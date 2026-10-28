@@ -1,17 +1,14 @@
+import {
+  type RecoveryAction,
+  type MessagePhase as AgentMessagePhase,
+  type ToolCategory,
+  type RunStatus as AgentRunStatus,
+  type InterruptType as PendingInterruptKind,
+} from "@flame/runtime-client/wire";
+export type { AgentMessagePhase, ToolCategory, AgentRunStatus };
 import { type CapturedToolResult, type RecordedFileChange } from "@flame/component-sdk";
-type RecoveryAction =
-  | "refetch"
-  | "coldRecover"
-  | "resubscribe"
-  | "reauthenticate"
-  | "waitRetryAfter"
-  | "promptUser"
-  | "stop";
-
 import { type ContentBlock } from "@/features/agent/public/contentBlock";
 export type MessageRole = "user" | "assistant" | "system";
-
-export type AgentMessagePhase = "commentary" | "finalAnswer";
 
 export interface PlanStep {
   readonly id: string;
@@ -25,8 +22,6 @@ export interface AgentPlan {
 }
 
 export type ToolCallStatus = CapturedToolResult["status"];
-
-export type ToolCategory = "shell" | "edit" | "read" | "search" | "web" | "task" | "unknown";
 
 export type AgentSafetyClass = NonNullable<CapturedToolResult["safetyClass"]>;
 
@@ -73,8 +68,6 @@ export interface AgentProblem {
   retryAfterSeconds?: number;
   activeRun?: { runId: string; status: string };
 }
-
-export type AgentRunStatus = "running" | "waiting" | "finished";
 
 export interface AgentUnresolvedEffect {
   processId: string;
@@ -132,8 +125,6 @@ export interface AgentRunView {
   createdAt: string;
   finishedAt: string | null;
 }
-
-type PendingInterruptKind = "approval" | "question";
 
 export interface PendingInterrupt {
   itemId: string;

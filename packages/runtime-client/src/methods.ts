@@ -1,3 +1,4 @@
+import { cloneJSON } from "@qimu/sdk/json";
 import {
   callPluginCommand,
   pendingPluginCommand,
@@ -513,7 +514,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
     createMutationJournal({
       scope: () => options.capabilities?.()?.limits.idempotency,
     });
-  const { call, perform, openMutation } = createWireCallPath(client, {
+  const { call, perform, openMutation, capturePluginCommand } = createWireCallPath(client, {
     ...options,
     mutationJournal,
   });
@@ -612,10 +613,11 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
         );
         return { result: opened.result, observation: { type: "stream", events: opened.events } };
       },
-      signal,
-      undefined,
-      original?.idempotencyKey,
-      original?.reserve,
+      {
+        signal,
+        journalKey: original?.idempotencyKey,
+        reserveOriginal: original?.reserve,
+      },
     );
   }
 
@@ -694,10 +696,11 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
           ]);
         return { type: "accepted", ...acknowledged };
       },
-      signal,
-      undefined,
-      original?.idempotencyKey,
-      original?.reserve,
+      {
+        signal,
+        journalKey: original?.idempotencyKey,
+        reserveOriginal: original?.reserve,
+      },
     );
     return expose(mutation);
   };
@@ -772,7 +775,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
                 return {
                   ...observed,
                   operation: "start",
-                  params: structuredClone(command.params),
+                  params: cloneJSON(command.params),
                   retry: (options) =>
                     openRun("runs.start", command.params, options?.signal, command),
                 };
@@ -780,7 +783,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
                 return {
                   ...observed,
                   operation: "resume",
-                  params: structuredClone(command.params),
+                  params: cloneJSON(command.params),
                   retry: (options) =>
                     openRun("runs.resume", command.params, options?.signal, command),
                 };
@@ -789,7 +792,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
                   ...observed,
                   operation: "steer",
                   userItemId: command.steerItemId,
-                  params: structuredClone(command.params),
+                  params: cloneJSON(command.params),
                   retry: (options) => openSteer(command.params, options?.signal, command),
                 };
             }
@@ -879,9 +882,8 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
         queryPluginStream(client, { perform }, request, consume, decode, signal),
       stream: (intent, input, prepare, consume, decode, signal) =>
         callPluginStream(
-          mutationJournal,
           client,
-          { perform, openMutation },
+          { perform, openMutation, capturePluginCommand },
           intent,
           input,
           prepare,
@@ -891,8 +893,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
         ),
       command: (intent, input, prepare, decode, signal) =>
         callPluginCommand(
-          mutationJournal,
-          { perform, openMutation },
+          { perform, openMutation, capturePluginCommand },
           intent,
           input,
           prepare,

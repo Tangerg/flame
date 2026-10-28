@@ -743,6 +743,66 @@
           "value": "\"automatic\""
         },
         {
+          "name": "ComponentExport",
+          "type": "untyped string",
+          "value": "\"component\""
+        },
+        {
+          "name": "ComponentPlacementExport",
+          "type": "ComponentPlacement",
+          "value": "\"export\""
+        },
+        {
+          "name": "ComponentPlacementFileRenderer",
+          "type": "ComponentPlacement",
+          "value": "\"fileRenderer\""
+        },
+        {
+          "name": "ComponentPlacementSessionAction",
+          "type": "ComponentPlacement",
+          "value": "\"sessionAction\""
+        },
+        {
+          "name": "ComponentPlacementToolResultRenderer",
+          "type": "ComponentPlacement",
+          "value": "\"toolResultRenderer\""
+        },
+        {
+          "name": "ComponentPlacementWorkspaceView",
+          "type": "ComponentPlacement",
+          "value": "\"workspaceView\""
+        },
+        {
+          "name": "ComponentScopeClient",
+          "type": "ComponentScope",
+          "value": "\"client\""
+        },
+        {
+          "name": "ComponentScopeFile",
+          "type": "ComponentScope",
+          "value": "\"file\""
+        },
+        {
+          "name": "ComponentScopeInstallation",
+          "type": "ComponentScope",
+          "value": "\"installation\""
+        },
+        {
+          "name": "ComponentScopeSession",
+          "type": "ComponentScope",
+          "value": "\"session\""
+        },
+        {
+          "name": "ComponentScopeToolResult",
+          "type": "ComponentScope",
+          "value": "\"toolResult\""
+        },
+        {
+          "name": "ComponentScopeWorkspace",
+          "type": "ComponentScope",
+          "value": "\"workspace\""
+        },
+        {
           "name": "Human",
           "type": "portable.Origin",
           "value": "\"human\""
@@ -751,6 +811,21 @@
           "name": "Model",
           "type": "portable.Origin",
           "value": "\"model\""
+        },
+        {
+          "name": "RendererFileExtension",
+          "type": "RendererSelectorKind",
+          "value": "\"fileExtension\""
+        },
+        {
+          "name": "RendererResultShape",
+          "type": "RendererSelectorKind",
+          "value": "\"resultShape\""
+        },
+        {
+          "name": "RendererToolName",
+          "type": "RendererSelectorKind",
+          "value": "\"toolName\""
         },
         {
           "name": "ScopeCall",
@@ -767,6 +842,45 @@
         {
           "name": "ValidateInvocation",
           "signature": "func(invocation portable.Invocation) error"
+        }
+      ],
+      "types": [
+        {
+          "name": "ComponentPlacement",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "Values",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "ComponentScope",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "Valid",
+              "signature": "func() bool"
+            },
+            {
+              "name": "Values",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "RendererSelectorKind",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "Values",
+              "signature": "func() []string"
+            }
+          ]
         }
       ]
     },
@@ -2085,6 +2199,16 @@
       ],
       "constants": [
         {
+          "name": "AddV2InputScopeProject",
+          "type": "AddV2InputScope",
+          "value": "\"project\""
+        },
+        {
+          "name": "AddV2InputScopeUser",
+          "type": "AddV2InputScope",
+          "value": "\"user\""
+        },
+        {
           "name": "AddV2Method",
           "type": "untyped string",
           "value": "\"flame.memory/add.v2\""
@@ -2100,9 +2224,29 @@
           "value": "\"flame.memory/delete.v2\""
         },
         {
+          "name": "ItemsV2InputScopeProject",
+          "type": "ItemsV2InputScope",
+          "value": "\"project\""
+        },
+        {
+          "name": "ItemsV2InputScopeUser",
+          "type": "ItemsV2InputScope",
+          "value": "\"user\""
+        },
+        {
           "name": "ItemsV2Method",
           "type": "untyped string",
           "value": "\"flame.memory/items.v2\""
+        },
+        {
+          "name": "ListV2InputScopeProject",
+          "type": "ListV2InputScope",
+          "value": "\"project\""
+        },
+        {
+          "name": "ListV2InputScopeUser",
+          "type": "ListV2InputScope",
+          "value": "\"user\""
         },
         {
           "name": "ListV2Method",
@@ -2150,6 +2294,16 @@
           "value": "2048"
         },
         {
+          "name": "ReviewV2InputDecisionApprove",
+          "type": "ReviewV2InputDecision",
+          "value": "\"approve\""
+        },
+        {
+          "name": "ReviewV2InputDecisionReject",
+          "type": "ReviewV2InputDecision",
+          "value": "\"reject\""
+        },
+        {
           "name": "ReviewV2Method",
           "type": "untyped string",
           "value": "\"flame.memory/review.v2\""
@@ -2168,6 +2322,41 @@
           "name": "UpdateV2Method",
           "type": "untyped string",
           "value": "\"flame.memory/update.v2\""
+        },
+        {
+          "name": "UpdateV2OutputOriginAuto",
+          "type": "UpdateV2OutputOrigin",
+          "value": "\"auto\""
+        },
+        {
+          "name": "UpdateV2OutputOriginUser",
+          "type": "UpdateV2OutputOrigin",
+          "value": "\"user\""
+        },
+        {
+          "name": "UpdateV2OutputScopeProject",
+          "type": "UpdateV2OutputScope",
+          "value": "\"project\""
+        },
+        {
+          "name": "UpdateV2OutputScopeUser",
+          "type": "UpdateV2OutputScope",
+          "value": "\"user\""
+        },
+        {
+          "name": "UpdateV2OutputStatusActive",
+          "type": "UpdateV2OutputStatus",
+          "value": "\"active\""
+        },
+        {
+          "name": "UpdateV2OutputStatusPending",
+          "type": "UpdateV2OutputStatus",
+          "value": "\"pending\""
+        },
+        {
+          "name": "UpdateV2OutputStatusRejected",
+          "type": "UpdateV2OutputStatus",
+          "value": "\"rejected\""
         }
       ],
       "types": [
@@ -2187,10 +2376,15 @@
             },
             {
               "name": "Scope",
-              "type": "string",
+              "type": "AddV2InputScope",
               "tag": "json:\"Scope\""
             }
           ]
+        },
+        {
+          "name": "AddV2InputScope",
+          "kind": "defined",
+          "underlying": "string"
         },
         {
           "name": "AddV2Output",
@@ -2203,7 +2397,7 @@
             },
             {
               "name": "Item",
-              "type": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot",
+              "type": "UpdateV2Output",
               "tag": "json:\"Item\""
             }
           ]
@@ -2239,15 +2433,20 @@
             },
             {
               "name": "Scope",
-              "type": "string",
+              "type": "ItemsV2InputScope",
               "tag": "json:\"Scope\""
             }
           ]
         },
         {
+          "name": "ItemsV2InputScope",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
           "name": "ItemsV2Output",
           "kind": "defined",
-          "underlying": "[]Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot"
+          "underlying": "[]UpdateV2Output"
         },
         {
           "name": "ListV2Input",
@@ -2270,10 +2469,15 @@
             },
             {
               "name": "Scope",
-              "type": "string",
+              "type": "ListV2InputScope",
               "tag": "json:\"Scope\""
             }
           ]
+        },
+        {
+          "name": "ListV2InputScope",
+          "kind": "defined",
+          "underlying": "string"
         },
         {
           "name": "ListV2Output",
@@ -2291,7 +2495,7 @@
             },
             {
               "name": "Rows",
-              "type": "[]Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot",
+              "type": "[]UpdateV2Output",
               "tag": "json:\"Rows\""
             }
           ]
@@ -2334,367 +2538,6 @@
           ]
         },
         {
-          "name": "Method_flame_2ememory_2fadd_2ev2Input",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "CWD",
-              "type": "string",
-              "tag": "json:\"CWD\""
-            },
-            {
-              "name": "Content",
-              "type": "string",
-              "tag": "json:\"Content\""
-            },
-            {
-              "name": "Scope",
-              "type": "string",
-              "tag": "json:\"Scope\""
-            }
-          ]
-        },
-        {
-          "name": "Method_flame_2ememory_2fadd_2ev2Output",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Changed",
-              "type": "bool",
-              "tag": "json:\"Changed\""
-            },
-            {
-              "name": "Item",
-              "type": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot",
-              "tag": "json:\"Item\""
-            }
-          ]
-        },
-        {
-          "name": "Method_flame_2ememory_2fdelete_2ev2Input",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "ExpectedRevision",
-              "type": "uint64",
-              "tag": "json:\"ExpectedRevision\""
-            },
-            {
-              "name": "ID",
-              "type": "string",
-              "tag": "json:\"ID\""
-            }
-          ]
-        },
-        {
-          "name": "Method_flame_2ememory_2fdelete_2ev2Output",
-          "kind": "struct"
-        },
-        {
-          "name": "Method_flame_2ememory_2fitems_2ev2Input",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Project",
-              "type": "string",
-              "tag": "json:\"Project\""
-            },
-            {
-              "name": "Scope",
-              "type": "string",
-              "tag": "json:\"Scope\""
-            }
-          ]
-        },
-        {
-          "name": "Method_flame_2ememory_2fitems_2ev2Output",
-          "kind": "defined",
-          "underlying": "[]Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot"
-        },
-        {
-          "name": "Method_flame_2ememory_2flist_2ev2Input",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "CWD",
-              "type": "string",
-              "tag": "json:\"CWD\""
-            },
-            {
-              "name": "Cursor",
-              "type": "string",
-              "tag": "json:\"Cursor\""
-            },
-            {
-              "name": "Limit",
-              "type": "*uint64",
-              "tag": "json:\"Limit,omitzero\""
-            },
-            {
-              "name": "Scope",
-              "type": "string",
-              "tag": "json:\"Scope\""
-            }
-          ]
-        },
-        {
-          "name": "Method_flame_2ememory_2flist_2ev2Output",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Capacity",
-              "type": "int64",
-              "tag": "json:\"Capacity\""
-            },
-            {
-              "name": "NextCursor",
-              "type": "string",
-              "tag": "json:\"NextCursor\""
-            },
-            {
-              "name": "Rows",
-              "type": "[]Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot",
-              "tag": "json:\"Rows\""
-            }
-          ]
-        },
-        {
-          "name": "Method_flame_2ememory_2fmaintain_2ev1Input",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Compacted",
-              "type": "bool",
-              "tag": "json:\"Compacted\""
-            },
-            {
-              "name": "Conversation",
-              "type": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fConversation",
-              "tag": "json:\"Conversation\""
-            },
-            {
-              "name": "Project",
-              "type": "string",
-              "tag": "json:\"Project\""
-            },
-            {
-              "name": "SessionID",
-              "type": "string",
-              "tag": "json:\"SessionID\""
-            }
-          ]
-        },
-        {
-          "name": "Method_flame_2ememory_2fmaintain_2ev1Output",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Published",
-              "type": "bool",
-              "tag": "json:\"Published\""
-            }
-          ]
-        },
-        {
-          "name": "Method_flame_2ememory_2freview_2ev2Input",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Decision",
-              "type": "string",
-              "tag": "json:\"Decision\""
-            },
-            {
-              "name": "ExpectedRevision",
-              "type": "uint64",
-              "tag": "json:\"ExpectedRevision\""
-            },
-            {
-              "name": "ID",
-              "type": "string",
-              "tag": "json:\"ID\""
-            }
-          ]
-        },
-        {
-          "name": "Method_flame_2ememory_2freview_2ev2Output",
-          "kind": "struct"
-        },
-        {
-          "name": "Method_flame_2ememory_2fsearch_2ev2Input",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "EmbeddingSpace",
-              "type": "string",
-              "tag": "json:\"EmbeddingSpace\""
-            },
-            {
-              "name": "Project",
-              "type": "string",
-              "tag": "json:\"Project\""
-            },
-            {
-              "name": "Query",
-              "type": "string",
-              "tag": "json:\"Query\""
-            },
-            {
-              "name": "TopK",
-              "type": "int64",
-              "tag": "json:\"TopK\""
-            }
-          ]
-        },
-        {
-          "name": "Method_flame_2ememory_2fsearch_2ev2Output",
-          "kind": "defined",
-          "underlying": "[]Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot"
-        },
-        {
-          "name": "Method_flame_2ememory_2fupdate_2ev2Input",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Content",
-              "type": "*string",
-              "tag": "json:\"Content,omitzero\""
-            },
-            {
-              "name": "ExpectedRevision",
-              "type": "uint64",
-              "tag": "json:\"ExpectedRevision\""
-            },
-            {
-              "name": "ID",
-              "type": "string",
-              "tag": "json:\"ID\""
-            },
-            {
-              "name": "Pinned",
-              "type": "*bool",
-              "tag": "json:\"Pinned,omitzero\""
-            }
-          ]
-        },
-        {
-          "name": "Method_flame_2ememory_2fupdate_2ev2Output",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Content",
-              "type": "string",
-              "tag": "json:\"Content\""
-            },
-            {
-              "name": "CreatedAt",
-              "type": "time.Time",
-              "tag": "json:\"CreatedAt\""
-            },
-            {
-              "name": "Day",
-              "type": "string",
-              "tag": "json:\"Day\""
-            },
-            {
-              "name": "Embedding",
-              "type": "[]float64",
-              "tag": "json:\"Embedding\""
-            },
-            {
-              "name": "EmbeddingSpace",
-              "type": "string",
-              "tag": "json:\"EmbeddingSpace\""
-            },
-            {
-              "name": "ID",
-              "type": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemID",
-              "tag": "json:\"ID\""
-            },
-            {
-              "name": "Origin",
-              "type": "string",
-              "tag": "json:\"Origin\""
-            },
-            {
-              "name": "Pinned",
-              "type": "bool",
-              "tag": "json:\"Pinned\""
-            },
-            {
-              "name": "Project",
-              "type": "string",
-              "tag": "json:\"Project\""
-            },
-            {
-              "name": "Revision",
-              "type": "uint64",
-              "tag": "json:\"Revision\""
-            },
-            {
-              "name": "Scope",
-              "type": "string",
-              "tag": "json:\"Scope\""
-            },
-            {
-              "name": "SessionID",
-              "type": "string",
-              "tag": "json:\"SessionID\""
-            },
-            {
-              "name": "Status",
-              "type": "string",
-              "tag": "json:\"Status\""
-            },
-            {
-              "name": "UpdatedAt",
-              "type": "time.Time",
-              "tag": "json:\"UpdatedAt\""
-            }
-          ]
-        },
-        {
-          "name": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fAck",
-          "kind": "struct"
-        },
-        {
-          "name": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fAddInput",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "CWD",
-              "type": "string",
-              "tag": "json:\"CWD\""
-            },
-            {
-              "name": "Content",
-              "type": "string",
-              "tag": "json:\"Content\""
-            },
-            {
-              "name": "Scope",
-              "type": "string",
-              "tag": "json:\"Scope\""
-            }
-          ]
-        },
-        {
-          "name": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fAddResult",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Changed",
-              "type": "bool",
-              "tag": "json:\"Changed\""
-            },
-            {
-              "name": "Item",
-              "type": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot",
-              "tag": "json:\"Item\""
-            }
-          ]
-        },
-        {
           "name": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fConversation",
           "kind": "struct",
           "fields": [
@@ -2711,274 +2554,9 @@
           ]
         },
         {
-          "name": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fItemInput",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "ExpectedRevision",
-              "type": "uint64",
-              "tag": "json:\"ExpectedRevision\""
-            },
-            {
-              "name": "ID",
-              "type": "string",
-              "tag": "json:\"ID\""
-            }
-          ]
-        },
-        {
-          "name": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fItemsInput",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Project",
-              "type": "string",
-              "tag": "json:\"Project\""
-            },
-            {
-              "name": "Scope",
-              "type": "string",
-              "tag": "json:\"Scope\""
-            }
-          ]
-        },
-        {
-          "name": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fListInput",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "CWD",
-              "type": "string",
-              "tag": "json:\"CWD\""
-            },
-            {
-              "name": "Cursor",
-              "type": "string",
-              "tag": "json:\"Cursor\""
-            },
-            {
-              "name": "Limit",
-              "type": "*uint64",
-              "tag": "json:\"Limit,omitzero\""
-            },
-            {
-              "name": "Scope",
-              "type": "string",
-              "tag": "json:\"Scope\""
-            }
-          ]
-        },
-        {
-          "name": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fMaintenanceInput",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Compacted",
-              "type": "bool",
-              "tag": "json:\"Compacted\""
-            },
-            {
-              "name": "Conversation",
-              "type": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fConversation",
-              "tag": "json:\"Conversation\""
-            },
-            {
-              "name": "Project",
-              "type": "string",
-              "tag": "json:\"Project\""
-            },
-            {
-              "name": "SessionID",
-              "type": "string",
-              "tag": "json:\"SessionID\""
-            }
-          ]
-        },
-        {
-          "name": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fMaintenanceResult",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Published",
-              "type": "bool",
-              "tag": "json:\"Published\""
-            }
-          ]
-        },
-        {
-          "name": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fPage",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Capacity",
-              "type": "int64",
-              "tag": "json:\"Capacity\""
-            },
-            {
-              "name": "NextCursor",
-              "type": "string",
-              "tag": "json:\"NextCursor\""
-            },
-            {
-              "name": "Rows",
-              "type": "[]Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot",
-              "tag": "json:\"Rows\""
-            }
-          ]
-        },
-        {
-          "name": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fReviewInput",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Decision",
-              "type": "string",
-              "tag": "json:\"Decision\""
-            },
-            {
-              "name": "ExpectedRevision",
-              "type": "uint64",
-              "tag": "json:\"ExpectedRevision\""
-            },
-            {
-              "name": "ID",
-              "type": "string",
-              "tag": "json:\"ID\""
-            }
-          ]
-        },
-        {
-          "name": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fSearchInput",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "EmbeddingSpace",
-              "type": "string",
-              "tag": "json:\"EmbeddingSpace\""
-            },
-            {
-              "name": "Project",
-              "type": "string",
-              "tag": "json:\"Project\""
-            },
-            {
-              "name": "Query",
-              "type": "string",
-              "tag": "json:\"Query\""
-            },
-            {
-              "name": "TopK",
-              "type": "int64",
-              "tag": "json:\"TopK\""
-            }
-          ]
-        },
-        {
-          "name": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fUpdateInput",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Content",
-              "type": "*string",
-              "tag": "json:\"Content,omitzero\""
-            },
-            {
-              "name": "ExpectedRevision",
-              "type": "uint64",
-              "tag": "json:\"ExpectedRevision\""
-            },
-            {
-              "name": "ID",
-              "type": "string",
-              "tag": "json:\"ID\""
-            },
-            {
-              "name": "Pinned",
-              "type": "*bool",
-              "tag": "json:\"Pinned,omitzero\""
-            }
-          ]
-        },
-        {
           "name": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemID",
           "kind": "defined",
           "underlying": "string"
-        },
-        {
-          "name": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Content",
-              "type": "string",
-              "tag": "json:\"Content\""
-            },
-            {
-              "name": "CreatedAt",
-              "type": "time.Time",
-              "tag": "json:\"CreatedAt\""
-            },
-            {
-              "name": "Day",
-              "type": "string",
-              "tag": "json:\"Day\""
-            },
-            {
-              "name": "Embedding",
-              "type": "[]float64",
-              "tag": "json:\"Embedding\""
-            },
-            {
-              "name": "EmbeddingSpace",
-              "type": "string",
-              "tag": "json:\"EmbeddingSpace\""
-            },
-            {
-              "name": "ID",
-              "type": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemID",
-              "tag": "json:\"ID\""
-            },
-            {
-              "name": "Origin",
-              "type": "string",
-              "tag": "json:\"Origin\""
-            },
-            {
-              "name": "Pinned",
-              "type": "bool",
-              "tag": "json:\"Pinned\""
-            },
-            {
-              "name": "Project",
-              "type": "string",
-              "tag": "json:\"Project\""
-            },
-            {
-              "name": "Revision",
-              "type": "uint64",
-              "tag": "json:\"Revision\""
-            },
-            {
-              "name": "Scope",
-              "type": "string",
-              "tag": "json:\"Scope\""
-            },
-            {
-              "name": "SessionID",
-              "type": "string",
-              "tag": "json:\"SessionID\""
-            },
-            {
-              "name": "Status",
-              "type": "string",
-              "tag": "json:\"Status\""
-            },
-            {
-              "name": "UpdatedAt",
-              "type": "time.Time",
-              "tag": "json:\"UpdatedAt\""
-            }
-          ]
         },
         {
           "name": "ReviewV2Input",
@@ -2986,7 +2564,7 @@
           "fields": [
             {
               "name": "Decision",
-              "type": "string",
+              "type": "ReviewV2InputDecision",
               "tag": "json:\"Decision\""
             },
             {
@@ -3000,6 +2578,11 @@
               "tag": "json:\"ID\""
             }
           ]
+        },
+        {
+          "name": "ReviewV2InputDecision",
+          "kind": "defined",
+          "underlying": "string"
         },
         {
           "name": "ReviewV2Output",
@@ -3034,7 +2617,7 @@
         {
           "name": "SearchV2Output",
           "kind": "defined",
-          "underlying": "[]Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot"
+          "underlying": "[]UpdateV2Output"
         },
         {
           "name": "UpdateV2Input",
@@ -3098,7 +2681,7 @@
             },
             {
               "name": "Origin",
-              "type": "string",
+              "type": "UpdateV2OutputOrigin",
               "tag": "json:\"Origin\""
             },
             {
@@ -3118,7 +2701,7 @@
             },
             {
               "name": "Scope",
-              "type": "string",
+              "type": "UpdateV2OutputScope",
               "tag": "json:\"Scope\""
             },
             {
@@ -3128,7 +2711,7 @@
             },
             {
               "name": "Status",
-              "type": "string",
+              "type": "UpdateV2OutputStatus",
               "tag": "json:\"Status\""
             },
             {
@@ -3137,6 +2720,21 @@
               "tag": "json:\"UpdatedAt\""
             }
           ]
+        },
+        {
+          "name": "UpdateV2OutputOrigin",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "UpdateV2OutputScope",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "UpdateV2OutputStatus",
+          "kind": "defined",
+          "underlying": "string"
         }
       ]
     },
@@ -3186,7 +2784,7 @@
         },
         {
           "name": "Command",
-          "signature": "func[P, R any](ctx context.Context, db *sql.DB, method string, id string, input P, admitted jsonvalue.Value, classify func(error) string, handler func(context.Context, P) (R, error)) (R, error)"
+          "signature": "func[P, R any](ctx context.Context, db *sql.DB, method string, id string, admitted jsonvalue.Value, classify func(error) string, handler func(context.Context, P) (R, error)) (R, error)"
         },
         {
           "name": "ReadReceipt",
@@ -3226,6 +2824,7 @@
       "path": "github.com/Tangerg/flame/packages/go-sdk/protocol",
       "imports": [
         "encoding/json/jsontext",
+        "github.com/Tangerg/flame/packages/go-sdk/extension",
         "github.com/Tangerg/flame/qimu/portable",
         "github.com/Tangerg/go-sdk/jsonrpc",
         "time"
@@ -3435,61 +3034,6 @@
           "name": "CancelRunRoot",
           "type": "CancelRunResponseType",
           "value": "\"root\""
-        },
-        {
-          "name": "ComponentPlacementExport",
-          "type": "ComponentPlacement",
-          "value": "\"export\""
-        },
-        {
-          "name": "ComponentPlacementFileRenderer",
-          "type": "ComponentPlacement",
-          "value": "\"fileRenderer\""
-        },
-        {
-          "name": "ComponentPlacementSessionAction",
-          "type": "ComponentPlacement",
-          "value": "\"sessionAction\""
-        },
-        {
-          "name": "ComponentPlacementToolResultRenderer",
-          "type": "ComponentPlacement",
-          "value": "\"toolResultRenderer\""
-        },
-        {
-          "name": "ComponentPlacementWorkspaceView",
-          "type": "ComponentPlacement",
-          "value": "\"workspaceView\""
-        },
-        {
-          "name": "ComponentScopeClient",
-          "type": "ComponentScope",
-          "value": "\"client\""
-        },
-        {
-          "name": "ComponentScopeFile",
-          "type": "ComponentScope",
-          "value": "\"file\""
-        },
-        {
-          "name": "ComponentScopeInstallation",
-          "type": "ComponentScope",
-          "value": "\"installation\""
-        },
-        {
-          "name": "ComponentScopeSession",
-          "type": "ComponentScope",
-          "value": "\"session\""
-        },
-        {
-          "name": "ComponentScopeToolResult",
-          "type": "ComponentScope",
-          "value": "\"toolResult\""
-        },
-        {
-          "name": "ComponentScopeWorkspace",
-          "type": "ComponentScope",
-          "value": "\"workspace\""
         },
         {
           "name": "ContentBlockImage",
@@ -4325,21 +3869,6 @@
           "name": "PluginRealizationReleaseUnavailable",
           "type": "PluginRealizationType",
           "value": "\"releaseUnavailable\""
-        },
-        {
-          "name": "PluginRendererFileExtension",
-          "type": "PluginRendererSelectorType",
-          "value": "\"fileExtension\""
-        },
-        {
-          "name": "PluginRendererResultShape",
-          "type": "PluginRendererSelectorType",
-          "value": "\"resultShape\""
-        },
-        {
-          "name": "PluginRendererToolName",
-          "type": "PluginRendererSelectorType",
-          "value": "\"toolName\""
         },
         {
           "name": "PluginServerHTTP",
@@ -6055,16 +5584,6 @@
               "type": "string"
             }
           ]
-        },
-        {
-          "name": "ComponentPlacement",
-          "kind": "defined",
-          "underlying": "string"
-        },
-        {
-          "name": "ComponentScope",
-          "kind": "defined",
-          "underlying": "string"
         },
         {
           "name": "ConfigurePluginRequest",
@@ -9006,12 +8525,12 @@
             },
             {
               "name": "Scope",
-              "type": "ComponentScope",
+              "type": "extension.ComponentScope",
               "tag": "json:\"scope\""
             },
             {
               "name": "Placement",
-              "type": "ComponentPlacement",
+              "type": "extension.ComponentPlacement",
               "tag": "json:\"placement\""
             },
             {
@@ -9546,7 +9065,7 @@
           "fields": [
             {
               "name": "Type",
-              "type": "PluginRendererSelectorType",
+              "type": "extension.RendererSelectorKind",
               "tag": "json:\"type\""
             },
             {
@@ -9555,11 +9074,6 @@
               "tag": "json:\"name\""
             }
           ]
-        },
-        {
-          "name": "PluginRendererSelectorType",
-          "kind": "defined",
-          "underlying": "string"
         },
         {
           "name": "PluginRequest",

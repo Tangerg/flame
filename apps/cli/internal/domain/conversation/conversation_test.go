@@ -126,7 +126,7 @@ func TestConversationAppendsTextDeltasInEventOrder(t *testing.T) {
 	for _, block := range []Block{
 		{ID: "answer", RunID: run.ID, Status: BlockStatusRunning, Kind: BlockAssistant},
 		{ID: "reasoning", RunID: run.ID, Status: BlockStatusRunning, Kind: BlockReasoning},
-		{ID: "tool", RunID: run.ID, Status: BlockStatusRunning, Kind: BlockTool, Tool: &ToolCall{Kind: ToolShell, Name: "shell", Status: ToolRunning}},
+		{ID: "tool", RunID: run.ID, Status: BlockStatusRunning, Kind: BlockTool, Tool: &ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Status: ToolRunning}},
 	} {
 		apply(t, projection, RunEvent{EventID: "start-" + block.ID, RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: BlockStarted{Block: block}})
 	}
@@ -191,7 +191,7 @@ func TestConversationRejectsARunThatFinishesWithAnOpenItem(t *testing.T) {
 			projection := New()
 			run := runningRun("seg_1")
 			apply(t, projection, RunEvent{EventID: "start", RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: SegmentStarted{Run: run}})
-			tool := ToolCall{Kind: ToolShell, Name: "shell", Command: "sleep 10", Status: ToolRunning}
+			tool := ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Command: "sleep 10", Status: ToolRunning}
 			apply(t, projection, RunEvent{EventID: "tool", RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: BlockStarted{Block: Block{
 				ID: "tool_1", RunID: run.ID, Status: BlockStatusRunning, Kind: BlockTool, Tool: &tool,
 			}}})
@@ -264,7 +264,7 @@ func TestConversationValidatesEphemeralToolAndCustomEventsAgainstTheActiveRun(t 
 	apply(t, projection, RunEvent{EventID: "start", RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: SegmentStarted{Run: run}})
 	apply(t, projection, RunEvent{EventID: "tool", RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: BlockStarted{Block: Block{
 		ID: "tool_1", RunID: run.ID, Status: BlockStatusRunning, Kind: BlockTool,
-		Tool: &ToolCall{Kind: ToolShell, Name: "shell", Status: ToolRunning},
+		Tool: &ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Status: ToolRunning},
 	}}})
 	apply(t, projection, RunEvent{EventID: "args", RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: ToolArgumentsDelta{BlockID: "tool_1", Text: `{"command":"go test`}})
 	apply(t, projection, RunEvent{EventID: "custom", RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: CustomEvent{Name: "vendor.trace", PayloadJSON: []byte(`{"span":"abc"}`)}})
@@ -285,7 +285,7 @@ func TestConversationFoldsAChildRunWithoutEndingTheRootStream(t *testing.T) {
 	apply(t, projection, treeEvent("open-root", root.ID, root.ActiveSegmentID, root.ActiveSegmentID, SegmentStarted{Run: root}))
 	delegate := Block{
 		ID: "delegate", RunID: root.ID, Status: BlockStatusRunning, Kind: BlockTool,
-		Tool: &ToolCall{Kind: ToolTask, Name: "delegate_task", Status: ToolRunning},
+		Tool: &ToolCall{Kind: protocol.ToolCategoryTask, Name: "delegate_task", Status: ToolRunning},
 	}
 	apply(t, projection, treeEvent("delegate-start", root.ID, root.ActiveSegmentID, root.ActiveSegmentID, BlockStarted{Block: delegate}))
 
@@ -327,7 +327,7 @@ func TestConversationResumesATreeInterruptedByAChild(t *testing.T) {
 	apply(t, projection, treeEvent("root-start-1", root.ID, root.ActiveSegmentID, root.ActiveSegmentID, SegmentStarted{Run: root}))
 	delegate := Block{
 		ID: "delegate", RunID: root.ID, Status: BlockStatusRunning, Kind: BlockTool,
-		Tool: &ToolCall{Kind: ToolTask, Name: "delegate_task", Status: ToolRunning},
+		Tool: &ToolCall{Kind: protocol.ToolCategoryTask, Name: "delegate_task", Status: ToolRunning},
 	}
 	apply(t, projection, treeEvent("delegate-start", root.ID, root.ActiveSegmentID, root.ActiveSegmentID, BlockStarted{Block: delegate}))
 	child := runningRun("seg_child_1")
@@ -336,7 +336,7 @@ func TestConversationResumesATreeInterruptedByAChild(t *testing.T) {
 	apply(t, projection, treeEvent("child-start-1", child.ID, child.ActiveSegmentID, root.ActiveSegmentID, SegmentStarted{Run: child}))
 	approval := Approval{
 		RunID: child.ID, ItemID: "child-approval", Title: "Inspect generated output",
-		Tool: &ToolCall{Kind: ToolRead, Name: "read", Status: ToolRunning},
+		Tool: &ToolCall{Kind: protocol.ToolCategoryRead, Name: "read", Status: ToolRunning},
 	}
 	apply(t, projection, treeEvent("approval-start", child.ID, child.ActiveSegmentID, root.ActiveSegmentID, BlockStarted{Block: Block{
 		ID: approval.ItemID, RunID: child.ID, Status: BlockStatusRunning, Kind: BlockTool, Tool: approval.Tool,
@@ -531,7 +531,7 @@ func attachedReconciliationSnapshot(t testing.TB) SessionSnapshot {
 		Transcript: []Block{
 			{ID: "same", RunID: "run_old", Status: BlockStatusCompleted, Kind: BlockAssistant, Text: "old"},
 			{ID: "same", RunID: "run_1", Status: BlockStatusCompleted, Kind: BlockAssistant, Text: "current"},
-			{ID: "live", RunID: "run_1", Status: BlockStatusRunning, Kind: BlockTool, Tool: &ToolCall{Kind: ToolShell, Name: "shell", Status: ToolRunning}},
+			{ID: "live", RunID: "run_1", Status: BlockStatusRunning, Kind: BlockTool, Tool: &ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Status: ToolRunning}},
 		},
 		Runs: []Run{
 			testRootRun(Run{ID: "run_old", SessionID: "ses_1", Status: protocol.RunStatusFinished, Outcome: Outcome{Status: protocol.OutcomeCompleted}}),

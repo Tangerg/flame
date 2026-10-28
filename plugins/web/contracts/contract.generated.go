@@ -3,48 +3,62 @@ package contracts
 
 import "time"
 
-type Method_flame_2eweb_2fbrowse_2ev1Input Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fBrowseInput
+type BrowseV1OutputFormat string
 
-type Method_flame_2eweb_2fbrowse_2ev1Output Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL2RvbWFpbg_5fPage
+const (
+	BrowseV1OutputFormatMarkdown BrowseV1OutputFormat = "markdown"
+	BrowseV1OutputFormatHtml     BrowseV1OutputFormat = "html"
+	BrowseV1OutputFormatText     BrowseV1OutputFormat = "text"
+)
 
-type Method_flame_2eweb_2ffetch_2ev1Input Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fFetchRequest
+type FetchV1InputFormat string
 
-type Method_flame_2eweb_2ffetch_2ev1Output Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL2RvbWFpbg_5fPage
+const (
+	FetchV1InputFormatMarkdown FetchV1InputFormat = "markdown"
+	FetchV1InputFormatHtml     FetchV1InputFormat = "html"
+	FetchV1InputFormatText     FetchV1InputFormat = "text"
+)
 
-type Method_flame_2eweb_2fsearch_2ev1Input Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchRequest
+type SearchV1InputRecency string
 
-type Method_flame_2eweb_2fsearch_2ev1Output Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchResponse
+const (
+	SearchV1InputRecencyHour  SearchV1InputRecency = "hour"
+	SearchV1InputRecencyDay   SearchV1InputRecency = "day"
+	SearchV1InputRecencyWeek  SearchV1InputRecency = "week"
+	SearchV1InputRecencyMonth SearchV1InputRecency = "month"
+	SearchV1InputRecencyYear  SearchV1InputRecency = "year"
+)
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL2RvbWFpbg_5fPage struct {
-	Content    string `json:"content"`
-	Format     string `json:"format"`
-	NextOffset *int64 `json:"nextOffset,omitzero"`
-	Offset     int64  `json:"offset"`
-	SnapshotId string `json:"snapshotId"`
-	TotalRunes int64  `json:"totalRunes"`
-	Url        string `json:"url"`
+type BrowseV1Output struct {
+	Content    string               `json:"content"`
+	Format     BrowseV1OutputFormat `json:"format"`
+	NextOffset *int64               `json:"nextOffset,omitzero"`
+	Offset     int64                `json:"offset"`
+	SnapshotId string               `json:"snapshotId"`
+	TotalRunes int64                `json:"totalRunes"`
+	Url        string               `json:"url"`
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fBrowseInput struct {
+type BrowseV1Input struct {
 	Limit      uint64 `json:"limit"`
 	Offset     uint64 `json:"offset"`
 	SnapshotId string `json:"snapshotId"`
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fFetchRequest struct {
-	Format *string `json:"format,omitzero"`
-	Url    string  `json:"url"`
+type FetchV1Input struct {
+	Format *FetchV1InputFormat `json:"format,omitzero"`
+	Url    string              `json:"url"`
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchRequest struct {
-	AllowedDomains *[]string `json:"allowed_domains,omitzero"`
-	BlockedDomains *[]string `json:"blocked_domains,omitzero"`
-	MaxResults     *int64    `json:"max_results,omitzero"`
-	Query          string    `json:"query"`
-	Recency        *string   `json:"recency,omitzero"`
+type SearchV1Input struct {
+	AllowedDomains *[]string             `json:"allowed_domains,omitzero"`
+	BlockedDomains *[]string             `json:"blocked_domains,omitzero"`
+	MaxResults     *int64                `json:"max_results,omitzero"`
+	Query          string                `json:"query"`
+	Recency        *SearchV1InputRecency `json:"recency,omitzero"`
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchResponse struct {
+type SearchV1Output struct {
 	Query   string                                                                      `json:"query"`
 	Results []Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchResult `json:"results"`
 }
@@ -62,15 +76,8 @@ const CapabilityJSON = "{\"protocol\":\"io.github.tangerg.qimu/portable/1\",\"re
 
 const BrowseV1Method = "flame.web/browse.v1"
 
-type BrowseV1Input Method_flame_2eweb_2fbrowse_2ev1Input
-type BrowseV1Output Method_flame_2eweb_2fbrowse_2ev1Output
-
 const FetchV1Method = "flame.web/fetch.v1"
 
-type FetchV1Input Method_flame_2eweb_2ffetch_2ev1Input
-type FetchV1Output Method_flame_2eweb_2ffetch_2ev1Output
+type FetchV1Output BrowseV1Output
 
 const SearchV1Method = "flame.web/search.v1"
-
-type SearchV1Input Method_flame_2eweb_2fsearch_2ev1Input
-type SearchV1Output Method_flame_2eweb_2fsearch_2ev1Output

@@ -377,6 +377,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
     checkRequest(method, params, requestMeta);
     const id = (++lastRequestId).toString();
     callOptions.onRequestRpcId?.(id);
+    if (connection.signal.aborted) throw new RpcTransportError("client closed");
     const req: TransportRequest = {
       jsonrpc: JSONRPC_VERSION,
       id,
@@ -386,11 +387,13 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
 
     return new Promise<WireResult<M> | string>((resolve, reject) => {
       const { signal } = callOptions;
-      const onAbort = () => {
-        if (!pending.has(id)) return;
+      const rejectPending = (error: unknown) => {
+        const request = pending.get(id);
+        if (!request) return;
         pending.delete(id);
-        reject(new RpcTransportError("aborted"));
+        request.reject(error);
       };
+      const onAbort = () => rejectPending(new RpcTransportError("aborted"));
       const detach = () => signal?.removeEventListener("abort", onAbort);
       pending.set(id, {
         method,
@@ -413,18 +416,17 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
         signal.addEventListener("abort", onAbort, { once: true });
       }
 
-      transport
-        .send(req, signal, {
-          idempotencyKey: callOptions.idempotencyKey,
-          idempotencyNamespace: callOptions.idempotencyNamespace,
-          lastEventId: callOptions.lastEventId,
-        })
-        .catch((err) => {
-          if (!pending.has(id)) return;
-          pending.delete(id);
-          detach();
-          reject(err);
-        });
+      try {
+        void transport
+          .send(req, signal, {
+            idempotencyKey: callOptions.idempotencyKey,
+            idempotencyNamespace: callOptions.idempotencyNamespace,
+            lastEventId: callOptions.lastEventId,
+          })
+          .catch(rejectPending);
+      } catch (error) {
+        rejectPending(error);
+      }
     });
   }
 

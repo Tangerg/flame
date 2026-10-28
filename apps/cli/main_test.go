@@ -549,7 +549,7 @@ func mixedInterruptPTYInterrupts() []conversation.Interrupt {
 			ItemID: "approval", Title: "Run contract checks", Rememberable: true,
 			RuleHint: "shell:go test ./...",
 			Tool: &conversation.ToolCall{
-				Kind: conversation.ToolShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning,
+				Kind: protocol.ToolCategoryShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning,
 				ArgumentsJSON: []byte(`{"command":"go test ./...","count":1}`),
 			},
 		},

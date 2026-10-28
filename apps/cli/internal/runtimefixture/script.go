@@ -349,7 +349,7 @@ func (d defaultScenario) prelude() []Step {
 		{ID: "3", Description: "Replace the sleep and re-run", Status: protocol.PlanStatusPending},
 	}))
 	prelude = append(prelude, stream("rsn_1", conversation.BlockReasoning, d.reasoning)...)
-	prelude = append(prelude, tool("tool_1", conversation.ToolShell, "shell",
+	prelude = append(prelude, tool("tool_1", protocol.ToolCategoryShell, "shell",
 		"go test ./internal/store -run TestCacheExpiry -count=5",
 		conversation.ToolOK, d.testOutput, "", 3*time.Second+412*time.Millisecond)...)
 	prelude = append(prelude, replacePlanStep(beat, []protocol.PlanStep{
@@ -361,7 +361,7 @@ func (d defaultScenario) prelude() []Step {
 }
 
 func (d defaultScenario) approved() []Step {
-	approved := tool("tool_3", conversation.ToolShell, "shell",
+	approved := tool("tool_3", protocol.ToolCategoryShell, "shell",
 		"go test ./internal/store -run TestCacheExpiry -count=50",
 		conversation.ToolOK, "ok  \tgithub.com/example/store\t2.104s", "", 2*time.Second+104*time.Millisecond)
 	approved = append(approved, stream("msg_2", conversation.BlockAssistant, d.summary)...)
@@ -401,7 +401,7 @@ func (d defaultScenario) script() Script {
 			Title:  "edit internal/store/cache_test.go",
 			Detail: "Replace the fixed 50ms sleep with a wait on the janitor's sweep signal.",
 			Tool: &conversation.ToolCall{
-				Kind: conversation.ToolEdit, Name: "edit", Summary: "internal/store/cache_test.go",
+				Kind: protocol.ToolCategoryEdit, Name: "edit", Summary: "internal/store/cache_test.go",
 				Status: conversation.ToolRunning, Path: "internal/store/cache_test.go", Diff: d.diff,
 			},
 			Diff:         d.diff,
@@ -430,7 +430,7 @@ func stream(id string, kind conversation.BlockKind, text string) []Step {
 }
 
 // tool renders one call as running, then finished with its result.
-func tool(id string, kind conversation.ToolKind, name, summary string, status conversation.ToolStatus, output, patch string, d time.Duration) []Step {
+func tool(id string, kind protocol.ToolCategory, name, summary string, status conversation.ToolStatus, output, patch string, d time.Duration) []Step {
 	running := conversation.Block{ID: id, Kind: conversation.BlockTool, Tool: &conversation.ToolCall{
 		Kind: kind, Name: name, Summary: summary, Status: conversation.ToolRunning,
 	}}
@@ -438,20 +438,20 @@ func tool(id string, kind conversation.ToolKind, name, summary string, status co
 		Kind: kind, Name: name, Summary: summary, Status: status, Output: output, Diff: patch, Duration: d,
 	}}
 	switch kind {
-	case conversation.ToolShell:
+	case protocol.ToolCategoryShell:
 		running.Tool.Command, done.Tool.Command = summary, summary
 		code := 0
 		if status == conversation.ToolError {
 			code = 1
 		}
 		done.Tool.ExitCode = &code
-	case conversation.ToolEdit, conversation.ToolRead:
+	case protocol.ToolCategoryEdit, protocol.ToolCategoryRead:
 		running.Tool.Path, done.Tool.Path = summary, summary
-	case conversation.ToolSearch:
+	case protocol.ToolCategorySearch:
 		running.Tool.Query, done.Tool.Query = summary, summary
-	case conversation.ToolWeb:
+	case protocol.ToolCategoryWeb:
 		running.Tool.URL, done.Tool.URL = summary, summary
-	case conversation.ToolUnknown, conversation.ToolTask:
+	case protocol.ToolCategoryUnknown, protocol.ToolCategoryTask:
 		// These kinds do not project a specialized primary field.
 	default:
 	}

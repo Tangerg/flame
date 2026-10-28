@@ -1,4 +1,4 @@
-import { metrics } from "@opentelemetry/api";
+import { context, metrics, propagation, trace } from "@opentelemetry/api";
 import { logs } from "@opentelemetry/api-logs";
 import {
   CompositePropagator,
@@ -26,55 +26,97 @@ export interface ObservabilityOptions {
 
 const LOCAL_METRIC_INTERVAL_MS = 500;
 
-let shutdownFn: (() => Promise<void>) | null = null;
+class ObservabilitySession {
+  readonly #tracer: WebTracerProvider;
+  readonly #meter: MeterProvider;
+  readonly #logger: LoggerProvider;
+  readonly #unbindInstruments: () => void;
+  #closing: Promise<void> | null = null;
 
-export async function setupObservability(opts: ObservabilityOptions): Promise<void> {
-  if (shutdownFn) return;
+  constructor(
+    opts: ObservabilityOptions,
+    otlp: OtlpBundle | null,
+    private readonly release: () => void,
+  ) {
+    const resource = resourceFromAttributes({
+      "service.name": opts.serviceName,
+      "service.version": opts.serviceVersion,
+    });
+    const spanProcessors: SpanProcessor[] = [new LocalSpanProcessor()];
+    if (otlp) spanProcessors.push(otlp.spanProcessor);
+    this.#tracer = new WebTracerProvider({ resource, spanProcessors });
 
-  const resource = resourceFromAttributes({
-    "service.name": opts.serviceName,
-    "service.version": opts.serviceVersion,
-  });
+    const readers: IMetricReader[] = [
+      new PeriodicExportingMetricReader({
+        exporter: new LocalMetricExporter(),
+        exportIntervalMillis: LOCAL_METRIC_INTERVAL_MS,
+      }),
+    ];
+    if (otlp) readers.push(otlp.metricReader);
+    this.#meter = new MeterProvider({ resource, readers });
 
-  const otlp = opts.otlpEndpoint ? await loadOtlp(opts.otlpEndpoint) : null;
+    const processors: LogRecordProcessor[] = [new LocalLogProcessor()];
+    if (otlp) processors.push(otlp.logProcessor);
+    this.#logger = new LoggerProvider({ resource, processors });
 
-  const spanProcessors: SpanProcessor[] = [new LocalSpanProcessor()];
-  if (otlp) spanProcessors.push(otlp.spanProcessor);
-  const tracerProvider = new WebTracerProvider({ resource, spanProcessors });
-  tracerProvider.register({
-    propagator: new CompositePropagator({
-      propagators: [new W3CTraceContextPropagator(), new W3CBaggagePropagator()],
-    }),
-  });
+    this.#tracer.register({
+      propagator: new CompositePropagator({
+        propagators: [new W3CTraceContextPropagator(), new W3CBaggagePropagator()],
+      }),
+    });
+    metrics.setGlobalMeterProvider(this.#meter);
+    logs.setGlobalLoggerProvider(this.#logger);
+    this.#unbindInstruments = bindMetricInstruments(this.#meter.getMeter("flame"));
+  }
 
-  const readers: IMetricReader[] = [
-    new PeriodicExportingMetricReader({
-      exporter: new LocalMetricExporter(),
-      exportIntervalMillis: LOCAL_METRIC_INTERVAL_MS,
-    }),
-  ];
-  if (otlp) readers.push(otlp.metricReader);
-  const meterProvider = new MeterProvider({ resource, readers });
-  metrics.setGlobalMeterProvider(meterProvider);
-  bindMetricInstruments();
-
-  const logProcessors: LogRecordProcessor[] = [new LocalLogProcessor()];
-  if (otlp) logProcessors.push(otlp.logProcessor);
-  const loggerProvider = new LoggerProvider({ resource, processors: logProcessors });
-  logs.setGlobalLoggerProvider(loggerProvider);
-
-  shutdownFn = async () => {
-    await Promise.allSettled([
-      tracerProvider.shutdown(),
-      meterProvider.shutdown(),
-      loggerProvider.shutdown(),
-    ]);
-    shutdownFn = null;
-  };
+  shutdown(): Promise<void> {
+    if (this.#closing) return this.#closing;
+    this.#unbindInstruments();
+    // SDK shutdown leaves the global registrations in place; replacements must
+    // not inherit providers whose processors have already been closed.
+    trace.disable();
+    metrics.disable();
+    logs.disable();
+    propagation.disable();
+    context.disable();
+    this.#closing = Promise.allSettled([
+      this.#tracer.shutdown(),
+      this.#meter.shutdown(),
+      this.#logger.shutdown(),
+    ])
+      .then((results) => {
+        const errors = results.flatMap((result) =>
+          result.status === "rejected" ? [result.reason] : [],
+        );
+        if (errors.length) throw new AggregateError(errors, "observability shutdown failed");
+      })
+      .finally(this.release);
+    return this.#closing;
+  }
 }
 
-export async function teardownObservability(): Promise<void> {
-  await shutdownFn?.();
+let openingSession: Promise<ObservabilitySession> | null = null;
+
+export async function setupObservability(opts: ObservabilityOptions): Promise<() => Promise<void>> {
+  const predecessor = openingSession;
+  const opening: Promise<ObservabilitySession> = (async () => {
+    if (predecessor) {
+      const previous = await predecessor.catch(() => null);
+      await previous?.shutdown();
+    }
+    const otlp = opts.otlpEndpoint ? await loadOtlp(opts.otlpEndpoint) : null;
+    return new ObservabilitySession(opts, otlp, () => {
+      if (openingSession === opening) openingSession = null;
+    });
+  })();
+  openingSession = opening;
+  try {
+    const session = await opening;
+    return () => session.shutdown();
+  } catch (error) {
+    if (openingSession === opening) openingSession = null;
+    throw error;
+  }
 }
 
 interface OtlpBundle {

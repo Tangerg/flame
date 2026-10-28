@@ -12,6 +12,7 @@ import (
 	"time"
 
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -47,7 +48,7 @@ func (c *coreCallbackTarget) SubscribeRuntime(ctx context.Context, _ protocol.Ru
 type coreCallbackInput struct{ Host qimumcp.CallbackRef }
 
 func coreCallbackMethod() (*qimumcp.Method[coreCallbackInput, string], error) {
-	return qimumcp.NewMethod[coreCallbackInput, string](qimumcp.MethodConfig{Name: "test.backend/core", Kind: portable.Query, Target: "call", Description: "Exercise the canonical Runtime callback."})
+	return qimumcp.NewMethod[coreCallbackInput, string](qimumcp.MethodConfig{Name: "test.backend/core", Kind: portable.Query, Target: extension.ScopeCall, Description: "Exercise the canonical Runtime callback."})
 }
 
 func TestCoreCallbackBackendProcess(t *testing.T) {

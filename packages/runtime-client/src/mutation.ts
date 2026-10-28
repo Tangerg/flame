@@ -39,7 +39,8 @@ export function mutationSettlementIsUnknown(error: unknown): boolean {
   if (error instanceof MutationLookupError) return true;
   if (error instanceof MutationObservationInterruptedError) return true;
   if (error instanceof RpcProtocolError) return true;
-  if (retryableTransportFailure(error)) return true;
+  // HTTP admission failure cannot settle an earlier dispatch under this identity.
+  if (error instanceof RpcTransportError) return true;
   // These responses do not settle the original command. Preserve its identity for
   // explicit recovery without expanding the separate automatic replay budget.
   return (

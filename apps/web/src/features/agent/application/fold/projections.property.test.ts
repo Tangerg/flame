@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ExactNumber } from "@qimu/sdk/json";
+import { WIRE_ENUMS } from "@flame/runtime-client/wire";
 import { type AgentToolInvocation } from "@/features/agent/public/events";
 import { TOOL_FAMILIES } from "@/lib/toolFamilies";
 import { Arbitrary, forEachSeed } from "@/test/arbitrary";
@@ -78,6 +79,7 @@ function hostileTool(a: Arbitrary): AgentToolInvocation {
   if (a.bool(0.3)) args[wireText(a)] = hostileValue(a);
   return {
     name: a.pick(TOOL_NAMES),
+    category: a.pick(WIRE_ENUMS.ToolCategory),
     arguments: args,
     ...(a.bool(0.7) ? { result: hostileValue(a) } : {}),
   };
@@ -152,4 +154,17 @@ describe("the tool projections, over the arguments a tool can actually carry", (
       for (const value of Object.values(fields)) expect(value).not.toBeNaN();
     });
   });
+});
+
+it("keeps malformed edit output as evidence without crashing the session projection", () => {
+  for (const result of [{ changes: "bad" }, { changes: [null] }, { changes: [{ path: 9 }] }]) {
+    const tool: AgentToolInvocation = {
+      name: "apply_patch",
+      category: "edit",
+      arguments: {},
+      result,
+    };
+    expect(toolLabel(tool)).toBe("apply_patch");
+    expect(toolFields(tool)).toEqual({ result: JSON.stringify(result) });
+  }
 });

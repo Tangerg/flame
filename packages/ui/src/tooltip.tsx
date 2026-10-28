@@ -25,7 +25,7 @@ interface Props {
   side?: "top" | "right" | "bottom" | "left";
   sideOffset?: number;
   delayDuration?: number;
-  children: ReactNode;
+  children: ReactElement;
 }
 
 interface RichTooltipProps {
@@ -48,8 +48,8 @@ export function TooltipProvider({ children }: TooltipProviderProps) {
 
 export function Tooltip({
   label,
-  side = "top",
-  sideOffset = 6,
+  side,
+  sideOffset,
   delayDuration,
   disabled,
   children,
@@ -57,7 +57,7 @@ export function Tooltip({
   if (label == null || label === "") return <>{children}</>;
   return (
     <RichTooltip
-      trigger={children as ReactElement}
+      trigger={children}
       side={side}
       sideOffset={sideOffset}
       delay={delayDuration}

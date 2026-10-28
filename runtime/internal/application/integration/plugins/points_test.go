@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -12,7 +13,7 @@ import (
 )
 
 func TestInstalledPointValuesRequireTheConsumerContractAndRetainExactBindings(t *testing.T) {
-	contract, err := portable.AdmitPoint(portable.PointDescriptor{Protocol: portable.Protocol, Reference: "reviews.analyzers", Composition: portable.Collection, Scope: "installation", Optional: true, Ordering: portable.CanonicalKeys, Value: jsontext.Value(`{"type":"object","required":["title"],"properties":{"title":{"type":"string"}},"additionalProperties":false}`), Applicability: jsontext.Value(`{"type":"object"}`)})
+	contract, err := portable.AdmitPoint(portable.PointDescriptor{Protocol: portable.Protocol, Reference: "reviews.analyzers", Composition: portable.Collection, Scope: extension.ScopeInstallation, Optional: true, Ordering: portable.CanonicalKeys, Value: jsontext.Value(`{"type":"object","required":["title"],"properties":{"title":{"type":"string"}},"additionalProperties":false}`), Applicability: jsontext.Value(`{"type":"object"}`)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,11 +38,24 @@ func TestInstalledPointValuesRequireTheConsumerContractAndRetainExactBindings(t 
 	}
 	consumer := makeSnapshot("reviews", plugin.Declaration{Points: []plugin.Point{{ID: "analyzers", Contract: contract.Identity()}}})
 	producer := makeSnapshot("checklist", plugin.Declaration{PointValues: []plugin.PointValue{{ID: "evidence", Contract: contract.Identity(), Value: value}}})
-	store := requirementInstallations{snapshots: []plugin.Snapshot{producer, consumer}}
-	context := portable.PointContext{Target: portable.Target{Scope: "installation", Reference: consumer.Installation.ID().String()}, Attributes: jsontext.Value(`{}`)}
-	bindings, err := ResolvePoint(t.Context(), testFramework(t, store), store, contract, context, nil)
+	otherDefinition := contract.Definition()
+	otherDefinition.Reference = "unrelated.point"
+	otherContract, err := portable.AdmitPoint(otherDefinition)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unrelated := makeSnapshot("unrelated", plugin.Declaration{PointValues: []plugin.PointValue{{ID: "unrelated", Contract: otherContract.Identity(), Value: value}}})
+	store := requirementInstallations{snapshots: []plugin.Snapshot{producer, consumer, unrelated}}
+	context := portable.PointContext{Target: portable.Target{Scope: extension.ScopeInstallation, Reference: consumer.Installation.ID().String()}, Attributes: jsontext.Value(`{}`)}
+	host := testFramework(t, store)
+	bindings, err := ResolvePoint(t.Context(), host, store, contract, context, nil)
 	if err != nil || len(bindings) != 1 || bindings[0].Reference.Installation != producer.Installation.ID() || bindings[0].Digest != producer.Selected.Digest() || bindings[0].Value != value {
 		t.Fatalf("installed point binding: %+v, %v", bindings, err)
+	}
+	for _, source := range host.ActiveSources() {
+		if source.InstallationID.String() == unrelated.Installation.ID().String() {
+			t.Fatal("point resolution activated an unrelated contributor")
+		}
 	}
 	foreign := context
 	foreign.Target.Reference = producer.Installation.ID().String()

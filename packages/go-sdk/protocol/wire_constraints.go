@@ -36,6 +36,9 @@ func ValidateWireTree(value any) error {
 	if !root.IsValid() {
 		return nil
 	}
+	if err := jsonvalue.ValidateType(root.Type()); err != nil {
+		return err
+	}
 	rootType := root.Type()
 	for rootType.Kind() == reflect.Pointer {
 		rootType = rootType.Elem()

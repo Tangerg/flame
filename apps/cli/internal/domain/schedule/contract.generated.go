@@ -3,69 +3,47 @@ package schedule
 
 import "time"
 
-type Method_flame_2eschedules_2fcreate_2ev1Input Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_5fDraft
-
-type Method_flame_2eschedules_2fcreate_2ev1Output Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_5fSnapshot
-
-type Method_flame_2eschedules_2fdelete_2ev1Input Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fItemInput
-
-type Method_flame_2eschedules_2fdelete_2ev1Output Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fAck
-
-type Method_flame_2eschedules_2flist_2ev1Input Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fListInput
-
-type Method_flame_2eschedules_2flist_2ev1Output Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fPage
-
-type Method_flame_2eschedules_2frunNow_2ev1Input Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fItemInput
-
-type Method_flame_2eschedules_2frunNow_2ev1Output Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2FwcGxpY2F0aW9u_5fRunReference
-
-type Method_flame_2eschedules_2fupdate_2ev1Input Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fUpdateInput
-
-type Method_flame_2eschedules_2fupdate_2ev1Output Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_5fSnapshot
-
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fSelection Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fselectionJSON_5bstring_5d
-
 type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fselectionJSON_5bstring_5d struct {
 	Model           string `json:"model"`
 	Provider        string `json:"provider"`
 	ReasoningEffort string `json:"reasoningEffort"`
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2FwcGxpY2F0aW9u_5fRunReference struct {
+type RunNowV1Output struct {
 	RunID     string `json:"RunID"`
 	SessionID string `json:"SessionID"`
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_5fDraft struct {
-	CWD            string                                                                                 `json:"CWD"`
-	Cron           string                                                                                 `json:"Cron"`
-	Enabled        bool                                                                                   `json:"Enabled"`
-	Instructions   string                                                                                 `json:"Instructions"`
-	ModelSelection Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fSelection `json:"ModelSelection"`
-	Title          string                                                                                 `json:"Title"`
+type CreateV1Input struct {
+	CWD            string                                                                                                 `json:"CWD"`
+	Cron           string                                                                                                 `json:"Cron"`
+	Enabled        bool                                                                                                   `json:"Enabled"`
+	Instructions   string                                                                                                 `json:"Instructions"`
+	ModelSelection Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fselectionJSON_5bstring_5d `json:"ModelSelection"`
+	Title          string                                                                                                 `json:"Title"`
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_5fSnapshot struct {
-	CWD            string                                                                                 `json:"CWD"`
-	CreatedAt      time.Time                                                                              `json:"CreatedAt"`
-	Cron           string                                                                                 `json:"Cron"`
-	ID             string                                                                                 `json:"ID"`
-	Instructions   string                                                                                 `json:"Instructions"`
-	LastRunAt      time.Time                                                                              `json:"LastRunAt"`
-	ModelSelection Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fSelection `json:"ModelSelection"`
-	NextRunAt      time.Time                                                                              `json:"NextRunAt"`
-	Revision       uint64                                                                                 `json:"Revision"`
-	Title          string                                                                                 `json:"Title"`
+type CreateV1Output struct {
+	CWD            string                                                                                                 `json:"CWD"`
+	CreatedAt      time.Time                                                                                              `json:"CreatedAt"`
+	Cron           string                                                                                                 `json:"Cron"`
+	ID             string                                                                                                 `json:"ID"`
+	Instructions   string                                                                                                 `json:"Instructions"`
+	LastRunAt      time.Time                                                                                              `json:"LastRunAt"`
+	ModelSelection Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fselectionJSON_5bstring_5d `json:"ModelSelection"`
+	NextRunAt      time.Time                                                                                              `json:"NextRunAt"`
+	Revision       uint64                                                                                                 `json:"Revision"`
+	Title          string                                                                                                 `json:"Title"`
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fAck struct {
+type DeleteV1Output struct {
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fItemInput struct {
+type DeleteV1Input struct {
 	ID string `json:"ID"`
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fListInput struct {
+type ListV1Input struct {
 	Cursor string `json:"Cursor"`
 	Limit  *int64 `json:"Limit,omitzero"`
 }
@@ -76,12 +54,12 @@ type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGV
 	ReasoningEffort *string `json:"ReasoningEffort,omitzero"`
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fPage struct {
-	NextCursor string                                                                                                  `json:"NextCursor"`
-	Rows       []Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_5fSnapshot `json:"Rows"`
+type ListV1Output struct {
+	NextCursor string           `json:"NextCursor"`
+	Rows       []CreateV1Output `json:"Rows"`
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fUpdateInput struct {
+type UpdateV1Input struct {
 	CWD              *string                                                                                              `json:"CWD,omitzero"`
 	Cron             *string                                                                                              `json:"Cron,omitzero"`
 	Enabled          *bool                                                                                                `json:"Enabled,omitzero"`
@@ -96,25 +74,14 @@ const CapabilityJSON = "{\"protocol\":\"io.github.tangerg.qimu/portable/1\",\"re
 
 const CreateV1Method = "flame.schedules/create.v1"
 
-type CreateV1Input Method_flame_2eschedules_2fcreate_2ev1Input
-type CreateV1Output Method_flame_2eschedules_2fcreate_2ev1Output
-
 const DeleteV1Method = "flame.schedules/delete.v1"
-
-type DeleteV1Input Method_flame_2eschedules_2fdelete_2ev1Input
-type DeleteV1Output Method_flame_2eschedules_2fdelete_2ev1Output
 
 const ListV1Method = "flame.schedules/list.v1"
 
-type ListV1Input Method_flame_2eschedules_2flist_2ev1Input
-type ListV1Output Method_flame_2eschedules_2flist_2ev1Output
-
 const RunNowV1Method = "flame.schedules/runNow.v1"
 
-type RunNowV1Input Method_flame_2eschedules_2frunNow_2ev1Input
-type RunNowV1Output Method_flame_2eschedules_2frunNow_2ev1Output
+type RunNowV1Input DeleteV1Input
 
 const UpdateV1Method = "flame.schedules/update.v1"
 
-type UpdateV1Input Method_flame_2eschedules_2fupdate_2ev1Input
-type UpdateV1Output Method_flame_2eschedules_2fupdate_2ev1Output
+type UpdateV1Output CreateV1Output

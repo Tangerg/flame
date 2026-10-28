@@ -26,6 +26,14 @@ func TestModelContextContractAdmitsOnlyAttributedRequestsAndSystemMaterial(t *te
 	if err := (ModelContextRequest{Request: *request}).Validate(); err == nil {
 		t.Fatal("uncaptured model admitted")
 	}
+	for _, selection := range []ModelSelection{
+		{Provider: " provider", Model: "model"},
+		{Provider: "provider", Model: "model\n"},
+	} {
+		if err := (ModelContextRequest{Provider: selection.Provider, Model: selection.Model, Request: *request}).Validate(); err == nil {
+			t.Fatal("context contribution admitted an invalid model identity")
+		}
+	}
 	if err := (ModelContextRequest{Provider: "provider", Model: "model", Request: *request, UserMessage: new(chat.NewSystemMessage("forged source"))}).Validate(); err == nil {
 		t.Fatal("non-user input projection admitted")
 	}

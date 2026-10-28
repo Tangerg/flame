@@ -139,16 +139,9 @@ func (r *Connection) ImportSession(ctx context.Context, request session.ImportRe
 	if err := r.requireFeature(protocol.FeatureSessionExport); err != nil {
 		return conversation.Session{}, err
 	}
-	// An artifact is user-supplied text: duplicate members, unknown members and
-	// a trailing second document all have to fail before it becomes a Session.
 	var artifact protocol.SessionArtifact
-	if err := json.Unmarshal(
-		request.Artifact.Bytes(), &artifact, json.RejectUnknownMembers(true),
-	); err != nil {
+	if err := protocol.DecodeRequest(request.Artifact.Bytes(), &artifact); err != nil {
 		return conversation.Session{}, fmt.Errorf("import session: decode artifact: %w", err)
-	}
-	if err := protocol.ValidateWireTree(artifact); err != nil {
-		return conversation.Session{}, fmt.Errorf("import session: %w", err)
 	}
 	options := r.commandOptions()
 	response, err := r.sessions.ImportSession(ctx, protocol.ImportSessionRequest{Artifact: artifact}, options)

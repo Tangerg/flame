@@ -4,14 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/qimu/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
-func (s *ExecutorCheckpointStore) replaceReferences(ctx context.Context, checkpoint executorCheckpointRecord) error {
+func (s *ExecutorCheckpointStore) replaceReferences(ctx context.Context, checkpoint runs.ExecutorCheckpoint) error {
 	if err := s.replaceToolResultReferences(ctx, checkpoint); err != nil {
 		return err
 	}
@@ -34,7 +35,7 @@ func (s *ExecutorCheckpointStore) replaceReferences(ctx context.Context, checkpo
 
 // The dependency rows advance in the transaction that advances the payload, so
 // a checkpoint whose dependencies are unknown cannot exist.
-func (s *ExecutorCheckpointStore) replaceResourceReferences(ctx context.Context, checkpoint executorCheckpointRecord) error {
+func (s *ExecutorCheckpointStore) replaceResourceReferences(ctx context.Context, checkpoint runs.ExecutorCheckpoint) error {
 	if _, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM executor_checkpoint_resources WHERE root_member_id = ?`, checkpoint.RootMemberID); err != nil {
 		return fmt.Errorf("sqlite: replace executor checkpoint %q dependencies: %w", checkpoint.RootMemberID, err)
 	}
@@ -117,7 +118,7 @@ func (s *ExecutorCheckpointStore) PendingCheckpointDependencies(ctx context.Cont
 }
 
 func (s *ExecutorCheckpointStore) pendingReferences(ctx context.Context) ([]plugin.Activation, []plugin.Dependency, error) {
-	rows, err := sqlite.Connection(ctx, s.db).QueryContext(ctx, `SELECT root_member_id FROM executor_checkpoints checkpoint WHERE EXISTS (SELECT 1 FROM runs WHERE runs.session_id=checkpoint.session_id AND runs.state <> 'terminal') ORDER BY root_member_id`)
+	rows, err := sqlite.Connection(ctx, s.db).QueryContext(ctx, `SELECT root_member_id FROM executor_checkpoints checkpoint WHERE EXISTS (SELECT 1 FROM runs WHERE runs.session_id=checkpoint.session_id AND runs.state <> ?) ORDER BY root_member_id`, runStateTerminal.databaseValue())
 	if err != nil {
 		return nil, nil, err
 	}

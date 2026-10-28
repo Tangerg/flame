@@ -55,19 +55,9 @@ type PathMatch struct {
 }
 
 func New(root string) (*Resolver, error) {
-	root = strings.TrimSpace(root)
-	if root == "" {
-		return nil, errors.New("attachment: workspace is required")
-	}
-	abs, err := filepath.Abs(root)
+	abs, err := filesystem.CanonicalPath(root)
 	if err != nil {
 		return nil, fmt.Errorf("attachment: resolve workspace: %w", err)
-	}
-	abs = filepath.Clean(abs)
-	if canonical, evalErr := filepath.EvalSymlinks(abs); evalErr == nil {
-		abs = canonical
-	} else if !errors.Is(evalErr, os.ErrNotExist) {
-		return nil, fmt.Errorf("attachment: resolve workspace symlinks: %w", evalErr)
 	}
 	return &Resolver{root: abs, maxBytes: authoring.MaxAttachmentBytes}, nil
 }
@@ -86,13 +76,9 @@ func (r *Resolver) Resolve(ctx context.Context, input string) (authoring.Attachm
 }
 
 func (r *Resolver) inspect(input string) (string, fs.FileInfo, []byte, error) {
-	path, err := r.absolute(input)
+	canonical, err := r.canonicalPath(input)
 	if err != nil {
 		return "", nil, nil, err
-	}
-	canonical, err := filepath.EvalSymlinks(path)
-	if err != nil {
-		return "", nil, nil, fmt.Errorf("attachment: resolve %q: %w", input, err)
 	}
 	file, info, err := filesystem.OpenFile(canonical, r.maxBytes)
 	if err != nil {
@@ -108,10 +94,6 @@ func (r *Resolver) inspect(input string) (string, fs.FileInfo, []byte, error) {
 			return "", nil, nil, fmt.Errorf("attachment: %q changed while it was being inspected", input)
 		}
 		return "", nil, nil, fmt.Errorf("attachment: verify %q after inspection: %w", input, err)
-	}
-	canonical, err = filepath.Abs(canonical)
-	if err != nil {
-		return "", nil, nil, fmt.Errorf("attachment: canonical path: %w", err)
 	}
 	return canonical, info, header, nil
 }
@@ -333,9 +315,8 @@ func completionFileInfo(entry fs.DirEntry, maxBytes int64) (fs.FileInfo, bool) {
 	return info, true
 }
 
-func (r *Resolver) absolute(input string) (string, error) {
-	input = strings.TrimSpace(input)
-	if input == "" {
+func (r *Resolver) canonicalPath(input string) (string, error) {
+	if strings.TrimSpace(input) == "" {
 		return "", errors.New("attachment: path is empty")
 	}
 	if input == "~" || strings.HasPrefix(input, "~/") {
@@ -346,13 +327,10 @@ func (r *Resolver) absolute(input string) (string, error) {
 		if input == "~" {
 			input = home
 		} else {
-			input = filepath.Join(home, strings.TrimPrefix(input, "~/"))
+			input = home + string(filepath.Separator) + strings.TrimPrefix(input, "~/")
 		}
 	}
-	if !filepath.IsAbs(input) {
-		input = filepath.Join(r.root, input)
-	}
-	return filepath.Clean(input), nil
+	return filesystem.ResolvePath(r.root, input)
 }
 
 func (r *Resolver) relative(path string) (string, bool) {

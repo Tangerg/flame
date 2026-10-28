@@ -7430,20 +7430,12 @@
           "maxLength": 256
         },
         "type": {
-          "$ref": "#/$defs/PluginRendererSelectorType"
+          "$ref": "#/$defs/RendererSelectorKind"
         }
       },
       "required": [
         "name",
         "type"
-      ]
-    },
-    "PluginRendererSelectorType": {
-      "type": "string",
-      "enum": [
-        "toolName",
-        "resultShape",
-        "fileExtension"
       ]
     },
     "PluginRequest": {
@@ -8994,6 +8986,14 @@
         "session",
         "project",
         "global"
+      ]
+    },
+    "RendererSelectorKind": {
+      "type": "string",
+      "enum": [
+        "toolName",
+        "resultShape",
+        "fileExtension"
       ]
     },
     "RequestMeta": {

@@ -21,7 +21,7 @@ type MemoryCommands interface {
 	DecodeAdd(*protocol.CallPluginResponse) (memory.AddV2Output, error)
 	PrepareUpdate(context.Context, memory.UpdateV2Input) (protocol.CallPluginRequest, error)
 	DecodeUpdate(string, *protocol.CallPluginResponse) (memory.Item, error)
-	PrepareReview(context.Context, string, uint64, memory.ReviewDecision) (protocol.CallPluginRequest, error)
+	PrepareReview(context.Context, string, uint64, memory.ReviewV2InputDecision) (protocol.CallPluginRequest, error)
 	PrepareDelete(context.Context, string, uint64) (protocol.CallPluginRequest, error)
 }
 
@@ -37,7 +37,7 @@ func ExecuteMemoryAddition(ctx context.Context, caller MemoryCommands, store *St
 		func(request protocol.CallPluginRequest) error { return retainedMemoryAddition(request, desired) },
 		func(reply *protocol.CallPluginResponse) (memory.AddV2Output, error) {
 			output, err := caller.DecodeAdd(reply)
-			if err == nil && output.Item.Scope != desired.Scope {
+			if err == nil && memory.AddV2InputScope(output.Item.Scope) != desired.Scope {
 				return memory.AddV2Output{}, errors.New("memory addition acknowledgement changed target scope")
 			}
 			return output, err
@@ -55,7 +55,7 @@ func ExecuteMemoryUpdate(ctx context.Context, caller MemoryCommands, store *Stor
 		})
 }
 
-func ExecuteMemoryReview(ctx context.Context, caller MemoryCommands, store *Store, policy mutation.ReplayPolicy, id string, expectedRevision uint64, decision memory.ReviewDecision) error {
+func ExecuteMemoryReview(ctx context.Context, caller MemoryCommands, store *Store, policy mutation.ReplayPolicy, id string, expectedRevision uint64, decision memory.ReviewV2InputDecision) error {
 	_, err := executeInstalledCommand(ctx, caller, store, memoryReviewIntent(id), policy,
 		func(ctx context.Context) (protocol.CallPluginRequest, error) {
 			return caller.PrepareReview(ctx, id, expectedRevision, decision)
@@ -120,7 +120,7 @@ func (s *Store) PendingMemoryUpdate(identity string) (memory.UpdateV2Input, bool
 	return input, true, nil
 }
 
-func (s *Store) PendingMemoryReview(identity string, decision memory.ReviewDecision) (memory.ReviewV2Input, bool, error) {
+func (s *Store) PendingMemoryReview(identity string, decision memory.ReviewV2InputDecision) (memory.ReviewV2Input, bool, error) {
 	pending, found, err := s.pendingMemoryItemCommand(memory.ReviewV2Method, memoryReviewIntent(""), identity)
 	if err != nil || !found {
 		return memory.ReviewV2Input{}, found, err
@@ -176,15 +176,15 @@ func memoryCommandInput[T any](request protocol.CallPluginRequest, method string
 	return input, nil
 }
 
-func retainedMemoryReview(request protocol.CallPluginRequest, id string, decision memory.ReviewDecision) (memory.ReviewV2Input, error) {
+func retainedMemoryReview(request protocol.CallPluginRequest, id string, decision memory.ReviewV2InputDecision) (memory.ReviewV2Input, error) {
 	input, err := memoryCommandInput[memory.ReviewV2Input](request, memory.ReviewV2Method)
 	if err != nil {
 		return input, err
 	}
-	if input.ID != id || (input.Decision != string(memory.ReviewApprove) && input.Decision != string(memory.ReviewReject)) {
+	if input.ID != id || (input.Decision != memory.ReviewV2InputDecisionApprove && input.Decision != memory.ReviewV2InputDecisionReject) {
 		return memory.ReviewV2Input{}, errors.New("pending agent memory review identity or decision is invalid")
 	}
-	if input.Decision != string(decision) {
+	if input.Decision != decision {
 		return input, fmt.Errorf("agent memory %s has an unconfirmed %s review; reconcile the original command before changing its decision", id, input.Decision)
 	}
 	return input, nil

@@ -16,6 +16,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -291,19 +292,15 @@ func (r runtimeProvider) workbench() (*workbench.Store, error) {
 }
 
 func canonicalWorkspacePath(path string) (string, error) {
-	abs, err := filepath.Abs(path)
-	if err != nil {
-		return "", fmt.Errorf("resolve workspace: %w", err)
+	root := ""
+	if !filepath.IsAbs(path) {
+		var err error
+		root, err = os.Getwd()
+		if err != nil {
+			return "", fmt.Errorf("resolve workspace: %w", err)
+		}
 	}
-	abs = filepath.Clean(abs)
-	canonical, err := filepath.EvalSymlinks(abs)
-	if err == nil {
-		return canonical, nil
-	}
-	if !errors.Is(err, os.ErrNotExist) {
-		return "", fmt.Errorf("resolve workspace symlinks: %w", err)
-	}
-	return abs, nil
+	return filesystem.ResolvePath(root, path)
 }
 
 var errNoPrompt = errors.New("no prompt: pass one as an argument, pipe one in, or both")

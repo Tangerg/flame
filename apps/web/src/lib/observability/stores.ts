@@ -4,13 +4,11 @@ import {
   type MetricRow,
   type LogRow,
 } from "@flame/component-sdk";
-import { type ResourceMetrics } from "@opentelemetry/sdk-metrics";
+import { DataPointType, type ResourceMetrics } from "@opentelemetry/sdk-metrics";
 import { create } from "zustand";
 const SPAN_CAP = 500;
 
 const LOG_CAP = 1000;
-
-const HISTOGRAM_DATA_POINT = 0;
 
 interface State {
   metrics: Record<string, MetricRow>;
@@ -31,10 +29,19 @@ export const useTelemetryStore = create<State>((set) => ({
     const next: Record<string, MetricRow> = {};
     for (const scope of batch.scopeMetrics) {
       for (const m of scope.metrics) {
-        const isHist = m.dataPointType === HISTOGRAM_DATA_POINT;
+        const isHist = m.dataPointType === DataPointType.HISTOGRAM;
         for (const dp of m.dataPoints) {
           const attrs = (dp.attributes ?? {}) as TelemetryAttributes;
-          const id = `${m.descriptor.name}|${stableKey(attrs)}`;
+          const id = JSON.stringify([
+            scope.scope.name,
+            scope.scope.version ?? null,
+            scope.scope.schemaUrl ?? null,
+            stableAttributes(scope.scope.attributes ?? {}),
+            m.descriptor.name,
+            m.descriptor.unit,
+            m.dataPointType,
+            stableAttributes(attrs),
+          ]);
           next[id] = isHist
             ? histogramRow(id, m.descriptor, dp.value as HistogramValue, attrs)
             : counterRow(id, m.descriptor, dp.value as number, attrs);
@@ -114,11 +121,10 @@ function counterRow(
   };
 }
 
-function stableKey(attrs: TelemetryAttributes): string {
+function stableAttributes(attrs: Record<string, unknown>): [string, unknown][] {
   return Object.entries(attrs)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([k, v]) => `${k}=${String(v)}`)
-    .join(",");
+    .filter(([, value]) => value !== undefined)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
 }
 
 function estimatePercentiles(buckets: HistogramValue["buckets"]): { p50: number; p95: number } {

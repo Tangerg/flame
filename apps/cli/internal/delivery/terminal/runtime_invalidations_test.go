@@ -1666,7 +1666,7 @@ func TestMatchingInterruptInvalidationPreservesTheOpenApproval(t *testing.T) {
 		return runtimefixture.Script{
 			Interrupts: []conversation.Interrupt{conversation.Approval{
 				ItemID: "approval_invalidation", Title: "Run generated command",
-				Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning},
+				Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning},
 			}},
 			Continue: func(provided []conversation.InterruptAnswer) []runtimefixture.Step {
 				answers <- provided
@@ -1718,7 +1718,7 @@ func TestAdvancedInterruptInvalidationClosesTheApprovalArgumentEditor(t *testing
 			Interrupts: []conversation.Interrupt{conversation.Approval{
 				ItemID: "approval_editor_invalidation", Title: "Run generated command",
 				Tool: &conversation.ToolCall{
-					Kind: conversation.ToolShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning,
+					Kind: protocol.ToolCategoryShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning,
 					ArgumentsJSON: []byte(`{"command":"go test ./..."}`),
 				},
 			}},
@@ -1774,7 +1774,7 @@ func TestInterruptInvalidationWinsARejectedStaleResume(t *testing.T) {
 		return runtimefixture.Script{
 			Interrupts: []conversation.Interrupt{conversation.Approval{
 				ItemID: "approval_resume_race", Title: "Run generated command",
-				Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning},
+				Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning},
 			}},
 			Continue: func([]conversation.InterruptAnswer) []runtimefixture.Step {
 				return []runtimefixture.Step{{Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}

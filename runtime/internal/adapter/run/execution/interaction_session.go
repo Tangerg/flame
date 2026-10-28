@@ -17,6 +17,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/flame/runtime/internal/keylock"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -36,6 +37,7 @@ type interactionSession struct {
 
 	lifetime               interactionLifetime
 	state                  interactionState
+	steerAdmissions        *keylock.Set
 	childProjection        interactionChildProjection
 	accounting             interactionAccounting
 	material               requestMaterial
@@ -139,10 +141,11 @@ func newInteractionSession(
 	telemetry *otelagent.Observer,
 ) *interactionSession {
 	return &interactionSession{
-		telemetry:      telemetry,
-		executionTrees: config.ExecutionTrees,
-		toolResults:    config.OriginalToolResults,
-		ref:            ref, scope: rootExecutionScope(start), lifetime: newInteractionLifetime(lifetime),
+		telemetry:       telemetry,
+		steerAdmissions: keylock.NewSet(),
+		executionTrees:  config.ExecutionTrees,
+		toolResults:     config.OriginalToolResults,
+		ref:             ref, scope: rootExecutionScope(start), lifetime: newInteractionLifetime(lifetime),
 		state: interactionState{
 			pendingSteers:    make(map[agent.SignalID]pendingInteractionSteer),
 			delegateCalls:    make(map[delegateCallIdentity]*managedDelegateCall),

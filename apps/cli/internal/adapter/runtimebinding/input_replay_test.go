@@ -126,7 +126,7 @@ func TestMutationReplaysActualAttachmentBytesAfterWorkbenchRestart(t *testing.T)
 					err = store.MarkPendingRunDispatching(start.SessionID, commandID, guard, prepared)
 				case "resume":
 					approval := conversation.Approval{RunID: "run_1", ItemID: "item_approval", Title: "Proceed?",
-						Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Status: conversation.ToolRunning}}
+						Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Status: conversation.ToolRunning}}
 					err = store.StagePendingResume("ses_1", workbench.PendingResume{
 						Command: conversation.ResumeRun{CommandID: commandID, RunID: "run_1", Message: &message, Input: input,
 							Answers: []conversation.InterruptAnswer{{ItemID: approval.ItemID, Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalDeny}}}},

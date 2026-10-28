@@ -6,21 +6,25 @@ export function startObservability(
 ): ObservabilityTeardown {
   let disposed = false;
   let teardown: ObservabilityTeardown | null = null;
-
-  void initialize()
+  let closing: Promise<void> | null = null;
+  const close = (fn: ObservabilityTeardown) => {
+    closing ??= Promise.resolve().then(fn).catch(reportFailure);
+    return closing;
+  };
+  const initialized = Promise.resolve()
+    .then(initialize)
     .then((fn) => {
-      if (disposed) {
-        void fn();
-        return;
-      }
+      if (disposed) return close(fn);
       teardown = fn;
     })
     .catch(reportFailure);
 
-  return () => {
+  return async () => {
     disposed = true;
     const fn = teardown;
     teardown = null;
-    if (fn) void fn();
+    if (fn) await close(fn);
+    else if (closing) await closing;
+    else await initialized;
   };
 }

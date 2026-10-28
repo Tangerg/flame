@@ -29,7 +29,7 @@ func configureFixture(t *testing.T, s *store, revision int64, draft *filewatch.D
 	if err != nil {
 		t.Fatal(err)
 	}
-	value, err := pluginstorage.Command(t.Context(), s.db, "configure", uuid.NewString(), input, admitted, classify, func(ctx context.Context, input wire.ConfigureInput) (filewatch.Snapshot, error) {
+	value, err := pluginstorage.Command(t.Context(), s.db, "configure", uuid.NewString(), admitted, classify, func(ctx context.Context, input wire.ConfigureInput) (filewatch.Snapshot, error) {
 		return s.configure(ctx, input.ExpectedRevision, input.Trigger)
 	})
 	if err != nil {
@@ -96,7 +96,7 @@ func TestCaptureSurvivesDefinitionChangesAndReceiptReplay(t *testing.T) {
 		t.Fatal(err)
 	}
 	invoke := func() (filewatch.Snapshot, error) {
-		return pluginstorage.Command(t.Context(), s.db, "configure", "original-command", input, admitted, classify, func(ctx context.Context, input wire.ConfigureInput) (filewatch.Snapshot, error) {
+		return pluginstorage.Command(t.Context(), s.db, "configure", "original-command", admitted, classify, func(ctx context.Context, input wire.ConfigureInput) (filewatch.Snapshot, error) {
 			return s.configure(ctx, input.ExpectedRevision, input.Trigger)
 		})
 	}

@@ -97,7 +97,7 @@ func (s *rpcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// with 204 No Content because processing has already completed.
 	if result.Response == nil {
 		if methodLabel != "" {
-			w.Header().Set("X-Method", methodLabel)
+			w.Header().Set(headerMethod, methodLabel)
 		}
 		w.WriteHeader(http.StatusNoContent)
 		return
@@ -124,7 +124,7 @@ func (s *rpcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if methodLabel != "" {
-		w.Header().Set("X-Method", methodLabel)
+		w.Header().Set(headerMethod, methodLabel)
 	}
 	w.WriteHeader(http.StatusOK)
 	if _, err := w.Write(responseBytes); err != nil {
@@ -197,7 +197,7 @@ func writeProblem(w http.ResponseWriter, kind problemKind, detail string, noCach
 		Title:     http.StatusText(kind.status),
 		Status:    kind.status,
 		Detail:    detail,
-		RequestID: w.Header().Get("Request-Id"),
+		RequestID: w.Header().Get(headerRequestID),
 	})
 }
 

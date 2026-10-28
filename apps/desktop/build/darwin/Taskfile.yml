@@ -9,7 +9,7 @@ tasks:
     cmds:
       - task: build:native
         vars:
-          ARCH: "{{.ARCH}}"
+          ARCH: "{{.TARGET_ARCH}}"
           DEV: "{{.DEV}}"
           OUTPUT: "{{.OUTPUT}}"
           EXTRA_TAGS: "{{.EXTRA_TAGS}}"
@@ -44,7 +44,7 @@ tasks:
     env:
       GOOS: darwin
       CGO_ENABLED: 1
-      GOARCH: "{{.ARCH | default ARCH}}"
+      GOARCH: "{{.TARGET_ARCH}}"
       CGO_CFLAGS: "-mmacosx-version-min={{.MACOS_MIN_VERSION}}"
       CGO_LDFLAGS: "-mmacosx-version-min={{.MACOS_MIN_VERSION}}"
       MACOSX_DEPLOYMENT_TARGET: "{{.MACOS_MIN_VERSION}}"
@@ -104,7 +104,7 @@ tasks:
           cp build/darwin/Assets.car "{{.APP_BUNDLE}}/Contents/Resources"
         fi
       - cp "{{.BINARY_SOURCE}}" "{{.APP_BUNDLE}}/Contents/MacOS/{{.APP_NAME}}"
-      - node ../../tooling/desktop-companions.mjs --arch "{{.ARCH | default ARCH}}" --output "{{.APP_BUNDLE}}/Contents/MacOS"
+      - node ../../tooling/desktop-companions.mjs --arch "{{.TARGET_ARCH}}" --output "{{.APP_BUNDLE}}/Contents/MacOS"
       - cp "{{.PLIST_SOURCE}}" "{{.APP_BUNDLE}}/Contents/Info.plist"
       - /usr/libexec/PlistBuddy -c 'Add :LSMinimumSystemVersion string {{.MACOS_MIN_VERSION}}' "{{.APP_BUNDLE}}/Contents/Info.plist"
       - task: '{{if eq OS "darwin"}}codesign:adhoc{{else}}codesign:skip{{end}}'

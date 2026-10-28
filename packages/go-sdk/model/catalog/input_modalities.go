@@ -28,11 +28,7 @@ func (Selections) AdmitInput(selection modelchoice.Selection, messages []chat.Me
 	for messageIndex := range messages {
 		for partIndex := range messages[messageIndex].Parts {
 			part := messages[messageIndex].Parts[partIndex]
-			modality, relevant, err := catalogInputModality(part)
-			if !relevant {
-				continue
-			}
-			if err != nil {
+			if err := admitCatalogPart(entry.Modalities, part); err != nil {
 				return fmt.Errorf(
 					"%w: model %q/%q message %d part %d: %w",
 					ErrUnsupportedInputModality,
@@ -43,16 +39,29 @@ func (Selections) AdmitInput(selection modelchoice.Selection, messages []chat.Me
 					err,
 				)
 			}
-			if !entry.Modalities.AcceptsInput(modality) {
-				return fmt.Errorf(
-					"%w: model %q/%q does not accept %s input",
-					ErrUnsupportedInputModality,
-					selection.Provider(),
-					selection.Model(),
-					modality,
-				)
+		}
+	}
+	return nil
+}
+
+func admitCatalogPart(allowed catalog.Modalities, part chat.Part) error {
+	if part.Kind == chat.PartToolResult {
+		if part.ToolResult == nil {
+			return errors.New("tool result content is absent")
+		}
+		for index, content := range part.ToolResult.Output.Content {
+			if err := admitCatalogPart(allowed, chat.Part{Kind: content.Kind, Media: content.Media}); err != nil {
+				return fmt.Errorf("tool result content %d: %w", index, err)
 			}
 		}
+		return nil
+	}
+	modality, relevant, err := catalogInputModality(part)
+	if err != nil {
+		return err
+	}
+	if relevant && !allowed.AcceptsInput(modality) {
+		return fmt.Errorf("model does not accept %s input", modality)
 	}
 	return nil
 }

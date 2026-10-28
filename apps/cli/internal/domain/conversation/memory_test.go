@@ -14,15 +14,15 @@ func TestTargetOwnsScopeWorkspaceInvariant(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
 		name      string
-		scope     memory.Scope
+		scope     memory.UpdateV2OutputScope
 		workspace string
 		wantErr   bool
 	}{
-		{name: "project", scope: memory.ScopeProject, workspace: "/repo"},
-		{name: "project on another operating system", scope: memory.ScopeProject, workspace: `C:\repo`},
-		{name: "project without workspace", scope: memory.ScopeProject, wantErr: true},
-		{name: "user", scope: memory.ScopeUser},
-		{name: "user with workspace", scope: memory.ScopeUser, workspace: "/repo", wantErr: true},
+		{name: "project", scope: memory.UpdateV2OutputScopeProject, workspace: "/repo"},
+		{name: "project on another operating system", scope: memory.UpdateV2OutputScopeProject, workspace: `C:\repo`},
+		{name: "project without workspace", scope: memory.UpdateV2OutputScopeProject, wantErr: true},
+		{name: "user", scope: memory.UpdateV2OutputScopeUser},
+		{name: "user with workspace", scope: memory.UpdateV2OutputScopeUser, workspace: "/repo", wantErr: true},
 		{name: "unknown", scope: "session", wantErr: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -38,7 +38,7 @@ func TestTargetOwnsScopeWorkspaceInvariant(t *testing.T) {
 func TestMemoryItemRejectsReversedTimestamps(t *testing.T) {
 	t.Parallel()
 	now := time.Now()
-	valid := memory.Item{Revision: 1, ID: testMemoryID, Scope: memory.ScopeProject, Content: "fact", Origin: memory.OriginAuto, Status: memory.StatusPending, CreatedAt: now, UpdatedAt: now}
+	valid := memory.Item{Revision: 1, ID: testMemoryID, Scope: memory.UpdateV2OutputScopeProject, Content: "fact", Origin: memory.UpdateV2OutputOriginAuto, Status: memory.UpdateV2OutputStatusPending, CreatedAt: now, UpdatedAt: now}
 	if err := valid.Validate(); err != nil {
 		t.Fatal(err)
 	}
@@ -51,14 +51,14 @@ func TestMemoryItemRejectsReversedTimestamps(t *testing.T) {
 
 func TestMemoryProjectionRequiresVisiblePublisherState(t *testing.T) {
 	now := time.Now()
-	valid := memory.Item{Revision: 1, ID: testMemoryID, Scope: memory.ScopeUser, Content: "fact", Origin: memory.OriginUser, Status: memory.StatusActive, CreatedAt: now, UpdatedAt: now}
+	valid := memory.Item{Revision: 1, ID: testMemoryID, Scope: memory.UpdateV2OutputScopeUser, Content: "fact", Origin: memory.UpdateV2OutputOriginUser, Status: memory.UpdateV2OutputStatusActive, CreatedAt: now, UpdatedAt: now}
 	for _, mutate := range []func(*memory.Item){
 		func(row *memory.Item) { row.ID = "" },
 		func(row *memory.Item) { row.Content = " " },
 		func(row *memory.Item) { row.Scope = "session" },
 		func(row *memory.Item) { row.Origin = "external" },
 		func(row *memory.Item) { row.Status = "rejected" },
-		func(row *memory.Item) { row.Status = memory.StatusPending },
+		func(row *memory.Item) { row.Status = memory.UpdateV2OutputStatusPending },
 		func(row *memory.Item) { row.CreatedAt = time.Time{} },
 		func(row *memory.Item) { row.UpdatedAt = time.Time{} },
 	} {
@@ -68,7 +68,7 @@ func TestMemoryProjectionRequiresVisiblePublisherState(t *testing.T) {
 			t.Fatalf("invalid visible projection accepted: %+v", row)
 		}
 	}
-	valid.Origin, valid.Status = memory.OriginAuto, memory.StatusPending
+	valid.Origin, valid.Status = memory.UpdateV2OutputOriginAuto, memory.UpdateV2OutputStatusPending
 	if err := valid.Validate(); err != nil {
 		t.Fatal(err)
 	}

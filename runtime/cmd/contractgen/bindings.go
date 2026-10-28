@@ -102,11 +102,15 @@ func writeGoBindings(local, remote string) error {
 		fmt.Fprintf(&body, "%q:%d,\n", name, refusals[name])
 	}
 	body.WriteString("}\nconst (\n")
-	for _, endpoint := range flamehttp.Contract().Endpoints {
+	httpContract := flamehttp.Contract()
+	for _, endpoint := range httpContract.Endpoints {
 		if endpoint.Kind == flamehttp.EndpointKindRPC {
 			fmt.Fprintf(&body, "rpcPath = %q\n", endpoint.Path)
 		}
 	}
+	fmt.Fprintf(&body, "headerIdempotencyKey = %q\nheaderIdempotencyNamespace = %q\nheaderLastEventID = %q\nheaderRequestID = %q\n",
+		httpContract.Headers.IdempotencyKey, httpContract.Headers.IdempotencyNamespace,
+		httpContract.Headers.LastEventID, httpContract.Headers.RequestID)
 	fmt.Fprintf(&body, "notificationRunEvent = %q\nnotificationRuntimeEvent = %q\nnotificationPluginStream = %q\n)\n", dispatch.NotificationRunEvent, dispatch.NotificationRuntimeEvent, dispatch.NotificationPluginStream)
 	return writeGoProjection(remote, "metadata.generated.go", body.String())
 }

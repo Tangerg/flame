@@ -1,3 +1,4 @@
+import { stringifyJSON } from "@qimu/sdk/json";
 import { type FlameClient } from "@flame/runtime-client";
 import {
   asItemId,
@@ -13,7 +14,7 @@ import {
   type RpcRunStartParams,
 } from "@/features/agent/adapters/rpcAgentDriver";
 function runOpeningIdentity(method: "start" | "resume", params: unknown): string {
-  return JSON.stringify([`runs.${method}`, params]);
+  return stringifyJSON([`runs.${method}`, params]);
 }
 
 export interface RuntimeRunsGateway extends RpcRunsGateway {

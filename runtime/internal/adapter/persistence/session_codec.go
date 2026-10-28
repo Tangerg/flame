@@ -46,8 +46,14 @@ func rowToSession(scanner interface {
 	}
 	snapshot.CreatedAt = time.Unix(0, createdAtNanos).UTC()
 	snapshot.UpdatedAt = time.Unix(0, updatedAtNanos).UTC()
-	snapshot.Favorite = favoriteInt != 0
-	snapshot.Isolated = isolatedInt != 0
+	snapshot.Favorite, err = boolFromInt(favoriteInt)
+	if err != nil {
+		return session.Session{}, fmt.Errorf("sqlite: Session favorite: %w", err)
+	}
+	snapshot.Isolated, err = boolFromInt(isolatedInt)
+	if err != nil {
+		return session.Session{}, fmt.Errorf("sqlite: Session isolation: %w", err)
+	}
 	workspace, err := session.NewWorkspace(workspacePath)
 	if err != nil {
 		return session.Session{}, err

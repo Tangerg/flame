@@ -11,6 +11,47 @@ import session from "@flame/runtime-client/testing/samples/session.json";
 import { MAXIMUM_RUN_EVENT_ID_CHARACTERS, RUN_EVENT_ID_PREFIX } from "@flame/runtime-client/wire";
 
 describe("RpcClient", () => {
+  it("does not dispatch after its request observer closes the client", async () => {
+    const transport = createMemoryTransport();
+    const client = createRpcClient(transport);
+    let closing: Promise<void> | undefined;
+
+    await expect(
+      client.call(
+        "runtime.discover",
+        {},
+        {
+          onRequestRpcId: () => {
+            closing = client.close();
+          },
+        },
+      ),
+    ).rejects.toThrow("client closed");
+
+    expect(transport.outbox()).toEqual([]);
+    await closing;
+  });
+
+  it("releases cancellation ownership when transport admission throws synchronously", async () => {
+    const memory = createMemoryTransport();
+    const failure = new Error("admission failed");
+    const client = createRpcClient({
+      ...memory,
+      send: () => {
+        throw failure;
+      },
+    });
+    const controller = new AbortController();
+    const detach = vi.spyOn(controller.signal, "removeEventListener");
+
+    await expect(client.call("runtime.discover", {}, { signal: controller.signal })).rejects.toBe(
+      failure,
+    );
+
+    expect(detach).toHaveBeenCalledWith("abort", expect.any(Function));
+    await client.close();
+  });
+
   it("rejects method-incompatible transport metadata before send", async () => {
     const transport = createMemoryTransport();
     const client = createRpcClient(transport);

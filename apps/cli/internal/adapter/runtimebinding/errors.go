@@ -95,6 +95,7 @@ func classifyError(err error) error {
 		{protocol.ErrInvalidProtocolVersion, conversation.ErrIncompatibleRuntime},
 		{protocol.ErrVcsUnavailable, workspace.ErrVersionControlUnavailable},
 		{flameruntime.ErrClosed, conversation.ErrDisconnected},
+		{runtimeclient.ErrClosed, authoring.ErrCommandNotDispatched},
 		{runtimeclient.ErrDisconnected, conversation.ErrDisconnected},
 		{protocol.ErrInvalidResponse, conversation.ErrIncompatibleRuntime},
 	} {
@@ -103,7 +104,10 @@ func classifyError(err error) error {
 			break
 		}
 	}
-	if errors.Is(err, runtimeclient.ErrAcknowledgementUnknown) {
+	// HTTP admission describes this attempt, never the outcome retained under an
+	// earlier command identity. Only an operation acknowledgement can settle it.
+	_, transportFailure := errors.AsType[*runtimeclient.TransportError](err)
+	if errors.Is(err, runtimeclient.ErrAcknowledgementUnknown) || transportFailure {
 		kind = errors.Join(kind, authoring.ErrCommandOutcomeUnknown)
 	}
 	var problem *protocol.ProblemData

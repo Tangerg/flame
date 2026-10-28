@@ -188,15 +188,15 @@ func approvalRuleParts(approval conversation.Approval) (tool, subject string) {
 		tool = string(approval.Tool.Kind)
 	}
 	switch approval.Tool.Kind {
-	case conversation.ToolShell:
+	case protocol.ToolCategoryShell:
 		subject = approval.Tool.Command
-	case conversation.ToolEdit, conversation.ToolRead:
+	case protocol.ToolCategoryEdit, protocol.ToolCategoryRead:
 		subject = approval.Tool.Path
-	case conversation.ToolSearch:
+	case protocol.ToolCategorySearch:
 		subject = approval.Tool.Query
-	case conversation.ToolWeb:
+	case protocol.ToolCategoryWeb:
 		subject = approval.Tool.URL
-	case conversation.ToolUnknown, conversation.ToolTask:
+	case protocol.ToolCategoryUnknown, protocol.ToolCategoryTask:
 	}
 	if strings.TrimSpace(subject) == "" {
 		subject = approval.Tool.Summary

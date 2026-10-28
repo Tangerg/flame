@@ -1047,7 +1047,7 @@ func TestLaunchDoesNotReplayRunOrResumeOwnershipIntoAnotherRuntimeStore(t *testi
 			stage: func(t *testing.T, store *workbench.Store) {
 				approval := conversation.Approval{
 					RunID: "run_waiting", ItemID: "approval_1", Title: "Proceed?",
-					Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Status: conversation.ToolRunning},
+					Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Status: conversation.ToolRunning},
 				}
 				pending := workbench.PendingResume{
 					Command: conversation.ResumeRun{

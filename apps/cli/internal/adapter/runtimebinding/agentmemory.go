@@ -27,7 +27,7 @@ func (a *AgentMemory) Items(ctx context.Context, target conversation.MemoryTarge
 	if err != nil {
 		return nil, err
 	}
-	input := memory.ListV2Input{Scope: string(validated.Scope), CWD: validated.Workspace}
+	input := memory.ListV2Input{Scope: memory.ListV2InputScope(validated.Scope), CWD: validated.Workspace}
 	var traversal *cursorTraversal
 	capacity := int64(0)
 	items := make([]memory.Item, 0)
@@ -88,8 +88,8 @@ func (a *AgentMemory) Items(ctx context.Context, target conversation.MemoryTarge
 	return items, nil
 }
 
-func (a *AgentMemory) PrepareReview(ctx context.Context, id string, expectedRevision uint64, decision memory.ReviewDecision) (protocol.CallPluginRequest, error) {
-	input, err := jsonvalue.Encode(memory.ReviewV2Input{ID: strings.TrimSpace(id), ExpectedRevision: expectedRevision, Decision: string(decision)})
+func (a *AgentMemory) PrepareReview(ctx context.Context, id string, expectedRevision uint64, decision memory.ReviewV2InputDecision) (protocol.CallPluginRequest, error) {
+	input, err := jsonvalue.Encode(memory.ReviewV2Input{ID: strings.TrimSpace(id), ExpectedRevision: expectedRevision, Decision: decision})
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
@@ -117,7 +117,7 @@ func (a *AgentMemory) DecodeUpdate(id string, reply *protocol.CallPluginResponse
 }
 
 func memoryProjection(row memory.UpdateV2Output) memory.Item {
-	return memory.Item{ID: string(row.ID), Revision: row.Revision, Scope: memory.Scope(row.Scope), Content: row.Content, Origin: memory.Origin(row.Origin), Status: memory.Status(row.Status), Pinned: row.Pinned, SessionID: row.SessionID, Day: row.Day, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
+	return memory.Item{ID: string(row.ID), Revision: row.Revision, Scope: row.Scope, Content: row.Content, Origin: row.Origin, Status: row.Status, Pinned: row.Pinned, SessionID: row.SessionID, Day: row.Day, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
 }
 
 func (a *AgentMemory) PrepareDelete(ctx context.Context, id string, expectedRevision uint64) (protocol.CallPluginRequest, error) {
@@ -153,7 +153,7 @@ func (a *AgentMemory) CallPlugin(ctx context.Context, request protocol.CallPlugi
 }
 
 func (a *AgentMemory) PrepareAdd(ctx context.Context, request memory.AddV2Input) (protocol.CallPluginRequest, error) {
-	if _, err := conversation.NewMemoryTarget(memory.Scope(request.Scope), request.CWD); err != nil {
+	if _, err := conversation.NewMemoryTarget(memory.UpdateV2OutputScope(request.Scope), request.CWD); err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
 	input, err := jsonvalue.Encode(request)
@@ -182,7 +182,7 @@ func (a *AgentMemory) resolveTarget(ctx context.Context, target conversation.Mem
 	if err := target.Validate(); err != nil {
 		return conversation.MemoryTarget{}, err
 	}
-	if target.Scope != memory.ScopeProject {
+	if target.Scope != memory.UpdateV2OutputScopeProject {
 		return target, nil
 	}
 	resolved, err := a.runtime.Resolve(ctx, workspace.ResolveRequest{Path: target.Workspace})
@@ -194,7 +194,7 @@ func (a *AgentMemory) resolveTarget(ctx context.Context, target conversation.Mem
 
 func agentMemoryResult(
 	operation, expectedID string,
-	expectedScope memory.Scope,
+	expectedScope memory.UpdateV2OutputScope,
 	result *memory.Item,
 	err error,
 ) (memory.Item, error) {

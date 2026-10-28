@@ -167,30 +167,35 @@ func (r *Registry) registerExtension[Capability, Params any](meta MethodMeta, cl
 	meta.Pagination = paginationNone
 	meta.Params = reflect.TypeFor[Params]()
 	r.add(meta, nil)
-	r.byName[meta.Name].classify = func(parameters any) (OperationKind, error) {
+	registered := r.byName[meta.Name]
+	registered.classify = func(parameters any) (OperationKind, error) {
 		request, ok := parameters.(Params)
 		if !ok {
 			return "", fmt.Errorf("operation: %s received invalid parameters", meta.Name)
 		}
 		return classify(request)
 	}
-	r.byName[meta.Name].prepare = func(target any, ctx context.Context, parameters any) (*Method, error) {
+	registered.prepare = func(target any, ctx context.Context, parameters any) (*Method, error) {
+		request, ok := parameters.(Params)
+		if !ok {
+			return nil, fmt.Errorf("operation: %s received invalid parameters", meta.Name)
+		}
 		capability, ok := target.(Capability)
 		if !ok || !capabilityAvailable(capability) {
 			return nil, fmt.Errorf("operation: target cannot handle %s", meta.Name)
 		}
-		kind, call, err := prepare(capability, ctx, parameters.(Params))
+		kind, call, err := prepare(capability, ctx, request)
 		if err != nil {
 			return nil, err
 		}
-		expected, err := classify(parameters.(Params))
+		expected, err := classify(request)
 		if err != nil {
 			return nil, err
 		}
 		if kind != expected {
 			return nil, fmt.Errorf("operation: %s resolved inconsistent semantics", meta.Name)
 		}
-		resolved := cloneMethodMeta(meta)
+		resolved := cloneMethodMeta(registered.Meta)
 		resolved.Operation = kind
 		switch kind {
 		case OperationQuery:
@@ -354,7 +359,18 @@ func paginationOf(params, result reflect.Type) (PaginationKind, error) {
 	if params == nil {
 		return paginationNone, errors.New("params type is required")
 	}
+	if err := jsonvalue.ValidateType(params); err != nil {
+		return paginationNone, fmt.Errorf("invalid params declaration: %w", err)
+	}
+	if result != nil {
+		if err := jsonvalue.ValidateType(result); err != nil {
+			return paginationNone, fmt.Errorf("invalid result declaration: %w", err)
+		}
+	}
 	params = jsonvalue.Deref(params)
+	if params.Kind() != reflect.Struct {
+		return paginationNone, fmt.Errorf("params must declare a JSON object, got %s", params)
+	}
 	cursor, hasCursor := jsonvalue.LookupField(params, "cursor")
 	limit, hasLimit := jsonvalue.LookupField(params, "limit")
 	var data, nextCursor jsonvalue.Field

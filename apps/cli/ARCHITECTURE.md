@@ -65,8 +65,7 @@ The remote terminal detaches on exit without canceling an observed or newly acce
 
 `runtimebinding.Connection` owns binding lifecycle, capability negotiation, exact protocol translation, and safe error classification. It does not own product state. The adapter preserves exact provider/model identity and never stores credentials in CLI state, history, frames, errors, or logs.
 
-The public Go SDK's `exactint` and `jsonvalue` packages own the shared numeric
-vocabulary. Filesystem adapters use `filesystem.DirectoryLease` for their own
+The public Go SDK's `exactint` owns bounded counters; Qimu's `jsonvalue` owns exact JSON values. Filesystem adapters use `filesystem.DirectoryLease` for their own
 partition lifetime; Domain and Application do not import that I/O capability. Settings may read the independent `packages/local-runtime`
 deployment defaults; only process composition and the binding adapter use its
 filesystem capabilities.

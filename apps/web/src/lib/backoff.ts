@@ -1,6 +1,4 @@
-// cappedExponentialBackoffMs doubles baseMs for each prior attempt up to capMs.
-// The caller supplies the attempt exponent and its own base/cap, so independent
-// retry policies share the formula without coupling their tuning.
+// Retry policies share the formula without sharing their independent tuning.
 export function cappedExponentialBackoffMs(
   exponent: number,
   baseMs: number,

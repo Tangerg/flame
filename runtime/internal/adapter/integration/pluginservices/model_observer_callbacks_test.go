@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -47,7 +46,7 @@ func TestObserverCohostsRPCAndNextWithDistinctCapturedAuthority(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			original := portable.Invocation{ID: "original-model", Origin: extension.Model, Parent: "original-effect", Target: portable.Target{Scope: "call", Reference: "original-model"}}
+			original := portable.Invocation{ID: "original-model", Origin: extension.Model, Parent: "original-effect", Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-model"}}
 			refs := make(chan qimumcp.CallbackRef, 1)
 			beforeNext := func(ctx context.Context) (qimumcp.CallbackRef, error) {
 				ref, err := qimumcp.CallbackFromContext(ctx)

@@ -389,8 +389,8 @@ func (t *textRenderer) toolVerdict(call *conversation.ToolCall) {
 
 func textToolName(call *conversation.ToolCall) string {
 	// A known kind IS its own label; only an unknown kind falls back to the
-	// provider name, so the labels are never re-spelled out of sync with ToolKind.
-	if call.Kind == conversation.ToolUnknown {
+	// provider name, so the labels are never re-spelled out of sync with the Runtime category.
+	if call.Kind == protocol.ToolCategoryUnknown {
 		if call.Name != "" {
 			return call.Name
 		}
@@ -402,15 +402,15 @@ func textToolName(call *conversation.ToolCall) string {
 func textToolPrimary(call *conversation.ToolCall) string {
 	var value string
 	switch call.Kind {
-	case conversation.ToolShell:
+	case protocol.ToolCategoryShell:
 		value = call.Command
-	case conversation.ToolEdit, conversation.ToolRead:
+	case protocol.ToolCategoryEdit, protocol.ToolCategoryRead:
 		value = call.Path
-	case conversation.ToolSearch:
+	case protocol.ToolCategorySearch:
 		value = call.Query
-	case conversation.ToolWeb:
+	case protocol.ToolCategoryWeb:
 		value = call.URL
-	case conversation.ToolUnknown, conversation.ToolTask:
+	case protocol.ToolCategoryUnknown, protocol.ToolCategoryTask:
 		// These kinds have no more specific primary field.
 	default:
 	}

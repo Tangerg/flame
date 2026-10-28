@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
@@ -47,7 +46,7 @@ func TestInstalledReviewsPointUsesCapturedCollaboratorsAndCurrentConsumerLifetim
 	consumer := activate(consumerSource, "consumer")
 	consumerServer := wait(consumer, "reviews")
 	contribution := consumer.Selected.Contributions[0]
-	request := protocol.CallPluginRequest{InstallationID: consumer.ID, Digest: consumer.Selected.Digest, Contribution: contribution.ID, Contract: contribution.Contract, Method: "io.github.tangerg.flame.examples/reviews.analyzers", Input: `{}`, Target: portable.Target{Scope: "installation", Reference: consumer.ID}}
+	request := protocol.CallPluginRequest{InstallationID: consumer.ID, Digest: consumer.Selected.Digest, Contribution: contribution.ID, Contract: contribution.Contract, Method: "io.github.tangerg.flame.examples/reviews.analyzers", Input: `{}`, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: consumer.ID}}
 	type analysis struct {
 		Review struct {
 			ID       string `json:"id"`

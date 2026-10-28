@@ -1,6 +1,6 @@
 import { colord } from "colord";
 import { type Scheme } from "@/lib/appearance";
-const THEME_PAINT_STORAGE_KEY = "flame.theme-paint";
+import { THEME_PAINT_STORAGE_KEY } from "@/features/theme/kit/documentTheme";
 
 export function rememberThemePaint(
   storage: () => Storage,

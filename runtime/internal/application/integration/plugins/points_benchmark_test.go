@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -15,7 +16,7 @@ func BenchmarkInstalledPointResolution(b *testing.B) {
 	for _, composition := range []portable.Composition{portable.Collection, portable.Decoration} {
 		for _, count := range []int{1, 8, 32} {
 			b.Run(fmt.Sprintf("%s/members=%d", composition, count), func(b *testing.B) {
-				contract, err := portable.AdmitPoint(portable.PointDescriptor{Protocol: portable.Protocol, Reference: "knowledge.sources", Composition: composition, Scope: "installation", Optional: true, Ordering: portable.ExplicitList, Value: jsontext.Value(`{"type":"object","properties":{"title":{"type":"string"}},"required":["title"],"additionalProperties":false}`), Applicability: jsontext.Value(`{"type":"object"}`)})
+				contract, err := portable.AdmitPoint(portable.PointDescriptor{Protocol: portable.Protocol, Reference: "knowledge.sources", Composition: composition, Scope: extension.ScopeInstallation, Optional: true, Ordering: portable.ExplicitList, Value: jsontext.Value(`{"type":"object","properties":{"title":{"type":"string"}},"required":["title"],"additionalProperties":false}`), Applicability: jsontext.Value(`{"type":"object"}`)})
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -48,7 +49,7 @@ func BenchmarkInstalledPointResolution(b *testing.B) {
 					store.snapshots = append(store.snapshots, producer)
 					order[i] = PointReference{Installation: producer.Installation.ID(), Contribution: "source"}
 				}
-				context := portable.PointContext{Target: portable.Target{Scope: "installation", Reference: consumer.Installation.ID().String()}, Attributes: jsontext.Value(`{}`)}
+				context := portable.PointContext{Target: portable.Target{Scope: extension.ScopeInstallation, Reference: consumer.Installation.ID().String()}, Attributes: jsontext.Value(`{}`)}
 				host := testFramework(b, store)
 				b.ReportAllocs()
 				for b.Loop() {

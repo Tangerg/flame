@@ -177,8 +177,12 @@ func projectTool(projection toolProjection) (conversation.ToolCall, error) {
 	if err != nil {
 		return conversation.ToolCall{}, fmt.Errorf("encode tool arguments: %w", err)
 	}
+	category := value.Category
+	if category == "" {
+		category = protocol.ToolCategoryUnknown
+	}
 	tool := conversation.ToolCall{
-		Kind: toolKind(value.Category), Name: value.Name, Summary: toolSummary(value.Name, value.Arguments),
+		Kind: category, Name: value.Name, Summary: toolSummary(value.Name, value.Arguments),
 		Safety:    projection.safety,
 		StartedAt: projection.startedAt, FinishedAt: projection.finishedAt,
 		Command: toolText(value.Arguments, "command"),
@@ -226,16 +230,6 @@ func projectTool(projection toolProjection) (conversation.ToolCall, error) {
 }
 
 const toolSummaryRuneLimit = 120
-
-// toolKind projects the Runtime-owned tool category onto the CLI vocabulary. An
-// absent category — an older or non-built-in wire shape — presents as unknown
-// rather than an invalid kind.
-func toolKind(category protocol.ToolCategory) conversation.ToolKind {
-	if category == "" {
-		return conversation.ToolUnknown
-	}
-	return conversation.ToolKind(category)
-}
 
 func truncateRunes(value string, limit int) string {
 	if limit <= 0 {

@@ -4,10 +4,10 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"fmt"
-	"strings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
 )
 
 type diagnosticToolBinding interface {
@@ -63,13 +63,13 @@ func (d *DiagnosticTools) Invoke(ctx context.Context, invocation workspace.Diagn
 		return workspace.DiagnosticToolResult{}, err
 	}
 	var arguments map[string]any
-	if err := json.Unmarshal(invocation.Arguments, &arguments); err != nil {
+	if err := json.Unmarshal(invocation.Arguments, &arguments, jsonvalue.Numbers()); err != nil {
 		return workspace.DiagnosticToolResult{}, fmt.Errorf("decode diagnostic tool arguments: %w", err)
 	}
 	options := r.commandOptions()
 	value, err := r.diagnosticTools.InvokeTool(ctx, protocol.InvokeToolRequest{
-		Name: strings.TrimSpace(invocation.Tool.Name), Arguments: arguments,
-		Workspace: &protocol.WorkspaceRef{Path: strings.TrimSpace(invocation.Workspace)},
+		Name: invocation.Tool.Name, Arguments: arguments,
+		Workspace: &protocol.WorkspaceRef{Path: invocation.Workspace},
 	}, options)
 	if err != nil {
 		return workspace.DiagnosticToolResult{}, classifyError(err)

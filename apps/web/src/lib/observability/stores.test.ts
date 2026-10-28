@@ -1,16 +1,12 @@
 import {
-  type AggregationTemporality,
+  AggregationTemporality,
+  DataPointType,
   type MetricDescriptor,
   type ResourceMetrics,
 } from "@opentelemetry/sdk-metrics";
 import { beforeEach, describe, expect, it } from "vitest";
+import { ValueType } from "@opentelemetry/api";
 import { useTelemetryStore } from "@/lib/observability/stores";
-const CUMULATIVE = 1 as AggregationTemporality;
-
-const HISTOGRAM = 0;
-
-const SUM = 3;
-
 const RES = {} as ResourceMetrics["resource"];
 
 const SCOPE = { name: "flame", version: "1.0.0" };
@@ -43,11 +39,11 @@ function histogramMetric({
   boundaries?: number[];
   counts: number[];
 }) {
-  const descriptor: MetricDescriptor = { name, unit, description, valueType: 1 };
+  const descriptor: MetricDescriptor = { name, unit, description, valueType: ValueType.DOUBLE };
   return {
     descriptor,
-    aggregationTemporality: CUMULATIVE,
-    dataPointType: HISTOGRAM,
+    aggregationTemporality: AggregationTemporality.CUMULATIVE,
+    dataPointType: DataPointType.HISTOGRAM,
     dataPoints: [
       {
         attributes: attrs,
@@ -72,11 +68,11 @@ function counterMetric({
   attrs?: Record<string, string | number>;
   total: number;
 }) {
-  const descriptor: MetricDescriptor = { name, unit, description, valueType: 1 };
+  const descriptor: MetricDescriptor = { name, unit, description, valueType: ValueType.DOUBLE };
   return {
     descriptor,
-    aggregationTemporality: CUMULATIVE,
-    dataPointType: SUM,
+    aggregationTemporality: AggregationTemporality.CUMULATIVE,
+    dataPointType: DataPointType.SUM,
     isMonotonic: true,
     dataPoints: [{ attributes: attrs, startTime: [0, 0], endTime: [0, 0], value: total }],
   };
@@ -167,6 +163,22 @@ describe("telemetry store: ingestMetrics", () => {
     const rows = metricRows();
     expect(rows).toHaveLength(1);
     expect(rows[0]!.count).toBe(7);
+  });
+
+  it("keeps distinct attribute values and instrumentation scopes separate", () => {
+    const resource = batch([
+      () => counterMetric({ name: "c", attrs: { a: "x,b=y" }, total: 1 }),
+      () => counterMetric({ name: "c", attrs: { a: "x", b: "y" }, total: 2 }),
+      () => counterMetric({ name: "c", attrs: { a: 1 }, total: 3 }),
+      () => counterMetric({ name: "c", attrs: { a: "1" }, total: 4 }),
+    ]);
+    resource.scopeMetrics.push({
+      scope: { name: "independent-meter" },
+      metrics: batch([() => counterMetric({ name: "c", attrs: { a: 1 }, total: 5 })])
+        .scopeMetrics[0]!.metrics,
+    });
+    useTelemetryStore.getState().ingestMetrics(resource);
+    expect(metricRows().map((row) => row.count)).toEqual([1, 2, 3, 4, 5]);
   });
 
   it("replaces the whole metric snapshot on each ingest (no merge)", () => {

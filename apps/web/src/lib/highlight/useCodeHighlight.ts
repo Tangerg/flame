@@ -14,9 +14,11 @@ export function useCodeHighlighter(): { highlighter: Highlighter | null; theme: 
   const [highlighter, setHighlighter] = useState<Highlighter | null>(null);
   useEffect(() => {
     let cancelled = false;
-    void getHighlighter().then((h) => {
-      if (!cancelled) setHighlighter(h);
-    });
+    void getHighlighter()
+      .then((h) => {
+        if (!cancelled) setHighlighter(h);
+      })
+      .catch((error: unknown) => reportHighlightFailure("highlighter unavailable", error));
     return () => {
       cancelled = true;
     };

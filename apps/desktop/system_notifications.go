@@ -11,6 +11,8 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/services/notifications"
 )
 
+const notificationTargetKey = "target"
+
 type systemNotifications interface {
 	start(ctx context.Context) error
 	authorized() (bool, error)
@@ -18,9 +20,8 @@ type systemNotifications interface {
 	send(notification bridge.DesktopNotification) error
 }
 
-// wailsNotifications adapts Wails' native notification service. It is started by
-// DesktopHost rather than registered with the application, so none of the service's
-// own methods become IPC entry points.
+// Only DesktopHost may expose IPC; registering the notification service directly
+// would publish its native methods as additional entry points.
 type wailsNotifications struct {
 	service *notifications.NotificationService
 	opened  func(target bridge.NotificationTarget)
@@ -35,7 +36,7 @@ func (w wailsNotifications) start(ctx context.Context) error {
 		if result.Response.ActionIdentifier != notifications.DefaultActionIdentifier {
 			return
 		}
-		if target, ok := result.Response.UserInfo["target"].(string); ok {
+		if target, ok := result.Response.UserInfo[notificationTargetKey].(string); ok {
 			if admitted, err := bridge.NewNotificationTarget(target); err == nil {
 				w.opened(admitted)
 			}
@@ -57,7 +58,7 @@ func (w wailsNotifications) send(notification bridge.DesktopNotification) error 
 		ID:    notification.ID,
 		Title: notification.Title,
 		Body:  notification.Body,
-		Data:  map[string]any{"target": notification.Target},
+		Data:  map[string]any{notificationTargetKey: notification.Target},
 	})
 }
 
@@ -65,9 +66,8 @@ func (d *DesktopHost) useNotifications(centre systemNotifications) {
 	d.notifications = centre
 }
 
-// ServiceStartup is the Wails lifecycle hook, which Wails never binds to IPC. It
-// starts the notification centre; an unbundled build has none, and that is reported
-// to the frontend as unsupported rather than failing the application.
+// Unbundled builds lack a notification centre; that absence must not prevent
+// the rest of the Desktop from starting.
 func (d *DesktopHost) ServiceStartup(ctx context.Context, _ application.ServiceOptions) error {
 	if d.notifications == nil {
 		return nil
@@ -94,8 +94,6 @@ func (d *DesktopHost) NotificationAuthorization() (bridge.NotificationAuthorizat
 	return bridge.NotificationsUndecided, nil
 }
 
-// RequestNotificationAuthorization asks the platform once; a refusal the user made
-// earlier comes back as denied without a prompt.
 func (d *DesktopHost) RequestNotificationAuthorization() (bridge.NotificationAuthorization, error) {
 	if !d.notificationsReady.Load() {
 		return bridge.NotificationsUnsupported, nil

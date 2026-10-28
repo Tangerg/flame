@@ -3,6 +3,7 @@ package runtimebinding
 import (
 	"context"
 	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"path/filepath"
 	"slices"
 	"testing"
@@ -14,9 +15,11 @@ import (
 )
 
 type diagnosticToolBindingStub struct {
-	t      *testing.T
-	page   *protocol.Page[protocol.ToolSpec]
-	result any
+	t                 *testing.T
+	page              *protocol.Page[protocol.ToolSpec]
+	result            any
+	expectedDepth     string
+	expectedWorkspace string
 }
 
 func (d *diagnosticToolBindingStub) ListTools(_ context.Context, options protocol.CallOptions) (*protocol.Page[protocol.ToolSpec], error) {
@@ -26,7 +29,8 @@ func (d *diagnosticToolBindingStub) ListTools(_ context.Context, options protoco
 
 func (d *diagnosticToolBindingStub) InvokeTool(_ context.Context, request protocol.InvokeToolRequest, options protocol.CommandOptions) (any, error) {
 	assertCommandMeta(d.t, options)
-	if request.Name != "inspect" || request.Workspace == nil || request.Workspace.Path != "/workspace" || request.Arguments["depth"] != float64(2) {
+	depth, err := json.Marshal(request.Arguments["depth"])
+	if err != nil || request.Name != "inspect" || request.Workspace == nil || request.Workspace.Path != d.expectedWorkspace || string(depth) != d.expectedDepth {
 		d.t.Fatalf("tool invocation = %+v", request)
 	}
 	return d.result, nil
@@ -36,7 +40,7 @@ func TestDiagnosticToolAdapterConfinesSafeCatalogAndJSON(t *testing.T) {
 	stub := &diagnosticToolBindingStub{t: t, page: protocol.NewPage([]protocol.ToolSpec{{
 		Name: "inspect", Description: "inspect state", SafetyClass: protocol.SafetyClassSafe,
 		Parameters: map[string]any{"type": "object"},
-	}}), result: map[string]any{"ok": true}}
+	}}), result: map[string]any{"ok": true}, expectedDepth: "2", expectedWorkspace: "/workspace"}
 	adapter := &DiagnosticTools{runtime: &Connection{diagnosticTools: stub, meta: requestMeta("test")}}
 	tools, err := adapter.Tools(t.Context())
 	if err != nil || len(tools) != 1 || tools[0].Name != "inspect" {
@@ -47,6 +51,22 @@ func TestDiagnosticToolAdapterConfinesSafeCatalogAndJSON(t *testing.T) {
 	})
 	if err != nil || string(result.JSON) != `{"ok":true}` {
 		t.Fatalf("Invoke = (%s, %v)", result.JSON, err)
+	}
+}
+
+func TestDiagnosticToolAdapterPreservesNumbersAndWorkspaceIdentity(t *testing.T) {
+	for _, literal := range []string{"9007199254740993", "1.2300", "1e+400"} {
+		t.Run(literal, func(t *testing.T) {
+			stub := &diagnosticToolBindingStub{t: t, expectedDepth: literal, expectedWorkspace: "/workspace ", result: map[string]bool{"ok": true}}
+			adapter := &DiagnosticTools{runtime: &Connection{diagnosticTools: stub, meta: requestMeta("test")}}
+			_, err := adapter.Invoke(t.Context(), workspace.DiagnosticToolInvocation{
+				Tool:      workspace.DiagnosticToolDescriptor{Name: "inspect", Schema: jsontext.Value(`{"type":"object"}`)},
+				Arguments: jsontext.Value(`{"depth":` + literal + `}`), Workspace: stub.expectedWorkspace,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+		})
 	}
 }
 

@@ -26,7 +26,7 @@ import {
 } from "../transport";
 import type { RpcId } from "../types";
 import { isResponse, parseRpcMessage } from "../types";
-import { HTTP_ENDPOINTS } from "@flame/runtime-client/wire";
+import { HTTP_ENDPOINTS, HTTP_HEADERS } from "@flame/runtime-client/wire";
 import {
   isWireStreamingMethodName,
   type WireStreamingMethodName,
@@ -44,6 +44,20 @@ function endSpan(span: Span, err?: unknown): void {
     });
   }
   span.end();
+}
+
+async function refuseResponse(
+  response: Response,
+  span: Span,
+  error: RpcProtocolError,
+): Promise<never> {
+  endSpan(span, error);
+  try {
+    await response.body?.cancel();
+  } catch (cause) {
+    error.cause = cause;
+  }
+  throw error;
 }
 
 export interface HttpTransportConfig {
@@ -110,7 +124,7 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
 
   function requestHeaders(extra: Record<string, string>): Record<string, string> {
     const headers: Record<string, string> = { ...extra };
-    if (config.localToken) headers.Authorization = `Bearer ${config.localToken}`;
+    if (config.localToken) headers[HTTP_HEADERS.authorization] = `Bearer ${config.localToken}`;
     return headers;
   }
 
@@ -323,14 +337,14 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       attributes: { "rpc.system": "jsonrpc", "rpc.method": method },
     });
     const headers = requestHeaders({
-      "Content-Type": "application/json",
+      [HTTP_HEADERS.contentType]: "application/json",
       Accept: "application/json, text/event-stream",
     });
-    if (options.idempotencyKey) headers["Idempotency-Key"] = options.idempotencyKey;
+    if (options.idempotencyKey) headers[HTTP_HEADERS.idempotencyKey] = options.idempotencyKey;
     if (options.idempotencyNamespace) {
-      headers["Idempotency-Namespace"] = options.idempotencyNamespace;
+      headers[HTTP_HEADERS.idempotencyNamespace] = options.idempotencyNamespace;
     }
-    if (options.lastEventId) headers["Last-Event-Id"] = options.lastEventId;
+    if (options.lastEventId) headers[HTTP_HEADERS.lastEventId] = options.lastEventId;
     propagation.inject(trace.setSpan(context.active(), span), headers);
 
     let res: Response;
@@ -348,7 +362,7 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
     }
     span.setAttribute("rpc.http.status_code", res.status);
     const metadata: TransportResponseMetadata = {
-      requestId: res.headers.get("Request-Id") ?? undefined,
+      requestId: res.headers.get(HTTP_HEADERS.requestId) ?? undefined,
     };
     if (metadata.requestId) span.setAttribute("flame.request_id", metadata.requestId);
 
@@ -358,20 +372,22 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
         [{ path: "$", detail: `must answer the call, not end it with http ${res.status}` }],
         metadata.requestId,
       );
-      endSpan(span, err);
-      throw err;
+      return refuseResponse(res, span, err);
     }
 
-    if (res.ok && (res.headers.get("Content-Type") ?? "").includes("text/event-stream")) {
+    const mediaType = res.headers
+      .get(HTTP_HEADERS.contentType)
+      ?.split(";", 1)[0]
+      ?.trim()
+      .toLowerCase();
+    if (res.ok && mediaType === "text/event-stream") {
       if (!isWireStreamingMethodName(method)) {
         const err = new RpcProtocolError(
           "RPC response",
           [{ path: "$", detail: `must not be an event stream for non-streaming method ${method}` }],
           metadata.requestId,
         );
-        endSpan(span, err);
-        await res.body?.cancel();
-        throw err;
+        return refuseResponse(res, span, err);
       }
       if (!res.body) {
         const err = new RpcTransportError(

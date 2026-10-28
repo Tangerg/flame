@@ -30,7 +30,7 @@ type moduleEntry struct {
 
 func componentModule(ctx context.Context, root *os.Root, component plugin.ClientComponent) (*distribution.Module, error) {
 	directory := path.Dir(component.Entry)
-	encoded, err := read(ctx, root, path.Join(directory, "modules.generated.json"), maxManifestBytes)
+	encoded, err := read(ctx, root, path.Join(directory, moduleGraphFilename), maxManifestBytes)
 	if err != nil {
 		return nil, fmt.Errorf("%w: component module graph: %w", plugin.ErrInvalid, err)
 	}
@@ -38,7 +38,7 @@ func componentModule(ctx context.Context, root *os.Root, component plugin.Client
 	if err := json.Unmarshal(encoded, &graph, json.RejectUnknownMembers(true)); err != nil {
 		return nil, fmt.Errorf("%w: component module graph: %w", plugin.ErrInvalid, err)
 	}
-	if graph.SchemaVersion != 1 || graph.Entry != path.Base(component.Entry) || len(graph.Modules) == 0 {
+	if graph.SchemaVersion != moduleGraphSchemaVersion || graph.Entry != path.Base(component.Entry) || len(graph.Modules) == 0 {
 		return nil, plugin.ErrInvalid
 	}
 	modules := map[string]moduleEntry{}

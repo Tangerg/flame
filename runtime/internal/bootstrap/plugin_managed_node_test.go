@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
@@ -26,11 +27,11 @@ func TestManagedNodeInstalledOperationAndOrdinaryToolUseTheirCallingHost(t *test
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build managed fixture: %s: %v", output, err)
 	}
-	method, err := qimumcp.NewMethod[protocol.UsageSummaryRequest, protocol.UsageSummary](qimumcp.MethodConfig{Name: "fixture.usage", Kind: portable.Query, Target: "installation", Description: "Read core accounting through the calling host."})
+	method, err := qimumcp.NewMethod[protocol.UsageSummaryRequest, protocol.UsageSummary](qimumcp.MethodConfig{Name: "fixture.usage", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read core accounting through the calling host."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "flame.fixture.usage", Composition: portable.Collection, Scope: "installation"}, method.Descriptor())
+	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "flame.fixture.usage", Composition: portable.Collection, Scope: extension.ScopeInstallation}, method.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +87,7 @@ func TestManagedNodeInstalledOperationAndOrdinaryToolUseTheirCallingHost(t *test
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "managed"}
 	tools := r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	toolName = tools[0].ModelName
-	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "probe", Contract: contract.Identity().String(), Method: method.Name(), Input: `{"sinceDays":1}`, Target: portable.Target{Scope: "installation", Reference: installed.ID}}
+	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "probe", Contract: contract.Identity().String(), Method: method.Name(), Input: `{"sinceDays":1}`, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}
 	response := r.must(delivery.PluginsCall, request, "").(*protocol.CallPluginResponse)
 	var summary protocol.UsageSummary
 	if response.Failure != nil || json.Unmarshal([]byte(response.Output), &summary) != nil || summary.ObservedAt.IsZero() || summary.Since == nil {

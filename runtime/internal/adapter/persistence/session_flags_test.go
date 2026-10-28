@@ -36,3 +36,31 @@ func TestSessionStorageCannotCreateCompetingFlagValues(t *testing.T) {
 		t.Fatalf("rejected flag writes changed Session: %+v, %v", got.Snapshot(), err)
 	}
 }
+
+func TestSessionStorageRejectsInvalidDecodedFlags(t *testing.T) {
+	for _, column := range []string{"favorite", "isolated"} {
+		t.Run(column, func(t *testing.T) {
+			store := newTempDB(t)
+			value := testsupport.MustRestoreSession(session.Snapshot{ID: "ses_flags", Workspace: testsupport.MustWorkspace("/work"), Favorite: true, Isolated: true})
+			if err := store.Insert(t.Context(), value); err != nil {
+				t.Fatal(err)
+			}
+			got, err := store.Get(t.Context(), value.ID())
+			if err != nil || !got.Favorite() || !got.Isolated() {
+				t.Fatalf("valid flags failed to round-trip: %+v, %v", got.Snapshot(), err)
+			}
+			if _, err := store.db.ExecContext(t.Context(), "PRAGMA ignore_check_constraints=ON"); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := store.db.ExecContext(t.Context(), "UPDATE sessions SET "+column+"=2 WHERE id=?", value.ID()); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := store.Get(t.Context(), value.ID()); err == nil {
+				t.Fatal("read normalized a corrupt flag into valid Session authority")
+			}
+			if _, err := store.List(t.Context()); err == nil {
+				t.Fatal("list normalized a corrupt flag into valid Session authority")
+			}
+		})
+	}
+}

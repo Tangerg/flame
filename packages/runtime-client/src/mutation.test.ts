@@ -12,7 +12,7 @@ describe("mutation settlement", () => {
       data: { type: "session_busy" },
     }),
     new RpcTransportError("unauthorized", 401),
-  ])("does not replay a definitive failure", async (failure) => {
+  ])("does not automatically replay a failure outside the replay policy", async (failure) => {
     const execute = vi.fn().mockRejectedValue(failure);
 
     await expect(createMutationPromise(execute)).rejects.toBe(failure);

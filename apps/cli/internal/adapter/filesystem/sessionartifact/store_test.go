@@ -66,6 +66,26 @@ func TestStoreRejectsPathsAsExportNames(t *testing.T) {
 	}
 }
 
+func TestLoadResolvesSymlinkBeforeParentTraversal(t *testing.T) {
+	root := t.TempDir()
+	physical := filepath.Join(root, "physical")
+	if err := os.MkdirAll(filepath.Join(physical, "child"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(physical, "child"), filepath.Join(root, "alias")); err != nil {
+		t.Fatal(err)
+	}
+	const body = `{"version":17}`
+	if err := os.WriteFile(filepath.Join(physical, "session.json "), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	selected := "alias" + string(filepath.Separator) + ".." + string(filepath.Separator) + "session.json "
+	document, err := (Store{}).Load(root, selected)
+	if err != nil || string(document.Bytes()) != body {
+		t.Fatalf("loaded document = %q, %v", document.Bytes(), err)
+	}
+}
+
 func TestStorePreservesPortableExtensionAndConflictSpaceForLongNames(t *testing.T) {
 	workspace := t.TempDir()
 	document, err := session.NewDocument(protocol.ExportFormatJSON, []byte(`{"version":17}`))

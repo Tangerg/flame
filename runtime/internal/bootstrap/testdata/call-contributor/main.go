@@ -13,7 +13,6 @@ import (
 	"syscall"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -105,11 +104,11 @@ func run(ctx context.Context) error {
 }
 
 func runDroppingStream(ctx context.Context, server *sdk.Server, backend *qimumcp.Backend, mode, trace string) error {
-	method, err := qimumcp.NewStreamingMethod[struct{}, string, bool](qimumcp.MethodConfig{Name: "example.records/stream.v1", Kind: portable.Mutation, Target: "installation", Description: "Stream the captured command."})
+	method, err := qimumcp.NewStreamingMethod[struct{}, string, bool](qimumcp.MethodConfig{Name: "example.records/stream.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Stream the captured command."})
 	if err != nil {
 		return err
 	}
-	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "example.records/streaming.v1", Composition: portable.Selection, Scope: "installation"}, method.Descriptor())
+	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "example.records/streaming.v1", Composition: portable.Selection, Scope: extension.ScopeInstallation}, method.Descriptor())
 	if err != nil {
 		return err
 	}

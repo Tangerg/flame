@@ -27,6 +27,7 @@ go 1.27.3
 	source := `package runtimeconsumer
 
 import (
+"github.com/Tangerg/flame/packages/go-sdk/extension"
 "context"
 "errors"
 "testing"
@@ -79,7 +80,7 @@ var _ = portable.AdmitPoint
 var _ = runtimeclient.ResolvePointValues[struct{}]
 
 func TestLocalContractAdmission(t *testing.T) {
-	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "example.com/records", Composition: portable.Selection, Scope: "installation"}, portable.MethodDescriptor{Name: "records/read", Kind: portable.Query, Target: "installation", Input: []byte("{\"type\":\"object\"}"), Output: []byte("{\"type\":\"string\"}")})
+	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "example.com/records", Composition: portable.Selection, Scope: extension.ScopeInstallation}, portable.MethodDescriptor{Name: "records/read", Kind: portable.Query, Target: extension.ScopeInstallation, Input: []byte("{\"type\":\"object\"}"), Output: []byte("{\"type\":\"string\"}")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +135,7 @@ func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
  if err != nil { t.Fatal(err) }
  calls := 0
  for range 2 {
-  value, err := pluginstorage.Command(t.Context(), db, "records.update", "original", struct{}{}, input, nil, func(ctx context.Context, _ struct{}) (bool, error) {
+  value, err := pluginstorage.Command(t.Context(), db, "records.update", "original", input, nil, func(ctx context.Context, _ struct{}) (bool, error) {
    calls++
    _, err := sqlitebase.Connection(ctx, db).ExecContext(ctx, "INSERT INTO records VALUES ('owned')")
    return err == nil, err
@@ -149,7 +150,7 @@ func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
  if err != nil || !projected.Found || projected.IsError { t.Fatalf("public Tool projection = %+v, %v", projected, err) }
  changed, err := jsonvalue.Encode(map[string]bool{"changed": true})
  if err != nil { t.Fatal(err) }
- _, err = pluginstorage.Command(t.Context(), db, "records.update", "original", struct{}{}, changed, nil, func(context.Context, struct{}) (bool, error) {
+ _, err = pluginstorage.Command(t.Context(), db, "records.update", "original", changed, nil, func(context.Context, map[string]bool) (bool, error) {
    calls++
    return false, nil
  })

@@ -311,11 +311,11 @@ func requireContextManagement(t *testing.T, runtime *Connection, workspace strin
 	if agentMemory == nil {
 		t.Fatal("context adapters were not advertised")
 	}
-	userTarget, err := conversation.NewMemoryTarget(memory.ScopeUser, "")
+	userTarget, err := conversation.NewMemoryTarget(memory.UpdateV2OutputScopeUser, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	addition, err := agentMemory.PrepareAdd(t.Context(), memory.AddV2Input{Scope: string(userTarget.Scope), Content: "integration preference"})
+	addition, err := agentMemory.PrepareAdd(t.Context(), memory.AddV2Input{Scope: memory.AddV2InputScope(userTarget.Scope), Content: "integration preference"})
 	if err != nil {
 		t.Fatal(err)
 	}

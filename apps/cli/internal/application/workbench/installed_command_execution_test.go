@@ -74,6 +74,33 @@ func execute(ctx context.Context, caller workbench.InstalledCaller, store *workb
 	return err
 }
 
+func TestInstalledCommandRejectsInvalidCapturedInputBeforePersistence(t *testing.T) {
+	for _, input := range []string{`{}`, `{"id":null}`, `{"id":42}`} {
+		t.Run(input, func(t *testing.T) {
+			storage := &persistence{files: make(map[string][]byte)}
+			store, err := workbench.Open(storage, workbench.Config{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = store.Close() })
+			invalid := request(t)
+			invalid.Input = input
+			now := time.Now()
+			caller := callerFunc(func(context.Context, protocol.CallPluginRequest, authoring.CommandID) (*protocol.CallPluginResponse, error) {
+				t.Fatal("invalid captured input reached the mutation owner")
+				return nil, nil
+			})
+			prepare := func(context.Context) (protocol.CallPluginRequest, error) { return invalid, nil }
+			if err := execute(t.Context(), caller, store, "delete", policy(t, "store", &now), prepare); err == nil {
+				t.Fatal("invalid captured input was accepted")
+			}
+			if len(storage.files) != 0 || len(store.PendingInstalledCommands()) != 0 {
+				t.Fatal("invalid captured input was retained as durable intent")
+			}
+		})
+	}
+}
+
 func TestLostAcknowledgementResumesOriginalRequestAfterRestart(t *testing.T) {
 	storage := &persistence{files: make(map[string][]byte)}
 	store, err := workbench.Open(storage, workbench.Config{})

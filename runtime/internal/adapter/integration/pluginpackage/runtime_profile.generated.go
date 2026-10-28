@@ -2,6 +2,8 @@
 package pluginpackage
 
 const hostModuleProfile = "io.github.tangerg.flame/component-runtime@1"
+const moduleGraphFilename = "modules.generated.json"
+const moduleGraphSchemaVersion = 1
 
 var hostModuleSpecifiers = [...]string{
 	"@flame/component-sdk",

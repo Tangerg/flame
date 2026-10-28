@@ -25,6 +25,9 @@ const (
 	defaultHistoryCapacity   = 1000
 	defaultStashCapacity     = 100
 	defaultWorkspaceCapacity = 50
+	stashIDEntropyBytes      = 8
+	historyName              = "history.json"
+	workspacesName           = "workspaces.json"
 	stashesName              = "stashes.json"
 	stashTransferName        = "stash-transfer.json"
 	sessionDeletionsName     = "session-deletions.json"
@@ -50,7 +53,7 @@ type Stash struct {
 
 func (s Stash) Validate() error {
 	identity, err := hex.DecodeString(s.ID)
-	if err != nil || len(identity) != 8 || hex.EncodeToString(identity) != s.ID {
+	if err != nil || len(identity) != stashIDEntropyBytes || hex.EncodeToString(identity) != s.ID {
 		return errors.New("stash identity is not canonical")
 	}
 	if s.CreatedAt.IsZero() {
@@ -244,7 +247,7 @@ func (s *Store) Remember(message authoring.Message) error {
 	}
 	next := append(cloneHistory(s.history), historyEntry{Message: message})
 	next = s.trimHistory(next)
-	if err := s.save("history.json", next); err != nil {
+	if err := s.save(historyName, next); err != nil {
 		return err
 	}
 	s.history = next
@@ -290,7 +293,7 @@ func (s *Store) newStash(message authoring.Message) (Stash, error) {
 	if message.IsEmpty() {
 		return Stash{}, errors.New("cannot stash an empty prompt")
 	}
-	identity := make([]byte, 8)
+	identity := make([]byte, stashIDEntropyBytes)
 	if _, err := io.ReadFull(s.random, identity); err != nil {
 		return Stash{}, fmt.Errorf("create stash id: %w", err)
 	}
@@ -303,12 +306,12 @@ func (s *Store) newStash(message authoring.Message) (Stash, error) {
 
 // StashPrompt preserves a prompt independently of its session draft.
 func (s *Store) StashPrompt(message authoring.Message) (Stash, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	stash, err := s.newStash(message)
 	if err != nil {
 		return Stash{}, err
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	next := append(slices.Clone(s.stashes), stash)
 	next = tailStashes(next, s.stashCapacity)
 	if err := s.save(stashesName, next); err != nil {
@@ -326,14 +329,14 @@ func (s *Store) StashDraft(sessionID string, message authoring.Message) (Stash, 
 	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return Stash{}, err
 	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	stash, err := s.newStash(message)
 	if err != nil {
 		return Stash{}, err
 	}
 	transfer := stashTransfer{SessionID: sessionID, Draft: stash.Message, Stash: stash}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	current, present := s.drafts[sessionID]
 	if !present || !current.Equal(message) {
 		return Stash{}, errors.New("session draft changed before it could be stashed")
@@ -354,10 +357,10 @@ func (s *Store) StashDraft(sessionID string, message authoring.Message) (Stash, 
 		rollbackErr := s.save(stashesName, previous)
 		if rollbackErr != nil {
 			s.stashes = next
-			return Stash{}, errors.Join(
+			return Stash{}, s.blockWrites(errors.Join(
 				fmt.Errorf("clear session draft: %w", err),
 				fmt.Errorf("restore prompt stashes: %w", rollbackErr),
-			)
+			))
 		}
 		if cleanupErr := s.remove(stashTransferName); cleanupErr != nil {
 			// Re-publish the intended stash so a surviving journal always describes
@@ -479,7 +482,7 @@ func (s *Store) RememberWorkspace(path string) error {
 	next := slices.DeleteFunc(slices.Clone(s.workspaces), func(item Workspace) bool { return item.Path == path })
 	next = slices.Insert(next, 0, workspace)
 	next = next[:min(len(next), s.workspaceCapacity)]
-	if err := s.save("workspaces.json", next); err != nil {
+	if err := s.save(workspacesName, next); err != nil {
 		return err
 	}
 	s.workspaces = next
@@ -561,7 +564,7 @@ func (s *Store) recordPromptHistoryLocked(commandID authoring.CommandID, message
 		return nil
 	}
 	next = s.trimHistory(append(next, historyEntry{Message: message, CommandID: commandID}))
-	if err := s.save("history.json", next); err != nil {
+	if err := s.save(historyName, next); err != nil {
 		return err
 	}
 	s.history = next

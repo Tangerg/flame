@@ -3,48 +3,62 @@ package testsupport
 
 import "time"
 
-type WebMethod_flame_2eweb_2fbrowse_2ev1Input WebMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fBrowseInput
+type WebBrowseV1OutputFormat string
 
-type WebMethod_flame_2eweb_2fbrowse_2ev1Output WebMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL2RvbWFpbg_5fPage
+const (
+	WebBrowseV1OutputFormatMarkdown WebBrowseV1OutputFormat = "markdown"
+	WebBrowseV1OutputFormatHtml     WebBrowseV1OutputFormat = "html"
+	WebBrowseV1OutputFormatText     WebBrowseV1OutputFormat = "text"
+)
 
-type WebMethod_flame_2eweb_2ffetch_2ev1Input WebMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fFetchRequest
+type WebFetchV1InputFormat string
 
-type WebMethod_flame_2eweb_2ffetch_2ev1Output WebMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL2RvbWFpbg_5fPage
+const (
+	WebFetchV1InputFormatMarkdown WebFetchV1InputFormat = "markdown"
+	WebFetchV1InputFormatHtml     WebFetchV1InputFormat = "html"
+	WebFetchV1InputFormatText     WebFetchV1InputFormat = "text"
+)
 
-type WebMethod_flame_2eweb_2fsearch_2ev1Input WebMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchRequest
+type WebSearchV1InputRecency string
 
-type WebMethod_flame_2eweb_2fsearch_2ev1Output WebMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchResponse
+const (
+	WebSearchV1InputRecencyHour  WebSearchV1InputRecency = "hour"
+	WebSearchV1InputRecencyDay   WebSearchV1InputRecency = "day"
+	WebSearchV1InputRecencyWeek  WebSearchV1InputRecency = "week"
+	WebSearchV1InputRecencyMonth WebSearchV1InputRecency = "month"
+	WebSearchV1InputRecencyYear  WebSearchV1InputRecency = "year"
+)
 
-type WebMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL2RvbWFpbg_5fPage struct {
-	Content    string `json:"content"`
-	Format     string `json:"format"`
-	NextOffset *int64 `json:"nextOffset,omitzero"`
-	Offset     int64  `json:"offset"`
-	SnapshotId string `json:"snapshotId"`
-	TotalRunes int64  `json:"totalRunes"`
-	Url        string `json:"url"`
+type WebBrowseV1Output struct {
+	Content    string                  `json:"content"`
+	Format     WebBrowseV1OutputFormat `json:"format"`
+	NextOffset *int64                  `json:"nextOffset,omitzero"`
+	Offset     int64                   `json:"offset"`
+	SnapshotId string                  `json:"snapshotId"`
+	TotalRunes int64                   `json:"totalRunes"`
+	Url        string                  `json:"url"`
 }
 
-type WebMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fBrowseInput struct {
+type WebBrowseV1Input struct {
 	Limit      uint64 `json:"limit"`
 	Offset     uint64 `json:"offset"`
 	SnapshotId string `json:"snapshotId"`
 }
 
-type WebMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fFetchRequest struct {
-	Format *string `json:"format,omitzero"`
-	Url    string  `json:"url"`
+type WebFetchV1Input struct {
+	Format *WebFetchV1InputFormat `json:"format,omitzero"`
+	Url    string                 `json:"url"`
 }
 
-type WebMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchRequest struct {
-	AllowedDomains *[]string `json:"allowed_domains,omitzero"`
-	BlockedDomains *[]string `json:"blocked_domains,omitzero"`
-	MaxResults     *int64    `json:"max_results,omitzero"`
-	Query          string    `json:"query"`
-	Recency        *string   `json:"recency,omitzero"`
+type WebSearchV1Input struct {
+	AllowedDomains *[]string                `json:"allowed_domains,omitzero"`
+	BlockedDomains *[]string                `json:"blocked_domains,omitzero"`
+	MaxResults     *int64                   `json:"max_results,omitzero"`
+	Query          string                   `json:"query"`
+	Recency        *WebSearchV1InputRecency `json:"recency,omitzero"`
 }
 
-type WebMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchResponse struct {
+type WebSearchV1Output struct {
 	Query   string                                                                         `json:"query"`
 	Results []WebMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchResult `json:"results"`
 }
@@ -62,15 +76,8 @@ const WebCapabilityJSON = "{\"protocol\":\"io.github.tangerg.qimu/portable/1\",\
 
 const WebBrowseV1Method = "flame.web/browse.v1"
 
-type WebBrowseV1Input WebMethod_flame_2eweb_2fbrowse_2ev1Input
-type WebBrowseV1Output WebMethod_flame_2eweb_2fbrowse_2ev1Output
-
 const WebFetchV1Method = "flame.web/fetch.v1"
 
-type WebFetchV1Input WebMethod_flame_2eweb_2ffetch_2ev1Input
-type WebFetchV1Output WebMethod_flame_2eweb_2ffetch_2ev1Output
+type WebFetchV1Output WebBrowseV1Output
 
 const WebSearchV1Method = "flame.web/search.v1"
-
-type WebSearchV1Input WebMethod_flame_2eweb_2fsearch_2ev1Input
-type WebSearchV1Output WebMethod_flame_2eweb_2fsearch_2ev1Output

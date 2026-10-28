@@ -19,9 +19,8 @@ var imageExtensionByMIME = map[string]string{
 	"image/webp":    "webp",
 }
 
-// decodeInlineImage accepts the same restricted inline-image family rendered by the
-// frontend. Remote URLs never cross this boundary, and malformed or non-image data is
-// rejected before a native dialog is opened.
+// Native saving accepts material already captured by the WebView; a URL must not
+// turn a save action into a new network request with different authority.
 func decodeInlineImage(source string) (extension string, contents []byte, err error) {
 	if !strings.HasPrefix(strings.ToLower(source), "data:") {
 		return "", nil, errors.New("source is not an inline data URL")
@@ -62,5 +61,5 @@ func decodeInlineImage(source string) (extension string, contents []byte, err er
 
 func suggestedImageFilename(extension string) string {
 	stamp := time.Now().Format("2006-01-02 at 15.04.05")
-	return fmt.Sprintf("Flame Image %s.%s", stamp, extension)
+	return fmt.Sprintf("%s Image %s.%s", productName, stamp, extension)
 }

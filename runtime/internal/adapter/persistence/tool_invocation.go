@@ -98,7 +98,7 @@ func (t *ToolInvocationStore) StartToolInvocation(
 		   call_id, item_id, session_id, run_id, segment_id, state, started_at, finished_at)
 		 SELECT ?, ?, session_id, run_id, ?, ?, ?, NULL
 		   FROM runs
-		  WHERE run_id = ? AND session_id = ? AND state != ?`,
+		  WHERE run_id = ? AND session_id = ? AND state = ? AND active_segment_id = ?`,
 			callID,
 			itemID,
 			segmentID,
@@ -106,7 +106,8 @@ func (t *ToolInvocationStore) StartToolInvocation(
 			startedAt.UTC().UnixNano(),
 			runID,
 			sessionID,
-			runStateTerminal.databaseValue(),
+			runStateRunning.databaseValue(),
+			segmentID,
 		)
 		if err != nil {
 			return fmt.Errorf("sqlite: start Tool invocation %q: %w", callID, err)

@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -121,7 +122,7 @@ func TestGitHubInstalledSecretLifecycleAndModelWritesShareThePublishedOwner(t *t
 		}
 		arguments.Store(input.String())
 		refusalText.Store("")
-		request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "github-operations", Contract: contracts.Identity().String(), Method: test.method, Input: input.String(), Target: portable.Target{Scope: "installation", Reference: installed.ID}}
+		request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "github-operations", Contract: contracts.Identity().String(), Method: test.method, Input: input.String(), Target: portable.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}
 		typed := r.must(delivery.PluginsCall, request, test.key).(*protocol.CallPluginResponse)
 		if typed.Failure == nil || typed.Failure.Code != test.code {
 			t.Fatalf("typed %s bypassed admission: %+v", test.name, typed)

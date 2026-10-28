@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -70,7 +69,7 @@ func TestIndependentModelPublisherUsesOriginalSourceAndCapturedMemberAfterCancel
 			}
 			finish := <-started
 			request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original independent input")))
-			source := modelref.EndpointInvocation{ID: "endpoint_independent", Kind: modelref.EndpointChat, Caller: portable.Invocation{ID: fact.CallID, Origin: extension.Model, Parent: "original-owner", Target: portable.Target{Scope: "call", Reference: fact.CallID}}, Provider: selection.Provider(), Model: selection.Model(), SessionID: draft.SessionID, Request: request, StartedAt: time.Now().UTC()}
+			source := modelref.EndpointInvocation{ID: "endpoint_independent", Kind: modelref.EndpointChat, Caller: portable.Invocation{ID: fact.CallID, Origin: extension.Model, Parent: "original-owner", Target: portable.Target{Scope: extension.ScopeCall, Reference: fact.CallID}}, Provider: selection.Provider(), Model: selection.Model(), SessionID: draft.SessionID, Request: request, StartedAt: time.Now().UTC()}
 			if err := journal.StartEndpointInvocation(t.Context(), source, fact.CallID); err != nil {
 				t.Fatal(err)
 			}

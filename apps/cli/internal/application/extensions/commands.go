@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 )
 
 // SlashCommand is a contributed composer command. Extensions receive a
@@ -67,9 +69,9 @@ type CommandDescriptor struct {
 // Validate checks the command identity and its aliases as one namespace.
 func (c CommandDescriptor) Validate() error {
 	switch {
-	case strings.TrimSpace(c.Name) == "":
+	case c.Name == "":
 		return errors.New("slash command has no name")
-	case strings.ContainsAny(c.Name, " /\t\n"):
+	case !validCommandIdentity(c.Name):
 		return fmt.Errorf("slash command %q has an invalid name", c.Name)
 	case strings.TrimSpace(c.Title) == "":
 		return fmt.Errorf("slash command %q has no title", c.Name)
@@ -84,7 +86,7 @@ func (c CommandDescriptor) Validate() error {
 func (c CommandDescriptor) validateAliases() error {
 	seen := map[string]struct{}{c.Name: {}}
 	for _, alias := range c.Aliases {
-		if strings.TrimSpace(alias) == "" || strings.ContainsAny(alias, " /\t\n") {
+		if !validCommandIdentity(alias) {
 			return fmt.Errorf("slash command %q has invalid alias %q", c.Name, alias)
 		}
 		if _, duplicate := seen[alias]; duplicate {
@@ -93,6 +95,11 @@ func (c CommandDescriptor) validateAliases() error {
 		seen[alias] = struct{}{}
 	}
 	return nil
+}
+
+func validCommandIdentity(value string) bool {
+	return value != "" && utf8.ValidString(value) && !strings.ContainsRune(value, '/') &&
+		!strings.ContainsFunc(value, func(character rune) bool { return unicode.IsSpace(character) || !unicode.IsPrint(character) })
 }
 
 func (c CommandDescriptor) CategoryLabel() string {

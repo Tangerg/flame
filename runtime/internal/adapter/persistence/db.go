@@ -15,8 +15,11 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	"github.com/Tangerg/flame/qimu/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
 // Column constraints derive from the stored state vocabulary so SQL admission
@@ -75,10 +78,10 @@ func currentSchema() []string {
 			provider    TEXT    NOT NULL CHECK (provider <> ''),
 			model       TEXT    NOT NULL CHECK (model <> ''),
 			reasoning_effort TEXT NOT NULL DEFAULT '',
-			favorite    INTEGER NOT NULL DEFAULT 0 CHECK (favorite IN (0, 1)),
-			isolated    INTEGER NOT NULL DEFAULT 0 CHECK (isolated IN (0, 1)),
-			revision    INTEGER NOT NULL DEFAULT %d CHECK (revision BETWEEN %d AND %d)
-		)`, firstExactInteger, firstExactInteger, exactint.Maximum),
+			favorite    INTEGER NOT NULL DEFAULT %[4]d CHECK (favorite IN (%[4]d, %[5]d)),
+			isolated    INTEGER NOT NULL DEFAULT %[4]d CHECK (isolated IN (%[4]d, %[5]d)),
+			revision    INTEGER NOT NULL DEFAULT %[1]d CHECK (revision BETWEEN %[2]d AND %[3]d)
+		)`, firstExactInteger, firstExactInteger, exactint.Maximum, storedFalse, storedTrue),
 		`CREATE INDEX IF NOT EXISTS idx_sessions_updated_at
 			ON sessions(updated_at DESC)`,
 		`CREATE INDEX IF NOT EXISTS idx_sessions_parent
@@ -189,7 +192,7 @@ func currentSchema() []string {
 		// Semantic response content and aggregate accounting stay in history_items
 		// and runs; deleting the owning Run also removes its invocation records.
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS model_invocations (
-			logical_purpose TEXT CHECK (logical_purpose IS NULL OR logical_purpose IN ('conversation','independent')),
+			logical_purpose TEXT CHECK (logical_purpose IS NULL OR logical_purpose IN ('%[7]s','%[8]s')),
 			call_id     TEXT    PRIMARY KEY,
 			session_id  TEXT,
 			run_id      TEXT REFERENCES runs(run_id) ON DELETE CASCADE,
@@ -200,7 +203,7 @@ func currentSchema() []string {
 			%[5]s,
 			%[6]s,
 			endpoint_json TEXT CHECK (endpoint_json IS NULL OR json_valid(endpoint_json)),
-			endpoint_kind TEXT CHECK (endpoint_kind IS NULL OR endpoint_kind IN ('chat', 'embedding')),
+			endpoint_kind TEXT CHECK (endpoint_kind IS NULL OR endpoint_kind IN ('%[9]s', '%[10]s')),
 			endpoint_failure TEXT NOT NULL DEFAULT '',
 			endpoint_cost_usd REAL CHECK (endpoint_cost_usd IS NULL OR (endpoint_cost_usd >= 0 AND endpoint_json IS NOT NULL AND known_response IS NOT NULL)),
 			known_response TEXT CHECK (known_response IS NULL OR ((state = '%[3]s' OR (state = '%[2]s' AND endpoint_json IS NOT NULL)) AND json_valid(known_response))),
@@ -218,6 +221,8 @@ func currentSchema() []string {
 			modelInvocationUnknown.databaseValue(),
 			modelInvocationLatencyColumn(),
 			modelInvocationUsageColumn(),
+			run.ModelConversation.String(), run.ModelIndependent.String(),
+			modelref.EndpointChat, modelref.EndpointEmbedding,
 		),
 		`CREATE INDEX IF NOT EXISTS idx_model_invocations_trajectory
 			ON model_invocations(run_id, started_at DESC, call_id DESC)`,
@@ -581,9 +586,9 @@ func currentSchema() []string {
 		// retire-only reference to original Run material: acceptance establishes
 		// it, the material's deletion sets it NULL via the foreign key, and importing
 		// the same RunID cannot refill it.
-		`CREATE TABLE IF NOT EXISTS idempotency_records (
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS idempotency_records (
 			key          TEXT PRIMARY KEY,
-			kind         TEXT NOT NULL CHECK (kind IN ('pending_response','response','run_acceptance')),
+			kind         TEXT NOT NULL CHECK (kind IN ('%[1]s','%[2]s','%[3]s')),
 			fingerprint  TEXT NOT NULL,
 			payload      BLOB,
 			expires_at   INTEGER,
@@ -595,19 +600,19 @@ func currentSchema() []string {
 			steer_input BLOB,
 			material_run_id TEXT REFERENCES runs(run_id) ON DELETE SET NULL,
 			CHECK (
-				(kind IN ('pending_response','response')
+				(kind IN ('%[1]s','%[2]s')
 					AND payload IS NOT NULL AND expires_at IS NOT NULL
 					AND operation IS NULL AND session_id IS NULL AND run_id IS NULL
 					AND segment_id IS NULL AND user_item_id IS NULL AND material_run_id IS NULL AND steer_input IS NULL)
 				OR
-				(kind = 'run_acceptance'
+				(kind = '%[3]s'
 					AND payload IS NULL AND expires_at IS NULL
 					AND operation IS NOT NULL AND session_id IS NOT NULL AND run_id IS NOT NULL
 					AND segment_id IS NOT NULL AND user_item_id IS NOT NULL
-					AND ((operation IN ('start','resume') AND steer_input IS NULL)
-						OR (operation = 'steer' AND steer_input IS NOT NULL)))
+					AND ((operation IN ('%[4]s','%[5]s') AND steer_input IS NULL)
+						OR (operation = '%[6]s' AND steer_input IS NOT NULL)))
 			)
-		)`,
+		)`, idempotencyPendingResponse, idempotencyResponse, idempotencyRunAcceptance, runs.CommandStartOpening, runs.CommandResumeOpening, runs.CommandSteerInput),
 		`CREATE INDEX IF NOT EXISTS idx_idempotency_records_expires_at
 			ON idempotency_records(expires_at) WHERE expires_at IS NOT NULL`,
 		// Optional agent-memory embedding role. Single row, pinned by CHECK(id =

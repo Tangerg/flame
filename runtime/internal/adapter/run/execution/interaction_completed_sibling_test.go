@@ -34,7 +34,7 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 	bStarted := make(chan agent.ProcessID, 1)
 	toolStarted := make(chan agent.ProcessID, 1)
 	var writes atomic.Int32
-	offloads := &fakeOffloader{}
+	offloads := &recordingToolResultOffloader{store: testTrees(t).stores.ToolResults}
 	ordinary, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "store", Description: "Write a known result."}, func(ctx context.Context, input struct {
 		Value string `json:"value"`
 	}) (string, error) {
@@ -89,7 +89,7 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 		}
 	})
 	question := newDelegateQuestionTool(t, "Ask for a value.")
-	executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{
+	executor, err := newProductConfiguredInteractionExecutor(t, InteractionExecutorConfig{
 		Lifetime: t.Context(), ChatResolver: staticInteractionChatResolver(model),
 		MaxConcurrentToolCalls: intPointer(4), BuildID: interactionTestBuildID,
 		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "ask"), testsupport.A2ATool(t, "store")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{question, ordinary}}},
@@ -101,19 +101,20 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 		t.Fatal(err)
 	}
 	workspace := t.TempDir()
-	sessions := &delegateSessionStore{value: testsupport.MustRestoreSession(session.Snapshot{
+	current := testsupport.MustRestoreSession(session.Snapshot{
 		ID: "session_1", Title: "completed sibling", Workspace: testsupport.MustWorkspace(workspace),
-	})}
-	projection := newDelegateProjection(t)
+	})
+	projection := newDelegateProjection(t, current, executor)
 	runSequence, segmentSequence := 0, 0
+	observations := newRecordingExecutionObserver(executor)
 	coordinator := mustNewRunCoordinator(t, runs.Dependencies{
-		RootStarts: executor, Observations: executor, Releases: executor, Conversation: delegateConversation{},
-		Session: runs.SessionPorts{Reader: sessions, Creator: sessions, ActiveRuns: sessions},
+		RootStarts: executor, Observations: observations, Releases: executor, Conversation: projection.history,
+		Session: runs.SessionPorts{Reader: projection.sessions, Creator: projection.sessions, ActiveRuns: projection.sessions},
 		Projection: runs.ProjectionPorts{
 			Openings: projection, ChildStarts: projection, Events: projection, Barriers: projection,
 			Checkpoints: projection, Workspace: projection, Finalizer: projection,
 		},
-		Admissions: testsupport.NewAdmissionGate(), Now: time.Now,
+		Admissions: projection.admissions, Now: time.Now,
 		NewRunID:     func() string { runSequence++; return "run_" + strconv.Itoa(runSequence) },
 		NewSegmentID: func() string { segmentSequence++; return "segment_" + strconv.Itoa(segmentSequence) },
 	})
@@ -164,22 +165,25 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 	if _, err := toolProcess.Await(ctx); err != nil {
 		t.Fatal(err)
 	}
-	projection.mu.Lock()
+	items, err := projection.stores.Transcript.List(t.Context(), current.ID())
+	if err != nil {
+		t.Fatal(err)
+	}
 	var known transcript.Item
-	for _, item := range projection.items {
+	for _, item := range items {
 		if invocation, ok := item.ToolInvocation(); ok && invocation.Offload != nil {
 			known = item
 		}
 	}
-	projection.mu.Unlock()
 	knownInvocation, found := known.ToolInvocation()
-	if !found || knownInvocation.Arguments.Canonical() != `{"value":"edited"}` || knownInvocation.Offload == nil || offloads.calls != 1 {
+	if !found || knownInvocation.Arguments.Canonical() != `{"value":"edited"}` || knownInvocation.Offload == nil || offloads.calls.Load() != 1 {
 		t.Fatalf("completed tool was not durably projected: %+v", known)
 	}
 	close(releaseA)
 	fixture := &waitingDelegateFixture{executor: executor, coordinator: coordinator, projection: projection}
 	barrier := fixture.waitForBarrier(t, 2*time.Second)
 	<-eventsReady
+	<-observations.completed
 	pending := barrier.Pending()
 	checkpoint := barrier.Checkpoint()
 	if len(checkpoint.ToolResultIDs) != 0 {
@@ -196,29 +200,23 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 	if err := executor.Release(t.Context(), runs.ExecutorRef{SessionID: barrier.SessionID(), ExecutorID: pending.ExecutorID}); err != nil {
 		t.Fatal(err)
 	}
-	ref, err := executor.StageAcceptedContinuation(t.Context(), waitingDelegateContinuation(barrier, workspace))
-	if err != nil {
-		t.Fatalf("restore completed sibling beside a waiting member: %v", err)
-	}
-	sequence, err := observeTestInteraction(t, executor, t.Context(), ref)
-	if err != nil {
-		t.Fatal(err)
-	}
-	continuedEvents := collectInteractionEvents(sequence)
 	binding := pending.Bindings[0]
-	// Restoration starts a new observation; the earlier sibling's wait deadline
-	// cannot measure whether this newly admitted continuation finishes.
 	resumeCtx, cancelResume := context.WithTimeout(t.Context(), 2*time.Second)
 	defer cancelResume()
-	if err := executor.BeginContinuation(t.Context(), ref, []runs.InterruptAnswer{{
-		InterruptItemID: binding.InterruptItemID, MemberID: binding.MemberID,
-		RequestID: binding.RequestID, Resolution: testsupport.QuestionAnswer(t, [][]string{{"chosen"}}),
-	}}, nil); err != nil {
+	resumed, err := coordinator.Resume(t.Context(), runs.ResumeCommand{
+		RunID: pending.RootRunID, CallerCapabilities: run.Capabilities{ChildRuns: true, InterruptKinds: []run.InterruptKind{run.InterruptQuestion}},
+		Responses: []runs.ResumeResponse{{ItemID: binding.InterruptItemID, Kind: run.InterruptQuestion, Question: &runs.QuestionResponse{Answers: [][]string{{"chosen"}}}}},
+	})
+	if err != nil {
 		t.Fatal(err)
 	}
+	go func() {
+		for range resumed.Events {
+		}
+	}()
 	var observed []runs.ExecutorEvent
 	select {
-	case observed = <-continuedEvents:
+	case observed = <-observations.completed:
 	case <-resumeCtx.Done():
 		t.Fatal("restored sibling tree did not finish")
 	}
@@ -258,11 +256,12 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 			}
 		}
 	}
-	projection.mu.Lock()
-	retained := projection.items[known.ID()]
-	projection.mu.Unlock()
-	if restoredMetadata != nil || !reflect.DeepEqual(retained, known) || writes.Load() != 1 || offloads.calls != 1 {
-		t.Fatalf("known tool changed or reran across restore: repeated=%+v writes=%d offloads=%d", restoredMetadata, writes.Load(), offloads.calls)
+	retained, retainedFound, err := projection.Item(t.Context(), known.ID())
+	if err != nil || !retainedFound {
+		t.Fatalf("retained tool missing: %v", err)
+	}
+	if restoredMetadata != nil || !reflect.DeepEqual(retained, known) || writes.Load() != 1 || offloads.calls.Load() != 1 {
+		t.Fatalf("known tool changed or reran across restore: repeated=%+v writes=%d offloads=%d", restoredMetadata, writes.Load(), offloads.calls.Load())
 	}
 	expectedStarts := []string{"delegate_a"}
 	expectedResults := []string{"delegate_a"}
@@ -270,9 +269,6 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 		childEnds != 1 || rootEnds != 1 || modelCalls.Load() != 5 || rootModels != 1 {
 		t.Fatalf("restored tree starts=%v results=%v childEnds=%d rootEnds=%d modelCalls=%d",
 			parentStarts, parentResults, childEnds, rootEnds, modelCalls.Load())
-	}
-	if err := executor.Release(t.Context(), ref); err != nil {
-		t.Fatal(err)
 	}
 }
 
@@ -290,3 +286,16 @@ func (siblingEditHook) BeforeToolUse(_ context.Context, input InteractionToolHoo
 }
 
 func (siblingEditHook) AfterToolUse(context.Context, InteractionToolHookInput) error { return nil }
+
+type recordingToolResultOffloader struct {
+	store toolResultOffloader
+	calls atomic.Int32
+}
+
+func (s *recordingToolResultOffloader) Stage(ctx context.Context, stage transcript.ToolResultStage) error {
+	if err := s.store.Stage(ctx, stage); err != nil {
+		return err
+	}
+	s.calls.Add(1)
+	return nil
+}

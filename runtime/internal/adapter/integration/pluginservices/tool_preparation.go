@@ -119,13 +119,15 @@ func prepareMemoryTool(ctx context.Context, source mcp.Executable, callbacks *qi
 	}
 	_, remote, _ := ref.MCP()
 	if remote.String() != memorycontract.SearchToolName {
-		metadata := scopemcp.RequestMetaFromContext(ctx)
-		delete(metadata, qimumcp.CallbackMetadataKey)
-		ctx = scopemcp.WithRequestMeta(ctx, metadata)
+		// Scope ignores empty metadata overrides, so retain the mandatory Tool
+		// context before withdrawing an inherited callback grant.
 		scoped, err := pluginsdk.WithToolContext(ctx, pluginsdk.ToolContext{CWD: cwd})
 		if err != nil {
 			return nil, nil, err
 		}
+		metadata := scopemcp.RequestMetaFromContext(scoped)
+		delete(metadata, qimumcp.CallbackMetadataKey)
+		scoped = scopemcp.WithRequestMeta(scoped, metadata)
 		return installedToolCall(scoped, source, invalidations), func() {}, nil
 	}
 	embedder, err := embeddings(ctx)

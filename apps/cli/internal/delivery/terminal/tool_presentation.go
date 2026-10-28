@@ -6,6 +6,7 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"slices"
 	"strings"
 	"time"
@@ -63,19 +64,19 @@ type toolPresenter struct {
 
 func defaultToolPresenters() []toolPresenter {
 	return []toolPresenter{
-		kindToolPresenter("shell", conversation.ToolShell, presentShellTool),
-		kindToolPresenter("edit", conversation.ToolEdit, presentEditTool),
-		kindToolPresenter("read", conversation.ToolRead, presentReadTool),
-		kindToolPresenter("search", conversation.ToolSearch, presentSearchTool),
-		kindToolPresenter("web", conversation.ToolWeb, presentWebTool),
-		kindToolPresenter("task", conversation.ToolTask, presentTaskTool),
+		kindToolPresenter(protocol.ToolCategoryShell, presentShellTool),
+		kindToolPresenter(protocol.ToolCategoryEdit, presentEditTool),
+		kindToolPresenter(protocol.ToolCategoryRead, presentReadTool),
+		kindToolPresenter(protocol.ToolCategorySearch, presentSearchTool),
+		kindToolPresenter(protocol.ToolCategoryWeb, presentWebTool),
+		kindToolPresenter(protocol.ToolCategoryTask, presentTaskTool),
 		{ID: "generic", Matches: func(conversation.ToolCall) bool { return true }, Present: presentUnknownTool},
 	}
 }
 
-func kindToolPresenter(id string, kind conversation.ToolKind, present func(conversation.ToolCall) toolPresentation) toolPresenter {
+func kindToolPresenter(kind protocol.ToolCategory, present func(conversation.ToolCall) toolPresentation) toolPresenter {
 	return toolPresenter{
-		ID: id,
+		ID: string(kind),
 		Matches: func(call conversation.ToolCall) bool {
 			return call.Kind == kind
 		},

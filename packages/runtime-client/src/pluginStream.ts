@@ -4,7 +4,6 @@ import { isErrorType, OperationFailure } from "./errors";
 import { MutationLookupError, mutationSettlementIsUnknown } from "./mutation";
 import { MutationJournalError } from "./durableMutationJournal";
 import type {
-  MutationJournal,
   MutationReservation,
   PluginCommandInput,
   PluginCommandBinding,
@@ -107,9 +106,8 @@ function observePluginStream(
 }
 
 export async function callPluginStream<T>(
-  journal: MutationJournal,
   client: RpcClient,
-  wire: Pick<WireCallPath, "perform" | "openMutation">,
+  wire: Pick<WireCallPath, "perform" | "openMutation" | "capturePluginCommand">,
   intent: string,
   input: PluginCommandInput,
   prepare: () => Promise<PluginCommandBinding>,
@@ -120,7 +118,7 @@ export async function callPluginStream<T>(
   if (pluginDeliveryMethod(input) !== "plugins.stream" || pluginOperationKind(input) !== "command")
     throw new TypeError("Plugin stream requires a streaming command method");
   parseJSON(input.input);
-  const { request, reservation } = await journal.capturePluginCommand(intent, input, prepare);
+  const { request, reservation } = await wire.capturePluginCommand(intent, input, prepare);
   return wire.openMutation(
     "plugins.stream",
     request,
@@ -135,10 +133,11 @@ export async function callPluginStream<T>(
         decode,
         attempt.signal,
       ),
-    signal,
-    undefined,
-    reservation.idempotencyKey,
-    () => reservation,
+    {
+      signal,
+      journalKey: reservation.idempotencyKey,
+      reserveOriginal: () => reservation,
+    },
   );
 }
 
@@ -170,6 +169,7 @@ export async function deliverPluginStream<T>(
       onRequestRpcId: stream.bindRequest,
       idempotencyKey: key,
       idempotencyNamespace: reservation.authorizeDispatch(),
+      requestMeta: reservation.requestMeta,
     });
     const final = await outcome;
     if ("error" in final) throw final.error;

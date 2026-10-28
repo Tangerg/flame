@@ -93,7 +93,7 @@ func TestUnavailableInputPreservesOriginalRunResumeAndSteer(t *testing.T) {
 			}
 			approval := conversation.Approval{
 				RunID: "run_resume", ItemID: "item_approval", Title: "Proceed?",
-				Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Status: conversation.ToolRunning},
+				Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Status: conversation.ToolRunning},
 			}
 			resume := PendingResume{
 				Command: conversation.ResumeRun{

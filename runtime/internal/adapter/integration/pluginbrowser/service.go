@@ -34,7 +34,7 @@ func New(config Config) (*Service, error) {
 		return nil, errors.New("plugin browser: bridge, registry and explicit transport budgets are required")
 	}
 	endpoint, err := url.Parse(config.ControlEndpoint)
-	if err != nil || endpoint == nil || endpoint.User != nil || endpoint.Fragment != "" || endpoint.RawQuery != "" || endpoint.Path == "" || (endpoint.IsAbs() && endpoint.Scheme != "http" && endpoint.Scheme != "https") || (!endpoint.IsAbs() && (!strings.HasPrefix(endpoint.Path, "/") || endpoint.Host != "")) {
+	if err != nil || endpoint == nil || endpoint.User != nil || endpoint.Fragment != "" || endpoint.RawQuery != "" || endpoint.Path == "" || (endpoint.IsAbs() && (endpoint.Host == "" || (endpoint.Scheme != "http" && endpoint.Scheme != "https"))) || (!endpoint.IsAbs() && (!strings.HasPrefix(endpoint.Path, "/") || endpoint.Host != "")) {
 		return nil, errors.New("plugin browser: control endpoint must be an HTTP URL or an absolute same-origin path")
 	}
 	contract, err := plugins.ComponentContract()

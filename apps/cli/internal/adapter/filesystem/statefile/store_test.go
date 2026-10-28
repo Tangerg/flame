@@ -54,6 +54,41 @@ func TestStoreReplacesReadsListsAndRemovesState(t *testing.T) {
 	}
 }
 
+func TestStoreUsesPhysicalParentAfterSymlinkTraversal(t *testing.T) {
+	directory := t.TempDir()
+	physical := filepath.Join(directory, "physical")
+	if err := os.MkdirAll(filepath.Join(physical, "child"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join(directory, "alias")
+	if err := os.Symlink(filepath.Join(physical, "child"), alias); err != nil {
+		t.Fatal(err)
+	}
+	store := openStore(t, alias+string(filepath.Separator)+"..")
+	if err := store.Replace("state.json", []byte("original owner")); err != nil {
+		t.Fatal(err)
+	}
+	value, err := os.ReadFile(filepath.Join(physical, "state.json"))
+	if err != nil || string(value) != "original owner" {
+		t.Fatalf("physical state = %q, %v", value, err)
+	}
+	if other, err := Open(physical); err == nil {
+		_ = other.Close()
+		t.Fatal("the same physical directory acquired a competing lease")
+	}
+}
+
+func TestStorePreservesWhitespaceInDirectoryIdentity(t *testing.T) {
+	directory := filepath.Join(t.TempDir(), "state ")
+	store := openStore(t, directory)
+	if err := store.Replace("state.json", []byte("exact path")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(directory, "state.json")); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestStoreListFilesFiltersAcrossReadBatches(t *testing.T) {
 	root := t.TempDir()
 	store := openStore(t, root)

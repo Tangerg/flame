@@ -37,7 +37,7 @@ func TestStorePersistsRunAndResumeReplayOwnership(t *testing.T) {
 	resumeGuard := protectedReplayGuard(t, "runtime-a", cancelGuard.Until().Add(time.Minute))
 	approval := conversation.Approval{
 		RunID: "run_2", ItemID: "approval_1", Title: "Proceed?",
-		Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Status: conversation.ToolRunning},
+		Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Status: conversation.ToolRunning},
 	}
 	resume := PendingResume{
 		Command: conversation.ResumeRun{

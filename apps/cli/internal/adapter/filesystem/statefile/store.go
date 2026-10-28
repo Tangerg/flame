@@ -39,14 +39,16 @@ type openedRoots struct {
 
 // Open validates, creates, and pins an owned state root.
 func Open(root string) (_ *Store, err error) {
-	root = strings.TrimSpace(root)
-	if root == "" {
+	if strings.TrimSpace(root) == "" {
 		return nil, errors.New("state directory is empty")
 	}
 	if !filepath.IsAbs(root) {
 		return nil, errors.New("state directory must be absolute")
 	}
-	root = filepath.Clean(root)
+	root, err = filesystem.CanonicalPath(root)
+	if err != nil {
+		return nil, fmt.Errorf("resolve state directory: %w", err)
+	}
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		return nil, fmt.Errorf("create state directory: %w", err)
 	}

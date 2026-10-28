@@ -1,4 +1,4 @@
-import { FLAME_ORANGE } from "@/lib/brand";
+import { FLAME_ORANGE } from "@/lib/brandColor";
 export type ColorThemeId = string;
 
 export type VisualStyleId = string;
@@ -60,4 +60,24 @@ export interface AppearanceEdit {
   setMotionScale: (scale: number) => void;
   setPaperTexture: (texture: PaperTexture) => void;
   setPaperTextureStrength: (strength: number) => void;
+}
+
+export function defaultAppearance(): AppearancePreference {
+  return {
+    theme: "system",
+    visualStyle: "flame",
+    accent: DEFAULT_ACCENT,
+    customTheme: { ...DEFAULT_CUSTOM_THEME },
+    contrast: DEFAULT_CONTRAST,
+    uiFont: "",
+    codeFont: "",
+    fontSize: null,
+    codeFontSize: null,
+    fontSmoothing: true,
+    density: DEFAULT_UI_DENSITY,
+    radiusScale: 1,
+    motionScale: 1,
+    paperTexture: "off",
+    paperTextureStrength: DEFAULT_PAPER_TEXTURE_STRENGTH,
+  };
 }

@@ -10,8 +10,6 @@ import (
 var assets embed.FS
 
 const (
-	productName         = "Flame"
-	productDescription  = "Agent client for the Flame Runtime"
 	defaultWindowWidth  = 1440
 	defaultWindowHeight = 900
 	minimumWindowWidth  = 1120
@@ -34,13 +32,12 @@ func desktopApplicationOptions(host *DesktopHost) application.Options {
 	}
 }
 
-// The WebView owns theme preferences. Until it loads, use the system default canvas;
-// check-bootstrap verifies these colors against the HTML and stylesheet.
+// The WebView owns preferences; native first paint projects the same system canvas.
 func desktopWindowBackground() application.RGBA {
 	if !systemPrefersDarkAppearance() {
-		return application.NewRGB(245, 245, 245)
+		return application.NewRGB(bootstrapLightRed, bootstrapLightGreen, bootstrapLightBlue)
 	}
-	return application.NewRGB(15, 15, 15)
+	return application.NewRGB(bootstrapDarkRed, bootstrapDarkGreen, bootstrapDarkBlue)
 }
 
 // Hiding the native titlebar also removes macOS window controls, corners, and shadow.

@@ -111,7 +111,7 @@ func TestAttachSessionReturnsAuthoritativeStateWhenNoStreamIsRequired(t *testing
 		runtime.Script = func(string) runtimefixture.Script {
 			return runtimefixture.Script{Interrupts: []conversation.Interrupt{conversation.Approval{
 				ItemID: "approval_1", Title: "Run checks",
-				Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning},
+				Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning},
 			}}}
 		}
 		session, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: t.TempDir()})

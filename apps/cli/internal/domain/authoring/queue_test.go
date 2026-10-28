@@ -413,6 +413,12 @@ func TestRejectedDispatchIsReidentifiedAndReleasedAtomically(t *testing.T) {
 	if _, ok := prompts.BeginDispatch("session"); !ok {
 		t.Fatal("could not reserve dispatch")
 	}
+	if err := prompts.RequeueDispatch("session", first.CommandID, first.CommandID); err == nil {
+		t.Fatal("requeued a definitively rejected command identity")
+	}
+	if retained, ok := prompts.Dispatching("session"); !ok || retained.CommandID != first.CommandID {
+		t.Fatalf("invalid replacement changed dispatch ownership: %+v, %t", retained, ok)
+	}
 	replacement := CommandID("cli_99999999999999999999999999999999")
 	if err := prompts.RequeueDispatch("session", first.CommandID, replacement); err != nil {
 		t.Fatal(err)

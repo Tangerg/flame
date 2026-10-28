@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -43,6 +44,11 @@ func (acceptAllRunModelInputs) AdmitSelection(modelchoice.Selection) error { ret
 
 func mustNewRunCoordinator(t *testing.T, deps runs.Dependencies) *runs.Coordinator {
 	t.Helper()
+	if projection, ok := deps.Projection.Openings.(*delegateProjection); ok {
+		deps.CommandAcceptances = projection.stores.CommandAcceptances
+		deps.AcceptedContinuations = projection.stores.AcceptedContinuations
+		deps.Isolation = projection.isolation
+	}
 	if deps.CommandAcceptances == nil {
 		deps.CommandAcceptances = noCommandAcceptances{}
 	}
@@ -90,6 +96,14 @@ func mustNewRunCoordinator(t *testing.T, deps runs.Dependencies) *runs.Coordinat
 	if err != nil {
 		t.Fatalf("construct Run coordinator: %v", err)
 	}
+	t.Cleanup(func() {
+		coordinator.BeginShutdown()
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		if err := coordinator.AwaitShutdown(ctx); err != nil {
+			t.Error(err)
+		}
+	})
 	return coordinator
 }
 

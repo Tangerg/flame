@@ -1,6 +1,7 @@
 package terminal
 
 import (
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -67,7 +68,7 @@ func newToolBlock(p blockPresentation, block conversation.Block) *toolBlock {
 
 func (t *toolBlock) Update(block conversation.Block) {
 	if block.Tool == nil {
-		t.call = conversation.ToolCall{Kind: conversation.ToolUnknown, Name: "invalid tool", Summary: "runtime omitted the tool projection", Status: conversation.ToolError}
+		t.call = conversation.ToolCall{Kind: protocol.ToolCategoryUnknown, Name: "invalid tool", Summary: "runtime omitted the tool projection", Status: conversation.ToolError}
 	} else {
 		t.call = block.Tool.Clone()
 	}

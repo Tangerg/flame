@@ -6,10 +6,17 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
-	"time"
+)
+
+const (
+	idempotencyPendingResponse = "pending_response"
+	idempotencyResponse        = "response"
+	idempotencyRunAcceptance   = "run_acceptance"
 )
 
 // IdempotencyStore persists replay records across runtime restarts.
@@ -49,15 +56,15 @@ func (i *idempotencyStore) Claim(ctx context.Context, key, fingerprint string) (
 		// the first mutation may already have committed. A run_acceptance acceptance has
 		// no wall-clock expiry at all and is never pruned here.
 		if _, execContextErr := db.ExecContext(ctx,
-			`DELETE FROM idempotency_records WHERE kind = 'response' AND expires_at <= ?`, now,
+			`DELETE FROM idempotency_records WHERE kind = ? AND expires_at <= ?`, idempotencyResponse, now,
 		); execContextErr != nil {
 			return fmt.Errorf("sqlite: prune idempotency records: %w", execContextErr)
 		}
 		res, execContextErr := db.ExecContext(ctx, `INSERT INTO idempotency_records(
 				key, kind, fingerprint, payload, expires_at
-			) VALUES (?, 'pending_response', ?, ?, ?)
+			) VALUES (?, ?, ?, ?, ?)
 			ON CONFLICT(key) DO NOTHING`,
-			key, fingerprint, []byte{}, now+int64(operation.ReplayRetention/time.Second))
+			key, idempotencyPendingResponse, fingerprint, []byte{}, now+int64(operation.ReplayRetention/time.Second))
 		if execContextErr != nil {
 			return fmt.Errorf("sqlite: insert idempotency claim: %w", execContextErr)
 		}
@@ -93,9 +100,9 @@ func (i *idempotencyStore) Claim(ctx context.Context, key, fingerprint string) (
 func (i *idempotencyStore) Complete(ctx context.Context, record operation.ReplayRecord) error {
 	now := time.Now().Unix()
 	res, err := sqlite.Connection(ctx, i.db).ExecContext(ctx,
-		`UPDATE idempotency_records SET kind = 'response', payload = ?, expires_at = ?
-		 WHERE key = ? AND fingerprint = ? AND kind = 'pending_response'`,
-		record.Payload, now+int64(operation.ReplayRetention/time.Second), record.Key, record.Fingerprint)
+		`UPDATE idempotency_records SET kind = ?, payload = ?, expires_at = ?
+		 WHERE key = ? AND fingerprint = ? AND kind = ?`,
+		idempotencyResponse, record.Payload, now+int64(operation.ReplayRetention/time.Second), record.Key, record.Fingerprint, idempotencyPendingResponse)
 	if err != nil {
 		return fmt.Errorf("sqlite: complete idempotency claim: %w", err)
 	}
@@ -113,8 +120,8 @@ func (i *idempotencyStore) Complete(ctx context.Context, record operation.Replay
 	var fingerprint string
 	var payload []byte
 	err = sqlite.Connection(ctx, i.db).QueryRowContext(ctx,
-		`SELECT fingerprint, payload FROM idempotency_records WHERE key = ? AND kind = 'response' AND expires_at > ?`,
-		record.Key, now).Scan(&fingerprint, &payload)
+		`SELECT fingerprint, payload FROM idempotency_records WHERE key = ? AND kind = ? AND expires_at > ?`,
+		record.Key, idempotencyResponse, now).Scan(&fingerprint, &payload)
 	if errors.Is(err, sql.ErrNoRows) {
 		return operation.ErrClaimLost
 	}

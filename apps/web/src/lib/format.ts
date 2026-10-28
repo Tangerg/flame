@@ -35,7 +35,7 @@ export function fmtDuration(ms: number): string {
 }
 
 export function durationText(t: Translate, start: number, end: number | null): string {
-  if (!end) return "—";
+  if (end === null) return "—";
   const sec = Math.round((end - start) / 1000);
   if (sec < 60) return t("duration.seconds", { sec });
   const min = Math.floor(sec / 60);

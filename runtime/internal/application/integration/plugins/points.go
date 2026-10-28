@@ -3,11 +3,11 @@ package plugins
 import (
 	"context"
 	"errors"
+	"slices"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/qimu"
-
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -40,7 +40,8 @@ func ResolvePoint(ctx context.Context, host *qimu.Host, store Store, contract *p
 	if err != nil {
 		return nil, err
 	}
-	declared := false
+	var declarations []plugin.Dependency
+	var providers []qimu.UnitRef
 	for _, snapshot := range snapshots {
 		if !snapshot.Installation.Enabled() {
 			continue
@@ -49,21 +50,24 @@ func ResolvePoint(ctx context.Context, host *qimu.Host, store Store, contract *p
 		declaresTarget := target.Target.Scope != extension.ScopeInstallation || target.Target.Reference == snapshot.Installation.ID().String()
 		for _, definition := range declaration.Points {
 			if definition.Contract == contract.Identity() && declaresTarget {
-				declared = true
+				declarations = append(declarations, snapshot.Installation.Dependency())
 			}
 		}
-		if len(declaration.PointValues) > 0 {
+		if slices.ContainsFunc(declaration.PointValues, func(value plugin.PointValue) bool { return value.Contract == contract.Identity() }) {
 			unit := qimu.UnitRef{InstallationID: qimu.InstallationID(snapshot.Installation.ID().String()), Release: qimu.Digest(snapshot.Selected.Digest().String()), UnitID: PointValuesUnit}
-			if _, err := host.ActivateUnit(ctx, "", unit); err != nil {
-				return nil, FrameworkError(err)
-			}
+			providers = append(providers, unit)
 		}
 	}
-	if !declared {
+	if len(declarations) == 0 {
 		return nil, plugin.ErrUnavailable
 	}
 	if !applicable {
 		return []PointBinding{}, nil
+	}
+	for _, provider := range providers {
+		if _, err := host.ActivateUnit(ctx, "", provider); err != nil {
+			return nil, FrameworkError(err)
+		}
 	}
 	point, err := DataPoint(contract)
 	if err != nil {
@@ -132,8 +136,26 @@ func ResolvePoint(ctx context.Context, host *qimu.Host, store Store, contract *p
 	if err != nil {
 		return nil, FrameworkError(err)
 	}
-	if err := host.Admission().Admit(ctx, func(admitted context.Context) error { return host.ValidateSelectionUnder(admitted, plan) }); err != nil {
+	if err := host.Admission().Admit(ctx, func(admitted context.Context) error {
+		if err := validatePointDeclaration(admitted, store, declarations); err != nil {
+			return err
+		}
+		return host.ValidateSelectionUnder(admitted, plan)
+	}); err != nil {
 		return nil, FrameworkError(err)
 	}
 	return result, nil
+}
+
+func validatePointDeclaration(ctx context.Context, store Store, declarations []plugin.Dependency) error {
+	for _, declaration := range declarations {
+		current, found, err := store.Get(ctx, declaration.InstallationID)
+		if err != nil {
+			return err
+		}
+		if found && current.Installation.Enabled() && current.Installation.Dependency() == declaration {
+			return nil
+		}
+	}
+	return plugin.ErrUnavailable
 }

@@ -92,3 +92,69 @@ func TestDecorateModelRefusesADecorationThatDropsTheModel(t *testing.T) {
 		t.Fatal("decorateModel accepted a nil model")
 	}
 }
+
+func TestDecorateModelCanTransformAnOptionalCapabilityAlone(t *testing.T) {
+	calls := 0
+	streams := 0
+	inner := struct {
+		chat.Model
+		streamerFunc
+	}{
+		Model: chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+			calls++
+			return nil, nil
+		}),
+		streamerFunc: func(context.Context, *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
+			streams++
+			return nil
+		},
+	}
+	transforms := 0
+	decorated, err := decorateModel(inner, modelDecoration{
+		name: "stream only",
+		stream: func(streamer chat.Streamer) chat.Streamer {
+			transforms++
+			return streamer
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := decorated.Call(t.Context(), nil); err != nil {
+		t.Fatal(err)
+	}
+	decorated.(chat.Streamer).Stream(t.Context(), nil)
+	if calls != 1 || streams != 1 || transforms != 1 {
+		t.Fatalf("optional decoration changed unrelated capabilities: calls=%d streams=%d transforms=%d", calls, streams, transforms)
+	}
+}
+
+func TestDecorateModelRefusesTypedNilCapabilities(t *testing.T) {
+	inner := struct {
+		chat.Model
+		streamerFunc
+		inputTokenCounterFunc
+	}{
+		Model: callOnlyModel{},
+		streamerFunc: func(context.Context, *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
+			return nil
+		},
+		inputTokenCounterFunc: func(context.Context, *chat.Request) (int64, error) { return 1, nil },
+	}
+	for _, tc := range []struct {
+		name       string
+		inner      chat.Model
+		decoration modelDecoration
+	}{
+		{name: "inner", inner: chat.ModelFunc(nil)},
+		{name: "call", inner: inner, decoration: modelDecoration{call: func(chat.Model) chat.Model { return chat.ModelFunc(nil) }}},
+		{name: "stream", inner: inner, decoration: modelDecoration{stream: func(chat.Streamer) chat.Streamer { return streamerFunc(nil) }}},
+		{name: "counter", inner: inner, decoration: modelDecoration{count: func(InputTokenCounter) InputTokenCounter { return inputTokenCounterFunc(nil) }}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := decorateModel(tc.inner, tc.decoration); err == nil {
+				t.Fatal("typed nil capability was published")
+			}
+		})
+	}
+}

@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -136,7 +137,7 @@ func testReviewReceiptHistoryEntrances(t *testing.T, updateInput, expected strin
 	request := protocol.CallPluginRequest{
 		InstallationID: installed.ID, Digest: installed.Selected.Digest,
 		Contribution: contribution.ID, Contract: contribution.Contract,
-		Target: portable.Target{Scope: "installation", Reference: installed.ID},
+		Target: portable.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
 		Method: "io.github.tangerg.flame.examples/reviews.list", Input: `{}`,
 	}
 	initial := runtime.must(delivery.PluginsCall, request, "").(*protocol.CallPluginResponse)

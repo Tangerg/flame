@@ -42,11 +42,20 @@ func New(content *distribution.Store, dataDirectory string, catalog releaseCatal
 	if content == nil || lo.IsNil(catalog) || !filepath.IsAbs(dataDirectory) {
 		return nil, errors.New("pluginpackage: content store, absolute data directory and release catalog are required")
 	}
-	parent, err := filesystem.CanonicalPath(filepath.Dir(dataDirectory))
+	for len(dataDirectory) > 0 && os.IsPathSeparator(dataDirectory[len(dataDirectory)-1]) {
+		dataDirectory = dataDirectory[:len(dataDirectory)-1]
+	}
+	parentPath, namespace := filepath.Split(dataDirectory)
+	if namespace == "" || namespace == "." || namespace == ".." {
+		return nil, errors.New("pluginpackage: data directory requires a named namespace")
+	}
+	// Cleaning before resolution changes symlink/.. traversal; resolving the
+	// namespace itself would grant authority through its redirection.
+	parent, err := filesystem.CanonicalPath(parentPath)
 	if err != nil {
 		return nil, fmt.Errorf("pluginpackage: resolve data directory parent: %w", err)
 	}
-	return &Releases{content: content, dataDirectory: filepath.Join(parent, filepath.Base(dataDirectory)), catalog: catalog}, nil
+	return &Releases{content: content, dataDirectory: filepath.Join(parent, namespace), catalog: catalog}, nil
 }
 
 // Root is a display projection, not a content claim. Reads and process launch

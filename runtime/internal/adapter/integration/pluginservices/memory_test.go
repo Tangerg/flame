@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
@@ -145,7 +144,7 @@ func TestMemoryMaintenanceCapturesBusinessInputAndRecoversBackendReceipts(t *tes
 		t.Fatal(err)
 	}
 	first, second := <-modelInvocations, <-modelInvocations
-	if first.ID == second.ID || first.Parent != id || second.Parent != id || first.Origin != extension.Automatic || second.Origin != extension.Automatic || first.Target.Scope != "call" || second.Target.Scope != "call" {
+	if first.ID == second.ID || first.Parent != id || second.Parent != id || first.Origin != extension.Automatic || second.Origin != extension.Automatic || first.Target.Scope != extension.ScopeCall || second.Target.Scope != extension.ScopeCall {
 		t.Fatalf("model calls lost distinct original ancestry: %+v, %+v", first, second)
 	}
 	var input memorycontract.MaintainV1Input
@@ -202,7 +201,7 @@ func TestMemoryMaintenanceCapturesBusinessInputAndRecoversBackendReceipts(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	publicAdd, err := calls.Prepare(t.Context(), plugins.CallRequest{Installation: installation.ID(), Digest: release.Digest(), Contribution: "memory-provider", Contract: contract, Method: memorycontract.AddV2Method, Input: addition, Target: portable.Target{Scope: "installation", Reference: installation.ID().String()}})
+	publicAdd, err := calls.Prepare(t.Context(), plugins.CallRequest{Installation: installation.ID(), Digest: release.Digest(), Contribution: "memory-provider", Contract: contract, Method: memorycontract.AddV2Method, Input: addition, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: installation.ID().String()}})
 	if err != nil {
 		t.Fatal(err)
 	}

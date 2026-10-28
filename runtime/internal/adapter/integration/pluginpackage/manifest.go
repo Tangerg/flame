@@ -282,9 +282,9 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 		}
 		var selector *plugin.RendererSelector
 		if w.Selector != nil {
-			selector = &plugin.RendererSelector{Kind: plugin.RendererSelectorKind(w.Selector.Type), Name: w.Selector.Name}
+			selector = &plugin.RendererSelector{Kind: w.Selector.Type, Name: w.Selector.Name}
 		}
-		return release.AdmitComponent(plugin.ClientComponent{Selector: selector, ID: w.ID, Title: w.Title, Scope: plugin.ComponentScope(w.Scope), Placement: plugin.ComponentPlacement(w.Placement), Entry: w.Entry, Export: w.Export, Contribution: contribution, Material: material})
+		return release.AdmitComponent(plugin.ClientComponent{Selector: selector, ID: w.ID, Title: w.Title, Scope: w.Scope, Placement: w.Placement, Entry: w.Entry, Export: w.Export, Contribution: contribution, Material: material})
 	})
 	for _, component := range slices.Sorted(maps.Keys(contributes)) {
 		if component != "themes" {

@@ -25,6 +25,7 @@ func TestInteractionExecutorAppliesColdWaitingDelegateCancellationWithoutDuplica
 	case <-time.After(waitBudget(3 * time.Second)):
 		t.Fatal("waiting Delegate did not park")
 	}
+	<-fixture.observations.completed
 	barrier := fixture.waitForBarrier(t, time.Second)
 	pending := barrier.Pending()
 	if len(pending.Interrupts) != 1 || len(pending.Continuations) != 2 {
@@ -59,29 +60,24 @@ func TestInteractionExecutorAppliesColdWaitingDelegateCancellationWithoutDuplica
 		t.Fatal(err)
 	}
 	assertPreparedWaitingCancellation(t, prepared, targetMemberID, cancelPrepare)
-	sequence, err := observeTestInteraction(t, fixture.executor, context.Background(), ref)
-	if err != nil {
-		cancelPrepare()
-		t.Fatal(err)
-	}
-	resumedEvents := collectInteractionEvents(sequence)
-	if err := prepared.Apply(runs.WaitingSubtreeResumesRunning); err != nil {
-		cancelPrepare()
-		t.Fatal(err)
-	}
-	time.Sleep(30 * time.Millisecond)
-	if calls := fixture.model.Calls(); calls != 2 {
-		cancelPrepare()
-		t.Fatalf("provider calls after state apply = %d, want 2 before continuation activation", calls)
-	}
-	if err := prepared.Continue(t.Context()); err != nil {
+	if err := prepared.Discard(); err != nil {
 		cancelPrepare()
 		t.Fatal(err)
 	}
 	cancelPrepare()
+	fixture.cancellation.beforeContinue = func() {
+		if calls := fixture.model.Calls(); calls != 2 {
+			t.Errorf("provider calls after state apply = %d, want 2 before continuation activation", calls)
+		}
+	}
+	if _, err := fixture.coordinator.Cancel(t.Context(), runs.CancelCommand{
+		RunID: "run_child", Reason: "caller canceled the waiting delegate", AllowChildRun: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
 	var observed []runs.ExecutorEvent
 	select {
-	case observed = <-resumedEvents:
+	case observed = <-fixture.observations.completed:
 	case <-time.After(waitBudget(3 * time.Second)):
 		t.Fatal("root did not finish after waiting Delegate cancellation")
 	}

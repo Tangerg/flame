@@ -4,10 +4,11 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
@@ -25,7 +26,7 @@ type ToolReceipt struct {
 }
 
 func ToolReceiptQuery() (*qimumcp.Method[qimumcp.ReceiptRequest, ToolReceipt], error) {
-	return qimumcp.NewMethod[qimumcp.ReceiptRequest, ToolReceipt](qimumcp.MethodConfig{Name: ToolReceiptMethod, Kind: portable.Query, Target: "installation", Description: ToolReceiptMethod})
+	return qimumcp.NewMethod[qimumcp.ReceiptRequest, ToolReceipt](qimumcp.MethodConfig{Name: ToolReceiptMethod, Kind: portable.Query, Target: extension.ScopeInstallation, Description: ToolReceiptMethod})
 }
 
 func NewToolReceipt(output chat.ToolOutput, failed bool) (ToolReceipt, error) {
@@ -71,7 +72,7 @@ func ReadToolReceipt(ctx context.Context, session *sdk.ClientSession, callID, re
 		return nil, errors.New("plugin: Tool receipt requires an output object")
 	}
 	var output chat.ToolOutput
-	if err := json.Unmarshal([]byte(receipt.Output), &output, json.RejectUnknownMembers(true)); err != nil {
+	if err := json.Unmarshal([]byte(receipt.Output), &output, json.RejectUnknownMembers(true), jsonvalue.Numbers()); err != nil {
 		return nil, err
 	}
 	if receipt.IsError {

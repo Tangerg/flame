@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -93,7 +92,7 @@ func TestAuxiliaryInstalledInputTransformationRetainsOriginalOrderLifetimeAndFin
 			original.Options.MaxOutputTokens = new(int64(64))
 			before := original.Clone()
 			for _, id := range []string{"input-first", "input-second"} {
-				ctx, _ := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: id, Origin: extension.Automatic, Parent: "original-effect", Target: portable.Target{Scope: "call", Reference: id}})
+				ctx, _ := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: id, Origin: extension.Automatic, Parent: "original-effect", Target: portable.Target{Scope: extension.ScopeCall, Reference: id}})
 				_, err := capture.Model().Call(ctx, original)
 				if (err == nil) != (mode == "ordered") {
 					t.Fatalf("transformed %s input admission: %v", mode, err)
@@ -110,7 +109,7 @@ func TestAuxiliaryInstalledInputTransformationRetainsOriginalOrderLifetimeAndFin
 				t.Fatal("transformed input entered caller-owned conversation")
 			}
 			store.disable(t)
-			ctx, _ := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "withdrawn-input", Origin: extension.Automatic, Parent: "original-effect", Target: portable.Target{Scope: "call", Reference: "withdrawn-input"}})
+			ctx, _ := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "withdrawn-input", Origin: extension.Automatic, Parent: "original-effect", Target: portable.Target{Scope: extension.ScopeCall, Reference: "withdrawn-input"}})
 			if _, err := capture.Model().Call(ctx, original); err == nil {
 				t.Fatal("withdrawn transformer was invoked")
 			}

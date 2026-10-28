@@ -4,11 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"path/filepath"
+	"testing"
+
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/qimu/sqlite"
-	"path/filepath"
-	"testing"
 )
 
 func TestPreparedCommandRetainsUnknownAdmissionAcrossRestart(t *testing.T) {
@@ -39,7 +40,7 @@ func TestPreparedCommandRetainsUnknownAdmissionAcrossRestart(t *testing.T) {
 	if _, _, err := AdmitCommand(t.Context(), db, "maintain", "original", receiptInput(t, "changed"), nil); !errors.Is(err, portable.ErrInvocationConflict) {
 		t.Fatalf("changed input=%v", err)
 	}
-	if _, err := Command(t.Context(), db, "maintain", "original", "input", input, nil, func(context.Context, string) (string, error) {
+	if _, err := Command(t.Context(), db, "maintain", "original", input, nil, func(context.Context, string) (string, error) {
 		t.Fatal("pending command entered atomic handler again")
 		return "", nil
 	}); !errors.Is(err, ErrCommandUnconfirmed) {

@@ -8,7 +8,7 @@ import (
 )
 
 func ComponentID(unit qimu.UnitID) (plugin.ContributionID, error) {
-	id, found := strings.CutPrefix(unit.String(), "component/")
+	id, found := strings.CutPrefix(unit.String(), componentUnitPrefix)
 	if !found {
 		return "", plugin.ErrInvalid
 	}

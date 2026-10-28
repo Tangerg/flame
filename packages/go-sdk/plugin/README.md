@@ -513,8 +513,8 @@ kinds with `PluginCallOptions`; query calls carry no command identity. The TypeS
 Component bindings expose `queryStream(method, input, consume, signal)` and keep
 command `stream(intent, method, input, consume, signal)` under the mutation journal.
 Both reuse the existing receiver/backpressure/cancellation owner. Ordinary
-`plugins.call` remains unary. Core is `2026-10-15.2`; backend protocol and private
-formats are unchanged.
+`plugins.call` remains unary. Runtime discovery and the generated bindings own the
+exact protocol revision required by each consumer.
 
 Core `CallPluginRequest.Input`, `CallPluginResponse.Output`, stream values and
 point attributes/values are JSON text strings. Contribution, requirement and
@@ -692,7 +692,7 @@ transformation, for root and delegated Call/Stream. A converter can turn unsuppo
 source media into supported text without replacing the original transcript. An
 unconverted unsupported request fails the accepted execution before provider I/O;
 there is no automatic replay. Structural MIME/empty-input errors still refuse the
-command before its state transition. Current Core `2026-10-15.2` includes this failure-timing contract.
+command before its state transition.
 Canonical media the selected model cannot accept is never passed to its provider
 counter; compaction uses its local projection and final transformation/admission
 remains authoritative. Independent calls retain their own identities, captured

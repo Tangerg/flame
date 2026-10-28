@@ -13,6 +13,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/layout"
@@ -310,13 +311,10 @@ func resolveWorkspace(current, requested string) (string, error) {
 		if requested == "~" {
 			requested = home
 		} else {
-			requested = filepath.Join(home, strings.TrimPrefix(requested, "~"+string(filepath.Separator)))
+			requested = home + string(filepath.Separator) + strings.TrimPrefix(requested, "~"+string(filepath.Separator))
 		}
 	}
-	if !filepath.IsAbs(requested) {
-		requested = filepath.Join(current, requested)
-	}
-	resolved, err := filepath.EvalSymlinks(filepath.Clean(requested))
+	resolved, err := filesystem.ResolvePath(current, requested)
 	if err != nil {
 		return "", fmt.Errorf("resolve workspace: %w", err)
 	}

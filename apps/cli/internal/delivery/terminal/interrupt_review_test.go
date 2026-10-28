@@ -11,7 +11,7 @@ import (
 func TestInterruptReviewRecordsEditsAndCommitsInRuntimeOrder(t *testing.T) {
 	approval := conversation.Approval{
 		RunID: "run_1", ItemID: "approval", Title: "Run command", Rememberable: true,
-		Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning},
+		Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning},
 	}
 	question := conversation.Question{
 		RunID: "run_1", ItemID: "question", Title: "Choose target",
@@ -56,7 +56,7 @@ func TestInterruptReviewRecordsEditsAndCommitsInRuntimeOrder(t *testing.T) {
 func TestInterruptReviewRejectsInvalidAnswersAndIncompleteCommit(t *testing.T) {
 	approval := conversation.Approval{
 		RunID: "run_1", ItemID: "approval", Title: "Read file",
-		Tool: &conversation.ToolCall{Kind: conversation.ToolRead, Name: "read", Path: "README.md", Status: conversation.ToolRunning},
+		Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryRead, Name: "read", Path: "README.md", Status: conversation.ToolRunning},
 	}
 	review, err := newInterruptReview([]conversation.Interrupt{approval})
 	if err != nil {
@@ -73,7 +73,7 @@ func TestInterruptReviewRejectsInvalidAnswersAndIncompleteCommit(t *testing.T) {
 func TestInterruptReviewRestoresACommittedBatchWithoutSharingAnswers(t *testing.T) {
 	approval := conversation.Approval{
 		RunID: "run_1", ItemID: "approval", Title: "Run command", Rememberable: true,
-		Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning},
+		Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning},
 	}
 	question := conversation.Question{
 		RunID: "run_1", ItemID: "question", Title: "Choose target",
@@ -108,7 +108,7 @@ func TestInterruptSummaryDisclosesEditedApprovalArguments(t *testing.T) {
 	t.Parallel()
 	approval := conversation.Approval{
 		RunID: "run_1", ItemID: "approval", Title: "Run command",
-		Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Status: conversation.ToolRunning},
+		Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Status: conversation.ToolRunning},
 	}
 	override, err := conversation.ParseToolArgumentOverride([]byte(`{"command":"echo safe"}`))
 	if err != nil {

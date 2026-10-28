@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
@@ -113,7 +112,7 @@ func TestRecoveryAccruesOnlyUncommittedDispatchedEndpointsAcrossRestart(t *testi
 				t.Fatal(err)
 			}
 			request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("captured request")))
-			invocation := modelref.EndpointInvocation{ID: "endpoint_pending", Kind: modelref.EndpointChat, Caller: portable.Invocation{ID: "logical_pending", Origin: extension.Human, Target: portable.Target{Scope: "call", Reference: "logical_pending"}}, Provider: selection.Provider(), Model: selection.Model(), SessionID: draft.SessionID, Request: request, StartedAt: at.Add(time.Second)}
+			invocation := modelref.EndpointInvocation{ID: "endpoint_pending", Kind: modelref.EndpointChat, Caller: portable.Invocation{ID: "logical_pending", Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeCall, Reference: "logical_pending"}}, Provider: selection.Provider(), Model: selection.Model(), SessionID: draft.SessionID, Request: request, StartedAt: at.Add(time.Second)}
 			if test.independent {
 				invocation.Provider = "openai"
 				invocation.Model = "independent-model"
@@ -278,7 +277,7 @@ func TestRecoveryAccruesIndependentKnownSourcesOnceWithoutChangingContext(t *tes
 		{"independent_two", 7, new(0.25), "", true},
 		{"independent_unknown", 0, nil, "unconfirmed", false},
 	} {
-		inv := modelref.EndpointInvocation{ID: "endpoint_" + test.id, Kind: modelref.EndpointChat, Caller: portable.Invocation{ID: test.id, Origin: extension.Model, Parent: "original_operation", Target: portable.Target{Scope: "call", Reference: test.id}}, Provider: "anthropic", Model: "captured-model", SessionID: draft.SessionID, Request: request, StartedAt: at.Add(time.Second)}
+		inv := modelref.EndpointInvocation{ID: "endpoint_" + test.id, Kind: modelref.EndpointChat, Caller: portable.Invocation{ID: test.id, Origin: extension.Model, Parent: "original_operation", Target: portable.Target{Scope: extension.ScopeCall, Reference: test.id}}, Provider: "anthropic", Model: "captured-model", SessionID: draft.SessionID, Request: request, StartedAt: at.Add(time.Second)}
 		if err := journal.StartEndpointInvocation(t.Context(), inv, "original_model"); err != nil {
 			t.Fatal(err)
 		}

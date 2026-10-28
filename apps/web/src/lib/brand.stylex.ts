@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-export const FLAME_ORANGE = "#fb6e30";
+import { FLAME_ORANGE } from "@/lib/brandColor";
+export { FLAME_ORANGE } from "@/lib/brandColor";
 
 export const brandColor = stylex.defineVars({ orange: FLAME_ORANGE });

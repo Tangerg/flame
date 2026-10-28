@@ -91,6 +91,17 @@ export interface HTTPSidecarResponses {
 
 export type HTTPSidecarEndpointName = keyof HTTPSidecarResponses;
 
+export const HTTP_HEADERS = {
+  authorization: "Authorization",
+  contentType: "Content-Type",
+  idempotencyKey: "Idempotency-Key",
+  idempotencyNamespace: "Idempotency-Namespace",
+  lastEventId: "Last-Event-Id",
+  requestId: "Request-Id",
+  server: "X-Server",
+  method: "X-Method",
+} as const;
+
 // RPC error codes and problem types describe one operation failure.
 export const PROBLEM_CODES = {
   "capability_not_negotiated": -32006,
@@ -1408,10 +1419,8 @@ export interface PluginReleaseRequest {
 
 export interface PluginRendererSelector {
   name: string;
-  type: PluginRendererSelectorType;
+  type: RendererSelectorKind;
 }
-
-export type PluginRendererSelectorType = "toolName" | "resultShape" | "fileExtension";
 
 export interface PluginRequest {
   installationId: string;
@@ -1619,6 +1628,8 @@ export interface RememberScope {
 }
 
 export type RememberScopeKind = "session" | "project" | "global";
+
+export type RendererSelectorKind = "toolName" | "resultShape" | "fileExtension";
 
 export interface RequestMeta {
   clientCapabilities?: ClientCapabilities;
@@ -2363,7 +2374,6 @@ export const WIRE_ENUMS = {
   PluginInputTarget: ["env", "header", "authorization"],
   PluginPresentation: ["admitted", "withheld"],
   PluginRealizationType: ["available", "releaseUnavailable"],
-  PluginRendererSelectorType: ["toolName", "resultShape", "fileExtension"],
   PluginServerType: ["stdio", "streamableHttp", "managedNode"],
   PluginStreamKind: ["chunk", "result", "failure"],
   PluginThemeScheme: ["dark", "light"],
@@ -2374,6 +2384,7 @@ export const WIRE_ENUMS = {
   ProviderTestOutcome: ["reachable", "notConfigured", "invalidCredentials", "timedOut", "failed"],
   QuestionFieldType: ["text", "choice"],
   RememberScopeKind: ["session", "project", "global"],
+  RendererSelectorKind: ["toolName", "resultShape", "fileExtension"],
   RestoreType: ["history", "files", "both"],
   RunAcceptanceType: ["notRecorded", "accepted", "retired"],
   RunCommandOperation: ["start", "resume", "steer"],

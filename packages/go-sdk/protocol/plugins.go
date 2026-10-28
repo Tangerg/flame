@@ -1,6 +1,9 @@
 package protocol
 
-import "github.com/Tangerg/flame/qimu/portable"
+import (
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/qimu/portable"
+)
 
 // PluginCommandRequest addresses original routing without another copy of input.
 type PluginCommandRequest struct {
@@ -158,19 +161,10 @@ type PluginRelease struct {
 	Diagnostics   []PluginDiagnostic        `json:"diagnostics"`
 }
 
-//flame:enum
-type PluginRendererSelectorType string
-
-const (
-	PluginRendererToolName      PluginRendererSelectorType = "toolName"
-	PluginRendererResultShape   PluginRendererSelectorType = "resultShape"
-	PluginRendererFileExtension PluginRendererSelectorType = "fileExtension"
-)
-
 // A renderer selector selects display only. It never resolves execution authority.
 type PluginRendererSelector struct {
-	Type PluginRendererSelectorType `json:"type"`
-	Name string                     `json:"name"`
+	Type extension.RendererSelectorKind `json:"type"`
+	Name string                         `json:"name"`
 }
 
 //flame:enum
@@ -400,43 +394,16 @@ type PluginPointBinding struct {
 	Value          string `json:"value"`
 }
 
-// ComponentScope is the host context a plugin client component renders in.
-//
-//flame:enum
-type ComponentScope string
-
-const (
-	ComponentScopeInstallation ComponentScope = "installation"
-	ComponentScopeWorkspace    ComponentScope = "workspace"
-	ComponentScopeSession      ComponentScope = "session"
-	ComponentScopeClient       ComponentScope = "client"
-	ComponentScopeFile         ComponentScope = "file"
-	ComponentScopeToolResult   ComponentScope = "toolResult"
-)
-
-// ComponentPlacement is the host surface a plugin client component attaches to.
-//
-//flame:enum
-type ComponentPlacement string
-
-const (
-	ComponentPlacementExport             ComponentPlacement = "export"
-	ComponentPlacementWorkspaceView      ComponentPlacement = "workspaceView"
-	ComponentPlacementSessionAction      ComponentPlacement = "sessionAction"
-	ComponentPlacementFileRenderer       ComponentPlacement = "fileRenderer"
-	ComponentPlacementToolResultRenderer ComponentPlacement = "toolResultRenderer"
-)
-
 type PluginClientComponent struct {
-	Selector     *PluginRendererSelector `json:"selector,omitzero"`
-	ID           string                  `json:"id"`
-	Title        string                  `json:"title"`
-	Scope        ComponentScope          `json:"scope"`
-	Placement    ComponentPlacement      `json:"placement"`
-	Entry        string                  `json:"entry"`
-	Export       string                  `json:"export"`
-	Contribution string                  `json:"contribution,omitzero"`
-	Material     string                  `json:"material,omitzero"`
+	Selector     *PluginRendererSelector      `json:"selector,omitzero"`
+	ID           string                       `json:"id"`
+	Title        string                       `json:"title"`
+	Scope        extension.ComponentScope     `json:"scope"`
+	Placement    extension.ComponentPlacement `json:"placement"`
+	Entry        string                       `json:"entry"`
+	Export       string                       `json:"export"`
+	Contribution string                       `json:"contribution,omitzero"`
+	Material     string                       `json:"material,omitzero"`
 }
 
 type OpenPluginResourcesRequest struct {

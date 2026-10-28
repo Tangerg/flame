@@ -13,6 +13,10 @@ failure invents no receipt. `ReadReceipt` and its `RegisterReceipts` transport r
 binding without invoking the use case. Reusing an identity with changed original
 JSON is a conflict; absent evidence never authorizes replay.
 
+`Command` accepts only the original admitted JSON and decodes the handler's typed
+input from that value. Callers cannot supply a separate mutation input under the
+same receipt identity. Typed conversion never changes the stored numeric lexemes.
+
 Identity conflicts retain the public `qimu/portable.ErrInvocationConflict`
 category. Classify it with `errors.Is`; an independent author's refusal classifier
 does not need private Runtime source or an error-string match.

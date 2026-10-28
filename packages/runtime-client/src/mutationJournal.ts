@@ -41,6 +41,7 @@ export interface MutationJournal {
     intent: string,
     input: PluginCommandInput,
     prepare: () => Promise<PluginCommandBinding>,
+    requestMeta?: () => RequestMeta | undefined,
   ): Promise<{ request: CallPluginRequest; reservation: MutationReservation }>;
   pendingCommands(): PendingRunCommand[];
   reserve(
@@ -133,7 +134,7 @@ function trackedMutation<T>(
 
 class MutationAuthority implements MutationJournal {
   readonly #journal: DurableMutationJournal;
-  readonly #claims = new Set<string>();
+  readonly #claims = new Map<string, DurableMutationIdentity>();
   readonly #preparing = new Set<string>();
   #retired = false;
 
@@ -174,6 +175,7 @@ class MutationAuthority implements MutationJournal {
     intent: string,
     input: PluginCommandInput,
     prepare: () => Promise<PluginCommandBinding>,
+    requestMeta?: () => RequestMeta | undefined,
   ): Promise<{ request: CallPluginRequest; reservation: MutationReservation }> {
     this.#assertCurrent();
     if (this.#preparing.has(intent))
@@ -185,12 +187,14 @@ class MutationAuthority implements MutationJournal {
         this.#claims.has(key),
       );
       if (!captured) {
+        const metadata = cloneJSON(requestMeta?.() ?? null);
         const binding = await prepare();
         this.#assertCurrent();
         captured = this.#journal.stagePluginCommand(
           intent,
           { ...binding, ...preparedInput },
           (key) => this.#claims.has(key),
+          metadata,
         );
       }
       return { request: captured.request, reservation: this.#claim(captured.identity) };
@@ -242,7 +246,7 @@ class MutationAuthority implements MutationJournal {
   }
 
   #claim(identity: DurableMutationIdentity): MutationReservation {
-    this.#claims.add(identity.entry.idempotencyKey);
+    this.#claims.set(identity.entry.idempotencyKey, identity);
     const lifecycle = this.#lifecycle(identity);
     return {
       idempotencyKey: identity.entry.idempotencyKey,
@@ -254,7 +258,7 @@ class MutationAuthority implements MutationJournal {
         this.#journal.bindSteerItem(identity, userItemId);
       },
       get requestMeta() {
-        return cloneJSON(identity.entry.command?.requestMeta ?? null);
+        return cloneJSON(identity.entry.requestMeta);
       },
       lookupNamespace: () => {
         this.#assertClaim(identity);
@@ -288,7 +292,7 @@ class MutationAuthority implements MutationJournal {
         if (definitiveOutcome) this.#journal.settle(identity);
       } finally {
         definitiveOutcome = false;
-        this.#claims.delete(idempotencyKey);
+        if (this.#claims.get(idempotencyKey) === identity) this.#claims.delete(idempotencyKey);
       }
     };
     return {
@@ -299,9 +303,14 @@ class MutationAuthority implements MutationJournal {
       claim: () => {
         this.#assertCurrent();
         if (activeAttempts === 0) definitiveOutcome = false;
-        if (!this.#claims.has(idempotencyKey)) {
+        const claimed = this.#claims.get(idempotencyKey);
+        if (claimed && claimed !== identity)
+          throw new MutationJournalOwnershipError(
+            "Runtime mutation identity is already owned by another attempt",
+          );
+        if (!claimed) {
           this.#journal.retain(identity);
-          this.#claims.add(idempotencyKey);
+          this.#claims.set(idempotencyKey, identity);
         }
       },
       resolve: () => finish(true),
@@ -312,7 +321,7 @@ class MutationAuthority implements MutationJournal {
 
   #assertClaim(identity: DurableMutationIdentity): void {
     this.#assertCurrent();
-    if (!this.#claims.has(identity.entry.idempotencyKey)) {
+    if (this.#claims.get(identity.entry.idempotencyKey) !== identity) {
       throw new MutationJournalOwnershipError(
         "Runtime mutation identity is no longer owned by this client",
       );

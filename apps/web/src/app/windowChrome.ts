@@ -7,6 +7,10 @@ const CENTRE_PROPERTY = "--window-controls-centre";
 
 export async function applyWindowChrome(host: Pick<ClientHost, "windowChrome">): Promise<void> {
   const chrome = await host.windowChrome();
+  publishWindowChrome(chrome);
+}
+
+function publishWindowChrome(chrome: Awaited<ReturnType<ClientHost["windowChrome"]>>): void {
   const root = document.documentElement;
   if (!chrome) {
     root.style.removeProperty(GUTTER_PROPERTY);
@@ -23,7 +27,23 @@ export async function applyWindowChrome(host: Pick<ClientHost, "windowChrome">):
 }
 
 export function watchWindowChrome(host: Pick<ClientHost, "windowChrome">): () => void {
-  const refresh = () => void applyWindowChrome(host);
+  let active = true;
+  let generation = 0;
+  const refresh = () => {
+    const admitted = ++generation;
+    void host
+      .windowChrome()
+      .then((chrome) => {
+        if (active && admitted === generation) publishWindowChrome(chrome);
+      })
+      .catch((error: unknown) => {
+        if (active && admitted === generation)
+          console.error("[window] chrome refresh failed:", error);
+      });
+  };
   addEventListener("resize", refresh);
-  return () => removeEventListener("resize", refresh);
+  return () => {
+    active = false;
+    removeEventListener("resize", refresh);
+  };
 }

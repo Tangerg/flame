@@ -1,5 +1,4 @@
-type HookScope = "global" | "project";
-
+import { type HookScope } from "@flame/runtime-client/wire";
 import { createParameterizedDataQuery } from "@/extensions/dataQuery";
 export interface HookReadModel {
   event: string;

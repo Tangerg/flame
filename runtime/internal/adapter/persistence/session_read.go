@@ -55,10 +55,7 @@ func (s *SessionStore) list(
 		args = append(args, workspacePath)
 	}
 	if after != nil {
-		favorite := 0
-		if after.Favorite() {
-			favorite = 1
-		}
+		favorite := boolToInt(after.Favorite())
 		updatedAt := after.UpdatedAt().UnixNano()
 		predicates = append(predicates, `(favorite < ?
 			OR (favorite = ? AND updated_at < ?)

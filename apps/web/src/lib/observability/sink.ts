@@ -1,6 +1,7 @@
-import { type HrTime } from "@opentelemetry/api";
+import { SpanKind, SpanStatusCode, type HrTime } from "@opentelemetry/api";
+import { ExportResultCode, type ExportResult } from "@opentelemetry/core";
 import {
-  type AggregationTemporality,
+  AggregationTemporality,
   type PushMetricExporter,
   type ResourceMetrics,
 } from "@opentelemetry/sdk-metrics";
@@ -9,19 +10,6 @@ import { type ReadableSpan, type SpanProcessor } from "@opentelemetry/sdk-trace-
 import { type LogRow, type SpanRow } from "@flame/component-sdk";
 import { useTelemetryStore } from "@/lib/observability/stores";
 import { ExactSequence } from "@/foundation/exactSequence";
-const EXPORT_SUCCESS = 0;
-
-const CUMULATIVE_TEMPORALITY = 1 as AggregationTemporality;
-
-const STATUS_ERROR = 2;
-
-const STATUS_OK = 1;
-
-const STATUS_TONE: Record<number, SpanRow["status"]> = {
-  [STATUS_ERROR]: "error",
-  [STATUS_OK]: "ok",
-};
-
 const FLUSH_MS = 500;
 
 const hrToMs = (t: HrTime): number => t[0] * 1000 + t[1] / 1e6;
@@ -58,9 +46,9 @@ class Batcher<T> {
 }
 
 export class LocalMetricExporter implements PushMetricExporter {
-  export(batch: ResourceMetrics, callback: (result: { code: number }) => void): void {
+  export(batch: ResourceMetrics, callback: (result: ExportResult) => void): void {
     useTelemetryStore.getState().ingestMetrics(batch);
-    callback({ code: EXPORT_SUCCESS });
+    callback({ code: ExportResultCode.SUCCESS });
   }
   forceFlush(): Promise<void> {
     return Promise.resolve();
@@ -69,7 +57,7 @@ export class LocalMetricExporter implements PushMetricExporter {
     return Promise.resolve();
   }
   selectAggregationTemporality(): AggregationTemporality {
-    return CUMULATIVE_TEMPORALITY;
+    return AggregationTemporality.CUMULATIVE;
   }
 }
 
@@ -86,10 +74,10 @@ export class LocalSpanProcessor implements SpanProcessor {
       traceId: ctx.traceId,
       parentSpanId: span.parentSpanContext?.spanId,
       name: span.name,
-      kind: SPAN_KIND[span.kind] ?? String(span.kind),
+      kind: SpanKind[span.kind].toLowerCase(),
       startMs: hrToMs(span.startTime),
       durationMillis: hrToMs(span.duration),
-      status: STATUS_TONE[code] ?? "unset",
+      status: code === SpanStatusCode.ERROR ? "error" : code === SpanStatusCode.OK ? "ok" : "unset",
       statusMessage: span.status.message || undefined,
       attrs: flattenAttrs(span.attributes),
     });
@@ -103,14 +91,6 @@ export class LocalSpanProcessor implements SpanProcessor {
     return Promise.resolve();
   }
 }
-
-const SPAN_KIND: Record<number, string> = {
-  0: "internal",
-  1: "server",
-  2: "client",
-  3: "producer",
-  4: "consumer",
-};
 
 const logIds = new ExactSequence();
 

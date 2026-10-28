@@ -950,6 +950,13 @@ func TestInteractionExecutorAppliesSteerAtNextModelBoundary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	duplicateID, err := executor.SubmitSteer(t.Context(), ref, runs.PreparedSteer{ItemID: firstID, Input: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "add evidence"}}})
+	if err != nil || duplicateID != firstID {
+		t.Fatalf("exact steer replay=%q %v", duplicateID, err)
+	}
+	if _, err := executor.SubmitSteer(t.Context(), ref, runs.PreparedSteer{ItemID: firstID, Input: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "changed original"}}}); !errors.Is(err, runs.ErrCommandKeyConflict) {
+		t.Fatalf("changed steer replaced its admitted original: %v", err)
+	}
 	secondID, err := executor.SubmitSteer(t.Context(), ref, runs.PreparedSteer{ItemID: "item_steer_second", Input: []transcript.ContentBlock{{
 		Kind: transcript.TextContent, Text: "add evidence",
 	}}})

@@ -11,7 +11,11 @@ import {
   type PluginInstallation,
 } from "@flame/runtime-client/wire";
 import { type PluginComponent } from "@flame/component-sdk";
-import { hostModuleProfile, hostModuleSpecifiers } from "@flame/component-sdk/runtime-profile";
+import {
+  componentExport,
+  hostModuleProfile,
+  hostModuleSpecifiers,
+} from "@flame/component-sdk/runtime-profile";
 import { type ContributionLifetime } from "@/extensions/definePlugin";
 import { reportPluginError } from "@/extensions/errors";
 import { NativeComponentMount } from "@/features/plugins/adapters/NativeComponentMount";
@@ -117,7 +121,7 @@ export class ComponentModules {
               if (
                 unit.imports.length ||
                 unit.exports.length !== 1 ||
-                unit.exports[0]!.name !== "component" ||
+                unit.exports[0]!.name !== componentExport ||
                 !sameContract(unit.exports[0]!.contract, contract.ref)
               )
                 throw new QimuError(
@@ -169,8 +173,8 @@ export class ComponentModules {
               return defineUnit({
                 id: unit.instance.source.unitId,
                 imports: {},
-                exports: { component: contract },
-                setup: () => ({ component: component as PluginComponent }),
+                exports: { [componentExport]: contract },
+                setup: () => ({ [componentExport]: component as PluginComponent }),
               });
             },
             remote: () => {
@@ -196,6 +200,7 @@ export class ComponentModules {
 
   async #openArtifact(unit: PlannedUnit, signal: AbortSignal) {
     const client = this.#client;
+    const endpoint = this.#endpoint;
     const configuration = parseJSON(unit.configurationJson) as { component?: { id?: unknown } };
     if (!client || typeof configuration.component?.id !== "string" || !configuration.component.id)
       throw new QimuError("invalid_plan", "component execution has no Flame artifact source");
@@ -229,7 +234,7 @@ export class ComponentModules {
       },
     );
     return {
-      url: `${this.#endpoint.replace(/\/+$/, "")}${route}`,
+      url: `${endpoint.replace(/\/+$/, "")}${route}`,
       digest: unit.module.digest,
       closed: resources.closed,
       async close() {
@@ -289,7 +294,7 @@ export class ComponentModules {
         const contract = new Service<PluginComponent>(session.componentContract);
         const objects = use.objects.filter(
           (reference) =>
-            reference.export.name === "component" &&
+            reference.export.name === componentExport &&
             sameContract(reference.export.contract, contract.ref),
         );
         if (objects.length !== 1)

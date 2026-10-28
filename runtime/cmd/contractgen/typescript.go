@@ -52,6 +52,7 @@ func newTypeScript(set *schemaSet, notifications []string) string {
 	emitter.header()
 	emitter.protocolVersion()
 	emitter.httpEndpoints()
+	emitter.httpHeaders()
 	emitter.problemCodes()
 	emitter.notifications(notifications)
 
@@ -111,6 +112,21 @@ func (t *tsEmitter) problemCodes() {
 		}
 	}
 	t.line("} as const satisfies Partial<Record<ProblemData['type'], RecoveryAction>>;")
+	t.line("")
+}
+
+func (t *tsEmitter) httpHeaders() {
+	headers := runtimehttp.Contract().Headers
+	t.line("export const HTTP_HEADERS = {")
+	t.line("  authorization: %s,", strconv.Quote(headers.Authorization))
+	t.line("  contentType: %s,", strconv.Quote(headers.ContentType))
+	t.line("  idempotencyKey: %s,", strconv.Quote(headers.IdempotencyKey))
+	t.line("  idempotencyNamespace: %s,", strconv.Quote(headers.IdempotencyNamespace))
+	t.line("  lastEventId: %s,", strconv.Quote(headers.LastEventID))
+	t.line("  requestId: %s,", strconv.Quote(headers.RequestID))
+	t.line("  server: %s,", strconv.Quote(headers.Server))
+	t.line("  method: %s,", strconv.Quote(headers.Method))
+	t.line("} as const;")
 	t.line("")
 }
 

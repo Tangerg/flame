@@ -28,5 +28,10 @@
     "react-dom/client",
     "react/jsx-dev-runtime",
     "react/jsx-runtime"
-  ]
+  ],
+  "moduleGraph": {
+    "filename": "modules.generated.json",
+    "schemaVersion": 1
+  },
+  "componentExport": "component"
 }

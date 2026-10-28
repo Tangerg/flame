@@ -5,7 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"unicode/utf8"
 
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
@@ -26,8 +25,8 @@ type PreparedCommand struct {
 // validateNew checks only local preconditions before the first durable admission.
 // Existing pending work and receipts must reconcile without acquiring new collaborators.
 func AdmitCommand(ctx context.Context, db *sql.DB, method, id string, input jsonvalue.Value, validateNew func(context.Context) error) (*PreparedCommand, []byte, error) {
-	if db == nil || id == "" || len(id) > 256 || !utf8.ValidString(id) || method == "" || !utf8.ValidString(method) {
-		return nil, nil, errors.New("managed plugin: database, method and bounded command identity are required")
+	if err := validateCommandIdentity(db, method, id); err != nil {
+		return nil, nil, err
 	}
 	if err := input.Validate(); err != nil {
 		return nil, nil, err
@@ -68,6 +67,9 @@ func AdmitCommand(ctx context.Context, db *sql.DB, method, id string, input json
 
 // ResumeCommand reads original private input and admission without creating work.
 func ResumeCommand(ctx context.Context, db *sql.DB, method, id string) (*PreparedCommand, jsonvalue.Value, []byte, error) {
+	if err := validateCommandIdentity(db, method, id); err != nil {
+		return nil, jsonvalue.Value{}, nil, err
+	}
 	var storedMethod, raw string
 	var reply []byte
 	if err := sqlite.Connection(ctx, db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, id).Scan(&storedMethod, &raw, &reply); err != nil {
@@ -96,6 +98,9 @@ func (c *PreparedCommand) NewlyAdmitted() bool { return c != nil && c.fresh }
 func (c *PreparedCommand) Complete(ctx context.Context, reply []byte) error {
 	if c == nil {
 		return errors.New("managed plugin: prepared command is required")
+	}
+	if err := validateCommandIdentity(c.db, c.method, c.id); err != nil {
+		return err
 	}
 	if _, err := qimumcp.DecodeReply[jsonvalue.Value](reply); err != nil {
 		if _, known := errors.AsType[*portable.Refusal](err); !known {

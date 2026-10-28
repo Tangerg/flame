@@ -1,7 +1,6 @@
 package transcript
 
 import (
-	"bytes"
 	"slices"
 )
 
@@ -26,10 +25,7 @@ func (i Item) Equal(other Item) bool {
 	if i.failure != nil && *i.failure != *other.failure {
 		return false
 	}
-	if !slices.EqualFunc(i.content, other.content, func(left, right ContentBlock) bool {
-		return left.Kind == right.Kind && left.Text == right.Text && left.MediaType == right.MediaType &&
-			bytes.Equal(left.Bytes, right.Bytes)
-	}) {
+	if !slices.EqualFunc(i.content, other.content, ContentBlock.Equal) {
 		return false
 	}
 	if (i.question == nil) != (other.question == nil) || (i.tool == nil) != (other.tool == nil) {

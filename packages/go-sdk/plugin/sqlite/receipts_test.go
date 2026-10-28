@@ -5,9 +5,12 @@ import (
 	"database/sql"
 	"errors"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/qimu/sqlite"
 )
@@ -40,16 +43,16 @@ func TestBusinessMutationAndSuccessOrRefusalReceiptAreAtomic(t *testing.T) {
 			return "saved", nil
 		}
 	}
-	_, err = Command(t.Context(), db, "update", "refused", "known", receiptInput(t, "known"), classify, handler)
+	_, err = Command(t.Context(), db, "update", "refused", receiptInput(t, "known"), classify, handler)
 	failure, ok := errors.AsType[*portable.Refusal](err)
 	if !ok || failure.Code != "conflict" {
 		t.Fatalf("known refusal=%v", err)
 	}
-	value, err := Command(t.Context(), db, "update", "success", "valid", receiptInput(t, "valid"), classify, handler)
+	value, err := Command(t.Context(), db, "update", "success", receiptInput(t, "valid"), classify, handler)
 	if err != nil || value != "saved" {
 		t.Fatalf("success=%q, %v", value, err)
 	}
-	_, err = Command(t.Context(), db, "update", "unconfirmed", "unknown", receiptInput(t, "unknown"), classify, handler)
+	_, err = Command(t.Context(), db, "update", "unconfirmed", receiptInput(t, "unknown"), classify, handler)
 	if err == nil {
 		t.Fatal("unknown mutation succeeded")
 	}
@@ -64,7 +67,7 @@ func TestBusinessMutationAndSuccessOrRefusalReceiptAreAtomic(t *testing.T) {
 		t.Fatalf("receipt count=%d, %v", total, err)
 	}
 	for _, key := range []struct{ id, input string }{{"refused", "known"}, {"success", "valid"}} {
-		_, err := Command(t.Context(), db, "update", key.id, key.input, receiptInput(t, key.input), classify, func(context.Context, string) (string, error) {
+		_, err := Command(t.Context(), db, "update", key.id, receiptInput(t, key.input), classify, func(context.Context, string) (string, error) {
 			t.Fatal("receipt replay invoked mutation")
 			return "", nil
 		})
@@ -148,5 +151,130 @@ func TestFormerCompletedOnlyReceiptSchemaIsRefusedWithoutMutation(t *testing.T) 
 	var input, reply string
 	if err := raw.QueryRowContext(t.Context(), `SELECT business_input_json,reply FROM commands WHERE id='original'`).Scan(&input, &reply); err != nil || input != `{"captured":true}` || reply != `{"value":{"Published":true}}` {
 		t.Fatalf("schema refusal changed retained evidence: %s, %s, %v", input, reply, err)
+	}
+}
+
+func TestCommandDerivesTypedMutationInputFromOriginalReceiptInput(t *testing.T) {
+	db, err := sqlite.OpenSchema(t.Context(), filepath.Join(t.TempDir(), "private.db"), []string{CommandsSchema})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	type input struct {
+		N int64 `json:"n"`
+	}
+	original, err := jsonvalue.Parse([]byte(`{"n":9007199254740993}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := Command(t.Context(), db, "retain", "original", original, nil, func(_ context.Context, value input) (int64, error) { return value.N, nil })
+	if err != nil || got != 9007199254740993 {
+		t.Fatalf("mutation input = (%d, %v)", got, err)
+	}
+	var retained string
+	if err := db.QueryRowContext(t.Context(), `SELECT business_input_json FROM commands WHERE id='original'`).Scan(&retained); err != nil || retained != original.String() {
+		t.Fatalf("receipt input = (%q, %v)", retained, err)
+	}
+	malformed := receiptInput(t, "not an input object")
+	if _, err := Command(t.Context(), db, "retain", "malformed", malformed, nil, func(context.Context, input) (bool, error) {
+		t.Fatal("malformed input reached mutation")
+		return false, nil
+	}); err == nil {
+		t.Fatal("malformed typed input was accepted")
+	}
+	var rows int
+	if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM commands WHERE id='malformed'`).Scan(&rows); err != nil || rows != 0 {
+		t.Fatalf("invalid input created a receipt = (%d, %v)", rows, err)
+	}
+}
+
+func TestCommandAdmissionRefusesMethodsWithoutReceiptIdentity(t *testing.T) {
+	db, err := sqlite.OpenSchema(t.Context(), filepath.Join(t.TempDir(), "private.db"), []string{CommandsSchema})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	input := receiptInput(t, "original")
+	for _, method := range []struct{ name, value string }{
+		{"empty", ""},
+		{"space", "two methods"},
+		{"control", "two\tmethods"},
+		{"invalid utf8", "method\xff"},
+		{"overlong", strings.Repeat("m", portable.ProfileLimits().MaxTokenBytes+1)},
+	} {
+		t.Run(method.name, func(t *testing.T) {
+			calls := 0
+			_, err := Command(t.Context(), db, method.value, "mutation", input, nil, func(context.Context, string) (bool, error) {
+				calls++
+				return true, nil
+			})
+			if err == nil || calls != 0 {
+				t.Fatalf("invalid method reached mutation: calls=%d, err=%v", calls, err)
+			}
+			prepared, reply, err := AdmitCommand(t.Context(), db, method.value, "external", input, func(context.Context) error {
+				calls++
+				return nil
+			})
+			if err == nil || calls != 0 || prepared != nil || len(reply) != 0 {
+				t.Fatalf("invalid method acquired external admission: calls=%d, command=%v, reply=%s, err=%v", calls, prepared, reply, err)
+			}
+			var rows int
+			if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM commands`).Scan(&rows); err != nil || rows != 0 {
+				t.Fatalf("invalid method retained command state: rows=%d, err=%v", rows, err)
+			}
+		})
+	}
+}
+
+func TestCommandPreservesPublishedNullableInputAndExactNumbers(t *testing.T) {
+	type input struct {
+		Name  *string `json:"name" jsonschema:"nullable"`
+		Value any     `json:"value"`
+	}
+	method, err := qimumcp.NewMethod[input, bool](qimumcp.MethodConfig{
+		Name: "numbers.save", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Save an optional name and original number.",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	contract, err := portable.AdmitMethod(method.Descriptor())
+	if err != nil {
+		t.Fatal(err)
+	}
+	db, err := sqlite.OpenSchema(t.Context(), filepath.Join(t.TempDir(), "private.db"), []string{CommandsSchema})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	admitted, err := jsonvalue.Parse([]byte(`{"name":null,"value":9007199254740993}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := contract.ValidateInput(admitted); err != nil {
+		t.Fatalf("published input refused: %v", err)
+	}
+	calls := 0
+	handler := func(_ context.Context, value input) (bool, error) {
+		calls++
+		encoded, err := jsonvalue.Encode(value)
+		if err != nil || value.Name != nil || encoded != admitted {
+			t.Fatalf("admitted nullable input or number changed: %s, %v", encoded.String(), err)
+		}
+		return true, nil
+	}
+	value, err := Command(t.Context(), db, method.Name(), "nullable", admitted, nil, handler)
+	if err != nil || !value || calls != 1 {
+		t.Fatalf("published input narrowed by receipt adapter: value=%t, calls=%d, err=%v", value, calls, err)
+	}
+	unknown, err := jsonvalue.Parse([]byte(`{"name":null,"value":9007199254740993,"unknown":true}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Command(t.Context(), db, method.Name(), "unknown", unknown, nil, handler); err == nil || calls != 1 {
+		t.Fatalf("unknown member reached mutation: calls=%d, err=%v", calls, err)
+	}
+	var rows int
+	if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM commands`).Scan(&rows); err != nil || rows != 1 {
+		t.Fatalf("unknown member retained command state: rows=%d, err=%v", rows, err)
 	}
 }

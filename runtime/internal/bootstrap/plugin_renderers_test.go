@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
@@ -24,7 +25,7 @@ func TestToolComponentUsesSelectedImmutableBytes(t *testing.T) {
 	var component protocol.PluginClientComponent
 	webBrowse := false
 	for _, value := range installed.Selected.Components {
-		if value.ID == "web-browse" && value.Selector != nil && value.Selector.Type == protocol.PluginRendererToolName && value.Selector.Name == "web_browse" {
+		if value.ID == "web-browse" && value.Selector != nil && value.Selector.Type == extension.RendererToolName && value.Selector.Name == "web_browse" {
 			webBrowse = true
 		}
 		if value.ID == "grep" {
@@ -34,7 +35,7 @@ func TestToolComponentUsesSelectedImmutableBytes(t *testing.T) {
 	if !webBrowse {
 		t.Fatal("captured web page continuation has no installed result renderer")
 	}
-	if component.Selector == nil || component.Selector.Type != protocol.PluginRendererToolName || component.Selector.Name != "grep" || component.Scope != "toolResult" || component.Placement != "toolResultRenderer" {
+	if component.Selector == nil || component.Selector.Type != extension.RendererToolName || component.Selector.Name != "grep" || component.Scope != extension.ComponentScopeToolResult || component.Placement != extension.ComponentPlacementToolResultRenderer {
 		t.Fatalf("selector: %+v", component)
 	}
 	request := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: component.ID}, Path: component.Entry}
@@ -81,7 +82,7 @@ func TestFileComponentUsesSelectedImmutableBytes(t *testing.T) {
 	}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-file-component")
 	for _, component := range installed.Selected.Components {
-		if component.Scope != "file" || component.Placement != "fileRenderer" || component.Selector == nil || component.Selector.Type != protocol.PluginRendererFileExtension {
+		if component.Scope != extension.ComponentScopeFile || component.Placement != extension.ComponentPlacementFileRenderer || component.Selector == nil || component.Selector.Type != extension.RendererFileExtension {
 			t.Fatalf("file selector: %+v", component)
 		}
 		request := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: component.ID}, Path: component.Entry}

@@ -13,5 +13,10 @@
     "@qimu/sdk/json",
     "@qimu/react"
   ],
-  "packageExports": ["@flame/ui"]
+  "packageExports": ["@flame/ui"],
+  "componentExport": "component",
+  "moduleGraph": {
+    "filename": "modules.generated.json",
+    "schemaVersion": 1
+  }
 }

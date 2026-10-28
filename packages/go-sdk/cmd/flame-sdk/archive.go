@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 )
 
 func archive(source, output, prefix string) (err error) {
@@ -20,11 +22,12 @@ func archive(source, output, prefix string) (err error) {
 	if err != nil {
 		return err
 	}
-	parent, err := filepath.EvalSymlinks(filepath.Dir(output))
+	parent, name := filepath.Split(output)
+	parent, err = filepath.EvalSymlinks(parent)
 	if err != nil {
 		return err
 	}
-	output = filepath.Join(parent, filepath.Base(output))
+	output = filepath.Join(parent, name)
 	if relative, err := filepath.Rel(source, output); err != nil || filepath.IsLocal(relative) {
 		return errors.New("plugin archive: output must be outside source")
 	}
@@ -38,6 +41,11 @@ func archive(source, output, prefix string) (err error) {
 	if !info.IsDir() {
 		return errors.New("plugin archive: source must be a directory")
 	}
+	root, err := os.OpenRoot(source)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = root.Close() }()
 	file, err := os.OpenFile(output, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
@@ -50,7 +58,7 @@ func archive(source, output, prefix string) (err error) {
 	}()
 	writer := zip.NewWriter(file)
 	defer func() { err = errors.Join(err, writer.Close()) }()
-	return filepath.WalkDir(source, func(path string, entry fs.DirEntry, walkErr error) error {
+	return fs.WalkDir(root.FS(), ".", func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
@@ -64,27 +72,26 @@ func archive(source, output, prefix string) (err error) {
 		if !info.Mode().IsRegular() {
 			return fmt.Errorf("plugin archive: non-regular resource %q", path)
 		}
-		relative, err := filepath.Rel(source, path)
-		if err != nil || !filepath.IsLocal(relative) {
+		if !fs.ValidPath(path) || !filepath.IsLocal(path) {
 			return errors.New("plugin archive: resource is outside source")
 		}
 		header, err := zip.FileInfoHeader(info)
 		if err != nil {
 			return err
 		}
-		header.Name = filepath.ToSlash(filepath.Join(prefix, relative))
+		header.Name = filepath.ToSlash(filepath.Join(prefix, path))
 		header.Method = zip.Deflate
 		header.SetModTime(time.Date(1980, 1, 1, 0, 0, 0, 0, time.UTC))
 		resource, err := writer.CreateHeader(header)
 		if err != nil {
 			return err
 		}
-		input, err := os.Open(path)
+		input, opened, err := filesystem.OpenFileAtExpected(root, path, info, 0)
 		if err != nil {
 			return err
 		}
 		_, copyErr := io.Copy(resource, input)
-		return errors.Join(copyErr, input.Close())
+		return errors.Join(copyErr, filesystem.VerifyAtVersion(input, opened, root, path), input.Close())
 	})
 }
 

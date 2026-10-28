@@ -7,7 +7,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -71,6 +70,9 @@ func RestoreCommand(record CommandBinding) (*Command, error) {
 	method, found := contract.Method(record.Method)
 	if !found || method.Kind() != portable.Mutation {
 		return nil, fmt.Errorf("%w: command does not belong to its original capability", ErrInvalid)
+	}
+	if err := method.ValidateInput(record.Input); err != nil {
+		return nil, fmt.Errorf("%w: command input differs from its original contract: %w", ErrInvalid, err)
 	}
 	if err := extension.ValidateInvocation(record.Invocation); err != nil {
 		return nil, err

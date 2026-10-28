@@ -62,6 +62,14 @@ transport. That refused handle cannot later capture a different target through
 reserved command retains its original identity and receipt lookup even while
 discovery is unavailable, and cannot dispatch into another store.
 
+The journal captures exact JSON input and the request metadata before admission.
+That one captured metadata value belongs to every original dispatch and explicit
+retry, including stable-intent plugin commands. Replacing client defaults cannot
+change an unresolved command. A replay refusal at the HTTP boundary does not
+prove whether an earlier dispatch was accepted, so it retains the original
+identity for receipt reconciliation. The current journal requires this captured
+metadata; older entry shapes are refused without conversion or deletion.
+
 Run `npm run check --workspace @flame/runtime-client` from the root after
 `make setup`. Independent author checks consume a real packed package, rather
 than workspace-private paths. No former package name or wildcard client export

@@ -7,8 +7,10 @@
 version: "3"
 
 vars:
-  APP_NAME: "flame"
-  BIN_DIR: "../../out/desktop/darwin-{{.ARCH | default ARCH}}"
+  APP_NAME:
+    sh: node -p 'require("./build/product.generated.json").slug'
+  TARGET_ARCH: "{{.ARCH | default ARCH}}"
+  BIN_DIR: "../../out/desktop/darwin-{{.TARGET_ARCH}}"
   NATIVE_BIN: "{{.BIN_DIR}}/native/{{.APP_NAME}}"
   PACKAGE_MANAGER: '{{.PACKAGE_MANAGER | default "npm"}}'
   # Single source for Vite's listener, Wails' webview URL, and the HMR client. See

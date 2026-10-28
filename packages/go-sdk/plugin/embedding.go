@@ -3,10 +3,11 @@ package plugin
 import (
 	"context"
 	"errors"
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"math"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
 )
 
@@ -18,7 +19,7 @@ type TextEmbeddings struct {
 // TextEmbeddingMethod projects vectors from the captured embedding model. The
 // model adapter retains the complete provider response and endpoint evidence.
 func TextEmbeddingMethod() (*qimumcp.Method[[]string, TextEmbeddings], error) {
-	return qimumcp.NewMethod[[]string, TextEmbeddings](qimumcp.MethodConfig{Name: "flame.model/embed-texts.v2", Kind: portable.Mutation, Target: "call", Description: "Embed texts and identify the vector space captured by this exchange."})
+	return qimumcp.NewMethod[[]string, TextEmbeddings](qimumcp.MethodConfig{Name: "flame.model/embed-texts.v2", Kind: portable.Mutation, Target: extension.ScopeCall, Description: "Embed texts and identify the vector space captured by this exchange."})
 }
 
 func CallTextEmbedding(ctx context.Context, ref qimumcp.CallbackRef, id string, texts []string) (TextEmbeddings, error) {

@@ -6,7 +6,6 @@ import {
 } from "./mutation";
 import { MutationJournalError } from "./durableMutationJournal";
 import type {
-  MutationJournal,
   PluginCommandInput,
   PluginCommandBinding,
   PendingPluginCommand,
@@ -107,8 +106,7 @@ export function pendingPluginCommand(
 }
 
 export async function callPluginCommand<T>(
-  journal: MutationJournal,
-  wire: Pick<WireCallPath, "perform" | "openMutation">,
+  wire: Pick<WireCallPath, "perform" | "openMutation" | "capturePluginCommand">,
   intent: string,
   input: PluginCommandInput,
   prepare: () => Promise<PluginCommandBinding>,
@@ -118,16 +116,17 @@ export async function callPluginCommand<T>(
   if (pluginDeliveryMethod(input) !== "plugins.call")
     throw new TypeError("Unary plugin command requires a unary method");
   parseJSON(input.input);
-  const { request, reservation } = await journal.capturePluginCommand(intent, input, prepare);
+  const { request, reservation } = await wire.capturePluginCommand(intent, input, prepare);
   return wire.openMutation(
     "plugins.call",
     request,
     (key, attempt, prepared) =>
       deliverPluginCommand(wire, prepared, reservation, key, decode, attempt.signal),
-    signal,
-    undefined,
-    reservation.idempotencyKey,
-    () => reservation,
+    {
+      signal,
+      journalKey: reservation.idempotencyKey,
+      reserveOriginal: () => reservation,
+    },
   );
 }
 
@@ -145,6 +144,7 @@ async function deliverPluginCommand<T>(
       signal,
       idempotencyKey: key,
       idempotencyNamespace: reservation.authorizeDispatch(),
+      requestMeta: reservation.requestMeta,
     });
   } catch (error) {
     if (

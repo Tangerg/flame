@@ -76,6 +76,41 @@ function deferred(): { promise: Promise<void>; resolve: () => void } {
 }
 
 describe("HTTPTransport — streamable HTTP", () => {
+  it.each([
+    { status: 202, contentType: "application/json" },
+    { status: 200, contentType: "text/event-stream" },
+  ])(
+    "cancels a refused $status $contentType response without losing its primary failure",
+    async ({ status, contentType }) => {
+      const cleanup = new Error("body cancellation failed");
+      const cancel = vi.fn(() => Promise.reject(cleanup));
+      const body = new ReadableStream<Uint8Array>({ cancel });
+      const transport = createHttpTransport({
+        baseUrl: "http://x",
+        fetch: async () => new Response(body, { status, headers: { "Content-Type": contentType } }),
+      });
+
+      await expect(transport.send(req("1", "runtime.discover"))).rejects.toMatchObject({
+        name: "RpcProtocolError",
+        cause: cleanup,
+      });
+      expect(cancel).toHaveBeenCalledOnce();
+      await transport.close();
+    },
+  );
+
+  it("recognizes an event-stream media type independently of casing and parameters", async () => {
+    const response = sseResponse([frame({ jsonrpc: "2.0", id: "1", result: {} })]);
+    response.headers.set("Content-Type", "Text/Event-Stream; Charset=UTF-8");
+    const transport = createHttpTransport({ baseUrl: "http://x", fetch: async () => response });
+    const iterator = transport.recv()[Symbol.asyncIterator]();
+    await transport.send(req("1", "runs.start"));
+    await expect(iterator.next()).resolves.toMatchObject({
+      value: { type: "message", message: { result: {} } },
+    });
+    await transport.close();
+  });
+
   it("rejects an invalid event-stream frame capacity before opening transport resources", () => {
     const fetchStub = vi.fn<typeof fetch>();
 

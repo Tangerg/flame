@@ -15,6 +15,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { stageNode } from "./node-companion.mjs";
+import { generatePresentation } from "./presentation.mjs";
 
 export const root = fileURLToPath(new URL("../", import.meta.url));
 export function run(
@@ -105,6 +106,7 @@ async function stampDeclarations(repository) {
 export async function generate(repository = root) {
   run("node", ["plugins/scripts/generate-runtime-profile.mjs"], repository);
   await buildShared(repository);
+  await generatePresentation(repository);
   const env = {
     ...proxyEnvironment(join(root, "out/module-proxy")),
     GOWORK: join(repository, "go.work"),
@@ -225,23 +227,6 @@ export async function generate(repository = root) {
         "plugins",
       );
     }
-    go(["generate", "./..."], "plugins");
-    go(
-      [
-        "run",
-        "github.com/Tangerg/flame/qimu/cmd/qimu",
-        "contract",
-        "--feature",
-        "usagereports/contracts/capability.json",
-        "--out",
-        "usagereports/package/io.github.tangerg.flame/contracts",
-        "--ts",
-        "usagereports/component",
-      ],
-      "plugins",
-    );
-    go(["generate", "./internal/testsupport"], "runtime");
-    go(["generate", "./nodequalification", "./integration"], "tooling");
     go(
       [
         "run",
@@ -270,6 +255,23 @@ export async function generate(repository = root) {
       ],
       "runtime",
     );
+    go(["generate", "./..."], "plugins");
+    go(
+      [
+        "run",
+        "github.com/Tangerg/flame/qimu/cmd/qimu",
+        "contract",
+        "--feature",
+        "usagereports/contracts/capability.json",
+        "--out",
+        "usagereports/package/io.github.tangerg.flame/contracts",
+        "--ts",
+        "usagereports/component",
+      ],
+      "plugins",
+    );
+    go(["generate", "./internal/testsupport"], "runtime");
+    go(["generate", "./nodequalification", "./integration"], "tooling");
     go(["generate", "./..."], "apps/cli");
     go(["generate", "./..."], "examples/plugins/reviews/backend");
     go(
@@ -755,9 +757,8 @@ async function main(command) {
         throw new Error(
           "native verification requires the supported macOS host",
         );
-      await stageWeb();
-      await goMembers(true);
       run("wails3", ["task", "build"], join(root, "apps/desktop"));
+      await goMembers(true);
       return;
     case "check-author":
       return run("node", ["tooling/check-author.mjs"]);
@@ -767,10 +768,9 @@ async function main(command) {
       await buildShared();
       return run("npm", ["run", "dev"], join(root, "apps/web"));
     case "dev-desktop":
-      await stageWeb();
+      await buildShared();
       return run("wails3", ["task", "dev"], join(root, "apps/desktop"));
     case "package-desktop":
-      await stageWeb();
       return run("wails3", ["task", "package"], join(root, "apps/desktop"));
     case "build-runtime":
     case "build-cli": {

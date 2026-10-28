@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PRODUCT_SLUG } from "@/app/product";
 import { type NotificationAuthorization } from "@/foundation/notificationAuthorization";
 import { downloadBlob } from "@/platform/download";
 import { type ClientHost } from "@/platform/host";
@@ -29,7 +30,7 @@ export function createBrowserHost(): ClientHost {
         char.charCodeAt(0),
       );
       downloadBlob(
-        `flame-image.${mime === "image/jpeg" ? "jpg" : mime.slice(6)}`,
+        `${PRODUCT_SLUG}-image.${mime === "image/jpeg" ? "jpg" : mime.slice(6)}`,
         new Blob([bytes], { type: mime }),
       );
       return true;

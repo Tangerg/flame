@@ -1,8 +1,12 @@
 import { stringifyJSON, parseJSON } from "@qimu/sdk/json";
 import { readFileSync } from "node:fs";
 import { afterEach, expect, it, vi } from "vitest";
-import type { CallPluginRequest, CallPluginResponse } from "@flame/runtime-client/wire";
-import type { RpcClient } from "./client";
+import type {
+  CallPluginRequest,
+  CallPluginResponse,
+  RequestMeta,
+} from "@flame/runtime-client/wire";
+import type { RpcClient, RpcCallOptions } from "./client";
 import { OperationFailure, RpcError, RpcTransportError } from "./errors";
 import { createMethods } from "./methods";
 import { MutationLookupError } from "./mutation";
@@ -368,6 +372,7 @@ function client(
   storage: Storage,
   scope = () => ({ namespace: "original-store", retentionSeconds: 3600 }),
   now = Date.now,
+  requestMeta?: () => RequestMeta | undefined,
 ) {
   const journal = createMutationJournal({ storage, scope, now });
   journals.push(journal);
@@ -376,11 +381,12 @@ function client(
       (
         method: string,
         request: CallPluginRequest,
-        options: { idempotencyKey: string; idempotencyNamespace: string },
+        options: RpcCallOptions,
       ) => Promise<CallPluginResponse>
     >();
   const methods = createMethods({ call: dispatch } as unknown as RpcClient, {
     mutationJournal: journal,
+    requestMeta,
   });
   return { journal, dispatch, methods };
 }
@@ -617,3 +623,41 @@ it("fences concurrent preparation and revoked client ownership before staging", 
   expect(create).not.toHaveBeenCalled();
   expect(storage.keys()).toHaveLength(1);
 });
+
+it.each(["direct", "stable intent"])(
+  "retains the original metadata for %s plugin recovery",
+  async (delivery) => {
+    const storage = new Storage();
+    const metadata = { clientInfo: { name: "original", version: "1" } };
+    const original = client(storage, undefined, undefined, () => metadata);
+    original.dispatch.mockRejectedValue(new RpcTransportError("reply lost"));
+    const command =
+      delivery === "direct"
+        ? original.methods.plugins.call({ ...binding, ...input })
+        : original.methods.plugins.command(
+            intent,
+            input,
+            async () => {
+              metadata.clientInfo.name = "changed while preparing";
+              return binding;
+            },
+            (value) => value,
+          );
+    metadata.clientInfo.name = "changed after capture";
+    await expect(command).rejects.toBeInstanceOf(RpcTransportError);
+    const [, request, options] = original.dispatch.mock.calls[0]!;
+    expect(options.requestMeta).toEqual({ clientInfo: { name: "original", version: "1" } });
+    original.journal.dispose();
+
+    const successor = client(storage, undefined, undefined, () => ({
+      clientInfo: { name: "replacement", version: "2" },
+    }));
+    successor.dispatch.mockResolvedValueOnce(request as unknown as CallPluginResponse);
+    successor.dispatch.mockResolvedValueOnce({ output: "{}" });
+    await expect(
+      successor.methods.plugins.pendingCommands()[0]!.recover((value) => value),
+    ).resolves.toEqual({});
+    expect(successor.dispatch.mock.calls[1]).toEqual(["plugins.call", request, options]);
+    expect(storage.keys()).toEqual([]);
+  },
+);

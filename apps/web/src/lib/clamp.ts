@@ -1,6 +1,4 @@
-// clamp constrains a number to an inclusive range. Non-finite input propagates:
-// callers that must tolerate garbage guard it at their own boundary, because the
-// right substitute (empty, full, previous) is a domain decision, not a math one.
+// A non-finite input propagates because its substitute belongs to the caller’s domain.
 export function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }

@@ -62,3 +62,77 @@ func TestRelativePathRequiresExplicitAbsoluteRoot(t *testing.T) {
 		t.Fatal("Resolve accepted a relative root")
 	}
 }
+
+func TestResolveFollowsSymlinkBeforeParentTraversal(t *testing.T) {
+	root := t.TempDir()
+	targetParent := t.TempDir()
+	target := filepath.Join(targetParent, "nested")
+	if err := os.Mkdir(target, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join(root, "alias")
+	if err := os.Symlink(target, alias); err != nil {
+		t.Fatal(err)
+	}
+	physicalParent, err := filepath.EvalSymlinks(targetParent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, suffix := range []string{"..", "../missing/child"} {
+		t.Run(suffix, func(t *testing.T) {
+			relative := "alias/" + suffix
+			want := filepath.Join(physicalParent, "missing", "child")
+			if suffix == ".." {
+				want = physicalParent
+			}
+			for _, path := range []string{relative, root + string(filepath.Separator) + relative} {
+				got, err := ResolvePath(root, path)
+				if err != nil || got != want {
+					t.Fatalf("ResolvePath(%q) = (%q, %v), want %q", path, got, err, want)
+				}
+			}
+		})
+	}
+}
+
+func TestResolveContinuesPhysicalTraversalAfterMissingParent(t *testing.T) {
+	root := t.TempDir()
+	outside := t.TempDir()
+	target := filepath.Join(outside, "nested")
+	if err := os.Mkdir(target, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, filepath.Join(root, "alias")); err != nil {
+		t.Fatal(err)
+	}
+	physical, err := filepath.EvalSymlinks(outside)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct{ path, want string }{
+		{"missing/../alias/new", filepath.Join(physical, "nested", "new")},
+		{"missing/../alias/../new", filepath.Join(physical, "new")},
+	} {
+		t.Run(test.path, func(t *testing.T) {
+			got, err := ResolvePath(root, test.path)
+			if err != nil || got != test.want {
+				t.Fatalf("ResolvePath(%q) = (%q, %v), want %q", test.path, got, err, test.want)
+			}
+			if contained, err := ContainsPath(root, got); err != nil || contained {
+				t.Fatalf("physical target was confined by its lexical alias: %t, %v", contained, err)
+			}
+		})
+	}
+}
+
+func TestResolveRejectsTraversalThroughExistingFile(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "file"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{"file/../new", "file/child", "file/."} {
+		if _, err := ResolvePath(root, path); err == nil {
+			t.Fatalf("accepted traversal through a regular file: %q", path)
+		}
+	}
+}

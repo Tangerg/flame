@@ -2,6 +2,7 @@ package terminal
 
 import (
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"image"
 	"strings"
 	"testing"
@@ -21,7 +22,7 @@ func TestReaderKeepsToolContentThatTheInlineBlockSummarizes(t *testing.T) {
 		lines[i] = fmt.Sprintf("contract line %03d", i+1)
 	}
 	call := conversation.ToolCall{
-		Kind: conversation.ToolShell, Command: "long output", Status: conversation.ToolOK,
+		Kind: protocol.ToolCategoryShell, Command: "long output", Status: conversation.ToolOK,
 		Output: strings.Join(lines, "\n"),
 	}
 	presentation := blockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
@@ -51,7 +52,7 @@ func TestReaderKeepsToolContentThatTheInlineBlockSummarizes(t *testing.T) {
 func TestReaderLiveTailFollowsOnlyAfterTheReaderMovesToTheBottom(t *testing.T) {
 	presentation := blockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
 	call := conversation.ToolCall{
-		Kind: conversation.ToolShell, Command: "stream", Status: conversation.ToolRunning,
+		Kind: protocol.ToolCategoryShell, Command: "stream", Status: conversation.ToolRunning,
 		Output: strings.Repeat("initial output row\n", 40),
 	}
 	tool := newToolBlock(presentation, conversation.Block{Kind: conversation.BlockTool, Tool: &call})

@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func TestTreeCommitContextHasAnIndependentDeadline(t *testing.T) {
+func TestTreeCommitPublicationBelongsToTheReleaseLifetime(t *testing.T) {
 	type key struct{}
 	caller, abandon := context.WithCancel(context.WithValue(t.Context(), key{}, "request"))
 	lifetime := newInteractionLifetime(t.Context())
@@ -17,12 +17,11 @@ func TestTreeCommitContextHasAnIndependentDeadline(t *testing.T) {
 	abandon()
 	lifetime.stopExecution()
 
-	before := time.Now()
-	ctx, cancel := lifetime.treeCommitContext(caller)
+	ctx, cancel := lifetime.publicationContext(caller)
 	defer cancel()
 	deadline, bounded := ctx.Deadline()
-	if !bounded || deadline.Before(before) || deadline.After(time.Now().Add(executionTreeCommitTimeout)) {
-		t.Fatalf("tree commit has no independent bounded deadline: %v, %t", deadline, bounded)
+	if bounded {
+		t.Fatalf("tree commit acquired an independent expiry: %v", deadline)
 	}
 	if err := ctx.Err(); err != nil {
 		t.Fatalf("abandoning observation canceled persistence: %v", err)
@@ -42,21 +41,21 @@ func TestTreeCommitContextHasAnIndependentDeadline(t *testing.T) {
 	}
 }
 
-func TestTreeCommitConfirmationGetsANewBoundedContext(t *testing.T) {
+func TestTreeCommitConfirmationRetainsTheOriginalOwnerLifetime(t *testing.T) {
 	lifetime := newInteractionLifetime(t.Context())
 	t.Cleanup(lifetime.stopRelease)
 	t.Cleanup(lifetime.stopExecution)
 	t.Cleanup(lifetime.stopReconciling)
-	write, cancelWrite := lifetime.treeCommitContext(t.Context())
+	write, cancelWrite := lifetime.publicationContext(t.Context())
 	cancelWrite()
 
-	confirmation, cancel := lifetime.treeCommitContext(write)
+	confirmation, cancel := lifetime.publicationContext(write)
 	defer cancel()
 	if err := confirmation.Err(); err != nil {
 		t.Fatalf("confirmation inherited the failed write's cancellation: %v", err)
 	}
-	if _, bounded := confirmation.Deadline(); !bounded {
-		t.Fatal("confirmation has no storage deadline")
+	if _, bounded := confirmation.Deadline(); bounded {
+		t.Fatal("confirmation acquired an independent expiry")
 	}
 }
 
@@ -79,7 +78,7 @@ func TestTreeCommitContextSeesAnAlreadyReleasedOwner(t *testing.T) {
 	t.Cleanup(lifetime.stopReconciling)
 	lifetime.stopRelease()
 
-	ctx, cancel := lifetime.treeCommitContext(t.Context())
+	ctx, cancel := lifetime.publicationContext(t.Context())
 	defer cancel()
 	if !errors.Is(ctx.Err(), context.Canceled) {
 		t.Fatal("tree commit started after owner release")

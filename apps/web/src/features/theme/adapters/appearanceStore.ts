@@ -4,17 +4,14 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { rehydrateOrDefault } from "@/lib/persistedStore";
 import { type Paired } from "@/lib/persistedStore";
 import {
-  DEFAULT_ACCENT,
-  DEFAULT_CONTRAST,
-  DEFAULT_CUSTOM_THEME,
+  defaultAppearance,
   DEFAULT_PAPER_TEXTURE_STRENGTH,
-  DEFAULT_UI_DENSITY,
   PAPER_TEXTURES,
   UI_DENSITY_MODES,
   type AppearanceEdit,
   type AppearancePreference,
 } from "@/features/theme/kit/appearance";
-const APPEARANCE_STORAGE_KEY = "flame.appearance";
+import { APPEARANCE_STORAGE_KEY } from "@/features/theme/kit/documentTheme";
 
 const HEX_COLOUR = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 
@@ -44,21 +41,7 @@ export function createAppearanceStore(storage: () => Storage) {
   return createStore<AppearancePreference & AppearanceEdit>()(
     persist(
       (set) => ({
-        theme: "system",
-        visualStyle: "flame",
-        accent: DEFAULT_ACCENT,
-        customTheme: { ...DEFAULT_CUSTOM_THEME },
-        contrast: DEFAULT_CONTRAST,
-        uiFont: "",
-        codeFont: "",
-        fontSize: null,
-        codeFontSize: null,
-        fontSmoothing: true,
-        density: DEFAULT_UI_DENSITY,
-        radiusScale: 1,
-        motionScale: 1,
-        paperTexture: "off",
-        paperTextureStrength: DEFAULT_PAPER_TEXTURE_STRENGTH,
+        ...defaultAppearance(),
 
         setTheme: (theme) => set({ theme }),
         setVisualStyle: (visualStyle) => set({ visualStyle }),

@@ -17,11 +17,13 @@ import (
 )
 
 type waitingDelegateFixture struct {
-	model       *waitingDelegateModel
-	executor    *InteractionExecutor
-	coordinator *runs.Coordinator
-	projection  *delegateProjection
-	workspace   string
+	model        *waitingDelegateModel
+	executor     *InteractionExecutor
+	coordinator  *runs.Coordinator
+	projection   *delegateProjection
+	workspace    string
+	observations *recordingExecutionObserver
+	cancellation *observingWaitingCancellationPreparer
 }
 
 func newWaitingDelegateFixture(t *testing.T, identity string) *waitingDelegateFixture {
@@ -29,7 +31,7 @@ func newWaitingDelegateFixture(t *testing.T, identity string) *waitingDelegateFi
 
 	model := newWaitingDelegateModel()
 	question := newDelegateQuestionTool(t, "Ask the user for the value required by delegated work.")
-	executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{
+	executor, err := newProductConfiguredInteractionExecutor(t, InteractionExecutorConfig{
 		Lifetime:     t.Context(),
 		ChatResolver: staticInteractionChatResolver(model),
 		BuildID:      interactionTestBuildID,
@@ -44,27 +46,30 @@ func newWaitingDelegateFixture(t *testing.T, identity string) *waitingDelegateFi
 	}
 
 	workspace := t.TempDir()
-	sessions := &delegateSessionStore{value: testsupport.MustRestoreSession(session.Snapshot{
+	current := testsupport.MustRestoreSession(session.Snapshot{
 		ID: "session_1", Title: "waiting delegate", Workspace: testsupport.MustWorkspace(workspace),
-	})}
-	projection := newDelegateProjection(t)
+	})
+	projection := newDelegateProjection(t, current, executor)
 	runIDs := []string{"run_root", "run_child"}
-	segmentIDs := []string{"segment_root", "segment_child"}
+	segmentIDs := []string{"segment_root", "segment_child", "segment_root_resumed", "segment_child_resumed"}
+	observations := newRecordingExecutionObserver(executor)
+	cancellation := &observingWaitingCancellationPreparer{source: executor}
 	coordinator := mustNewRunCoordinator(t, runs.Dependencies{
-		RootStarts: executor, Observations: executor, Releases: executor,
-		Conversation: delegateConversation{},
-		Session:      runs.SessionPorts{Reader: sessions, Creator: sessions, ActiveRuns: sessions},
+		RootStarts: executor, Observations: observations, Releases: executor,
+		WaitingSubtreeCancellationPreparer: cancellation,
+		Conversation:                       projection.history,
+		Session:                            runs.SessionPorts{Reader: projection.sessions, Creator: projection.sessions, ActiveRuns: projection.sessions},
 		Projection: runs.ProjectionPorts{
 			Openings: projection, ChildStarts: projection, Events: projection,
 			Barriers: projection, Checkpoints: projection, Workspace: projection, Finalizer: projection,
 		},
-		Admissions: testsupport.NewAdmissionGate(), Now: time.Now,
+		Admissions: projection.admissions, Now: time.Now,
 		NewRunID:     func() string { return takeFirstIdentifier(&runIDs) },
 		NewSegmentID: func() string { return takeFirstIdentifier(&segmentIDs) },
 	})
 	return &waitingDelegateFixture{
 		model: model, executor: executor, coordinator: coordinator, projection: projection,
-		workspace: workspace,
+		workspace: workspace, observations: observations, cancellation: cancellation,
 	}
 }
 

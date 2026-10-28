@@ -7,40 +7,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-)
-
-// ComponentScope is the host context a client component renders in.
-type ComponentScope string
-
-const (
-	componentScopeInstallation ComponentScope = "installation"
-	componentScopeWorkspace    ComponentScope = "workspace"
-	componentScopeSession      ComponentScope = "session"
-	componentScopeClient       ComponentScope = "client"
-	componentScopeFile         ComponentScope = "file"
-	componentScopeToolResult   ComponentScope = "toolResult"
-)
-
-func (s ComponentScope) Valid() bool {
-	switch s {
-	case componentScopeInstallation, componentScopeWorkspace, componentScopeSession,
-		componentScopeClient, componentScopeFile, componentScopeToolResult:
-		return true
-	default:
-		return false
-	}
-}
-
-// ComponentPlacement is the host surface a client component attaches to.
-type ComponentPlacement string
-
-const (
-	componentPlacementExport             ComponentPlacement = "export"
-	componentPlacementWorkspaceView      ComponentPlacement = "workspaceView"
-	componentPlacementSessionAction      ComponentPlacement = "sessionAction"
-	componentPlacementFileRenderer       ComponentPlacement = "fileRenderer"
-	componentPlacementToolResultRenderer ComponentPlacement = "toolResultRenderer"
 )
 
 var componentExport = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]{0,63}$`)
@@ -51,8 +19,8 @@ type ClientComponent struct {
 	Selector     *RendererSelector
 	ID           ContributionID
 	Title        string
-	Scope        ComponentScope
-	Placement    ComponentPlacement
+	Scope        extension.ComponentScope
+	Placement    extension.ComponentPlacement
 	Entry        string
 	Export       string
 	Contribution ContributionID
@@ -72,32 +40,32 @@ func (b *Builder) AdmitComponent(value ClientComponent) error {
 		return refuse(DiagnosticInvalidDeclaration, "invalid component %q", value.ID)
 	}
 	switch value.Placement {
-	case componentPlacementExport:
+	case extension.ComponentPlacementExport:
 		if value.Selector != nil || value.Material != "" {
 			return refuse(DiagnosticInvalidDeclaration, "exported component cannot declare host placement metadata")
 		}
-	case componentPlacementWorkspaceView:
-		if (value.Scope == componentScopeFile || value.Scope == componentScopeToolResult) || value.Selector != nil {
+	case extension.ComponentPlacementWorkspaceView:
+		if (value.Scope == extension.ComponentScopeFile || value.Scope == extension.ComponentScopeToolResult) || value.Selector != nil {
 			return refuse(DiagnosticInvalidDeclaration, "workspace component has a renderer target")
 		}
-	case componentPlacementSessionAction:
-		if value.Scope != componentScopeSession || value.Material != "" || value.Selector != nil {
+	case extension.ComponentPlacementSessionAction:
+		if value.Scope != extension.ComponentScopeSession || value.Material != "" || value.Selector != nil {
 			return refuse(DiagnosticInvalidDeclaration, "session action requires session context")
 		}
-	case componentPlacementFileRenderer:
-		if value.Scope != componentScopeFile || value.Material != "" || value.Selector == nil || value.Selector.Kind != rendererFileExtension || len(value.Selector.Name) > MaxRendererSelectorNameBytes || !fileExtensionPattern.MatchString(value.Selector.Name) {
+	case extension.ComponentPlacementFileRenderer:
+		if value.Scope != extension.ComponentScopeFile || value.Material != "" || value.Selector == nil || value.Selector.Kind != extension.RendererFileExtension || len(value.Selector.Name) > MaxRendererSelectorNameBytes || !fileExtensionPattern.MatchString(value.Selector.Name) {
 			return refuse(DiagnosticInvalidDeclaration, "file component requires an exact extension selector")
 		}
-	case componentPlacementToolResultRenderer:
-		if value.Scope != componentScopeToolResult || value.Material != "" || value.Selector == nil || value.Selector.Name == "" || len(value.Selector.Name) > MaxRendererSelectorNameBytes || !utf8.ValidString(value.Selector.Name) {
+	case extension.ComponentPlacementToolResultRenderer:
+		if value.Scope != extension.ComponentScopeToolResult || value.Material != "" || value.Selector == nil || value.Selector.Name == "" || len(value.Selector.Name) > MaxRendererSelectorNameBytes || !utf8.ValidString(value.Selector.Name) {
 			return refuse(DiagnosticInvalidDeclaration, "tool result component requires an exact selector")
 		}
 		switch value.Selector.Kind {
-		case rendererToolName:
+		case extension.RendererToolName:
 			if strings.ContainsAny(value.Selector.Name, " \t\r\n") {
 				return refuse(DiagnosticInvalidDeclaration, "invalid tool result name")
 			}
-		case rendererResultShape:
+		case extension.RendererResultShape:
 			if !slices.Contains([]string{"command", "search", "patch", "webSearch"}, value.Selector.Name) {
 				return refuse(DiagnosticInvalidDeclaration, "invalid tool result shape")
 			}

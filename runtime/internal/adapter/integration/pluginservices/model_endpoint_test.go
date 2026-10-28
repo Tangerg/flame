@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
@@ -50,7 +49,7 @@ func TestEndpointEvidenceSurvivesOuterObserverFailureAndHostRestart(t *testing.T
 		t.Fatal(err)
 	}
 	bound, _ := observers.Bind(resolved.Model(), nil, bindings)
-	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "original-endpoint-parent", Origin: extension.Automatic, Parent: "original-effect", Target: portable.Target{Scope: "call", Reference: "original-endpoint-parent"}})
+	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "original-endpoint-parent", Origin: extension.Automatic, Parent: "original-effect", Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-endpoint-parent"}})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
@@ -49,7 +50,7 @@ func TestGuardrailsInstalledInputRefusesDispatchWithoutRewritingAuthoredHistory(
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "guardrails-policy", Contract: contracts.Identity().String(), Method: testsupport.GuardrailsReplacePolicyV1Method, Input: input.String(), Target: portable.Target{Scope: "installation", Reference: installed.ID}}, "protect-phrase").(*protocol.CallPluginResponse)
+	result := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "guardrails-policy", Contract: contracts.Identity().String(), Method: testsupport.GuardrailsReplacePolicyV1Method, Input: input.String(), Target: portable.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}, "protect-phrase").(*protocol.CallPluginResponse)
 	if result.Failure != nil || strings.Contains(result.Output, protected) {
 		t.Fatalf("policy result leaked or refused: %+v", result)
 	}

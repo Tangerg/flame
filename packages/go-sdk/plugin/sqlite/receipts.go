@@ -3,8 +3,10 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	json "encoding/json/v2"
 	"errors"
-	"unicode/utf8"
+	"fmt"
+	"reflect"
 
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
@@ -17,10 +19,13 @@ const CommandsSchema = `CREATE TABLE IF NOT EXISTS commands (id TEXT PRIMARY KEY
 
 var ErrCommandUnconfirmed = errors.New("managed plugin: command outcome is unconfirmed")
 
-func Command[P, R any](ctx context.Context, db *sql.DB, method, id string, input P, admitted jsonvalue.Value, classify func(error) string, handler func(context.Context, P) (R, error)) (R, error) {
+func Command[P, R any](ctx context.Context, db *sql.DB, method, id string, admitted jsonvalue.Value, classify func(error) string, handler func(context.Context, P) (R, error)) (R, error) {
 	var zero R
-	if id == "" || len(id) > 256 || !utf8.ValidString(id) {
-		return zero, errors.New("managed plugin: bounded command identity is required")
+	if err := validateCommandIdentity(db, method, id); err != nil {
+		return zero, err
+	}
+	if handler == nil {
+		return zero, errors.New("managed plugin: command handler is required")
 	}
 	if err := admitted.Validate(); err != nil {
 		return zero, err
@@ -40,6 +45,15 @@ func Command[P, R any](ctx context.Context, db *sql.DB, method, id string, input
 			return nil
 		}
 		if !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		// The retained request is the only input authority; accepting a separate
+		// typed argument would allow effects that disagree with their receipt.
+		var input P
+		if err := jsonvalue.ValidateType(reflect.TypeFor[P]()); err != nil {
+			return err
+		}
+		if err := json.Unmarshal(admitted.JSON(), &input, json.RejectUnknownMembers(true), jsonvalue.Numbers()); err != nil {
 			return err
 		}
 		if _, err := connection.ExecContext(ctx, `SAVEPOINT command_mutation`); err != nil {
@@ -72,17 +86,33 @@ func RegisterCommand[P, R any](server *qimumcp.Backend, db *sql.DB, method *qimu
 	if method == nil || method.Descriptor().Kind != portable.Mutation {
 		return errors.New("managed plugin: command method is required")
 	}
+	if server == nil || db == nil || handler == nil {
+		return errors.New("managed plugin: backend, database and command handler are required")
+	}
 	return method.RegisterServer(server, classify, func(ctx context.Context, session *sdk.ServerSession, command qimumcp.Command[P]) (R, error) {
 		admitted, err := command.RequestInput()
 		if err != nil {
 			var zero R
 			return zero, err
 		}
-		return Command(ctx, db, method.Name(), command.ID, command.Input, admitted, classify, func(ctx context.Context, input P) (R, error) { return handler(ctx, session, input) })
+		return Command(ctx, db, method.Name(), command.ID, admitted, classify, func(ctx context.Context, input P) (R, error) { return handler(ctx, session, input) })
 	})
 }
 
+func validateCommandIdentity(db *sql.DB, method, id string) error {
+	if db == nil || !portable.ValidMethodName(method) {
+		return errors.New("managed plugin: database and valid method identity are required")
+	}
+	if err := qimumcp.ValidateCommandID(id); err != nil {
+		return fmt.Errorf("managed plugin: %w", err)
+	}
+	return nil
+}
+
 func RegisterReceipts(server *qimumcp.Backend, db *sql.DB) error {
+	if server == nil || db == nil {
+		return errors.New("managed plugin: backend and database are required")
+	}
 	method, err := qimumcp.ReceiptQuery()
 	if err != nil {
 		return err
@@ -99,6 +129,9 @@ func RegisterReceipts(server *qimumcp.Backend, db *sql.DB) error {
 
 // ReadReceipt only projects the private owner's original method/input evidence.
 func ReadReceipt(ctx context.Context, db *sql.DB, input qimumcp.ReceiptRequest) (qimumcp.Receipt, error) {
+	if db == nil {
+		return qimumcp.Receipt{}, errors.New("managed plugin: database is required")
+	}
 	if err := input.Validate(); err != nil {
 		return qimumcp.Receipt{}, err
 	}

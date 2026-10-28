@@ -1,3 +1,4 @@
+import { THEME_CLASS_PREFIX } from "@/features/theme/kit/documentTheme";
 import { type StoreApi } from "zustand";
 import {
   type AppearancePreference,
@@ -50,8 +51,8 @@ export function installDocumentAppearance<T extends AppearancePreference>(
     const scheme = resolveThemeScheme(system, theme);
     const spec = lookupExtensionByKey(COLOR_THEME, theme === "system" ? scheme : theme);
 
-    root.classList.remove("theme-light", "theme-dark");
-    root.classList.add(`theme-${scheme}`);
+    root.classList.remove(`${THEME_CLASS_PREFIX}light`, `${THEME_CLASS_PREFIX}dark`);
+    root.classList.add(`${THEME_CLASS_PREFIX}${scheme}`);
 
     appliedColorTokens = replaceTokens(appliedColorTokens, {
       ...spec?.tokens,

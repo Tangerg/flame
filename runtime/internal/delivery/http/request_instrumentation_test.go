@@ -4,9 +4,13 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"log/slog"
 	nethttp "net/http"
 	"net/http/httptest"
+	"net/http/httptrace"
+	"net/textproto"
+	"slices"
 	"strings"
 	"testing"
 
@@ -222,5 +226,69 @@ func TestHandlerPanicReachesTheLoggingChannel(t *testing.T) {
 	}
 	if !strings.Contains(logged, "request_instrumentation_test.go") {
 		t.Fatalf("diagnostics = %q, want a stack naming the frame that panicked", logged)
+	}
+}
+
+func TestInformationalResponsesPreserveTheFinalResponse(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		fail bool
+	}{{name: "success"}, {name: "panic", fail: true}} {
+		t.Run(test.name, func(t *testing.T) {
+			fail := test.fail
+			server := httptest.NewServer((&Server{}).instrumentRequests(nethttp.HandlerFunc(func(w nethttp.ResponseWriter, _ *nethttp.Request) {
+				w.WriteHeader(nethttp.StatusEarlyHints)
+				w.WriteHeader(nethttp.StatusProcessing)
+				if fail {
+					panic("after informational response")
+				}
+				w.WriteHeader(nethttp.StatusCreated)
+				_, _ = w.Write([]byte("created"))
+			})))
+			defer server.Close()
+			var informational []int
+			ctx := httptrace.WithClientTrace(t.Context(), &httptrace.ClientTrace{Got1xxResponse: func(code int, _ textproto.MIMEHeader) error {
+				informational = append(informational, code)
+				return nil
+			}})
+			request, err := nethttp.NewRequestWithContext(ctx, nethttp.MethodGet, server.URL, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			response, err := server.Client().Do(request)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer response.Body.Close()
+			body, err := io.ReadAll(response.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := nethttp.StatusCreated
+			if fail {
+				want = nethttp.StatusInternalServerError
+			}
+			if response.StatusCode != want || !slices.Equal(informational, []int{nethttp.StatusEarlyHints, nethttp.StatusProcessing}) {
+				t.Fatalf("informational=%v final=%d body=%s", informational, response.StatusCode, body)
+			}
+			if !fail && string(body) != "created" {
+				t.Fatalf("body=%s", body)
+			}
+		})
+	}
+}
+
+type failingFlushWriter struct {
+	*httptest.ResponseRecorder
+	failure error
+}
+
+func (w failingFlushWriter) FlushError() error { return w.failure }
+
+func TestRecordingResponseWriterPreservesFlushErrors(t *testing.T) {
+	cause := errors.New("transport flush failed")
+	writer := &recordingResponseWriter{ResponseWriter: failingFlushWriter{ResponseRecorder: httptest.NewRecorder(), failure: cause}}
+	if err := nethttp.NewResponseController(writer).Flush(); !errors.Is(err, cause) {
+		t.Fatalf("flush error=%v, want underlying transport failure", err)
 	}
 }

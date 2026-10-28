@@ -304,7 +304,8 @@ func encodeInteractionPendingSteer(
 		}
 		expected := steer.acceptance.Clone()
 		expected.Operation, expected.UserItemID, expected.SteerInput = runs.CommandSteerInput, steer.itemID, steer.content
-		if !expected.Equal(*steer.acceptance) || signalID.String() != "steer:"+steer.itemID {
+		expectedSignal, err := steerSignalID(steer.itemID)
+		if err != nil || !expected.Equal(*steer.acceptance) || signalID != expectedSignal {
 			return interactionPendingSteerWire{}, errors.New("pending steer command does not name its attributed input")
 		}
 		wire.Command = &interactionSteerCommandWire{Key: steer.acceptance.Key, Fingerprint: steer.acceptance.Fingerprint, SessionID: steer.acceptance.SessionID, RunID: steer.acceptance.RunID, SegmentID: steer.acceptance.SegmentID}
@@ -624,7 +625,8 @@ func (w interactionPendingSteerWire) decode(
 	}
 	pending := pendingInteractionSteer{itemID: w.ItemID, content: content}
 	if w.Command != nil {
-		if w.SignalID != "steer:"+w.ItemID {
+		expectedSignal, err := steerSignalID(w.ItemID)
+		if err != nil || signalID != expectedSignal {
 			return zeroSignalID, pendingInteractionSteer{}, errors.New("pending steer command does not name its Signal")
 		}
 		pending.acceptance = &runs.CommandAcceptance{Key: w.Command.Key, Fingerprint: w.Command.Fingerprint, Operation: runs.CommandSteerInput, SessionID: w.Command.SessionID, RunID: w.Command.RunID, SegmentID: w.Command.SegmentID, UserItemID: w.ItemID, SteerInput: transcript.CloneContent(content)}

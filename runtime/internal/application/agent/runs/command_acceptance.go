@@ -1,7 +1,6 @@
 package runs
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -91,9 +90,7 @@ func (a CommandAcceptance) Clone() CommandAcceptance {
 }
 
 func (a CommandAcceptance) Equal(b CommandAcceptance) bool {
-	return a.Key == b.Key && a.Fingerprint == b.Fingerprint && a.Operation == b.Operation && a.SessionID == b.SessionID && a.RunID == b.RunID && a.SegmentID == b.SegmentID && a.UserItemID == b.UserItemID && slices.EqualFunc(a.SteerInput, b.SteerInput, func(x, y transcript.ContentBlock) bool {
-		return x.Kind == y.Kind && x.Text == y.Text && x.MediaType == y.MediaType && bytes.Equal(x.Bytes, y.Bytes)
-	})
+	return a.Key == b.Key && a.Fingerprint == b.Fingerprint && a.Operation == b.Operation && a.SessionID == b.SessionID && a.RunID == b.RunID && a.SegmentID == b.SegmentID && a.UserItemID == b.UserItemID && slices.EqualFunc(a.SteerInput, b.SteerInput, transcript.ContentBlock.Equal)
 }
 
 // CommandIdentity is the external command reference the delivery boundary binds
