@@ -23,13 +23,13 @@ context are published to main as `f9241b46b`, with receipt `8a16a1824`. Paired
 Diff reading is published as `3a5cdba36`, and Settings task continuity as
 `d3f7ff83e`. Schedules receipt navigation and command focus are published as
 `5be573459`. Paired custom-color editing and native keyboard color entry are
-published as `9014e9689`. Shared Panel viewport reflow now passes the complete
-production-entry qualification and cleanup under **Settings focus and pointer
-activation** below. Next inspect unavailable-Runtime startup: the isolated
-production entry continues showing a loading work index while Connection reports
-the private origin unavailable. Trace the existing connection/query owners before
-changing that presentation. Preserve the separate exact-Run and Skills object
-contract limits already recorded below.
+published as `9014e9689`. Shared Panel viewport reflow is published as `0c9069714`,
+with its complete production-entry qualification and cleanup under **Settings
+focus and pointer activation** below. Startup connection recovery now retains
+the existing notice and action before the first Session snapshot; see **Startup
+connection recovery**. Next trace the observed work-index empty/loading
+transition through its existing navigation/query owners. Preserve the separate
+exact-Run and Skills object contract limits already recorded below.
 The user resumed the paused goal.
 Completed batches are verified, explicitly committed and pushed to main under the
 goal publication policy. Preserve parallel work in the primary checkout. Do not
@@ -1192,6 +1192,124 @@ The reported recurrence was real: `75fd5dd80` explicitly removed automatic tint
 at the user's request, but `d345239c4` later restored it in `neutralScale` and
 asserted that behavior in a test. Later main integrations retained it. The
 regression is repaired at the scale owner rather than hidden by a page override.
+
+### Startup connection recovery
+
+The actual production Wails entry at published `0c9069714` can leave the main
+workspace blank when its isolated Runtime origin is unavailable. Connection
+settings has the failure, but the ordinary recovery notice lives inside the
+Composer, which ChatPanel does not mount before its Session query finishes.
+
+ChatPanel now retains its existing workspace frame and Conversation region while
+waiting for the first defined Session snapshot. The existing
+`RuntimeConnectionNotice` is shared with FloatingComposer, with the same service,
+localized copy, roles, command and motion. Once a snapshot exists, including a
+known empty list, the ordinary Conversation/Composer owns the notice. Explicit
+workspace views remain reachable while waiting; Session-owned material and the
+ordinary Dock toggle wait for their existing owner to become available. There is
+no synthetic Session, draft, request state, retry loop or focus transition.
+
+The first candidate still treated query `isLoading` as readiness. Native retries
+repeatedly replaced its recovery button and dropped keyboard focus to BODY; the
+same entry briefly painted a false new conversation. Passive Element identities
+and direct focus/key observations established real replacement rather than a
+CUA selector problem. A new failing regression captures request activity changing
+without any Session snapshot. Readiness now follows snapshot existence, so
+loading/idle/retry transitions cannot remount that recovery task. The production
+query and Runtime lifecycle remain unchanged.
+
+| Severity | Location                                       | Before                                                                                        | After                                                                          | Why                                                                                               |
+| -------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| HIGH     | `features/shell/workbench/panel/ChatPanel.tsx` | Unavailable startup hides the recovery entry; request activity can replace the focused action | One existing notice/action remains reachable until actual Session data arrives | Recover the connection without losing the current keyboard task or claiming an empty conversation |
+
+ZCode's actual `remote-connection-flow/ui/RemoteConnectionProgress.tsx` keeps
+connection failure and its recovery action available outside the main wizard.
+Its global progress publisher is not copied. The local ChatGPT remote-profile
+draft module is actual UI code, but supplies no evidence for this cold-start
+focus contract. Existing Flame notice, workspace inspection and Session-query
+owners determine the repair. Better-accessibility/writing guidance supplies the
+explicit recovery and truthful pending-state review; the shared reading column,
+semantic colors, quiet controls, font system, Base UI and existing motion remain
+unchanged. No new slogan, secondary label, accent stripe or component system is
+introduced.
+
+The initial regression baseline exposes **4 failures / 23 passes**. The first
+candidate passes **32 tests** before native rejection. Its additional
+snapshot/activity regression fails **1 / 7** before the final repair. Final
+focused checks pass **6 files / 132 tests** plus Web typecheck. Existing installed
+view-continuity tests now supply the defined empty Session snapshot their loaded
+state represents; all lifecycle assertions remain intact. Notice-retirement
+assertions await the existing exit animation rather than changing product motion.
+
+The aggregate Web check is **not a pass**. Its first run reports **13 failures /
+4,049 passes**: four introduced loaded-fixture mismatches, subsequently repaired,
+and nine unchanged Runtime HTTP readiness/dispatch cases. The final aggregate
+passes all **428 frontend files / 4,013 tests**, typecheck, lint and format, but
+the Runtime file passes **48 / 49**, failing the independent CLI-owned Run join
+with `timed out waiting for CLI provider dispatch`. A subsequent isolated run of
+the complete, unchanged Runtime HTTP file passes **49 / 49**. Both aggregate
+failure logs are retained; no Runtime/CLI source, timeout, assertion or test
+selection is weakened. The repository-script's **22** subsequent Web owner,
+style/token, locale, resource, production-bundle and module-linkage gates are run
+separately because the aggregate stops at its failed test stage.
+All **22** pass. Supported `make check-native` also passes Desktop test/vet/build,
+Web staging and the Wails production build. The test-link macOS26/11.0 object
+warnings and duplicate `-lobjc` warning are non-fatal; the production deployment
+target remains 13.0. A separate minimum-macOS machine is not qualified. All **15**
+tracked installed/sample component resources retain their accepted hashes.
+
+Native qualification uses the actual production entry and Wails bootstrap,
+private Go asset/home/origin overlays, and a loopback origin returning unavailable
+without forwarding Runtime traffic. The passive observer only reads the DOM,
+styles, geometry, storage and trusted focus/input events. CUA supplies every UI
+action. Two rejected/probe generations are retained separately from the final
+snapshot-readiness generation.
+
+- Fresh Chinese14/light/Orange startup presents the existing unavailable alert
+  and Connection settings action before Session data. Pointer entry opens the
+  actual Connection category with the private origin. Escape returns to the
+  Conversation region; Tab then reaches its retained recovery button and Enter
+  reopens Connection.
+- At the native **1121 × 729** minimum and **560 × 364 / DPR4 / 200%**, the
+  Chinese action remains visible at **[457.3125, 155.21875, 71.1875, 28]**. The
+  native Settings task and return remain operable.
+- Actual appearance edits to English18/dark/Purple (`#7f52ff`), Paper Off,
+  followed by the same return/Tab/200% path, retain the action at
+  **[353.3203125, 167.71875, 175.1796875, 30]**. The main frame is
+  **[0, 131.21875, 560.5, 233.28125]**; BODY/HTML scroll remains **0**.
+- One recovery Element identity, **10**, survives retries, Settings visits,
+  font/language/theme changes and the final repeated entry. Enter opens
+  Connection even when Appearance was the last visited category. No Apply,
+  Session/Run creation or live provider work executes.
+- The observation-free production control repeats pointer entry,
+  Escape/Tab/Enter, minimum-window/200% entry and return in English18/dark/Purple.
+  All **496 non-HTML files** match across the **497-file** measured/clean builds;
+  only `index.html` differs. The clean run emits **zero** observer records and
+  supplies no independent DOM-geometry evidence. Both its ordinary generation and
+  a post-Quit AX-read relaunch are quit; no further AX request restarts the app.
+
+The deterministic loaded-handoff test qualifies one notice and the later retained
+Composer input/draft/focus. This unavailable native origin does not qualify live
+Runtime recovery or provider execution. VoiceOver speech, OS IME, fresh 320px,
+RTL/forced-colors GUI, arbitrary zoom levels and a separate minimum-macOS host
+remain unqualified. No browser visual suite or performance benchmark runs.
+Scoped result: **Approve** for unavailable-startup recovery, retained action
+identity and the exercised Settings-return contracts, with the aggregate test
+failure explicitly retained above.
+
+Cleanup unregisters the private bundle, retires all **5** generations and closes
+the passive server. It removes **8** created output/cache roots and **3** owned
+Library/temp paths, restores all **4** original files and modes, and verifies all
+**14** output-presence and **5** Library baselines. All **5,922** qualified
+non-Markdown inputs remain frozen, including **5,914** outside the six changed
+existing inputs and two additions. The exact
+`flame-startup-recovery-1028-8HY4yA` root is absent after identity/source/process
+guards. Its in-memory gzip round-trips before and after deletion: **45** flat
+UTF-8 records, **472** passive observations with **75** accepted final-generation
+records, five generation receipts and source/resource/asset/native hash maps;
+**1,210,184 bytes**, SHA-256
+`87dad357b3646511b1ef4b2ca0cf9efb6c37213f4c1a015633eb02aacce6da35`.
+The primary checkout, user data, references and unrelated processes are preserved.
 
 ### Native reading color qualification
 

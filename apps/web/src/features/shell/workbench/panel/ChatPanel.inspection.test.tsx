@@ -135,7 +135,7 @@ vi.mock("@/features/agent/public/session", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/agent/public/session")>()),
   useActiveSession: () => null,
   useActiveSessionId: () => model.sessionId,
-  useAgentSessions: () => ({ isLoading: false }),
+  useAgentSessions: () => ({ isLoading: false, data: [] }),
 }));
 prepareTestClient(() => {
   Object.assign(testClient.agent.access, {

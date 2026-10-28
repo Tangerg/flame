@@ -29,7 +29,7 @@ const model = vi.hoisted(() => ({
 vi.mock("@/features/agent/public/session", () => ({
   useActiveSession: () => null,
   useActiveSessionId: () => model.sessionId,
-  useAgentSessions: () => ({ isLoading: model.isLoading }),
+  useAgentSessions: () => ({ isLoading: model.isLoading, data: model.isLoading ? undefined : [] }),
 }));
 
 vi.mock("@/features/agent/public/run", () => ({
@@ -154,7 +154,22 @@ describe("ChatPanel Session-owned workspace view state", () => {
     expect(view.container.querySelector('[data-dock="open"]')).toBeNull();
   });
 
-  it("reconciles dock availability after the loading placeholder yields to the shell", () => {
+  it("does not mount retained Session material while the first read is pending", () => {
+    nextInstance = 0;
+    model.sessionId = "ses_first";
+    model.activeMainView = null;
+    model.dock = { open: false, viewIds: ["stateful"], activeViewId: "stateful" };
+    model.views = [{ id: "stateful", title: "stateful", component: StatefulWorkspaceView }];
+    model.isLoading = true;
+
+    const view = testClient.render(<ChatPanel onSend={() => true} />);
+    expect(screen.queryByText(/workspace-instance:/)).toBeNull();
+    model.isLoading = false;
+    view.rerender(<ChatPanel onSend={() => true} />);
+    expect(screen.getByText("workspace-instance:1")).toBeTruthy();
+  });
+
+  it("keeps pending connection layout measurable before Session material arrives", () => {
     model.sessionId = "ses_first";
     model.activeMainView = null;
     model.dock = { open: false, viewIds: [], activeViewId: null };
@@ -162,7 +177,9 @@ describe("ChatPanel Session-owned workspace view state", () => {
     model.isLoading = true;
 
     const view = testClient.render(<ChatPanel onSend={() => true} />);
-    expect(view.container.firstChild).toBeNull();
+    expect(screen.getByRole("main", { name: "Agent workspace" })).toBeTruthy();
+    expect(view.container.querySelector('[data-slot="composer-overlay"]')).toBeNull();
+    expect(screen.queryByRole("button", { name: /Open material full width/ })).toBeNull();
 
     model.isLoading = false;
     view.rerender(<ChatPanel onSend={() => true} />);

@@ -30,7 +30,7 @@ vi.mock("@/features/agent/public/session", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/agent/public/session")>()),
   useActiveSession: () => null,
   useActiveSessionId: () => "recovery-session",
-  useAgentSessions: () => ({ isLoading: false }),
+  useAgentSessions: () => ({ isLoading: false, data: [] }),
 }));
 vi.mock("@/features/agent/public/run", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/agent/public/run")>()),

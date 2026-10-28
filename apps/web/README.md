@@ -30,6 +30,17 @@ explicit dependencies. Tests construct independent instances in `test/renderClie
 and visual fixtures compose them in `visual/client.tsx`. No default feature-instance
 registry or module-global port installer is part of the product API.
 
+The workbench keeps its layout and existing Runtime recovery notice available
+before the first Session snapshot. Conversation content starts from a defined
+snapshot, including a known empty list. Request activity can change while that
+snapshot is still absent, so it cannot remount the recovery action or create an
+empty conversation. Explicit workspace views remain reachable during that wait.
+The existing connection status owns the notice and automatic retry; its action
+opens the Connection settings pane. Closing Settings returns to the retained
+conversation region, with the same recovery action next in the Tab order. Once
+Session data arrives, the existing Composer presents connection feedback and
+retains its draft and focus through later connection status changes.
+
 Shared text, search and selection fields use the same quiet sunken fill,
 transparent resting edge and independent keyboard focus perimeter. The theme
 visual style owns these values; modules do not remove borders locally. Validation

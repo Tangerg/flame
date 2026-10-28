@@ -39,7 +39,7 @@ const model = vi.hoisted(() => ({
 vi.mock("@/features/agent/public/session", () => ({
   useActiveSession: () => null,
   useActiveSessionId: () => model.sessionId,
-  useAgentSessions: () => ({ isLoading: false }),
+  useAgentSessions: () => ({ isLoading: false, data: [] }),
 }));
 
 vi.mock("@/features/agent/public/run", () => ({

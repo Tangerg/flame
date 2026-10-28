@@ -1,20 +1,11 @@
-import { useWorkspace } from "@/features/workspace/public/workspace";
 import * as stylex from "@stylexjs/stylex";
 import { type ReactNode, type Ref, type RefObject } from "react";
-import { AnimatePresence, motion } from "motion/react";
-import { useT } from "@/lib/i18n/index";
-import { useMotion } from "@/lib/motion";
-import { useRuntimeServiceStatus } from "@/features/connection/public/serviceStatus";
-import { CONNECTION_PANE } from "@/features/settings/public/paneIDs";
-import { openWorkspaceSettingsPane } from "@/features/workspace/public/navigation";
 import { Slot } from "@/extensions/host/Slot";
-import { SystemMessage } from "@/ui/index";
-import { vocab } from "@flame/ui";
 import { JumpToBottomButton } from "@/features/shell/workbench/panel/JumpToBottomButton";
+import { RuntimeConnectionNotice } from "@/features/shell/workbench/panel/RuntimeConnectionNotice";
 import { space } from "@flame/ui/tokens.stylex";
 import { readingColumn as rc } from "@/features/chat/public/message/rendering";
 const fc = stylex.create({
-  notice: { flexShrink: 0, marginBottom: space.s2 },
   tray: {
     display: "flex",
     width: "100%",
@@ -58,49 +49,6 @@ const fc = stylex.create({
     paddingBottom: { default: space.s3, "@container conversation (min-width: 640px)": space.s4 },
   },
 });
-
-function RuntimeConnectionNotice() {
-  const { disclosureExitTransition, disclosureTransition } = useMotion();
-  const workspaceAccess = useWorkspace();
-
-  const t = useT();
-  const service = useRuntimeServiceStatus();
-  const visible = service.phase === "reconnecting" || service.phase === "unavailable";
-  const unavailable = service.phase === "unavailable";
-
-  return (
-    <AnimatePresence initial={false}>
-      {visible && (
-        <motion.div
-          key="runtime-connection-notice"
-          initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 4, transition: disclosureExitTransition }}
-          transition={disclosureTransition}
-          className={stylex.props(fc.notice).className}
-        >
-          <SystemMessage
-            variant={unavailable ? "error" : "warning"}
-            icon={unavailable ? "alert" : "loop"}
-            role={unavailable ? "alert" : "status"}
-            aria-live={unavailable ? "assertive" : "polite"}
-            className={stylex.props(vocab.pretty).className}
-            action={
-              unavailable
-                ? {
-                    label: t("runtime.connection.settings"),
-                    onClick: () => openWorkspaceSettingsPane(workspaceAccess, CONNECTION_PANE),
-                  }
-                : undefined
-            }
-          >
-            {t(unavailable ? "runtime.connection.unavailable" : "runtime.connection.reconnecting")}
-          </SystemMessage>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
 
 function ComposerOverlayTop() {
   return <Slot name="composer.overlay.top" wrapper className={stylex.props(fc.tray).className} />;
