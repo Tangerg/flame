@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
 	"path/filepath"
@@ -108,15 +109,31 @@ func TestModelScheduleEditsAndDeletionHaveHistoricalReceipts(t *testing.T) {
 	var records []observed
 	call := func(id, name string, input any, refused bool) *sdk.CallToolResult {
 		t.Helper()
-		output, err := session.CallTool(t.Context(), &sdk.CallToolParams{Meta: scheduleToolMetadata(t, id), Name: name, Arguments: input})
+		admitted, err := jsonvalue.Encode(input)
+		if err != nil {
+			t.Fatal(err)
+		}
+		arguments := jsontext.Value(admitted.JSON())
+		output, err := session.CallTool(t.Context(), &sdk.CallToolParams{Meta: scheduleToolMetadata(t, id), Name: name, Arguments: arguments})
 		if err != nil || output.IsError != refused {
 			t.Fatalf("%s: %+v, %v", name, output, err)
 		}
-		assertScheduleToolReceipt(t, session, id, name, input, output)
-		records = append(records, observed{id, name, input, output})
+		var storedInput string
+		if err := db.QueryRowContext(t.Context(), `SELECT business_input_json FROM commands WHERE id=?`, "tool:"+id).Scan(&storedInput); err != nil || storedInput != admitted.String() {
+			t.Fatalf("%s changed its original Tool input: %s, %v", name, storedInput, err)
+		}
+		assertScheduleToolReceipt(t, session, id, name, arguments, output)
+		records = append(records, observed{id, name, arguments, output})
 		return output
 	}
-	created := call("create", createScheduleTool, map[string]any{"title": "original", "instructions": "inspect", "cron": "0 9 * * *"}, false)
+	workspace, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	created := call("create", createScheduleTool, map[string]any{
+		"title": "original", "instructions": "inspect", "cron": "0 9 * * *", "workspace_path": workspace,
+		"provider": "private-provider", "model": "original-model", "reasoning_effort": "initial-effort",
+	}, false)
 	encoded, err := json.Marshal(created.StructuredContent)
 	if err != nil {
 		t.Fatal(err)
@@ -125,7 +142,17 @@ func TestModelScheduleEditsAndDeletionHaveHistoricalReceipts(t *testing.T) {
 	if err := json.Unmarshal(encoded, &first); err != nil {
 		t.Fatal(err)
 	}
-	updated := call("edit", updateScheduleTool, map[string]any{"schedule_id": first.Schedule.ScheduleID, "expected_revision": first.Schedule.Revision, "title": "edited", "enabled": false}, false)
+	if first.Schedule.WorkspacePath != workspace || first.Schedule.Provider != "private-provider" || first.Schedule.Model != "original-model" || first.Schedule.ReasoningEffort != "initial-effort" {
+		t.Fatalf("creation lost flattened Tool fields: %+v", first)
+	}
+	store := scheduledb.NewScheduleStore(db)
+	if stored, err := store.Get(t.Context(), first.Schedule.ScheduleID); err != nil || viewSchedule(stored) != first.Schedule {
+		t.Fatalf("creation receipt differs from persisted Schedule: %+v, %v", stored.Snapshot(), err)
+	}
+	updated := call("edit", updateScheduleTool, map[string]any{
+		"schedule_id": first.Schedule.ScheduleID, "expected_revision": first.Schedule.Revision, "title": "edited", "enabled": false,
+		"workspace_path": "", "provider": "edited-provider", "model": "edited-model", "reasoning_effort": "edited-effort",
+	}, false)
 	encoded, err = json.Marshal(updated.StructuredContent)
 	if err != nil {
 		t.Fatal(err)
@@ -134,8 +161,14 @@ func TestModelScheduleEditsAndDeletionHaveHistoricalReceipts(t *testing.T) {
 	if err := json.Unmarshal(encoded, &next); err != nil {
 		t.Fatal(err)
 	}
-	if next.Schedule.Revision != first.Schedule.Revision+1 || next.Schedule.Title != "edited" || next.Schedule.Enabled {
+	if next.Schedule.ScheduleID != first.Schedule.ScheduleID || next.Schedule.Revision != first.Schedule.Revision+1 || next.Schedule.Title != "edited" || next.Schedule.Enabled {
 		t.Fatalf("edit failed to preserve the observed transition: %+v", next)
+	}
+	if next.Schedule.WorkspacePath != "" || next.Schedule.Provider != "edited-provider" || next.Schedule.Model != "edited-model" || next.Schedule.ReasoningEffort != "edited-effort" {
+		t.Fatalf("edit lost flattened Tool fields: %+v", next)
+	}
+	if stored, err := store.Get(t.Context(), first.Schedule.ScheduleID); err != nil || viewSchedule(stored) != next.Schedule {
+		t.Fatalf("edit receipt differs from persisted Schedule: %+v, %v", stored.Snapshot(), err)
 	}
 	call("stale", updateScheduleTool, map[string]any{"schedule_id": first.Schedule.ScheduleID, "expected_revision": first.Schedule.Revision, "title": "stale"}, true)
 	call("bad-model", updateScheduleTool, map[string]any{"schedule_id": first.Schedule.ScheduleID, "expected_revision": next.Schedule.Revision, "provider": "incomplete"}, true)
@@ -153,11 +186,20 @@ func TestModelScheduleEditsAndDeletionHaveHistoricalReceipts(t *testing.T) {
 	host.db = db
 	session, _ = scheduleToolSession(t, db, host)
 	for _, record := range records {
+		replayed, err := session.CallTool(t.Context(), &sdk.CallToolParams{Meta: scheduleToolMetadata(t, record.id), Name: record.name, Arguments: record.input})
+		if err != nil || replayed.IsError != record.output.IsError {
+			t.Fatalf("replay %s = %+v, %v", record.name, replayed, err)
+		}
 		assertScheduleToolReceipt(t, session, record.id, record.name, record.input, record.output)
+		assertScheduleToolReceipt(t, session, record.id, record.name, record.input, replayed)
 	}
 	var definitions int
 	if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM schedules`).Scan(&definitions); err != nil || definitions != 0 {
-		t.Fatalf("receipt recovery recreated deleted work: %d, %v", definitions, err)
+		t.Fatalf("command replay or receipt recovery recreated deleted work: %d, %v", definitions, err)
+	}
+	var commands int
+	if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM commands`).Scan(&commands); err != nil || commands != len(records) {
+		t.Fatalf("command replay created additional receipts: %d, %v", commands, err)
 	}
 	if _, err := db.ExecContext(t.Context(), `UPDATE commands SET reply='{"value":null}' WHERE id='tool:delete'`); err != nil {
 		t.Fatal(err)
