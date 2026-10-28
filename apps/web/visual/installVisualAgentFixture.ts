@@ -352,8 +352,47 @@ export async function installVisualAgentFixture(
     }
     return true;
   });
+  const cancelPresentation = new URLSearchParams(location.search).get("subagent-cancel");
+  let cancelInvocations = 0;
   store.setCancelRun(VISUAL_SESSION_ID, (runId) => {
     document.documentElement.dataset.visualCanceledRun = runId;
+    document.documentElement.dataset.visualCancelCalls = String(++cancelInvocations);
+    if (cancelPresentation === "unavailable") {
+      installVisualRuntimeServiceStatusPort(visual, "unavailable");
+      return;
+    }
+    if (cancelPresentation !== "settled") return;
+    const captured = snapshot.runs.find((run) => run.id === runId);
+    if (!captured || captured.status === "finished")
+      throw new Error("The subagent fixture requires an unfinished captured run");
+    snapshot.runs = snapshot.runs.map((run) => {
+      if (run.id !== runId) return run;
+      const finished = {
+        ...run,
+        status: "finished" as const,
+        finishedAt: "2026-07-31T08:02:00.000Z",
+        outcome: { type: "canceled" as const, detail: "The isolated fixture canceled this run." },
+      };
+      delete finished.activeSegmentId;
+      return finished;
+    });
+    snapshot.pendingInterruptSets = snapshot.pendingInterruptSets
+      .map((pending) => ({
+        ...pending,
+        interrupts: pending.interrupts.filter((interrupt) => interrupt.runId !== runId),
+      }))
+      .filter((pending) => pending.interrupts.length > 0);
+    const refresh = store.beginViewRefresh(VISUAL_SESSION_ID, true);
+    if (
+      !refresh ||
+      !store.commitViewRefresh(
+        VISUAL_SESSION_ID,
+        refresh,
+        projectAgentSessionSnapshot(projectRuntimeAgentSnapshot(snapshot)),
+      )
+    ) {
+      throw new Error("Failed to publish the captured subagent outcome");
+    }
   });
 
   return view;

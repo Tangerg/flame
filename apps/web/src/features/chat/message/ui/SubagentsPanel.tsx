@@ -1,10 +1,20 @@
 import { useWorkspace } from "@/features/workspace/public/workspace";
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
-import { Activity, useId, useLayoutEffect, useMemo, useRef } from "react";
+import {
+  Activity,
+  Component,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { useStickToBottom } from "use-stick-to-bottom";
 import { useT } from "@/lib/i18n/index";
 import { useActiveConversationRows } from "@/features/agent/public/conversation";
+import { useActiveSessionId } from "@/features/agent/public/session";
 import { delegatedTranscriptRows } from "@/features/agent/public/conversation";
 import { agentRunIsFinished, agentRunIsRunning } from "@/features/agent/public/runPresentation";
 import {
@@ -83,10 +93,94 @@ const styles = stylex.create({
   },
 });
 
+function subagentOpener(container: HTMLElement, runId: string) {
+  const row = [...container.querySelectorAll<HTMLElement>('[data-slot="delegated-run-link"]')].find(
+    (node) => node.dataset.runId === runId,
+  );
+  return row?.querySelector<HTMLButtonElement>("button") ?? null;
+}
+
+interface SubagentPanelLayoutProps {
+  panel: RefObject<HTMLDivElement | null>;
+  back: RefObject<HTMLButtonElement | null>;
+  sessionId: string;
+  selectedId: string | null;
+  visible: boolean;
+  label: string;
+  children: ReactNode;
+}
+
+interface RetiredSubagentControl {
+  source: HTMLElement;
+  container: HTMLElement;
+  runId: string | null;
+}
+
+class SubagentPanelLayout extends Component<
+  SubagentPanelLayoutProps,
+  unknown,
+  RetiredSubagentControl | null
+> {
+  // Completion can move a task between groups before layout effects can observe its focused node.
+  override getSnapshotBeforeUpdate(
+    previous: SubagentPanelLayoutProps,
+  ): RetiredSubagentControl | null {
+    if (
+      !this.props.visible ||
+      !previous.visible ||
+      previous.sessionId !== this.props.sessionId ||
+      previous.selectedId !== this.props.selectedId
+    )
+      return null;
+    const panel = this.props.panel.current;
+    const source = panel?.ownerDocument.activeElement;
+    if (!panel || !(source instanceof HTMLElement) || !panel.contains(source)) return null;
+    const row = source.closest<HTMLElement>('[data-slot="delegated-run-link"]');
+    if (row?.dataset.runId)
+      return {
+        source,
+        container: source.closest<HTMLElement>('[data-slot="subagent-transcript"]') ?? panel,
+        runId: row.dataset.runId,
+      };
+    return source.matches("[data-subagent-stop]")
+      ? { source, container: panel, runId: null }
+      : null;
+  }
+
+  override componentDidUpdate(
+    _previous: SubagentPanelLayoutProps,
+    _state: unknown,
+    retired: RetiredSubagentControl | null,
+  ) {
+    const panel = this.props.panel.current;
+    if (
+      !retired ||
+      !panel ||
+      retired.source.isConnected ||
+      panel.ownerDocument.activeElement !== panel.ownerDocument.body
+    )
+      return;
+    if (retired.runId) {
+      const container = retired.container.isConnected ? retired.container : panel;
+      (subagentOpener(container, retired.runId) ?? panel).focus();
+    } else this.props.back.current?.focus({ preventScroll: true });
+  }
+
+  override render() {
+    return (
+      <AgentWorkspaceView ref={this.props.panel} tabIndex={-1} ariaLabel={this.props.label}>
+        {this.props.children}
+      </AgentWorkspaceView>
+    );
+  }
+}
+
 export function SubagentsPanel() {
   const workspaceAccess = useWorkspace();
 
   const t = useT();
+  const sessionId = useActiveSessionId();
+  const visible = useContentVisible();
   const summaryId = useId();
   const rows = useActiveConversationRows();
   const entries = useMemo(() => subagentEntries(rows), [rows]);
@@ -134,10 +228,7 @@ export function SubagentsPanel() {
     if (selectedId) {
       backRef.current?.focus({ preventScroll: true });
     } else if (fromRun) {
-      const row = [...panel.querySelectorAll<HTMLElement>('[data-slot="delegated-run-link"]')].find(
-        (node) => node.dataset.runId === fromRun,
-      );
-      (row?.querySelector<HTMLButtonElement>("button") ?? panel).focus();
+      (subagentOpener(panel, fromRun) ?? panel).focus();
     }
   }, [selectedId, inspection]);
   const selected = entries.find(({ narrative }) => narrative.run.id === selectedId);
@@ -152,7 +243,14 @@ export function SubagentsPanel() {
     : null;
   const running = entries.filter(({ narrative }) => agentRunIsRunning(narrative.run)).length;
   return (
-    <AgentWorkspaceView ref={panelRef} tabIndex={-1} ariaLabel={t("subagents.title")}>
+    <SubagentPanelLayout
+      panel={panelRef}
+      back={backRef}
+      sessionId={sessionId}
+      selectedId={selectedId}
+      visible={visible}
+      label={t("subagents.title")}
+    >
       <header data-slot="subagent-header" {...stylex.props(styles.header)}>
         {selectedId && (
           <IconButton
@@ -236,7 +334,7 @@ export function SubagentsPanel() {
       {!selected && selectedId ? (
         <EmptyState icon={iconGlyph("alert")} tone="negative" title={t("subagents.unavailable")} />
       ) : null}
-    </AgentWorkspaceView>
+    </SubagentPanelLayout>
   );
 }
 
@@ -291,7 +389,7 @@ function SubagentTranscript({
   const { narrative, facts } = entry;
   const rows = useMemo(() => delegatedTranscriptRows(narrative, facts), [narrative, facts]);
   return (
-    <div hidden={hidden} {...stylex.props(styles.reader)}>
+    <div data-slot="subagent-transcript" hidden={hidden} {...stylex.props(styles.reader)}>
       <ScrollArea
         ref={measured ? scrollRef : undefined}
         className={stylex.props(styles.scroller).className}

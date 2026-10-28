@@ -250,6 +250,13 @@ identity as their accessible description. Target changes and keyed reordering
 retain that relationship without copying task text; cancellation admission and
 the exact Session/Run command target retain their existing owners.
 
+When completion moves the focused task into another group, the Subagents layout
+returns focus to that task's current entry. Retired header actions return to the
+surviving task header; nested tasks stay inside their visible parent reader.
+Later outside focus, hidden views and Session or selection changes remain with
+their existing owners. Unavailable cancellation actions stay focusable and refuse
+activation through the shared disabled-control contract.
+
 Conversation Find follows rendered message changes while its query is open.
 Refreshes retain the selected occurrence in its message, rebuild current highlight
 ranges and preserve focus and reading position. Only query changes and explicit

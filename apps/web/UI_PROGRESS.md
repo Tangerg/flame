@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Current source continues from main `487d59c14`, which qualifies captured-audio playback and return. Captured resource links now retain a meaningful name, visible shared link styling, selectable destination and fitting focus scope; a URI used as the name appears once. Native verification and cleanup are complete below. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
+Current source continues from main `cad71edc8`, which preserves captured-resource link identity and reading. Subagent completion now retains the same task entry or surviving header, and unavailable cancellation controls retain focus while refusing activation. Native verification and cleanup are complete under **Subagent completion and unavailable-action focus**. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -48,7 +48,11 @@ failures retain their identity, original bytes and recorded status, published as
 `9b8a297bb`. Embedded-resource reading now retains its URI beside captured media
 and keeps fitting origin/control groups together, published as `5c6d10496`.
 Native playback and return are qualified and published as `487d59c14`.
-Resource-link identity and reading affordance now have their own repair below.
+Resource-link identity and reading affordance are published as `cad71edc8`.
+The following subagent batch qualifies completion, unavailable controls, nested
+reader scope, source return and continued editing. Its publication fetch finds
+zero incoming main commits at `cad71edc8`; no repeated merge or broad unrelated
+verification is needed.
 See **Computer console
 editing and operation return**. Preserve the
 separate exact-Run and Skills object contract limits already recorded below.
@@ -5317,6 +5321,110 @@ The user's repeated explicit main-sync request freshly confirms both main refs
 at `e616e1a4c`, already contained in the owned branch, with zero incoming commits.
 Delivery remains local only; the primary checkout is untouched and the overall
 UI goal remains open.
+
+### Subagent completion and unavailable-action focus
+
+The frozen `cad71edc8c9b228fa8413551886ad901c1f6764a` native scene loses
+focus to BODY when completion remounts a task in Finished, removes a selected
+header action, or native disabling retires the focused cancellation button.
+The first two failures originate in the Subagents layout; the last uses the
+existing shared focusable-disabled contract rather than another disabled model.
+
+`SubagentPanelLayout` captures the focused control before React mutates the
+grouped layout. It restores the current task opener only when the old node is
+disconnected and the document still focuses BODY. A nested task resolves inside
+its retained visible transcript before the overview, whose duplicate entry can
+be hidden. A retired selected-header action returns to All subagents without
+scrolling. Hidden views, Session/selection changes and later outside focus yield
+to their existing owners. This adds no DOM wrapper, synchronized selection,
+timer, global observer or command state. `SubagentStopButton` retains the exact
+Session/Run target, admission owner and visible-summary description.
+
+The existing canonical visual fixture adds explicit
+`subagent-cancel=settled|unavailable` modes. Genuine native cancellation input
+either publishes a captured canceled outcome through the existing projection
+and refresh entrance, removing that Run's pending interrupts, or marks the
+fixture transport unavailable. Its local call counter detects repeated fixture
+activation. These modes qualify rendered outcomes and physical focus; they do
+not establish live Runtime cancellation, recovery, provider execution or engine
+admission. Default fixture behavior remains available.
+
+Read-only ZCode `ToolSummaryRow.tsx` informs task/action context; HeroUI's
+`button/disabled.tsx` informs disabled presentation. Neither establishes Flame's
+focus-retirement semantics. Existing ChatGPT/ArcUI/Radix/Ace research and the
+better-interface domains retain their earlier scope.
+
+| Domain        | Inspected behavior                                                    | Scoped result                                                       |
+| ------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Accessibility | Focused row/header retirement, nested scope and disabled action input | Same task remains reachable; later focus retains its existing owner |
+| Layout        | Split Dock and narrow full-pane task return                           | Tested controls and return entry remain visible                     |
+| Writing       | Existing EN/ZH task identities, outcomes and short action names       | No extra product labels or instructions                             |
+| Typography    | EN 14 px and ZH 18 px at normal and 200% zoom                         | Existing wrapped task identity remains readable                     |
+| Colors        | Light Orange and dark custom blue focus/disabled states               | Existing tokens retained; no new contrast measurement               |
+| UI            | Completion, source inspection, Escape return and draft continuation   | Existing reader and navigation lifetimes retained                   |
+
+Ten regression cases cover the two overview controls, selected header, visible
+nested task, later outside focus, unavailable actions, hidden views and Session
+retirement. The initial eight-case addition exposes **6 failures / 17 passes**
+against the original implementation. Final verification passes:
+
+- Full frontend: **431 files / 4,105 tests**, **72.00 s**, including all **25**
+  SubagentsPanel tests. Web typecheck, lint, formatting, circular dependencies,
+  layer boundaries, API consumers, design system, chrome and all eight locales
+  pass. The focused command/row/panel suite also passes.
+- Exact component-resource reproduction, `make check-native` including Desktop
+  test/vet/build and the supported Wails v3 build, production module linking
+  and all **409** CSS variables pass. The native linker retains its existing
+  duplicate `-lobjc` warning. The complete Web aggregate, unchanged shared-UI
+  suite and unrelated backend/Runtime suites are not rerun; no broad pass is
+  inferred from these scoped checks.
+- Native EN/light/14 px/Orange: overview cancellation returns to the same Run
+  in Finished; selected cancellation returns to All subagents; file inspection
+  and Escape return to the same source opener. Unavailable controls remain
+  focused with `aria-disabled=true`, and Return/Space leave the fixture call
+  count at **one**. Forward Tab leaves the disabled action for nearby content.
+- Native ZH/dark/18 px/custom blue `#2F6BFF`: resize to **1125 × 734**, then
+  200% zoom reaches **562 × 367 CSS px / DPR 4**. Completed nested cancellation
+  focuses the visible parent-reader opener at **526.5 × 76 px**, while its
+  hidden overview duplicate has a zero rectangle. Header retirement and index
+  return retain the current task. The unavailable row and header still describe
+  Verify package dependencies and reject repeat activation. Actual Size is
+  restored before continuing both original drafts. Fixture sidebar chrome in
+  this scene does not establish full-product viewport geometry.
+- Two final native controls omit the passive observer entirely. Their **614**
+  asset hashes differ from the observed build only in the two HTML entrances,
+  and they generate **zero** loopback observation requests. They retain the
+  row/header completion, disabled focus, forward Tab, source/Escape return and
+  continued drafts. Clean native outcomes are qualified by AX and pixels,
+  without claiming measured DOM geometry.
+
+All mouse, key, scroll, resize and zoom input uses CUA. The optional observer
+only reads the owned native scene. The source-view fixture preserves captured
+path identity but contains placeholder file text, not a real filesystem read.
+Plain reverse Tab does not reach Back on this host; Option+Shift+Tab succeeds in
+the light scene but not the zoomed dark scene, so no reverse-Tab guarantee is
+claimed. Pointer Back, forward Tab and keyboard activation remain qualified.
+VoiceOver speech, IME, live execution, a fresh motion/contrast matrix and
+offscreen wheel-retention are not qualified. No CSS, palette, type, persistence
+or protocol migration is required; no whole-product award-level claim is made.
+
+All **eight** private native instances are retired; the exact bundle is
+unregistered and loopback server closed. Cleanup removes **seven** newly created
+output/cache roots and **three** exact profile roots, restores all **four**
+original files and modes, and rechecks **18** output-presence baselines, **five**
+profile baselines, the two original UI-cache files and empty Web Vite-temp
+directory. All **6,264** non-Markdown inputs match their final qualified hashes;
+only four intended source/test/fixture inputs differ from the frozen base. All **32** installed
+resources and **two** read-only references remain unchanged. The private root
+`flame-subagent-focus-QFY7UF` is absent. The verified in-memory gzip retains
+**60** flat UTF-8 records, **37,339,558** uncompressed bytes and **2,664,125**
+compressed bytes; SHA-256
+`2249899ad261a743f8c8edb51395ee4977b11e82c464fcf12ed8965e676f2392`.
+
+Next, inspect an actual remaining tool/detail return path from current source
+and native evidence. Do not repeat these completed task-retirement repairs or
+broaden into Runtime command ownership without a new observed defect. The
+continuous UI goal remains active; preserve the primary checkout's parallel work.
 
 ### Explicit-main task return and index focus
 

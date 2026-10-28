@@ -18,10 +18,12 @@ export function SubagentStopButton({
   const available = useRuntimeCommandsAvailable();
   return (
     <IconButton
+      data-subagent-stop=""
       icon={iconGlyph("stop")}
       size="sm"
       variant="soft"
       round
+      focusableWhenDisabled
       disabled={!available}
       aria-label={t("agent.runTree.action.cancel")}
       aria-describedby={summaryId}

@@ -521,6 +521,192 @@ it("explains unconfirmed effects for the selected terminal child without replaci
   expect(screen.queryByText("child-effect")).toBeNull();
 });
 
+function namedRows(run = child): TranscriptRow[] {
+  const current = rows(run);
+  current[0]!.facts.toolCalls.delegate = {
+    id: "delegate",
+    runId: "root",
+    name: "delegate_task",
+    fn: "Review captured child",
+    args: "{}",
+    status: "ok",
+  };
+  return current;
+}
+
+function completedChild(): AgentRunView {
+  return {
+    ...child,
+    status: "finished",
+    activeSegmentId: null,
+    outcome: { type: "completed" },
+    finishedAt: "2026-01-01T00:00:10Z",
+  };
+}
+
+it.each(["task", "cancel"] as const)(
+  "keeps the same overview task reachable when its focused %s control retires",
+  (control) => {
+    material.rows = namedRows();
+    testClient.navigation.go({ session: "session" });
+    const { rerender } = testClient.render(<SubagentsPanel />);
+    const opener = screen.getByRole("button", { name: /^Review captured child/ });
+    const target =
+      control === "task"
+        ? opener
+        : screen.getByRole("button", {
+            name: "Cancel this run",
+            description: "Review captured child",
+          });
+    act(() => target.focus());
+    material.rows = namedRows(completedChild());
+    rerender(<SubagentsPanel />);
+    const current = screen.getByRole("button", { name: /^Review captured child/ });
+    expect(opener.isConnected).toBe(false);
+    expect(document.activeElement).toBe(current);
+    fireEvent.click(current);
+    expect(screen.getByRole("button", { name: "All subagents" })).not.toBeNull();
+    expect(screen.getByText("Child streamed output")).not.toBeNull();
+  },
+);
+
+it("returns a retired selected-task cancellation control to the surviving task header", () => {
+  material.rows = namedRows();
+  testClient.navigation.go({ session: "session" });
+  openWorkspaceSubagentRun(testClient.workspace.access, "child");
+  const { rerender } = testClient.render(<SubagentsPanel />);
+  const stop = screen.getByRole("button", {
+    name: "Cancel this run",
+    description: "Review captured child",
+  });
+  act(() => stop.focus());
+  material.rows = namedRows(completedChild());
+  rerender(<SubagentsPanel />);
+  expect(stop.isConnected).toBe(false);
+  expect(document.activeElement).toBe(screen.getByRole("button", { name: "All subagents" }));
+  expect(screen.getByText("Child streamed output")).not.toBeNull();
+});
+
+it("keeps a finished nested task in its visible parent reader", async () => {
+  const nestedRows = (finished: boolean) => {
+    const current = namedRows();
+    const facts = current[0]!.facts;
+    facts.toolCalls.nested = {
+      id: "nested",
+      runId: "child",
+      name: "delegate_task",
+      fn: "Review captured nested task",
+      args: "{}",
+      status: "ok",
+    };
+    facts.delegatedRuns.delegate![0]!.messages[0]!.blocks.push({
+      kind: "tool",
+      toolCallId: "nested",
+    });
+    facts.delegatedRuns.nested![0]!.run = {
+      ...(finished ? completedChild() : child),
+      id: "nested",
+      parentRunId: "child",
+      spawnedByItemId: "nested",
+    };
+    return current;
+  };
+  material.rows = nestedRows(false);
+  testClient.navigation.go({ session: "session" });
+  openWorkspaceSubagentRun(testClient.workspace.access, "child");
+  const { rerender } = testClient.render(<SubagentsPanel />);
+  await act(async () => vi.dynamicImportSettled());
+  const parent = screen.getByRole("region", { name: "Review captured child" });
+  const stop = within(parent).getByRole("button", { name: "Cancel this run" });
+  act(() => stop.focus());
+  material.rows = nestedRows(true);
+  rerender(<SubagentsPanel />);
+  expect(document.activeElement).toBe(within(parent).getByRole("button", { name: /Sub-agent/ }));
+  expect(screen.getByRole("region", { name: "Review captured child" })).toBe(parent);
+});
+
+it.each(["hidden", "session"] as const)(
+  "leaves %s context retirement to its existing owner",
+  (retirement) => {
+    material.rows = namedRows();
+    testClient.navigation.go({ session: "session" });
+    let visible = true;
+    const content = () => (
+      <ContentVisibility visible={visible}>
+        <SubagentsPanel />
+      </ContentVisibility>
+    );
+    const { rerender } = testClient.render(content());
+    const stop = screen.getByRole("button", {
+      name: "Cancel this run",
+      description: "Review captured child",
+    });
+    act(() => stop.focus());
+    material.rows = namedRows(completedChild());
+    if (retirement === "hidden") visible = false;
+    else act(() => testClient.navigation.go({ session: "other" }));
+    rerender(content());
+    expect(stop.isConnected).toBe(false);
+    expect(document.activeElement).toBe(document.body);
+  },
+);
+
+it.each([false, true])(
+  "leaves later outside focus alone when a task finishes (selected=%s)",
+  (selected) => {
+    material.rows = namedRows();
+    testClient.navigation.go({ session: "session" });
+    if (selected) openWorkspaceSubagentRun(testClient.workspace.access, "child");
+    const content = () => (
+      <>
+        <SubagentsPanel />
+        <input aria-label="Current draft" defaultValue="Continue after reviewing this task." />
+      </>
+    );
+    const { rerender } = testClient.render(content());
+    const stop = screen.getByRole("button", {
+      name: "Cancel this run",
+      description: "Review captured child",
+    });
+    const draft = screen.getByRole("textbox", { name: "Current draft" });
+    act(() => stop.focus());
+    act(() => draft.focus());
+    material.rows = namedRows(completedChild());
+    rerender(content());
+    expect(document.activeElement).toBe(draft);
+    expect((draft as HTMLInputElement).value).toBe("Continue after reviewing this task.");
+  },
+);
+
+it.each([false, true])(
+  "retains a focused cancellation control without admitting offline actions (selected=%s)",
+  (selected) => {
+    material.available = true;
+    finishTestClient(() => {
+      material.available = true;
+    });
+    material.cancel.mockClear();
+    material.rows = namedRows();
+    testClient.navigation.go({ session: "session" });
+    if (selected) openWorkspaceSubagentRun(testClient.workspace.access, "child");
+    const { rerender } = testClient.render(<SubagentsPanel />);
+    const stop = screen.getByRole("button", {
+      name: "Cancel this run",
+      description: "Review captured child",
+    });
+    act(() => stop.focus());
+    material.available = false;
+    rerender(<SubagentsPanel />);
+    expect(stop.getAttribute("aria-disabled")).toBe("true");
+    expect(stop.hasAttribute("disabled")).toBe(false);
+    expect(document.activeElement).toBe(stop);
+    fireEvent.click(stop);
+    fireEvent.keyDown(stop, { key: "Enter" });
+    fireEvent.keyUp(stop, { key: "Enter" });
+    expect(material.cancel).not.toHaveBeenCalled();
+  },
+);
+
 it("cancels the currently selected child and disables mutations while disconnected", () => {
   material.rows = rows();
   for (const [id, title] of [
@@ -562,8 +748,8 @@ it("cancels the currently selected child and disables mutations while disconnect
   expect(
     screen
       .getByRole("button", { name: "Cancel this run", description: "Audit nested scope" })
-      .hasAttribute("disabled"),
-  ).toBe(true);
+      .getAttribute("aria-disabled"),
+  ).toBe("true");
   material.available = true;
 });
 
