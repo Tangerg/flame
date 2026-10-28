@@ -123,6 +123,8 @@ export const fr = {
   "source.copied": "Texte copié",
   "source.wrap": "Activer le retour à la ligne",
   "source.unwrap": "Désactiver le retour à la ligne",
+  "result.refresh": "Actualiser le résultat original",
+  "result.stale": "Les éléments conservés peuvent être obsolètes.",
   "result.title": "Opération d’origine inspectée",
   "result.content": "Contenu enregistré",
   "result.image": "Image capturée {{number}}",

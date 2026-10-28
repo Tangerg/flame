@@ -118,6 +118,8 @@ export const zhTW = {
   "source.copied": "已複製",
   "source.wrap": "啟用自動換行",
   "source.unwrap": "關閉自動換行",
+  "result.refresh": "重新整理原始結果",
+  "result.stale": "保留的證據可能已過期。",
   "result.title": "已檢查的原始操作",
   "result.content": "已記錄內容",
   "result.image": "擷取影像 {{number}}",

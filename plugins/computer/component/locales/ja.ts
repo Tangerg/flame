@@ -121,6 +121,8 @@ export const ja = {
   "source.copied": "コピーしました",
   "source.wrap": "折り返しを有効にする",
   "source.unwrap": "折り返しを無効にする",
+  "result.refresh": "元の結果を更新",
+  "result.stale": "保持された証拠は古くなっている可能性があります。",
   "result.title": "確認した元の操作",
   "result.content": "記録された内容",
   "result.image": "取得した画像 {{number}}",

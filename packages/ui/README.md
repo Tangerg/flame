@@ -240,6 +240,9 @@ its code typography, shared wrap preference and host-supplied highlighting. It
 limits long code to the smaller of 28rem and 60vh, keeping the caption outside
 the scrolling source. A complete `CodeBlock` is one Panel focus unit so its caption
 stays visible with the focused reader when the block fits the available space.
+The complete block also fits within the window below the existing Panel and
+disclosure clearances. Its caption does not shrink; the source flexes within the
+remaining height, so nested reading actions stay visible at large page zoom.
 Oversized blocks retain the Panel's existing focused-control fallback.
 A consumer's `styles` override merges on that same `pre`;
 compact Tool inspectors retain their smaller existing bound. Highlighting changes

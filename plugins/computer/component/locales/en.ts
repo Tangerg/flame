@@ -123,6 +123,8 @@ export const en = {
   "source.copied": "Source copied",
   "source.wrap": "Enable word wrap",
   "source.unwrap": "Disable word wrap",
+  "result.refresh": "Refresh original outcome",
+  "result.stale": "Retained evidence may be outdated.",
   "result.title": "Inspected original operation",
   "result.content": "Recorded content",
   "result.image": "Captured image {{number}}",

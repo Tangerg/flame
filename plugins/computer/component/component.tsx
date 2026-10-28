@@ -541,22 +541,65 @@ export function Computer({ context }: { context: ComponentContext }) {
         {state.history?.value && state.history.value.entries.length === 0 && (
           <EmptyState title={t("history.empty")} />
         )}
-        {state.history?.value?.entries.map((entry) => (
-          <RecordGroup key={entry.id}>
-            <Toolbar label={entry.id}>
-              <Button onClick={() => void state.inspect(entry.id)}>
-                {entry.id}
-              </Button>
-              <Badge tone={entry.settled ? "neutral" : "warning"}>
-                {t(entry.settled ? "history.settled" : "history.unknown")}
-              </Badge>
-            </Toolbar>
-            <Metadata>
-              {commandLabel(entry.method, t)} ·{" "}
-              {dateTime.format(new Date(entry.admittedAt))}
-            </Metadata>
-          </RecordGroup>
-        ))}
+        {state.history?.value?.entries.map((entry) => {
+          const result =
+            state.result?.id === entry.id ? state.result : undefined;
+          return (
+            <RecordGroup key={entry.id}>
+              <Metadata>
+                {commandLabel(entry.method, t)} ·{" "}
+                {dateTime.format(new Date(entry.admittedAt))}
+              </Metadata>
+              <Disclosure
+                title={entry.id}
+                open={result !== undefined}
+                data-focused={result !== undefined}
+                stickyHeader={result !== undefined}
+                onOpenChange={(open) => {
+                  if (open) void state.inspect(entry.id);
+                  else state.closeInspection();
+                }}
+                actions={
+                  <>
+                    <Badge tone={entry.settled ? "neutral" : "warning"}>
+                      {t(entry.settled ? "history.settled" : "history.unknown")}
+                    </Badge>
+                    {result && (
+                      <Button
+                        focusableWhenDisabled
+                        disabled={result.loading}
+                        onClick={() => void state.inspect(entry.id)}
+                      >
+                        {t("result.refresh")}
+                      </Button>
+                    )}
+                  </>
+                }
+              >
+                {result && (
+                  <RecordGroup
+                    role="region"
+                    aria-label={t("result.title")}
+                    aria-busy={result.loading}
+                  >
+                    {result.loading && (
+                      <p role="status">{t("history.reading")}</p>
+                    )}
+                    {result.error && (
+                      <div role="alert">
+                        {result.value && (
+                          <Callout kind="warning">{t("result.stale")}</Callout>
+                        )}
+                        <RecordBody>{result.error}</RecordBody>
+                      </div>
+                    )}
+                    {result.value && <Outcome record={result.value} t={t} />}
+                  </RecordGroup>
+                )}
+              </Disclosure>
+            </RecordGroup>
+          );
+        })}
         <Toolbar label={t("history.pages")}>
           <Button
             disabled={!state.hasPrevious || state.history?.loading}
@@ -572,29 +615,6 @@ export function Computer({ context }: { context: ComponentContext }) {
           </Button>
         </Toolbar>
       </PanelSection>
-      {state.result && (
-        <PanelSection
-          title={t("result.title")}
-          actions={
-            state.result.value && (
-              <Button
-                disabled={state.result.loading}
-                onClick={() => void state.inspect(state.result!.value!.id)}
-              >
-                {t("refresh")}
-              </Button>
-            )
-          }
-        >
-          {state.result.loading && <p role="status">{t("history.reading")}</p>}
-          {state.result.error && (
-            <div role="alert">
-              <RecordBody>{state.result.error}</RecordBody>
-            </div>
-          )}
-          {state.result.value && <Outcome record={state.result.value} t={t} />}
-        </PanelSection>
-      )}
     </Panel>
   );
 }

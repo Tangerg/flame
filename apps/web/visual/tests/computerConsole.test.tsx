@@ -72,6 +72,9 @@ function fixture(value = initial) {
   let contextGate: Promise<void> | undefined;
   let contextArrived: (() => void) | undefined;
   let replyGate: Promise<void> | undefined;
+  let resultGate: { promise: Promise<void>; arrived(): void } | undefined;
+  let unavailableResult = false;
+  let historyPageSize: number | undefined;
 
   function publish(next: Snapshot) {
     snapshot = structuredClone(next);
@@ -165,15 +168,29 @@ function fixture(value = initial) {
       }
       return output(captured);
     }
-    if (params.method === methods.history)
+    if (params.method === methods.history) {
+      const start = Number((JSON.parse(params.input) as { before?: string }).before ?? 0);
+      const entries = [...records.values()];
+      const end = start + (historyPageSize ?? entries.length);
       return output({
-        entries: [...records.values()].map(
-          ({ inputJSON: _input, invocationJSON: _invocation, outcomeJSON: _outcome, ...entry }) =>
-            entry,
-        ),
+        entries: entries
+          .slice(start, end)
+          .map(
+            ({ inputJSON: _input, invocationJSON: _invocation, outcomeJSON: _outcome, ...entry }) =>
+              entry,
+          ),
+        ...(end < entries.length ? { next: String(end) } : {}),
       });
+    }
     if (params.method === methods.result) {
-      const record = records.get((JSON.parse(params.input) as { id: string }).id);
+      const record = structuredClone(records.get((JSON.parse(params.input) as { id: string }).id));
+      const gate = resultGate;
+      resultGate = undefined;
+      if (gate) {
+        gate.arrived();
+        await gate.promise;
+      }
+      if (unavailableResult) return unknown();
       if (!record) throw new Error("fixture operation record is missing");
       return output(record);
     }
@@ -338,6 +355,18 @@ function fixture(value = initial) {
       const gate = Promise.withResolvers<void>();
       replyGate = gate.promise;
       return gate.resolve;
+    },
+    holdResult() {
+      const gate = Promise.withResolvers<void>();
+      const arrived = Promise.withResolvers<void>();
+      resultGate = { promise: gate.promise, arrived: arrived.resolve };
+      return { arrived: arrived.promise, release: gate.resolve };
+    },
+    setResultUnavailable(value: boolean) {
+      unavailableResult = value;
+    },
+    setHistoryPageSize(value: number) {
+      historyPageSize = value;
     },
   };
 }
@@ -1089,6 +1118,190 @@ it("rereads the receipt owner after a same-state completion notification", async
   });
   act(() => setup.server.publish(setup.server.snapshot()));
   expect(await screen.findByRole("button", { name: "settled-after-ready" })).not.toBeNull();
+  expect(setup.server.originals.size).toBe(0);
+});
+
+function recordedTool(id: string): OperationRecord {
+  return {
+    id,
+    kind: "tool",
+    method: "computer_js",
+    admittedAt: "2026-10-28T00:02:00.000Z",
+    dispatched: true,
+    settled: true,
+    inputJSON: JSON.stringify({ code: "Never execute this historical source." }),
+    invocationJSON: '{"origin":"model"}',
+    outcomeJSON: JSON.stringify({ content: [{ type: "text", text: `Recorded ${id}.` }] }),
+  };
+}
+
+it("reads original evidence next to its expanded record and keeps the editor draft", async () => {
+  const setup = rig();
+  setup.server.records.set("first-operation", recordedTool("first-operation"));
+  setup.server.records.set("second-operation", recordedTool("second-operation"));
+  setup.mount();
+  const editor = await screen.findByRole("textbox", { name: "Tool arguments (JSON)" });
+  const draft = '{"code":"still editing"}';
+  fireEvent.change(editor, { target: { value: draft } });
+  const first = await screen.findByRole("button", { name: "first-operation" });
+  first.focus();
+  fireEvent.click(first);
+  const evidence = await screen.findByText("Recorded first-operation.");
+  expect(first.getAttribute("aria-expanded")).toBe("true");
+  expect(document.getElementById(first.getAttribute("aria-controls")!)?.contains(evidence)).toBe(
+    true,
+  );
+  expect(document.activeElement).toBe(first);
+  expect((editor as HTMLTextAreaElement).value).toBe(draft);
+  fireEvent.click(screen.getByRole("button", { name: "second-operation" }));
+  await screen.findByText("Recorded second-operation.");
+  expect(first.getAttribute("aria-expanded")).toBe("false");
+  expect(screen.queryByText("Recorded first-operation.")).toBeNull();
+  expect(setup.server.originals.size).toBe(0);
+});
+
+it("retains evidence and refresh focus while rereading the same original record", async () => {
+  const setup = rig();
+  setup.server.records.set("original-operation", recordedTool("original-operation"));
+  setup.mount();
+  fireEvent.click(await screen.findByRole("button", { name: "original-operation" }));
+  const evidence = await screen.findByText("Recorded original-operation.");
+  const refresh = screen.getByRole("button", { name: "Refresh original outcome" });
+  const held = setup.server.holdResult();
+  refresh.focus();
+  fireEvent.click(refresh);
+  await held.arrived;
+  expect(screen.getByText("Recorded original-operation.")).toBe(evidence);
+  expect(document.activeElement).toBe(refresh);
+  expect(refresh.getAttribute("aria-disabled")).toBe("true");
+  const calls = setup.server.calls.filter((call) => call.params.method === methods.result).length;
+  fireEvent.click(refresh);
+  expect(setup.server.calls.filter((call) => call.params.method === methods.result)).toHaveLength(
+    calls,
+  );
+  await act(async () => held.release());
+  await waitFor(() => expect(refresh.getAttribute("aria-disabled")).not.toBe("true"));
+  expect(document.activeElement).toBe(refresh);
+  expect(screen.getByText("Recorded original-operation.")).toBe(evidence);
+  expect(setup.server.originals.size).toBe(0);
+});
+
+it("keeps later editor focus when an asynchronous original read arrives", async () => {
+  const setup = rig();
+  setup.server.records.set("delayed-operation", recordedTool("delayed-operation"));
+  const held = setup.server.holdResult();
+  setup.mount();
+  fireEvent.click(await screen.findByRole("button", { name: "delayed-operation" }));
+  await held.arrived;
+  const editor = screen.getByRole("textbox", { name: "Tool arguments (JSON)" });
+  editor.focus();
+  fireEvent.change(editor, { target: { value: '{"code":"continued elsewhere"}' } });
+  await act(async () => held.release());
+  await screen.findByText("Recorded delayed-operation.");
+  expect(document.activeElement).toBe(editor);
+  expect((editor as HTMLTextAreaElement).value).toBe('{"code":"continued elsewhere"}');
+});
+
+it("retires a collapsed read and never reopens it when the old response arrives", async () => {
+  const setup = rig();
+  setup.server.records.set("retired-operation", recordedTool("retired-operation"));
+  const held = setup.server.holdResult();
+  setup.mount();
+  const trigger = await screen.findByRole("button", { name: "retired-operation" });
+  trigger.focus();
+  fireEvent.click(trigger);
+  await held.arrived;
+  fireEvent.click(trigger);
+  expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  await act(async () => held.release());
+  expect(screen.queryByText("Recorded retired-operation.")).toBeNull();
+  expect(document.activeElement).toBe(trigger);
+  expect(setup.server.originals.size).toBe(0);
+});
+
+it("keeps a newer selection when an older original read completes later", async () => {
+  const setup = rig();
+  setup.server.records.set("older-operation", recordedTool("older-operation"));
+  setup.server.records.set("newer-operation", recordedTool("newer-operation"));
+  const held = setup.server.holdResult();
+  setup.mount();
+  const older = await screen.findByRole("button", { name: "older-operation" });
+  fireEvent.click(older);
+  await held.arrived;
+  const newer = screen.getByRole("button", { name: "newer-operation" });
+  newer.focus();
+  fireEvent.click(newer);
+  await screen.findByText("Recorded newer-operation.");
+  await act(async () => held.release());
+  expect(older.getAttribute("aria-expanded")).toBe("false");
+  expect(newer.getAttribute("aria-expanded")).toBe("true");
+  expect(screen.queryByText("Recorded older-operation.")).toBeNull();
+  expect(document.activeElement).toBe(newer);
+});
+
+it("marks retained evidence stale after a failed reread and retries the same original identity", async () => {
+  const setup = rig();
+  setup.server.records.set("retained-operation", recordedTool("retained-operation"));
+  setup.mount();
+  fireEvent.click(await screen.findByRole("button", { name: "retained-operation" }));
+  const evidence = await screen.findByText("Recorded retained-operation.");
+  const refresh = screen.getByRole("button", { name: "Refresh original outcome" });
+  setup.server.setResultUnavailable(true);
+  refresh.focus();
+  fireEvent.click(refresh);
+  await screen.findByText(/Retained evidence may be outdated/);
+  expect(screen.getByText("Recorded retained-operation.")).toBe(evidence);
+  expect(document.activeElement).toBe(refresh);
+  setup.server.setResultUnavailable(false);
+  fireEvent.click(refresh);
+  await waitFor(() => expect(screen.queryByText(/Retained evidence may be outdated/)).toBeNull());
+  const reads = setup.server.calls.filter((call) => call.params.method === methods.result);
+  expect(reads).toHaveLength(3);
+  expect(
+    reads.every(
+      (call) => (JSON.parse(call.params.input) as { id: string }).id === "retained-operation",
+    ),
+  ).toBe(true);
+  expect(setup.server.originals.size).toBe(0);
+});
+
+it("retries an initially unreadable original record without inventing an outcome", async () => {
+  const setup = rig();
+  setup.server.records.set("unreadable-operation", recordedTool("unreadable-operation"));
+  setup.server.setResultUnavailable(true);
+  setup.mount();
+  const trigger = await screen.findByRole("button", { name: "unreadable-operation" });
+  trigger.focus();
+  fireEvent.click(trigger);
+  const detail = await screen.findByRole("region", { name: "Inspected original operation" });
+  await within(detail).findByRole("alert");
+  expect(screen.queryByText("Recorded unreadable-operation.")).toBeNull();
+  expect(screen.queryByText(/Retained evidence may be outdated/)).toBeNull();
+  expect(document.activeElement).toBe(trigger);
+  setup.server.setResultUnavailable(false);
+  fireEvent.click(screen.getByRole("button", { name: "Refresh original outcome" }));
+  await within(detail).findByText("Recorded unreadable-operation.");
+  expect(setup.server.originals.size).toBe(0);
+});
+
+it("returns to the retained original selection after paging without replacing its draft", async () => {
+  const setup = rig();
+  setup.server.setHistoryPageSize(1);
+  setup.server.records.set("page-one", recordedTool("page-one"));
+  setup.server.records.set("page-two", recordedTool("page-two"));
+  setup.mount();
+  const editor = await screen.findByRole("textbox", { name: "Tool arguments (JSON)" });
+  fireEvent.change(editor, { target: { value: '{"code":"unsubmitted"}' } });
+  fireEvent.click(await screen.findByRole("button", { name: "page-one" }));
+  await screen.findByText("Recorded page-one.");
+  fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+  await screen.findByRole("button", { name: "page-two" });
+  expect(screen.queryByText("Recorded page-one.")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Previous page" }));
+  const original = await screen.findByRole("button", { name: "page-one" });
+  expect(original.getAttribute("aria-expanded")).toBe("true");
+  expect(screen.getByText("Recorded page-one.")).not.toBeNull();
+  expect((editor as HTMLTextAreaElement).value).toBe('{"code":"unsubmitted"}');
   expect(setup.server.originals.size).toBe(0);
 });
 

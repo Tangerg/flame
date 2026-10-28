@@ -12,7 +12,7 @@ import { ARTIFACT_SURFACE } from "./artifact-surface";
 import { useCopyFeedback } from "./clipboard";
 import { IconButton } from "./icon-button";
 import { selectAllInReader } from "./reader-selection";
-import { color, leading, space, type, weight } from "./tokens.stylex";
+import { color, layout, leading, space, type, weight } from "./tokens.stylex";
 
 let wrapCode = false;
 const wrapListeners = new Set<() => void>();
@@ -77,11 +77,16 @@ const styles = stylex.create({
     flexDirection: "column",
     minWidth: 0,
     maxWidth: "100%",
+    maxHeight: {
+      default: null,
+      ":is([data-slot='code-block'])": `calc(100dvh - var(--panel-controls-height, 0px) - var(--disclosure-header-height, 0px) - ${layout.controlGap})`,
+    },
     overflow: "hidden",
   },
   caption: {
     display: "flex",
     flexWrap: "wrap",
+    flexShrink: 0,
     alignItems: "center",
     gap: space.s1,
     minHeight: "calc(var(--control-height-xs) + var(--spacing) * 2)",
@@ -111,6 +116,7 @@ const styles = stylex.create({
   },
   code: {
     margin: 0,
+    minHeight: 0,
     minWidth: 0,
     maxWidth: "100%",
     maxHeight: "min(28rem,60vh)",

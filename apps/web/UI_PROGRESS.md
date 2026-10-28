@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Current source continues from main `3cc13e9a8`, which publishes the Computer console editing and operation-return task. Session search readiness and entry focus are published as `646819ab3`. Captured source reading now uses named shared readers and a fitting caption/body focus boundary; its scoped native qualification and cleanup are complete below. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
+Current source continues from main `65043ca10`, which publishes named captured-source readers and a fitting caption/body focus boundary. Computer console editing and operation return are published as `3cc13e9a8`; Session search readiness and entry focus as `646819ab3`. Original history now expands beside its record and retains evidence, reading position and refresh focus. Its native qualification and cleanup are complete below, including the shared complete-reader height bound. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -40,8 +40,11 @@ fast-forwards three main commits through `e8bbe836c`; its later publication fetc
 finds zero incoming commits. Computer manual execution retains field feedback,
 drafts, readable pending arguments and logical focus through review and permission
 retirement, published as `3cc13e9a8`. Its captured-source follow-up unifies literal
-reading, local selection, wrapping, source names and fitting caption/body focus;
-the publication fetch again finds no incoming commits. See **Computer console
+reading, local selection, wrapping, source names and fitting caption/body focus,
+published as `65043ca10`. Original-history inspection now keeps the selected record,
+evidence and refresh action together; complete CodeBlocks fit beneath the existing
+sticky clearances at large zoom. The publication fetch finds no incoming commits.
+See **Computer console
 editing and operation return**. Preserve the
 separate exact-Run and Skills object contract limits already recorded below.
 The user resumed the paused goal.
@@ -6975,8 +6978,108 @@ normally rebuilt Computer ESM. The private root `flame-computer-source-BdzHmW` i
 absent. The round-tripped in-memory gzip retains **60** flat UTF-8 records
 (**5,657,434** uncompressed bytes), SHA-256
 `43b17ebb70a388eb43e79840eba515b72a4f4ef38f1d65fc32b1a88eb802f7fa`.
-Next inspect original-history selection, detail arrival and return before choosing
-another repair. The existing Runtime and receipt owners remain authoritative.
+Original-history selection, detail arrival and return are qualified in the
+following section. The existing Runtime and receipt owners remain authoritative.
+
+### Original-history reading and return
+
+Actual Wails reproduced two task failures: selecting a history record appended its
+detail after the entire list and pagination, and Refresh removed its own focused
+button before recreating it. Native focus fell to the page body. The component
+also had no expanded-record relationship or local return path. These were
+presentation/read-lifetime defects; the original receipt and command owners were
+already correct.
+
+`plugins/computer/component/component.tsx` now uses the shared controlled
+Disclosure beside the original record. Operation/time, exact identity and recorded
+status remain associated with that detail. Only the selected record expands;
+its fitting header retains identity and Refresh while reading. The same trigger
+returns to the surrounding history, without remounting the editor or introducing
+a modal, focus timer or additional navigation controller. Existing Panel controls
+remain available, including stop and exact-session revocation during pending work.
+
+`useComputer.ts` owns the selected query identity and its cancellable read. It
+retains known evidence while rereading that same identity, exposes a retry even
+after the first read fails, and marks retained evidence when a reread fails. A
+different selection cannot inherit another record's evidence. Collapsing aborts
+only this read; its later response cannot reopen the detail. Paging retains the
+last selection and original cursor contract. No read response moves later focus,
+replays historical code, invents a result or advances Runtime command state.
+Refresh uses the existing focusable-disabled boundary while pending. Both new
+labels are complete in eight catalogs.
+
+The first narrow native pass exposed a composition defect: at 200% zoom the
+60vh source plus its caption no longer fit beneath the expanded record header.
+Panel correctly used its oversized-unit fallback, leaving the caption behind
+the sticky header. `packages/ui/src/code-block.tsx` now bounds the complete literal
+CodeBlock by the window and the existing Panel/disclosure clearance variables.
+Its caption does not shrink; the source flexes and scrolls within the remainder.
+The change adds no geometry observer or competing clearance state. General
+CodeFrames retain their consumer-owned bodies, and Panel retains its oversized
+focus fallback for genuinely taller units.
+
+Better-series task, layout, writing, typography, color and accessibility guidance
+informs this scope. Read-only ZCode `CloudContentDialog.tsx` and
+`EmbeddedWebsiteHeader.tsx` reinforce object-bound actions and explicit return;
+Flame uses its existing nonmodal disclosure because this is adjacent evidence
+reading. Existing HeroUI, Radix, Arc and Ace research remains applicable without
+importing another component system. The neutral canvas, Orange/custom accent,
+approved control surfaces and shared reader typography remain with their owners.
+
+Verification:
+
+- Six of the first seven new regression cases fail before the repair. Final
+  Computer acceptance passes **40** tests through the real component SDK and an
+  isolated Runtime transport, covering original-query identity, retained evidence,
+  failed first reads, refresh failures/retry, delayed selection, collapse retirement,
+  later editor focus, paging and draft continuity. Historical mutations remain zero.
+- Final full frontend acceptance passes **431 files / 4,080 tests** after the
+  shared height repair. UI checks pass **10 files / 187 tests**, type/lint/format
+  and the independent packed UI/icon consumer. Earlier scoped UI acceptance also
+  passes **108** component/Panel tests. Web type/lint/format passes.
+- Plugin check passes **43** scripts and **16 files / 274** backend/contract tests;
+  its configured **one file / 13 cases** remain skipped. This full plugin check
+  precedes the final shared CSS repair; the final normal component rebuild,
+  reproducibility check and production module-link acceptance pass afterward.
+- Final `make check-native` passes Desktop test/vet/build and the supported Wails
+  production build. CSS-variable and production React/Runtime module-link checks
+  pass. The unrelated Runtime integration project is not run this batch.
+- Actual Wails loads the generated published Computer ESM with isolated SDK data.
+  English/light/14/explicit Orange covers unknown evidence, pending controls,
+  selection, refresh, reading, keyboard return and continued editing. Chinese/dark/
+  18/custom blue covers a **1125 × 734** native window at **200%** page zoom
+  (**562 × 367** CSS viewport, DPR 4). The final source body fits at **204.5 px**;
+  its actions begin at **133.6875 px**, below the record actions ending at
+  **120.5 px**. The original **6,713-character** input remains locally selectable
+  and contains the exact **6,244-character** draft. Its reader node and terminal
+  scroll position **3,019 px** survive Refresh. Record collapse/Enter activation,
+  draft return and continued input pass.
+- A fresh English/light/14/explicit Orange native control has **zero** observer
+  events or requests. Its **614** assets match the final observed build except
+  the two HTML entries. Keyboard return, wrapping, independent scrolling through
+  the `090` tail, refresh focus and exact draft/continued text (**6,244 / 6,246**
+  characters) pass without the observer. Source selection highlighting is checked
+  visually in this control; its exact byte assertion belongs to the observed pass.
+- Native input uses CUA; the passive observer only reads. No real Computer engine,
+  OS control/grant or live Runtime command admission is qualified. Native clipboard
+  writes, VoiceOver, OS IME and forced colors are not exercised. No browser or
+  performance suite, Claude CLI or subagent is used.
+
+Cleanup retires all five owned app instances, unregisters the private bundle and
+closes the listener. It removes **nine** new output/cache roots and **three**
+private profile/temp paths, restores **four** original files and modes and all
+**18** output-presence/**five** profile baselines. All **6,264** non-Markdown inputs
+retain their final qualified state; **13** explicit source/test/resource paths
+change from the captured base. One of **32** installed resources changes: the
+normally rebuilt Computer ESM. The read-only reference hashes remain unchanged.
+The private root `flame-computer-history-f3BVOH` is absent. The round-tripped
+in-memory gzip retains **61** flat UTF-8 records (**14,728,830** uncompressed bytes),
+SHA-256 `b7e5675c7abe9be8cb6b58bf3a07f54140d0fc245fb163ce203d37550c5dc988`.
+
+Next compare the remaining recorded-material and supporting-evidence reading paths
+against their existing shared readers and documented qualifications. Choose the
+next repair from fresh source and native evidence, without repeating this resolved
+history or draft investigation. The whole-product goal remains active.
 
 ## Approval argument review and submission
 

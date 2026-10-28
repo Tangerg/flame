@@ -118,6 +118,8 @@ export const zh = {
   "source.copied": "已复制",
   "source.wrap": "启用自动换行",
   "source.unwrap": "关闭自动换行",
+  "result.refresh": "刷新原始结果",
+  "result.stale": "保留的证据可能已过期。",
   "result.title": "已检查的原始操作",
   "result.content": "已记录内容",
   "result.image": "捕获图像 {{number}}",

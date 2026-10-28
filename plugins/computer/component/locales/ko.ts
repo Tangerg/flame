@@ -122,6 +122,8 @@ export const ko = {
   "source.copied": "복사됨",
   "source.wrap": "자동 줄 바꿈 사용",
   "source.unwrap": "자동 줄 바꿈 해제",
+  "result.refresh": "원본 결과 새로 고침",
+  "result.stale": "보관된 증거가 오래되었을 수 있습니다.",
   "result.title": "검토한 원래 작업",
   "result.content": "기록된 내용",
   "result.image": "캡처된 이미지 {{number}}",

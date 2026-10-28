@@ -114,7 +114,9 @@ export function useComputer(context: ComponentContext) {
   const [inspection, setInspection] = useState<Read<Snapshot>>();
   const [surfaceRead, setSurfaceRead] = useState<Read<Surface>>();
   const [historyRead, setHistoryRead] = useState<Read<HistoryPage>>();
-  const [resultRead, setResultRead] = useState<Read<OperationRecord>>();
+  const [resultRead, setResultRead] = useState<
+    Read<OperationRecord> & { id: string }
+  >();
   const [watchError, setWatchError] = useState<
     { kind: "ended" } | { kind: "failed"; message: string }
   >();
@@ -208,18 +210,40 @@ export function useComputer(context: ComponentContext) {
       const request = new AbortController();
       resultRequest.current = request;
       const lifetime = AbortSignal.any([signal, request.signal]);
-      setResultRead({ context, loading: true });
+      setResultRead((previous) => ({
+        context,
+        id,
+        value:
+          previous?.context === context && previous.id === id
+            ? previous.value
+            : undefined,
+        loading: true,
+      }));
       try {
         const value = await operations.query(methods.result, { id }, lifetime);
         if (!lifetime.aborted)
-          setResultRead({ context, value, loading: false });
+          setResultRead({ context, id, value, loading: false });
       } catch (error) {
         if (!lifetime.aborted)
-          setResultRead({ context, loading: false, error: failureText(error) });
+          setResultRead((previous) => ({
+            context,
+            id,
+            value:
+              previous?.context === context && previous.id === id
+                ? previous.value
+                : undefined,
+            loading: false,
+            error: failureText(error),
+          }));
       }
     },
     [context, operations, signal],
   );
+
+  const closeInspection = useCallback(() => {
+    resultRequest.current?.abort();
+    setResultRead(undefined);
+  }, []);
 
   useEffect(() => () => owner.abort(), [owner]);
 
@@ -475,6 +499,7 @@ export function useComputer(context: ComponentContext) {
     },
     loadHistory,
     inspect,
+    closeInspection,
     submit,
     busy: (method: CommandMethod) =>
       commandView.some((command) =>

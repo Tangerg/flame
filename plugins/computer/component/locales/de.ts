@@ -126,6 +126,8 @@ export const de = {
   "source.copied": "Quelltext kopiert",
   "source.wrap": "Zeilenumbruch aktivieren",
   "source.unwrap": "Zeilenumbruch deaktivieren",
+  "result.refresh": "Originalergebnis aktualisieren",
+  "result.stale": "Die gespeicherten Belege sind möglicherweise veraltet.",
   "result.title": "Geprüfte ursprüngliche Aktion",
   "result.content": "Gespeicherter Inhalt",
   "result.image": "Erfasstes Bild {{number}}",

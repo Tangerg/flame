@@ -123,6 +123,8 @@ export const es = {
   "source.copied": "Texto copiado",
   "source.wrap": "Activar ajuste de línea",
   "source.unwrap": "Desactivar ajuste de línea",
+  "result.refresh": "Actualizar resultado original",
+  "result.stale": "Las pruebas conservadas pueden estar desactualizadas.",
   "result.title": "Operación original inspeccionada",
   "result.content": "Contenido registrado",
   "result.image": "Imagen capturada {{number}}",

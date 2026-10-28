@@ -84,6 +84,14 @@ reader, wrapping follows the shared page preference, and Copy receives the exact
 original string. Long content scrolls beneath its actions. A fitting reader and
 caption enter the Panel viewport together, while raw content stays unexecuted.
 
+History expands the selected original record in place. Its identity, recorded
+status and refresh action remain with the detail; the same disclosure returns to
+the surrounding records. Rereading keeps existing evidence and focus, marks
+retained evidence when a read fails, and retries only the original query.
+Collapsing retires that read without changing the operation. Later responses do
+not reopen it or steal focus. Paging preserves the last selection and the manual
+editor draft; reading history never repeats historical actions.
+
 ## Supported deployment boundary
 
 The direct adapter supports macOS on Apple Silicon and Linux ARM64/x86-64 with
