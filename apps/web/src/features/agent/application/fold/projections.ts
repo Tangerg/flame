@@ -210,13 +210,13 @@ function categoryFields(
   switch (tool.category) {
     case "shell": {
       const command = commandToolResult(tool.result);
-      const merged = command?.output ?? asString(tool.result);
+      const output = command ? command.output : asString(tool.result);
       return {
         exitCode: command?.exitCode,
         ...(asString(tool.arguments?.command) !== undefined
           ? { command: asString(tool.arguments?.command) }
           : {}),
-        ...(merged !== undefined ? { result: merged } : {}),
+        ...(output !== undefined ? { result: output } : {}),
       };
     }
     case "edit": {
