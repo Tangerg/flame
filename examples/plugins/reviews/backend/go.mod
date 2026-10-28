@@ -4,7 +4,7 @@ go 1.27.3
 
 require (
 	github.com/Tangerg/flame/packages/go-sdk v0.1.0-qimu.20261028.1
-	github.com/Tangerg/flame/qimu v0.1.0-qimu.20261028.1
+	github.com/Tangerg/flame/qimu v0.1.0-qimu.20261028.2
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
 	github.com/Tangerg/scope/core v0.58.0
 	github.com/invopop/jsonschema v0.14.0

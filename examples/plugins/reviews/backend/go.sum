@@ -1,7 +1,7 @@
 github.com/Tangerg/flame/packages/go-sdk v0.1.0-qimu.20261028.1 h1:UuNarz4Ka5ikssgjfQRRMIY7HppoHTGcrN8kHpJUGuU=
 github.com/Tangerg/flame/packages/go-sdk v0.1.0-qimu.20261028.1/go.mod h1:pou6USvhPxOMoZXVhi736DXAZPTYQPzPHYDlviQKfWY=
-github.com/Tangerg/flame/qimu v0.1.0-qimu.20261028.1 h1:Fv9WiO1Bo4+MSaGNHzisJmJbxjMi6QhEyj2GEXYDmic=
-github.com/Tangerg/flame/qimu v0.1.0-qimu.20261028.1/go.mod h1:uGlLRUYXDfFZvsuAv+I88PHtYeIX+w2sK5CJLGXu/qA=
+github.com/Tangerg/flame/qimu v0.1.0-qimu.20261028.2 h1:YvydkZRK0JJViYZJeidGXcHjEwS98X68d16dd/dZO4A=
+github.com/Tangerg/flame/qimu v0.1.0-qimu.20261028.2/go.mod h1:uGlLRUYXDfFZvsuAv+I88PHtYeIX+w2sK5CJLGXu/qA=
 github.com/Tangerg/go-sdk v1.8.1-scope.3 h1:hMC4qrvwu38L4/bLwnPiCYi9BTRFQxGb6Cs97pa/CzQ=
 github.com/Tangerg/go-sdk v1.8.1-scope.3/go.mod h1:9ZBcxdycY3/8/I1dCH3Uo5rCY3Run9Y4ZmEmiQIulUw=
 github.com/Tangerg/scope/core v0.58.0 h1:9qVRiN+9++zUiWpNoGCjLuusRGLnZiUjC58auS7p4u8=
