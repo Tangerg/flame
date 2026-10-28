@@ -11,6 +11,7 @@ export function useAppearanceEdit(): AppearanceEdit {
 }
 export {
   DEFAULT_ACCENT,
+  DEFAULT_CUSTOM_THEME,
   PAPER_TEXTURES,
   UI_DENSITY_MODES,
   type PaperTexture,

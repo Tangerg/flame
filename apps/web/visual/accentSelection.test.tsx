@@ -30,9 +30,8 @@ it.each([
     await loadPluginsForTest(defaultAccents);
     testClient.theme.store.setState({ accent });
     testClient.render(<AccentSection />);
-    const selected = screen
-      .getAllByLabelText(name)
-      .find((node) => node.tagName !== "INPUT") as HTMLElement;
+    const trigger = screen.getByRole("button", { name });
+    const selected = trigger.closest("[data-focus-proxy]") ?? trigger;
     const swatch = selected.querySelector<HTMLElement>("span[aria-hidden][style]")!;
     const mark = selected.querySelector<HTMLElement>("[data-slot='accent-selection-mark']")!;
     expect(testClient.theme.store.getState().accent).toBe(accent);

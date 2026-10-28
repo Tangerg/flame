@@ -6,6 +6,7 @@ import { type Paired } from "@/lib/persistedStore";
 import {
   DEFAULT_ACCENT,
   DEFAULT_CONTRAST,
+  DEFAULT_CUSTOM_THEME,
   DEFAULT_PAPER_TEXTURE_STRENGTH,
   DEFAULT_UI_DENSITY,
   PAPER_TEXTURES,
@@ -46,7 +47,7 @@ export function createAppearanceStore(storage: () => Storage) {
         theme: "system",
         visualStyle: "flame",
         accent: DEFAULT_ACCENT,
-        customTheme: { bg: "#0f1117", fg: "#e6e8ee" },
+        customTheme: { ...DEFAULT_CUSTOM_THEME },
         contrast: DEFAULT_CONTRAST,
         uiFont: "",
         codeFont: "",

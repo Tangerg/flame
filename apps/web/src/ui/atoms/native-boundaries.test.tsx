@@ -7,21 +7,26 @@ prepareTestClient(() => {
   finishTestClient(() => owned.dispose());
 });
 import { screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ColorPickerInput } from "@/ui/atoms/color-picker-input";
 import { TextLink } from "@/ui/atoms/text-link";
 import { HiddenFileInput } from "@/ui/atoms/hidden-file-input";
 describe("native design-system boundaries", () => {
   it("owns browser-native input types inside atoms", () => {
-    testClient.render(
+    const { container } = testClient.render(
       <>
         <HiddenFileInput aria-label="Attach" accept="image/*" />
-        <ColorPickerInput aria-label="Accent" />
+        <ColorPickerInput aria-label="Accent" value="#fb6e30" onValueChange={vi.fn()} />
       </>,
     );
 
     expect(screen.getByLabelText("Attach").getAttribute("type")).toBe("file");
-    expect(screen.getByLabelText("Accent").getAttribute("type")).toBe("color");
+    expect(container.querySelector('input[type="color"]')?.getAttribute("aria-hidden")).toBe(
+      "true",
+    );
+    expect(screen.getAllByRole("button", { name: "Accent", description: "#FB6E30" })).toHaveLength(
+      1,
+    );
   });
 
   it("owns safe external-link policy", () => {

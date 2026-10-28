@@ -43,6 +43,22 @@ Each active settings tab panel owns its scroll viewport and keyboard focus.
 Shared Select closes when Base UI reports its trigger fully clipped; dismissal
 keeps the current value and viewport position, then returns focus to that panel.
 
+Custom foreground and background edits remain a local paired preview until Apply.
+The palette owner reports their minimum text contrast over its actual reading
+planes and paper bounds; the editor admits pairs at the existing 4.5:1 text
+threshold without altering either selected color. Discard returns to the current
+applied pair. Restore default colors changes only that pair, including recovery
+from an already unreadable saved theme; its recovery action uses the independent
+CTA colors in that state. Settings category changes retain the unfinished preview,
+while closing Settings or choosing another theme ends it. Applying, discarding and
+restoring retain the active action's focus. Other appearance preferences and
+persisted color formats retain their existing owners.
+Shared color entries use the existing button keyboard contract and describe their
+selected hexadecimal value. Activation opens the actual browser-native color
+picker through `showPicker()` within that user gesture. The native carrier is not
+a second keyboard or accessibility target; the visible swatch or row owns the
+focus perimeter. Both custom theme colors and custom accent use this boundary.
+
 Settings categories mount on first visit and retain their inline inputs and pending
 feedback for the lifetime of the open Settings view. Inactive categories retain
 layout and native reading position while invisible and inert; their visibility

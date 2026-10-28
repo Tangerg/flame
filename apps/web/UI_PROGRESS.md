@@ -21,10 +21,13 @@ The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flam
 is on `codex/ui-feedback-local-1026`. Targeted Diff reads and accepted comparison
 context are published to main as `f9241b46b`, with receipt `8a16a1824`. Paired
 Diff reading is published as `3a5cdba36`, and Settings task continuity as
-`d3f7ff83e`. The current Schedules batch has completed module/native qualification
-and cleanup under **Accepted Run receipts and native command focus** below.
-Next trace custom foreground/background editing, contrast and recovery against
-the current theme palette owner before selecting another repair.
+`d3f7ff83e`. Schedules receipt navigation and command focus are published as
+`5be573459`. The current color-editing batch has completed module/native
+qualification and cleanup under **Custom color editing and native keyboard entry**
+below. Next trace retained field visibility through native zoom against actual
+production bootstrap and scrolling owners; the private fixture finding is not yet
+a qualified production defect. Preserve the separate exact-Run and Skills object
+contract limits already recorded below.
 The user resumed the paused goal.
 Completed batches are verified, explicitly committed and pushed to main under the
 goal publication policy. Preserve parallel work in the primary checkout. Do not
@@ -17212,6 +17215,116 @@ receipts. It is **1,769,850 bytes**, SHA-256:
 **Approve** this inspected Settings installation and return flow. Whole-product
 review continues. Next trace Schedules' structured Run receipt and the Host's
 existing Session/Run navigation owner before choosing a public component action.
+
+### Custom color editing and native keyboard entry
+
+The 2026-10-28 batch starts from published `5be573459`. Two high-impact findings
+drive one complete Appearance task: immediate per-field writes can make the
+whole UI unreadable before a color pair is finished, and native WebKit Tab
+navigation skips the original color wells. The initial editor baseline exposes
+**8 failures**. Native examination confirms the skipped wells in both ordinary
+and zoomed navigation. Explicit `tabIndex=0` also fails in the native host and is
+discarded; it is not part of the delivered repair.
+
+Custom foreground/background edits now remain one local draft until **Apply
+colors**. `paletteThemePreview` publishes the same contribution as the existing
+palette owner and measures its primary text over that owner's actual reading
+planes and paper bounds. `customPalette` supplies the same custom definition to
+the installed theme and preview. The editor admits a changed pair only at the
+existing **4.5:1** threshold, without replacing either chosen color. Displayed
+ratios are floored before localized formatting; acceptance uses the unrounded
+measurement. A plain canvas pair that passes while a derived surface fails is
+rejected, as is a pair whose paper paint crosses the threshold.
+
+**Discard changes** returns to the current applied pair; an independent preference
+change does not discard the preview. Existing Settings category retention preserves
+the draft, while closing Settings or choosing another theme retires it. Apply
+updates both colors in one preference transition. Apply and Discard remain
+focusably unavailable afterward, preserving their action node and focus while
+rejecting repeat activation. **Restore default colors** clears the preview and
+changes only the pair using the same default constant as the appearance store.
+Theme, accent, font, contrast, paper and persisted color formats keep their owners.
+Already unreadable stored pairs remain explicit user choices until recovery;
+their recovery action uses the independent CTA fill and ink so it stays readable.
+
+The shared `ColorPickerInput` now owns one named button entry, its selected hex
+description and a native carrier excluded from duplicate Tab/accessibility scope.
+The existing `ButtonPrimitive` owns keyboard activation; synchronous `showPicker()`
+opens the real system palette within that gesture. No separate picker, keyboard
+handler, focus-return effect, global listener or color state is introduced. Both
+custom colors and custom accent use this boundary. Their old raw-input props and
+label wrappers migrate together to the current value callback and visible focus
+proxy. HeroUI's actual local `color-picker/with-fields` and `color-field/form-example`
+inform field grouping and explicit application. The [HTML Standard's picker
+contract](https://html.spec.whatwg.org/multipage/input.html#dom-input-showpicker)
+confirms the native user-activation boundary. Existing Radix focus and Arc/Ace
+surface/composition research remains applicable.
+
+Six better domains are covered: accessible names, selected-value descriptions and
+native keyboard entry (accessibility); one bounded field grid, wrapping actions
+and existing Settings scrolling (layout); actual 14/18px text, monospace values
+and localized ratios (typography); Apply/Discard/Restore and an actual minimum
+failure reason (writing); palette-owned measurements, independent recovery ink,
+default Orange and custom purple (colors); quiet resting fills, visible focus
+proxies and existing button state motion without new effects (UI). The new labels
+and feedback are supplied in all eight Host locales.
+
+Final focused checks pass **6 files / 189 tests**, covering paired acceptance,
+unavailable action guards, discard/latest applied values, default-only recovery,
+theme retirement, independent preference changes, paper remeasurement, native
+entry semantics and accent selection ink. The final full Web check passes
+**428 files / 4,054 tests** and all subsequent owner, style, token, locale,
+boundary, resource and production-bundle gates. `make check-native` completes
+Desktop test/vet/build, Web staging and production Wails build. The existing
+duplicate `-lobjc` warning remains non-fatal. There are no SDK, Runtime, protocol,
+provider or dependency changes. All **15** tracked installed/sample component ESM
+files retain their accepted hashes.
+
+Actual Wails qualification uses six stopped generations of one private bundle.
+Final-source Chinese18, custom `#7C5CFC` and Cotton5 verify Theme → Background →
+Foreground, Enter/Space native picking, cancellation and return to the same
+button, retained category drafts, Apply and Restore focus, and keyboard access to
+custom accent. Observed geometry includes **1440 × 900 / DPR 2**, **1121 × 729 /
+DPR 2** and native **200% at 560 × 364 / DPR 4**. Focus transitions reveal controls
+in the existing active Settings tabpanel; BODY/HTML remain at zero scroll. The
+applied pair changes exactly as selected, and recovery retains the purple accent,
+18px type and Cotton5. Native inspection of stored `#808080` foreground/background
+measures **1:1** in the preview before explicit recovery. The visible recovery
+button's actual computed white ink and `rgb(121, 89, 248)` fill measure
+**4.56779605541403:1**, independently of that bad pair.
+
+The final observation-free Orange14/Paper Off native control repeats mouse and
+keyboard picking, isolated preview, Apply focus, Restore focus, Settings close and
+return to an unchanged bilingual Composer draft, then continued typing. All
+**607 non-HTML product files** match across its **609-file** observed/clean builds;
+only the two HTML entries differ. The clean control produces **zero** observer
+records. Appearance preferences use their real private WebKit store; Runtime data
+uses the existing read-only visual fixture. Live provider/Run execution, VoiceOver
+speech, OS IME, forced colors/RTL and a separate minimum-macOS machine are not
+qualified. No browser visual suite or performance benchmark is run.
+
+One separate native reading candidate remains: after zoom alone, the previously
+focused field can retain DOM focus below the viewport until the next Tab
+transition. The latter reveals the target and completes this color task. Trace
+production bootstrap, viewport observation and the actual scroll owner before
+changing a shared reader or native chrome; do not call that gap repaired here.
+Also inspect preset identity for valid uppercase accent values before normalizing
+stored choices: the current comparison still uses raw hex casing.
+
+Cleanup unregisters the bundle, retires all six process generations and closes the
+passive local observer. It removes **8** newly created output/cache roots and **4**
+owned app Library/temp paths. All **4** original files and modes, **14** output
+presence baselines and **5** Library baselines are restored. All **5,920** frozen
+non-Markdown inputs pass preservation checks, including **5,899** outside the
+**21** owned source changes; the two new source files are included in that freeze.
+The private root `flame-custom-colors-1028-exylSF` is absent. The in-memory archive
+round-trips before and after deletion and retains **43** flat UTF-8 records,
+**86** passive observations, six generation receipts, source/resource/asset maps,
+computed-color measurements and native hashes; **3,490,754 bytes**, SHA-256
+`34ec12d98d567f20ed0d31d0a51b661d1c487429b340aea02141e4b397d7cfb2`.
+Primary-checkout work and shared caches/processes remain untouched. The scoped
+color-editing task is qualified within these bounds; whole-product and award-level
+acceptance remain open.
 
 ## Command palette / shortcuts audit
 

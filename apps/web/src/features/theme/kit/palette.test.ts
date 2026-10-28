@@ -14,6 +14,7 @@ import {
 import { toOklch } from "@/features/theme/kit/oklab";
 import {
   paletteThemeContribution,
+  paletteThemePreview,
   SCHEME_BASE,
   type PaletteTheme,
 } from "@/features/theme/kit/palette";
@@ -265,6 +266,42 @@ describe.each(APPEARANCES)("paper reading contrast in %s", (_label, subject) => 
 });
 
 describe("palette themes", () => {
+  it("reports unreadable declared colors without replacing them", () => {
+    const preview = paletteThemePreview(
+      theme("light", { background: "#808080", foreground: "#808080" }),
+      "#fb6e30",
+      25,
+    );
+    expect(preview.textContrast).toBeCloseTo(1, 10);
+    expect(preview.contribution.tokens).toMatchObject({
+      "color-bg": "#808080",
+      "color-text": "#808080",
+    });
+  });
+
+  it("includes derived reading planes in the preview's minimum text contrast", () => {
+    const preview = paletteThemePreview(
+      theme("light", { background: "#ffffff", foreground: "#767676" }),
+      "#fb6e30",
+      25,
+    );
+    expect(contrastRatio("#767676", "#ffffff")).toBeGreaterThanOrEqual(WCAG_AA_TEXT);
+    expect(preview.textContrast).toBeLessThan(WCAG_AA_TEXT);
+  });
+
+  it("includes the existing worst-case paper paint in the preview", () => {
+    const subject = theme("light", { background: "#ffffff", foreground: "#686868" });
+    expect(paletteThemePreview(subject, "#fb6e30", 25).textContrast).toBeGreaterThanOrEqual(
+      WCAG_AA_TEXT,
+    );
+    const paper = paletteThemePreview(subject, "#fb6e30", 25, {
+      paperTexture: "xuan",
+      paperTextureStrength: 5,
+    });
+    expect(paper.textContrast).toBeLessThan(WCAG_AA_TEXT);
+    expect(paper.contribution.tokens?.["color-text"]).toBe("#686868");
+  });
+
   it("emit one role vocabulary for built-in, custom and partial palettes", () => {
     const keys = (subject: PaletteTheme) => Object.keys(tokensOf(subject)).sort();
     const builtin = keys(theme("light"));

@@ -4,6 +4,7 @@ import { type AppearancePreference } from "@/features/theme/kit/appearance";
 import {
   WCAG_AA_TEXT,
   compositeColor,
+  contrastRatio,
   controlEdge,
   focusRing,
   legibleMix,
@@ -94,11 +95,17 @@ function elevatedPlane(scheme: Scheme, neutral: Scale): string {
 }
 
 export function paletteThemeContribution(
+  ...args: Parameters<typeof paletteThemePreview>
+): ColorThemeSpec {
+  return paletteThemePreview(...args).contribution;
+}
+
+export function paletteThemePreview(
   theme: PaletteTheme,
   preferredAccent: string,
   contrast: number,
   paper?: Pick<AppearancePreference, "paperTexture" | "paperTextureStrength">,
-): ColorThemeSpec {
+) {
   const { scheme, palette } = theme;
   const background = palette.background ?? SCHEME_BASE[scheme].background;
   const foreground = palette.foreground ?? SCHEME_BASE[scheme].foreground;
@@ -146,7 +153,7 @@ export function paletteThemeContribution(
         : declared,
     );
 
-  return {
+  const contribution: ColorThemeSpec = {
     id: theme.id,
     label: theme.label,
     scheme,
@@ -199,5 +206,9 @@ export function paletteThemeContribution(
       "color-cta-hover": step(accent, 10),
       "color-cta-text": onSolid,
     },
+  };
+  return {
+    contribution,
+    textContrast: Math.min(...backgrounds.map((plane) => contrastRatio(text, plane))),
   };
 }

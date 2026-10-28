@@ -13,6 +13,8 @@ export const DEFAULT_CONTRAST = 25;
 
 export const DEFAULT_ACCENT = FLAME_ORANGE;
 
+export const DEFAULT_CUSTOM_THEME = { bg: "#0f1117", fg: "#e6e8ee" } as const;
+
 export const PAPER_TEXTURES = ["off", "xuan", "cotton", "grain"] as const;
 
 export type PaperTexture = (typeof PAPER_TEXTURES)[number];

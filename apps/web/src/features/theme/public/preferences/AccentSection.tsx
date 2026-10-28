@@ -1,5 +1,4 @@
 import * as stylex from "@stylexjs/stylex";
-import { useId } from "react";
 import { useT } from "@/lib/i18n/index";
 import { ACCENT } from "@/features/theme/public/extensionPoints";
 import { useExtensionPoint } from "@/extensions/selectors/extensions";
@@ -83,13 +82,10 @@ function CustomAccentPicker({
   onChange: (hex: string) => void;
   label: string;
 }) {
-  const inputId = useId();
   return (
-    <label
-      htmlFor={inputId}
+    <span
       data-focus-proxy=""
       title={label}
-      aria-label={label}
       className={stylex.props(a.target, corner.pill).className}
     >
       <span
@@ -98,13 +94,8 @@ function CustomAccentPicker({
         style={{ background: isActive ? value : RAINBOW_HINT }}
       />
       <SelectionMark selected={isActive} fill={value} />
-      <ColorPickerInput
-        id={inputId}
-        aria-label={label}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    </label>
+      <ColorPickerInput aria-label={label} value={value} onValueChange={onChange} />
+    </span>
   );
 }
 
