@@ -51,8 +51,7 @@ export const ko: Record<string, string> = {
   "map.description": "설명",
   "interaction.running": "작업 결과를 기다리는 중…",
   "interaction.failed": "작업에 실패했습니다.",
-  "interaction.complete":
-    "작업이 접수되었습니다. 이어지는 대화는 아직 실행 중일 수 있습니다.",
+  "interaction.complete": "작업이 접수되었습니다.",
   "interaction.unknown":
     "원래 작업의 결과가 확인되지 않았습니다. 다시 제출하기 전에 원래 작업을 복구하세요.",
   "interaction.recover": "원래 작업 복구",

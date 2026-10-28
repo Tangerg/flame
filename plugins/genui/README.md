@@ -166,6 +166,13 @@ application controller awaits each effect. Invalid forms do not dispatch their
 action. A pending action blocks duplicate submission. Cancellation or a known
 failure stops the remaining steps and is shown explicitly.
 
+An invalid form submission focuses its first available invalid control in the
+current form and visible view. Field-specific errors describe their input,
+selection trigger or choice group rather than broadcasting a live update on
+every edit. The field views project the document owner's validation; they do not
+admit or reject execution. Drafts, hidden-view validation and action dispatch
+retain their existing owners.
+
 An operation request supplies its local ID, installation, contribution, method,
 optional resource target and an input expression. The model cannot supply the
 admitted contract, release digest or operation kind. The backend resolves these

@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Current source continues from main `244c5d270`, which qualifies native disabled-button navigation conditions. Tool results now retain a local keyboard context when completion or a contribution update replaces the focused presentation; see **Result presentation and local reading focus**. Native verification, regression checks and resource retirement are complete. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
+Current source continues from main `fd7c0b0ca`, which preserves local reading focus when a Tool result is replaced. Generated forms now return invalid submissions to the first available error field and connect choice errors to their controls; see **Generated-form error recovery**. Native verification, regression checks and resource retirement are complete. The next observed issue is keeping a fitting composite field's heading within the conversation reading frame. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -56,9 +56,11 @@ toolbar navigation and continued drafting. Its native reverse-navigation
 follow-up compares plain HTML, shared and upstream controls, then qualifies the
 pure keyboard path in the actual workspace, published as `244c5d270`. The next
 result-presentation repair keeps completed evidence, its local actions, source
-return and continued drafting together. Its publication fetch finds zero incoming
-main commits at `244c5d270`; no repeated merge or unrelated integration check is
-needed.
+return and continued drafting together, published as `fd7c0b0ca`. The generated-form
+follow-up qualifies invalid submission, ordered correction, local acceptance,
+choice feedback and continued authoring. Its publication fetch finds zero incoming
+main commits at `fd7c0b0ca`; merging reports already up to date. No unrelated
+Runtime integration suite is repeated for this presentation repair.
 See **Computer console
 editing and operation return**. Preserve the
 separate exact-Run and Skills object contract limits already recorded below.
@@ -1969,6 +1971,113 @@ Verdict: **Approve for these invalid-field focus and settings-return tasks**.
 This local repair qualifies the inspected domains and states only. The complete
 award-level UI goal remains open; subsequent work needs fresh task evidence.
 No remote push or primary checkout integration occurs.
+
+### Generated-form error recovery
+
+At main `fd7c0b0caf8964edadb7fe77e55191709d90a3b5`, the actual Wails GenUI
+report rejects an invalid numeric draft correctly, but leaves focus on
+**Apply scenario**. After scrolling through the expanded form, the invalid
+weeks control is at **y = -334 CSS px** and the general failure is at **y = -643 px**;
+neither appears beside the visible submission area. Tab continues to Reset.
+The failure is the submission-to-field handoff, not the document's validation
+or execution decision. Select and MultiSelect also render an error without
+associating it with their trigger or group.
+
+`plugins/genui/component/fields.tsx` now focuses the first available invalid
+control within the submitted form, excluding hidden, inert and unavailable
+controls. This synchronous handoff uses the field views' existing validation
+projection. `Presentation.validateAction` and the interaction controller still
+own admission and dispatch, including conditional views. Valid submission keeps
+its current focus. The OpenUI store retains the only local draft representation.
+Field errors describe their controls instead of broadcasting on every edit.
+
+The shared Select accepts `invalid` and `aria-describedby`, exposing its existing
+semantic error boundary on the trigger. FormGroup accepts invalid state and a
+description for composite choices. GenUI connects those contracts without
+changing Base UI's popup, selection or focus ownership. All eight acceptance
+translations retain the existing **action accepted** boundary and remove the
+unrelated suggestion that a conversation might be running after a purely local
+calculation. No Runtime lifecycle, receipt or recovery contract changes.
+
+Read-only HeroUI evidence is its actual `Form` adapter and form/FieldError
+composition tests under `/Users/tangerg/Desktop/heroui/packages/react`.
+The better-interface domains guide the review; these references are design
+evidence rather than native Flame qualification.
+
+| Domain        | Inspected outcome                                                                                 | Limit                                                            |
+| ------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Accessibility | Invalid input and choices receive logical focus; field errors have explicit descriptions.         | VoiceOver announcements are not verified.                        |
+| Layout        | Long forms, wheel reading, narrow workspaces and 200% correction remain operable.                 | A composite heading can still clip above the conversation frame. |
+| Typography    | EN 14 px and ZH 18 px retain complete field errors and result text.                               | Other scripts and OS IME are not newly qualified.                |
+| Colors        | Native invalid edges coexist with the existing keyboard perimeter in Orange/light and blue/dark.  | No new contrast or arbitrary-theme matrix is claimed.            |
+| UI            | Ordered correction, valid acceptance, reset, Select selection and return retain the current task. | Existing motion and reduced-motion owners are unchanged.         |
+| Writing       | Acceptance feedback is shorter and does not infer another task's progress.                        | Accepted document labels remain authored content.                |
+
+| Severity         | Location                             | Before                                                                                   | After                                                                         | Why                                                              |
+| ---------------- | ------------------------------------ | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| MEDIUM, repaired | GenUI FormView                       | A rejected submission leaves the user at the footer with both errors above the viewport. | The first available invalid control receives focus; its draft remains intact. | The user can identify and correct the field directly.            |
+| MEDIUM, repaired | GenUI SelectView and MultiSelectView | Error text is detached from the control's accessible description.                        | The trigger or choice group exposes invalid state and describes its error.    | The field-to-feedback relationship is programmatic (WCAG 1.3.1). |
+
+Native qualification uses four isolated Wails instances and the actual installed
+GenUI ESM through the captured-result component lifecycle:
+
+- EN/light/14 px/Flame Orange: retain a Composer draft, open the report, invalidate
+  both team and weeks, expand the advanced form and submit with the pointer.
+  Focus returns to team; correcting it and pressing Enter returns to weeks.
+  Both targets are at **y = 108 px**, with their errors visible. A valid six-week
+  submission retains field focus and displays the applied scenario. Reset restores
+  the original form values. Keyboard Select choice, Escape then Tab to the native
+  date control, file-tree navigation and the explicit Back action work. The original
+  draft continues as `Continue after correcting the delivery scenario. Review complete.`.
+- ZH/dark/18 px/`#3366ff`: freeze only accepted fixture inputs to require the three
+  choice fields, with no operations. At **562 × 367 CSS px / DPR 4 / 200%**, keyboard
+  submission returns in order to Delivery track, Generative UI and Internal.
+  Selection, Space and an arrow key correct them; their inline errors retire.
+  Valid acceptance retains Apply focus and reports `Action accepted` in the host
+  locale. The local result remains readable by wheel. Full-width file material,
+  keyboard access to its body, the explicit Close action and Actual Size preserve
+  the report's selections and draft. Continued text is
+  `校验选择项后继续。 已核对，继续。`.
+- The final instance removes the passive observer and repeats the three-choice
+  correction/acceptance sequence at 200%, followed by Actual Size and continued
+  drafting. All **614** resources match the observed build except the two HTML
+  entries that contain the observer. It makes **zero** observation requests.
+
+All UI input uses native CUA. The passive script only reads focus, keys, geometry,
+descriptions and styles. Private fixture inputs do not alter the accepted document
+model, production router or component code. Local scenario actions do not call a
+Runtime or provider. The file body qualifies reading/navigation only. Live GenUI
+commands, review/unknown recovery, VoiceOver, forced colors, RTL and other platforms
+are not newly qualified; existing controller tests retain their execution coverage.
+
+The eight new regressions fail against the original source (**8 failed / 28 passed**)
+and pass after the repair. Final verification passes **3 GenUI Web files / 62 tests**,
+**3 installed-component files / 29 tests**, the full UI check (**10 files / 187 tests**
+and one independent packed consumer), and the full plugin check (**43 author checks;
+16 backend/contract files / 274 tests**). Its existing **13 Linux-only tests** are
+skipped on macOS. Web typecheck, lint, design-system/token/chrome/module checks,
+production bundle checks and `make check-native` pass. The independent GenUI package
+and ZIP build pass; its component exactly matches the qualified installed resource.
+All builds and checks run serially. Browser suites, performance benchmarks, Claude
+CLI and subagents do not run. No persistence migration is needed. Live installed
+releases retain their normal explicit selection boundary.
+
+All four native instances are stopped, the bundle is unregistered and the loopback
+observer is closed. Cleanup removes **9** newly created output/cache roots and
+**3** owned profile paths, restores **4** original files and their modes, and passes
+all **18** output-presence and **5** profile baselines. All **6,266** qualified
+non-Markdown inputs, **32** installed resources, the two inspected reference files,
+the original two-file UI cache and empty Web config cache remain intact.
+The private root `flame-genui-form-BKHZhP` is absent. The verified in-memory archive
+contains **63** UTF-8 records, **15,509,972** uncompressed bytes and **2,265,495** gzip
+bytes; SHA-256 `3d90cd4d0087936baf582cdb66d27b46026158253be4457d0d880651c6988d02`.
+The primary checkout, user data and unrelated processes remain untouched.
+
+The form correction tasks are approved within these bounds. The next observed
+reading issue is **not fixed here**: when submission returns to a composite choice
+at 200%, its caption can start above the conversation header even though the option
+and inline error remain visible. Inspect the existing conversation reading-frame
+owner and shared focus-unit contract next. The whole-product UI goal remains open.
 
 ### Command focus and visible pane boundaries
 

@@ -51,8 +51,7 @@ export const en: Record<string, string> = {
   "map.description": "Description",
   "interaction.running": "Waiting for the operation…",
   "interaction.failed": "The operation failed.",
-  "interaction.complete":
-    "Action accepted. A continued conversation may still be running.",
+  "interaction.complete": "Action accepted.",
   "interaction.unknown":
     "The original action has not been confirmed. Recover it before submitting again.",
   "interaction.recover": "Recover original action",

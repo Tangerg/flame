@@ -185,6 +185,10 @@ sizes and portable filters use this same positioning contract. The popup keeps
 the shared entry motion but closes without an exit transition: Base UI holds
 its focus manager until the popup unmounts, so an animated exit delays focus
 return and a quick Tab after Escape would leave focus on the document.
+`Select.invalid` exposes the same semantic invalid state and field boundary as
+text input. Its `aria-describedby` links the trigger to field-specific feedback;
+`FormGroup` accepts that description and invalid state for composite choices.
+Consumers own validation and error content.
 When Base UI reports the trigger fully clipped, the Select retires its own root
 without choosing a value. It returns focus to the nearest focusable scrolling
 owner without moving that viewport, and preserves any later outside focus.

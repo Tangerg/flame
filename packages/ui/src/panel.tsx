@@ -8,6 +8,7 @@ import {
   useLayoutEffect,
   useMemo,
   useRef,
+  type AriaAttributes,
   type ComponentPropsWithRef,
   type ReactNode,
 } from "react";
@@ -897,13 +898,15 @@ export function FormField({
 export function FormGroup({
   label,
   children,
+  ...props
 }: {
   label: string;
   children: ReactNode;
-}) {
+} & Pick<AriaAttributes, "aria-invalid" | "aria-describedby">) {
   const labelId = useId();
   return (
     <div
+      {...props}
       role="group"
       aria-labelledby={labelId}
       data-focus-unit=""

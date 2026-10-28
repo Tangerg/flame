@@ -50,7 +50,7 @@ export const zhTW: Record<string, string> = {
   "map.description": "說明",
   "interaction.running": "正在等候操作結果…",
   "interaction.failed": "操作失敗。",
-  "interaction.complete": "動作已接受。後續對話可能仍在執行。",
+  "interaction.complete": "動作已接受。",
   "interaction.unknown": "原動作尚未確認。請先復原原動作，確認結果後再提交。",
   "interaction.recover": "復原原動作",
   "interaction.review": "確認業務命令",

@@ -50,7 +50,7 @@ export const zh: Record<string, string> = {
   "map.description": "说明",
   "interaction.running": "正在等待操作结果…",
   "interaction.failed": "操作失败。",
-  "interaction.complete": "动作已接受。继续的对话可能仍在执行。",
+  "interaction.complete": "动作已接受。",
   "interaction.unknown":
     "原动作尚未确认。请先恢复原动作，再次提交前需确认其结果。",
   "interaction.recover": "恢复原动作",

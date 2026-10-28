@@ -509,6 +509,184 @@ it("validates date bounds through the document owner before any form action", as
   expect(screen.getByText("Date must be on or before 2027-12-31.")).toBeTruthy();
 });
 
+it("returns an invalid report submission to its first field without losing the draft", async () => {
+  show(GENUI_REPORT);
+  const team = screen.getByRole("textbox", { name: "Delivery team" });
+  const weeks = screen.getByRole("textbox", { name: "Delivery weeks" });
+  const form = screen.getByRole("form", { name: "Delivery scenario" });
+  const submit = screen.getByRole("button", { name: "Apply scenario" });
+  await act(async () => {});
+  fireEvent.change(team, { target: { value: "" } });
+  fireEvent.change(weeks, { target: { value: "-" } });
+  submit.focus();
+  await act(async () => {
+    fireEvent.submit(form);
+  });
+  expect(window.document.activeElement).toBe(team);
+  expect((weeks as HTMLInputElement).value).toBe("-");
+  expect(screen.getByText("No scenario has been applied.")).toBeTruthy();
+
+  fireEvent.change(team, { target: { value: "Review team" } });
+  submit.focus();
+  await act(async () => {
+    fireEvent.submit(form);
+  });
+  expect(window.document.activeElement).toBe(weeks);
+  fireEvent.change(weeks, { target: { value: "6" } });
+  submit.focus();
+  await act(async () => {
+    fireEvent.submit(form);
+  });
+  expect(window.document.activeElement).toBe(submit);
+  expect(screen.getByText("Applied scenario for Review team: 6 delivery weeks.")).toBeTruthy();
+  expect(screen.getByText("Action accepted.").getAttribute("role")).toBe("status");
+});
+
+it.each(["Input", "TextArea", "Select", "MultiSelect", "RadioGroup", "DatePicker"] as const)(
+  "connects the %s validation to its control and focuses it on submission",
+  async (type) => {
+    const choice = ["Select", "MultiSelect", "RadioGroup"].includes(type);
+    const field: UiNode = {
+      id: "requiredField",
+      type,
+      props: {
+        field: "draft",
+        label: "Required detail",
+        ...(type === "DatePicker" ? { min: "2026-10-27" } : { rules: { required: true } }),
+        ...(choice ? { options: [{ value: "first", label: "First option" }] } : {}),
+      },
+    };
+    show(
+      document(
+        [
+          {
+            id: "form",
+            type: "Form",
+            props: { action: "save", submitLabel: "Save local" },
+            children: [field],
+          },
+          { id: "output", type: "Text", props: { text: { state: "saved" } } },
+        ],
+        [
+          {
+            id: "draft",
+            value: type === "DatePicker" ? "2026-01-01" : type === "MultiSelect" ? [] : "",
+          },
+          { id: "saved", value: "Not saved" },
+        ],
+        [
+          {
+            id: "save",
+            steps: [{ type: "set", state: "saved", value: { literal: "Saved locally" } }],
+          },
+        ],
+      ),
+    );
+    await act(async () => {});
+    const target =
+      type === "Select"
+        ? screen.getByRole("combobox", { name: "Required detail" })
+        : type === "MultiSelect" || type === "RadioGroup"
+          ? screen.getByRole(type === "MultiSelect" ? "checkbox" : "radio", {
+              name: "First option",
+            })
+          : screen.getByLabelText("Required detail");
+    const validation =
+      type === "MultiSelect" || type === "RadioGroup"
+        ? screen.getByRole(type === "MultiSelect" ? "group" : "radiogroup", {
+            name: "Required detail",
+          })
+        : target;
+    expect(validation.getAttribute("aria-invalid")).toBe("true");
+    const description = window.document.getElementById(
+      validation.getAttribute("aria-describedby") ?? "",
+    );
+    expect(description?.textContent).toBe(
+      type === "DatePicker" ? "Date must be on or after 2026-10-27." : "This field is required.",
+    );
+    const submit = screen.getByRole("button", { name: "Save local" });
+    submit.focus();
+    await act(async () => {
+      fireEvent.submit(screen.getByRole("form", { name: "Save local" }));
+    });
+    expect(window.document.activeElement).toBe(target);
+    expect(screen.getByText("Not saved")).toBeTruthy();
+  },
+);
+
+it("keeps invalid-field focus inside the submitted form and its visible view", async () => {
+  show(
+    document(
+      [
+        {
+          id: "outside",
+          type: "Input",
+          props: { field: "outside", label: "Other draft", rules: { required: true } },
+        },
+        {
+          id: "form",
+          type: "Form",
+          props: { action: "save", submitLabel: "Save local" },
+          children: [
+            {
+              id: "tabs",
+              type: "Tabs",
+              props: {
+                field: "tab",
+                items: [
+                  { value: "hidden", label: "Other view" },
+                  { value: "current", label: "Current view" },
+                ],
+              },
+              children: [
+                {
+                  id: "hidden",
+                  type: "Input",
+                  props: { field: "hidden", label: "Hidden draft", rules: { required: true } },
+                },
+                {
+                  id: "current",
+                  type: "Input",
+                  props: { field: "current", label: "Current draft", rules: { required: true } },
+                },
+              ],
+            },
+          ],
+        },
+        { id: "output", type: "Text", props: { text: { state: "saved" } } },
+      ],
+      [
+        { id: "outside", value: "" },
+        { id: "hidden", value: "" },
+        { id: "current", value: "" },
+        { id: "tab", value: "current" },
+        { id: "saved", value: "Not saved" },
+      ],
+      [
+        {
+          id: "save",
+          steps: [{ type: "set", state: "saved", value: { literal: "Saved locally" } }],
+        },
+      ],
+    ),
+  );
+  await act(async () => {});
+  const submit = screen.getByRole("button", { name: "Save local" });
+  submit.focus();
+  await act(async () => {
+    fireEvent.submit(screen.getByRole("form", { name: "Save local" }));
+  });
+  const current = screen.getByRole("textbox", { name: "Current draft" });
+  expect(window.document.activeElement).toBe(current);
+  fireEvent.change(current, { target: { value: "Ready" } });
+  submit.focus();
+  await act(async () => {
+    fireEvent.submit(screen.getByRole("form", { name: "Save local" }));
+  });
+  expect(window.document.activeElement).toBe(submit);
+  expect(screen.getByText("Saved locally")).toBeTruthy();
+});
+
 it("validates visible form fields and resets declared fields even while their conditional view is absent", async () => {
   show(
     document(

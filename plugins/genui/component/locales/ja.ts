@@ -51,8 +51,7 @@ export const ja: Record<string, string> = {
   "map.description": "説明",
   "interaction.running": "操作の結果を待っています…",
   "interaction.failed": "操作に失敗しました。",
-  "interaction.complete":
-    "操作が受理されました。続きの会話は実行中の場合があります。",
+  "interaction.complete": "操作が受理されました。",
   "interaction.unknown":
     "元の操作はまだ確認されていません。再送信する前に元の操作を復旧してください。",
   "interaction.recover": "元の操作を復旧",

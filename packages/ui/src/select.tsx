@@ -52,6 +52,8 @@ export function Select({
   label,
   id,
   disabled,
+  invalid,
+  "aria-describedby": describedBy,
   size = "md",
 }: {
   value: string | null;
@@ -60,6 +62,8 @@ export function Select({
   label: string;
   id?: string;
   disabled?: boolean;
+  invalid?: boolean;
+  "aria-describedby"?: string;
   size?: "sm" | "md" | "lg";
 }) {
   const trigger = useRef<HTMLButtonElement>(null);
@@ -95,6 +99,8 @@ export function Select({
         }
         id={id}
         aria-label={label}
+        aria-invalid={invalid || undefined}
+        aria-describedby={describedBy}
       >
         <SelectPrimitive.Value
           placeholder={value === null ? label : undefined}

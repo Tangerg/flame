@@ -40,7 +40,7 @@ function FieldFrame({
     <div data-genui-field={field} data-genui-invalid={issue ? "" : undefined}>
       {children}
       {issue && (
-        <Metadata id={errorId} role="status">
+        <Metadata id={errorId}>
           {t(
             `validation.${issue.code}`,
             issue.limit === undefined ? undefined : { limit: issue.limit },
@@ -127,6 +127,8 @@ export function SelectView({
           options={props.options}
           onValueChange={(next) => !blocked && setValue(next)}
           disabled={blocked}
+          invalid={issue !== undefined}
+          aria-describedby={issue ? errorId : undefined}
         />
       </FormGroup>
     </FieldFrame>
@@ -143,7 +145,11 @@ export function MultiSelectView({
   const issue = validateField(values, props.rules);
   return (
     <FieldFrame field={props.field} issue={issue} errorId={errorId} t={t}>
-      <FormGroup label={props.label}>
+      <FormGroup
+        label={props.label}
+        aria-invalid={issue !== undefined}
+        aria-describedby={issue ? errorId : undefined}
+      >
         {props.options.map((option) => (
           <Checkbox
             key={option.value}
@@ -316,6 +322,21 @@ export function FormView({
       onSubmit={(event) => {
         event.preventDefault();
         if (interaction.blocked) return;
+        // Field views project the document's validation; execution still owns admission.
+        for (const control of event.currentTarget.querySelectorAll<HTMLElement>(
+          "[data-genui-invalid] :is(input, textarea, button, [tabindex])",
+        )) {
+          if (
+            control.tabIndex < 0 ||
+            control.matches(
+              ':disabled, [aria-disabled="true"], [type="hidden"]',
+            ) ||
+            control.closest('[hidden], [inert], [aria-hidden="true"]')
+          )
+            continue;
+          control.focus();
+          if (control.ownerDocument.activeElement === control) break;
+        }
         void interaction.execute(props.action);
       }}
       onReset={(event) => {
