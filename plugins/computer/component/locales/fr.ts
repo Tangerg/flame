@@ -128,6 +128,8 @@ export const fr = {
   "result.title": "Opération d’origine inspectée",
   "result.content": "Contenu enregistré",
   "result.image": "Image capturée {{number}}",
+  "result.imageUnavailable":
+    "Cette image enregistrée n’a pas pu être affichée.",
   "result.audio": "Audio capturé {{number}}",
   "result.captured": "Image enregistrée, pas un bureau en direct.",
   "result.resource": "Ressource enregistrée",

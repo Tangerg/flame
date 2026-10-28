@@ -127,6 +127,7 @@ export const ko = {
   "result.title": "검토한 원래 작업",
   "result.content": "기록된 내용",
   "result.image": "캡처된 이미지 {{number}}",
+  "result.imageUnavailable": "이 기록된 이미지를 표시할 수 없습니다.",
   "result.audio": "캡처된 오디오 {{number}}",
   "result.captured": "기록된 이미지이며 실시간 데스크톱이 아닙니다.",
   "result.resource": "기록된 리소스",

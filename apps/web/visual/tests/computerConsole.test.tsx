@@ -1135,6 +1135,66 @@ function recordedTool(id: string): OperationRecord {
   };
 }
 
+it.each(["image", "resource"] as const)(
+  "explains an unreadable captured %s while preserving the original outcome",
+  async (kind) => {
+    const setup = rig();
+    const data = "aW52YWxpZCBQTkc=";
+    const content =
+      kind === "image"
+        ? { type: "image", mimeType: "image/png", data }
+        : {
+            type: "resource",
+            resource: { uri: "memory://capture.png", mimeType: "image/png", blob: data },
+          };
+    const original = {
+      ...recordedTool("unreadable-capture"),
+      outcomeJSON: JSON.stringify({ content: [content] }),
+    };
+    setup.server.records.set(original.id, original);
+    setup.mount();
+    fireEvent.click(await screen.findByRole("button", { name: original.id }));
+    const image = await screen.findByRole("img", { name: "Captured image 1" });
+    fireEvent.error(image);
+    expect(
+      await screen.findByRole("img", {
+        name: "Captured image 1",
+        description: "This recorded image could not be displayed.",
+      }),
+    ).not.toBeNull();
+    expect(image.isConnected).toBe(false);
+    const detail = screen.getByRole("region", { name: "Inspected original operation" });
+    expect(within(detail).getByText("Recorded outcome")).not.toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Exact recorded outcome" }));
+    expect(screen.getByRole("region", { name: "Exact recorded outcome" }).textContent).toBe(
+      original.outcomeJSON,
+    );
+    expect(setup.server.originals.size).toBe(0);
+  },
+);
+
+it("keeps an adjacent captured image available after another image fails in Chinese", async () => {
+  const setup = rig();
+  setup.server.records.set("paired-captures", {
+    ...recordedTool("paired-captures"),
+    outcomeJSON: JSON.stringify({
+      content: [
+        { type: "image", mimeType: "image/png", data: "aW52YWxpZCBQTkc=" },
+        { type: "image", mimeType: "image/png", data: png },
+      ],
+    }),
+  });
+  setup.mount("zh");
+  fireEvent.click(await screen.findByRole("button", { name: "paired-captures" }));
+  const failed = await screen.findByRole("img", { name: "捕获图像 1" });
+  const available = screen.getByRole("img", { name: "捕获图像 2" });
+  fireEvent.error(failed);
+  await screen.findByRole("img", { name: "捕获图像 1", description: "无法显示此记录的图像。" });
+  expect(screen.getByRole("img", { name: "捕获图像 2" })).toBe(available);
+  expect(available.getAttribute("src")).toBe(`data:image/png;base64,${png}`);
+  expect(setup.server.originals.size).toBe(0);
+});
+
 it("reads original evidence next to its expanded record and keeps the editor draft", async () => {
   const setup = rig();
   setup.server.records.set("first-operation", recordedTool("first-operation"));

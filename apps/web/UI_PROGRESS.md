@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Current source continues from main `65043ca10`, which publishes named captured-source readers and a fitting caption/body focus boundary. Computer console editing and operation return are published as `3cc13e9a8`; Session search readiness and entry focus as `646819ab3`. Original history now expands beside its record and retains evidence, reading position and refresh focus. Its native qualification and cleanup are complete below, including the shared complete-reader height bound. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
+Current source continues from main `20bc1b30d`, which publishes contextual original-history reading and the complete-reader height bound. Named captured-source readers are published as `65043ca10`, Computer editing/return as `3cc13e9a8`, and Session search readiness as `646819ab3`. Captured-image decode failures now have readable, named feedback while preserving original bytes and recorded operation status; native qualification and cleanup are complete below. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -43,7 +43,9 @@ retirement, published as `3cc13e9a8`. Its captured-source follow-up unifies lite
 reading, local selection, wrapping, source names and fitting caption/body focus,
 published as `65043ca10`. Original-history inspection now keeps the selected record,
 evidence and refresh action together; complete CodeBlocks fit beneath the existing
-sticky clearances at large zoom. The publication fetch finds no incoming commits.
+sticky clearances at large zoom, published as `20bc1b30d`. Captured-image preview
+failures retain their identity, original bytes and recorded status. The publication
+fetch finds no incoming commits.
 See **Computer console
 editing and operation return**. Preserve the
 separate exact-Run and Skills object contract limits already recorded below.
@@ -7079,7 +7081,87 @@ SHA-256 `b7e5675c7abe9be8cb6b58bf3a07f54140d0fc245fb163ce203d37550c5dc988`.
 Next compare the remaining recorded-material and supporting-evidence reading paths
 against their existing shared readers and documented qualifications. Choose the
 next repair from fresh source and native evidence, without repeating this resolved
-history or draft investigation. The whole-product goal remains active.
+history or draft investigation. The following captured-image repair continues that
+comparison. The whole-product goal remains active.
+
+### Captured-image decode failures
+
+Actual Wails confirmed that a validly encoded but undecodable PNG left only a
+broken-image box and the historical-image caption. WebKit reported completion with
+natural dimensions **0 × 0**; there was no readable preview-failure feedback.
+The recorded operation itself was settled and its original bytes remained valid
+receipt evidence. Changing its operation status would have misrepresented that
+separate presentation failure.
+
+`plugins/computer/component/result.tsx` now gives each captured image a local
+source-specific decode-failure witness. The browser still owns decoding. On error,
+the shared `ImageNotice` replaces the broken image with its captured identity and
+localized failure description. The original historical caption, recorded status,
+MIME/base64 validation and exact-outcome reader remain unchanged. Image resources
+use that same existing Content path. A failed image neither hides adjacent images
+nor retries the original operation. Eight catalogs contain the new description.
+
+Read-only comparison with the existing host `ImageBlock.tsx` source-specific
+failure boundary and shared `ImageNotice` informs this change. Existing gallery
+selection, geometry, descriptions, saving and return qualifications above remain
+unchanged. Better-series writing, accessibility, typography, layout and color
+guidance supports a named, quiet inline notice; there is no new media framework,
+shared UI API, decorative rail, token, permission or Runtime policy.
+
+The Computer visual fixture has an explicit `media=unreadable` preset containing
+two captured original records: undecodable PNG bytes and a valid **1 × 1** PNG.
+It uses the same published ESM, real component SDK and isolated Runtime transport.
+Native acceptance reads these records without opening a lease or invoking an
+operation. Default fixture behavior remains unchanged.
+
+Verification:
+
+- All **three** new regression cases fail against the original implementation;
+  final Computer acceptance passes **43** tests. Direct images and resource blobs
+  expose the named failure, retain exact original outcome text and settled status,
+  and admit no historical mutation. The Chinese paired-image case preserves the
+  neighboring valid image.
+- Web type/lint/format passes. Plugin check passes **43** scripts and **16 files /
+  274** backend/contract tests; the configured **one file / 13 cases** remain
+  skipped. Normal component build/reproduction, production module links and CSS
+  variables pass. `make check-native` passes Desktop test/vet/build and the
+  supported Wails production build. No shared UI, SDK, Go or backend source changes;
+  full frontend and unrelated Runtime suites are not rerun for this local repair.
+  The previous **431 files / 4,080 tests** remain the qualification of base `20bc1b30d`.
+- Actual English/light/14/explicit Orange Wails renders the named failure, keeps
+  recorded outcome evidence and permits exact selection of the **79-character**
+  original result. Refresh preserves the local failure boundary. Switching to the
+  valid PNG produces browser natural dimensions **1 × 1** with no failure notice.
+- Chinese/dark/18/custom blue also passes at **1125 × 734** native size and **200%**
+  page zoom (**562 × 367** CSS viewport, DPR 4). The complete notice occupies
+  **235.3671875 × 70 px** at **(24, 175)**, fully within the viewport. Original
+  bytes wrap and select exactly, reverse Tab/Enter returns to the original record,
+  and the unsubmitted lease draft stays **960** before continuing to **961**.
+  A valid image still decodes independently. No authorization action is invoked.
+- A fresh English/light/14/explicit Orange native control without the observer
+  shows the same failure and recorded status, selects all **79** original
+  characters exactly, returns by keyboard and continues the retained lease draft.
+  It sends **zero** observer events or requests. Its **614** assets match the
+  observed build except the two HTML entries.
+- CUA supplies all native input; the passive observer only reads. No Flame
+  Computer engine, live command admission or OS grant/control is qualified. Audio
+  decoding, native clipboard writes, VoiceOver, OS IME and forced colors are not
+  exercised. No browser/performance suite, Claude CLI or subagent is used.
+
+Cleanup retires all four private app instances, unregisters the bundle and closes
+the listener. It removes **eight** new output/cache roots and **three** private
+profile/temp paths, restores **four** original files/modes, all **18** output
+presence baselines and **five** private-profile baselines. All **6,264**
+non-Markdown inputs retain their final qualified state; **12** explicit
+source/test/resource paths change from base. Only the normally rebuilt Computer
+ESM changes among **32** installed resources. The private root
+`flame-computer-media-hXDZzW` is absent. The verified in-memory gzip retains **49**
+flat UTF-8 records (**5,559,398** uncompressed bytes), SHA-256
+`a1b9bbd7e103954b40bba3d8160aa702dd3266ba07204d87072dce3b93d9951b`.
+
+Next inspect remaining recorded audio/resource reading paths from fresh native
+evidence. Treat them as review candidates, preserve existing media and receipt
+owners, and do not repeat these resolved image or history investigations.
 
 ## Approval argument review and submission
 

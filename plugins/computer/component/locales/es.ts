@@ -128,6 +128,7 @@ export const es = {
   "result.title": "Operación original inspeccionada",
   "result.content": "Contenido registrado",
   "result.image": "Imagen capturada {{number}}",
+  "result.imageUnavailable": "No se pudo mostrar esta imagen registrada.",
   "result.audio": "Audio capturado {{number}}",
   "result.captured": "Imagen registrada; no es un escritorio en directo.",
   "result.resource": "Recurso registrado",

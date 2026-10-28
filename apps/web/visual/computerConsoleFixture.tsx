@@ -35,6 +35,26 @@ export async function createComputerConsoleFixture(locale: string) {
   const encoder = new TextEncoder();
   let snapshot: Snapshot = { host, configured: true };
   const records = new Map<string, OperationRecord>();
+  if (new URLSearchParams(location.search).get("media") === "unreadable") {
+    for (const [id, data] of [
+      ["recorded-unreadable-image", "aW52YWxpZCBQTkc="],
+      ["recorded-valid-image", capturedImage],
+    ] as const) {
+      records.set(id, {
+        id,
+        kind: "tool",
+        method: "computer_js",
+        admittedAt: "2026-10-29T00:00:00.000Z",
+        dispatched: true,
+        settled: true,
+        inputJSON: '{"code":"recorded capture"}',
+        invocationJSON: '{"origin":"model"}',
+        outcomeJSON: JSON.stringify({
+          content: [{ type: "image", mimeType: "image/png", data }],
+        }),
+      });
+    }
+  }
   const commands = new Map<string, CallPluginRequest>();
   const outcomes = new Map<string, unknown>();
   let pending:

@@ -128,6 +128,7 @@ export const en = {
   "result.title": "Inspected original operation",
   "result.content": "Recorded content",
   "result.image": "Captured image {{number}}",
+  "result.imageUnavailable": "This recorded image could not be displayed.",
   "result.audio": "Captured audio {{number}}",
   "result.captured": "Recorded image; this is not a live desktop.",
   "result.resource": "Recorded resource",

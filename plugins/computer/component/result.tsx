@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { parseJSON, stringifyJSON } from "@qimu/sdk/json";
 import { type Translate } from "@flame/component-sdk";
 import {
@@ -6,6 +6,7 @@ import {
   CodeBlock,
   Disclosure,
   Facts,
+  ImageNotice,
   Metadata,
   RecordBody,
   RecordGroup,
@@ -82,6 +83,28 @@ function mediaURL(mime: unknown, data: unknown, kind: "image" | "audio") {
   return `data:${mime};base64,${data}`;
 }
 
+function CapturedImage({
+  src,
+  label,
+  unavailable,
+}: {
+  src: string;
+  label: string;
+  unavailable: string;
+}) {
+  const [failedSource, setFailedSource] = useState<string>();
+  if (failedSource === src)
+    return <ImageNotice label={label} detail={unavailable} />;
+  return (
+    <img
+      src={src}
+      alt={label}
+      onError={() => setFailedSource(src)}
+      style={{ display: "block", maxWidth: "100%", height: "auto" }}
+    />
+  );
+}
+
 function Content({
   value,
   index,
@@ -102,10 +125,10 @@ function Content({
     if (src)
       return (
         <figure style={{ minWidth: 0, margin: 0 }}>
-          <img
+          <CapturedImage
             src={src}
-            alt={t("result.image", { number: String(index + 1) })}
-            style={{ display: "block", maxWidth: "100%", height: "auto" }}
+            label={t("result.image", { number: String(index + 1) })}
+            unavailable={t("result.imageUnavailable")}
           />
           <figcaption>
             <Metadata>{t("result.captured")}</Metadata>

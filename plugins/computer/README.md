@@ -84,6 +84,11 @@ reader, wrapping follows the shared page preference, and Copy receives the exact
 original string. Long content scrolls beneath its actions. A fitting reader and
 caption enter the Panel viewport together, while raw content stays unexecuted.
 
+If a recorded image cannot be decoded, its captured identity and readable preview
+failure replace the broken image. Original bytes remain in the recorded outcome;
+this display failure does not change the operation's recorded status or affect
+other images in the result.
+
 History expands the selected original record in place. Its identity, recorded
 status and refresh action remain with the detail; the same disclosure returns to
 the surrounding records. Rereading keeps existing evidence and focus, marks

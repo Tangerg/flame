@@ -126,6 +126,7 @@ export const ja = {
   "result.title": "確認した元の操作",
   "result.content": "記録された内容",
   "result.image": "取得した画像 {{number}}",
+  "result.imageUnavailable": "この記録された画像を表示できませんでした。",
   "result.audio": "取得した音声 {{number}}",
   "result.captured": "記録された画像で、ライブ画面ではありません。",
   "result.resource": "記録されたリソース",

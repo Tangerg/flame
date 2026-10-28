@@ -123,6 +123,7 @@ export const zhTW = {
   "result.title": "已檢查的原始操作",
   "result.content": "已記錄內容",
   "result.image": "擷取影像 {{number}}",
+  "result.imageUnavailable": "無法顯示此記錄的圖像。",
   "result.audio": "擷取音訊 {{number}}",
   "result.captured": "已記錄影像，並非即時桌面。",
   "result.resource": "已記錄資源",

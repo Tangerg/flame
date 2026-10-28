@@ -131,6 +131,8 @@ export const de = {
   "result.title": "Geprüfte ursprüngliche Aktion",
   "result.content": "Gespeicherter Inhalt",
   "result.image": "Erfasstes Bild {{number}}",
+  "result.imageUnavailable":
+    "Dieses aufgezeichnete Bild konnte nicht angezeigt werden.",
   "result.audio": "Erfasstes Audio {{number}}",
   "result.captured": "Gespeichertes Bild; kein Live-Desktop.",
   "result.resource": "Gespeicherte Ressource",
