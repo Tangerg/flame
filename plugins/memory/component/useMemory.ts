@@ -142,7 +142,7 @@ export function useMemory(context: ComponentContext) {
           }));
       }
     };
-    void context.track(watch());
+    void context.track(() => watch());
     return () => controller.abort();
   }, [context, load]);
   const current =

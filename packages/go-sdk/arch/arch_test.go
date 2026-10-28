@@ -13,6 +13,7 @@ import (
 )
 
 const sdkModulePath = "github.com/Tangerg/flame/packages/go-sdk"
+const qimuModulePath = "github.com/Tangerg/flame/qimu"
 
 // moduleRoot resolves this module from its manifest; it never guesses a checkout layout.
 func moduleRoot(t *testing.T) string {
@@ -53,7 +54,7 @@ func TestStandaloneImports(t *testing.T) {
 		}
 		for _, imported := range file.Imports {
 			value := strings.Trim(imported.Path.Value, `"`)
-			if (value == "github.com/Tangerg/flame" || strings.HasPrefix(value, "github.com/Tangerg/flame/")) && value != sdkModulePath && !strings.HasPrefix(value, sdkModulePath+"/") {
+			if (value == "github.com/Tangerg/flame" || strings.HasPrefix(value, "github.com/Tangerg/flame/")) && value != sdkModulePath && !strings.HasPrefix(value, sdkModulePath+"/") && value != qimuModulePath && !strings.HasPrefix(value, qimuModulePath+"/") {
 				relative, _ := filepath.Rel(root, path)
 				t.Errorf("%s imports host/repository package %s; the SDK must be independently buildable", relative, value)
 			}
@@ -69,7 +70,7 @@ func TestSharedValuesStayFreeOfExternalCapabilities(t *testing.T) {
 	root := moduleRoot(t)
 	values := map[string]bool{
 		"extension": true, "exactint": true, "identity": true, "instant": true,
-		"jsonvalue": true, "model": true, "pagination": true,
+		"model": true, "pagination": true,
 	}
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
@@ -207,9 +208,7 @@ func TestPublicTypesUseTheirOwningDeclaration(t *testing.T) {
 
 func TestSDKUsesOneJSONVocabulary(t *testing.T) {
 	root := moduleRoot(t)
-	exact := map[string]string{
-		"jsonvalue": "names json.Number as the exact-number carrier",
-	}
+	exact := map[string]string{}
 	found := make(map[string]bool, len(exact))
 	walkErr := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
@@ -255,7 +254,7 @@ func TestSDKUsesOneJSONVocabulary(t *testing.T) {
 func TestSharedCapabilitiesStayPure(t *testing.T) {
 	root := moduleRoot(t)
 	for _, name := range []string{
-		"capture", "exactint", "jsonvalue", "extension", "identity", "model", "pagination",
+		"capture", "exactint", "extension", "identity", "model", "pagination",
 	} {
 		forbidExternalImports(t, filepath.Join(root, name), []string{
 			"github.com/Tangerg/flame/runtime/internal/domain",
@@ -272,14 +271,14 @@ func TestProtocolStaysWireOnly(t *testing.T) {
 	root := moduleRoot(t)
 	// These packages remain outward capabilities after moving into the SDK;
 	// their public paths must not escape the former private-import boundary.
-	banned := []string{"github.com/Tangerg/flame/runtime"}
+	banned := []string{"github.com/Tangerg/flame/runtime", qimuModulePath + "/mcp", qimuModulePath + "/sqlite", qimuModulePath + "/runner", qimuModulePath + "/distribution", qimuModulePath + "/process", qimuModulePath + "/control"}
 	for _, name := range []string{
 		"client", "plugin", "sqlite", "contractgen", "cmd", "filesystem", "sandbox",
 		"httpresponse", "model/catalog", "cancellation", "capture", "pagination",
 	} {
 		banned = append(banned, sdkModulePath+"/"+name)
 	}
-	for _, name := range []string{"protocol", "jsonvalue"} {
+	for _, name := range []string{"protocol"} {
 		forbidExternalImports(t, filepath.Join(root, name), append(banned, frameworkImports...))
 	}
 }

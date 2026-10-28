@@ -12,6 +12,11 @@ existing Tool/Item history retains the accepted document as structured content;
 plain text is a derived projection. The installed component reads that successful
 captured result, never the original unaccepted tool arguments.
 
+The MCP schemas use Qimu's portable structural profile. Authored string rules
+appear in their descriptions and remain enforced by the original GenUI parser,
+alongside cross-field rules, before any document or operation binding is accepted.
+Invalid identifiers, SVG values and other authored strings remain business refusals.
+
 ## Ownership
 
 | Fact                                                                | Owner                                                             | Other representations                                              |

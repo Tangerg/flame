@@ -21,6 +21,7 @@ mkdir out/plugins/review-analyzer
 cp -R examples/plugins/reviews/analyzer/package/. out/plugins/review-analyzer/
 mkdir -p out/plugins/review-analyzer/bin
 go build -trimpath -ldflags='-s -w' -o out/plugins/review-analyzer/bin/review-analyzer ./examples/plugins/reviews/backend/cmd/review-analyzer
+go run ./runtime/cmd/pluginpack --source "$PWD/out/plugins/review-analyzer" --os "$(go env GOOS)" --arch "$(go env GOARCH)"
 ```
 
 Install the absolute `out/plugins/review-analyzer` directory through
@@ -28,10 +29,18 @@ Install the absolute `out/plugins/review-analyzer` directory through
 before activating Reviews; Reviews' optional named analyzer collection is
 captured at setup. Deliberate changes require reloading that consumer entry.
 
-`plugin.json` owns package identity, `mcp.json` owns process launch, and the
+`pluginpack` writes Qimu's neutral manifest and lock through the same Flame
+declaration projection used during installation. These files and the listed
+artifacts form the complete release; a raw source directory is not installable.
+The commands above use the current Go target; cross-compilation must select the
+Runtime host's `GOOS` and `GOARCH` for both the executable and the package.
+
+`plugin.json` supplies Flame package metadata, `mcp.json` declares its packaged process, and the
 referenced namespace declaration binds `analyzer` plus the point value
 `unresolved-review`. Contract files and the TypeScript method projection are
-generated from the Reviews consumer's Go types. Do not edit a generated schema
+generated from the Reviews consumer's Go types through Qimu's public contract
+generator. The neutral manifest supplies the sole immutable release identity.
+Do not edit a generated schema
 or add an analyzer branch to the generic package loader.
 
 `TestInstalledReviewsPointUsesCapturedCollaboratorsAndCurrentConsumerLifetime` in

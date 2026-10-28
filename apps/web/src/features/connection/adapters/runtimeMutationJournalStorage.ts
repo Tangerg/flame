@@ -1,4 +1,4 @@
-import { stringifyJSON } from "@flame/runtime-client";
+import { stringifyJSON } from "@qimu/sdk/json";
 import { type KeyValueStore } from "@/extensions/storage";
 export interface RuntimeMutationJournalStorage {
   get(key: string): unknown;

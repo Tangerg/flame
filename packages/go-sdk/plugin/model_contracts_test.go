@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -16,7 +16,7 @@ func TestPublishedModelContractsKeepConsumerDescriptorsIndependent(t *testing.T)
 	}
 	for _, test := range []struct {
 		name  string
-		load  func() (*extension.Capability, error)
+		load  func() (*portable.Capability, error)
 		input any
 	}{
 		{"observer", ModelObserverContract, *request},
@@ -71,7 +71,7 @@ func TestPublishedModelContractsKeepConsumerDescriptorsIndependent(t *testing.T)
 func BenchmarkPublishedModelContracts(b *testing.B) {
 	for _, test := range []struct {
 		name string
-		load func() (*extension.Capability, error)
+		load func() (*portable.Capability, error)
 	}{
 		{"observer", ModelObserverContract},
 		{"input", ModelInputContract},

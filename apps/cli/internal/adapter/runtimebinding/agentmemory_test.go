@@ -14,9 +14,9 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/memory"
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 )
 
 type memoryFixtureRecord = memory.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot
@@ -365,7 +365,7 @@ func (a *agentMemoryBindingStub) ListPluginProviders(_ context.Context, _ protoc
 	return protocol.NewPage([]protocol.PluginProviderSelection{{Role: "memory", InstallationID: id, Contribution: "memory-provider"}}), nil
 }
 func (a *agentMemoryBindingStub) ListPlugins(_ context.Context, _ protocol.CallOptions) (*protocol.Page[protocol.PluginInstallation], error) {
-	contract, err := extension.ParseCapability([]byte(memory.CapabilityJSON))
+	contract, err := portable.ParseCapability([]byte(memory.CapabilityJSON))
 	if err != nil {
 		a.t.Fatal(err)
 	}

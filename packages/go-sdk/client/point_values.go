@@ -5,9 +5,9 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/scope/core/jsonschema"
 	"github.com/samber/lo"
 )
@@ -25,7 +25,7 @@ type PointValue[T any] struct {
 
 // ResolvePointValues checks the consumer's typed schema against its published
 // point before decoding immutable installed bindings into consumer-owned values.
-func ResolvePointValues[T any](ctx context.Context, caller PointResolver, contract *extension.Point, target extension.Target, attributes any, order []protocol.PluginPointReference, options protocol.CallOptions) ([]PointValue[T], error) {
+func ResolvePointValues[T any](ctx context.Context, caller PointResolver, contract *portable.Point, target portable.Target, attributes any, order []protocol.PluginPointReference, options protocol.CallOptions) ([]PointValue[T], error) {
 	if lo.IsNil(caller) || contract == nil {
 		return nil, errors.New("runtime: point resolver and admitted contract are required")
 	}

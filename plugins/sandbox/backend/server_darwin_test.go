@@ -9,9 +9,13 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	rpc "github.com/Tangerg/flame/plugins/sandbox/internal/contract"
+	"github.com/Tangerg/flame/plugins/sandbox/internal/wire"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -29,7 +33,7 @@ func TestTypedAndModelExecutionShareAdmissionAndOriginalToolReceipt(t *testing.T
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "sandbox-test", Version: "1"}, nil)
-	if err := pluginsdk.RegisterClient(client); err != nil {
+	if err := qimumcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()
@@ -44,7 +48,7 @@ func TestTypedAndModelExecutionShareAdmissionAndOriginalToolReceipt(t *testing.T
 	}
 	defer session.Close()
 	contracts, _ := rpc.NewContracts()
-	exported, err := pluginsdk.ResolveCapability(t.Context(), session, "sandbox", contracts.Capability)
+	exported, err := qimumcp.ResolveCapability(t.Context(), session, "sandbox", contracts.Capability)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,9 +56,9 @@ func TestTypedAndModelExecutionShareAdmissionAndOriginalToolReceipt(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	input := rpc.ExecuteInput{Script: "printf sandbox-result; exit 3", TimeoutMillis: 3000}
+	input := wire.ExecuteInput{Script: "printf sandbox-result; exit 3", TimeoutMillis: 3000}
 	encoded, _ := jsonvalue.Encode(input)
-	ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "typed", Origin: extension.Human, Target: extension.Target{Scope: "installation", Reference: "sandbox"}})
+	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "typed", Origin: extension.Human, Target: portable.Target{Scope: "installation", Reference: "sandbox"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +67,7 @@ func TestTypedAndModelExecutionShareAdmissionAndOriginalToolReceipt(t *testing.T
 		t.Fatal(err)
 	}
 	meta := make(sdk.Meta)
-	if err := meta.Set(pluginsdk.InvocationMetadataKey, extension.Invocation{ID: "model", Origin: extension.Model, Target: extension.Target{Scope: "installation", Reference: "sandbox"}}); err != nil {
+	if err := meta.Set(qimumcp.InvocationMetadataKey, portable.Invocation{ID: "model", Origin: extension.Model, Target: portable.Target{Scope: "installation", Reference: "sandbox"}}); err != nil {
 		t.Fatal(err)
 	}
 	model, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: executeTool, Arguments: input, Meta: meta})

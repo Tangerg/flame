@@ -133,6 +133,48 @@ it("keeps repeated presentation calls deterministic without creating a private h
   expect(first.structuredContent).toEqual(accepted);
 });
 
+it.each([
+  [{ id: "1invalid", type: "Text", props: { text: "Invalid identifier" } }],
+  [
+    {
+      id: "invalid",
+      type: "Svg",
+      props: { label: "Invalid SVG", viewBox: "0 0 100 100" },
+      children: [{ id: "path", type: "Path", props: { d: "M0 0<script>" } }],
+    },
+  ],
+  [
+    {
+      id: "invalid",
+      type: "Svg",
+      props: { label: "Invalid SVG", viewBox: "0 0 100 100" },
+      children: [
+        {
+          id: "circle",
+          type: "Circle",
+          props: {
+            cx: 10,
+            cy: 10,
+            r: 5,
+            fill: "url(https://example.com/paint)",
+          },
+        },
+      ],
+    },
+  ],
+])(
+  "retains consumer string constraints behind portable structural admission: %j",
+  async (...nodes) => {
+    const client = await connect();
+    const result = await client.callTool({
+      name: PRESENT_TOOL,
+      arguments: { ...report, nodes },
+    });
+    expect(result.isError).toBe(true);
+    expect(result.structuredContent).toBeUndefined();
+  },
+);
+
 it("returns a known refusal for cross-field document violations without publishing a report", async () => {
   const client = await connect();
   const result = await client.callTool({

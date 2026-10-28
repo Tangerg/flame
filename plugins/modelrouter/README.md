@@ -53,7 +53,7 @@ recreating a default policy. Generated management contracts live beside the
 generated selection contract; regenerate with:
 
 ```sh
-go generate ./plugins/modelrouter/internal/contract
+make generate
 ```
 
 Runtime admits the selected identity against its provider configuration and actual
@@ -62,3 +62,11 @@ prices the actual endpoint. An unavailable selected model fails the use case.
 Accepted Runs freeze their selection; retries do not reroute. Session preferences,
 waiting executions, compaction and accounting remain core facts. Policy changes
 affect only future selection queries.
+
+The maintainer-only `contractgen` command owns the capability descriptor. It
+derives schemas from the domain and pure wire declarations. `make generate`
+updates `contracts/contract.generated.go` from that owner before refreshing package
+projections. Backend bindings consume the exact published descriptor through Qimu.
+An independent author module's `go generate` refreshes package projections from
+that descriptor; it does not derive another contract from relocated implementation
+types.

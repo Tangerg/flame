@@ -3,10 +3,11 @@ package schedule
 import (
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/qimu/portable"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
@@ -18,7 +19,7 @@ type OccurrenceSnapshot struct {
 	NextRunAt  time.Time
 	SessionID  string
 	RunID      string
-	Invocation extension.Invocation
+	Invocation portable.Invocation
 }
 
 type Occurrence struct {
@@ -28,7 +29,7 @@ type Occurrence struct {
 	nextRunAt  time.Time
 	sessionID  string
 	runID      string
-	invocation extension.Invocation
+	invocation portable.Invocation
 }
 
 // The consumed revision is a claim precondition; pending work retains only the captured execution.
@@ -45,7 +46,7 @@ type Acceptance struct {
 }
 
 // Stable Session/Run identities are chosen before persistence so retry cannot open a second Run.
-func (s Schedule) Claim(sessionID, runID string, firedAt time.Time, invocation extension.Invocation) (Claim, error) {
+func (s Schedule) Claim(sessionID, runID string, firedAt time.Time, invocation portable.Invocation) (Claim, error) {
 	if !s.Enabled() {
 		return Claim{}, errors.New("schedule: only an enabled due schedule can form an occurrence")
 	}
@@ -78,7 +79,7 @@ func (s Schedule) Claim(sessionID, runID string, firedAt time.Time, invocation e
 }
 
 func (o Occurrence) validate() error {
-	if err := o.invocation.Validate(); err != nil {
+	if err := extension.ValidateInvocation(o.invocation); err != nil {
 		return err
 	}
 	if err := o.id.validate(); err != nil {

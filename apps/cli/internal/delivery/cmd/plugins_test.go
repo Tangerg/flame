@@ -11,9 +11,10 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 )
 
 type pluginCommandFixture struct {
@@ -251,21 +252,21 @@ func TestPluginRetirementKeepsTheOriginalNamespaceAndKey(t *testing.T) {
 }
 
 func TestPluginGetCommandReadsOriginalIdentityWithoutMutation(t *testing.T) {
-	method, err := pluginsdk.NewMethod[struct {
+	method, err := qimumcp.NewMethod[struct {
 		Value uint64  `json:"value"`
 		Scale float64 `json:"scale"`
 	}, struct {
 		Saved bool `json:"saved"`
-	}](pluginsdk.MethodConfig{Name: "test.retained/save.v1", Kind: extension.Mutation, Target: "installation", Description: "Retain one authored input."})
+	}](qimumcp.MethodConfig{Name: "test.retained/save.v1", Kind: portable.Mutation, Target: "installation", Description: "Retain one authored input."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := extension.NewCapability(extension.CapabilityConfig{Reference: "test.retained", Composition: extension.Collection, Scope: "installation"}, method.Descriptor())
+	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "test.retained", Composition: portable.Collection, Scope: "installation"}, method.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}
 	const installation = "12345678-1234-1234-1234-123456789abc"
-	original := protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("a", 64), Contribution: "retained", Contract: string(contract.Identity().JSON()), Method: method.Name(), Input: `{"scale":1.0,"value":18446744073709551615}`, Target: extension.Target{Scope: "installation", Reference: installation}}
+	original := protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("a", 64), Contribution: "retained", Contract: string(contract.Identity().JSON()), Method: method.Name(), Input: `{"scale":1.0,"value":18446744073709551615}`, Target: portable.Target{Scope: "installation", Reference: installation}}
 	query := protocol.PluginCommandRequest{Namespace: "idp_" + strings.Repeat("1", 32), Key: "retained-web-command"}
 	encoded, err := json.Marshal(query)
 	if err != nil {

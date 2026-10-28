@@ -11,7 +11,8 @@ prepareTestClient(() => {
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { type CallPluginRequest, type Model, type Page } from "@flame/runtime-client/wire";
-import { createFlameClient, stringifyJSON } from "@flame/runtime-client";
+import { stringifyJSON } from "@qimu/sdk/json";
+import { createFlameClient } from "@flame/runtime-client";
 import { createMemoryTransport } from "@flame/runtime-client/testing";
 import { respondSuccess, waitForRequest } from "@flame/runtime-client/testing";
 import { type ComponentContext } from "@flame/component-sdk";
@@ -54,7 +55,7 @@ beforeEach(() => {
       contract: CAPABILITY_JSON,
     },
     telemetry: { read: () => ({ spans: [], metrics: [], logs: [] }), clear() {} },
-    track: (operation) => operation,
+    track: (operation) => operation(context.signal),
   };
 });
 

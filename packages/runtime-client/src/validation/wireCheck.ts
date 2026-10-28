@@ -25,7 +25,7 @@ import {
   isJSONNumber,
   projectNumber,
   type JSONNumber,
-} from "../json";
+} from "@qimu/sdk/json";
 
 /** One rule a value broke, and where. */
 export interface WireViolation {

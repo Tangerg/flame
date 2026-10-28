@@ -3,9 +3,11 @@ package plugins
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/portable"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/samber/lo"
@@ -21,10 +23,10 @@ type CommandStore interface {
 // replacement. All network I/O happens after this boundary has been released.
 type Commands struct {
 	store     CommandStore
-	admission *Admission
+	admission *qimu.Admission
 }
 
-func NewCommands(store CommandStore, admission *Admission) (*Commands, error) {
+func NewCommands(store CommandStore, admission *qimu.Admission) (*Commands, error) {
 	if lo.IsNil(store) || admission == nil {
 		return nil, errors.New("plugins: command store and admission are required")
 	}
@@ -63,7 +65,7 @@ func (c *Commands) authorized(ctx context.Context, id string) (*plugin.Command, 
 // Retirement and dispatch compete under the same admission boundary. The retained
 // route prevents a retired identity from ever being admitted as new work.
 func (c *Commands) Retire(ctx context.Context, id string) error {
-	return c.admission.Under(ctx, func() error {
+	return c.admission.Admit(ctx, func(ctx context.Context) error {
 		command, err := c.authorized(ctx, id)
 		if err != nil {
 			return err
@@ -78,8 +80,8 @@ func (c *Commands) Retire(ctx context.Context, id string) error {
 // RestoreInvocation validates a private owner's retained caller against original
 // host routing, including the resource owner's original target. Only a fresh
 // automatic trigger needs the background contribution's own installation target.
-func (c *Commands) RestoreInvocation(ctx context.Context, invocation extension.Invocation) (context.Context, error) {
-	if err := invocation.Validate(); err != nil {
+func (c *Commands) RestoreInvocation(ctx context.Context, invocation portable.Invocation) (context.Context, error) {
+	if err := extension.ValidateInvocation(invocation); err != nil {
 		return nil, err
 	}
 	actor, found := operation.ActorFrom(ctx)
@@ -119,9 +121,9 @@ type CommandAdmission struct {
 	Activation plugin.Activation
 }
 
-func (c *Commands) Bind(ctx context.Context, id, method string, input jsonvalue.Value, resolve func(context.Context) (CommandAdmission, error), capture func(ContributionBinding) (extension.Invocation, error)) (*plugin.Command, error) {
+func (c *Commands) Bind(ctx context.Context, id, method string, input jsonvalue.Value, resolve func(context.Context) (CommandAdmission, error), capture func(ContributionBinding) (portable.Invocation, error)) (*plugin.Command, error) {
 	var command *plugin.Command
-	err := c.admission.Under(ctx, func() error {
+	err := c.admission.Admit(ctx, func(ctx context.Context) error {
 		previous, found, err := c.store.Get(ctx, id)
 		if err != nil {
 			return err
@@ -155,7 +157,7 @@ func (c *Commands) Bind(ctx context.Context, id, method string, input jsonvalue.
 }
 
 func (c *Commands) Dispatch(ctx context.Context, id string, admit func(context.Context, plugin.CommandBinding) error) error {
-	return c.admission.Under(ctx, func() error {
+	return c.admission.Admit(ctx, func(ctx context.Context) error {
 		command, found, err := c.store.Get(ctx, id)
 		if err != nil {
 			return err
@@ -175,7 +177,7 @@ func (c *Commands) Dispatch(ctx context.Context, id string, admit func(context.C
 }
 
 func (c *Commands) Observe(ctx context.Context, id string) error {
-	return c.admission.Under(ctx, func() error {
+	return c.admission.Admit(ctx, func(ctx context.Context) error {
 		command, found, err := c.store.Get(ctx, id)
 		if err != nil {
 			return err

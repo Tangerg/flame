@@ -7,7 +7,7 @@ import {
 import { validateMethodParams, validateWire } from "@flame/runtime-client/validation";
 import type { RequestMeta, CallPluginRequest } from "@flame/runtime-client/wire";
 import { RpcProtocolError } from "./errors";
-import { parseJSON } from "./json";
+import { parseJSON } from "@qimu/sdk/json";
 
 export function checkRequest<M extends WireMethodName>(
   method: M,

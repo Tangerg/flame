@@ -16,6 +16,7 @@ import type * as Wire from "./wire.generated";
 
 /** Every shape the protocol publishes. */
 export type WireTypeName =
+  | "AcquirePluginComponentRequest"
   | "ActiveRunRef"
   | "AgentDoc"
   | "AgentDocScope"
@@ -49,6 +50,7 @@ export type WireTypeName =
   | "ChangeStatus"
   | "ClientCapabilities"
   | "ClientInfo"
+  | "ClosePluginBrowserRealmRequest"
   | "CommandResult"
   | "ComponentPlacement"
   | "ComponentScope"
@@ -184,6 +186,7 @@ export type WireTypeName =
   | "ModelPricing"
   | "ModelTokenLimits"
   | "ModelUsage"
+  | "OpenPluginBrowserRealmRequest"
   | "OpenPluginResourcesRequest"
   | "PageContinuation"
   | "PageOfAgentDoc"
@@ -217,6 +220,16 @@ export type WireTypeName =
   | "PlanState"
   | "PlanStatus"
   | "PlanStep"
+  | "PluginBrowserAuthority"
+  | "PluginBrowserContractKind"
+  | "PluginBrowserContractMode"
+  | "PluginBrowserContractRef"
+  | "PluginBrowserExecution"
+  | "PluginBrowserLocalExport"
+  | "PluginBrowserObjectRef"
+  | "PluginBrowserRealm"
+  | "PluginBrowserSession"
+  | "PluginBrowserUseGrant"
   | "PluginCallFailure"
   | "PluginChangeNotice"
   | "PluginClientComponent"
@@ -398,6 +411,14 @@ export type WireTypeName =
   ;
 
 const CHECKS: Record<WireTypeName, WireCheck> = {
+  AcquirePluginComponentRequest: object({
+    componentId: allOf([text(), pattern("^[a-z][a-z0-9._-]{0,63}$")]),
+    digest: allOf([text(), pattern("^[0-9a-f]{64}$")]),
+    installationId: allOf([text(), pattern("^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$")]),
+    operationId: allOf([text(), minLength(1)]),
+    parentUseId: text(),
+    realm: ref(() => CHECKS.PluginBrowserRealm),
+  }, ["componentId", "digest", "installationId", "operationId", "realm"]),
   ActiveRunRef: object({
     runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     status: ref(() => CHECKS.RunStatus),
@@ -897,6 +918,9 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     name: allOf([text(), minLength(1)]),
     version: allOf([text(), minLength(1)]),
   }, ["name", "version"]),
+  ClosePluginBrowserRealmRequest: object({
+    realm: ref(() => CHECKS.PluginBrowserRealm),
+  }, ["realm"]),
   CommandResult: object({
     exitCode: integer(),
     output: text(),
@@ -2256,6 +2280,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     outputTokens: allOf([integer(), minimum("0")]),
     reasoningTokens: allOf([integer(), minimum("0")]),
   }, []),
+  OpenPluginBrowserRealmRequest: object({
+    operationId: allOf([text(), minLength(1)]),
+    resume: ref(() => CHECKS.PluginBrowserRealm),
+    resumeToken: allOf([text(), minLength(1)]),
+  }, ["operationId", "resumeToken"]),
   OpenPluginResourcesRequest: object({
     componentId: allOf([text(), pattern("^[a-z][a-z0-9._-]{0,63}$")]),
     digest: allOf([text(), pattern("^[0-9a-f]{64}$")]),
@@ -2388,6 +2417,56 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     id: allOf([text(), minLength(1)]),
     status: ref(() => CHECKS.PlanStatus),
   }, ["description", "id", "status"]),
+  PluginBrowserAuthority: object({
+    epoch: text(),
+    id: text(),
+  }, ["epoch", "id"]),
+  PluginBrowserContractKind: enumOf(["service", "point", "event"]),
+  PluginBrowserContractMode: enumOf(["native", "portable"]),
+  PluginBrowserContractRef: object({
+    digest: text(),
+    kind: ref(() => CHECKS.PluginBrowserContractKind),
+    mode: ref(() => CHECKS.PluginBrowserContractMode),
+    name: text(),
+    version: text(),
+  }, ["digest", "kind", "mode", "name", "version"]),
+  PluginBrowserExecution: object({
+    generation: text(),
+    id: text(),
+  }, ["generation", "id"]),
+  PluginBrowserLocalExport: object({
+    contract: ref(() => CHECKS.PluginBrowserContractRef),
+    instanceId: text(),
+    name: text(),
+  }, ["contract", "instanceId", "name"]),
+  PluginBrowserObjectRef: object({
+    export: ref(() => CHECKS.PluginBrowserLocalExport),
+    objectId: text(),
+  }, ["export", "objectId"]),
+  PluginBrowserRealm: object({
+    epoch: text(),
+    id: text(),
+  }, ["epoch", "id"]),
+  PluginBrowserSession: object({
+    authority: ref(() => CHECKS.PluginBrowserAuthority),
+    componentContract: ref(() => CHECKS.PluginBrowserContractRef),
+    controlEndpoint: allOf([text(), minLength(1)]),
+    credential: allOf([text(), minLength(1)]),
+    maximumMessageBytes: allOf([integer(), minimum("1")]),
+    pollIntervalMilliseconds: allOf([integer(), minimum("1")]),
+    proofCapacity: allOf([integer(), minimum("1")]),
+    realm: ref(() => CHECKS.PluginBrowserRealm),
+  }, ["authority", "componentContract", "controlEndpoint", "credential", "maximumMessageBytes", "pollIntervalMilliseconds", "proofCapacity", "realm"]),
+  PluginBrowserUseGrant: object({
+    approvalToken: text(),
+    authority: ref(() => CHECKS.PluginBrowserAuthority),
+    execution: ref(() => CHECKS.PluginBrowserExecution),
+    id: text(),
+    objects: array(ref(() => CHECKS.PluginBrowserObjectRef)),
+    realm: ref(() => CHECKS.PluginBrowserRealm),
+    scopeGeneration: text(),
+    scopeId: text(),
+  }, ["approvalToken", "authority", "execution", "id", "objects", "realm", "scopeGeneration", "scopeId"]),
   PluginCallFailure: object({
     code: allOf([text(), minLength(1), maxLength(256)]),
     message: allOf([text(), minLength(1)]),
@@ -4481,6 +4560,9 @@ const METHOD_PARAMS: Record<WireMethodName, WireCheck> = {
   "mcp.servers.reconnect": ref(() => CHECKS.MCPServerRequest),
   "mcp.authorizationAttempts.create": ref(() => CHECKS.CreateMCPAuthorizationAttemptRequest),
   "mcp.authorizationAttempts.get": ref(() => CHECKS.MCPAuthorizationAttemptRequest),
+  "plugins.openBrowserRealm": ref(() => CHECKS.OpenPluginBrowserRealmRequest),
+  "plugins.acquireComponent": ref(() => CHECKS.AcquirePluginComponentRequest),
+  "plugins.closeBrowserRealm": ref(() => CHECKS.ClosePluginBrowserRealmRequest),
   "plugins.getCommand": ref(() => CHECKS.PluginCommandRequest),
   "plugins.retireCommand": ref(() => CHECKS.PluginCommandRequest),
   "plugins.stream": ref(() => CHECKS.CallPluginRequest),
@@ -4592,6 +4674,9 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "mcp.servers.reconnect": object({}, []),
   "mcp.authorizationAttempts.create": ref(() => CHECKS.MCPAuthorizationAttempt),
   "mcp.authorizationAttempts.get": ref(() => CHECKS.MCPAuthorizationAttempt),
+  "plugins.openBrowserRealm": ref(() => CHECKS.PluginBrowserSession),
+  "plugins.acquireComponent": ref(() => CHECKS.PluginBrowserUseGrant),
+  "plugins.closeBrowserRealm": object({}, []),
   "plugins.getCommand": ref(() => CHECKS.CallPluginRequest),
   "plugins.retireCommand": object({}, []),
   "plugins.stream": object({}, []),

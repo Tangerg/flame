@@ -5,6 +5,11 @@ import {
 } from "./pluginCommand";
 import { callPluginStream, queryPluginStream } from "./pluginStream";
 import type {
+  OpenPluginBrowserRealmRequest,
+  PluginBrowserSession,
+  AcquirePluginComponentRequest,
+  ClosePluginBrowserRealmRequest,
+  PluginBrowserUseGrant,
   OpenPluginResourcesRequest,
   PluginResourceLease,
   ReadPluginResourceRequest,
@@ -349,6 +354,18 @@ export interface Methods {
     };
   };
   plugins: {
+    openBrowserRealm: (
+      request: OpenPluginBrowserRealmRequest,
+      signal?: AbortSignal,
+    ) => MutationPromise<PluginBrowserSession>;
+    acquireComponent: (
+      request: AcquirePluginComponentRequest,
+      signal?: AbortSignal,
+    ) => MutationPromise<PluginBrowserUseGrant>;
+    closeBrowserRealm: (
+      request: ClosePluginBrowserRealmRequest,
+      signal?: AbortSignal,
+    ) => MutationPromise<void>;
     getCommand: (request: PluginCommandRequest, signal?: AbortSignal) => Promise<CallPluginRequest>;
     retireCommand: (request: PluginCommandRequest, signal?: AbortSignal) => MutationPromise<void>;
     pendingCommands: () => PluginCommandRecovery[];
@@ -848,6 +865,10 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       },
     },
     plugins: {
+      openBrowserRealm: (request, signal) => call("plugins.openBrowserRealm", request, { signal }),
+      acquireComponent: (request, signal) => call("plugins.acquireComponent", request, { signal }),
+      closeBrowserRealm: (request, signal) =>
+        call("plugins.closeBrowserRealm", request, { signal }),
       getCommand: (request, signal) => call("plugins.getCommand", request, { signal }),
       retireCommand: (request, signal) => call("plugins.retireCommand", request, { signal }),
       pendingCommands: () =>

@@ -1,4 +1,4 @@
-import { stringifyJSON, parseJSON } from "./json";
+import { stringifyJSON, parseJSON } from "@qimu/sdk/json";
 import { readFileSync } from "node:fs";
 import { afterEach, expect, it, vi } from "vitest";
 import type { CallPluginRequest, CallPluginResponse } from "@flame/runtime-client/wire";

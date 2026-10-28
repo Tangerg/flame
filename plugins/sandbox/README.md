@@ -36,8 +36,16 @@ projects the original result through the Tool codec; it never executes code.
 Regenerate the contract with:
 
 ```sh
-go generate ./plugins/sandbox/internal/contract
+make generate
 ```
 
 Build the ordinary target package with `plugins/scripts/build-packages.mjs`; installation never
 compiles source. The backend uses no shared UI components or new dependencies.
+
+The maintainer-only `contractgen` command owns the capability descriptor. It
+derives schemas from the domain and pure wire declarations. `make generate`
+updates `contracts/contract.generated.go` from that owner before refreshing package
+projections. Backend bindings consume the exact published descriptor through Qimu.
+An independent author module's `go generate` refreshes package projections from
+that descriptor; it does not derive another contract from relocated implementation
+types.

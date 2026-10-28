@@ -13,11 +13,12 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+	sdkplugin "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	"github.com/Tangerg/flame/qimu/cancellation"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
@@ -29,19 +30,27 @@ const manifestSchema = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.js
 const MCPSchema = "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json"
 
 func parse(ctx context.Context, root *os.Root, digest identity.Digest) (plugin.Release, error) {
+	builder, err := parseMetadata(ctx, root)
+	if err != nil {
+		return plugin.Release{}, err
+	}
+	return builder.Release(digest)
+}
+
+func parseMetadata(ctx context.Context, root *os.Root) (*plugin.Builder, error) {
 	body, err := read(ctx, root, "plugin.json", maxManifestBytes)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) || errors.Is(err, errResourceLimit) {
-			return plugin.Release{}, fmt.Errorf("%w: manifest: %w", plugin.ErrInvalid, err)
+			return nil, fmt.Errorf("%w: manifest: %w", plugin.ErrInvalid, err)
 		}
-		return plugin.Release{}, fmt.Errorf("pluginpackage: read manifest: %w", err)
+		return nil, fmt.Errorf("pluginpackage: read manifest: %w", err)
 	}
 	var envelope map[string]jsontext.Value
 	if err = json.Unmarshal(body, &envelope); err != nil {
-		return plugin.Release{}, fmt.Errorf("%w: manifest object: %w", plugin.ErrInvalid, err)
+		return nil, fmt.Errorf("%w: manifest object: %w", plugin.ErrInvalid, err)
 	}
 	if envelope == nil {
-		return plugin.Release{}, fmt.Errorf("%w: manifest must be a JSON object", plugin.ErrInvalid)
+		return nil, fmt.Errorf("%w: manifest must be a JSON object", plugin.ErrInvalid)
 	}
 	var unknown []plugin.Diagnostic
 	known := []string{"$schema", "name", "version", "description", "author", "homepage", "repository", "license", "keywords", "extensions"}
@@ -57,38 +66,38 @@ func parse(ctx context.Context, root *os.Root, digest identity.Digest) (plugin.R
 		if key == "keywords" {
 			var v []string
 			if err = jsonvalue.UnmarshalNonNull(raw, &v); err != nil {
-				return plugin.Release{}, fmt.Errorf("%w: manifest keywords: %w", plugin.ErrInvalid, err)
+				return nil, fmt.Errorf("%w: manifest keywords: %w", plugin.ErrInvalid, err)
 			}
 			if v == nil {
-				return plugin.Release{}, fmt.Errorf("%w: invalid keywords", plugin.ErrInvalid)
+				return nil, fmt.Errorf("%w: invalid keywords", plugin.ErrInvalid)
 			}
 			continue
 		}
 		if key == "author" {
 			var v map[string]jsontext.Value
 			if err = json.Unmarshal(raw, &v); err != nil {
-				return plugin.Release{}, fmt.Errorf("%w: manifest author: %w", plugin.ErrInvalid, err)
+				return nil, fmt.Errorf("%w: manifest author: %w", plugin.ErrInvalid, err)
 			}
 			if v == nil {
-				return plugin.Release{}, fmt.Errorf("%w: invalid author", plugin.ErrInvalid)
+				return nil, fmt.Errorf("%w: invalid author", plugin.ErrInvalid)
 			}
 			for field, value := range v {
 				var text string
 				if !slices.Contains([]string{"name", "email", "url"}, field) || string(value) == "null" {
-					return plugin.Release{}, fmt.Errorf("%w: invalid author field %q", plugin.ErrInvalid, field)
+					return nil, fmt.Errorf("%w: invalid author field %q", plugin.ErrInvalid, field)
 				}
 				if err := json.Unmarshal(value, &text); err != nil {
-					return plugin.Release{}, fmt.Errorf("%w: author field %q: %w", plugin.ErrInvalid, field, err)
+					return nil, fmt.Errorf("%w: author field %q: %w", plugin.ErrInvalid, field, err)
 				}
 			}
 			continue
 		}
 		var text string
 		if string(raw) == "null" {
-			return plugin.Release{}, fmt.Errorf("%w: invalid manifest field %q", plugin.ErrInvalid, key)
+			return nil, fmt.Errorf("%w: invalid manifest field %q", plugin.ErrInvalid, key)
 		}
 		if err := json.Unmarshal(raw, &text); err != nil {
-			return plugin.Release{}, fmt.Errorf("%w: manifest field %q: %w", plugin.ErrInvalid, key, err)
+			return nil, fmt.Errorf("%w: manifest field %q: %w", plugin.ErrInvalid, key, err)
 		}
 	}
 	var schema, name, version, description string
@@ -97,34 +106,34 @@ func parse(ctx context.Context, root *os.Root, digest identity.Digest) (plugin.R
 	_ = json.Unmarshal(envelope["version"], &version)
 	_ = json.Unmarshal(envelope["description"], &description)
 	if schema != manifestSchema {
-		return plugin.Release{}, fmt.Errorf("%w: unsupported manifest schema %q", plugin.ErrInvalid, schema)
+		return nil, fmt.Errorf("%w: unsupported manifest schema %q", plugin.ErrInvalid, schema)
 	}
 	release, err := plugin.NewBuilder(name, version, description)
 	if err != nil {
-		return plugin.Release{}, fmt.Errorf("manifest: %w", err)
+		return nil, fmt.Errorf("manifest: %w", err)
 	}
 	for _, diagnostic := range unknown {
 		release.Report(diagnostic)
 	}
 	nativeServers, err := parseMCP(ctx, root, release)
 	if err != nil {
-		return plugin.Release{}, err
+		return nil, err
 	}
 	if raw, found := envelope["extensions"]; found {
 		if err := parseExtensions(raw, release, ctx, root, nativeServers); err != nil {
-			return plugin.Release{}, err
+			return nil, err
 		}
 		if err := cancellation.Err(ctx); err != nil {
-			return plugin.Release{}, err
+			return nil, err
 		}
 	}
 	if err = parseSkills(ctx, root, release); err != nil {
-		return plugin.Release{}, err
+		return nil, err
 	}
 	if err := cancellation.Err(ctx); err != nil {
-		return plugin.Release{}, err
+		return nil, err
 	}
-	return release.Release(digest)
+	return release, nil
 }
 
 func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Context, root *os.Root, nativeServers []string) error {
@@ -151,7 +160,7 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 	}
 	var members map[string]jsontext.Value
 	var requiredProtocol string
-	if err := json.Unmarshal(body, &members); err != nil || members == nil || json.Unmarshal(members["protocol"], &requiredProtocol) != nil || requiredProtocol != extension.Protocol {
+	if err := json.Unmarshal(body, &members); err != nil || members == nil || json.Unmarshal(members["protocol"], &requiredProtocol) != nil || requiredProtocol != sdkplugin.DeclarationProtocol {
 		report(release, plugin.Component{Kind: plugin.ComponentFlameExtension}, plugin.DiagnosticInvalidDeclaration)
 		return nil
 	}
@@ -200,7 +209,7 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 		if err != nil {
 			return err
 		}
-		contract, err := extension.ParseCapability(body)
+		contract, err := portable.ParseCapability(body)
 		if err != nil {
 			return err
 		}
@@ -213,7 +222,7 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 			if err != nil {
 				return err
 			}
-			dependency, err := extension.ParseCapability(body)
+			dependency, err := portable.ParseCapability(body)
 			if err != nil {
 				return err
 			}
@@ -221,7 +230,7 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 		}
 		return release.AdmitContribution(value)
 	})
-	readPoint := func(resource string) (*extension.Point, error) {
+	readPoint := func(resource string) (*portable.Point, error) {
 		if !plugin.ValidResourcePath(resource) || !strings.HasPrefix(resource, plugin.Namespace+"/") {
 			return nil, plugin.ErrInvalid
 		}
@@ -229,7 +238,7 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 		if err != nil {
 			return nil, err
 		}
-		return extension.ParsePoint(body)
+		return portable.ParsePoint(body)
 	}
 	admitContributions(members["points"], release, plugin.Component{Kind: plugin.ComponentContribution, Name: "points"}, func(w wirePoint) error {
 		contract, err := readPoint(w.Contract)
@@ -366,7 +375,13 @@ func parseMCP(ctx context.Context, root *os.Root, release *plugin.Builder) ([]st
 	}
 	for _, name := range names {
 		server, err := portableServer(name, envelope.Servers[name])
+		if err == nil && server.Transport != mcpserver.TransportStdio {
+			return nil, fmt.Errorf("%w: installed server %q requires a packaged process; configure remote MCP through the host registry", plugin.ErrInvalid, name)
+		}
 		if err == nil {
+			if _, packaged := server.PackagedCommand(); !packaged {
+				return nil, fmt.Errorf("%w: installed server %q requires a packaged executable", plugin.ErrInvalid, name)
+			}
 			err = inspectServerFiles(root, server)
 		}
 		if err == nil {

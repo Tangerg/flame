@@ -7,16 +7,16 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"os"
 	"os/exec"
 	"os/signal"
 	"strings"
 	"sync"
 	"syscall"
-
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func main() {
@@ -72,7 +72,7 @@ func run() (err error) {
 				return
 			}
 			semantic := request.Method
-			if semantic == "io.github.tangerg.flame/operations.invoke" {
+			if semantic == qimumcp.InvokeMethod {
 				semantic = request.Params.Method
 			}
 			matched := semantic == os.Args[3] && (os.Args[4] == "" || request.Params.Name == os.Args[4])
@@ -210,13 +210,13 @@ func receiptFault(stage string, response []byte) ([]byte, error) {
 	var result jsontext.Value
 	switch stage {
 	case "absent":
-		encoded, err := pluginsdk.EncodeReply(pluginsdk.ToolReceipt{}, nil, nil)
+		encoded, err := qimumcp.EncodeReply(pluginsdk.ToolReceipt{}, nil, nil)
 		if err != nil {
 			return nil, err
 		}
 		result = encoded.JSON()
 	case "conflict":
-		encoded, err := pluginsdk.EncodeReply(pluginsdk.ToolReceipt{}, extension.ErrInvocationConflict, func(error) string { return "command_conflict" })
+		encoded, err := qimumcp.EncodeReply(pluginsdk.ToolReceipt{}, portable.ErrInvocationConflict, func(error) string { return "command_conflict" })
 		if err != nil {
 			return nil, err
 		}

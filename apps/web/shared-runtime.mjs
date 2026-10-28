@@ -4,4 +4,7 @@ export const sharedRuntimePackages = [
   "@base-ui/react",
   "motion",
   "@flame/runtime-client",
+  "@qimu/sdk",
+  "@qimu/browser",
+  "@qimu/react",
 ];

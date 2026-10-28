@@ -3,6 +3,7 @@ package execution
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/qimu"
 	"iter"
 	"path/filepath"
 	"sync"
@@ -11,8 +12,6 @@ import (
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -58,10 +57,7 @@ func newTestConfiguredInteractionExecutor(t *testing.T, config InteractionExecut
 		config.ModelEvidence = journal
 	}
 	if config.Admission == nil {
-		config.Admission = plugins.NewAdmission()
-	}
-	if config.InstallationCommands == nil {
-		config.InstallationCommands = emptyInstallationCommands{}
+		config.Admission = qimu.NewAdmission()
 	}
 	if config.ExecutionTrees == nil {
 		config.ExecutionTrees = testTrees(t)
@@ -69,11 +65,6 @@ func newTestConfiguredInteractionExecutor(t *testing.T, config InteractionExecut
 	return NewInteractionExecutor(config)
 }
 
-type emptyInstallationCommands struct{}
-
-func (emptyInstallationCommands) PendingCommandDependencies(context.Context) ([]plugin.Dependency, error) {
-	return nil, nil
-}
 func (s *testExecutionTrees) LoadExecutionTree(_ context.Context, sessionID, rootID string) (runs.ExecutionTreeHead, bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

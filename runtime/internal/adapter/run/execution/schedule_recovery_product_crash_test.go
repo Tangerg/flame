@@ -8,6 +8,7 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,9 +17,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/flame/qimu/runner"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -42,6 +46,9 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build Runtime fixture: %v\n%s", err, output)
 	}
+	if err := testsupport.PrepareRuntimeCompanions(binary); err != nil {
+		t.Fatalf("prepare Runtime companions: %v", err)
+	}
 	packages := filepath.Join(distribution, "plugins")
 	build = exec.CommandContext(t.Context(), "node", filepath.Join(module, "../plugins/scripts/build-packages.mjs"), "--os", goruntime.GOOS, "--arch", goruntime.GOARCH, "--output", packages)
 	build.Dir = module
@@ -52,6 +59,25 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 	for _, cut := range []string{"commit", "query", "resolution", "edited", "absent", "conflict", "malformed", "disabled"} {
 		t.Run(cut, func(t *testing.T) {
 			home := testsupport.TempDirectory(t)
+			processRunner, err := runner.NewDaemon(runner.DaemonConfig{
+				Executable: filepath.Join(distribution, "qimu-runner"),
+				Directory:  filepath.Join(home, "runner"), StartTimeout: 10 * time.Second,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			// The independent runner is owned outside the Host processes being
+			// killed. Every later Host must reconnect to this original authority.
+			t.Cleanup(func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+				if err := processRunner.Close(ctx); err != nil {
+					t.Error(err)
+				}
+			})
+			if _, err := processRunner.Identity(t.Context()); err != nil {
+				t.Fatal(err)
+			}
 			source, evidence := scheduleLossPackage(t, module, packages)
 			if err := syscall.Mkfifo(evidence+".ready", 0600); err != nil {
 				t.Fatal(err)
@@ -61,14 +87,7 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer ready.Close()
-			if err := syscall.Mkfifo(evidence+".continue", 0600); err != nil {
-				t.Fatal(err)
-			}
-			permit, err := os.OpenFile(evidence+".continue", os.O_RDWR, 0600)
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer permit.Close()
+
 			invoke := func(phase string, kill bool) {
 				t.Helper()
 				if err := os.WriteFile(evidence+".phase", []byte(phase), 0600); err != nil {
@@ -97,20 +116,7 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 								barrier <- err
 								return
 							}
-							if phase == "resolution" {
-								settled, err := scheduleResolutionCommitted(ctx, home)
-								if err != nil {
-									barrier <- err
-									return
-								}
-								if !settled {
-									if _, err := permit.Write([]byte{1}); err != nil {
-										barrier <- err
-										return
-									}
-									continue
-								}
-							}
+
 							barrier <- nil
 							return
 						}
@@ -188,24 +194,18 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 			if !originalChild.Valid() {
 				t.Fatal("original create Process is unavailable")
 			}
-			if cut == "disabled" {
-				for _, dependency := range checkpoint.Installations {
-					snapshot, found, err := stores.Installations.Get(t.Context(), dependency.InstallationID)
-					if err != nil || !found {
-						t.Fatalf("original installation: %t,%v", found, err)
-					}
-					snapshot.Installation.Disable()
-					if err := stores.Installations.Save(t.Context(), snapshot.Installation); err != nil {
-						t.Fatal(err)
-					}
-				}
-			}
 			if err := stores.Close(); err != nil {
 				t.Fatal(err)
+			}
+			if cut == "disabled" {
+				invoke("disable", false)
 			}
 			negative := cut == "absent" || cut == "conflict" || cut == "malformed" || cut == "disabled"
 			if cut == "query" || cut == "resolution" {
 				invoke(cut, true)
+			}
+			if cut == "resolution" {
+				assertScheduleResolutionCommitted(t, home, checkpoint.SessionID, checkpoint.RootMemberID, originalChild.Relation().ProcessID())
 			}
 			phase := "finish"
 			if negative {
@@ -342,6 +342,46 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 	}
 }
 
+func assertScheduleResolutionCommitted(t *testing.T, home, sessionID, rootID string, original agent.ProcessID) {
+	t.Helper()
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := stores.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	head, found, err := stores.ExecutorCheckpoints.LoadExecutionTree(t.Context(), sessionID, rootID)
+	if err != nil || !found {
+		t.Fatalf("resolution cut: found=%t error=%v", found, err)
+	}
+	tree, err := agent.ParseTreeSnapshot(head.Payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, process := range tree.ProcessSnapshots() {
+		if process.Relation().ProcessID() != original {
+			continue
+		}
+		for id, settlement := range process.Settlements() {
+			if settlement.Status() != agent.SettlementStatusSucceeded {
+				continue
+			}
+			request, found := tree.EffectRequest(original, id)
+			if !found {
+				continue
+			}
+			invocation, err := interaction.ToolInvocationFromRequest(request)
+			if err == nil && invocation.ToolCall().Name == "schedules_create_schedule" {
+				return
+			}
+		}
+	}
+	t.Fatal("SIGKILL preceded the original create Effect's committed resolution")
+}
+
 func scheduleLossPackage(t *testing.T, module, packages string) (string, string) {
 	t.Helper()
 	source := filepath.Join(t.TempDir(), "schedules")
@@ -361,47 +401,10 @@ func scheduleLossPackage(t *testing.T, module, packages string) (string, string)
 	if err := os.WriteFile(filepath.Join(source, "mcp.json"), descriptor, 0600); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := pluginpackage.BuildRelease(t.Context(), source, pluginpackage.BuildTarget{OS: goruntime.GOOS, Arch: goruntime.GOARCH}, io.Discard); err != nil {
+		t.Fatalf("build the actual message-loss release: %v", err)
+	}
 	return source, evidence
-}
-
-func scheduleResolutionCommitted(ctx context.Context, home string) (settled bool, resultErr error) {
-	stores, err := persistence.Open(ctx, persistence.Config{DataDirectory: home})
-	if err != nil {
-		return false, err
-	}
-	defer func() { resultErr = errors.Join(resultErr, stores.Close()) }()
-	receipt, err := stores.CommandAcceptances.Lookup(ctx, scheduleCrashKey)
-	if err != nil || !receipt.Found {
-		return false, err
-	}
-	checkpoint, found, err := stores.ExecutorCheckpoints.LoadSessionCheckpoint(ctx, receipt.Acceptance.SessionID)
-	if err != nil || !found {
-		return false, err
-	}
-	head, found, err := stores.ExecutorCheckpoints.LoadExecutionTree(ctx, checkpoint.SessionID, checkpoint.RootMemberID)
-	if err != nil || !found {
-		return false, err
-	}
-	tree, err := agent.ParseTreeSnapshot(head.Payload)
-	if err != nil {
-		return false, err
-	}
-	for _, process := range tree.ProcessSnapshots() {
-		for id, settlement := range process.Settlements() {
-			if settlement.Status() != agent.SettlementStatusSucceeded {
-				continue
-			}
-			request, found := tree.EffectRequest(process.Relation().ProcessID(), id)
-			if !found {
-				continue
-			}
-			invocation, err := interaction.ToolInvocationFromRequest(request)
-			if err == nil && invocation.ToolCall().Name == "schedules_create_schedule" {
-				return true, nil
-			}
-		}
-	}
-	return false, nil
 }
 
 // Inspect a stopped release through the public backend contract. The crash
@@ -413,7 +416,7 @@ func readScheduleOwner(t *testing.T, packages, dataDirectory string, original sd
 	var stderr bytes.Buffer
 	command.Stderr = &stderr
 	client := sdk.NewClient(&sdk.Implementation{Name: "schedule-owner-check"}, nil)
-	if err := pluginsdk.RegisterClient(client); err != nil {
+	if err := qimumcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	session, err := client.Connect(t.Context(), &sdk.CommandTransport{Command: command}, nil)
@@ -425,7 +428,7 @@ func readScheduleOwner(t *testing.T, packages, dataDirectory string, original sd
 			t.Error(err)
 		}
 	}()
-	contract, err := extension.ParseCapability([]byte(testsupport.SchedulesCapabilityJSON))
+	contract, err := portable.ParseCapability([]byte(testsupport.SchedulesCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -433,11 +436,11 @@ func readScheduleOwner(t *testing.T, packages, dataDirectory string, original sd
 	if err != nil || len(page.Rows) != 1 || page.NextCursor != "" {
 		t.Fatalf("original backend creation: %+v, %v", page, err)
 	}
-	var invocation extension.Invocation
-	if err := json.Unmarshal(original.Meta[pluginsdk.InvocationMetadataKey], &invocation, json.RejectUnknownMembers(true)); err != nil {
+	var invocation portable.Invocation
+	if err := json.Unmarshal(original.Meta[qimumcp.InvocationMetadataKey], &invocation, json.RejectUnknownMembers(true)); err != nil {
 		t.Fatal(err)
 	}
-	ctx, err := pluginsdk.WithInvocation(t.Context(), invocation)
+	ctx, err := qimumcp.WithInvocation(t.Context(), invocation)
 	if err != nil {
 		t.Fatal(err)
 	}

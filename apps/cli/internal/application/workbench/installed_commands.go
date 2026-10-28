@@ -11,8 +11,8 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/portable"
 )
 
 const installedCommandsName = "installed-commands.json"
@@ -37,7 +37,7 @@ type installedCommandRecord struct {
 	Contract       string                `json:"contract"`
 	Method         string                `json:"method"`
 	Input          []byte                `json:"input"`
-	Target         extension.Target      `json:"target"`
+	Target         portable.Target       `json:"target"`
 	Replay         authoring.ReplayGuard `json:"replay"`
 }
 
@@ -66,12 +66,12 @@ func (p PendingInstalledCommand) validate() error {
 	if err := errors.Join(p.CommandID.Validate(), p.Replay.Validate(), protocol.ValidateWireTree(p.Request), p.Request.Target.Validate()); err != nil {
 		return err
 	}
-	contract, err := extension.ParseCapability([]byte(p.Request.Contract))
+	contract, err := portable.ParseCapability([]byte(p.Request.Contract))
 	if err != nil {
 		return err
 	}
 	method, found := contract.Method(p.Request.Method)
-	if !found || method.Kind() != extension.Mutation {
+	if !found || method.Kind() != portable.Mutation {
 		return errors.New("installed command method is not a command")
 	}
 	if method.Descriptor().Target != p.Request.Target.Scope {
@@ -219,7 +219,7 @@ func executeInstalledCommand[T any](ctx context.Context, caller InstalledCaller,
 			return zero, err
 		}
 	}
-	var ownerRefusal *extension.Refusal
+	var ownerRefusal *portable.Refusal
 	result, err := mutation.ConfirmAdmitted(ctx, mutation.AcknowledgementBackoff(), mutation.ReplayAdmission(policy, pending.Replay), func(ctx context.Context) (T, error) {
 		request := pending.Request
 		reply, err := caller.CallPlugin(ctx, request, pending.CommandID)
@@ -232,7 +232,7 @@ func executeInstalledCommand[T any](ctx context.Context, caller InstalledCaller,
 			return zero, errors.New("installed command acknowledgement is absent")
 		}
 		if reply.Failure != nil {
-			ownerRefusal = &extension.Refusal{Code: reply.Failure.Code, Message: reply.Failure.Message}
+			ownerRefusal = &portable.Refusal{Code: reply.Failure.Code, Message: reply.Failure.Message}
 			return zero, ownerRefusal
 		}
 		return decode(reply)

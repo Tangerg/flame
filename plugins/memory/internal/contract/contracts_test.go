@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 )
 
 func TestGeneratedCapabilityMatchesTheActualMethodOwner(t *testing.T) {
@@ -23,7 +23,7 @@ func TestGeneratedCapabilityMatchesTheActualMethodOwner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	published, err := extension.ParseCapability(data)
+	published, err := portable.ParseCapability(data)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -14,15 +14,13 @@ func main() {
 
 func run(arguments []string) error {
 	if len(arguments) == 0 {
-		return fmt.Errorf("expected contract, backend-protocol or archive")
+		return fmt.Errorf("expected contract or backend-protocol")
 	}
 	switch arguments[0] {
 	case "contract":
 		return runContract(arguments[1:])
 	case "backend-protocol":
 		return runBackendProtocol(arguments[1:])
-	case "archive":
-		return runArchive(arguments[1:])
 	default:
 		return fmt.Errorf("unknown command %q", arguments[0])
 	}

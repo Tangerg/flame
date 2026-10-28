@@ -4,12 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"os"
 	"path/filepath"
 	"testing"
-
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/runtime/internal/application/operation"
 )
 
 func TestIdempotencyStoreReplayConflictAndExpiry(t *testing.T) {
@@ -37,7 +36,7 @@ func TestIdempotencyStoreReplayConflictAndExpiry(t *testing.T) {
 		t.Fatalf("aged pending claim: record=%+v claimed=%v err=%v", got, claimed, err)
 	}
 	conflicting := operation.ReplayRecord{Key: first.Key, Fingerprint: "second"}
-	if _, _, claimErr := store.Claim(ctx, conflicting.Key, conflicting.Fingerprint); !errors.Is(claimErr, extension.ErrInvocationConflict) {
+	if _, _, claimErr := store.Claim(ctx, conflicting.Key, conflicting.Fingerprint); !errors.Is(claimErr, portable.ErrInvocationConflict) {
 		t.Fatalf("reuse aged pending claim = %v, want ErrKeyConflict", claimErr)
 	}
 	if completeErr := store.Complete(ctx, first); completeErr != nil {
@@ -55,7 +54,7 @@ func TestIdempotencyStoreReplayConflictAndExpiry(t *testing.T) {
 	if err != nil || claimed || string(got.Payload) != string(first.Payload) {
 		t.Fatalf("completed claim: record=%+v claimed=%v err=%v", got, claimed, err)
 	}
-	if _, _, claimErr := store.Claim(ctx, conflicting.Key, conflicting.Fingerprint); !errors.Is(claimErr, extension.ErrInvocationConflict) {
+	if _, _, claimErr := store.Claim(ctx, conflicting.Key, conflicting.Fingerprint); !errors.Is(claimErr, portable.ErrInvocationConflict) {
 		t.Fatalf("claim conflicting record = %v, want ErrKeyConflict", claimErr)
 	}
 
@@ -98,7 +97,7 @@ func TestIdempotencyStoreKeepsAbandonedClaimAcrossReopen(t *testing.T) {
 	if err != nil || claimed || len(got.Payload) != 0 {
 		t.Fatalf("claim after reopen = (%+v, %v, %v), want unresolved reservation", got, claimed, err)
 	}
-	if _, _, err := store.Claim(t.Context(), record.Key, "second"); !errors.Is(err, extension.ErrInvocationConflict) {
+	if _, _, err := store.Claim(t.Context(), record.Key, "second"); !errors.Is(err, portable.ErrInvocationConflict) {
 		t.Fatalf("reuse after reopen = %v, want ErrKeyConflict", err)
 	}
 }

@@ -24,11 +24,11 @@ type resourceManifestResolver struct {
 	captured []capturedResourceManifest
 }
 
-func (r *resourceManifestResolver) Manifest(ctx context.Context, group domaintool.Group, capturedMCP []domaintool.Ref) (toolset.Manifest, error) {
+func (r *resourceManifestResolver) Manifest(ctx context.Context, group domaintool.Group, retained *toolset.Retained) (toolset.Manifest, error) {
 	if r.failure == "delegated resolution" && group == domaintool.GroupDelegated {
 		return toolset.Manifest{}, errors.New("delegated resolution failed")
 	}
-	manifest, err := r.resolver.Manifest(ctx, group, capturedMCP)
+	manifest, err := r.resolver.Manifest(ctx, group, retained)
 	if err != nil {
 		return toolset.Manifest{}, err
 	}

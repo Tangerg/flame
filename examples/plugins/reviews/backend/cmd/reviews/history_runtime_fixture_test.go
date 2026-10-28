@@ -14,8 +14,8 @@ import (
 
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
 
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -77,7 +77,7 @@ func TestReceiptHistoryRuntimeFixture(t *testing.T) {
 				} else {
 					updates.Add(1)
 				}
-			case pluginsdk.ReceiptMethod:
+			case qimumcp.ReceiptMethod:
 				receiptReads.Add(1)
 			}
 			return next(ctx, method, request)

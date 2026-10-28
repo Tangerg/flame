@@ -109,7 +109,7 @@ func TestEqualNamesAcrossOriginsKeepSeparateRelations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := installations.Save(t.Context(), installation); err != nil {
+	if err := installations.projectRecord(t.Context(), installation.Snapshot()); err != nil {
 		t.Fatal(err)
 	}
 	installed, err := installation.ServerID(testsupport.ServerName("files"))
@@ -154,7 +154,7 @@ func TestEqualNamesAcrossOriginsKeepSeparateRelations(t *testing.T) {
 		t.Fatalf("removing the user server changed installation exposure: %+v, %v", exposure, err)
 	}
 
-	if err := installations.Remove(t.Context(), installation.Snapshot().ID); err != nil {
+	if _, err := db.ExecContext(t.Context(), `DELETE FROM plugin_installations WHERE id=?`, installation.ID().String()); err != nil {
 		t.Fatal(err)
 	}
 	requireRows(t, db, map[string]int{"mcp_sources": 0, "approval_rules": 0, "mcp_tool_exposure": 0})

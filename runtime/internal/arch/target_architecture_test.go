@@ -14,6 +14,7 @@ import (
 const (
 	runtimeModulePath      = "github.com/Tangerg/flame/runtime"
 	sdkModulePath          = "github.com/Tangerg/flame/packages/go-sdk"
+	qimuModulePath         = "github.com/Tangerg/flame/qimu"
 	localRuntimeModulePath = "github.com/Tangerg/flame/packages/local-runtime"
 )
 
@@ -29,6 +30,12 @@ func repositoryLayer(path string) (string, bool) {
 	if relative, ok := strings.CutPrefix(path, sdkModulePath+"/"); ok {
 		return sdkLayer(relative), true
 	}
+	if path == qimuModulePath {
+		return ringMechanism, true
+	}
+	if relative, ok := strings.CutPrefix(path, qimuModulePath+"/"); ok {
+		return qimuLayer(relative), true
+	}
 	if path == localRuntimeModulePath {
 		return ringDeployment, true
 	}
@@ -40,15 +47,30 @@ func repositoryLayer(path string) (string, bool) {
 
 func sdkLayer(path string) string {
 	switch path {
-	case "exactint", "identity", "instant", "jsonvalue", "extension", "model":
+	case "exactint", "identity", "instant", "extension", "model":
 		return ringValue
-	case "pagination", "cancellation", "capture":
+	case "pagination", "capture":
 		return ringMechanism
 	case "protocol":
 		return ringProtocol
-	case "plugin", "plugin/memory", "plugin/sqlite", "sqlite", "filesystem", "model/catalog", "sandbox", "httpresponse", "client":
+	case "plugin", "plugin/memory", "plugin/sqlite", "filesystem", "model/catalog", "sandbox", "httpresponse", "client":
 		return ringInfra
-	case "contractgen", "cmd/flame-sdk":
+	case "cmd/flame-sdk":
+		return ringGenerator
+	default:
+		return ringUnknown
+	}
+}
+
+func qimuLayer(path string) string {
+	switch path {
+	case "jsonvalue", "portable":
+		return ringValue
+	case "cancellation", "control":
+		return ringMechanism
+	case "mcp", "sqlite", "runner", "distribution", "process", "control/host":
+		return ringInfra
+	case "contractgen", "cmd/qimu", "cmd/controlgen", "mcp/cmd/protocolgen":
 		return ringGenerator
 	default:
 		return ringUnknown
@@ -133,6 +155,10 @@ func TestDeliveryDependencyRuleAllowsIndependentMechanisms(t *testing.T) {
 		{name: "unknown target", dependency: runtimeModulePath + "/internal/newfeature", wantViolations: 1},
 		{name: "public protocol", dependency: sdkModulePath + "/protocol"},
 		{name: "public backend transport", dependency: sdkModulePath + "/plugin", wantViolations: 1},
+		{name: "qimu admission", dependency: qimuModulePath},
+		{name: "qimu contract", dependency: qimuModulePath + "/portable"},
+		{name: "qimu mcp driver", dependency: qimuModulePath + "/mcp", wantViolations: 1},
+		{name: "qimu unknown", dependency: qimuModulePath + "/unclassified", wantViolations: 1},
 		{name: "pure value", dependency: sdkModulePath + "/identity"},
 		{name: "technical mechanism", dependency: sdkModulePath + "/pagination"},
 		{name: "generator", dependency: runtimeModulePath + "/cmd/contractgen", wantViolations: 1},
@@ -177,15 +203,23 @@ func TestDependencyRuleClassifiesSharedAndPublicBoundaries(t *testing.T) {
 		allowed  bool
 	}{
 		{from: runtimeModulePath, to: runtimeModulePath + "/internal/bootstrap", allowed: true},
-		{from: sdkModulePath + "/plugin/sqlite", to: sdkModulePath + "/sqlite", allowed: true},
+		{from: sdkModulePath + "/plugin/sqlite", to: qimuModulePath + "/sqlite", allowed: true},
+		{from: runtimeModulePath + "/internal/domain/newaggregate", to: qimuModulePath + "/portable", allowed: true},
+		{from: runtimeModulePath + "/internal/domain/newaggregate", to: qimuModulePath},
+		{from: runtimeModulePath + "/internal/application/agent/newusecase", to: qimuModulePath, allowed: true},
+		{from: runtimeModulePath + "/internal/application/agent/newusecase", to: qimuModulePath + "/mcp"},
+		{from: qimuModulePath + "/portable", to: qimuModulePath},
+		{from: qimuModulePath + "/portable", to: qimuModulePath + "/jsonvalue", allowed: true},
+		{from: qimuModulePath, to: qimuModulePath + "/mcp"},
+		{from: qimuModulePath + "/mcp", to: qimuModulePath, allowed: true},
 		{from: runtimeModulePath + "/internal/domain/newaggregate", to: sdkModulePath + "/model", allowed: true},
 		{from: sdkModulePath + "/plugin/sqlite", to: sdkModulePath + "/extension", allowed: true},
 		{from: sdkModulePath + "/extension", to: runtimeModulePath + "/internal/application/agent/runs"},
 		{from: sdkModulePath + "/model", to: sdkModulePath + "/model/catalog"},
 		{from: sdkModulePath + "/model/catalog", to: sdkModulePath + "/model", allowed: true},
-		{from: sdkModulePath + "/sqlite", to: sdkModulePath + "/cancellation", allowed: true},
-		{from: sdkModulePath + "/sqlite", to: runtimeModulePath + "/internal/application/agent/runs"},
-		{from: runtimeModulePath + "/internal/domain/newaggregate", to: sdkModulePath + "/sqlite"},
+		{from: qimuModulePath + "/sqlite", to: qimuModulePath + "/cancellation", allowed: true},
+		{from: qimuModulePath + "/sqlite", to: runtimeModulePath + "/internal/application/agent/runs"},
+		{from: runtimeModulePath + "/internal/domain/newaggregate", to: qimuModulePath + "/sqlite"},
 		{from: runtimeModulePath + "/internal/domain/newaggregate", to: sdkModulePath + "/identity", allowed: true},
 		{from: runtimeModulePath + "/internal/domain/newaggregate", to: sdkModulePath + "/protocol"},
 		{from: runtimeModulePath + "/internal/domain/newaggregate", to: sdkModulePath + "/extension", allowed: true},
@@ -193,12 +227,15 @@ func TestDependencyRuleClassifiesSharedAndPublicBoundaries(t *testing.T) {
 		{from: runtimeModulePath + "/internal/domain/newaggregate", to: sdkModulePath + "/plugin"},
 		{from: runtimeModulePath + "/internal/application/agent/newusecase", to: sdkModulePath + "/plugin"},
 		{from: sdkModulePath + "/extension", to: sdkModulePath + "/plugin"},
-		{from: sdkModulePath + "/extension", to: sdkModulePath + "/jsonvalue", allowed: true},
+		{from: sdkModulePath + "/extension", to: qimuModulePath + "/jsonvalue", allowed: true},
 		{from: runtimeModulePath + "/internal/domain/newaggregate", to: runtimeModulePath + "/internal/completion"},
 		{from: runtimeModulePath + "/internal/application/agent/newusecase", to: runtimeModulePath + "/internal/completion", allowed: true},
 		{from: sdkModulePath + "/identity", to: runtimeModulePath + "/internal/domain/session"},
 		{from: runtimeModulePath + "/internal/completion", to: runtimeModulePath + "/internal/application/agent/runs"},
-		{from: sdkModulePath + "/protocol", to: sdkModulePath + "/jsonvalue", allowed: true},
+		{from: sdkModulePath + "/protocol", to: qimuModulePath + "/jsonvalue", allowed: true},
+		{from: sdkModulePath + "/protocol", to: qimuModulePath + "/control"},
+		{from: runtimeModulePath + "/internal/domain/newaggregate", to: qimuModulePath + "/control"},
+		{from: runtimeModulePath + "/internal/application/agent/newusecase", to: qimuModulePath + "/control/host"},
 		{from: sdkModulePath + "/protocol", to: runtimeModulePath + "/internal/application/agent/runs"},
 		{from: sdkModulePath + "/protocol", to: sdkModulePath + "/capture"},
 		{from: localRuntimeModulePath, to: runtimeModulePath + "/internal/bootstrap"},

@@ -13,7 +13,7 @@ import (
 	"testing"
 	"testing/synctest"
 
-	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
+	"github.com/Tangerg/flame/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -280,7 +280,7 @@ func TestInstallationLookupSeparatesAbsentRecordFromMissingRelease(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Save(t.Context(), installation); err != nil {
+	if err := store.projectRecord(t.Context(), installation.Snapshot()); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := db.ExecContext(t.Context(), `PRAGMA foreign_keys=OFF`); err != nil {

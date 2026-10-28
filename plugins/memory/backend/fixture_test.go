@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/plugins/memory/internal/sqlite"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -23,7 +23,7 @@ func connectMemoryBackend(t *testing.T, path string) (*sqlite.AgentMemoryStore, 
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "runtime"}, nil)
-	if err := pluginsdk.RegisterClient(client); err != nil {
+	if err := qimumcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()

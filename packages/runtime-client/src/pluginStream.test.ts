@@ -1,4 +1,4 @@
-import { parseJSON, stringifyJSON } from "./json";
+import { parseJSON, stringifyJSON } from "@qimu/sdk/json";
 import { expect, it, vi } from "vitest";
 import { createFlameClient } from "./sdk";
 import { createHttpTransport } from "./transports/http";
@@ -7,7 +7,7 @@ import { MutationLookupError } from "./mutation";
 import type { ServerCapabilities } from "@flame/runtime-client/wire";
 
 const descriptor = {
-  protocol: "io.github.tangerg.flame/backend/2026-10-15.3",
+  protocol: "io.github.tangerg.qimu/portable/1",
   reference: "records",
   composition: "selection",
   scope: "installation",

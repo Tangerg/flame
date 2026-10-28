@@ -38,6 +38,7 @@ type admission struct {
 
 type launch struct {
 	config    ServerConfig
+	managed   *installedSession
 	stdio     *stdioLaunch
 	retire    sessionCleanup
 	admission admission

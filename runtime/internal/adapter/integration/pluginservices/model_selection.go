@@ -5,8 +5,11 @@ import (
 	"errors"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
@@ -34,7 +37,7 @@ func (o *CallComposition) SelectModel(ctx context.Context, proposal models.Selec
 		if err != nil || !found {
 			return err
 		}
-		binding, chosen, err = plugins.SelectedContribution(ctx, o.calls.installations, o.calls.selections, contract)
+		binding, chosen, err = plugins.SelectedContribution(ctx, o.calls.framework, o.calls.installations, o.calls.selections, contract)
 		if err != nil {
 			return err
 		}
@@ -57,32 +60,35 @@ func (o *CallComposition) SelectModel(ctx context.Context, proposal models.Selec
 	if err != nil {
 		return modelchoice.Selection{}, err
 	}
-	if live != binding {
+	if !live.SameContribution(binding) {
 		return modelchoice.Selection{}, plugin.ErrStale
 	}
-	session, err := o.calls.pool.ServiceSession(ctx, binding.ServerID)
+	borrowed, err := borrowContribution(ctx, o.calls.pool, binding)
 	if err != nil {
 		return modelchoice.Selection{}, err
 	}
+	defer borrowed.Close()
+	ctx = borrowed.Context()
+	session := borrowed.Session()
 	if _, err := o.calls.pool.SessionActor(ctx, binding.ServerID, session); err != nil {
 		return modelchoice.Selection{}, err
 	}
 	id := uuid.NewString()
-	target := extension.Target{Scope: extension.ScopeCall, Reference: id}
-	invocation := extension.Invocation{ID: id, Origin: extension.Automatic, Parent: operation.Identity(ctx), Target: target}
+	target := portable.Target{Scope: extension.ScopeCall, Reference: id}
+	invocation := portable.Invocation{ID: id, Origin: extension.Automatic, Parent: operation.Identity(ctx), Target: target}
 	if parent, err := operation.Capture(ctx, target); err == nil {
 		invocation.Origin = parent.Origin
 		invocation.Parent = parent.ID
 	}
-	if parent, err := pluginsdk.InvocationFromContext(ctx); err == nil {
+	if parent, err := qimumcp.InvocationFromContext(ctx); err == nil {
 		invocation.Origin = parent.Origin
 		invocation.Parent = parent.ID
 	}
-	ctx, err = pluginsdk.WithInvocation(ctx, invocation)
+	ctx, err = qimumcp.WithInvocation(ctx, invocation)
 	if err != nil {
 		return modelchoice.Selection{}, err
 	}
-	exported, err := pluginsdk.ResolveCapability(ctx, session, binding.Export, contract)
+	exported, err := qimumcp.ResolveCapability(ctx, session, binding.Export, contract)
 	if err != nil {
 		return modelchoice.Selection{}, err
 	}

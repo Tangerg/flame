@@ -14,7 +14,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
-	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
+	"github.com/Tangerg/flame/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
@@ -643,9 +643,15 @@ func currentSchema() []string {
 			FOREIGN KEY(root_member_id, session_id) REFERENCES executor_checkpoints(root_member_id, session_id) ON DELETE CASCADE,
 			FOREIGN KEY(session_id, result_id) REFERENCES tool_result_blobs(session_id, id) ON DELETE RESTRICT
 		)`,
-		executorCheckpointInstallationsSchema(),
-		`CREATE INDEX IF NOT EXISTS idx_executor_checkpoint_installations_installation
-			ON executor_checkpoint_installations(installation_id)`,
+		`CREATE TABLE IF NOT EXISTS executor_checkpoint_bindings (
+			root_member_id TEXT NOT NULL REFERENCES executor_checkpoints(root_member_id) ON DELETE CASCADE,
+			position INTEGER NOT NULL CHECK(position >= 0),
+			binding_json TEXT NOT NULL CHECK(json_valid(binding_json)),
+			PRIMARY KEY(root_member_id, position)
+		)`,
+		executorCheckpointResourcesSchema(),
+		`CREATE INDEX IF NOT EXISTS idx_executor_checkpoint_resources_installation
+			ON executor_checkpoint_resources(installation_id)`,
 		// Append-only quality signals submitted through feedback.create. They are
 		// deliberately not foreign-keyed: a user may report a general issue or
 		// submit feedback after the referenced runtime records are cleaned up.
@@ -716,8 +722,8 @@ func mcpOAuthSessionsSchema() string {
 		)`, digestCheck("target_fingerprint"), oauthBindingColumn)
 }
 
-func executorCheckpointInstallationsSchema() string {
-	return fmt.Sprintf(`CREATE TABLE IF NOT EXISTS executor_checkpoint_installations (
+func executorCheckpointResourcesSchema() string {
+	return fmt.Sprintf(`CREATE TABLE IF NOT EXISTS executor_checkpoint_resources (
 			root_member_id TEXT NOT NULL REFERENCES executor_checkpoints(root_member_id) ON DELETE CASCADE,
 			installation_id TEXT NOT NULL CHECK (%s),
 			digest TEXT NOT NULL CHECK (%s),

@@ -11,12 +11,18 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/runner"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -28,6 +34,7 @@ func scheduleCrashModel(t *testing.T, home string) chat.Model {
 		for _, message := range request.Messages {
 			for _, part := range message.Parts {
 				if part.ToolResult != nil && part.ToolResult.Name == name {
+
 					result, err := json.Marshal(part.ToolResult.Output.Details)
 					if err != nil {
 						return nil, err
@@ -62,34 +69,42 @@ func TestScheduleRecoveryCrashHelper(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if phase == "resolution" {
-		tx := stores.Transactor
-		stores.Transactor = func(ctx context.Context, apply func(context.Context) error) error {
-			if err := tx(ctx, apply); err != nil {
+		commit := stores.CommitPluginReferences
+		stores.CommitPluginReferences = func(ctx context.Context, host *qimu.Host, identity string, checkpoint runs.ExecutorCheckpoint, apply func(context.Context) error) error {
+			if err := commit(ctx, host, identity, checkpoint, apply); err != nil {
 				return err
 			}
-			receipt, err := stores.CommandAcceptances.Lookup(ctx, scheduleCrashKey)
-			if err != nil || !receipt.Found {
+			settled, err := scheduleResolutionCommitted(ctx, stores)
+			if err != nil || !settled {
 				return err
 			}
-			if _, found, err := stores.ExecutorCheckpoints.LoadSessionCheckpoint(ctx, receipt.Acceptance.SessionID); err != nil || !found {
+			// The real owner has committed. Withhold only its acknowledgement
+			// so the parent can kill this process before continuation advances.
+			if err := scheduleCrashReady(os.Getenv("FLAME_TEST_SCHEDULE_EVIDENCE")); err != nil {
 				return err
 			}
-			evidence := os.Getenv("FLAME_TEST_SCHEDULE_EVIDENCE")
-			if err := scheduleCrashReady(evidence); err != nil {
-				return err
-			}
-			permit, err := os.OpenFile(evidence+".continue", os.O_RDONLY, 0600)
-			if err != nil {
-				return err
-			}
-			var acknowledgement [1]byte
-			_, err = io.ReadFull(permit, acknowledgement[:])
-			return errors.Join(err, permit.Close())
+			<-ctx.Done()
+			return context.Cause(ctx)
 		}
 	}
 
 	cfg := protocolRuntimeConfig(t, stores, scheduleCrashModel(t, home))
+	processRunner, err := runner.NewDaemon(runner.DaemonConfig{
+		Executable: testsupport.RunnerExecutable(t), Directory: filepath.Join(home, "runner"), StartTimeout: 10 * time.Second,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.processRunner = processRunner
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := processRunner.Close(ctx); err != nil {
+			t.Error(err)
+		}
+	})
 	cfg.approvalMode = approval.ModeYolo
 	if os.Getenv("FLAME_TEST_SCHEDULE_EDITED") == "1" {
 		cfg.approvalMode = approval.ModeSafe
@@ -106,17 +121,13 @@ func TestScheduleRecoveryCrashHelper(t *testing.T) {
 	var sum [sha256.Size]byte
 	copy(sum[:], hash.Sum(nil))
 	cfg.buildID = runs.BuildFromSHA256(sum).String()
+	if phase == "disable" {
+		disableOriginalScheduleBinding(t, cfg)
+		return
+	}
 	host, api := buildProtocolRuntime(t, cfg, home)
 	defer host.Close()
-	endpoint := acceptedCommandEndpoint(t, api, stores)
-	// Mirror production delivery: publish the callback RPC, then run the deferred
-	// uncertain-execution revival that depends on background plugin sessions.
-	if err := host.application.publishCallbacks(endpoint); err != nil {
-		t.Fatal(err)
-	}
-	if err := host.application.recoverUncertainExecutions(t.Context()); err != nil {
-		t.Fatal(err)
-	}
+	endpoint := host.Endpoint()
 	if phase == "commit" || phase == "edited" {
 		r := &poMCPRuntime{t: t, host: host, api: api, endpoint: endpoint}
 		installed := poMCPActivate(r, os.Getenv("FLAME_TEST_SCHEDULE_SOURCE"))
@@ -186,6 +197,72 @@ func TestScheduleRecoveryCrashHelper(t *testing.T) {
 		lookup, _ := os.ReadFile(os.Getenv("FLAME_TEST_SCHEDULE_EVIDENCE") + ".finish")
 		t.Fatalf("recovered Run: %+v, outcome=%+v, error=%v, lookup=%s", value, value.Outcome, err, lookup)
 	}
+}
+
+// This phase reconstructs the real execution authority before changing the
+// original installation. It deliberately creates no Run executor that could
+// consume the pending business result before the disable is admitted.
+func disableOriginalScheduleBinding(t *testing.T, cfg assemblyConfig) {
+	t.Helper()
+	lifetime := newRuntimeLifetime(t.Context(), cfg.resources)
+	defer func() {
+		if err := closeRuntimeLifetime(lifetime); err != nil {
+			t.Error(err)
+		}
+	}()
+	packages, err := buildPluginPackages(cfg, lifetime)
+	if err != nil {
+		t.Fatal(err)
+	}
+	callbacks := qimumcp.NewCallbacks()
+	defer func() {
+		if err := callbacks.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	framework, err := buildFramework(t.Context(), cfg, lifetime, packages, callbacks)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cfg.stores.Admission.RecoveryError(); err != nil {
+		t.Fatalf("original execution ownership did not recover: %v", err)
+	}
+	receipt, err := cfg.stores.CommandAcceptances.Lookup(t.Context(), scheduleCrashKey)
+	if err != nil || !receipt.Found {
+		t.Fatalf("original accepted command: %t, %v", receipt.Found, err)
+	}
+	checkpoint, found, err := cfg.stores.ExecutorCheckpoints.LoadSessionCheckpoint(t.Context(), receipt.Acceptance.SessionID)
+	if err != nil || !found {
+		t.Fatalf("original retained execution: %t, %v", found, err)
+	}
+	dependencies := checkpoint.Dependencies()
+	if len(dependencies) == 0 {
+		t.Fatal("original execution has no retained installation")
+	}
+	for _, dependency := range dependencies {
+		if err := framework.host.SetEnabled(t.Context(), qimu.InstallationID(dependency.InstallationID.String()), false); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func scheduleResolutionCommitted(ctx context.Context, stores *persistence.Bundle) (bool, error) {
+	receipt, err := stores.CommandAcceptances.Lookup(ctx, scheduleCrashKey)
+	if err != nil || !receipt.Found {
+		return false, err
+	}
+	items, err := stores.Transcript.List(ctx, receipt.Acceptance.SessionID)
+	if err != nil {
+		return false, err
+	}
+	// The result Item and opaque executor cut share the original transaction.
+	// The execution-adapter test verifies the exact settlement after SIGKILL.
+	for _, item := range items {
+		if invocation, ok := item.ToolInvocation(); ok && invocation.Name == "schedules_create_schedule" && item.Status() == transcript.ItemCompleted {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func scheduleCrashReady(evidence string) error {

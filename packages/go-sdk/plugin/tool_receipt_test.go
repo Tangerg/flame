@@ -3,10 +3,11 @@ package plugin
 import (
 	"context"
 	"errors"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/tool"
@@ -43,12 +44,12 @@ func TestToolReceiptReadsOnlyTheOriginalOwnerOutput(t *testing.T) {
 		{name: "corrupt output", receipt: ToolReceipt{Found: true, Output: `{"content":[{"kind":"invalid"}]}`}, invalid: true},
 		{name: "undeclared output", receipt: ToolReceipt{Output: known.Output}, invalid: true},
 		{name: "undeclared failure", receipt: ToolReceipt{IsError: true}, invalid: true},
-		{name: "lookup conflict", queryErr: &extension.Refusal{Code: "command_conflict", Message: "changed input"}, invalid: true},
+		{name: "lookup conflict", queryErr: &portable.Refusal{Code: "command_conflict", Message: "changed input"}, invalid: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			server := sdk.NewServer(&sdk.Implementation{Name: "independent records"}, nil)
 			backend := testBackend(t, server)
-			if err := testMethod[ReceiptRequest, ToolReceipt](t, ToolReceiptMethod, extension.Query).RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command Command[ReceiptRequest]) (ToolReceipt, error) {
+			if err := testMethod[qimumcp.ReceiptRequest, ToolReceipt](t, ToolReceiptMethod, portable.Query).RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command qimumcp.Command[qimumcp.ReceiptRequest]) (ToolReceipt, error) {
 				request := command.Input
 				if request.ID != "tool:original" || request.Method != "append_record" || request.InputDigest != input.Digest() {
 					t.Fatalf("read changed original identity: %+v", request)
@@ -57,17 +58,17 @@ func TestToolReceiptReadsOnlyTheOriginalOwnerOutput(t *testing.T) {
 			}); err != nil {
 				t.Fatal(err)
 			}
-			if err := testMethod[string, string](t, "append_record", extension.Mutation).RegisterServer(backend, nil, func(context.Context, *sdk.ServerSession, Command[string]) (string, error) {
+			if err := testMethod[string, string](t, "append_record", portable.Mutation).RegisterServer(backend, nil, func(context.Context, *sdk.ServerSession, qimumcp.Command[string]) (string, error) {
 				t.Error("receipt lookup replayed the mutation")
 				return "", nil
 			}); err != nil {
 				t.Fatal(err)
 			}
 			client := sdk.NewClient(&sdk.Implementation{Name: "Core"}, nil)
-			if err := RegisterClient(client); err != nil {
+			if err := qimumcp.RegisterClient(client); err != nil {
 				t.Fatal(err)
 			}
-			session := connectPublishedBackend(t, backend, client)
+			session := connectPublishedBackend(t, backend, server, client)
 			actual, err := ReadToolReceipt(t.Context(), session, "original", "append_record", input)
 			_, failed := errors.AsType[*tool.Failure](err)
 			if (actual != nil) != test.found || failed != test.failed {

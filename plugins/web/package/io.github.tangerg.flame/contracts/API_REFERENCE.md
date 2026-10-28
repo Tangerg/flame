@@ -8,6 +8,6 @@ Generated from the feature's Go-owned method contracts.
 | `flame.web/fetch.v1` | query | installation | Fetch a URL through configured Jina Reader credentials and capture a private immutable snapshot. Return its first 8192 Unicode codepoints and exact continuation offset. |
 | `flame.web/search.v1` | query | installation | Search through configured Tavily credentials with a query up to 8192 bytes, honoring explicit domain and supported recency filters. Each call queries the provider; results are bounded to 128 KiB. |
 
-Capability `flame.web.v1` uses `collection` composition in `installation` scope. Required backend protocol: `io.github.tangerg.flame/backend/2026-10-15.3`.
+Capability `flame.web.v1` uses `collection` composition in `installation` scope. Required backend protocol: `io.github.tangerg.qimu/portable/1`.
 
 `capability.generated.json` preserves the canonical callable contract; `schema.json` and the method references are presentation projections.

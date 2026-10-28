@@ -6,8 +6,8 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/cancellation"
 )
 
 // Gate serializes one writer per session, records live Runs, and coordinates

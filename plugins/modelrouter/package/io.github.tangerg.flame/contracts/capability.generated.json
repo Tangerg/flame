@@ -1,5 +1,5 @@
 {
-  "protocol": "io.github.tangerg.flame/backend/2026-10-15.3",
+  "protocol": "io.github.tangerg.qimu/portable/1",
   "reference": "flame.model-router.v1",
   "composition": "collection",
   "scope": "installation",
@@ -238,33 +238,6 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvY29udHJhY3Q_ReplaceInput": {
-            "additionalProperties": false,
-            "properties": {
-              "expectedRevision": {
-                "allOf": [
-                  {
-                    "maximum": 9223372036854775807,
-                    "minimum": -9223372036854775808
-                  }
-                ],
-                "minimum": 1,
-                "type": "integer"
-              },
-              "rules": {
-                "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_Rule"
-                },
-                "maxItems": 3,
-                "type": "array"
-              }
-            },
-            "required": [
-              "expectedRevision",
-              "rules"
-            ],
-            "type": "object"
-          },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_Rule": {
             "additionalProperties": false,
             "properties": {
@@ -290,6 +263,33 @@
             "required": [
               "use",
               "selection"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvd2lyZQ_ReplaceInput": {
+            "additionalProperties": false,
+            "properties": {
+              "expectedRevision": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "rules": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_Rule"
+                },
+                "maxItems": 3,
+                "type": "array"
+              }
+            },
+            "required": [
+              "expectedRevision",
+              "rules"
             ],
             "type": "object"
           }

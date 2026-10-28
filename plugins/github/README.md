@@ -186,7 +186,17 @@ GitHub's [issues](https://docs.github.com/en/rest/issues/issues?apiVersion=2026-
 contracts define the external boundary. Enterprise endpoints, OAuth flows,
 asynchronous merge queues and context contribution require their own demonstrated needs.
 
-Generate with `go generate ./plugins/github/internal/contract` and verify the
+Generate with `make generate` and verify the
 changed backend with `go test ./plugins/github/backend/... -count=1` from
 the repository workspace. Tests use deterministic HTTP transports and no live
 GitHub credentials.
+
+## Contract publication
+
+The plugin's `contractgen/` program owns its Portable definition. `make generate`
+from the repository root refreshes `contracts/contract.generated.go` before the
+package and client projections. Handwritten DTOs and schema hooks in
+`internal/wire` remain independent of that generated descriptor. The backend and
+exported author implementation bind the published contract with `ImplementMethod`;
+an author's local `go generate` refreshes projections without redefining identity
+from relocated Go types.

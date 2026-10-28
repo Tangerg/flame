@@ -5,11 +5,13 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/sandbox/internal/contract"
 	sandbox "github.com/Tangerg/flame/plugins/sandbox/internal/domain"
+	"github.com/Tangerg/flame/plugins/sandbox/internal/wire"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/tool"
@@ -18,7 +20,7 @@ import (
 const executeTool = "sandbox_execute"
 
 func commandFailure(err error) error {
-	refusal, known := errors.AsType[*extension.Refusal](err)
+	refusal, known := errors.AsType[*portable.Refusal](err)
 	if !known {
 		return err
 	}
@@ -35,16 +37,16 @@ func newServer(runner *runner) (*sdk.Server, error) {
 		return nil, err
 	}
 	server := sdk.NewServer(&sdk.Implementation{Name: "flame.sandbox", Version: "1.0.0"}, nil)
-	backend, err := pluginsdk.NewBackend(server)
+	backend, err := qimumcp.NewBackend(server)
 	if err != nil {
 		return nil, err
 	}
-	execute, err := tool.NewFunc(tool.FuncConfig{Name: executeTool, Description: contracts.Execute.Descriptor().Description}, func(ctx context.Context, input rpc.ExecuteInput) (sandbox.Result, error) {
+	execute, err := tool.NewFunc(tool.FuncConfig{Name: executeTool, Description: contracts.Execute.Descriptor().Description}, func(ctx context.Context, input wire.ExecuteInput) (sandbox.Result, error) {
 		id, err := pluginsdk.ToolCommandID(ctx)
 		if err != nil {
 			return sandbox.Result{}, err
 		}
-		original, err := pluginsdk.RequestInput(ctx)
+		original, err := qimumcp.RequestInput(ctx)
 		if err != nil {
 			return sandbox.Result{}, err
 		}
@@ -63,17 +65,17 @@ func newServer(runner *runner) (*sdk.Server, error) {
 	}
 	if err := errors.Join(
 		pluginstorage.RegisterReceipts(backend, runner.db),
-		contracts.Execute.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ExecuteInput]) (sandbox.Result, error) {
+		contracts.Execute.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[wire.ExecuteInput]) (sandbox.Result, error) {
 			original, err := command.RequestInput()
 			if err != nil {
 				return sandbox.Result{}, err
 			}
 			return runner.execute(ctx, contracts.Execute.Name(), command.ID, command.Input, original)
 		}),
-		contracts.Limits.RegisterServer(backend, classify, func(context.Context, *sdk.ServerSession, pluginsdk.Command[struct{}]) (rpc.Limits, error) {
+		contracts.Limits.RegisterServer(backend, classify, func(context.Context, *sdk.ServerSession, qimumcp.Command[struct{}]) (wire.Limits, error) {
 			return runner.limits(), nil
 		}),
-		toolReceipts.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[pluginsdk.ReceiptRequest]) (pluginsdk.ToolReceipt, error) {
+		toolReceipts.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[qimumcp.ReceiptRequest]) (pluginsdk.ToolReceipt, error) {
 			input := command.Input
 			if input.Method != executeTool {
 				return pluginsdk.ToolReceipt{}, nil

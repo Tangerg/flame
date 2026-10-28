@@ -1,3 +1,4 @@
+import protocol from "@flame/backend-sdk/protocol" with { type: "json" };
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import {
@@ -14,8 +15,49 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { buildPlugin } from "./build.mjs";
-import { buildBackend } from "@flame/backend-sdk/build";
+import { buildBackend } from "@qimu/node/build";
 import { rolldown } from "rolldown";
+
+test("exported native author plans load without a Node backend SDK", async () => {
+  const root = await mkdtemp(join(tmpdir(), "flame-native-author-"));
+  try {
+    const author = join(root, "native author 作者");
+    await mkdir(join(author, "package"), { recursive: true });
+    await writeFile(
+      join(author, "package/plugin.json"),
+      JSON.stringify({ name: "example.native", version: "1.0.0" }),
+    );
+    await writeFile(
+      join(author, "package/mcp.json"),
+      JSON.stringify({
+        mcpServers: { native: { command: "./bin/native" } },
+      }),
+    );
+    await cp(
+      new URL("./build.mjs", import.meta.url),
+      join(author, "build.mjs"),
+    );
+    execFileSync(
+      process.execPath,
+      [
+        "--input-type=module",
+        "--eval",
+        `import assert from "node:assert/strict";
+import { pathToFileURL } from "node:url";
+const author = process.argv[1];
+const { readBuildPlan } = await import(pathToFileURL(author + "/build.mjs"));
+const plan = await readBuildPlan(author);
+assert.equal(plan.native, true);
+assert.deepEqual(plan.managed, []);
+`,
+        author,
+      ],
+      { cwd: author, stdio: "pipe" },
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
 
 for (const [kind, content, problem] of [
   [
@@ -42,6 +84,8 @@ for (const [kind, content, problem] of [
       await writeFile(input, content + "\nexport default {};\n");
       await assert.rejects(
         buildBackend({
+          target: protocol.constants.nodeTarget,
+          maximumFrameBytes: protocol.constants.maximumFrameBytes,
           input,
           directory: join(directory, "output"),
           compiler: rolldown,
@@ -58,7 +102,11 @@ test("replacement refuses to erase the author project", async () => {
   try {
     const author = join(root, "author");
     await mkdir(join(author, "package"), { recursive: true });
-    const manifest = JSON.stringify({ name: "acme.plugin", version: "1.0.0" });
+    const manifest = JSON.stringify({
+      $schema: "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+      name: "acme.plugin",
+      version: "1.0.0",
+    });
     await writeFile(join(author, "package/plugin.json"), manifest);
     for (const output of [author, root, join(author, "package/out")]) {
       await assert.rejects(
@@ -73,6 +121,51 @@ test("replacement refuses to erase the author project", async () => {
     const output = join(root, "output");
     await buildPlugin({ source: author, output, os: "darwin", arch: "arm64" });
     assert.equal(await readFile(join(output, "plugin.json"), "utf8"), manifest);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("repository native packaging resolves Go modules with workspace mode disabled", async () => {
+  const root = await mkdtemp(join(tmpdir(), "flame-module-release-"));
+  try {
+    const output = join(root, "release");
+    execFileSync(
+      process.execPath,
+      [
+        fileURLToPath(new URL("./build-packages.mjs", import.meta.url)),
+        "--plugin",
+        "memory",
+        "--os",
+        "linux",
+        "--arch",
+        "amd64",
+        "--output",
+        output,
+      ],
+      {
+        cwd: root,
+        env: {
+          ...process.env,
+          GOWORK: "off",
+          GOOS: "windows",
+          GOARCH: "arm64",
+        },
+        stdio: "pipe",
+      },
+    );
+    const release = JSON.parse(
+      await readFile(join(output, "memory/manifest.json"), "utf8"),
+    );
+    assert.equal(release.package, "flame.memory");
+    assert.match(release.release, /^[a-f0-9]{64}$/);
+    assert.deepEqual(
+      release.units.find((unit) => unit.id === "backend/memory").variants,
+      [{ os: "linux", arch: "amd64", path: "bin/memory" }],
+    );
+    const executable = await readFile(join(output, "memory/bin/memory"));
+    assert.deepEqual([...executable.subarray(0, 4)], [0x7f, 0x45, 0x4c, 0x46]);
+    assert.equal(executable.readUInt16LE(18), 62);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

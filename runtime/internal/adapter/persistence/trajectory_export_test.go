@@ -10,7 +10,9 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
+
+	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/flame/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -147,7 +149,7 @@ func TestTrajectoryExportIncludesSessionOnlyKnownEndpointEvidence(t *testing.T) 
 	response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Usage: &chat.Usage{InputTokens: 9007199254740993, OutputTokens: 2}}}
 	for index, scope := range []string{"ses_export", ""} {
 		id := []string{"session", "global"}[index]
-		invocation := modelref.EndpointInvocation{ID: "endpoint_" + id, Kind: modelref.EndpointChat, Caller: extension.Invocation{ID: "utility_" + id, Origin: extension.Automatic, Parent: "maintenance", Target: extension.Target{Scope: "call", Reference: "utility_" + id}}, Provider: "anthropic", Model: "captured-model", SessionID: scope, Request: request, StartedAt: time.Unix(100, 0).UTC()}
+		invocation := modelref.EndpointInvocation{ID: "endpoint_" + id, Kind: modelref.EndpointChat, Caller: portable.Invocation{ID: "utility_" + id, Origin: extension.Automatic, Parent: "maintenance", Target: portable.Target{Scope: "call", Reference: "utility_" + id}}, Provider: "anthropic", Model: "captured-model", SessionID: scope, Request: request, StartedAt: time.Unix(100, 0).UTC()}
 		if err := store.StartEndpointInvocation(t.Context(), invocation, ""); err != nil {
 			t.Fatal(err)
 		}

@@ -8,9 +8,9 @@ import (
 
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -43,7 +43,7 @@ func TestPublicReceiptLookupRetainsOriginalOutcomeAcrossBackendRestart(t *testin
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "receipt-client"}, nil)
-	if err := pluginsdk.RegisterClient(client); err != nil {
+	if err := qimumcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()
@@ -57,7 +57,7 @@ func TestPublicReceiptLookupRetainsOriginalOutcomeAcrossBackendRestart(t *testin
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = session.Close() })
-	capability, err := pluginsdk.NewCapabilityBinding(session, "reviews", contracts.Capability)
+	capability, err := qimumcp.NewCapabilityBinding(session, "reviews", contracts.Capability)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func TestPublicReceiptLookupRetainsOriginalOutcomeAcrossBackendRestart(t *testin
 		if err == nil {
 			t.Fatal("changed binding adopted an earlier receipt")
 		}
-		if _, known := errors.AsType[*extension.Refusal](err); known {
+		if _, known := errors.AsType[*portable.Refusal](err); known {
 			t.Fatalf("binding error fabricated a known mutation result: %v", err)
 		}
 	}
@@ -127,7 +127,7 @@ func TestMalformedPrivateReceiptCannotBecomeKnownEvidence(t *testing.T) {
 		if _, err := store.db.ExecContext(t.Context(), `UPDATE invocations SET result=? WHERE id='original'`, []byte(result)); err != nil {
 			t.Fatal(err)
 		}
-		receipt, err := store.receipt(t.Context(), pluginsdk.ReceiptRequest{ID: "original", Method: contracts.Update.Name(), InputDigest: digest.Digest()}, contracts.Update.Name())
+		receipt, err := store.receipt(t.Context(), qimumcp.ReceiptRequest{ID: "original", Method: contracts.Update.Name(), InputDigest: digest.Digest()}, contracts.Update.Name())
 		if err == nil || receipt.Found {
 			t.Fatalf("corrupt private result became receipt evidence: %s, %v", result, err)
 		}
@@ -151,7 +151,7 @@ func TestMalformedPrivateReceiptCannotBecomeKnownEvidence(t *testing.T) {
 	if _, err := store.db.ExecContext(t.Context(), `UPDATE invocations SET input_json=? WHERE id='original'`, data); err != nil {
 		t.Fatal(err)
 	}
-	if receipt, err := store.receipt(t.Context(), pluginsdk.ReceiptRequest{ID: "original", Method: contracts.Update.Name(), InputDigest: digest.Digest()}, contracts.Update.Name()); err == nil || receipt.Found {
+	if receipt, err := store.receipt(t.Context(), qimumcp.ReceiptRequest{ID: "original", Method: contracts.Update.Name(), InputDigest: digest.Digest()}, contracts.Update.Name()); err == nil || receipt.Found {
 		t.Fatalf("corrupt binding became known evidence: %+v, %v", receipt, err)
 	}
 }

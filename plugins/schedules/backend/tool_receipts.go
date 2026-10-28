@@ -10,25 +10,26 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	app "github.com/Tangerg/flame/plugins/schedules/internal/application"
-	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
+	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-func toolReceipt(ctx context.Context, db *sql.DB, input pluginsdk.ReceiptRequest) (pluginsdk.ToolReceipt, error) {
+func toolReceipt(ctx context.Context, db *sql.DB, input qimumcp.ReceiptRequest) (pluginsdk.ToolReceipt, error) {
 	remote := input.Method
 	switch remote {
 	case createScheduleTool:
-		input.Method = rpc.Create
+		input.Method = wire.Create
 	case updateScheduleTool:
-		input.Method = rpc.Update
+		input.Method = wire.Update
 	case deleteScheduleTool:
-		input.Method = rpc.Delete
+		input.Method = wire.Delete
 	case runScheduleTool:
-		input.Method = rpc.RunNow
+		input.Method = wire.RunNow
 	default:
 		return pluginsdk.ToolReceipt{}, nil
 	}
@@ -36,7 +37,7 @@ func toolReceipt(ctx context.Context, db *sql.DB, input pluginsdk.ReceiptRequest
 	if err != nil || !receipt.Found {
 		return pluginsdk.ToolReceipt{}, err
 	}
-	_, err = pluginsdk.DecodeReply[jsontext.Value](receipt.Reply)
+	_, err = qimumcp.DecodeReply[jsontext.Value](receipt.Reply)
 	if err != nil {
 		if classify(err) == "" {
 			return pluginsdk.ToolReceipt{}, err
@@ -50,7 +51,7 @@ func toolReceipt(ctx context.Context, db *sql.DB, input pluginsdk.ReceiptRequest
 	var projection any
 	switch remote {
 	case createScheduleTool, updateScheduleTool:
-		snapshot, err := pluginsdk.DecodeReply[schedule.Snapshot](receipt.Reply)
+		snapshot, err := qimumcp.DecodeReply[schedule.Snapshot](receipt.Reply)
 		if err != nil {
 			return pluginsdk.ToolReceipt{}, err
 		}
@@ -60,7 +61,7 @@ func toolReceipt(ctx context.Context, db *sql.DB, input pluginsdk.ReceiptRequest
 		}
 		projection = scheduleResponse{Schedule: viewSchedule(state)}
 	case deleteScheduleTool:
-		if _, err := pluginsdk.DecodeReply[rpc.Ack](receipt.Reply); err != nil {
+		if _, err := qimumcp.DecodeReply[wire.Ack](receipt.Reply); err != nil {
 			return pluginsdk.ToolReceipt{}, err
 		}
 		var original string
@@ -76,7 +77,7 @@ func toolReceipt(ctx context.Context, db *sql.DB, input pluginsdk.ReceiptRequest
 		}
 		projection = scheduleDeleteResponse(arguments)
 	case runScheduleTool:
-		reference, err := pluginsdk.DecodeReply[app.RunReference](receipt.Reply)
+		reference, err := qimumcp.DecodeReply[app.RunReference](receipt.Reply)
 		if err != nil {
 			return pluginsdk.ToolReceipt{}, err
 		}

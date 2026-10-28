@@ -10,6 +10,6 @@ Generated from the feature's Go-owned method contracts.
 | `flame.filewatch/get.v1` | query | installation | Read this installation's single persistent file trigger and configuration revision. |
 | `flame.filewatch/status.v1` | query | installation | Inspect the actual background observation revision and failures. A failed watch requires explicit configuration rearm; accepted dispatch intents continue reconciliation. |
 
-Capability `flame.filewatch.v1` uses `collection` composition in `installation` scope. Required backend protocol: `io.github.tangerg.flame/backend/2026-10-15.3`.
+Capability `flame.filewatch.v1` uses `collection` composition in `installation` scope. Required backend protocol: `io.github.tangerg.qimu/portable/1`.
 
 `capability.generated.json` preserves the canonical callable contract; `schema.json` and the method references are presentation projections.

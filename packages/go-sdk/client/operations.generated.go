@@ -169,6 +169,15 @@ func (r *Client) CreateMCPAuthorizationAttempt(ctx context.Context, request prot
 func (r *Client) GetMCPAuthorizationAttempt(ctx context.Context, request protocol.MCPAuthorizationAttemptRequest, options protocol.CallOptions) (*protocol.MCPAuthorizationAttempt, error) {
 	return r.invoke[protocol.MCPAuthorizationAttemptRequest, *protocol.MCPAuthorizationAttempt](ctx, "mcp.authorizationAttempts.get", request, callOptions(options))
 }
+func (r *Client) OpenPluginBrowserRealm(ctx context.Context, request protocol.OpenPluginBrowserRealmRequest, options protocol.CommandOptions) (*protocol.PluginBrowserSession, error) {
+	return r.invoke[protocol.OpenPluginBrowserRealmRequest, *protocol.PluginBrowserSession](ctx, "plugins.openBrowserRealm", request, commandOptions(options))
+}
+func (r *Client) AcquirePluginComponent(ctx context.Context, request protocol.AcquirePluginComponentRequest, options protocol.CommandOptions) (*protocol.PluginBrowserUseGrant, error) {
+	return r.invoke[protocol.AcquirePluginComponentRequest, *protocol.PluginBrowserUseGrant](ctx, "plugins.acquireComponent", request, commandOptions(options))
+}
+func (r *Client) ClosePluginBrowserRealm(ctx context.Context, request protocol.ClosePluginBrowserRealmRequest, options protocol.CommandOptions) error {
+	return r.invokeAck[protocol.ClosePluginBrowserRealmRequest](ctx, "plugins.closeBrowserRealm", request, commandOptions(options))
+}
 func (r *Client) GetPluginCommand(ctx context.Context, request protocol.PluginCommandRequest, options protocol.CallOptions) (*protocol.CallPluginRequest, error) {
 	return r.invoke[protocol.PluginCommandRequest, *protocol.CallPluginRequest](ctx, "plugins.getCommand", request, callOptions(options))
 }

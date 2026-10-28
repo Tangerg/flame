@@ -1,10 +1,6 @@
 // @vitest-environment happy-dom
-import { Backend } from "@flame/backend-sdk";
-import {
-  ExactNumber,
-  parseJSON,
-  stringifyJSON,
-} from "@flame/runtime-client/json";
+import { Backend } from "@qimu/node";
+import { ExactNumber, parseJSON, stringifyJSON } from "@qimu/sdk/json";
 import { createParser } from "@openuidev/lang-core";
 import {
   Renderer,

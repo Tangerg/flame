@@ -10,14 +10,15 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	app "github.com/Tangerg/flame/plugins/memory/internal/application"
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/scope/core/chat"
 	tool "github.com/Tangerg/scope/core/tool"
 	"github.com/invopop/jsonschema"
@@ -221,7 +222,7 @@ func memoryToolCommand[P, R any](ctx context.Context, db *sql.DB, name string, i
 	if err != nil {
 		return zero, pluginsdk.DefiniteToolFailure(err)
 	}
-	admitted, err := pluginsdk.RequestInput(ctx)
+	admitted, err := qimumcp.RequestInput(ctx)
 	if err != nil {
 		return zero, pluginsdk.DefiniteToolFailure(err)
 	}
@@ -234,13 +235,13 @@ func memoryToolFailure(name string, err error) error {
 		return nil
 	}
 	wrapped := fmt.Errorf("%s: %w", name, err)
-	if _, known := errors.AsType[*extension.Refusal](err); known {
+	if _, known := errors.AsType[*portable.Refusal](err); known {
 		return pluginsdk.DefiniteToolFailure(wrapped)
 	}
 	return wrapped
 }
 
-func memoryToolReceipt(ctx context.Context, db *sql.DB, input pluginsdk.ReceiptRequest) (pluginsdk.ToolReceipt, error) {
+func memoryToolReceipt(ctx context.Context, db *sql.DB, input qimumcp.ReceiptRequest) (pluginsdk.ToolReceipt, error) {
 	switch input.Method {
 	case addMemoryTool, updateMemoryTool, deleteMemoryTool, reviewMemoryTool:
 	default:
@@ -250,7 +251,7 @@ func memoryToolReceipt(ctx context.Context, db *sql.DB, input pluginsdk.ReceiptR
 	if err != nil || !receipt.Found {
 		return pluginsdk.ToolReceipt{}, err
 	}
-	value, err := pluginsdk.DecodeReply[jsontext.Value](receipt.Reply)
+	value, err := qimumcp.DecodeReply[jsontext.Value](receipt.Reply)
 	if err != nil {
 		failure, known := tool.ClassifyFailure(memoryToolFailure(input.Method, err))
 		if !known {

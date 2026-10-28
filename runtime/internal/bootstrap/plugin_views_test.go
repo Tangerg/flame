@@ -12,10 +12,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
@@ -134,8 +134,7 @@ func TestTrajectoryComponentReadsInstalledBytesAndCanonicalHistory(t *testing.T)
 	stale := request
 	stale.Digest = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 	checkFailure(delivery.PluginsReadResource, stale, protocol.ErrPluginStale)
-	r.close()
-	r = poMCPOpen(t, cfg)
+	r = reopenPluginRuntime(t, r, &cfg)
 	if got := r.must(delivery.PluginsReadResource, request, "").(*protocol.PluginResource); *got != *resource {
 		t.Fatal("restart reinterpreted the admitted component bytes")
 	}
@@ -167,7 +166,7 @@ func TestMemoryComponentUsesInstalledPublicOperationsAndPreservesPrivateFacts(t 
 	for _, content := range []string{"first fact", "second fact"} {
 		r.must(delivery.PluginsCall, memoryAddRequest(r, memorycontract.AddV2Input{Scope: "user", Content: content}), content)
 	}
-	contracts, err := extension.ParseCapability([]byte(memorycontract.CapabilityJSON))
+	contracts, err := portable.ParseCapability([]byte(memorycontract.CapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,7 +176,7 @@ func TestMemoryComponentUsesInstalledPublicOperationsAndPreservesPrivateFacts(t 
 		if err != nil {
 			t.Fatal(err)
 		}
-		request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "memory-provider", Contract: string(contracts.Identity().JSON()), Method: memorycontract.ListV2Method, Input: string(input.JSON()), Target: extension.Target{Scope: "installation", Reference: installed.ID}}
+		request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "memory-provider", Contract: string(contracts.Identity().JSON()), Method: memorycontract.ListV2Method, Input: string(input.JSON()), Target: portable.Target{Scope: "installation", Reference: installed.ID}}
 		result := r.must(delivery.PluginsCall, request, "").(*protocol.CallPluginResponse)
 		if result.Failure != nil {
 			t.Fatalf("installed list refusal: %+v", result.Failure)
@@ -229,7 +228,7 @@ func TestScheduleComponentUsesOwnBackendAndWithdrawalPreservesPrivateData(t *tes
 	for index, cron := range []string{"0 * * * *", "0 9 * * *"} {
 		readScheduleCreate(r, scheduleCreateRequest(r, testsupport.SchedulesCreateV1Input{Enabled: true, Title: "Inspect", Instructions: "Inspect current work", Cron: cron}), fmt.Sprintf("create-%d", index))
 	}
-	contracts, err := extension.ParseCapability([]byte(testsupport.SchedulesCapabilityJSON))
+	contracts, err := portable.ParseCapability([]byte(testsupport.SchedulesCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -240,7 +239,7 @@ func TestScheduleComponentUsesOwnBackendAndWithdrawalPreservesPrivateData(t *tes
 		if err != nil {
 			t.Fatal(err)
 		}
-		installedReply := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "schedules-provider", Contract: string(contracts.Identity().JSON()), Method: testsupport.SchedulesListV1Method, Target: extension.Target{Scope: "installation", Reference: installed.ID}, Input: string(input)}, "").(*protocol.CallPluginResponse)
+		installedReply := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "schedules-provider", Contract: string(contracts.Identity().JSON()), Method: testsupport.SchedulesListV1Method, Target: portable.Target{Scope: "installation", Reference: installed.ID}, Input: string(input)}, "").(*protocol.CallPluginResponse)
 		var page testsupport.SchedulesListV1Output
 		if err := json.Unmarshal([]byte(installedReply.Output), &page); err != nil {
 			t.Fatal(err)
@@ -261,8 +260,7 @@ func TestScheduleComponentUsesOwnBackendAndWithdrawalPreservesPrivateData(t *tes
 		t.Fatalf("installed schedule traversal omitted accepted rows: %v", seen)
 	}
 
-	r.close()
-	r = poMCPOpen(t, cfg)
+	r = reopenPluginRuntime(t, r, &cfg)
 	restarted := r.must(delivery.PluginsList, struct{}{}, "").(*protocol.Page[protocol.PluginInstallation])
 	if !reflect.DeepEqual(restarted.Data[0].Selected.Components, installed.Selected.Components) {
 		t.Fatal("restart changed admitted components")
@@ -273,7 +271,7 @@ func TestScheduleComponentUsesOwnBackendAndWithdrawalPreservesPrivateData(t *tes
 		t.Fatalf("disabled schedule page: %v", refused.Failure)
 	}
 	r.must(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, "uninstall-schedules")
-	result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "schedules-provider", Contract: string(contracts.Identity().JSON()), Method: testsupport.SchedulesListV1Method, Target: extension.Target{Scope: "installation", Reference: installed.ID}, Input: `{"Cursor":""}`}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+	result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "schedules-provider", Contract: string(contracts.Identity().JSON()), Method: testsupport.SchedulesListV1Method, Target: portable.Target{Scope: "installation", Reference: installed.ID}, Input: `{"Cursor":""}`}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if !errors.Is(result.Failure, protocol.ErrPluginNotFound) {
 		t.Fatalf("uninstalled Schedule owner=%v", result.Failure)
 	}
@@ -358,8 +356,7 @@ func TestUsageComponentUsesCanonicalSummaryAndUninstallPreservesUsage(t *testing
 			t.Fatalf("%s changed accounting records: before=%+v after=%+v", phase, recorded, actual)
 		}
 	}
-	r.close()
-	r = poMCPOpen(t, cfg)
+	r = reopenPluginRuntime(t, r, &cfg)
 	assertRetainedReport("restart", r.must(delivery.UsageSummary, read, "").(*protocol.UsageSummary))
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-usage")
 	refused(resourceRequest, delivery.PluginsReadResource, protocol.ErrPluginDisabled)

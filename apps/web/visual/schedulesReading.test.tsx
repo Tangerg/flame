@@ -95,7 +95,7 @@ function mountSchedules(subscribeError?: Error) {
     telemetry: { read: () => ({ spans: [], metrics: [], logs: [] }), clear() {} },
     locale: "en",
     signal: owner.signal,
-    track: (operation) => operation,
+    track: (operation) => operation(owner.signal),
     compose: () => null,
   };
   testClient.render(

@@ -9,6 +9,7 @@ import (
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	"github.com/Tangerg/flame/qimu"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -31,6 +32,42 @@ type pendingCallComposition struct {
 type unavailableCallComposition struct {
 	contextCaptureComposition
 	cause error
+}
+
+type failedRestorationComposition struct {
+	contextCaptureComposition
+	definite bool
+	cause    error
+}
+
+func (c *failedRestorationComposition) RestorationFailure([]plugins.ContributionBinding) (bool, error) {
+	return c.definite, c.cause
+}
+
+func TestWaitingContributionProbeUsesTheOriginalRestorationConclusion(t *testing.T) {
+	for _, definite := range []bool{false, true} {
+		name, cause := "inconclusive", errors.Join(plugin.ErrUnavailable, qimu.ErrRecoveryRequired)
+		if definite {
+			name, cause = "failed", errors.New("original MCP initialization closed")
+		}
+		t.Run(name, func(t *testing.T) {
+			workspace := t.TempDir()
+			checkpoint := captureInteractionQuestionCheckpoint(t, workspace)
+			executor := newObservedTestInteractionExecutor(t, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+				t.Fatal("restoration probe called the provider")
+				return nil, nil
+			}), InteractionExecutorConfig{CallComposition: &failedRestorationComposition{definite: definite, cause: cause}})
+			continuation := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_restoration", run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}})
+			verdict, err := executor.CanResumeWaitingExecution(t.Context(), continuation)
+			if definite {
+				if err != nil || verdict.Resumable() || verdict.Deferred() || verdict.Loss() != runs.LossConfigurationChanged {
+					t.Fatalf("original failed restoration did not lose waiting state: %+v, %v", verdict, err)
+				}
+			} else if !errors.Is(err, cause) || verdict.Resumable() || verdict.Deferred() || verdict.Loss() != "" {
+				t.Fatalf("diagnostic error category overrode the inconclusive restoration: %+v, %v", verdict, err)
+			}
+		})
+	}
 }
 
 func (c *unavailableCallComposition) Activations(context.Context, []plugins.ContributionBinding) ([]plugin.Activation, error) {

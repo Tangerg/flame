@@ -53,7 +53,7 @@ func outwardDependency(path string) bool {
 	for _, prefix := range []string{
 		"database/sql", "net/http", "os", "github.com/Tangerg/go-sdk/mcp",
 		"github.com/Tangerg/scope/agent", "github.com/Tangerg/scope/core/chatclient",
-		"github.com/Tangerg/flame/packages/go-sdk/plugin", "github.com/Tangerg/flame/packages/go-sdk/storage", "github.com/Tangerg/flame/packages/go-sdk/sqlite", "github.com/Tangerg/flame/packages/go-sdk/filesystem",
+		"github.com/Tangerg/flame/packages/go-sdk/plugin", "github.com/Tangerg/flame/packages/go-sdk/storage", "github.com/Tangerg/flame/qimu/sqlite", "github.com/Tangerg/flame/packages/go-sdk/filesystem",
 		"github.com/Tangerg/flame/packages/go-sdk/sandbox", "github.com/Tangerg/flame/packages/go-sdk/httpresponse",
 	} {
 		if path == prefix || strings.HasPrefix(path, prefix+"/") {

@@ -1,9 +1,19 @@
 # Local Runtime handoff
 
 This independent Go module owns the default local endpoint, process deployment
-roots, strict token handoff and companion `plugins/` lookup. It is
+roots, strict token handoff, the original Qimu runner executable and companion `plugins/` lookup. It is
 shared by Runtime, CLI and the native Desktop host without importing their
 business implementation.
+
+`RunnerExecutable` resolves the distribution's sibling `qimu-runner` executable.
+The original runner owns process creation, fencing and wait proofs; Runtime never
+substitutes a PID observation or a new runner's empty ledger for that authority.
+The distribution stages it beside the Runtime executable before activation.
+
+`DataDirectory` selects the fresh `flame-qimu.db` database. Qimu framework records and
+Runtime business references commit in that one SQLite database. This breaking
+cutover does not read or convert historical plugin state; retain old deployments
+with their old data and start the new distribution in a fresh product root.
 
 `node-release.json` owns the exact managed Node release, target artifacts,
 checksums and launch arguments. `NodeForExecutable` resolves it beneath the

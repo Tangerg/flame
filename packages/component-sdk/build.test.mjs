@@ -15,6 +15,20 @@ test("published components preserve the Host's Runtime error and exact JSON inst
     const runtimeEntry = createRequire(import.meta.url).resolve(
       "@flame/runtime-client",
     );
+    const jsonDirectory = join(directory, "node_modules/@qimu/sdk");
+    await mkdir(jsonDirectory, { recursive: true });
+    await buildComponent({
+      input: createRequire(import.meta.url).resolve("@qimu/sdk/json"),
+      directory: jsonDirectory,
+      compiler: rolldown,
+    });
+    await writeFile(
+      join(jsonDirectory, "package.json"),
+      JSON.stringify({
+        type: "module",
+        exports: { "./json": "./component.js" },
+      }),
+    );
     const hostSource = join(directory, "host.ts");
     await writeFile(
       hostSource,
@@ -31,19 +45,15 @@ test("published components preserve the Host's Runtime error and exact JSON inst
       join(hostDirectory, "package.json"),
       JSON.stringify({
         type: "module",
-        exports: { ".": "./component.js", "./json": "./json.js" },
+        exports: { ".": "./component.js" },
       }),
-    );
-    await writeFile(
-      join(hostDirectory, "json.js"),
-      'export { ExactNumber, isJSONNumber, parseJSON, stringifyJSON } from "./component.js";',
     );
     const input = join(directory, "entry.ts");
     await writeFile(
       input,
       `
         import { mutationSettlementIsUnknown, OperationFailure } from "@flame/runtime-client";
-        import { isJSONNumber, parseJSON, stringifyJSON } from "@flame/runtime-client/json";
+        import { isJSONNumber, parseJSON, stringifyJSON } from "@qimu/sdk/json";
         export function inspect(unknown, failure, value) {
           const source = stringifyJSON({ value });
           return {
@@ -61,17 +71,20 @@ test("published components preserve the Host's Runtime error and exact JSON inst
     const host = await import(
       pathToFileURL(join(hostDirectory, "component.js"))
     );
+    const hostJSON = await import(
+      pathToFileURL(join(jsonDirectory, "component.js"))
+    );
     const component = await import(pathToFileURL(join(output, "component.js")));
     const result = component.inspect(
       new host.MutationLookupError(new Error("reply unavailable")),
       new host.OperationFailure("not_found", "owner refused"),
-      new host.ExactNumber("1.00"),
+      new hostJSON.ExactNumber("1.00"),
     );
     assert.equal(result.unknown, true);
     assert.equal(result.failure, true);
     assert.equal(result.exact, true);
     assert.equal(result.source, '{"value":1.00}');
-    assert.equal(result.decoded instanceof host.ExactNumber, true);
+    assert.equal(result.decoded instanceof hostJSON.ExactNumber, true);
     assert.equal(result.decoded.text, "1.00");
   } finally {
     await rm(directory, { recursive: true, force: true });
@@ -96,12 +109,43 @@ test("bundles private static and dynamic modules into an executable browser grap
       compiler: rolldown,
     });
     assert.deepEqual([...emitted.exports].sort(), ["lazy", "value"]);
+    const graph = JSON.parse(
+      await readFile(join(output, "modules.generated.json"), "utf8"),
+    );
+    assert.deepEqual(graph, emitted.graph);
+    assert.equal(graph.schemaVersion, 1);
+    assert.equal(graph.entry, "component.js");
+    assert.deepEqual(graph.sharedSpecifiers, []);
+    assert.equal(graph.modules.length, 2);
+    const root = graph.modules.find((module) => module.path === graph.entry);
+    assert.equal(root.dynamicImports.length, 1);
+    assert(
+      graph.modules.some((module) => module.path === root.dynamicImports[0]),
+    );
     const component = await import(pathToFileURL(join(output, "component.js")));
     assert.equal(component.value, 7);
     assert.equal((await component.lazy()).value, 9);
     assert.doesNotMatch(
       await readFile(join(output, "component.js"), "utf8"),
       /value\.ts|lazy\.ts/,
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("refuses a computed dynamic import before publishing an incomplete module graph", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "flame-computed-import-"));
+  try {
+    const input = join(directory, "entry.ts");
+    await writeFile(input, "export const load = (name) => import(name);");
+    await assert.rejects(
+      buildComponent({
+        input,
+        directory: join(directory, "output"),
+        compiler: rolldown,
+      }),
+      /component dynamic imports must name a build-time module/,
     );
   } finally {
     await rm(directory, { recursive: true, force: true });

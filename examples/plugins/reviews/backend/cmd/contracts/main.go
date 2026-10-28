@@ -10,7 +10,7 @@ import (
 	"strconv"
 
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/qimu/portable"
 )
 
 func main() {
@@ -44,7 +44,7 @@ func run() error {
 		_, err = os.Stdout.Write(append(data, '\n'))
 		return err
 	}
-	var contract *extension.Capability
+	var contract *portable.Capability
 	if *analyzerCapability {
 		contracts, err := reviews.NewAnalyzerContracts()
 		if err != nil {

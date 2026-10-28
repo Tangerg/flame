@@ -1,23 +1,22 @@
-// Package pluginpackage translates portable packages and owns confined immutable
-// release bytes. Inspection never runs package code.
+// Package pluginpackage interprets Flame metadata in neutral Qimu releases.
+// Qimu owns archive admission, release identity, integrity and content claims.
 package pluginpackage
 
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
-	"slices"
-	"strings"
-	"sync"
 
-	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/cancellation"
+	"github.com/Tangerg/flame/qimu/distribution"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/samber/lo"
@@ -28,346 +27,151 @@ const maxManifestBytes int64 = 4 << 20
 
 var errResourceLimit = errors.New("pluginpackage: resource limit exceeded")
 
-const maxFiles = 4096
-
 type releaseCatalog interface {
 	Get(context.Context, flameidentity.Digest) (plugin.Release, error)
 	Admit(context.Context, plugin.Release) error
-	Digests(context.Context) ([]flameidentity.Digest, error)
-	Remove(context.Context, flameidentity.Digest) error
 }
 
 type Releases struct {
-	directory         string
-	directoryIdentity os.FileInfo
-	catalog           releaseCatalog
-	executionMu       sync.Mutex
-	executions        map[flameidentity.Digest]*executionContent
-	// publishMu serializes publication and reclamation of release directories.
-	publishMu sync.Mutex
-	// mu guards the integrity cache and the verifications in flight. It is
-	// never held across filesystem I/O.
-	mu               sync.Mutex
-	verified         map[flameidentity.Digest]releaseIntegrity
-	verifying        map[flameidentity.Digest]*verification
-	nextVerification uint64
+	content       *distribution.Store
+	dataDirectory string
+	catalog       releaseCatalog
 }
 
-func New(directory string, catalog releaseCatalog) (*Releases, error) {
-	if lo.IsNil(catalog) {
-		return nil, errors.New("pluginpackage: release catalog is required")
+func New(content *distribution.Store, dataDirectory string, catalog releaseCatalog) (*Releases, error) {
+	if content == nil || lo.IsNil(catalog) || !filepath.IsAbs(dataDirectory) {
+		return nil, errors.New("pluginpackage: content store, absolute data directory and release catalog are required")
 	}
-	if !filepath.IsAbs(directory) {
-		return nil, errors.New("pluginpackage: release directory must be absolute")
-	}
-	absolute := filepath.Clean(directory)
-	if err := os.MkdirAll(absolute, 0700); err != nil {
-		return nil, fmt.Errorf("pluginpackage: create release directory: %w", err)
-	}
-	resolved, err := filepath.EvalSymlinks(absolute)
-	if err != nil {
-		return nil, fmt.Errorf("pluginpackage: resolve release directory: %w", err)
-	}
-	identity, err := os.Stat(resolved)
-	if err != nil {
-		return nil, err
-	}
-	return &Releases{
-		directory:         resolved,
-		directoryIdentity: identity,
-		catalog:           catalog,
-		executions:        map[flameidentity.Digest]*executionContent{},
-		verified:          map[flameidentity.Digest]releaseIntegrity{},
-		verifying:         map[flameidentity.Digest]*verification{},
-	}, nil
+	return &Releases{content: content, dataDirectory: filepath.Clean(dataDirectory), catalog: catalog}, nil
 }
 
+// Root is a display projection, not a content claim. Reads and process launch
+// retain an original Qimu Lease before using this location.
 func (r *Releases) Root(digest flameidentity.Digest) (string, error) {
-	if err := r.validateDirectory(); err != nil {
-		return "", err
-	}
 	if err := digest.Validate(); err != nil {
 		return "", errors.Join(plugin.ErrInvalid, err)
 	}
-	return filepath.Join(r.directory, digest.String()), nil
+	return r.content.Path(qimu.Digest(digest.String()))
 }
 
-func (r *Releases) validateDirectory() error {
-	current, err := os.Stat(r.directory)
-	if err != nil {
-		return err
-	}
-	if !os.SameFile(r.directoryIdentity, current) {
-		return errors.New("pluginpackage: release directory changed while Runtime owns it")
-	}
-	return nil
-}
-
-// RecoverStaging runs only under the Runtime's directory lease, before package
-// admission opens. Normal reclamation must preserve live unpublished candidates.
-func (r *Releases) RecoverStaging(ctx context.Context) (err error) {
-	if err := r.validateDirectory(); err != nil {
-		return err
-	}
-	directory, _, err := filesystem.OpenDirectoryExpected(r.directory, r.directoryIdentity)
-	if err != nil {
-		return err
-	}
-	defer func() { err = errors.Join(err, directory.Close()) }()
-	for {
-		if err := cancellation.Err(ctx); err != nil {
-			return err
-		}
-		entries, readErr := directory.ReadDir(reclaimBatch)
-		for _, entry := range entries {
-			if err := cancellation.Err(ctx); err != nil {
-				return err
-			}
-			if strings.HasPrefix(entry.Name(), ".stage-") {
-				if err := removeSealed(filepath.Join(r.directory, entry.Name())); err != nil {
-					return fmt.Errorf("pluginpackage: recover staging: %w", err)
-				}
-			}
-		}
-		if errors.Is(readErr, io.EOF) {
-			return nil
-		}
-		if readErr != nil {
-			return fmt.Errorf("pluginpackage: list staging: %w", readErr)
-		}
-	}
-}
-
-// Candidate is one package admitted as an immutable release that is not yet
-// published: its bytes are sealed in private staging and its declaration is
-// interpreted. Publishing it names it in the catalog; discarding it removes
-// staging that was never published.
 type Candidate struct {
 	releases *Releases
-	staged   *staging
+	lease    *distribution.Lease
 	release  plugin.Release
-	contents treeContents
 }
 
 func (c *Candidate) Release() plugin.Release { return c.release }
-
 func (c *Candidate) Publish(ctx context.Context) (plugin.Release, error) {
-	return c.releases.publish(ctx, c.staged, c.release, c.contents)
-}
-
-func (c *Candidate) Discard() error {
-	if err := c.releases.validateDirectory(); err != nil {
-		return err
+	if _, err := c.lease.Directory(); err != nil {
+		return plugin.Release{}, err
 	}
-	return c.staged.discard()
+	if err := c.releases.catalog.Admit(ctx, c.release); err != nil {
+		return plugin.Release{}, err
+	}
+	return c.releases.catalog.Get(ctx, c.release.Digest())
 }
+func (c *Candidate) Discard() error { return c.lease.Close() }
 
-// Materialize admits one package as a candidate release: the bytes are copied
-// into private staging within the package limits, sealed read-only, digested
-// and interpreted once per digest. Publication is left to the installation
-// change that references the release, so nothing is published outside the
-// admission point that also reclaims releases.
+// Materialize holds the neutral release before its bytes become visible. The
+// claim survives metadata publication until the installation workflow discards
+// this original candidate, including admission failures and response loss.
 func (r *Releases) Materialize(ctx context.Context, source string) (_ plugins.Candidate, err error) {
-	if err := r.validateDirectory(); err != nil {
-		return nil, err
-	}
 	if err := cancellation.Err(ctx); err != nil {
 		return nil, err
 	}
 	if !filepath.IsAbs(source) {
 		return nil, fmt.Errorf("%w: source must be an absolute Runtime path", plugin.ErrInvalid)
 	}
-	staged, err := newStaging(r.directory)
+	info, err := os.Lstat(source)
 	if err != nil {
 		return nil, err
+	}
+	var lease *distribution.Lease
+	if info.IsDir() {
+		lease, err = r.content.InstallDirectoryHeld(ctx, source)
+	} else if info.Mode().IsRegular() {
+		file, _, openErr := filesystem.OpenFile(source, distribution.DefaultLimits().ArchiveBytes)
+		if openErr != nil {
+			return nil, openErr
+		}
+		hash := sha256.New()
+		_, readErr := io.Copy(hash, cancellation.Reader(ctx, file))
+		if err = errors.Join(readErr, file.Close()); err != nil {
+			return nil, err
+		}
+		lease, err = r.content.InstallArchiveHeld(ctx, source, qimu.Digest(hex.EncodeToString(hash.Sum(nil))))
+	} else {
+		return nil, fmt.Errorf("%w: package source must be a directory or regular archive: %w", plugin.ErrInvalid, filesystem.ErrNotRegular)
+	}
+	if err != nil {
+		return nil, packageInputError(err)
 	}
 	defer func() {
 		if err != nil {
-			err = errors.Join(err, staged.discard())
+			err = errors.Join(err, lease.Close())
 		}
 	}()
-	if err := staged.extract(ctx, source); err != nil {
-		return nil, err
-	}
-	if err := staged.seal(); err != nil {
-		return nil, err
-	}
-	digest, contents, err := treeDigest(ctx, staged.root)
+	neutral := lease.Release()
+	digest, err := flameidentity.ParseDigest(neutral.Digest.String())
 	if err != nil {
 		return nil, err
 	}
-	release, err := r.admission(ctx, staged.root, digest)
+	directory, err := lease.Directory()
 	if err != nil {
 		return nil, err
 	}
-	return &Candidate{releases: r, staged: staged, release: release, contents: contents}, nil
-}
-
-// admission returns the catalog's interpretation of a digest it has already
-// admitted, so equal bytes are never reinterpreted; only a new digest is parsed.
-func (r *Releases) admission(ctx context.Context, root *os.Root, digest flameidentity.Digest) (plugin.Release, error) {
+	root, err := os.OpenRoot(directory)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { err = errors.Join(err, root.Close()) }()
 	release, err := r.catalog.Get(ctx, digest)
 	if errors.Is(err, plugin.ErrNotFound) {
-		return parse(ctx, root, digest)
+		release, err = parse(ctx, root, digest)
 	}
-	return release, err
-}
-
-// publish makes sealed staging the release directory for its digest, or
-// verifies the directory an earlier admission already published, and admits
-// the release to the catalog. publishMu serializes the existence check, the
-// rename and reclamation, so a directory is never removed while published.
-func (r *Releases) publish(ctx context.Context, staged *staging, release plugin.Release, contents treeContents) (plugin.Release, error) {
-	digest := release.Digest()
-	destination, err := r.Root(digest)
 	if err != nil {
-		return plugin.Release{}, err
+		return nil, err
 	}
-	r.publishMu.Lock()
-	defer r.publishMu.Unlock()
-	if err := cancellation.Err(ctx); err != nil {
-		return plugin.Release{}, err
+	if release.Name() != neutral.Manifest.Package || release.Declaration().Version != neutral.Manifest.Version {
+		return nil, fmt.Errorf("%w: Flame metadata disagrees with its neutral manifest", plugin.ErrInvalid)
 	}
-	if _, err := os.Stat(destination); err == nil {
-		if _, err := r.verify(ctx, digest); err != nil {
-			return plugin.Release{}, err
-		}
-		// A prior publish killed after the move but before the re-seal leaves a
-		// writable root that the content digest does not cover (treeDigest skips
-		// "."). Re-seal it so recovery admits a sealed release.
-		if err := os.Chmod(destination, 0500); err != nil {
-			return plugin.Release{}, err
-		}
-	} else if !errors.Is(err, fs.ErrNotExist) {
-		return plugin.Release{}, err
-	} else {
-		// The staged root was sealed to 0500 for digesting, but macOS refuses to
-		// rename a directory without owner write. Restore write on the root alone,
-		// move it, then re-seal through the held capability; descendants stay
-		// read-only and the root is outside the content digest.
-		if err := staged.root.Chmod(".", 0700); err != nil {
-			return plugin.Release{}, err
-		}
-		if err := os.Rename(staged.path, destination); err != nil {
-			return plugin.Release{}, err
-		}
-		if err := staged.root.Chmod(".", 0500); err != nil {
-			return plugin.Release{}, errors.Join(err, removeSealed(destination))
-		}
-		info, err := staged.root.Stat(".")
-		if err != nil {
-			return plugin.Release{}, errors.Join(err, removeSealed(destination))
-		}
-		r.remember(digest, releaseIntegrity{treeContents: contents, directory: info})
+	if err := validateProjection(ctx, root, release, neutral.Manifest); err != nil {
+		return nil, err
 	}
-	if err := r.catalog.Admit(ctx, release); err != nil {
-		return plugin.Release{}, err
-	}
-	return r.catalog.Get(ctx, digest)
+	return &Candidate{releases: r, lease: lease, release: release}, nil
 }
 
-// Reclaim removes every admitted release and release directory outside
-// retained. The directory goes first: a release whose directory could not be
-// removed stays in the catalog and is retried by the next reclamation, and a
-// directory without a catalog row is still found by its digest name. Staging
-// and entries that do not name a digest are not releases and are left alone.
-// The directory is read in bounded batches, so garbage of any size is
-// reclaimed without materializing the whole listing.
-func (r *Releases) Reclaim(ctx context.Context, retained []flameidentity.Digest) (err error) {
-	if err := r.validateDirectory(); err != nil {
+// Reclaim collects content only. Immutable metadata remains an interpretation of
+// its original release for durable history; it never grants availability.
+func (r *Releases) Reclaim(ctx context.Context) error {
+	digests, err := r.content.Digests(ctx)
+	if err != nil {
 		return err
 	}
-	r.publishMu.Lock()
-	defer r.publishMu.Unlock()
-	admitted, err := r.catalog.Digests(ctx)
-	if err != nil {
-		return fmt.Errorf("pluginpackage: list admitted releases: %w", err)
-	}
-	directory, err := os.Open(r.directory)
-	if err != nil {
-		return fmt.Errorf("pluginpackage: open release directories: %w", err)
-	}
-	defer func() { err = errors.Join(err, directory.Close()) }()
-	var failures error
-	reclaim := func(digest flameidentity.Digest) error {
-		if slices.Contains(retained, digest) {
-			return nil
-		}
-		if err := cancellation.Err(ctx); err != nil {
-			return err
-		}
-		dir, err := r.Root(digest)
-		if err != nil {
-			return err
-		}
-		r.forget(digest)
-		if err := removeSealed(dir); err != nil {
-			failures = errors.Join(failures, fmt.Errorf("pluginpackage: remove release %s directory: %w", digest, err))
-			return nil
-		}
-		if slices.Contains(admitted, digest) {
-			if err := r.catalog.Remove(ctx, digest); err != nil {
-				failures = errors.Join(failures, fmt.Errorf("pluginpackage: remove release %s: %w", digest, err))
-			}
-		}
-		return nil
-	}
-	published := make(map[flameidentity.Digest]struct{})
-	for {
-		entries, readErr := directory.ReadDir(reclaimBatch)
-		for _, entry := range entries {
-			digest, err := flameidentity.ParseDigest(entry.Name())
-			if err != nil {
-				continue
-			}
-			published[digest] = struct{}{}
-			if err := reclaim(digest); err != nil {
-				return errors.Join(failures, err)
-			}
-		}
-		if errors.Is(readErr, io.EOF) {
-			break
-		}
-		if readErr != nil {
-			return errors.Join(failures, fmt.Errorf("pluginpackage: list release directories: %w", readErr))
+	var failures []error
+	for _, digest := range digests {
+		if err := r.content.Remove(ctx, digest); err != nil && !errors.Is(err, qimu.ErrInUse) {
+			failures = append(failures, err)
 		}
 	}
-	for _, digest := range admitted {
-		if _, seen := published[digest]; seen {
-			continue
-		}
-		if err := reclaim(digest); err != nil {
-			return errors.Join(failures, err)
-		}
-	}
-	return failures
+	return errors.Join(failures...)
 }
 
-// reclaimBatch bounds one directory read during reclamation.
-const reclaimBatch = 256
-
-func (r *Releases) readResource(ctx context.Context, installation *plugin.Installation, name string, limit int64) ([]byte, error) {
+func (r *Releases) readResource(ctx context.Context, installation *plugin.Installation, name string, limit int64) (_ []byte, err error) {
 	if !plugin.ValidResourcePath(name) {
 		return nil, fmt.Errorf("%w: invalid resource path", plugin.ErrInvalid)
 	}
-	root, integrity, err := r.verifiedRoot(ctx, installation.Selected())
+	lease, err := r.content.Acquire(ctx, qimu.Digest(installation.Selected().String()))
 	if err != nil {
 		return nil, err
 	}
-	content, err := read(ctx, root, name, limit)
-	if err == nil {
-		expected, exists := integrity.files[name]
-		if !exists || sha256.Sum256(content) != expected {
-			err = plugin.ErrUnavailable
-		}
-	}
-	err = errors.Join(err, root.Close())
-	if err != nil {
-		content = nil
+	defer func() { err = errors.Join(err, lease.Close()) }()
+	content, err := lease.ReadLimit(ctx, name, limit)
+	if errors.Is(err, distribution.ErrCapacity) {
+		return nil, errors.Join(errResourceLimit, err)
 	}
 	return content, err
 }
-
 func (r *Releases) ReadResource(ctx context.Context, installation *plugin.Installation, name string) ([]byte, error) {
 	body, err := r.readResource(ctx, installation, name, maxPackageBytes)
 	if err != nil && !errors.Is(err, plugin.ErrInvalid) && cancellation.Err(ctx) == nil {
@@ -376,11 +180,19 @@ func (r *Releases) ReadResource(ctx context.Context, installation *plugin.Instal
 	return body, err
 }
 
+func packageInputError(err error) error {
+	if errors.Is(err, distribution.ErrInvalid) || errors.Is(err, distribution.ErrIntegrity) || errors.Is(err, distribution.ErrCapacity) || errors.Is(err, filesystem.ErrFileTooLarge) || errors.Is(err, filesystem.ErrNotRegular) || errors.Is(err, os.ErrNotExist) {
+		return errors.Join(plugin.ErrInvalid, err)
+	}
+	return err
+}
+
+// read applies a Flame format budget inside an already acquired content tree.
 func read(ctx context.Context, root *os.Root, name string, limit int64) (body []byte, err error) {
 	if cause := cancellation.Err(ctx); cause != nil {
 		return nil, cause
 	}
-	f, _, err := filesystem.OpenFileAt(root, name, limit)
+	file, _, err := filesystem.OpenFileAt(root, name, limit)
 	if err != nil {
 		if errors.Is(err, filesystem.ErrFileTooLarge) {
 			return nil, errors.Join(errResourceLimit, err)
@@ -388,12 +200,12 @@ func read(ctx context.Context, root *os.Root, name string, limit int64) (body []
 		return nil, err
 	}
 	defer func() {
-		err = errors.Join(err, f.Close())
+		err = errors.Join(err, file.Close())
 		if err != nil {
 			body = nil
 		}
 	}()
-	body, err = io.ReadAll(io.LimitReader(cancellation.Reader(ctx, f), limit+1))
+	body, err = io.ReadAll(io.LimitReader(cancellation.Reader(ctx, file), limit+1))
 	if err != nil {
 		return nil, err
 	}

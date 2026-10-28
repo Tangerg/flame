@@ -1,6 +1,6 @@
 import { useInstalledPlugins } from "@/features/plugins/context";
 import { pluginContract } from "@flame/runtime-client";
-import { parseJSON } from "@flame/runtime-client";
+import { parseJSON } from "@qimu/sdk/json";
 import { checkRequest } from "@flame/runtime-client";
 import { useRef, useState } from "react";
 import * as stylex from "@stylexjs/stylex";

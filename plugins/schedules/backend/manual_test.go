@@ -10,12 +10,14 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	models "github.com/Tangerg/flame/packages/go-sdk/model/catalog"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	"github.com/Tangerg/flame/plugins/schedules/internal/sqlite"
+	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -37,7 +39,7 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 	host := &observedRunHost{db: db, namespace: "original-runtime"}
 	host.lost.Store(true)
 	server := sdk.NewServer(&sdk.Implementation{Name: "schedules-test"}, nil)
-	registered, err := registerServer(server, db, store, filesystem.DirectoryResolver{}, models.Selections{}, func(context.Context, pluginsdk.CallbackRef) (runHost, func() error, error) {
+	registered, err := registerServer(server, db, store, filesystem.DirectoryResolver{}, models.Selections{}, func(context.Context, qimumcp.CallbackRef) (runHost, func() error, error) {
 		return host, func() error { return nil }, nil
 	})
 	if err != nil {
@@ -49,7 +51,7 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 		}
 	})
 	client := sdk.NewClient(&sdk.Implementation{Name: "public-author"}, nil)
-	if err := pluginsdk.RegisterClient(client); err != nil {
+	if err := qimumcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	left, right := sdk.NewInMemoryTransports()
@@ -67,24 +69,24 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	exported, err := pluginsdk.ResolveCapability(ctx, session, "schedules", contracts.Capability)
+	exported, err := qimumcp.ResolveCapability(ctx, session, "schedules", contracts.Capability)
 	if err != nil {
 		t.Fatal(err)
 	}
-	method, err := exported.Method(rpc.RunNow)
+	method, err := exported.Method(wire.RunNow)
 	if err != nil {
 		t.Fatal(err)
 	}
-	invocation := extension.Invocation{ID: "original-manual", Origin: extension.Human, Target: extension.Target{Scope: "installation", Reference: "captured-installation"}}
-	ctx, err = pluginsdk.WithInvocation(ctx, invocation)
+	invocation := portable.Invocation{ID: "original-manual", Origin: extension.Human, Target: portable.Target{Scope: "installation", Reference: "captured-installation"}}
+	ctx, err = qimumcp.WithInvocation(ctx, invocation)
 	if err != nil {
 		t.Fatal(err)
 	}
-	metadata, err := pluginsdk.CallbackMetadata(pluginsdk.CallbackRef{Endpoint: "http://127.0.0.1:1/", Credential: strings.Repeat("a", 64), Call: strings.Repeat("b", 64), MaxResponseBytes: 4096})
+	metadata, err := qimumcp.CallbackMetadata(qimumcp.CallbackRef{Endpoint: "http://127.0.0.1:1/", Credential: strings.Repeat("a", 64), Call: strings.Repeat("b", 64), MaxResponseBytes: 4096})
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := jsonvalue.Encode(rpc.ItemInput{ID: definition.ID()})
+	input, err := jsonvalue.Encode(wire.ItemInput{ID: definition.ID()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,16 +152,16 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 	if err != nil || retained.Snapshot() != captured.Snapshot() {
 		t.Fatalf("deleted definition changed captured work: %v", err)
 	}
-	changed, err := jsonvalue.Encode(rpc.ItemInput{ID: "sch_other"})
+	changed, err := jsonvalue.Encode(wire.ItemInput{ID: "sch_other"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := method.Invoke(ctx, invocation.ID, changed); !errors.Is(decodeError(err), extension.ErrInvocationConflict) {
+	if _, err := method.Invoke(ctx, invocation.ID, changed); !errors.Is(decodeError(err), portable.ErrInvocationConflict) {
 		t.Fatalf("changed input did not conflict: %v", err)
 	}
 	refused := invocation
 	refused.ID = "missing-schedule"
-	refusalContext, err := pluginsdk.WithInvocation(t.Context(), refused)
+	refusalContext, err := qimumcp.WithInvocation(t.Context(), refused)
 	if err != nil {
 		t.Fatal(err)
 	}

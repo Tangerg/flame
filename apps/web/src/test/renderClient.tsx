@@ -108,6 +108,7 @@ export function createTestClient(
     client,
     runtime.endpoint.currentRuntimeEndpoint,
     theme.access,
+    (children) => <Wrapper>{children}</Wrapper>,
   );
   const selectors = createAgentViewSelectors(agent.projection.store, navigation);
   function Wrapper({ children }: { children: ReactNode }) {

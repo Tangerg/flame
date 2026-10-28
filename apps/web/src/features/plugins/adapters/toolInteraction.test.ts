@@ -3,7 +3,7 @@ import { type FlameClient, type RunRef } from "@flame/runtime-client";
 import { type AgentInputSettlement } from "@/features/agent/public/input";
 import { captureToolInteraction, type SubmitCapturedAgentInput } from "./toolInteraction";
 
-function fixture(submitInput: SubmitCapturedAgentInput) {
+function fixture(submitInput: SubmitCapturedAgentInput, admit = () => {}) {
   const controller = new AbortController();
   const run: RunRef = {
     id: "run_original",
@@ -23,7 +23,9 @@ function fixture(submitInput: SubmitCapturedAgentInput) {
     submitInput,
     source,
     controller.signal,
-    (operation) => {
+    (factory) => {
+      admit();
+      const operation = factory(controller.signal);
       tracked.push(operation);
       return operation;
     },
@@ -39,6 +41,44 @@ const accepted = {
 };
 
 describe("captured tool interaction", () => {
+  it("admits the original lifetime before starting I/O and leaves a denied submission inactive", async () => {
+    const submit = vi.fn<SubmitCapturedAgentInput>(async () => accepted);
+    const admit = vi.fn<() => void>(() => {
+      throw new Error("original lifetime unavailable");
+    });
+    const { interaction, get } = fixture(submit, admit);
+    const input = { action: "Continue", payloadJSON: "{}" };
+    expect(() => interaction.submit(input)).toThrow("original lifetime unavailable");
+    expect(get).not.toHaveBeenCalled();
+    expect(submit).not.toHaveBeenCalled();
+    admit.mockImplementation(() => undefined);
+    await expect(interaction.submit(input)).resolves.toEqual(accepted);
+    expect(get).toHaveBeenCalledOnce();
+    expect(submit).toHaveBeenCalledOnce();
+  });
+
+  it("admits recovery before observing the original command and retains denied recovery", async () => {
+    const recover = vi.fn(async () => accepted);
+    const submit = vi.fn<SubmitCapturedAgentInput>(async () => ({
+      status: "unknown",
+      idempotencyKey: "original-key",
+      recover,
+    }));
+    const admit = vi.fn<() => void>(() => undefined);
+    const { interaction } = fixture(submit, admit);
+    const result = await interaction.submit({ action: "Continue", payloadJSON: "{}" });
+    if (result.status !== "unknown") throw new Error("expected unknown receipt");
+    admit.mockImplementation(() => {
+      throw new Error("original lifetime unavailable");
+    });
+    expect(() => result.recover()).toThrow("original lifetime unavailable");
+    expect(recover).not.toHaveBeenCalled();
+    admit.mockImplementation(() => undefined);
+    await expect(result.recover()).resolves.toEqual(accepted);
+    expect(recover).toHaveBeenCalledOnce();
+    expect(submit).toHaveBeenCalledOnce();
+  });
+
   it("resolves the source Run on submission and retains the exact form JSON in ordinary input", async () => {
     const pending = Promise.withResolvers<AgentInputSettlement>();
     const submit = vi.fn<SubmitCapturedAgentInput>(() => pending.promise);

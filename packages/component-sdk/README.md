@@ -153,6 +153,15 @@ Known refusals become `OperationFailure`;
 unconfirmed transport remains the shared Runtime client's uncertainty. The mapped
 command preserves its original idempotency key and explicit retry closure.
 
+`context.track(factory)` reserves work in the component's original Qimu Use
+before invoking the factory synchronously. The factory receives the owned signal
+and must start the operation inside that call. The returned Promise is the
+factory's original object, including a command's idempotency key and retry
+entrance. Admission failure leaves the factory uncalled. Closing a component
+joins all accepted work before its Use exit proof can be submitted.
+`bindOperations` applies this rule to queries, commands, streams and recovery;
+direct Runtime calls use `context.track((signal) => startOperation(signal))`.
+
 The component captures its inspected resource/revision before submitting a
 command. It must not turn response loss into another command identity or render
 an unconfirmed change as saved. Closing a component cancels observation; it does
@@ -203,10 +212,10 @@ directory and `compiler: rolldown` imported from the author toolchain's declared
 The SDK owns shared-module externalization and the prebuilt ESM/relative-asset
 format. The former implicit compiler lookup is removed; all in-repository build
 callers supply the compiler explicitly. Private dependencies are bundled. `HOST_MODULES` names shared React,
-React DOM, JSX runtimes, SDK, Runtime-client, Runtime-client JSON and UI modules;
+React DOM, JSX runtimes, SDK, Runtime-client, Qimu exact JSON and UI modules;
 UI subpath imports are also external. The workbench derives its import map from
 that same declaration and deduplicates the Runtime-client package. Both
-`@flame/runtime-client` and `@flame/runtime-client/json` therefore use the actual
+`@flame/runtime-client` and `@qimu/sdk/json` therefore use the actual
 Host's error constructors and exact-number codec. Source-only tests cannot prove
 this identity; component builds and the production ESM linkage check exercise it.
 Unresolved imports, including Node built-ins, fail the browser build instead of
@@ -215,7 +224,7 @@ The graphical client must map those imports to its actual shared instances befor
 evaluating an entry. The workbench emits an import map to its actual shared ESM exports. Core resource
 subscriptions and exact-release asset queries provide package-relative URLs. The
 component signal cancels observation; its explicit track boundary joins SDK calls
-through the existing contribution lifetime. Development uses this same format.
+through the original approved Use lifetime. Development uses this same format.
 
 The checked Reviews Board is the concrete consumer. It displays current owner
 data, submits inspected-revision changes, exposes conflict and uncertainty,

@@ -66,7 +66,7 @@ async function mountSelections(
   const operations: PackageOperations = {
     ...client.plugins,
     signal: resources.signal,
-    track: (operation) => operation,
+    track: (operation) => operation(resources.signal),
   };
   host = await startKernel([
     definePlugin({

@@ -10,10 +10,7 @@ const contracts = new Set(
 );
 for (const resource of contracts) {
   execFileSync(
-    join(
-      project,
-      "tools/flame-sdk" + (process.platform === "win32" ? ".exe" : ""),
-    ),
+    join(project, "tools/qimu" + (process.platform === "win32" ? ".exe" : "")),
     [
       "contract",
       "--feature",

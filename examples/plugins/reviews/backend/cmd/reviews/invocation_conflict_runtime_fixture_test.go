@@ -4,6 +4,7 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"fmt"
+	"github.com/Tangerg/flame/qimu/portable"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -14,10 +15,8 @@ import (
 	"testing"
 
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
-
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -66,8 +65,8 @@ func TestInvocationConflictRuntimeFixture(t *testing.T) {
 		return func(ctx context.Context, method string, request sdk.Request) (sdk.Result, error) {
 			if call, ok := request.(*sdk.CallToolRequest); ok && call.Params != nil && call.Params.Name == "update_review" {
 				if toolUpdates.Add(1) == 1 {
-					var invocation extension.Invocation
-					if err := json.Unmarshal(call.Params.Meta[pluginsdk.InvocationMetadataKey], &invocation, json.RejectUnknownMembers(true)); err != nil {
+					var invocation portable.Invocation
+					if err := json.Unmarshal(call.Params.Meta[qimumcp.InvocationMetadataKey], &invocation, json.RejectUnknownMembers(true)); err != nil {
 						return nil, err
 					}
 					if err := invocation.Validate(); err != nil {
@@ -100,7 +99,7 @@ func TestInvocationConflictRuntimeFixture(t *testing.T) {
 						return nil, err
 					}
 				}
-			case pluginsdk.ReceiptMethod:
+			case qimumcp.ReceiptMethod:
 				receiptReads.Add(1)
 			}
 			return next(ctx, method, request)
@@ -129,11 +128,11 @@ func TestInvocationConflictRuntimeFixture(t *testing.T) {
 		t.Fatalf("expected distinct prior Tool and typed identities: %v", priorIDs)
 	}
 	for _, id := range priorIDs {
-		receipt, err := store.receipt(t.Context(), pluginsdk.ReceiptRequest{ID: id, Method: contracts.Update.Name(), InputDigest: admitted.Digest()}, contracts.Update.Name())
+		receipt, err := store.receipt(t.Context(), qimumcp.ReceiptRequest{ID: id, Method: contracts.Update.Name(), InputDigest: admitted.Digest()}, contracts.Update.Name())
 		if err != nil || !receipt.Found {
 			t.Fatalf("original private receipt lost: %+v, %v", receipt, err)
 		}
-		result, err := pluginsdk.DecodeReply[reviews.UpdateResult](receipt.Reply)
+		result, err := qimumcp.DecodeReply[reviews.UpdateResult](receipt.Reply)
 		if err != nil || result != (reviews.UpdateResult{Type: reviews.NotFound}) {
 			t.Fatalf("conflict overwrote original private outcome: %+v, %v", result, err)
 		}

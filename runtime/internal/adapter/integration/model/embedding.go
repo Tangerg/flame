@@ -8,7 +8,7 @@ import (
 	"time"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -143,7 +143,7 @@ func (e *embedder) Embed(ctx context.Context, texts []string) ([][]float32, erro
 }
 
 func (e *embedder) start(ctx context.Context, request *embedding.Request) (modelref.EndpointInvocation, error) {
-	caller, err := pluginsdk.InvocationFromContext(ctx)
+	caller, err := qimumcp.InvocationFromContext(ctx)
 	if err != nil {
 		return modelref.EndpointInvocation{}, err
 	}

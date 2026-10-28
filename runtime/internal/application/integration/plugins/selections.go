@@ -4,8 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/qimu"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/samber/lo"
@@ -20,11 +21,11 @@ type SelectionStore interface {
 type Selections struct {
 	store         SelectionStore
 	installations Store
-	admission     *Admission
+	admission     *qimu.Admission
 	publish       invalidation.Publish
 }
 
-func NewSelections(store SelectionStore, installations Store, admission *Admission, publish invalidation.Publish) (*Selections, error) {
+func NewSelections(store SelectionStore, installations Store, admission *qimu.Admission, publish invalidation.Publish) (*Selections, error) {
 	if lo.IsNil(store) || lo.IsNil(installations) || admission == nil {
 		return nil, errors.New("plugins: provider selections, installations and admission are required")
 	}
@@ -52,12 +53,12 @@ func (s *Selections) Select(ctx context.Context, record plugin.SelectionRecord) 
 		if !found {
 			return fmt.Errorf("%w: contribution is not declared", plugin.ErrInvalid)
 		}
-		contract, err := extension.ParseCapability(contribution.Contract.JSON())
+		contract, err := portable.ParseCapability(contribution.Contract.JSON())
 		if err != nil {
 			return err
 		}
 		descriptor := contract.Descriptor()
-		if descriptor.Reference != record.Role || descriptor.Composition != extension.Selection {
+		if descriptor.Reference != record.Role || descriptor.Composition != portable.Selection {
 			return fmt.Errorf("%w: contribution does not provide the requested selection role", plugin.ErrInvalid)
 		}
 		return s.store.Save(ctx, selection)

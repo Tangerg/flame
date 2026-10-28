@@ -30,9 +30,9 @@ func (c *connections) statuses() []mcpserver.ConnectionStatus {
 	return out
 }
 
-// Detach removes a server from the live projection and starts retiring its
-// session. Session teardown remains owned by connections and is joined by
-// Shutdown; it never delays the application control-plane mutation.
+// Detach removes a server from the live projection. Ordinary session teardown
+// belongs to connections. Managed retirement is requested from the Host, which
+// joins the actual resource after its original Uses have released.
 func (c *connections) detach(name mcpserver.ID) error {
 	c.mu.Lock()
 	if c.closed {
@@ -91,10 +91,10 @@ func (c *connections) publishToolsLocked(changed ...mcpserver.ID) {
 	c.onTools(catalog, pending, changed)
 }
 
-// Shutdown rejects new operations, joins all admitted dials, and closes every
-// session still present in the ownership ledger. ClientSession.Close consumes
-// its transport closer even when it returns an error, so that diagnostic is
-// terminal and the session leaves the ledger after the attempt completes.
+// Shutdown rejects new operations, joins admitted discovery and retires the
+// current catalog. The Host owns completion of managed instance retirement.
+// Ordinary ClientSession.Close consumes its transport closer even on error, so
+// that diagnostic is terminal for the connection owner's resource.
 // Every completed Shutdown returns the same aggregate result without repeating
 // cleanup; a caller's cancellation ends only its own wait.
 func (c *connections) shutdown(ctx context.Context) error {
@@ -244,9 +244,8 @@ func (c *connections) closeSessionAttempt(
 	}
 	c.mu.Lock()
 	if current := c.sessions[session]; current == owned && current.close == attempt {
-		// sdkmcp.ClientSession.Close is one-shot: its underlying transport
-		// closer is consumed before the error returns. Retaining this entry
-		// would only replay a cached diagnostic, never advance cleanup.
+		// Ordinary close is one-shot. For managed entries this removes only
+		// the catalog observation; the Host retains original exit ownership.
 		delete(c.sessions, session)
 	}
 	if err == nil {

@@ -7,11 +7,13 @@
 // fact in this file is read from the Contract Registry.
 
 import type {
+  AcquirePluginComponentRequest,
   ApprovalModeResult,
   CallPluginRequest,
   CallPluginResponse,
   CancelRunRequest,
   CancelRunResponse,
+  ClosePluginBrowserRealmRequest,
   ConfigurePluginRequest,
   CreateMCPAuthorizationAttemptRequest,
   CreateSessionRequest,
@@ -63,6 +65,7 @@ import type {
   MCPServerRequest,
   MCPTestResult,
   MCPToolExposure,
+  OpenPluginBrowserRealmRequest,
   OpenPluginResourcesRequest,
   PageOfAgentDoc,
   PageOfFileEntry,
@@ -88,6 +91,8 @@ import type {
   PageOfWorkspaceFileChange,
   PageOfWorkspaceSummary,
   Plan,
+  PluginBrowserSession,
+  PluginBrowserUseGrant,
   PluginChangeNotice,
   PluginCommandRequest,
   PluginComposition,
@@ -229,6 +234,9 @@ const METHOD_NAMES = [
   "mcp.servers.reconnect",
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
+  "plugins.openBrowserRealm",
+  "plugins.acquireComponent",
+  "plugins.closeBrowserRealm",
   "plugins.getCommand",
   "plugins.retireCommand",
   "plugins.stream",
@@ -347,6 +355,8 @@ const VALUE_METHOD_NAMES = [
   "mcp.tools.list",
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
+  "plugins.openBrowserRealm",
+  "plugins.acquireComponent",
   "plugins.getCommand",
   "plugins.stream",
   "plugins.openResources",
@@ -786,6 +796,27 @@ export const WIRE_METHOD_POLICY = {
     operation: "query",
     response: "unary",
     idempotency: "none",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "plugins.openBrowserRealm": {
+    operation: "command",
+    response: "unary",
+    idempotency: "ownerResponse",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "plugins.acquireComponent": {
+    operation: "command",
+    response: "unary",
+    idempotency: "ownerResponse",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "plugins.closeBrowserRealm": {
+    operation: "command",
+    response: "unary",
+    idempotency: "ownerResponse",
     replayCursor: "none",
     pagination: "none",
   },
@@ -1274,6 +1305,15 @@ export const WIRE_CAPABILITY_POLICY: {
   "mcp.authorizationAttempts.get": [
     { requires: ["mcp"] },
   ],
+  "plugins.openBrowserRealm": [
+    { requires: ["plugins"] },
+  ],
+  "plugins.acquireComponent": [
+    { requires: ["plugins"] },
+  ],
+  "plugins.closeBrowserRealm": [
+    { requires: ["plugins"] },
+  ],
   "plugins.getCommand": [
     { requires: ["plugins"] },
   ],
@@ -1413,6 +1453,9 @@ export interface WireShapes {
   "mcp.servers.reconnect": { params: MCPServerRequest };
   "mcp.authorizationAttempts.create": { params: CreateMCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
   "mcp.authorizationAttempts.get": { params: MCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
+  "plugins.openBrowserRealm": { params: OpenPluginBrowserRealmRequest; result: PluginBrowserSession };
+  "plugins.acquireComponent": { params: AcquirePluginComponentRequest; result: PluginBrowserUseGrant };
+  "plugins.closeBrowserRealm": { params: ClosePluginBrowserRealmRequest };
   "plugins.getCommand": { params: PluginCommandRequest; result: CallPluginRequest };
   "plugins.retireCommand": { params: PluginCommandRequest };
   "plugins.stream": { params: CallPluginRequest; result: Record<string, never> };

@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
-	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/flame/qimu/sqlite"
 )
 
 func TestBusinessMutationAndSuccessOrRefusalReceiptAreAtomic(t *testing.T) {
@@ -41,7 +41,7 @@ func TestBusinessMutationAndSuccessOrRefusalReceiptAreAtomic(t *testing.T) {
 		}
 	}
 	_, err = Command(t.Context(), db, "update", "refused", "known", receiptInput(t, "known"), classify, handler)
-	failure, ok := errors.AsType[*extension.Refusal](err)
+	failure, ok := errors.AsType[*portable.Refusal](err)
 	if !ok || failure.Code != "conflict" {
 		t.Fatalf("known refusal=%v", err)
 	}
@@ -53,7 +53,7 @@ func TestBusinessMutationAndSuccessOrRefusalReceiptAreAtomic(t *testing.T) {
 	if err == nil {
 		t.Fatal("unknown mutation succeeded")
 	}
-	if _, ok := errors.AsType[*extension.Refusal](err); ok {
+	if _, ok := errors.AsType[*portable.Refusal](err); ok {
 		t.Fatalf("unknown became known=%v", err)
 	}
 	var count, total int
@@ -69,7 +69,7 @@ func TestBusinessMutationAndSuccessOrRefusalReceiptAreAtomic(t *testing.T) {
 			return "", nil
 		})
 		if key.id == "refused" {
-			if _, ok := errors.AsType[*extension.Refusal](err); !ok {
+			if _, ok := errors.AsType[*portable.Refusal](err); !ok {
 				t.Fatalf("refusal replay=%v", err)
 			}
 		} else if err != nil {

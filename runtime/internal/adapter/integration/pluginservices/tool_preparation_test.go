@@ -12,11 +12,15 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
+	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
@@ -35,20 +39,36 @@ import (
 type toolInstallationStore struct {
 	plugins.Store
 	snapshot plugin.Snapshot
+	host     *qimu.Host
 	failure  error
 }
 
-func (s *toolInstallationStore) Get(context.Context, identity.InstallationID) (plugin.Snapshot, bool, error) {
-	return s.snapshot, true, s.failure
+func (s *toolInstallationStore) Get(ctx context.Context, id identity.InstallationID) (plugin.Snapshot, bool, error) {
+	if s.failure != nil {
+		return plugin.Snapshot{}, false, s.failure
+	}
+	if s.Store != nil {
+		return s.Store.Get(ctx, id)
+	}
+	return s.snapshot, true, nil
 }
 
-func (s *toolInstallationStore) List(context.Context) ([]plugin.Snapshot, error) {
-	return []plugin.Snapshot{s.snapshot}, s.failure
+func (s *toolInstallationStore) List(ctx context.Context) ([]plugin.Snapshot, error) {
+	if s.failure != nil {
+		return nil, s.failure
+	}
+	if s.Store != nil {
+		return s.Store.List(ctx)
+	}
+	return []plugin.Snapshot{s.snapshot}, nil
 }
 
 type toolSourceRegistry struct{ server mcpserver.Server }
 
 func (r toolSourceRegistry) Dispatchable(context.Context, mcpserver.ID) (mcpserver.Server, bool, error) {
+	return r.server.Clone(), true, nil
+}
+func (r toolSourceRegistry) Definition(context.Context, mcpserver.ID) (mcpserver.Server, bool, error) {
 	return r.server.Clone(), true, nil
 }
 func (r toolSourceRegistry) Connection(context.Context, mcpserver.ID) (mcpapp.Launch, error) {
@@ -64,16 +84,16 @@ func (e *preparedEmbedder) Embed(context.Context, []string) ([][]float32, error)
 }
 
 func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) {
-	memoryContracts, err := extension.ParseCapability([]byte(memorycontract.CapabilityJSON))
+	memoryContracts, err := portable.ParseCapability([]byte(memorycontract.CapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
-	schedulesContracts, err := extension.ParseCapability([]byte(testsupport.SchedulesCapabilityJSON))
+	schedulesContracts, err := portable.ParseCapability([]byte(testsupport.SchedulesCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, scenario := range []struct {
-		contract  *extension.Capability
+		contract  *portable.Capability
 		name      string
 		embedding bool
 	}{{memoryContracts, memorycontract.SearchToolName, true}, {memoryContracts, "add_memory", false}, {schedulesContracts, "search", false}} {
@@ -97,7 +117,7 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 				t.Fatal(err)
 			}
 			store := &toolInstallationStore{snapshot: plugin.Snapshot{Installation: installation, Selected: release}}
-			callbacks := pluginsdk.NewCallbacks()
+			callbacks := qimumcp.NewCallbacks()
 			t.Cleanup(func() { _ = callbacks.Close() })
 			if err := callbacks.PublishRPC(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				http.Error(w, "unexpected host call", http.StatusBadRequest)
@@ -107,15 +127,36 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 			var calls, notices atomic.Int32
 			embedder := &preparedEmbedder{}
 			var captured pluginsdk.ToolContext
-			var capturedGrant pluginsdk.CallbackRef
+			var capturedGrant qimumcp.CallbackRef
 			remote := sdk.NewServer(&sdk.Implementation{Name: "feature-owner"}, nil)
+			backend, err := qimumcp.NewBackend(remote)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, descriptor := range contract.Descriptor().Methods {
+				method, err := qimumcp.ImplementMethod[jsonvalue.Value, jsonvalue.Value](contract, descriptor.Name)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := method.RegisterServer(backend, nil, func(context.Context, *sdk.ServerSession, qimumcp.Command[jsonvalue.Value]) (jsonvalue.Value, error) {
+					return jsonvalue.Value{}, errors.New("fixture only executes the declared MCP tool")
+				}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := backend.BindCapability("owner", contract); err != nil {
+				t.Fatal(err)
+			}
+			if err := backend.Publish(); err != nil {
+				t.Fatal(err)
+			}
 			if err := pluginsdk.RegisterTools(remote); err != nil {
 				t.Fatal(err)
 			}
 			remote.AddTool(&sdk.Tool{Name: scenario.name, InputSchema: jsontext.Value(`{"type":"object"}`)}, func(ctx context.Context, request *sdk.CallToolRequest) (*sdk.CallToolResult, error) {
 				calls.Add(1)
-				var invocation extension.Invocation
-				if err := json.Unmarshal(request.Params.Meta[pluginsdk.InvocationMetadataKey], &invocation); err != nil {
+				var invocation portable.Invocation
+				if err := json.Unmarshal(request.Params.Meta[qimumcp.InvocationMetadataKey], &invocation); err != nil {
 					return nil, err
 				}
 				if invocation.ID != "original-logical-call" || invocation.Origin != extension.Model || invocation.Parent != "run_owner" || invocation.Target.Reference != installation.ID().String() || string(request.Params.Meta["owner-meta"]) != `"retained"` {
@@ -132,13 +173,13 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 						if captured.EmbeddingSpace != "" {
 							return nil, errors.New("memory management received an embedding space")
 						}
-						if _, err := pluginsdk.CallbackFromContext(ctx); err == nil {
+						if _, err := qimumcp.CallbackFromContext(ctx); err == nil {
 							return nil, errors.New("memory management received model authority")
 						}
 						return nil, errors.New("response unavailable after dispatch")
 					}
 					var err error
-					capturedGrant, err = pluginsdk.CallbackFromContext(ctx)
+					capturedGrant, err = qimumcp.CallbackFromContext(ctx)
 					if err != nil {
 						return nil, err
 					}
@@ -153,7 +194,7 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 						return nil, errors.Join(err, errors.New("prepared callback failed"))
 					}
 				} else {
-					ref, err := pluginsdk.CallbackFromContext(ctx)
+					ref, err := qimumcp.CallbackFromContext(ctx)
 					if err != nil {
 						return nil, err
 					}
@@ -181,19 +222,8 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			pool, err := mcp.Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, toolSourceRegistry{server}, callbacks, prepare, nil, nil)
-			if err != nil {
-				t.Fatal(err)
-			}
-			t.Cleanup(func() { _ = pool.Shutdown(context.WithoutCancel(t.Context())) })
-			attempt, err := pool.BeginConnect(t.Context(), server.ID())
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer attempt.Close()
-			if err := attempt.Run(); err != nil {
-				t.Fatal(err)
-			}
+			managed := newManagedFixture(t, store, server, callbacks, prepare)
+			pool := managed.Pool
 			var tools []toolcontract.Tool
 			pool.SetToolSink(func(current []toolcontract.Tool, _ []mcpserver.ID) { tools = current })
 			if len(tools) != 1 {
@@ -214,7 +244,7 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 				t.Fatal(err)
 			}
 			if contract == memoryContracts && !scenario.embedding {
-				if err := metadata.Set(pluginsdk.CallbackMetadataKey, map[string]string{"parent": "authority"}); err != nil {
+				if err := metadata.Set(qimumcp.CallbackMetadataKey, map[string]string{"parent": "authority"}); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -229,7 +259,7 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 				if embedder.calls.Load() != 1 || notices.Load() != 1 {
 					t.Fatal("Memory callback or feature observation escaped its owner")
 				}
-				if _, err := pluginsdk.CallTextEmbedding(t.Context(), capturedGrant, "stale-embedding", []string{"stale"}); !errors.Is(err, pluginsdk.ErrStaleCall) {
+				if _, err := pluginsdk.CallTextEmbedding(t.Context(), capturedGrant, "stale-embedding", []string{"stale"}); !errors.Is(err, qimumcp.ErrStaleCall) {
 					t.Fatalf("failed Tool call retained its callback: %v", err)
 				}
 				embeddingFailure = errors.New("embedding source read failed")
@@ -249,8 +279,10 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 			}
 			store.failure = errors.New("installation read failed")
 			before := calls.Load()
-			if _, err := bound.Call(ctx, invocation); !errors.Is(err, store.failure) || calls.Load() != before {
-				t.Fatalf("unverifiable installed source fell back to an unprepared call: %v", err)
+			_, err = bound.Call(ctx, invocation)
+			failure, classified := toolcontract.ClassifyFailure(err)
+			if !classified || !errors.Is(failure.Cause(), store.failure) || calls.Load() != before {
+				t.Fatalf("unverifiable installed source lost its classified cause or dispatched: %v", err)
 			}
 		})
 	}

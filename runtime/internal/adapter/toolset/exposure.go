@@ -25,6 +25,8 @@ import (
 // only representation installation admission consults.
 type Manifest struct {
 	Installations []plugin.Dependency
+	Bindings      []plugin.Activation
+	Resources     []plugin.Dependency
 	Visible       []toolcontract.Tool
 	Deferred      []toolcontract.Tool
 	PendingMCP    []mcpserver.ID
@@ -37,6 +39,7 @@ type Manifest struct {
 func (m Manifest) Clone() Manifest {
 	return Manifest{
 		Installations: slices.Clone(m.Installations), Visible: slices.Clone(m.Visible),
+		Bindings: cloneManifestBindings(m.Bindings), Resources: slices.Clone(m.Resources),
 		Deferred:   slices.Clone(m.Deferred),
 		PendingMCP: slices.Clone(m.PendingMCP),
 		discovery:  m.discovery,
@@ -99,6 +102,7 @@ func (m manifestBuilder) manifest(telemetry oteltool.Middleware) (Manifest, erro
 		return Manifest{}, m.err
 	}
 	installations := slices.Clone(m.installations)
+	var bindings []plugin.Activation
 	freeze := func(tools []toolcontract.Tool) ([]toolcontract.Tool, error) {
 		frozen := make([]toolcontract.Tool, len(tools))
 		for index, executable := range tools {
@@ -108,6 +112,9 @@ func (m manifestBuilder) manifest(telemetry oteltool.Middleware) (Manifest, erro
 			}
 			installations = append(installations, activation.Dependencies...)
 			if !activation.Identity.IsZero() {
+				if !slices.ContainsFunc(bindings, activation.Equal) {
+					bindings = append(bindings, activation.Clone())
+				}
 				executable = frozenInstallationTool{Tool: executable, activation: activation.Clone()}
 			}
 			frozen[index] = executable
@@ -123,7 +130,15 @@ func (m manifestBuilder) manifest(telemetry oteltool.Middleware) (Manifest, erro
 		return Manifest{}, err
 	}
 
-	return Manifest{Installations: plugin.CompactDependencies(installations), Visible: visible, Deferred: deferred, PendingMCP: slices.Clone(m.pendingMCP), discovery: m.discovery, close: m.close}, nil
+	return Manifest{Installations: plugin.CompactDependencies(installations), Bindings: bindings, Resources: plugin.CompactDependencies(m.installations), Visible: visible, Deferred: deferred, PendingMCP: slices.Clone(m.pendingMCP), discovery: m.discovery, close: m.close}, nil
+}
+
+func cloneManifestBindings(values []plugin.Activation) []plugin.Activation {
+	result := slices.Clone(values)
+	for index := range result {
+		result[index] = result[index].Clone()
+	}
+	return result
 }
 
 func instrumentTools(telemetry oteltool.Middleware, tools []toolcontract.Tool) ([]toolcontract.Tool, error) {

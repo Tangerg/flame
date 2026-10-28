@@ -15,9 +15,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/scope/core/chat"
@@ -114,7 +114,7 @@ func testReviewReceiptHistoryEntrances(t *testing.T, updateInput, expected strin
 	source := reviewExamplePackage(t)
 	descriptor, err := json.Marshal(map[string]any{
 		"$schema":    "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
-		"mcpServers": map[string]any{"reviews": map[string]any{"type": "streamable-http", "url": url}},
+		"mcpServers": map[string]any{"reviews": testMCPServer(url)},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -122,6 +122,7 @@ func testReviewReceiptHistoryEntrances(t *testing.T, updateInput, expected strin
 	if err := os.WriteFile(filepath.Join(source, "mcp.json"), descriptor, 0600); err != nil {
 		t.Fatal(err)
 	}
+	authorPluginPackage(t, source)
 	client := reviewRefusalChat(t, updateInput)
 	cfg := poMCPConfig(t)
 	cfg.approvalMode = approval.ModeYolo
@@ -135,7 +136,7 @@ func testReviewReceiptHistoryEntrances(t *testing.T, updateInput, expected strin
 	request := protocol.CallPluginRequest{
 		InstallationID: installed.ID, Digest: installed.Selected.Digest,
 		Contribution: contribution.ID, Contract: contribution.Contract,
-		Target: extension.Target{Scope: "installation", Reference: installed.ID},
+		Target: portable.Target{Scope: "installation", Reference: installed.ID},
 		Method: "io.github.tangerg.flame.examples/reviews.list", Input: `{}`,
 	}
 	initial := runtime.must(delivery.PluginsCall, request, "").(*protocol.CallPluginResponse)

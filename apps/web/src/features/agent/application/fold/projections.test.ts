@@ -1,4 +1,5 @@
-import { parseJSON, type ToolInvocation } from "@flame/runtime-client";
+import { parseJSON } from "@qimu/sdk/json";
+import { type ToolInvocation } from "@flame/runtime-client";
 import { describe, expect, it } from "vitest";
 import {
   argsText,

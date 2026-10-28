@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -27,14 +28,14 @@ func TestInstalledModelSelectionPreservesProposalAndOriginalCallerWithoutFallbac
 				t.Fatal(err)
 			}
 			var calls atomic.Int32
-			composition, store := installedCallCompositionFixture(t, contract, []string{"observer"}, func(backend *pluginsdk.Backend) {
+			composition, store := installedCallCompositionFixture(t, contract, []string{"observer"}, func(backend *qimumcp.Backend) {
 				method, err := pluginsdk.ModelSelectionMethod()
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[pluginsdk.ModelSelectionRequest]) (pluginsdk.ModelSelection, error) {
+				if err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[pluginsdk.ModelSelectionRequest]) (pluginsdk.ModelSelection, error) {
 					calls.Add(1)
-					invocation, err := pluginsdk.InvocationFromContext(ctx)
+					invocation, err := qimumcp.InvocationFromContext(ctx)
 					if err != nil || invocation.Origin != extension.Human || invocation.Parent != "original-selection-parent" || invocation.ID != invocation.Target.Reference || command.ID != "" {
 						return pluginsdk.ModelSelection{}, errors.New("original selection query attribution changed")
 					}
@@ -56,7 +57,7 @@ func TestInstalledModelSelectionPreservesProposalAndOriginalCallerWithoutFallbac
 				}
 			}, http.NotFoundHandler())
 			if mode == "withdrawn" {
-				store.snapshot.Installation.Disable()
+				store.disable(t)
 			}
 			proposed, err := modelchoice.NewWithReasoningEffort("provider", "proposed-model", "high")
 			if err != nil {

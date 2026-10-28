@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
@@ -111,7 +111,7 @@ func (s *scheduleServiceStub) update(request schedule.UpdateV1Input) (schedule.C
 
 func boundScheduleRequest(method string, input any) (protocol.CallPluginRequest, error) {
 	encoded, err := jsonvalue.Encode(input)
-	return protocol.CallPluginRequest{InstallationID: "12345678-1234-1234-1234-123456789abc", Digest: "1111111111111111111111111111111111111111111111111111111111111111", Contribution: "schedules-provider", Contract: schedule.CapabilityJSON, Method: method, Target: extension.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}, Input: string(encoded.JSON())}, err
+	return protocol.CallPluginRequest{InstallationID: "12345678-1234-1234-1234-123456789abc", Digest: "1111111111111111111111111111111111111111111111111111111111111111", Contribution: "schedules-provider", Contract: schedule.CapabilityJSON, Method: method, Target: portable.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}, Input: string(encoded.JSON())}, err
 }
 func (s *scheduleServiceStub) PrepareCreate(_ context.Context, request schedule.CreateV1Input) (protocol.CallPluginRequest, error) {
 	return boundScheduleRequest(schedule.CreateV1Method, request)

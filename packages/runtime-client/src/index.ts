@@ -98,16 +98,6 @@ export { createSidecarClient } from "./sidecar";
 export type { LivenessStatus, ReadinessStatus, RuntimeInfo, SidecarClient } from "./sidecar";
 export { createHttpTransport } from "./transports/http";
 export { JSONRPC_VERSION } from "./types";
-export {
-  ExactNumber,
-  parseJSON,
-  stringifyJSON,
-  cloneJSON,
-  equalJSON,
-  isJSONInteger,
-  isJSONNumber,
-} from "./json";
-export type { JSONNumber } from "./json";
 export { normalizeRuntimeEndpoint } from "./endpoint";
 
 export { errorMessage } from "./errors";

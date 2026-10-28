@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
+	"github.com/Tangerg/flame/qimu/portable"
 )
 
 func TestCapturedRunRequestRestoresOneExecutionOwner(t *testing.T) {
@@ -31,7 +33,7 @@ func TestCapturedRunRequestRestoresOneExecutionOwner(t *testing.T) {
 			name string
 			edit func(*RunRequestSnapshot)
 		}{
-			{"missing caller", func(v *RunRequestSnapshot) { v.Invocation = extension.Invocation{} }},
+			{"missing caller", func(v *RunRequestSnapshot) { v.Invocation = portable.Invocation{} }},
 			{"missing Session", func(v *RunRequestSnapshot) { v.SessionID = "" }},
 			{"missing Run", func(v *RunRequestSnapshot) { v.RunID = "" }},
 			{"invalid Session", func(v *RunRequestSnapshot) { v.SessionID = "ses_bad id" }},
@@ -61,6 +63,6 @@ func TestCapturedRunRequestRestoresOneExecutionOwner(t *testing.T) {
 	}
 }
 
-func testInvocation() extension.Invocation {
-	return extension.Invocation{ID: "schedule-trigger", Origin: extension.Automatic, Parent: "parent-trigger", Target: extension.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}}
+func testInvocation() portable.Invocation {
+	return portable.Invocation{ID: "schedule-trigger", Origin: extension.Automatic, Parent: "parent-trigger", Target: portable.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}}
 }

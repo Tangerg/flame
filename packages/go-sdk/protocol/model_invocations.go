@@ -1,9 +1,8 @@
 package protocol
 
 import (
+	"github.com/Tangerg/flame/qimu/portable"
 	"time"
-
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 )
 
 type ListModelEndpointsRequest struct {
@@ -30,7 +29,7 @@ type ModelEndpointInvocation struct {
 	SessionID string               `json:"sessionId,omitzero"`
 	RunID     string               `json:"runId,omitzero"`
 	SegmentID string               `json:"segmentId,omitzero"`
-	Caller    extension.Invocation `json:"caller"`
+	Caller    portable.Invocation  `json:"caller"`
 	Provider  string               `json:"provider"`
 	Model     string               `json:"model"`
 	Request   string               `json:"request"`

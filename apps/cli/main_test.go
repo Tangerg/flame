@@ -868,7 +868,11 @@ func buildProductionBinary(t *testing.T) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := runtimefixture.BuildFirstPartyPackages(t.Context(), directory); err != nil {
+	runner, err := localruntime.RunnerExecutable(binary)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := runtimefixture.BuildRuntimeCompanions(t.Context(), binary, directory, runner); err != nil {
 		t.Fatal(err)
 	}
 	return binary
@@ -907,7 +911,11 @@ func TestProductionBinaryOpensAnIsolatedRuntimeAndReleasesItsLease(t *testing.T)
 	if profile.Discovery.ProtocolVersion == "" || profile.Discovery.ServerInfo.Name == "" || len(profile.Discovery.Capabilities.RuntimeTopics) == 0 {
 		t.Fatalf("incomplete in-process runtime profile: %+v", profile)
 	}
-	if info, err := os.Stat(filepath.Join(flameHome, "runtime", "flame.db")); err != nil || !info.Mode().IsRegular() {
+	data, err := localruntime.DataDirectoryAt(filepath.Join(flameHome, "runtime"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info, err := os.Stat(data.DatabasePath()); err != nil || !info.Mode().IsRegular() {
 		t.Fatalf("runtime database = (%v, %v), want regular file", info, err)
 	}
 

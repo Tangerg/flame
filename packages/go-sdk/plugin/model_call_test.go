@@ -4,6 +4,7 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"iter"
 	"net/http"
 	"reflect"
@@ -11,6 +12,8 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
+	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -46,10 +49,12 @@ func TestSelectedModelSharesPublishedRPCAndRequiresOriginalInvocation(t *testing
 		t.Run(map[bool]string{false: "missing-owner", true: "original-owner"}[owning], func(t *testing.T) {
 			host := newTestCallbacks(t)
 			session := new(sdk.ClientSession)
-			host.AdmitSession(session)
-			recorded := make(chan extension.Invocation, 1)
-			callback, err := NewSelectedModelCallback(func(ctx context.Context, command Command[ModelCallRequest]) (*chat.Response, error) {
-				actual, _ := InvocationFromContext(ctx)
+			if err := host.AdmitSession(session); err != nil {
+				t.Fatal(err)
+			}
+			recorded := make(chan portable.Invocation, 1)
+			callback, err := NewSelectedModelCallback(func(ctx context.Context, command qimumcp.Command[ModelCallRequest]) (*chat.Response, error) {
+				actual, _ := qimumcp.InvocationFromContext(ctx)
 				recorded <- actual
 				if command.Input.Selection.Model != "configured" {
 					return nil, errors.New("route changed")
@@ -66,12 +71,12 @@ func TestSelectedModelSharesPublishedRPCAndRequiresOriginalInvocation(t *testing
 			}
 			ctx := t.Context()
 			if owning {
-				ctx, err = WithInvocation(ctx, extension.Invocation{ID: "original-owner", Origin: extension.Human, Parent: "original-parent", Target: extension.Target{Scope: "call", Reference: "original-owner"}})
+				ctx, err = qimumcp.WithInvocation(ctx, portable.Invocation{ID: "original-owner", Origin: extension.Human, Parent: "original-parent", Target: portable.Target{Scope: "call", Reference: "original-owner"}})
 				if err != nil {
 					t.Fatal(err)
 				}
 			}
-			ref, release, err := host.OpenRPC(ctx, session, CallbackLimits{MaxRequestBytes: 64 << 10, MaxResponseBytes: 64 << 10})
+			ref, release, err := host.OpenRPC(ctx, session, qimumcp.CallbackLimits{MaxRequestBytes: 64 << 10, MaxResponseBytes: 64 << 10})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -87,7 +92,7 @@ func TestSelectedModelSharesPublishedRPCAndRequiresOriginalInvocation(t *testing
 				return
 			}
 			actual := <-recorded
-			want := extension.Invocation{ID: "fresh-model-call", Origin: extension.Human, Parent: "original-owner", Target: extension.Target{Scope: "call", Reference: "fresh-model-call"}}
+			want := portable.Invocation{ID: "fresh-model-call", Origin: extension.Human, Parent: "original-owner", Target: portable.Target{Scope: "call", Reference: "fresh-model-call"}}
 			if err != nil || response == nil || !reflect.DeepEqual(actual, want) {
 				t.Fatalf("original owner changed: %+v %+v %v", actual, response, err)
 			}
@@ -96,7 +101,7 @@ func TestSelectedModelSharesPublishedRPCAndRequiresOriginalInvocation(t *testing
 				t.Fatal(err)
 			}
 			r.Header.Set("Authorization", ref.Credential)
-			r.Header.Set("Flame-Call", ref.Call)
+			r.Header.Set(qimumcp.CallHeader, ref.Call)
 			returned, err := http.DefaultClient.Do(r)
 			if err != nil {
 				t.Fatal(err)
@@ -112,11 +117,13 @@ func TestSelectedModelSharesPublishedRPCAndRequiresOriginalInvocation(t *testing
 func TestSelectedBackgroundCallbacksProjectOnlyRetainedOwnerForCallAndStream(t *testing.T) {
 	host := newTestCallbacks(t)
 	session := new(sdk.ClientSession)
-	host.AdmitSession(session)
-	original := extension.Invocation{ID: "retained-operation", Origin: extension.Automatic, Parent: "original-trigger", Target: extension.Target{Scope: "call", Reference: "retained-operation"}}
-	records := make(chan extension.Invocation, 2)
-	unary, err := NewSelectedModelCallback(func(ctx context.Context, _ Command[ModelCallRequest]) (*chat.Response, error) {
-		inv, _ := InvocationFromContext(ctx)
+	if err := host.AdmitSession(session); err != nil {
+		t.Fatal(err)
+	}
+	original := portable.Invocation{ID: "retained-operation", Origin: extension.Automatic, Parent: "original-trigger", Target: portable.Target{Scope: "call", Reference: "retained-operation"}}
+	records := make(chan portable.Invocation, 2)
+	unary, err := NewSelectedModelCallback(func(ctx context.Context, _ qimumcp.Command[ModelCallRequest]) (*chat.Response, error) {
+		inv, _ := qimumcp.InvocationFromContext(ctx)
 		records <- inv
 		message := chat.NewAssistantMessage(chat.NewTextPart("known"))
 		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, nil)
@@ -124,9 +131,9 @@ func TestSelectedBackgroundCallbacksProjectOnlyRetainedOwnerForCallAndStream(t *
 	if err != nil {
 		t.Fatal(err)
 	}
-	stream, err := NewSelectedModelStreamCallback(func(ctx context.Context, _ Command[ModelCallRequest]) iter.Seq2[*chat.ResponseDelta, error] {
+	stream, err := NewSelectedModelStreamCallback(func(ctx context.Context, _ qimumcp.Command[ModelCallRequest]) iter.Seq2[*chat.ResponseDelta, error] {
 		return func(yield func(*chat.ResponseDelta, error) bool) {
-			inv, _ := InvocationFromContext(ctx)
+			inv, _ := qimumcp.InvocationFromContext(ctx)
 			records <- inv
 			yield(&chat.ResponseDelta{Parts: []chat.PartDelta{chat.NewTextDelta("known")}, FinishReason: chat.FinishReasonStop}, nil)
 		}
@@ -138,18 +145,18 @@ func TestSelectedBackgroundCallbacksProjectOnlyRetainedOwnerForCallAndStream(t *
 		t.Fatal(err)
 	}
 	var projections atomic.Int32
-	ref, release, err := host.OpenRPCWithInvocation(t.Context(), session, CallbackLimits{MaxRequestBytes: 64 << 10, MaxResponseBytes: 64 << 10}, func(ctx context.Context, wire extension.Invocation) (context.Context, error) {
+	ref, release, err := host.OpenRPCWithInvocation(t.Context(), session, qimumcp.CallbackLimits{MaxRequestBytes: 64 << 10, MaxResponseBytes: 64 << 10}, func(ctx context.Context, wire portable.Invocation) (context.Context, error) {
 		if wire != original {
 			return nil, errors.New("unretained invocation")
 		}
 		projections.Add(1)
-		return WithInvocation(ctx, wire)
+		return qimumcp.WithInvocation(ctx, wire)
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer release()
-	ctx, err := WithInvocation(t.Context(), original)
+	ctx, err := qimumcp.WithInvocation(t.Context(), original)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,7 +180,7 @@ func TestSelectedBackgroundCallbacksProjectOnlyRetainedOwnerForCallAndStream(t *
 	}
 	forgedOwner := original
 	forgedOwner.Origin = extension.Human
-	forged, err := WithInvocation(t.Context(), forgedOwner)
+	forged, err := qimumcp.WithInvocation(t.Context(), forgedOwner)
 	if err != nil {
 		t.Fatal(err)
 	}

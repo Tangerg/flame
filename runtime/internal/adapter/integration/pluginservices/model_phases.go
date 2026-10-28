@@ -16,7 +16,7 @@ type contributionPhaseKey struct{}
 // rejecting a cycle does not skip a contributor or change the selected chain.
 func enterContributionPhase(ctx context.Context, binding plugins.ContributionBinding) (context.Context, error) {
 	active, _ := ctx.Value(contributionPhaseKey{}).([]plugins.ContributionBinding)
-	if slices.Contains(active, binding) {
+	if slices.ContainsFunc(active, binding.SameContribution) {
 		return nil, fmt.Errorf("%w: recursive contribution %s", plugin.ErrInvalid, binding.ContributionID)
 	}
 	return context.WithValue(ctx, contributionPhaseKey{}, append(slices.Clone(active), binding)), nil

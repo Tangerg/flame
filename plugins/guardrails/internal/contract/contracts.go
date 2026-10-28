@@ -1,43 +1,36 @@
 package contract
 
-//go:generate sh -c "go run github.com/Tangerg/flame/plugins/guardrails/backend/cmd/contracts | go run github.com/Tangerg/flame/packages/go-sdk/cmd/flame-sdk contract --feature - --out ../../package/io.github.tangerg.flame/contracts --ts ../../package/io.github.tangerg.flame/contracts"
+//go:generate sh -c "go run github.com/Tangerg/flame/plugins/guardrails/backend/cmd/contracts | go run github.com/Tangerg/flame/qimu/cmd/qimu contract --feature - --out ../../package/io.github.tangerg.flame/contracts --ts ../../package/io.github.tangerg.flame/contracts"
 //go:generate sh -c "go run github.com/Tangerg/flame/packages/go-sdk/cmd/flame-sdk contract --model-contract input > ../../package/io.github.tangerg.flame/contracts/input.generated.json"
 
 import (
-	"github.com/invopop/jsonschema"
-
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	"github.com/Tangerg/flame/plugins/guardrails/contracts"
 	guardrail "github.com/Tangerg/flame/plugins/guardrails/internal/domain"
+	"github.com/Tangerg/flame/plugins/guardrails/internal/wire"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 )
 
-type ReplaceInput struct {
-	ExpectedRevision int64    `json:"expectedRevision" jsonschema:"minimum=1"`
-	Phrases          []string `json:"phrases"`
-}
-
 type Contracts struct {
-	Capability *extension.Capability
-	Get        *pluginsdk.Method[struct{}, guardrail.Summary]
-	Replace    *pluginsdk.Method[ReplaceInput, guardrail.Summary]
+	Capability *portable.Capability
+	Get        *qimumcp.Method[struct{}, guardrail.Summary]
+	Replace    *qimumcp.Method[wire.ReplaceInput, guardrail.Summary]
 }
 
 func NewContracts() (Contracts, error) {
 	var c Contracts
 	var err error
-	c.Get, err = pluginsdk.NewMethod[struct{}, guardrail.Summary](pluginsdk.MethodConfig{Name: "flame.guardrails/get-policy.v1", Kind: extension.Query, Target: extension.ScopeInstallation, Description: "Inspect the private policy revision and protected phrase count without returning protected values."})
+	c.Capability, err = portable.ParseCapability([]byte(contracts.CapabilityJSON))
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Replace, err = pluginsdk.NewMethod[ReplaceInput, guardrail.Summary](pluginsdk.MethodConfig{Name: "flame.guardrails/replace-policy.v1", Kind: extension.Mutation, Target: extension.ScopeInstallation, Description: "Replace exact, case-sensitive protected phrases at the inspected revision. Matching model-visible string fields refuse provider dispatch."})
+	c.Get, err = qimumcp.ImplementMethod[struct{}, guardrail.Summary](c.Capability, contracts.GetPolicyV1Method)
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Capability, err = extension.NewCapability(extension.CapabilityConfig{Reference: "flame.guardrails.v1", Composition: extension.Collection, Scope: extension.ScopeInstallation}, c.Get.Descriptor(), c.Replace.Descriptor())
-	return c, err
-}
-
-func (ReplaceInput) JSONSchemaExtend(schema *jsonschema.Schema) {
-	phrases, _ := schema.Properties.Get("phrases")
-	phrases.MaxItems = new(uint64(guardrail.MaxPhrases))
+	c.Replace, err = qimumcp.ImplementMethod[wire.ReplaceInput, guardrail.Summary](c.Capability, contracts.ReplacePolicyV1Method)
+	if err != nil {
+		return Contracts{}, err
+	}
+	return c, nil
 }

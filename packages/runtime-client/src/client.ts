@@ -6,7 +6,7 @@ import {
   RpcConnectionError,
 } from "./errors";
 import { checkRequest, requestRequiresIdempotency } from "./request";
-import { stringifyJSON } from "./json";
+import { stringifyJSON } from "@qimu/sdk/json";
 import {
   MAXIMUM_RUN_EVENT_ID_CHARACTERS,
   PROBLEM_CODES,

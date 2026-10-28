@@ -8,9 +8,8 @@ version: "3"
 
 vars:
   APP_NAME: "flame"
-  BIN_DIR: "../../out/desktop/darwin-{{ARCH}}"
+  BIN_DIR: "../../out/desktop/darwin-{{.ARCH | default ARCH}}"
   NATIVE_BIN: "{{.BIN_DIR}}/native/{{.APP_NAME}}"
-  UNIVERSAL_BIN: "{{.BIN_DIR}}/universal/{{.APP_NAME}}"
   PACKAGE_MANAGER: '{{.PACKAGE_MANAGER | default "npm"}}'
   # Single source for Vite's listener, Wails' webview URL, and the HMR client. See
   # ../web/vite.config.ts for why HMR cannot infer this value reliably.

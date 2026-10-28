@@ -13,8 +13,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
+	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
+	"github.com/Tangerg/flame/qimu/portable"
 )
 
 type roundTrip func(*http.Request) (*http.Response, error)
@@ -62,7 +62,7 @@ func TestConditionalReadsRevalidateAuthorizationAndKeepCredentialScopesPrivate(t
 	if err != nil {
 		t.Fatal(err)
 	}
-	input := rpc.IssueInput{Repository: "Owner/Repo", Number: 42}
+	input := contractwire.IssueInput{Repository: "Owner/Repo", Number: 42}
 	first, err := connector.getIssue(t.Context(), input)
 	if err != nil {
 		t.Fatal(err)
@@ -74,7 +74,7 @@ func TestConditionalReadsRevalidateAuthorizationAndKeepCredentialScopesPrivate(t
 	status = http.StatusUnauthorized
 	if _, err := connector.getIssue(t.Context(), input); err == nil {
 		t.Fatal("revoked authorization returned cached private data")
-	} else if refusal, ok := errors.AsType[*extension.Refusal](err); !ok || refusal.Code != "unauthorized" {
+	} else if refusal, ok := errors.AsType[*portable.Refusal](err); !ok || refusal.Code != "unauthorized" {
 		t.Fatalf("authorization failure = %v", err)
 	}
 	otherToken := "second-private-fixture-token"
@@ -150,8 +150,8 @@ func TestGitHubReadsBoundResponsesAndPreserveExplicitFailures(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, err = connector.getIssue(t.Context(), rpc.IssueInput{Repository: "owner/repo", Number: 42})
-			refusal, known := errors.AsType[*extension.Refusal](err)
+			_, err = connector.getIssue(t.Context(), contractwire.IssueInput{Repository: "owner/repo", Number: 42})
+			refusal, known := errors.AsType[*portable.Refusal](err)
 			if err == nil || known != (test.refusal != "") || known && refusal.Code != test.refusal || calls != 1 {
 				t.Fatalf("failure changed or retried: code=%v err=%v calls=%d", refusal, err, calls)
 			}
@@ -172,7 +172,7 @@ func TestGitHubReadsBoundResponsesAndPreserveExplicitFailures(t *testing.T) {
 		t.Fatal(err)
 	}
 	ref := "refs/tags/v1&exact"
-	file, err := connector.readFile(t.Context(), rpc.FileInput{Repository: "owner/repo", Path: "docs/read me.md", Ref: &ref})
+	file, err := connector.readFile(t.Context(), contractwire.FileInput{Repository: "owner/repo", Path: "docs/read me.md", Ref: &ref})
 	if err != nil || file.Text != text || file.SHA != "original-sha" {
 		t.Fatalf("file = %+v, %v", file, err)
 	}
@@ -197,7 +197,7 @@ func TestGitHubQueryCancellationJoinsItsOriginalRequest(t *testing.T) {
 	defer cancel()
 	done := make(chan error, 1)
 	go func() {
-		_, err := connector.getIssue(ctx, rpc.IssueInput{Repository: "owner/repo", Number: 42})
+		_, err := connector.getIssue(ctx, contractwire.IssueInput{Repository: "owner/repo", Number: 42})
 		done <- err
 	}()
 	<-started

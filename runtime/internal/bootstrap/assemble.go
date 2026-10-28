@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
@@ -49,7 +50,12 @@ func assemble(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLifetime
 	if err != nil {
 		return nil, err
 	}
-	policy, err := buildPolicyComposition(ctx, cfg)
+	modelServices, err := buildModelEnvironment(ctx, cfg, defaultSelection)
+	if err != nil {
+		return nil, err
+	}
+	lifetime.toolResources = append(lifetime.toolResources, terminalStep(func(context.Context) error { return modelServices.callbacks.Close() }))
+	policy, err := buildPolicyComposition(ctx, cfg, lifetime, modelServices)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +66,7 @@ func assemble(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLifetime
 	execution, err := buildExecutionComposition(
 		ctx,
 		cfg,
-		defaultSelection,
+		modelServices,
 		lifetime,
 		buildTools,
 		policy,
@@ -189,6 +195,9 @@ func buildAssemblyCore(
 		ExecutionTrees:      cfg.stores.ExecutorCheckpoints,
 		ChildRunStarts:      cfg.stores.ChildRunStarts,
 		Tx:                  segment.Transactor(cfg.stores.Transactor),
+		PluginBindings: func(ctx context.Context, identity string, checkpoint runs.ExecutorCheckpoint, apply func(context.Context) error) error {
+			return cfg.stores.CommitPluginReferences(ctx, policy.framework.host, identity, checkpoint, apply)
+		},
 	}
 	runSegmentConfig.CommandAcceptances = cfg.stores.CommandAcceptances
 	runSegmentConfig.ActorAuthority, err = plugins.NewRunActorAdmission(cfg.stores.Installations)
@@ -289,7 +298,7 @@ func buildAssemblyCore(
 		return nil, fmt.Errorf("runtime: construct MCP coordinator: %w", err)
 	}
 	lifetime.mcpCoordinator = mcpCoordinator
-	pluginCoordinator, err := plugins.New(lifetime.context, cfg.stores.Installations, cfg.stores.PluginReleases, policy.packages, mcpCoordinator, execution.executor, policy.invalidations.publish)
+	pluginCoordinator, err := plugins.New(lifetime.context, policy.framework.host, cfg.stores.Installations, cfg.stores.PluginReleases, policy.packages, mcpCoordinator, policy.invalidations.publish)
 	if err != nil {
 		return nil, err
 	}
@@ -420,40 +429,44 @@ func buildAssemblyCore(
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct trajectory exporter: %w", err)
 	}
-	// Every constructor must succeed before startup can retire retained state.
-	// Reclamation precedes recovery so restored execution sees admitted bodies
-	// and release content protected by their durable and live owners.
-	if _, err := cfg.stores.ToolResults.PurgeUnbound(ctx); err != nil {
-		return nil, fmt.Errorf("runtime: reconcile staged tool results: %w", err)
-	}
-	if err := policy.packages.ReclaimExecutions(ctx); err != nil {
-		return nil, fmt.Errorf("runtime: reclaim plugin execution content: %w", err)
-	}
-	if err := pluginCoordinator.Reclaim(ctx); err != nil {
-		return nil, fmt.Errorf("runtime: %w", err)
-	}
-	if err := runCoordinator.ReviveAcceptedContinuations(ctx); err != nil {
-		return nil, fmt.Errorf("runtime: revive accepted continuations: %w", err)
-	}
-	if err := cfg.stores.ModelInvocations.ReconcileEndpointInvocations(ctx, time.Now().UTC()); err != nil {
-		return nil, err
-	}
-	// Uncertain-execution revival resolves a crash-uncertain Tool outcome by
-	// querying its backing plugin session, and the ownership sweep must follow it
-	// in that order. A background plugin cannot serve that session until the
-	// Runtime has published its callback RPC, which only exists once the delivery
-	// endpoint is built. Defer both until the owner publishes callbacks.
+	// Startup effects run only after every constructor has succeeded, callback
+	// RPC is published and original execution protection has been reconciled.
+	var recoveryMu sync.Mutex
+	recovered := false
 	recoverUncertain := func(ctx context.Context) error {
+		recoveryMu.Lock()
+		defer recoveryMu.Unlock()
+		if recovered {
+			return nil
+		}
+		if err := cfg.stores.Admission.RecoveryError(); err != nil {
+			return err
+		}
+		if _, err := cfg.stores.ToolResults.PurgeUnbound(ctx); err != nil {
+			return fmt.Errorf("runtime: reconcile staged tool results: %w", err)
+		}
+		if err := pluginCoordinator.Reclaim(ctx); err != nil {
+			return fmt.Errorf("runtime: reclaim plugin content: %w", err)
+		}
+		if err := runCoordinator.ReviveAcceptedContinuations(ctx); err != nil {
+			return fmt.Errorf("runtime: revive accepted continuations: %w", err)
+		}
+		if err := cfg.stores.ModelInvocations.ReconcileEndpointInvocations(ctx, time.Now().UTC()); err != nil {
+			return err
+		}
 		if err := runCoordinator.ReviveUncertainExecutions(ctx, recoveryPersistence, cfg.stores.ExecutorCheckpoints, execution.executor); err != nil {
 			return fmt.Errorf("runtime: revive uncertain executions: %w", err)
 		}
 		if err := ownershipRecovery.ReconcileStartup(ctx); err != nil {
 			return fmt.Errorf("runtime: reconcile abandoned ownership: %w", err)
 		}
+		recovered = true
 		return nil
 	}
 	host := &Instance{
 		application: &runtimeApplication{
+			pluginControl: policy.framework.control,
+			pluginsReady:  policy.framework.ready,
 			delivery: delivery.HandlerConfig{
 				Sessions:               sessionCoordinator,
 				MCP:                    mcpCoordinator,
@@ -461,6 +474,7 @@ func buildAssemblyCore(
 				PluginSelections:       pluginSelections,
 				PluginCompositions:     pluginCompositions,
 				PluginCalls:            execution.tools.pluginCalls,
+				PluginBrowser:          policy.framework.browser,
 				Approvals:              approvalCoordinator,
 				Models:                 modelCoordinator,
 				ModelEndpoints:         modelEndpoints,

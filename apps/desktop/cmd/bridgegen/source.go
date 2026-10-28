@@ -15,7 +15,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/apps/desktop/internal/bridge"
-	"github.com/Tangerg/flame/packages/go-sdk/contractgen"
+	"github.com/Tangerg/flame/qimu/contractgen"
 )
 
 type contract struct {

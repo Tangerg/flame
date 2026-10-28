@@ -13,12 +13,15 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/model/catalog"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
 	scheduledb "github.com/Tangerg/flame/plugins/schedules/internal/sqlite"
+	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -31,7 +34,7 @@ func TestOriginalCreateResultIsHistoricalAndReadOnly(t *testing.T) {
 	}
 	defer db.Close()
 	server := sdk.NewServer(&sdk.Implementation{Name: "schedules-proof"}, nil)
-	registered, err := registerServer(server, db, scheduledb.NewScheduleStore(db), filesystem.DirectoryResolver{}, catalog.Selections{}, func(context.Context, pluginsdk.CallbackRef) (runHost, func() error, error) {
+	registered, err := registerServer(server, db, scheduledb.NewScheduleStore(db), filesystem.DirectoryResolver{}, catalog.Selections{}, func(context.Context, qimumcp.CallbackRef) (runHost, func() error, error) {
 		return nil, nil, errors.New("unexpected Run connection")
 	})
 	if err != nil {
@@ -43,7 +46,7 @@ func TestOriginalCreateResultIsHistoricalAndReadOnly(t *testing.T) {
 		}
 	})
 	client := sdk.NewClient(&sdk.Implementation{Name: "runtime-proof"}, nil)
-	if err := pluginsdk.RegisterClient(client); err != nil {
+	if err := qimumcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()
@@ -66,7 +69,7 @@ func TestOriginalCreateResultIsHistoricalAndReadOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	exported, err := pluginsdk.ResolveCapability(t.Context(), session, "schedules", contracts.Capability)
+	exported, err := qimumcp.ResolveCapability(t.Context(), session, "schedules", contracts.Capability)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +96,7 @@ func TestOriginalCreateResultIsHistoricalAndReadOnly(t *testing.T) {
 		t.Fatalf("absence: %+v,%v", result, err)
 	}
 	var metadata sdk.Meta
-	if err := metadata.Set(pluginsdk.InvocationMetadataKey, extension.Invocation{ID: "original", Origin: extension.Model, Target: extension.Target{Scope: "installation", Reference: "schedules-owner"}}); err != nil {
+	if err := metadata.Set(qimumcp.InvocationMetadataKey, portable.Invocation{ID: "original", Origin: extension.Model, Target: portable.Target{Scope: "installation", Reference: "schedules-owner"}}); err != nil {
 		t.Fatal(err)
 	}
 	normal, err := session.CallTool(t.Context(), &sdk.CallToolParams{Meta: metadata, Name: "create_schedule", Arguments: input})
@@ -113,15 +116,15 @@ func TestOriginalCreateResultIsHistoricalAndReadOnly(t *testing.T) {
 	if encodeErr != nil || expectedErr != nil || observed != expected {
 		t.Fatalf("receipt output differs from the normal Tool output: %+v / %+v", original.Details, normal.StructuredContent)
 	}
-	page, err := list.Call(t.Context(), rpc.ListInput{})
+	page, err := list.Call(t.Context(), wire.ListInput{})
 	if err != nil || len(page.Rows) != 1 {
 		t.Fatalf("created schedules: %+v,%v", page, err)
 	}
 	updated := "edited title"
-	if _, err := update.CallCommand(t.Context(), "edit", rpc.UpdateInput{ID: page.Rows[0].ID, ExpectedRevision: page.Rows[0].Revision, Title: &updated}); err != nil {
+	if _, err := update.CallCommand(t.Context(), "edit", wire.UpdateInput{ID: page.Rows[0].ID, ExpectedRevision: page.Rows[0].Revision, Title: &updated}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := remove.CallCommand(t.Context(), "delete", rpc.ItemInput{ID: page.Rows[0].ID}); err != nil {
+	if _, err := remove.CallCommand(t.Context(), "delete", wire.ItemInput{ID: page.Rows[0].ID}); err != nil {
 		t.Fatal(err)
 	}
 	historical, err := lookup("original", string(arguments))
@@ -133,7 +136,7 @@ func TestOriginalCreateResultIsHistoricalAndReadOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := metadata.Set(pluginsdk.InvocationMetadataKey, extension.Invocation{ID: "refused", Origin: extension.Model, Target: extension.Target{Scope: "installation", Reference: "schedules-owner"}}); err != nil {
+	if err := metadata.Set(qimumcp.InvocationMetadataKey, portable.Invocation{ID: "refused", Origin: extension.Model, Target: portable.Target{Scope: "installation", Reference: "schedules-owner"}}); err != nil {
 		t.Fatal(err)
 	}
 	refusal, err := session.CallTool(t.Context(), &sdk.CallToolParams{Meta: metadata, Name: "create_schedule", Arguments: refusedInput})
@@ -158,7 +161,7 @@ func TestOriginalCreateResultIsHistoricalAndReadOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result, err := lookup("original", string(changed)); result != nil || !errors.Is(decodeError(err), extension.ErrInvocationConflict) {
+	if result, err := lookup("original", string(changed)); result != nil || !errors.Is(decodeError(err), portable.ErrInvocationConflict) {
 		t.Fatalf("wrong input became evidence: %+v,%v", result, err)
 	}
 	if _, err := db.ExecContext(t.Context(), `UPDATE commands SET reply='{"wrong":"result"}' WHERE id='tool:original'`); err != nil {
@@ -171,7 +174,7 @@ func TestOriginalCreateResultIsHistoricalAndReadOnly(t *testing.T) {
 	if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM schedules`).Scan(&schedules); err != nil {
 		t.Fatal(err)
 	}
-	if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM commands WHERE method=?`, rpc.Create).Scan(&creates); err != nil {
+	if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM commands WHERE method=?`, wire.Create).Scan(&creates); err != nil {
 		t.Fatal(err)
 	}
 	if schedules != 0 || creates != 2 {
@@ -194,7 +197,7 @@ func TestBackgroundSetupChecksRuntimeAndJoinsItsConnection(t *testing.T) {
 			}
 			server := sdk.NewServer(&sdk.Implementation{Name: "background-owner"}, nil)
 			var opened, closed atomic.Int32
-			registered, err := registerServer(server, db, scheduledb.NewScheduleStore(db), filesystem.DirectoryResolver{}, catalog.Selections{}, func(context.Context, pluginsdk.CallbackRef) (runHost, func() error, error) {
+			registered, err := registerServer(server, db, scheduledb.NewScheduleStore(db), filesystem.DirectoryResolver{}, catalog.Selections{}, func(context.Context, qimumcp.CallbackRef) (runHost, func() error, error) {
 				opened.Add(1)
 				return &observedRunHost{db: db, namespace: "attached"}, func() error { closed.Add(1); return nil }, nil
 			})
@@ -203,7 +206,7 @@ func TestBackgroundSetupChecksRuntimeAndJoinsItsConnection(t *testing.T) {
 			}
 			defer registered.Close()
 			client := sdk.NewClient(&sdk.Implementation{Name: "background-consumer"}, nil)
-			if err := pluginsdk.RegisterClient(client); err != nil {
+			if err := qimumcp.RegisterClient(client); err != nil {
 				t.Fatal(err)
 			}
 			left, right := sdk.NewInMemoryTransports()
@@ -217,11 +220,11 @@ func TestBackgroundSetupChecksRuntimeAndJoinsItsConnection(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer session.Close()
-			metadata, err := pluginsdk.CallbackMetadata(pluginsdk.CallbackRef{Endpoint: "http://127.0.0.1:1/", Call: strings.Repeat("a", 64), Credential: strings.Repeat("b", 64), MaxResponseBytes: 4096})
+			metadata, err := qimumcp.CallbackMetadata(qimumcp.CallbackRef{Endpoint: "http://127.0.0.1:1/", Call: strings.Repeat("a", 64), Credential: strings.Repeat("b", 64), MaxResponseBytes: 4096})
 			if err != nil {
 				t.Fatal(err)
 			}
-			err = pluginsdk.SetUp(t.Context(), session, []pluginsdk.SetupContribution{{ID: "schedules-provider", Export: "schedules", Requires: []pluginsdk.SetupDependency{}, Background: &extension.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}}}, metadata)
+			err = qimumcp.SetUp(t.Context(), session, []qimumcp.SetupContribution{{ID: "schedules-provider", Export: "schedules", Requires: []qimumcp.SetupDependency{}, Background: &portable.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}}}, metadata)
 			if (err != nil) != mismatched {
 				t.Fatalf("setup mismatched=%v: %v", mismatched, err)
 			}

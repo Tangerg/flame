@@ -1,4 +1,4 @@
-import { parseJSON, stringifyJSON } from "@flame/runtime-client";
+import { parseJSON, stringifyJSON } from "@qimu/sdk/json";
 const ROOT = "flame.plugin";
 
 export interface KeyValueStore {

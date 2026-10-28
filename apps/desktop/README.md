@@ -25,6 +25,17 @@ The native Taskfile delegates this shared graph to the root and owns platform
 compilation, icon packaging, bundle metadata and signing steps. Packaging inputs
 under `build/` are source. Deliveries are under `out/desktop/<platform>`.
 
+Each macOS distribution targets one explicit `amd64` or `arm64` architecture.
+The bundle's `Contents/MacOS` contains the Desktop executable, a separately
+started `flame-runtime`, `qimu-runner`, the verified Node companion and first-party
+plugin packages built for that same target. Packaging uses the existing pinned
+Node artifact cache prepared by `make setup` and signs the complete bundle after
+all companions are present. Universal packaging is rejected: joining only the
+Desktop binaries would not produce a valid multi-architecture plugin release.
+The Desktop does not silently start its packaged Runtime; deployment starts the
+Runtime separately, and the Desktop attaches through its configured local
+endpoint and credential handoff.
+
 The actual exported `DesktopHost` receiver methods own the native IPC entrance.
 `internal/bridge` owns its pure wire types, typed notification constants and value
 refinements. `cmd/bridgegen` reads those declarations without compiling Wails,

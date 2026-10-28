@@ -43,7 +43,7 @@ async function openUsage() {
     telemetry: { read: () => ({ spans: [], metrics: [], logs: [] }), clear() {} },
     locale: "en",
     signal: owner.signal,
-    track: (operation) => operation,
+    track: (operation) => operation(owner.signal),
     compose: () => null,
   };
   releases.push(async () => {

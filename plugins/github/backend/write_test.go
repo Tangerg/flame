@@ -14,10 +14,13 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
+	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -43,7 +46,7 @@ func connectGitHubWrites(t *testing.T, path string, transport http.RoundTripper,
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "github-write-test"}, nil)
-	if err := pluginsdk.RegisterClient(client); err != nil {
+	if err := qimumcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()
@@ -67,9 +70,9 @@ func connectGitHubWrites(t *testing.T, path string, transport http.RoundTripper,
 	return c, session, close
 }
 
-func githubBinding(t *testing.T, session *sdk.ClientSession, contracts rpc.Contracts, method string) *pluginsdk.Binding {
+func githubBinding(t *testing.T, session *sdk.ClientSession, contracts rpc.Contracts, method string) *qimumcp.Binding {
 	t.Helper()
-	bound, err := pluginsdk.ResolveCapability(t.Context(), session, "github", contracts.Capability)
+	bound, err := qimumcp.ResolveCapability(t.Context(), session, "github", contracts.Capability)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,7 +85,7 @@ func githubBinding(t *testing.T, session *sdk.ClientSession, contracts rpc.Contr
 
 func invokeGitHub(t *testing.T, session *sdk.ClientSession, contracts rpc.Contracts, method, id string, input jsonvalue.Value) (jsonvalue.Value, error) {
 	t.Helper()
-	ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: id, Origin: extension.Human, Target: extension.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}})
+	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: id, Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,10 +97,10 @@ func TestGitHubTypedAndModelWritesShareAdmissionOutcomesAndRecovery(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	issue := rpc.IssueInput{Repository: "owner/repo", Number: 42}
-	comment := rpc.CommentInput{Repository: "owner/repo", CommentID: 11}
-	inlineID := rpc.CommentInput{Repository: "owner/repo", CommentID: 33}
-	location := rpc.InlineComment{Path: "new.go", Body: "Review note", Line: 7, Side: rpc.Right, StartLine: new(int64(5)), StartSide: new(rpc.Right)}
+	issue := contractwire.IssueInput{Repository: "owner/repo", Number: 42}
+	comment := contractwire.CommentInput{Repository: "owner/repo", CommentID: 11}
+	inlineID := contractwire.CommentInput{Repository: "owner/repo", CommentID: 33}
+	location := contractwire.InlineComment{Path: "new.go", Body: "Review note", Line: 7, Side: contractwire.Right, StartLine: new(int64(5)), StartSide: new(contractwire.Right)}
 	submitted := strings.ReplaceAll(strings.ReplaceAll(reviewJSON, `"state":"PENDING","commit_id":null,"submitted_at":null`, `"state":"APPROVED","commit_id":"`+inspectedSHA+`","submitted_at":"2026-10-20T00:00:00Z"`), `"body":""`, `"body":"Looks good"`)
 	inline := strings.ReplaceAll(reviewCommentJSON, `"commit_id":"head-sha"`, `"commit_id":"`+inspectedSHA+`"`)
 	for _, test := range []struct {
@@ -106,17 +109,17 @@ func TestGitHubTypedAndModelWritesShareAdmissionOutcomesAndRecovery(t *testing.T
 		input                          any
 		payload                        string
 	}{
-		{"create_issue", contracts.CreateIssue.Name(), "POST", "/repos/owner/repo/issues", issueJSON, 201, rpc.CreateIssueInput{Repository: "owner/repo", Title: "New issue", Body: new("Text"), Labels: []string{"bug"}, Assignees: []string{"octocat"}}, `{"title":"New issue","body":"Text","labels":["bug"],"assignees":["octocat"]}`},
-		{"update_issue", contracts.UpdateIssue.Name(), "PATCH", "/repos/owner/repo/issues/42", issueJSON, 200, rpc.UpdateIssueInput{IssueInput: issue, Body: new(""), State: new(rpc.Closed), StateReason: new(rpc.NotPlanned), Labels: new([]string{}), Assignees: new([]string{})}, `{"body":"","state":"closed","state_reason":"not_planned","labels":[],"assignees":[]}`},
-		{"create_issue_comment", contracts.CreateComment.Name(), "POST", "/repos/owner/repo/issues/42/comments", commentJSON, 201, rpc.CreateCommentInput{IssueInput: issue, Body: "Discussion"}, `{"body":"Discussion"}`},
-		{"update_issue_comment", contracts.UpdateComment.Name(), "PATCH", "/repos/owner/repo/issues/comments/11", commentJSON, 200, rpc.UpdateCommentInput{CommentInput: comment, Body: "Edited"}, `{"body":"Edited"}`},
+		{"create_issue", contracts.CreateIssue.Name(), "POST", "/repos/owner/repo/issues", issueJSON, 201, contractwire.CreateIssueInput{Repository: "owner/repo", Title: "New issue", Body: new("Text"), Labels: []string{"bug"}, Assignees: []string{"octocat"}}, `{"title":"New issue","body":"Text","labels":["bug"],"assignees":["octocat"]}`},
+		{"update_issue", contracts.UpdateIssue.Name(), "PATCH", "/repos/owner/repo/issues/42", issueJSON, 200, contractwire.UpdateIssueInput{IssueInput: issue, Body: new(""), State: new(contractwire.Closed), StateReason: new(contractwire.NotPlanned), Labels: new([]string{}), Assignees: new([]string{})}, `{"body":"","state":"closed","state_reason":"not_planned","labels":[],"assignees":[]}`},
+		{"create_issue_comment", contracts.CreateComment.Name(), "POST", "/repos/owner/repo/issues/42/comments", commentJSON, 201, contractwire.CreateCommentInput{IssueInput: issue, Body: "Discussion"}, `{"body":"Discussion"}`},
+		{"update_issue_comment", contracts.UpdateComment.Name(), "PATCH", "/repos/owner/repo/issues/comments/11", commentJSON, 200, contractwire.UpdateCommentInput{CommentInput: comment, Body: "Edited"}, `{"body":"Edited"}`},
 		{"delete_issue_comment", contracts.DeleteComment.Name(), "DELETE", "/repos/owner/repo/issues/comments/11", "", 204, comment, ""},
-		{"create_pull_request", contracts.CreatePull.Name(), "POST", "/repos/owner/repo/pulls", strings.Replace(pullJSON, `"draft":true`, `"draft":true,"maintainer_can_modify":false`, 1), 201, rpc.CreatePullInput{Repository: "owner/repo", Title: "New PR", Head: "fork:topic", Base: "main", HeadRepository: new("fork-repo"), Draft: new(false), MaintainerCanModify: new(false)}, `{"title":"New PR","head":"fork:topic","base":"main","head_repo":"fork-repo","draft":false,"maintainer_can_modify":false}`},
-		{"submit_pull_request_review", contracts.SubmitReview.Name(), "POST", "/repos/owner/repo/pulls/42/reviews", submitted, 200, rpc.SubmitReviewInput{IssueInput: issue, CommitID: inspectedSHA, Event: rpc.Approve, Body: new("Looks good"), Comments: []rpc.InlineComment{location}}, `{"commit_id":"` + inspectedSHA + `","event":"APPROVE","body":"Looks good","comments":[{"path":"new.go","body":"Review note","line":7,"side":"RIGHT","start_line":5,"start_side":"RIGHT"}]}`},
-		{"merge_pull_request", contracts.MergePull.Name(), "PUT", "/repos/owner/repo/pulls/42/merge", `{"sha":"` + mergedSHA + `","merged":true,"message":"Merged"}`, 200, rpc.MergePullInput{IssueInput: issue, HeadSHA: inspectedSHA, MergeMethod: rpc.Squash, CommitTitle: new("Squashed"), CommitMessage: new("")}, `{"sha":"` + inspectedSHA + `","merge_method":"squash","commit_title":"Squashed","commit_message":""}`},
-		{"create_pull_request_comment", contracts.CreateReviewComment.Name(), "POST", "/repos/owner/repo/pulls/42/comments", inline, 201, rpc.CreateReviewCommentInput{IssueInput: issue, CommitID: inspectedSHA, InlineComment: location}, `{"commit_id":"` + inspectedSHA + `","path":"new.go","body":"Review note","line":7,"side":"RIGHT","start_line":5,"start_side":"RIGHT"}`},
-		{"reply_pull_request_comment", contracts.ReplyReviewComment.Name(), "POST", "/repos/owner/repo/pulls/42/comments/32/replies", inline, 201, rpc.ReplyReviewCommentInput{IssueInput: issue, CommentID: 32, Body: "Thread reply"}, `{"body":"Thread reply"}`},
-		{"update_pull_request_comment", contracts.UpdateReviewComment.Name(), "PATCH", "/repos/owner/repo/pulls/comments/33", inline, 200, rpc.UpdateCommentInput{CommentInput: inlineID, Body: "Edited review"}, `{"body":"Edited review"}`},
+		{"create_pull_request", contracts.CreatePull.Name(), "POST", "/repos/owner/repo/pulls", strings.Replace(pullJSON, `"draft":true`, `"draft":true,"maintainer_can_modify":false`, 1), 201, contractwire.CreatePullInput{Repository: "owner/repo", Title: "New PR", Head: "fork:topic", Base: "main", HeadRepository: new("fork-repo"), Draft: new(false), MaintainerCanModify: new(false)}, `{"title":"New PR","head":"fork:topic","base":"main","head_repo":"fork-repo","draft":false,"maintainer_can_modify":false}`},
+		{"submit_pull_request_review", contracts.SubmitReview.Name(), "POST", "/repos/owner/repo/pulls/42/reviews", submitted, 200, contractwire.SubmitReviewInput{IssueInput: issue, CommitID: inspectedSHA, Event: contractwire.Approve, Body: new("Looks good"), Comments: []contractwire.InlineComment{location}}, `{"commit_id":"` + inspectedSHA + `","event":"APPROVE","body":"Looks good","comments":[{"path":"new.go","body":"Review note","line":7,"side":"RIGHT","start_line":5,"start_side":"RIGHT"}]}`},
+		{"merge_pull_request", contracts.MergePull.Name(), "PUT", "/repos/owner/repo/pulls/42/merge", `{"sha":"` + mergedSHA + `","merged":true,"message":"Merged"}`, 200, contractwire.MergePullInput{IssueInput: issue, HeadSHA: inspectedSHA, MergeMethod: contractwire.Squash, CommitTitle: new("Squashed"), CommitMessage: new("")}, `{"sha":"` + inspectedSHA + `","merge_method":"squash","commit_title":"Squashed","commit_message":""}`},
+		{"create_pull_request_comment", contracts.CreateReviewComment.Name(), "POST", "/repos/owner/repo/pulls/42/comments", inline, 201, contractwire.CreateReviewCommentInput{IssueInput: issue, CommitID: inspectedSHA, InlineComment: location}, `{"commit_id":"` + inspectedSHA + `","path":"new.go","body":"Review note","line":7,"side":"RIGHT","start_line":5,"start_side":"RIGHT"}`},
+		{"reply_pull_request_comment", contracts.ReplyReviewComment.Name(), "POST", "/repos/owner/repo/pulls/42/comments/32/replies", inline, 201, contractwire.ReplyReviewCommentInput{IssueInput: issue, CommentID: 32, Body: "Thread reply"}, `{"body":"Thread reply"}`},
+		{"update_pull_request_comment", contracts.UpdateReviewComment.Name(), "PATCH", "/repos/owner/repo/pulls/comments/33", inline, 200, contractwire.UpdateCommentInput{CommentInput: inlineID, Body: "Edited review"}, `{"body":"Edited review"}`},
 		{"delete_pull_request_comment", contracts.DeleteReviewComment.Name(), "DELETE", "/repos/owner/repo/pulls/comments/33", "", 204, inlineID, ""},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -164,7 +167,7 @@ func TestGitHubTypedAndModelWritesShareAdmissionOutcomesAndRecovery(t *testing.T
 				t.Fatalf("human replay redispatched: %s calls=%d %v", replay.String(), calls, err)
 			}
 			var meta sdk.Meta
-			if err := meta.Set(pluginsdk.InvocationMetadataKey, extension.Invocation{ID: "model", Origin: extension.Model, Target: extension.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}}); err != nil {
+			if err := meta.Set(qimumcp.InvocationMetadataKey, portable.Invocation{ID: "model", Origin: extension.Model, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}}); err != nil {
 				t.Fatal(err)
 			}
 			commandID = "tool:model"
@@ -226,12 +229,12 @@ func TestUnknownGitHubWriteNeverRedispatchesAfterRestart(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			input, _ := jsonvalue.Encode(rpc.CreateIssueInput{Repository: "owner/repo", Title: "Original"})
+			input, _ := jsonvalue.Encode(contractwire.CreateIssueInput{Repository: "owner/repo", Title: "Original"})
 			_, err := invokeGitHub(t, session, contracts, contracts.CreateIssue.Name(), "original", input)
 			if err == nil {
 				t.Fatal("uncertain write invented success")
 			}
-			if _, known := errors.AsType[*extension.Refusal](err); known {
+			if _, known := errors.AsType[*portable.Refusal](err); known {
 				t.Fatalf("uncertain write became a definite refusal: %v", err)
 			}
 			if calls != 1 {
@@ -251,9 +254,9 @@ func TestUnknownGitHubWriteNeverRedispatchesAfterRestart(t *testing.T) {
 			if err != nil || found || calls != 1 {
 				t.Fatalf("receipt lookup invented an outcome: found=%v calls=%d %v", found, calls, err)
 			}
-			changed, _ := jsonvalue.Encode(rpc.CreateIssueInput{Repository: "owner/repo", Title: "Different"})
+			changed, _ := jsonvalue.Encode(contractwire.CreateIssueInput{Repository: "owner/repo", Title: "Different"})
 			_, err = invokeGitHub(t, session, contracts, contracts.CreateIssue.Name(), "original", changed)
-			refusal, known := errors.AsType[*extension.Refusal](err)
+			refusal, known := errors.AsType[*portable.Refusal](err)
 			if !known || refusal.Code != "command_conflict" || calls != 1 {
 				t.Fatalf("unknown identity was rebound: calls=%d %v", calls, err)
 			}
@@ -273,10 +276,10 @@ func TestGitHubKnownWriteRefusalsAndOriginalModelReceiptSurviveLaterSuccess(t *t
 				calls++
 				return upstream(status, "do not echo provider body or credential", nil), nil
 			}), &token)
-			input := rpc.MergePullInput{IssueInput: rpc.IssueInput{Repository: "owner/repo", Number: 42}, HeadSHA: inspectedSHA, MergeMethod: rpc.Merge}
+			input := contractwire.MergePullInput{IssueInput: contractwire.IssueInput{Repository: "owner/repo", Number: 42}, HeadSHA: inspectedSHA, MergeMethod: contractwire.Merge}
 			admitted, _ := jsonvalue.Encode(input)
 			var meta sdk.Meta
-			if err := meta.Set(pluginsdk.InvocationMetadataKey, extension.Invocation{ID: "refused", Origin: extension.Model, Target: extension.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}}); err != nil {
+			if err := meta.Set(qimumcp.InvocationMetadataKey, portable.Invocation{ID: "refused", Origin: extension.Model, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}}); err != nil {
 				t.Fatal(err)
 			}
 			result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "merge_pull_request", Arguments: input, Meta: meta})
@@ -322,11 +325,11 @@ func TestGitHubWriteInvalidatesReadProjectionsBeforeExternalIO(t *testing.T) {
 		}
 		return nil, errors.New("fixture: response lost")
 	}), &token)
-	input := rpc.IssueInput{Repository: "owner/repo", Number: 42}
+	input := contractwire.IssueInput{Repository: "owner/repo", Number: 42}
 	if _, err := c.getIssue(t.Context(), input); err != nil {
 		t.Fatal(err)
 	}
-	admitted, _ := jsonvalue.Encode(rpc.CreateCommentInput{IssueInput: input, Body: "Comment"})
+	admitted, _ := jsonvalue.Encode(contractwire.CreateCommentInput{IssueInput: input, Body: "Comment"})
 	if _, err := invokeGitHub(t, session, contracts, contracts.CreateComment.Name(), "unknown-write", admitted); err == nil {
 		t.Fatal("unknown comment invented success")
 	}
@@ -336,7 +339,7 @@ func TestGitHubWriteInvalidatesReadProjectionsBeforeExternalIO(t *testing.T) {
 	if !reflect.DeepEqual(readTags, []string{"", ""}) {
 		t.Fatalf("post-write query borrowed an old conditional response: %+v", readTags)
 	}
-	if receipt, err := pluginstorage.ReadReceipt(t.Context(), c.store.db, pluginsdk.ReceiptRequest{ID: "unknown-write", Method: contracts.CreateComment.Name(), InputDigest: admitted.Digest()}); err != nil || receipt.Found {
+	if receipt, err := pluginstorage.ReadReceipt(t.Context(), c.store.db, qimumcp.ReceiptRequest{ID: "unknown-write", Method: contracts.CreateComment.Name(), InputDigest: admitted.Digest()}); err != nil || receipt.Found {
 		t.Fatalf("unknown write acquired a receipt: %+v %v", receipt, err)
 	}
 }

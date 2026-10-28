@@ -1,5 +1,5 @@
 {
-  "protocol": "io.github.tangerg.flame/backend/2026-10-15.3",
+  "protocol": "io.github.tangerg.qimu/portable/1",
   "reference": "flame.sandbox.v1",
   "composition": "collection",
   "scope": "installation",
@@ -11,7 +11,7 @@
       "description": "Execute a bounded /bin/sh script in a new private native sandbox workspace. Writes stay in that workspace, the configured home is hidden, network is denied and child environment is scrubbed. No CPU or memory quota is promised. Replaying the original command returns its saved outcome; unknown work is never re-executed.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9pbnRlcm5hbC9jb250cmFjdA_ExecuteInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9pbnRlcm5hbC93aXJl_ExecuteInput": {
             "additionalProperties": false,
             "properties": {
               "script": {
@@ -203,7 +203,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9pbnRlcm5hbC9jb250cmFjdA_Limits": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9pbnRlcm5hbC93aXJl_Limits": {
             "additionalProperties": false,
             "properties": {
               "available": {

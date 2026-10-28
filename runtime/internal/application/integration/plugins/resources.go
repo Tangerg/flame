@@ -10,7 +10,7 @@ import (
 
 func (c *Coordinator) Component(ctx context.Context, id identity.InstallationID, digest identity.Digest, component plugin.ContributionID) (plugin.ClientComponent, error) {
 	var value plugin.ClientComponent
-	err := c.dependencies.UnderAdmission(ctx, func(_ []plugin.Dependency) error {
+	err := c.framework.Admission().Admit(ctx, func(ctx context.Context) error {
 		snapshot, err := c.installationSnapshot(ctx, id)
 		if err != nil {
 			return err
@@ -26,7 +26,7 @@ func (c *Coordinator) Resource(ctx context.Context, id identity.InstallationID, 
 		return nil, plugin.ErrInvalid
 	}
 	var installation *plugin.Installation
-	err := c.dependencies.UnderAdmission(ctx, func(_ []plugin.Dependency) error {
+	err := c.framework.Admission().Admit(ctx, func(ctx context.Context) error {
 		snapshot, err := c.installationSnapshot(ctx, id)
 		if err != nil {
 			return err

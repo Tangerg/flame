@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/qimu"
 	"iter"
 	"os"
 	"slices"
@@ -16,7 +17,7 @@ import (
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -49,9 +50,9 @@ type interactionModelEvidence interface {
 }
 
 type originalToolResults interface {
-	OwnsToolSource(context.Context, domaintool.Ref, flameidentity.Digest) (bool, error)
-	AwaitOriginalToolSource(context.Context, domaintool.Ref, flameidentity.Digest, flameidentity.Digest) (bool, error)
-	OriginalToolResult(context.Context, domaintool.Ref, flameidentity.Digest, flameidentity.Digest, string, string) (*corechat.ToolOutput, error)
+	OwnsToolSource(context.Context, domaintool.Ref, flameidentity.Digest, plugin.Activation) (bool, error)
+	AwaitOriginalToolSource(context.Context, domaintool.Ref, flameidentity.Digest, flameidentity.Digest, plugin.Activation) (bool, error)
+	OriginalToolResult(context.Context, domaintool.Ref, flameidentity.Digest, flameidentity.Digest, plugin.Activation, string, string) (*corechat.ToolOutput, error)
 }
 
 // InteractionExecutorConfig freezes the host-owned inputs shared by
@@ -59,9 +60,7 @@ type originalToolResults interface {
 // executable Interaction adapter or behavior-affecting dispatcher configuration
 // changes, so Agent Framework Deployment references remain honest.
 type InteractionExecutorConfig struct {
-	InstallationCheckpoints installationCheckpoints
-	Admission               *plugins.Admission
-	InstallationCommands    installationCommands
+	Admission *qimu.Admission
 	// Lifetime is the process-owned root for every Interaction staged by this
 	// executor. Request contexts may bound staging and commands, but accepted
 	// execution must outlive the request that created it.
@@ -94,7 +93,7 @@ type InteractionExecutorConfig struct {
 // root owns an independent Engine and exactly one Interaction Process; the
 // Application owns durable Run state and consumes only [runs.ExecutorEvent].
 type InteractionExecutor struct {
-	installations *plugins.Admission
+	installations *qimu.Admission
 	lifetime      context.Context
 	config        InteractionExecutorConfig
 	policy        interactionExecutionPolicy
@@ -118,9 +117,6 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 	}
 	if config.Admission == nil {
 		return nil, errors.New("execution: installation admission is required")
-	}
-	if lo.IsNil(config.InstallationCommands) {
-		return nil, errors.New("execution: installation command projection is required")
 	}
 	if lo.IsNil(config.ExecutionTrees) {
 		return nil, errors.New("execution: execution tree store is required")
@@ -220,7 +216,10 @@ func (i *InteractionExecutor) StageRoot(
 		return runs.ExecutorRef{}, err
 	}
 	defer finishAssembly()
-	assembly, abandon := i.installations.Begin()
+	assembly, abandon, err := i.installations.Begin()
+	if err != nil {
+		return runs.ExecutorRef{}, err
+	}
 	defer abandon()
 	start = start.Clone()
 	if err := flameidentity.ValidateSession(start.SessionID); err != nil {
@@ -246,7 +245,7 @@ func (i *InteractionExecutor) StageRoot(
 		return runs.ExecutorRef{}, fmt.Errorf("execution: encode Interaction input: %w", err)
 	}
 	session.input = input
-	if err := i.installations.Publish(ctx, assembly, session.installationDependencies(), func() error {
+	if err := i.installations.Publish(ctx, assembly, dependencyInstallations(session.installationDependencies()), func() error {
 		return i.sessions.register(session)
 	}); err != nil {
 		return runs.ExecutorRef{}, err
@@ -324,14 +323,18 @@ func (i *InteractionExecutor) assembleInteraction(
 		}
 	}
 	if i.config.CallComposition != nil {
-		bindings := session.compositionBindings()
-		activations, err := i.config.CallComposition.Activations(ctx, bindings)
-		if err != nil {
+		var activations []plugin.Activation
+		if checkpoint != nil {
+			activations = checkpoint.bindings
+		} else {
+			activations, err = i.config.CallComposition.Activations(ctx, session.compositionBindings())
+			if err != nil {
+				return nil, err
+			}
+		}
+		if err := session.bindCompositionActivations(activations); err != nil {
 			return nil, err
 		}
-		session.state.mu.Lock()
-		session.compositionActivations = activations
-		session.state.mu.Unlock()
 	}
 	if len(session.modelInputs) > 0 {
 		if i.config.CallComposition == nil {
@@ -643,7 +646,10 @@ func (i *InteractionExecutor) restoreWaitingTree(
 		return err
 	}
 	defer finishAssembly()
-	assembly, abandon := i.installations.Begin()
+	assembly, abandon, err := i.installations.Begin()
+	if err != nil {
+		return err
+	}
 	defer abandon()
 	if err := validateRestoreWorkspace(continuation); err != nil {
 		return err
@@ -714,7 +720,7 @@ func (i *InteractionExecutor) restoreWaitingTree(
 		}
 		return fmt.Errorf("%w: restored Interaction tree has no pending input", runs.ErrExecutorStateLost)
 	}
-	if err := i.installations.Publish(ctx, assembly, session.installationDependencies(), func() error {
+	if err := i.installations.Publish(ctx, assembly, dependencyInstallations(session.installationDependencies()), func() error {
 		return i.sessions.register(session)
 	}); err != nil {
 		return err

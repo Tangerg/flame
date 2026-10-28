@@ -186,6 +186,7 @@ func newSessionStateE2ERuntime(
 	cfg.userHome = home
 	cfg.defaultWorkspacePath = home
 	cfg.maintenance = noMaintenance{}
+	cfg.processRunner = testProcessRunner(t)
 	host, api := buildProtocolRuntime(t, cfg, home)
 	t.Cleanup(func() {
 		if closeErr := host.Close(); closeErr != nil {

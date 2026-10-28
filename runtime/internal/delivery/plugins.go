@@ -17,6 +17,9 @@ const (
 	pluginsResolveRequirements Name = "plugins.resolveRequirements"
 	PluginsResolvePoint        Name = "plugins.resolvePoint"
 	pluginsOpenResources       Name = "plugins.openResources"
+	PluginsOpenBrowserRealm    Name = "plugins.openBrowserRealm"
+	PluginsAcquireComponent    Name = "plugins.acquireComponent"
+	PluginsCloseBrowserRealm   Name = "plugins.closeBrowserRealm"
 	PluginsReadResource        Name = "plugins.readResource"
 	PluginsListProviders       Name = "plugins.listProviders"
 	PluginsSelectProvider      Name = "plugins.selectProvider"
@@ -45,6 +48,23 @@ func pluginErrors() []string {
 }
 
 func registerPlugins(r *Registry) {
+	// Browser lifecycle retries re-enter Qimu's original operation owner. Generic
+	// response replay must not retain Realm credentials or mint competing Uses.
+	r.command(MethodMeta{Name: PluginsOpenBrowserRealm, GoName: "OpenPluginBrowserRealm", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors(), Idempotency: idempotencyOwnerResponse}, func(s interface {
+		OpenPluginBrowserRealm(context.Context, protocol.OpenPluginBrowserRealmRequest) (*protocol.PluginBrowserSession, error)
+	}, ctx context.Context, in protocol.OpenPluginBrowserRealmRequest) (*protocol.PluginBrowserSession, error) {
+		return s.OpenPluginBrowserRealm(ctx, in)
+	})
+	r.command(MethodMeta{Name: PluginsAcquireComponent, GoName: "AcquirePluginComponent", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors(), Idempotency: idempotencyOwnerResponse}, func(s interface {
+		AcquirePluginComponent(context.Context, protocol.AcquirePluginComponentRequest) (*protocol.PluginBrowserUseGrant, error)
+	}, ctx context.Context, in protocol.AcquirePluginComponentRequest) (*protocol.PluginBrowserUseGrant, error) {
+		return s.AcquirePluginComponent(ctx, in)
+	})
+	r.commandAck(MethodMeta{Name: PluginsCloseBrowserRealm, GoName: "ClosePluginBrowserRealm", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors(), Idempotency: idempotencyOwnerResponse}, func(s interface {
+		ClosePluginBrowserRealm(context.Context, protocol.ClosePluginBrowserRealmRequest) error
+	}, ctx context.Context, in protocol.ClosePluginBrowserRealmRequest) error {
+		return s.ClosePluginBrowserRealm(ctx, in)
+	})
 	r.query(MethodMeta{Name: PluginsGetCommand, GoName: "GetPluginCommand", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
 		GetPluginCommand(context.Context, protocol.PluginCommandRequest) (*protocol.CallPluginRequest, error)
 	}, ctx context.Context, in protocol.PluginCommandRequest) (*protocol.CallPluginRequest, error) {

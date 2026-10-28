@@ -975,6 +975,17 @@ func registerTrajectoryValues(s *Shapes) {
 }
 
 func registerPluginValues(s *Shapes) {
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.OpenPluginBrowserRealmRequest](), Constraints: []FieldConstraint{
+		{Field: "operationId", Kind: ConstraintNonEmpty}, {Field: "resumeToken", Kind: ConstraintNonEmpty},
+	}})
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.AcquirePluginComponentRequest](), Constraints: []FieldConstraint{
+		{Field: "operationId", Kind: ConstraintNonEmpty}, {Field: "componentId", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
+	}})
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginBrowserSession](), Constraints: []FieldConstraint{
+		{Field: "credential", Kind: ConstraintNonEmpty}, {Field: "controlEndpoint", Kind: ConstraintNonEmpty},
+		{Field: "maximumMessageBytes", Kind: ConstraintPositive}, {Field: "proofCapacity", Kind: ConstraintPositive},
+		{Field: "pollIntervalMilliseconds", Kind: ConstraintPositive},
+	}})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginClientComponent](), Constraints: []FieldConstraint{
 		{Field: "id", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
 		{Field: "contribution", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},

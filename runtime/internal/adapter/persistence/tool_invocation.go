@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
-	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
+	"github.com/Tangerg/flame/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )

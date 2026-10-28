@@ -4,12 +4,12 @@ import (
 	"context"
 	"database/sql"
 
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	app "github.com/Tangerg/flame/plugins/memory/internal/application"
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/sqlite"
 )
 
 // Only publication is transactional here. Ledger facts survive failed model
@@ -38,7 +38,7 @@ func (s maintenancePublication) Reconcile(ctx context.Context, publication memor
 }
 
 func maintenanceReply(published bool) ([]byte, error) {
-	result, err := pluginsdk.EncodeReply(rpc.MaintenanceResult{Published: published}, nil, nil)
+	result, err := qimumcp.EncodeReply(rpc.MaintenanceResult{Published: published}, nil, nil)
 	if err != nil {
 		return nil, err
 	}

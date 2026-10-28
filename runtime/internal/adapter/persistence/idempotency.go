@@ -6,11 +6,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"time"
-
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
+	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/flame/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
+	"time"
 )
 
 // IdempotencyStore persists replay records across runtime restarts.
@@ -80,7 +79,7 @@ func (i *idempotencyStore) Claim(ctx context.Context, key, fingerprint string) (
 			return fmt.Errorf("sqlite: read idempotency claim: %w", scanErr)
 		}
 		if stored.Fingerprint != fingerprint {
-			return extension.ErrInvocationConflict
+			return portable.ErrInvocationConflict
 		}
 		record, claimed = stored, false
 		return nil
@@ -123,7 +122,7 @@ func (i *idempotencyStore) Complete(ctx context.Context, record operation.Replay
 		return fmt.Errorf("sqlite: inspect completed idempotency claim: %w", err)
 	}
 	if fingerprint != record.Fingerprint {
-		return extension.ErrInvocationConflict
+		return portable.ErrInvocationConflict
 	}
 	if !bytes.Equal(payload, record.Payload) {
 		return operation.ErrOutcomeConflict

@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import type { PluginInstallation } from "@flame/runtime-client/wire";
-import { stringifyJSON } from "@flame/runtime-client";
-import { Capability, PROTOCOL } from "@flame/backend-sdk";
+import { stringifyJSON } from "@qimu/sdk/json";
+import { Capability, PROTOCOL } from "@qimu/node";
 import { OperationCatalog } from "./operationCatalog";
 import type { OperationRequest } from "../contracts/document";
 

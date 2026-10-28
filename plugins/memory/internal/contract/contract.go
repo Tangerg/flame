@@ -6,8 +6,8 @@ import (
 	"github.com/invopop/jsonschema"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
 )
 
 const (

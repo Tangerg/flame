@@ -42,6 +42,7 @@ const (
 	EndpointKindRPC      EndpointKind = "rpc"
 	EndpointKindSidecar  EndpointKind = "sidecar"
 	endpointKindResource EndpointKind = "resource"
+	endpointKindControl  EndpointKind = "pluginControl"
 )
 
 // EndpointAuthentication states the HTTP-layer gate applied before a handler.
@@ -49,8 +50,9 @@ type EndpointAuthentication string
 
 const (
 	EndpointAuthenticationNone          EndpointAuthentication = "none"
-	endpointAuthenticationLocalToken    EndpointAuthentication = "localToken"
-	endpointAuthenticationResourceLease EndpointAuthentication = "resourceLease"
+	EndpointAuthenticationLocalToken    EndpointAuthentication = "localToken"
+	EndpointAuthenticationResourceLease EndpointAuthentication = "resourceLease"
+	EndpointAuthenticationRealm         EndpointAuthentication = "pluginRealm"
 )
 
 const (
@@ -63,6 +65,8 @@ const (
 )
 
 const pluginResourcePrefix = endpointPrefix + "/plugin-resources/"
+
+const PluginControlPath = endpointPrefix + "/qimu"
 
 // EndpointSpec is one implemented HTTP entrypoint. ResponseType is nil for the
 // JSON-RPC binding because its typed method results live in operation.Contract;
@@ -103,7 +107,17 @@ var endpointRegistry = struct {
 }{
 	Endpoints: []endpointRegistration{
 		{
-			EndpointSpec: EndpointSpec{Name: endpointPluginResources, Projects: delivery.PluginsReadResource, Kind: endpointKindResource, Method: http.MethodGet, Path: pluginResourcePrefix + "{lease}/*", Authentication: endpointAuthenticationResourceLease, ResponseStatuses: []int{http.StatusOK, http.StatusGone}},
+			EndpointSpec: EndpointSpec{Name: "pluginControl", Kind: endpointKindControl, Method: http.MethodPost, Path: PluginControlPath, Authentication: EndpointAuthenticationRealm, ResponseStatuses: []int{http.StatusOK, http.StatusUnauthorized, http.StatusConflict, http.StatusServiceUnavailable}},
+			handler: func(server *Server, w http.ResponseWriter, r *http.Request) {
+				if server.pluginControl == nil {
+					http.Error(w, "plugin control is unavailable", http.StatusServiceUnavailable)
+					return
+				}
+				server.pluginControl.ServeHTTP(w, r)
+			},
+		},
+		{
+			EndpointSpec: EndpointSpec{Name: endpointPluginResources, Projects: delivery.PluginsReadResource, Kind: endpointKindResource, Method: http.MethodGet, Path: pluginResourcePrefix + "{lease}/*", Authentication: EndpointAuthenticationResourceLease, ResponseStatuses: []int{http.StatusOK, http.StatusGone}},
 			handler:      func(server *Server, w http.ResponseWriter, r *http.Request) { server.resources.ServeHTTP(w, r) },
 		},
 		{
@@ -112,7 +126,7 @@ var endpointRegistry = struct {
 				Kind:             EndpointKindRPC,
 				Method:           http.MethodPost,
 				Path:             endpointPrefix + "/rpc",
-				Authentication:   endpointAuthenticationLocalToken,
+				Authentication:   EndpointAuthenticationLocalToken,
 				ResponseStatuses: []int{http.StatusOK, http.StatusAccepted, http.StatusNoContent},
 			},
 			handler: func(server *Server, w http.ResponseWriter, r *http.Request) { server.rpc.ServeHTTP(w, r) },

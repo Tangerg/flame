@@ -10,13 +10,14 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	plugin "github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -178,8 +179,7 @@ func TestScheduleManualCommandReplaysAcceptedRunAcrossDisableAndRestart(t *testi
 	if *replay != *accepted {
 		t.Fatal("manual replay opened another Run")
 	}
-	r.close()
-	r = poMCPOpen(t, cfg)
+	r = reopenPluginRuntime(t, r, &cfg)
 	r.poMCPTools(server, ready)
 	replay = readScheduleRun(r, request, "manual")
 	if *replay != *accepted {
@@ -216,17 +216,17 @@ func TestMemoryCommittedReplyLossReplaysFromItsSingleOwner(t *testing.T) {
 		t.Fatalf("original command binding missing: %t, %v", found, err)
 	}
 	contract := original.Snapshot().Contract
-	var document extension.CapabilityDescriptor
+	var document portable.CapabilityDescriptor
 	if err := json.Unmarshal(contract.JSON(), &document); err != nil {
 		t.Fatalf("original contract not captured: %v", err)
 	}
-	var add extension.MethodDescriptor
+	var add portable.MethodDescriptor
 	for _, method := range document.Methods {
 		if method.Name == "flame.memory/add.v2" {
 			add = method
 		}
 	}
-	if add.Kind != extension.Mutation || len(add.Input) == 0 || len(add.Output) == 0 {
+	if add.Kind != portable.Mutation || len(add.Input) == 0 || len(add.Output) == 0 {
 		t.Fatalf("original contract did not capture flame.memory/add.v2: %+v", document.Methods)
 	}
 	requireManagedServiceChange(t, changed)
@@ -237,7 +237,7 @@ func TestMemoryCommittedReplyLossReplaysFromItsSingleOwner(t *testing.T) {
 	if !errors.Is(unavailable.Failure, protocol.ErrPluginUnavailable) {
 		t.Fatalf("disabled Memory remained callable: %v", unavailable.Failure)
 	}
-	r = reopenCommandRuntime(t, r, &cfg)
+	r = reopenPluginRuntime(t, r, &cfg)
 	restored, found, err := cfg.stores.PluginCommands.Get(t.Context(), commandID)
 	if err != nil || !found || restored.Snapshot().Contract != contract {
 		t.Fatalf("restart changed original contract: %t, %v", found, err)
@@ -263,21 +263,34 @@ func TestMemoryCommittedReplyLossReplaysFromItsSingleOwner(t *testing.T) {
 
 func assertUnresolvedInstallationIsHeld(t *testing.T, r *poMCPRuntime, installed *protocol.PluginInstallation) {
 	t.Helper()
+	if len(installed.Selected.Servers) == 0 {
+		t.Fatal("command fixture has no declared backend")
+	}
+	unchanged := protocol.ConfigurePluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}
+	result := r.endpoint.Invoke(t.Context(), delivery.PluginsConfigure, unchanged, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+	if result.Failure != nil {
+		t.Fatalf("unchanged configuration replaced the retained binding: %v", result.Failure)
+	}
+	server := installed.Selected.Servers[0].Name
+	change := protocol.PluginComponentDisable
+	if slices.Contains(installed.DisabledServers, server) {
+		change = protocol.PluginComponentEnable
+	}
 	for _, action := range []struct {
 		method delivery.Name
 		input  any
 	}{
 		{delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}},
-		{delivery.PluginsConfigure, protocol.ConfigurePluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}},
+		{delivery.PluginsConfigure, protocol.ConfigurePluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, ServerChanges: map[string]protocol.PluginComponentChange{server: change}}},
 	} {
 		result := r.endpoint.Invoke(t.Context(), action.method, action.input, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
-		if !errors.Is(result.Failure, protocol.ErrPluginInUse) {
+		if result.Failure == nil || !errors.Is(result.Failure, protocol.ErrPluginInUse) {
 			t.Fatalf("unresolved command did not pin its installation for %s: %v", action.method, result.Failure)
 		}
 	}
 	if installed.Staged != nil {
 		result := r.endpoint.Invoke(t.Context(), delivery.PluginsSelect, protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Staged.Digest}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
-		if !errors.Is(result.Failure, protocol.ErrPluginInUse) {
+		if result.Failure == nil || !errors.Is(result.Failure, protocol.ErrPluginInUse) {
 			t.Fatalf("unresolved command did not pin its release: %v", result.Failure)
 		}
 	}
@@ -301,6 +314,7 @@ func managedMessageLossPackage(t *testing.T, name, method, stage string) (string
 	if err := os.WriteFile(filepath.Join(source, "mcp.json"), descriptor, 0600); err != nil {
 		t.Fatal(err)
 	}
+	authorPluginPackage(t, source)
 	return source, evidence
 }
 
@@ -368,13 +382,12 @@ func TestScheduleLostCreateReplyReplaysAfterRevocationAndRestart(t *testing.T) {
 	if err := json.Unmarshal(raw, &captured); err != nil {
 		t.Fatal(err)
 	}
-	committed, err := pluginsdk.DecodeReply[testsupport.SchedulesCreateV1Output](captured.Response.Result)
+	committed, err := qimumcp.DecodeReply[testsupport.SchedulesCreateV1Output](captured.Response.Result)
 	if err != nil {
 		t.Fatalf("create did not commit before response loss: %v", err)
 	}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable")
-	r.close()
-	r = poMCPOpen(t, cfg)
+	r = reopenPluginRuntime(t, r, &cfg)
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "reenable")
 	r.poMCPTools(server, ready)
 	replay := readScheduleCreate(r, request, "lost-create")
@@ -410,7 +423,7 @@ func TestScheduleRunNowReplyLossRetainsAcceptanceAfterRestartAndSessionDeletion(
 	if err := json.Unmarshal(raw, &captured); err != nil {
 		t.Fatal(err)
 	}
-	accepted, err := pluginsdk.DecodeReply[testsupport.SchedulesRunNowV1Output](captured.Response.Result)
+	accepted, err := qimumcp.DecodeReply[testsupport.SchedulesRunNowV1Output](captured.Response.Result)
 	if err != nil {
 		t.Fatalf("manual acceptance did not commit before response loss: %v", err)
 	}
@@ -426,11 +439,9 @@ func TestScheduleRunNowReplyLossRetainsAcceptanceAfterRestartAndSessionDeletion(
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	r.close()
-	r = poMCPOpen(t, cfg)
+	r = reopenPluginRuntime(t, r, &cfg)
 	r.must(delivery.SessionsDelete, protocol.DeleteSessionRequest{SessionID: accepted.SessionID}, "delete-accepted")
-	r.close()
-	r = poMCPOpen(t, cfg)
+	r = reopenPluginRuntime(t, r, &cfg)
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "reenable")
 	r.poMCPTools(server, ready)
 	for range 2 {
@@ -475,7 +486,7 @@ func TestScheduleLostRunNowReplyRetainsCapturedWorkOnStartup(t *testing.T) {
 	if err := json.Unmarshal(raw, &captured); err != nil {
 		t.Fatal(err)
 	}
-	pending, err := pluginsdk.DecodeReply[testsupport.SchedulesRunNowV1Output](captured.Response.Result)
+	pending, err := qimumcp.DecodeReply[testsupport.SchedulesRunNowV1Output](captured.Response.Result)
 	if err != nil {
 		t.Fatalf("manual acceptance did not commit: %v", err)
 	}
@@ -483,8 +494,7 @@ func TestScheduleLostRunNowReplyRetainsCapturedWorkOnStartup(t *testing.T) {
 	r.poMCPTools(&server, ready)
 	title, instructions := "edited title", "edited instructions"
 	r.must(delivery.PluginsCall, scheduleUpdateRequest(r, testsupport.SchedulesUpdateV1Input{ID: saved.ID, ExpectedRevision: saved.Revision + 1, Title: &title, Instructions: &instructions}), "edit-after-capture")
-	r.close()
-	r = poMCPOpen(t, cfg)
+	r = reopenPluginRuntime(t, r, &cfg)
 	r.poMCPTools(&server, ready)
 	workerCtx, cancelWorkers := context.WithCancel(t.Context())
 	joins := r.host.application.startWorkers(workerCtx)

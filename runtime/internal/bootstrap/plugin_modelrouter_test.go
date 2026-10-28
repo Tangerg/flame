@@ -7,10 +7,10 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -24,7 +24,7 @@ func TestModelRouterInstalledPolicyBindsNewRunWithoutRewritingSessionOrAcceptedR
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "modelrouter"))
 	waitCallContributorState(t, r, installed.ID, protocol.MCPServerConnected)
-	contracts, err := extension.ParseCapability([]byte(testsupport.ModelrouterCapabilityJSON))
+	contracts, err := portable.ParseCapability([]byte(testsupport.ModelrouterCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func TestModelRouterInstalledPolicyBindsNewRunWithoutRewritingSessionOrAcceptedR
 		if err != nil {
 			t.Fatal(err)
 		}
-		request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "modelrouter-policy", Contract: contracts.Identity().String(), Method: testsupport.ModelrouterReplacePolicyV1Method, Input: input.String(), Target: extension.Target{Scope: "installation", Reference: installed.ID}}
+		request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "modelrouter-policy", Contract: contracts.Identity().String(), Method: testsupport.ModelrouterReplacePolicyV1Method, Input: input.String(), Target: portable.Target{Scope: "installation", Reference: installed.ID}}
 		result := r.must(delivery.PluginsCall, request, key).(*protocol.CallPluginResponse)
 		if result.Failure != nil {
 			t.Fatal(result.Failure)

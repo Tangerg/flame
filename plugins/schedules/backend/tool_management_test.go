@@ -11,12 +11,15 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	models "github.com/Tangerg/flame/packages/go-sdk/model/catalog"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	scheduledb "github.com/Tangerg/flame/plugins/schedules/internal/sqlite"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -24,14 +27,14 @@ import (
 func scheduleToolSession(t *testing.T, db *sql.DB, host *observedRunHost) (*sdk.ClientSession, func() error) {
 	t.Helper()
 	server := sdk.NewServer(&sdk.Implementation{Name: "schedules-tool-test"}, nil)
-	registered, err := registerServer(server, db, scheduledb.NewScheduleStore(db), filesystem.DirectoryResolver{}, models.Selections{}, func(context.Context, pluginsdk.CallbackRef) (runHost, func() error, error) {
+	registered, err := registerServer(server, db, scheduledb.NewScheduleStore(db), filesystem.DirectoryResolver{}, models.Selections{}, func(context.Context, qimumcp.CallbackRef) (runHost, func() error, error) {
 		return host, func() error { return nil }, nil
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "schedules-tool-consumer"}, nil)
-	if err := pluginsdk.RegisterClient(client); err != nil {
+	if err := qimumcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	left, right := sdk.NewInMemoryTransports()
@@ -50,11 +53,11 @@ func scheduleToolSession(t *testing.T, db *sql.DB, host *observedRunHost) (*sdk.
 
 func scheduleToolMetadata(t *testing.T, id string) sdk.Meta {
 	t.Helper()
-	metadata, err := pluginsdk.CallbackMetadata(pluginsdk.CallbackRef{Endpoint: "http://127.0.0.1:1/", Credential: strings.Repeat("a", 64), Call: strings.Repeat("b", 64), MaxResponseBytes: 4096})
+	metadata, err := qimumcp.CallbackMetadata(qimumcp.CallbackRef{Endpoint: "http://127.0.0.1:1/", Credential: strings.Repeat("a", 64), Call: strings.Repeat("b", 64), MaxResponseBytes: 4096})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := metadata.Set(pluginsdk.InvocationMetadataKey, extension.Invocation{ID: id, Origin: extension.Model, Parent: "parent-call", Target: extension.Target{Scope: "installation", Reference: "schedules-owner"}}); err != nil {
+	if err := metadata.Set(qimumcp.InvocationMetadataKey, portable.Invocation{ID: id, Origin: extension.Model, Parent: "parent-call", Target: portable.Target{Scope: "installation", Reference: "schedules-owner"}}); err != nil {
 		t.Fatal(err)
 	}
 	return metadata.Meta
@@ -225,7 +228,7 @@ func TestModelManualRunRetainsItsCommandAcrossRestartAndDeletedDefinition(t *tes
 	if err != nil || len(pending) != 1 || pending[0].Snapshot() != captured.Snapshot() {
 		t.Fatalf("restart changed captured work: %+v, %v", pending, err)
 	}
-	ctx, err := pluginsdk.WithInvocation(t.Context(), captured.Invocation())
+	ctx, err := qimumcp.WithInvocation(t.Context(), captured.Invocation())
 	if err != nil {
 		t.Fatal(err)
 	}

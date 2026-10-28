@@ -12,9 +12,9 @@ import (
 	"time"
 
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
@@ -44,10 +44,10 @@ func (c *coreCallbackTarget) SubscribeRuntime(ctx context.Context, _ protocol.Ru
 	}, nil
 }
 
-type coreCallbackInput struct{ Host pluginsdk.CallbackRef }
+type coreCallbackInput struct{ Host qimumcp.CallbackRef }
 
-func coreCallbackMethod() (*pluginsdk.Method[coreCallbackInput, string], error) {
-	return pluginsdk.NewMethod[coreCallbackInput, string](pluginsdk.MethodConfig{Name: "test.backend/core", Kind: extension.Query, Target: "call", Description: "Exercise the canonical Runtime callback."})
+func coreCallbackMethod() (*qimumcp.Method[coreCallbackInput, string], error) {
+	return qimumcp.NewMethod[coreCallbackInput, string](qimumcp.MethodConfig{Name: "test.backend/core", Kind: portable.Query, Target: "call", Description: "Exercise the canonical Runtime callback."})
 }
 
 func TestCoreCallbackBackendProcess(t *testing.T) {
@@ -55,12 +55,12 @@ func TestCoreCallbackBackendProcess(t *testing.T) {
 		return
 	}
 	server := sdk.NewServer(&sdk.Implementation{Name: "core-callback-author"}, nil)
-	backend, err := pluginsdk.NewBackend(server)
+	backend, err := qimumcp.NewBackend(server)
 	if err == nil {
 		method, methodErr := coreCallbackMethod()
 		err = methodErr
 		if err == nil {
-			err = method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[coreCallbackInput]) (string, error) {
+			err = method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[coreCallbackInput]) (string, error) {
 				client, err := runtimeclient.ConnectCallback(ctx, command.Input.Host)
 				if err != nil {
 					return "", err
@@ -99,7 +99,7 @@ func TestCoreCallbackBackendProcess(t *testing.T) {
 func TestCoreCallbacksUseCanonicalDeliveryThroughARealBackend(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
 	defer cancel()
-	callbacks := pluginsdk.NewCallbacks()
+	callbacks := qimumcp.NewCallbacks()
 	t.Cleanup(func() {
 		if err := callbacks.Close(); err != nil {
 			t.Error(err)
@@ -136,7 +136,7 @@ func TestCoreCallbacksUseCanonicalDeliveryThroughARealBackend(t *testing.T) {
 		t.Fatal("published RPC handler was replaced")
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "headless-host"}, nil)
-	if err := pluginsdk.RegisterClient(client); err != nil {
+	if err := qimumcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	command := exec.Command(os.Args[0], "-test.run=^TestCoreCallbackBackendProcess$")
@@ -151,9 +151,11 @@ func TestCoreCallbacksUseCanonicalDeliveryThroughARealBackend(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	callbacks.AdmitSession(session)
+	if err := callbacks.AdmitSession(session); err != nil {
+		t.Fatal(err)
+	}
 	owner := context.WithValue(ctx, coreCallbackOwnerKey{}, "captured owner")
-	ref, release, err := callbacks.OpenRPC(owner, session, pluginsdk.CallbackLimits{MaxRequestBytes: 4096, MaxResponseBytes: 4096})
+	ref, release, err := callbacks.OpenRPC(owner, session, qimumcp.CallbackLimits{MaxRequestBytes: 4096, MaxResponseBytes: 4096})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,10 +180,10 @@ func TestCoreCallbacksUseCanonicalDeliveryThroughARealBackend(t *testing.T) {
 	}
 	defer stale.Close()
 	_, _, err = stale.StartRun(ctx, protocol.StartRunRequest{SessionID: "ses_absent", Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "go"}}}, protocol.RunCommandOptions{})
-	if !errors.Is(err, pluginsdk.ErrStaleCall) || errors.Is(err, runtimeclient.ErrAcknowledgementUnknown) {
+	if !errors.Is(err, qimumcp.ErrStaleCall) || errors.Is(err, runtimeclient.ErrAcknowledgementUnknown) {
 		t.Fatalf("stale callback command = %v", err)
 	}
-	bounded, releaseBounded, err := callbacks.OpenRPC(owner, session, pluginsdk.CallbackLimits{MaxRequestBytes: 16, MaxResponseBytes: 4096})
+	bounded, releaseBounded, err := callbacks.OpenRPC(owner, session, qimumcp.CallbackLimits{MaxRequestBytes: 16, MaxResponseBytes: 4096})
 	if err != nil {
 		t.Fatal(err)
 	}

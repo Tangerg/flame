@@ -10,7 +10,7 @@ import {
   parseJSON,
   projectNumber,
   stringifyJSON,
-} from "@flame/runtime-client/json";
+} from "@qimu/sdk/json";
 import { Temporal } from "@js-temporal/polyfill";
 import { z } from "zod/v4";
 

@@ -36,7 +36,7 @@ There is no graphical-client copy of the protocol implementation and no global
 client locator. `app/` constructs dependencies and passes them outward through
 plugin factories; consumers never import the composition root.
 
-The pure `@flame/runtime-client/json` entry supplies exact JSON data handling.
+The pure `@qimu/sdk/json` entry supplies exact JSON data handling.
 Its checked dependency closure excludes Runtime calls and wire records; those
 remain translated at adapters rather than entering context application models.
 

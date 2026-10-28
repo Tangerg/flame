@@ -46,6 +46,7 @@ func TestRuntimeCompactsDuringOneLongRunBeforeTheNextMainModelCall(t *testing.T)
 	cfg.userHome = home
 	cfg.defaultWorkspacePath = home
 	cfg.maintenance = noMaintenance{}
+	cfg.processRunner = testProcessRunner(t)
 	host, api := buildProtocolRuntime(t, cfg, home)
 	defer func() {
 		if closeErr := host.Close(); closeErr != nil {

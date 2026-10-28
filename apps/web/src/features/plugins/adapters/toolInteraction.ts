@@ -1,9 +1,11 @@
 import {
   type CapturedToolInteraction,
+  type ComponentContext,
   type InteractionSubmission,
   type ToolInteractionInput,
 } from "@flame/component-sdk";
-import { asRunId, parseJSON, type FlameClient } from "@flame/runtime-client";
+import { asRunId, type FlameClient } from "@flame/runtime-client";
+import { parseJSON } from "@qimu/sdk/json";
 import { type AgentInput, type AgentInputSettlement } from "@/features/agent/public/input";
 
 export type SubmitCapturedAgentInput = (
@@ -17,7 +19,7 @@ export function captureToolInteraction(
   submitInput: SubmitCapturedAgentInput,
   source: Readonly<{ runId: string; itemId: string }>,
   signal: AbortSignal,
-  track: <T>(operation: Promise<T>) => Promise<T>,
+  track: ComponentContext["track"],
 ): CapturedToolInteraction {
   const captured = Object.freeze({ ...source });
   let active = false;
@@ -34,14 +36,15 @@ export function captureToolInteraction(
       recover: () => {
         signal.throwIfAborted();
         if (active) throw new Error("tool interaction is already awaiting its original command");
-        active = true;
-        const recovery = Promise.resolve()
-          .then(() => result.recover())
-          .then(project)
-          .finally(() => {
-            active = false;
-          });
-        return track(recovery);
+        return track(() => {
+          active = true;
+          return Promise.resolve()
+            .then(() => result.recover())
+            .then(project)
+            .finally(() => {
+              active = false;
+            });
+        });
       },
     });
     unknown = retained;
@@ -73,15 +76,16 @@ export function captureToolInteraction(
           },
         ],
       };
-      active = true;
-      const submission = (async () => {
-        const run = await runtime.runs.get(asRunId(captured.runId), signal);
-        signal.throwIfAborted();
-        return project(await submitInput(run.sessionId, prepared, signal));
-      })().finally(() => {
-        active = false;
+      return track(() => {
+        active = true;
+        return (async () => {
+          const run = await runtime.runs.get(asRunId(captured.runId), signal);
+          signal.throwIfAborted();
+          return project(await submitInput(run.sessionId, prepared, signal));
+        })().finally(() => {
+          active = false;
+        });
       });
-      return track(submission);
     },
   });
 }

@@ -7,7 +7,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
+	"github.com/Tangerg/flame/qimu/sqlite"
 )
 
 func Open(ctx context.Context, path string) (*sql.DB, error) {

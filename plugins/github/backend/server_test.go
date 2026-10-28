@@ -9,10 +9,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
+	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -72,7 +73,7 @@ func TestTypedAndModelToolsShareGitHubReadsAndKnownRefusals(t *testing.T) {
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "github-test"}, nil)
-	if err := pluginsdk.RegisterClient(client); err != nil {
+	if err := qimumcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()
@@ -90,7 +91,7 @@ func TestTypedAndModelToolsShareGitHubReadsAndKnownRefusals(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	exported, err := pluginsdk.ResolveCapability(t.Context(), session, "github", contracts.Capability)
+	exported, err := qimumcp.ResolveCapability(t.Context(), session, "github", contracts.Capability)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,18 +99,18 @@ func TestTypedAndModelToolsShareGitHubReadsAndKnownRefusals(t *testing.T) {
 		method, tool string
 		input        any
 	}{
-		{contracts.List.Name(), "list_issues", rpc.ListInput{Repository: "owner/repo", State: "all", Page: 1, Limit: 2}},
-		{contracts.Issue.Name(), "get_issue", rpc.IssueInput{Repository: "owner/repo", Number: 42}},
-		{contracts.File.Name(), "read_file", rpc.FileInput{Repository: "owner/repo", Path: "README.md"}},
-		{contracts.Pulls.Name(), "list_pull_requests", rpc.PullListInput{ListInput: rpc.ListInput{Repository: "owner/repo", State: "all", Page: 1, Limit: 10}}},
-		{contracts.Pull.Name(), "get_pull_request", rpc.IssueInput{Repository: "owner/repo", Number: 42}},
-		{contracts.PullFiles.Name(), "list_pull_request_files", rpc.ThreadInput{IssueInput: rpc.IssueInput{Repository: "owner/repo", Number: 42}, Page: 1, Limit: 10}},
-		{contracts.Comments.Name(), "list_issue_comments", rpc.ThreadInput{IssueInput: rpc.IssueInput{Repository: "owner/repo", Number: 42}, Page: 1, Limit: 10}},
-		{contracts.Reviews.Name(), "list_pull_request_reviews", rpc.ThreadInput{IssueInput: rpc.IssueInput{Repository: "owner/repo", Number: 42}, Page: 1, Limit: 10}},
-		{contracts.ReviewComments.Name(), "list_pull_request_comments", rpc.ThreadInput{IssueInput: rpc.IssueInput{Repository: "owner/repo", Number: 42}, Page: 1, Limit: 10}},
-		{contracts.Checks.Name(), "list_check_runs", rpc.CommitInput{Repository: "owner/repo", Ref: "head-sha", Page: 1, Limit: 10}},
-		{contracts.Annotations.Name(), "list_check_annotations", rpc.CheckInput{Repository: "owner/repo", CheckRunID: 44, Page: 1, Limit: 10}},
-		{contracts.Statuses.Name(), "list_commit_statuses", rpc.CommitInput{Repository: "owner/repo", Ref: "head-sha", Page: 1, Limit: 10}},
+		{contracts.List.Name(), "list_issues", contractwire.ListInput{Repository: "owner/repo", State: "all", Page: 1, Limit: 2}},
+		{contracts.Issue.Name(), "get_issue", contractwire.IssueInput{Repository: "owner/repo", Number: 42}},
+		{contracts.File.Name(), "read_file", contractwire.FileInput{Repository: "owner/repo", Path: "README.md"}},
+		{contracts.Pulls.Name(), "list_pull_requests", contractwire.PullListInput{ListInput: contractwire.ListInput{Repository: "owner/repo", State: "all", Page: 1, Limit: 10}}},
+		{contracts.Pull.Name(), "get_pull_request", contractwire.IssueInput{Repository: "owner/repo", Number: 42}},
+		{contracts.PullFiles.Name(), "list_pull_request_files", contractwire.ThreadInput{IssueInput: contractwire.IssueInput{Repository: "owner/repo", Number: 42}, Page: 1, Limit: 10}},
+		{contracts.Comments.Name(), "list_issue_comments", contractwire.ThreadInput{IssueInput: contractwire.IssueInput{Repository: "owner/repo", Number: 42}, Page: 1, Limit: 10}},
+		{contracts.Reviews.Name(), "list_pull_request_reviews", contractwire.ThreadInput{IssueInput: contractwire.IssueInput{Repository: "owner/repo", Number: 42}, Page: 1, Limit: 10}},
+		{contracts.ReviewComments.Name(), "list_pull_request_comments", contractwire.ThreadInput{IssueInput: contractwire.IssueInput{Repository: "owner/repo", Number: 42}, Page: 1, Limit: 10}},
+		{contracts.Checks.Name(), "list_check_runs", contractwire.CommitInput{Repository: "owner/repo", Ref: "head-sha", Page: 1, Limit: 10}},
+		{contracts.Annotations.Name(), "list_check_annotations", contractwire.CheckInput{Repository: "owner/repo", CheckRunID: 44, Page: 1, Limit: 10}},
+		{contracts.Statuses.Name(), "list_commit_statuses", contractwire.CommitInput{Repository: "owner/repo", Ref: "head-sha", Page: 1, Limit: 10}},
 	} {
 		input, err := jsonvalue.Encode(test.input)
 		if err != nil {
@@ -119,7 +120,7 @@ func TestTypedAndModelToolsShareGitHubReadsAndKnownRefusals(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if method.Descriptor().Kind != extension.Query {
+		if method.Descriptor().Kind != portable.Query {
 			t.Fatal("read operation acquired mutation authority")
 		}
 		typed, err := method.Invoke(t.Context(), "", input)
@@ -139,7 +140,7 @@ func TestTypedAndModelToolsShareGitHubReadsAndKnownRefusals(t *testing.T) {
 			t.Fatalf("typed/Tool %s diverged: %s, %s, %v", test.tool, typed.String(), model.String(), err)
 		}
 		if test.tool == "list_issues" {
-			var page rpc.IssuePage
+			var page contractwire.IssuePage
 			if err := json.Unmarshal(typed.JSON(), &page); err != nil || page.NextPage == nil || *page.NextPage != 2 {
 				t.Fatalf("GitHub's canonical repository-ID pagination was lost: %+v, %v", page, err)
 			}
@@ -150,14 +151,14 @@ func TestTypedAndModelToolsShareGitHubReadsAndKnownRefusals(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	input := rpc.IssueInput{Repository: "owner/repo", Number: 42}
+	input := contractwire.IssueInput{Repository: "owner/repo", Number: 42}
 	admitted, err := jsonvalue.Encode(input)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := method.Invoke(t.Context(), "", admitted); err == nil {
 		t.Fatal("typed query hid rejected authorization")
-	} else if refusal, ok := errors.AsType[*extension.Refusal](err); !ok || refusal.Code != "unauthorized" {
+	} else if refusal, ok := errors.AsType[*portable.Refusal](err); !ok || refusal.Code != "unauthorized" {
 		t.Fatalf("typed refusal = %v", err)
 	}
 	result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "get_issue", Arguments: input})

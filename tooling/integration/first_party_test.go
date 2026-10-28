@@ -3,13 +3,13 @@ package integration
 import (
 	json "encoding/json/v2"
 	"os"
-	"path/filepath"
 	"slices"
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	localruntime "github.com/Tangerg/flame/packages/local-runtime"
+	"github.com/Tangerg/flame/qimu/portable"
 
 	flameruntime "github.com/Tangerg/flame/runtime"
 )
@@ -93,7 +93,7 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	contract, err := extension.ParseCapability([]byte(SchedulesCapabilityJSON))
+	contract, err := portable.ParseCapability([]byte(SchedulesCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +101,7 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reply, err := current.CallPlugin(t.Context(), protocol.CallPluginRequest{InstallationID: scheduling.ID, Digest: scheduling.Selected.Digest, Contribution: "schedules-provider", Contract: string(contract.Identity().JSON()), Method: SchedulesListV1Method, Input: string(input), Target: extension.Target{Scope: "installation", Reference: scheduling.ID}}, protocol.PluginCallOptions{})
+	reply, err := current.CallPlugin(t.Context(), protocol.CallPluginRequest{InstallationID: scheduling.ID, Digest: scheduling.Selected.Digest, Contribution: "schedules-provider", Contract: string(contract.Identity().JSON()), Method: SchedulesListV1Method, Input: string(input), Target: portable.Target{Scope: "installation", Reference: scheduling.ID}}, protocol.PluginCallOptions{})
 	if err != nil || reply.Failure != nil {
 		t.Fatalf("default schedule backend: %+v, %v", reply, err)
 	}
@@ -162,8 +162,13 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 	if err := current.Close(); err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"flame.db", "flame.db-wal", "flame.db-shm"} {
-		if err := os.Remove(filepath.Join(cfg.DataDirectory, name)); err != nil && !os.IsNotExist(err) {
+	layout, err := localruntime.DataDirectoryAt(cfg.DataDirectory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	database := layout.DatabasePath()
+	for _, path := range []string{database, database + "-wal", database + "-shm"} {
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 			t.Fatal(err)
 		}
 	}

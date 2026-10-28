@@ -263,6 +263,9 @@ func runtimeAPIConsumptionByMethod() map[string]runtimeAPIConsumption {
 		return runtimeAPIConsumption{Area: area, Mode: materializedByAggregate, Entry: entry}
 	}
 	return map[string]runtimeAPIConsumption{
+		"OpenPluginBrowserRealm":   {Area: "browser execution", Mode: externalReconciliation, Entry: "browser SDK bootstrap owns the actual JavaScript Realm"},
+		"AcquirePluginComponent":   {Area: "browser execution", Mode: externalReconciliation, Entry: "browser component mount acquires the original Host-approved Use"},
+		"ClosePluginBrowserRealm":  {Area: "browser execution", Mode: externalReconciliation, Entry: "browser controlled reload seals its original Realm before local cleanup"},
 		"ListModelEndpoints":       {Area: "physical model evidence", Mode: externalReconciliation, Entry: "public Go/TS endpoint evidence query; CLI Run metrics remain aggregate projections"},
 		"ListPluginCompositions":   {Area: "installed composition", Mode: externalReconciliation, Entry: "shared Go/TS composition management; no dedicated CLI editor"},
 		"ResolvePluginComposition": {Area: "installed composition", Mode: externalReconciliation, Entry: "shared Go/TS concrete ordered-binding query for consumer-owned composition"},

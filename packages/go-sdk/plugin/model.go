@@ -4,8 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/invopop/jsonschema"
 )
@@ -43,14 +46,14 @@ func (f *ModelFailure) Is(target error) bool {
 }
 
 // ModelMethod publishes Scope's complete exchange without a text-only projection.
-func ModelMethod() (*Method[chat.Request, ModelResult], error) {
-	return NewMethod[chat.Request, ModelResult](MethodConfig{
-		Name: "flame.model/call.v1", Kind: extension.Mutation, Target: "call",
+func ModelMethod() (*qimumcp.Method[chat.Request, ModelResult], error) {
+	return qimumcp.NewMethod[chat.Request, ModelResult](qimumcp.MethodConfig{
+		Name: "flame.model/call.v1", Kind: portable.Mutation, Target: "call",
 		Description: "Perform one complete exchange with the model captured by this call.",
 	})
 }
 
-func CallModel(ctx context.Context, ref CallbackRef, id string, request *chat.Request) (*chat.Response, error) {
+func CallModel(ctx context.Context, ref qimumcp.CallbackRef, id string, request *chat.Request) (*chat.Response, error) {
 	if err := request.Validate(); err != nil {
 		return nil, err
 	}
@@ -58,7 +61,7 @@ func CallModel(ctx context.Context, ref CallbackRef, id string, request *chat.Re
 	if err != nil {
 		return nil, err
 	}
-	result, err := CallHost(ctx, ref, method, id, *request.Clone())
+	result, err := qimumcp.CallHost(ctx, ref, method, id, *request.Clone())
 	if err != nil {
 		return nil, err
 	}
@@ -67,15 +70,15 @@ func CallModel(ctx context.Context, ref CallbackRef, id string, request *chat.Re
 
 // NewModelCallback leaves command admission and resource policy with its caller.
 // Each command projects a call-scoped child identity, preserving origin/parent.
-func NewModelCallback(call func(context.Context, Command[chat.Request]) (*chat.Response, error)) (Callback, error) {
+func NewModelCallback(call func(context.Context, qimumcp.Command[chat.Request]) (*chat.Response, error)) (qimumcp.Callback, error) {
 	if call == nil {
-		return Callback{}, errors.New("plugin: model call owner is required")
+		return qimumcp.Callback{}, errors.New("plugin: model call owner is required")
 	}
 	method, err := ModelMethod()
 	if err != nil {
-		return Callback{}, err
+		return qimumcp.Callback{}, err
 	}
-	return NewCallback(method, nil, func(ctx context.Context, command Command[chat.Request]) (ModelResult, error) {
+	return qimumcp.NewCallback(method, nil, func(ctx context.Context, command qimumcp.Command[chat.Request]) (ModelResult, error) {
 		if err := command.Input.Validate(); err != nil {
 			return ModelResult{}, err
 		}
@@ -85,7 +88,7 @@ func NewModelCallback(call func(context.Context, Command[chat.Request]) (*chat.R
 			return ModelResult{}, err
 		}
 		response, err := call(ctx, command)
-		if refusal, known := errors.AsType[*extension.Refusal](err); known && response == nil {
+		if refusal, known := errors.AsType[*portable.Refusal](err); known && response == nil {
 			return ModelResult{}, refusal
 		}
 		return modelResult(response, err)
@@ -93,8 +96,8 @@ func NewModelCallback(call func(context.Context, Command[chat.Request]) (*chat.R
 }
 
 func modelCallContext(ctx context.Context, id string) (context.Context, error) {
-	call := extension.Invocation{ID: id, Origin: extension.Automatic, Target: extension.Target{Scope: "call", Reference: id}}
-	if parent, err := InvocationFromContext(ctx); err == nil {
+	call := portable.Invocation{ID: id, Origin: extension.Automatic, Target: portable.Target{Scope: "call", Reference: id}}
+	if parent, err := qimumcp.InvocationFromContext(ctx); err == nil {
 		if parent.ID == id && parent.Target == call.Target {
 			return ctx, nil
 		}
@@ -103,7 +106,7 @@ func modelCallContext(ctx context.Context, id string) (context.Context, error) {
 			call.Parent = parent.Parent
 		}
 	}
-	return WithInvocation(ctx, call)
+	return qimumcp.WithInvocation(ctx, call)
 }
 
 func modelResult(response *chat.Response, err error) (ModelResult, error) {

@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	rpc "github.com/Tangerg/flame/plugins/web/internal/contract"
 	capture "github.com/Tangerg/flame/plugins/web/internal/domain"
+	"github.com/Tangerg/flame/plugins/web/internal/wire"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/tool"
@@ -24,7 +26,7 @@ func readTool[P, R any](name, description string, read func(context.Context, P) 
 			return result, errors.Join(err, ctx.Err(), context.Cause(ctx))
 		}
 		kind, message := tool.FailureKindFailed, "web: read failed"
-		if refusal, known := errors.AsType[*extension.Refusal](err); known {
+		if refusal, known := errors.AsType[*portable.Refusal](err); known {
 			kind, message = tool.FailureKindRejected, refusal.Message
 		} else if classify(err) != "" {
 			kind, message = tool.FailureKindRejected, err.Error()
@@ -44,7 +46,7 @@ func newServer(research *research) (*sdk.Server, error) {
 		return nil, err
 	}
 	server := sdk.NewServer(&sdk.Implementation{Name: "flame.web", Version: "1.0.0"}, nil)
-	backend, err := pluginsdk.NewBackend(server)
+	backend, err := qimumcp.NewBackend(server)
 	if err != nil {
 		return nil, err
 	}
@@ -64,13 +66,13 @@ func newServer(research *research) (*sdk.Server, error) {
 		return nil, err
 	}
 	if err := errors.Join(
-		contracts.Search.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[web.SearchRequest]) (web.SearchResponse, error) {
+		contracts.Search.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[web.SearchRequest]) (web.SearchResponse, error) {
 			return research.searchWeb(ctx, command.Input)
 		}),
-		contracts.Fetch.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[web.FetchRequest]) (capture.Page, error) {
+		contracts.Fetch.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[web.FetchRequest]) (capture.Page, error) {
 			return research.fetchPage(ctx, command.Input)
 		}),
-		contracts.Browse.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.BrowseInput]) (capture.Page, error) {
+		contracts.Browse.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[wire.BrowseInput]) (capture.Page, error) {
 			return research.browse(ctx, command.Input)
 		}),
 		backend.BindCapability("web", contracts.Capability),

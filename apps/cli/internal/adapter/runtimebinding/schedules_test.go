@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/schedule"
 )
@@ -46,7 +46,7 @@ func (s *scheduleBindingStub) ListPluginProviders(_ context.Context, options pro
 }
 func (s *scheduleBindingStub) ListPlugins(_ context.Context, options protocol.CallOptions) (*protocol.Page[protocol.PluginInstallation], error) {
 	s.assertMeta(options.RequestMeta)
-	contracts, err := extension.ParseCapability([]byte(schedule.CapabilityJSON))
+	contracts, err := portable.ParseCapability([]byte(schedule.CapabilityJSON))
 	if err != nil {
 		s.t.Fatal(err)
 	}

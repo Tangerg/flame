@@ -10,9 +10,9 @@ import (
 
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/jsonschema"
 )
@@ -26,7 +26,7 @@ func TestGeneratedAnalyzerPointPreservesTheConsumerContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	artifact, err := extension.ParsePoint(data)
+	artifact, err := portable.ParsePoint(data)
 	if err != nil || artifact.Identity() != owner.Identity() {
 		t.Fatalf("packaged analyzer point differs from its consumer owner: %v", err)
 	}
@@ -42,7 +42,7 @@ func TestGeneratedContractsPreserveBackendAdmission(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := extension.ParseCapability(capabilityData)
+	contract, err := portable.ParseCapability(capabilityData)
 	if err != nil || contract.Identity() != contracts.Capability.Identity() {
 		t.Fatalf("generated capability differs from the backend owner: %v", err)
 	}
@@ -51,12 +51,12 @@ func TestGeneratedContractsPreserveBackendAdmission(t *testing.T) {
 		t.Fatal(err)
 	}
 	var methods []struct {
-		Name        string               `json:"name"`
-		Kind        extension.MethodKind `json:"kind"`
-		Target      string               `json:"target"`
-		Description string               `json:"description"`
-		Input       string               `json:"input"`
-		Output      string               `json:"output"`
+		Name        string              `json:"name"`
+		Kind        portable.MethodKind `json:"kind"`
+		Target      string              `json:"target"`
+		Description string              `json:"description"`
+		Input       string              `json:"input"`
+		Output      string              `json:"output"`
 	}
 	if err := json.Unmarshal(methodsData, &methods, json.RejectUnknownMembers(true)); err != nil {
 		t.Fatal(err)
@@ -173,7 +173,7 @@ func TestLiveCapabilityMatchesGeneratedReviewsContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "contract-client"}, nil)
-	if err := pluginsdk.RegisterClient(client); err != nil {
+	if err := qimumcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()
@@ -191,11 +191,11 @@ func TestLiveCapabilityMatchesGeneratedReviewsContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := extension.ParseCapability(data)
+	contract, err := portable.ParseCapability(data)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := pluginsdk.ResolveCapability(t.Context(), session, "reviews", contract); err != nil {
+	if _, err := qimumcp.ResolveCapability(t.Context(), session, "reviews", contract); err != nil {
 		t.Fatalf("live export differs from generated capability: %v", err)
 	}
 }

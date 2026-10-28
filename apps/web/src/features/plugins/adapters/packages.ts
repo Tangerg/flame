@@ -12,7 +12,7 @@ export const usePluginProviders = createDataQuery<PluginProviderSelection[]>(PRO
 
 export type PackageOperations = Methods["plugins"] & {
   signal: AbortSignal;
-  track<P extends Promise<unknown>>(operation: P): P;
+  track<P extends Promise<unknown>>(operation: (signal: AbortSignal) => P): P;
 };
 
 export interface PackageRealizationFailure {

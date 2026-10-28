@@ -1,13 +1,13 @@
 package terminal
 
 import (
+	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"os"
 	"testing"
 
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
-	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 )
 
 func TestMain(tests *testing.M) {
-	os.Exit(runtimefixture.RunWithFirstPartyPackages(tests, localruntime.FirstPartyDirectory))
+	os.Exit(runtimefixture.RunWithRuntimeCompanions(tests, localruntime.FirstPartyDirectory, localruntime.RunnerExecutable))
 }

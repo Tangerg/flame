@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/portable"
 	flameruntime "github.com/Tangerg/flame/runtime"
 )
 
@@ -106,13 +106,13 @@ func verifyStandalonePlugin(t *testing.T, name string) {
 	if contract == "" {
 		t.Fatal("author did not publish its own contract")
 	}
-	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "guardrails-policy", Contract: contract, Method: GuardrailsReplacePolicyV1Method, Input: `{"expectedRevision":1,"phrases":["private phrase"]}`, Target: extension.Target{Scope: "installation", Reference: installed.ID}}
+	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "guardrails-policy", Contract: contract, Method: GuardrailsReplacePolicyV1Method, Input: `{"expectedRevision":1,"phrases":["private phrase"]}`, Target: portable.Target{Scope: "installation", Reference: installed.ID}}
 	if name == "memory" {
-		published, err := extension.ParseCapability([]byte(memorycontract.CapabilityJSON))
+		published, err := portable.ParseCapability([]byte(memorycontract.CapabilityJSON))
 		if err != nil {
 			t.Fatal(err)
 		}
-		exported, err := extension.ParseCapability([]byte(contract))
+		exported, err := portable.ParseCapability([]byte(contract))
 		if err != nil || exported.Identity() != published.Identity() {
 			t.Fatalf("module relocation changed the host's Memory contract: %v", err)
 		}
@@ -129,7 +129,7 @@ func verifyStandalonePlugin(t *testing.T, name string) {
 		request.Input = `{"Scope":"user","CWD":"","Content":"independent author fact"}`
 	}
 	if name == "usagereports" {
-		published, err := extension.ParseCapability([]byte(UsageReportsCapabilityJSON))
+		published, err := portable.ParseCapability([]byte(UsageReportsCapabilityJSON))
 		if err != nil {
 			t.Fatal(err)
 		}

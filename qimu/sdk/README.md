@@ -1,0 +1,78 @@
+# Qimu TypeScript SDK
+
+`@qimu/sdk` contains typed native contracts, unit declarations, structured resource
+ownership, and exact JSON. It has no React, Node, Flame, or Dougong dependency.
+Public control messages are generated from `qimu/control` Go types. They are
+projections, not a second handwritten protocol schema.
+
+## Native contracts and units
+
+A consumer owns each contract's name, version, digest, kind, and execution mode.
+Construct a `Service<T>`, `Point<Metadata, Value>`, or `Event<Payload>` from that
+published identity. `optional(service)` declares explicit absence. Equal
+TypeScript types alone never make two contract identities interchangeable.
+
+```ts
+import { defineUnit, Service } from "@qimu/sdk";
+
+const files = new Service<{ read(): string }>(publishedFilesContract);
+const preview = new Service<{ text(): string }>(publishedPreviewContract);
+
+export default defineUnit({
+  id: "preview",
+  imports: { source: files, comparison: files },
+  exports: { preview },
+  setup({ imports }) {
+    return {
+      preview: {
+        text: () => `${imports.source.read()} / ${imports.comparison.read()}`,
+      },
+    };
+  },
+});
+```
+
+The Host approves each named import slot independently. Setup cannot look up or
+select another provider. Native objects remain in their JavaScript Realm. A
+consumer chooses portable codecs and remote drivers separately.
+
+A Point export must call `setup.contribute(point, exportName, metadata, value)`
+and return that same object under its declared export name. Extra staged keys
+may use a declared Point contract. Metadata is captured before setup returns.
+Staging never waits for the unit's own global publication acknowledgement.
+
+## Ownership
+
+`Lifetime.run` registers work before invoking it. `branch` creates an owned
+child. `cleanup` registers LIFO resource release before acquisition starts.
+`dependsOn` records an already approved actual resource dependency; it performs
+no discovery or resolution. Closing broadcasts cancellation to all children,
+joins admitted work, then releases dependents before their providers.
+
+A cleanup exception means release is unconfirmed. The original resource adapter
+can later call the returned `Cleanup.confirmReleased(evidence)` once actual
+termination is known. Cleanup is not replayed. A resource that was released but
+reported a diagnostic returns `{ status: "released", error }` explicitly.
+
+`close()` observes the initial settlement. `wait()` observes terminal release.
+Cancelling either wait does not cancel the original exit. Concurrent callers
+observe one exit identity. Final reports contain bounded diagnostic categories,
+not thrown payloads or retained plugin closures.
+The cancellation reason is an immutable closed-status error. Use the original
+Exit's identity to identify an exit; the reason object does not identify one.
+
+`acquire` and `withResource` build resource handles on that same Lifetime. They
+reserve cleanup before asynchronous acquisition and release a late result when
+its owner has already begun closing. They do not create an independent cleanup
+manager.
+
+## Exact JSON
+
+Use `@qimu/sdk/json` for values that may contain integers or decimal bounds beyond
+JavaScript's exact `number` range. It exports `parseJSON`, `stringifyJSON`,
+`cloneJSON`, `ExactNumber`, and numeric inspection helpers. Protocol identities,
+epochs, revisions, and generations are opaque strings in the control projection.
+
+Run `npm run check --workspace @qimu/sdk` from the monorepo root. Regenerate
+control types through `go run ./cmd/controlgen --out sdk/src/protocol.generated.ts`
+in `qimu`; never edit the generated TypeScript file.

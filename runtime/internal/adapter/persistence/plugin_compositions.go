@@ -5,10 +5,10 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
-	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/flame/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
@@ -82,7 +82,7 @@ func restoreComposition(reference, encoded string) (plugin.OrderedComposition, e
 	if err != nil {
 		return plugin.OrderedComposition{}, err
 	}
-	contract, err := extension.ParseCapability(value.Snapshot().Contract.JSON())
+	contract, err := portable.ParseCapability(value.Snapshot().Contract.JSON())
 	if err != nil || contract.Descriptor().Reference != reference {
 		return plugin.OrderedComposition{}, errors.Join(err, errors.New("sqlite: composition reference differs from its contract"))
 	}
@@ -94,7 +94,7 @@ func (s *compositionStore) Save(ctx context.Context, value plugin.OrderedComposi
 		return err
 	}
 	record := value.Snapshot()
-	contract, err := extension.ParseCapability(record.Contract.JSON())
+	contract, err := portable.ParseCapability(record.Contract.JSON())
 	if err != nil {
 		return err
 	}

@@ -2,17 +2,13 @@ package mcp
 
 import (
 	"context"
-	"crypto/sha256"
-	json "encoding/json/v2"
 	"errors"
 	"os/exec"
-	"slices"
-	"strings"
 	"sync"
 
-	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	"github.com/Tangerg/flame/qimu/cancellation"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/go-sdk/auth"
@@ -30,6 +26,7 @@ type server struct {
 	tools   []Executable          // last tool set proved on this session
 	state   mcpserver.ConnectionState
 	failure mcpserver.ConnectionFailure // set exactly while state is failed
+	cause   error
 
 	// oauth is either a restored durable OAuth handler or the handler obtained by
 	// a successful [connections.Authorize]. nil until a saved session exists or
@@ -43,14 +40,15 @@ func (s *server) name() mcpserver.ID { return s.id }
 
 // settle is the only writer of the live outcome, so the session, tool set,
 // state and failure category always describe the same attempt.
-func (s *server) settle(session *sdkmcp.ClientSession, tools []Executable, state mcpserver.ConnectionState, failure mcpserver.ConnectionFailure) {
+func (s *server) settle(session *sdkmcp.ClientSession, tools []Executable, state mcpserver.ConnectionState, failure mcpserver.ConnectionFailure, cause error) {
 	if state != mcpserver.ConnectionConnected {
 		session, tools = nil, nil
 	}
 	if state != mcpserver.ConnectionFailed {
 		failure = ""
+		cause = nil
 	}
-	s.session, s.tools, s.state, s.failure = session, tools, state, failure
+	s.session, s.tools, s.state, s.failure, s.cause = session, tools, state, failure, cause
 }
 
 type shutdownAttempt struct {
@@ -65,17 +63,19 @@ type sessionCloseAttempt struct {
 
 type ownedSession struct {
 	closeFn  func() error
+	managed  *installedObservation
 	close    *sessionCloseAttempt
 	bindings *plugin.RequiredBindings
 }
 
-// connections owns the live MCP server sessions + reconnect. The tool sink
+// connections owns ordinary MCP sessions and observes managed Host instances.
+// The tool sink
 // receives the rebuilt model-facing tool set inside the same critical section
 // that changes a server's live outcome, so no reader can observe a settled
 // status whose tools the sink has not received, or the reverse.
 type connections struct {
 	lifetime  context.Context
-	callbacks *pluginsdk.Callbacks
+	callbacks *qimumcp.Callbacks
 	mu        sync.Mutex
 	servers   []*server
 	client    *sdkmcp.Client
@@ -141,16 +141,14 @@ func (c *connections) current(name mcpserver.ID, session *sdkmcp.ClientSession) 
 	return configuredServer != nil && configuredServer.session == session
 }
 
-func (c *connections) ownSessionLocked(session *sdkmcp.ClientSession, cleanup sessionCleanup, bindings *plugin.RequiredBindings) {
+func (c *connections) ownSessionLocked(session *sdkmcp.ClientSession, cleanup sessionCleanup, bindings *plugin.RequiredBindings) error {
 	if session == nil {
-		return
+		return nil
 	}
-	if c.sessions == nil {
-		c.sessions = make(map[*sdkmcp.ClientSession]*ownedSession)
-	}
+	var err error
 	if c.sessions[session] == nil {
 		if c.callbacks != nil {
-			c.callbacks.AdmitSession(session)
+			err = c.callbacks.AdmitSession(session)
 		}
 		c.sessions[session] = &ownedSession{bindings: bindings, closeFn: func() error {
 			if c.callbacks != nil {
@@ -159,6 +157,7 @@ func (c *connections) ownSessionLocked(session *sdkmcp.ClientSession, cleanup se
 			return retireSession(session, cleanup)
 		}}
 	}
+	return err
 }
 
 // retireSession closes session and then its process group. A stdio server
@@ -203,86 +202,11 @@ func (c *connections) requirements(session *sdkmcp.ClientSession) (*plugin.Requi
 func (c *connections) activation(session *sdkmcp.ClientSession) (plugin.Activation, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.closed || session == nil {
+	owned := c.sessions[session]
+	if c.closed || owned == nil || owned.close != nil || owned.managed == nil {
 		return plugin.Activation{}, ErrUnavailable
 	}
-	var root *server
-	for _, candidate := range c.servers {
-		if candidate.session == session {
-			root = candidate
-			break
-		}
-	}
-	type boundJSON struct{ Provider, Digest, Contribution, Server, Export, Contract string }
-	type requirementJSON struct {
-		Contribution, ID, Contract string
-		Optional                   bool
-		Bindings                   []boundJSON
-	}
-	type entryJSON struct {
-		Server, Authority string
-		Requirements      []requirementJSON
-	}
-	var entries []entryJSON
-	var dependencies []plugin.Dependency
-	visited := map[*server]bool{}
-	var collect func(*server) error
-	collect = func(current *server) error {
-		if current == nil || current.session == nil {
-			return ErrUnavailable
-		}
-		if visited[current] {
-			return nil
-		}
-		visited[current] = true
-		owned := c.sessions[current.session]
-		if owned == nil || owned.close != nil {
-			return ErrUnavailable
-		}
-		if digest, _, installed := current.config.Source.Release(); installed {
-			id, _ := current.id.Origin().Installation()
-			dependencies = append(dependencies, plugin.Dependency{InstallationID: id, Digest: digest})
-		}
-		entry := entryJSON{Server: current.id.String(), Authority: current.config.AuthorityFingerprint().String(), Requirements: []requirementJSON{}}
-		for _, required := range owned.bindings.Snapshot() {
-			requirement := requirementJSON{Contribution: required.Contribution.String(), ID: required.ID.String(), Contract: required.Contract.String(), Optional: required.Optional, Bindings: []boundJSON{}}
-
-			for _, binding := range required.Bindings {
-				requirement.Bindings = append(requirement.Bindings, boundJSON{binding.Provider.InstallationID.String(), binding.Provider.Digest.String(), binding.Contribution.String(), binding.Server.String(), binding.Export, binding.Contract.String()})
-				origin, err := mcpserver.InstallationOrigin(binding.Provider.InstallationID)
-				if err != nil {
-					return err
-				}
-				id, err := mcpserver.NewID(origin, binding.Server)
-				if err != nil {
-					return err
-				}
-				provider := c.find(id)
-				if provider == nil {
-					return ErrUnavailable
-				}
-				digest, _, installed := provider.config.Source.Release()
-				if !installed || digest != binding.Provider.Digest {
-					return ErrUnavailable
-				}
-				if err := collect(provider); err != nil {
-					return err
-				}
-			}
-			entry.Requirements = append(entry.Requirements, requirement)
-		}
-		entries = append(entries, entry)
-		return nil
-	}
-	if err := collect(root); err != nil {
-		return plugin.Activation{}, err
-	}
-	slices.SortFunc(entries, func(a, b entryJSON) int { return strings.Compare(a.Server, b.Server) })
-	encoded, err := json.Marshal(entries, json.Deterministic(true))
-	if err != nil {
-		return plugin.Activation{}, err
-	}
-	return plugin.Activation{Identity: identity.DigestFromSum(sha256.Sum256(encoded)), Dependencies: plugin.CompactDependencies(dependencies)}, nil
+	return owned.managed.activation()
 }
 
 func (c *connections) serviceSession(ctx context.Context, current mcpserver.Server) (*sdkmcp.ClientSession, error) {

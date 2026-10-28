@@ -30,6 +30,51 @@ type scriptedRuntimeCloser struct {
 	closes  int
 }
 
+type runtimeCloseFunc func() error
+
+func (f runtimeCloseFunc) Close() error { return f() }
+
+func TestRunServerKeepsCleanupTransportUntilOriginalRuntimeExit(t *testing.T) {
+	started := make(chan struct{})
+	closing := make(chan struct{})
+	proof := make(chan struct{})
+	served := make(chan struct{})
+	exited := false
+	server := scriptedHTTPServer{
+		start: func() error { close(started); <-served; return http.ErrServerClosed },
+		shutdown: func(context.Context) error {
+			close(served)
+			if !exited {
+				return errors.New("cleanup transport stopped before original runtime exit")
+			}
+			return nil
+		},
+		close: func() error { return errors.New("unexpected forced transport close") },
+	}
+	instance := runtimeCloseFunc(func() error {
+		close(closing)
+		<-proof
+		exited = true
+		return nil
+	})
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	result := make(chan error, 1)
+	go func() { result <- runServer(ctx, io.Discard, server, "127.0.0.1:0", nil, instance) }()
+	<-started
+	cancel()
+	<-closing
+	select {
+	case <-served:
+		t.Fatal("original cleanup channel was closed while release proof was pending")
+	default:
+	}
+	close(proof)
+	if err := <-result; err != nil {
+		t.Fatal(err)
+	}
+}
+
 func (s *scriptedRuntimeCloser) Close() error {
 	result := s.results[s.closes]
 	s.closes++
@@ -79,7 +124,7 @@ func TestRunServerClosesTransportAfterServeFailure(t *testing.T) {
 		},
 	}
 
-	err := runServer(t.Context(), io.Discard, server, "127.0.0.1:0", nil)
+	err := runServer(t.Context(), io.Discard, server, "127.0.0.1:0", nil, nil)
 	if !errors.Is(err, serveFailure) || !errors.Is(err, closeFailure) {
 		t.Fatalf("runServer error = %v, want serve and close failures", err)
 	}
@@ -111,7 +156,7 @@ func TestRunServerUsesGracefulShutdownAfterOwnerCancellation(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	result := make(chan error, 1)
-	go func() { result <- runServer(ctx, io.Discard, server, "127.0.0.1:0", nil) }()
+	go func() { result <- runServer(ctx, io.Discard, server, "127.0.0.1:0", nil, nil) }()
 	<-started
 	cancel()
 
@@ -137,7 +182,7 @@ func TestBannerReportsTheGateThatActuallyExists(t *testing.T) {
 			shutdown: func(context.Context) error { return nil },
 			close:    func() error { return nil },
 		}
-		_ = runServer(t.Context(), &printed, server, "127.0.0.1:0", token)
+		_ = runServer(t.Context(), &printed, server, "127.0.0.1:0", token, nil)
 		return printed.String()
 	}
 

@@ -11,6 +11,7 @@ import (
 	app "github.com/Tangerg/flame/plugins/memory/internal/application"
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -37,7 +38,7 @@ func registerServer(server *sdk.Server, db *sql.DB, store store, roots app.RootR
 	if err != nil {
 		return err
 	}
-	backend, err := pluginsdk.NewBackend(server)
+	backend, err := qimumcp.NewBackend(server)
 	if err != nil {
 		return err
 	}
@@ -67,10 +68,10 @@ func registerServer(server *sdk.Server, db *sql.DB, store store, roots app.RootR
 	}
 	if err := errors.Join(
 		pluginstorage.RegisterReceipts(backend, db),
-		toolReceipts.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[pluginsdk.ReceiptRequest]) (pluginsdk.ToolReceipt, error) {
+		toolReceipts.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[qimumcp.ReceiptRequest]) (pluginsdk.ToolReceipt, error) {
 			return memoryToolReceipt(ctx, db, command.Input)
 		}),
-		contracts.List.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ListInput]) (rpc.Page, error) {
+		contracts.List.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[rpc.ListInput]) (rpc.Page, error) {
 			input := command.Input
 			limit := pagination.DefaultLimit()
 			if input.Limit != nil {
@@ -102,16 +103,16 @@ func registerServer(server *sdk.Server, db *sql.DB, store store, roots app.RootR
 		pluginstorage.RegisterCommand(backend, db, contracts.Review, classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ReviewInput) (rpc.Ack, error) {
 			return rpc.Ack{}, review.Review(ctx, input.ID, input.ExpectedRevision, input.Decision)
 		}),
-		contracts.Items.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ItemsInput]) ([]memory.ItemSnapshot, error) {
+		contracts.Items.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[rpc.ItemsInput]) ([]memory.ItemSnapshot, error) {
 			input := command.Input
 			items, err := read.Items(ctx, input.Scope, input.Project)
 			return snapshots(items), err
 		}),
-		contracts.Search.RegisterServer(backend, classify, func(ctx context.Context, session *sdk.ServerSession, command pluginsdk.Command[rpc.SearchInput]) ([]memory.ItemSnapshot, error) {
+		contracts.Search.RegisterServer(backend, classify, func(ctx context.Context, session *sdk.ServerSession, command qimumcp.Command[rpc.SearchInput]) ([]memory.ItemSnapshot, error) {
 			input := command.Input
 			var resolve func(context.Context) (app.Embedder, error)
 			if input.EmbeddingSpace != "" {
-				grant, err := pluginsdk.CallbackFromContext(ctx)
+				grant, err := qimumcp.CallbackFromContext(ctx)
 				if err != nil {
 					return nil, err
 				}
@@ -126,26 +127,26 @@ func registerServer(server *sdk.Server, db *sql.DB, store store, roots app.RootR
 			items, err := read.Search(ctx, input.Project, input.Query, input.TopK)
 			return snapshots(items), err
 		}),
-		contracts.Maintain.RegisterServer(backend, classify, func(ctx context.Context, session *sdk.ServerSession, command pluginsdk.Command[rpc.MaintenanceInput]) (rpc.MaintenanceResult, error) {
+		contracts.Maintain.RegisterServer(backend, classify, func(ctx context.Context, session *sdk.ServerSession, command qimumcp.Command[rpc.MaintenanceInput]) (rpc.MaintenanceResult, error) {
 			input := command.Input
 			admitted, err := command.RequestInput()
 			if err != nil {
 				return rpc.MaintenanceResult{}, err
 			}
-			var grant pluginsdk.CallbackRef
+			var grant qimumcp.CallbackRef
 			prepared, original, err := pluginstorage.AdmitCommand(ctx, db, rpc.Maintain, command.ID, admitted, func(ctx context.Context) error {
 				if !input.Compacted {
 					return nil
 				}
 				var err error
-				grant, err = pluginsdk.CallbackFromContext(ctx)
+				grant, err = qimumcp.CallbackFromContext(ctx)
 				return err
 			})
 			if err != nil {
 				return rpc.MaintenanceResult{}, err
 			}
 			if prepared == nil {
-				return pluginsdk.DecodeReply[rpc.MaintenanceResult](original)
+				return qimumcp.DecodeReply[rpc.MaintenanceResult](original)
 			}
 			if !prepared.NewlyAdmitted() {
 				return rpc.MaintenanceResult{}, pluginstorage.ErrCommandUnconfirmed
@@ -202,7 +203,7 @@ func (s toolSearch) Search(ctx context.Context, project, query string, topK int)
 	var embed func(context.Context) (app.Embedder, error)
 	if scope.EmbeddingSpace != "" {
 		embed = func(context.Context) (app.Embedder, error) {
-			grant, err := pluginsdk.CallbackFromContext(ctx)
+			grant, err := qimumcp.CallbackFromContext(ctx)
 			if err != nil {
 				return nil, err
 			}

@@ -3,13 +3,11 @@ package pluginservices
 import (
 	"context"
 	"errors"
-	"path/filepath"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 )
 
 type cancelPreparedStore struct {
@@ -32,7 +30,7 @@ func TestCanceledPreparedStreamRetiresWithoutAnyBackendInvocation(t *testing.T) 
 	ctx, cancel := context.WithCancel(operation.Bind(t.Context(), "records.stream", "cancel-after-binding"))
 	defer cancel()
 	store := f.host.PluginCommands
-	routing, err := plugins.NewCommands(cancelPreparedStore{CommandStore: store, cancel: cancel}, plugins.NewAdmission())
+	routing, err := plugins.NewCommands(cancelPreparedStore{CommandStore: store, cancel: cancel}, f.host.Admission)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,18 +43,7 @@ func TestCanceledPreparedStreamRetiresWithoutAnyBackendInvocation(t *testing.T) 
 	if err != nil || !found || command.Snapshot().Phase != plugin.CommandPrepared {
 		t.Fatalf("prepared=%v, %t, %v", command, found, err)
 	}
-	if err := f.host.Close(); err != nil {
-		t.Fatal(err)
-	}
-	f.host, err = persistencefixture.Open(t, t.Context(), filepath.Dir(f.hostPath))
-	if err != nil {
-		t.Fatal(err)
-	}
-	store = f.host.PluginCommands
-	f.calls.routing, err = plugins.NewCommands(store, plugins.NewAdmission())
-	if err != nil {
-		t.Fatal(err)
-	}
+	f.reopen(t)
 	if err := f.calls.RetireCommand(t.Context(), id); err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +53,7 @@ func TestCanceledPreparedStreamRetiresWithoutAnyBackendInvocation(t *testing.T) 
 	if _, err := f.run(t, operation.Bind(t.Context(), "records.stream", "cancel-after-binding")); !errors.Is(err, plugin.ErrCommandRetired) || f.invocations.Load() != 0 {
 		t.Fatalf("retired stream replayed: %v, invocations=%d", err, f.invocations.Load())
 	}
-	if held, err := store.PendingCommandDependencies(t.Context()); err != nil || len(held) != 0 {
+	if held, err := f.host.PluginCommands.PendingCommandDependencies(t.Context()); err != nil || len(held) != 0 {
 		t.Fatalf("retired dependencies=%v, %v", held, err)
 	}
 }

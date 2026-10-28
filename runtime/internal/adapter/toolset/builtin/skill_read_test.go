@@ -91,7 +91,7 @@ func TestSkillLoadReportsUsageFailureAndRecovers(t *testing.T) {
 	if storageErr == nil {
 		t.Fatal("invalid usage file did not fail recording")
 	}
-	tools, _, err := BuildReaders(t.Context(), t.TempDir(), userDir, recorder, nil)
+	tools, _, err := BuildReaders(t.Context(), t.TempDir(), userDir, recorder, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +150,7 @@ func TestBuildReadersMergesProjectOverUser(t *testing.T) {
 	writeSkill(t, user, "shared", "USER copy")
 	writeSkill(t, user, "user-only", "user only")
 
-	tools, _, err := BuildReaders(t.Context(), cwd, user, nil, nil)
+	tools, _, err := BuildReaders(t.Context(), cwd, user, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,7 +192,7 @@ func TestBuildReadersMergesProjectOverUser(t *testing.T) {
 // neither the project nor the user Skills directory exists — no empty Skill
 // tool cluttering the model's tool list.
 func TestBuildReadersAbsentWhenNoDirs(t *testing.T) {
-	tools, _, err := BuildReaders(t.Context(), t.TempDir(), filepath.Join(t.TempDir(), "missing"), nil, nil)
+	tools, _, err := BuildReaders(t.Context(), t.TempDir(), filepath.Join(t.TempDir(), "missing"), nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -207,7 +207,7 @@ func TestBuiltSkillReaderKeepsItsSelectedLibraryAfterDeletion(t *testing.T) {
 	writeSkill(t, project, "shared", "project copy")
 	writeSkill(t, user, "shared", "user copy")
 	recorder := &recordingProbe{}
-	tools, _, err := BuildReaders(t.Context(), workspace, user, recorder, nil)
+	tools, _, err := BuildReaders(t.Context(), workspace, user, recorder, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -229,7 +229,7 @@ func TestBuiltSkillReaderKeepsItsSelectedLibraryAfterDeletion(t *testing.T) {
 	if len(recorder.names) != 0 {
 		t.Fatalf("a shadowed library acquired usage: %v", recorder.names)
 	}
-	tools, _, err = BuildReaders(t.Context(), workspace, user, recorder, nil)
+	tools, _, err = BuildReaders(t.Context(), workspace, user, recorder, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

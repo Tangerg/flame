@@ -16,7 +16,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
 )
 
 const (

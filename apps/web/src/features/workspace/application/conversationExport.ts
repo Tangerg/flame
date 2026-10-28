@@ -1,6 +1,6 @@
 import { type AgentAccess } from "@/features/agent/public/agent";
 import { type RuntimeAccess } from "@/features/connection/public/runtime";
-import { parseJSON } from "@flame/runtime-client/json";
+import { parseJSON } from "@qimu/sdk/json";
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
 import { createPublicationSlot } from "@/lib/publicationSlot";

@@ -35,7 +35,7 @@ func TestOriginalScheduleSourceAvailabilityPreservesRecoveryFailures(t *testing.
 			}
 			server := mcpserver.Server{Source: source, Name: name, Enabled: true, Transport: mcpserver.TransportStdio, Command: "echo"}
 			poolSource := toolSourceRegistry{server: server}
-			pool, err := mcp.Open(t.Context(), t.Context(), nil, nil, poolSource, nil, nil, nil, nil)
+			pool, err := mcp.Open(t.Context(), t.Context(), nil, nil, poolSource, nil, nil, nil, nil, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -58,7 +58,8 @@ func TestOriginalScheduleSourceAvailabilityPreservesRecoveryFailures(t *testing.
 				ctx, cancel = context.WithCancelCause(ctx)
 				cancel(failure)
 			}
-			available, err := schedules.AwaitOriginalToolSource(ctx, testsupport.MCPTool(server.ID(), "create_schedule"), release.Digest(), server.AuthorityFingerprint())
+			activation := testsupport.ServerActivation("original", name.String(), plugin.Dependency{InstallationID: installation.ID(), Digest: release.Digest()})
+			available, err := schedules.AwaitOriginalToolSource(ctx, testsupport.MCPTool(server.ID(), "create_schedule"), release.Digest(), server.AuthorityFingerprint(), activation)
 			if available {
 				t.Fatal("unavailable original source became recoverable")
 			}

@@ -6,10 +6,10 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/sqlite"
 )
 
 type store struct{ db *sql.DB }
@@ -148,7 +148,7 @@ func (s *store) completeIndex(ctx context.Context, prepared *pluginstorage.Prepa
 	err := sqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
 		var err error
 		result, outcomeErr = publish(ctx)
-		reply, err := pluginsdk.EncodeReply(result, outcomeErr, classify)
+		reply, err := qimumcp.EncodeReply(result, outcomeErr, classify)
 		if err != nil {
 			return err
 		}

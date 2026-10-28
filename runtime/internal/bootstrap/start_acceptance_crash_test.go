@@ -53,7 +53,7 @@ func TestStartAcceptanceCrashHelper(t *testing.T) {
 	})}
 	host, api := buildProtocolRuntime(t, protocolRuntimeConfig(t, stores, model), home)
 	defer host.Close()
-	endpoint := acceptedCommandEndpoint(t, api, stores)
+	endpoint := host.Endpoint()
 	if phase == "commit" {
 		session, err := api.CreateSession(t.Context(), protocol.CreateSessionRequest{Workspace: &protocol.WorkspaceRef{Path: home}})
 		if err != nil {

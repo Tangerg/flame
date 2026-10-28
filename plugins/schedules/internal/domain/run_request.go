@@ -3,10 +3,10 @@ package schedule
 import (
 	"errors"
 	"fmt"
-	"time"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/portable"
+	"time"
 )
 
 type RunRecord struct {
@@ -21,7 +21,7 @@ type RunRequest struct {
 	occurrenceID occurrenceIdentity
 	sessionID    string
 	runID        string
-	invocation   extension.Invocation
+	invocation   portable.Invocation
 	commandID    string
 }
 
@@ -65,7 +65,7 @@ func (r RunRecord) validate() error {
 func (r RunRecord) ScheduleID() string { return r.scheduleID.String() }
 func (r RunRecord) RanAt() time.Time   { return r.ranAt }
 
-func (s Schedule) ManualRun(commandID, sessionID, runID string, ranAt time.Time, invocation extension.Invocation) (RunRequest, error) {
+func (s Schedule) ManualRun(commandID, sessionID, runID string, ranAt time.Time, invocation portable.Invocation) (RunRequest, error) {
 	record, err := s.recordRun(ranAt)
 	if err != nil {
 		return RunRequest{}, err
@@ -87,7 +87,7 @@ func (o Occurrence) RunRequest() RunRequest {
 }
 
 func (r RunRequest) Validate() error {
-	if err := r.invocation.Validate(); err != nil {
+	if err := extension.ValidateInvocation(r.invocation); err != nil {
 		return err
 	}
 	if err := r.execution.validate(); err != nil {
@@ -134,10 +134,10 @@ func (r RunRequest) ManualRecord() (RunRecord, bool) {
 	return *r.manualRecord, true
 }
 
-func (r RunRequest) SessionID() string                { return r.sessionID }
-func (r RunRequest) RunID() string                    { return r.runID }
-func (r RunRequest) Invocation() extension.Invocation { return r.invocation }
-func (r RunRequest) CommandID() string                { return r.commandID }
+func (r RunRequest) SessionID() string               { return r.sessionID }
+func (r RunRequest) RunID() string                   { return r.runID }
+func (r RunRequest) Invocation() portable.Invocation { return r.invocation }
+func (r RunRequest) CommandID() string               { return r.commandID }
 
 type RunRequestSnapshot struct {
 	ScheduleID   string
@@ -146,7 +146,7 @@ type RunRequestSnapshot struct {
 	SessionID    string
 	RunID        string
 	ManualRanAt  time.Time
-	Invocation   extension.Invocation
+	Invocation   portable.Invocation
 	CommandID    string `json:"CommandID,omitzero"`
 }
 

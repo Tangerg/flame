@@ -1,5 +1,5 @@
 {
-  "protocol": "io.github.tangerg.flame/backend/2026-10-15.3",
+  "protocol": "io.github.tangerg.qimu/portable/1",
   "reference": "flame.github.v1",
   "composition": "collection",
   "scope": "installation",
@@ -11,7 +11,7 @@
       "description": "Create a discussion comment on an issue or PR; code-line comments use create_pull_request_comment. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_CreateCommentInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CreateCommentInput": {
             "additionalProperties": false,
             "properties": {
               "body": {
@@ -76,7 +76,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Comment": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Comment": {
             "additionalProperties": false,
             "properties": {
               "author": {
@@ -165,7 +165,7 @@
       "description": "Create an issue with title, optional body, labels and assignees. Returns GitHub's actual values, including metadata GitHub may ignore without sufficient permissions. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_CreateIssueInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CreateIssueInput": {
             "additionalProperties": false,
             "properties": {
               "assignees": {
@@ -240,7 +240,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Issue": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Issue": {
             "additionalProperties": false,
             "properties": {
               "assignees": {
@@ -425,7 +425,7 @@
       "description": "Create an inline PR review comment at the inspected commit/path/line/side; optional startLine/startSide defines a range. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_CreateReviewCommentInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CreateReviewCommentInput": {
             "additionalProperties": false,
             "properties": {
               "body": {
@@ -602,7 +602,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_ReviewComment": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ReviewComment": {
             "additionalProperties": false,
             "properties": {
               "author": {
@@ -829,7 +829,7 @@
       "description": "Create a PR from existing head/base branches, optionally as a draft. This does not create commits or push a branch. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_CreatePullInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CreatePullInput": {
             "additionalProperties": false,
             "properties": {
               "base": {
@@ -926,7 +926,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Branch": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Branch": {
             "additionalProperties": false,
             "properties": {
               "label": {
@@ -949,7 +949,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_PullRequest": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_PullRequest": {
             "additionalProperties": false,
             "properties": {
               "additions": {
@@ -965,7 +965,7 @@
                 "type": "string"
               },
               "base": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Branch"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Branch"
               },
               "body": {
                 "type": "string"
@@ -992,7 +992,7 @@
                 "type": "boolean"
               },
               "head": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Branch"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Branch"
               },
               "maintainerCanModify": {
                 "type": "boolean"
@@ -1073,7 +1073,7 @@
             "type": "string"
           },
           "base": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Branch"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Branch"
           },
           "body": {
             "type": "string"
@@ -1100,7 +1100,7 @@
             "type": "boolean"
           },
           "head": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Branch"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Branch"
           },
           "maintainerCanModify": {
             "type": "boolean"
@@ -1172,7 +1172,7 @@
       "description": "Delete one issue/PR discussion comment by its inspected ID. This does not delete an inline code-review comment. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_CommentInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CommentInput": {
             "additionalProperties": false,
             "properties": {
               "commentId": {
@@ -1225,7 +1225,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_DeletedComment": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_DeletedComment": {
             "additionalProperties": false,
             "properties": {
               "deleted": {
@@ -1282,7 +1282,7 @@
       "description": "Delete an inline PR review comment by its inspected comment ID. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_CommentInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CommentInput": {
             "additionalProperties": false,
             "properties": {
               "commentId": {
@@ -1335,7 +1335,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_DeletedComment": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_DeletedComment": {
             "additionalProperties": false,
             "properties": {
               "deleted": {
@@ -1392,7 +1392,7 @@
       "description": "Read one GitHub issue or pull request by its repository and issue number.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_IssueInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_IssueInput": {
             "additionalProperties": false,
             "properties": {
               "number": {
@@ -1445,7 +1445,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Issue": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Issue": {
             "additionalProperties": false,
             "properties": {
               "assignees": {
@@ -1630,7 +1630,7 @@
       "description": "Read a pull request's head/base SHAs, draft/merge state and change counts. A missing mergeable value means GitHub has not computed it. Use the head SHA for subsequent commit checks.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_IssueInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_IssueInput": {
             "additionalProperties": false,
             "properties": {
               "number": {
@@ -1683,7 +1683,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Branch": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Branch": {
             "additionalProperties": false,
             "properties": {
               "label": {
@@ -1706,7 +1706,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_PullRequest": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_PullRequest": {
             "additionalProperties": false,
             "properties": {
               "additions": {
@@ -1722,7 +1722,7 @@
                 "type": "string"
               },
               "base": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Branch"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Branch"
               },
               "body": {
                 "type": "string"
@@ -1749,7 +1749,7 @@
                 "type": "boolean"
               },
               "head": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Branch"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Branch"
               },
               "maintainerCanModify": {
                 "type": "boolean"
@@ -1830,7 +1830,7 @@
             "type": "string"
           },
           "base": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Branch"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Branch"
           },
           "body": {
             "type": "string"
@@ -1857,7 +1857,7 @@
             "type": "boolean"
           },
           "head": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Branch"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Branch"
           },
           "maintainerCanModify": {
             "type": "boolean"
@@ -1929,7 +1929,7 @@
       "description": "Read one page of line-level diagnostics for a check run ID returned by list_check_runs. Preserves paths, ranges, severity and original diagnostic text.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_CheckInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CheckInput": {
             "additionalProperties": false,
             "properties": {
               "checkRunId": {
@@ -2028,7 +2028,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Annotation": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Annotation": {
             "additionalProperties": false,
             "properties": {
               "endColumn": {
@@ -2092,12 +2092,12 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_AnnotationPage": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_AnnotationPage": {
             "additionalProperties": false,
             "properties": {
               "annotations": {
                 "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Annotation"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Annotation"
                 },
                 "type": "array"
               },
@@ -2122,7 +2122,7 @@
         "properties": {
           "annotations": {
             "items": {
-              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Annotation"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Annotation"
             },
             "type": "array"
           },
@@ -2149,7 +2149,7 @@
       "description": "Read one page of latest check runs with upstream status, conclusion and diagnostic text. GitHub limits this endpoint to the most recent 1000 check suites. Use the exact PR head SHA, list_check_annotations for line diagnostics, and list_commit_statuses for external CI.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_CommitInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CommitInput": {
             "additionalProperties": false,
             "properties": {
               "limit": {
@@ -2240,12 +2240,12 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_CheckPage": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CheckPage": {
             "additionalProperties": false,
             "properties": {
               "checkRuns": {
                 "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_CheckRun"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CheckRun"
                 },
                 "type": "array"
               },
@@ -2264,7 +2264,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_CheckRun": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CheckRun": {
             "additionalProperties": false,
             "properties": {
               "annotationsCount": {
@@ -2337,7 +2337,7 @@
         "properties": {
           "checkRuns": {
             "items": {
-              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_CheckRun"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CheckRun"
             },
             "type": "array"
           },
@@ -2364,7 +2364,7 @@
       "description": "Read one page of commit statuses, including external CI that is not represented by check runs. Use an exact PR head SHA when assessing a revision.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_CommitInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CommitInput": {
             "additionalProperties": false,
             "properties": {
               "limit": {
@@ -2455,7 +2455,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_CommitStatus": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CommitStatus": {
             "additionalProperties": false,
             "properties": {
               "context": {
@@ -2497,7 +2497,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_StatusPage": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_StatusPage": {
             "additionalProperties": false,
             "properties": {
               "nextPage": {
@@ -2511,7 +2511,7 @@
               },
               "statuses": {
                 "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_CommitStatus"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CommitStatus"
                 },
                 "type": "array"
               }
@@ -2536,7 +2536,7 @@
           },
           "statuses": {
             "items": {
-              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_CommitStatus"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CommitStatus"
             },
             "type": "array"
           }
@@ -2554,7 +2554,7 @@
       "description": "Read one page of discussion comments on an issue or pull request. Inline code review comments are returned by list_pull_request_comments.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_ThreadInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ThreadInput": {
             "additionalProperties": false,
             "properties": {
               "limit": {
@@ -2653,7 +2653,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Comment": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Comment": {
             "additionalProperties": false,
             "properties": {
               "author": {
@@ -2693,12 +2693,12 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_CommentPage": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CommentPage": {
             "additionalProperties": false,
             "properties": {
               "comments": {
                 "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Comment"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Comment"
                 },
                 "type": "array"
               },
@@ -2723,7 +2723,7 @@
         "properties": {
           "comments": {
             "items": {
-              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Comment"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Comment"
             },
             "type": "array"
           },
@@ -2750,7 +2750,7 @@
       "description": "Read one explicit page of repository issues and pull requests, exposing the next page number supplied by GitHub.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_ListInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ListInput": {
             "additionalProperties": false,
             "properties": {
               "limit": {
@@ -2853,7 +2853,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Issue": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Issue": {
             "additionalProperties": false,
             "properties": {
               "assignees": {
@@ -2941,12 +2941,12 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_IssuePage": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_IssuePage": {
             "additionalProperties": false,
             "properties": {
               "issues": {
                 "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Issue"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Issue"
                 },
                 "type": "array"
               },
@@ -2971,7 +2971,7 @@
         "properties": {
           "issues": {
             "items": {
-              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Issue"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Issue"
             },
             "type": "array"
           },
@@ -2998,7 +2998,7 @@
       "description": "Read one page of inline PR review comments with diff context, commit identity, reply parent and available line positions. Missing current positions can indicate outdated comments.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_ThreadInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ThreadInput": {
             "additionalProperties": false,
             "properties": {
               "limit": {
@@ -3097,7 +3097,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_ReviewComment": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ReviewComment": {
             "additionalProperties": false,
             "properties": {
               "author": {
@@ -3206,12 +3206,12 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_ReviewCommentPage": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ReviewCommentPage": {
             "additionalProperties": false,
             "properties": {
               "comments": {
                 "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_ReviewComment"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ReviewComment"
                 },
                 "type": "array"
               },
@@ -3236,7 +3236,7 @@
         "properties": {
           "comments": {
             "items": {
-              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_ReviewComment"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ReviewComment"
             },
             "type": "array"
           },
@@ -3263,7 +3263,7 @@
       "description": "Read one live page of PR file changes and available patches. An absent patch is not an empty diff. GitHub exposes at most 3000 files; limitReached means the list may be incomplete. Read repository files at an exact PR head/base SHA when needed.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_ThreadInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ThreadInput": {
             "additionalProperties": false,
             "properties": {
               "limit": {
@@ -3362,7 +3362,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_ChangedFile": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ChangedFile": {
             "additionalProperties": false,
             "properties": {
               "additions": {
@@ -3418,12 +3418,12 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_FilePage": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_FilePage": {
             "additionalProperties": false,
             "properties": {
               "files": {
                 "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_ChangedFile"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ChangedFile"
                 },
                 "type": "array"
               },
@@ -3452,7 +3452,7 @@
         "properties": {
           "files": {
             "items": {
-              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_ChangedFile"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ChangedFile"
             },
             "type": "array"
           },
@@ -3483,7 +3483,7 @@
       "description": "Read one page of PR reviews with their upstream state, commit and submitted time, including pending and dismissed reviews.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_ThreadInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ThreadInput": {
             "additionalProperties": false,
             "properties": {
               "limit": {
@@ -3582,7 +3582,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Review": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Review": {
             "additionalProperties": false,
             "properties": {
               "author": {
@@ -3623,7 +3623,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_ReviewPage": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ReviewPage": {
             "additionalProperties": false,
             "properties": {
               "nextPage": {
@@ -3637,7 +3637,7 @@
               },
               "reviews": {
                 "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Review"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Review"
                 },
                 "type": "array"
               }
@@ -3662,7 +3662,7 @@
           },
           "reviews": {
             "items": {
-              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Review"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Review"
             },
             "type": "array"
           }
@@ -3680,7 +3680,7 @@
       "description": "List one page of pull requests with head/base refs and SHAs, optionally filtered by base or owner:branch head.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_PullListInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_PullListInput": {
             "additionalProperties": false,
             "properties": {
               "base": {
@@ -3803,7 +3803,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Branch": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Branch": {
             "additionalProperties": false,
             "properties": {
               "label": {
@@ -3826,7 +3826,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_PullPage": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_PullPage": {
             "additionalProperties": false,
             "properties": {
               "nextPage": {
@@ -3840,7 +3840,7 @@
               },
               "pullRequests": {
                 "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_PullRequest"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_PullRequest"
                 },
                 "type": "array"
               }
@@ -3850,7 +3850,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_PullRequest": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_PullRequest": {
             "additionalProperties": false,
             "properties": {
               "additions": {
@@ -3866,7 +3866,7 @@
                 "type": "string"
               },
               "base": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Branch"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Branch"
               },
               "body": {
                 "type": "string"
@@ -3893,7 +3893,7 @@
                 "type": "boolean"
               },
               "head": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Branch"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Branch"
               },
               "maintainerCanModify": {
                 "type": "boolean"
@@ -3972,7 +3972,7 @@
           },
           "pullRequests": {
             "items": {
-              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_PullRequest"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_PullRequest"
             },
             "type": "array"
           }
@@ -3990,7 +3990,7 @@
       "description": "Directly merge a PR with the explicit merge method and inspected head SHA. GitHub enforces protection and permissions. Merge queues and stacked PRs require GitHub's separate asynchronous API and are not supported by this operation. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_MergePullInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_MergePullInput": {
             "additionalProperties": false,
             "properties": {
               "commitMessage": {
@@ -4099,7 +4099,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_MergeResult": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_MergeResult": {
             "additionalProperties": false,
             "properties": {
               "merged": {
@@ -4152,7 +4152,7 @@
       "description": "Read a UTF-8 repository file up to one MiB, optionally at an exact Git ref. Directory and binary content are refused.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_FileInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_FileInput": {
             "additionalProperties": false,
             "properties": {
               "path": {
@@ -4205,7 +4205,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_File": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_File": {
             "additionalProperties": false,
             "properties": {
               "path": {
@@ -4270,7 +4270,7 @@
       "description": "Reply to an existing inline PR review comment by its inspected comment ID, preserving its upstream thread. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_ReplyReviewCommentInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ReplyReviewCommentInput": {
             "additionalProperties": false,
             "properties": {
               "body": {
@@ -4357,7 +4357,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_ReviewComment": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ReviewComment": {
             "additionalProperties": false,
             "properties": {
               "author": {
@@ -4584,7 +4584,7 @@
       "description": "Create and submit an APPROVE, REQUEST_CHANGES or COMMENT review against the explicit inspected commit, optionally with inline comments. Body is required for COMMENT and REQUEST_CHANGES. Does not leave a pending review. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_InlineComment": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_InlineComment": {
             "additionalProperties": false,
             "properties": {
               "body": {
@@ -4648,7 +4648,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_SubmitReviewInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_SubmitReviewInput": {
             "additionalProperties": false,
             "properties": {
               "body": {
@@ -4657,7 +4657,7 @@
               },
               "comments": {
                 "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_InlineComment"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_InlineComment"
                 },
                 "type": "array"
               },
@@ -4713,7 +4713,7 @@
           },
           "comments": {
             "items": {
-              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_InlineComment"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_InlineComment"
             },
             "type": "array"
           },
@@ -4761,7 +4761,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Review": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Review": {
             "additionalProperties": false,
             "properties": {
               "author": {
@@ -4852,7 +4852,7 @@
       "description": "Replace one issue/PR discussion comment's body by its inspected comment ID. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_UpdateCommentInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_UpdateCommentInput": {
             "additionalProperties": false,
             "properties": {
               "body": {
@@ -4917,7 +4917,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Comment": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Comment": {
             "additionalProperties": false,
             "properties": {
               "author": {
@@ -5006,7 +5006,7 @@
       "description": "Patch only supplied issue fields. Empty body clears it; empty labels/assignees clear their sets. Omitted fields are preserved. GitHub provides no atomic revision condition for these edits. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_UpdateIssueInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_UpdateIssueInput": {
             "additionalProperties": false,
             "properties": {
               "assignees": {
@@ -5175,7 +5175,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Issue": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Issue": {
             "additionalProperties": false,
             "properties": {
               "assignees": {
@@ -5360,7 +5360,7 @@
       "description": "Replace an inline PR review comment's body by its inspected comment ID. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_UpdateCommentInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_UpdateCommentInput": {
             "additionalProperties": false,
             "properties": {
               "body": {
@@ -5425,7 +5425,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_ReviewComment": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ReviewComment": {
             "additionalProperties": false,
             "properties": {
               "author": {

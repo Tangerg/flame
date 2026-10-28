@@ -167,7 +167,7 @@ function ProviderRole({
     command.current = { operations, mutation };
     update({ busy: true, failure: undefined });
     try {
-      await operations.track(mutation);
+      await mutation;
       if (signal.aborted) return;
       command.current = undefined;
       update({ unknown: undefined, draft: null });
@@ -190,9 +190,11 @@ function ProviderRole({
     const signal = observationSignal();
     if (!signal) return;
     try {
-      const mutation = operations.selectProvider(
-        { role, installationId: candidate.installation.id, contribution: candidate.contribution },
-        signal,
+      const mutation = operations.track(() =>
+        operations.selectProvider(
+          { role, installationId: candidate.installation.id, contribution: candidate.contribution },
+          signal,
+        ),
       );
       void observe(mutation, signal);
     } catch (error) {
@@ -244,7 +246,10 @@ function ProviderRole({
               try {
                 const signal = observationSignal();
                 if (!signal) return;
-                void observe(unknown.retry({ signal }), signal);
+                void observe(
+                  operations.track(() => unknown.retry({ signal })),
+                  signal,
+                );
               } catch (error) {
                 update({
                   failure: error instanceof Error ? error.message : t("packages.providers.failed"),

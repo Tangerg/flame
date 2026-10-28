@@ -7,8 +7,8 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/spf13/cobra"
 )
 
@@ -229,7 +229,7 @@ func newPluginCallCommand(provider runtimeProvider) *cobra.Command {
 		if err := protocol.DecodeRequest([]byte(input), &request); err != nil {
 			return fmt.Errorf("plugin request: %w", err)
 		}
-		contract, err := extension.ParseCapability([]byte(request.Contract))
+		contract, err := portable.ParseCapability([]byte(request.Contract))
 		if err != nil {
 			return err
 		}
@@ -238,7 +238,7 @@ func newPluginCallCommand(provider runtimeProvider) *cobra.Command {
 			return errors.New("plugin method is absent from the required contract")
 		}
 		commandID := authoring.CommandID(key)
-		if method.Kind() == extension.Mutation {
+		if method.Kind() == portable.Mutation {
 			if commandID == "" {
 				commandID = mutation.NewCommandID()
 			}

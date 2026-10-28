@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	"github.com/Tangerg/flame/qimu/distribution"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -88,7 +89,7 @@ func TestVerifiedResourceRefusesReplacementFIFOWithoutBlocking(t *testing.T) {
 		}
 		return err
 	})
-	if !errors.Is(err, filesystem.ErrNotRegular) {
+	if !errors.Is(err, distribution.ErrInvalid) {
 		t.Fatalf("replacement node lost its file-kind failure: %v", err)
 	}
 }

@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
+	"github.com/Tangerg/flame/qimu/portable"
 )
 
 func TestGeneratedCapabilityMatchesTheActualMethodOwner(t *testing.T) {
@@ -18,7 +18,7 @@ func TestGeneratedCapabilityMatchesTheActualMethodOwner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	published, err := extension.ParseCapability(data)
+	published, err := portable.ParseCapability(data)
 	if err != nil {
 		t.Fatal(err)
 	}

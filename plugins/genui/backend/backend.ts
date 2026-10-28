@@ -1,4 +1,5 @@
-import { Backend, Refusal } from "@flame/backend-sdk";
+import { runtime } from "@flame/backend-sdk";
+import { Backend, Refusal } from "@qimu/node";
 import {
   InvalidPresentation,
   Presentation,
@@ -48,7 +49,7 @@ export function createBackend(): Backend {
         const request = parseDocument(input);
         const bindings = request.operations.length
           ? new OperationCatalog(
-              (await (await context.runtime()).plugins.list(context.signal))
+              (await (await runtime(context)).plugins.list(context.signal))
                 .data,
             ).capture(request.operations)
           : [];
@@ -103,7 +104,7 @@ export function createBackend(): Backend {
         ...(includeOperations || installationId !== undefined
           ? {
               operations: new OperationCatalog(
-                (await (await context.runtime()).plugins.list(context.signal))
+                (await (await runtime(context)).plugins.list(context.signal))
                   .data,
               ).describe(installationId),
             }

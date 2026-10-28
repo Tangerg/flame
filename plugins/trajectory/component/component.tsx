@@ -96,11 +96,14 @@ export function Trajectory({ context }: { context: ComponentContext }) {
         const includeDescendants =
           capturedDescendants ??
           Boolean(
-            (await context.track(context.runtime.runtime.discover(signal)))
-              .capabilities.features?.subagents?.enabled,
+            (
+              await context.track(() =>
+                context.runtime.runtime.discover(signal),
+              )
+            ).capabilities.features?.subagents?.enabled,
           );
         signal.throwIfAborted();
-        const page = await context.track(
+        const page = await context.track(() =>
           context.runtime.sessions.trajectory(
             {
               sessionId,
@@ -304,7 +307,7 @@ export function RenameSession({ context }: { context: ComponentContext }) {
     setBusy(true);
     setFailure(undefined);
     try {
-      const result = await context.track(command);
+      const result = await command;
       if (context.signal.aborted) return;
       setSaved(result);
       setUnknown(undefined);
@@ -325,11 +328,13 @@ export function RenameSession({ context }: { context: ComponentContext }) {
           return;
         context.signal.throwIfAborted();
         void observe(
-          context.runtime.sessions.update({
-            sessionId: session.id,
-            expectedRevision: session.revision,
-            title,
-          }),
+          context.track(() =>
+            context.runtime.sessions.update({
+              sessionId: session.id,
+              expectedRevision: session.revision,
+              title,
+            }),
+          ),
         );
       }}
     >
@@ -357,7 +362,7 @@ export function RenameSession({ context }: { context: ComponentContext }) {
               aria-busy={busy || undefined}
               onClick={() => {
                 if (pending.current || context.signal.aborted) return;
-                void observe(unknown.retry());
+                void observe(context.track(() => unknown.retry()));
               }}
             >
               {busy ? (

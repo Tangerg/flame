@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type FlameClient } from "@flame/runtime-client";
-import { parseJSON } from "@flame/runtime-client/json";
+import { parseJSON } from "@qimu/sdk/json";
 import { createTestClient, type TestClient } from "@/test/renderClient";
 let testClient: TestClient;
 

@@ -6,7 +6,7 @@ import {
   RpcProtocolError,
   RpcTransportError,
 } from "./errors";
-import { parseJSON } from "./json";
+import { parseJSON } from "@qimu/sdk/json";
 import {
   projectHTTPSidecarResponse,
   validateHTTPSidecarResponse,

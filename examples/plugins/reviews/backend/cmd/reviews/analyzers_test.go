@@ -7,9 +7,9 @@ import (
 
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 )
 
 type observedAnalyzerCaller struct {
@@ -40,7 +40,7 @@ func TestAnalysisUsesTheResolvedReleaseAndRejectsUnrelatedFindingEvidence(t *tes
 		t.Fatal(err)
 	}
 	caller := &observedAnalyzerCaller{value: protocol.PluginPointBinding{InstallationID: provider, Digest: strings.Repeat("a", 64), Contribution: "evidence", Value: string(value.JSON())}, finding: reviews.Finding{Code: "open", Message: "Inspect this evidence.", ReviewID: review.ID, Revision: review.Revision}}
-	result, err := analyzeReview(t.Context(), caller, extension.Target{Scope: "installation", Reference: consumer}, review)
+	result, err := analyzeReview(t.Context(), caller, portable.Target{Scope: "installation", Reference: consumer}, review)
 	if err != nil || result.Review != review || len(result.Findings) != 1 || len(caller.calls) != 1 {
 		t.Fatalf("analysis: %+v, calls=%d, %v", result, len(caller.calls), err)
 	}
@@ -49,7 +49,7 @@ func TestAnalysisUsesTheResolvedReleaseAndRejectsUnrelatedFindingEvidence(t *tes
 		t.Fatalf("analysis retargeted its captured point value: %+v", request)
 	}
 	caller.finding.Revision++
-	if _, err := analyzeReview(t.Context(), caller, extension.Target{Scope: "installation", Reference: consumer}, review); err == nil {
+	if _, err := analyzeReview(t.Context(), caller, portable.Target{Scope: "installation", Reference: consumer}, review); err == nil {
 		t.Fatal("accepted a finding about a different inspected revision")
 	}
 }

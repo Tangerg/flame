@@ -6,13 +6,15 @@ import { type RuntimeStream, followRuntimeGeneration } from "@/features/connecti
 import { registerPackageContributions } from "@/features/plugins/contributions";
 import { ComponentModules } from "@/features/plugins/adapters/componentModules";
 import { createInstalledPackageState } from "@/features/plugins/adapters/packages";
+import { type ReactNode } from "react";
 export function createInstalledPlugins(
   runtimeClient: () => FlameClient,
   runtimeEndpoint: () => string,
   themeAccess: ThemeAccess,
+  wrap: (children: ReactNode) => ReactNode = (children) => children,
 ) {
   const access = createInstalledPackageState();
-  const modules = new ComponentModules();
+  const modules = new ComponentModules(wrap);
   let current: ContributionLifetime | undefined;
   let retiring = Promise.resolve();
   let latest: object = {};
@@ -21,10 +23,12 @@ export function createInstalledPlugins(
   let disposal: Promise<void> | undefined;
   return {
     access,
+    reload: () => modules.reload(),
     start(ctx: Pick<PluginContext<{}>, "lifetime" | "signal" | "log">, runtime: RuntimeStream) {
       if (disposed) throw new Error("Installed plugins are disposed");
       if (stop) throw new Error("Installed plugins are already started");
       const replace = () => {
+        modules.disconnect();
         const intent = {};
         latest = intent;
         const predecessor = current;
@@ -73,7 +77,12 @@ export function createInstalledPlugins(
       const release = current?.[asyncDisposeSymbol]() ?? Promise.resolve();
       current = undefined;
       access.clear();
-      disposal = Promise.all([retiring, release]).then(() => undefined);
+      disposal = Promise.all([retiring, release])
+        .then(() => modules.close())
+        .catch((error: unknown) => {
+          disposal = undefined;
+          throw error;
+        });
       return disposal;
     },
   };

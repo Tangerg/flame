@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
+	"github.com/Tangerg/flame/qimu/cancellation"
 	"golang.org/x/sys/windows"
 )
 

@@ -7,10 +7,10 @@ import (
 	"iter"
 	"sync/atomic"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/samber/lo"
 )
 
@@ -21,10 +21,10 @@ type PluginStreamer interface {
 type PluginStreamingMethod[P, C, R any] struct {
 	caller  PluginStreamer
 	binding PluginBinding
-	method  *extension.Method
+	method  *portable.Method
 }
 
-func BindPluginStreamingMethod[P, C, R any](caller PluginStreamer, binding PluginBinding, method *pluginsdk.StreamingMethod[P, C, R]) (*PluginStreamingMethod[P, C, R], error) {
+func BindPluginStreamingMethod[P, C, R any](caller PluginStreamer, binding PluginBinding, method *qimumcp.StreamingMethod[P, C, R]) (*PluginStreamingMethod[P, C, R], error) {
 	if lo.IsNil(caller) || method == nil {
 		return nil, errors.New("runtime: plugin streamer and typed method are required")
 	}
@@ -37,33 +37,33 @@ func BindPluginStreamingMethod[P, C, R any](caller PluginStreamer, binding Plugi
 
 // Stream freezes input and options before lazy delivery. The returned sequence
 // has one consumer and never resubmits or changes its captured binding.
-func (m *PluginStreamingMethod[P, C, R]) Stream(ctx context.Context, input P, options protocol.PluginCallOptions) iter.Seq2[pluginsdk.StreamValue[C, R], error] {
+func (m *PluginStreamingMethod[P, C, R]) Stream(ctx context.Context, input P, options protocol.PluginCallOptions) iter.Seq2[qimumcp.StreamValue[C, R], error] {
 	admitted, inputErr := jsonvalue.Encode(input)
 	capturedOptions, optionsErr := captureStreamOptions(options)
 	var consumed atomic.Bool
-	return func(yield func(pluginsdk.StreamValue[C, R], error) bool) {
+	return func(yield func(qimumcp.StreamValue[C, R], error) bool) {
 		fail := func(err error) {
-			if m != nil && m.method.Kind() == extension.Mutation {
+			if m != nil && m.method.Kind() == portable.Mutation {
 				err = errors.Join(ErrAcknowledgementUnknown, err)
 			}
-			yield(pluginsdk.StreamValue[C, R]{}, err)
+			yield(qimumcp.StreamValue[C, R]{}, err)
 		}
 		if !consumed.CompareAndSwap(false, true) {
-			yield(pluginsdk.StreamValue[C, R]{}, ErrClosed)
+			yield(qimumcp.StreamValue[C, R]{}, ErrClosed)
 			return
 		}
 		if m == nil || inputErr != nil || optionsErr != nil {
-			yield(pluginsdk.StreamValue[C, R]{}, errors.Join(inputErr, optionsErr, errors.New("runtime: valid bound stream input and options are required")))
+			yield(qimumcp.StreamValue[C, R]{}, errors.Join(inputErr, optionsErr, errors.New("runtime: valid bound stream input and options are required")))
 			return
 		}
 		if err := m.method.ValidateInput(admitted); err != nil {
-			yield(pluginsdk.StreamValue[C, R]{}, err)
+			yield(qimumcp.StreamValue[C, R]{}, err)
 			return
 		}
 		request := protocol.CallPluginRequest{InstallationID: m.binding.InstallationID, Digest: m.binding.Digest, Contribution: m.binding.Contribution, Contract: string(m.binding.Contract.Identity().JSON()), Method: m.method.Name(), Input: string(admitted.JSON()), Target: m.binding.Target}
 		_, events, err := m.caller.StreamPlugin(ctx, request, capturedOptions)
 		if err != nil {
-			yield(pluginsdk.StreamValue[C, R]{}, err)
+			yield(qimumcp.StreamValue[C, R]{}, err)
 			return
 		}
 		if events == nil {
@@ -73,7 +73,7 @@ func (m *PluginStreamingMethod[P, C, R]) Stream(ctx context.Context, input P, op
 		var final *R
 		for event, err := range events {
 			if err != nil {
-				yield(pluginsdk.StreamValue[C, R]{}, err)
+				yield(qimumcp.StreamValue[C, R]{}, err)
 				return
 			}
 			if final != nil {
@@ -86,7 +86,7 @@ func (m *PluginStreamingMethod[P, C, R]) Stream(ctx context.Context, input P, op
 			}
 			switch event.Kind {
 			case protocol.PluginStreamFailure:
-				yield(pluginsdk.StreamValue[C, R]{}, &extension.Refusal{Code: event.Failure.Code, Message: event.Failure.Message})
+				yield(qimumcp.StreamValue[C, R]{}, &portable.Refusal{Code: event.Failure.Code, Message: event.Failure.Message})
 				return
 			case protocol.PluginStreamChunk:
 				if err := m.method.ValidateChunk([]byte(event.Value)); err != nil {
@@ -98,7 +98,7 @@ func (m *PluginStreamingMethod[P, C, R]) Stream(ctx context.Context, input P, op
 					fail(errors.Join(protocol.ErrInvalidResponse, err))
 					return
 				}
-				if !yield(pluginsdk.StreamValue[C, R]{Chunk: &chunk}, nil) {
+				if !yield(qimumcp.StreamValue[C, R]{Chunk: &chunk}, nil) {
 					return
 				}
 			case protocol.PluginStreamResult:
@@ -114,10 +114,10 @@ func (m *PluginStreamingMethod[P, C, R]) Stream(ctx context.Context, input P, op
 			}
 		}
 		if final == nil {
-			fail(pluginsdk.ErrStreamUnconfirmed)
+			fail(qimumcp.ErrStreamUnconfirmed)
 			return
 		}
-		yield(pluginsdk.StreamValue[C, R]{Result: final}, nil)
+		yield(qimumcp.StreamValue[C, R]{Result: final}, nil)
 	}
 }
 

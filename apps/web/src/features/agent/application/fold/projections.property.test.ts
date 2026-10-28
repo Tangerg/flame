@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ExactNumber } from "@flame/runtime-client";
+import { ExactNumber } from "@qimu/sdk/json";
 import { type AgentToolInvocation } from "@/features/agent/public/events";
 import { TOOL_FAMILIES } from "@/lib/toolFamilies";
 import { Arbitrary, forEachSeed } from "@/test/arbitrary";

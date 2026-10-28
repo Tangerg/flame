@@ -5,10 +5,11 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/scope/core/chat"
@@ -30,13 +31,13 @@ func (o *CallComposition) ValidateContext(ctx context.Context, bindings []plugin
 	return o.validateCompositionBindings(ctx, contract, bindings)
 }
 
-func (o *CallComposition) validateCompositionBindings(ctx context.Context, contract *extension.Capability, bindings []plugins.ContributionBinding) error {
+func (o *CallComposition) validateCompositionBindings(ctx context.Context, contract *portable.Capability, bindings []plugins.ContributionBinding) error {
 	for _, binding := range bindings {
 		captured, err := o.calls.resolveContribution(ctx, plugins.CallRequest{Installation: binding.InstallationID, Digest: binding.Digest, Contribution: binding.ContributionID, Contract: contract})
 		if err != nil {
 			return err
 		}
-		if captured != binding {
+		if !captured.SameContribution(binding) {
 			return plugin.ErrStale
 		}
 	}
@@ -60,7 +61,7 @@ func (o *CallComposition) PrepareContext(ctx context.Context, bindings []plugins
 	if err := request.Validate(); err != nil {
 		return nil, err
 	}
-	if _, err := pluginsdk.InvocationFromContext(ctx); err != nil {
+	if _, err := qimumcp.InvocationFromContext(ctx); err != nil {
 		return nil, err
 	}
 	if err := o.ValidateContext(ctx, bindings); err != nil {
@@ -81,14 +82,17 @@ func (o *CallComposition) PrepareContext(ctx context.Context, bindings []plugins
 		if err != nil {
 			return nil, err
 		}
-		session, err := o.calls.pool.ServiceSession(ctx, binding.ServerID)
+		borrowed, err := borrowContribution(calling, o.calls.pool, binding)
 		if err != nil {
 			return nil, err
 		}
-		if _, err := o.calls.pool.SessionActor(ctx, binding.ServerID, session); err != nil {
+		defer borrowed.Close()
+		calling = borrowed.Context()
+		session := borrowed.Session()
+		if _, err := o.calls.pool.SessionActor(calling, binding.ServerID, session); err != nil {
 			return nil, err
 		}
-		exported, err := pluginsdk.NewCapabilityBinding(session, binding.Export, contract)
+		exported, err := qimumcp.NewCapabilityBinding(session, binding.Export, contract)
 		if err != nil {
 			return nil, err
 		}

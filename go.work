@@ -1,6 +1,7 @@
 go 1.27.3
 
 use (
+	./qimu
 	./apps/cli
 	./apps/desktop
 	./examples/plugins/reviews/backend

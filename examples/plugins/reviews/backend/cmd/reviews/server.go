@@ -10,9 +10,11 @@ import (
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
 
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/qimu/portable"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/tool"
@@ -40,11 +42,11 @@ func newServer(store *store) (*sdk.Server, error) {
 		if len(current) != 1 {
 			return reviews.Analysis{}, fmt.Errorf("reviews: expected the owned example review")
 		}
-		invocation, err := pluginsdk.InvocationFromContext(ctx)
+		invocation, err := qimumcp.InvocationFromContext(ctx)
 		if err != nil {
 			return reviews.Analysis{}, err
 		}
-		ref, err := pluginsdk.CallbackFromContext(ctx)
+		ref, err := qimumcp.CallbackFromContext(ctx)
 		if err != nil {
 			return reviews.Analysis{}, err
 		}
@@ -66,7 +68,7 @@ func newServer(store *store) (*sdk.Server, error) {
 		if err != nil {
 			return reviews.UpdateResult{}, rejected("bounded invocation identity is required")
 		}
-		admitted, err := pluginsdk.RequestInput(ctx)
+		admitted, err := qimumcp.RequestInput(ctx)
 		if err != nil {
 			return reviews.UpdateResult{}, err
 		}
@@ -99,11 +101,11 @@ func newServer(store *store) (*sdk.Server, error) {
 		return nil, err
 	}
 	server := sdk.NewServer(&sdk.Implementation{Name: "flame-review-example", Version: "1.0.0"}, nil)
-	backend, err := pluginsdk.NewBackend(server)
+	backend, err := qimumcp.NewBackend(server)
 	if err != nil {
 		return nil, err
 	}
-	if err := backend.OnSetup(func(_ context.Context, setup pluginsdk.Setup) (io.Closer, error) {
+	if err := backend.OnSetup(func(_ context.Context, setup qimumcp.Setup) (io.Closer, error) {
 		values, err := setup.Contributions()
 		if err != nil {
 			return nil, err
@@ -116,7 +118,7 @@ func newServer(store *store) (*sdk.Server, error) {
 			if value.Export != "reviews" || len(value.Requires) != 1 || value.Requires[0].ID != "analyzers" || !value.Requires[0].Optional {
 				return nil, fmt.Errorf("reviews: named optional analyzers dependency is required")
 			}
-			actual, err := extension.AdmitCapability(value.Requires[0].Contract)
+			actual, err := portable.AdmitCapability(value.Requires[0].Contract)
 			if err != nil {
 				return nil, err
 			}
@@ -131,21 +133,21 @@ func newServer(store *store) (*sdk.Server, error) {
 	if err := pluginsdk.RegisterTools(server, list, update, analyzeTool); err != nil {
 		return nil, err
 	}
-	receipts, err := pluginsdk.ReceiptQuery()
+	receipts, err := qimumcp.ReceiptQuery()
 	if err != nil {
 		return nil, err
 	}
-	if err := receipts.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[pluginsdk.ReceiptRequest]) (pluginsdk.Receipt, error) {
+	if err := receipts.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[qimumcp.ReceiptRequest]) (qimumcp.Receipt, error) {
 		return store.receipt(ctx, command.Input, contracts.Update.Name())
 	}); err != nil {
 		return nil, err
 	}
-	if err := contracts.List.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, _ pluginsdk.Command[struct{}]) (reviews.ListResult, error) {
+	if err := contracts.List.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, _ qimumcp.Command[struct{}]) (reviews.ListResult, error) {
 		return read(ctx)
 	}); err != nil {
 		return nil, err
 	}
-	if err := contracts.Update.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[reviews.Update]) (reviews.UpdateResult, error) {
+	if err := contracts.Update.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[reviews.Update]) (reviews.UpdateResult, error) {
 		admitted, err := command.RequestInput()
 		if err != nil {
 			return reviews.UpdateResult{}, err
@@ -154,7 +156,7 @@ func newServer(store *store) (*sdk.Server, error) {
 	}); err != nil {
 		return nil, err
 	}
-	if err := contracts.Analyzers.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, _ pluginsdk.Command[struct{}]) (reviews.Analysis, error) {
+	if err := contracts.Analyzers.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, _ qimumcp.Command[struct{}]) (reviews.Analysis, error) {
 		return analyze(ctx)
 	}); err != nil {
 		return nil, err

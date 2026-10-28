@@ -14,7 +14,7 @@ import {
   parseJSON,
   projectNumber,
   stringifyJSON,
-} from "@flame/runtime-client/json";
+} from "@qimu/sdk/json";
 import type { CallPluginRequest } from "@flame/runtime-client/wire";
 import { z } from "zod/v4";
 import {
@@ -184,7 +184,22 @@ function schemaProjection(schema: z.ZodType): {
   type: "object";
   [keyword: string]: unknown;
 } {
-  const projected = z.toJSONSchema(schema, { reused: "ref" });
+  const projected = z.toJSONSchema(schema, {
+    reused: "ref",
+    override({ jsonSchema }) {
+      if (jsonSchema.pattern === undefined) return;
+      // Portable admission owns structure; the original Zod parser owns authored
+      // string rules alongside its cross-field checks. Publish those rules as
+      // descriptions without asking the host to execute consumer regexes.
+      jsonSchema.description = [
+        jsonSchema.description,
+        `Must match ${JSON.stringify(jsonSchema.pattern)}.`,
+      ]
+        .filter(Boolean)
+        .join(" ");
+      delete jsonSchema.pattern;
+    },
+  });
   if (projected.type !== "object")
     throw new Error("genui: document schema requires an object root");
   return { ...projected, type: projected.type };

@@ -31,8 +31,8 @@ func ProjectSkillDir(workspaceRoot string) string {
 // and installation dependencies share that selection; later directory changes
 // cannot add a name or replace its authority. Selected documents remain editable.
 // decorateUser records only loads selected from the user library.
-func OverlaySkillSource(ctx context.Context, workspaceRoot, userDir string, packages PackageSkills, decorateUser func(sdk.ResourceSource) sdk.ResourceSource) (sdk.ResourceSource, []plugin.Dependency, error) {
-	selected, err := resolveSkills(ctx, workspaceRoot, userDir, packages)
+func OverlaySkillSource(ctx context.Context, workspaceRoot, userDir string, packages PackageSkills, decorateUser func(sdk.ResourceSource) sdk.ResourceSource, retained []plugin.Dependency) (sdk.ResourceSource, []plugin.Dependency, error) {
+	selected, err := resolveSkills(ctx, workspaceRoot, userDir, packages, retained)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -51,7 +51,7 @@ func OverlaySkillSource(ctx context.Context, workspaceRoot, userDir string, pack
 // rather than erroring. Malformed selected documents produce diagnostics;
 // unrelated I/O failures still fail the query.
 func ListSkills(ctx context.Context, workspaceRoot, userDir string, packages PackageSkills) (workspaceapp.SkillDiscovery, error) {
-	selected, err := resolveSkills(ctx, workspaceRoot, userDir, packages)
+	selected, err := resolveSkills(ctx, workspaceRoot, userDir, packages, nil)
 	if err != nil {
 		return workspaceapp.SkillDiscovery{}, err
 	}

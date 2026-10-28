@@ -113,6 +113,7 @@ export function createVisualClient(runtimeClient: () => FlameClient) {
     runtimeClient,
     runtime.endpoint.currentRuntimeEndpoint,
     theme.access,
+    (children) => <Wrapper>{children}</Wrapper>,
   );
   function Wrapper({ children }: { children: ReactNode }) {
     return (

@@ -29,22 +29,58 @@ type Node struct {
 	arguments    []string
 }
 
+type nodeRelease struct {
+	Version   string   `json:"version"`
+	Arguments []string `json:"arguments"`
+	Targets   map[string]struct {
+		Archive          string `json:"archive"`
+		ArchiveSHA256    string `json:"archiveSHA256"`
+		Executable       string `json:"executable"`
+		ExecutableSHA256 string `json:"executableSHA256"`
+	} `json:"targets"`
+}
+
+func nodeSelection() (nodeRelease, error) {
+	var release nodeRelease
+	if err := json.Unmarshal(nodeReleaseJSON, &release); err != nil {
+		return release, fmt.Errorf("node companion: distribution selection: %w", err)
+	}
+	return release, nil
+}
+
+// NodeTarget projects the original immutable companion selection to package
+// authoring. It names the interpreter bytes, not a process or installed package.
+type NodeTarget struct {
+	OS               string
+	Arch             string
+	Version          string
+	ExecutableDigest string
+}
+
+func NodeTargets() ([]NodeTarget, error) {
+	release, err := nodeSelection()
+	if err != nil {
+		return nil, err
+	}
+	targets := make([]NodeTarget, 0, len(release.Targets))
+	for target, selection := range release.Targets {
+		osName, arch, ok := strings.Cut(target, "-")
+		if !ok {
+			return nil, errors.New("node companion: invalid distribution target")
+		}
+		targets = append(targets, NodeTarget{OS: osName, Arch: arch, Version: release.Version, ExecutableDigest: selection.ExecutableSHA256})
+	}
+	slices.SortFunc(targets, func(a, b NodeTarget) int { return strings.Compare(a.OS+"/"+a.Arch, b.OS+"/"+b.Arch) })
+	return targets, nil
+}
+
 func NodeForExecutable(executable string) (Node, error) {
 	if !filepath.IsAbs(executable) {
 		return Node{}, errors.New("node companion: host executable must be absolute")
 	}
-	var release struct {
-		Version   string   `json:"version"`
-		Arguments []string `json:"arguments"`
-		Targets   map[string]struct {
-			Archive          string `json:"archive"`
-			ArchiveSHA256    string `json:"archiveSHA256"`
-			Executable       string `json:"executable"`
-			ExecutableSHA256 string `json:"executableSHA256"`
-		} `json:"targets"`
-	}
-	if err := json.Unmarshal(nodeReleaseJSON, &release); err != nil {
-		return Node{}, fmt.Errorf("node companion: distribution selection: %w", err)
+	release, err := nodeSelection()
+	if err != nil {
+		return Node{}, err
 	}
 	target, found := release.Targets[runtime.GOOS+"-"+runtime.GOARCH]
 	if !found {
@@ -61,6 +97,7 @@ func NodeForExecutable(executable string) (Node, error) {
 }
 
 func (n Node) Command() string                 { return n.command }
+func (n Node) ExecutableDigest() string        { return n.expected }
 func (n Node) Identity() string                { return n.identity }
 func (n Node) Arguments(entry string) []string { return append(slices.Clone(n.arguments), entry) }
 

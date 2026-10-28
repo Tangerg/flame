@@ -12,8 +12,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
+	"github.com/Tangerg/flame/qimu/cancellation"
 	"github.com/samber/lo"
 )
 

@@ -1,53 +1,51 @@
 package contract
 
-//go:generate sh -c "go run github.com/Tangerg/flame/plugins/schedules/backend/cmd/contracts | go run github.com/Tangerg/flame/packages/go-sdk/cmd/flame-sdk contract --feature - --out ../../package/io.github.tangerg.flame/contracts --ts ../../package/io.github.tangerg.flame/contracts"
+//go:generate sh -c "go run github.com/Tangerg/flame/plugins/schedules/backend/cmd/contracts | go run github.com/Tangerg/flame/qimu/cmd/qimu contract --feature - --out ../../package/io.github.tangerg.flame/contracts --ts ../../package/io.github.tangerg.flame/contracts"
 
 import (
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	published "github.com/Tangerg/flame/plugins/schedules/contracts"
 	app "github.com/Tangerg/flame/plugins/schedules/internal/application"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
+	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 )
 
-// CapabilityReference is the exact reference the Runtime binds this feature under;
-// the background-command gate matches on it, so it has one owner.
-const CapabilityReference = "schedules"
-
 type Contracts struct {
-	Capability *extension.Capability
-	List       *pluginsdk.Method[ListInput, Page]
-	Create     *pluginsdk.Method[schedule.Draft, schedule.Snapshot]
-	Update     *pluginsdk.Method[UpdateInput, schedule.Snapshot]
-	Delete     *pluginsdk.Method[ItemInput, Ack]
-	RunNow     *pluginsdk.Method[ItemInput, app.RunReference]
+	Capability *portable.Capability
+	List       *qimumcp.Method[wire.ListInput, wire.Page]
+	Create     *qimumcp.Method[schedule.Draft, schedule.Snapshot]
+	Update     *qimumcp.Method[wire.UpdateInput, schedule.Snapshot]
+	Delete     *qimumcp.Method[wire.ItemInput, wire.Ack]
+	RunNow     *qimumcp.Method[wire.ItemInput, app.RunReference]
 }
 
 func NewContracts() (Contracts, error) {
-	var contracts Contracts
+	var c Contracts
 	var err error
-	contracts.List, err = pluginsdk.NewMethod[ListInput, Page](pluginsdk.MethodConfig{Name: List, Kind: extension.Query, Target: extension.ScopeInstallation, Description: "List current schedule definitions and revisions."})
+	c.Capability, err = portable.ParseCapability([]byte(published.CapabilityJSON))
 	if err != nil {
 		return Contracts{}, err
 	}
-	contracts.Create, err = pluginsdk.NewMethod[schedule.Draft, schedule.Snapshot](pluginsdk.MethodConfig{Name: Create, Kind: extension.Mutation, Target: extension.ScopeInstallation, Description: "Create one schedule definition."})
+	c.List, err = qimumcp.ImplementMethod[wire.ListInput, wire.Page](c.Capability, published.ListV1Method)
 	if err != nil {
 		return Contracts{}, err
 	}
-	contracts.Update, err = pluginsdk.NewMethod[UpdateInput, schedule.Snapshot](pluginsdk.MethodConfig{Name: Update, Kind: extension.Mutation, Target: extension.ScopeInstallation, Description: "Change one schedule using its inspected revision."})
+	c.Create, err = qimumcp.ImplementMethod[schedule.Draft, schedule.Snapshot](c.Capability, published.CreateV1Method)
 	if err != nil {
 		return Contracts{}, err
 	}
-	contracts.Delete, err = pluginsdk.NewMethod[ItemInput, Ack](pluginsdk.MethodConfig{Name: Delete, Kind: extension.Mutation, Target: extension.ScopeInstallation, Description: "Delete one schedule definition."})
+	c.Update, err = qimumcp.ImplementMethod[wire.UpdateInput, schedule.Snapshot](c.Capability, published.UpdateV1Method)
 	if err != nil {
 		return Contracts{}, err
 	}
-	contracts.RunNow, err = pluginsdk.NewMethod[ItemInput, app.RunReference](pluginsdk.MethodConfig{Name: RunNow, Kind: extension.Mutation, Target: extension.ScopeInstallation, Description: "Capture and reconcile one manual Run through its original Runtime acceptance."})
+	c.Delete, err = qimumcp.ImplementMethod[wire.ItemInput, wire.Ack](c.Capability, published.DeleteV1Method)
 	if err != nil {
 		return Contracts{}, err
 	}
-	contracts.Capability, err = extension.NewCapability(extension.CapabilityConfig{Reference: CapabilityReference, Composition: extension.Selection, Scope: extension.ScopeInstallation}, contracts.List.Descriptor(), contracts.Create.Descriptor(), contracts.Update.Descriptor(), contracts.Delete.Descriptor(), contracts.RunNow.Descriptor())
+	c.RunNow, err = qimumcp.ImplementMethod[wire.ItemInput, app.RunReference](c.Capability, published.RunNowV1Method)
 	if err != nil {
 		return Contracts{}, err
 	}
-	return contracts, nil
+	return c, nil
 }

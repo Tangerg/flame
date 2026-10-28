@@ -1,8 +1,9 @@
 package plugin
 
 import (
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/model"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -42,13 +43,13 @@ func (r ModelSelectionRequest) Validate() error {
 	}
 	return nil
 }
-func ModelSelectionMethod() (*Method[ModelSelectionRequest, ModelSelection], error) {
-	return NewMethod[ModelSelectionRequest, ModelSelection](MethodConfig{Name: "flame.model-selection/select.v2", Kind: extension.Query, Target: "call", Description: "Select the exact model using the actual calling use and captured limits before provider construction, request-capacity admission and metering."})
+func ModelSelectionMethod() (*qimumcp.Method[ModelSelectionRequest, ModelSelection], error) {
+	return qimumcp.NewMethod[ModelSelectionRequest, ModelSelection](qimumcp.MethodConfig{Name: "flame.model-selection/select.v2", Kind: portable.Query, Target: "call", Description: "Select the exact model using the actual calling use and captured limits before provider construction, request-capacity admission and metering."})
 }
-func ModelSelectionContract() (*extension.Capability, error) {
+func ModelSelectionContract() (*portable.Capability, error) {
 	method, err := ModelSelectionMethod()
 	if err != nil {
 		return nil, err
 	}
-	return extension.NewCapability(extension.CapabilityConfig{Reference: "flame.model-selection.v2", Composition: extension.Selection, Scope: "call"}, method.Descriptor())
+	return portable.NewCapability(portable.CapabilityConfig{Reference: "flame.model-selection.v2", Composition: portable.Selection, Scope: "call"}, method.Descriptor())
 }

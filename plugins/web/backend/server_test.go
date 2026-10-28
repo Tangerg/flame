@@ -9,10 +9,13 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+
 	rpc "github.com/Tangerg/flame/plugins/web/internal/contract"
 	capture "github.com/Tangerg/flame/plugins/web/internal/domain"
+	"github.com/Tangerg/flame/plugins/web/internal/wire"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/tools/web"
 )
@@ -40,7 +43,7 @@ func TestTypedAndModelToolsShareSearchFetchBrowseAndDefiniteReadFailure(t *testi
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "web-test", Version: "1"}, nil)
-	if err := pluginsdk.RegisterClient(client); err != nil {
+	if err := qimumcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()
@@ -58,16 +61,16 @@ func TestTypedAndModelToolsShareSearchFetchBrowseAndDefiniteReadFailure(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	exported, err := pluginsdk.ResolveCapability(t.Context(), session, "web", contracts.Capability)
+	exported, err := qimumcp.ResolveCapability(t.Context(), session, "web", contracts.Capability)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "web-entry", Origin: extension.Human, Target: extension.Target{Scope: "installation", Reference: "web"}})
+	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "web-entry", Origin: extension.Human, Target: portable.Target{Scope: "installation", Reference: "web"}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	meta := make(sdk.Meta)
-	if err := meta.Set(pluginsdk.InvocationMetadataKey, extension.Invocation{ID: "model-web-entry", Origin: extension.Model, Target: extension.Target{Scope: "installation", Reference: "web"}}); err != nil {
+	if err := meta.Set(qimumcp.InvocationMetadataKey, portable.Invocation{ID: "model-web-entry", Origin: extension.Model, Target: portable.Target{Scope: "installation", Reference: "web"}}); err != nil {
 		t.Fatal(err)
 	}
 	compare := func(method, name string, input any) jsonvalue.Value {
@@ -104,7 +107,7 @@ func TestTypedAndModelToolsShareSearchFetchBrowseAndDefiniteReadFailure(t *testi
 	if err := json.Unmarshal(fetched.JSON(), &page); err != nil {
 		t.Fatal(err)
 	}
-	compare(contracts.Browse.Name(), "web_browse", rpc.BrowseInput{SnapshotID: page.SnapshotID, Limit: 8192})
+	compare(contracts.Browse.Name(), "web_browse", wire.BrowseInput{SnapshotID: page.SnapshotID, Limit: 8192})
 	fail = true
 	failed, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "web_fetch", Arguments: web.FetchRequest{URL: "https://example.test"}, Meta: meta})
 	if err != nil || !failed.IsError {

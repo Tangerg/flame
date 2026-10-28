@@ -7,7 +7,8 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
+	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -23,7 +24,8 @@ var (
 // application/agent/runs and are validated again by the consuming adapter.
 type executorCheckpointRecord struct {
 	ToolResultIDs []transcript.ToolResultID
-	Installations []plugin.Dependency
+	Bindings      []plugin.Activation
+	Resources     []plugin.Dependency
 	RootMemberID  string
 	SessionID     string
 	Payload       []byte
@@ -34,8 +36,11 @@ func (e executorCheckpointRecord) validate() error {
 	if err := transcript.ValidateToolResultReferences(e.ToolResultIDs); err != nil {
 		return fmt.Errorf("%w: %w", errInvalidExecutorCheckpointRecord, err)
 	}
-	if err := plugin.ValidateDependencies(e.Installations); err != nil {
+	if err := plugin.ValidateDependencies(e.Resources); err != nil {
 		return fmt.Errorf("%w: %w", errInvalidExecutorCheckpointRecord, err)
+	}
+	if _, err := checkpointDependencies(e.Bindings, e.Resources); err != nil {
+		return err
 	}
 	if err := runs.ValidateMember(e.RootMemberID); err != nil {
 		return fmt.Errorf("%w: %v", errInvalidExecutorCheckpointRecord, err)
@@ -57,7 +62,8 @@ func (e executorCheckpointRecord) validate() error {
 // Payload interpretation and all executor-member topology belong exclusively to
 // the execution adapter.
 type ExecutorCheckpointStore struct {
-	db *sql.DB
+	db        *sql.DB
+	admission *qimu.Admission
 }
 
 // NewExecutorCheckpointStore binds opaque executor checkpoint persistence to a
@@ -72,6 +78,14 @@ func newExecutorCheckpointStore(db *sql.DB) *ExecutorCheckpointStore {
 func (s *ExecutorCheckpointStore) saveCheckpointRecord(ctx context.Context, checkpoint executorCheckpointRecord) error {
 	if err := checkpoint.validate(); err != nil {
 		return fmt.Errorf("sqlite: save executor checkpoint: %w", err)
+	}
+	if s.admission != nil && (len(checkpoint.Bindings) != 0 || len(checkpoint.Resources) != 0) {
+		if err := s.admission.CheckAdmitted(ctx); err != nil {
+			return err
+		}
+		if err := validateReferenceWrite(ctx, checkpoint); err != nil {
+			return err
+		}
 	}
 	return sqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
 		var owner, buildID string
@@ -222,7 +236,7 @@ func (s *ExecutorCheckpointStore) loadCheckpoint(ctx context.Context, rootMember
 	if err != nil {
 		return executorCheckpointRecord{}, err
 	}
-	checkpoint.Installations, err = s.installationDependencies(ctx, rootMemberID)
+	checkpoint.Bindings, checkpoint.Resources, err = s.checkpointReferences(ctx, rootMemberID)
 	if err != nil {
 		return executorCheckpointRecord{}, err
 	}

@@ -6,11 +6,10 @@ import {
   isErrorType,
   mutationSettlementIsUnknown,
   OperationFailure,
-  parseJSON,
   pluginMethod,
-  stringifyJSON,
   type PluginCommandRecovery,
 } from "@flame/runtime-client";
+import { parseJSON, stringifyJSON } from "@qimu/sdk/json";
 import type { CallPluginRequest } from "@flame/runtime-client/wire";
 import { Presentation, type Action } from "../contracts/document";
 
@@ -385,7 +384,7 @@ export class InteractionController {
   ): Promise<void> {
     this.#context.signal.throwIfAborted();
     try {
-      const data = await this.#context.track(
+      const data = await this.#context.track(() =>
         command.recover((value) => value, this.#context.signal),
       );
       this.#context.signal.throwIfAborted();
@@ -471,7 +470,7 @@ export class InteractionController {
       let data: unknown;
       if (method.kind === "command") {
         const command = { contract, method: name, input };
-        data = await this.#context.track(
+        data = await this.#context.track(() =>
           method.streaming
             ? this.#context.runtime.plugins.stream(
                 intent,
@@ -490,7 +489,7 @@ export class InteractionController {
               ),
         );
       } else if (method.streaming) {
-        data = await this.#context.track(
+        data = await this.#context.track(() =>
           this.#context.runtime.plugins.queryStream(
             { ...binding, input },
             consume,
@@ -499,7 +498,7 @@ export class InteractionController {
           ),
         );
       } else {
-        const reply = await this.#context.track(
+        const reply = await this.#context.track(() =>
           this.#context.runtime.plugins.call(
             { ...binding, input },
             { signal: this.#context.signal },

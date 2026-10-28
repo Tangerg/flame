@@ -6,7 +6,7 @@ prepareTestClient(() => {
   testClient = owned;
   finishTestClient(() => owned.dispose());
 });
-import { act, cleanup, fireEvent, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import {
   ComponentBoundary,
@@ -90,6 +90,31 @@ it("injects the captured interaction into an installed result without querying d
   mounted.unmount();
   expect(() => original.submit({ action: "Continue", payloadJSON: "{}" })).toThrow(/abort/i);
   expect(send).toHaveBeenCalledOnce();
+});
+
+it("keeps reload behind the original cleanup gate and exposes an unconfirmed exit", async () => {
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  const closing = Promise.withResolvers<void>();
+  const reload = vi.fn(() => closing.promise);
+  function Broken(): never {
+    throw new Error("native render failed");
+  }
+  testClient.render(
+    <ComponentBoundary scope="installed component" reload={reload}>
+      <Broken />
+    </ComponentBoundary>,
+  );
+  const button = screen.getByRole("button", { name: "Reload window" }) as HTMLButtonElement;
+  fireEvent.click(button);
+  expect(button.disabled).toBe(true);
+  expect(reload).toHaveBeenCalledOnce();
+  closing.reject(new Error("original resource release remains unconfirmed"));
+  await waitFor(() => expect(button.disabled).toBe(false));
+  const details = screen.getAllByRole("button", { name: "Details" });
+  fireEvent.click(details[0]!);
+  expect(screen.getByText(/scope: installed component reload/).textContent).toContain(
+    "original resource release remains unconfirmed",
+  );
 });
 
 it("retains the original component exception for inspection before reloading", () => {

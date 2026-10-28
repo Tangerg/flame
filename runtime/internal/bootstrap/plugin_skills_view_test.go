@@ -97,8 +97,7 @@ func TestSkillsComponentUsesCanonicalOwnersAndWithdrawalPreservesCuration(t *tes
 	stale.Revision = current.Revision
 	r.must(delivery.SkillsProposalsApprove, stale, "approve-current")
 	inspect()
-	r.close()
-	r = poMCPOpen(t, cfg)
+	r = reopenPluginRuntime(t, r, &cfg)
 	inspect()
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable")
 	refuse(delivery.PluginsReadResource, resource, protocol.ErrPluginDisabled)

@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "entry": "component.js",
+  "modules": [
+    {
+      "path": "ci-info-CFJFRlpw.js",
+      "imports": [
+        "rolldown-runtime-XKyaHtl9.js"
+      ],
+      "dynamicImports": [],
+      "exports": [
+        "default"
+      ]
+    },
+    {
+      "path": "component.js",
+      "imports": [
+        "@flame/component-sdk",
+        "@flame/runtime-client",
+        "@flame/ui",
+        "@qimu/sdk/json",
+        "react",
+        "react/jsx-runtime",
+        "rolldown-runtime-XKyaHtl9.js"
+      ],
+      "dynamicImports": [
+        "ci-info-CFJFRlpw.js"
+      ],
+      "exports": [
+        "GenUIResult"
+      ]
+    },
+    {
+      "path": "rolldown-runtime-XKyaHtl9.js",
+      "imports": [],
+      "dynamicImports": [],
+      "exports": [
+        "n",
+        "r",
+        "t"
+      ]
+    }
+  ],
+  "sharedSpecifiers": [
+    "@flame/component-sdk",
+    "@flame/runtime-client",
+    "@flame/ui",
+    "@qimu/sdk/json",
+    "react",
+    "react/jsx-runtime"
+  ]
+}

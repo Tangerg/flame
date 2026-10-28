@@ -7,9 +7,11 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/model/catalog"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/scope/core/chat"
@@ -109,11 +111,11 @@ func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt)
 		return "", err
 	}
 	id := uuid.NewString()
-	invocation := extension.Invocation{ID: id, Origin: extension.Automatic, Parent: operation.Identity(ctx), Target: extension.Target{Scope: extension.ScopeCall, Reference: id}}
-	if parent, err := pluginsdk.InvocationFromContext(ctx); err == nil {
+	invocation := portable.Invocation{ID: id, Origin: extension.Automatic, Parent: operation.Identity(ctx), Target: portable.Target{Scope: extension.ScopeCall, Reference: id}}
+	if parent, err := qimumcp.InvocationFromContext(ctx); err == nil {
 		invocation.Origin, invocation.Parent = parent.Origin, parent.ID
 	}
-	ctx, err = pluginsdk.WithInvocation(ctx, invocation)
+	ctx, err = qimumcp.WithInvocation(ctx, invocation)
 	if err != nil {
 		return "", err
 	}

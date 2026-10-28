@@ -5,9 +5,12 @@ import (
 	"errors"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/guardrails/internal/contract"
 	guardrail "github.com/Tangerg/flame/plugins/guardrails/internal/domain"
+	"github.com/Tangerg/flame/plugins/guardrails/internal/wire"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -29,20 +32,20 @@ func newServer(store *store) (*sdk.Server, error) {
 		return nil, err
 	}
 	server := sdk.NewServer(&sdk.Implementation{Name: "flame.guardrails", Version: "1.0.0"}, nil)
-	backend, err := pluginsdk.NewBackend(server)
+	backend, err := qimumcp.NewBackend(server)
 	if err != nil {
 		return nil, err
 	}
 	if err := errors.Join(
 		pluginstorage.RegisterReceipts(backend, store.db),
-		pluginstorage.RegisterCommand(backend, store.db, contracts.Replace, classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ReplaceInput) (guardrail.Summary, error) {
+		pluginstorage.RegisterCommand(backend, store.db, contracts.Replace, classify, func(ctx context.Context, _ *sdk.ServerSession, input wire.ReplaceInput) (guardrail.Summary, error) {
 			return store.replace(ctx, input.ExpectedRevision, input.Phrases)
 		}),
-		contracts.Get.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, _ pluginsdk.Command[struct{}]) (guardrail.Summary, error) {
+		contracts.Get.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, _ qimumcp.Command[struct{}]) (guardrail.Summary, error) {
 			policy, err := store.read(ctx)
 			return policy.Summary(), err
 		}),
-		input.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[pluginsdk.ModelInputRequest]) (chat.Request, error) {
+		input.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[pluginsdk.ModelInputRequest]) (chat.Request, error) {
 			if err := command.Input.Validate(); err != nil {
 				return chat.Request{}, err
 			}

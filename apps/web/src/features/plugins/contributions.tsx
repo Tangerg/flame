@@ -127,6 +127,7 @@ function createPackageReconciler(
               default: ({ file, fallback }: { file: CapturedFile; fallback: ReactNode }) => (
                 <InstalledFileComponent
                   entry={loaded.component}
+                  reload={loaded.reload}
                   component={component}
                   generation={generation}
                   compose={compose}
@@ -150,6 +151,7 @@ function createPackageReconciler(
               component: (props) => (
                 <ComponentBoundary
                   scope={componentFailureScope(component, generation)}
+                  reload={() => modules.reload()}
                   fallback={props.fallback}
                 >
                   <Suspense fallback={props.fallback}>
@@ -184,6 +186,7 @@ function createPackageReconciler(
               }) => (
                 <InstalledToolResultComponent
                   entry={loaded.component}
+                  reload={loaded.reload}
                   component={component}
                   generation={generation}
                   compose={compose}
@@ -207,6 +210,7 @@ function createPackageReconciler(
               component: (props) => (
                 <ComponentBoundary
                   scope={componentFailureScope(component, generation)}
+                  reload={() => modules.reload()}
                   fallback={props.fallback}
                 >
                   <Suspense fallback={props.fallback}>
@@ -233,6 +237,7 @@ function createPackageReconciler(
               default: ({ session }: { session: CapturedSession }) => (
                 <InstalledSessionActionComponent
                   entry={loaded.component}
+                  reload={loaded.reload}
                   component={component}
                   generation={generation}
                   compose={compose}
@@ -270,6 +275,7 @@ function createPackageReconciler(
             default: () => (
               <InstalledComponent
                 entry={loaded.component}
+                reload={loaded.reload}
                 component={component}
                 generation={generation}
                 compose={compose}
@@ -291,7 +297,10 @@ function createPackageReconciler(
             material: entry.material,
             dock: entry.scope === "session" ? "session" : undefined,
             component: () => (
-              <ComponentBoundary scope={componentFailureScope(component, generation)}>
+              <ComponentBoundary
+                scope={componentFailureScope(component, generation)}
+                reload={() => modules.reload()}
+              >
                 <Suspense fallback={<ComponentLoading />}>
                   <View />
                 </Suspense>
@@ -332,8 +341,7 @@ export function registerPackageContributions(
   );
   const fetcher = async (_params?: unknown, signal?: AbortSignal) =>
     (
-      await trackContributionIO(
-        scope,
+      await trackContributionIO(scope, () =>
         client.plugins.list(signal ? AbortSignal.any([scope.signal, signal]) : scope.signal),
       )
     ).data;
@@ -342,8 +350,7 @@ export function registerPackageContributions(
     key: PROVIDERS_KEY,
     fetcher: async (_params?: unknown, signal?: AbortSignal) =>
       (
-        await trackContributionIO(
-          scope,
+        await trackContributionIO(scope, () =>
           client.plugins.listProviders(
             signal ? AbortSignal.any([scope.signal, signal]) : scope.signal,
           ),

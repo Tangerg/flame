@@ -19,6 +19,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
+	"github.com/Tangerg/flame/qimu/portable"
 )
 
 // The backend is independently exportable; its captured wire fixture must not
@@ -109,7 +110,7 @@ func TestRunAdmissionReleasesObservationAndRetainsOriginalIdentity(t *testing.T)
 				occurrence, err := schedule.RestoreOccurrence(schedule.OccurrenceSnapshot{
 					ID: "sch_due:1700000000000", Execution: schedule.ExecutionSnapshot{Title: "Due", Instructions: "captured input"},
 					FiredAt: at, NextRunAt: at.Add(time.Hour), SessionID: fmt.Sprintf("ses_due_%d", index), RunID: fmt.Sprintf("run_due_%d", index),
-					Invocation: extension.Invocation{ID: fmt.Sprintf("trigger-%d", index), Origin: extension.Automatic, Target: extension.Target{Scope: extension.ScopeInstallation, Reference: "11111111-1111-4111-8111-111111111111"}},
+					Invocation: portable.Invocation{ID: fmt.Sprintf("trigger-%d", index), Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "11111111-1111-4111-8111-111111111111"}},
 				})
 				if err != nil {
 					t.Fatal(err)

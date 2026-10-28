@@ -1,4 +1,4 @@
-import { parseJSON, projectNumber } from "@flame/runtime-client/json";
+import { parseJSON, projectNumber } from "@qimu/sdk/json";
 import { Temporal } from "@js-temporal/polyfill";
 import { z } from "zod/v4";
 import { finiteNumber, InvalidPresentation, limits } from "./expression";

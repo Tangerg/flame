@@ -9,16 +9,21 @@ prepareTestClient(() => {
   finishTestClient(() => owned.dispose());
 });
 import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createFlameClient, parseJSON, stringifyJSON } from "@flame/runtime-client";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { parseJSON, stringifyJSON } from "@qimu/sdk/json";
+import { createFlameClient } from "@flame/runtime-client";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { createMemoryTransport } from "@flame/runtime-client/testing";
 import { respondSuccess, waitForRequest } from "@flame/runtime-client/testing";
-import { type ComponentContext } from "@flame/component-sdk";
+import { bindOperations, type ComponentContext } from "@flame/component-sdk";
 import { type ResolvePluginPointRequest, type CallPluginRequest } from "@flame/runtime-client/wire";
 import { Board } from "../../../../examples/plugins/reviews/component/board";
-import { CAPABILITY_JSON } from "../../../../examples/plugins/reviews/component/methods.generated";
+import {
+  CAPABILITY_JSON,
+  type MethodInputs,
+  type MethodOutputs,
+} from "../../../../examples/plugins/reviews/component/methods.generated";
 import { ANALYZERS_JSON } from "../../../../examples/plugins/reviews/component/analyzers.generated";
 let transport: ReturnType<typeof createMemoryTransport>;
 
@@ -54,7 +59,7 @@ beforeEach(() => {
       read: () => ({ spans: [], metrics: [], logs: [] }),
       clear() {},
     },
-    track: (operation) => operation,
+    track: (operation) => operation(context.signal),
   };
 });
 
@@ -76,6 +81,30 @@ async function readReview(status: "open" | "resolved", revision = 1) {
 }
 
 describe("installed Reviews contextual actions", () => {
+  it("admits component work before the Runtime client can create a command", () => {
+    const refused = new Error("component work capacity exhausted");
+    const call = vi.spyOn(client.plugins, "call");
+    const operations = bindOperations<MethodInputs, MethodOutputs>(
+      {
+        ...context,
+        track() {
+          throw refused;
+        },
+      },
+      CAPABILITY_JSON,
+      { scope: "installation", reference: context.binding!.installationId },
+    );
+    expect(() =>
+      operations.command("io.github.tangerg.flame.examples/reviews.update", {
+        id: "example-review",
+        expectedRevision: 1,
+        status: "resolved",
+      }),
+    ).toThrow(refused);
+    expect(call).not.toHaveBeenCalled();
+    expect(transport.outbox()).toEqual([]);
+  });
+
   it("retains an original command recovery entrance after the component and client are recreated", async () => {
     const records = new Map<string, unknown>();
     const storage = {

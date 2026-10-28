@@ -1,0 +1,54 @@
+{
+  "constants": {
+    "protocol": "io.github.tangerg.qimu/portable/1",
+    "invokeMethod": "io.github.tangerg.qimu/operations.invoke",
+    "describeMethod": "io.github.tangerg.qimu/operations.describe",
+    "validateMethod": "io.github.tangerg.qimu/operations.validate",
+    "setupMethod": "io.github.tangerg.qimu/operations.setup",
+    "activateMethod": "io.github.tangerg.qimu/operations.activate",
+    "callbackMetadataKey": "io.github.tangerg.qimu/callback.v1",
+    "streamMetadataKey": "io.github.tangerg.qimu/stream.v1",
+    "CallHeader": "Qimu-Call",
+    "InvocationHeader": "Qimu-Invocation",
+    "InvocationMetadataKey": "io.github.tangerg.qimu/invocation",
+    "ReceiptMethod": "io.github.tangerg.qimu/commands.get"
+  },
+  "limits": {
+    "maxDescriptorBytes": 1048576,
+    "maxJSONDepth": 64,
+    "maxDescriptorNodes": 16384,
+    "maxValueNodes": 33554432,
+    "maxMethods": 256,
+    "maxReferences": 1024,
+    "maxReferenceDepth": 64,
+    "maxReferenceWork": 16384,
+    "maxValidationWork": 268435456,
+    "maxEqualityWork": 1048576,
+    "maxNumberBytes": 1024,
+    "maxAbsExponent": 4096,
+    "maxPatternBytes": 512,
+    "maxPatternRepeat": 256
+  },
+  "receipt": "{\"description\":\"io.github.tangerg.qimu/commands.get\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvbWNw_ReceiptRequest\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"inputDigest\":{\"type\":\"string\"},\"method\":{\"type\":\"string\"}},\"required\":[\"id\",\"method\",\"inputDigest\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"inputDigest\":{\"type\":\"string\"},\"method\":{\"type\":\"string\"}},\"required\":[\"id\",\"method\",\"inputDigest\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"io.github.tangerg.qimu/commands.get\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvbWNw_Receipt\":{\"additionalProperties\":false,\"properties\":{\"found\":{\"type\":\"boolean\"},\"reply\":true},\"required\":[\"found\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"found\":{\"type\":\"boolean\"},\"reply\":true},\"required\":[\"found\"],\"type\":\"object\"},\"target\":\"installation\"}",
+  "receiptIdentity": "5632ad0eaf1876fe4bdd43387e5a964cad4cbc5c30d6fc1e76f148096529ce13",
+  "streamDelivery": "{\"description\":\"Deliver one ordered chunk to its captured stream consumer.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvbWNw_deliveredChunk\":{\"additionalProperties\":false,\"properties\":{\"sequence\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"value\":true},\"required\":[\"sequence\",\"value\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"sequence\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"value\":true},\"required\":[\"sequence\",\"value\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"qimu.stream/deliver.v1\",\"output\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"type\":\"boolean\"},\"target\":\"call\"}",
+  "inputs": [
+    {
+      "source": "{\"z\":1.0,\"a\":9007199254740993}",
+      "canonical": "{\"a\":9007199254740993,\"z\":1.0}",
+      "digest": "617ca0a3e3ea33d0f066dc317d2e8fe8813e26743dd231873b0ae981b44bbe4d"
+    },
+    {
+      "source": "{\"a\":1e+20,\"n\":-0,\"s\":\"\\u0061\"}",
+      "canonical": "{\"a\":1e+20,\"n\":-0,\"s\":\"a\"}",
+      "digest": "80448163483a5752502b16637d2f93a382ac42b32419c8ea172288cc5d66fdf0"
+    },
+    {
+      "source": "{\"\\ud83d\\ude00\":1,\"\\uffff\":2,\"a\":[false,null]}",
+      "canonical": "{\"a\":[false,null],\"😀\":1,\"￿\":2}",
+      "digest": "48248aed92c5a6c4097e612d4a63fd82f4b21e952c605ab5979d593d2655f765"
+    }
+  ],
+  "capability": "{\"composition\":\"collection\",\"methods\":[{\"description\":\"io.github.tangerg.qimu/commands.get\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvbWNw_ReceiptRequest\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"inputDigest\":{\"type\":\"string\"},\"method\":{\"type\":\"string\"}},\"required\":[\"id\",\"method\",\"inputDigest\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"inputDigest\":{\"type\":\"string\"},\"method\":{\"type\":\"string\"}},\"required\":[\"id\",\"method\",\"inputDigest\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"￿\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvbWNw_Receipt\":{\"additionalProperties\":false,\"properties\":{\"found\":{\"type\":\"boolean\"},\"reply\":true},\"required\":[\"found\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"found\":{\"type\":\"boolean\"},\"reply\":true},\"required\":[\"found\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"io.github.tangerg.qimu/commands.get\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvbWNw_ReceiptRequest\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"inputDigest\":{\"type\":\"string\"},\"method\":{\"type\":\"string\"}},\"required\":[\"id\",\"method\",\"inputDigest\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"inputDigest\":{\"type\":\"string\"},\"method\":{\"type\":\"string\"}},\"required\":[\"id\",\"method\",\"inputDigest\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"😀\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvbWNw_Receipt\":{\"additionalProperties\":false,\"properties\":{\"found\":{\"type\":\"boolean\"},\"reply\":true},\"required\":[\"found\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"found\":{\"type\":\"boolean\"},\"reply\":true},\"required\":[\"found\"],\"type\":\"object\"},\"target\":\"installation\"}],\"protocol\":\"io.github.tangerg.qimu/portable/1\",\"reference\":\"﻿contract\",\"scope\":\"installation\"}",
+  "capabilityIdentity": "518888a7db1b8f11ba5291e387ac87c7e08e0999d4c9d8e01501291d4a4a21e0"
+}

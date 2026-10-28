@@ -11,6 +11,6 @@ Generated from the feature's Go-owned method contracts.
 | `flame.knowledgebase/reindex.v1` | command | installation | Rebuild an existing document's embedding index from its stored original text at the inspected revision through the configured embedding role. |
 | `flame.knowledgebase/search.v1` | query | installation | Retrieve cited chunks from indexed user documents through the configured embedding role. |
 
-Capability `flame.knowledgebase.v1` uses `collection` composition in `installation` scope. Required backend protocol: `io.github.tangerg.flame/backend/2026-10-15.3`.
+Capability `flame.knowledgebase.v1` uses `collection` composition in `installation` scope. Required backend protocol: `io.github.tangerg.qimu/portable/1`.
 
 `capability.generated.json` preserves the canonical callable contract; `schema.json` and the method references are presentation projections.

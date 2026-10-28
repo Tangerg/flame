@@ -11,7 +11,7 @@ const { values } = parseArgs({
     arch: { type: "string" },
     plugin: { type: "string" },
     archives: { type: "string" },
-    "archive-tool": { type: "string" },
+    "package-tool": { type: "string" },
     replace: { type: "boolean", default: false },
   },
 });
@@ -53,7 +53,7 @@ try {
       ...values,
       source: join(source, name),
       output: join(target, name),
-      archiveTool: values["archive-tool"],
+      packageTool: values["package-tool"],
     });
   }
   if (values.replace) await rm(values.output, { recursive: true, force: true });

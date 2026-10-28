@@ -4,21 +4,16 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./node": "./src/node.ts",
-    "./build": "./build.mjs"
+    "./protocol": "./src/protocol.generated.json"
   },
   "files": [
     "src",
-    "build.mjs",
     "README.md"
   ],
   "dependencies": {
     "@flame/runtime-client": "*",
-    "@modelcontextprotocol/sdk": "1.32.2",
-    "ajv-formats": "3.0.1",
-    "decimal.js": "10.6.0",
-    "jsonschema": "1.5.0",
-    "zod": "^4.6.7"
+    "@qimu/node": "*",
+    "@qimu/sdk": "*"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
@@ -30,8 +25,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "lint": "oxlint src testing build.mjs --deny-warnings",
-    "format:check": "prettier --check src testing build.mjs package.json tsconfig.json README.md",
+    "lint": "oxlint src testing --deny-warnings",
+    "format:check": "prettier --check src testing package.json tsconfig.json README.md",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm run test"
   }
 }

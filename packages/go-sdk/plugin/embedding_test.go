@@ -3,33 +3,38 @@ package plugin
 import (
 	"context"
 	"errors"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"math"
 	"slices"
 	"sync/atomic"
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
+	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func TestTextEmbeddingCallbackKeepsChildAttributionAndCallerBudget(t *testing.T) {
-	callbacks := NewCallbacks()
+	callbacks := qimumcp.NewCallbacks()
 	t.Cleanup(func() {
 		if err := callbacks.Close(); err != nil {
 			t.Error(err)
 		}
 	})
 	session := new(sdk.ClientSession)
-	callbacks.AdmitSession(session)
-	owner := extension.Invocation{ID: "original-tool", Origin: extension.Model, Parent: "executing-run", Target: extension.Target{Scope: "installation", Reference: "owner"}}
-	ctx, err := WithInvocation(t.Context(), owner)
+	if err := callbacks.AdmitSession(session); err != nil {
+		t.Fatal(err)
+	}
+	owner := portable.Invocation{ID: "original-tool", Origin: extension.Model, Parent: "executing-run", Target: portable.Target{Scope: "installation", Reference: "owner"}}
+	ctx, err := qimumcp.WithInvocation(t.Context(), owner)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var calls atomic.Int32
-	callback, err := NewTextEmbeddingCallback(func(ctx context.Context, command Command[[]string]) (TextEmbeddings, error) {
-		invocation, err := InvocationFromContext(ctx)
-		if err != nil || invocation.ID != command.ID || invocation.Origin != owner.Origin || invocation.Parent != owner.ID || invocation.Target != (extension.Target{Scope: "call", Reference: command.ID}) {
+	callback, err := NewTextEmbeddingCallback(func(ctx context.Context, command qimumcp.Command[[]string]) (TextEmbeddings, error) {
+		invocation, err := qimumcp.InvocationFromContext(ctx)
+		if err != nil || invocation.ID != command.ID || invocation.Origin != owner.Origin || invocation.Parent != owner.ID || invocation.Target != (portable.Target{Scope: "call", Reference: command.ID}) {
 			t.Errorf("embedding changed original ownership: %+v, %v", invocation, err)
 		}
 		input, err := command.RequestInput()
@@ -42,7 +47,7 @@ func TestTextEmbeddingCallbackKeepsChildAttributionAndCallerBudget(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ref, release, err := callbacks.Open(ctx, session, CallbackLimits{MaxRequestBytes: 4096, MaxResponseBytes: 4096}, callback)
+	ref, release, err := callbacks.Open(ctx, session, qimumcp.CallbackLimits{MaxRequestBytes: 4096, MaxResponseBytes: 4096}, callback)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +65,7 @@ func TestTextEmbeddingCallbackKeepsChildAttributionAndCallerBudget(t *testing.T)
 		t.Fatalf("physical calls = %d", calls.Load())
 	}
 	release()
-	if _, err := CallTextEmbedding(t.Context(), ref, "retired", []string{"captured text"}); !errors.Is(err, ErrStaleCall) {
+	if _, err := CallTextEmbedding(t.Context(), ref, "retired", []string{"captured text"}); !errors.Is(err, qimumcp.ErrStaleCall) {
 		t.Fatalf("retired grant accepted work: %v", err)
 	}
 	if calls.Load() != 3 {
@@ -70,16 +75,18 @@ func TestTextEmbeddingCallbackKeepsChildAttributionAndCallerBudget(t *testing.T)
 
 func TestTextEmbeddingCallbackRejectsMalformedCorrespondence(t *testing.T) {
 	for _, vectors := range [][][]float32{nil, {{}, {}}, {{1}, {1, 2}}} {
-		callbacks := NewCallbacks()
+		callbacks := qimumcp.NewCallbacks()
 		session := new(sdk.ClientSession)
-		callbacks.AdmitSession(session)
-		callback, err := NewTextEmbeddingCallback(func(context.Context, Command[[]string]) (TextEmbeddings, error) {
+		if err := callbacks.AdmitSession(session); err != nil {
+			t.Fatal(err)
+		}
+		callback, err := NewTextEmbeddingCallback(func(context.Context, qimumcp.Command[[]string]) (TextEmbeddings, error) {
 			return TextEmbeddings{Space: "captured-space", Vectors: vectors}, nil
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
-		ref, release, err := callbacks.Open(t.Context(), session, CallbackLimits{MaxRequestBytes: 4096, MaxResponseBytes: 4096}, callback)
+		ref, release, err := callbacks.Open(t.Context(), session, qimumcp.CallbackLimits{MaxRequestBytes: 4096, MaxResponseBytes: 4096}, callback)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -3,10 +3,10 @@ import { type ComponentContext } from "@flame/component-sdk";
 import {
   createFlameClient,
   createHttpTransport,
-  stringifyJSON,
   type FlameClient,
   type MutationJournalStorage,
 } from "@flame/runtime-client";
+import { stringifyJSON } from "@qimu/sdk/json";
 import { type CallPluginRequest, type ServerCapabilities } from "@flame/runtime-client/wire";
 import {
   Presentation,
@@ -20,7 +20,7 @@ import {
 
 const installationId = "12345678-1234-1234-1234-123456789abc";
 const contract = stringifyJSON({
-  protocol: "io.github.tangerg.flame/backend/2026-10-15.3",
+  protocol: "io.github.tangerg.qimu/portable/1",
   reference: "test.records",
   composition: "selection",
   scope: "installation",
@@ -262,7 +262,7 @@ function controller(
     },
     locale: "en",
     signal: owner.signal,
-    track: (operation) => operation,
+    track: (operation) => operation(owner.signal),
     compose: () => null,
   };
   const port: InteractionState = {

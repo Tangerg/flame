@@ -7,8 +7,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
 )
 
 // Name is the binding-neutral identity of one Runtime operation. Concrete

@@ -14,9 +14,9 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	memorycontract "github.com/Tangerg/flame/apps/cli/internal/domain/memory"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/oolong/core/input"
 )
 
@@ -198,7 +198,7 @@ func boundMemoryRequest(method string, value any) (protocol.CallPluginRequest, e
 		return protocol.CallPluginRequest{}, err
 	}
 	const installation = "12345678-1234-1234-1234-123456789abc"
-	return protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("1", 64), Contribution: "memory-provider", Contract: memorycontract.CapabilityJSON, Method: method, Target: extension.Target{Scope: "installation", Reference: installation}, Input: string(input.JSON())}, nil
+	return protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("1", 64), Contribution: "memory-provider", Contract: memorycontract.CapabilityJSON, Method: method, Target: portable.Target{Scope: "installation", Reference: installation}, Input: string(input.JSON())}, nil
 }
 
 func (a *agentMemoryServiceStub) CallPlugin(_ context.Context, request protocol.CallPluginRequest, commandID authoring.CommandID) (*protocol.CallPluginResponse, error) {

@@ -1,5 +1,6 @@
-import { projectNumber } from "@flame/runtime-client/json";
-import { parseJSON, stringifyJSON, type FlameClient } from "@flame/runtime-client";
+import { projectNumber } from "@qimu/sdk/json";
+import { parseJSON, stringifyJSON } from "@qimu/sdk/json";
+import { type FlameClient } from "@flame/runtime-client";
 import {
   CAPABILITY_JSON,
   type MethodInputs,

@@ -20,14 +20,14 @@ A Goal outcome report requires the immutable Goal incarnation that admitted its 
 
 ## Dependency direction
 
-| Ring        | Responsibility                                                                   |
-| ----------- | -------------------------------------------------------------------------------- |
-| Domain      | Aggregates, values, invariants, legal transitions, and pure policy               |
-| Application | Use-case ordering, transactions, workflow lifetime, and consumer-owned ports     |
-| Adapter     | Translation to Scope, providers, MCP, persistence, and other external systems    |
-| Infra       | Filesystem, Git, process, LSP, telemetry, and other technical mechanisms         |
-| Delivery    | Binding-neutral endpoint, dispatch, HTTP/SSE transport, and protocol projection  |
-| Bootstrap   | Concrete construction, ownership transfer, startup, recovery, and shutdown       |
+| Ring        | Responsibility                                                                  |
+| ----------- | ------------------------------------------------------------------------------- |
+| Domain      | Aggregates, values, invariants, legal transitions, and pure policy              |
+| Application | Use-case ordering, transactions, workflow lifetime, and consumer-owned ports    |
+| Adapter     | Translation to Scope, providers, MCP, persistence, and other external systems   |
+| Infra       | Filesystem, Git, process, LSP, telemetry, and other technical mechanisms        |
+| Delivery    | Binding-neutral endpoint, dispatch, HTTP/SSE transport, and protocol projection |
+| Bootstrap   | Concrete construction, ownership transfer, startup, recovery, and shutdown      |
 
 Domain does not depend on Application or outer rings. Application depends on Domain and declares narrow interfaces for effects it consumes. Adapters and Infra satisfy those interfaces. Delivery invokes Application through one endpoint. Bootstrap is the only concrete composition root.
 
@@ -94,8 +94,11 @@ The workspace VCS adapter translates Git results and failures directly from
 eligibility, unavailable/conflict outcomes, and Session-scoped restore policy.
 `adapter/persistence` owns Runtime product schema, SQL, strict storage codecs and
 Application port translation in one database lifecycle. Public
-`packages/go-sdk/sqlite` owns shared schema admission, connection and
-transaction mechanisms; it carries no host or backend business tables.
+`qimu/sqlite` owns shared schema admission, connection and transaction mechanisms,
+stable framework settlement and execution protection. Runtime supplies its own
+business schemas; Qimu records and Runtime business references commit in one
+`flame-qimu.db` database under the Host's original Admission. Plugin backends keep
+their private business databases and receipts.
 Workspace mutation intents commit independently before filesystem changes and
 retire independently after their effects; they never join an ambient business
 transaction.
@@ -197,7 +200,9 @@ MCP catalog validation, disabled-tool policy, discovery grouping, and automatic 
 MCP management reads, connected Tool counts, and execution publication derive from the same admitted Scope Tool snapshot. Listing never performs another remote discovery; reconnect replaces the snapshot for all three consumers. Scope Binding compiles each schema before a connection or probe succeeds, and Scope Registry admits the prospective catalog across connected servers. Runtime retains remote identity, description, and catalog-capacity policy. Diagnostic and MCP metadata carry Scope ToolDefinition directly; Delivery alone projects schemas to protocol objects while preserving exact numeric literals. Runtime has no parallel schema value type or parser.
 
 An admitted MCP Tool call receives Runtime's existing logical call identity in
-request metadata as the ID in `io.github.tangerg.flame/invocation`, beside origin, parent and concrete target. It is the same bounded
+request metadata under the compiled `qimumcp.InvocationMetadataKey`, beside
+origin, parent and concrete target. `qimu/mcp` owns this generic transport;
+Flame's `extension` package validates its product origin vocabulary. It is the same bounded
 identity committed with the Tool attempt, derived from Scope attribution and
 retained across approval and continuation; a provider's correlation ID is not a
 business retry identity. The Scope MCP adapter forwards this per-call projection.
@@ -208,11 +213,12 @@ backend business state never acquires a Runtime writer. This metadata conveys no
 authentication or dispatch grant. Unexpected MCP failures keep their existing
 unknown-effect semantics.
 
-The product executor admits Interaction roots. Installed MCP tools use the
-existing Session-owned Run and Interrupt path. Declarative human actions select
-a closed existing Runtime operation and delegate through its delivery endpoint;
-`renameSession` uses the Session update owner. HTML bridges expose bounded reads
-and cannot dispatch tools or backend mutations. Diagnostic `tools.invoke` keeps
+The product executor admits Interaction roots. Installed MCP Tools use the
+existing Session-owned Run and Interrupt path. Ordinary React components consume
+captured public context and invoke canonical Runtime or installed operations;
+Session actions use the same component boundary and Session update owner.
+Qimu owns their admitted Browser executions and Uses. No HTML bridge or closed
+action enum supplies a parallel dispatch path. Diagnostic `tools.invoke` keeps
 its diagnostic contract and is not a plugin action entrance.
 
 Tool search reports its fixed initial catalog and the names selected by that invocation. Its structured result owns the executed matches, including after argument rewriting; `interaction.AdvertisingTool` reads those names without repeating a search from the original model proposal. Scope validates the exact deferred bindings and commits cumulative Tool visibility only after successful execution. Neither a frozen description nor one search result can say which other Tools remain unloaded. The former context-bound advertisement callback is removed.
