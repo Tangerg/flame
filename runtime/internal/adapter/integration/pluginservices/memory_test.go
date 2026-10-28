@@ -197,7 +197,7 @@ func TestMemoryMaintenanceCapturesBusinessInputAndRecoversBackendReceipts(t *tes
 		t.Fatal(err)
 	}
 	addContext := operation.Bind(t.Context(), "memory.add", "keyword")
-	addition, err := jsonvalue.Encode(memorycontract.AddV2Input{Scope: "project", CWD: project, Content: "keyword fact"})
+	addition, err := jsonvalue.Encode(memorycontract.AddV2Input{Scope: memorycontract.AddV2InputScopeProject, CWD: project, Content: "keyword fact"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -275,7 +275,7 @@ func TestMemoryMaintenanceCapturesBusinessInputAndRecoversBackendReceipts(t *tes
 	if err != nil || len(items) != 1 || items[0].Content != "keyword fact" {
 		t.Fatalf("absent role lost keyword search: %v, %v", items, err)
 	}
-	current, err := owner.Items(t.Context(), "project", project)
+	current, err := owner.Items(t.Context(), memorycontract.ItemsV2InputScopeProject, project)
 	if err != nil || len(current) != 1 || current[0].Content != "keyword fact" || current[0].ID != items[0].ID || current[0].UpdatedAt.IsZero() {
 		t.Fatalf("published active read changed prompt values: %+v, %v", current, err)
 	}
@@ -287,12 +287,12 @@ func TestMemoryMaintenanceCapturesBusinessInputAndRecoversBackendReceipts(t *tes
 	}
 	failure := errors.New("installed memory read failed")
 	store.failure = failure
-	if items, err := owner.Items(t.Context(), "project", project); !errors.Is(err, failure) || len(items) != 0 {
+	if items, err := owner.Items(t.Context(), memorycontract.ItemsV2InputScopeProject, project); !errors.Is(err, failure) || len(items) != 0 {
 		t.Fatalf("operational failure became absent memory: %+v, %v", items, err)
 	}
 	store.failure = nil
 	store.disable(t)
-	if items, err := owner.Items(t.Context(), "project", project); err != nil || len(items) != 0 {
+	if items, err := owner.Items(t.Context(), memorycontract.ItemsV2InputScopeProject, project); err != nil || len(items) != 0 {
 		t.Fatalf("optional absence failed: %+v, %v", items, err)
 	}
 }

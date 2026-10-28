@@ -165,15 +165,15 @@ func TestMemoryComponentUsesInstalledPublicOperationsAndPreservesPrivateFacts(t 
 	}
 	r.poMCPTools(&protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "memory"}, memoryToolsReady)
 	for _, content := range []string{"first fact", "second fact"} {
-		r.must(delivery.PluginsCall, memoryAddRequest(r, memorycontract.AddV2Input{Scope: "user", Content: content}), content)
+		r.must(delivery.PluginsCall, memoryAddRequest(r, memorycontract.AddV2Input{Scope: memorycontract.AddV2InputScopeUser, Content: content}), content)
 	}
 	contracts, err := portable.ParseCapability([]byte(memorycontract.CapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
-	query := memorycontract.ListV2Input{Scope: "user", Limit: new(uint64(1))}
+	query := memorycontract.ListV2Input{Scope: memorycontract.ListV2InputScopeUser, Limit: new(uint64(1))}
 	for {
-		input, err := jsonvalue.Encode(memorycontract.ListV2Input{Scope: "user", Cursor: query.Cursor, Limit: query.Limit})
+		input, err := jsonvalue.Encode(memorycontract.ListV2Input{Scope: memorycontract.ListV2InputScopeUser, Cursor: query.Cursor, Limit: query.Limit})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -196,7 +196,7 @@ func TestMemoryComponentUsesInstalledPublicOperationsAndPreservesPrivateFacts(t 
 		query.Cursor = page.NextCursor
 	}
 	r.must(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, "uninstall-memory")
-	result := memoryQueryResult(r, memorycontract.ListV2Input{Scope: "user"})
+	result := memoryQueryResult(r, memorycontract.ListV2Input{Scope: memorycontract.ListV2InputScopeUser})
 	if !errors.Is(result.Failure, protocol.ErrPluginUnavailable) {
 		t.Fatalf("uninstalled Memory owner=%v", result.Failure)
 	}

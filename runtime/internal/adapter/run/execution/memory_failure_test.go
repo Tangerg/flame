@@ -7,21 +7,23 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+
+	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 )
 
 type failingMemoryPartition struct {
-	scope string
+	scope memorycontract.ItemsV2InputScope
 }
 
-func (f failingMemoryPartition) Items(_ context.Context, scope string, _ string) ([]MemoryPromptItem, error) {
-	if scope == string(f.scope) {
+func (f failingMemoryPartition) Items(_ context.Context, scope memorycontract.ItemsV2InputScope, _ string) ([]MemoryPromptItem, error) {
+	if scope == f.scope {
 		return nil, errors.New("memory storage unavailable")
 	}
 	return []MemoryPromptItem{testMemoryPromptItem(MemoryPromptItem{Content: "healthy partition fact", Pinned: true})}, nil
 }
 
 func TestPinnedMemoryFailurePreservesHealthyPartitionAndDiagnostics(t *testing.T) {
-	for _, scope := range []string{"project", "user"} {
+	for _, scope := range []memorycontract.ItemsV2InputScope{memorycontract.ItemsV2InputScopeProject, memorycontract.ItemsV2InputScopeUser} {
 		t.Run(string(scope), func(t *testing.T) {
 			var diagnostics bytes.Buffer
 			previous := slog.Default()

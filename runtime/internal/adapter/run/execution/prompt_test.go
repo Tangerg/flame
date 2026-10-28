@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 )
 
@@ -119,8 +120,8 @@ func composeSystemPromptText(t *testing.T, config WorkingContextConfig, cwd stri
 
 type stubAgentMemory struct{ content string }
 
-func (s stubAgentMemory) Items(_ context.Context, scope string, _ string) ([]MemoryPromptItem, error) {
-	if scope != string("project") || strings.TrimSpace(s.content) == "" {
+func (s stubAgentMemory) Items(_ context.Context, scope memorycontract.ItemsV2InputScope, _ string) ([]MemoryPromptItem, error) {
+	if scope != memorycontract.ItemsV2InputScopeProject || strings.TrimSpace(s.content) == "" {
 		return nil, nil
 	}
 	// Pinned so it reaches the always-on core (the composer injects pinned only).

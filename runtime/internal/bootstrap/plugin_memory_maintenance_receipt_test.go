@@ -120,7 +120,7 @@ func TestMemoryMaintenanceCommittedReplyLossRecoversWithoutAnotherModelCall(t *t
 	if _, err := testsupport.CallCapability[memorycontract.MaintainV1Input, memorycontract.MaintainV1Output](ctx, session, memoryContract(t), "memory", memorycontract.MaintainV1Method, "original", input, sdk.ParamsBase{}); err == nil {
 		t.Fatal("same identity adopted changed maintenance input")
 	}
-	listed, err := testsupport.CallCapability[memorycontract.ListV2Input, memorycontract.ListV2Output](ctx, session, memoryContract(t), "memory", memorycontract.ListV2Method, "", memorycontract.ListV2Input{Scope: "project", CWD: project}, sdk.ParamsBase{})
+	listed, err := testsupport.CallCapability[memorycontract.ListV2Input, memorycontract.ListV2Output](ctx, session, memoryContract(t), "memory", memorycontract.ListV2Method, "", memorycontract.ListV2Input{Scope: memorycontract.ListV2InputScopeProject, CWD: project}, sdk.ParamsBase{})
 	if err != nil || len(listed.Rows) != 1 || listed.Rows[0].Content != "retained publication" {
 		t.Fatalf("recovered private memory=%+v, %v", listed, err)
 	}

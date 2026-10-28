@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
@@ -213,10 +214,10 @@ type provenanceMemoryReader struct {
 
 func (p provenanceMemoryReader) Items(
 	_ context.Context,
-	scope string,
+	scope memorycontract.ItemsV2InputScope,
 	_ string,
 ) ([]MemoryPromptItem, error) {
-	if scope != string("project") {
+	if scope != memorycontract.ItemsV2InputScopeProject {
 		return nil, nil
 	}
 	return slices.Clone(p.items), nil

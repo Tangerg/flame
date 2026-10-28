@@ -20,7 +20,7 @@ func TestMissingOwnerReceiptNeverResubmitsAnUnconfirmedCommand(t *testing.T) {
 	installed := poMCPActivate(r, source)
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "memory"}
 	r.poMCPTools(server, memoryToolsReady)
-	request := memoryAddRequest(r, memorycontract.AddV2Input{Scope: "user", Content: "must not be silently resubmitted"})
+	request := memoryAddRequest(r, memorycontract.AddV2Input{Scope: memorycontract.AddV2InputScopeUser, Content: "must not be silently resubmitted"})
 	invoke := func() *protocol.Failure {
 		return r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "uncertain", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}).Failure
 	}
@@ -32,7 +32,7 @@ func TestMissingOwnerReceiptNeverResubmitsAnUnconfirmedCommand(t *testing.T) {
 	if failure := invoke(); failure == nil || !errors.Is(failure, protocol.ErrInternalError) {
 		t.Fatalf("missing receipt was settled or resubmitted: %v", failure)
 	}
-	page := readMemoryPage(r, memorycontract.ListV2Input{Scope: "user"})
+	page := readMemoryPage(r, memorycontract.ListV2Input{Scope: memorycontract.ListV2InputScopeUser})
 	if len(page.Data) != 0 {
 		t.Fatalf("receipt lookup executed the original mutation: %+v", page.Data)
 	}
@@ -92,7 +92,7 @@ func TestObservedCommandNeverRetargetsToReplacementProvider(t *testing.T) {
 		return &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: id}, Name: "memory"}
 	}
 	r.poMCPTools(server(first.ID), memoryToolsReady)
-	request := memoryAddRequest(r, memorycontract.AddV2Input{Scope: "user", Content: "original provider's fact"})
+	request := memoryAddRequest(r, memorycontract.AddV2Input{Scope: memorycontract.AddV2InputScopeUser, Content: "original provider's fact"})
 	r.must(delivery.PluginsCall, request, "original-command")
 	r.must(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: first.ID}, "uninstall-observed")
 	second := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "replacement-install").(*protocol.PluginInstallation)
@@ -104,12 +104,12 @@ func TestObservedCommandNeverRetargetsToReplacementProvider(t *testing.T) {
 	if replay.Failure == nil || !errors.Is(replay.Failure, protocol.ErrInternalError) {
 		t.Fatalf("old identity adopted replacement provider: %v", replay.Failure)
 	}
-	page := readMemoryPage(r, memorycontract.ListV2Input{Scope: "user"})
+	page := readMemoryPage(r, memorycontract.ListV2Input{Scope: memorycontract.ListV2InputScopeUser})
 	if len(page.Data) != 0 {
 		t.Fatalf("old command mutated replacement owner: %+v", page.Data)
 	}
-	created := mustMemoryAdd(r, memoryAddRequest(r, memorycontract.AddV2Input{Scope: "user", Content: "original provider's fact"}), "new-command")
-	page = readMemoryPage(r, memorycontract.ListV2Input{Scope: "user"})
+	created := mustMemoryAdd(r, memoryAddRequest(r, memorycontract.AddV2Input{Scope: memorycontract.AddV2InputScopeUser, Content: "original provider's fact"}), "new-command")
+	page = readMemoryPage(r, memorycontract.ListV2Input{Scope: memorycontract.ListV2InputScopeUser})
 	if len(page.Data) != 1 || !reflect.DeepEqual(page.Data[0], *created) {
 		t.Fatalf("new command did not use replacement owner: %+v", page.Data)
 	}
