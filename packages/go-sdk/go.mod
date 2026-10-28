@@ -3,7 +3,7 @@ module github.com/Tangerg/flame/packages/go-sdk
 go 1.27.3
 
 require (
-	github.com/Tangerg/flame/qimu v0.1.0-quality.20261029.1
+	github.com/Tangerg/flame/qimu v0.1.0-quality.20261029.2
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
 	github.com/Tangerg/scope/core v0.58.0
 	github.com/Tangerg/scope/mcp v0.58.0
