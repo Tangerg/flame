@@ -29,3 +29,36 @@ func TestInvalidSocketAddressNeverCreatesOrReconnectsAnAuthority(t *testing.T) {
 		t.Fatalf("validation created state: %v", err)
 	}
 }
+
+func TestSocketParentUsesTheOriginalPhysicalDirectory(t *testing.T) {
+	directory, err := os.MkdirTemp("", "qimu-alias-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(directory) })
+	owned := filepath.Join(directory, "owned")
+	server, err := Open(Config{Directory: owned})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := server.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	alias := filepath.Join(directory, "alias")
+	if err := os.Symlink(owned, alias); err != nil {
+		t.Fatal(err)
+	}
+	listener, err := server.Listen(filepath.Join(alias, "socket"))
+	if err != nil {
+		t.Fatalf("physical directory alias was refused: %v", err)
+	}
+	if err := listener.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if listener, err := server.Listen(filepath.Join(directory, "foreign.sock")); err == nil {
+		_ = listener.Close()
+		t.Fatal("socket escaped its original directory")
+	}
+}

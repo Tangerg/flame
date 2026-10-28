@@ -167,7 +167,11 @@ func (s *Server) Listen(socket string) (net.Listener, error) {
 	if err := validateSocketPath(socket); err != nil {
 		return nil, err
 	}
-	if filepath.Dir(socket) != s.config.Directory {
+	directory, err := filepath.EvalSymlinks(filepath.Dir(socket))
+	if err != nil {
+		return nil, err
+	}
+	if directory != s.config.Directory {
 		return nil, errors.New("runner: socket must be in the owned state directory")
 	}
 	if info, err := os.Lstat(socket); err == nil {

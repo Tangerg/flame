@@ -183,7 +183,10 @@ func TestSeparateRunnerSurvivesClientAndLosesNoAttemptOnRestart(t *testing.T) {
 		}
 	}()
 	if line, err := bufio.NewReader(stdout).ReadString('\n'); err != nil || line != "ready\n" {
-		t.Fatalf("daemon ready: %q %v %s", line, err, diagnostics.String())
+		_ = command.Process.Kill()
+		waitErr := command.Wait()
+		command.Process = nil
+		t.Fatalf("daemon ready: %q %v %s", line, errors.Join(err, waitErr), diagnostics.String())
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()

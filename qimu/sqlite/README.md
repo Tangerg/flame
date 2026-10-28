@@ -1,8 +1,12 @@
 # SQLite settlement and execution protection
 
 This optional adapter uses one local SQLite file and the Host's existing
-`qimu.Admission`. A held operating-system file lock grants one Store authority;
-opening another Host on the same database fails. The database is configured and
+`qimu.Admission`. A held operating-system lock on a persistent `.qimu-lock`
+sidecar grants one Store authority; opening another Host on the same database
+fails. The sidecar stays in place after release and must not be replaced while a
+Store is alive. Database and lock paths must be regular files without hard links.
+The sidecar keeps authority separate from SQLite's own byte-range locks on macOS.
+The database is configured and
 checked for WAL, synchronous FULL, foreign keys and disabled dirty reads. The
 profile requires a reliable local filesystem. It does not support network filesystems,
 independent writers or atomic transactions across databases.
