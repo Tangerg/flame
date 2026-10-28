@@ -77,26 +77,27 @@ type scheduleView struct {
 	CreatedAt       string `json:"created_at,omitempty"`
 }
 
-type scheduleManagement interface {
+// Receipted execution must own the original Tool input before Domain projection.
+type scheduleOperations interface {
 	ListPage(ctx context.Context, cursor string, limit pagination.RequestedLimit) (pagination.Page[scheduledomain.Schedule], error)
-	Create(ctx context.Context, draft scheduledomain.Draft) (scheduledomain.Schedule, error)
-	Update(ctx context.Context, command scheduleapp.UpdateCommand) (scheduledomain.Schedule, error)
-	Delete(ctx context.Context, id string) error
+	Create(ctx context.Context, input createScheduleArgs) (scheduledomain.Schedule, error)
+	Update(ctx context.Context, input updateScheduleArgs) (scheduledomain.Schedule, error)
+	Delete(ctx context.Context, input deleteScheduleArgs) error
 }
 
 type scheduleManagementTools struct {
-	coordinator scheduleManagement
-	manual      func(context.Context, wire.ItemInput) (scheduleapp.RunReference, error)
+	operations scheduleOperations
+	manual     func(context.Context, wire.ItemInput) (scheduleapp.RunReference, error)
 }
 
-func buildSchedules(coordinator scheduleManagement, manual func(context.Context, wire.ItemInput) (scheduleapp.RunReference, error)) ([]toolcontract.Tool, error) {
-	if lo.IsNil(coordinator) {
-		return nil, errors.New("schedules: tool coordinator is required")
+func buildSchedules(operations scheduleOperations, manual func(context.Context, wire.ItemInput) (scheduleapp.RunReference, error)) ([]toolcontract.Tool, error) {
+	if lo.IsNil(operations) {
+		return nil, errors.New("schedules: tool operations are required")
 	}
 	if manual == nil {
 		return nil, errors.New("schedules: manual Run operation is required")
 	}
-	t := &scheduleManagementTools{coordinator: coordinator, manual: manual}
+	t := &scheduleManagementTools{operations: operations, manual: manual}
 	list, err := toolcontract.NewFunc[listScheduleArgs, scheduleListResponse](
 		toolcontract.FuncConfig{
 			Name:        "list_schedules",
@@ -146,7 +147,7 @@ func buildSchedules(coordinator scheduleManagement, manual func(context.Context,
 }
 
 func (s *scheduleManagementTools) list(ctx context.Context, in listScheduleArgs) (scheduleListResponse, error) {
-	page, err := s.coordinator.ListPage(ctx, in.Cursor, pagination.DefaultLimit())
+	page, err := s.operations.ListPage(ctx, in.Cursor, pagination.DefaultLimit())
 	if err != nil {
 		return scheduleListResponse{}, pluginsdk.DefiniteToolFailure(fmt.Errorf("list_schedules: %w", err))
 	}
@@ -158,11 +159,7 @@ func (s *scheduleManagementTools) list(ctx context.Context, in listScheduleArgs)
 }
 
 func (s *scheduleManagementTools) create(ctx context.Context, in createScheduleArgs) (scheduleResponse, error) {
-	draft, err := in.draft()
-	if err != nil {
-		return scheduleResponse{}, pluginsdk.DefiniteToolFailure(err)
-	}
-	created, err := s.coordinator.Create(ctx, draft)
+	created, err := s.operations.Create(ctx, in)
 	if err != nil {
 		return scheduleResponse{}, commandFailure(createScheduleTool, err)
 	}
@@ -185,11 +182,15 @@ func (in createScheduleArgs) draft() (scheduledomain.Draft, error) {
 }
 
 func (s *scheduleManagementTools) update(ctx context.Context, in updateScheduleArgs) (scheduleResponse, error) {
-	value, err := s.coordinator.Update(ctx, scheduleapp.UpdateCommand{ID: in.ScheduleID, ExpectedRevision: in.ExpectedRevision, Patch: scheduleapp.Patch{Title: in.Title, Instructions: in.Instructions, CWD: in.WorkspacePath, Cron: in.Cron, Enabled: in.Enabled, ModelSelection: modelchoice.Patch{Provider: in.Provider, Model: in.Model, ReasoningEffort: in.ReasoningEffort}}})
+	value, err := s.operations.Update(ctx, in)
 	if err != nil {
 		return scheduleResponse{}, commandFailure(updateScheduleTool, err)
 	}
 	return scheduleResponse{Schedule: viewSchedule(value)}, nil
+}
+
+func (in updateScheduleArgs) command() scheduleapp.UpdateCommand {
+	return scheduleapp.UpdateCommand{ID: in.ScheduleID, ExpectedRevision: in.ExpectedRevision, Patch: scheduleapp.Patch{Title: in.Title, Instructions: in.Instructions, CWD: in.WorkspacePath, Cron: in.Cron, Enabled: in.Enabled, ModelSelection: modelchoice.Patch{Provider: in.Provider, Model: in.Model, ReasoningEffort: in.ReasoningEffort}}}
 }
 
 func (s *scheduleManagementTools) run(ctx context.Context, in wire.ItemInput) (scheduleapp.RunReference, error) {
@@ -198,7 +199,7 @@ func (s *scheduleManagementTools) run(ctx context.Context, in wire.ItemInput) (s
 }
 
 func (s *scheduleManagementTools) delete(ctx context.Context, in deleteScheduleArgs) (scheduleDeleteResponse, error) {
-	if err := s.coordinator.Delete(ctx, in.ScheduleID); err != nil {
+	if err := s.operations.Delete(ctx, in); err != nil {
 		return scheduleDeleteResponse{}, commandFailure(deleteScheduleTool, err)
 	}
 	return scheduleDeleteResponse(in), nil

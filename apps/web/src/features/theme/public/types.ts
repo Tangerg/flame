@@ -1,4 +1,5 @@
-import { type Scheme, type VisualStyleMotion } from "@/lib/appearance";
+import { type Scheme } from "@/lib/appearance";
+import { type VisualStyleMotion } from "@/lib/visualStyleMotion";
 export interface ColorThemeSpec {
   id: string;
   label: string;

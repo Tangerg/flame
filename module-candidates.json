@@ -32,7 +32,8 @@
     "v0.1.0-qimu.20261027.4": "86ef90823afa6794144da0b46033edf8cf479f73",
     "v0.1.0-qimu.20261027.5": "a83c01b1d15a0bebccd2d4b5f83c1f5f9d9e9bde",
     "v0.1.0-qimu.20261028.1": "f36de0be9338a7fa776dd2bfeba335002104178f",
-    "v0.1.0-quality.20261029.1": "aea445a691b8a92b4a1f56c734dbddb0f973d3ff"
+    "v0.1.0-quality.20261029.1": "aea445a691b8a92b4a1f56c734dbddb0f973d3ff",
+    "v0.1.0-quality.20261029.2": "593018702000623b5f76efae043a9e8049980e19"
   },
   "github.com/Tangerg/flame/plugins": {
     "v0.1.0-architecture.20261026.3": "16d3bfa89e76615a92d01a140e677c23d353bfc5",
@@ -65,7 +66,9 @@
     "v0.1.0-qimu.20261028.2": "383fda3fb4ccc2f74364f26012ca4cfc09b42dd0",
     "v0.1.0-qimu.20261028.3": "5e82556f2f682b4250e6c3ebafb73467caa5a9f2",
     "v0.1.0-qimu.20261028.4": "a85576c88463caba72db1f64dcc5d79b5bc1f57e",
-    "v0.1.0-quality.20261029.1": "9bea1b964d123c3f8c308452db343e5fbf8ee27c"
+    "v0.1.0-quality.20261029.1": "9bea1b964d123c3f8c308452db343e5fbf8ee27c",
+    "v0.1.0-quality.20261029.2": "f2f74421384d42cadcdeca8a79c6593556fc8502",
+    "v0.1.0-quality.20261029.3": "1a466fee9a092a88a9b307c05c32c1ab3ab48262"
   },
   "github.com/Tangerg/flame/apps/cli": {
     "v0.1.0-architecture.20261026.2": "2a8d0965feab1910047347f87d486331110c9ced",

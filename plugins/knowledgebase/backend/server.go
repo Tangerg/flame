@@ -64,14 +64,14 @@ func newServer(library *library) (*sdk.Server, error) {
 			if err != nil {
 				return knowledge.Header{}, err
 			}
-			return library.importDocument(ctx, contracts.Import.Name(), command.ID, command.Input, input)
+			return library.importDocument(ctx, contracts.Import.Name(), command.ID, input)
 		}),
 		contracts.Reindex.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[wire.DocumentInput]) (knowledge.Header, error) {
 			input, err := command.RequestInput()
 			if err != nil {
 				return knowledge.Header{}, err
 			}
-			return library.reindexDocument(ctx, contracts.Reindex.Name(), command.ID, command.Input, input)
+			return library.reindexDocument(ctx, contracts.Reindex.Name(), command.ID, input)
 		}),
 		pluginstorage.RegisterCommand(backend, library.store.db, contracts.Delete, classify, func(ctx context.Context, _ *sdk.ServerSession, input wire.DocumentInput) (bool, error) {
 			return library.store.delete(ctx, input.ID, input.ExpectedRevision)

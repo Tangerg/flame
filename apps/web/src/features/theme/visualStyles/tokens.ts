@@ -1,4 +1,4 @@
-import { type VisualStyleMotion } from "@/lib/appearance";
+import { type VisualStyleMotion } from "@/lib/visualStyleMotion";
 type VisualStyleTokenName =
   | "style-shape-2xs"
   | "style-shape-xs"

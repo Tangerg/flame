@@ -53,7 +53,7 @@ async function runDesktopCommand(t, command) {
   for (const executable of ["npm", "wails3"]) {
     await writeFile(
       join(bin, executable),
-      `#!${process.execPath}\nconst fs = require("node:fs");\nfs.appendFileSync(process.env.FLAME_DESKTOP_TEST_LOG, JSON.stringify([${JSON.stringify(executable)}, ...process.argv.slice(2)]) + "\\n");\n`,
+      `#!${process.execPath}\nimport { appendFileSync } from "node:fs";\nappendFileSync(process.env.FLAME_DESKTOP_TEST_LOG, JSON.stringify([${JSON.stringify(executable)}, ...process.argv.slice(2)]) + "\\n");\n`,
       { mode: 0o755 },
     );
   }

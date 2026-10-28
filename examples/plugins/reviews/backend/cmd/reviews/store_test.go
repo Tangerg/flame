@@ -273,5 +273,5 @@ func testUpdate(ctx context.Context, store *store, id string, input reviews.Upda
 	if err != nil {
 		return reviews.UpdateResult{}, err
 	}
-	return store.update(ctx, id, input, admitted)
+	return store.update(ctx, id, admitted)
 }

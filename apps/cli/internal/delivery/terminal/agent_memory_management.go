@@ -432,7 +432,7 @@ func (a *app) reviewAgentMemory(target *conversation.MemoryTarget, id string, ex
 				if a.workbench != nil {
 					if original, found, _ := a.workbench.PendingMemoryReview(id, decision); found {
 						if original.Decision != "" {
-							message += " · retry /memory-" + original.Decision + " " + id + " to reconcile the original command"
+							message += " · retry /memory-" + string(original.Decision) + " " + id + " to reconcile the original command"
 						}
 					}
 				}

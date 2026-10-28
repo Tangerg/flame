@@ -133,19 +133,16 @@ func (s *store) receipt(ctx context.Context, request qimumcp.ReceiptRequest, upd
 	return qimumcp.Receipt{Found: true, Reply: reply.JSON()}, nil
 }
 
-func (s *store) update(ctx context.Context, invocationID string, input reviews.Update, admitted jsonvalue.Value) (_ reviews.UpdateResult, err error) {
+func (s *store) update(ctx context.Context, invocationID string, admitted jsonvalue.Value) (_ reviews.UpdateResult, err error) {
 	if err := validateInvocationID(invocationID); err != nil {
 		return reviews.UpdateResult{}, err
 	}
 	if err := admitted.Validate(); err != nil {
 		return reviews.UpdateResult{}, err
 	}
-	var received reviews.Update
-	if err := json.Unmarshal(admitted.JSON(), &received, json.RejectUnknownMembers(true)); err != nil {
+	var input reviews.Update
+	if err := json.Unmarshal(admitted.JSON(), &input, json.RejectUnknownMembers(true), jsonvalue.Numbers()); err != nil {
 		return reviews.UpdateResult{}, err
-	}
-	if received != input {
-		return reviews.UpdateResult{}, errors.New("reviews: update differs from admitted input")
 	}
 	if err := s.inputSchema.Validate(admitted.JSON()); err != nil {
 		return reviews.UpdateResult{}, err

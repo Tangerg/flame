@@ -172,13 +172,20 @@ describe("telemetry store: ingestMetrics", () => {
       () => counterMetric({ name: "c", attrs: { a: 1 }, total: 3 }),
       () => counterMetric({ name: "c", attrs: { a: "1" }, total: 4 }),
     ]);
-    resource.scopeMetrics.push({
-      scope: { name: "independent-meter" },
-      metrics: batch([() => counterMetric({ name: "c", attrs: { a: 1 }, total: 5 })])
-        .scopeMetrics[0]!.metrics,
-    });
+    const scopes = [
+      { name: "independent-meter" },
+      { ...SCOPE, version: "2.0.0" },
+      { ...SCOPE, schemaUrl: "https://example.test/schema/v1" },
+    ];
+    for (const [index, scope] of scopes.entries()) {
+      resource.scopeMetrics.push({
+        scope,
+        metrics: batch([() => counterMetric({ name: "c", attrs: { a: 1 }, total: index + 5 })])
+          .scopeMetrics[0]!.metrics,
+      });
+    }
     useTelemetryStore.getState().ingestMetrics(resource);
-    expect(metricRows().map((row) => row.count)).toEqual([1, 2, 3, 4, 5]);
+    expect(metricRows().map((row) => row.count)).toEqual([1, 2, 3, 4, 5, 6, 7]);
   });
 
   it("replaces the whole metric snapshot on each ingest (no merge)", () => {

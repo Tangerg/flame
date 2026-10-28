@@ -36,7 +36,6 @@ export const useTelemetryStore = create<State>((set) => ({
             scope.scope.name,
             scope.scope.version ?? null,
             scope.scope.schemaUrl ?? null,
-            stableAttributes(scope.scope.attributes ?? {}),
             m.descriptor.name,
             m.descriptor.unit,
             m.dataPointType,

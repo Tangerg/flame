@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	json "encoding/json/v2"
 	"errors"
 	"path/filepath"
 	"runtime"
@@ -56,8 +57,11 @@ func (r *runner) limits() wire.Limits {
 	return wire.Limits{Available: processsandbox.Available(), Platform: runtime.GOOS, MaxScriptBytes: sandbox.MaxScriptBytes, MaxTimeoutMillis: sandbox.MaxTimeoutMillis, RetainedBytesPerStream: processsandbox.MaxCommandOutputBytes}
 }
 
-func (r *runner) execute(ctx context.Context, method, id string, input wire.ExecuteInput, original jsonvalue.Value) (sandbox.Result, error) {
-	prepared, reply, err := pluginstorage.AdmitCommand(ctx, r.db, method, id, original, nil)
+func (r *runner) execute(ctx context.Context, method, id string, original jsonvalue.Value) (sandbox.Result, error) {
+	var input wire.ExecuteInput
+	prepared, reply, err := pluginstorage.AdmitCommand(ctx, r.db, method, id, original, func(context.Context) error {
+		return json.Unmarshal(original.JSON(), &input, json.RejectUnknownMembers(true), jsonvalue.Numbers())
+	})
 	if err != nil {
 		return sandbox.Result{}, err
 	}

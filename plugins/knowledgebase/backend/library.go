@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	json "encoding/json/v2"
 	"errors"
 	"strings"
 	"unicode/utf8"
@@ -40,15 +41,23 @@ func newLibrary(store *store, resolve resolveEmbedding) (*library, error) {
 	return &library{store: store, resolve: resolve}, nil
 }
 
-func (l *library) importDocument(ctx context.Context, method, id string, input wire.ImportInput, admitted jsonvalue.Value) (knowledge.Header, error) {
+func (l *library) importDocument(ctx context.Context, method, id string, admitted jsonvalue.Value) (knowledge.Header, error) {
 	return l.indexDocument(ctx, method, id, admitted, func(context.Context) (knowledge.Draft, int64, error) {
+		var input wire.ImportInput
+		if err := json.Unmarshal(admitted.JSON(), &input, json.RejectUnknownMembers(true), jsonvalue.Numbers()); err != nil {
+			return knowledge.Draft{}, 0, err
+		}
 		draft, err := knowledge.NewDraft(input.Content)
 		return draft, input.ExpectedRevision, err
 	})
 }
 
-func (l *library) reindexDocument(ctx context.Context, method, id string, input wire.DocumentInput, admitted jsonvalue.Value) (knowledge.Header, error) {
+func (l *library) reindexDocument(ctx context.Context, method, id string, admitted jsonvalue.Value) (knowledge.Header, error) {
 	return l.indexDocument(ctx, method, id, admitted, func(ctx context.Context) (knowledge.Draft, int64, error) {
+		var input wire.DocumentInput
+		if err := json.Unmarshal(admitted.JSON(), &input, json.RejectUnknownMembers(true), jsonvalue.Numbers()); err != nil {
+			return knowledge.Draft{}, 0, err
+		}
 		document, err := l.store.read(ctx, input.ID)
 		if err != nil {
 			return knowledge.Draft{}, 0, err

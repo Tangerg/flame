@@ -79,7 +79,7 @@ export default {
   try {
     const { output } = await bundle.generate({
       format: "esm",
-      inlineDynamicImports: true,
+      codeSplitting: false,
     });
     if (output.length !== 1 || output[0].type !== "chunk")
       throw new Error("presentation owners must produce one pure module");

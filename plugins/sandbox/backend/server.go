@@ -41,7 +41,7 @@ func newServer(runner *runner) (*sdk.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	execute, err := tool.NewFunc(tool.FuncConfig{Name: executeTool, Description: contracts.Execute.Descriptor().Description}, func(ctx context.Context, input wire.ExecuteInput) (sandbox.Result, error) {
+	execute, err := tool.NewFunc(tool.FuncConfig{Name: executeTool, Description: contracts.Execute.Descriptor().Description}, func(ctx context.Context, _ wire.ExecuteInput) (sandbox.Result, error) {
 		id, err := pluginsdk.ToolCommandID(ctx)
 		if err != nil {
 			return sandbox.Result{}, err
@@ -50,7 +50,7 @@ func newServer(runner *runner) (*sdk.Server, error) {
 		if err != nil {
 			return sandbox.Result{}, err
 		}
-		result, err := runner.execute(ctx, contracts.Execute.Name(), id, input, original)
+		result, err := runner.execute(ctx, contracts.Execute.Name(), id, original)
 		return result, commandFailure(err)
 	})
 	if err != nil {
@@ -70,7 +70,7 @@ func newServer(runner *runner) (*sdk.Server, error) {
 			if err != nil {
 				return sandbox.Result{}, err
 			}
-			return runner.execute(ctx, contracts.Execute.Name(), command.ID, command.Input, original)
+			return runner.execute(ctx, contracts.Execute.Name(), command.ID, original)
 		}),
 		contracts.Limits.RegisterServer(backend, classify, func(context.Context, *sdk.ServerSession, qimumcp.Command[struct{}]) (wire.Limits, error) {
 			return runner.limits(), nil

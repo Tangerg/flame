@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { DEFAULT_MOTION, type Scheme, type VisualStyleMotion } from "@/lib/appearance";
+import { type Scheme } from "@/lib/appearance";
+import { DEFAULT_MOTION, type VisualStyleMotion } from "@/lib/visualStyleMotion";
 import { createTheme, type Theme } from "@/features/theme/adapters/theme";
 let owner: Theme;
 beforeEach(() => {

@@ -168,8 +168,8 @@ func (t memoryTools) list(ctx context.Context, input listMemoryArgs) (memoryPage
 	return memoryPage{Memories: memorySearchResults(page.Rows).Memories, NextCursor: page.NextCursor, Capacity: memory.MaxVisiblePerTarget}, nil
 }
 
-func (t memoryTools) add(ctx context.Context, input addMemoryArgs) (memoryView, error) {
-	return memoryToolCommand(ctx, t.db, addMemoryTool, input, func(ctx context.Context, input addMemoryArgs) (memoryView, error) {
+func (t memoryTools) add(ctx context.Context, _ addMemoryArgs) (memoryView, error) {
+	return memoryToolCommand(ctx, t.db, addMemoryTool, func(ctx context.Context, input addMemoryArgs) (memoryView, error) {
 		cwd, err := memoryToolCWD(ctx)
 		if err != nil {
 			return memoryView{}, err
@@ -188,8 +188,8 @@ func (t memoryTools) authorize(ctx context.Context, input memoryItemArgs) error 
 	return err
 }
 
-func (t memoryTools) update(ctx context.Context, input updateMemoryArgs) (memoryView, error) {
-	return memoryToolCommand(ctx, t.db, updateMemoryTool, input, func(ctx context.Context, input updateMemoryArgs) (memoryView, error) {
+func (t memoryTools) update(ctx context.Context, _ updateMemoryArgs) (memoryView, error) {
+	return memoryToolCommand(ctx, t.db, updateMemoryTool, func(ctx context.Context, input updateMemoryArgs) (memoryView, error) {
 		if err := t.authorize(ctx, input.memoryItemArgs); err != nil {
 			return memoryView{}, err
 		}
@@ -198,8 +198,8 @@ func (t memoryTools) update(ctx context.Context, input updateMemoryArgs) (memory
 	})
 }
 
-func (t memoryTools) remove(ctx context.Context, input memoryItemArgs) (rpc.Ack, error) {
-	return memoryToolCommand(ctx, t.db, deleteMemoryTool, input, func(ctx context.Context, input memoryItemArgs) (rpc.Ack, error) {
+func (t memoryTools) remove(ctx context.Context, _ memoryItemArgs) (rpc.Ack, error) {
+	return memoryToolCommand(ctx, t.db, deleteMemoryTool, func(ctx context.Context, input memoryItemArgs) (rpc.Ack, error) {
 		if err := t.authorize(ctx, input); err != nil {
 			return rpc.Ack{}, err
 		}
@@ -207,8 +207,8 @@ func (t memoryTools) remove(ctx context.Context, input memoryItemArgs) (rpc.Ack,
 	})
 }
 
-func (t memoryTools) review(ctx context.Context, input reviewMemoryArgs) (rpc.Ack, error) {
-	return memoryToolCommand(ctx, t.db, reviewMemoryTool, input, func(ctx context.Context, input reviewMemoryArgs) (rpc.Ack, error) {
+func (t memoryTools) review(ctx context.Context, _ reviewMemoryArgs) (rpc.Ack, error) {
+	return memoryToolCommand(ctx, t.db, reviewMemoryTool, func(ctx context.Context, input reviewMemoryArgs) (rpc.Ack, error) {
 		if err := t.authorize(ctx, input.memoryItemArgs); err != nil {
 			return rpc.Ack{}, err
 		}
@@ -216,7 +216,7 @@ func (t memoryTools) review(ctx context.Context, input reviewMemoryArgs) (rpc.Ac
 	})
 }
 
-func memoryToolCommand[P, R any](ctx context.Context, db *sql.DB, name string, input P, apply func(context.Context, P) (R, error)) (R, error) {
+func memoryToolCommand[P, R any](ctx context.Context, db *sql.DB, name string, apply func(context.Context, P) (R, error)) (R, error) {
 	var zero R
 	id, err := pluginsdk.ToolCommandID(ctx)
 	if err != nil {
@@ -226,7 +226,7 @@ func memoryToolCommand[P, R any](ctx context.Context, db *sql.DB, name string, i
 	if err != nil {
 		return zero, pluginsdk.DefiniteToolFailure(err)
 	}
-	value, err := pluginstorage.Command(ctx, db, name, id, input, admitted, classify, apply)
+	value, err := pluginstorage.Command(ctx, db, name, id, admitted, classify, apply)
 	return value, memoryToolFailure(name, err)
 }
 

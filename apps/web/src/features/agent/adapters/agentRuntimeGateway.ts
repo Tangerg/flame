@@ -183,7 +183,7 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
                     reasoningEffort: command.params.reasoningEffort,
                   },
                   ...(command.params.params
-                    ? { generation: cloneJSON(command.params.params) }
+                    ? { generation: cloneJSON({ ...command.params.params }) }
                     : {}),
                 }
               : {

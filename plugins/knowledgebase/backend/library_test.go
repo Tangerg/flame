@@ -51,7 +51,7 @@ func TestImportPublishesItsOnlyReceiptAndNeverRepeatsAnUnconfirmedEmbedding(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	first, err := library.importDocument(t.Context(), contracts.Import.Name(), "original", input, admitted)
+	first, err := library.importDocument(t.Context(), contracts.Import.Name(), "original", admitted)
 	if err != nil || first.Revision != 1 {
 		t.Fatalf("import = %+v, %v", first, err)
 	}
@@ -65,7 +65,7 @@ func TestImportPublishesItsOnlyReceiptAndNeverRepeatsAnUnconfirmedEmbedding(t *t
 	t.Cleanup(func() { _ = reopened.db.Close() })
 	library.store = reopened
 	for range 2 {
-		replayed, err := library.importDocument(t.Context(), contracts.Import.Name(), "original", input, admitted)
+		replayed, err := library.importDocument(t.Context(), contracts.Import.Name(), "original", admitted)
 		if err != nil || replayed != first || calls.Load() != 1 {
 			t.Fatalf("receipt replay changed ownership: %+v, calls=%d, %v", replayed, calls.Load(), err)
 		}
@@ -76,14 +76,14 @@ func TestImportPublishesItsOnlyReceiptAndNeverRepeatsAnUnconfirmedEmbedding(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "original", changed, changedJSON); !errors.Is(err, portable.ErrInvocationConflict) {
+	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "original", changedJSON); !errors.Is(err, portable.ErrInvocationConflict) {
 		t.Fatalf("changed intent = %v", err)
 	}
 	staleCalls := calls.Load()
-	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "stale", input, admitted); !errors.Is(err, knowledge.ErrRevisionConflict) || calls.Load() != staleCalls {
+	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "stale", admitted); !errors.Is(err, knowledge.ErrRevisionConflict) || calls.Load() != staleCalls {
 		t.Fatalf("stale import dispatched embedding: calls=%d %v", calls.Load(), err)
 	}
-	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "stale", input, admitted); err == nil || calls.Load() != staleCalls {
+	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "stale", admitted); err == nil || calls.Load() != staleCalls {
 		t.Fatalf("known refusal was re-executed: %v", err)
 	}
 	input.ExpectedRevision = 1
@@ -92,11 +92,11 @@ func TestImportPublishesItsOnlyReceiptAndNeverRepeatsAnUnconfirmedEmbedding(t *t
 		t.Fatal(err)
 	}
 	unknown.Store(true)
-	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "unknown", input, admitted); err == nil {
+	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "unknown", admitted); err == nil {
 		t.Fatal("lost embedding became success")
 	}
 	before := calls.Load()
-	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "unknown", input, admitted); !errors.Is(err, pluginstorage.ErrCommandUnconfirmed) || calls.Load() != before {
+	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "unknown", admitted); !errors.Is(err, pluginstorage.ErrCommandUnconfirmed) || calls.Load() != before {
 		t.Fatalf("pending work repeated its external exchange: %v", err)
 	}
 	receipt, err := pluginstorage.ReadReceipt(t.Context(), reopened.db, qimumcp.ReceiptRequest{ID: "unknown", Method: contracts.Import.Name(), InputDigest: admitted.Digest()})

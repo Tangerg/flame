@@ -29,7 +29,7 @@ func TestUnsupportedPlatformSettlesARefusalWithoutHostAccess(t *testing.T) {
 	input := wire.ExecuteInput{Script: "exit 0", TimeoutMillis: 1000}
 	encoded, _ := jsonvalue.Encode(input)
 	for range 2 {
-		_, err := runner.execute(t.Context(), contracts.Execute.Name(), "unavailable", input, encoded)
+		_, err := runner.execute(t.Context(), contracts.Execute.Name(), "unavailable", encoded)
 		refusal, known := errors.AsType[*portable.Refusal](err)
 		if !known || refusal.Code != "sandbox_unavailable" {
 			t.Fatalf("unsupported confinement was not refused: %v", err)

@@ -14,6 +14,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	scheduleapp "github.com/Tangerg/flame/plugins/schedules/internal/application"
 	scheduledomain "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
@@ -22,7 +23,7 @@ import (
 
 func TestSchedulesCreateListDelete(t *testing.T) {
 	reg := newMemoryScheduleRegistry()
-	tools, err := buildSchedules(newTestScheduleCoordinator(reg), unexpectedManualRun)
+	tools, err := buildSchedules(newTestScheduleOperations(reg), unexpectedManualRun)
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
@@ -61,20 +62,20 @@ func TestSchedulesCreateListDelete(t *testing.T) {
 }
 
 func TestSchedulesRejectMissingManagementPort(t *testing.T) {
-	for _, coordinator := range []scheduleManagement{nil, (*scheduleapp.Coordinator)(nil)} {
+	for _, coordinator := range []scheduleOperations{nil, (*scheduleOperationsFixture)(nil)} {
 		tools, err := buildSchedules(coordinator, unexpectedManualRun)
 		if err == nil || len(tools) != 0 {
 			t.Fatalf("missing management port = (%d tools, %v)", len(tools), err)
 		}
 	}
-	if _, err := buildSchedules(newTestScheduleCoordinator(newMemoryScheduleRegistry()), nil); err == nil {
+	if _, err := buildSchedules(newTestScheduleOperations(newMemoryScheduleRegistry()), nil); err == nil {
 		t.Fatal("manual Run capability was published without its owner")
 	}
 }
 
 func TestScheduleToolsEditObservedRevisionWithoutReplacingIdentity(t *testing.T) {
 	registry := newMemoryScheduleRegistry()
-	tools, err := buildSchedules(newTestScheduleCoordinator(registry), unexpectedManualRun)
+	tools, err := buildSchedules(newTestScheduleOperations(registry), unexpectedManualRun)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +137,7 @@ func TestSchedulesListIsBoundedAndContinuable(t *testing.T) {
 		}
 		reg.items[id] = scheduled
 	}
-	tools, err := buildSchedules(newTestScheduleCoordinator(reg), unexpectedManualRun)
+	tools, err := buildSchedules(newTestScheduleOperations(reg), unexpectedManualRun)
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
@@ -167,7 +168,7 @@ func TestSchedulesListIsBoundedAndContinuable(t *testing.T) {
 
 func TestSchedulesHaveActionSpecificStrictSchemas(t *testing.T) {
 	reg := newMemoryScheduleRegistry()
-	tools, err := buildSchedules(newTestScheduleCoordinator(reg), unexpectedManualRun)
+	tools, err := buildSchedules(newTestScheduleOperations(reg), unexpectedManualRun)
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
@@ -185,7 +186,7 @@ func TestSchedulesHaveActionSpecificStrictSchemas(t *testing.T) {
 
 func TestSchedulesCreateRejectsUnavailableWorkdir(t *testing.T) {
 	reg := newMemoryScheduleRegistry()
-	tools, err := buildSchedules(newTestScheduleCoordinator(reg), unexpectedManualRun)
+	tools, err := buildSchedules(newTestScheduleOperations(reg), unexpectedManualRun)
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
@@ -203,7 +204,7 @@ func TestSchedulesCreateRejectsUnavailableWorkdir(t *testing.T) {
 
 func TestScheduleRefusalFailsTheCallNotTheRun(t *testing.T) {
 	reg := newMemoryScheduleRegistry()
-	tools, err := buildSchedules(newTestScheduleCoordinator(reg), unexpectedManualRun)
+	tools, err := buildSchedules(newTestScheduleOperations(reg), unexpectedManualRun)
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
@@ -223,7 +224,7 @@ func TestScheduleRefusalFailsTheCallNotTheRun(t *testing.T) {
 }
 
 func TestScheduleStoreFailureStaysUnproven(t *testing.T) {
-	tools, err := buildSchedules(newTestScheduleCoordinator(failingScheduleInsert{newMemoryScheduleRegistry()}), unexpectedManualRun)
+	tools, err := buildSchedules(newTestScheduleOperations(failingScheduleInsert{newMemoryScheduleRegistry()}), unexpectedManualRun)
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
@@ -258,7 +259,7 @@ func newMemoryScheduleRegistry() *memoryScheduleRegistry {
 	return &memoryScheduleRegistry{items: map[string]scheduledomain.Schedule{}}
 }
 
-func newTestScheduleCoordinator(reg scheduleapp.ManagementStore) *scheduleapp.Coordinator {
+func newTestScheduleOperations(reg scheduleapp.ManagementStore) *scheduleOperationsFixture {
 	value, err := scheduleapp.New(scheduleapp.Dependencies{
 		Store:         reg,
 		Paths:         filesystem.DirectoryResolver{},
@@ -268,7 +269,29 @@ func newTestScheduleCoordinator(reg scheduleapp.ManagementStore) *scheduleapp.Co
 	if err != nil {
 		panic(err)
 	}
-	return value
+	return &scheduleOperationsFixture{coordinator: value}
+}
+
+type scheduleOperationsFixture struct{ coordinator *scheduleapp.Coordinator }
+
+func (s *scheduleOperationsFixture) ListPage(ctx context.Context, cursor string, limit pagination.RequestedLimit) (pagination.Page[scheduledomain.Schedule], error) {
+	return s.coordinator.ListPage(ctx, cursor, limit)
+}
+
+func (s *scheduleOperationsFixture) Create(ctx context.Context, input createScheduleArgs) (scheduledomain.Schedule, error) {
+	draft, err := input.draft()
+	if err != nil {
+		return scheduledomain.Schedule{}, err
+	}
+	return s.coordinator.Create(ctx, draft)
+}
+
+func (s *scheduleOperationsFixture) Update(ctx context.Context, input updateScheduleArgs) (scheduledomain.Schedule, error) {
+	return s.coordinator.Update(ctx, input.command())
+}
+
+func (s *scheduleOperationsFixture) Delete(ctx context.Context, input deleteScheduleArgs) error {
+	return s.coordinator.Delete(ctx, input.ScheduleID)
 }
 
 type scheduleModelAdmitter struct{}
