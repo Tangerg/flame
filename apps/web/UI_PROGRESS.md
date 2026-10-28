@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Current source continues from captured upstream `e8bbe836c`, including main's three Computer integration commits. Session search readiness and entry focus are published as `646819ab3`. The Computer console editing and operation-return task below has completed scoped native qualification and cleanup. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
+Current source continues from main `3cc13e9a8`, which publishes the Computer console editing and operation-return task. Session search readiness and entry focus are published as `646819ab3`. Captured source reading now uses named shared readers and a fitting caption/body focus boundary; its scoped native qualification and cleanup are complete below. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -37,9 +37,12 @@ Retry continuity and its visible painted host are published as `1cceecdd1`; see
 are published as `646819ab3`, including completed native dialog/return qualification
 and cleanup; see **Session search readiness and entry focus**. The resumed batch
 fast-forwards three main commits through `e8bbe836c`; its later publication fetch
-finds zero incoming commits. Computer manual execution now retains field feedback,
+finds zero incoming commits. Computer manual execution retains field feedback,
 drafts, readable pending arguments and logical focus through review and permission
-retirement. See **Computer console editing and operation return**. Preserve the
+retirement, published as `3cc13e9a8`. Its captured-source follow-up unifies literal
+reading, local selection, wrapping, source names and fitting caption/body focus;
+the publication fetch again finds no incoming commits. See **Computer console
+editing and operation return**. Preserve the
 separate exact-Run and Skills object contract limits already recorded below.
 The user resumed the paused goal.
 Completed batches are verified, explicitly committed and pushed to main under the
@@ -6887,9 +6890,93 @@ one of **32** resource files changes: the normally rebuilt Computer ESM. The
 private root `flame-computer-console-Y3voUb` is absent. The round-tripped in-memory
 gzip contains **46** flat UTF-8 records (**6,887,154** uncompressed bytes), SHA-256
 `4844b0c29fbee3d6529f376d737fcbb35500d6663a4848cb8f6257cc501655a3`.
-Parallel primary-checkout work remains preserved. Next inspect long captured
-outcomes and their reading/return task before selecting another scoped repair;
-this batch does not claim complete Computer-console or whole-product acceptance.
+Parallel primary-checkout work remains preserved. This repair is published as
+`3cc13e9a8`. The captured-source follow-up below continues its long-content task;
+neither task claims complete Computer-console or whole-product acceptance.
+
+### Captured source reading and visible context
+
+At `3cc13e9a8`, Computer's separate `Source` pre bypasses the shared reader's
+selection and viewport contracts. Actual Wails Cmd+A selects **1,238 characters**
+including the page heading and host instead of its **127-character** instruction
+source. Three added regressions fail before the repair. All thirteen raw-source
+call sites now use the shared `CodeBlock` through the existing Source composition:
+instructions, schemas, reviewed arguments, permission data, resources and original
+receipts. Ordinary human-readable result text and media keep their existing views.
+Source values remain literal; no formatter, parser or execution path is added.
+
+CodeBody owns the stable named region, local Ctrl/Cmd+A, code typography and the
+existing page-wide wrap preference. CodeCaption owns exact-string copy and its
+acceptance feedback; eight locale catalogs provide the action names. The optional
+CodeBlock `caption` displays the source's existing name without changing the
+language supplied to the host highlighter. This keeps “Tool arguments (JSON)” or
+“Original runtime instructions” visible after their parent headings scroll away.
+Other CodeBlock callers retain their previous caption defaults.
+
+Native review also exposes a shared focus-group gap: focusing a long CodeBody
+positions its wrap action at **y=28**, behind the sticky Panel controls. CodeBlock
+now declares its complete caption/body as the existing Panel focus unit. The
+responsible Panel already owns fit detection, sticky clearance, pointer activation,
+reading continuity and the oversized-control fallback; no extra scroll listener,
+timer or local offset is added. Its new regression fails before the marker and
+passes both the fitting-caption and oversized-block cases afterward. Actual Wails
+then places the fitting caption action at **y=61** while preserving body focus,
+selection and independent scroll. The later named-caption regression likewise
+fails before the visible name is supplied.
+
+Read-only ZCode `components/ai-elements/code-block.tsx` and
+`components/ui/code-viewer.tsx` inform the separation of source scrolling from
+copy/wrap actions. Existing HeroUI/Radix and Arc/Ace research remains reference
+material; actual Wails determines the focus and viewport result. Better-series
+guidance maps to named scopes, code-size ownership, bounded reading space,
+secondary actions, localized writing and existing neutral/Orange/custom-blue
+tokens. The existing artifact skin and motion owners remain intact.
+
+Verification and boundaries:
+
+- The shared-focus checkpoint passes **431 frontend files / 4,072 tests**. The final
+  optional caption preserves other callers' defaults; after it, all **32 Computer
+  tests**, the complete **10 UI files / 187 tests**, UI type/lint/format and the
+  independent packed UI/icon consumer pass. Coverage includes exact literal
+  selection/copy, whitespace and markup, a stable reader through wrapping,
+  caption/language separation, fitting focus groups and the existing edit/review/
+  unknown-command paths. The full frontend project is not rerun for that final
+  additive caption; the final changed consumers are covered by those focused gates.
+- Plugin type/lint/format, **43 script tests**, **16 files / 274 backend/contract
+  tests**, catalog and reproducible resource checks pass. Configured **one file /
+  13 cases** remain skipped. Final Web type/lint/format, CSS-variable and production
+  module-linkage checks pass. Final `make check-native` passes Desktop test/vet/build
+  and the supported Wails build. Runtime HTTP/engine checks are outside this GUI
+  scope; the earlier missing offline Node-archive boundary above remains explicit.
+- Native Wails qualifies English/light/14 px/Orange and Chinese/dark/18 px/custom
+  blue, resizing to **1,125 × 734** and **200%** (**562 × 367**, DPR 4). A
+  **6,244-character**, 90-entry source remains exactly selectable, reaches tail
+  marker `090` by independent scrolling, and returns to an unchanged editable
+  draft that accepts further whitespace. Reader heights are **448 px** at wide
+  Actual Size and **220.1953125 px** in the short zoomed viewport; source names and actions
+  remain visible. Actual Size is restored. The final clean English/light/14 px/
+  Orange control confirms the named caption, exact selection, mouse wrap, draft
+  return and continued editing with **zero observer events or requests**. All
+  **614** fixed/control assets agree except their two observer-bearing HTML entries.
+  Pre-fix and intermediate checkpoints retain separate manifests and receipts.
+- The native host loads the generated published component with isolated SDK data.
+  No real Computer engine, desktop control or OS grant is exercised. Exact copy
+  bytes are checked with controlled Clipboard acceptance; native desktop clipboard
+  writes, live Runtime admission/engine outcomes, VoiceOver, OS IME and forced colors
+  are not qualified. No browser/performance suite, Claude CLI or subagent is used.
+
+Cleanup retires every owned native instance, unregisters the bundle and closes the
+listener. It removes **nine** new output/cache roots and **three** private profile/
+temp paths, restores **four** original files and modes, and restores all **18**
+output-presence and **five** profile baselines. All **6,264** non-Markdown inputs
+retain their frozen qualified state; sixteen explicit source/test/resource paths
+change from the captured base. Exactly one of **32** resource files changes, the
+normally rebuilt Computer ESM. The private root `flame-computer-source-BdzHmW` is
+absent. The round-tripped in-memory gzip retains **60** flat UTF-8 records
+(**5,657,434** uncompressed bytes), SHA-256
+`43b17ebb70a388eb43e79840eba515b72a4f4ef38f1d65fc32b1a88eb802f7fa`.
+Next inspect original-history selection, detail arrival and return before choosing
+another repair. The existing Runtime and receipt owners remain authoritative.
 
 ## Approval argument review and submission
 

@@ -233,17 +233,23 @@ export function CodeBody({
 export function CodeBlock({
   children,
   label,
+  caption,
   language,
   labels,
 }: {
   children: string;
   label: string;
+  caption?: string;
   language?: string;
   labels?: CodeActionLabels;
 }) {
   return (
-    <CodeFrame data-slot="code-block">
-      <CodeCaption language={language} code={children} labels={labels} />
+    <CodeFrame data-slot="code-block" data-focus-unit="">
+      <CodeCaption
+        language={caption ?? language}
+        code={children}
+        labels={labels}
+      />
       <CodeBody label={label} language={language || "text"}>
         {children}
       </CodeBody>

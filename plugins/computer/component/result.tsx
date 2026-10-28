@@ -3,6 +3,7 @@ import { parseJSON, stringifyJSON } from "@qimu/sdk/json";
 import { type Translate } from "@flame/component-sdk";
 import {
   Callout,
+  CodeBlock,
   Disclosure,
   Facts,
   Metadata,
@@ -11,24 +12,28 @@ import {
 } from "@flame/ui";
 import type { OperationRecord } from "./types";
 
-export function Source({ value, label }: { value: string; label: string }) {
+export function Source({
+  value,
+  label,
+  t,
+}: {
+  value: string;
+  label: string;
+  t: Translate;
+}) {
   return (
-    <pre
-      aria-label={label}
-      tabIndex={0}
-      style={{
-        fontFamily: "var(--font-mono)",
-        fontSize: "inherit",
-        whiteSpace: "pre-wrap",
-        overflowWrap: "anywhere",
-        overflow: "auto",
-        maxHeight: "28rem",
-        minWidth: 0,
-        margin: 0,
+    <CodeBlock
+      label={label}
+      caption={label}
+      labels={{
+        copy: t("source.copy"),
+        copied: t("source.copied"),
+        wrap: t("source.wrap"),
+        unwrap: t("source.unwrap"),
       }}
     >
       {value}
-    </pre>
+    </CodeBlock>
   );
 }
 
@@ -87,7 +92,9 @@ function Content({
   t: Translate;
 }) {
   if (!object(value))
-    return <Source value={stringifyJSON(value)} label={t("result.content")} />;
+    return (
+      <Source value={stringifyJSON(value)} label={t("result.content")} t={t} />
+    );
   if (value.type === "text" && typeof value.text === "string")
     return <RecordBody>{value.text}</RecordBody>;
   if (value.type === "image") {
@@ -124,6 +131,7 @@ function Content({
     if (typeof resource.text === "string")
       return (
         <Source
+          t={t}
           value={resource.text}
           label={
             typeof resource.uri === "string"
@@ -172,7 +180,9 @@ function Content({
       </RecordGroup>
     );
   }
-  return <Source value={stringifyJSON(value)} label={t("result.content")} />;
+  return (
+    <Source value={stringifyJSON(value)} label={t("result.content")} t={t} />
+  );
 }
 
 export function Outcome({
@@ -237,6 +247,7 @@ export function Outcome({
           {outcome.result.structuredContent !== undefined && (
             <Disclosure title={t("result.structured")}>
               <Source
+                t={t}
                 value={stringifyJSON(outcome.result.structuredContent)}
                 label={t("result.structured")}
               />
@@ -246,19 +257,28 @@ export function Outcome({
       )}
       {outcome?.value !== undefined && (
         <Source
+          t={t}
           value={stringifyJSON(outcome.value)}
           label={t("result.content")}
         />
       )}
       <Disclosure title={t("result.input")}>
-        <Source value={record.inputJSON} label={t("result.input")} />
+        <Source value={record.inputJSON} label={t("result.input")} t={t} />
       </Disclosure>
       <Disclosure title={t("result.invocation")}>
-        <Source value={record.invocationJSON} label={t("result.invocation")} />
+        <Source
+          value={record.invocationJSON}
+          label={t("result.invocation")}
+          t={t}
+        />
       </Disclosure>
       {record.outcomeJSON !== undefined && (
         <Disclosure title={t("result.original")}>
-          <Source value={record.outcomeJSON} label={t("result.original")} />
+          <Source
+            value={record.outcomeJSON}
+            label={t("result.original")}
+            t={t}
+          />
         </Disclosure>
       )}
     </RecordGroup>

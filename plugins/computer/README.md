@@ -78,6 +78,12 @@ available, only while that form still owns focus. Pending permission actions sta
 focusable without admitting another response. Captured targets, original command
 identity and permission authority remain with their existing owners.
 
+Captured instructions, schemas, arguments and original evidence use the shared
+literal-source reader. Its header names the source; Ctrl/Cmd+A stays within that
+reader, wrapping follows the shared page preference, and Copy receives the exact
+original string. Long content scrolls beneath its actions. A fitting reader and
+caption enter the Panel viewport together, while raw content stays unexecuted.
+
 ## Supported deployment boundary
 
 The direct adapter supports macOS on Apple Silicon and Linux ARM64/x86-64 with

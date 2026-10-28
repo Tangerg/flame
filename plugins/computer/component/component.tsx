@@ -143,7 +143,11 @@ function ExecuteForm({
               [t("session.surface"), review.surfaceDigest],
             ]}
           />
-          <Source value={review.argumentsJSON} label={t("execute.arguments")} />
+          <Source
+            value={review.argumentsJSON}
+            label={t("execute.arguments")}
+            t={t}
+          />
           {!current && <Callout kind="warning">{t("execute.stale")}</Callout>}
           <Toolbar label={t("execute.actions")}>
             <Button
@@ -212,15 +216,16 @@ function ExecuteForm({
       )}
       <Disclosure title={t("context.instructions")}>
         <Source
+          t={t}
           value={surface.instructions}
           label={t("context.instructions")}
         />
       </Disclosure>
       <Disclosure title={t("context.tools")}>
-        <Source value={surface.toolsJSON} label={t("context.tools")} />
+        <Source value={surface.toolsJSON} label={t("context.tools")} t={t} />
       </Disclosure>
       <Disclosure title={t("context.server")}>
-        <Source value={surface.serverJSON} label={t("context.server")} />
+        <Source value={surface.serverJSON} label={t("context.server")} t={t} />
       </Disclosure>
     </RecordGroup>
   );

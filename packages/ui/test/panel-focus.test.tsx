@@ -8,6 +8,7 @@ import {
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
   ContentVisibility,
+  CodeBlock,
   FormActions,
   FormGroup,
   Panel,
@@ -185,6 +186,35 @@ it("keeps a fitting unit below the panel controls", () => {
   rectangles.set(field, new DOMRect(0, 270, 200, 32));
   act(() => field.focus());
   expect(revealed).toEqual([unit]);
+});
+
+it("reveals the code caption with its focused reader when the complete block fits", () => {
+  const view = render(
+    <div data-testid="viewport" style={{ overflowY: "auto", height: 300 }}>
+      <Panel label="Captured evidence" controls={<button>Refresh</button>}>
+        <CodeBlock label="Original source">Complete original source</CodeBlock>
+      </Panel>
+    </div>,
+  );
+  const reader = screen.getByRole("region", { name: "Original source" });
+  const block = view.container.querySelector('[data-slot="code-block"]')!;
+  const controls = view.container.querySelector(
+    '[data-slot="panel-controls"]',
+  )!;
+  rectangles.set(screen.getByTestId("viewport"), new DOMRect(0, 200, 800, 300));
+  rectangles.set(controls, new DOMRect(0, 200, 800, 50));
+  rectangles.set(block, new DOMRect(0, 230, 800, 200));
+  rectangles.set(reader, new DOMRect(0, 270, 800, 160));
+  act(() => reader.focus());
+  expect(revealed).toEqual([block]);
+  expect(document.activeElement).toBe(reader);
+
+  act(() => reader.blur());
+  revealed.length = 0;
+  rectangles.set(block, new DOMRect(0, 230, 800, 400));
+  act(() => reader.focus());
+  expect(revealed).toEqual([]);
+  expect(document.activeElement).toBe(reader);
 });
 
 it("uses the nearest native label inside a larger unit", () => {

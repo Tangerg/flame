@@ -487,6 +487,30 @@ describe("recorded code", () => {
     vi.unstubAllGlobals();
   });
 
+  it("shows a captured caption without changing its source language", () => {
+    const languages: string[] = [];
+    function Source({ source, language }: CodeSourceProps) {
+      languages.push(language);
+      return <code>{source}</code>;
+    }
+    render(
+      <CodeHighlightProvider component={Source}>
+        <CodeBlock
+          label="Captured request"
+          caption="Original input"
+          language="json"
+        >
+          {"{}"}
+        </CodeBlock>
+      </CodeHighlightProvider>,
+    );
+    expect(screen.getByText("Original input")).not.toBeNull();
+    expect(languages).toContain("json");
+    expect(
+      screen.getByRole("region", { name: "Captured request" }).textContent,
+    ).toBe("{}");
+  });
+
   it("paints a host source component for the same literal and keeps copy on the original text", async () => {
     const writeText = vi
       .fn<(text: string) => Promise<void>>()

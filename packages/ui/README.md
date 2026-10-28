@@ -233,10 +233,15 @@ native labels; `DocumentBody` styles already-parsed semantic document content.
 These components own presentation only and do not query or advance product facts.
 `CodeBlock` frames its single literal string child with the same `ARTIFACT_SURFACE` skin
 as the transcript's code and diagram artifacts. Its named `pre` remains the
-bounded keyboard scroll region. `CodeBody` owns that stable literal source region,
+bounded keyboard scroll region. An optional `caption` keeps a captured source's
+identity visible in its header without changing the `language` used for highlighting.
+`CodeBody` owns that stable literal source region,
 its code typography, shared wrap preference and host-supplied highlighting. It
 limits long code to the smaller of 28rem and 60vh, keeping the caption outside
-the scrolling source. A consumer's `styles` override merges on that same `pre`;
+the scrolling source. A complete `CodeBlock` is one Panel focus unit so its caption
+stays visible with the focused reader when the block fits the available space.
+Oversized blocks retain the Panel's existing focused-control fallback.
+A consumer's `styles` override merges on that same `pre`;
 compact Tool inspectors retain their smaller existing bound. Highlighting changes
 only the child `code`, preserving the reading region, scroll position and focus.
 The literal remains natively selectable even inside an otherwise non-selectable

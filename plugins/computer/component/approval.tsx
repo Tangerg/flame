@@ -352,7 +352,11 @@ export function ApprovalForm({
         </Button>
       </Toolbar>
       <Disclosure title={t("approval.original")}>
-        <Source value={approval.requestJSON} label={t("approval.original")} />
+        <Source
+          value={approval.requestJSON}
+          label={t("approval.original")}
+          t={t}
+        />
       </Disclosure>
     </RecordForm>
   );

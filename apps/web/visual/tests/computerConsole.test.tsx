@@ -954,6 +954,58 @@ it("does not let an older same-worker context response overwrite an explicit ret
   expect(setup.server.originals.size).toBe(0);
 });
 
+it.each(["metaKey", "ctrlKey"])(
+  "selects only the complete captured source with %s and preserves its reading scope",
+  async (modifier) => {
+    const setup = rig();
+    const source = `  Captured instructions\n<script>this is literal source</script>\n${"long source ".repeat(300)}\nTrailing spaces  \n`;
+    setup.server.setInstructions(source);
+    setup.mount();
+    await screen.findByRole("textbox", { name: "Tool arguments (JSON)" });
+    fireEvent.click(screen.getByRole("button", { name: "Original runtime instructions" }));
+    const reader = screen.getByLabelText("Original runtime instructions");
+    expect(reader.textContent).toBe(source);
+    window.getSelection()?.removeAllRanges();
+    reader.focus();
+    expect(fireEvent.keyDown(reader, { key: "a", [modifier]: true })).toBe(false);
+    expect(window.getSelection()?.toString()).toBe(source);
+    expect(document.activeElement).toBe(reader);
+    expect(document.querySelector("script")).toBeNull();
+    expect(setup.server.originals.size).toBe(0);
+  },
+);
+
+it("copies exact captured source and keeps its reader stable while changing wrapping", async () => {
+  const setup = rig();
+  const source = "  original source\n  spaces and <literal> markup\n";
+  setup.server.setInstructions(source);
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } });
+  onTestFinished(() => {
+    vi.unstubAllGlobals();
+  });
+  setup.mount();
+  await screen.findByRole("textbox", { name: "Tool arguments (JSON)" });
+  fireEvent.click(screen.getByRole("button", { name: "Original runtime instructions" }));
+  const reader = screen.getByLabelText("Original runtime instructions");
+  expect(
+    within(reader.closest<HTMLElement>('[data-slot="code-block"]')!).getByText(
+      "Original runtime instructions",
+    ),
+  ).not.toBeNull();
+  const wrap = screen.getByRole("button", { name: "Enable word wrap" });
+  fireEvent.click(wrap);
+  expect(screen.getByLabelText("Original runtime instructions")).toBe(reader);
+  expect(reader.getAttribute("data-wrap")).toBe("true");
+  expect(reader.textContent).toBe(source);
+  fireEvent.click(screen.getByRole("button", { name: "Disable word wrap" }));
+  expect(reader.getAttribute("data-wrap")).toBe("false");
+  fireEvent.click(screen.getByRole("button", { name: "Copy source" }));
+  await screen.findByRole("button", { name: "Source copied" });
+  expect(writeText).toHaveBeenCalledExactlyOnceWith(source);
+  expect(setup.server.originals.size).toBe(0);
+});
+
 it("shows captured media and unknown evidence without executing historical code", async () => {
   const setup = rig();
   setup.server.records.set("original-tool", {
