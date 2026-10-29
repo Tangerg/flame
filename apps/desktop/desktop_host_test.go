@@ -77,6 +77,50 @@ func TestDesktopHostBootstrap(t *testing.T) {
 	}
 }
 
+func TestDesktopHostBootstrapObservesCredentialsCreatedAfterStartup(t *testing.T) {
+	home := t.TempDir()
+	host := mustDesktopHost(t, home)
+	initial, err := host.Bootstrap()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if initial.LocalRuntime.LocalToken != "" {
+		t.Fatal("bootstrap returned a credential before Runtime created it")
+	}
+	directory := mustDesktopDataDirectory(t, home)
+	if err := os.MkdirAll(directory.Path(), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	token, err := localruntime.OpenToken(directory.LocalTokenPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	observed, err := host.Bootstrap()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if observed.LocalRuntime.LocalToken != token.Value() {
+		t.Fatal("running Desktop host did not observe the new Runtime credential")
+	}
+	if err := os.WriteFile(directory.LocalTokenPath(), []byte("invalid"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := host.Bootstrap(); err == nil {
+		t.Fatal("bootstrap accepted an invalid replacement credential")
+	}
+	replacement := base64.RawURLEncoding.EncodeToString(bytes.Repeat([]byte{1}, 32))
+	if err := os.WriteFile(directory.LocalTokenPath(), []byte(replacement), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	observed, err = host.Bootstrap()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if observed.LocalRuntime.LocalToken != replacement {
+		t.Fatal("running Desktop host did not recover after credential replacement")
+	}
+}
+
 func TestDesktopHostBootstrapRejectsInvalidDurableCredentials(t *testing.T) {
 	value := base64.RawURLEncoding.EncodeToString(make([]byte, 32))
 	tests := map[string]struct {

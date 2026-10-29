@@ -63,7 +63,7 @@ function hostBinding(
 }
 
 describe("DesktopHostClient", () => {
-  it("validates and caches the Wails bootstrap result", async () => {
+  it("validates and shares only an in-flight Wails bootstrap read", async () => {
     const binding = hostBinding({
       [BOOTSTRAP]: async () => ({
         localRuntime: { endpoint: "http://127.0.0.1:17171", localToken: "token" },
@@ -71,12 +71,38 @@ describe("DesktopHostClient", () => {
     });
     const client = createDesktopHostClient(binding);
 
-    await expect(client.bootstrap()).resolves.toMatchObject({
+    const first = client.bootstrap();
+    expect(client.bootstrap()).toBe(first);
+    await expect(first).resolves.toMatchObject({
       runtime: { localToken: "token" },
     });
     await client.bootstrap();
-    expect(binding.call).toHaveBeenCalledTimes(1);
+    expect(binding.call).toHaveBeenCalledTimes(2);
     expect(binding.call).toHaveBeenCalledWith(BOOTSTRAP);
+  });
+
+  it("reads a local token created after the Desktop started", async () => {
+    const read = vi
+      .fn()
+      .mockResolvedValueOnce({ localRuntime: { endpoint: "http://127.0.0.1:17171" } })
+      .mockResolvedValue({
+        localRuntime: { endpoint: "http://127.0.0.1:17171", localToken: "new-token" },
+      });
+    const client = createDesktopHostClient(hostBinding({ [BOOTSTRAP]: read }));
+    expect((await client.bootstrap()).runtime.localToken).toBeUndefined();
+    expect((await client.bootstrap()).runtime.localToken).toBe("new-token");
+  });
+
+  it("can retry a failed native bootstrap read", async () => {
+    const read = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("native read failed"))
+      .mockResolvedValue({ localRuntime: { endpoint: "http://127.0.0.1:17171" } });
+    const client = createDesktopHostClient(hostBinding({ [BOOTSTRAP]: read }));
+    await expect(client.bootstrap()).rejects.toThrow("native read failed");
+    await expect(client.bootstrap()).resolves.toMatchObject({
+      runtime: { endpoint: "http://127.0.0.1:17171" },
+    });
   });
 
   it("rejects a malformed host response", async () => {

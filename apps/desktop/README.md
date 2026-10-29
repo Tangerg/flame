@@ -64,10 +64,17 @@ on Linux as well as macOS. The repository's `make check-generated` and
 `tooling/integration` compare the actual generator output with both checked-in
 Web projections byte for byte. Full service binding and native I/O still require
 `make check-native` on macOS. The Web adapter owns
-bootstrap caching, endpoint normalization, cancellation translation and unmeasured
+in-flight bootstrap sharing, endpoint normalization, cancellation translation and unmeasured
 window geometry; the generator does not replace those behaviors. Browser uses its
 own host adapter. Selecting a remote Runtime does not grant native filesystem
 identity to server paths. Runtime owns provider credentials and execution.
+
+Each connection inspection that uses native credentials reads the current host
+observation. The connection lifetime rejects a read that finishes after its
+inspection is retired. User-configured credentials stay bound to their selected
+endpoint; resetting the connection selects the live native observation again.
+A Desktop opened before Runtime can therefore recover when Runtime creates its
+token, without restarting the renderer. Failed native reads can also be retried.
 
 Vite owns frontend HMR at the one `VITE_PORT` selected by the Taskfile. Wails
 watches native Go sources and ignores generated Web staging. Teardown closes the

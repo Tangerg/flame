@@ -76,8 +76,13 @@ function installTargets(name: string, navigation: Navigator = createMemoryNaviga
       read: () => ({ endpoint }),
       defaultTarget: () => ({ endpoint: targetA }),
       replace(target) {
+        if (endpoint === target.endpoint) return false;
         endpoint = target.endpoint;
         for (const callback of callbacks) callback();
+        return true;
+      },
+      reset() {
+        return this.replace({ endpoint: targetA });
       },
     }),
   };

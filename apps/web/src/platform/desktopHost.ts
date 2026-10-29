@@ -62,7 +62,9 @@ export function createDesktopHostClient(binding: DesktopHostBinding): ClientHost
           runtime: { ...parsed.data.localRuntime, endpoint },
           localFilesystemEndpoint: endpoint,
         };
-      })();
+      })().finally(() => {
+        pending = undefined;
+      });
       return pending;
     },
     async chooseWorkingDirectory() {

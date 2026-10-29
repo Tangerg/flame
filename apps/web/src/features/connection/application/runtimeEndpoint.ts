@@ -7,7 +7,8 @@ export interface RuntimeEndpointTarget {
 export interface RuntimeEndpointConfiguration {
   read(): RuntimeEndpointTarget;
   defaultTarget(): RuntimeEndpointTarget;
-  replace(target: RuntimeEndpointTarget): void;
+  replace(target: RuntimeEndpointTarget): boolean;
+  reset(): boolean;
 }
 const UrlSchema = z.url();
 
@@ -32,14 +33,6 @@ export function createRuntimeEndpoint(configuration: RuntimeEndpointConfiguratio
     return configuration.defaultTarget().endpoint;
   }
 
-  function replaceTarget(target: RuntimeEndpointTarget): RuntimeEndpointChange {
-    const current = configuration.read();
-    const changed =
-      current.endpoint !== target.endpoint || current.localToken !== target.localToken;
-    if (changed) configuration.replace(target);
-    return { kind: "applied", endpoint: target.endpoint, changed };
-  }
-
   function applyRuntimeEndpoint(input: string, localToken?: string): RuntimeEndpointChange {
     const trimmed = input.trim() || configuration.defaultTarget().endpoint;
     if (localToken !== undefined && !TokenSchema.safeParse(localToken.trim()).success) {
@@ -60,11 +53,13 @@ export function createRuntimeEndpoint(configuration: RuntimeEndpointConfiguratio
           ? current.localToken
           : undefined
         : localToken.trim() || undefined;
-    return replaceTarget({ endpoint, localToken: token });
+    const changed = configuration.replace({ endpoint, localToken: token });
+    return { kind: "applied", endpoint, changed };
   }
 
   function resetRuntimeEndpoint(): RuntimeEndpointChange {
-    return replaceTarget(configuration.defaultTarget());
+    const changed = configuration.reset();
+    return { kind: "applied", endpoint: configuration.read().endpoint, changed };
   }
 
   return {

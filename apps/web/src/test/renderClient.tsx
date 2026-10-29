@@ -66,8 +66,15 @@ export function createTestClient(
       read: () => target,
       defaultTarget: () => original,
       replace(next) {
+        if (target.endpoint === next.endpoint && target.localToken === next.localToken) {
+          return false;
+        }
         target = { ...next, localToken: next.localToken };
         for (const listener of replacements) listener();
+        return true;
+      },
+      reset() {
+        return this.replace(original);
       },
     }),
   };

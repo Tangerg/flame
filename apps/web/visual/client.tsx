@@ -60,6 +60,9 @@ export function createVisualClient(runtimeClient: () => FlameClient) {
     replace() {
       throw new Error("Visual Runtime endpoint is not bound");
     },
+    reset() {
+      throw new Error("Visual Runtime endpoint is not bound");
+    },
   };
   const runtime: RuntimeAccess = {
     capabilities: projection.capabilities,
@@ -68,8 +71,14 @@ export function createVisualClient(runtimeClient: () => FlameClient) {
       read: () => configuration.read(),
       defaultTarget: () => configuration.defaultTarget(),
       replace: (next) => {
-        configuration.replace(next);
+        if (!configuration.replace(next)) return false;
         for (const listener of replacements) listener();
+        return true;
+      },
+      reset: () => {
+        if (!configuration.reset()) return false;
+        for (const listener of replacements) listener();
+        return true;
       },
     }),
   };
