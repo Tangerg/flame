@@ -484,10 +484,12 @@ export const en: Record<string, string> = {
   "mcp.form.transport.aria": "Transport",
   "mcp.form.command.placeholder": "npx",
   "mcp.form.command.aria": "Command",
-  "mcp.form.args": "Arguments — one per line",
-  "mcp.form.args.placeholder": "-y\n@modelcontextprotocol/server-filesystem\n/path",
-  "mcp.form.env": "Environment — KEY=value, one per line",
-  "mcp.form.env.placeholder": "API_KEY=…",
+  "mcp.form.args": "Arguments (JSON array)",
+  "mcp.form.args.placeholder": '["--stdio", " value ", ""]',
+  "mcp.form.args.invalid": "Enter a JSON array of strings, or leave blank for no arguments.",
+  "mcp.form.env": "Environment (JSON object)",
+  "mcp.form.env.placeholder": '{"API_KEY":"…", "EMPTY":""}',
+  "mcp.form.env.invalid": "Enter a non-empty JSON object with string values.",
   "mcp.form.env.keep": "Leave blank to keep the stored environment",
   "mcp.form.env.clear": "Remove stored environment",
   "mcp.form.env.targetChanged":
@@ -501,8 +503,9 @@ export const en: Record<string, string> = {
   "mcp.form.auth.originChanged":
     "The endpoint origin changed. Enter new authorization or remove the stored value.",
   "mcp.form.auth.aria": "Authorization token",
-  "mcp.form.headers": "Headers — KEY=value, one per line",
-  "mcp.form.headers.placeholder": "X-API-Key=…",
+  "mcp.form.headers": "Headers (JSON object)",
+  "mcp.form.headers.placeholder": '{"X-API-Key":"…"}',
+  "mcp.form.headers.invalid": "Enter a non-empty JSON object with string values.",
   "mcp.form.headers.keep": "Leave blank to keep the stored headers",
   "mcp.form.headers.clear": "Remove stored headers",
   "mcp.form.headers.originChanged":

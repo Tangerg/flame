@@ -17,6 +17,10 @@ packaging. An HTTP-only client does not initialize a local Runtime.
 
 Running without a subcommand opens the Oolong terminal interface. Runtime owns durable product state and execution; CLI owns process behavior, terminal interaction, rendering, and local authoring state.
 
+MCP forms preserve command and directory bytes, and encode arguments as JSON
+arrays and environment/header replacements as JSON objects. Empty and whitespace
+values remain explicit process material; Runtime owns their final admission.
+
 Workspace `/diff --raw` displays the original patch, including file headers and
 line-termination markers. `/diff --rows` renders Runtime's per-file rows with
 old/new line numbers, rename paths, binary changes and truncation feedback.

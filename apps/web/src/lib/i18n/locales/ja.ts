@@ -773,10 +773,12 @@ export const ja: Record<string, string> = {
   "mcp.form.transport.aria": "トランスポート",
   "mcp.form.command.placeholder": "npx",
   "mcp.form.command.aria": "コマンド",
-  "mcp.form.args": "引数 — 1行に1つ",
-  "mcp.form.args.placeholder": "-y\n@modelcontextprotocol/server-filesystem\n/path",
-  "mcp.form.env": "環境変数 — KEY=value、1行に1つ",
-  "mcp.form.env.placeholder": "API_KEY=…",
+  "mcp.form.args": "引数（JSON 配列）",
+  "mcp.form.args.placeholder": '["--stdio", " value ", ""]',
+  "mcp.form.args.invalid": "文字列の JSON 配列を入力してください。引数なしの場合は空欄にします。",
+  "mcp.form.env": "環境変数（JSON オブジェクト）",
+  "mcp.form.env.placeholder": '{"API_KEY":"…", "EMPTY":""}',
+  "mcp.form.env.invalid": "値が文字列の空でない JSON オブジェクトを入力してください。",
   "mcp.form.env.keep": "空欄のままにすると保存済みの環境変数を保持します",
   "mcp.form.env.clear": "保存済みの環境変数を削除",
   "mcp.form.env.targetChanged":
@@ -790,8 +792,9 @@ export const ja: Record<string, string> = {
   "mcp.form.auth.originChanged":
     "エンドポイントのオリジンが変わりました。新しい認証情報を入力するか、保存済みの値を削除してください。",
   "mcp.form.auth.aria": "認証トークン",
-  "mcp.form.headers": "ヘッダー — KEY=value、1行に1つ",
-  "mcp.form.headers.placeholder": "X-API-Key=…",
+  "mcp.form.headers": "ヘッダー（JSON オブジェクト）",
+  "mcp.form.headers.placeholder": '{"X-API-Key":"…"}',
+  "mcp.form.headers.invalid": "値が文字列の空でない JSON オブジェクトを入力してください。",
   "mcp.form.headers.keep": "空欄のままにすると保存済みのヘッダーを保持します",
   "mcp.form.headers.clear": "保存済みのヘッダーを削除",
   "mcp.form.headers.originChanged":

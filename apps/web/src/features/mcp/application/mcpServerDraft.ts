@@ -1,6 +1,12 @@
 import { type MCPServerSettings } from "@/features/mcp/application/mcpServerConfig";
 import { type MCPTransport } from "@/features/mcp/application/mcpServerConfig";
-import { type MCPServerInput } from "@/features/mcp/application/mcpServerInput";
+import {
+  type MCPConnectionInput,
+  type MCPServerInput,
+  type MCPServerUpdateInput,
+} from "@/features/mcp/application/mcpServerInput";
+import { parseJSON } from "@qimu/sdk/json";
+import { validateWire } from "@flame/runtime-client/validation";
 import {
   boundedMCPHandshakeTimeout,
   MCPHandshakeTimeoutError,
@@ -43,11 +49,11 @@ export class RetainedValue {
   submittedText(): string | null | undefined {
     if (this.state.disposition === "clear") return null;
     if (this.state.disposition === "preserve") return undefined;
-    return this.state.text.trim() || undefined;
+    return this.state.text;
   }
 
   submittedPairs(
-    parse: (text: string) => Record<string, string> | undefined,
+    parse: (text: string) => Record<string, string>,
   ): Record<string, string> | null | undefined {
     if (this.state.disposition === "clear") return null;
     if (this.state.disposition === "preserve") return undefined;
@@ -82,7 +88,7 @@ export class MCPServerEdit {
         transport: server?.type ?? "stdio",
         description: server?.description ?? "",
         command: server?.command ?? "",
-        args: (server?.args ?? []).join("\n"),
+        args: server ? JSON.stringify(server.args ?? [], null, 2) : "",
         environment: RetainedValue.preserved(),
         dir: server?.dir ?? "",
         url: server?.url ?? "",
@@ -102,7 +108,8 @@ export class MCPServerEdit {
     const { name, transport, command, url } = this.fields;
     return (
       name.trim() !== "" &&
-      (transport === "stdio" ? command.trim() !== "" : url.trim() !== "") &&
+      (transport === "stdio" ? command !== "" : url.trim() !== "") &&
+      this.jsonIssue === undefined &&
       !this.authorizationNeedsDisposition &&
       !this.headersNeedDisposition &&
       !this.environmentNeedsDisposition &&
@@ -111,6 +118,7 @@ export class MCPServerEdit {
   }
 
   get environmentNeedsDisposition(): boolean {
+    if (this.jsonIssue === "args") return false;
     return (
       this.fields.transport === "stdio" &&
       this.fields.environment.disposition === "preserve" &&
@@ -145,28 +153,56 @@ export class MCPServerEdit {
     if (handshakeTimeout === undefined) {
       throw new Error("MCP handshake timeout must be blank or a positive integer");
     }
-    const f = this.fields;
-    const base: MCPServerInput = {
-      name: f.name.trim(),
-      transport: f.transport,
+    return {
+      ...this.connectionInput(),
+      name: this.fields.name.trim(),
       enabled: this.stored?.enabled ?? true,
-      description: f.description.trim() || undefined,
+      description: this.fields.description.trim() || undefined,
       handshakeTimeout,
     };
+  }
+
+  toUpdate(): MCPServerUpdateInput | undefined {
+    if (!this.stored) throw new Error("mcp_update_requires_inspected_server");
+    const input = this.toInput();
+    const update: MCPServerUpdateInput = {};
+    if ((input.description ?? "") !== (this.stored.description ?? "")) {
+      update.description = input.description ?? "";
+    }
+    if (
+      mcpHandshakeTimeoutSeconds(input.handshakeTimeout) !==
+      mcpHandshakeTimeoutSeconds(this.stored.handshakeTimeout)
+    ) {
+      update.handshakeTimeout = input.handshakeTimeout;
+    }
+    const connectionChanged =
+      input.transport !== this.stored.type ||
+      (input.transport === "stdio"
+        ? !this.sameStdioTarget(this.stored) || this.fields.environment.disposition !== "preserve"
+        : input.url !== this.stored.url ||
+          this.fields.authorization.disposition !== "preserve" ||
+          this.fields.headers.disposition !== "preserve");
+    if (connectionChanged) update.connection = this.connectionInput();
+    return Object.keys(update).length > 0 ? update : undefined;
+  }
+
+  private connectionInput(): MCPConnectionInput {
+    const f = this.fields;
+    const json = this.jsonFields();
     if (f.transport === "stdio") {
       return {
-        ...base,
-        command: f.command.trim() || undefined,
-        args: linesToList(f.args),
-        env: f.environment.submittedPairs(linesToMap),
-        dir: f.dir.trim() || undefined,
+        transport: f.transport,
+        command: f.command,
+        args: json.args,
+        env: json.env,
+        dir: f.dir || undefined,
       };
     }
     return {
-      ...base,
+      transport: f.transport,
       url: f.url.trim() || undefined,
       authorization: f.authorization.submittedText(),
-      headers: f.headers.submittedPairs(linesToMap),
+      headers: json.headers,
     };
   }
 
@@ -183,35 +219,70 @@ export class MCPServerEdit {
   }
 
   private sameStdioTarget(server: MCPServerSettings): boolean {
-    const args = linesToList(this.fields.args) ?? [];
+    const args = argumentsFrom(this.fields.args);
     const storedArgs = server.args ?? [];
     return (
-      server.command === this.fields.command.trim() &&
+      server.command === this.fields.command &&
       storedArgs.length === args.length &&
       storedArgs.every((value, index) => value === args[index]) &&
-      (server.dir ?? "") === this.fields.dir.trim()
+      (server.dir ?? "") === this.fields.dir
     );
   }
-}
 
-function linesToList(text: string): string[] | undefined {
-  const list = text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-  return list.length ? list : undefined;
-}
-
-function linesToMap(text: string): Record<string, string> | undefined {
-  const out = new Map<string, string>();
-  for (const line of text.split("\n")) {
-    const kv = line.trim();
-    if (!kv) continue;
-    const i = kv.indexOf("=");
-    if (i === -1) out.set(kv, "");
-    else out.set(kv.slice(0, i).trim(), kv.slice(i + 1).trim());
+  get jsonIssue(): JSONField | undefined {
+    try {
+      this.jsonFields();
+      return undefined;
+    } catch (error) {
+      if (error instanceof MCPFieldJSONError) return error.field;
+      throw error;
+    }
   }
-  return out.size ? Object.fromEntries(out) : undefined;
+
+  private jsonFields(): Pick<MCPServerInput, "args" | "env" | "headers"> {
+    const f = this.fields;
+    return f.transport === "stdio"
+      ? {
+          args: argumentsFrom(f.args),
+          env: f.environment.submittedPairs((text) => stringMapFrom(text, "environment")),
+        }
+      : { headers: f.headers.submittedPairs((text) => stringMapFrom(text, "headers")) };
+  }
+}
+
+type JSONField = "args" | "environment" | "headers";
+
+class MCPFieldJSONError extends Error {
+  constructor(readonly field: JSONField) {
+    super("mcp_form_json_invalid");
+  }
+}
+
+function fieldJSON(source: string, field: JSONField): unknown {
+  try {
+    return parseJSON(source);
+  } catch (error) {
+    if (error instanceof SyntaxError) throw new MCPFieldJSONError(field);
+    throw error;
+  }
+}
+
+function argumentsFrom(source: string): string[] {
+  if (source.trim() === "") return [];
+  const value = fieldJSON(source, "args");
+  if (!Array.isArray(value) || !value.every((argument) => typeof argument === "string")) {
+    throw new MCPFieldJSONError("args");
+  }
+  return value;
+}
+
+function stringMapFrom(source: string, field: "environment" | "headers"): Record<string, string> {
+  const value = fieldJSON(source, field);
+  const type = field === "environment" ? "MCPEnvironmentChange" : "MCPHeadersChange";
+  if (validateWire(type, { type: "set", value }, "request").length > 0) {
+    throw new MCPFieldJSONError(field);
+  }
+  return value as Record<string, string>;
 }
 
 function sameHTTPOrigin(left: string | undefined, right: string): boolean {

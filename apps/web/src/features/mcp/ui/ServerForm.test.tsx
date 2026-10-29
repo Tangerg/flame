@@ -158,6 +158,74 @@ function expectDisabledControls(names: readonly string[], role: "switch" | "radi
   expect(controls).toEqual(names.map((name) => ({ name, disabled: held })));
 }
 
+describe("MCP literal connection editing", () => {
+  it("sends only a description change while retaining exact process fields", async () => {
+    const stored = {
+      ...stdioServer,
+      command: "/tools/mcp ",
+      dir: "/work/project ",
+      args: ["", " value ", "first\nsecond"],
+    };
+    const update = vi.fn<MCPServerGateway["update"]>().mockResolvedValue(stored);
+    await mount({ update }, stored);
+    expect(field("Command").value).toBe(stored.command);
+    expect(field("Working directory").value).toBe(stored.dir);
+    expect(JSON.parse(field("Arguments (JSON array)").value)).toEqual(stored.args);
+    fireEvent.change(field("Description"), { target: { value: "Changed description" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(update).toHaveBeenCalledWith(stored.id, { description: "Changed description" }),
+    );
+  });
+
+  it.each([
+    {
+      fieldName: "Arguments (JSON array)",
+      invalid: "one\ntwo",
+      valid: '["", " value ", "first\\nsecond"]',
+      input: { args: ["", " value ", "first\nsecond"] },
+    },
+    {
+      fieldName: "Environment (JSON object)",
+      invalid: '{"EMPTY":1}',
+      valid: JSON.stringify({ EMPTY: "", SPACES: " \t " }),
+      input: { env: { EMPTY: "", SPACES: " \t " } },
+    },
+    {
+      fieldName: "Headers (JSON object)",
+      invalid: "X-Key=value",
+      valid: '{"X-Key":"value"}',
+      input: { headers: { "X-Key": "value" } },
+    },
+  ])(
+    "explains invalid $fieldName JSON and preserves corrected material",
+    async ({ fieldName, invalid, valid, input }) => {
+      const test = vi.fn<MCPServerGateway["test"]>().mockResolvedValue({ ok: true });
+      await mount(
+        { test },
+        fieldName.startsWith("Headers")
+          ? httpServer
+          : { ...stdioServer, args: [], envMasked: undefined },
+      );
+      const control = field(fieldName);
+      control.focus();
+      fireEvent.change(control, { target: { value: invalid } });
+      expect(control.getAttribute("aria-invalid")).toBe("true");
+      expect(
+        document.getElementById(control.getAttribute("aria-describedby")!)?.textContent,
+      ).toContain("JSON");
+      expect(screen.getByRole("button", { name: "Save" }).hasAttribute("disabled")).toBe(true);
+      expect(test).not.toHaveBeenCalled();
+      fireEvent.change(control, { target: { value: valid } });
+      expect(control.hasAttribute("aria-invalid")).toBe(false);
+      expect(control.hasAttribute("aria-describedby")).toBe(false);
+      expect(document.activeElement).toBe(control);
+      fireEvent.click(screen.getByRole("button", { name: "Test" }));
+      await waitFor(() => expect(test).toHaveBeenCalledWith(expect.objectContaining(input)));
+    },
+  );
+});
+
 describe("MCP server test feedback", () => {
   it.each(["0", "-1", "1.5", "9007199254740992"])(
     "explains an invalid timeout %s and clears the error when corrected",
@@ -256,17 +324,12 @@ describe("MCP server test feedback", () => {
     expectLiteral([
       "Server name",
       "Command",
-      "Arguments — one per line",
-      "Environment — KEY=value, one per line",
+      "Arguments (JSON array)",
+      "Environment (JSON object)",
       "Working directory",
     ]);
     fireEvent.click(screen.getByRole("radio", { name: "Streamable HTTP" }));
-    expectLiteral([
-      "Server name",
-      "Server URL",
-      "Authorization token",
-      "Headers — KEY=value, one per line",
-    ]);
+    expectLiteral(["Server name", "Server URL", "Authorization token", "Headers (JSON object)"]);
   });
 
   it("closes an authored draft on Runtime replacement and never submits it to the successor", async () => {
@@ -475,7 +538,7 @@ describe("MCP server form while a mutation is pending", () => {
     const textFields = [
       "Server URL",
       "Authorization token",
-      "Headers — KEY=value, one per line",
+      "Headers (JSON object)",
       "Description",
     ];
     const switches = ["Remove stored authorization", "Remove stored headers"];
@@ -491,9 +554,8 @@ describe("MCP server form while a mutation is pending", () => {
     expect(update).toHaveBeenCalledWith(
       httpServer.id,
       expect.objectContaining({
-        url: "https://tools.example/v2",
         description: "Team tools",
-        headers: null,
+        connection: expect.objectContaining({ url: "https://tools.example/v2", headers: null }),
       }),
     );
 
@@ -537,8 +599,8 @@ describe("MCP server form while a mutation is pending", () => {
     await mount({ delete: remove, test }, stdioServer);
     const textFields = [
       "Command",
-      "Arguments — one per line",
-      "Environment — KEY=value, one per line",
+      "Arguments (JSON array)",
+      "Environment (JSON object)",
       "Working directory",
       "Description",
     ];

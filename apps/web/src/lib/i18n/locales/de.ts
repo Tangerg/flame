@@ -802,10 +802,13 @@ export const de: Record<string, string> = {
   "mcp.form.transport.aria": "Transport",
   "mcp.form.command.placeholder": "npx",
   "mcp.form.command.aria": "Befehl",
-  "mcp.form.args": "Argumente — eines pro Zeile",
-  "mcp.form.args.placeholder": "-y\n@modelcontextprotocol/server-filesystem\n/pfad",
-  "mcp.form.env": "Umgebung — KEY=Wert, eines pro Zeile",
-  "mcp.form.env.placeholder": "API_KEY=…",
+  "mcp.form.args": "Argumente (JSON-Array)",
+  "mcp.form.args.placeholder": '["--stdio", " value ", ""]',
+  "mcp.form.args.invalid":
+    "Gib ein JSON-Array mit Zeichenfolgen ein, oder lasse das Feld ohne Argumente leer.",
+  "mcp.form.env": "Umgebung (JSON-Objekt)",
+  "mcp.form.env.placeholder": '{"API_KEY":"…", "EMPTY":""}',
+  "mcp.form.env.invalid": "Gib ein nicht leeres JSON-Objekt mit Zeichenfolgen als Werten ein.",
   "mcp.form.env.keep": "Leer lassen, um die gespeicherte Umgebung beizubehalten",
   "mcp.form.env.clear": "Gespeicherte Umgebung entfernen",
   "mcp.form.env.targetChanged":
@@ -819,8 +822,9 @@ export const de: Record<string, string> = {
   "mcp.form.auth.originChanged":
     "Der Ursprung des Endpunkts hat sich geändert. Neue Autorisierung eingeben oder den gespeicherten Wert entfernen.",
   "mcp.form.auth.aria": "Autorisierungstoken",
-  "mcp.form.headers": "Header — KEY=Wert, eines pro Zeile",
-  "mcp.form.headers.placeholder": "X-API-Key=…",
+  "mcp.form.headers": "Header (JSON-Objekt)",
+  "mcp.form.headers.placeholder": '{"X-API-Key":"…"}',
+  "mcp.form.headers.invalid": "Gib ein nicht leeres JSON-Objekt mit Zeichenfolgen als Werten ein.",
   "mcp.form.headers.keep": "Leer lassen, um die gespeicherten Header beizubehalten",
   "mcp.form.headers.clear": "Gespeicherte Header entfernen",
   "mcp.form.headers.originChanged":

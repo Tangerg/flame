@@ -2,7 +2,10 @@ import { GenerationRetiredError, wasGenerationRetired } from "@/lib/asyncOwnersh
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { queryClient, repairCachedProjection } from "@/lib/queryClient";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
-import { type MCPServerInput } from "@/features/mcp/application/mcpServerInput";
+import {
+  type MCPServerInput,
+  type MCPServerUpdateInput,
+} from "@/features/mcp/application/mcpServerInput";
 import {
   MCP_SERVERS_KEY,
   MCP_TOOLS_KEY,
@@ -71,7 +74,7 @@ class MCPServerMutationGeneration {
     });
   }
 
-  update(server: MCPServerID, input: MCPServerInput): Promise<MCPServerSettings> {
+  update(server: MCPServerID, input: MCPServerUpdateInput): Promise<MCPServerSettings> {
     return this.#run(server, {
       execute: () => this.#gateway.update(server, input),
       commit: commitMCPServerSaved,

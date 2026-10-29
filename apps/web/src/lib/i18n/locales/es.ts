@@ -813,10 +813,13 @@ export const es: Record<string, string> = {
   "mcp.form.transport.aria": "Transporte",
   "mcp.form.command.placeholder": "npx",
   "mcp.form.command.aria": "Comando",
-  "mcp.form.args": "Argumentos: uno por línea",
-  "mcp.form.args.placeholder": "-y\n@modelcontextprotocol/server-filesystem\n/ruta",
-  "mcp.form.env": "Entorno: CLAVE=valor, uno por línea",
-  "mcp.form.env.placeholder": "API_KEY=…",
+  "mcp.form.args": "Argumentos (matriz JSON)",
+  "mcp.form.args.placeholder": '["--stdio", " value ", ""]',
+  "mcp.form.args.invalid":
+    "Introduce una matriz JSON de cadenas, o déjalo en blanco si no hay argumentos.",
+  "mcp.form.env": "Entorno (objeto JSON)",
+  "mcp.form.env.placeholder": '{"API_KEY":"…", "EMPTY":""}',
+  "mcp.form.env.invalid": "Introduce un objeto JSON no vacío con valores de tipo cadena.",
   "mcp.form.env.keep": "Déjalo en blanco para conservar el entorno guardado",
   "mcp.form.env.clear": "Eliminar el entorno guardado",
   "mcp.form.env.targetChanged":
@@ -830,8 +833,9 @@ export const es: Record<string, string> = {
   "mcp.form.auth.originChanged":
     "El origen del endpoint cambió. Introduce una autorización nueva o elimina el valor guardado.",
   "mcp.form.auth.aria": "Token de autorización",
-  "mcp.form.headers": "Cabeceras: CLAVE=valor, una por línea",
-  "mcp.form.headers.placeholder": "X-API-Key=…",
+  "mcp.form.headers": "Cabeceras (objeto JSON)",
+  "mcp.form.headers.placeholder": '{"X-API-Key":"…"}',
+  "mcp.form.headers.invalid": "Introduce un objeto JSON no vacío con valores de tipo cadena.",
   "mcp.form.headers.keep": "Déjalo en blanco para conservar las cabeceras guardadas",
   "mcp.form.headers.clear": "Eliminar las cabeceras guardadas",
   "mcp.form.headers.originChanged":

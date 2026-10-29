@@ -142,13 +142,13 @@ func (m mcpFormDraft) connection() (mcp.ConnectionInput, error) {
 		}
 		connection.Headers = headers
 	case protocol.MCPTransportStdio:
-		connection.Command = strings.TrimSpace(m.command)
+		connection.Command = m.command
 		arguments, err := parseMCPArguments(m.arguments)
 		if err != nil {
 			return mcp.ConnectionInput{}, err
 		}
 		connection.Args = arguments
-		connection.Directory = strings.TrimSpace(m.directory)
+		connection.Directory = m.directory
 		environment, err := mcpEnvironmentChange(m.environmentMode, m.environment)
 		if err != nil {
 			return mcp.ConnectionInput{}, err
@@ -315,7 +315,9 @@ func (a *app) mcpFormFields(flow *mcpFormFlow) ([]headless.Field, []*headless.Te
 		headers.SetMask("•")
 		secretFields = append(secretFields, authorization, headers)
 	case mcpFormStdio:
-		textField("stdio command", "mcp-server", &draft.command, requiredText)
+		textField("stdio command", "mcp-server", &draft.command, func(value string) error {
+			return (mcp.ConnectionInput{Transport: protocol.MCPTransportStdio, Command: value}).Validate()
+		})
 		textField("stdio args JSON", `["--stdio"]`, &draft.arguments, func(value string) error {
 			_, err := parseMCPArguments(value)
 			return err
@@ -357,7 +359,7 @@ func mcpAuthorizationChange(mode formChange, value string) (*mcp.AuthorizationCh
 	}
 	switch mode {
 	case formChangeSet:
-		change := &mcp.AuthorizationChange{Kind: protocol.MCPSecretSet, Value: strings.TrimSpace(value)}
+		change := &mcp.AuthorizationChange{Kind: protocol.MCPSecretSet, Value: value}
 		return change, change.Validate()
 	case formChangeClear:
 		return &mcp.AuthorizationChange{Kind: protocol.MCPSecretClear}, nil

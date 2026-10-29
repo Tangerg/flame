@@ -1,4 +1,7 @@
-import { type MCPServerInput } from "@/features/mcp/application/mcpServerInput";
+import {
+  type MCPServerInput,
+  type MCPServerUpdateInput,
+} from "@/features/mcp/application/mcpServerInput";
 import {
   type MCPServerID,
   type MCPServerSettings,
@@ -16,7 +19,7 @@ export type MCPAuthorizationAttempt =
 
 export interface MCPServerGateway {
   create(input: MCPServerInput): Promise<MCPServerSettings>;
-  update(server: MCPServerID, input: MCPServerInput): Promise<MCPServerSettings>;
+  update(server: MCPServerID, input: MCPServerUpdateInput): Promise<MCPServerSettings>;
   delete(server: MCPServerID): Promise<void>;
   setEnabled(server: MCPServerID, enabled: boolean): Promise<MCPServerSettings>;
   setToolExposure(server: MCPServerID, name: string, disabled: boolean): Promise<void>;

@@ -817,10 +817,13 @@ export const fr: Record<string, string> = {
   "mcp.form.transport.aria": "Transport",
   "mcp.form.command.placeholder": "npx",
   "mcp.form.command.aria": "Commande",
-  "mcp.form.args": "Arguments — un par ligne",
-  "mcp.form.args.placeholder": "-y\n@modelcontextprotocol/server-filesystem\n/chemin",
-  "mcp.form.env": "Environnement — CLÉ=valeur, un par ligne",
-  "mcp.form.env.placeholder": "API_KEY=…",
+  "mcp.form.args": "Arguments (tableau JSON)",
+  "mcp.form.args.placeholder": '["--stdio", " value ", ""]',
+  "mcp.form.args.invalid":
+    "Saisis un tableau JSON de chaînes, ou laisse ce champ vide pour ne passer aucun argument.",
+  "mcp.form.env": "Environnement (objet JSON)",
+  "mcp.form.env.placeholder": '{"API_KEY":"…", "EMPTY":""}',
+  "mcp.form.env.invalid": "Saisis un objet JSON non vide dont les valeurs sont des chaînes.",
   "mcp.form.env.keep": "Laissez vide pour conserver l’environnement enregistré",
   "mcp.form.env.clear": "Supprimer l’environnement enregistré",
   "mcp.form.env.targetChanged":
@@ -834,8 +837,9 @@ export const fr: Record<string, string> = {
   "mcp.form.auth.originChanged":
     "L’origine du point de terminaison a changé. Saisissez une nouvelle autorisation ou supprimez la valeur enregistrée.",
   "mcp.form.auth.aria": "Jeton d'autorisation",
-  "mcp.form.headers": "En-têtes — CLÉ=valeur, un par ligne",
-  "mcp.form.headers.placeholder": "X-API-Key=…",
+  "mcp.form.headers": "En-têtes (objet JSON)",
+  "mcp.form.headers.placeholder": '{"X-API-Key":"…"}',
+  "mcp.form.headers.invalid": "Saisis un objet JSON non vide dont les valeurs sont des chaînes.",
   "mcp.form.headers.keep": "Laissez vide pour conserver les en-têtes enregistrés",
   "mcp.form.headers.clear": "Supprimer les en-têtes enregistrés",
   "mcp.form.headers.originChanged":

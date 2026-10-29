@@ -444,6 +444,11 @@ connection readiness continues to come from the server row's canonical status.
 Test and save feedback share the action group. New feedback is revealed with its
 focused action when the group fits, without moving focus or returning to a group
 the user already left.
+MCP arguments use a JSON string array; environment and header replacements use
+JSON string-valued objects. Invalid JSON stays at its field. Exact argument
+boundaries, command/path whitespace and environment values survive edits.
+Blank secret fields keep their stored values; clearing remains explicit.
+Metadata-only saves omit the connection, and unchanged edits issue no command.
 Configuration identifiers, commands, paths and connection values explicitly opt
 out of native capitalization, autocorrection and spelling changes at their fields.
 JSON import uses the labeled format example without a repeated introduction and

@@ -4,7 +4,7 @@ import {
   type MCPHandshakeTimeout as WireMCPHandshakeTimeout,
   type MCPAuthorizationChange,
   type MCPAuthorizationAttempt,
-  type MCPConnectionInput,
+  type MCPConnectionInput as WireMCPConnectionInput,
   type MCPEnvironmentChange,
   type MCPHeadersChange,
   type FlameClient,
@@ -12,7 +12,11 @@ import {
   type UpdateMCPServerRequest,
 } from "@flame/runtime-client";
 import { type MCPTestResult } from "@flame/runtime-client/wire";
-import { type MCPServerInput } from "@/features/mcp/application/mcpServerInput";
+import {
+  type MCPConnectionInput,
+  type MCPServerInput,
+  type MCPServerUpdateInput,
+} from "@/features/mcp/application/mcpServerInput";
 import { type MCPHandshakeTimeout } from "@/features/mcp/application/mcpHandshakeTimeout";
 import { mcpServerSettings } from "@/features/mcp/adapters/runtimeMcpServerProjection";
 import { mcpStatusText } from "@/features/mcp/adapters/mcpStatusText";
@@ -40,7 +44,7 @@ function environmentChange(
   return value === null ? { type: "clear" } : { type: "set", value };
 }
 
-function connectionInput(input: MCPServerInput): MCPConnectionInput {
+function connectionInput(input: MCPConnectionInput): WireMCPConnectionInput {
   if (input.transport === "stdio") {
     return {
       type: "stdio",
@@ -68,12 +72,14 @@ function candidate(input: MCPServerInput): MCPServerCandidate {
   };
 }
 
-function updateRequest(server: MCPServerID, input: MCPServerInput): UpdateMCPServerRequest {
+function updateRequest(server: MCPServerID, input: MCPServerUpdateInput): UpdateMCPServerRequest {
   return {
     server,
-    description: input.description ?? "",
-    connection: connectionInput(input),
-    handshakeTimeout: wireHandshakeTimeout(input.handshakeTimeout),
+    description: input.description,
+    connection: input.connection ? connectionInput(input.connection) : undefined,
+    handshakeTimeout: input.handshakeTimeout
+      ? wireHandshakeTimeout(input.handshakeTimeout)
+      : undefined,
   };
 }
 

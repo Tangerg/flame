@@ -58,6 +58,8 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
   const draft = edit.fields;
   const timeoutInvalid = edit.handshakeTimeout === undefined;
   const timeoutErrorId = useId();
+  const jsonIssue = edit.jsonIssue;
+  const jsonErrorId = useId();
 
   const [saving, setSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -86,9 +88,10 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
     setSaving(true);
     reset();
     try {
-      const input = buildInput();
-      if (server) await commands.update(server.id, input);
-      else await commands.create(input);
+      if (server) {
+        const update = edit.toUpdate();
+        if (update) await commands.update(server.id, update);
+      } else await commands.create(buildInput());
       if (presented.current) onDone();
     } catch (err) {
       if (!presented.current || wasGenerationRetired(err)) return;
@@ -177,9 +180,20 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
                 spellCheck={false}
                 pending={saving}
                 value={draft.args}
+                invalid={jsonIssue === "args"}
+                aria-describedby={jsonIssue === "args" ? jsonErrorId : undefined}
                 onChange={(event) => updateDraft("args", event.target.value)}
                 placeholder={t("mcp.form.args.placeholder")}
               />
+              {jsonIssue === "args" && (
+                <span
+                  id={jsonErrorId}
+                  role="alert"
+                  {...stylex.props(vocab.negative, typeStep.uiMd)}
+                >
+                  {t("mcp.form.args.invalid")}
+                </span>
+              )}
             </FormField>
             <div {...stylex.props(vocab.column, gap.s1_5)}>
               <FormField label={t("mcp.form.env")}>
@@ -192,6 +206,8 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
                   spellCheck={false}
                   pending={saving}
                   value={draft.environment.text}
+                  invalid={jsonIssue === "environment"}
+                  aria-describedby={jsonIssue === "environment" ? jsonErrorId : undefined}
                   onChange={(event) =>
                     updateDraft("environment", draft.environment.edited(event.target.value))
                   }
@@ -199,6 +215,15 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
                     hasEnvironmentStored ? t("mcp.form.env.keep") : t("mcp.form.env.placeholder")
                   }
                 />
+                {jsonIssue === "environment" && (
+                  <span
+                    id={jsonErrorId}
+                    role="alert"
+                    {...stylex.props(vocab.negative, typeStep.uiMd)}
+                  >
+                    {t("mcp.form.env.invalid")}
+                  </span>
+                )}
               </FormField>
               {hasEnvironmentStored && (
                 <label {...stylex.props(ss.split, vocab.muted, typeStep.uiMd)}>
@@ -296,11 +321,18 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
               spellCheck={false}
               pending={saving}
               value={draft.headers.text}
+              invalid={jsonIssue === "headers"}
+              aria-describedby={jsonIssue === "headers" ? jsonErrorId : undefined}
               onChange={(event) => updateDraft("headers", draft.headers.edited(event.target.value))}
               placeholder={
                 hasHeadersStored ? t("mcp.form.headers.keep") : t("mcp.form.headers.placeholder")
               }
             />
+            {jsonIssue === "headers" && (
+              <span id={jsonErrorId} role="alert" {...stylex.props(vocab.negative, typeStep.uiMd)}>
+                {t("mcp.form.headers.invalid")}
+              </span>
+            )}
           </FormField>
           {hasHeadersStored && (
             <label {...stylex.props(ss.split, vocab.muted, typeStep.uiMd)}>

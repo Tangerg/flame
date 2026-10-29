@@ -65,6 +65,22 @@ describe("runtimeMcpServerGateway", () => {
     ).resolves.toEqual(expected);
   });
 
+  it("sends a metadata delta without replacing connection material", async () => {
+    const update = vi.fn().mockResolvedValue(runtimeServer({ description: "changed" }));
+    uninstall = installMCPServerGateway(
+      () => ({ mcp: { update } }) as unknown as FlameClient,
+    ).dispose;
+    await MCPServerMutationOwner.capture()!.update(userMCPServer("cloud"), {
+      description: "changed",
+    });
+    const request = update.mock.calls[0]![0];
+    expect(JSON.parse(JSON.stringify(request))).toEqual({
+      server: userMCPServer("cloud"),
+      description: "changed",
+    });
+    expect(validateWire("UpdateMCPServerRequest", request, "request")).toEqual([]);
+  });
+
   it("changes exposure through its own operation without updating the server", async () => {
     const setToolExposure = vi.fn().mockResolvedValue(undefined);
     const update = vi.fn();

@@ -1,6 +1,7 @@
 package terminal
 
 import (
+	json "encoding/json/v2"
 	"maps"
 	"slices"
 	"testing"
@@ -10,6 +11,46 @@ import (
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/program"
 )
+
+func TestMCPFormPreservesExactProcessMaterial(t *testing.T) {
+	args := []string{"--label", " value ", "", "first\nsecond"}
+	server := protocol.MCPServer{
+		ID: protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginUser}, Name: "literal"},
+		Connection: protocol.MCPConnection{
+			Type: protocol.MCPTransportStdio, Command: "/tools/mcp ", Args: args, Dir: "/work/project ",
+		},
+		HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
+	}
+	draft := newMCPFormDraft(mcpFormUpdate, server)
+	draft.description = "changed"
+	update, changed, err := draft.update(server)
+	if err != nil || !changed || update.Connection != nil {
+		t.Fatalf("metadata edit = %+v, %t, %v", update, changed, err)
+	}
+	draft.replaceConnection = true
+	connection, err := draft.connection()
+	if err != nil || connection.Command != server.Connection.Command || connection.Directory != server.Connection.Dir ||
+		!slices.Equal(connection.Args, args) || connection.Environment != nil {
+		t.Fatalf("connection = %+v, %v", connection, err)
+	}
+	encoded, err := json.Marshal(args)
+	if err != nil {
+		t.Fatal(err)
+	}
+	draft = newMCPFormDraft(mcpFormCreate, protocol.MCPServer{})
+	draft.name, draft.transport, draft.command, draft.directory, draft.arguments = "literal", protocol.MCPTransportStdio, " mcp ", " /project ", string(encoded)
+	candidate, err := draft.candidate()
+	if err != nil || candidate.Connection.Command != " mcp " || candidate.Connection.Directory != " /project " || !slices.Equal(candidate.Connection.Args, args) {
+		t.Fatalf("candidate = %+v, %v", candidate, err)
+	}
+}
+
+func TestMCPFormPreservesReplacementAuthorization(t *testing.T) {
+	change, err := mcpAuthorizationChange(formChangeSet, " Bearer literal ")
+	if err != nil || change.Value != " Bearer literal " {
+		t.Fatalf("form changed authorization before Runtime admission: %+v, %v", change, err)
+	}
+}
 
 func TestMCPEnvironmentFormPreservesProcessValues(t *testing.T) {
 	change, err := mcpEnvironmentChange(formChangeSet, `{"EMPTY":"","SPACES":" \t "," PADDED ":" value "}`)

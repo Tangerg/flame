@@ -14,14 +14,105 @@ function editWith(fields: Partial<MCPServerFields>, server?: MCPServerSettings):
 }
 
 describe("mcpServerDraft", () => {
+  it("preserves exact process material when only description or timeout changes", () => {
+    const server: MCPServerSettings = {
+      id: userMCPServer("literal"),
+      status: "disabled",
+      type: "stdio",
+      enabled: false,
+      command: "/tools/mcp ",
+      dir: "/work/project ",
+      args: ["--label", " value ", "", "first\nsecond"],
+      envMasked: { TOKEN: "********" },
+      handshakeTimeout: { type: "unbounded" },
+    };
+    for (const fields of [{ description: "changed" }, { timeoutSec: "15" }]) {
+      const edit = editWith(fields, server);
+      expect(edit.isValid).toBe(true);
+      expect(edit.environmentNeedsDisposition).toBe(false);
+      expect(edit.toInput()).toMatchObject({
+        command: server.command,
+        dir: server.dir,
+        args: server.args,
+      });
+      expect(edit.toInput().env).toBeUndefined();
+      expect(edit.toUpdate()).not.toHaveProperty("connection");
+    }
+  });
+
+  it("creates exact JSON arguments and environment values", () => {
+    const args = ["", " space ", "first\nsecond", 'quote"\\tail'];
+    const env = { EMPTY: "", SPACES: " \t ", TOKEN: " value ", " PADDED ": "first\nsecond" };
+    const edit = editWith({
+      name: "literal",
+      command: " mcp ",
+      dir: " /project ",
+      args: JSON.stringify(args),
+      environment: RetainedValue.preserved().edited(JSON.stringify(env)),
+    });
+    expect(edit.toInput()).toMatchObject({ command: " mcp ", dir: " /project ", args, env });
+  });
+
+  it.each([
+    ["args", "one\ntwo"],
+    ["args", "null"],
+    ["args", '["ok", 2]'],
+    ["environment", '{"KEY":"first","KEY":"second"}'],
+    ["environment", '{"KEY":2}'],
+    ["environment", "{}"],
+    ["headers", "KEY=value"],
+    ["headers", "[]"],
+    ["headers", '{"X-Key":null}'],
+  ] as const)("rejects unrepresentable %s JSON %s without guessing", (field, source) => {
+    const edit =
+      field === "headers"
+        ? editWith({
+            name: "cloud",
+            transport: "streamableHttp",
+            url: "https://example.com",
+            headers: RetainedValue.preserved().edited(source),
+          })
+        : editWith({
+            name: "local",
+            command: "node",
+            ...(field === "args"
+              ? { args: source }
+              : { environment: RetainedValue.preserved().edited(source) }),
+          });
+    expect(edit.jsonIssue).toBe(field);
+    expect(edit.isValid).toBe(false);
+    expect(() => edit.toInput()).toThrow("mcp_form_json_invalid");
+  });
+
+  it("keeps an unchanged edit empty and changes only the explicit secret disposition", () => {
+    const server: MCPServerSettings = {
+      id: userMCPServer("local"),
+      type: "stdio",
+      status: "disabled",
+      enabled: false,
+      command: "node",
+      args: [""],
+      envMasked: { TOKEN: "****" },
+      handshakeTimeout: { type: "unbounded" },
+    };
+    const edit = MCPServerEdit.of(server);
+    expect(edit.toUpdate()).toBeUndefined();
+    expect(edit.with("environment", RetainedValue.preserved().cleared(true)).toUpdate()).toEqual({
+      connection: { transport: "stdio", command: "node", args: [""], env: null, dir: undefined },
+    });
+    expect(edit.with("args", '[" "]').environmentNeedsDisposition).toBe(true);
+    expect(edit.with("args", "invalid").environmentNeedsDisposition).toBe(false);
+    expect(edit.with("args", "invalid").isValid).toBe(false);
+  });
+
   it("builds stdio config input from the form draft", () => {
     const input = editWith({
       name: " git ",
       transport: "stdio",
       description: " repository tools ",
       command: " npx ",
-      args: " -y\n@modelcontextprotocol/server-git\n\n",
-      environment: RetainedValue.preserved().edited("TOKEN=a=b\nEMPTY_KEY\n"),
+      args: JSON.stringify(["-y", "@modelcontextprotocol/server-git"]),
+      environment: RetainedValue.preserved().edited('{"TOKEN":"a=b","EMPTY_KEY":""}'),
       dir: " /repo ",
       url: "",
       authorization: RetainedValue.preserved().cleared(false),
@@ -34,10 +125,10 @@ describe("mcpServerDraft", () => {
       transport: "stdio",
       enabled: true,
       description: "repository tools",
-      command: "npx",
+      command: " npx ",
       args: ["-y", "@modelcontextprotocol/server-git"],
       env: { TOKEN: "a=b", EMPTY_KEY: "" },
-      dir: "/repo",
+      dir: " /repo ",
       handshakeTimeout: { type: "bounded", seconds: 30 },
     });
   });
@@ -49,7 +140,9 @@ describe("mcpServerDraft", () => {
       description: "",
       command: "run",
       args: "",
-      environment: RetainedValue.preserved().edited("__proto__=polluted\nconstructor=c\nKEEP=1"),
+      environment: RetainedValue.preserved().edited(
+        '{"__proto__":"polluted","constructor":"c","KEEP":"1"}',
+      ),
       dir: "",
       url: "",
       authorization: RetainedValue.preserved().cleared(false),
@@ -82,7 +175,7 @@ describe("mcpServerDraft", () => {
         dir: "",
         url: " https://example.com/mcp ",
         authorization: RetainedValue.preserved().edited("   "),
-        headers: RetainedValue.preserved().edited("X-Trace=abc=123\nBare\n"),
+        headers: RetainedValue.preserved().edited('{"X-Trace":"abc=123","Bare":""}'),
         timeoutSec: "",
       },
       server,
@@ -116,7 +209,7 @@ describe("mcpServerDraft", () => {
       name: "fs",
       transport: "stdio",
       command: "node",
-      args: "server.js\n--root\n/repo",
+      args: JSON.stringify(["server.js", "--root", "/repo"], null, 2),
       environment: { disposition: "preserve" },
       headers: { disposition: "preserve" },
       timeoutSec: "15",
@@ -161,7 +254,8 @@ describe("mcpServerDraft", () => {
     const cleared = draft.with("headers", RetainedValue.preserved().cleared(true));
     expect(cleared.isValid).toBe(true);
     expect(
-      draft.with("headers", RetainedValue.preserved().edited("X-API-Key=replacement")).isValid,
+      draft.with("headers", RetainedValue.preserved().edited('{"X-API-Key":"replacement"}'))
+        .isValid,
     ).toBe(true);
     expect(cleared.toInput().headers).toBe(null);
   });
@@ -183,14 +277,15 @@ describe("mcpServerDraft", () => {
     expect(unchanged.isValid).toBe(true);
     expect(unchanged.toInput().env).toBeUndefined();
 
-    const changed = unchanged.with("args", "other.js");
+    const changed = unchanged.with("args", '["other.js"]');
     expect(changed.isValid).toBe(false);
     const cleared = changed.with("environment", RetainedValue.preserved().cleared(true));
     expect(cleared.isValid).toBe(true);
     expect(cleared.toInput().env).toBe(null);
     expect(
-      changed.with("environment", RetainedValue.preserved().edited("API_KEY=replacement")).toInput()
-        .env,
+      changed
+        .with("environment", RetainedValue.preserved().edited('{"API_KEY":"replacement"}'))
+        .toInput().env,
     ).toEqual({ API_KEY: "replacement" });
   });
 
@@ -216,6 +311,7 @@ describe("mcpServerDraft", () => {
     const replacement = RetainedValue.preserved().edited("  secret  ");
     expect(replacement.disposition).toBe("replace");
     expect(replacement.text).toBe("  secret  ");
+    expect(replacement.submittedText()).toBe("  secret  ");
 
     const cleared = RetainedValue.preserved().cleared(true);
     expect(cleared.disposition).toBe("clear");

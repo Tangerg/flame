@@ -133,7 +133,7 @@ func (c ConnectionInput) Validate() error {
 			}
 		}
 	case protocol.MCPTransportStdio:
-		if strings.TrimSpace(c.Command) == "" {
+		if c.Command == "" {
 			return errors.New("stdio MCP connection input command is empty")
 		}
 		if c.URL != "" || c.Authorization != nil || c.Headers != nil {

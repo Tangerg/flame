@@ -769,10 +769,12 @@ export const ko: Record<string, string> = {
   "mcp.form.transport.aria": "전송 방식",
   "mcp.form.command.placeholder": "npx",
   "mcp.form.command.aria": "명령",
-  "mcp.form.args": "인자 — 한 줄에 하나",
-  "mcp.form.args.placeholder": "-y\n@modelcontextprotocol/server-filesystem\n/path",
-  "mcp.form.env": "환경 변수 — KEY=value, 한 줄에 하나",
-  "mcp.form.env.placeholder": "API_KEY=…",
+  "mcp.form.args": "인자(JSON 배열)",
+  "mcp.form.args.placeholder": '["--stdio", " value ", ""]',
+  "mcp.form.args.invalid": "문자열의 JSON 배열을 입력하세요. 인자가 없으면 비워 두세요.",
+  "mcp.form.env": "환경 변수(JSON 객체)",
+  "mcp.form.env.placeholder": '{"API_KEY":"…", "EMPTY":""}',
+  "mcp.form.env.invalid": "값이 문자열인 비어 있지 않은 JSON 객체를 입력하세요.",
   "mcp.form.env.keep": "비워 두면 저장된 환경 변수를 유지합니다",
   "mcp.form.env.clear": "저장된 환경 변수 제거",
   "mcp.form.env.targetChanged":
@@ -786,8 +788,9 @@ export const ko: Record<string, string> = {
   "mcp.form.auth.originChanged":
     "엔드포인트 출처가 변경되었습니다. 새 인증 정보를 입력하거나 저장된 값을 제거하세요.",
   "mcp.form.auth.aria": "인증 토큰",
-  "mcp.form.headers": "헤더 — KEY=value, 한 줄에 하나",
-  "mcp.form.headers.placeholder": "X-API-Key=…",
+  "mcp.form.headers": "헤더(JSON 객체)",
+  "mcp.form.headers.placeholder": '{"X-API-Key":"…"}',
+  "mcp.form.headers.invalid": "값이 문자열인 비어 있지 않은 JSON 객체를 입력하세요.",
   "mcp.form.headers.keep": "비워 두면 저장된 헤더를 유지합니다",
   "mcp.form.headers.clear": "저장된 헤더 제거",
   "mcp.form.headers.originChanged":

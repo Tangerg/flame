@@ -856,6 +856,50 @@ func TestMCPEnvironmentEditsMatchRuntimeAdmission(t *testing.T) {
 	}
 }
 
+func TestMCPProcessMaterialMatchesRuntimeAdmission(t *testing.T) {
+	configureIntegrationRuntime(t)
+	runtime := openIntegrationRuntime(t, runtimefixture.TempDirectory(t))
+	for _, test := range []struct {
+		name    string
+		command string
+		args    []string
+		dir     string
+		valid   bool
+	}{
+		{"literal", "/tools/mcp ", []string{"--label", " value ", "", "first\nsecond"}, "/work/project ", true},
+		{"whitespace-command", " ", []string{""}, "", true},
+		{"nul-command", "mcp\x00server", nil, "", false},
+		{"nul-argument", "mcp", []string{"bad\x00argument"}, "", false},
+		{"nul-directory", "mcp", nil, "/work/\x00bad", false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			candidate := mcp.Candidate{Name: "process-" + test.name, Connection: mcp.ConnectionInput{
+				Transport: protocol.MCPTransportStdio, Command: test.command, Args: test.args, Directory: test.dir,
+			}}
+			created, err := runtime.CreateServer(t.Context(), candidate)
+			if !test.valid {
+				if !errors.Is(err, protocol.ErrInvalidParams) {
+					t.Fatalf("process admission = %v, want Runtime invalid params", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			updated, err := runtime.UpdateServer(t.Context(), mcp.ServerUpdate{Server: created.ID, Description: new("changed")})
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, server := range []protocol.MCPServer{created, updated} {
+				connection := server.Connection
+				if connection.Command != test.command || connection.Dir != test.dir || !slices.Equal(connection.Args, test.args) {
+					t.Fatalf("Runtime changed process material: %+v", connection)
+				}
+			}
+		})
+	}
+}
+
 func requireIntegrationMCPServer(
 	t *testing.T, server protocol.MCPServer, description string, timeoutSeconds int, authorized bool, headers ...string,
 ) {
