@@ -16145,6 +16145,112 @@ to remote `main`. Fresh `ls-remote` matched that commit, all **21** accepted
 product/resource inputs matched, and the owned checkout was clean with zero
 unpushed commits. This in-place receipt adds no product change.
 
+### Installed component reload continuity (2026-10-30)
+
+The initially failed installed-reader flow exposed a separate recovery defect in
+`src/features/plugins/ui/InstalledComponent.tsx:133`. Reload window became
+natively disabled while the original cleanup gate was pending. Actual Wails
+focused HTML content during that wait and after rejection; the next Tab restarted
+at the fixture sidebar. The original draft survived, but the recovery position
+did not. This is the installed ComponentRecovery owner, distinct from the
+PluginBoundary Retry handoff above and the open native reverse-Tab investigation.
+
+Reload now projects the existing pending state through the shared Button's
+`pending` contract. It stays focusable while unavailable, rejects repeat
+activation and remains the current keyboard destination after refused cleanup.
+Later focus stays with its owner. Both render failure and retired component
+resources use this same recovery function. Cleanup admission, reload, exception
+capture, diagnostics, labels and retirement retain their existing owners; no
+state, wrapper, listener, focus reassignment, timer or dependency is added.
+
+Read-only HeroUI's actual Button/loading-state example informs unavailable
+pending activation. ZCode's actual `packages/ui/src/ErrorBoundary.tsx` supplies
+localized recovery and diagnostic grouping evidence. Flame uses its existing
+Base UI control and tokens; reference reset, telemetry and timer policies are
+not copied. Earlier workspace/Radix research remains context, rather than native
+focus evidence. Applicable repository and module instructions, the better-series
+domains and the React skill inform the bounded review.
+
+| Domain        | Inspected scope and result                                                                                                 |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Accessibility | Pending/refused focus, unavailable pointer/Return/Space, later editing, explicit retry and native reading pass.            |
+| Layout        | Dock/main return, 1440/1120 windows and the existing full-width retreat at 200% keep recovery reachable.                   |
+| Writing       | Existing translated recovery, source identity and complete captured diagnostics remain; no new copy or inferred status.    |
+| Typography    | English 14px and Chinese 18px/200% retain full diagnostic access, wrapping and native scroll reading.                      |
+| Colors        | Existing Orange/light and Blue/dark keyboard perimeters remain visible. Tokens stay unchanged; contrast is not remeasured. |
+| UI            | Shared pending activation, retained expanded details and later draft focus pass; existing reduced-motion behavior remains. |
+
+| Severity         | Location                                                                | Before                                                     | After                                                            | Why                                                                                |
+| ---------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| MEDIUM, repaired | `src/features/plugins/ui/InstalledComponent.tsx:133`, ComponentRecovery | Pending cleanup discards the focused Reload window action. | Shared pending availability retains that action through refusal. | Failed recovery should not restart the reader's navigation or reclaim later input. |
+
+Verification:
+
+- The first test invocation executes no tests because the retired shared UI build
+  is absent. After the required `make stage-web`, the original two-file baseline
+  passes **24 tests**. New contracts against unchanged product source fail
+  **3 cases** while **23 pass**. The existing native-disabled assertion changes
+  intentionally to focusable unavailability; admission assertions are retained.
+- Final recovery/result/boundary checks pass **3 files / 36 tests**, and the
+  existing shared Button contract passes **28 tests**. Coverage includes both
+  failure modes, refused original cleanup, repeat rejection and later draft
+  value/selection/focus. Web typecheck, lint and interactive-chrome checks pass.
+- Normal `make check-native` passes Desktop Go test/vet/build and the supported
+  Wails production build in **24.999 s**. Existing duplicate-library and SDK/deployment
+  linker warnings remain; no minimum-macOS-host qualification is claimed.
+
+Three actual Wails launches use a fresh private identity/home and the normal
+DesktopHost, services, menu and window composition. A private fixture input
+supplies a render exception or retired resources, plus an explicitly held/rejected
+reload callback. The shipped ComponentRecovery and shared controls handle the
+interaction. No observer, input script or product debug route is added. Original
+and final English native binaries match; Web assets carry the product repair.
+Each clean scene's complete **343-asset** map matches after its acceptance.
+
+English/light/14px/Flame Orange verifies pointer, Return and Space repeat refusal,
+the retained button and visible keyboard ring during cleanup, and focus after
+rejection. Tab/Return reads the reload failure and original component identity.
+Both expanded diagnostics survive main/Dock return. A second pending attempt
+continues after collapsing the Dock: its later rejection preserves Composer
+focus and the exact draft “Keep recovery draft — 保留 · resumed after reading
+and cleanup refusal.”
+
+Chinese/dark/18px/custom Blue with reduced motion exercises retired resources at
+**200% native page zoom** in the 1120×720 window. The existing narrow-window
+entry presents the material full width. Keyboard activation, unavailable repeats
+and refusal retain the reload position and Blue perimeter. A later 24-line
+diagnostic exposes its final Chinese line and stack; its focused scroller admits
+Down-key reading and wheel movement back to earlier lines. Native window
+zoom/restore retains the recovery location. Closing the material during another
+held attempt leaves later editing intact through rejection. Actual Size restores
+the 500px Dock and the original Composer focus. The draft continues to
+“恢复验收草稿，保留原来的阅读位置。 已读完诊断，继续输入。 清理失败也没有打断。”
+
+All **six** owned reload-fixture requests settle as explicit failures; repeats
+create no extra request. These isolated paths do not qualify successful window
+reload, live Realm cleanup/admission, every boundary placement, VoiceOver or OS
+IME. Chinese uses native paste, not an IME claim. No message/business command,
+browser suite, benchmark, Claude CLI or subagent is used. Screenshots/AX remain
+in the CUA transcript, without a screenshot-file archive claim.
+
+Cleanup unregisters the bundle, retires all three launches, closes the listener,
+removes **eight** new output/cache roots and **three** private profiles, and
+restores four original files/modes. Before and after retirement, preservation
+passes for **6,385** qualified non-Markdown inputs, **34** installed resources,
+**51** read-only references, three instructions, 21 outputs and five profile
+absences. The exact root /private/tmp/flame-component-recovery-9Pv0fU is absent;
+the installed toolchain and primary parallel checkout are preserved. The
+memory-only archive round-trips **56 UTF-8 records**, **2,071,264 raw bytes** and
+**716,729 gzip bytes**, SHA-256
+012622c422b290f77b4d1f109437548b6a248580eb6a3f2b887093e403851a6e.
+The interval fetch finds no incoming main commit, avoiding an unnecessary merge
+and validation loop.
+
+**Approve** this installed recovery flow. The broad UI goal stays active and the
+separate native reverse-Tab finding stays open. Next inspect a mounted Tool/File
+reader becoming failed: that transition differs from the initially failed
+workspace scene qualified here and needs its own evidence before a focus change.
+
 ### Settings pane error identity
 
 Actual Wails showed the Appearance heading and selected tab beside a failure

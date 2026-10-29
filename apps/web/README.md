@@ -74,6 +74,12 @@ saving, Close, Escape and outside dismissal share the same unavailable contract
 as Cancel and Save. Settlement restores dismissal; draft, error, command and
 return-focus ownership remain with their existing callers and shared controls.
 
+Installed component recovery keeps Reload window focusable while its original
+cleanup gate is pending. The shared pending button blocks repeat activation;
+refused cleanup retains the recovery action and diagnostics without reclaiming
+later input focus. Render failure and retired resources use this same recovery
+boundary. Component retirement and actual window reload keep their existing owners.
+
 Package configuration keeps local validation feedback with the open edit. It
 formats syntax, object-shape and request-field errors as correction instructions
 and derives field validity from that one message. Editing or cancelling retires
