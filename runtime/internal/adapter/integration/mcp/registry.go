@@ -71,8 +71,8 @@ func (c *connections) retireSessionLocked(session *sdkmcp.ClientSession) *sessio
 // publishToolsLocked rebuilds the model-facing catalog from each connected
 // server's last verified tool snapshot and hands it to the sink. The caller
 // holds mu and has just changed a live outcome, so the sink observes exactly
-// the state Statuses reports. Network I/O happens only while establishing a
-// session; publication is deterministic and cannot turn caller cancellation or
+// the state Statuses reports. Network I/O stays outside this boundary, so
+// publication cannot turn caller cancellation or
 // another server's independent failure into a false catalog.
 func (c *connections) publishToolsLocked(changed ...mcpserver.ID) {
 	if c.onTools == nil {
@@ -214,6 +214,9 @@ func (c *connections) beginSessionCloseLocked(session *sdkmcp.ClientSession) *se
 	if attempt == nil {
 		attempt = &sessionCloseAttempt{done: make(chan struct{})}
 		owned.close = attempt
+		if owned.cancelTools != nil {
+			owned.cancelTools()
+		}
 		go c.closeSessionAttempt(session, owned, attempt)
 	}
 	return attempt

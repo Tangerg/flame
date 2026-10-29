@@ -144,7 +144,7 @@ func TestHandshakeRejectsLateSDKSessionAfterLifetimeCancellation(t *testing.T) {
 			})
 			cause := errors.New("handshake owner stopped")
 			session, release, err := connectSession(lifetime.parent, lifetime.owner, nil, func(ctx context.Context) (*sdkmcp.ClientSession, error) {
-				session, err := newClient().Connect(ctx, clientTransport, nil)
+				session, err := newClient(nil).Connect(ctx, clientTransport, nil)
 				if err == nil {
 					t.Cleanup(func() {
 						if err := session.Close(); err != nil {

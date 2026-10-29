@@ -122,6 +122,10 @@ func (c *connections) dialAndSwap(ctx context.Context, attempt *attempt, prepare
 		c.sessions[session] = &ownedSession{closeFn: cleanupSession, bindings: prepared.admission.Bindings, managed: observation}
 	}
 	owned := c.sessions[session]
+	var toolVersion uint64
+	if owned != nil {
+		toolVersion = owned.toolVersion
+	}
 	c.mu.Unlock()
 	if err == nil && prepared.admission.Run != nil {
 		step = mcpserver.FailureConfiguration
@@ -175,7 +179,13 @@ func (c *connections) dialAndSwap(ctx context.Context, attempt *attempt, prepare
 			attempt.target.oauth = nil
 		}
 	} else {
+		for index := range verifiedTools {
+			verifiedTools[index].catalogVersion = toolVersion
+		}
 		attempt.target.settle(session, verifiedTools, mcpserver.ConnectionConnected, "", nil)
+		if owned != nil && owned.toolChanges != nil {
+			c.watchToolChangesLocked(session, owned, cfg, toolVersion)
+		}
 		if keepHandler {
 			attempt.target.oauth = cfg.OAuthHandler // keep the authorized handler for this session's reconnects
 		}

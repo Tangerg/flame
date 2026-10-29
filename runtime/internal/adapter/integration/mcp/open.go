@@ -16,16 +16,13 @@ var tracer = otel.Tracer("scope/flame/adapter/integration/mcp")
 
 // newConnections validates the complete ledger before any owned attempt starts.
 func newConnections(ctx, lifetime context.Context, servers []ServerConfig, oauthSessions oauthSessionStore,
-	callbacks *qimumcp.Callbacks, client *sdkmcp.Client,
+	callbacks *qimumcp.Callbacks,
 ) (*connections, error) {
 	if lo.IsNil(ctx) {
 		return nil, errors.New("mcp: startup context is required")
 	}
 	if lo.IsNil(lifetime) {
 		return nil, errors.New("mcp: lifetime is required")
-	}
-	if client == nil {
-		return nil, errors.New("mcp: client is required")
 	}
 	if oauthSessions != nil && lo.IsNil(oauthSessions) {
 		return nil, errors.New("mcp: supplied oauth session store is nil")
@@ -41,8 +38,9 @@ func newConnections(ctx, lifetime context.Context, servers []ServerConfig, oauth
 			return nil, fmt.Errorf("mcp: invalid server %q: %w", srv.ID(), err)
 		}
 	}
-	c := &connections{lifetime: lifetime, callbacks: callbacks, client: client, oauthSessions: oauthSessions,
+	c := &connections{lifetime: lifetime, callbacks: callbacks, oauthSessions: oauthSessions,
 		sessions: make(map[*sdkmcp.ClientSession]*ownedSession)}
+	c.client = newClient(c.toolListChanged)
 	if err := c.cancellationErr(ctx); err != nil {
 		return nil, err
 	}

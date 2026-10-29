@@ -30,7 +30,7 @@ func TestStartupRejectsCanceledAdmission(t *testing.T) {
 				connections, err := openConnections(ctx, lifetime, configs, nil, func(context.Context, mcpserver.ID) (*launchPermit, error) {
 					t.Error("canceled initialization read configuration")
 					return nil, errors.New("unexpected configuration read")
-				}, nil, newClient())
+				}, nil)
 				if connections != nil {
 					defer connections.shutdown(context.WithoutCancel(t.Context()))
 				}
@@ -53,7 +53,7 @@ func TestStartupHandoffDoesNotBorrowCallerLifetime(t *testing.T) {
 		<-ctx.Done()
 		close(settled)
 		return nil, ctx.Err()
-	}, nil, newClient())
+	}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestStartupShutdownRetainsSessionRetirementDiagnostics(t *testing.T) {
 	var retired atomic.Int32
 	c, err := openConnections(t.Context(), t.Context(), []ServerConfig{cfg}, nil, func(context.Context, mcpserver.ID) (*launchPermit, error) {
 		return newLaunch(cfg, nil, func() error { retired.Add(1); return failure }, admission{})
-	}, nil, newClient())
+	}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +124,7 @@ func TestStartupToleratesIndependentHandshakeTimeout(t *testing.T) {
 			return newLaunch(timedOut, nil, nil, admission{})
 		}
 		return newLaunch(healthy, nil, nil, admission{})
-	}, nil, newClient())
+	}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +161,7 @@ func startupDescriptor(name string) ServerConfig {
 // the next source would otherwise be admitted. All callbacks see the same owner.
 func TestStartupCompletesEveryAdmissionBeforeConfiguration(t *testing.T) {
 	configs := []ServerConfig{startupDescriptor("first"), startupDescriptor("second")}
-	ledger, err := newConnections(t.Context(), t.Context(), configs, nil, nil, newClient())
+	ledger, err := newConnections(t.Context(), t.Context(), configs, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
