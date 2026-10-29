@@ -15,6 +15,7 @@ import {
 } from "@flame/component-sdk";
 import { type ComponentAcquisition } from "@/features/plugins/adapters/componentModules";
 import * as stylex from "@stylexjs/stylex";
+import { useContentVisible } from "@flame/ui";
 
 const styles = stylex.create({ container: { display: "contents" } });
 
@@ -67,7 +68,9 @@ function ownedInput(
 
 export function NativeComponentMount({ acquire, wrap, report, ...input }: Props) {
   const parent = useCurrentUse();
+  const visible = useContentVisible();
   const container = useRef<HTMLDivElement>(null);
+  const focused = useRef<Element | null>(null);
   const current = useRef<
     | {
         acquisition: ComponentAcquisition;
@@ -80,10 +83,38 @@ export function NativeComponentMount({ acquire, wrap, report, ...input }: Props)
   const [failure, setFailure] = useState<{ error: unknown }>();
   useLayoutEffect(() => {
     latest.current = input;
+    if (!visible) focused.current = null;
   });
+  useLayoutEffect(() => {
+    const root = container.current!;
+    // An earlier inner-root update must not leave a stale recovery target.
+    const observer = new MutationObserver(() => {
+      if (focused.current && !focused.current.isConnected) focused.current = null;
+    });
+    observer.observe(root, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
   useEffect(() => {
     let retired = false;
     let owned: typeof current.current;
+    const fail = (error: unknown) => {
+      report(error);
+      if (retired) return;
+      const source = focused.current;
+      focused.current = null;
+      const root = container.current;
+      // Qimu's separate React root removes the focused node before reporting failure.
+      if (
+        source &&
+        !source.isConnected &&
+        root?.isConnected &&
+        !root.closest('[hidden], [inert], [aria-hidden="true"]') &&
+        root.ownerDocument.activeElement === root.ownerDocument.body
+      ) {
+        root.parentElement?.closest<HTMLElement>("[tabindex]")?.focus({ preventScroll: true });
+      }
+      setFailure({ error });
+    };
     const release = async () => {
       if (!owned) return;
       await owned.mount.close();
@@ -104,10 +135,7 @@ export function NativeComponentMount({ acquire, wrap, report, ...input }: Props)
           acquisition.contract,
           container.current!,
           ownedInput(latest.current, acquisition, projection),
-          (error) => {
-            report(error);
-            if (!retired) setFailure({ error });
-          },
+          fail,
           wrap,
         );
         owned = { acquisition, mount: rendered, projection };
@@ -120,12 +148,10 @@ export function NativeComponentMount({ acquire, wrap, report, ...input }: Props)
       }
     };
     const work = parent ? parent.lifetime.run(setup) : setup();
-    void work.catch((error: unknown) => {
-      report(error);
-      if (!retired) setFailure({ error });
-    });
+    void work.catch(fail);
     return () => {
       retired = true;
+      focused.current = null;
       if (current.current === owned) current.current = undefined;
       void release().catch(report);
     };
@@ -136,5 +162,23 @@ export function NativeComponentMount({ acquire, wrap, report, ...input }: Props)
       void owned.mount.render(ownedInput(input, owned.acquisition, owned.projection)).catch(report);
   }, [input, report]);
   if (failure) throw failure.error;
-  return <div ref={container} {...stylex.props(styles.container)} />;
+  return (
+    <div
+      ref={container}
+      onFocusCapture={(event) => {
+        focused.current = visible && event.target instanceof Element ? event.target : null;
+      }}
+      onBlurCapture={(event) => {
+        if (
+          focused.current?.isConnected &&
+          !(
+            event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)
+          )
+        ) {
+          focused.current = null;
+        }
+      }}
+      {...stylex.props(styles.container)}
+    />
+  );
 }

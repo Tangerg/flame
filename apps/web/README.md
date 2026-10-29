@@ -80,6 +80,12 @@ refused cleanup retains the recovery action and diagnostics without reclaiming
 later input focus. Render failure and retired resources use this same recovery
 boundary. Component retirement and actual window reload keep their existing owners.
 
+An independently mounted component's render failure returns lost owned focus to
+its existing reading host before fallback appears. Later outside focus, explicit
+blur, hidden content and ordinary unmount retain their own navigation. This
+handoff belongs to the native DOM mount, which retires stale focus records when
+an earlier inner-root update removes their node. Runtime cleanup remains separate.
+
 Package configuration keeps local validation feedback with the open edit. It
 formats syntax, object-shape and request-field errors as correction instructions
 and derives field validity from that one message. Editing or cancelling retires

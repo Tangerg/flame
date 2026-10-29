@@ -16251,6 +16251,116 @@ separate native reverse-Tab finding stays open. Next inspect a mounted Tool/File
 reader becoming failed: that transition differs from the initially failed
 workspace scene qualified here and needs its own evidence before a focus change.
 
+### Mounted reader failure continuity (2026-10-30)
+
+An already mounted enhanced Tool/File reader can fail during its own update.
+Original-source Wails reproduction preserves captured JSON or all 24 README
+source lines and diagnostics, but loses the focused control to HTML content.
+The next Tab reaches local word-wrap or Details, respectively; it does not
+restart at the sidebar. This differs from the initially failed recovery flow
+above and the separate native reverse-Tab finding.
+
+`src/features/plugins/adapters/NativeComponentMount.tsx` owns this transition.
+Read-only inspection of the installed `@qimu/react` implementation confirms that
+its separate React root removes the focused node before `onUncaughtError` calls
+the host. A parent reader's React update snapshot cannot observe that internal
+commit. The mount now records its own current focus and, only when that node
+was removed by failure and focus fell to BODY, focuses the existing surviving
+reading host before exposing fallback. It neither creates a new destination nor
+overrides later focus, explicit blur, hidden/inert content or normal unmount.
+The existing visibility context retires hidden focus records. One scoped DOM
+observer retires records when an earlier successful inner update removes their
+node; otherwise a later failure could revive an obsolete reading position.
+
+Original error reporting, acquisition, Lifetime cleanup, release proofs,
+captured source and recovery keep their owners. There is no new wrapper, global
+listener, timer, dependency, business state, token or persisted-data migration.
+The module README records the DOM mount's responsibility. Earlier read-only
+ZCode recovery and Radix focus research inform local continuity; installed SDK,
+Lifetime and React sources establish this particular root boundary. Applicable
+better-series and React guidance inform the bounded review.
+
+| Domain        | Inspected result                                                                                                        |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Accessibility | Owned failure returns to its existing reader; later focus/selection, blur, visibility, fallback focus and unmount pass. |
+| Layout        | Combined workspace and full-width material retain identity, source and return paths through native zoom/resize.         |
+| Writing       | Existing translated failure, file/tool identity and complete captured diagnostics remain authoritative.                 |
+| Typography    | EN 14px and ZH 18px/200% retain original source, diagnostic reading and available actions.                              |
+| Colors        | Existing Orange/light and custom Blue/dark keyboard rings remain visible; no new palette or contrast claim.             |
+| UI            | Keyboard/pointer reading, local fallback controls, file-row return and resumed drafts pass; reduced motion retained.    |
+
+| Severity         | Location                                                     | Before                                       | After                                                 |
+| ---------------- | ------------------------------------------------------------ | -------------------------------------------- | ----------------------------------------------------- |
+| MEDIUM, repaired | `src/features/plugins/adapters/NativeComponentMount.tsx:100` | Inner-root failure loses the reader's focus. | The surviving local reading host keeps task position. |
+
+Verification:
+
+- The original two-file baseline passes **18 tests**. The new real-module
+  failure test against original source fails only owned focus (**1 fail / 6
+  pass**), while source fallback and recovery are present. Initial test harness
+  attempts used `act`, which intercepts React root errors instead of invoking
+  the installed root callback; those attempts are not product-failure evidence.
+  Native DOM activation exercises the real callback without changing production.
+- The first repair exposes a stale-record regression (**1 fail / 17 pass**):
+  an ordinary inner update removes the control before a later failure. The scoped
+  observer fixes that lifetime. Final checks pass **4 files / 141 tests** across
+  real module acquisition, installed recovery, Tool focus and File workspace.
+  The failure matrix includes outside focus/selection, explicit blur, hidden,
+  inert, aria-hidden, visibility, missing host, fallback autofocus and unmount.
+- Final format, Web type/lint/layers/design-system/chrome, production bundle and
+  plugin-module gates pass. Normal `make check-native` passes Desktop Go
+  test/vet/build and the supported Wails production build in **20.765 s**.
+  Existing linker SDK/deployment warnings remain; the current macOS host does
+  not qualify minimum-OS behavior. Unchanged broad suites are not repeated.
+
+Three actual Wails launches use a fresh private identity/home and normal
+DesktopHost, services, menu and window composition: original EN, final EN and
+final ZH. Temporary presentation inputs supply a held read and internal render
+exception through the actual native mount, Qimu React root and SDK Lifetime.
+The native fixture's acquisition reference is a presentation stub; real
+Runtime/Realm acquisition and release contracts are covered by module tests,
+not claimed as native admission. No input script or extra observer is injected.
+Each scene records its **344-asset** map; final ZH assets match after acceptance.
+
+Final EN/light/14px/Orange verifies keyboard Tool failure to Result, local
+word-wrap/Details, pointer File failure to README, complete 24-line source and
+Back to the selected file row. A delayed second-file failure preserves the
+Composer's selected `ng`; native typing replaces it with `NG` in the retained
+draft. A retained hidden File fails without moving Workspace diff tab focus;
+revealing Files preserves that tab's focus without a queued handoff.
+
+Final ZH/dark/18px/custom Blue/reduced motion at **200% native page zoom**
+repeats Tool and full-width File failure, visible focus, keyboard diagnostics,
+wheel reading and selected-row return. At restored Actual Size, a private
+self-removal control verifies that an earlier normal update leaves HTML focus;
+the later error leaves it there. A separate later conversation focus also
+survives. Native window zoom/restore retains the selected file, and the draft
+continues exactly `中文阅读草稿。保留上下文。继续阅读。已继续。`.
+
+All **10** private read requests settle; none remains pending. Chinese text uses
+native paste, not an OS IME claim. The initial EN paste inserted the existing
+clipboard image, so EN draft qualification uses native ASCII typing; this does
+not qualify clipboard handling. Successful reload, live plugin admission,
+VoiceOver, other-platform GUI, browser suites and benchmarks are not claimed.
+No Send, business command, Claude CLI or subagent is used. Screenshots/AX remain
+in the CUA transcript, without a screenshot-file archive claim.
+
+Cleanup unregisters the bundle, stops all launches/listeners, removes **seven**
+new output/cache roots and **three** private profiles, and restores four original
+files/modes. Before and after retirement, preservation passes for **6,385**
+qualified non-Markdown inputs, **34** resources, **55** read-only references,
+three instructions, 21 output baselines and five profile absences. The exact
+root /private/tmp/flame-reader-failure-NHQOL6 is absent; the managed toolchain and
+primary parallel checkout remain preserved. The memory-only archive round-trips
+**83 UTF-8 records**, **2,233,977 raw bytes**, **734,913 gzip bytes**, SHA-256
+`d04dbc65c686b673aeb007d85745a69ea95f26138da8511368822309900c1ec3`.
+The interval fetch finds no incoming main commit, avoiding a redundant merge.
+
+**Approve** the inspected mounted-reader failure flow. The broad UI goal stays
+active; the native reverse-Tab finding remains separate. Next inspect failures
+during an actual reader input/context update and the return from error details,
+using current evidence before extending the repair.
+
 ### Settings pane error identity
 
 Actual Wails showed the Appearance heading and selected tab beside a failure

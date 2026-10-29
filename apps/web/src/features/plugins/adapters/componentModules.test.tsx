@@ -1,6 +1,13 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
-import { createElement, useEffect, type ComponentProps } from "react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  createElement,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+} from "react";
 import { type Host } from "dougong";
 import { type FlameClient, type MutationPromise } from "@flame/runtime-client";
 import {
@@ -21,6 +28,9 @@ import { definePlugin, type ContributionLifetime } from "@/extensions/definePlug
 import { startKernel, stopKernel } from "@/extensions/bootstrap";
 import { captureClientTelemetry } from "@/lib/observability/clientTelemetry";
 import { ComponentModules } from "@/features/plugins/adapters/componentModules";
+import { ComponentBoundary } from "@/features/plugins/ui/InstalledComponent";
+import { createTestClient } from "@/test/renderClient";
+import { ContentVisibility } from "@flame/ui";
 
 const component: PluginClientComponent = {
   id: "panel",
@@ -344,6 +354,216 @@ it("uses one approved execution and evaluation for two independently owned compo
   await f.modules.close();
   expect(f.closeResources).toHaveBeenCalledOnce();
   expect(f.proofs.some((proof) => proof.scopeKind === "execution")).toBe(true);
+});
+
+it("retains the current reader when its independently mounted component fails", async () => {
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  const renderFailure = new Error("captured result reader failed");
+  function NativeReader() {
+    const [failed, setFailed] = useState(false);
+    if (failed) throw renderFailure;
+    return <button onClick={() => setFailed(true)}>Read another section</button>;
+  }
+  const f = fixture(NativeReader);
+  const Native = (await f.load()).component;
+  const client = createTestClient();
+  try {
+    client.render(
+      <div role="group" aria-label="Captured result" tabIndex={-1}>
+        <ComponentBoundary
+          scope="captured tool result"
+          fallback={<p>Recorded result stays readable.</p>}
+          reload={async () => {}}
+        >
+          <Native context={f.context} />
+        </ComponentBoundary>
+      </div>,
+    );
+    const reader = await screen.findByRole("button", { name: "Read another section" });
+    reader.focus();
+    expect(document.activeElement).toBe(reader);
+
+    // act queues root errors instead of delivering Qimu's onUncaughtError callback.
+    reader.click();
+
+    await screen.findByRole("alert");
+    expect(reader.isConnected).toBe(false);
+    expect(screen.getByText("Recorded result stays readable.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Reload window" })).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByRole("group", { name: "Captured result" }));
+    fireEvent.click(screen.getByRole("button", { name: "Details" }));
+    expect(screen.getByText(/scope: captured tool result/).textContent).toContain(
+      renderFailure.message,
+    );
+    await waitFor(() => expect(f.proofs.some((proof) => proof.scopeKind === "use")).toBe(true));
+  } finally {
+    await client.dispose();
+  }
+});
+
+it.each(["owned", "outside", "blurred", "hidden", "inert", "aria-hidden", "visibility", "no-host"])(
+  "keeps native failure focus with its current owner through %s",
+  async (mode) => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const read = Promise.withResolvers<void>();
+    function NativeReader() {
+      const [failed, setFailed] = useState(false);
+      useEffect(() => {
+        void read.promise.then(() => setFailed(true));
+      }, []);
+      if (failed) throw new Error("captured result reader failed");
+      return <button type="button">Read another section</button>;
+    }
+    const f = fixture(NativeReader);
+    const Native = (await f.load()).component;
+    const client = createTestClient();
+    const scene = (retired: boolean) => (
+      <>
+        <input aria-label="Later draft" defaultValue="Continue reading — 保留" />
+        <ContentVisibility visible={mode !== "visibility" || !retired}>
+          <div
+            role="group"
+            aria-label="Captured result"
+            tabIndex={mode === "no-host" ? undefined : -1}
+            hidden={mode === "hidden" && retired}
+            inert={mode === "inert" && retired}
+            aria-hidden={mode === "aria-hidden" && retired ? true : undefined}
+          >
+            <ComponentBoundary scope="captured tool result" fallback={<p>Recorded source</p>}>
+              <Native context={f.context} />
+            </ComponentBoundary>
+          </div>
+        </ContentVisibility>
+      </>
+    );
+    try {
+      const mounted = client.render(scene(false));
+      const host = screen.getByRole("group", { name: "Captured result" });
+      const draft = screen.getByRole("textbox", { name: "Later draft" }) as HTMLInputElement;
+      const reader = await screen.findByRole("button", { name: "Read another section" });
+      reader.focus();
+      draft.setSelectionRange(8, 15);
+      if (mode === "outside") draft.focus();
+      if (mode === "blurred") reader.blur();
+      mounted.rerender(scene(true));
+
+      read.resolve();
+
+      await screen.findByText("Recorded source");
+      const expected = mode === "owned" ? host : mode === "outside" ? draft : document.body;
+      expect(reader.isConnected).toBe(false);
+      expect(document.activeElement).toBe(expected);
+      expect(draft.value).toBe("Continue reading — 保留");
+      expect([draft.selectionStart, draft.selectionEnd]).toEqual([8, 15]);
+      mounted.rerender(scene(false));
+      expect(document.activeElement).toBe(expected);
+      expect(f.acquireComponent).toHaveBeenCalledOnce();
+      await waitFor(() => expect(f.proofs.some((proof) => proof.scopeKind === "use")).toBe(true));
+    } finally {
+      await client.dispose();
+    }
+  },
+);
+
+it("retires focus when an inner update already removed the control", async () => {
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  const read = Promise.withResolvers<void>();
+  function NativeReader() {
+    const [stage, setStage] = useState(0);
+    useEffect(() => {
+      void read.promise.then(() => setStage(2));
+    }, []);
+    if (stage === 2) throw new Error("later native result failure");
+    return stage === 0 ? (
+      <button onClick={() => setStage(1)}>Continue reading</button>
+    ) : (
+      <p>Another native section</p>
+    );
+  }
+  const f = fixture(NativeReader);
+  const Native = (await f.load()).component;
+  const client = createTestClient();
+  try {
+    client.render(
+      <>
+        <input aria-label="Later draft" />
+        <div role="group" aria-label="Captured result" tabIndex={-1}>
+          <ComponentBoundary scope="captured tool result" fallback={<p>Recorded source</p>}>
+            <Native context={f.context} />
+          </ComponentBoundary>
+        </div>
+      </>,
+    );
+    const reader = await screen.findByRole("button", { name: "Continue reading" });
+    reader.focus();
+    reader.click();
+    await screen.findByText("Another native section");
+    const draft = screen.getByRole("textbox", { name: "Later draft" });
+    draft.focus();
+    draft.blur();
+    expect(document.activeElement).toBe(document.body);
+
+    read.resolve();
+
+    await screen.findByText("Recorded source");
+    expect(document.activeElement).toBe(document.body);
+    expect(f.acquireComponent).toHaveBeenCalledOnce();
+  } finally {
+    await client.dispose();
+  }
+});
+
+it("leaves newly mounted fallback focus with the fallback", async () => {
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  function NativeReader() {
+    const [failed, setFailed] = useState(false);
+    if (failed) throw new Error("captured result reader failed");
+    return <button onClick={() => setFailed(true)}>Read another section</button>;
+  }
+  function RecordedAction() {
+    const action = useRef<HTMLButtonElement>(null);
+    useLayoutEffect(() => action.current?.focus(), []);
+    return <button ref={action}>Recorded result action</button>;
+  }
+  const f = fixture(NativeReader);
+  const Native = (await f.load()).component;
+  const client = createTestClient();
+  try {
+    client.render(
+      <div role="group" aria-label="Captured result" tabIndex={-1}>
+        <ComponentBoundary scope="captured tool result" fallback={<RecordedAction />}>
+          <Native context={f.context} />
+        </ComponentBoundary>
+      </div>,
+    );
+    const reader = await screen.findByRole("button", { name: "Read another section" });
+    reader.focus();
+    reader.click();
+
+    const recorded = await screen.findByRole("button", { name: "Recorded result action" });
+    expect(document.activeElement).toBe(recorded);
+  } finally {
+    await client.dispose();
+  }
+});
+
+it("leaves normal native unmount focus to its navigation owner", async () => {
+  const f = fixture(() => <button>Native result action</button>);
+  const Native = (await f.load()).component;
+  const scene = (shown: boolean) => (
+    <div role="group" aria-label="Captured result" tabIndex={-1}>
+      {shown && <Native context={f.context} />}
+    </div>
+  );
+  const mounted = render(scene(true));
+  const action = await screen.findByRole("button", { name: "Native result action" });
+  action.focus();
+
+  mounted.rerender(scene(false));
+
+  expect(action.isConnected).toBe(false);
+  expect(document.activeElement).toBe(document.body);
+  await waitFor(() => expect(f.proofs.some((proof) => proof.scopeKind === "use")).toBe(true));
 });
 
 it("unmounts the native root but keeps tracked component work owned until it settles", async () => {
