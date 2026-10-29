@@ -151,8 +151,8 @@ func TestReaderCopiesOnlyAnUninterruptedOwnedSelectionGesture(t *testing.T) {
 	root.Handle(input.Mouse{Pos: start, Action: input.MouseDown, Button: input.ButtonLeft})
 	root.Handle(input.Mouse{Pos: end, Action: input.MouseDrag, Button: input.ButtonLeft})
 	root.Handle(input.Mouse{Pos: end, Action: input.MouseUp, Button: input.ButtonLeft})
-	if clipboard.text == "" {
-		t.Fatal("owned selection gesture did not copy")
+	if clipboard.text != "copy" {
+		t.Fatalf("owned selection copied %q, want the selected word", clipboard.text)
 	}
 
 	interruptions := []struct {
@@ -182,6 +182,73 @@ func TestReaderCopiesOnlyAnUninterruptedOwnedSelectionGesture(t *testing.T) {
 			root.Handle(input.Mouse{Pos: end, Action: input.MouseUp, Button: input.ButtonLeft})
 			if clipboard.text != "" {
 				t.Fatalf("interrupted selection copied %q", clipboard.text)
+			}
+		})
+	}
+}
+
+func TestReaderCopiesExactlyTheDisplayedBodySelection(t *testing.T) {
+	lines := []string{"alpha first", "beta middle", "gamma last"}
+	for _, size := range []image.Point{image.Pt(60, 8), image.Pt(22, 5)} {
+		for _, line := range lines {
+			t.Run(fmt.Sprintf("%dx%d/%s", size.X, size.Y, line), func(t *testing.T) {
+				clipboard := new(recordingClipboard)
+				reader := newReaderPane(kit.Dark(), kit.Unicode(), highlight.New("github-dark"), input.Wheel{}, clipboard)
+				t.Cleanup(reader.Shutdown)
+				reader.Open(readerTarget{document: readerDocument{Title: "Reader heading", Sections: []toolSection{{Style: toolSectionCode, Text: strings.Join(lines, "\n")}}}})
+				root := headless.NewRoot(reader)
+				surface := grid.NewSurface(size.X, size.Y)
+				root.Draw(surface.View())
+				start := drawnTextOrigin(t, surface, line)
+				end := start.Add(image.Pt(len(line)-1, 0))
+				root.Handle(input.Mouse{Pos: start, Action: input.MouseDown, Button: input.ButtonLeft})
+				root.Handle(input.Mouse{Pos: end, Action: input.MouseDrag, Button: input.ButtonLeft})
+				root.Handle(input.Mouse{Pos: end, Action: input.MouseUp, Button: input.ButtonLeft})
+				if clipboard.text != line {
+					t.Fatalf("selected %q at %v, copied %q", line, start, clipboard.text)
+				}
+			})
+		}
+	}
+}
+
+func TestReaderBodyPointerCaptureFollowsCommittedGeometry(t *testing.T) {
+	for _, mode := range []string{"outside", "resized", "hidden", "scrolled", "header", "footer"} {
+		t.Run(mode, func(t *testing.T) {
+			clipboard := new(recordingClipboard)
+			reader := newReaderPane(kit.Dark(), kit.Unicode(), highlight.New("github-dark"), input.Wheel{}, clipboard)
+			t.Cleanup(reader.Shutdown)
+			reader.Open(readerTarget{document: readerDocument{Title: "Reader heading", Sections: []toolSection{{Style: toolSectionCode, Text: "alpha first\nbeta middle\ngamma last"}}}})
+			root := headless.NewRoot(reader)
+			surface := grid.NewSurface(30, 5)
+			root.Draw(surface.View())
+			start := drawnTextOrigin(t, surface, "alpha first")
+			end := image.Pt(100, 100)
+			want := "alpha first\nbeta middle\ngamma last"
+			switch mode {
+			case "header":
+				start, end, want = image.Pt(0, 0), image.Pt(5, 0), ""
+			case "footer":
+				start, end, want = image.Pt(0, 4), image.Pt(5, 4), ""
+			case "scrolled":
+				root.Handle(input.Mouse{Pos: start, Action: input.WheelDown})
+				root.Draw(surface.View())
+				start = drawnTextOrigin(t, surface, "gamma last")
+				end, want = start.Add(image.Pt(9, 0)), "gamma last"
+			}
+			root.Handle(input.Mouse{Pos: start, Action: input.MouseDown, Button: input.ButtonLeft})
+			if mode == "resized" {
+				root.Draw(grid.NewSurface(22, 4).View())
+				want = "alpha first\nbeta middle"
+			}
+			if mode == "hidden" {
+				root.Draw(grid.NewSurface(22, 1).View())
+				want = ""
+			}
+			root.Handle(input.Mouse{Pos: end, Action: input.MouseDrag, Button: input.ButtonLeft})
+			root.Handle(input.Mouse{Pos: end, Action: input.MouseUp, Button: input.ButtonLeft})
+			if clipboard.text != want {
+				t.Fatalf("copied %q, want %q", clipboard.text, want)
 			}
 		})
 	}
