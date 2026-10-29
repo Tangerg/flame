@@ -5,6 +5,7 @@ import {
   useContext,
   useCallback,
   useEffect,
+  useImperativeHandle,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -304,6 +305,7 @@ export function Panel({
   const styled = stylex.props(styles.panel, type.uiMd);
   const compact = useContext(PanelHostContext) === "compact";
   const panelRef = useRef<HTMLElement>(null);
+  useImperativeHandle(ref, () => panelRef.current!, []);
   const controlsRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const pressedTarget = useRef<Element | null>(null);
@@ -457,7 +459,7 @@ export function Panel({
       const reading = readingFocus.current;
       if (!moved || !reading) return;
       const frame = bodyFocusFrame(reading.target);
-      if (!frame) return;
+      if (!frame || frame.bottom <= frame.top) return;
       // Reflow and scroll anchoring can notify before ResizeObserver delivery.
       if (
         frame.top !== reading.frame.top ||
@@ -500,11 +502,7 @@ export function Panel({
   return (
     <section
       {...props}
-      ref={(node) => {
-        panelRef.current = node;
-        if (typeof ref === "function") return ref(node);
-        if (ref) ref.current = node;
-      }}
+      ref={panelRef}
       data-slot="panel"
       aria-label={label}
       {...styled}

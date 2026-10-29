@@ -104,6 +104,8 @@ Its explicit `header` slot holds introductory content, `controls` holds the one
 sticky action and filter zone, and children hold the scrolling content. The host
 keeps its existing scroll viewport. The panel does not shrink inside a column
 host: its canvas and sticky-control boundary extend through the complete content.
+The panel owns its stable DOM ref; forwarded refs project that same element without
+retiring it while new children receive focus during a commit.
 `Panel` projects only its own controls' measured height on its root to keep focused content and anchors
 clear of the controls; wrapped controls update through `ResizeObserver`.
 Body focus also respects the host's clipped viewport. `readingUnitFor` gives
@@ -120,6 +122,8 @@ without refocusing it or changing its value or text selection. A wheel gesture
 or a moved scrollbar that leaves the field behind retires that follow; reflow
 notifications without scroll displacement do not. Later outside focus, inactive
 retained content and unmount also retire the reading witness.
+When controls temporarily cover the entire host viewport, that witness waits for
+reflow to restore a reading frame. An explicit wheel gesture still retires it.
 Pointer-caused focus leaves the pressed control in place so activation can
 finish before any row reveal, including reflow during the press.
 The body retains the pressed target until pointerup or cancellation,
