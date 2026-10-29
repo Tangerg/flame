@@ -24,7 +24,8 @@ export const fr = {
   "open.help":
     "Pendant cette durée, les outils du modèle contrôlent l’hôte Runtime via le moteur de contrôle de Flame. Utilisez une console hors du bureau, du compte et du navigateur contrôlés, sur un autre appareil ou une cible isolée. Fermer cette vue ne termine pas l’autorisation.",
   "open.lease": "Durée en secondes",
-  "open.invalid": "Saisissez un entier entre 60 et {{maximum}} secondes.",
+  "open.invalid":
+    "Saisissez un entier entre {{minimum}} et {{maximum}} secondes.",
   "open.action": "Autoriser et ouvrir le contrôle",
   "close.action": "Terminer le contrôle",
   "close.help":

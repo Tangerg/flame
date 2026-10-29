@@ -24,7 +24,8 @@ export const de = {
   "open.help":
     "Während dieses Zeitraums können Modellwerkzeuge den Runtime-Host über Flames Computersteuerung steuern. Verwenden Sie eine Konsole außerhalb des gesteuerten Desktops, Kontos und Browsers, etwa ein separates Gerät oder ein isoliertes Ziel. Das Schließen dieser Ansicht beendet die Freigabe nicht.",
   "open.lease": "Dauer in Sekunden",
-  "open.invalid": "Ganze Zahl zwischen 60 und {{maximum}} Sekunden eingeben.",
+  "open.invalid":
+    "Ganze Zahl zwischen {{minimum}} und {{maximum}} Sekunden eingeben.",
   "open.action": "Genehmigen und Steuerung öffnen",
   "close.action": "Steuerungsfreigabe beenden",
   "close.help":

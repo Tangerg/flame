@@ -13,6 +13,7 @@ import {
 } from "@qimu/node";
 import sample from "@flame/runtime-client/testing/samples/usageSummary.json";
 import { Archive } from "./archive";
+import { LIMITS } from "../contracts/limits";
 
 const contract = new Capability(
   parseJSON(
@@ -168,7 +169,7 @@ it("settles bounded capacity refusals without truncating or changing their origi
     reads++;
     return canonicalJSON(accounting());
   };
-  for (let index = 0; index < 64; index++)
+  for (let index = 0; index < LIMITS.maxReports; index++)
     await archive.capture(command("saved-" + index), read);
   await expect(archive.capture(command("full"), read)).rejects.toMatchObject({
     code: "archive_capacity",
@@ -178,10 +179,12 @@ it("settles bounded capacity refusals without truncating or changing their origi
   await expect(archive.capture(command("full"), read)).rejects.toMatchObject({
     code: "archive_capacity",
   });
-  expect(reads).toBe(64 + 1);
+  expect(reads).toBe(LIMITS.maxReports + 1);
   const huge = {
     ...accounting(),
-    byProvider: [{ ...sample.byProvider[0]!, key: "x".repeat(1 << 20) }],
+    byProvider: [
+      { ...sample.byProvider[0]!, key: "x".repeat(LIMITS.maxReportBytes) },
+    ],
   };
   await expect(
     archive.capture(command("too-large"), async () => canonicalJSON(huge)),
@@ -190,7 +193,7 @@ it("settles bounded capacity refusals without truncating or changing their origi
     found: true,
     reply: { failure: { code: "invalid_report" } },
   });
-  expect(archive.list()).toHaveLength(64 - 1);
+  expect(archive.list()).toHaveLength(LIMITS.maxReports - 1);
 });
 
 it("rejects bad time/range evidence and keeps its admission unconfirmed", async () => {

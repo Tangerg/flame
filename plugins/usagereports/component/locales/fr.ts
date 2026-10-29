@@ -25,11 +25,11 @@ export const fr: Record<string, string> = {
   "pending.retire": "Retirer la commande d’origine",
   "archive.title": "Archives",
   "archive.count_one":
-    "{{count}} rapport enregistré. La capacité est de 64 ; supprimez un rapport pour libérer de la place.",
+    "{{count}} rapport enregistré. La capacité est de {{capacity}} ; supprimez un rapport pour libérer de la place.",
   "archive.count_many":
-    "{{count}} rapports enregistrés. La capacité est de 64 ; supprimez un rapport pour libérer de la place.",
+    "{{count}} rapports enregistrés. La capacité est de {{capacity}} ; supprimez un rapport pour libérer de la place.",
   "archive.count_other":
-    "{{count}} rapports enregistrés. La capacité est de 64 ; supprimez un rapport pour libérer de la place.",
+    "{{count}} rapports enregistrés. La capacité est de {{capacity}} ; supprimez un rapport pour libérer de la place.",
   "archive.capture.note":
     "Une capture copie la comptabilité principale des {{daily}} (quotidien) ou des {{weekly}} (hebdomadaire) avant son exécution, et non un jour ou une semaine calendaires.",
   "archive.reading": "Lecture des rapports enregistrés…",

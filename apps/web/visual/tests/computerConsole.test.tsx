@@ -12,6 +12,7 @@ import { createTestClient } from "@/test/renderClient";
 import { mockSelectLayout } from "@/test/selectLayout";
 import { Computer } from "../../../../plugins/computer/component/component";
 import { METHODS } from "../../../../plugins/computer/contracts/methods";
+import { LIMITS } from "../../../../plugins/computer/contracts/limits";
 import { CAPABILITY_JSON } from "../../../../plugins/computer/component/methods.generated";
 import type {
   Approval,
@@ -563,16 +564,25 @@ it("opens an explicit bounded lease on the displayed Runtime host only after a h
   expect(screen.getByText(/operator console outside the controlled desktop/)).not.toBeNull();
   expect(setup.server.originals.size).toBe(0);
   const lease = screen.getByRole("textbox", { name: "Lease duration in seconds" });
-  fireEvent.change(lease, { target: { value: "30.5" } });
-  fireEvent.click(screen.getByRole("button", { name: "Authorize and open control" }));
-  expect((await screen.findByRole("alert")).textContent).toContain("60 to 3600");
-  expect(setup.server.originals.size).toBe(0);
-  fireEvent.change(lease, { target: { value: "300" } });
+  expect((lease as HTMLInputElement).value).toBe(String(LIMITS.defaultLeaseSeconds));
+  for (const value of [
+    LIMITS.minLeaseSeconds - 1,
+    LIMITS.maxLeaseSeconds + 1,
+    LIMITS.minLeaseSeconds + 0.5,
+  ]) {
+    fireEvent.change(lease, { target: { value: String(value) } });
+    fireEvent.click(screen.getByRole("button", { name: "Authorize and open control" }));
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      `${LIMITS.minLeaseSeconds} to ${LIMITS.maxLeaseSeconds}`,
+    );
+    expect(setup.server.originals.size).toBe(0);
+  }
+  fireEvent.change(lease, { target: { value: String(LIMITS.minLeaseSeconds) } });
   fireEvent.click(screen.getByRole("button", { name: "Authorize and open control" }));
   await screen.findByRole("button", { name: "End control lease" });
   const [original] = setup.server.originals.values();
   expect(original!.method).toBe(METHODS.open);
-  expect(JSON.parse(original!.input)).toEqual({ leaseSeconds: 300 });
+  expect(JSON.parse(original!.input)).toEqual({ leaseSeconds: LIMITS.minLeaseSeconds });
 });
 
 it("displays original native risks and offers only upstream persistence choices", async () => {

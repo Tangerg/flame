@@ -25,9 +25,9 @@ export const en: Record<string, string> = {
   "pending.retire": "Retire original command",
   "archive.title": "Archive",
   "archive.count_one":
-    "{{count}} saved report. Capacity is 64; remove a report to make room.",
+    "{{count}} saved report. Capacity is {{capacity}}; remove a report to make room.",
   "archive.count_other":
-    "{{count}} saved reports. Capacity is 64; remove a report to make room.",
+    "{{count}} saved reports. Capacity is {{capacity}}; remove a report to make room.",
   "archive.capture.note":
     "A capture copies core accounting for the {{daily}} (daily) or the {{weekly}} (weekly) before it runs, not a calendar day or week.",
   "archive.reading": "Reading saved reports…",

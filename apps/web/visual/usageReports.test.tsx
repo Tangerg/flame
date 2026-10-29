@@ -21,6 +21,7 @@ import {
 import { type CallPluginResponse } from "@flame/runtime-client/wire";
 import { type ComponentContext } from "@flame/component-sdk";
 import { UsageReports } from "../../../plugins/usagereports/component/component";
+import { LIMITS } from "../../../plugins/usagereports/contracts/limits";
 import {
   CAPABILITY_JSON,
   type MethodOutputs,
@@ -274,7 +275,9 @@ it("reads a named report at the pane top and returns to the same archive row", a
   expect(pane.scrollTop).toBe(480);
   expect(screen.getAllByRole("button", { name: /^View report/ })).toHaveLength(2);
   expect(
-    screen.getByText("2 saved reports. Capacity is 64; remove a report to make room."),
+    screen.getByText(
+      `2 saved reports. Capacity is ${LIMITS.maxReports}; remove a report to make room.`,
+    ),
   ).toBeTruthy();
 });
 

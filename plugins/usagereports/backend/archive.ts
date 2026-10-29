@@ -12,9 +12,8 @@ import {
 } from "@qimu/node";
 import { validCommand } from "@qimu/node/contract";
 import { validateWire } from "@flame/runtime-client/validation";
+import { LIMITS } from "../contracts/limits";
 
-const MAX_REPORTS = 64;
-const MAX_REPORT_BYTES = 1 << 20;
 type Period = "daily" | "weekly";
 type RecordValue = Record<string, unknown>;
 type Command = Pick<
@@ -330,15 +329,15 @@ export class Archive {
       const count = this.#db
         .prepare("SELECT COUNT(*) AS count FROM reports")
         .get()!.count as bigint;
-      if (count > BigInt(MAX_REPORTS))
+      if (count > BigInt(LIMITS.maxReports))
         throw new Error("usage reports: invalid stored archive capacity");
       let refusal: Refusal | undefined;
-      if (Buffer.byteLength(canonicalJSON(value)) > MAX_REPORT_BYTES)
+      if (Buffer.byteLength(canonicalJSON(value)) > LIMITS.maxReportBytes)
         refusal = new Refusal(
           "invalid_report",
           "captured accounting exceeds the report capacity",
         );
-      else if (count === BigInt(MAX_REPORTS))
+      else if (count === BigInt(LIMITS.maxReports))
         refusal = new Refusal(
           "archive_capacity",
           "remove a saved report before capturing another",
@@ -367,7 +366,8 @@ export class Archive {
       throw new Error("usage reports: corrupt saved report identity");
     summary(snapshot.value);
     if (
-      Buffer.byteLength(canonicalJSON(snapshot.value)) > MAX_REPORT_BYTES ||
+      Buffer.byteLength(canonicalJSON(snapshot.value)) >
+        LIMITS.maxReportBytes ||
       reportId(snapshot.command, snapshot.period, snapshot.value) !== id
     )
       throw new Error("usage reports: corrupt saved report content");
@@ -405,8 +405,8 @@ export class Archive {
   list(): Header[] {
     const rows = this.#db
       .prepare("SELECT id,snapshot FROM reports ORDER BY rowid DESC LIMIT ?")
-      .all(MAX_REPORTS + 1);
-    if (rows.length > MAX_REPORTS)
+      .all(LIMITS.maxReports + 1);
+    if (rows.length > LIMITS.maxReports)
       throw new Error("usage reports: invalid stored archive capacity");
     return rows.map((row) => {
       if (typeof row.id !== "string" || typeof row.snapshot !== "string")

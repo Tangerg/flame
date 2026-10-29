@@ -24,7 +24,7 @@ export const zh: Record<string, string> = {
   "pending.retire": "撤销原始命令",
   "archive.title": "归档",
   "archive.count_other":
-    "已保存 {{count}} 份报告。容量为 64；删除一份报告以腾出空间。",
+    "已保存 {{count}} 份报告。容量为 {{capacity}}；删除一份报告以腾出空间。",
   "archive.capture.note":
     "捕获会在运行前复制 {{daily}}（每日）或 {{weekly}}（每周）的核心核算，而不是某个日历日或日历周。",
   "archive.reading": "正在读取已保存的报告…",

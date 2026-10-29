@@ -110,7 +110,11 @@ export const schemas = Object.freeze({
   record,
   summary,
   open: z.strictObject({
-    leaseSeconds: z.number().int().min(60).max(LIMITS.maxLeaseSeconds),
+    leaseSeconds: z
+      .number()
+      .int()
+      .min(LIMITS.minLeaseSeconds)
+      .max(LIMITS.maxLeaseSeconds),
   }),
   sessionInput,
   stop: z.strictObject({ sessionId: token, operationId: token }),

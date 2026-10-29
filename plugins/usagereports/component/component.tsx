@@ -8,6 +8,7 @@ import {
   type Ref,
 } from "react";
 import { ArrowLeft, Refresh } from "@flame/icons/react";
+import { LIMITS } from "../contracts/limits";
 import {
   failureText,
   bindOperations,
@@ -487,7 +488,13 @@ function Archive({ context }: { context: BoundContext }) {
       <div hidden={Boolean(opened)}>
         <PanelSection
           title={t("archive.title")}
-          description={headers && t("archive.count", { count: headers.length })}
+          description={
+            headers &&
+            t("archive.count", {
+              count: headers.length,
+              capacity: LIMITS.maxReports,
+            })
+          }
         >
           <Metadata>
             {t("archive.capture.note", {

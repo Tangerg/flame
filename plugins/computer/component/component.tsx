@@ -270,7 +270,7 @@ export function Computer({ context }: { context: ComponentContext }) {
     const leaseSeconds = Number(lease);
     if (
       !Number.isInteger(leaseSeconds) ||
-      leaseSeconds < 60 ||
+      leaseSeconds < LIMITS.minLeaseSeconds ||
       leaseSeconds > LIMITS.maxLeaseSeconds
     ) {
       setLeaseError(true);
@@ -475,7 +475,10 @@ export function Computer({ context }: { context: ComponentContext }) {
           </FormRow>
           {leaseError && (
             <p role="alert">
-              {t("open.invalid", { maximum: String(LIMITS.maxLeaseSeconds) })}
+              {t("open.invalid", {
+                minimum: String(LIMITS.minLeaseSeconds),
+                maximum: String(LIMITS.maxLeaseSeconds),
+              })}
             </p>
           )}
           <Button
