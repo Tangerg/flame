@@ -12,6 +12,7 @@ including in tests and development commands.
 | `extension`                                                                            | Flame invocation origins and installation/call scope policy           |
 | `plugin`                                                                               | Flame model roles, tool authoring and product receipt contracts       |
 | `plugin/memory`                                                                        | Published Memory consumer contract                                    |
+| `plugin/skilllearning`                                                                 | Skill learning advice and bounded call-scoped source/model contracts  |
 | `plugin/codeintel`                                                                     | Versioned source transformations and diagnostic consumer contract     |
 | `plugin/sqlite`                                                                        | Atomic plugin mutations and durable receipts                          |
 | `model`                                                                                | Provider/model selection, generation values and token estimates       |
