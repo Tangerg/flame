@@ -24,13 +24,14 @@ type ComponentPlacement string
 const (
 	ComponentPlacementExport             ComponentPlacement = "export"
 	ComponentPlacementWorkspaceView      ComponentPlacement = "workspaceView"
+	ComponentPlacementSettingsPane       ComponentPlacement = "settingsPane"
 	ComponentPlacementSessionAction      ComponentPlacement = "sessionAction"
 	ComponentPlacementFileRenderer       ComponentPlacement = "fileRenderer"
 	ComponentPlacementToolResultRenderer ComponentPlacement = "toolResultRenderer"
 )
 
 func (ComponentPlacement) Values() []string {
-	return []string{string(ComponentPlacementExport), string(ComponentPlacementWorkspaceView), string(ComponentPlacementSessionAction), string(ComponentPlacementFileRenderer), string(ComponentPlacementToolResultRenderer)}
+	return []string{string(ComponentPlacementExport), string(ComponentPlacementWorkspaceView), string(ComponentPlacementSettingsPane), string(ComponentPlacementSessionAction), string(ComponentPlacementFileRenderer), string(ComponentPlacementToolResultRenderer)}
 }
 
 type RendererSelectorKind string

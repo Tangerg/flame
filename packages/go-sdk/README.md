@@ -9,12 +9,14 @@ including in tests and development commands.
 | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
 | `client`                                                                               | Remote HTTP/SSE lifecycle and generated typed operations              |
 | `protocol`                                                                             | Runtime wire values, complete tree admission and strict RPC envelopes |
-| `extension`                                                                            | Flame invocation origins and installation/call scope policy           |
+| `extension`                                                                            | Invocation scopes and installed client contribution metadata          |
 | `plugin`                                                                               | Flame model roles, tool authoring and product receipt contracts       |
 | `plugin/memory`                                                                        | Published Memory consumer contract                                    |
 | `plugin/skilllearning`                                                                 | Skill learning advice and bounded call-scoped source/model contracts  |
 | `plugin/codeintel`                                                                     | Versioned source transformations and diagnostic consumer contract     |
 | `plugin/modelprovider`                                                                 | Installed chat, token counting, model facts and embedding adapters    |
+| `hook`                                                                                 | Portable lifecycle events, rules and bounded command material         |
+| `plugin/hookprovider`                                                                  | Installed rule sources and original command outcomes                  |
 | `plugin/sqlite`                                                                        | Atomic plugin mutations and durable receipts                          |
 | `model`                                                                                | Provider/model selection, generation values and token estimates       |
 | `model/catalog`                                                                        | Translation of Scope's released model catalog                         |
