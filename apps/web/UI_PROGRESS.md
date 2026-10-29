@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Current batch repairs first-result readiness in Files: a paused root list, expanded directory or file read retains Loading until it has a result. Accepted empty data, cached content, tree position and drafts retain their owners. All 128 focused tests, typecheck, lint, remaining Web/native gates and actual light/dark/18px/200%/observer-free tasks pass. Evidence and cleanup are complete; the qualified source is ready for publication under **First file-result readiness**. Source-return/long-tooltip delivery remains `c126bc235`. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
+Current batch repairs first-result readiness in Files: a paused root list, expanded directory or file read retains Loading until it has a result. Accepted empty data, cached content, tree position and drafts retain their owners. All 128 focused tests, typecheck, lint, remaining Web/native gates and actual light/dark/18px/200%/observer-free tasks pass. The repair is published as `4468c2fc6`; evidence, cleanup and delivery are recorded under **First file-result readiness**. Source-return/long-tooltip delivery remains `c126bc235`. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -98,6 +98,7 @@ and qualifies visible adjacent-action continuity, later draft focus and the
 observer-free native control; see **Notification history and current action focus**.
 Full-width source-return destinations and complete shared Tooltip labels are
 published as `c126bc235`; see **Full-width return destinations and complete labels**.
+First-result readiness in Files is published as `4468c2fc6`; see **First file-result readiness**.
 See **Goal save
 feedback and pending dismissal** and **Computer console
 editing and operation return**. Preserve the
@@ -10864,8 +10865,11 @@ The round-tripped in-memory gzip retains **88 UTF-8 records**, **5,135,939 raw
 bytes** and **909,238 gzip bytes**, including private canonical inputs, serial
 checks, original/final native observations, asset/source maps and cleanup proof.
 SHA-256: `7b1b4024b0c80c0da9fa0e8a28ea08c1379416ad0726642ba311c2431beea801`.
-The qualified source is ready for publication after this verification and
-cleanup boundary.
+Implementation `4468c2fc6f9ae55209cb1eb4cb43bacde0b1c18a` is committed with
+the normal formatting, workspace-lint and message hooks, then pushed normally to
+main. Exact HEAD, origin/main and remote hashes match; divergence is **0/0** and
+the owned checkout is clean. Post-hook preservation repeats all counts above.
+This documentation-only receipt does not repeat the qualified checks.
 
 Verdict: **Approve** for first-result readiness and the inspected browse/read/
 return task. Fresh live network recovery, VoiceOver, OS IME, other platforms,
