@@ -374,12 +374,24 @@ func TestReadShellOutput_Wait(t *testing.T) {
 	shell := shellTool(t, shells, "shell")
 	output := shellTool(t, shells, "read_shell_output")
 
-	out, err := callTextTool(attachedRun(t), shell, `{"command":"sleep 0.3; printf done","description":"Wait then print done","run_in_background":true}`)
+	release := filepath.Join(t.TempDir(), "release")
+	quotedRelease := "'" + strings.ReplaceAll(release, "'", "'\"'\"'") + "'"
+	arguments, err := json.Marshal(shellArgs{
+		Command:         "while [ ! -f " + quotedRelease + " ]; do sleep 0.01; done; printf done",
+		Description:     "Print done after release",
+		RunInBackground: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := callTextTool(attachedRun(t), shell, string(arguments))
 	if err != nil {
 		t.Fatalf("shell(bg) = %q err=%v", out, err)
 	}
 	id := backgroundShellID(t, out)
-	// Without blocking it's still running; with block it waits to completion.
+	if err := os.WriteFile(release, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
 	read, err := callTextTool(attachedRun(t), output, `{"shell_id":"`+id+`","wait":true}`)
 	if err != nil {
 		t.Fatalf("read_shell_output(wait) err=%v", err)
