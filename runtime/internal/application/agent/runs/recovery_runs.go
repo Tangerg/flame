@@ -13,10 +13,7 @@ type recoveryRunTree struct {
 	postorder []string
 }
 
-func recoveryRunCatalogSessionIDs(values []rundomain.Run) ([]string, error) {
-	if err := validateRecoveryRunCatalog(values); err != nil {
-		return nil, err
-	}
+func recoveryRunCatalogSessionIDs(values []rundomain.Run) []string {
 	sessions := make(map[string]struct{}, len(values))
 	for _, value := range values {
 		sessions[value.SessionID()] = struct{}{}
@@ -26,13 +23,10 @@ func recoveryRunCatalogSessionIDs(values []rundomain.Run) ([]string, error) {
 		ids = append(ids, sessionID)
 	}
 	slices.Sort(ids)
-	return ids, nil
+	return ids
 }
 
 func groupRecoveryRunTrees(active []rundomain.Run) (map[string]recoveryRunTree, error) {
-	if err := validateRecoveryRunCatalog(active); err != nil {
-		return nil, err
-	}
 	grouped := make(map[string][]rundomain.Run)
 	for _, run := range active {
 		rootRunID := run.Lineage().TreeRootID(run.ID())
@@ -51,10 +45,7 @@ func groupRecoveryRunTrees(active []rundomain.Run) (map[string]recoveryRunTree, 
 		if err != nil {
 			return nil, fmt.Errorf("runs: assemble recovery Run tree %q: %w", rootRunID, err)
 		}
-		root, found := runsByID[rootRunID]
-		if !found {
-			return nil, fmt.Errorf("runs: assemble recovery Run tree %q: root is missing", rootRunID)
-		}
+		root := runsByID[rootRunID]
 		for _, run := range runs {
 			if run.SessionID() != root.SessionID() {
 				return nil, fmt.Errorf(
@@ -77,40 +68,4 @@ func groupRecoveryRunTrees(active []rundomain.Run) (map[string]recoveryRunTree, 
 		trees[rootRunID] = recoveryRunTree{root: root, runsByID: runsByID, postorder: topology.Postorder()}
 	}
 	return trees, nil
-}
-
-func validateRecoveryRunCatalog(values []rundomain.Run) error {
-	seen := make(map[string]int, len(values))
-	rootBySession := make(map[string]int, len(values))
-	for index, value := range values {
-		if value.ID() == "" {
-			return fmt.Errorf("runs: recovery Run[%d] was never constructed", index)
-		}
-		if value.State().IsTerminal() {
-			return fmt.Errorf("runs: recovery Run[%d] %q is terminal", index, value.ID())
-		}
-		if first, duplicate := seen[value.ID()]; duplicate {
-			return fmt.Errorf(
-				"runs: recovery Run[%d] %q duplicates Run[%d] identity",
-				index,
-				value.ID(),
-				first,
-			)
-		}
-		seen[value.ID()] = index
-		if !value.Lineage().IsRoot() {
-			continue
-		}
-		if first, duplicate := rootBySession[value.SessionID()]; duplicate {
-			return fmt.Errorf(
-				"runs: recovery root Run[%d] %q duplicates Session ownership held by Run[%d] %q",
-				index,
-				value.ID(),
-				first,
-				values[first].ID(),
-			)
-		}
-		rootBySession[value.SessionID()] = index
-	}
-	return nil
 }

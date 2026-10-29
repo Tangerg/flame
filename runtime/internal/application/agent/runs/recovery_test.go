@@ -325,60 +325,6 @@ func (s *selectiveRecoveryAdmissions) AcquireRecoverySession(sessionID string) (
 	return func() { s.released[sessionID]++ }, true, nil
 }
 
-func TestRecoveryRejectsInvalidRunCatalogBeforeAdmission(t *testing.T) {
-	createdAt := time.Date(2026, 8, 14, 0, 0, 0, 0, time.UTC)
-	active := testsupport.MustRestoreRun(rundomain.Snapshot{
-		ID: "run_active", SessionID: "session_active", State: rundomain.Running,
-		ActiveSegmentID: "segment_active", CreatedAt: createdAt,
-		MessageMark: rundomain.UnknownMessageMark(),
-	})
-	terminal, err := active.Terminate(rundomain.Termination{
-		Outcome: rundomain.OutcomeCompleted, FinishedAt: createdAt.Add(time.Second), MessageMark: rundomain.MessageMarkAt(0),
-	})
-	if err != nil {
-		t.Fatalf("Terminate fixture: %v", err)
-	}
-	secondRoot := testsupport.MustRestoreRun(rundomain.Snapshot{
-		ID: "run_second", SessionID: active.SessionID(), State: rundomain.Running,
-		ActiveSegmentID: "segment_second", CreatedAt: createdAt,
-		MessageMark: rundomain.UnknownMessageMark(),
-	})
-	for name, candidates := range map[string][]rundomain.Run{
-		"invalid aggregate":          {{}},
-		"terminal row":               {terminal},
-		"duplicate Run identity":     {active, active},
-		"multiple roots for Session": {active, secondRoot},
-	} {
-		t.Run(name, func(t *testing.T) {
-			store := &recoveryStoreStub{runs: candidates}
-			admissions := &selectiveRecoveryAdmissions{released: map[string]int{}}
-			recovery, err := NewRecovery(
-				store,
-				waitingExecutionResumabilityFunc(func(context.Context, ExecutionContinuation) (bool, error) {
-					return false, nil
-				}),
-				admissions,
-				nil,
-			)
-			if err != nil {
-				t.Fatalf("NewRecovery: %v", err)
-			}
-
-			if _, err := recovery.Reconcile(t.Context()); err == nil {
-				t.Fatal("Reconcile accepted an invalid Run catalog")
-			}
-			if len(admissions.acquired) != 0 || store.transcriptReads != 0 || store.commits != 0 {
-				t.Fatalf(
-					"invalid catalog reached admission or planning: acquired=%v transcriptReads=%d commits=%d",
-					admissions.acquired,
-					store.transcriptReads,
-					store.commits,
-				)
-			}
-		})
-	}
-}
-
 func TestRecoveryRejectsIncoherentActiveTreeBeforePlanning(t *testing.T) {
 	createdAt := time.Date(2026, 8, 14, 0, 30, 0, 0, time.UTC)
 	capabilities := rundomain.Capabilities{ChildRuns: true}
@@ -395,15 +341,28 @@ func TestRecoveryRejectsIncoherentActiveTreeBeforePlanning(t *testing.T) {
 			SpawnedByItemID: "item_spawn", ParentRunID: root.ID(), RootRunID: root.ID(),
 		},
 	})
-	for name, mutate := range map[string]func(*rundomain.Snapshot){
-		"mixed lifecycle": func(snapshot *rundomain.Snapshot) {
+	for _, test := range []struct {
+		name   string
+		mutate func(*rundomain.Snapshot)
+		want   string
+	}{
+		{"mixed lifecycle", func(snapshot *rundomain.Snapshot) {
 			snapshot.State = rundomain.Waiting
 			snapshot.ActiveSegmentID = ""
-		},
+		}, "while root Run"},
+		{"missing parent", func(snapshot *rundomain.Snapshot) {
+			snapshot.Lineage.ParentRunID = "run_missing"
+		}, "unknown parent"},
+		{"missing root", func(snapshot *rundomain.Snapshot) {
+			snapshot.Lineage.RootRunID = "run_missing"
+		}, "is missing"},
+		{"foreign Session", func(snapshot *rundomain.Snapshot) {
+			snapshot.SessionID = "session_foreign"
+		}, "want tree Session"},
 	} {
-		t.Run(name, func(t *testing.T) {
+		t.Run(test.name, func(t *testing.T) {
 			snapshot := child.Snapshot()
-			mutate(&snapshot)
+			test.mutate(&snapshot)
 			candidate := testsupport.MustRestoreRun(snapshot)
 			store := &recoveryStoreStub{
 				runs:        []rundomain.Run{root, candidate},
@@ -416,8 +375,8 @@ func TestRecoveryRejectsIncoherentActiveTreeBeforePlanning(t *testing.T) {
 				t.Fatalf("NewRecovery: %v", err)
 			}
 
-			if _, err := recovery.Reconcile(t.Context()); err == nil {
-				t.Fatal("Reconcile accepted an incoherent active Run tree")
+			if _, err := recovery.Reconcile(t.Context()); err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("Reconcile = %v, want tree contradiction %q", err, test.want)
 			}
 			if store.transcriptReads != 0 || store.commits != 0 {
 				t.Fatalf(

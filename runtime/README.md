@@ -1219,6 +1219,11 @@ receipt never consumes or changes that decision. Withdrawal of a queued child-st
 request retains its original cause. After claim, waiting still joins the conclusive
 decision even when the producer's context is canceled.
 
+Recovery consumes the storage-owned complete and unique non-terminal Run
+catalog. Domain construction and database constraints own individual records and
+active-root uniqueness; Recovery owns tree topology, cross-Session consistency
+and waiting-barrier coherence.
+
 Recovery probes only validate persisted state; they never activate a writer. Waiting checkpoints retain product bindings, while the committed execution-tree head is authoritative for restoration. A checkpoint holds no copy of the root Run's model selection, capabilities, or Goal incarnation, nor of the Session's workspace or isolation; restoration reads each from its owner. This integration requires the current Scope snapshots and the current execution-tree schema. Older waiting snapshots and databases are not converted or replayed. Schema installation rejects the former execution-tree table without modifying existing data; use a fresh data directory and retain the old one separately.
 
 Plain executor errors, lost responses, cancellation, and host failures do not prove a business outcome. They remain unknown and cannot produce normal model feedback. A concrete executor may return an explicit Scope Tool failure with its known output, including partial success; validation and authorization owners may reject calls they have not executed. Runtime's generic Tool observer never converts arbitrary errors into known failures. Approval-subject validation translates only a definite local argument refusal into a known failure, retaining effective arguments and result metadata through the same durable settlement path. Hook and authorization rewrites are validated before executable entry; arbitrary hook or authorization-store errors remain host failures. Product cancellation closes abandoned Items without inventing Tool results.

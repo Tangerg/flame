@@ -26,6 +26,8 @@ const lostToolResult = "tool result unavailable because execution state was lost
 // decides which Run tree survives.
 type RecoveryStore interface {
 	ToolResultPublications
+	// ListNonTerminalRuns returns the complete, unique set of constructed open
+	// Runs, with at most one root per Session. Storage owns this query contract.
 	ListNonTerminalRuns(ctx context.Context) ([]rundomain.Run, error)
 	ListPendingInterrupts(ctx context.Context) ([]Pending, error)
 	ListOpenModelInvocations(ctx context.Context) ([]OpenModelInvocation, error)
@@ -324,10 +326,7 @@ func (r *Recovery) claimAbandonedSessions(
 	if err != nil {
 		return nil, fmt.Errorf("runs: load recovery candidates: %w", err)
 	}
-	ids, err := recoveryRunCatalogSessionIDs(candidates)
-	if err != nil {
-		return nil, err
-	}
+	ids := recoveryRunCatalogSessionIDs(candidates)
 	claims := &recoverySessionClaims{
 		sessionIDs: make(map[string]struct{}, len(ids)),
 		releases:   make([]func(), 0, len(ids)),
