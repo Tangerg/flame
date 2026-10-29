@@ -104,7 +104,7 @@ export function HooksPane() {
   });
   const workspace = useActiveSessionWorkspace();
   const cwd = resolvedWorkspaceCwd(workspace);
-  const { data, isLoading, error, refetch } = useHookConfigs(
+  const { data, isPending, error, refetch } = useHookConfigs(
     isWorkspaceResolving(workspace) ? undefined : { cwd },
   );
 
@@ -135,7 +135,7 @@ export function HooksPane() {
 
       <DataView
         items={data?.hooks}
-        isLoading={isLoading || isWorkspaceResolving(workspace)}
+        isLoading={isPending || isWorkspaceResolving(workspace)}
         failure={error}
         onRetry={refetch}
         skeletonCount={3}

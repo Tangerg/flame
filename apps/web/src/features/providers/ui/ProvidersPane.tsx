@@ -12,7 +12,7 @@ import { ProviderRow } from "@/features/providers/ui/ProviderRow";
 import { EmbeddingModelSection, UtilityModelSection } from "@/features/providers/ui/RoleSections";
 export function ProvidersPane() {
   const t = useT();
-  const { data, isLoading, error, refetch } = useProviderConfigs();
+  const { data, isPending, error, refetch } = useProviderConfigs();
   const unset = needsProviderSetup(data);
   const [cameUnset, setCameUnset] = useState(false);
   if (unset && !cameUnset) setCameUnset(true);
@@ -26,7 +26,7 @@ export function ProvidersPane() {
       )}
       <DataView
         items={data}
-        isLoading={isLoading}
+        isLoading={isPending}
         failure={error}
         onRetry={refetch}
         skeletonCount={3}

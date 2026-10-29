@@ -171,7 +171,7 @@ export function PackageManager() {
           ))}
         <DataView
           items={catalog.data ?? []}
-          isLoading={catalog.isLoading}
+          isLoading={catalog.isPending}
           failure={retained ? undefined : catalog.error}
           onRetry={catalog.refetch}
           empty={{ icon: "blocks", title: t("packages.empty") }}

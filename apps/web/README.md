@@ -147,6 +147,15 @@ successful settlement retains the action's focus when clearing the source makes
 that action unavailable. Category navigation does not create another draft store
 or command owner.
 
+Settings catalogs distinguish the first result from request activity. Providers,
+hooks, remembered approval rules, installed Runtime packages and provider selections
+without known roles project the query's `isPending` into DataView. A paused first
+read retains Loading; only an accepted empty result establishes an empty list.
+Accepted empty or populated data remains readable during paused rereads. Hooks
+also retain the existing workspace-resolution boundary. Known plugin roles keep
+their independent selection-read state and available candidates; model roles,
+approval mode, drafts and commands keep their existing owners.
+
 `SettingRow` marks the label and controls as one shared focus unit. `Panel` owns
 revealing that complete unit inside the clipped host when it fits; taller rows
 retain the focused control as the reading target.

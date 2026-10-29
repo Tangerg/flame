@@ -86,7 +86,7 @@ export function RulesRow() {
 
   const t = useT();
   const sessionId = useActiveSessionId();
-  const { data, isLoading, error, refetch } = useApprovalRuleConfigs(sessionId);
+  const { data, isPending, error, refetch } = useApprovalRuleConfigs(sessionId);
   const { busy, run } = useCommandAction({
     wasRetired: wasGenerationRetired,
     fallback: t("approvals.error.forget"),
@@ -139,7 +139,7 @@ export function RulesRow() {
       >
         <DataView
           items={data}
-          isLoading={isLoading}
+          isLoading={isPending}
           failure={error}
           onRetry={refetch}
           unsupported={{ icon: "shield" }}

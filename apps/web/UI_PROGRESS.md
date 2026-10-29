@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Current batch repairs initial MCP result readiness: server and expanded-tool lists retain Loading before their first result, including paused reads. Accepted empty data, cached tools, independent permissions and editing keep their owners. All 65 focused tests, typecheck, lint and remaining Web/native gates pass; light/dark/18px/200% and observer-free native tasks pass. The repair is published as `17916606d`; evidence, cleanup and delivery are recorded under **First MCP-result readiness**. Files readiness is published as `4468c2fc6`; source-return/long-tooltip delivery remains `c126bc235`. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
+Current batch repairs first-result readiness in five remaining Settings catalogs: providers, hooks, remembered approval rules, installed Runtime packages and selections without known roles. Paused first reads retain Loading; accepted data, independent roles and drafts remain available. All 130 focused tests, typecheck, lint and remaining Web/native gates pass; light/dark/18px/200% and observer-free native tasks pass. Evidence and cleanup are recorded under **Settings catalog first-result readiness**; publication is the next step. MCP readiness is published as `17916606d`, Files as `4468c2fc6`, and source-return/long-tooltip delivery as `c126bc235`. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -100,6 +100,8 @@ Full-width source-return destinations and complete shared Tooltip labels are
 published as `c126bc235`; see **Full-width return destinations and complete labels**.
 First-result readiness in Files is published as `4468c2fc6`; see **First file-result readiness**.
 Initial MCP server/tool readiness is published as `17916606d`; see **First MCP-result readiness**.
+The five remaining Settings catalogs now retain their own initial-read state;
+see **Settings catalog first-result readiness** for native task and cleanup evidence.
 See **Goal save
 feedback and pending dismissal** and **Computer console
 editing and operation return**. Preserve the
@@ -10753,6 +10755,142 @@ remote confirmation. Implementation
 exact remote hash, clean owned checkout, zero unpushed commits, unchanged accepted
 inputs and restored preexisting outputs are verified. Continue with fresh task
 evidence at the separate workspace refresh boundary.
+
+### Settings catalog first-result readiness
+
+At main `d2db3d0e2`, actual Wails reproduces five premature empty claims during
+first reads paused before data exists: `No providers`, `No hooks configured`,
+`No rules yet`, `No Runtime packages installed` and
+`No provider has been selected`. Resuming the same queries exposes two providers,
+two scoped hooks, two approval rules, two packages and two provider selections.
+Approval mode and model roles already retain their independent initial states;
+known local plugin contributions remain readable while remote catalogs wait.
+
+`ProvidersPane`, `HooksPane`, `RulesRow`, `PackageManager` and the no-known-role
+branch of `ProviderSelections` now project query `isPending` into the existing
+DataView slot. Installed Query derives `isLoading` from pending plus active
+fetching, so it loses a first read when that request pauses. Accepted empty and
+populated data retain their meaning through paused rereads. Hooks preserve the
+existing workspace-resolution guard. Known plugin roles already use their
+selection-read owner and retain candidates; they are not replaced with a
+catalog-wide loading state. Errors/Retry, permissions, model roles, command
+retirement, provider/configuration drafts and focus leases keep their owners.
+There is no shared DataView API, dependency, protocol, storage, network-mode or
+Runtime change, and no additional mutable state or focus handler.
+
+The [TanStack network-mode reference](https://tanstack.com/query/latest/docs/framework/react/guides/network-mode)
+and installed observer establish query readiness. Read-only ZCode's actual
+PluginsSection separates target/RPC readiness, an unread list and accepted
+empty data; HeroUI's Skeleton and ListBox examples inform existing loading and
+list presentation. ZCode's ProviderModelSettingsGroups is an actual grouped
+model-settings reference. Its BotsDialog ProviderSettingsCard instead binds bot
+credentials and context, so it supplies no model-catalog readiness contract.
+Flame retains its existing Base UI, StyleX and semantic tokens.
+
+| Domain        | Evidence inspected                                                                  | Result and boundary                                                               |
+| ------------- | ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Accessibility | Named loading, native Tab/End, configuration cancellation, later input and return   | Existing focus owners pass; no VoiceOver audio or new OS IME qualification.       |
+| Layout        | Light normal/adjusted windows; dark 560×377 CSS px at measured 200%; scoped sources | Independent panel reading remains reachable. No fresh RTL or 320px qualification. |
+| Writing       | EN/ZH loading and five empty claims; literal source and rule-match identity         | Empty claims require accepted empty results; no new copy or locale keys.          |
+| Typography    | 14/18px settings, long source paths, JSON draft and existing labels                 | Existing type, wrapping and reading owners retained.                              |
+| Colors        | Light/Orange and dark/custom-blue keyboard focus                                    | Existing semantic colors retained; no new numerical contrast claim.               |
+| UI            | Existing skeletons, filled fields, retained panes and configuration dialog          | No additional decoration, motion or component system.                             |
+
+| Severity         | Domain       | Location                                    | Before                                                 | After                                           | Why                                                             |
+| ---------------- | ------------ | ------------------------------------------- | ------------------------------------------------------ | ----------------------------------------------- | --------------------------------------------------------------- |
+| MEDIUM, repaired | Writing / UX | Five Settings catalog consumers named above | A paused first read presents a known-empty collection. | Loading persists until a first result is known. | Unknown content must stay distinct from accepted empty content. |
+
+Verification passed:
+
+- Baseline: **12 files / 110 tests**. Twenty new cases use real queries and the
+  online manager: first empty/nonempty results and accepted empty/nonempty
+  rereads for each consumer. Frozen original source fails **10**, passes **10**
+  and skips **37** older cases. Final checks pass **14 files / 130 tests**,
+  Web typecheck and lint. An earlier red invocation records **12 failures /
+  eight passes** because the four new Rules cases assumed an undefined Session
+  key. Deriving the key from the real active-Session owner corrects those test
+  inputs; no product behavior or valid assertion is weakened.
+- The other **11** serial Web/native gates pass: circular/context/layer,
+  design-system/token/chrome/locale, resource reproduction, production bundle,
+  module links and `make check-native`. The native gate takes **37.441s**,
+  including Desktop test/vet/build and the supported Wails production build.
+  Shared UI source/dependencies are unchanged; its earlier **194-test** package
+  check is reused, not a new run.
+- EN/light/14px/Orange: all five first-read surfaces show existing Loading.
+  Local plugin names and an installation draft remain available. Arrival
+  retains `/captured/保留界面草稿.zip` and its focus. A private Memory JSON
+  draft reaches caret **107**; Escape cancels and restores Configure inputs.
+  Pausing an explicit selection refresh retains accepted selections; later
+  source focus survives resumption. An unsaved provider URL draft and model
+  picker Escape retain their owners through category return. Scoped hook
+  sources and exact/glob rules are readable without activating trust or rule
+  deletion. Native window adjustment changes **1440×900 → 1513×950**. Actual
+  Plugins scrolling moves **0 → 2,380** within **3,280px content / 900px
+  viewport**, scrollWidth/clientWidth **1,253/1,253**. Close and Cmd+L retain
+  `Keep this settings-reading draft. Continued.`, caret **44**.
+- ZH/dark/18px/custom-blue/motion-off: actual native viewport is
+  **560×377 CSS px / DPR 4 / 200%**. The scrolled initial Hooks wait is at
+  **126 / 323 / 197** (scrollTop/content/viewport). Tab then End reaches the
+  remembered-rule loading region at **409 / 605 / 197**. Mode Loading is
+  independently retained above it, not claimed fully visible simultaneously.
+  Pending catalogs do not block local-plugin reading to the final contribution:
+  **3,498 / 3,695 / 197**, with **556/556** horizontal width. Arrival retains
+  `/captured/中文设置草稿.zip` and its later input focus. The configuration
+  draft reaches Cancel at **[405.39, 317.5, 55.30, 32]**. Pointer entry into the
+  textarea, Tab and Return cancel to Configure inputs. Accepted hooks read to
+  their global source; accepted rules preserve project/global and exact/glob
+  context. Keyboard focus reaches the first Forget control without activating
+  it. Category return retains the installation source. Close and Cmd+L retain
+  `设置读取后保留对话草稿。 已继续。`, caret **17**.
+- The observer-free native control repeats all five waits, independent local
+  reading, actual accepted catalogs, JSON editing/Cancel, category draft return
+  and continued conversation: `无观察器设置草稿。 已继续。`. It has **622
+  assets**; only the two HTML entries differ from the captured candidate by
+  removing the additional observer. Extra observation records and requests
+  are both **zero**. Actual Size completes before 20 native Zoom In actions;
+  no passive CSS geometry or selection measurement is claimed for this control.
+  Actual Size is restored before Quit.
+
+Four native generations cover frozen original, light candidate, dark candidate
+and observer-free control. The private canonical producer supplies captured wire
+records through actual memory transport/adapters, without a live provider or
+business Runtime. Before mounting, it retires the private prewarmed package
+query to establish a cold read; independent installed contributions remain.
+Ctrl+Alt+K changes Query availability through native input, without OS network
+changes. Configuration edits remain unsubmitted, trust stays off, and no install,
+provider save/test or rule deletion runs. Two changed-app input guards and a
+wheel `windowNotFoundAtPosition` attempt are excluded from passing evidence;
+fresh native state and actual keyboard completion establish the final paths.
+The observer's window-intersection filter alone does not prove visibility
+inside clipped ancestors; viewport rectangles, screenshots and native focus
+determine the stated visible results. An initial clean-build command uses an
+absent app-local Vite path; the verified workspace binary completes the build.
+
+Publication fetch finds zero incoming main commits at `d2db3d0e2`. All four native
+generations are stopped, the exact bundle is unregistered and the loopback
+observer is closed. Cleanup removes **seven** new checkout output/cache roots
+and **three** owned profile paths, restores **four** original files and modes,
+and passes all **18** output and **five** profile baselines. All **6,308**
+qualified non-Markdown inputs, **32** resources, **28** read-only references and
+**three** instruction files pass preservation; **6,297** source inputs outside
+the change remain identical. The original UI cache retains its two files and
+Web Vite-temp stays empty. Primary-checkout parallel work, user data, references
+and unrelated processes remain preserved. The exact private root
+`/private/tmp/flame-settings-readiness-3g7T4r` is absent; independent post-removal
+preservation repeats every count above.
+
+The round-tripped in-memory gzip retains **112 UTF-8 records**, **9,514,965 raw
+bytes** and **1,202,852 gzip bytes**, including original/new-case failures,
+accepted source/asset maps, native inputs/results and cleanup proof. SHA-256:
+`bde400574831d1c2632de85d244c26a6c768f0803c1dd211d1e079fac4b3b856`.
+No full Web/Runtime/browser suite, benchmark, live business chain or other-OS
+qualification is claimed.
+
+Verdict: **Approve** for these Settings first-result and reading/edit/return
+paths. Publication remains to complete. The whole-product UI objective is
+unfinished. Next inspect task hierarchy and repeated Settings introductions at
+large zoom against actual context, retaining concrete scope/permission meaning;
+do not infer a focus defect or mechanically replace other loading flags.
 
 ### First MCP-result readiness
 

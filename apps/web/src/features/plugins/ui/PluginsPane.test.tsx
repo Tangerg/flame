@@ -6,7 +6,7 @@ prepareTestClient(() => {
   testClient = owned;
   finishTestClient(() => owned.dispose());
 });
-import { QueryClientProvider } from "@tanstack/react-query";
+import { onlineManager, QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { DATA_PROVIDER } from "@/extensions/dataProvider";
 import {
@@ -26,6 +26,12 @@ import { toast } from "sonner";
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 let host: Host | undefined;
+
+function pauseQueries() {
+  const wasOnline = onlineManager.isOnline();
+  onlineManager.setOnline(false);
+  finishTestClient(() => onlineManager.setOnline(wasOnline));
+}
 
 const example = definePlugin({
   name: "flame.builtin.example",
@@ -187,6 +193,69 @@ describe("PluginsPane installation facts", () => {
       </QueryClientProvider>,
     );
   }
+
+  const catalogCases = [
+    {
+      name: "empty",
+      installations: [] as PluginInstallation[],
+      visibleText: "No Runtime packages installed",
+    },
+    { name: "nonempty", installations: [reviewedInstallation()], visibleText: "Reviewed package" },
+  ];
+
+  it.each(catalogCases)(
+    "waits for the first paused $name package result",
+    async ({ installations, visibleText }) => {
+      pauseQueries();
+      const read = vi.fn(async () => installations);
+      const install = vi.fn(async () => reviewedInstallation());
+      await renderPackages({ install }, read);
+      await waitFor(() =>
+        expect(queryClient.getQueryState([PACKAGES_KEY])).toMatchObject({
+          status: "pending",
+          fetchStatus: "paused",
+          data: undefined,
+        }),
+      );
+      expect(read).not.toHaveBeenCalled();
+      expect(screen.getAllByRole("status").map((status) => status.textContent)).toContain(
+        "Loading",
+      );
+      expect(screen.queryByText("No Runtime packages installed")).toBeNull();
+      const source = screen.getByRole("textbox", {
+        name: "Absolute package directory or ZIP path on the Runtime",
+      });
+      fireEvent.change(source, { target: { value: "/captured/保留这个输入.zip" } });
+      act(() => source.focus());
+
+      await act(async () => onlineManager.setOnline(true));
+      expect(await screen.findByText(visibleText)).toBeTruthy();
+      expect(document.activeElement).toBe(source);
+      expect(source).toHaveProperty("value", "/captured/保留这个输入.zip");
+      expect(install).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(catalogCases)(
+    "keeps accepted $name packages during a paused reread",
+    async ({ installations, visibleText }) => {
+      const read = vi.fn(async () => installations);
+      await renderPackages({}, read);
+      await screen.findByText(visibleText);
+      read.mockClear();
+      pauseQueries();
+      act(() => void queryClient.refetchQueries({ queryKey: [PACKAGES_KEY] }));
+      await waitFor(() =>
+        expect(queryClient.getQueryState([PACKAGES_KEY])).toMatchObject({
+          status: "success",
+          fetchStatus: "paused",
+          data: installations,
+        }),
+      );
+      expect(read).not.toHaveBeenCalled();
+      expect(screen.getByText(visibleText)).toBeTruthy();
+    },
+  );
 
   it.each(["configure", "stage"] as const)(
     "retains an independent %s draft through a failed catalog refresh and retry",

@@ -9,7 +9,7 @@ prepareTestClient(() => {
   finishTestClient(() => owned.dispose());
 });
 import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { onlineManager, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { type Host } from "dougong";
 import { createFlameClient, RpcError, type FlameClient } from "@flame/runtime-client";
@@ -86,6 +86,71 @@ async function mountSelections(
     </QueryClientProvider>,
   );
 }
+
+function pauseQueries() {
+  const wasOnline = onlineManager.isOnline();
+  onlineManager.setOnline(false);
+  finishTestClient(() => onlineManager.setOnline(wasOnline));
+}
+
+const noRoleCases = [
+  {
+    name: "empty",
+    selections: [] as PluginProviderSelection[],
+    visibleText: "No provider has been selected.",
+  },
+  { name: "nonempty", selections: VISUAL_PLUGIN_PROVIDERS, visibleText: "memory" },
+];
+
+it.each(noRoleCases)(
+  "waits for the first paused $name selection result before roles are known",
+  async ({ selections, visibleText }) => {
+    pauseQueries();
+    const read = vi.fn(async () => selections);
+    const select = vi.fn((value: PluginProviderSelection) => value);
+    await mountSelections(read, select, []);
+    await waitFor(() =>
+      expect(queryClient.getQueryState([PROVIDERS_KEY])).toMatchObject({
+        status: "pending",
+        fetchStatus: "paused",
+        data: undefined,
+      }),
+    );
+    expect(read).not.toHaveBeenCalled();
+    expect(screen.getByRole("status").textContent).toBe("Loading");
+    expect(screen.queryByText("No provider has been selected.")).toBeNull();
+    const draft = screen.getByRole("textbox", { name: "Later draft" });
+    act(() => draft.focus());
+
+    await act(async () => onlineManager.setOnline(true));
+    expect(await screen.findByText(visibleText)).toBeTruthy();
+    expect(document.activeElement).toBe(draft);
+    expect(select).not.toHaveBeenCalled();
+  },
+);
+
+it.each(noRoleCases)(
+  "keeps accepted $name selections during a paused reread",
+  async ({ selections, visibleText }) => {
+    const read = vi.fn(async () => selections);
+    const select = vi.fn((value: PluginProviderSelection) => value);
+    await mountSelections(read, select, []);
+    await screen.findByText(visibleText);
+    read.mockClear();
+    pauseQueries();
+    act(() => void queryClient.refetchQueries({ queryKey: [PROVIDERS_KEY] }));
+    await waitFor(() =>
+      expect(queryClient.getQueryState([PROVIDERS_KEY])).toMatchObject({
+        status: "success",
+        fetchStatus: "paused",
+        data: selections,
+      }),
+    );
+    expect(read).not.toHaveBeenCalled();
+    expect(screen.getByText(visibleText)).toBeTruthy();
+    expect(select).not.toHaveBeenCalled();
+  },
+);
 
 it("keeps contributed candidates available without inventing a selection during the first read", async () => {
   const read = vi.fn(

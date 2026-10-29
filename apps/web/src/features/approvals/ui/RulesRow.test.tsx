@@ -19,7 +19,7 @@ vi.mock("@/features/agent/public/session", () => ({
 }));
 
 vi.mock("@/features/approvals/application/approvalConfig", () => ({
-  useApprovalRuleConfigs: () => ({ data: model.rules, isLoading: false, error: null }),
+  useApprovalRuleConfigs: () => ({ data: model.rules, isPending: false, error: null }),
   forgetApprovalRule: vi.fn(() => Promise.resolve()),
   forgetApprovalRules: vi.fn(() => Promise.resolve()),
 }));

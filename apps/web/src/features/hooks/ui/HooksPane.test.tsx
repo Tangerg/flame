@@ -6,8 +6,8 @@ prepareTestClient(() => {
   testClient = owned;
   finishTestClient(() => owned.dispose());
 });
-import { QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, screen, within } from "@testing-library/react";
+import { onlineManager, QueryClientProvider } from "@tanstack/react-query";
+import { act, cleanup, screen, waitFor, within } from "@testing-library/react";
 import { type Host } from "dougong";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { queryClient } from "@/lib/queryClient";
@@ -35,20 +35,92 @@ afterEach(async () => {
 const literal = { normalizer: (text: string) => text };
 
 async function renderCatalog(catalog: HookCatalog) {
+  const list = vi.fn(async () => catalog);
   host = await startKernel([
     definePlugin({
       name: "test.hooks",
       setup(ctx) {
-        ctx.contribute(DATA_PROVIDER, { key: HOOKS_KEY, fetcher: async () => catalog });
+        ctx.contribute(DATA_PROVIDER, { key: HOOKS_KEY, fetcher: list });
       },
     }),
   ]);
   testClient.render(
     <QueryClientProvider client={queryClient}>
       <HooksPane />
+      <textarea aria-label="Later draft" defaultValue="Keep this hooks draft." />
     </QueryClientProvider>,
   );
+  return list;
 }
+
+function pauseQueries() {
+  const wasOnline = onlineManager.isOnline();
+  onlineManager.setOnline(false);
+  finishTestClient(() => onlineManager.setOnline(wasOnline));
+}
+
+const catalogCases = [
+  { name: "empty", hooks: [] as HookCatalog["hooks"], visibleText: "No hooks configured" },
+  {
+    name: "nonempty",
+    hooks: [
+      {
+        event: "PreToolUse",
+        command: "guard",
+        scope: "global",
+        source: "/captured/hooks.json",
+        active: true,
+      },
+    ] as HookCatalog["hooks"],
+    visibleText: "PreToolUse",
+  },
+];
+
+it.each(catalogCases)(
+  "waits for the first paused $name hooks result",
+  async ({ hooks, visibleText }) => {
+    pauseQueries();
+    const list = await renderCatalog({ hooks, projectTrusted: false });
+    await waitFor(() =>
+      expect(queryClient.getQueryState([HOOKS_KEY, { cwd: "/repo" }])).toMatchObject({
+        status: "pending",
+        fetchStatus: "paused",
+        data: undefined,
+      }),
+    );
+    expect(list).not.toHaveBeenCalled();
+    expect(screen.getByRole("status").textContent).toBe("Loading");
+    expect(screen.queryByText("No hooks configured")).toBeNull();
+    const draft = screen.getByRole("textbox", { name: "Later draft" });
+    act(() => draft.focus());
+
+    await act(async () => onlineManager.setOnline(true));
+    expect(await screen.findByText(visibleText)).toBeTruthy();
+    expect(document.activeElement).toBe(draft);
+    expect(draft).toHaveProperty("value", "Keep this hooks draft.");
+  },
+);
+
+it.each(catalogCases)(
+  "keeps accepted $name hooks during a paused reread",
+  async ({ hooks, visibleText }) => {
+    const catalog = { hooks, projectTrusted: false };
+    const list = await renderCatalog(catalog);
+    await screen.findByText(visibleText);
+    list.mockClear();
+    pauseQueries();
+    act(() => void queryClient.refetchQueries({ queryKey: [HOOKS_KEY] }));
+    await waitFor(() =>
+      expect(queryClient.getQueryState([HOOKS_KEY, { cwd: "/repo" }])).toMatchObject({
+        status: "success",
+        fetchStatus: "paused",
+        data: catalog,
+      }),
+    );
+    expect(list).not.toHaveBeenCalled();
+    expect(screen.getByText(visibleText)).toBeTruthy();
+  },
+);
 
 async function articleWithSource(source: string) {
   const article = (await screen.findByText(source, literal)).closest("article");
