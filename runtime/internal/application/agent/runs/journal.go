@@ -195,6 +195,10 @@ func (j *journal) appendLocked(charged chargedEvent) error {
 	j.head = nextSequence
 	j.headCursor = nextCursor
 	ev.Sequence = nextSequence
+	if ev.Replayable() {
+		// The journal's position is assigned after payload precharge.
+		charged.bytes += len(nextCursor) - len(ev.Cursor)
+	}
 	ev.Cursor = nextCursor
 	if ev.Replayable() {
 		j.retained = append(j.retained, chargedEvent{event: ev, bytes: charged.bytes})

@@ -1153,6 +1153,11 @@ Shell output uses Scope's `tools/content.Content`: `stdout` is an object with `e
 
 ## Execution lifecycle
 
+Replay windows and subscriber queues reuse one publication charge for the full
+Item snapshot, including accepted answers, rejected argument source, approval
+edits and reasons. The journal adds its assigned cursor before fanout. An event
+over the byte budget is evicted and disconnects a slow subscriber explicitly.
+
 Tree-barrier preparation reduces every active member against speculative state.
 Only the accepted atomic barrier transaction advances all live reducers, before
 publishing any of its events. Refusal or cancellation retains the previously
