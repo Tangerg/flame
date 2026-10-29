@@ -40,7 +40,11 @@ func ResolvePath(root, path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return resolve(abs, 0)
+	resolved, err := resolve(abs, 0)
+	if err != nil {
+		return "", &os.PathError{Op: "resolve", Path: abs, Err: err}
+	}
+	return resolved, nil
 }
 
 // Trust boundaries must pass resolved paths so symlink aliases cannot bypass confinement.

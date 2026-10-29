@@ -132,14 +132,23 @@ func TestResolveRejectsTraversalThroughExistingFile(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "file"), nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	for _, path := range []string{"file/../new", "file/child", "file/."} {
-		_, err := ResolvePath(root, path)
-		var pathError *os.PathError
-		if !errors.As(err, &pathError) || !errors.Is(err, syscall.ENOTDIR) {
-			t.Fatalf("traversal through a regular file lost its filesystem cause: %q: %v", path, err)
-		}
-		if pathError.Path != root+string(filepath.Separator)+path {
-			t.Fatalf("filesystem error changed the refused path: %q", pathError.Path)
+	alias := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(root, alias); err != nil {
+		t.Fatal(err)
+	}
+	for _, directory := range []string{root, alias} {
+		for _, relative := range []string{"file/../new", "file/child", "file/."} {
+			absolute := directory + string(filepath.Separator) + relative
+			for _, path := range []string{relative, absolute} {
+				_, err := ResolvePath(directory, path)
+				var pathError *os.PathError
+				if !errors.As(err, &pathError) || !errors.Is(err, syscall.ENOTDIR) {
+					t.Fatalf("traversal through a regular file lost its filesystem cause: %q: %v", path, err)
+				}
+				if pathError.Path != absolute {
+					t.Fatalf("filesystem error changed the refused path: %q, want %q", pathError.Path, absolute)
+				}
+			}
 		}
 	}
 }
