@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Current batch repairs initial MCP result readiness: server and expanded-tool lists retain Loading before their first result, including paused reads. Accepted empty data, cached tools, independent permissions and editing keep their owners. All 65 focused tests, typecheck, lint and remaining Web/native gates pass; light/dark/18px/200% and observer-free native tasks pass. Evidence and cleanup are complete; qualified source is ready for publication under **First MCP-result readiness**. Files readiness is published as `4468c2fc6`; source-return/long-tooltip delivery remains `c126bc235`. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
+Current batch repairs initial MCP result readiness: server and expanded-tool lists retain Loading before their first result, including paused reads. Accepted empty data, cached tools, independent permissions and editing keep their owners. All 65 focused tests, typecheck, lint and remaining Web/native gates pass; light/dark/18px/200% and observer-free native tasks pass. The repair is published as `17916606d`; evidence, cleanup and delivery are recorded under **First MCP-result readiness**. Files readiness is published as `4468c2fc6`; source-return/long-tooltip delivery remains `c126bc235`. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -99,6 +99,7 @@ observer-free native control; see **Notification history and current action focu
 Full-width source-return destinations and complete shared Tooltip labels are
 published as `c126bc235`; see **Full-width return destinations and complete labels**.
 First-result readiness in Files is published as `4468c2fc6`; see **First file-result readiness**.
+Initial MCP server/tool readiness is published as `17916606d`; see **First MCP-result readiness**.
 See **Goal save
 feedback and pending dismissal** and **Computer console
 editing and operation return**. Preserve the
@@ -10868,8 +10869,11 @@ The round-tripped in-memory gzip retains **138 UTF-8 records**, **18,640,377 raw
 bytes** and **1,684,565 gzip bytes**, including canonical inputs, all attempts,
 serial gates, original/final observations, source/asset maps and cleanup proof.
 SHA-256: `79eebd9dcb2064e947fdd6997cae31540cdc9ed7283565e67e5a4fc98f9b6599`.
-The qualified source is ready for publication after this verification and
-cleanup boundary.
+Implementation `17916606d78e64faa6b3f97376ef67c0ab3cceec` is committed with
+the normal formatting, workspace-lint and message hooks, then pushed normally to
+main. Exact HEAD, origin/main and remote hashes match; divergence is **0/0** and
+the owned checkout is clean. Post-hook preservation repeats all counts above.
+This documentation-only receipt does not repeat the qualified checks.
 
 Verdict: **Approve** for initial MCP reads and the inspected tools/edit/return
 path. The whole-product UI objective remains unfinished. Continue with actual
