@@ -7,7 +7,6 @@ import (
 	"github.com/Tangerg/flame/qimu/portable"
 	"maps"
 	"slices"
-	"strconv"
 	"strings"
 	"unicode/utf8"
 )
@@ -83,19 +82,19 @@ func buildFeature(data []byte) (*featureArtifacts, error) {
 	}
 	line("export interface MethodInputs {")
 	for _, method := range artifacts.methods {
-		line("  %s: %s;", strconv.Quote(method.Name), strings.TrimPrefix(method.Input, "schema.json"+RefPrefix))
+		line("  %s: %s;", TypeScriptStringLiteral(method.Name), strings.TrimPrefix(method.Input, "schema.json"+RefPrefix))
 	}
 	line("}")
 	line("export interface MethodOutputs {")
 	for _, method := range artifacts.methods {
-		line("  %s: %s;", strconv.Quote(method.Name), strings.TrimPrefix(method.Output, "schema.json"+RefPrefix))
+		line("  %s: %s;", TypeScriptStringLiteral(method.Name), strings.TrimPrefix(method.Output, "schema.json"+RefPrefix))
 	}
 	line("}")
 	if slices.ContainsFunc(artifacts.methods, func(method featureMethod) bool { return method.Stream != "" }) {
 		line("export interface MethodChunks {")
 		for _, method := range artifacts.methods {
 			if method.Stream != "" {
-				line("  %s: %s;", strconv.Quote(method.Name), strings.TrimPrefix(method.Stream, "schema.json"+RefPrefix))
+				line("  %s: %s;", TypeScriptStringLiteral(method.Name), strings.TrimPrefix(method.Stream, "schema.json"+RefPrefix))
 			}
 		}
 		line("}")
@@ -106,11 +105,11 @@ func buildFeature(data []byte) (*featureArtifacts, error) {
 		if method.Stream != "" {
 			stream = ", streaming: true"
 		}
-		line("  %s: { kind: %s, target: %s%s },", strconv.Quote(method.Name), strconv.Quote(string(method.Kind)), strconv.Quote(method.Target), stream)
+		line("  %s: { kind: %s, target: %s%s },", TypeScriptStringLiteral(method.Name), TypeScriptStringLiteral(string(method.Kind)), TypeScriptStringLiteral(method.Target), stream)
 	}
 	line("} as const;")
-	line("export const CAPABILITY = { protocol: %s, reference: %s, composition: %s, scope: %s, contract: %s } as const;", strconv.Quote(descriptor.Protocol), strconv.Quote(descriptor.Reference), strconv.Quote(string(descriptor.Composition)), strconv.Quote(descriptor.Scope), strconv.Quote(contract.Identity().Digest()))
-	line("export const CAPABILITY_JSON = %s;", strconv.Quote(string(contract.Identity().JSON())))
+	line("export const CAPABILITY = { protocol: %s, reference: %s, composition: %s, scope: %s, contract: %s } as const;", TypeScriptStringLiteral(descriptor.Protocol), TypeScriptStringLiteral(descriptor.Reference), TypeScriptStringLiteral(string(descriptor.Composition)), TypeScriptStringLiteral(descriptor.Scope), TypeScriptStringLiteral(contract.Identity().Digest()))
+	line("export const CAPABILITY_JSON = %s;", TypeScriptStringLiteral(string(contract.Identity().JSON())))
 	artifacts.typescript = output.String()
 	return artifacts, nil
 }

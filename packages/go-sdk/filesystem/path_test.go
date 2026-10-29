@@ -1,8 +1,10 @@
 package filesystem
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 )
 
@@ -131,8 +133,13 @@ func TestResolveRejectsTraversalThroughExistingFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, path := range []string{"file/../new", "file/child", "file/."} {
-		if _, err := ResolvePath(root, path); err == nil {
-			t.Fatalf("accepted traversal through a regular file: %q", path)
+		_, err := ResolvePath(root, path)
+		var pathError *os.PathError
+		if !errors.As(err, &pathError) || !errors.Is(err, syscall.ENOTDIR) {
+			t.Fatalf("traversal through a regular file lost its filesystem cause: %q: %v", path, err)
+		}
+		if pathError.Path != root+string(filepath.Separator)+path {
+			t.Fatalf("filesystem error changed the refused path: %q", pathError.Path)
 		}
 	}
 }

@@ -103,7 +103,7 @@ func TestQuiescentInstallationChangeReadsOnlyDependencyProjections(t *testing.T)
 		refused     bool
 	}{
 		{name: "pending checkpoint dependency", checkpoints: pendingInstallationCheckpoints{dependedInstallation: true}, refused: true},
-		{name: "live session dependency", live: true, refused: true},
+		{name: "live session dependency", checkpoints: pendingInstallationCheckpoints{}, live: true, refused: true},
 		{name: "other installation's checkpoint", checkpoints: pendingInstallationCheckpoints{unrelatedInstallation: true}},
 		{name: "revocation while in use", checkpoints: pendingInstallationCheckpoints{dependedInstallation: true}, live: true, disable: true},
 	} {

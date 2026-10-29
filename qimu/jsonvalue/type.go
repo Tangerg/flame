@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"strings"
 )
 
 // Generated projections cannot reproduce shadowing or custom field encodings.
@@ -107,8 +106,8 @@ func declaredFields(owner reflect.Type, visiting map[reflect.Type]bool) ([]Field
 	var fields []Field
 	var embeds []reflect.Type
 	for field := range owner.Fields() {
-		name, options := wireNameOf(field)
-		if err := validateFieldTag(field, options.embedded); err != nil {
+		name, options, err := parseFieldTag(field)
+		if err != nil {
 			return nil, nil, fmt.Errorf("json field %s.%s: %w", owner, field.Name, err)
 		}
 		if options.embedded {
@@ -141,27 +140,4 @@ func declaredFields(owner reflect.Type, visiting map[reflect.Type]bool) ([]Field
 		names[field.Name], selectors[field.GoName] = true, true
 	}
 	return fields, embeds, nil
-}
-
-func validateFieldTag(field reflect.StructField, embedded bool) error {
-	tag, tagged := field.Tag.Lookup("json")
-	if tag == "-" {
-		return nil
-	}
-	if !field.IsExported() && !embedded {
-		if tagged {
-			return errors.New("unexported field must be ignored")
-		}
-		return nil
-	}
-	_, options, _ := strings.Cut(tag, ",")
-	for option := range strings.SplitSeq(options, ",") {
-		if embedded && option != "" {
-			return fmt.Errorf("embedded field cannot declare option %q", option)
-		}
-		if option != "" && option != "omitzero" && option != "omitempty" {
-			return fmt.Errorf("unsupported field option %q", option)
-		}
-	}
-	return nil
 }

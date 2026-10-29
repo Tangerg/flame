@@ -1,9 +1,11 @@
 package jsonvalue
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
+	"unicode/utf8"
 )
 
 // Decoding and generated projections must admit the same field ownership.
@@ -110,28 +112,63 @@ type wireTagOptions struct {
 	optional bool
 }
 
-func wireNameOf(field reflect.StructField) (string, wireTagOptions) {
+const (
+	omitEmptyOption = "omitempty"
+	omitZeroOption  = "omitzero"
+)
+
+func parseFieldTag(field reflect.StructField) (string, wireTagOptions, error) {
 	tag, tagged := field.Tag.Lookup("json")
+	if tag == "-" {
+		return "", wireTagOptions{}, nil
+	}
 	name, rest, hasOptions := strings.Cut(tag, ",")
-	if field.Anonymous && name == "" {
-		return "", wireTagOptions{embedded: true}
+	options := wireTagOptions{embedded: field.Anonymous && name == ""}
+	if !field.IsExported() && !options.embedded {
+		if tagged {
+			return "", wireTagOptions{}, errors.New("unexported field must be ignored")
+		}
+		return "", wireTagOptions{}, nil
 	}
-	if !field.IsExported() {
-		return "", wireTagOptions{}
+	if !utf8.ValidString(name) || strings.ContainsAny(name, "\\'\"`") {
+		return "", wireTagOptions{}, fmt.Errorf("invalid JSON field name %q", name)
 	}
-	options := wireTagOptions{}
-	for option := range strings.SplitSeq(rest, ",") {
-		if option == "omitempty" || option == "omitzero" {
-			options.optional = true
+	if hasOptions {
+		optional, err := parseOmissionOptions(rest)
+		if err != nil {
+			return "", wireTagOptions{}, err
+		}
+		if options.embedded {
+			return "", wireTagOptions{}, errors.New("embedded field cannot declare omission options")
+		}
+		options.optional = optional
+	}
+	if options.embedded {
+		return "", options, nil
+	}
+	if name == "" {
+		name = field.Name
+	}
+	return name, options, nil
+}
+
+func parseOmissionOptions(raw string) (bool, error) {
+	var seenOmitEmpty, seenOmitZero bool
+	for option := range strings.SplitSeq(raw, ",") {
+		var duplicate bool
+		switch option {
+		case omitEmptyOption:
+			duplicate, seenOmitEmpty = seenOmitEmpty, true
+		case omitZeroOption:
+			duplicate, seenOmitZero = seenOmitZero, true
+		case "":
+			return false, errors.New("empty field option")
+		default:
+			return false, fmt.Errorf("unsupported field option %q", option)
+		}
+		if duplicate {
+			return false, fmt.Errorf("duplicate field option %q", option)
 		}
 	}
-	switch {
-	case !tagged, name == "":
-		return field.Name, options
-	case name == "-" && !hasOptions:
-		// A bare "-" skips the field; `json:"-,"` names it "-".
-		return "", wireTagOptions{}
-	default:
-		return name, options
-	}
+	return seenOmitEmpty || seenOmitZero, nil
 }

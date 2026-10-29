@@ -31,7 +31,7 @@ func TestDecodeParamsRejectsDriftedRequests(t *testing.T) {
 		raw    string
 		detail string
 	}{
-		{name: "null", raw: `null`, detail: "must be an object"},
+		{name: "null", raw: `null`, detail: "must not be null"},
 		{name: "unknown field", raw: `{"sessionId":"ses_1","input":[],"context":[]}`, detail: `unknown object member name "context"`},
 		{name: "wrong type", raw: `{"sessionId":1,"input":[]}`, detail: `JSON number into Go string within "/sessionId"`},
 		{name: "multiple values", raw: `{"sessionId":"ses_1"} {}`, detail: "after top-level value"},

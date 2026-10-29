@@ -128,15 +128,13 @@ func prefixedWireErrors(path string, err error) []FieldError {
 		}
 		return fields
 	}
-	field := path
-	if field == "" {
-		field = "$"
-	}
-	return []FieldError{{Field: field, Detail: err.Error()}}
+	return []FieldError{{Field: joinWirePath(path, ""), Detail: err.Error()}}
 }
 
 func joinWirePath(prefix, field string) string {
 	switch {
+	case prefix == "" && field == "":
+		return "$"
 	case prefix == "":
 		return field
 	case field == "":

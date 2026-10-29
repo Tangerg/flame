@@ -15,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -96,11 +97,16 @@ func TestUnadmittedSteerSurvivesUncertainExecutionRecovery(t *testing.T) {
 				return nil, ctx.Err()
 			}
 		}}
+		installedTool := scheduleReceiptTool{Tool: inner, configuration: configuration, remote: "append_record"}
+		activation, err := installedTool.InstallationActivation()
+		if err != nil {
+			t.Fatal(err)
+		}
 		config := InteractionExecutorConfig{
 			ExecutionTrees: trees, OriginalToolResults: probe,
-			ToolResolver: staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{
-				scheduleReceiptTool{Tool: inner, configuration: configuration, remote: "append_record"},
-			}}},
+			ToolResolver: staticInteractionTools{manifest: toolset.Manifest{
+				Visible: []toolcontract.Tool{installedTool}, Bindings: []plugin.Activation{activation}, Installations: activation.Dependencies,
+			}},
 			ToolInterpreter: immutableToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 		}
 		executor := newObservedTestInteractionExecutor(t, model, config)

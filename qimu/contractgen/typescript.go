@@ -1,11 +1,12 @@
 package contractgen
 
 import (
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"maps"
 	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 )
 
@@ -105,7 +106,7 @@ func (t *TypeScript) branch(unionSchema, variantSchema *Schema) string {
 // rest.
 func (t *TypeScript) narrow(baseChild, narrowing *Schema) string {
 	if narrowing.Const != "" {
-		return strconv.Quote(narrowing.Const)
+		return TypeScriptStringLiteral(narrowing.Const)
 	}
 	if len(narrowing.Enum) > 0 {
 		return unionOf(QuoteAll(narrowing.Enum))
@@ -264,17 +265,26 @@ func typeKeywords(value SchemaType) []SchemaType {
 
 var identifier = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]*$`)
 
+// JSON escapes preserve JavaScript string values; Go's \a and \U escapes do not.
+func TypeScriptStringLiteral(value string) string {
+	encoded, err := json.Marshal(value, jsontext.EscapeForJS(true))
+	if err != nil {
+		panic(fmt.Errorf("contractgen: invalid typescript string: %w", err))
+	}
+	return string(encoded)
+}
+
 func PropertyKey(name string) string {
 	if identifier.MatchString(name) {
 		return name
 	}
-	return strconv.Quote(name)
+	return TypeScriptStringLiteral(name)
 }
 
 func QuoteAll(values []string) []string {
 	out := make([]string, 0, len(values))
 	for _, value := range values {
-		out = append(out, strconv.Quote(value))
+		out = append(out, TypeScriptStringLiteral(value))
 	}
 	return out
 }

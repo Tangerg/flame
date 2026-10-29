@@ -52,6 +52,22 @@ func TestRequestDecodingPreservesTargetOnFailure(t *testing.T) {
 	}
 }
 
+func TestRequestDecodingProjectsRootShapeFailuresAsInvalidParameters(t *testing.T) {
+	for _, target := range []any{&protocol.RequestMeta{}, &protocol.StartRunRequest{}} {
+		err := protocol.DecodeRequest([]byte(`null`), target)
+		if !errors.Is(err, protocol.ErrInvalidParams) {
+			t.Fatalf("root null was not rejected: %T, %v", target, err)
+		}
+		problem := protocol.ProjectError(err).Problem()
+		if problem.Type != protocol.ErrInvalidParams.Error() || !reflect.DeepEqual(problem.Errors, []protocol.FieldError{{Field: "$", Detail: "must not be null"}}) {
+			t.Fatalf("root shape failure lost its invalid-parameters evidence: %+v", problem)
+		}
+		if err := protocol.ValidateWireTree(problem); err != nil {
+			t.Fatalf("root shape failure produced an invalid response: %v", err)
+		}
+	}
+}
+
 func TestRequestDecodingReportsAuthoredFieldPresence(t *testing.T) {
 	const id = "00000000-0000-4000-8000-000000000001"
 	for _, test := range []struct {

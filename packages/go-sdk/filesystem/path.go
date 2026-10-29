@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 )
 
 const maxSymlinkDepth = 40
@@ -66,7 +67,7 @@ func resolve(abs string, depth int) (string, error) {
 	parts := strings.Split(abs[len(volume):], separator)
 	for index, name := range parts {
 		if info != nil && !info.IsDir() {
-			return "", fmt.Errorf("resolve filesystem path %q: existing prefix is not traversable", abs)
+			return "", &os.PathError{Op: "resolve", Path: abs, Err: syscall.ENOTDIR}
 		}
 		switch name {
 		case "", ".":
