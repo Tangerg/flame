@@ -123,8 +123,9 @@ compact-space reading, selection, preview return and continued drafts are
 qualified under **Nested source sizing within the reading frame**. File,
 trajectory and diagnostic code actions now use their existing component locale,
 published as `58cce6221`; see **Captured code reader action locale** for the
-70-test and native qualification. Next trace the observed high-zoom Panel caption
-and reading budget before selecting another repair. The separate native
+70-test and native qualification. Panel now supplies the same clipped viewport
+to source sizing and focus visibility, and recognizes its own queued reflow
+scrolls; see **Panel reader budget and owned reflow scroll**. The separate native
 reverse-Tab finding remains open.
 The user resumed the paused goal.
 Completed batches are verified, explicitly committed and pushed to main under the
@@ -16622,10 +16623,10 @@ and accepted-copy feedback; layout and typography retain the source region;
 color and UI keep existing light/Orange and dark/custom-Blue focus and wrapping
 states. No new contrast or motion measurement is claimed.
 
-| Severity                     | Domain                  | Location                                                | Before                                                                                | After                                                               | Why                                                                    |
-| ---------------------------- | ----------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| MEDIUM, repaired             | Writing / Accessibility | Three portable captured-code callers and their catalogs | A localized reader exposes English action and success names.                          | Actions and accepted feedback use the same active component locale. | Keep the object and its operations in one vocabulary.                  |
-| Observed, next investigation | Layout                  | Trajectory at ZH/18px/200%                              | End can leave the caption behind sticky Panel controls; Shift+Tab reveals Copy again. | Trace the Panel reading budget before selecting a layout repair.    | Establish geometry ownership without adding a local scroll workaround. |
+| Severity         | Domain                  | Location                                                | Before                                                                                | After                                                               | Why                                                                    |
+| ---------------- | ----------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| MEDIUM, repaired | Writing / Accessibility | Three portable captured-code callers and their catalogs | A localized reader exposes English action and success names.                          | Actions and accepted feedback use the same active component locale. | Keep the object and its operations in one vocabulary.                  |
+| Resolved below   | Layout                  | Trajectory at ZH/18px/200%                              | End can leave the caption behind sticky Panel controls; Shift+Tab reveals Copy again. | The shared Panel now supplies its actual clipped reading budget.    | Establish geometry ownership without adding a local scroll workaround. |
 
 Verification:
 
@@ -16684,15 +16685,121 @@ memory-only archive round-trips **65 UTF-8 records**, **2,880,532 raw bytes**,
 The managed toolchain and primary parallel checkout remain preserved. The one
 interval fetch finds zero incoming main commits; no redundant merge is needed.
 
-The localized captured-reader actions are accepted. Continue by tracing the
-observed high-zoom Panel caption/read-budget behavior; the separate native
-reverse-Tab finding also remains open. The broad UI goal stays active.
+The localized captured-reader actions are accepted. The Panel follow-up below
+resolves the observed high-zoom caption/read-budget behavior. The separate native
+reverse-Tab finding and broad UI goal remain open.
 
 Delivery: implementation `58cce62212110a96226cfc9cf7ae1f68d344c149` is
 pushed to remote `main`. Fresh `ls-remote` matches, divergence is zero and the
 owned checkout is clean. Normal staged formatting/lint and commit-message hooks
 pass. Post-hook preservation repeats the same source/resource/reference and
 retirement checks above. This in-place delivery receipt changes no product input.
+
+### Panel reader budget and owned reflow scroll (2026-10-30)
+
+Scope: inspect captured trajectory evidence in the Dock and main reading area,
+resize the native window, read a related Markdown file, return and continue the
+retained conversation draft. Source values and Runtime lifecycles are unchanged.
+
+Original Wails at ZH/18px/dark/custom Blue/200% confirms the prior observation.
+The viewport is 560×377 CSS px; its workspace body starts at y=46 and has
+331.5px height. Sticky controls end at y=144. The 261px CodeBlock starts at
+y=116.5, with its caption at y=117.5: **26.5px** of that caption is behind the
+controls. CodeFrame falls back to window height while Panel's focus rule already
+intersects the host clips. These two projections disagree about available space.
+
+`packages/ui/src/panel.tsx:274` extracts that existing intersection once for
+both uses. The existing active viewport observation publishes
+`--reading-frame-height` even after focus moves outside, then removes it when
+retained content becomes inactive or unmounts. No additional observer, wrapper,
+scroll command, key handler or component-local sizing override is introduced.
+The existing CodeFrame caption/source minimum and focused-control fallback remain.
+In the same native scene, the complete frame is **227.5px**, caption y=146 and
+source bottom y=371.5, clear of the controls and clipped lower edge.
+
+The first sizing candidate exposes a second cause during native window animation.
+Its own reveal issues a scroll, then the queued event arrives after the new
+geometry has been recorded. The old position map classifies that correction as a
+user scroll and retires the reading witness. A private, read-only trace proves
+this sequence without a selection or external focus change. Panel now retains
+the same position map at its existing owner and records positions after its own
+`scrollIntoView`. Deliberate wheel/scrollbar displacement, later outside focus,
+inactive content, pointer activation and teardown keep their existing rules.
+There is no timing guess, retry loop or second source of scroll intent.
+
+Read-only ZCode `packages/ui/src/PreviewPane.tsx:1794` separates persistent chrome
+from the shrinking reading body. The existing HeroUI/Radix reading-group and
+focus-return research remains the reference for context. Better-layout guides
+fitting complete content below sticky chrome; better-accessibility guides visible
+keyboard reading at 200%. Typography, writing, colors and UI retain existing
+literal source, names, type roles, Orange/custom-Blue states and motion owners.
+No new color, contrast or motion measurement is claimed.
+
+| Severity         | Domain             | Location                                | Before                                                                     | After                                                                   | Why                                                                    |
+| ---------------- | ------------------ | --------------------------------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| HIGH, repaired   | Layout             | `packages/ui/src/panel.tsx:274`, `:432` | Window-sized code can hide its caption behind sticky controls at 200%.     | Source sizing and focus use the same clipped viewport.                  | Keep the source identity and operations with its focused body.         |
+| MEDIUM, repaired | Accessibility / UI | `packages/ui/src/panel.tsx:391`         | A queued owner-issued scroll stops reading follow during window animation. | The issuing owner records that correction in its existing position map. | Preserve native reflow continuity while honoring deliberate scrolling. |
+
+Verification:
+
+- Original baseline passes **2 UI files / 112 tests**. Four new sizing/lifetime
+  cases fail against original product (**4 fail / 35 pass**). The queued-scroll
+  regression fails against the first sizing candidate (**1 fail / 39 pass**).
+  Final focused coverage passes **2 files / 117 tests**.
+- Full `npm run check --workspace @flame/ui` passes build, types, lint, format,
+  **12 files / 204 tests** and independent packed UI/icons consumption.
+- Web integration passes **33 files / 571 tests**, covering portable views,
+  InstalledComponent lifetime, workspace retention, Settings and transcript
+  reading follow. Web types, lint, format, layers, design system, tokens, styles,
+  authored classes, shorthand, chrome, locales, bundle and module linking pass.
+  Portable component generation/type/resource checks pass; all **34** frozen
+  resources remain identical. Ordinary `make check-native` passes in **22.816 s**.
+
+Six actual Wails launches distinguish original reproduction, first-candidate
+failure, internal diagnosis, final measured acceptance and two clean controls.
+The normal DesktopHost/services/menu/window composition uses a private identity/
+home and canonical fixture records. The passive observer only reads geometry;
+the temporary internal trace only records witness transitions. CUA owns all input.
+The initial private Vite invocation uses the checkout root and produces a nested
+entry; correcting its cwd to `apps/web` restores the normal fixture/public asset
+layout before native launch. That setup is not qualification.
+
+Final measured ZH acceptance covers source End/Home, complete JSON selection,
+native window zoom/restore, wheel chaining, deliberate departure without a later
+pullback, retained expanded record and `最终阅读草稿。已继续。`.
+The clean controls remove both observer entries and its sole script; all **343**
+remaining non-HTML assets match the final measured build. Both EN/light/14px/
+Orange and ZH/dark/18px/Blue use the same **345 byte-identical assets** and emit
+**zero** added records. EN checks trajectory and Markdown Go selection, copy,
+wrap states, return to the expanded record and `Clean reader draft. Continued.`.
+ZH repeats 200% code reading, native animated window enlargement/restoration,
+selection, copy/wrap and `无观察器复核草稿。已继续。`.
+Home/End at an already reached source boundary can deliberately chain to the
+outer page; separate resize-only observations prove the reflow result. This
+existing vertical chaining is preserved, not suppressed to retain a caption.
+
+These are native presentation/lifetime qualifications, not live provider or
+Runtime/Realm admission, installed release reload, clipboard denial, VoiceOver,
+OS IME, forced colors, a new 320px native window or other-platform GUI coverage.
+Chinese uses native paste. No Send, business mutation, browser suite, benchmark,
+Claude CLI or subagent is used. Screenshots/AX remain in the CUA transcript.
+
+Cleanup stops every launch/listener, unregisters the bundle, removes **eight** new
+output/cache roots and **three** private profiles, and restores four original
+files/modes. Before and after exact-root deletion, preservation passes **6,386**
+qualified non-Markdown inputs, **34** resources, **55** read-only references,
+three instructions, 21 output baselines and five profile absences.
+`/private/tmp/flame-panel-budget-clk7mU` is absent. The memory-only archive
+round-trips **95 UTF-8 records**, including **156** observations (**77** internal
+trace records), **2,543,572 raw bytes**, **762,766 gzip bytes**, SHA-256
+`6af78c98555bf80b6ee2adae787bde6051baf693d4fbf5d3d5263fea0468083d`.
+The managed toolchain and primary parallel checkout remain preserved. The one
+interval fetch finds zero incoming main commits; no redundant merge is needed.
+
+**Approve** the inspected shared sizing and owned-reflow repair. The broad UI
+goal remains active. Next revisit native reverse-navigation at the pointer-to-
+keyboard handoff using the existing plain-HTML/upstream evidence before selecting
+a product change; that separate cause has not yet been established.
 
 ### Settings pane error identity
 

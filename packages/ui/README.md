@@ -97,9 +97,13 @@ Its explicit `header` slot holds introductory content, `controls` holds the one
 sticky action and filter zone, and children hold the scrolling content. The host
 keeps its existing scroll viewport. The panel does not shrink inside a column
 host: its canvas and sticky-control boundary extend through the complete content.
-`Panel` projects only its own controls' measured height on its root to keep focused content and anchors
+`Panel` projects its own controls' measured height on its root to keep focused content and anchors
 clear of the controls; wrapped controls update through `ResizeObserver`.
-Body focus also respects the host's clipped viewport. `readingUnitFor` gives
+Its existing viewport observation also projects the clipped host height as
+`--reading-frame-height` for nested source readers. Sizing and body focus use
+the same intersection of host clips and the window; reader sizing continues
+after focus moves outside, and retires with inactive content or unmount.
+`readingUnitFor` gives
 Panel and transcript readers the same context rule: use the nearest declared
 `data-focus-unit` when it fits, then the wrapping native label, then the control.
 An option's label cannot hide the heading of its fitting group. Each reader owns
@@ -113,6 +117,8 @@ without refocusing it or changing its value or text selection. A wheel gesture
 or a moved scrollbar that leaves the field behind retires that follow; reflow
 notifications without scroll displacement do not. Later outside focus, inactive
 retained content and unmount also retire the reading witness.
+The same owner records positions after its own reveal, so a queued programmatic
+scroll event during native window animation cannot retire that reflow witness.
 Pointer-caused focus leaves the pressed control in place so activation can
 finish before any row reveal, including reflow during the press.
 The body retains the pressed target until pointerup or cancellation,

@@ -144,6 +144,7 @@ function scene(
     field,
     viewport: screen.getByTestId("viewport"),
     hide: () => view.rerender(frame(false)),
+    show: () => view.rerender(frame(true)),
     unmount: view.unmount,
   };
 }
@@ -159,6 +160,74 @@ function resize(node: Element) {
     }
   });
 }
+
+it.each([false, true])(
+  "sizes nested readers to the clipped host without requiring body focus (controls: %s)",
+  (sticky) => {
+    const { viewport, field } = scene("unit", sticky);
+    const panel = field.closest<HTMLElement>('[data-slot="panel"]')!;
+    resize(viewport);
+    expect(panel.style.getPropertyValue("--reading-frame-height")).toBe(
+      "300px",
+    );
+
+    const outside = document.createElement("button");
+    document.body.append(outside);
+    act(() => outside.focus());
+    rectangles.set(viewport, new DOMRect(0, 200, 400, 220));
+    fireEvent(window, new Event("resize"));
+    expect(panel.style.getPropertyValue("--reading-frame-height")).toBe(
+      "220px",
+    );
+    expect(document.activeElement).toBe(outside);
+    expect(revealed).toEqual([]);
+    outside.remove();
+  },
+);
+
+it("intersects nested host clips and the window when sizing source readers", () => {
+  render(
+    <div data-testid="outer" style={{ overflowY: "hidden" }}>
+      <div data-testid="inner" style={{ overflowY: "auto" }}>
+        <Panel label="Captured evidence">
+          <CodeBlock label="Original source">
+            Complete original source
+          </CodeBlock>
+        </Panel>
+      </div>
+    </div>,
+  );
+  const outer = screen.getByTestId("outer");
+  const inner = screen.getByTestId("inner");
+  const panel = screen.getByRole("region", { name: "Captured evidence" });
+  rectangles.set(outer, new DOMRect(0, 80, 800, 380));
+  rectangles.set(inner, new DOMRect(0, 140, 800, 340));
+  resize(inner);
+  expect(panel.style.getPropertyValue("--reading-frame-height")).toBe("320px");
+
+  rectangles.set(outer, new DOMRect(0, 80, 800, 580));
+  rectangles.set(inner, new DOMRect(0, 140, 800, 560));
+  resize(outer);
+  expect(panel.style.getPropertyValue("--reading-frame-height")).toBe("460px");
+  expect(revealed).toEqual([]);
+});
+
+it("retires and renews the reader budget with retained content visibility", () => {
+  const { viewport, field, hide, show, unmount } = scene("unit", true);
+  const panel = field.closest<HTMLElement>('[data-slot="panel"]')!;
+  resize(viewport);
+  expect(panel.style.getPropertyValue("--reading-frame-height")).toBe("300px");
+  hide();
+  expect(panel.style.getPropertyValue("--reading-frame-height")).toBe("");
+  rectangles.set(viewport, new DOMRect(0, 200, 400, 140));
+  resize(viewport);
+  expect(panel.style.getPropertyValue("--reading-frame-height")).toBe("");
+  show();
+  expect(panel.style.getPropertyValue("--reading-frame-height")).toBe("140px");
+  unmount();
+  expect(panel.style.getPropertyValue("--reading-frame-height")).toBe("");
+  expect(observations.every(({ nodes }) => !nodes.has(viewport))).toBe(true);
+});
 
 it.each(["unit", "label", "group"] as const)(
   "reveals the complete %s when its control is visible but its label is above the viewport",
@@ -384,6 +453,30 @@ it("keeps focus through scroll anchoring before the resized frame is observed", 
   fireEvent.scroll(viewport);
   resize(viewport);
   expect(revealed).toEqual([field]);
+});
+
+it("keeps the reading witness through its own queued scroll during native reflow", () => {
+  const { unit, field, viewport } = scene();
+  rectangles.set(unit, new DOMRect(0, 220, 300, 100));
+  act(() => field.focus());
+  vi.spyOn(HTMLElement.prototype, "scrollIntoView").mockImplementation(
+    function (this: HTMLElement) {
+      revealed.push(this);
+      viewport.scrollTop += 40;
+      rectangles.set(field, new DOMRect(0, 180, 200, 32));
+    },
+  );
+  rectangles.set(unit, new DOMRect(0, 100, 300, 400));
+  rectangles.set(field, new DOMRect(0, 340, 200, 32));
+  rectangles.set(viewport, new DOMRect(0, 200, 400, 100));
+  resize(viewport);
+  fireEvent.scroll(viewport);
+
+  rectangles.set(field, new DOMRect(0, 340, 200, 32));
+  rectangles.set(viewport, new DOMRect(0, 200, 420, 80));
+  resize(viewport);
+  expect(revealed).toEqual([field, field]);
+  expect(document.activeElement).toBe(field);
 });
 
 it("responds to native window reflow before an element observer notifies", () => {
