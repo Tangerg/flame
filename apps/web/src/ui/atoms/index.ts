@@ -31,7 +31,7 @@ export { SelectTrigger } from "@/ui/atoms/select-trigger";
 
 export { ShikiCodeBlock } from "@/ui/atoms/shiki-code-block";
 export { useCodeActionLabels } from "@/ui/atoms/codeActionLabels";
-export { SkeletonControl, SkeletonList, SkeletonText } from "@/ui/atoms/skeleton";
+export { SkeletonList, SkeletonText } from "@/ui/atoms/skeleton";
 export { SystemMessage } from "@/ui/atoms/system-message";
 export { Tag } from "@/ui/atoms/tag";
 export { TextEditorDialog } from "@/ui/atoms/text-editor-dialog";

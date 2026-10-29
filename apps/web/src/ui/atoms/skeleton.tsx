@@ -44,15 +44,6 @@ const styles = stylex.create({
     gap: space.s2,
     paddingBlock: space.s1_5,
   },
-  inline: {
-    display: "inline-flex",
-    height: "var(--control-height-md)",
-    flexShrink: 0,
-    alignItems: "center",
-    gap: space.s1_5,
-    borderRadius: radius.card,
-    paddingInline: space.s2_5,
-  },
 });
 
 function SkeletonLine({
@@ -77,21 +68,6 @@ export function SkeletonText({ label = "Loading…" }: { label?: string }) {
       <SkeletonLine width="88%" height="0.65em" />
       <SkeletonLine width="62%" height="0.65em" />
     </output>
-  );
-}
-
-export function SkeletonControl({
-  glyph = true,
-  width = "64px",
-}: {
-  glyph?: boolean;
-  width?: string;
-}) {
-  return (
-    <div {...stylex.props(styles.inline)} aria-hidden>
-      {glyph && <SkeletonLine width="6px" height={6} />}
-      <SkeletonLine width={width} height={12} />
-    </div>
   );
 }
 
