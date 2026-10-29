@@ -10677,23 +10677,24 @@ DEVELOPMENT.md and module conventions remain authoritative.
 Scope of the better-interface review is the document/history pagination flow in
 the existing React, StyleX, Base UI and semantic-token workspace:
 
-| Domain        | Evidence inspected                                                                     | Result                                                                      |
-| ------------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| Accessibility | Shared Button/Select/Panel contracts, native pagination, revision jump and recovery    | Four MEDIUM findings fixed; VoiceOver and OS IME not reviewed               |
-| Layout        | Actual Dock/main reading, native scroll, 1120/1440 widths, window zoom and 200%        | Changed focus targets remain visible; unread-ID wrapping is a LOW follow-up |
-| Writing       | Existing English/Chinese pagination, revision labels and errors                        | Known identity fixed; unread target's raw ID remains a LOW follow-up        |
-| Typography    | Actual 14/18px control labels and 200% geometry                                        | No type-scale change; raw unread-ID wrapping remains                        |
-| Colors        | Existing Orange/light and Blue/dark pending, boundary and focus states                 | Measured focus pairs pass 3:1; existing semantic tokens retained            |
-| UI            | Shared pending/press guards, accepted-page continuity, pointer and keyboard activation | Changed focus lifetime qualified below; no new motion or chrome             |
+| Domain        | Evidence inspected                                                                     | Result                                                                            |
+| ------------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Accessibility | Shared Button/Select/Panel contracts, native pagination, revision jump and recovery    | Four MEDIUM findings fixed; VoiceOver and OS IME not reviewed                     |
+| Layout        | Actual Dock/main reading, native scroll, 1120/1440 widths, window zoom and 200%        | Identity reading passes; duplicated authoring entry points remain a LOW follow-up |
+| Writing       | Existing English/Chinese pagination, revision labels and errors                        | Known and unread identity fixed; metadata stays truthful                          |
+| Typography    | Actual 14/18px labels, full-ID access and keyboard reading at 200%                     | Short selection remains one line; full values wrap through existing Facts         |
+| Colors        | Existing Orange/light and Blue/dark fields, Facts and focus states                     | Existing tokens retained; earlier measured pairs below; not remeasured this batch |
+| UI            | Shared pending/press guards, accepted-page continuity, pointer and keyboard activation | Identity/disclosure lifetime qualified below; no new motion or chrome             |
 
-| Severity | Domain        | Location                                                  | Before                                                                           | After                                                                                   | Why                                                        |
-| -------- | ------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| MEDIUM   | Accessibility | Deliverables document/history pagination                  | Native disabled discarded focused list navigation                                | Shared pending controls and focusable true boundaries; fixed                            | Keyboard reading continues from the current task position  |
-| MEDIUM   | Accessibility | useDeliverables query projection                          | A same-document history cursor read removed its accepted page and controls       | Retain that document's accepted page until settlement; fixed                            | Stable controls preserve the reading and retry context     |
-| MEDIUM   | Accessibility | Inspector Open current revision action                    | Its removal on the revision change leaves native AX focus at HTML content        | Focused activation hands focus to the surviving history region; fixed                   | Keyboard reading continues at the version controls         |
-| MEDIUM   | Accessibility | Deliverables Refresh action                               | Native disabled discarded focus while the list/catalog reread                    | Shared focusable pending boundary, with the existing availability scope; fixed          | Recovery remains reachable without restarting navigation   |
-| LOW      | Writing       | Exact revision Select after visiting another history page | Current revision label fell back to its full identity when absent from that page | Selected canonical read revision remains one option beside the page; fixed              | The selected object stays recognizable across page changes |
-| LOW      | Writing       | Exact revision Select while an unknown target is reading  | A selected target without accepted metadata renders its full 64-character ID     | Open follow-up: present the exact unknown identity compactly without inventing metadata | Three-line wrapping displaces reading in the narrow Dock   |
+| Severity | Domain        | Location                                                  | Before                                                                           | After                                                                                      | Why                                                                |
+| -------- | ------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| MEDIUM   | Accessibility | Deliverables document/history pagination                  | Native disabled discarded focused list navigation                                | Shared pending controls and focusable true boundaries; fixed                               | Keyboard reading continues from the current task position          |
+| MEDIUM   | Accessibility | useDeliverables query projection                          | A same-document history cursor read removed its accepted page and controls       | Retain that document's accepted page until settlement; fixed                               | Stable controls preserve the reading and retry context             |
+| MEDIUM   | Accessibility | Inspector Open current revision action                    | Its removal on the revision change leaves native AX focus at HTML content        | Focused activation hands focus to the surviving history region; fixed                      | Keyboard reading continues at the version controls                 |
+| MEDIUM   | Accessibility | Deliverables Refresh action                               | Native disabled discarded focus while the list/catalog reread                    | Shared focusable pending boundary, with the existing availability scope; fixed             | Recovery remains reachable without restarting navigation           |
+| LOW      | Writing       | Exact revision Select after visiting another history page | Current revision label fell back to its full identity when absent from that page | Selected canonical read revision remains one option beside the page; fixed                 | The selected object stays recognizable across page changes         |
+| LOW      | Writing       | plugins/deliverables/component/component.tsx:512          | A selected target without accepted metadata renders its full 64-character ID     | Derived short-ID option plus stable full-identity disclosure; fixed                        | The selected object stays compact without hiding its full identity |
+| LOW      | Layout        | plugins/deliverables/component/component.tsx:535          | Create/Import each has a toolbar button and a same-named Disclosure trigger      | Follow-up: inspect and consolidate entry/close/reopen while preserving drafts and receipts | Duplicate entry points displace retained-document reading          |
 
 Verification (2026-10-29):
 
@@ -10933,13 +10934,110 @@ listener remaining. The memory-only archive round-trips 104 UTF-8 records,
 2ebe90e1a7602a1343401c35d4b3e1b5aa9aca01e7170d4eda2f2ebd5985f389.
 This final handoff changes no qualified product source.
 
+**Unread revision identity qualification (2026-10-30)**
+
+The canonical selection now supplies a short-ID option whenever neither the
+accepted read nor the current history page has that revision's metadata. Its
+value remains the complete identity; no time, origin or read result is inferred.
+Known metadata replaces that label through the existing derived option list.
+The existing identity/native-facts disclosure moves from the revision-keyed
+Inspector into the stable history region. Full selected document/revision IDs
+remain reachable while reading and after refusal, and native facts appear only
+from the accepted read. The unchanged inspection decoder has one projection in
+Workspace, shared with Inspector and the disclosure. No label cache, selection
+owner, shared Select API, style, locale key or protocol is added.
+
+The preceding observer-free Wails 3.0.0 source snapshot exactly matches this
+batch's 6,385-input original baseline; its native full-ID observation is reused.
+HeroUI's actual asynchronous Select collection and ZCode ModelConfigSelect's
+key/value/name separation are re-read as identity/presentation references.
+Flame keeps its Base UI controls, semantic tokens and existing progressive
+disclosure rather than copying those systems. All six better-* skills are
+loaded; the consolidated review above covers this same reading path.
+
+- All 26 existing public-client tests pass against the original. Three new
+  contract cases fail on the full 64-character fallback. After the repair, all
+  29 pass: pending and refused identity, selected option, full-value access,
+  metadata arrival, stable expansion/focus, recovery, document replacement and
+  late read/history settlement. No mutation handle is acquired. An initial
+  preparation failure used an unsupported Testing Library role option; it was
+  corrected before the red run and is excluded from product evidence.
+- Plugin/Web type and lint, plugin format, Web design-system/resource/bundle/
+  module checks pass. make check-native passes in 18.906 s, including normal
+  resource/Web staging, Desktop Go test/vet/build and Wails production building.
+  Normal generation changes only Deliverables component.js among 34 resources.
+- Actual English/light/Orange at 14px and 1440 × 900 shows a selected 12-character
+  target during the held read. Keyboard opening exposes its complete IDs without
+  invented metadata. Success enriches that same expanded disclosure and keeps
+  its focus; refusal retains it and the short label. Another document replaces
+  its IDs and metadata. Files/back retains that document, expansion and original
+  draft; native wheel scrolling and direct draft continuation are observed.
+  Both native builds contain no observer or input bootstrap. One user-change
+  guard and an offscreen AX click that issued no read are excluded; the same
+  process's visible keyboard path completes.
+
+- The first Chinese sequence is interrupted by a native user-change guard and
+  excluded. Re-query shows another document and an expanded import form, with
+  no import submitted. The same process and read response remain live. Later,
+  documented native input works again; closing that form and continuing the
+  retained read needs no restart or rebuild. In Chinese/dark/Blue at 18px,
+  native window zoom and twenty 5% page-zoom steps from ActualSize reach 200%.
+  Tab reaches the one-line short-ID picker, then the existing identity trigger.
+  Keyboard Page Down exposes both full wrapping IDs. Refusal retains the open
+  disclosure, IDs and focus; explicit Refresh recovers the exact revision.
+  ActualSize and the original window size are restored. A controlled historical
+  to current-version path then repeats short-ID and full-value keyboard access
+  in the 363-point Dock; success adds metadata while retaining disclosure focus.
+  Returning from main reading continues the original draft to
+  “核对完整版本身份。 已核对缩放、失败和返回，继续对话。 窄面板也已核对。”
+- Both actual Wails builds use 344 identical Web assets with an empty observer
+  and input bootstrap; no observer event is received. Screenshots and native AX
+  evidence remain in the CUA transcript. This qualifies declared ESM through
+  InstalledComponent and the public client with three private read-only
+  data/composition producers. Live release acquisition/Realm admission, native
+  document engines, saving/sending, business mutations, OS IME, VoiceOver and
+  320px remain outside this verification. Existing semantic colors/styles are
+  unchanged; rendered contrast pairs are not remeasured in this batch. No
+  browser/performance suite, Claude CLI or subagent is used.
+
+Cleanup retires both original native launches, unregisters the exact bundle and
+closes its listener. Seven new checkout output/cache roots and three private
+profiles are removed; all four original files and modes are restored. Independent
+checks preserve 6,385 qualified inputs, 34 resources, 50 read-only references,
+three instruction files, 21 output and five profile-absence baselines. The
+installed toolchain and primary parallel checkout remain untouched. The interval
+fetch finds no incoming main commit, so the qualified source needs no additional
+merge or validation round. The exact private root
+/private/tmp/flame-unread-revision-poBhgg is absent; all preservation checks pass
+again after retirement, with no owned native process or listener remaining. The
+memory-only archive round-trips 48 UTF-8 records, 2,664,708 raw bytes and 960,716
+gzip bytes, SHA-256
+4360939a47086191f1460bfc051c1500bd8f15852d8241bf4d1d28f323f4a362.
+This final handoff changes no qualified product source; publication uses the
+ordinary push to remote main.
+
+Read-only follow-up triage identifies duplicated authoring entry points:
+Workspace renders both toolbar buttons and controlled Disclosure triggers for
+Create/Import. The English native screenshot and AX tree show both pairs;
+existing authoring/import tests scope their lookup to Deliverable actions.
+CreateForm owns its unsent fields, and keepMounted currently preserves them;
+ImportForm also owns resumable local-file input while useDeliverables owns the
+upload and command receipts. A subsequent hierarchy pass must preserve those
+lifetimes and verify entry, close, reopening and return focus before deleting
+an entry point. HeroUI's actual Disclosure basic/render-function examples use
+one composed trigger; they are composition references, not Flame runtime proof.
+No authoring-flow code changes in this batch. Raw ISO dates in the list, picker
+and Inspector are another lower-priority reading candidate; existing Computer
+and Trajectory views already use locale-bound Intl.DateTimeFormat. Their policy
+must be checked against document identity and exact-time access before reuse.
+
 **Approve** the inspected pagination, revision-selection and focus repairs; no
-HIGH or MEDIUM finding remains in that qualified scope. A LOW unread-target
-label remains: when its metadata has not been accepted, the actual 18px narrow
-Dock renders the full 64-character identity over three lines. The next batch
-should present that exact identity compactly, preserving canonical selection
-and truthful unknown state. OS IME and VoiceOver remain unreviewed; the broader
-UI goal stays active without a claim of whole-product award-level completion.
+HIGH or MEDIUM finding remains in that qualified reading scope. The LOW
+unread-target label finding is fixed with full-value access retained. The next
+concrete task is the duplicated Create/Import entry and its draft/return
+lifetime, as triaged above; its complete authoring flow is not yet qualified.
+OS IME and VoiceOver remain unreviewed. The broader UI goal stays active without
+a claim of whole-product award-level completion.
 
 ## Shortcut recording and activation
 

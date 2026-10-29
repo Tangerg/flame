@@ -267,30 +267,20 @@ function safeSource(uri: string): string | undefined {
 function Inspector({
   state,
   document,
+  inspection,
   catalog,
   onOpenCurrent,
   t,
 }: {
   state: DeliverablesState;
   document: DocumentRead;
+  inspection: { value?: Inspection; error?: string };
   catalog?: FormatCatalog;
   onOpenCurrent: (origin: HTMLButtonElement) => void;
   t: Translate;
 }) {
   const [removal, setRemoval] = useState<{ id: string; revision: string }>();
   const [csvSheet, setCSVSheet] = useState<string>();
-  const inspection = useMemo(() => {
-    try {
-      const value = inspectionSchema.parse(JSON.parse(document.inspectionJSON));
-      if (value.format !== document.revision.format)
-        throw new Error(
-          "deliverables: inspection format differs from its native revision",
-        );
-      return { value };
-    } catch (error) {
-      return { error: failureText(error) };
-    }
-  }, [document.inspectionJSON, document.revision.format]);
   const current = document.document.head === document.revision.id;
   const provenance = document.revision.provenance;
   const sheets =
@@ -418,33 +408,6 @@ function Inspector({
           ]}
         />
       </Disclosure>
-      <Disclosure title={t("revision.details")}>
-        <Facts
-          values={[
-            [t("document.id"), document.document.id],
-            [t("revision.id"), document.revision.id],
-            [
-              t("revision.parent"),
-              document.revision.parent ?? t("revision.first"),
-            ],
-            [t("file.hash"), document.revision.sha256],
-          ]}
-        />
-        {inspection.value && (
-          <Facts
-            values={Object.entries(inspection.value.facts).map(
-              ([key, value]) => [key, String(value)],
-            )}
-          />
-        )}
-        <Source label={t("content.original")} value={document.inspectionJSON} />
-        {document.processingJSON && (
-          <Source
-            label={t("revision.processing")}
-            value={document.processingJSON}
-          />
-        )}
-      </Disclosure>
       <Disclosure title={t("remove.title")}>
         <Metadata>{t("remove.help")}</Metadata>
         {removal ? (
@@ -527,12 +490,39 @@ function Workspace({ context }: { context: ComponentContext }) {
         entry.title.toLocaleLowerCase().includes(search.toLocaleLowerCase()),
     ) ?? [];
   const document = state.read?.value;
+  const inspection = useMemo(() => {
+    if (!document) return {};
+    try {
+      const value = inspectionSchema.parse(JSON.parse(document.inspectionJSON));
+      if (value.format !== document.revision.format)
+        throw new Error(
+          "deliverables: inspection format differs from its native revision",
+        );
+      return { value };
+    } catch (error) {
+      return { error: failureText(error) };
+    }
+  }, [document?.inspectionJSON, document?.revision.format]);
   const history = state.history?.value?.entries ?? [];
   const revisions =
     document &&
     !history.some((revision) => revision.id === document.revision.id)
       ? [document.revision, ...history]
       : history;
+  const revisionOptions = revisions.map((revision) => ({
+    value: revision.id,
+    label: `${revision.createdAt} · ${t(`operation.${revision.operation}`)} · ${revision.id.slice(0, 12)}`,
+  }));
+  if (
+    state.selection &&
+    !revisionOptions.some(
+      (option) => option.value === state.selection?.revision,
+    )
+  )
+    revisionOptions.unshift({
+      value: state.selection.revision,
+      label: state.selection.revision.slice(0, 12),
+    });
   return (
     <Panel
       label={t("panel.title")}
@@ -685,10 +675,7 @@ function Workspace({ context }: { context: ComponentContext }) {
               if (state.selection)
                 state.open({ id: state.selection.id, revision });
             }}
-            options={revisions.map((revision) => ({
-              value: revision.id,
-              label: `${revision.createdAt} · ${t(`operation.${revision.operation}`)} · ${revision.id.slice(0, 12)}`,
-            }))}
+            options={revisionOptions}
           />
           {(state.historyPrevious || state.history?.value?.next) && (
             <Toolbar label={t("history.paging")}>
@@ -716,6 +703,44 @@ function Workspace({ context }: { context: ComponentContext }) {
               </Button>
             </Toolbar>
           )}
+          <Disclosure title={t("revision.details")}>
+            <Facts
+              values={[
+                [t("document.id"), state.selection.id],
+                [t("revision.id"), state.selection.revision],
+              ]}
+            />
+            {document && (
+              <>
+                <Facts
+                  values={[
+                    [
+                      t("revision.parent"),
+                      document.revision.parent ?? t("revision.first"),
+                    ],
+                    [t("file.hash"), document.revision.sha256],
+                  ]}
+                />
+                {inspection.value && (
+                  <Facts
+                    values={Object.entries(inspection.value.facts).map(
+                      ([key, value]) => [key, String(value)],
+                    )}
+                  />
+                )}
+                <Source
+                  label={t("content.original")}
+                  value={document.inspectionJSON}
+                />
+                {document.processingJSON && (
+                  <Source
+                    label={t("revision.processing")}
+                    value={document.processingJSON}
+                  />
+                )}
+              </>
+            )}
+          </Disclosure>
         </PanelSection>
       )}
       {state.read?.loading && <Metadata role="status">{t("reading")}</Metadata>}
@@ -727,6 +752,7 @@ function Workspace({ context }: { context: ComponentContext }) {
           key={document.revision.id}
           state={state}
           document={document}
+          inspection={inspection}
           catalog={catalog?.formats}
           onOpenCurrent={(origin) => {
             if (context.signal.aborted) return;

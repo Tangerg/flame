@@ -908,3 +908,94 @@ it.each([
     expect(fixture.calls.filter((call) => call.key !== null)).toHaveLength(0);
   },
 );
+
+it.each([false, true])(
+  "keeps an unread revision compact with its full identity available through settlement (failure=%s)",
+  async (fail) => {
+    const fixture = await rig();
+    fixture.paginate("history", false);
+    fixture.ui.render(<Deliverables context={fixture.context()} />);
+    fireEvent.click(await screen.findByRole("button", { name: /Quarterly report/ }));
+    const pager = within(await screen.findByRole("group", { name: "Revision history pages" }));
+    fireEvent.click(pager.getByRole("button", { name: "Next" }));
+    await waitFor(() =>
+      expect(pager.getByRole("button", { name: "Previous" }).getAttribute("aria-disabled")).toBe(
+        "false",
+      ),
+    );
+    await chooseOption("Choose exact revision", /eeeeeeeeeeee/);
+    await screen.findByText("Historical native revision");
+    fixture.failReads(fail);
+    const held = fixture.hold(doc1);
+    fireEvent.click(screen.getByRole("button", { name: "Open current revision" }));
+    await held.arrived;
+    const select = screen.getByRole("combobox", { name: "Choose exact revision" });
+    expect(select.textContent).toBe(rev1.slice(0, 12));
+    fireEvent.click(select);
+    expect(
+      (await screen.findByRole("option", { name: rev1.slice(0, 12) })).getAttribute(
+        "aria-selected",
+      ),
+    ).toBe("true");
+    expect(screen.getAllByRole("option")).toHaveLength(2);
+    fireEvent.keyDown(select, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+    const details = screen.getByRole("button", { name: "Revision identity and native facts" });
+    act(() => details.focus());
+    fireEvent.click(details);
+    expect(details.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByText(doc1, { exact: true })).toBeTruthy();
+    expect(screen.getByText(rev1, { exact: true })).toBeTruthy();
+    expect(screen.queryByText("Initial revision", { exact: true })).toBeNull();
+    await act(async () => held.release());
+    await waitFor(() => expect(screen.queryByText("Reading…")).toBeNull());
+    expect(screen.getByRole("button", { name: "Revision identity and native facts" })).toBe(
+      details,
+    );
+    expect(details.getAttribute("aria-expanded")).toBe("true");
+    expect(document.activeElement).toBe(details);
+    expect(screen.getByText(rev1, { exact: true })).toBeTruthy();
+    expect(select.textContent).toBe(
+      fail ? rev1.slice(0, 12) : `${timestamp} · Created · aaaaaaaaaaaa`,
+    );
+    expect(Boolean(screen.queryByText(/fixture acknowledgement unavailable/))).toBe(fail);
+    expect(fixture.calls.filter((call) => call.method === METHODS.read).at(-1)?.input).toEqual({
+      id: doc1,
+      revision: rev1,
+    });
+    fixture.failReads(false);
+    await chooseOption("Choose exact revision", /eeeeeeeeeeee/);
+    await screen.findByText("Historical native revision");
+    expect(screen.getByText("e".repeat(64), { exact: true })).toBeTruthy();
+    expect(screen.queryByText(rev1, { exact: true })).toBeNull();
+    expect(fixture.calls.filter((call) => call.key !== null)).toHaveLength(0);
+  },
+);
+
+it("withdraws an unread revision option and identity when another document becomes selected", async () => {
+  const fixture = await rig();
+  const held = fixture.hold(doc1);
+  const history = fixture.hold("history:");
+  fixture.ui.render(<Deliverables context={fixture.context()} />);
+  fireEvent.click(await screen.findByRole("button", { name: /Quarterly report/ }));
+  await held.arrived;
+  await history.arrived;
+  const select = screen.getByRole("combobox", { name: "Choose exact revision" });
+  expect(select.textContent).toBe(rev1.slice(0, 12));
+  fireEvent.click(screen.getByRole("button", { name: "Revision identity and native facts" }));
+  expect(screen.getByText(rev1, { exact: true })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: /Meeting notes/ }));
+  await waitFor(() =>
+    expect(select.textContent).toBe(`${timestamp} · Created · ${rev2.slice(0, 12)}`),
+  );
+  expect(screen.getByText(doc2, { exact: true })).toBeTruthy();
+  expect(screen.getByText(rev2, { exact: true })).toBeTruthy();
+  expect(screen.queryByText(rev1, { exact: true })).toBeNull();
+  await act(async () => held.release());
+  await act(async () => history.release());
+  expect(select.textContent).toBe(`${timestamp} · Created · ${rev2.slice(0, 12)}`);
+  fireEvent.click(select);
+  expect(screen.getAllByRole("option")).toHaveLength(1);
+  expect(screen.queryByRole("option", { name: rev1.slice(0, 12) })).toBeNull();
+  expect(fixture.calls.filter((call) => call.key !== null)).toHaveLength(0);
+});

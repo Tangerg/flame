@@ -80,6 +80,11 @@ page, so paging does not replace its label with a raw identity or change selecti
 Opening the current revision from its focused Inspector action moves focus to the
 stable revision-history region. Read settlement preserves any later focus move.
 Refresh uses the same focusable pending boundary while the list or catalog rereads.
+An unread selected revision uses its short identity until metadata is available.
+The history region's existing identity disclosure keeps the full document and
+revision identities available during reading and after failure. Native facts
+appear only after a successful read; settlement preserves the open disclosure
+and its focus.
 
 Each rendered page thumbnail opens its original PNG in the shared image reader
 for local zoom and panning. The captured revision, render and page identity remain
