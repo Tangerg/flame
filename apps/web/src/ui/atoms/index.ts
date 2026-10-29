@@ -18,7 +18,7 @@ export { LightboxDialog } from "@/ui/atoms/lightbox-dialog";
 export { Loader } from "@/ui/atoms/loader";
 export { ContextMenu, DropdownMenu } from "@/ui/atoms/menu";
 export { OptionRow } from "@/ui/atoms/option-row";
-export { Popover } from "@/ui/atoms/popover";
+export { Popover } from "@flame/ui";
 export { Pressable } from "@/ui/atoms/pressable";
 export { Gauge } from "@/ui/atoms/gauge";
 export { ProgressBar } from "@/ui/atoms/progress-bar";

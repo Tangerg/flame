@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Current source continues from main `d9c325bd6`, which returns invalid generated forms to the first available error field. Fitting choice groups now retain their headings in the conversation reading frame and shared Panel; see **Generated-form error recovery** and **Fitting choice groups in the reading frame**. Native verification, regression checks and resource retirement are complete. Continue observing complete content/Dock tasks before choosing another repair. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
+Current source continues from main `8a00266d3`, which keeps fitting choice groups in their reading frame. Generated-report popovers now use the shared portal, nested dismissal and focus contract; see **Generated-report popup boundaries**. Native verification, regression checks and resource retirement are complete. Next inspect the report's unstyled native progress presentation in the themed content/Dock workspace. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -60,8 +60,10 @@ return and continued drafting together, published as `fd7c0b0ca`. The generated-
 follow-up qualifies invalid submission, ordered correction, local acceptance,
 choice feedback and continued authoring, published as `d9c325bd6`. The fitting-unit
 follow-up qualifies composite headings, pointer selection, keyboard return and
-zoom reflow. Its publication fetch finds zero incoming main commits at `d9c325bd6`;
-merging reports already up to date. No unrelated
+zoom reflow, published as `8a00266d3`. Generated-report popup qualification adds
+clipped-reader escape, nested choices, local completion, file-material return
+and continued authoring. Its publication fetch finds zero incoming main commits
+at `8a00266d3`; merging reports already up to date. No unrelated
 Runtime integration suite is repeated for this presentation repair.
 See **Computer console
 editing and operation return**. Preserve the
@@ -2168,6 +2170,120 @@ The fitting-unit correction is approved within these bounds. Next inspect other
 composed report controls and their original-evidence return path in the actual
 content/Dock workspace; choose another repair only from a concrete failure.
 The whole-product UI goal remains active.
+
+### Generated-report popup boundaries
+
+At main `8a00266d3b6d076b7e20844ce83830bc75129c20`, a generated report's
+absolutely positioned Popover remains inside its clipped Tool-result container.
+In actual Wails at **1440 × 900 CSS px**, the focused Review note starts at
+**y = 733 px**, while its enclosing content ends at **679 px**. The popup begins
+at **637 px** and extends to **925 px**. Its controls exist in the accessibility
+tree but are not visible. Escape from a nested detail also closes both dialogs
+and returns directly to the report instead of the immediate parent.
+
+The existing application Popover moves into `packages/ui/src/popover.tsx` and is
+exported by `@flame/ui`. Catalog pickers and the application barrel use that one
+implementation. GenUI removes its separate positioning, document pointer listener,
+focus query and Escape handler. Its declared open field and all drafts remain in
+the OpenUI store. The shared Base UI primitive owns portal placement, collision
+handling, nested dismissal and focus return. GenUI owns its bounded content measure
+and available-height scrolling. Its active content boundary retires descendants
+when a local action closes their parent. Closing retains the primitive's ordinary
+unmount lifecycle; inactive sandbox content is not kept alive by this repair.
+No new popup-state mirror, dependency, Runtime command or persistence migration is
+introduced.
+
+Read-only evidence is HeroUI's actual `popover.tsx` and `popover.stories.tsx`,
+including its trigger, portal and dialog composition. The official
+[Radix Popover](https://www.radix-ui.com/primitives/docs/components/popover)
+reference informs trigger relationships and managed focus; the installed
+[Base UI 1.9 Popover](https://base-ui.com/react/components/popover) supplies the
+actual implementation contract. These are design/API references, not native
+Flame verification. Repository boundaries remain those in AGENTS.md,
+PROJECT_RULES.md, DEVELOPMENT.md and the Web/UI/GenUI READMEs.
+
+The better-interface review covers the generated-popup correction/return flow,
+the shared application composition and its inspected file-reader consumer:
+
+| Domain        | Evidence inspected                                                                                      | Result                                                                                                                                                              |
+| ------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Accessibility | `layout.tsx:259`, shared Popover, native field names, keyboard Select, nested Escape and focus return   | Repaired; VoiceOver audio is not newly verified.                                                                                                                    |
+| Layout        | Native 1440 × 900 and 562 × 367/364 CSS px, 200%, both themes and the resized final action              | Complete inspected controls remain reachable; RTL is not newly verified.                                                                                            |
+| Writing       | Existing authored labels, host EN/ZH controls and local acceptance feedback                             | Clear within this flow; no new interface copy.                                                                                                                      |
+| Typography    | Native 14/18 px, 400-weight controls and 27.9 px body line-height at 18 px                              | Clear within the inspected scale; other fonts/scripts are not newly qualified.                                                                                      |
+| Colors        | Shared floating/filled surfaces, Orange/light, custom-blue/dark and opaque computed dark pairs          | Dark text ratios are **13.38:1** and **14.37:1**; the Blue ring is **3.32:1 / 3.56:1** against its adjacent surfaces. Light numeric contrast is not newly measured. |
+| UI            | Shared FLOATING_PANEL, current trigger states, native nesting, source return and existing motion policy | Clear for the inspected interaction; reduced-motion appearance is not newly run.                                                                                    |
+
+| Severity       | Domain        | Location                                                                   | Before                                                                | After                                                                                           | Why                                                                                  |
+| -------------- | ------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| HIGH, repaired | Accessibility | `plugins/genui/component/layout.tsx:259`; `packages/ui/src/popover.tsx:30` | Focused controls are clipped and one Escape closes two detail levels. | The shared portaled primitive keeps the decision visible and dismisses the current layer first. | Keyboard access and visible focus must retain the current task (WCAG 2.1.1, 2.4.11). |
+
+Four isolated Wails instances qualify the baseline and final paths through the
+actual installed GenUI component and captured-result lifecycle:
+
+- EN/light/14 px/Flame Orange: the complete **384 × 270 px** popup is at
+  **y = 353 px**, with its first input at **453 px**. Editing, a pointer Select
+  choice, keyboard reopening, nested detail editing and one-level Escape pass.
+  The popup moves by the same **539 px** as its source during deliberate wheel
+  reading. Clicking Composer dismisses it without replacing later editing focus.
+  Full-width file material, the shared Go to line popup, line-2 selection, keyboard
+  body reading and explicit Close retain the report and original draft. Continued
+  text is `Continue after reviewing the popup details. Review complete.`.
+- ZH/dark/18 px/custom blue, **562 × 367 CSS px / DPR 4 / 200%**: keyboard
+  selection retains the outer detail and the Chinese note. Both dialog levels
+  fit; the parent is **384 × 295 px** and the child **384 × 144 px**. One Escape
+  returns to More guidance. Reopening retains the nested draft; its declared
+  Back to report action closes the parent, reports actual local acceptance and
+  focuses Review hint. Reopening shows only that layer. After native height
+  reduction to **364 px**, the focused final action remains entirely visible at
+  **[179, 252, 137.85, 32]**. Actual Size and continued drafting produce
+  `保留浮层详情后的对话草稿。 已返回，继续。`.
+- The final instance removes the observer and repeats the 200% visible popup,
+  nested Escape, explicit local completion, Actual Size and continued drafting.
+  All **614** assets match the observed final build except the two HTML entries
+  containing the observer. It emits **zero** observation requests or events.
+  The final draft is `完成浮层复核后继续。 已返回。`.
+
+All UI input uses native CUA. The observer only reads keys, focus, geometry and
+computed styles. Private accepted inputs add nested local fields without any
+operation. The later dark/clean fixture also declares the local close action;
+the light fixture retains the original action set. A configuration check catches
+and replaces an earlier factory closure that retained the old fixture/observer
+strings before the dark build. The actual resulting HTML and native Back to report
+control are verified. These scenes do not qualify live provider execution,
+unknown command recovery, OS IME, forced colors or other-platform GUIs.
+
+The settled original comparison fails three new cases: innermost Escape, nested
+Select interaction and hidden-view retirement. Final coverage adds outside
+authoring, a declared parent-close action and sandbox unmount lifetime. The harness
+waits for Renderer initialization and sends the complete mouse press/release/click
+sequence required by the installed primitive's intentional dismissal policy.
+The final **433 Web files / 4,152 tests** pass. The full UI check passes
+**10 files / 189 tests** and the independent packed UI/icons consumer, now including
+the public Popover. The full plugin check passes **43 author checks** and
+**16 backend/contract files / 274 tests**; the existing **13 Linux-only tests** are
+skipped on macOS. Web typecheck, lint, design-system/token/chrome checks, production
+bundle/module checks and `make check-native` pass. The independent GenUI package
+contains **18 files**, its ZIP builds, and its component exactly matches the
+qualified installed resource. Only the GenUI component changes among **32**
+installed resources. All checks/builds run serially. No browser suite, performance
+benchmark, Claude CLI, subagent or unrelated Runtime integration suite runs.
+
+All four native instances are stopped, their bundle is unregistered and the
+loopback observer is closed. Cleanup removes **9** new output/cache roots and
+**3** owned profile paths, restores **4** original files and modes, and passes all
+**18** output and **5** profile baselines. All **6,267** qualified non-Markdown
+inputs, **32** installed resources, two read-only reference files and the original
+UI/Web cache contents remain intact. The private root
+`flame-genui-popover-We9wdY` is absent. Its round-tripped in-memory gzip retains
+**71** UTF-8 records, **34,919,906** uncompressed bytes and **3,113,081** gzip bytes;
+SHA-256 `bad2cd42544e296c59a9578595595544d8660f3dbe42b5a79350cd9d20a31d05`.
+The primary checkout, user data and unrelated processes remain untouched.
+
+Verdict: **Approve for the inspected popup and file-return tasks**. The whole-product
+UI goal remains active. Native light review also exposes the generated report's
+plain green HTML progress meter beside otherwise themed controls; inspect that
+existing presentation owner next before selecting another repair.
 
 ### Command focus and visible pane boundaries
 

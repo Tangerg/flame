@@ -49,6 +49,14 @@ components do not maintain another modality or ring owner.
 that reveal a label only while it is truncated keep the same trigger mounted
 and disable its tooltip when the complete text fits.
 
+`Popover` owns the same portal, floating surface, Base UI nesting and focus
+contract for application controls and portable views. A consumer that retains
+content declares its active subtree with `ContentVisibility`;
+hidden roots retire through their existing change callback, and hidden portals
+do not restore focus to an unavailable trigger. Positioning, initial/final focus
+and dismissal remain with Base UI. Consumers own their content measure and
+available-height scrolling, not another document-level outside-press listener.
+
 ```tsx
 import { Button, IconButton, FontScaleProvider } from "@flame/ui";
 import { Brain } from "@flame/icons/react";

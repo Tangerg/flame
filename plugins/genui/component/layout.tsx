@@ -1,15 +1,15 @@
-import { useEffect, useId, useRef, type KeyboardEvent } from "react";
+import { useId, type KeyboardEvent } from "react";
 import {
   Button,
   ContentVisibility,
   Disclosure,
   Metadata,
   PanelSection,
+  Popover,
   RecordForm,
   RecordGroup,
   RecordTitle,
   Toolbar,
-  useContentVisible,
 } from "@flame/ui";
 import type { ComponentRenderProps } from "@openuidev/react-lang";
 import type { Translate } from "@flame/component-sdk";
@@ -261,62 +261,28 @@ export function PopoverView({
   renderNode,
 }: ComponentRenderProps<DisplayProps["Popover"]>) {
   const [open, setOpen] = useLocalValue<boolean>(props.field);
-  const id = useId();
-  const root = useRef<HTMLDivElement>(null);
-  const trigger = useRef<HTMLButtonElement>(null);
-  const panel = useRef<HTMLDivElement>(null);
-  const visible = useContentVisible();
-  useEffect(() => {
-    if (!open || !visible) return;
-    const first = panel.current?.querySelector<HTMLElement>(
-      "button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), a[href], [tabindex='0']",
-    );
-    (first ?? panel.current)?.focus();
-    const closeOutside = (event: PointerEvent) => {
-      if (event.target instanceof Node && !root.current?.contains(event.target))
-        setOpen(false);
-    };
-    document.addEventListener("pointerdown", closeOutside);
-    return () => document.removeEventListener("pointerdown", closeOutside);
-  }, [open, visible, setOpen]);
   return (
-    <div
-      ref={root}
-      style={{ position: "relative", minWidth: 0 }}
-      onKeyDown={(event) => {
-        if (event.key === "Escape" && open) {
-          event.preventDefault();
-          setOpen(false);
-          trigger.current?.focus();
-        }
-      }}
-    >
-      <Button
-        ref={trigger}
-        aria-expanded={open}
-        aria-controls={id}
-        aria-haspopup="dialog"
-        onClick={() => setOpen(!open)}
+    <Popover.Root open={open} onOpenChange={setOpen}>
+      <Popover.Trigger render={<Button />}>{props.label}</Popover.Trigger>
+      <Popover.Content
+        aria-label={props.label}
+        align="start"
+        sideOffset={8}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: GAP.medium,
+          padding: "calc(var(--spacing) * 4)",
+          width: "min(24rem, var(--available-width))",
+          maxHeight: "var(--available-height)",
+          overflowY: "auto",
+          overscrollBehavior: "contain",
+        }}
       >
-        {props.label}
-      </Button>
-      {open && visible && (
-        <RecordForm
-          ref={panel}
-          id={id}
-          role="dialog"
-          aria-label={props.label}
-          tabIndex={-1}
-          style={{
-            position: "absolute",
-            zIndex: 1,
-            width: "max-content",
-            maxWidth: "100%",
-          }}
-        >
+        <ContentVisibility visible={open}>
           {renderNode(props.children)}
-        </RecordForm>
-      )}
-    </div>
+        </ContentVisibility>
+      </Popover.Content>
+    </Popover.Root>
   );
 }

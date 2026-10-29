@@ -6,7 +6,7 @@ import { color, motion, radius, space, surface, type, weight } from "@flame/ui/t
 import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
 import { Icon, type IconName } from "@/ui/icons/index";
 import { dress } from "@flame/ui/button";
-import { Popover } from "@/ui/atoms/popover";
+import { Popover } from "@flame/ui";
 import { floatingRow } from "@/ui/atoms/option-row";
 import { Pressable } from "@/ui/atoms/pressable";
 import { vocab } from "@flame/ui/vocabulary";

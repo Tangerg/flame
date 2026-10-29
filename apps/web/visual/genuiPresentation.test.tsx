@@ -296,9 +296,231 @@ it("composes controls, conditional views and repeated nodes from their declared 
   fireEvent.click(within(panel).getByRole("button", { name: "Show answer" }));
   expect(within(panel).getByText("Runtime owns execution and recovery.")).toBeTruthy();
   fireEvent.click(within(panel).getByRole("button", { name: "Review hint" }));
-  expect(within(panel).getByRole("dialog", { name: "Review hint" })).toBeTruthy();
-  fireEvent.keyDown(within(panel).getByRole("dialog", { name: "Review hint" }), { key: "Escape" });
-  expect(within(panel).queryByRole("dialog", { name: "Review hint" })).toBeNull();
+  expect(screen.getByRole("dialog", { name: "Review hint" })).toBeTruthy();
+  fireEvent.keyDown(screen.getByRole("dialog", { name: "Review hint" }), { key: "Escape" });
+  await waitFor(() => expect(screen.queryByRole("dialog", { name: "Review hint" })).toBeNull());
+});
+
+async function popoverScene() {
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
+    this: HTMLElement,
+  ) {
+    if (this.closest("[hidden]")) return new DOMRect();
+    return this === window.document.documentElement || this === window.document.body
+      ? new DOMRect(0, 0, 1024, 768)
+      : new DOMRect(20, 20, 160, 32);
+  });
+  for (const [property, field, viewport] of [
+    ["clientWidth", 160, 1024],
+    ["clientHeight", 32, 768],
+  ] as const) {
+    vi.spyOn(HTMLElement.prototype, property, "get").mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      return this === window.document.documentElement || this === window.document.body
+        ? viewport
+        : field;
+    });
+  }
+  const context = capturedContext(
+    JSON.stringify(
+      document(
+        [
+          {
+            id: "review",
+            type: "Popover",
+            props: { field: "open", label: "Review hint" },
+            children: [
+              { id: "note", type: "Input", props: { field: "note", label: "Review note" } },
+              {
+                id: "mode",
+                type: "Select",
+                props: {
+                  field: "mode",
+                  label: "Review mode",
+                  options: [
+                    { value: "balanced", label: "Balanced" },
+                    { value: "focused", label: "Focused" },
+                  ],
+                },
+              },
+              {
+                id: "guidance",
+                type: "Popover",
+                props: { field: "nested", label: "More guidance" },
+                children: [
+                  { id: "detail", type: "Input", props: { field: "detail", label: "Second note" } },
+                  {
+                    id: "finish",
+                    type: "Button",
+                    props: { label: "Back to report", action: "close" },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+        [
+          { id: "open", value: false },
+          { id: "nested", value: false },
+          { id: "note", value: "Keep this review note." },
+          { id: "detail", value: "Keep the nested note." },
+          { id: "mode", value: "balanced" },
+        ],
+        [{ id: "close", steps: [{ type: "set", state: "open", value: { literal: false } }] }],
+      ),
+    ),
+  );
+  const frame = (visible: boolean) => (
+    <>
+      <input aria-label="Later draft" defaultValue="Keep authoring" />
+      <div hidden={!visible}>
+        <ui.ContentVisibility visible={visible}>
+          <GenUIResult context={context} />
+        </ui.ContentVisibility>
+      </div>
+    </>
+  );
+  const view = testClient.render(frame(true));
+  await act(async () => {});
+  return { setVisible: (visible: boolean) => view.rerender(frame(visible)) };
+}
+
+it("closes only the innermost generated popover with Escape and retains its local draft", async () => {
+  await popoverScene();
+  fireEvent.click(screen.getByRole("button", { name: "Review hint" }));
+  fireEvent.click(screen.getByRole("button", { name: "More guidance" }));
+  const detail = screen.getByRole("textbox", { name: "Second note" });
+  fireEvent.change(detail, { target: { value: "Edited nested note" } });
+  act(() => detail.focus());
+
+  fireEvent.keyDown(detail, { key: "Escape" });
+
+  await waitFor(() => expect(screen.queryByRole("dialog", { name: "More guidance" })).toBeNull());
+  expect(screen.getByRole("dialog", { name: "Review hint" })).toBeTruthy();
+  await waitFor(() =>
+    expect(window.document.activeElement).toBe(
+      screen.getByRole("button", { name: "More guidance" }),
+    ),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "More guidance" }));
+  expect((screen.getByRole("textbox", { name: "Second note" }) as HTMLInputElement).value).toBe(
+    "Edited nested note",
+  );
+});
+
+it("keeps a generated popover open while choosing from its portaled Select", async () => {
+  await popoverScene();
+  fireEvent.click(screen.getByRole("button", { name: "Review hint" }));
+  const mode = screen.getByRole("combobox", { name: "Review mode" });
+  act(() => mode.focus());
+  fireEvent.click(mode);
+  const list = await screen.findByRole("listbox");
+  const option = within(list).getByRole("option", { name: "Focused" });
+
+  fireEvent.pointerDown(option, { pointerType: "mouse" });
+  fireEvent.click(option);
+
+  await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+  expect(screen.getByRole("dialog", { name: "Review hint" })).toBeTruthy();
+  expect(mode.textContent).toContain("Focused");
+  await waitFor(() => expect(window.document.activeElement).toBe(mode));
+});
+
+it("retires nested generated details when a declared action closes their parent", async () => {
+  await popoverScene();
+  fireEvent.click(screen.getByRole("button", { name: "Review hint" }));
+  fireEvent.click(screen.getByRole("button", { name: "More guidance" }));
+  fireEvent.change(screen.getByRole("textbox", { name: "Second note" }), {
+    target: { value: "Edited nested note" },
+  });
+
+  fireEvent.click(screen.getByRole("button", { name: "Back to report" }));
+
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  fireEvent.click(screen.getByRole("button", { name: "Review hint" }));
+  expect(screen.queryByRole("dialog", { name: "More guidance" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "More guidance" }));
+  expect((screen.getByRole("textbox", { name: "Second note" }) as HTMLInputElement).value).toBe(
+    "Edited nested note",
+  );
+});
+
+it("keeps generated sandbox content out of a closed popover's lifetime", async () => {
+  show(
+    document(
+      [
+        {
+          id: "preview",
+          type: "Popover",
+          props: { field: "open", label: "Local preview" },
+          children: [
+            {
+              id: "demo",
+              type: "HtmlView",
+              props: { title: "Local demonstration", html: "<p>Captured demonstration</p>" },
+            },
+          ],
+        },
+      ],
+      [{ id: "open", value: false }],
+    ),
+  );
+  await act(async () => {});
+  expect(screen.queryByTitle("Local demonstration")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Local preview" }));
+  const frame = screen.getByTitle("Local demonstration");
+  expect(frame.getAttribute("sandbox")).toBe("allow-scripts");
+
+  fireEvent.keyDown(screen.getByRole("dialog", { name: "Local preview" }), { key: "Escape" });
+
+  await waitFor(() => expect(frame.isConnected).toBe(false));
+});
+
+it("retires a hidden generated popover without reopening it over a later draft", async () => {
+  const scene = await popoverScene();
+  fireEvent.click(screen.getByRole("button", { name: "Review hint" }));
+  fireEvent.change(screen.getByRole("textbox", { name: "Review note" }), {
+    target: { value: "Edited review note" },
+  });
+  const draft = screen.getByRole("textbox", { name: "Later draft" });
+
+  scene.setVisible(false);
+  act(() => draft.focus());
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  scene.setVisible(true);
+
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(window.document.activeElement).toBe(draft);
+  expect((draft as HTMLInputElement).value).toBe("Keep authoring");
+  fireEvent.click(screen.getByRole("button", { name: "Review hint" }));
+  expect((screen.getByRole("textbox", { name: "Review note" }) as HTMLInputElement).value).toBe(
+    "Edited review note",
+  );
+});
+
+it("dismisses a generated popover on an outside pointer without retargeting later authoring", async () => {
+  await popoverScene();
+  fireEvent.click(screen.getByRole("button", { name: "Review hint" }));
+  fireEvent.change(screen.getByRole("textbox", { name: "Review note" }), {
+    target: { value: "Edited review note" },
+  });
+  const draft = screen.getByRole("textbox", { name: "Later draft" });
+  fireEvent.pointerDown(draft, { pointerType: "mouse" });
+  fireEvent.mouseDown(draft);
+  act(() => draft.focus());
+  fireEvent.pointerUp(draft, { pointerType: "mouse" });
+  fireEvent.mouseUp(draft);
+  fireEvent.click(draft);
+  fireEvent.change(draft, { target: { value: "Continue authoring" } });
+
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(window.document.activeElement).toBe(draft);
+  expect((draft as HTMLInputElement).value).toBe("Continue authoring");
+  fireEvent.click(screen.getByRole("button", { name: "Review hint" }));
+  expect((screen.getByRole("textbox", { name: "Review note" }) as HTMLInputElement).value).toBe(
+    "Edited review note",
+  );
 });
 
 it("filters, sorts, pages and selects rows without changing the captured data", async () => {

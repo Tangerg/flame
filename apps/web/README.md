@@ -324,6 +324,12 @@ session titles, message authors, and complete entry paths for files. Nested
 submenus keep their primitive's relationship to the controlling item instead of
 receiving a separate name.
 
+Application and installed-view popovers use the public `@flame/ui` composition.
+Portaled details retain their trigger relationship while escaping clipped
+transcript content. Base UI owns positioning, nested dismissal and focus return;
+retained content uses the shared visibility boundary. Catalog pickers, anchored
+Composer suggestions and their existing content sizes retain the same contract.
+
 File previews keep their filename to two visible lines beside persistent navigation,
 range and commands. Header groups share a row when their natural widths fit and
 wrap together when space is limited. Navigation and actions align with the primary

@@ -1,9 +1,12 @@
 import * as stylex from "@stylexjs/stylex";
 import { type ComponentProps, type ReactNode } from "react";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
-import { FLOATING_LAYER, FLOATING_PANEL } from "@flame/ui/floating-surface";
-import { useHiddenPopupRelease, useHiddenRootRetirement } from "@flame/ui";
+import { FLOATING_LAYER, FLOATING_PANEL } from "./floating-surface";
+import {
+  useHiddenPopupRelease,
+  useHiddenRootRetirement,
+} from "./popup-visibility";
 type PositionerProps = ComponentProps<typeof PopoverPrimitive.Positioner>;
 
 type PopupProps = ComponentProps<typeof PopoverPrimitive.Popup>;
@@ -56,7 +59,7 @@ function PopoverContent({
           {...popupProps}
           finalFocus={visible ? finalFocus : false}
           {...panel}
-          className={cn(panel.className, className)}
+          className={clsx(panel.className, className)}
         >
           {children}
         </PopoverPrimitive.Popup>
@@ -110,7 +113,7 @@ function AnchoredPanel({
             initialFocus={false}
             finalFocus={false}
             {...panel}
-            className={cn(panel.className, className)}
+            className={clsx(panel.className, className)}
           >
             {children}
           </PopoverPrimitive.Popup>
@@ -120,7 +123,9 @@ function AnchoredPanel({
   );
 }
 
-function PopoverRoot<Payload = unknown>(props: PopoverPrimitive.Root.Props<Payload>) {
+function PopoverRoot<Payload = unknown>(
+  props: PopoverPrimitive.Root.Props<Payload>,
+) {
   const retirement = useHiddenRootRetirement(props);
   return <PopoverPrimitive.Root {...props} {...retirement} />;
 }

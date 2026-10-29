@@ -60,6 +60,12 @@ literal references checked at admission.
   embeds. Data acquisition remains an ordinary agent tool or installed query.
 
 Controls use public `@flame/ui` components and the active host locale and tokens.
+Popover uses the shared non-modal portal and collision positioning, so a clipped
+report does not clip its detail controls. Nested Select and Popover dismissal
+use Base UI's existing layer boundary. The declared open field and all drafts
+remain in the OpenUI store. Closing removes popup content through the primitive's
+ordinary lifetime; hidden views retire open descendants without reopening over
+later authoring. Available-height scrolling keeps larger popup content reachable.
 Native chart geometry uses labels, patterns and a data table rather than color
 alone. Markdown uses the established renderer with raw HTML disabled. KaTeX
 produces MathML with trusted commands disabled. Map tiles use OpenStreetMap with
