@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   createTranslator,
   failureText,
@@ -268,11 +268,13 @@ function Inspector({
   state,
   document,
   catalog,
+  onOpenCurrent,
   t,
 }: {
   state: DeliverablesState;
   document: DocumentRead;
   catalog?: FormatCatalog;
+  onOpenCurrent: (origin: HTMLButtonElement) => void;
   t: Translate;
 }) {
   const [removal, setRemoval] = useState<{ id: string; revision: string }>();
@@ -364,14 +366,7 @@ function Inspector({
           </>
         )}
         {!current && (
-          <Button
-            onClick={() =>
-              state.open({
-                id: document.document.id,
-                revision: document.document.head,
-              })
-            }
-          >
+          <Button onClick={(event) => onOpenCurrent(event.currentTarget)}>
             {t("revision.openHead")}
           </Button>
         )}
@@ -505,6 +500,7 @@ function Workspace({ context }: { context: ComponentContext }) {
     [context.locale],
   );
   const state = useDeliverables(context);
+  const historyEntry = useRef<HTMLElement>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -558,7 +554,10 @@ function Workspace({ context }: { context: ComponentContext }) {
             {t("import.open")}
           </Button>
           <Button
-            disabled={state.list?.loading || state.catalog?.loading}
+            pending={state.list?.loading || state.catalog?.loading}
+            aria-busy={
+              state.list?.loading || state.catalog?.loading || undefined
+            }
             onClick={() => {
               void state.refresh();
             }}
@@ -667,7 +666,12 @@ function Workspace({ context }: { context: ComponentContext }) {
         )}
       </PanelSection>
       {state.selection && (
-        <PanelSection title={t("history.title")}>
+        <PanelSection
+          ref={historyEntry}
+          tabIndex={-1}
+          aria-label={t("history.title")}
+          title={t("history.title")}
+        >
           {state.history?.loading && (
             <Metadata role="status">{t("reading")}</Metadata>
           )}
@@ -724,6 +728,15 @@ function Workspace({ context }: { context: ComponentContext }) {
           state={state}
           document={document}
           catalog={catalog?.formats}
+          onOpenCurrent={(origin) => {
+            if (context.signal.aborted) return;
+            const ownedFocus = origin.ownerDocument.activeElement === origin;
+            state.open({
+              id: document.document.id,
+              revision: document.document.head,
+            });
+            if (ownedFocus) historyEntry.current?.focus();
+          }}
           t={t}
         />
       )}

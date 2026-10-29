@@ -77,6 +77,9 @@ settlement preserves the user's current focus, including a later move to another
 control. Read failures retain the accepted page and its available navigation.
 The exact revision being read remains a selectable option alongside each history
 page, so paging does not replace its label with a raw identity or change selection.
+Opening the current revision from its focused Inspector action moves focus to the
+stable revision-history region. Read settlement preserves any later focus move.
+Refresh uses the same focusable pending boundary while the list or catalog rereads.
 
 Each rendered page thumbnail opens its original PNG in the shared image reader
 for local zoom and panning. The captured revision, render and page identity remain

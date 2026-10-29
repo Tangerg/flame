@@ -10679,19 +10679,21 @@ the existing React, StyleX, Base UI and semantic-token workspace:
 
 | Domain        | Evidence inspected                                                                     | Result                                                                      |
 | ------------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| Accessibility | Shared Button/Select contracts, native pagination/selection and current-revision jump  | Two fixed findings; one MEDIUM follow-up; VoiceOver and OS IME not reviewed |
-| Layout        | Actual Dock/main reading, native scroll, 1120/1440 widths, window zoom and 200%        | Clear for the changed controls and inspected return flow                    |
-| Writing       | Existing English/Chinese pagination, revision labels and errors                        | One fixed finding; qualification below                                      |
-| Typography    | Actual 14/18px control labels and 200% geometry                                        | Clear for pagination; no global type-scale change                           |
-| Colors        | Existing Orange/light and Blue/dark pending, boundary and focus states                 | Clear in inspected states; semantic tokens retained                         |
-| UI            | Shared pending/press guards, accepted-page continuity, pointer and keyboard activation | Clear after the two fixes; no new motion or chrome                          |
+| Accessibility | Shared Button/Select/Panel contracts, native pagination, revision jump and recovery    | Four MEDIUM findings fixed; VoiceOver and OS IME not reviewed               |
+| Layout        | Actual Dock/main reading, native scroll, 1120/1440 widths, window zoom and 200%        | Changed focus targets remain visible; unread-ID wrapping is a LOW follow-up |
+| Writing       | Existing English/Chinese pagination, revision labels and errors                        | Known identity fixed; unread target's raw ID remains a LOW follow-up        |
+| Typography    | Actual 14/18px control labels and 200% geometry                                        | No type-scale change; raw unread-ID wrapping remains                        |
+| Colors        | Existing Orange/light and Blue/dark pending, boundary and focus states                 | Measured focus pairs pass 3:1; existing semantic tokens retained            |
+| UI            | Shared pending/press guards, accepted-page continuity, pointer and keyboard activation | Changed focus lifetime qualified below; no new motion or chrome             |
 
-| Severity | Domain        | Location                                                  | Before                                                                           | After                                                                             | Why                                                        |
-| -------- | ------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| MEDIUM   | Accessibility | Deliverables document/history pagination                  | Native disabled discarded focused list navigation                                | Shared pending controls and focusable true boundaries; fixed                      | Keyboard reading continues from the current task position  |
-| MEDIUM   | Accessibility | useDeliverables query projection                          | A same-document history cursor read removed its accepted page and controls       | Retain that document's accepted page until settlement; fixed                      | Stable controls preserve the reading and retry context     |
-| MEDIUM   | Accessibility | Inspector Open current revision action                    | Its removal on the revision change leaves native AX focus at HTML content        | Open follow-up: preserve a stable local reading entry when that action disappears | Keyboard users lose the current reading position           |
-| LOW      | Writing       | Exact revision Select after visiting another history page | Current revision label fell back to its full identity when absent from that page | Selected canonical read revision remains one option beside the page; fixed        | The selected object stays recognizable across page changes |
+| Severity | Domain        | Location                                                  | Before                                                                           | After                                                                                   | Why                                                        |
+| -------- | ------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| MEDIUM   | Accessibility | Deliverables document/history pagination                  | Native disabled discarded focused list navigation                                | Shared pending controls and focusable true boundaries; fixed                            | Keyboard reading continues from the current task position  |
+| MEDIUM   | Accessibility | useDeliverables query projection                          | A same-document history cursor read removed its accepted page and controls       | Retain that document's accepted page until settlement; fixed                            | Stable controls preserve the reading and retry context     |
+| MEDIUM   | Accessibility | Inspector Open current revision action                    | Its removal on the revision change leaves native AX focus at HTML content        | Focused activation hands focus to the surviving history region; fixed                   | Keyboard reading continues at the version controls         |
+| MEDIUM   | Accessibility | Deliverables Refresh action                               | Native disabled discarded focus while the list/catalog reread                    | Shared focusable pending boundary, with the existing availability scope; fixed          | Recovery remains reachable without restarting navigation   |
+| LOW      | Writing       | Exact revision Select after visiting another history page | Current revision label fell back to its full identity when absent from that page | Selected canonical read revision remains one option beside the page; fixed              | The selected object stays recognizable across page changes |
+| LOW      | Writing       | Exact revision Select while an unknown target is reading  | A selected target without accepted metadata renders its full 64-character ID     | Open follow-up: present the exact unknown identity compactly without inventing metadata | Three-line wrapping displaces reading in the narrow Dock   |
 
 Verification (2026-10-29):
 
@@ -10833,11 +10835,87 @@ baselines. No owned app process or listener remains. The memory-only archive
 round-trips 70 UTF-8 records, 10636064 raw bytes and
 2018595 gzip bytes, SHA-256 46f4990e4d978c4751c56b3e00dd27de0d1eb1fa16da323ee3d2064c37aa027f.
 The final handoff changes no qualified product source. The observed
-current-revision-jump focus loss is the next concrete task for the active goal.
+current-revision-jump focus loss is qualified in the following batch.
 
-**Approve** the inspected pagination and revision-selection changes; no HIGH
-finding remains. One MEDIUM current-revision-jump focus finding remains for the
-next batch. OS IME and VoiceOver were not reviewed. The broader UI goal is active.
+**Current-revision and recovery focus qualification (2026-10-30)**
+
+Workspace owns the stable history region and the current-revision action's
+local focus handoff. It checks whether the activating button owns focus before
+the existing selection changes, then synchronously focuses that surviving named
+region. A subsequent user focus move belongs to the user; read success or refusal
+never schedules recovery. The existing PanelSection ref and global focus token
+supply the surface, without a wrapper, new navigation state, shared API or style.
+Refresh also uses the existing Button pending contract while list/catalog reads
+are pending. It becomes available when those reads settle, even if the separate
+document read remains pending, preserving the original retry policy.
+
+The preceding actual Wails counterexample and its 6,379 non-Markdown source
+inputs match this batch's original baseline, so that original launch is reused.
+The better-* review covers all six domains in the consolidated tables above;
+existing HeroUI/ZCode/Radix focus and pending-state research informs the local
+handoff, without importing another component system. The README and normally
+generated Deliverables component.js follow the source change; the other 33
+installed resources are unchanged.
+
+- All six new current-revision contract cases fail against the original: four
+  expose BODY focus loss and two expose the missing named history region.
+  Success/refusal, activating/later/outside focus and the exact read identity are
+  covered. The first native candidate then exposes Refresh's separate native
+  disabled focus loss. Its additional regression fails against that candidate.
+  The final public-client Deliverables suite passes 26 tests; the existing Panel
+  suite passes 35. The latter remains valid after the Header-only pending repair.
+- Final plugin/Web type and lint, plugin format, Web design-system, token,
+  chrome, resource, bundle and module checks pass. The normal make check-native
+  passes in 18.662 s, including Desktop Go test/vet/build and Wails production
+  building. Builds run serially. No browser suite or performance baseline runs.
+- Actual repaired English/light/Orange at 14px retains Refresh during held
+  list/read responses. Repeated Enter/Space send one list and one read request.
+  Releasing only the list makes Refresh available while the read is still held;
+  refusal retains its focus and accepted document. An explicit retry succeeds.
+  Keyboard/pointer current-revision activation focuses Revision history; success
+  or refusal keeps that entry, and the next Tab reaches the real revision picker.
+  Later Composer edits survive settlement. Files and back retain the document,
+  history page and draft; native wheel scrolling and continued input are checked.
+- Chinese/dark/Blue at 18px and reduced motion repeats the keyboard path. At
+  200%, native window zoom gives 756 × 475 CSS px; the focused history region is
+  wholly visible at [26,273,704.5,139]. Refusal keeps it focused and Tab reaches
+  the picker. Closing the main reader continues the draft to
+  “从当前版本继续阅读。 已核对焦点和失败恢复，继续对话。” ActualSize is restored.
+  The existing 1.5px focus outline measures 3.37:1 against the inspected light
+  surface and 4.09:1 against the dark surface; these two pairs are not a global
+  contrast certification.
+- The observer-free control keeps the same dark native binary and 619 assets,
+  differing only in the two HTML entries; observer-event delta is zero. It
+  repeats current-revision handoff, next Tab, pending Refresh guards and retry.
+  One later-focus refusal observation reports an unnamed native container and
+  accepts no appended text; it is inconclusive and excluded. A second held read
+  in the same process confirms Composer focus before/after list and refused-read
+  settlement, followed by directly appended text without refocusing. No launch
+  is restarted to replace that observation. Screenshots and native AX evidence
+  remain in the CUA transcript, without a screenshot-file archive claim.
+
+The isolated composition uses the generated declared ESM, InstalledComponent
+lifecycle and public client with three private read-only data/composition
+producers. It does not qualify live release acquisition/Realm admission, native
+document engines, Save/Send mutations, OS IME, VoiceOver or a 320px viewport.
+No Claude CLI or subagent is used. Native input uses CUA; the removed observer
+only read state. No Runtime, command, wire or persisted-data migration is needed.
+
+Four native launches are retired. The exact bundle is unregistered and listener
+closed; eight new checkout output/cache roots and three private profiles are
+removed, and all four original files/modes restored. Independent checks preserve
+6,379 qualified inputs, 34 resources, 45 read-only references, three instruction
+files, 21 output and five profile-absence baselines. The installed toolchain and
+primary parallel checkout are preserved. Publication and private-root retirement
+are recorded after the ordinary main push.
+
+**Approve** the inspected pagination, revision-selection and focus repairs; no
+HIGH or MEDIUM finding remains in that qualified scope. A LOW unread-target
+label remains: when its metadata has not been accepted, the actual 18px narrow
+Dock renders the full 64-character identity over three lines. The next batch
+should present that exact identity compactly, preserving canonical selection
+and truthful unknown state. OS IME and VoiceOver remain unreviewed; the broader
+UI goal stays active without a claim of whole-product award-level completion.
 
 ## Shortcut recording and activation
 

@@ -739,6 +739,42 @@ it.each([
   },
 );
 
+it("keeps refresh focus while the overview rereads and preserves later focus through a refused revision read", async () => {
+  const fixture = await rig();
+  fixture.ui.render(<Deliverables context={fixture.context()} />);
+  fireEvent.click(await screen.findByRole("button", { name: /Quarterly report/ }));
+  await screen.findByText("Current native revision");
+  const refresh = screen.getByRole<HTMLButtonElement>("button", { name: "Refresh" });
+  const list = fixture.hold("list:");
+  const read = fixture.hold(doc1);
+  act(() => refresh.focus());
+  fireEvent.click(refresh);
+  await list.arrived;
+  await read.arrived;
+  expect(refresh.matches(":disabled")).toBe(false);
+  expect(refresh.getAttribute("aria-busy")).toBe("true");
+  expect(document.activeElement).toBe(refresh);
+  const calls = () => fixture.calls.filter((call) => call.method === METHODS.list).length;
+  const count = calls();
+  fireEvent.click(refresh);
+  fireEvent.keyDown(refresh, { key: "Enter" });
+  fireEvent.keyDown(refresh, { key: " " });
+  fireEvent.keyUp(refresh, { key: " " });
+  expect(calls()).toBe(count);
+  await act(async () => list.release());
+  await waitFor(() => expect(refresh.getAttribute("aria-busy")).not.toBe("true"));
+  expect(document.activeElement).toBe(refresh);
+  expect(refresh.matches(":disabled")).toBe(false);
+  expect(refresh.getAttribute("aria-disabled")).not.toBe("true");
+  const search = screen.getByRole("searchbox", { name: "Search this page of titles" });
+  act(() => search.focus());
+  fixture.failReads(true);
+  await act(async () => read.release());
+  await screen.findByText(/fixture acknowledgement unavailable/);
+  expect(document.activeElement).toBe(search);
+  expect(fixture.calls.filter((call) => call.key !== null)).toHaveLength(0);
+});
+
 it("retains a history page only for its document and rejects its late response after switching", async () => {
   const fixture = await rig();
   fixture.paginate("history", false);
@@ -823,3 +859,52 @@ it("keeps the selected revision recognizable and selectable across history pages
   expect(screen.queryByRole("option", { name: historicalLabel })).toBeNull();
   expect(fixture.calls.filter((call) => call.key !== null)).toHaveLength(0);
 });
+
+it.each([
+  { fail: false, focus: "origin" },
+  { fail: false, focus: "later" },
+  { fail: false, focus: "outside" },
+  { fail: true, focus: "origin" },
+  { fail: true, focus: "later" },
+  { fail: true, focus: "outside" },
+] as const)(
+  "keeps a local reading entry when opening the current revision (failure=$fail, focus=$focus)",
+  async ({ fail, focus }) => {
+    const fixture = await rig();
+    fixture.paginate("history", false);
+    fixture.ui.render(<Deliverables context={fixture.context()} />);
+    fireEvent.click(await screen.findByRole("button", { name: /Quarterly report/ }));
+    const pager = within(await screen.findByRole("group", { name: "Revision history pages" }));
+    fireEvent.click(pager.getByRole("button", { name: "Next" }));
+    await waitFor(() =>
+      expect(pager.getByRole("button", { name: "Previous" }).getAttribute("aria-disabled")).toBe(
+        "false",
+      ),
+    );
+    await chooseOption("Choose exact revision", /eeeeeeeeeeee/);
+    await screen.findByText("Historical native revision");
+    const jump = screen.getByRole<HTMLButtonElement>("button", { name: "Open current revision" });
+    const select = screen.getByRole("combobox", { name: "Choose exact revision" });
+    const entry = select.closest("section")!;
+    const search = screen.getByRole("searchbox", { name: "Search this page of titles" });
+    fixture.failReads(fail);
+    const held = fixture.hold(doc1);
+    act(() => (focus === "outside" ? search : jump).focus());
+    fireEvent.click(jump);
+    await held.arrived;
+    expect(document.activeElement).toBe(focus === "outside" ? search : entry);
+    expect(screen.getByRole("region", { name: "Revision history" })).toBe(entry);
+    expect(entry.tabIndex).toBe(-1);
+    if (focus === "later") act(() => search.focus());
+    await act(async () => held.release());
+    await waitFor(() => expect(screen.queryByText("Reading…")).toBeNull());
+    expect(document.activeElement).toBe(focus === "origin" ? entry : search);
+    expect(Boolean(screen.queryByText("Current native revision"))).toBe(!fail);
+    expect(Boolean(screen.queryByText(/fixture acknowledgement unavailable/))).toBe(fail);
+    expect(fixture.calls.filter((call) => call.method === METHODS.read).at(-1)?.input).toEqual({
+      id: doc1,
+      revision: rev1,
+    });
+    expect(fixture.calls.filter((call) => call.key !== null)).toHaveLength(0);
+  },
+);
