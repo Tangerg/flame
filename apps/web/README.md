@@ -305,6 +305,13 @@ Escape restores the original action; programmatic navigation keeps its existing
 presentation policy. Diagnostics still opens the catalog when no unique renderer
 is admitted.
 
+Full-width workspace materials retain the same Browse panels picker as the
+Dock. Choosing a different material preserves full-width presentation and captures
+the actual trigger through Workspace navigation's existing inspection owner.
+Back restores the retained source and its trigger; selecting the current material
+only closes the picker. Its delayed completion respects later outside focus.
+Settings, unavailable views and the catalog retain their separate task headers.
+
 Image galleries keep the complete captured description in a named, keyboard
 scroll region. The header takes its natural height, and long descriptions stay
 bounded while the existing image viewport fits the remaining space. Selection

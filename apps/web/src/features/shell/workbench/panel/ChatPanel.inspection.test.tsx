@@ -321,6 +321,92 @@ it("hands focus from a removed full-width trigger to the material and back to th
   expect(document.activeElement).toBe(screen.getByRole("region", { name: "Conversation" }));
 });
 
+describe("full-width material picker", () => {
+  it.each([700, 1200])(
+    "switches material and returns to its full-width source at %i px",
+    async (width) => {
+      vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(width);
+      openWorkspaceView(testClient.workspace.access, "subagents");
+      testClient.render(<ChatPanel onSend={() => true} />);
+      const evidence = screen.getByRole("button", { name: "Evidence 0" });
+      fireEvent.click(evidence);
+      const browse = screen.getByRole("button", { name: "Browse panels" });
+      act(() => browse.focus());
+      fireEvent.click(browse);
+      const search = await screen.findByRole("combobox", { name: "Find a panel…" });
+      fireEvent.change(search, { target: { value: "Files" } });
+      fireEvent.click(screen.getByRole("option", { name: "Files" }));
+      await vi.waitFor(() => {
+        expect(testClient.navigation.get().view).toBe("file");
+        expect(screen.queryByRole("combobox", { name: "Find a panel…" })).toBeNull();
+        expect(screen.getByRole("region", { name: "Files" }).contains(document.activeElement)).toBe(
+          true,
+        );
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Back to Subagents" }));
+      expect(testClient.navigation.get().view).toBe("subagents");
+      expect(screen.getByRole("button", { name: "Evidence 1" })).toBe(evidence);
+      expect(document.activeElement).toBe(browse);
+      fireEvent.click(screen.getByRole("button", { name: "Close" }));
+      expect(screen.getByLabelText("Composer draft")).toHaveProperty("value", INITIAL_DRAFT);
+    },
+  );
+
+  it("closes a current-material selection without creating a return to itself", async () => {
+    openWorkspaceView(testClient.workspace.access, "file");
+    testClient.render(<ChatPanel onSend={() => true} />);
+    const browse = screen.getByRole("button", { name: "Browse panels" });
+    act(() => browse.focus());
+    fireEvent.click(browse);
+    await screen.findByRole("combobox", { name: "Find a panel…" });
+    fireEvent.click(screen.getByRole("option", { name: "Files" }));
+    await vi.waitFor(() =>
+      expect(screen.queryByRole("combobox", { name: "Find a panel…" })).toBeNull(),
+    );
+    expect(testClient.navigation.get().view).toBe("file");
+    expect(screen.queryByRole("button", { name: "Back to Files" })).toBeNull();
+    expect(document.activeElement).toBe(browse);
+  });
+
+  it("preserves later focus after selecting the current material", async () => {
+    openWorkspaceView(testClient.workspace.access, "file");
+    testClient.render(
+      <>
+        <ChatPanel onSend={() => true} />
+        <button>Later control</button>
+      </>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Browse panels" }));
+    await screen.findByRole("combobox", { name: "Find a panel…" });
+    fireEvent.click(screen.getByRole("option", { name: "Files" }));
+    const later = screen.getByRole("button", { name: "Later control" });
+    act(() => later.focus());
+    await vi.waitFor(() =>
+      expect(screen.queryByRole("combobox", { name: "Find a panel…" })).toBeNull(),
+    );
+    await drainBrowserTasks();
+    expect(document.activeElement).toBe(later);
+    expect(testClient.navigation.get().view).toBe("file");
+  });
+
+  it("contains picker Escape without leaving its full-width material", async () => {
+    openWorkspaceView(testClient.workspace.access, "file");
+    testClient.render(<ChatPanel onSend={() => true} />);
+    const browse = screen.getByRole("button", { name: "Browse panels" });
+    act(() => browse.focus());
+    fireEvent.click(browse);
+    const search = await screen.findByRole("combobox", { name: "Find a panel…" });
+    fireEvent.keyDown(search, { key: "Escape" });
+    await vi.waitFor(() =>
+      expect(screen.queryByRole("combobox", { name: "Find a panel…" })).toBeNull(),
+    );
+    expect(testClient.navigation.get().view).toBe("file");
+    expect(document.activeElement).toBe(browse);
+    expect(screen.getByRole("button", { name: "File controls" })).toBeTruthy();
+  });
+});
+
 it("returns focus from a removed main header to the visible Dock", () => {
   openWorkspaceViewInDock(testClient.workspace.access, "file");
   openWorkspaceView(testClient.workspace.access, "file");

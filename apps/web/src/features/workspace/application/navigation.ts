@@ -127,8 +127,12 @@ export function selectWorkspaceChat(
   workspaceAccess.navigation.selectChat(presentation);
 }
 
-export function openWorkspaceView(workspaceAccess: WorkspaceAccess, id: string): void {
-  workspaceAccess.navigation.openView(id);
+export function openWorkspaceView(
+  workspaceAccess: WorkspaceAccess,
+  id: string,
+  origin?: HTMLElement,
+): void {
+  workspaceAccess.navigation.openView(id, origin);
 }
 
 export function openWorkspaceViewInDock(

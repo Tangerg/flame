@@ -33,6 +33,7 @@ import {
   closeWorkspaceDockView,
   closeWorkspaceView,
   collapseWorkspaceDock,
+  openWorkspaceView,
   openWorkspaceViewInDock,
   reorderWorkspaceDockView,
   selectWorkspaceDockView,
@@ -99,17 +100,17 @@ function useDockCatalogGroups(
   }));
 }
 
-function AddDockViewPicker({
+function WorkspaceViewPicker({
   groups,
   openViewIds,
   activeViewId,
+  onSelect,
 }: {
   groups: ContextDockDestinationGroup[];
   openViewIds: ReadonlySet<string>;
   activeViewId: string;
+  onSelect: (viewId: string, origin?: HTMLElement) => void;
 }) {
-  const workspaceAccess = useWorkspace();
-
   const t = useT();
   const pickerGroups = useDockCatalogGroups(groups, openViewIds);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -132,9 +133,22 @@ function AddDockViewPicker({
           className={stylex.props(sh.toEnd).className}
         />
       }
-      onSelect={(item) =>
-        openWorkspaceViewInDock(workspaceAccess, item.id, triggerRef.current ?? undefined)
-      }
+      onSelect={(item) => {
+        if (item.id === activeViewId) {
+          const trigger = triggerRef.current;
+          const active = trigger?.ownerDocument.activeElement;
+          if (
+            trigger?.isConnected &&
+            (!active ||
+              active === trigger.ownerDocument.body ||
+              active === trigger.ownerDocument.documentElement)
+          ) {
+            trigger.focus({ preventScroll: true });
+          }
+          return;
+        }
+        onSelect(item.id, triggerRef.current ?? undefined);
+      }}
     />
   );
 }
@@ -190,10 +204,11 @@ function DockHeader({
           moveRightLabel: t("dock.tabs.moveRight"),
         }}
       />
-      <AddDockViewPicker
+      <WorkspaceViewPicker
         groups={groups}
         openViewIds={openViewIds}
         activeViewId={tabs.find((tab) => tab.active)?.id ?? WORKSPACE_DOCK_CATALOG}
+        onSelect={openWorkspaceViewInDock.bind(null, workspaceAccess)}
       />
       <IconButton
         icon={iconGlyph("maximize")}
@@ -325,6 +340,7 @@ export function ChatPanel({ onSend, ref }: Props) {
     };
   });
   const openViewIds = new Set(ownedDockViewIds);
+  if (activeMainView !== null) openViewIds.add(activeMainView);
   const presentedMain = fullPaneViewId !== null;
   const mountedViewIds = new Set(ownedDockViewIds);
   if (activeMainView !== null) mountedViewIds.add(activeMainView);
@@ -358,7 +374,18 @@ export function ChatPanel({ onSend, ref }: Props) {
               : undefined
           }
           onKeyDown={inspectedFullPane ? onMaterialKeyDown : undefined}
-        />
+        >
+          {hasDockOwner &&
+            fullPaneViewId !== WORKSPACE_DOCK_CATALOG &&
+            viewsById.get(fullPaneViewId)?.dock !== undefined && (
+              <WorkspaceViewPicker
+                groups={catalog}
+                openViewIds={openViewIds}
+                activeViewId={fullPaneViewId}
+                onSelect={openWorkspaceView.bind(null, workspaceAccess)}
+              />
+            )}
+        </WorkspaceWindowHeader>
       )}
       <AgentDockRow
         ref={dockRowRef}

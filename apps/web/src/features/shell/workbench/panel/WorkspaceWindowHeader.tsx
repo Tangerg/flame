@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { type KeyboardEventHandler } from "react";
+import { type KeyboardEventHandler, type ReactNode } from "react";
 import { IconButton, vocab } from "@flame/ui";
 import { space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 import { useT } from "@/lib/i18n/index";
@@ -21,11 +21,13 @@ export function WorkspaceWindowHeader({
   exit,
   onOpenInDock,
   onKeyDown,
+  children,
 }: {
   view: Pick<WorkspaceViewSpec, "title" | "icon" | "dock"> | undefined;
   exit: WorkspaceWindowExit;
   onOpenInDock?: () => void;
   onKeyDown?: KeyboardEventHandler<HTMLDivElement>;
+  children?: ReactNode;
 }) {
   const t = useT();
   const title = t(view ? view.title : "workspace.view.unavailable.title");
@@ -40,6 +42,7 @@ export function WorkspaceWindowHeader({
         {title}
       </span>
       <div {...stylex.props(styles.actions)}>
+        {children}
         {view?.dock !== undefined && onOpenInDock && (
           <IconButton
             icon={iconGlyph("open")}

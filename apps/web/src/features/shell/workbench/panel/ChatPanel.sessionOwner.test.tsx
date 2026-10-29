@@ -44,6 +44,7 @@ vi.mock("@/features/workspace/public/navigation", () => ({
   closeWorkspaceDockView: vi.fn(),
   closeWorkspaceView: vi.fn(),
   collapseWorkspaceDock: vi.fn(),
+  openWorkspaceView: vi.fn(),
   openWorkspaceViewInDock: vi.fn(),
   reorderWorkspaceDockView: vi.fn(),
   selectWorkspaceDockView: vi.fn(),

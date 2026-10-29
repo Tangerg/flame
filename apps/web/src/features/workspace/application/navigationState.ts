@@ -71,7 +71,7 @@ export interface WorkspaceNavigationPort {
   useDockWidth(): WorkspaceOptionalColumnWidth;
   toggleSidebar(): void;
   selectChat(presentation?: WorkspaceChatPresentation): void;
-  openView(id: string): void;
+  openView(id: string, origin?: HTMLElement): void;
   openViewInDock(id: string, origin?: HTMLElement): void;
   selectDockView(id: string): void;
   closeDockView(id: string): void;

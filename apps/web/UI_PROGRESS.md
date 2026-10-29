@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Current batch continues from main `679f39230`, which publishes shared editor pending dismissal. Package configuration now keeps readable local validation with its edit rather than command feedback; see **Current configuration correction and feedback scope** under **Plugin installation and edit recovery**. Final scoped tests, native light/dark/18 px/200% tasks and the observer-free control pass. Original drafts, cancellation, known command refusal, related-file return and continued editing are qualified; resource retirement is complete. The publication fetch finds zero incoming commits and merging main reports already up to date. Next inspect material switching while the Dock is collapsed at large zoom. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
+Current batch continues from main `7d359a2cc`, which publishes package configuration correction and feedback scope. Full-width workspace materials now retain Browse panels and a source-aware return without changing zoom; see **Full-width material switching** under **Global Composer focus and retained material**. All 142 scoped tests, native light/dark/18 px/200% tasks and the observer-free control pass; resource retirement is complete. The publication fetch finds zero incoming commits and merging main reports already up to date. Next trace the native picker option-name discrepancy against its shared combobox semantics before deciding whether another repair is warranted. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -84,8 +84,10 @@ qualifies shared pending dismissal, known rejection, retained drafts and
 continued editing after file return. Its publication fetch finds zero incoming
 commits at `353cfd86e`; merging reports already up to date. The shared
 editor repair is published as `679f39230`. Package configuration correction and
-feedback scope now qualify correction, cancellation, known refusal and file
-return, including the observer-free native control.
+feedback scope are published as `7d359a2cc` and qualify correction, cancellation,
+known refusal and file return, including the observer-free native control.
+Full-width material switching now qualifies direct selection, retained source
+return, nested picker Escape and continued drafting without changing zoom.
 See **Goal save
 feedback and pending dismissal** and **Computer console
 editing and operation return**. Preserve the
@@ -6379,6 +6381,112 @@ Flame's actual navigation/history, registered input target and retained-view
 lifetimes supply the implementation contracts. Existing Base UI modal semantics
 and better-series focus/layout guidance preserve bounded tasks, source returns,
 typography, semantic colors and the approved visual system.
+
+### Full-width material switching
+
+At frozen main `7d359a2cc2c885488f8bda59484a513db87f500a`, actual Wails
+EN/light/14 px/Orange reproduces a missing task entry. Native window adjustment,
+sidebar collapse and twenty Zoom In actions reach **200% / 756 × 475 CSS px**.
+The formal full-width entry opens Workspace diff, but its header only offers
+Close; the hidden Dock owns both the material tabs and Browse panels. Choosing
+Files requires leaving that reading presentation or changing zoom.
+
+`ChatPanel` now composes the existing `WorkspaceViewPicker` into
+`WorkspaceWindowHeader` for registered Dock materials. The same picker serves
+both hosts with a required selection action; the header accepts ordinary children
+instead of owning navigation or another mode flag. Workspace navigation accepts
+the actual origin and captures it through the existing inspection owner before
+the main-view transition. Selection stays full width at both narrow and wide
+sizes. Back restores the same source instance and trigger. Choosing the current
+material only closes the picker, with idle-root focus restoration that respects
+a later outside control. No new history owner, stored state, listener, timer,
+theme token, Runtime operation or data migration is introduced. Settings,
+unavailable views and the catalog keep their existing task headers.
+
+Read-only ZCode `WorkspaceShellLayout.tsx`, `AnimatedSidePanePanel.tsx` and
+`WorkspaceSidePaneToggleButton.tsx` show the same new-tab action retained in
+mobile-overlay composition and moved outside an overflowing strip. This informs
+action availability when space changes; its React state and pane APIs are not
+copied. Existing HeroUI composition and Base UI popup/return contracts supply the
+shared controls. The React composition guide informs the static children slot.
+Prior ChatGPT, Radix and Ace research retains its stated scope; static references
+do not establish Flame keyboard behavior. Root instructions, Web architecture
+and native/visual READMEs preserve Wails **v3.0.0-beta.34** and existing ownership.
+
+| Domain        | Evidence inspected                                                                       | Result and boundary                                                                               |
+| ------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Accessibility | Native selection, four Tabs to file body, picker Escape, source return, later-focus test | One MEDIUM missing-entry finding repaired. VoiceOver audio and OS IME are not newly qualified.    |
+| Layout        | Native window adjustment, 756 × 475 at 200%; deterministic 700/1200 px main presentation | Entry and return stay reachable without zoom changes. A fresh 320 px Dock and RTL are not run.    |
+| Writing       | Existing EN/ZH Browse, search, clear, no-result, source-return and Close names           | Existing task names retained; no slogan, helper paragraph or new dictionary string.               |
+| Typography    | Native 14/18 px headers, search, code identity and reader                                | Existing ladder, 500-weight controls and 18.9/24.3 px control line heights retained.              |
+| Colors        | Neutral light/Orange and dark/custom-blue scenes, selected rows and keyboard reader      | Existing surfaces and visible focus perimeters retained. No new contrast-ratio claim is made.     |
+| UI            | Shared 28 × 28 px header action, popup, full-motion light and motion-off dark            | Existing icon, spacing, radius and popup motion retain their owners. No new decorative treatment. |
+
+| Severity         | Domain | Location                                           | Before                                                       | After                                                        | Why                                                       |
+| ---------------- | ------ | -------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | --------------------------------------------------------- |
+| MEDIUM, repaired | Layout | `src/features/shell/workbench/panel/ChatPanel.tsx` | Full-width material hides the only material-selection entry. | The same Browse panels picker remains in its visible header. | The user can inspect related objects at the current zoom. |
+
+Actual native qualification uses the production workspace and installed views
+with canonical deterministic providers. CUA supplies every input; the passive
+observer only reads rendered state. No script changes a draft, route, store or
+focus, and no live Runtime command is admitted.
+
+- **Original:** full-width Diff lacks Browse panels at 200%.
+- **EN/light/14 px/Orange:** full-width Diff → Browse → search Files → keyboard
+  selection retains full width and exposes Back to Workspace diff. Four Tabs
+  reach the actual file body. Empty-query picker Escape leaves Files open;
+  selecting Files again retains the original return. Back restores the same Diff
+  read timestamp and Browse focus. Close and continued input retain the exact
+  `Keep this draft while switching materials. Continued after reviewing Files.`
+- **ZH/dark/18 px/custom blue/motion off:** native keyboard entry opens Browse,
+  a no-result query exposes the existing correction, and Tab/Return on Clear
+  restores search focus. Files selection, body End, wheel, picker Escape,
+  keyboard Back and Close retain `材料切换后继续这份草稿。 回来继续。`.
+- **Observer-free control:** all **617** assets match the measured build except
+  its two HTML entry files, which remove the observer. The same dark/native/200%
+  task returns through Diff and continues `无观察器复核保留草稿。 继续。`.
+  The private observer receives zero additional events or requests.
+
+The initial light launch is interrupted by native changed-application detection;
+after a native Force Reload, the complete measured task above passes. That
+interruption and an initial dark URL using unregistered `zh-CN` are excluded from
+acceptance; the corrected `zh` instance completes the task. Native AX reports
+only part of the unfiltered option text; actual screenshots show the complete
+picker. This batch does not claim that discrepancy is a product resource failure
+or a qualified screen-reader result.
+
+The unchanged focused baseline passes **3 files / 137 tests**. All **5** new
+regressions fail against the original source because Browse is absent. The first
+candidate has 139 passes and 3 failures from an existing closed navigation mock
+missing the new public export; extending that mock fixes the test boundary.
+The final focused run passes **3 files / 142 tests**, covering inspection,
+Session-owned continuity and Workspace navigation. Web typecheck, lint, formatting,
+circular/context/layer, design-system/token/chrome/locale, resource reproduction,
+bundle/module checks and `make check-native` pass serially. All **32** installed
+resources retain their hashes. Full Web/Runtime suites, browser suites,
+performance benchmarks, Claude CLI and subagents do not run. Wide native
+full-width switching, OS IME, VoiceOver and other-platform GUIs are not newly
+qualified; the wide presentation contract is covered by the 1200 px regression.
+
+All **5** recorded native generations are stopped; the bundle is unregistered
+and its loopback port is closed. Cleanup removes **7** new checkout output/cache
+roots and **3** owned profile paths, restores **4** original files and modes, and
+passes all **18** output and **5** profile baselines. All **6,269** qualified
+non-Markdown inputs, **32** resources, **9** read-only references and **3**
+instruction files pass preservation. The existing Web Vite-temp directory remains
+empty. The private root `flame-narrow-material-7TIPVW` is absent. The
+round-tripped in-memory archive retains **76** UTF-8 records, **9,939,427** raw
+bytes and **1,103,079** gzip bytes; SHA-256
+`9cb6824f0bccf8e01c36053d3a4fa1f027d45adab0576e475fa8629d4f8655fc`.
+Primary-checkout parallel work remains untouched.
+
+Verdict: **Approve** for the inspected full-width material-selection and return
+task. Typography, whitespace, hierarchy, color, motion, interaction, responsive
+and originality checks retain the established design in these scenes. This does
+not establish whole-product award-level acceptance. Next trace the native picker
+option-name discrepancy against its actual shared combobox semantics before
+deciding whether there is another actionable defect. The whole UI goal remains
+active and unfinished.
 
 ### Stop and command availability preserve authoring
 

@@ -132,7 +132,10 @@ export function createWorkspaceNavigation(
     },
     toggleSidebar: () => useShellLayoutStore.getState().toggleSidebar(),
     selectChat,
-    openView: (id) => navigation.go({ view: id }),
+    openView: (id, origin) => {
+      inspectFrom(id, origin);
+      navigation.go({ view: id });
+    },
     openViewInDock: (id, origin) => showDockView(id, "alone", origin),
     selectDockView: (id) => {
       if (useContextDockStore.getState().dockViewIds.includes(id)) showDockView(id, "beside");
