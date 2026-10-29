@@ -223,6 +223,39 @@ func TestFeatureNullableObjectPreservesRequiredProperties(t *testing.T) {
 	}
 }
 
+func TestFeatureNumericTypesKeepExactJSONRepresentationAcrossSchemaForms(t *testing.T) {
+	for _, kind := range []string{"integer", "number"} {
+		for _, sample := range []struct{ schema, want string }{
+			{`{"type":"` + kind + `"}`, "JSONNumber"},
+			{`{"type":["` + kind + `","null"]}`, "JSONNumber | null"},
+			{`{"type":["` + kind + `","string"]}`, "JSONNumber | string"},
+			{`{"anyOf":[{"type":"` + kind + `"},{"type":"null"}]}`, "JSONNumber | null"},
+			{`{"oneOf":[{"type":"` + kind + `"},{"type":"null"}]}`, "JSONNumber | null"},
+		} {
+			t.Run(sample.schema, func(t *testing.T) {
+				node, err := featureNode([]byte(sample.schema))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if got := NewTypeScript(nil).TypeOf(node); got != sample.want {
+					t.Fatalf("numeric projection: %s, want %s", got, sample.want)
+				}
+				descriptor, err := featureDescriptor(portable.MethodDescriptor{Name: "exact.read", Kind: portable.Query, Target: "installation", Description: "Read an exact number.", Input: []byte(`{"type":"object"}`), Output: []byte(sample.schema)})
+				if err != nil {
+					t.Fatal(err)
+				}
+				generated, err := buildFeature(descriptor)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !strings.Contains(generated.typescript, `import type { JSONNumber } from "@qimu/sdk/json";`) {
+					t.Fatalf("numeric projection lacks its type import: %s", generated.typescript)
+				}
+			})
+		}
+	}
+}
+
 func TestFeatureGenerationRefusesFormerBareMethodArray(t *testing.T) {
 	if _, err := buildFeature([]byte(`[]`)); err == nil {
 		t.Fatal("former generator input was accepted")
