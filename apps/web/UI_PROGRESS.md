@@ -118,10 +118,14 @@ feedback and pending dismissal** and **Computer console
 editing and operation return**. Preserve the
 separate exact-Run and Skills object contract limits already recorded below.
 Nested source readers now use the transcript's measured reading height and the
-shared frame's actual caption minimum. Native End, compact-space reading,
-selection, preview return and continued drafts are qualified under **Nested
-source sizing within the reading frame**. File-preview code actions still need
-their existing locale applied; that separately observed follow-up remains open.
+shared frame's actual caption minimum, published as `0d384cba3`. Native End,
+compact-space reading, selection, preview return and continued drafts are
+qualified under **Nested source sizing within the reading frame**. File,
+trajectory and diagnostic code actions now use their existing component locale,
+published as `58cce6221`; see **Captured code reader action locale** for the
+70-test and native qualification. Next trace the observed high-zoom Panel caption
+and reading budget before selecting another repair. The separate native
+reverse-Tab finding remains open.
 The user resumed the paused goal.
 Completed batches are verified, explicitly committed and pushed to main under the
 goal publication policy. Preserve parallel work in the primary checkout. Do not
@@ -16683,6 +16687,12 @@ interval fetch finds zero incoming main commits; no redundant merge is needed.
 The localized captured-reader actions are accepted. Continue by tracing the
 observed high-zoom Panel caption/read-budget behavior; the separate native
 reverse-Tab finding also remains open. The broad UI goal stays active.
+
+Delivery: implementation `58cce62212110a96226cfc9cf7ae1f68d344c149` is
+pushed to remote `main`. Fresh `ls-remote` matches, divergence is zero and the
+owned checkout is clean. Normal staged formatting/lint and commit-message hooks
+pass. Post-hook preservation repeats the same source/resource/reference and
+retirement checks above. This in-place delivery receipt changes no product input.
 
 ### Settings pane error identity
 
