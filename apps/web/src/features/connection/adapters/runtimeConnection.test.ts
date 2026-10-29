@@ -1,4 +1,3 @@
-import { IMAGE_FILENAME_STEM } from "@/app/product";
 import { createRuntimeMutationJournalStorage } from "@/features/connection/adapters/runtimeMutationJournalStorage";
 import { createStorage } from "@/extensions/storage";
 import { runtimeRequestMeta } from "@/app/runtimeProtocol";
@@ -16,14 +15,14 @@ function localBootstrap(localToken: string): ClientBootstrap {
 }
 
 function desktop(bootstrap: ClientHost["bootstrap"]): ClientHost {
-  return { ...createBrowserHost(IMAGE_FILENAME_STEM), kind: "desktop", bootstrap };
+  return { ...createBrowserHost(), kind: "desktop", bootstrap };
 }
 
 let connection: ReturnType<typeof createRuntimeConnection>;
 
 beforeEach(async () => {
   connection = createRuntimeConnection(
-    createBrowserHost(IMAGE_FILENAME_STEM),
+    createBrowserHost(),
     runtimeRequestMeta,
     createRuntimeMutationJournalStorage(createStorage("test.runtime")),
   );
@@ -44,7 +43,7 @@ describe("Runtime connection ownership", () => {
 
   it("requires each owner to finish its own bootstrap", async () => {
     const successor = createRuntimeConnection(
-      createBrowserHost(IMAGE_FILENAME_STEM),
+      createBrowserHost(),
       runtimeRequestMeta,
       createRuntimeMutationJournalStorage(createStorage("test.runtime")),
     );
@@ -75,7 +74,7 @@ describe("Runtime connection ownership", () => {
 
   it("never closes another renderer's connection", async () => {
     const successor = createRuntimeConnection(
-      createBrowserHost(IMAGE_FILENAME_STEM),
+      createBrowserHost(),
       runtimeRequestMeta,
       createRuntimeMutationJournalStorage(createStorage("test.runtime")),
     );

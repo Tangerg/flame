@@ -1,4 +1,5 @@
 import { IMAGE_FILENAME_STEM } from "@/app/product";
+import { createImageExport } from "@/foundation/imageExport";
 import { type VisualClient } from "./client";
 import { notifyFrom } from "@/features/notifications/public/notifications";
 import { InstalledComponent } from "@/features/plugins/ui/InstalledComponent";
@@ -507,7 +508,7 @@ export async function installVisualWorkspaceFixture(
     fileView,
     workbenchSettings(visual.workspace.access),
     appearanceSettings,
-    createBrandPlugin(createBrowserHost(IMAGE_FILENAME_STEM).saveImage),
+    createBrandPlugin(createImageExport(IMAGE_FILENAME_STEM, createBrowserHost().saveFile)),
     createProvidersPlugin(runtimeClient),
     shortcutsSettings(visual.workspace.access),
     approvalsSettings,

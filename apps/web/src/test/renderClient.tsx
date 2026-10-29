@@ -29,7 +29,8 @@ import { createWorkspace } from "@/features/workspace/adapters/workspace";
 import { WorkspaceProvider } from "@/features/workspace/public/workspace";
 import { createWorkingDirectoryPicker } from "@/features/navigation/adapters/workingDirectorySelection";
 import { WorkingDirectoryProvider } from "@/features/navigation/public/workingDirectory";
-import { ImageSaveProvider, type ImageSave } from "@/features/chat/public/imageSave";
+import { ImageSaveProvider } from "@/features/chat/public/imageSave";
+import { createImageExport, type ImageExport } from "@/foundation/imageExport";
 import { createBrowserHost } from "@/platform/browserHost";
 
 export function createTestClient(
@@ -39,7 +40,7 @@ export function createTestClient(
     host?: ClientHost;
     start?: boolean;
     endpoint?: string;
-    saveImage?: ImageSave;
+    saveImage?: ImageExport;
   } = {},
 ) {
   const theme = createTheme(document, window);
@@ -103,7 +104,8 @@ export function createTestClient(
     scope,
   );
   if (options.start !== false) composer.start();
-  const host = options.host ?? createBrowserHost(IMAGE_FILENAME_STEM);
+  const host = options.host ?? createBrowserHost();
+  const saveImage = options.saveImage ?? createImageExport(IMAGE_FILENAME_STEM, host.saveFile);
   const workspace = createWorkspace(client, navigation, host, () => false, agent.access, runtime);
   workspace.dock.activate(runtime.endpoint.currentRuntimeEndpoint());
   const directory = createWorkingDirectoryPicker(
@@ -129,7 +131,7 @@ export function createTestClient(
               <ComposerProvider value={composer.access}>
                 <WorkspaceProvider value={workspace.access}>
                   <WorkingDirectoryProvider value={directory.access}>
-                    <ImageSaveProvider saveImage={options.saveImage ?? host.saveImage}>
+                    <ImageSaveProvider saveImage={saveImage}>
                       <NotificationProvider value={notifications.access}>
                         <InstalledPluginsProvider value={installedPlugins.access}>
                           {children}

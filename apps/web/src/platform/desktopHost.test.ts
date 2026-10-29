@@ -1,4 +1,3 @@
-import { IMAGE_FILENAME_STEM } from "@/app/product";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { RpcTransportError } from "@flame/runtime-client";
 import { createClientHost } from "@/platform/clientHost";
@@ -14,8 +13,6 @@ vi.mock("@wailsio/runtime", () => ({
 const BOOTSTRAP = DesktopMethods.Bootstrap.name;
 
 const CHOOSE_WORKING_DIRECTORY = DesktopMethods.ChooseWorkingDirectory.name;
-
-const SAVE_IMAGE = DesktopMethods.SaveImage.name;
 
 const SAVE_FILE = DesktopMethods.SaveFile.name;
 
@@ -36,7 +33,6 @@ function hostBinding(
       localRuntime: { endpoint: "http://127.0.0.1:17171" },
     }),
     [CHOOSE_WORKING_DIRECTORY]: async () => "/tmp/project",
-    [SAVE_IMAGE]: async () => true,
     [SAVE_FILE]: async () => true,
     [WINDOW_CHROME]: async () => ({
       controlsCentreY: 20,
@@ -227,24 +223,6 @@ describe("DesktopHostClient", () => {
     );
   });
 
-  it("saves inline images through the packaged host and preserves cancellation", async () => {
-    const binding = hostBinding();
-    const source = "data:image/png;base64,aW1hZ2U=";
-
-    await expect(createDesktopHostClient(binding).saveImage(source)).resolves.toBe(true);
-    expect(binding.call).toHaveBeenCalledWith(SAVE_IMAGE, source);
-
-    const cancelled = hostBinding({ [SAVE_IMAGE]: async () => false });
-    await expect(createDesktopHostClient(cancelled).saveImage(source)).resolves.toBe(false);
-  });
-
-  it("rejects malformed image-save responses", async () => {
-    const malformed = hostBinding({ [SAVE_IMAGE]: async () => "saved" });
-    await expect(
-      createDesktopHostClient(malformed).saveImage("data:image/png;base64,aW1hZ2U="),
-    ).rejects.toBeInstanceOf(RpcTransportError);
-  });
-
   it("reads the platform's window-control geometry", async () => {
     const binding = hostBinding();
     await expect(createDesktopHostClient(binding).windowChrome()).resolves.toEqual({
@@ -283,13 +261,18 @@ describe("DesktopHostClient", () => {
     const client = createDesktopHostClient(binding);
     await client.bootstrap();
     await client.chooseWorkingDirectory();
-    await client.saveImage("data:image/png;base64,aW1hZ2U=");
+    await client.saveFile({
+      filename: "image.png",
+      mime: "image/png",
+      bytes: new TextEncoder().encode("image"),
+    });
     await client.windowChrome();
     expect(binding.call.mock.calls.flat()).toEqual([
       BOOTSTRAP,
       CHOOSE_WORKING_DIRECTORY,
-      SAVE_IMAGE,
-      "data:image/png;base64,aW1hZ2U=",
+      SAVE_FILE,
+      "image.png",
+      "aW1hZ2U=",
       WINDOW_CHROME,
     ]);
   });
@@ -330,7 +313,7 @@ describe("DesktopHostClient", () => {
       wailsCall.mockResolvedValueOnce({
         localRuntime: { endpoint: "http://127.0.0.1:17171", localToken: "token" },
       });
-      const bootstrap = await createClientHost(IMAGE_FILENAME_STEM).bootstrap();
+      const bootstrap = await createClientHost().bootstrap();
       expect(bootstrap.runtime.localToken).toBe("token");
       expect(wailsCall).toHaveBeenCalledWith(BOOTSTRAP);
     });

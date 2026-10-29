@@ -1,3 +1,4 @@
+import { type FileSaveResult } from "@flame/component-sdk";
 import { ImageSaveProvider } from "@/features/chat/public/imageSave";
 import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
 import { createTestClient, type TestClient } from "@/test/renderClient";
@@ -13,7 +14,7 @@ import { MESSAGE_CONTENT_CLASS } from "@/features/chat/message/ui/messageContent
 import { MarkdownRenderer } from "@/features/chat/message/ui/markdown/MarkdownRenderer";
 import { ImageBlock } from "@/features/chat/message/ui/cards/ImageBlock";
 const mocks = vi.hoisted(() => ({
-  saveImage: vi.fn<(source: string) => Promise<boolean>>(),
+  saveImage: vi.fn<(source: string) => Promise<FileSaveResult>>(),
 }));
 
 const FIRST_PNG =
@@ -33,7 +34,7 @@ async function settle(action: () => void): Promise<void> {
   });
 }
 
-async function failLater(save: PromiseWithResolvers<boolean>): Promise<void> {
+async function failLater(save: PromiseWithResolvers<FileSaveResult>): Promise<void> {
   await act(async () => {
     save.reject(new Error("disk full"));
     await save.promise.catch(() => {});
@@ -42,8 +43,8 @@ async function failLater(save: PromiseWithResolvers<boolean>): Promise<void> {
 
 describe("ImageBlock", () => {
   it("delivers each mounted gallery's save to its own injected callback", async () => {
-    const first = vi.fn(async () => true);
-    const second = vi.fn(async () => true);
+    const first = vi.fn(async () => "saved" as const);
+    const second = vi.fn(async () => "saved" as const);
     testClient.render(
       <>
         <ImageSaveProvider saveImage={first}>
@@ -62,7 +63,7 @@ describe("ImageBlock", () => {
     await openPreview(previews[0]!);
     let dialog = screen.getByRole("dialog", { name: "Image preview" });
     await settle(() =>
-      fireEvent.click(within(dialog).getByRole("button", { name: "Download image" })),
+      fireEvent.click(within(dialog).getByRole("button", { name: "Download PNG" })),
     );
     expect(first).toHaveBeenCalledExactlyOnceWith(`data:image/png;base64,${FIRST_PNG}`);
     expect(second).not.toHaveBeenCalled();
@@ -70,7 +71,7 @@ describe("ImageBlock", () => {
     await openPreview(previews[1]!);
     dialog = screen.getByRole("dialog", { name: "Image preview" });
     await settle(() =>
-      fireEvent.click(within(dialog).getByRole("button", { name: "Download image" })),
+      fireEvent.click(within(dialog).getByRole("button", { name: "Download PNG" })),
     );
     expect(second).toHaveBeenCalledExactlyOnceWith(`data:image/gif;base64,${SECOND_GIF}`);
     expect(first).toHaveBeenCalledOnce();
@@ -78,7 +79,7 @@ describe("ImageBlock", () => {
 
   beforeEach(() => {
     mocks.saveImage.mockReset();
-    mocks.saveImage.mockResolvedValue(true);
+    mocks.saveImage.mockResolvedValue("saved");
   });
 
   it("saves the active gallery image through the packaged desktop owner", async () => {
@@ -91,7 +92,7 @@ describe("ImageBlock", () => {
 
     await openPreview(screen.getAllByRole("button", { name: "View attached image" })[0]!);
     fireEvent.click(screen.getByRole("button", { name: "Next image" }));
-    fireEvent.click(screen.getByRole("button", { name: "Download image" }));
+    fireEvent.click(screen.getByRole("button", { name: "Download PNG" }));
 
     await waitFor(() => {
       expect(mocks.saveImage).toHaveBeenCalledWith(`data:image/gif;base64,${SECOND_GIF}`);
@@ -104,7 +105,7 @@ describe("ImageBlock", () => {
 
     await openPreview(screen.getByRole("button", { name: "View attached image" }));
     const dialog = screen.getByRole("dialog", { name: "Image preview" });
-    const download = within(dialog).getByRole("button", { name: "Download image" });
+    const download = within(dialog).getByRole("button", { name: "Download PNG" });
     await settle(() => fireEvent.click(download));
 
     const alert = await within(dialog).findByRole("alert");
@@ -122,12 +123,12 @@ describe("ImageBlock", () => {
   });
 
   it("stays quiet when the save chooser is cancelled", async () => {
-    mocks.saveImage.mockResolvedValueOnce(false);
+    mocks.saveImage.mockResolvedValueOnce("cancelled");
     testClient.render(<ImageBlock mime="image/png" data={FIRST_PNG} />);
 
     await openPreview(screen.getByRole("button", { name: "View attached image" }));
     const dialog = screen.getByRole("dialog", { name: "Image preview" });
-    const download = within(dialog).getByRole("button", { name: "Download image" });
+    const download = within(dialog).getByRole("button", { name: "Download PNG" });
     await settle(() => fireEvent.click(download));
 
     expect(mocks.saveImage).toHaveBeenCalledOnce();
@@ -136,12 +137,12 @@ describe("ImageBlock", () => {
   });
 
   it("keeps a failure from a closed preview out of the reopened one", async () => {
-    const save = Promise.withResolvers<boolean>();
+    const save = Promise.withResolvers<FileSaveResult>();
     mocks.saveImage.mockReturnValueOnce(save.promise);
     testClient.render(<ImageBlock mime="image/png" data={FIRST_PNG} />);
 
     await openPreview(screen.getByRole("button", { name: "View attached image" }));
-    fireEvent.click(screen.getByRole("button", { name: "Download image" }));
+    fireEvent.click(screen.getByRole("button", { name: "Download PNG" }));
     fireEvent.keyDown(screen.getByRole("dialog", { name: "Image preview" }), { key: "Escape" });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 
@@ -151,14 +152,12 @@ describe("ImageBlock", () => {
     const dialog = screen.getByRole("dialog", { name: "Image preview" });
     expect(within(dialog).queryByRole("alert")).toBeNull();
     expect(
-      within(dialog)
-        .getByRole("button", { name: "Download image" })
-        .hasAttribute("aria-describedby"),
+      within(dialog).getByRole("button", { name: "Download PNG" }).hasAttribute("aria-describedby"),
     ).toBe(false);
   });
 
   it("names the image whose save failed after moving to another image", async () => {
-    const save = Promise.withResolvers<boolean>();
+    const save = Promise.withResolvers<FileSaveResult>();
     mocks.saveImage.mockReturnValueOnce(save.promise);
     testClient.render(
       <div className={MESSAGE_CONTENT_CLASS}>
@@ -171,7 +170,7 @@ describe("ImageBlock", () => {
     );
 
     await openPreview(screen.getByRole("button", { name: "Architecture" }));
-    fireEvent.click(screen.getByRole("button", { name: "Download image" }));
+    fireEvent.click(screen.getByRole("button", { name: "Download PNG" }));
     fireEvent.click(screen.getByRole("button", { name: "Next image" }));
     await failLater(save);
 

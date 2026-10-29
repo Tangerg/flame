@@ -1,4 +1,5 @@
 import { createElement, lazy } from "react";
+import { type ImageExport } from "@/foundation/imageExport";
 import { definePlugin } from "@/extensions/definePlugin";
 import { registerSettingsPane } from "@/features/settings/public/registerSettingsPane";
 import { BRAND_PANE } from "@/features/settings/public/paneIDs";
@@ -8,7 +9,7 @@ const BrandPane = lazy(() =>
   })),
 );
 
-export function createBrandPlugin(saveImage: (source: string) => Promise<boolean>) {
+export function createBrandPlugin(saveImage: ImageExport) {
   return definePlugin({
     name: "flame.builtin.brand",
     setup(ctx) {

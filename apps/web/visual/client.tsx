@@ -1,4 +1,5 @@
 import { IMAGE_FILENAME_STEM } from "@/app/product";
+import { createImageExport } from "@/foundation/imageExport";
 import { type ReactNode } from "react";
 import { type FlameClient } from "@flame/runtime-client";
 import { createMemoryNavigator } from "@/lib/navigation.testkit";
@@ -40,7 +41,8 @@ function useRecordedChatSession() {
 
 /** One browser fixture owns these feature instances; production has no default instance. */
 export function createVisualClient(runtimeClient: () => FlameClient) {
-  const host = createBrowserHost(IMAGE_FILENAME_STEM);
+  const host = createBrowserHost();
+  const saveImage = createImageExport(IMAGE_FILENAME_STEM, host.saveFile);
   const theme = createTheme(document, window);
   const navigation = createMemoryNavigator();
   const projection = createRuntimeConnectionProjection();
@@ -134,7 +136,7 @@ export function createVisualClient(runtimeClient: () => FlameClient) {
             <ComposerProvider value={composer.access}>
               <WorkspaceProvider value={workspace.access}>
                 <WorkingDirectoryProvider value={directory.access}>
-                  <ImageSaveProvider saveImage={host.saveImage}>
+                  <ImageSaveProvider saveImage={saveImage}>
                     <NotificationProvider value={notifications.access}>
                       <InstalledPluginsProvider value={installedPlugins.access}>
                         {children}

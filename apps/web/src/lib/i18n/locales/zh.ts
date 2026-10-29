@@ -165,7 +165,7 @@ export const zh: Record<string, string> = {
   "message.image.close": "关闭图片预览",
   "message.image.zoomIn": "放大图片",
   "message.image.zoomOut": "缩小图片",
-  "message.image.download": "下载图片",
+  "message.image.download": "下载为 PNG",
   "message.image.downloadFailed": "无法保存图片",
   "message.svg.generatedAlt": "助手生成的图片",
   "message.mermaid.enlarge": "放大图表",

@@ -168,7 +168,7 @@ export const es: Record<string, string> = {
   "message.image.close": "Cerrar vista previa de la imagen",
   "message.image.zoomIn": "Ampliar imagen",
   "message.image.zoomOut": "Reducir imagen",
-  "message.image.download": "Descargar imagen",
+  "message.image.download": "Descargar como PNG",
   "message.image.downloadFailed": "No se pudo guardar la imagen",
   "message.svg.generatedAlt": "Imagen generada por el asistente",
   "message.mermaid.enlarge": "Ampliar diagrama",

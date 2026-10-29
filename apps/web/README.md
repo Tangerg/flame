@@ -6,6 +6,14 @@ semantics; Web owns inputs, view projections, navigation and presentation.
 The [native host](../desktop/README.md) supplies macOS capabilities without owning
 another UI application.
 
+Image previews and exports share one inline-image contract. Export decodes the
+image in an inert image context and rasterizes it as PNG before calling the host's
+file-save boundary. SVG source never crosses that boundary as executable material;
+animated formats export a still frame. Browser reports download dispatch, while
+Desktop reports a completed write or cancellation. The download action names PNG
+explicitly. [SVG image contexts](https://developer.mozilla.org/en-US/docs/Web/SVG/Guides/SVG_as_an_image)
+disable scripts and external resource loading.
+
 From the repository root:
 
 ```sh

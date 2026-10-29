@@ -83,9 +83,12 @@ window generation and its client resources; the native host attaches to its conf
 `SaveFile` accepts a suggested basename and canonical base64 bytes. The native
 save panel owns the actual destination and reports completion only after the write
 finishes; cancellation remains distinct from an error. This is the single file
-save owner for text exports and binary plugin deliverables. It does not own a
-plugin's document revisions, validation or delivery decisions. The specialized
-inline-image decoder retains its existing image-saving behavior.
+save owner for image exports, text exports and binary plugin deliverables. It does
+not own a plugin's document revisions, validation or delivery decisions. Shared
+Web image export supplies rasterized PNG bytes; native code does not decode data
+URLs or select image formats. The former `SaveImage` IPC method is removed.
+Rebuild the native host and shared Web together; external image callers must
+produce PNG material and use `SaveFile`.
 
 `make check-native` stages the same Web product, runs native Go test/vet/build
 and the supported Wails build. A browser bundle alone is not native verification.

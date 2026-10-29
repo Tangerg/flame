@@ -1,3 +1,4 @@
+import { createImageExport } from "@/foundation/imageExport";
 import { IMAGE_FILENAME_STEM } from "@/app/product";
 import { createRuntimeMutationJournalStorage } from "@/features/connection/adapters/runtimeMutationJournalStorage";
 import { createStorage } from "@/extensions/storage";
@@ -46,7 +47,7 @@ const resetKernelForTest = async () => {
 import { type FlameClient } from "@flame/runtime-client";
 let connection: ReturnType<typeof createRuntimeConnection>;
 
-const host = createBrowserHost(IMAGE_FILENAME_STEM);
+const host = createBrowserHost();
 
 let builtinPlugins: ReturnType<typeof createBuiltinPlugins>;
 
@@ -62,7 +63,7 @@ beforeEach(async () => {
   finishTestClient(() => owned.dispose());
   builtinPlugins = createBuiltinPlugins(
     connection,
-    host,
+    createImageExport(IMAGE_FILENAME_STEM, host.saveFile),
     testClient.navigation,
     testClient.agent,
     testClient.composer,
@@ -144,7 +145,7 @@ describe("built-in contributions", () => {
     });
     builtinPlugins = createBuiltinPlugins(
       connection,
-      host,
+      createImageExport(IMAGE_FILENAME_STEM, host.saveFile),
       testClient.navigation,
       testClient.agent,
       testClient.composer,

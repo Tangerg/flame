@@ -26,6 +26,7 @@ import App from "@/App";
 import { createRuntimeConnection } from "@/features/connection/adapters/runtimeConnection";
 import { createBuiltinPlugins } from "@/app/builtinPlugins";
 import { createClientHost } from "@/platform/clientHost";
+import { createImageExport } from "@/foundation/imageExport";
 import { ClientRenderer } from "@/app/renderer";
 import { FAILURE_SCOPE, RootBoundary, StartupFailure } from "@/app/StartupFailure";
 import { applyWindowChrome, watchWindowChrome } from "@/app/windowChrome";
@@ -33,7 +34,8 @@ import { disposeOnHmr } from "@/lib/hmr";
 import "@/styles/markdown.css";
 import "@/styles/overlays.css";
 import "@/styles/globals.css";
-const host = createClientHost(IMAGE_FILENAME_STEM);
+const host = createClientHost();
+const saveImage = createImageExport(IMAGE_FILENAME_STEM, host.saveFile);
 const theme = createTheme(document, window);
 
 const connection = createRuntimeConnection(
@@ -89,7 +91,7 @@ const installedPlugins = createInstalledPlugins(
 );
 const plugins = createBuiltinPlugins(
   connection,
-  host,
+  saveImage,
   navigation.navigator,
   agent,
   composer,
@@ -108,7 +110,7 @@ function ApplicationContext({ children }: { children: ReactNode }) {
           <ComposerProvider value={composer.access}>
             <WorkspaceProvider value={workspace.access}>
               <WorkingDirectoryProvider value={directory.access}>
-                <ImageSaveProvider saveImage={(source) => host.saveImage(source)}>
+                <ImageSaveProvider saveImage={saveImage}>
                   <NotificationProvider value={notifications.access}>
                     <InstalledPluginsProvider value={installedPlugins.access}>
                       {children}

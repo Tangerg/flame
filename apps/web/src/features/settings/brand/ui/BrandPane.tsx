@@ -1,3 +1,4 @@
+import { type ImageExport } from "@/foundation/imageExport";
 import * as stylex from "@stylexjs/stylex";
 import { colord } from "colord";
 import { useState } from "react";
@@ -95,7 +96,7 @@ const { r, g, b } = colord(FLAME_ORANGE).toRgb();
 
 const rgb = `${r}, ${g}, ${b}`;
 
-export function BrandPane({ saveImage }: { saveImage: (source: string) => Promise<boolean> }) {
+export function BrandPane({ saveImage }: { saveImage: ImageExport }) {
   const t = useT();
   const { copied, copy } = useCopyFeedback(hex);
   const [savingId, setSavingId] = useState<string | null>(null);

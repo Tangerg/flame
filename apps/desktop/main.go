@@ -34,10 +34,6 @@ func main() {
 		dialogs: app.Dialog,
 		window:  window,
 	})
-	host.useImageSaver(wailsImageSaver{
-		dialogs: app.Dialog,
-		window:  window,
-	})
 	host.useFileSaver(wailsFileSaver{
 		dialogs: app.Dialog,
 		window:  window,

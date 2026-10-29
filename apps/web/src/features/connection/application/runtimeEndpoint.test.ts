@@ -1,4 +1,3 @@
-import { IMAGE_FILENAME_STEM } from "@/app/product";
 import { runtimeRequestMeta } from "@/app/runtimeProtocol";
 import { createBrowserHost } from "@/platform/browserHost";
 import { createDesktopHostClient } from "@/platform/desktopHost";
@@ -78,7 +77,7 @@ beforeEach(async () => {
   vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Runtime test discovery unavailable"));
   runtimeConnection = createRuntimeConnection(
     {
-      ...createBrowserHost(IMAGE_FILENAME_STEM),
+      ...createBrowserHost(),
       bootstrap: async () => ({
         runtime: { endpoint: DEFAULT_RUNTIME_ENDPOINT },
         localFilesystemEndpoint: null,
@@ -266,7 +265,7 @@ it("keeps a configured remote credential separate from native refresh and resets
 describe("runtime endpoint", () => {
   it("requires the environment bootstrap before exposing a Runtime endpoint", async () => {
     const owner = createRuntimeConnection(
-      createBrowserHost(IMAGE_FILENAME_STEM),
+      createBrowserHost(),
       runtimeRequestMeta,
       createRuntimeMutationJournalStorage(createStorage("test.uninitialized")),
     );
@@ -506,7 +505,7 @@ it("binds the local token and filesystem capability only to the bootstrapped Run
   await runtimeConnection.dispose();
   runtimeConnection = createRuntimeConnection(
     {
-      ...createBrowserHost(IMAGE_FILENAME_STEM),
+      ...createBrowserHost(),
       kind: "desktop",
       bootstrap: async () => ({
         runtime: { endpoint: localEndpoint, localToken: "native-token" },

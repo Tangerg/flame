@@ -1,7 +1,7 @@
 import { createBrowserHost } from "@/platform/browserHost";
 import { createDesktopHostClient } from "@/platform/desktopHost";
 import { type ClientHost } from "@/platform/host";
-export function createClientHost(imageFilenameStem: string): ClientHost {
+export function createClientHost(): ClientHost {
   // Native channels exist before Wails injects its JavaScript runtime object.
   const scope = globalThis as {
     webkit?: { messageHandlers?: { external?: unknown } };
@@ -11,7 +11,7 @@ export function createClientHost(imageFilenameStem: string): ClientHost {
     scope.webkit?.messageHandlers?.external === undefined &&
     scope.chrome?.webview === undefined
   ) {
-    return createBrowserHost(imageFilenameStem);
+    return createBrowserHost();
   }
   return createDesktopHostClient({
     async call(method, ...args) {

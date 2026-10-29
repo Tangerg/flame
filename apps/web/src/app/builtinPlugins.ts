@@ -7,7 +7,7 @@ import { type WorkspaceOwner } from "@/features/workspace/adapters/workspace";
 import { type createWorkingDirectoryPicker } from "@/features/navigation/adapters/workingDirectorySelection";
 import { type Navigator } from "@/lib/navigation";
 import { shellServices } from "./shellServices";
-import { type ClientHost } from "@/platform/host";
+import { type ImageExport } from "@/foundation/imageExport";
 import { type createRuntimeConnection } from "@/features/connection/adapters/runtimeConnection";
 import { type AnyPlugin } from "dougong";
 import appearance from "@/features/settings/appearance";
@@ -83,7 +83,7 @@ export function createToolRenderingPlugins(workspace: WorkspaceOwner["access"]):
 
 export function createBuiltinPlugins(
   connection: ReturnType<typeof createRuntimeConnection>,
-  host: ClientHost,
+  saveImage: ImageExport,
   navigation: Navigator,
   agent: AgentOwner,
   composerOwner: ComposerOwner,
@@ -137,7 +137,7 @@ export function createBuiltinPlugins(
 
   const panes: AnyPlugin[] = [
     appearance,
-    createBrandPlugin((source) => host.saveImage(source)),
+    createBrandPlugin(saveImage),
     approvalsPane,
     personalization,
     connectionSettings,

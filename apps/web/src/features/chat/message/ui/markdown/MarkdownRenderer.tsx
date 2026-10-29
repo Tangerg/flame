@@ -10,7 +10,7 @@ import remarkMath from "remark-math";
 import remend from "remend";
 import { splitStreamingBlocks } from "@/features/chat/message/ui/markdown/splitStreamingBlocks";
 import { createMarkdownComponents } from "@/features/chat/message/ui/markdown/markdownComponents";
-import { isInlineMarkdownImage } from "@/features/chat/message/ui/markdown/MarkdownImage";
+import { isInlineImage } from "@/foundation/imageExport";
 import { handleMarkdownCopy } from "@/features/chat/message/ui/markdown/markdownSelectionCopy";
 import { ensureKatexCss } from "@/features/chat/message/ui/markdown/katexCss";
 import { rehypeFadeIn } from "@/features/chat/message/ui/markdown/rehypeFadeIn";
@@ -65,7 +65,7 @@ const allowElement = (el: { tagName: string }) => !DENIED_HTML_TAGS.has(el.tagNa
 const markdownUrlTransform: NonNullable<
   React.ComponentProps<typeof ReactMarkdown>["urlTransform"]
 > = (value, _key, node) =>
-  node.tagName === "img" && isInlineMarkdownImage(value) ? value : defaultUrlTransform(value);
+  node.tagName === "img" && isInlineImage(value) ? value : defaultUrlTransform(value);
 
 export function MarkdownRenderer(props: MarkdownMessageProps) {
   const { text, reveal } = props;

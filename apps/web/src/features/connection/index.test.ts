@@ -1,4 +1,3 @@
-import { IMAGE_FILENAME_STEM } from "@/app/product";
 import { runtimeRequestMeta } from "@/app/runtimeProtocol";
 import { createBrowserHost } from "@/platform/browserHost";
 import { createStorage } from "@/extensions/storage";
@@ -130,7 +129,7 @@ beforeEach(async () => {
     return new Response(JSON.stringify(value), { headers: { "Content-Type": "application/json" } });
   });
   connection = createRuntimeConnection(
-    createBrowserHost(IMAGE_FILENAME_STEM),
+    createBrowserHost(),
     runtimeRequestMeta,
     createRuntimeMutationJournalStorage(createStorage("test.runtime")),
   );

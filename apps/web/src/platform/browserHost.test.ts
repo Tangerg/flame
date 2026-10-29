@@ -1,8 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createBrowserHost } from "@/platform/browserHost";
 import { createClientHost } from "@/platform/clientHost";
-const imageFilenameStem = "fixture-image";
-const image = "data:image/png;base64,aW1hZ2U=";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -11,7 +9,7 @@ afterEach(() => {
 
 describe("browser host", () => {
   it("boots against the serving origin without assuming a local filesystem", async () => {
-    const host = createClientHost(imageFilenameStem);
+    const host = createClientHost();
     expect(host.kind).toBe("web");
     await expect(host.bootstrap()).resolves.toEqual({
       runtime: { endpoint: window.location.origin },
@@ -21,27 +19,6 @@ describe("browser host", () => {
     await expect(host.windowChrome()).resolves.toBeNull();
     await expect(host.openPath("/remote/workspace")).resolves.toBe(false);
     await expect(host.revealPath("/remote/workspace")).resolves.toBe(false);
-  });
-
-  it("downloads image bytes with the supplied filename and releases its object URL", async () => {
-    vi.useFakeTimers();
-    const create = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:fixture-image");
-    const revoke = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
-    let name = "";
-    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (
-      this: HTMLAnchorElement,
-    ) {
-      name = this.download;
-    });
-    await expect(createClientHost(imageFilenameStem).saveImage(image)).resolves.toBe(true);
-    expect(name).toBe("fixture-image.png");
-    expect(click).toHaveBeenCalledOnce();
-    const blob = create.mock.calls[0]![0] as Blob;
-    expect(blob.type).toBe("image/png");
-    expect(await blob.text()).toBe("image");
-    expect(document.querySelector('a[download="fixture-image.png"]')).toBeNull();
-    await vi.runAllTimersAsync();
-    expect(revoke).toHaveBeenCalledWith("blob:fixture-image");
   });
 
   it("hands exact exported text and MIME to the browser download", async () => {
@@ -58,7 +35,7 @@ describe("browser host", () => {
     const mime = "text/markdown;charset=utf-8";
 
     await expect(
-      createBrowserHost(imageFilenameStem).saveFile({
+      createBrowserHost().saveFile({
         filename: "flame-session.md",
         bytes: new TextEncoder().encode(content),
         mime,
@@ -85,7 +62,7 @@ describe("browser host", () => {
       names.push(this.download);
     });
     const backing = new Uint8Array([1, 0x50, 0x4b, 0, 0xff, 0x80, 2]);
-    const saving = createBrowserHost(imageFilenameStem).saveFile({
+    const saving = createBrowserHost().saveFile({
       filename: "成果包.zip",
       mime: "application/zip",
       bytes: backing.subarray(1, 6),
@@ -115,26 +92,12 @@ describe("browser host", () => {
       "result\n.pdf",
     ]) {
       await expect(
-        createBrowserHost(imageFilenameStem).saveFile({
+        createBrowserHost().saveFile({
           filename,
           mime: "application/pdf",
           bytes: new Uint8Array(),
         }),
       ).rejects.toThrow("basename");
-    }
-    expect(create).not.toHaveBeenCalled();
-  });
-
-  it("does not turn remote URLs or executable data into downloaded images", async () => {
-    const create = vi.spyOn(URL, "createObjectURL");
-    for (const source of [
-      "https://remote.example/image.png",
-      "data:text/html;base64,aW1hZ2U=",
-      "data:image/svg+xml;base64,aW1hZ2U=",
-    ]) {
-      await expect(createBrowserHost(imageFilenameStem).saveImage(source)).rejects.toThrow(
-        "Invalid string",
-      );
     }
     expect(create).not.toHaveBeenCalled();
   });
