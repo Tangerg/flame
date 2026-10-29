@@ -23,8 +23,8 @@ github.com/Tangerg/flame/packages/local-runtime v0.1.0-quality.20261029.1 h1:K4h
 github.com/Tangerg/flame/packages/local-runtime v0.1.0-quality.20261029.1/go.mod h1:k7GImwPntRgT/FNYEO+2Bx351W/ULxJUH2cU0y3zKRg=
 github.com/Tangerg/flame/qimu v0.1.0-quality.20261029.3 h1:oAdu4c8rUVN9YiWku362AisKap56baJgQw8ccEIHic8=
 github.com/Tangerg/flame/qimu v0.1.0-quality.20261029.3/go.mod h1:uGlLRUYXDfFZvsuAv+I88PHtYeIX+w2sK5CJLGXu/qA=
-github.com/Tangerg/flame/runtime v0.1.0-quality.20261029.9 h1:D+cDwLH/Oc24awk/a41wOqp/K7+qjN+5w4KluRYKh6k=
-github.com/Tangerg/flame/runtime v0.1.0-quality.20261029.9/go.mod h1:J+w+TnESB6UvBb3ImiyWN+5uNQLwbBiko40SKcSE+UE=
+github.com/Tangerg/flame/runtime v0.1.0-quality.20261030.plugin-boundaries.1 h1:/n7fU0V1/I/Gstnhrnq8hKv7mtJjm+uMwnqNDZg8UKw=
+github.com/Tangerg/flame/runtime v0.1.0-quality.20261030.plugin-boundaries.1/go.mod h1:p3OAEQV6hEzActVOqVHNfaQ61BMPv2yIHToCk/PgACE=
 github.com/Tangerg/go-sdk v1.8.1-scope.3 h1:hMC4qrvwu38L4/bLwnPiCYi9BTRFQxGb6Cs97pa/CzQ=
 github.com/Tangerg/go-sdk v1.8.1-scope.3/go.mod h1:9ZBcxdycY3/8/I1dCH3Uo5rCY3Run9Y4ZmEmiQIulUw=
 github.com/Tangerg/oolong/components v0.25.0 h1:FvMkzeNBLCW5zxVyUiUjvSyhvMYoJkdKeqckG9hh63E=
@@ -41,8 +41,6 @@ github.com/Tangerg/oolong/mermaid v0.25.0 h1:ZhKgZ757WB1ILUweaFo/dokxjv0WnAbcRxn
 github.com/Tangerg/oolong/mermaid v0.25.0/go.mod h1:eS67jTpkxiA68JwzTDH2b8FhR9I+Nce0oTsfrSzlu8M=
 github.com/Tangerg/oolong/ptytest v0.25.0 h1:mQ/TiRgUSbDUPsGVTOF5jCiCIiTfYYAUVJbMTZARIWU=
 github.com/Tangerg/oolong/ptytest v0.25.0/go.mod h1:SZ/8GHAScDpUplmr0GbL4OMWHRlkNrSRmklA82gMf0c=
-github.com/Tangerg/scope/a2a v0.58.0 h1:vaYNSQIkAc3Z3OA59U053h77Z1qdSGYY9WZabnRx/34=
-github.com/Tangerg/scope/a2a v0.58.0/go.mod h1:07fhdxl6fbpU2se97zQ4nu1x+ES+5hOLwjbuCoz35fc=
 github.com/Tangerg/scope/agent v0.58.0 h1:xDyCAIBxQXQhdouxsFbKId6dVJ8ctbvwY2JWM3AXV7o=
 github.com/Tangerg/scope/agent v0.58.0/go.mod h1:BBYTGkTkL/61N/KACZWxXgINwJDby6ACAnhMzaBKyE8=
 github.com/Tangerg/scope/core v0.58.0 h1:9qVRiN+9++zUiWpNoGCjLuusRGLnZiUjC58auS7p4u8=
@@ -103,8 +101,6 @@ github.com/Tangerg/scope/tools/skills v0.58.0 h1:A3CX82ZDqlXs0E8SnvHN4xDe4PHupJU
 github.com/Tangerg/scope/tools/skills v0.58.0/go.mod h1:4gs0XAxH8vQt54Ix87Wmn2hTcHkZVfu/MZfGUzwXdDk=
 github.com/Tangerg/sse v0.0.6 h1:8/Sf/fI6uNQzFms7VKYt02fs9p/cmOJKJl1lYdljC6I=
 github.com/Tangerg/sse v0.0.6/go.mod h1:+GPL/425WlIYRig6frpXeEk7GFYgcHaadIufk6pwe0I=
-github.com/a2aproject/a2a-go/v2 v2.7.0 h1:rwIpzO5O9Mxu/Rm4S2SZfHYzNcvF3FK9aaaTxP35kAo=
-github.com/a2aproject/a2a-go/v2 v2.7.0/go.mod h1:rvFIb0sBJl2qmJRYU2fQxI6hhIQksmGGMEhT/uRwWww=
 github.com/adrg/frontmatter v0.2.0 h1:/DgnNe82o03riBd1S+ZDjd43wAmC6W35q67NHeLkPd4=
 github.com/adrg/frontmatter v0.2.0/go.mod h1:93rQCj3z3ZlwyxxpQioRKC1wDLto4aXHrbqIsnH9wmE=
 github.com/alecthomas/assert/v2 v2.11.0 h1:2Q9r3ki8+JYXvGsDyBXwH3LcJ+WK5D0gc5E8vS6K3D0=
@@ -254,8 +250,6 @@ github.com/segmentio/asm v1.2.1 h1:DTNbBqs57ioxAD4PrArqftgypG4/qNpXoJx8TVXxPR0=
 github.com/segmentio/asm v1.2.1/go.mod h1:BqMnlJP91P8d+4ibuonYZw9mfnzI9HfxselHZr5aAcs=
 github.com/segmentio/encoding v0.5.4 h1:OW1VRern8Nw6ITAtwSZ7Idrl3MXCFwXHPgqESYfvNt0=
 github.com/segmentio/encoding v0.5.4/go.mod h1:HS1ZKa3kSN32ZHVZ7ZLPLXWvOVIiZtyJnO1gPH1sKt0=
-github.com/sourcegraph/jsonrpc2 v0.2.3 h1:0VYp5WZ2irQvRK8OKKxZAbbplj6Pmda07MXm+Mdz3GQ=
-github.com/sourcegraph/jsonrpc2 v0.2.3/go.mod h1:0jBvyko0tdLpe6ntNSF/mvFalb/RPRXcmogoV47cEWc=
 github.com/spf13/afero v1.15.0 h1:b/YBCLWAJdFWJTN9cLhiXXcD7mzKn9Dm86dNnfyQw1I=
 github.com/spf13/afero v1.15.0/go.mod h1:NC2ByUVxtQs4b3sIUphxK0NioZnmxgyCrfzeuq8lxMg=
 github.com/spf13/cast v1.10.0 h1:h2x0u2shc1QuLHfxi+cTJvs30+ZAHOGRic8uyGTDWxY=
@@ -310,8 +304,6 @@ go.opentelemetry.io/otel/sdk/metric v1.47.0 h1:lfISg2j93VT6yqdk9OfUaZmw/GfcZqCCV
 go.opentelemetry.io/otel/sdk/metric v1.47.0/go.mod h1:ypLp+mW1Nt2x+Szt3b5/i1syodyts49lMOwxpDI3VGw=
 go.opentelemetry.io/otel/trace v1.47.0 h1:JOjX/Oci8K94QHddo+bbfya/Ai/nf6/dt9ZfrFNWSrM=
 go.opentelemetry.io/otel/trace v1.47.0/go.mod h1:jNaSLa2PZEYFG6fRjJABAu+bw4FS08uDmPg28lTghu0=
-go.uber.org/goleak v1.3.0 h1:2K3zAYmnTNqV73imy9J1T3WC+gmCePx2hEGkimedGto=
-go.uber.org/goleak v1.3.0/go.mod h1:CoHD4mav9JJNrW/WLlf7HGZPjdw8EucARQHekz1X6bE=
 go.yaml.in/yaml/v3 v3.0.4/go.mod h1:DhzuOOF2ATzADvBadXxruRBLzYTpT36CKvDb3+aBEFg=
 go.yaml.in/yaml/v3 v3.0.5 h1:N6y/pJk8buWs9NY5ERU2HSMfm+IuD/OtfdAnq6kESPw=
 go.yaml.in/yaml/v3 v3.0.5/go.mod h1:HVTZu1O7/Vkt2N+BFy8Zza+lnLsABggaTM2ZpNIGuKg=

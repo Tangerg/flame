@@ -9,7 +9,6 @@ require (
 	codeberg.org/go-latex/latex v0.3.0 // indirect
 	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/Tangerg/go-sdk v1.8.1-scope.3 // indirect
-	github.com/Tangerg/scope/a2a v0.58.0 // indirect
 	github.com/Tangerg/scope/agent v0.58.0 // indirect
 	github.com/Tangerg/scope/core v0.58.0 // indirect
 	github.com/Tangerg/scope/mcp v0.58.0 // indirect
@@ -40,7 +39,6 @@ require (
 	github.com/Tangerg/scope/tools v0.58.0 // indirect
 	github.com/Tangerg/scope/tools/skills v0.58.0 // indirect
 	github.com/Tangerg/sse v0.0.6 // indirect
-	github.com/a2aproject/a2a-go/v2 v2.7.0 // indirect
 	github.com/adrg/frontmatter v0.2.0 // indirect
 	github.com/alecthomas/chroma/v2 v2.27.0 // indirect
 	github.com/alecthomas/repr v0.5.4 // indirect
@@ -85,7 +83,6 @@ require (
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3 // indirect
 	github.com/segmentio/asm v1.2.1 // indirect
 	github.com/segmentio/encoding v0.5.4 // indirect
-	github.com/sourcegraph/jsonrpc2 v0.2.3 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
@@ -131,7 +128,7 @@ require (
 	github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.plugin-boundaries.2
 	github.com/Tangerg/flame/packages/local-runtime v0.1.0-quality.20261029.1
 	github.com/Tangerg/flame/qimu v0.1.0-quality.20261029.3
-	github.com/Tangerg/flame/runtime v0.1.0-quality.20261029.9
+	github.com/Tangerg/flame/runtime v0.1.0-quality.20261030.plugin-boundaries.1
 	github.com/Tangerg/oolong/components v0.25.0
 	github.com/Tangerg/oolong/core v0.25.0
 	github.com/Tangerg/oolong/highlight v0.25.0
