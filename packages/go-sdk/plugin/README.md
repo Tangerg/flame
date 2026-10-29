@@ -833,3 +833,17 @@ and atomic patch rules shared with Runtime. [`model/catalog`](../model/catalog/R
 admits known effort levels and input modalities from the released Scope catalog.
 Authors use these public packages directly; role configuration, endpoint evidence
 and execution budgets retain their respective owners.
+
+## Lifecycle hook sources
+
+`plugin/hookprovider` publishes `flame.hooks.v1`. An installed source discovers
+ordered `hook.Hook` values and executes trusted commands with private original
+receipts. `Discovery.IncludeProject` is the Runtime's trust decision: an
+untrusted project must not be read or parsed during execution discovery.
+Inspection may request the complete cascade without authorizing its commands.
+
+`hook` owns portable rules, bounded event material and command advice. Runtime
+owns project trust, event ordering, decision folding, final Tool admission and
+approval. A command's `allow` advice cannot override those owners. Cancellation
+must stop and join the command's process group; an admitted command without a
+known original receipt cannot run again under that identity.
