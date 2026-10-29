@@ -6,7 +6,7 @@ import (
 	"io"
 	"reflect"
 
-	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem/commit"
 )
 
 // WriteError retains the outcome of this write attempt. A later write refused
@@ -14,7 +14,7 @@ import (
 // committed failure.
 type WriteError struct {
 	Record string
-	Result filesystem.CommitResult
+	Result commit.Result
 }
 
 func (e *WriteError) Error() string {
@@ -37,8 +37,8 @@ func writeCommitted(err error) bool {
 type Persistence interface {
 	Read(name string, maximumBytes int64) ([]byte, error)
 	ListFiles(directory, extension string) ([]string, error)
-	Replace(name string, body []byte) filesystem.CommitResult
-	Remove(name string) filesystem.CommitResult
+	Replace(name string, body []byte) commit.Result
+	Remove(name string) commit.Result
 	ConfirmDurability() error
 }
 

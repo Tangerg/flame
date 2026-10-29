@@ -10,6 +10,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem/commit"
 	"github.com/spf13/fileflow"
 	"github.com/spf13/pathologize"
 
@@ -33,7 +34,7 @@ type Store struct{}
 // cleanup fails after publication. Repeating the export is a separate intent.
 type Publication struct {
 	Path string
-	filesystem.CommitResult
+	commit.Result
 }
 
 func (Store) Publish(workspace, title, requestedName string, document session.Document) (result Publication) {
@@ -70,16 +71,16 @@ func (Store) Publish(workspace, title, requestedName string, document session.Do
 
 func publishStaged(publish func() (string, error), confirm func(string) error) Publication {
 	path, publishErr := publish()
-	result := Publication{Path: path, CommitResult: filesystem.CommitResult{Err: publishErr}}
+	result := Publication{Path: path, Result: commit.Result{Err: publishErr}}
 	if path == "" {
 		return result
 	}
-	result.State = filesystem.CommitVisible
+	result.State = commit.Visible
 	if err := confirm(path); err != nil {
 		result.Err = errors.Join(publishErr, fmt.Errorf("confirm session document durability: %w", err))
 		return result
 	}
-	result.State = filesystem.CommitDurable
+	result.State = commit.Durable
 	return result
 }
 

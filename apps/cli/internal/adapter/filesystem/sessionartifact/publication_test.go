@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/agent/session"
-	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem/commit"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/spf13/fileflow"
 )
@@ -65,7 +65,7 @@ func TestPublicationRetainsTheSelectedPathAndEachFailure(t *testing.T) {
 				t.Fatalf("original was overwritten: %q, %v", original, err)
 			}
 			unconfirmed := phase == "confirmation" || phase == "cleanup and confirmation"
-			if (result.State == filesystem.CommitVisible) != unconfirmed || errors.Is(result.Err, confirmFailure) != unconfirmed {
+			if (result.State == commit.Visible) != unconfirmed || errors.Is(result.Err, confirmFailure) != unconfirmed {
 				t.Fatalf("durability evidence = %+v", result)
 			}
 			cleanup := phase == "cleanup" || phase == "cleanup and confirmation"
@@ -86,7 +86,7 @@ func TestIdenticalPublicationConfirmsTheExistingFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	first := (Store{}).Publish(root, "Session", "session.md", document)
-	if first.Err != nil || first.State != filesystem.CommitDurable {
+	if first.Err != nil || first.State != commit.Durable {
 		t.Fatalf("first publication = %+v", first)
 	}
 	before, err := os.Stat(first.Path)
@@ -94,7 +94,7 @@ func TestIdenticalPublicationConfirmsTheExistingFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	second := (Store{}).Publish(root, "Session", "session.md", document)
-	if second.Err != nil || second.State != filesystem.CommitDurable || second.Path != first.Path {
+	if second.Err != nil || second.State != commit.Durable || second.Path != first.Path {
 		t.Fatalf("identical publication = %+v", second)
 	}
 	after, err := os.Stat(second.Path)

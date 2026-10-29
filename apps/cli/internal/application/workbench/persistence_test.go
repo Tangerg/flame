@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/statefile"
-	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem/commit"
 )
 
 type closeTrackingPersistence struct {
@@ -33,11 +33,11 @@ func (p *closeTrackingPersistence) ListFiles(string, string) ([]string, error) {
 	}
 	return nil, os.ErrNotExist
 }
-func (*closeTrackingPersistence) Replace(string, []byte) filesystem.CommitResult {
-	return filesystem.CommitResult{State: filesystem.CommitDurable}
+func (*closeTrackingPersistence) Replace(string, []byte) commit.Result {
+	return commit.Result{State: commit.Durable}
 }
-func (*closeTrackingPersistence) Remove(string) filesystem.CommitResult {
-	return filesystem.CommitResult{State: filesystem.CommitDurable}
+func (*closeTrackingPersistence) Remove(string) commit.Result {
+	return commit.Result{State: commit.Durable}
 }
 func (p *closeTrackingPersistence) Close() error {
 	p.closed++
@@ -97,9 +97,9 @@ type removeFailurePersistence struct {
 	enabled bool
 }
 
-func (r *removeFailurePersistence) Remove(name string) filesystem.CommitResult {
+func (r *removeFailurePersistence) Remove(name string) commit.Result {
 	if r.enabled && name == r.name {
-		return filesystem.CommitResult{Err: errors.New("injected remove failure")}
+		return commit.Result{Err: errors.New("injected remove failure")}
 	}
 	return r.Persistence.Remove(name)
 }

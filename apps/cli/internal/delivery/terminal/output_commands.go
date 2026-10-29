@@ -7,7 +7,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/sessionartifact"
 	"github.com/Tangerg/flame/apps/cli/internal/application/agent/session"
-	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem/commit"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -87,7 +87,7 @@ func sessionPublicationMessage(result sessionartifact.Publication) string {
 		return "export session failed: " + result.Err.Error()
 	}
 	message := "exported session · " + result.Path
-	if result.State == filesystem.CommitVisible {
+	if result.State == commit.Visible {
 		return message + " · durability unconfirmed: " + result.Err.Error()
 	}
 	if result.Err != nil {

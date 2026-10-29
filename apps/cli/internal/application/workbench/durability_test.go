@@ -15,7 +15,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
-	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem/commit"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -24,11 +24,11 @@ import (
 type uncertainPersistence struct {
 	*statefile.Store
 	remaining int
-	state     filesystem.CommitState
+	state     commit.State
 	cause     error
 }
 
-func (p *uncertainPersistence) result(result filesystem.CommitResult) filesystem.CommitResult {
+func (p *uncertainPersistence) result(result commit.Result) commit.Result {
 	if p.remaining > 0 {
 		p.remaining--
 		if p.remaining == 0 && result.Committed() {
@@ -39,11 +39,11 @@ func (p *uncertainPersistence) result(result filesystem.CommitResult) filesystem
 	return result
 }
 
-func (p *uncertainPersistence) Replace(name string, body []byte) filesystem.CommitResult {
+func (p *uncertainPersistence) Replace(name string, body []byte) commit.Result {
 	return p.result(p.Store.Replace(name, body))
 }
 
-func (p *uncertainPersistence) Remove(name string) filesystem.CommitResult {
+func (p *uncertainPersistence) Remove(name string) commit.Result {
 	return p.result(p.Store.Remove(name))
 }
 
@@ -54,7 +54,7 @@ func openUncertainWorkbench(t *testing.T) (*workbench.Store, *uncertainPersisten
 	if err != nil {
 		t.Fatal(err)
 	}
-	uncertain := &uncertainPersistence{Store: storage, state: filesystem.CommitVisible, cause: errors.New("directory confirmation failed")}
+	uncertain := &uncertainPersistence{Store: storage, state: commit.Visible, cause: errors.New("directory confirmation failed")}
 	store, err := workbench.Open(uncertain, workbench.Config{})
 	if err != nil {
 		t.Fatal(err)
@@ -427,7 +427,7 @@ func TestInstalledCommandWaitsForReopenWithoutPreparingAnotherIntent(t *testing.
 }
 
 func TestStashPostCommitFailureNeverCompensatesVisibleProgress(t *testing.T) {
-	for _, state := range []filesystem.CommitState{filesystem.CommitVisible, filesystem.CommitDurable} {
+	for _, state := range []commit.State{commit.Visible, commit.Durable} {
 		for _, cut := range []int{1, 2, 3, 4} {
 			t.Run(fmt.Sprintf("state_%d/cut_%d", state, cut), func(t *testing.T) {
 				store, storage, directory := openUncertainWorkbench(t)

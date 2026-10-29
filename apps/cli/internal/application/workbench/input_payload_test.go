@@ -14,7 +14,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem/commit"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -184,9 +184,9 @@ type inputWriteFailure struct {
 	prefix string
 }
 
-func (p inputWriteFailure) Replace(name string, body []byte) filesystem.CommitResult {
+func (p inputWriteFailure) Replace(name string, body []byte) commit.Result {
 	if strings.HasPrefix(name, p.prefix) {
-		return filesystem.CommitResult{Err: errors.New("injected input publication failure")}
+		return commit.Result{Err: errors.New("injected input publication failure")}
 	}
 	return p.Persistence.Replace(name, body)
 }
@@ -300,7 +300,7 @@ type pausedInputPersistence struct {
 	release chan struct{}
 }
 
-func (p pausedInputPersistence) Replace(name string, body []byte) filesystem.CommitResult {
+func (p pausedInputPersistence) Replace(name string, body []byte) commit.Result {
 	if strings.HasPrefix(name, "inputs/") {
 		close(p.entered)
 		<-p.release

@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
-	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem/commit"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
@@ -35,16 +35,16 @@ func (p *persistence) Read(name string, _ int64) ([]byte, error) {
 	return slices.Clone(value), nil
 }
 func (*persistence) ListFiles(string, string) ([]string, error) { return nil, nil }
-func (p *persistence) Replace(name string, body []byte) filesystem.CommitResult {
+func (p *persistence) Replace(name string, body []byte) commit.Result {
 	if p.fail {
-		return filesystem.CommitResult{Err: errors.New("storage unavailable")}
+		return commit.Result{Err: errors.New("storage unavailable")}
 	}
 	p.files[name] = slices.Clone(body)
-	return filesystem.CommitResult{State: filesystem.CommitDurable}
+	return commit.Result{State: commit.Durable}
 }
-func (p *persistence) Remove(name string) filesystem.CommitResult {
+func (p *persistence) Remove(name string) commit.Result {
 	delete(p.files, name)
-	return filesystem.CommitResult{State: filesystem.CommitDurable}
+	return commit.Result{State: commit.Durable}
 }
 
 type callerFunc func(context.Context, protocol.CallPluginRequest, authoring.CommandID) (*protocol.CallPluginResponse, error)

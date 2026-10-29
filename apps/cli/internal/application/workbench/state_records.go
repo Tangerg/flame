@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
-	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem/commit"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -330,7 +330,7 @@ func (s *Store) writable() (bool, error) {
 func (s *Store) save(name string, value any, publish func()) error {
 	writable, err := s.writable()
 	if err != nil {
-		return &WriteError{Record: name, Result: filesystem.CommitResult{Err: err}}
+		return &WriteError{Record: name, Result: commit.Result{Err: err}}
 	}
 	if !writable {
 		publish()
@@ -356,7 +356,7 @@ func (s *Store) save(name string, value any, publish func()) error {
 func (s *Store) remove(name string, publish func()) error {
 	writable, err := s.writable()
 	if err != nil {
-		return &WriteError{Record: name, Result: filesystem.CommitResult{Err: err}}
+		return &WriteError{Record: name, Result: commit.Result{Err: err}}
 	}
 	if !writable {
 		publish()
@@ -365,19 +365,19 @@ func (s *Store) remove(name string, publish func()) error {
 	return s.acceptCommit(name, s.persistence.Remove(name), publish)
 }
 
-func (s *Store) acceptCommit(name string, result filesystem.CommitResult, publish func()) error {
+func (s *Store) acceptCommit(name string, result commit.Result, publish func()) error {
 	switch result.State {
-	case filesystem.CommitUncommitted:
+	case commit.Uncommitted:
 		if result.Err == nil {
 			return s.blockWrites(errors.New("persistence returned an uncommitted write without a cause"))
 		}
 		return &WriteError{Record: name, Result: result}
-	case filesystem.CommitVisible, filesystem.CommitDurable:
+	case commit.Visible, commit.Durable:
 		publish()
 	default:
 		return s.blockWrites(errors.New("persistence returned an unknown commit state"))
 	}
-	if result.State == filesystem.CommitVisible {
+	if result.State == commit.Visible {
 		if result.Err == nil {
 			result.Err = errors.New("persistence did not confirm record durability")
 		}

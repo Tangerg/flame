@@ -46,3 +46,8 @@ Cross-module regeneration is coordinated from the repository root by
 `make generate`. Publishers own contract identities; the SDK holds generated
 consumer projections and its commands never import publisher implementations.
 Runtime's generator owns the typed Runtime operations and wire constraints.
+
+`filesystem/commit` owns the pure publication evidence used by persistence ports:
+uncommitted, visible and durable outcomes retain their original I/O diagnostic.
+Applications consume that value without importing filesystem operations. The
+filesystem adapter remains responsible for establishing the physical evidence.

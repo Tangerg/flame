@@ -14,6 +14,7 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem/commit"
 	"github.com/spf13/pathologize"
 )
 
@@ -229,28 +230,28 @@ func (s *Store) ListFiles(name, extension string) (_ []string, err error) {
 // Replace atomically publishes one complete state file. The temporary file is
 // created beside the destination, so Rename cannot cross filesystems and
 // intentionally replaces the prior snapshot instead of conflict-renaming it.
-func (s *Store) Replace(name string, body []byte) (result filesystem.CommitResult) {
+func (s *Store) Replace(name string, body []byte) (result commit.Result) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := s.ensureRoot(); err != nil {
-		return filesystem.CommitResult{Err: err}
+		return commit.Result{Err: err}
 	}
 	relative, err := stateName(name)
 	if err != nil {
-		return filesystem.CommitResult{Err: err}
+		return commit.Result{Err: err}
 	}
 	directory, err := s.openDirectory(filepath.Dir(relative), true)
 	if err != nil {
-		return filesystem.CommitResult{Err: err}
+		return commit.Result{Err: err}
 	}
 	defer func() { result.Err = errors.Join(result.Err, directory.Close()) }()
 	return replaceStateFile(directory, filepath.Base(relative), body)
 }
 
-func replaceStateFile(directory *os.Root, base string, body []byte) (result filesystem.CommitResult) {
+func replaceStateFile(directory *os.Root, base string, body []byte) (result commit.Result) {
 	temporary, temporaryName, err := createTemporary(directory)
 	if err != nil {
-		return filesystem.CommitResult{Err: fmt.Errorf("create state snapshot: %w", err)}
+		return commit.Result{Err: fmt.Errorf("create state snapshot: %w", err)}
 	}
 	defer func() {
 		if !result.Committed() {
@@ -270,52 +271,52 @@ type snapshotFile interface {
 	Close() error
 }
 
-func publishSnapshot(temporary snapshotFile, body []byte, rename, confirm func() error) filesystem.CommitResult {
+func publishSnapshot(temporary snapshotFile, body []byte, rename, confirm func() error) commit.Result {
 	if _, err := temporary.Write(body); err != nil {
-		return filesystem.CommitResult{Err: errors.Join(fmt.Errorf("write state snapshot: %w", err), temporary.Close())}
+		return commit.Result{Err: errors.Join(fmt.Errorf("write state snapshot: %w", err), temporary.Close())}
 	}
 	if err := temporary.Sync(); err != nil {
-		return filesystem.CommitResult{Err: errors.Join(fmt.Errorf("sync state snapshot: %w", err), temporary.Close())}
+		return commit.Result{Err: errors.Join(fmt.Errorf("sync state snapshot: %w", err), temporary.Close())}
 	}
 	if err := temporary.Close(); err != nil {
-		return filesystem.CommitResult{Err: fmt.Errorf("close state snapshot: %w", err)}
+		return commit.Result{Err: fmt.Errorf("close state snapshot: %w", err)}
 	}
 	if err := rename(); err != nil {
-		return filesystem.CommitResult{Err: fmt.Errorf("replace state snapshot: %w", err)}
+		return commit.Result{Err: fmt.Errorf("replace state snapshot: %w", err)}
 	}
 	return confirmedCommit(confirm())
 }
 
 // Remove retires one state file. Missing files are already removed.
-func (s *Store) Remove(name string) (result filesystem.CommitResult) {
+func (s *Store) Remove(name string) (result commit.Result) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := s.ensureRoot(); err != nil {
-		return filesystem.CommitResult{Err: err}
+		return commit.Result{Err: err}
 	}
 	relative, err := stateName(name)
 	if err != nil {
-		return filesystem.CommitResult{Err: err}
+		return commit.Result{Err: err}
 	}
 	directory, err := s.openDirectory(filepath.Dir(relative), false)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return filesystem.CommitResult{State: filesystem.CommitDurable}
+			return commit.Result{State: commit.Durable}
 		}
-		return filesystem.CommitResult{Err: err}
+		return commit.Result{Err: err}
 	}
 	defer func() { result.Err = errors.Join(result.Err, directory.Close()) }()
 	if err := directory.Remove(filepath.Base(relative)); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return filesystem.CommitResult{Err: err}
+		return commit.Result{Err: err}
 	}
 	return confirmedCommit(syncDirectoryAt(directory, "."))
 }
 
-func confirmedCommit(err error) filesystem.CommitResult {
+func confirmedCommit(err error) commit.Result {
 	if err != nil {
-		return filesystem.CommitResult{State: filesystem.CommitVisible, Err: fmt.Errorf("confirm state directory: %w", err)}
+		return commit.Result{State: commit.Visible, Err: fmt.Errorf("confirm state directory: %w", err)}
 	}
-	return filesystem.CommitResult{State: filesystem.CommitDurable}
+	return commit.Result{State: commit.Durable}
 }
 
 // ConfirmDurability establishes the current visible records before an owner

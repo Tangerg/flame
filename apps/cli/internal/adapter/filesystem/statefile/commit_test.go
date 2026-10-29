@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem/commit"
 )
 
 type publicationFaultFile struct {
@@ -75,14 +75,14 @@ func TestSnapshotPublicationKeepsCommitAndDurabilityEvidence(t *testing.T) {
 				}
 				return syncDirectoryAt(root, ".")
 			})
-			wantState := filesystem.CommitUncommitted
+			wantState := commit.Uncommitted
 			wantBody, wantConfirmations := "original", 0
 			if stage == "directory sync" || stage == "success" {
-				wantState = filesystem.CommitVisible
+				wantState = commit.Visible
 				wantBody, wantConfirmations = "replacement", 1
 			}
 			if stage == "success" {
-				wantState = filesystem.CommitDurable
+				wantState = commit.Durable
 			}
 			if result.State != wantState || file.closes != 1 || confirmations != wantConfirmations {
 				t.Fatalf("publication = %+v, closes=%d, confirmations=%d", result, file.closes, confirmations)
@@ -121,7 +121,7 @@ func TestDurabilityConfirmationUsesTheOwnedPhysicalDirectory(t *testing.T) {
 	if err := store.ConfirmDurability(); err == nil {
 		t.Fatal("confirmation adopted a replacement physical boundary")
 	}
-	if result := store.Replace("new.json", []byte("wrong owner")); result.State != filesystem.CommitUncommitted || result.Err == nil {
+	if result := store.Replace("new.json", []byte("wrong owner")); result.State != commit.Uncommitted || result.Err == nil {
 		t.Fatalf("replacement physical boundary admitted write: %+v", result)
 	}
 }

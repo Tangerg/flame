@@ -8,7 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/statefile"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
-	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem/commit"
 )
 
 type stashRollbackFailure struct {
@@ -18,19 +18,19 @@ type stashRollbackFailure struct {
 	enabled     bool
 }
 
-func (p *stashRollbackFailure) Replace(name string, body []byte) filesystem.CommitResult {
+func (p *stashRollbackFailure) Replace(name string, body []byte) commit.Result {
 	if p.enabled && name == stashesName {
 		p.stashWrites++
 		if p.stashWrites > 1 {
-			return filesystem.CommitResult{Err: errors.New("injected stash rollback failure")}
+			return commit.Result{Err: errors.New("injected stash rollback failure")}
 		}
 	}
 	return p.Persistence.Replace(name, body)
 }
 
-func (p *stashRollbackFailure) Remove(name string) filesystem.CommitResult {
+func (p *stashRollbackFailure) Remove(name string) commit.Result {
 	if p.enabled && name == p.draftName {
-		return filesystem.CommitResult{Err: errors.New("injected draft retirement failure")}
+		return commit.Result{Err: errors.New("injected draft retirement failure")}
 	}
 	return p.Persistence.Remove(name)
 }

@@ -15,7 +15,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
-	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem/commit"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/programtest"
@@ -24,17 +24,17 @@ import (
 func TestExportNoticeDistinguishesPublicationFromConfirmation(t *testing.T) {
 	cause := errors.New("original I/O failure")
 	for _, test := range []struct {
-		state  filesystem.CommitState
+		state  commit.State
 		cause  error
 		prefix string
 		detail string
 	}{
-		{filesystem.CommitUncommitted, cause, "export session failed:", cause.Error()},
-		{filesystem.CommitVisible, cause, "exported session · /chosen/archive-1.json", "durability unconfirmed:"},
-		{filesystem.CommitDurable, cause, "exported session · /chosen/archive-1.json", "cleanup failed:"},
-		{filesystem.CommitDurable, nil, "exported session · /chosen/archive-1.json", ""},
+		{commit.Uncommitted, cause, "export session failed:", cause.Error()},
+		{commit.Visible, cause, "exported session · /chosen/archive-1.json", "durability unconfirmed:"},
+		{commit.Durable, cause, "exported session · /chosen/archive-1.json", "cleanup failed:"},
+		{commit.Durable, nil, "exported session · /chosen/archive-1.json", ""},
 	} {
-		result := sessionartifact.Publication{Path: "/chosen/archive-1.json", CommitResult: filesystem.CommitResult{State: test.state, Err: test.cause}}
+		result := sessionartifact.Publication{Path: "/chosen/archive-1.json", Result: commit.Result{State: test.state, Err: test.cause}}
 		notice := sessionPublicationMessage(result)
 		if !strings.HasPrefix(notice, test.prefix) || !strings.Contains(notice, test.detail) {
 			t.Fatalf("publication notice = %q", notice)

@@ -11,7 +11,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
-	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem/commit"
 )
 
 type unconfirmedCancellationStorage struct {
@@ -19,10 +19,10 @@ type unconfirmedCancellationStorage struct {
 	cause error
 }
 
-func (p *unconfirmedCancellationStorage) Replace(name string, body []byte) filesystem.CommitResult {
+func (p *unconfirmedCancellationStorage) Replace(name string, body []byte) commit.Result {
 	result := p.Store.Replace(name, body)
 	if p.cause != nil && result.Committed() {
-		result.State, result.Err = filesystem.CommitVisible, p.cause
+		result.State, result.Err = commit.Visible, p.cause
 	}
 	return result
 }
