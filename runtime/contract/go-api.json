@@ -890,23 +890,6 @@
         "context",
         "os"
       ],
-      "constants": [
-        {
-          "name": "CommitDurable",
-          "type": "CommitState",
-          "value": "2"
-        },
-        {
-          "name": "CommitUncommitted",
-          "type": "CommitState",
-          "value": "0"
-        },
-        {
-          "name": "CommitVisible",
-          "type": "CommitState",
-          "value": "1"
-        }
-      ],
       "variables": [
         {
           "name": "ErrAbsolutePathRequired",
@@ -1005,31 +988,6 @@
       ],
       "types": [
         {
-          "name": "CommitResult",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "State",
-              "type": "CommitState"
-            },
-            {
-              "name": "Err",
-              "type": "error"
-            }
-          ],
-          "methods": [
-            {
-              "name": "Committed",
-              "signature": "func() bool"
-            }
-          ]
-        },
-        {
-          "name": "CommitState",
-          "kind": "defined",
-          "underlying": "uint8"
-        },
-        {
           "name": "DirectoryLease",
           "kind": "struct",
           "methods": [
@@ -1072,6 +1030,53 @@
               "signature": "func() error"
             }
           ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/filesystem/commit",
+      "constants": [
+        {
+          "name": "Durable",
+          "type": "State",
+          "value": "2"
+        },
+        {
+          "name": "Uncommitted",
+          "type": "State",
+          "value": "0"
+        },
+        {
+          "name": "Visible",
+          "type": "State",
+          "value": "1"
+        }
+      ],
+      "types": [
+        {
+          "name": "Result",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "State",
+              "type": "State"
+            },
+            {
+              "name": "Err",
+              "type": "error"
+            }
+          ],
+          "methods": [
+            {
+              "name": "Committed",
+              "signature": "func() bool"
+            }
+          ]
+        },
+        {
+          "name": "State",
+          "kind": "defined",
+          "underlying": "uint8"
         }
       ]
     },
