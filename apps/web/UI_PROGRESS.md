@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Current batch integrates 31 incoming main commits through `aee40a542`. Notification history now continues at a visible adjacent action when its oldest focused record is evicted at the existing 200-entry cap. Later draft focus wins, and long arrivals receive ordinary browser focus reveal. All 13 scoped regressions, typecheck, applicable Web gates, final supported native build and light/dark/18 px/200%/observer-free tasks pass. Owned native/build resources are retired; scoped publication follows. See **Reading through capacity eviction** under **Notification history and current action focus**. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
+Current batch integrates 31 incoming main commits through `aee40a542`. Notification history now continues at a visible adjacent action when its oldest focused record is evicted at the existing 200-entry cap. Later draft focus wins, and long arrivals receive ordinary browser focus reveal. All 13 scoped regressions, typecheck, applicable Web gates, final supported native build and light/dark/18 px/200%/observer-free tasks pass. Implementation `c46bd7c5a` is published to remote main, and owned native/build resources are retired. See **Reading through capacity eviction** under **Notification history and current action focus**. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -92,7 +92,8 @@ without changing zoom. Its native catalog-reporting follow-up is a scoped
 diagnosis published as `d78c293f0`, with no product implementation change.
 The Session-history follow-up is published as `b2bf3fed1` and qualifies retirement
 of header queries and pending selections while preserving same-Session source
-return and editing. The notification-cap follow-up integrates 31 main commits through `aee40a542`
+return and editing. The notification-cap follow-up is published as `c46bd7c5a`,
+after integrating 31 main commits through `aee40a542`
 and qualifies visible adjacent-action continuity, later draft focus and the
 observer-free native control; see **Notification history and current action focus**.
 See **Goal save
@@ -21094,8 +21095,14 @@ remain untouched. The final evidence archive passes a gzip roundtrip with
 **217 UTF-8 records**, **60,311,472 raw bytes** and **3,010,560 gzip bytes**;
 SHA-256 `ffd9c3711e6773f17d68686f3dc89d3573ea809569ce4a3dabb112b9cdee3b33`.
 The exact private root `/private/tmp/flame-notification-cap-TcNqWM` is absent.
-Independent post-removal preservation repeats all counts above. Scoped publication
-follows these accepted artifacts.
+Independent post-removal preservation repeats all counts above.
+
+Implementation `c46bd7c5a0243db6d644afa1279cd476a4753d10` is committed and
+pushed to remote main. Normal staged formatting, all-workspace lint and commit
+message hooks pass. Exact remote `refs/heads/main`, local HEAD and origin/main
+match at publication, with zero unpushed commits and a clean owned checkout.
+This documentation-only delivery receipt retains the qualified source bytes and
+cleanup proof; it does not repeat code or native checks.
 
 The fixture footer is not production-sidebar placement evidence. Native visible
 focus and actual input do not establish VoiceOver speech. Fresh 320 px layout,
