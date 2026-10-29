@@ -1,6 +1,6 @@
 //go:build unix
 
-package hooks
+package main
 
 import (
 	"context"

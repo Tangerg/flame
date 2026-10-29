@@ -1,4 +1,4 @@
-package hooks
+package main
 
 import (
 	"bytes"
@@ -11,16 +11,16 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/capture"
+	"github.com/Tangerg/flame/packages/go-sdk/hook"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
+	"github.com/Tangerg/flame/packages/go-sdk/procgroup"
 	"github.com/Tangerg/flame/qimu/cancellation"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
-	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
-	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
-	"github.com/Tangerg/flame/packages/go-sdk/procgroup"
 )
 
 const (
-	maxHookCommandInputBytes  = 512 << 10
-	maxHookCommandOutputBytes = 64 << 10
+	maxHookCommandInputBytes  = hookprovider.MaxCommandInputBytes
+	maxHookCommandOutputBytes = hookprovider.MaxCommandOutputBytes
 	hookProcessWaitDelay      = 2 * time.Second
 )
 
@@ -29,9 +29,9 @@ type Shell struct{}
 
 // RunHookCommand runs req.Command via the host shell, encoding the typed domain
 // input into the external hook JSON contract at this adapter boundary.
-func (Shell) RunHookCommand(ctx context.Context, req apphooks.CommandRequest) apphooks.CommandResult {
+func (Shell) RunHookCommand(ctx context.Context, req commandRequest) commandResult {
 	if err := cancellation.Err(ctx); err != nil {
-		return apphooks.CommandResult{
+		return commandResult{
 			Err: err, ExitCode: -1, TimedOut: ctx.Err() == context.DeadlineExceeded,
 		}
 	}
@@ -44,7 +44,7 @@ func (Shell) RunHookCommand(ctx context.Context, req apphooks.CommandRequest) ap
 			maxHookCommandInputBytes,
 		))
 	}
-	stdin, err := json.Marshal(hookInputWireFrom(req.Input))
+	stdin, err := json.Marshal(req.Input)
 	if err != nil {
 		return failedHookCommandInput(fmt.Errorf("encode: %w", err))
 	}
@@ -78,7 +78,7 @@ func (Shell) RunHookCommand(ctx context.Context, req apphooks.CommandRequest) ap
 	if errors.Is(cleanupErr, os.ErrProcessDone) {
 		cleanupErr = nil
 	}
-	result := apphooks.CommandResult{
+	result := commandResult{
 		Stderr:   stderr.Diagnostic(),
 		ExitCode: exitCodeOf(runErr),
 		Err:      errors.Join(runErr, cancellationErr, cleanupErr),
@@ -96,44 +96,13 @@ func (Shell) RunHookCommand(ctx context.Context, req apphooks.CommandRequest) ap
 	return result
 }
 
-type hookInputWire struct {
-	Event           domainhooks.Event  `json:"event"`
-	SessionID       string             `json:"sessionId,omitempty"`
-	CWD             string             `json:"cwd,omitempty"`
-	Tool            *hookToolInputWire `json:"tool,omitzero"`
-	Prompt          string             `json:"prompt,omitempty"`
-	PromptTruncated bool               `json:"promptTruncated,omitzero"`
-	Reason          string             `json:"reason,omitempty"`
-}
-
-type hookToolInputWire struct {
-	Name            string `json:"name"`
-	Arguments       string `json:"arguments,omitempty"`
-	Result          string `json:"result,omitempty"`
-	ResultTruncated bool   `json:"resultTruncated,omitzero"`
-}
-
-func hookInputWireFrom(input domainhooks.Input) hookInputWire {
-	out := hookInputWire{
-		Event: input.Event, SessionID: input.SessionID, CWD: input.CWD,
-		Prompt: input.Prompt, PromptTruncated: input.PromptTruncated, Reason: input.Reason,
-	}
-	if input.Tool != nil {
-		out.Tool = &hookToolInputWire{
-			Name: input.Tool.Name, Arguments: input.Tool.Arguments,
-			Result: input.Tool.Result, ResultTruncated: input.Tool.ResultTruncated,
-		}
-	}
-	return out
-}
-
-func failedHookCommandInput(err error) apphooks.CommandResult {
-	return apphooks.CommandResult{
+func failedHookCommandInput(err error) commandResult {
+	return commandResult{
 		Err: fmt.Errorf("hooks: command input: %w", err), ExitCode: -1,
 	}
 }
 
-func hookInputMaterialWithinLimit(input domainhooks.Input, limit int) bool {
+func hookInputMaterialWithinLimit(input hook.Input, limit int) bool {
 	remaining := limit
 	consume := func(value string) bool {
 		if len(value) > remaining {
@@ -159,37 +128,37 @@ func hookInputMaterialWithinLimit(input domainhooks.Input, limit int) bool {
 }
 
 type hookDecisionWire struct {
-	Decision         *apphooks.CommandVerdict `json:"decision,omitzero"`
-	Reason           string                   `json:"reason,omitempty"`
-	InjectContext    string                   `json:"injectContext,omitempty"`
-	RewriteArguments string                   `json:"rewriteArguments,omitempty"`
+	Decision         *hook.CommandVerdict `json:"decision,omitzero"`
+	Reason           string               `json:"reason,omitempty"`
+	InjectContext    string               `json:"injectContext,omitempty"`
+	RewriteArguments string               `json:"rewriteArguments,omitempty"`
 }
 
-func hookDecisionFromWire(stdout []byte) (apphooks.CommandDecision, error) {
+func hookDecisionFromWire(stdout []byte) (hook.CommandDecision, error) {
 	trimmed := bytes.TrimSpace(stdout)
 	if len(trimmed) == 0 {
-		return apphooks.CommandDecision{Verdict: apphooks.CommandAllow}, nil
+		return hook.CommandDecision{Verdict: hook.CommandAllow}, nil
 	}
 	if trimmed[0] != '{' {
-		return apphooks.CommandDecision{}, errors.New("hooks: command decision must be a JSON object")
+		return hook.CommandDecision{}, errors.New("hooks: command decision must be a JSON object")
 	}
 	var wire hookDecisionWire
 	if err := jsonvalue.UnmarshalNonNull(stdout, &wire); err != nil {
-		return apphooks.CommandDecision{}, fmt.Errorf("hooks: decode command decision: %w", err)
+		return hook.CommandDecision{}, fmt.Errorf("hooks: decode command decision: %w", err)
 	}
 	verdict, err := hookVerdictFromWire(wire.Decision)
 	if err != nil {
-		return apphooks.CommandDecision{}, err
+		return hook.CommandDecision{}, err
 	}
-	return apphooks.CommandDecision{
+	return hook.CommandDecision{
 		Verdict: verdict, Reason: wire.Reason,
 		InjectContext: wire.InjectContext, RewriteArguments: wire.RewriteArguments,
 	}, nil
 }
 
-func hookVerdictFromWire(verdict *apphooks.CommandVerdict) (apphooks.CommandVerdict, error) {
+func hookVerdictFromWire(verdict *hook.CommandVerdict) (hook.CommandVerdict, error) {
 	if verdict == nil {
-		return apphooks.CommandAllow, nil
+		return hook.CommandAllow, nil
 	}
 	if !verdict.Valid() {
 		return "", fmt.Errorf("hooks: unsupported command decision %q", *verdict)
@@ -205,4 +174,36 @@ func exitCodeOf(err error) int {
 		return ee.ExitCode()
 	}
 	return -1
+}
+
+type commandRequest struct {
+	Command string
+	CWD     string
+	Input   hook.Input
+	Timeout time.Duration
+}
+
+type commandResult struct {
+	Decision hook.CommandDecision
+	Stderr   string
+	ExitCode int
+	Err      error
+	TimedOut bool
+}
+
+func (r commandResult) project() hookprovider.Result {
+	result := hookprovider.Result{Stderr: r.Stderr, ExitCode: r.ExitCode}
+	if r.Decision.Verdict.Valid() {
+		result.Decision = &r.Decision
+	}
+	if r.Err != nil {
+		kind := hookprovider.Failed
+		if r.TimedOut {
+			kind = hookprovider.TimedOut
+		} else if errors.Is(r.Err, context.Canceled) {
+			kind = hookprovider.Canceled
+		}
+		result.Failure = &hookprovider.Failure{Kind: kind, Message: r.Err.Error()}
+	}
+	return result
 }

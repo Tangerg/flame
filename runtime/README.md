@@ -1859,3 +1859,15 @@ cancellation, join and held-dependency ownership. Scope's exact provider instanc
 decides whether streaming/counting capabilities exist. No unavailable capability
 is fabricated, and an endpoint's accounting total does not invent a universal
 Run/Goal budget. Evidence deletion follows the retention rules above.
+
+## Installed lifecycle rules
+
+The installed [Hooks backend](../plugins/hooks/README.md) owns configuration
+sources and bounded command execution. Runtime passes its captured project root
+and trust decision before discovery, retains the exact source through each event
+set, and owns final authorization, approval and argument admission. Disabled
+sources contribute no new rules; there is no direct Runtime shell fallback.
+Existing installations explicitly select `flame.hooks.v1`; fresh catalogs select
+the shipped backend. The `hooks.json` document format and Runtime trust store are
+unchanged. Commands use the installed process environment rather than inheriting
+ambient Runtime variables.

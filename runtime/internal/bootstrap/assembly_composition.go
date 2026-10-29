@@ -7,7 +7,6 @@ import (
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
-	adapterhooks "github.com/Tangerg/flame/runtime/internal/adapter/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
@@ -102,8 +101,6 @@ func buildPolicyComposition(ctx context.Context, cfg assemblyConfig, lifetime *r
 // members share one resolved scope and one authored-resource observer.
 type workspaceComposition struct {
 	scope            *workspace.Scope
-	hookResolver     *adapterhooks.Resolver
-	hooks            *apphooks.Catalog
 	authoredWatch    *workspace.AuthoredWatch
 	skills           *workspace.Skills
 	skillMaintenance *workspace.SkillMaintenance
@@ -119,14 +116,6 @@ func buildWorkspaceComposition(
 	scope, err := workspace.NewScope(cfg.defaultWorkspacePath, cfg.userHome, workspaceadapter.Resolver{})
 	if err != nil {
 		return workspaceComposition{}, fmt.Errorf("runtime: build workspace scope: %w", err)
-	}
-	hookResolver, err := newHookResolver(cfg.userHome, cfg.stores.Trust)
-	if err != nil {
-		return workspaceComposition{}, fmt.Errorf("runtime: build hook resolver: %w", err)
-	}
-	hooks, err := apphooks.NewCatalog(scope, hookResolver, cfg.stores.Trust, publish)
-	if err != nil {
-		return workspaceComposition{}, fmt.Errorf("runtime: build hook management: %w", err)
 	}
 	authoredWatcher, err := workspaceadapter.NewAuthoredWatcher(cfg.userHome, cfg.skillsUserDir)
 	if err != nil {
@@ -161,8 +150,6 @@ func buildWorkspaceComposition(
 	}
 	return workspaceComposition{
 		scope:            scope,
-		hookResolver:     hookResolver,
-		hooks:            hooks,
 		authoredWatch:    authoredWatch,
 		skills:           workspaceSkills,
 		skillMaintenance: skillMaintenance,
@@ -174,6 +161,7 @@ func buildWorkspaceComposition(
 // executionComposition owns the model/tool execution graph. Every acquired
 // closer is transferred to runtimeLifetime before an error can escape.
 type executionComposition struct {
+	hooks             *apphooks.Catalog
 	conversation      conversationEnvironment
 	models            modelEnvironment
 	tools             toolEnvironment
@@ -245,6 +233,14 @@ func buildExecutionComposition(
 	if err != nil {
 		return executionComposition{}, err
 	}
+	hookResolver, err := newHookResolver(cfg.userHome, cfg.stores.Trust, toolRuntime.pluginCalls)
+	if err != nil {
+		return executionComposition{}, fmt.Errorf("runtime: build hook resolver: %w", err)
+	}
+	hooks, err := apphooks.NewCatalog(workspaceServices.scope, hookResolver, cfg.stores.Trust, policy.invalidations.publish)
+	if err != nil {
+		return executionComposition{}, fmt.Errorf("runtime: build hook management: %w", err)
+	}
 	modelServices := toolRuntime.models
 	workingContexts, err := executionadapter.NewWorkingContextComposer(executionadapter.WorkingContextConfig{
 		UserHome:          cfg.userHome,
@@ -252,7 +248,7 @@ func buildExecutionComposition(
 		AgentMemorySearch: toolRuntime.memory,
 		Plan:              cfg.stores.Plan,
 		Goal:              policy.goalReader,
-		Hooks:             workspaceServices.hookResolver,
+		Hooks:             hookResolver,
 	})
 	if err != nil {
 		return executionComposition{}, fmt.Errorf("runtime: build working context: %w", err)
@@ -326,6 +322,7 @@ func buildExecutionComposition(
 		return executionComposition{}, err
 	}
 	return executionComposition{
+		hooks:             hooks,
 		conversation:      conversation,
 		models:            modelServices,
 		tools:             toolRuntime,

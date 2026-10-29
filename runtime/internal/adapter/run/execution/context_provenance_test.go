@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
+	hookdata "github.com/Tangerg/flame/packages/go-sdk/hook"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
-	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	corechat "github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/metadata"
@@ -89,13 +89,13 @@ func TestPromptCompositionRejectsSourcePurposeMismatch(t *testing.T) {
 
 func TestWorkingContextAttributesHookAndRecalledMemoryInPlace(t *testing.T) {
 	cwd := t.TempDir()
-	hooks := []domainhooks.Hook{
-		{Event: domainhooks.SessionStart, Inject: "session context"},
-		{Event: domainhooks.UserPromptSubmit, Inject: "turn context"},
+	hooks := []hookdata.Hook{
+		{Event: hookdata.SessionStart, Inject: "session context"},
+		{Event: hookdata.UserPromptSubmit, Inject: "turn context"},
 	}
 	recalledMemoryID := testAgentMemoryItemID(t, '2')
 	composer := newTestWorkingContextComposer(t, WorkingContextConfig{
-		Hooks: provenanceHookResolver{bound: apphooks.NewBound(hooks, apphooks.NewRunner(nil, nil))},
+		Hooks: provenanceHookResolver{bound: apphooks.NewBound(hooks, apphooks.NewRunner(nil, nil), nil)},
 		AgentMemorySearch: &fakeAgentMemorySearcher{
 			items: []MemoryPromptItem{testMemoryPromptItem(MemoryPromptItem{ID: recalledMemoryID, Content: "recalled fact"})},
 		},
@@ -127,8 +127,8 @@ func TestWorkingContextAttributesHookAndRecalledMemoryInPlace(t *testing.T) {
 	}
 	hook := decodeContextProvenance(t, messages[1].Parts[0].Metadata)
 	if len(hook) != 2 ||
-		hook[0].Reference != string(domainhooks.SessionStart) ||
-		hook[1].Reference != string(domainhooks.UserPromptSubmit) {
+		hook[0].Reference != string(hookdata.SessionStart) ||
+		hook[1].Reference != string(hookdata.UserPromptSubmit) {
 		t.Fatalf("hook provenance=%+v", hook)
 	}
 	if len(messages[1].Parts) != 3 || messages[1].Parts[1].Text != "question" {

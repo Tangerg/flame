@@ -487,7 +487,7 @@ func buildAssemblyCore(
 				WorkspaceVCS:           workspaceVCS,
 				WorkspaceDiscovery:     workspaceDiscovery,
 				WorkspaceSkills:        workspaceServices.skills,
-				Hooks:                  workspaceServices.hooks,
+				Hooks:                  execution.hooks,
 				WorkspaceWatch:         workspaceWatch,
 				WorkspaceAuthoredWatch: workspaceServices.authoredWatch,
 				Goals:                  goalDriver,

@@ -14,7 +14,7 @@ const (
 func registerHooks(registry *Registry) {
 	registry.query(MethodMeta{
 		Name: hooksList, GoName: "ListHooks",
-		Errors: []string{protocol.ErrWorkspaceUnavailable.Error()},
+		Errors: pluginProviderErrors(protocol.ErrWorkspaceUnavailable.Error()),
 	}, func(service interface {
 		ListHooks(context.Context, protocol.ListHooksRequest) (*protocol.HooksListResult, error)
 	}, ctx context.Context, request protocol.ListHooksRequest) (*protocol.HooksListResult, error) {

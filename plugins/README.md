@@ -2,7 +2,7 @@
 
 Memory, Schedules, Knowledge base, GitHub, Model router, Guardrails, Web research,
 Saved usage reports, Generated interfaces, Deliverables, Computer use, Native sandbox,
-File watch, Code intelligence, Remote agents and Skill learning have optional
+File watch, Code intelligence, Remote agents, Skill learning, Model providers and Hooks have optional
 backends. Memory, Schedules, Saved usage reports, Generated interfaces, Deliverables, Computer use and Skills expose
 ordinary public components; the remaining packages are backend-only.
 MCP model Tools and human Runtime commands
@@ -12,6 +12,16 @@ Code intelligence (`codeintel`) owns language-server queries and version-bound
 formatting and diagnostics. Runtime retains the only file mutation path; the
 provider computes against supplied snapshots and never commits those transformations.
 See [`codeintel/README.md`](codeintel/README.md).
+
+Model providers (`providers`) owns Scope vendor clients, provider catalogs,
+token counting and Embedding execution. Runtime retains credentials, exact
+selection, call evidence, accounting and recovery. See
+[`providers/README.md`](providers/README.md).
+
+Hooks (`hooks`) owns authored rule discovery and bounded command execution.
+Runtime supplies project identity and trust, retains each captured source and
+owns final event decisions and Tool authorization. See
+[`hooks/README.md`](hooks/README.md).
 
 Remote agents (`a2a`) owns A2A discovery, remote requests and durable task
 bindings. Runtime retains Tool admission and internal delegation. See

@@ -1,4 +1,4 @@
-package hooks
+package main
 
 import (
 	"context"
@@ -9,7 +9,8 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
+	"github.com/Tangerg/flame/packages/go-sdk/hook"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
 )
 
 func writeHooks(t *testing.T, dir, body string) {
@@ -45,17 +46,17 @@ func TestLoad_TagsGlobalAndProjectScope(t *testing.T) {
 	writeHooks(t, home, `{"hooks":[{"event":"SessionStart","inject":"global-ctx"}]}`)
 	writeHooks(t, cwd, `{"hooks":[{"event":"PreToolUse","matcher":"shell","command":"true"}]}`)
 
-	hooks, err := loadCascade(context.Background(), cwd, home)
+	hooks, err := readTestHooks(context.Background(), cwd, home)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(hooks) != 2 {
 		t.Fatalf("len = %d, want 2: %+v", len(hooks), hooks)
 	}
-	if hooks[0].Scope != domainhooks.ScopeGlobal || hooks[0].Inject != "global-ctx" {
+	if hooks[0].Scope != hook.ScopeGlobal || hooks[0].Inject != "global-ctx" {
 		t.Errorf("hook[0] = %+v, want global SessionStart", hooks[0])
 	}
-	if hooks[1].Scope != domainhooks.ScopeProject || hooks[1].Event != domainhooks.PreToolUse {
+	if hooks[1].Scope != hook.ScopeProject || hooks[1].Event != hook.PreToolUse {
 		t.Errorf("hook[1] = %+v, want project PreToolUse", hooks[1])
 	}
 	if hooks[1].Source == "" {
@@ -68,7 +69,7 @@ func TestLoad_MalformedReturnsError(t *testing.T) {
 	cwd := t.TempDir()
 	writeHooks(t, cwd, `{ this is not json `)
 
-	if _, err := loadCascade(context.Background(), cwd, home); err == nil {
+	if _, err := readTestHooks(context.Background(), cwd, home); err == nil {
 		t.Fatal("Load malformed config error = nil")
 	}
 }
@@ -85,7 +86,7 @@ func TestLoadRejectsUnknownPolicyFields(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			cwd := t.TempDir()
 			writeHooks(t, cwd, test.body)
-			if hooks, err := loadCascade(t.Context(), cwd, ""); err == nil {
+			if hooks, err := readTestHooks(t.Context(), cwd, ""); err == nil {
 				t.Fatalf("Load accepted unknown policy field: %+v", hooks)
 			}
 		})
@@ -105,7 +106,7 @@ func TestLoadRejectsMissingAndNullConfigurationMaterial(t *testing.T) {
 		t.Run(body, func(t *testing.T) {
 			cwd := t.TempDir()
 			writeHooks(t, cwd, body)
-			if hooks, err := loadCascade(t.Context(), cwd, ""); err == nil {
+			if hooks, err := readTestHooks(t.Context(), cwd, ""); err == nil {
 				t.Fatalf("Load accepted missing or null material: %+v", hooks)
 			}
 		})
@@ -113,7 +114,7 @@ func TestLoadRejectsMissingAndNullConfigurationMaterial(t *testing.T) {
 	for _, body := range []string{"", `{"hooks":[]}`} {
 		cwd := t.TempDir()
 		writeHooks(t, cwd, body)
-		if hooks, err := loadCascade(t.Context(), cwd, ""); err != nil || len(hooks) != 0 {
+		if hooks, err := readTestHooks(t.Context(), cwd, ""); err != nil || len(hooks) != 0 {
 			t.Fatalf("Load explicit empty configuration = %+v, %v", hooks, err)
 		}
 	}
@@ -137,7 +138,7 @@ func TestLoadRejectsInvalidHookConfiguration(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			cwd := t.TempDir()
 			writeHooks(t, cwd, test.body)
-			if _, err := loadCascade(t.Context(), cwd, ""); !errors.Is(err, domainhooks.ErrInvalidHook) {
+			if _, err := readTestHooks(t.Context(), cwd, ""); !errors.Is(err, hook.ErrInvalidHook) {
 				t.Fatalf("Load error = %v, want ErrInvalidHook", err)
 			}
 		})
@@ -145,7 +146,7 @@ func TestLoadRejectsInvalidHookConfiguration(t *testing.T) {
 }
 
 func TestLoad_MissingFilesAreFine(t *testing.T) {
-	hooks, err := loadCascade(context.Background(), t.TempDir(), t.TempDir())
+	hooks, err := readTestHooks(context.Background(), t.TempDir(), t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -159,7 +160,7 @@ func TestLoadRejectsNonRegularConfiguration(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(cwd, ".flame", "hooks.json"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := loadCascade(t.Context(), cwd, ""); !errors.Is(err, filesystem.ErrNotRegular) {
+	if _, err := readTestHooks(t.Context(), cwd, ""); !errors.Is(err, filesystem.ErrNotRegular) {
 		t.Fatalf("Load error = %v, want non-regular configuration", err)
 	}
 }
@@ -169,7 +170,7 @@ func TestLoadPreservesCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancelCause(t.Context())
 	cancel(cause)
 
-	if _, err := loadCascade(ctx, t.TempDir(), t.TempDir()); !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
+	if _, err := readTestHooks(ctx, t.TempDir(), t.TempDir()); !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
 		t.Fatalf("Load error = %v, want context.Canceled", err)
 	}
 }
@@ -178,9 +179,9 @@ func TestLoadRejectsUnboundedHookFilesAndCascades(t *testing.T) {
 	t.Run("exact file bytes", func(t *testing.T) {
 		cwd := t.TempDir()
 		body := hooksDocument(0)
-		body += strings.Repeat(" ", int(domainhooks.MaxConfigurationFileBytes)-len(body))
+		body += strings.Repeat(" ", int(hook.MaxConfigurationFileBytes)-len(body))
 		writeHooks(t, cwd, body)
-		if _, err := loadCascade(t.Context(), cwd, ""); err != nil {
+		if _, err := readTestHooks(t.Context(), cwd, ""); err != nil {
 			t.Fatalf("Load exact 256 KiB hooks.json: %v", err)
 		}
 	})
@@ -188,7 +189,7 @@ func TestLoadRejectsUnboundedHookFilesAndCascades(t *testing.T) {
 	t.Run("file bytes", func(t *testing.T) {
 		cwd := t.TempDir()
 		writeHooks(t, cwd, hooksDocument(0)+strings.Repeat(" ", 256<<10))
-		if _, err := loadCascade(t.Context(), cwd, ""); !errors.Is(err, domainhooks.ErrConfigurationTooLarge) || !errors.Is(err, filesystem.ErrFileTooLarge) {
+		if _, err := readTestHooks(t.Context(), cwd, ""); !errors.Is(err, hook.ErrConfigurationTooLarge) || !errors.Is(err, filesystem.ErrFileTooLarge) {
 			t.Fatalf("oversized Hook admission lost classification or input cause: %v", err)
 		}
 	})
@@ -196,7 +197,7 @@ func TestLoadRejectsUnboundedHookFilesAndCascades(t *testing.T) {
 	t.Run("hooks per file", func(t *testing.T) {
 		cwd := t.TempDir()
 		writeHooks(t, cwd, hooksDocument(129))
-		if _, err := loadCascade(t.Context(), cwd, ""); err == nil {
+		if _, err := readTestHooks(t.Context(), cwd, ""); err == nil {
 			t.Fatal("Load accepted more than 128 hooks in one file")
 		}
 	})
@@ -214,7 +215,7 @@ func TestLoadRejectsUnboundedHookFilesAndCascades(t *testing.T) {
 		writeHooks(t, home, hooksDocument(128))
 		writeHooks(t, root, hooksDocument(128))
 		writeHooks(t, cwd, hooksDocument(1))
-		if _, err := loadCascade(t.Context(), cwd, home); err == nil {
+		if _, err := discover(t.Context(), hookprovider.Discovery{CWD: cwd, ProjectRoot: root, Home: home, IncludeProject: true}); err == nil {
 			t.Fatal("Load accepted more than 256 hooks in one complete cascade")
 		}
 	})
@@ -224,17 +225,21 @@ func TestLoadRejectsUnboundedHookFilesAndCascades(t *testing.T) {
 		writeHooks(t, cwd, string([]byte(
 			`{"hooks":[{"event":"SessionStart","inject":"`+string([]byte{0xff})+`"}]}`,
 		)))
-		if _, err := loadCascade(t.Context(), cwd, ""); err == nil {
+		if _, err := readTestHooks(t.Context(), cwd, ""); err == nil {
 			t.Fatal("Load accepted hooks.json containing invalid UTF-8")
 		}
 	})
 }
 
 func TestLoadRequiresAbsoluteCompositionPaths(t *testing.T) {
-	if _, err := loadCascade(t.Context(), "relative-workspace", ""); err == nil {
+	if _, err := readTestHooks(t.Context(), "relative-workspace", ""); err == nil {
 		t.Fatal("Load accepted a relative cwd")
 	}
-	if _, err := loadCascade(t.Context(), t.TempDir(), "relative-home"); err == nil {
+	if _, err := readTestHooks(t.Context(), t.TempDir(), "relative-home"); err == nil {
 		t.Fatal("Load accepted a relative home")
 	}
+}
+
+func readTestHooks(ctx context.Context, cwd, home string) ([]hook.Hook, error) {
+	return discover(ctx, hookprovider.Discovery{CWD: cwd, ProjectRoot: cwd, Home: home, IncludeProject: true})
 }

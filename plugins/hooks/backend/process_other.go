@@ -1,6 +1,6 @@
-//go:build windows
+//go:build !unix && !windows
 
-package hooks
+package main
 
 import (
 	"context"
@@ -8,5 +8,5 @@ import (
 )
 
 func hookShellCommand(ctx context.Context, command string) *exec.Cmd {
-	return exec.CommandContext(ctx, "cmd.exe", "/d", "/s", "/c", command)
+	return exec.CommandContext(ctx, "sh", "-c", command)
 }

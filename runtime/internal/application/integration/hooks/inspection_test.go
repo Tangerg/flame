@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	domain "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
+	hookdata "github.com/Tangerg/flame/packages/go-sdk/hook"
 )
 
 func TestInspectionAcceptsResolvedGlobalToProjectCascade(t *testing.T) {
@@ -23,7 +23,7 @@ func TestInspectionRejectsBrokenResolvedCascades(t *testing.T) {
 			value.Hooks[0].Inject = ""
 		},
 		"unknown scope": func(value *Inspection) {
-			value.Hooks[0].Scope = domain.Scope("other")
+			value.Hooks[0].Scope = hookdata.Scope("other")
 		},
 		"relative source": func(value *Inspection) {
 			value.Hooks[0].Source = ".flame/hooks.json"
@@ -47,10 +47,10 @@ func TestInspectionRejectsBrokenResolvedCascades(t *testing.T) {
 
 	t.Run("oversized cascade", func(t *testing.T) {
 		inspection := validInspection()
-		inspection.Hooks = make([]domain.Hook, domain.MaxHooksPerCascade+1)
+		inspection.Hooks = make([]hookdata.Hook, hookdata.MaxHooksPerCascade+1)
 		for index := range inspection.Hooks {
-			inspection.Hooks[index] = domain.Hook{
-				Event: domain.Stop, Inject: "context", Scope: domain.ScopeGlobal,
+			inspection.Hooks[index] = hookdata.Hook{
+				Event: hookdata.Stop, Inject: "context", Scope: hookdata.ScopeGlobal,
 				Source: "/home/.flame/hooks.json",
 			}
 		}
@@ -64,9 +64,9 @@ func validInspection() Inspection {
 	return Inspection{
 		ProjectRoot:    "/repo",
 		ProjectTrusted: true,
-		Hooks: []domain.Hook{
-			{Event: domain.Stop, Inject: "global", Scope: domain.ScopeGlobal, Source: "/home/.flame/hooks.json"},
-			{Event: domain.PreToolUse, Command: "check", Scope: domain.ScopeProject, Source: "/repo/pkg/.flame/hooks.json"},
+		Hooks: []hookdata.Hook{
+			{Event: hookdata.Stop, Inject: "global", Scope: hookdata.ScopeGlobal, Source: "/home/.flame/hooks.json"},
+			{Event: hookdata.PreToolUse, Command: "check", Scope: hookdata.ScopeProject, Source: "/repo/pkg/.flame/hooks.json"},
 		},
 	}
 }

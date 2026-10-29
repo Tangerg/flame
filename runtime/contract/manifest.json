@@ -1359,6 +1359,8 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
+        "plugin_stale",
         "workspace_unavailable"
       ]
     },
@@ -2104,6 +2106,7 @@
         "recoveryAction": "promptUser",
         "methods": [
           "goals.start",
+          "hooks.list",
           "models.list",
           "models.setEmbeddingRole",
           "models.setUtilityRole",
@@ -2145,6 +2148,7 @@
         "recoveryAction": "promptUser",
         "methods": [
           "goals.start",
+          "hooks.list",
           "models.list",
           "models.setEmbeddingRole",
           "models.setUtilityRole",

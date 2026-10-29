@@ -6769,6 +6769,14 @@
       },
       "errors": [
         {
+          "code": -32045,
+          "message": "plugin_unavailable"
+        },
+        {
+          "code": -32043,
+          "message": "plugin_stale"
+        },
+        {
           "code": -32005,
           "message": "workspace_unavailable"
         }

@@ -1030,6 +1030,313 @@
       ]
     },
     {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/hook",
+      "constants": [
+        {
+          "name": "CommandAllow",
+          "type": "CommandVerdict",
+          "value": "\"allow\""
+        },
+        {
+          "name": "CommandAsk",
+          "type": "CommandVerdict",
+          "value": "\"ask\""
+        },
+        {
+          "name": "CommandDeny",
+          "type": "CommandVerdict",
+          "value": "\"deny\""
+        },
+        {
+          "name": "MaxArgumentsBytes",
+          "type": "untyped int",
+          "value": "262144"
+        },
+        {
+          "name": "MaxConfigurationFileBytes",
+          "type": "int64",
+          "value": "262144"
+        },
+        {
+          "name": "MaxHooksPerCascade",
+          "type": "untyped int",
+          "value": "256"
+        },
+        {
+          "name": "MaxPromptBytes",
+          "type": "untyped int",
+          "value": "262144"
+        },
+        {
+          "name": "MaxTimeoutMillis",
+          "type": "untyped int",
+          "value": "300000"
+        },
+        {
+          "name": "Notification",
+          "type": "Event",
+          "value": "\"Notification\""
+        },
+        {
+          "name": "PostToolUse",
+          "type": "Event",
+          "value": "\"PostToolUse\""
+        },
+        {
+          "name": "PreCompact",
+          "type": "Event",
+          "value": "\"PreCompact\""
+        },
+        {
+          "name": "PreToolUse",
+          "type": "Event",
+          "value": "\"PreToolUse\""
+        },
+        {
+          "name": "ScopeGlobal",
+          "type": "Scope",
+          "value": "\"global\""
+        },
+        {
+          "name": "ScopeProject",
+          "type": "Scope",
+          "value": "\"project\""
+        },
+        {
+          "name": "SessionStart",
+          "type": "Event",
+          "value": "\"SessionStart\""
+        },
+        {
+          "name": "Stop",
+          "type": "Event",
+          "value": "\"Stop\""
+        },
+        {
+          "name": "UserPromptSubmit",
+          "type": "Event",
+          "value": "\"UserPromptSubmit\""
+        }
+      ],
+      "variables": [
+        {
+          "name": "ErrConfigurationTooLarge",
+          "type": "error"
+        },
+        {
+          "name": "ErrInvalidHook",
+          "type": "error"
+        }
+      ],
+      "functions": [
+        {
+          "name": "ValidateConfigurationFileSize",
+          "signature": "func(size int64) error"
+        },
+        {
+          "name": "ValidateHookCascade",
+          "signature": "func(count int) error"
+        },
+        {
+          "name": "ValidateHooksPerFile",
+          "signature": "func(count int) error"
+        }
+      ],
+      "types": [
+        {
+          "name": "CommandDecision",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Verdict",
+              "type": "CommandVerdict",
+              "tag": "json:\"verdict\""
+            },
+            {
+              "name": "Reason",
+              "type": "string",
+              "tag": "json:\"reason,omitempty\""
+            },
+            {
+              "name": "InjectContext",
+              "type": "string",
+              "tag": "json:\"injectContext,omitempty\""
+            },
+            {
+              "name": "RewriteArguments",
+              "type": "string",
+              "tag": "json:\"rewriteArguments,omitempty\""
+            }
+          ]
+        },
+        {
+          "name": "CommandVerdict",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            },
+            {
+              "name": "Valid",
+              "signature": "func() bool"
+            }
+          ]
+        },
+        {
+          "name": "Event",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "Hook",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Event",
+              "type": "Event",
+              "tag": "json:\"event\""
+            },
+            {
+              "name": "Matcher",
+              "type": "string",
+              "tag": "json:\"matcher,omitempty\""
+            },
+            {
+              "name": "Command",
+              "type": "string",
+              "tag": "json:\"command,omitempty\""
+            },
+            {
+              "name": "Inject",
+              "type": "string",
+              "tag": "json:\"inject,omitempty\""
+            },
+            {
+              "name": "TimeoutMillis",
+              "type": "int",
+              "tag": "json:\"timeoutMillis,omitzero\""
+            },
+            {
+              "name": "Scope",
+              "type": "Scope",
+              "tag": "json:\"scope\""
+            },
+            {
+              "name": "Source",
+              "type": "string",
+              "tag": "json:\"source\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Matches",
+              "signature": "func(in Input) bool"
+            },
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Input",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Event",
+              "type": "Event",
+              "tag": "json:\"event\""
+            },
+            {
+              "name": "SessionID",
+              "type": "string",
+              "tag": "json:\"sessionId,omitempty\""
+            },
+            {
+              "name": "CWD",
+              "type": "string",
+              "tag": "json:\"cwd,omitempty\""
+            },
+            {
+              "name": "Tool",
+              "type": "*ToolInput",
+              "tag": "json:\"tool,omitzero\""
+            },
+            {
+              "name": "Prompt",
+              "type": "string",
+              "tag": "json:\"prompt,omitempty\""
+            },
+            {
+              "name": "PromptTruncated",
+              "type": "bool",
+              "tag": "json:\"promptTruncated,omitzero\""
+            },
+            {
+              "name": "Reason",
+              "type": "string",
+              "tag": "json:\"reason,omitempty\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "CommandProjection",
+              "signature": "func() (Input, error)"
+            },
+            {
+              "name": "ValidateCommandMaterial",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Scope",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "ToolInput",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Name",
+              "type": "string",
+              "tag": "json:\"name\""
+            },
+            {
+              "name": "Arguments",
+              "type": "string",
+              "tag": "json:\"arguments,omitempty\""
+            },
+            {
+              "name": "Result",
+              "type": "string",
+              "tag": "json:\"result,omitempty\""
+            },
+            {
+              "name": "ResultTruncated",
+              "type": "bool",
+              "tag": "json:\"resultTruncated,omitzero\""
+            }
+          ]
+        }
+      ]
+    },
+    {
       "path": "github.com/Tangerg/flame/packages/go-sdk/httporigin",
       "imports": [
         "net/url"
@@ -2373,6 +2680,180 @@
             {
               "name": "Validate",
               "signature": "func(source Document) error"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider",
+      "imports": [
+        "github.com/Tangerg/flame/packages/go-sdk/hook",
+        "github.com/Tangerg/flame/qimu/mcp",
+        "github.com/Tangerg/flame/qimu/portable"
+      ],
+      "constants": [
+        {
+          "name": "Canceled",
+          "type": "FailureKind",
+          "value": "\"canceled\""
+        },
+        {
+          "name": "Failed",
+          "type": "FailureKind",
+          "value": "\"failed\""
+        },
+        {
+          "name": "MaxCommandInputBytes",
+          "type": "untyped int",
+          "value": "524288"
+        },
+        {
+          "name": "MaxCommandOutputBytes",
+          "type": "untyped int",
+          "value": "65536"
+        },
+        {
+          "name": "TimedOut",
+          "type": "FailureKind",
+          "value": "\"timedOut\""
+        }
+      ],
+      "functions": [
+        {
+          "name": "Contract",
+          "signature": "func() (*portable.Capability, error)"
+        },
+        {
+          "name": "DiscoverMethod",
+          "signature": "func() (*mcp.Method[Discovery, []hook.Hook], error)"
+        },
+        {
+          "name": "ExecuteMethod",
+          "signature": "func() (*mcp.Method[Command, Result], error)"
+        }
+      ],
+      "types": [
+        {
+          "name": "Command",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Command",
+              "type": "string",
+              "tag": "json:\"command\""
+            },
+            {
+              "name": "CWD",
+              "type": "string",
+              "tag": "json:\"cwd\""
+            },
+            {
+              "name": "Input",
+              "type": "hook.Input",
+              "tag": "json:\"input\""
+            },
+            {
+              "name": "TimeoutMillis",
+              "type": "int64",
+              "tag": "json:\"timeoutMillis\" jsonschema:\"minimum=1\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Discovery",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "CWD",
+              "type": "string",
+              "tag": "json:\"cwd\""
+            },
+            {
+              "name": "ProjectRoot",
+              "type": "string",
+              "tag": "json:\"projectRoot\""
+            },
+            {
+              "name": "Home",
+              "type": "string",
+              "tag": "json:\"home,omitempty\""
+            },
+            {
+              "name": "IncludeProject",
+              "type": "bool",
+              "tag": "json:\"includeProject\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Failure",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Kind",
+              "type": "FailureKind",
+              "tag": "json:\"kind\""
+            },
+            {
+              "name": "Message",
+              "type": "string",
+              "tag": "json:\"message\""
+            }
+          ]
+        },
+        {
+          "name": "FailureKind",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "Result",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Decision",
+              "type": "*hook.CommandDecision",
+              "tag": "json:\"decision,omitzero\""
+            },
+            {
+              "name": "Stderr",
+              "type": "string",
+              "tag": "json:\"stderr,omitempty\""
+            },
+            {
+              "name": "ExitCode",
+              "type": "int",
+              "tag": "json:\"exitCode\""
+            },
+            {
+              "name": "Failure",
+              "type": "*Failure",
+              "tag": "json:\"failure,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
             }
           ]
         }

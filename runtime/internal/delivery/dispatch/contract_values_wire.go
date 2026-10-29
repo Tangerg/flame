@@ -3,6 +3,7 @@ package dispatch
 import (
 	"reflect"
 
+	hookdata "github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -10,7 +11,6 @@ import (
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -610,7 +610,7 @@ func registerHookValues(s *Shapes) {
 		Constraints: []FieldConstraint{
 			{Field: "source", Kind: ConstraintNonEmpty},
 			{Field: "timeoutMillis", Kind: ConstraintNonNegative},
-			{Field: "timeoutMillis", Kind: ConstraintMaximum, Limit: hooks.MaxTimeoutMillis},
+			{Field: "timeoutMillis", Kind: ConstraintMaximum, Limit: hookdata.MaxTimeoutMillis},
 		},
 	})
 	nonEmpty[protocol.SetHookTrustRequest](s, "projectRoot")

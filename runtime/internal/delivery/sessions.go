@@ -54,7 +54,7 @@ func registerSessions(registry *Registry) {
 
 	registry.command(MethodMeta{
 		Name: SessionsCreate, GoName: "CreateSession",
-		Errors: modelProviderErrors(protocol.ErrWorkspaceUnavailable.Error()),
+		Errors: pluginProviderErrors(protocol.ErrWorkspaceUnavailable.Error()),
 	}, func(service interface {
 		CreateSession(context.Context, protocol.CreateSessionRequest) (*protocol.Session, error)
 	}, ctx context.Context, request protocol.CreateSessionRequest) (*protocol.Session, error) {
@@ -66,7 +66,7 @@ func registerSessions(registry *Registry) {
 	// is off, instead of the whole method disappearing.
 	registry.command(MethodMeta{
 		Name: SessionsUpdate, GoName: "UpdateSession",
-		Errors: modelProviderErrors(protocol.ErrSessionNotFound.
+		Errors: pluginProviderErrors(protocol.ErrSessionNotFound.
 			Error(), protocol.ErrRevisionConflict.
 			Error(), protocol.ErrWorkspaceUnavailable.
 			Error(),
@@ -101,7 +101,7 @@ func registerSessions(registry *Registry) {
 
 	registry.command(MethodMeta{
 		Name: sessionsFork, GoName: "ForkSession",
-		Errors: modelProviderErrors(protocol.ErrSessionNotFound.
+		Errors: pluginProviderErrors(protocol.ErrSessionNotFound.
 			Error(), protocol.ErrRunNotFound.
 			Error(),
 		),

@@ -3,9 +3,14 @@ package delivery
 import (
 	"context"
 	"errors"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/qimu/portable"
 )
+
+func pluginProviderErrors(other ...string) []string {
+	return append([]string{protocol.ErrPluginUnavailable.Error(), protocol.ErrPluginStale.Error()}, other...)
+}
 
 func runtimeProduced(detail string, cause error) *protocol.Failure {
 	return protocol.NewFailure(errors.Join(protocol.ErrInternalError, cause), "the runtime produced "+detail)

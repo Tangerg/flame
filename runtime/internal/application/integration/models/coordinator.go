@@ -1,8 +1,6 @@
-// Package models is the application coordinator for provider + model
-// configuration: the runtime-mutable provider registry (credentials), the static
-// provider catalog + credential prober, and the utility / embedding model roles.
-// It is a thin use-case layer over the domain provider registry and focused
-// ports for model validation, catalog lookup, and credential probing.
+// Package models owns provider configuration, model admission and utility and
+// embedding roles. Installed adapters supply capability facts and execute probes;
+// Runtime retains configuration precedence and role persistence.
 package models
 
 import (

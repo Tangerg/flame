@@ -17,7 +17,7 @@ type hookTrust interface {
 
 // NewHookResolver builds the runtime hook resolver from the composition root's
 // user-home snapshot and the durable project trust policy.
-func newHookResolver(userHome string, trust hookTrust) (*adapterhooks.Resolver, error) {
+func newHookResolver(userHome string, trust hookTrust, source adapterhooks.Source) (*adapterhooks.Resolver, error) {
 	if lo.IsNil(trust) {
 		return nil, errors.New("hooks: trust store is required")
 	}
@@ -29,8 +29,9 @@ func newHookResolver(userHome string, trust hookTrust) (*adapterhooks.Resolver, 
 			}
 			return ok, nil
 		},
+		source,
 		func(ctx context.Context, source string, err error) {
 			slog.ErrorContext(ctx, "hooks: command failed", "source", source, "error", err)
 		},
-	), nil
+	)
 }

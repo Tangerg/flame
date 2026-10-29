@@ -89,7 +89,7 @@ Protocol `2026-10-29.1` · 104 methods
 | `plugins.configure` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
 | `plugins.setEnablement` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
 | `plugins.uninstall` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
-| `hooks.list` | query | unary | none | none | none | — | — | `workspace_unavailable` |
+| `hooks.list` | query | unary | none | none | none | — | — | `plugin_unavailable`, `plugin_stale`, `workspace_unavailable` |
 | `hooks.setTrust` | command | unary | replayResponse | none | none | — | — | `workspace_unavailable` |
 | `approval.setRule` | command | unary | replayResponse | none | none | — | — | — |
 | `approval.getMode` | query | unary | none | none | none | — | — | — |
