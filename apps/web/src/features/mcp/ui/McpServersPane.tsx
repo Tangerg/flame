@@ -14,7 +14,7 @@ import { settingStyles as ss } from "@/ui/settings/settingStyles";
 export function McpServersPane() {
   const t = useT();
   const commands = useMCPServerCommands();
-  const { data, isLoading, error, refetch } = useMCPServers();
+  const { data, isPending, error, refetch } = useMCPServers();
   const [adding, setAdding] = useState<HTMLElement | null>(null);
   const panelId = useId();
 
@@ -47,7 +47,7 @@ export function McpServersPane() {
 
       <DataView
         items={data}
-        isLoading={isLoading}
+        isLoading={isPending}
         failure={error}
         onRetry={refetch}
         skeletonCount={3}

@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Current batch repairs first-result readiness in Files: a paused root list, expanded directory or file read retains Loading until it has a result. Accepted empty data, cached content, tree position and drafts retain their owners. All 128 focused tests, typecheck, lint, remaining Web/native gates and actual light/dark/18px/200%/observer-free tasks pass. The repair is published as `4468c2fc6`; evidence, cleanup and delivery are recorded under **First file-result readiness**. Source-return/long-tooltip delivery remains `c126bc235`. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
+Current batch repairs initial MCP result readiness: server and expanded-tool lists retain Loading before their first result, including paused reads. Accepted empty data, cached tools, independent permissions and editing keep their owners. All 65 focused tests, typecheck, lint and remaining Web/native gates pass; light/dark/18px/200% and observer-free native tasks pass. Evidence and cleanup are complete; qualified source is ready for publication under **First MCP-result readiness**. Files readiness is published as `4468c2fc6`; source-return/long-tooltip delivery remains `c126bc235`. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -10752,6 +10752,130 @@ remote confirmation. Implementation
 exact remote hash, clean owned checkout, zero unpushed commits, unchanged accepted
 inputs and restored preexisting outputs are verified. Continue with fresh task
 evidence at the separate workspace refresh boundary.
+
+### First MCP-result readiness
+
+At main `8fdf78e1f`, actual Wails reproduces premature empty results at two
+related boundaries. A paused first server read claims `No MCP servers`. After
+that read accepts the captured docs server, its row reports eight tools, but
+expanding its still-unread tool query claims `This server exposes no tools`.
+Resuming both reads exposes the real server and eight tools.
+
+`McpServersPane.tsx` and `ToolControls.tsx` now project each query's `isPending`
+into the existing DataView loading slot. The installed Query observer derives
+`isLoading` from pending plus active fetching; it cannot represent a paused first
+read. Accepted empty lists remain empty and accepted contents remain available
+through later pauses. Server origin, exact tool identity, separate exposure and
+approval reads, errors/Retry, configuration drafts, mutation retirement and query
+ownership are unchanged. There is no new state, event handler, timeout, cache,
+DataView contract, network mode, API, dependency or Runtime change.
+
+The [TanStack network-mode reference](https://tanstack.com/query/latest/docs/framework/react/guides/network-mode)
+and installed Query observer distinguish result status from request activity.
+Read-only ZCode's real PluginsSection consumes McpSettingsSection, whose
+`mcpProjectionReady` owns the initial loading boundary independently of the
+known-empty list. HeroUI's actual Accordion examples keep trigger identity
+beside progressive content; they are presentation references, not evidence of
+Flame's native focus behavior. Flame retains shared Disclosure/DataView,
+Base UI, StyleX and existing semantic roles.
+
+| Domain        | Evidence inspected                                                                                       | Result and boundary                                                                                     |
+| ------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Accessibility | Named loading, persistent server/disclosure, real Tab/reverse Tab, editor cancel and conversation return | Keyboard path passes; no new VoiceOver audio or OS IME qualification.                                   |
+| Layout        | Light normal/adjusted windows; dark 560×377 CSS px at actual 200%; long literal tool names               | Existing scroll and reflow owners keep current controls reachable. No fresh 320px or RTL qualification. |
+| Writing       | Existing EN/ZH loading, empty, server identity and tool-policy copy                                      | Empty claims wait for an accepted empty result. No new copy or locale keys.                             |
+| Typography    | 14/18px names, descriptions and controls                                                                 | Long names wrap within the existing reading width. Type owners remain unchanged.                        |
+| Colors        | Light/Orange and dark/custom-blue focused controls                                                       | Existing theme and focus roles retained. No new numerical contrast claim.                               |
+| UI            | Existing skeleton, Disclosure and configuration form; full-motion light and motion-off dark              | No additional skin, decoration or animation.                                                            |
+
+| Severity         | Domain       | Location                                  | Before                                              | After                                                  | Why                                                               |
+| ---------------- | ------------ | ----------------------------------------- | --------------------------------------------------- | ------------------------------------------------------ | ----------------------------------------------------------------- |
+| MEDIUM, repaired | Writing / UX | MCP server list and expanded ToolControls | A paused first query presents a known-empty result. | Existing initial loading stays until the first result. | Unknown content must remain distinct from accepted empty content. |
+
+Verification passed:
+
+- Baseline: **6 files / 57 tests**. Eight new cases use actual queries and the
+  online manager. Original source fails **four**, passes **four** and skips the
+  two older tests: first server/tool reads miss Loading; accepted empty/nonempty
+  rereads already pass. Final MCP pane/tool/row/form, DataView and data-query
+  checks pass **6 files / 65 tests**, Web typecheck and lint. An initial candidate
+  run has **63 passes / two failures** because the new assertion incorrectly
+  demands that the editor's independent empty live-status span disappear. The
+  correction asserts retirement of Loading and preserves that status owner.
+- The other **11** serial Web/native gates pass; together with scoped lint these
+  cover circular/context/layer, design-system/token/chrome/locale, resource
+  reproduction, production bundle, module links and `make check-native`.
+  The native gate takes **54.129s**, including Desktop test/vet/build and the
+  supported Wails production build. Shared UI source and dependency inputs are
+  unchanged; its earlier **194-test** package check is reused, not a new run.
+- EN/light/14px/Orange: first server and expanded-tool waits show Loading and
+  retain their parent identity. An Add draft keeps `Keep this server draft`
+  and its field focus when the server arrives. Cancel restores Add focus. The
+  accepted eight-tool list reads to its final description; its tab panel moves
+  **scrollTop 0 → 306** within **1,156px content / 850px viewport**. Reverse
+  keyboard navigation reaches Edit; eight Tabs reach Cancel, whose acceptance
+  restores Edit while tools stay expanded. Native window adjustment changes
+  **1440×900 → 1513×950**. Close and Cmd+L retain
+  `Keep this MCP-reading draft. Continued.`, caret **39**.
+- ZH/dark/18px/custom-blue/motion-off: the measured native viewport is
+  **560×377 CSS px / DPR 4 / 200%**. The first server wait and scrolled local
+  tool wait expose 加载中. Tool arrival preserves the disclosure focus. Sixteen
+  Tabs reach the last tool's auto-approve control, which is visible within the
+  existing panel: **1,733px content / 197px viewport**, scrollTop **1,481**,
+  scrollWidth/clientWidth **556/556**. Seventeen reverse Tabs and Return open
+  the same server's editor. Cancel remains reachable, and reverse navigation
+  reaches Close. Continued input retains `MCP 工具读取后保留草稿。 已继续。`,
+  caret **19**. Early wheel probes hit Settings navigation; only the subsequent
+  content-area scroll establishes the local loading result.
+- The observer-free control contains **622 assets**. Only `index.html` and
+  `visual/index.html` differ by removing the additional observer; the other
+  620 assets match the final dark capture. Private callback diagnostics are also
+  absent. The native large-zoom keyboard path repeats both waits, all eight
+  tools, final-control reading, Edit/Cancel, Close and continued input:
+  `无观察器 MCP 草稿。 已继续。`. Extra observation records and requests are
+  both **zero**. Actual Size completes before the final 20 native Zoom In
+  actions; no passive CSS geometry or selection measurement is claimed for
+  this control. Actual Size is restored before Quit.
+
+Nine native generations include four qualified task scenes: final frozen
+original, light candidate, final dark candidate and observer-free control.
+Earlier private controls are bounded diagnostics: default visual capabilities
+omit MCP; one captured model name violates the real 64-character protocol limit;
+a whole-source override after StyleX preprocessing leaves an uncompiled call;
+and one diagnostic build overlaps source edits. None establishes a product
+failure or a passing resumed task. The final original uses actual frozen view
+sources through the normal compiler, then restores candidate bytes exactly.
+The private producer negotiates MCP and supplies bounded memory-protocol records.
+Its Ctrl+Alt+K command changes only Query availability through CUA, without OS
+network changes or a live server. The initial package build also attempts UI
+before its required icon output exists; building icons then UI repairs that
+precondition. All attempts and their corrections remain in the evidence.
+
+Publication fetch finds zero incoming main commits at `8fdf78e1f`; merging is
+already up to date. All nine native generations are stopped, the exact bundle is
+unregistered and the loopback observer is closed. Cleanup removes **seven** new
+checkout output/cache roots and **three** owned profile paths, restores **four**
+original files and modes, and passes all **18** output and **five** profile
+baselines. All **6,306** qualified non-Markdown inputs, **32** resources,
+**25** read-only reference inputs and **three** instruction files pass preservation;
+**6,302** source inputs outside this change remain identical. The original UI
+cache retains its two files and Web Vite-temp stays empty. Primary-checkout
+parallel work, user data, references and unrelated processes remain untouched.
+The exact private root `/private/tmp/flame-mcp-readiness-IZ4mZo` is absent;
+independent post-removal preservation repeats every count above.
+
+The round-tripped in-memory gzip retains **138 UTF-8 records**, **18,640,377 raw
+bytes** and **1,684,565 gzip bytes**, including canonical inputs, all attempts,
+serial gates, original/final observations, source/asset maps and cleanup proof.
+SHA-256: `79eebd9dcb2064e947fdd6997cae31540cdc9ed7283565e67e5a4fc98f9b6599`.
+The qualified source is ready for publication after this verification and
+cleanup boundary.
+
+Verdict: **Approve** for initial MCP reads and the inspected tools/edit/return
+path. The whole-product UI objective remains unfinished. Continue with actual
+first-result evidence in the remaining Settings catalog consumers, preserving
+known-role projections and independent accepted data rather than mechanically
+replacing every loading flag.
 
 ### First file-result readiness
 

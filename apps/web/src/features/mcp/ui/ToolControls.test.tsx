@@ -15,7 +15,7 @@ const model = vi.hoisted(() => ({
     data: [
       { name: "read", description: "", modelName: "docs_read", nameConflicts: [] as string[] },
     ],
-    isLoading: false,
+    isPending: false,
     error: null as Error | null,
     refetch: vi.fn(),
   },

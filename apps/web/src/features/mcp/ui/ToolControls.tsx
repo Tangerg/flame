@@ -88,7 +88,7 @@ export function ToolControls({ server }: Props) {
       <SettingsGroup>
         <DataView
           items={tools.data}
-          isLoading={tools.isLoading}
+          isLoading={tools.isPending}
           failure={tools.error}
           onRetry={tools.refetch}
           skeletonCount={3}

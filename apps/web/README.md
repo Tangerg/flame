@@ -410,6 +410,11 @@ error and reports accepted or failed writes through the existing clipboard owner
 Clearing a plugin's transient errors returns focus to the loaded-plugin list,
 including when an unloaded plugin's row disappears.
 
+MCP server and expanded-tool lists keep their initial loading presentation while
+the existing query is pending, including a paused first request. Empty states
+require accepted empty data; accepted rows and tools remain available through
+later pauses. Query, server identity, permission and editor owners remain unchanged.
+
 MCP server rows read their own tools directly, independent of configuration
 editing and server origin. Reconnect runs in the same exact-ID serial mutation
 generation as other server commands; its acknowledgement only admits a
