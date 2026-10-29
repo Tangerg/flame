@@ -7,7 +7,7 @@ prepareTestClient(() => {
   testClient = owned;
   finishTestClient(() => owned.dispose());
 });
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DATA_PROVIDER } from "@/extensions/dataProvider";
@@ -123,6 +123,12 @@ afterEach(() => {
   client.clear();
 });
 
+function pauseQueries() {
+  const wasOnline = onlineManager.isOnline();
+  onlineManager.setOnline(false);
+  finishTestClient(() => onlineManager.setOnline(wasOnline));
+}
+
 function lineWindow(start: number, end: number, totalLines: number): WorkspaceFileContent {
   const lines = Array.from({ length: end - start + 1 }, (_, i) => `line ${start + i}`);
   return { content: lines.join("\n"), startLine: start, totalLines };
@@ -185,6 +191,91 @@ function mountRetained() {
     reveal: () => view.rerender(workspace(true)),
   };
 }
+
+describe("first file reads", () => {
+  it("waits for the first root listing while its query is paused", async () => {
+    pauseQueries();
+    mount(<FileWorkspace />);
+    await waitFor(() => {
+      expect(client.getQueryState([WORKSPACE_LIST_FILES_KEY, { cwd: undefined }])).toMatchObject({
+        status: "pending",
+        fetchStatus: "paused",
+        data: undefined,
+      });
+    });
+    expect(listFiles).not.toHaveBeenCalled();
+    expect(screen.getByRole("status").textContent).toBe("Loading");
+    expect(screen.queryByText("No files")).toBeNull();
+
+    await act(async () => onlineManager.setOnline(true));
+    expect(await screen.findByRole("treeitem", { name: "src" })).toBeTruthy();
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("waits for an expanded directory's first paused read", async () => {
+    mount(<FileWorkspace />);
+    const parent = await screen.findByRole("treeitem", { name: "src" });
+    pauseQueries();
+    act(() => parent.focus());
+    fireEvent.click(parent);
+    await waitFor(() => {
+      expect(
+        client.getQueryState([WORKSPACE_LIST_FILES_KEY, { cwd: undefined, path: "src" }]),
+      ).toMatchObject({ status: "pending", fetchStatus: "paused", data: undefined });
+    });
+    expect(listFiles).toHaveBeenCalledOnce();
+    expect(screen.getByRole("status").textContent).toBe("Loading");
+    expect(screen.queryByText("No files")).toBeNull();
+    expect(document.activeElement).toBe(parent);
+
+    await act(async () => onlineManager.setOnline(true));
+    expect(await screen.findByRole("treeitem", { name: "main.go" })).toBeTruthy();
+    expect(document.activeElement).toBe(parent);
+  });
+
+  it("waits for the selected file's first paused read", async () => {
+    pauseQueries();
+    openWorkspaceFile(testClient.workspace.access, "src/main.go");
+    mount(<FileWorkspace />);
+    await waitFor(() => {
+      expect(
+        client.getQueryState([WORKSPACE_READ_FILE_KEY, { cwd: undefined, path: "src/main.go" }]),
+      ).toMatchObject({ status: "pending", fetchStatus: "paused", data: undefined });
+    });
+    expect(readFile).not.toHaveBeenCalled();
+    expect(screen.getByText("src/main.go")).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toBe("Loading");
+    const back = screen.getByRole("button", { name: "Back to files" });
+    expect(document.activeElement).toBe(back);
+
+    await act(async () => onlineManager.setOnline(true));
+    expect(await screen.findByText("package main")).toBeTruthy();
+    expect(document.activeElement).toBe(back);
+  });
+
+  it.each([
+    { name: "empty", accepted: [] as WorkspaceFileEntry[], visibleText: "No files" },
+    { name: "nonempty", accepted: [directory], visibleText: "src" },
+  ])(
+    "keeps an accepted $name listing during a paused reread",
+    async ({ accepted, visibleText }) => {
+      client.setQueryData([WORKSPACE_LIST_FILES_KEY, { cwd: undefined }], accepted);
+      pauseQueries();
+      mount(<FileWorkspace />);
+      act(() => void client.refetchQueries({ queryKey: [WORKSPACE_LIST_FILES_KEY] }));
+      await waitFor(() => {
+        expect(client.getQueryState([WORKSPACE_LIST_FILES_KEY, { cwd: undefined }])).toMatchObject({
+          status: "success",
+          fetchStatus: "paused",
+          data: accepted,
+        });
+      });
+      expect(listFiles).not.toHaveBeenCalled();
+      expect(screen.queryByRole("status")).toBeNull();
+      expect(screen.getByText(visibleText)).toBeTruthy();
+    },
+  );
+});
 
 describe("workspace files panel", () => {
   it("shows the rename relationship while preserving unknown binary statistics", () => {

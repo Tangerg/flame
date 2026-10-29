@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Current batch makes the existing full-width return destination visible and repairs continuous long labels in the shared Tooltip. The exact source-return chain, compact Dock, current material, focus and drafts retain their owners. Shared UI checks (194 tests), workspace/installed continuity (152 tests), Web typecheck, the 12 gates and actual light/dark/18px/200%/observer-free tasks pass. Implementation `c126bc235` is published to remote main; evidence and cleanup are complete. See **Full-width return destinations and complete labels**. Prior notification-cap delivery remains `c46bd7c5a`. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
+Current batch repairs first-result readiness in Files: a paused root list, expanded directory or file read retains Loading until it has a result. Accepted empty data, cached content, tree position and drafts retain their owners. All 128 focused tests, typecheck, lint, remaining Web/native gates and actual light/dark/18px/200%/observer-free tasks pass. Evidence and cleanup are complete; the qualified source is ready for publication under **First file-result readiness**. Source-return/long-tooltip delivery remains `c126bc235`. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -10751,6 +10751,127 @@ remote confirmation. Implementation
 exact remote hash, clean owned checkout, zero unpushed commits, unchanged accepted
 inputs and restored preexisting outputs are verified. Continue with fresh task
 evidence at the separate workspace refresh boundary.
+
+### First file-result readiness
+
+At main `2a4ee1ee9`, actual Wails reproduces one readiness error in three Files
+consumers. With a first query paused before it has data, the root list and an
+expanded directory claim `No files`; a selected file keeps its identity but
+shows no loading feedback. Restoring query availability then exposes real files
+and content, proving that those earlier empty claims were premature.
+
+The installed Query observer derives `isLoading` from pending plus active
+fetching. A paused first read is still pending. `FileWorkspace.tsx` now projects
+`isPending` into the existing root-list and file-body loading slots, and
+`FileTree.tsx` does the same for an expanded directory and its visible children.
+Accepted empty results remain empty; accepted rows and contents remain readable
+during later pauses. Existing query status/data, workspace resolution, placeholder
+continuity, first failures, unsupported files, retries, file selection, reading
+position and source return retain their owners. No new cache, network mode,
+DataView API, event handler, timeout or Runtime operation is introduced.
+
+The [TanStack network-mode reference](https://tanstack.com/query/latest/docs/framework/react/guides/network-mode)
+distinguishes result status from request activity, including paused initial
+queries. The exact installed `queryObserver.ts` and `retryer.ts` agree. Read-only
+ZCode's actual workspace file tree distinguishes `rootLoaded` from request
+activity before selecting its initial presentation. Its FileManagerPane is
+consumed by AnimatedSidePanePanel, rather than an export renderer. HeroUI's list
+and text Skeleton demos supply presentation examples only. Flame retains its
+existing SkeletonList, Base UI/StyleX and semantic theme roles; the references do
+not establish its native focus behavior.
+
+| Domain        | Evidence inspected                                                                             | Result and boundary                                                                                     |
+| ------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Accessibility | Existing named loading output, tree cursor, paused file identity, actual keyboard entry/return | Existing busy/status and focus contracts remain. VoiceOver audio and OS IME are not newly qualified.    |
+| Layout        | Light normal/adjusted windows and dark 560×377 CSS viewport at actual 200%                     | Loading, file identity and page actions remain available. Fresh 320px native width and RTL are not run. |
+| Writing       | Existing EN/ZH Loading, No files, file identity and return labels                              | Empty-result wording appears only after an accepted empty result; no new copy or dictionary keys.       |
+| Typography    | 14/18px titles, paths, tree labels and restored Markdown                                       | Existing type and reading owners remain unchanged.                                                      |
+| Colors        | Light/Orange and dark/custom-blue loading and focused controls                                 | Existing semantic planes and focus retain their owners. No new contrast measurement is claimed.         |
+| UI            | Existing list/text skeletons, full-motion light and motion-off dark                            | No new skin or animation; only the result-readiness projection changes.                                 |
+
+| Severity         | Domain  | Location                                                | Before                                                                  | After                                                                 | Why                                                        |
+| ---------------- | ------- | ------------------------------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------- | ---------------------------------------------------------- |
+| MEDIUM, repaired | Writing | `FileWorkspace.tsx` root/body and `FileTree.tsx` branch | Paused first reads produce a false empty result or no loading feedback. | The existing initial-loading presentation waits for the first result. | Keep unknown content distinct from accepted empty content. |
+
+Verification passed:
+
+- Focused baseline: **4 files / 123 tests**. Five new tests use the actual Query
+  client and online manager. Original source yields **three failures / two
+  passes / 92 skipped**: each first read lacks Loading, while both accepted
+  empty and nonempty pause cases already pass. Final FileWorkspace, FileView,
+  DataView and data-query checks pass **4 files / 128 tests**, plus Web typecheck
+  and lint. One initial lint failure rejects conditional assertions in the new
+  table; supplying each case's expected visible text corrects it without
+  disabling a check or weakening readiness assertions.
+- The other **11** serial Web/native gates pass; together with the scoped lint,
+  these cover circular/context/layer, design-system/token/chrome/locale,
+  resource reproduction, production bundle, module links and
+  `make check-native`. The native gate takes **21.672s**, including Desktop
+  test/vet/build and the supported Wails production build. Shared UI source and
+  dependency inputs remain unchanged; its preceding **194-test** package check
+  is reused, not reported as a new run.
+- EN/light/14px/Orange: all three paused initial reads show the existing Loading
+  feedback. Root entries survive a pending child read, and the folder retains
+  focus when its child appears. The file retains README.md identity while
+  waiting, then reveals its real 24-line Markdown, code and table. Back restores
+  the selected README.md row. Actual native window adjustment changes
+  **1440×900 → 1513×950**, retaining the tree and exact draft
+  `Keep this file-read draft. Continued.`, caret **37**.
+- ZH/dark/18px/custom-blue/motion-off at native **560×377 CSS px / 200%**:
+  root, branch and file each expose 加载中. Resume replaces the waiting state
+  with actual content. The named file reader's scrollTop moves **0 → 242**
+  within **918px content / 121px viewport**, retaining reading focus. The actual
+  Browse popup closes with Escape; Tab/Return reaches the local Back action,
+  restores selected README.md, and Shift+Tab/Return closes full width. The
+  original `首次文件读取后保留草稿。 已继续。` draft continues, caret **17**.
+- The additional-observer-free control has **622 assets**. Only `index.html`
+  and `visual/index.html` remove the observer; every other asset matches.
+  At actual native 200%, Tab enters the tree, Right expands the paused branch,
+  Down selects README.md and Return enters its paused read. Its Back action
+  retains keyboard focus through settlement. Four Tabs enter the reader, six
+  Downs reveal the bottom table, and four reverse Tabs return to Back. Return
+  restores the selected row; Shift+Tab/Return, Cmd+L and continued input retain
+  `无观察器文件读取草稿。 已继续。`. There are **zero** additional observation
+  records or requests. No passive DOM geometry, selection or data-state
+  measurement is claimed for this control.
+
+Four native generations cover original, light, dark and observer-free scenes.
+The private producer freezes only query availability and canonical fixture data;
+its registered Mod+Alt+N command changes that captured input through CUA. It does
+not alter the OS network or contact a live Runtime/provider. One light resume-key
+attempt is interrupted by changed-app detection; fresh AX, rebinding and actual
+reader entry establish the passing resumed result. That attempt is excluded.
+Four reverse Tabs after pointer entry into a rendered reader also leave focus
+there in an early probe. Its cause is not established; the subsequent complete
+keyboard-entry control above passes. No new focus handler is inferred from that
+probe. Revisit its pointer-specific boundary with a comparator when that reading
+or native focus path is next changed.
+
+Publication fetch finds zero incoming main commits at `2a4ee1ee9`; merging is
+already up to date. All four native generations are stopped, the exact bundle is
+unregistered and the loopback observer is closed. Cleanup removes **seven** new
+checkout output/cache roots and **three** owned profile paths, restores **four**
+original files and modes, and passes all **18** output and **five** profile
+baselines. All **6,306** qualified non-Markdown inputs, **32** resources,
+**20** read-only reference inputs and **three** instruction files pass preservation;
+**6,303** source inputs outside this change remain identical. The original UI
+cache keeps its two files and Web Vite-temp stays empty. Primary-checkout parallel
+work, user data, references and unrelated processes remain untouched. The exact
+private root `/private/tmp/flame-file-readiness-47fKRw` is absent; independent
+post-removal preservation repeats every count above.
+
+The round-tripped in-memory gzip retains **88 UTF-8 records**, **5,135,939 raw
+bytes** and **909,238 gzip bytes**, including private canonical inputs, serial
+checks, original/final native observations, asset/source maps and cleanup proof.
+SHA-256: `7b1b4024b0c80c0da9fa0e8a28ea08c1379416ad0726642ba311c2431beea801`.
+The qualified source is ready for publication after this verification and
+cleanup boundary.
+
+Verdict: **Approve** for first-result readiness and the inspected browse/read/
+return task. Fresh live network recovery, VoiceOver, OS IME, other platforms,
+full Web/Runtime suites, browser suites and performance benchmarks are not
+qualified. Claude CLI and subagents do not run. Continue another evidence-backed
+UI task after publication; the whole-product goal remains unfinished.
 
 ### Root file-list refresh continuity
 

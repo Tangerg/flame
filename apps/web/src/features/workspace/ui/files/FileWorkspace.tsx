@@ -293,7 +293,7 @@ function FileBrowser({
     >
       <DataView
         items={query.data}
-        isLoading={query.isLoading || isWorkspaceResolving(workspace)}
+        isLoading={query.isPending || isWorkspaceResolving(workspace)}
         failure={retained ? undefined : query.error}
         onRetry={query.refetch}
         unsupported={{ icon: "folder" }}
@@ -339,7 +339,7 @@ function FilePreview({
   const lineWindow = windowFor.intent === viewer ? windowFor.window : initialWindow(targetLine);
   const setLineWindow = (next: LineWindow) => setWindowFor({ intent: viewer, window: next });
 
-  const { data, isPlaceholderData, isLoading, isFetching, error, refetch } = useWorkspaceReadFile(
+  const { data, isPlaceholderData, isPending, isFetching, error, refetch } = useWorkspaceReadFile(
     !isWorkspaceResolving(workspace)
       ? {
           cwd,
@@ -538,7 +538,7 @@ function FilePreview({
       ) : (
         <DataView
           items={data ? [data] : []}
-          isLoading={isLoading || isWorkspaceResolving(workspace)}
+          isLoading={isPending || isWorkspaceResolving(workspace)}
           failure={retained ? undefined : error}
           onRetry={refetch}
           skeletonCount={12}

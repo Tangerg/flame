@@ -111,14 +111,14 @@ function TreeNode({
       : undefined;
   const {
     data: children,
-    isLoading,
+    isPending,
     isFetching,
     error,
     refetch,
   } = useWorkspaceListFiles(expanded ? { cwd: tree.cwd, path: entry.path } : undefined);
   // A failed refresh of this directory's accepted children keeps them and their cursor in place.
   const retained = expanded && children !== undefined && children.length > 0;
-  const shown = expanded && !isLoading && (error == null || retained) ? children : undefined;
+  const shown = expanded && !isPending && (error == null || retained) ? children : undefined;
   const childCursor =
     cursor !== entry.path && shown?.some((child) => holds(child, cursor)) ? cursor : null;
   const focusable = cursor !== null && childCursor === null;
@@ -220,7 +220,7 @@ function TreeNode({
         <Tree.Group id={groupId}>
           <DataView
             items={children}
-            isLoading={isLoading}
+            isLoading={isPending}
             failure={retained ? undefined : error}
             onRetry={refetch}
             skeletonCount={1}

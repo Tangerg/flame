@@ -199,6 +199,11 @@ Full-width reading shows the existing return action's destination beside its
 arrow. Compact Dock headers keep the named icon action. Source return and the
 file reader's local return to its list retain their separate navigation owners.
 
+File roots, expanded directories and selected file bodies retain first-result
+loading while their query is pending, including a paused request. Accepted empty
+lists and readable content keep their meaning during later pauses. Query data,
+network admission, retry and navigation retain their existing owners.
+
 Project choices retain complete wrapping names. When projects share a display
 name, both the new-conversation tray and active-project menu show their full
 folder paths in the same row. Unique names keep their compact row. The current
