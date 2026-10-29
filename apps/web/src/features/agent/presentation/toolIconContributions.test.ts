@@ -54,7 +54,7 @@ describe("tool icon contributions", () => {
   });
 
   it("falls back to the generic tool glyph for a name it does not know", () => {
-    expect(defaultToolIconFor("lsp")).toBe("code");
+    expect(defaultToolIconFor("codeintel_lsp")).toBe("code");
     expect(defaultToolIconFor("acme_do_thing")).toBe("tool");
   });
 });

@@ -167,7 +167,7 @@ describe("toolPresentation", () => {
       tool({ id: "read", name: "read" }),
       tool({ id: "grep", name: "grep" }),
       tool({ id: "glob", name: "glob" }),
-      tool({ id: "lsp", name: "lsp" }),
+      tool({ id: "codeintel_lsp", name: "codeintel_lsp" }),
     ];
     expect(summarizeActivity(t, tools)).toBe("1 read · 2 search · 1 lookup");
   });

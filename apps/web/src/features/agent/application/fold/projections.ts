@@ -100,7 +100,7 @@ function firstLine(v: unknown): string | undefined {
 function nameLabel(tool: AgentToolInvocation): string | undefined {
   const a = tool.arguments;
   switch (tool.name) {
-    case "lsp": {
+    case "codeintel_lsp": {
       const op = asString(a.operation);
       if (op === "workspace_symbols") return asString(a.query);
       const path = asString(a.path);
@@ -128,7 +128,7 @@ function nameLabel(tool: AgentToolInvocation): string | undefined {
     case "search_tools":
       return asString(a.query);
     case "web_fetch":
-    case "http_request":
+    case "web_http_request":
       return asString(a.url);
     default:
       return undefined;

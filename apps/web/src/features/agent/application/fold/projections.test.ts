@@ -23,21 +23,25 @@ it("renders original opaque Tool arguments and output without numeric conversion
 describe("toolLabel — name-keyed specialised tools", () => {
   it("lsp position operations label path:line:character", () => {
     expect(
-      toolLabel(tool("lsp", { operation: "definition", path: "main.go", line: 42, character: 3 })),
+      toolLabel(
+        tool("codeintel_lsp", { operation: "definition", path: "main.go", line: 42, character: 3 }),
+      ),
     ).toBe("main.go:42:3");
     expect(
-      toolLabel(tool("lsp", { operation: "hover", path: "a.ts", line: 1, character: 5 })),
+      toolLabel(tool("codeintel_lsp", { operation: "hover", path: "a.ts", line: 1, character: 5 })),
     ).toBe("a.ts:1:5");
   });
 
   it("lsp file/query operations label by their key argument", () => {
-    expect(toolLabel(tool("lsp", { operation: "document_symbols", path: "main.go" }))).toBe(
+    expect(
+      toolLabel(tool("codeintel_lsp", { operation: "document_symbols", path: "main.go" })),
+    ).toBe("main.go");
+    expect(
+      toolLabel(tool("codeintel_lsp", { operation: "workspace_symbols", query: "ReadTool" })),
+    ).toBe("ReadTool");
+    expect(toolLabel(tool("codeintel_lsp", { operation: "diagnostics", path: "main.go" }))).toBe(
       "main.go",
     );
-    expect(toolLabel(tool("lsp", { operation: "workspace_symbols", query: "ReadTool" }))).toBe(
-      "ReadTool",
-    );
-    expect(toolLabel(tool("lsp", { operation: "diagnostics", path: "main.go" }))).toBe("main.go");
   });
 
   it("the Skill family labels by name; ask_user labels the first question", () => {
@@ -61,7 +65,7 @@ describe("toolLabel — name-keyed specialised tools", () => {
     expect(toolLabel(tool("search_memory", { query: "deploy runbook" }))).toBe("deploy runbook");
     expect(toolLabel(tool("search_tools", { query: "screenshot" }))).toBe("screenshot");
     expect(toolLabel(tool("web_fetch", { url: "https://go.dev" }))).toBe("https://go.dev");
-    expect(toolLabel(tool("http_request", { url: "https://api.local/health" }))).toBe(
+    expect(toolLabel(tool("web_http_request", { url: "https://api.local/health" }))).toBe(
       "https://api.local/health",
     );
   });
@@ -228,7 +232,7 @@ describe("toolFields — runtime wire shapes", () => {
 
 describe("argsText — complete recorded arguments remain separate from summaries", () => {
   it.each([
-    ["lsp", { operation: "definition", path: "a.go", line: 1, character: 1 }],
+    ["codeintel_lsp", { operation: "definition", path: "a.go", line: 1, character: 1 }],
     ["load_skill", { name: "review", cursor: { offset: 134, snapshot: "a".repeat(64) } }],
     [
       "read_skill_resource",
@@ -237,7 +241,7 @@ describe("argsText — complete recorded arguments remain separate from summarie
     ["read", { path: "a.go", offset: 12, limit: 8 }],
     ["read_tool_result", { result_id: "BLOB234", offset: 20, limit: 40 }],
     ["shell", { command: "go test ./...", timeout: 10 }],
-    ["http_request", { url: "https://example.invalid", method: "POST", body: "literal" }],
+    ["web_http_request", { url: "https://example.invalid", method: "POST", body: "literal" }],
     ["linear_create_issue", { title: "t" }],
   ] as const)("retains every captured parameter for %s", (name, args) => {
     expect(JSON.parse(argsText(tool(name, args)))).toEqual(args);

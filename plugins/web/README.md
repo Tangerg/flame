@@ -7,6 +7,8 @@ released Scope; credentials are optional private installation inputs `jina-key`
 and `tavily-key`. An unset input explicitly refuses that provider's operation.
 Malformed configured values refuse backend startup. Parent process credentials
 do not become installation inputs.
+Runtime prefixes these MCP names with the installed server name, so the HTTP
+Tool is exposed to the model and recorded in the transcript as `web_http_request`.
 
 Search accepts Scope's query, result count, domain filters and recency vocabulary.
 Tavily refuses unsupported hourly recency. Queries are bounded to 8192 bytes;

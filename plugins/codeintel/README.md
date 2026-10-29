@@ -1,7 +1,7 @@
 # Code intelligence
 
 The optional `flame.codeintel` package owns language-server processes, LSP queries,
-formatter selection and diagnostic comparison. The installed `lsp` model Tool
+formatter selection and diagnostic comparison. The installed `codeintel_lsp` model Tool
 provides diagnostics, definitions, references, hover and symbols through the same
 backend. Runtime no longer constructs language servers or accepts `lsp.servers`.
 

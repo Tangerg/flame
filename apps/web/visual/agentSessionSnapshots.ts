@@ -384,14 +384,17 @@ const WEB_FETCH_CALL = settledTool(
 
 const HTTP_CALL = settledTool(
   "item_remote_http",
-  "http_request",
+  "web_http_request",
   { method: "GET", url: "http://127.0.0.1:17171/v2/health/ready" },
   JSON.stringify({
     status: 200,
     duration: "12ms",
     truncated: false,
-    headers: { "content-type": "application/json", "cache-control": "no-store" },
-    body: '{"ready":true,"database":"open"}',
+    headers: {
+      "content-type": [{ encoding: "utf8", data: "application/json" }],
+      "cache-control": [{ encoding: "utf8", data: "no-store" }],
+    },
+    body: { encoding: "utf8", data: '{"ready":true,"database":"open"}' },
   }),
 );
 
@@ -561,7 +564,7 @@ const READ_SHELL_CALL = settledTool(
 
 const LSP_CALL = settledTool(
   "item_agentic_lsp",
-  "lsp",
+  "codeintel_lsp",
   { operation: "references", path: "runtime/internal/session/store.go", line: 214, character: 6 },
   [
     "runtime/internal/session/store.go:214:6",

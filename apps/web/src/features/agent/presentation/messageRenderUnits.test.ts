@@ -218,7 +218,7 @@ describe("planRenderUnits · read-only grouping", () => {
   });
 
   it("groups lsp lookups", () => {
-    const tools = { one: tool("one", "lsp"), two: tool("two", "lsp") };
+    const tools = { one: tool("one", "codeintel_lsp"), two: tool("two", "codeintel_lsp") };
     expect(planRenderUnits([tb("one"), tb("two")], tools, NO_AWAITING)).toEqual([
       { kind: "toolGroup", tools: [tools.one, tools.two], superseded: false },
     ]);

@@ -10,6 +10,9 @@ import { act, cleanup, fireEvent, screen, within } from "@testing-library/react"
 import { afterEach, expect, it, vi } from "vitest";
 import { type CapturedToolResult, type ComponentContext } from "@flame/component-sdk";
 import { RecordedResult } from "../../../plugins/tool-results/component/component";
+import declaration from "../../../plugins/tool-results/package/io.github.tangerg.flame/declaration.json";
+import { selectToolResultRenderer } from "@/features/chat/tools/application/toolResultRenderer";
+import { type ToolResultRendererSpec } from "@/features/chat/public/tools/types";
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -56,6 +59,84 @@ function capturedContext(
     },
   });
 }
+
+it.each([
+  { name: "codeintel_lsp", id: "lsp", result: "src/main.go:3:1" },
+  { name: "web_http_request", id: "http-request", result: '{"status":200}' },
+])("selects the installed renderer for $name", ({ name, id, result }) => {
+  const renderers = declaration.components.map((entry): ToolResultRendererSpec => ({
+    id: entry.id,
+    title: entry.title,
+    selector: entry.selector as ToolResultRendererSpec["selector"],
+    component: () => null,
+  }));
+  const tool = {
+    id: "item",
+    runId: "run",
+    name,
+    fn: name,
+    args: "{}",
+    status: "ok" as const,
+    result,
+  };
+  expect(selectToolResultRenderer(renderers, tool)?.id).toBe(id);
+});
+
+it.each([
+  { encoding: "base64", data: "AAECAw==", expected: "base64: AAECAw==" },
+  {
+    encoding: "utf8",
+    data: "<img src=x onerror=alert(1)>",
+    expected: "<img src=x onerror=alert(1)>",
+  },
+])(
+  "preserves $encoding HTTP response bytes in the installed renderer",
+  ({ encoding, data, expected }) => {
+    const response = {
+      status: 200,
+      duration: "12ms",
+      headers: {
+        "content-type": [{ encoding: "utf8", data: "application/octet-stream" }],
+        "x-raw": [{ encoding: "base64", data: "/wA=" }],
+      },
+      body: { encoding, data },
+      truncated: true,
+    };
+    testClient.render(
+      <RecordedResult context={capturedContext("web_http_request", JSON.stringify(response))} />,
+    );
+    const reader = screen.getByRole("region", { name: "Result" });
+    expect(screen.getByText("Response", { exact: true })).toBeTruthy();
+    expect(reader.textContent).toContain("200 12ms");
+    expect(reader.textContent).toContain("content-type: application/octet-stream");
+    expect(reader.textContent).toContain("x-raw: base64: /wA=");
+    expect(reader.textContent).toContain(expected);
+    expect(reader.textContent).not.toContain("[object Object]");
+    expectInert(reader);
+  },
+);
+
+it.each([
+  { body: { encoding: "utf8", data: "body", unrecognized: "keep" } },
+  { body: { encoding: "utf8", data: "body" }, unrecognized: "keep" },
+  { body: { encoding: "future", data: "keep" } },
+  { body: { encoding: "utf8", data: "body" }, headers: { "x-raw": [] } },
+])("retains complete source for an unrecognized HTTP response %#", (value) => {
+  const source = JSON.stringify(
+    {
+      status: 200,
+      duration: "12ms",
+      ...value,
+    },
+    null,
+    2,
+  );
+  testClient.render(<RecordedResult context={capturedContext("web_http_request", source)} />);
+  const reader = screen.getByRole("region", { name: "Result" });
+  expect(Array.from(reader.querySelectorAll("pre"), (line) => line.textContent)).toEqual(
+    source.split("\n"),
+  );
+});
 
 function expectInert(result: HTMLElement) {
   expect(result.querySelector("a, img, script, iframe, [onclick]")).toBeNull();
@@ -151,7 +232,7 @@ it("keeps known raw results as exact numbered source lines even when JSON contai
     "read_skill_resource",
     "read_tool_result",
     "search_tools",
-    "lsp",
+    "codeintel_lsp",
     "stop_shell",
     "propose_skill",
     "delegate_task",

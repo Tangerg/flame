@@ -199,6 +199,50 @@ function webPage(page: Record<string, unknown>) {
   };
 }
 
+function httpContent(value: unknown): string | undefined {
+  const content = record(value);
+  if (Object.keys(content).length !== 2 || typeof content.data !== "string")
+    return undefined;
+  if (content.encoding === "utf8") return content.data;
+  if (content.encoding === "base64") return `base64: ${content.data}`;
+  return undefined;
+}
+
+function httpResponse(response: Record<string, unknown>) {
+  const { status, duration, truncated } = response;
+  if (
+    Object.keys(response).some(
+      (key) =>
+        !["status", "duration", "truncated", "headers", "body"].includes(key),
+    ) ||
+    typeof status !== "number" ||
+    !Number.isInteger(status) ||
+    typeof duration !== "string" ||
+    (truncated !== undefined && typeof truncated !== "boolean")
+  )
+    return undefined;
+  const body = httpContent(response.body);
+  if (body === undefined) return undefined;
+  const headers: string[] = [];
+  if (response.headers !== undefined) {
+    if (
+      !response.headers ||
+      typeof response.headers !== "object" ||
+      Array.isArray(response.headers)
+    )
+      return undefined;
+    for (const [name, values] of Object.entries(response.headers)) {
+      if (!Array.isArray(values) || values.length === 0) return undefined;
+      for (const value of values) {
+        const content = httpContent(value);
+        if (content === undefined) return undefined;
+        headers.push(`${name}: ${content}`);
+      }
+    }
+  }
+  return { status, duration, truncated, headers: headers.join("\n"), body };
+}
+
 function xmlElements(element: Element): Element[] | undefined {
   if (
     element.attributes.length ||
@@ -327,7 +371,7 @@ function resultContent(tool: CapturedToolResult, t: Translate): ResultContent {
     }
     case "read_tool_result":
     case "search_tools":
-    case "lsp":
+    case "codeintel_lsp":
     case "stop_shell":
     case "propose_skill":
     case "delegate_task":
@@ -338,6 +382,22 @@ function resultContent(tool: CapturedToolResult, t: Translate): ResultContent {
       };
   }
   const result = parsed(source);
+  if (tool.name === "web_http_request") {
+    const response = httpResponse(result);
+    return response
+      ? {
+          kind: "rows",
+          label: t("caption.response"),
+          rows: [
+            {
+              kind: "located",
+              location: `${response.status} ${response.duration}${response.truncated ? ` · ${t("http.truncated")}` : ""}`,
+              body: `${response.headers}\n${response.body}`,
+            },
+          ],
+        }
+      : { kind: "rows", label: t("caption.result"), rows: sourceRows(source) };
+  }
   if (tool.name === "web_fetch" || tool.name === "web_browse") {
     const page = webPage(result);
     return page
@@ -398,23 +458,6 @@ function resultContent(tool: CapturedToolResult, t: Translate): ResultContent {
         };
       }),
     };
-  if (tool.name === "http_request" && typeof result.status === "number") {
-    const headers = Object.entries(record(result.headers))
-      .map(([key, value]) => `${key}: ${text(value)}`)
-      .join("\n");
-    return {
-      kind: "rows",
-      label: t("caption.response"),
-      rows: [
-        {
-          kind: "located",
-          location: `${result.status} ${text(result.duration)}${result.truncated ? ` · ${t("http.truncated")}` : ""}`,
-          body: `${headers}\n${text(result.body)}`,
-        },
-      ],
-    };
-  }
-
   return {
     kind: "rows",
     label: t("caption.result"),

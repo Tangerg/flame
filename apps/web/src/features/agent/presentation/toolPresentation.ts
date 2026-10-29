@@ -108,7 +108,7 @@ type ActivityFamily = (typeof ACTIVITY_FAMILIES)[number];
 
 function activityFamily(tool: ToolCall): ActivityFamily {
   if (tool.name === "read") return "read";
-  if (tool.name === "lsp") return "lookup";
+  if (tool.name === "codeintel_lsp") return "lookup";
   if (tool.safetyClass === "write") return "write";
   if (tool.safetyClass === "exec") return "run";
   if (tool.safetyClass === "network") return "fetch";
