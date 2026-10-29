@@ -839,8 +839,4 @@ async function main(command) {
       throw new Error(`unknown workspace command: ${command}`);
   }
 }
-if (
-  process.argv[1] &&
-  resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-)
-  await main(process.argv[2]);
+if (import.meta.main) await main(process.argv[2]);

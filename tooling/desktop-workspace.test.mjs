@@ -57,19 +57,17 @@ async function runDesktopCommand(t, command) {
       { mode: 0o755 },
     );
   }
-  const result = spawnSync(
-    process.execPath,
-    [join(directory, "tooling/workspace.mjs"), command],
-    {
-      cwd: directory,
-      env: {
-        ...process.env,
-        PATH: `${bin}:${process.env.PATH}`,
-        FLAME_DESKTOP_TEST_LOG: log,
-      },
-      encoding: "utf8",
+  const entry = join(directory, "workspace.mjs");
+  await symlink(join(directory, "tooling/workspace.mjs"), entry);
+  const result = spawnSync(process.execPath, [entry, command], {
+    cwd: directory,
+    env: {
+      ...process.env,
+      PATH: `${bin}:${process.env.PATH}`,
+      FLAME_DESKTOP_TEST_LOG: log,
     },
-  );
+    encoding: "utf8",
+  });
   let commands = [];
   try {
     commands = (await readFile(log, "utf8"))
