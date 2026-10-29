@@ -16522,15 +16522,15 @@ and semantic-token system:
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Accessibility | Native Tab, Home/End, wheel, outer chaining, complete Go/JSON selection, caption Copy and image-preview Escape return pass.                       |
 | Layout        | The complete ordinary frame is 104.5px, source 70px and final text bottom 200.5px, within the safe bottom of 216.5px.                             |
-| Writing       | Tool labels retain their current locale. The separate File preview still uses English CodeBlock actions in ZH and remains a follow-up.            |
+| Writing       | Tool labels retain their current locale. The File preview's English actions in ZH are resolved by the captured-reader locale work below.          |
 | Typography    | EN/14px and ZH/18px, including 200%, retain the code type owner. A four-line draft leaves a 73.25px frame with a full 38.75px padded source line. |
 | Colors        | Existing light/Orange and dark/custom Blue reading rings remain visible. No color value changes or new contrast measurement is claimed.           |
 | UI            | Source/SVG reading, copy feedback, image-dialog return, native window zoom/restore, selected-file return and continued drafts pass.               |
 
-| Severity             | Domain  | Location                                                              | Before                                                                            | After / next action                                                                     | Why                                                                    |
-| -------------------- | ------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| HIGH, repaired       | Layout  | `readingFollow.ts:97`, `code-block.tsx:86`, `shiki-code-block.tsx:44` | Fixed source height extends beneath the Composer at 200%.                         | Shared frame consumes the actual reading budget and retains its caption/source minimum. | Read the captured result without navigating away to expose its tail.   |
-| MEDIUM, pre-existing | Writing | `plugins/file-renderers/component/component.tsx:79`                   | ZH preview names its code region in Chinese but Copy/wrap actions remain English. | Apply the component's active locale in the next scoped batch.                           | Keep reading actions understandable in the current interface language. |
+| Severity               | Domain  | Location                                                              | Before                                                                            | After / next action                                                                     | Why                                                                    |
+| ---------------------- | ------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| HIGH, repaired         | Layout  | `readingFollow.ts:97`, `code-block.tsx:86`, `shiki-code-block.tsx:44` | Fixed source height extends beneath the Composer at 200%.                         | Shared frame consumes the actual reading budget and retains its caption/source minimum. | Read the captured result without navigating away to expose its tail.   |
+| MEDIUM, resolved below | Writing | `plugins/file-renderers/component/component.tsx:79`                   | ZH preview names its code region in Chinese but Copy/wrap actions remain English. | The subsequent captured-reader batch applies the component's active locale.             | Keep reading actions understandable in the current interface language. |
 
 Verification:
 
@@ -16584,10 +16584,105 @@ SHA-256 `1259efb399d592975868a7a81cac0a37152282e55b686b73fd9a90a01d15114d`.
 The managed toolchain and primary parallel checkout remain preserved. The one
 interval fetch finds zero incoming main commits; no redundant merge is needed.
 
-The sizing repair is accepted. **Needs changes** remains the broader reading-flow
-verdict because the pre-existing File action language and separate native
-reverse-Tab finding remain open. The whole UI goal stays active; next trace the
-File CodeBlock locale contract before changing the other captured readers.
+The sizing repair is accepted. The File action-language follow-up is resolved
+below. The separate native reverse-Tab finding and the broader UI goal remain
+open; this is not a whole-product award-tier acceptance.
+
+### Captured code reader action locale (2026-10-30)
+
+Scope: read a Markdown file, inspect a recorded trajectory or local diagnostic
+record, copy or wrap its source, return and continue the conversation draft.
+Original Wails shows Chinese region names beside English Copy/wrap actions.
+Caller tracing identifies the same missing `CodeBlock.labels` projection in
+exactly three portable readers. Other production CodeBlock callers already
+supply their active locale; the shared library's English standalone defaults
+are correct.
+
+`plugins/file-renderers/component/component.tsx:79`,
+`plugins/trajectory/component/report.tsx:335` and
+`plugins/diagnostics/component/component.tsx:178` now supply Copy, Copied,
+Enable word wrap and Disable word wrap through their existing component
+translator. Each package adds these four names to its existing eight catalogs,
+using the established host vocabulary. Normal generation updates the three
+published ESM components; no generated module metadata changes. There is no
+new locale provider, shared translation singleton, Runtime call, copy lifecycle
+or wrapping state. Captured source, enum values, metadata and selection remain
+literal.
+
+Better-writing's single vocabulary and action-state guidance informs this
+repair. Read-only ZCode `packages/ui/src/i18n/IntlProvider.tsx` and Flame's
+existing component SDK translator confirm the active catalog boundary. The
+earlier HeroUI/Radix, reading typography and return research remains applicable;
+their component systems are not introduced. Accessibility keeps named actions
+and accepted-copy feedback; layout and typography retain the source region;
+color and UI keep existing light/Orange and dark/custom-Blue focus and wrapping
+states. No new contrast or motion measurement is claimed.
+
+| Severity                     | Domain                  | Location                                                | Before                                                                                | After                                                               | Why                                                                    |
+| ---------------------------- | ----------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| MEDIUM, repaired             | Writing / Accessibility | Three portable captured-code callers and their catalogs | A localized reader exposes English action and success names.                          | Actions and accepted feedback use the same active component locale. | Keep the object and its operations in one vocabulary.                  |
+| Observed, next investigation | Layout                  | Trajectory at ZH/18px/200%                              | End can leave the caption behind sticky Panel controls; Shift+Tab reveals Copy again. | Trace the Panel reading budget before selecting a layout repair.    | Establish geometry ownership without adding a local scroll workaround. |
+
+Verification:
+
+- The four existing presentation/evidence/navigation files pass **46 tests**
+  before changes. The new three-reader/eight-locale regression fails against
+  original product in **21 non-English cases**, with the three English cases
+  passing. Its initial broad disclosure query also matched trajectory footer
+  disclosures; scoping navigation to the actual record fixes that harness error.
+  Final focused coverage passes **5 files / 70 tests**.
+- Deferred clipboard acceptance verifies that success appears only after the
+  existing clipboard promise resolves, without stealing later draft focus.
+  Wrapping retains the same PRE and literal source. Unexpected Runtime reads,
+  composition, file saves and telemetry clears throw in these captured inputs.
+- Plugin type, lint, format, eight-locale completeness and exact generated
+  resource reproduction pass. Web type, lint, format, layers, design-system,
+  chrome, locales, production bundle and plugin-module gates pass.
+  Ordinary `make check-native` passes in **15.052 s**. No shared UI product code
+  changes; the preceding batch's UI qualification is retained instead of
+  repeating unchanged suites.
+
+Actual Wails uses the normal DesktopHost/services/menu/window composition with
+a private identity/home and deterministic presentation inputs. The existing
+telemetry owner ingests one fixed span and one fixed log at private fixture
+bootstrap; actual Diagnostics reads that owner. All final scenes use the same
+**345 byte-identical Web assets**, with no added UI script or observer.
+
+ZH/dark/18px/custom Blue at 200% verifies all three readers' Chinese Copy,
+wrap/unwrap and **已复制** feedback through native keyboard/pointer input.
+Complete Go/JSON selection excludes captions and surrounding controls. Return
+retains `reading-guide.md`, the expanded diagnostic record and the drafts
+`保留阅读草稿。已继续。` and `诊断阅读草稿。已继续。` within their respective launches.
+EN/light/14px/Orange verifies all three readers' **Copied** feedback, both wrap
+states, complete literal selection, native window zoom/restore, selected-file
+return and `Reader control draft. Continued.`. The private sidebar is a static
+state illustration, so Diagnostics uses a separate native startup query rather
+than claiming sidebar navigation. A private PATH-only runner initially leaves
+Go's module cache unset; inheriting the normal shell environment restores the
+successful native build/sign. Neither setup attempt is product qualification.
+
+These scenes qualify real component presentation and native interaction, not
+live provider execution, Runtime/Realm admission, installed-resource reload,
+clipboard denial, VoiceOver, OS IME or other-platform GUIs. Chinese input uses
+native paste. No Send, business mutation, browser suite, benchmark, Claude CLI
+or subagent is used. Screenshots and AX stay in the CUA transcript; the archive
+does not claim screenshot files.
+
+Cleanup stops all app launches and the loopback listener, unregisters the exact
+bundle, removes **seven** new output/cache roots and **three** private profiles,
+and restores four original files/modes. Before and after exact-root retirement,
+preservation passes **6,386** qualified non-Markdown inputs, **34** resources,
+**55** read-only references, three instructions, 21 output baselines and five
+profile absences. `/private/tmp/flame-reader-locale-LOuIom` is absent. The
+memory-only archive round-trips **65 UTF-8 records**, **2,880,532 raw bytes**,
+**695,866 gzip bytes**, SHA-256
+`8978e1dfe939a15f507bad65ca84170af096b3ffd27681f4f977e3a556540e10`.
+The managed toolchain and primary parallel checkout remain preserved. The one
+interval fetch finds zero incoming main commits; no redundant merge is needed.
+
+The localized captured-reader actions are accepted. Continue by tracing the
+observed high-zoom Panel caption/read-budget behavior; the separate native
+reverse-Tab finding also remains open. The broad UI goal stays active.
 
 ### Settings pane error identity
 

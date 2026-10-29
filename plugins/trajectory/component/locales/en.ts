@@ -1,4 +1,8 @@
 export const en: Record<string, string> = {
+  "code.copy": "Copy code",
+  "code.copied": "Copied",
+  "code.wrap": "Enable word wrap",
+  "code.unwrap": "Disable word wrap",
   "panel.title": "Session trajectory",
   "panel.session": "Session",
   "controls.label": "Trajectory controls",

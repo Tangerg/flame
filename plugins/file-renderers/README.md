@@ -35,6 +35,9 @@ wrapping follows the same page-wide preference as transcript code. Syntax color
 comes from the host's code highlighter; it paints escaped text and never runs or
 loads authored code, and the literal stays visible until it is ready. Code, inline code and tables consume the same shared reading
 roles as the transcript while file parsing and content trust stay here.
+Code action names and accepted-copy feedback use the same component locale as
+the named reading region. Captured fence language, metadata and source remain
+literal; shared UI retains wrapping and selection ownership.
 Parsed table column alignment is projected on both header and body cells.
 Paragraphs, headings, nested lists, quotes and rules use the shared `data-prose`
 grammar. A quote that opens with a GitHub alert marker (`[!NOTE]`, `[!TIP]`,

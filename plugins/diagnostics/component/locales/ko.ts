@@ -1,4 +1,8 @@
 export const ko: Record<string, string> = {
+  "code.copy": "코드 복사",
+  "code.copied": "복사됨",
+  "code.wrap": "자동 줄 바꿈 사용",
+  "code.unwrap": "자동 줄 바꿈 사용 안 함",
   "panel.title": "클라이언트 진단",
   "controls.label": "진단 컨트롤",
   refresh: "새로 고침",

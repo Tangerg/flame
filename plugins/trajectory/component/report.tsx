@@ -332,7 +332,16 @@ function Observation({
   if (row.type === "item" && row.item.type === "reasoning" && row.item.redacted)
     notes.push(t("note.reasoningRedacted"));
   const raw = (
-    <CodeBlock label={t("evidence.recorded")} language="json">
+    <CodeBlock
+      label={t("evidence.recorded")}
+      language="json"
+      labels={{
+        copy: t("code.copy"),
+        copied: t("code.copied"),
+        wrap: t("code.wrap"),
+        unwrap: t("code.unwrap"),
+      }}
+    >
       {prettyJSON(row)}
     </CodeBlock>
   );

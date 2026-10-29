@@ -1,4 +1,8 @@
 export const de: Record<string, string> = {
+  "code.copy": "Code kopieren",
+  "code.copied": "Kopiert",
+  "code.wrap": "Zeilenumbruch aktivieren",
+  "code.unwrap": "Zeilenumbruch deaktivieren",
   "panel.title": "Client-Diagnose",
   "controls.label": "Diagnosesteuerung",
   refresh: "Aktualisieren",

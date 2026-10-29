@@ -74,6 +74,9 @@ prose. Message content keeps its text and image order. When a readable body is
 present, complete JSON remains available under Recorded evidence; structured
 records keep primary JSON evidence. Both projections use the same redacted
 evidence, preserving unknown fields while omitting redacted reasoning text.
+Recorded-evidence code actions and accepted-copy feedback use the component's
+active locale. Shared UI retains the literal reader and wrap preference; changing
+an action label does not rewrite the captured evidence.
 
 Recorded message images retain their bounded inline thumbnail and open the
 original captured bytes in the shared image reader. Zoom, panning and dismissal

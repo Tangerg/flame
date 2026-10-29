@@ -80,6 +80,12 @@ function markdownComponents(t: Translate): Components {
           label={t("code.block", { n: node?.position?.start.line ?? 1 })}
           language={language}
           caption={caption || undefined}
+          labels={{
+            copy: t("code.copy"),
+            copied: t("code.copied"),
+            wrap: t("code.wrap"),
+            unwrap: t("code.unwrap"),
+          }}
         >
           {String(child.props.children ?? "").replace(/\n$/, "")}
         </CodeBlock>

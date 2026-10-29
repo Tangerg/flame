@@ -1,4 +1,8 @@
 export const ko: Record<string, string> = {
+  "code.copy": "코드 복사",
+  "code.copied": "복사됨",
+  "code.wrap": "자동 줄 바꿈 사용",
+  "code.unwrap": "자동 줄 바꿈 사용 안 함",
   "panel.title": "세션 궤적",
   "panel.session": "세션",
   "controls.label": "궤적 컨트롤",
