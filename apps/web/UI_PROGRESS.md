@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Current batch continues from main `d78c293f0`. Full-width material switching is published as `0f604b4e8`; its header picker now also follows the active Session's lifetime. Open queries and closing selections retire when history restores another Session. All 144 scoped tests, native light/dark/18 px/200% tasks and the observer-free control pass; resource retirement is complete. See **Picker ownership across Session history** under **Global Composer focus and retained material**. The publication fetch finds zero incoming commits. The preceding native option-reporting comparison establishes no Flame-specific repair. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
+Current batch integrates 31 incoming main commits through `aee40a542`. Notification history now continues at a visible adjacent action when its oldest focused record is evicted at the existing 200-entry cap. Later draft focus wins, and long arrivals receive ordinary browser focus reveal. All 13 scoped regressions, typecheck, applicable Web gates, final supported native build and light/dark/18 px/200%/observer-free tasks pass. Owned native/build resources are retired; scoped publication follows. See **Reading through capacity eviction** under **Notification history and current action focus**. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -90,8 +90,11 @@ Full-width material switching is published as `0f604b4e8` and qualifies direct
 selection, retained source return, nested picker Escape and continued drafting
 without changing zoom. Its native catalog-reporting follow-up is a scoped
 diagnosis published as `d78c293f0`, with no product implementation change.
-The Session-history follow-up now qualifies retirement of header queries and
-pending selections while preserving same-Session source return and editing.
+The Session-history follow-up is published as `b2bf3fed1` and qualifies retirement
+of header queries and pending selections while preserving same-Session source
+return and editing. The notification-cap follow-up integrates 31 main commits through `aee40a542`
+and qualifies visible adjacent-action continuity, later draft focus and the
+observer-free native control; see **Notification history and current action focus**.
 See **Goal save
 feedback and pending dismissal** and **Computer console
 editing and operation return**. Preserve the
@@ -20846,9 +20849,10 @@ Its unavailable state derives directly from `entry.dismissed`, through the
 same shared `focusableWhenDisabled` contract already used by Clear all.
 The button retains its node, focus and row position; repeated activation is
 refused. Existing dimmed message text, exact entry keys, newest-first order and
-the notification store's sole log/count/dismissal ownership remain. No focus
-effect, timer, listener, restoration ref, extra state or shared-control change
-was added. A React `useId` prefix and the existing entry identity associate
+the notification store's sole log/count/dismissal ownership remain. That
+retained-entry repair added no focus effect, timer, listener, restoration ref,
+extra state or shared-control change. The capacity follow-up below handles actual
+record eviction. A React `useId` prefix and the existing entry identity associate
 each Dismiss with its own message through `aria-describedby` (`:101`, `:115`),
 including duplicate message strings.
 
@@ -20951,8 +20955,8 @@ establishes 561 CSS px at 200%, not a fresh 320 CSS px viewport or a separate
 navigation evidence. Actual shared-control unit queries qualify the accessible
 description relationship; native AX qualifies names/disabled states, without a
 VoiceOver speech claim. OS IME, RTL, other locale GUIs/platforms, fresh contrast
-measurements, live OS notifications, timed toasts and eviction of a focused oldest
-row at the existing 200-entry cap remain unverified.
+measurements, live OS notifications and timed toasts remain unverified in that
+qualification. Capacity eviction is covered by the follow-up below.
 
 All 5,724 tracked non-Markdown inputs retain accepted aggregate SHA-256
 `6addf613632186792133e6c21d69ef57beb68756b3c2478b456de74697351cbd`;
@@ -20975,6 +20979,129 @@ all six PIDs are dead, all seventeen output-presence baselines and three origina
 file hashes/inventories are preserved, all new Library outputs are absent, and
 all accepted source/resource bytes match. This documentation-only receipt does
 not repeat code checks or change the retained two aggregate Web failures.
+
+#### Reading through capacity eviction
+
+At published main `b2bf3fed1`, the existing 200-entry cap removes the oldest
+record even while its Dismiss action is focused. Actual Wails retains the open
+history, its bottom reading position and the Composer draft, but focus drops to
+BODY. Keeping a dismissed control does not cover actual record eviction.
+
+`NotificationsBadge.tsx` now holds only the current history action's DOM
+reference. After that node is removed, a layout effect moves otherwise unclaimed
+BODY focus to the oldest surviving action. Actual blur and popup open/close retire
+that reference; a later field or another current control wins. Ordinary browser
+focus also reveals the action when a larger incoming row moves it out of view.
+No second log, selected-row model, queue, manual scroll algorithm, timer or shared
+control policy is introduced. The existing store owns its cap, identities, order,
+dismissal and unread count. Shared Popover entry, normal Tab exit and Escape
+restoration keep their existing owner.
+
+| Severity | Location                                  | Before                                                                                                             | After                                                          | Why                                                                                     |
+| -------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Medium   | `NotificationsBadge.tsx` capacity handoff | Evicting the focused record leaves BODY active.                                                                    | The oldest surviving action continues the same history task.   | Native focus continuity after actual data removal.                                      |
+| Medium   | Capacity handoff reveal                   | The first candidate's `preventScroll` leaves the newly focused action below the visible list after a long arrival. | Ordinary focus reveals that action inside the existing reader. | A CSS focus ring outside the viewport does not provide visible current-action feedback. |
+
+The better-accessibility and better-layout focus/reading guidance and the Base UI,
+WCAG, HeroUI and ZCode reference distinctions above apply to this bounded task.
+Typography, whitespace, hierarchy, colors, motion and responsive geometry retain
+their existing owners. Micro-interaction review qualifies visible current action
+and continued editing. No decorative surface, new copy or product-wide award,
+contrast or accessibility certification is claimed.
+
+The unchanged baseline passes 10 tests in three files. The initial two cap
+regressions fail one and pass one against the original Badge: eviction loses
+focus, while later draft focus already survives. Final coverage passes **13 tests
+in three files**, including adjacent action continuation, retained dismissal,
+later draft text/selection, intentional blur, Clear all and Escape. An intermediate
+blur assertion incorrectly required BODY after Base UI's ordinary popup restore;
+it is corrected to the existing dialog contract. Native layout supplies the
+variable-height regression; jsdom does not supply that geometry.
+
+The publication fetch fast-forwards **31 commits / 590 files** through
+`aee40a5422a99ab8867a287233ef6fbe19511ffb` without conflicts or notification
+patch changes. Incoming generated product constants remain authoritative; the
+private native host is adapted to consume them rather than redeclare them.
+All 13 scoped tests, typecheck and twelve serial Web/native gates pass after
+integration. Following the reveal correction, focused tests, typecheck, lint,
+private Web builds and supported `make check-native` pass again. The last native
+check takes 20.86 s and includes the final production Web/Wails build. Other
+unchanged static contracts retain their passing integration results. No whole-Web
+or Runtime integration rerun, browser suite, benchmark, Claude CLI or subagent is
+claimed for this batch.
+
+Actual Wails uses the production Badge, shared controls, canonical workspace
+fixture and existing notification store. A private build input seeds 200 records;
+its proven shortcut calls actual `notifyFrom` for the next entry. Passive reports
+only read focus, list/viewport geometry and draft selection. All UI input is native
+CUA. No product debug route, notification navigation, live Send, provider/tool
+call, Runtime mutation or alternate data owner is introduced.
+
+- Original English/light/14 px: Event 1 is focused at list scrollTop 10,964.
+  Entry 201 retains 200 records, removes Event 1 and leaves BODY active; the exact
+  draft remains. The original failure is retained rather than inferred from tests.
+- Final English/light/14 px/Orange: native window zoom changes 1440 × 900 to
+  1513 × 950 while retaining the draft. At **756 × 475 CSS px / 200%**, a short
+  arrival moves focus from Event 1 to visible Event 2 without changing list
+  scrollTop 11,079. The 360 × 465 popup remains at (34, 5), and the Orange focus
+  outline remains visible. Repeated Return/Space retain 199 unread records.
+  Escape returns to the bell; the same draft becomes
+  `Keep the final draft. Continued.`, caret 32.
+- Final Chinese/dark/18 px/custom blue/reduced motion at **720 × 450 / 200%**:
+  a real **1,587-character** arrival grows list scrollHeight 13,900 → 15,413.
+  The first candidate leaves focused Event 2 at y=1,896, outside its reader
+  (y=49, height 396). Ordinary focus moves the list's scrollTop
+  13,504 → 15,017 and restores the action to y=383.5; popup (34, 5, 360, 440)
+  and viewport stay unchanged. The visible blue action accepts one dismissal,
+  refuses repeats and returns to the bell on Escape. A later native draft
+  selection 0..10 survives another long arrival. File-material search, full-width
+  body reading, Back to Workspace diff and Close retain the same input; its final
+  text is `长通知前保留的草稿。 已继续。 已返回。`, caret 20.
+- Final observer-free Chinese/dark/18 px/blue/reduced-motion control repeats the
+  long arrival at native 200%, shows visible Event 2 focus, retains 199 unread
+  after repeated activation, returns to the bell and continues
+  `最终版本保留的草稿。 已继续。`. All **627 assets** match the observed build except
+  the two HTML observer entries; the control produces **zero observer requests or
+  events**. No passive DOM measurements are claimed for that control.
+
+The earlier dark scene also qualifies actual wheel reading (scrollTop
+13,479 → 13,014), normal Tab exit, reopening, Clear all's retained disabled focus
+and empty-state Escape. Reopening resets that unmounted popup reader as before;
+this repair does not add history-scroll persistence. The CUA substring-selection
+API failed to find the native textarea text; that attempt is excluded, while
+actual keyboard selection qualifies the recorded draft ranges. Two additional
+long probes still encoded their original short bootstrap; their generated entry
+had no long message, so those inputs are excluded. The corrected build verifies
+its emitted long-message marker and actual log admission before judging layout.
+No native shortcut or cache failure is established by those incomplete probes.
+
+The Mac lock interruption stopped three goal turns and retired the original
+private environment. After manual unlock, its preserved source inputs are rebuilt
+and the native task resumes. The earlier blocked receipt retains 84 UTF-8 records,
+17,239,392 raw bytes / 979,318 gzip bytes, SHA-256
+`c04aec11b51dd6981fb3679cbd2e64ba3eed2705828662599854f75409b9647f`.
+It remains historical evidence, not a current pending-native status.
+
+All **11 owned native generations** are retired, including incomplete input
+probes; the exact bundle is unregistered and observer closed. Seven new checkout
+output directories and three new native profile directories are removed, and all
+four original output files retain their restored hashes/modes. All 18 output
+baselines, the exact two-file UI cache inventory, empty preexisting Web Vite temp
+directory and five native-profile absence baselines pass. All **6,306 final source
+inputs**, **32 current-main plugin resources**, nine read-only references and three
+instruction files retain accepted bytes. Primary parallel work and shared tools
+remain untouched. The final evidence archive passes a gzip roundtrip with
+**217 UTF-8 records**, **60,311,472 raw bytes** and **3,010,560 gzip bytes**;
+SHA-256 `ffd9c3711e6773f17d68686f3dc89d3573ea809569ce4a3dabb112b9cdee3b33`.
+The exact private root `/private/tmp/flame-notification-cap-TcNqWM` is absent.
+Independent post-removal preservation repeats all counts above. Scoped publication
+follows these accepted artifacts.
+
+The fixture footer is not production-sidebar placement evidence. Native visible
+focus and actual input do not establish VoiceOver speech. Fresh 320 px layout,
+OS IME, RTL, live OS notifications, other platforms and new contrast measurements
+remain outside this batch. Preserve the qualified cap/reading behavior; further
+content/Dock work requires a different current-source and native finding.
 
 ## HITL approval surface audit
 

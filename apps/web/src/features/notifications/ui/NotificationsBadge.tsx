@@ -1,6 +1,6 @@
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
-import { useId } from "react";
+import { useId, useLayoutEffect, useRef } from "react";
 import { Popover } from "@/ui/index";
 import { SectionLabel } from "@/ui/index";
 import { StatusDot } from "@/ui/index";
@@ -46,9 +46,26 @@ export function NotificationsBadge() {
   const clearAll = useNotificationStore((state) => state.clearAll);
   const unread = unreadNotificationCount(log);
   const messageIdPrefix = useId();
+  const historyRef = useRef<HTMLDivElement>(null);
+  const focusedDismiss = useRef<HTMLButtonElement>(null);
+
+  useLayoutEffect(() => {
+    const removed = focusedDismiss.current;
+    if (!removed || removed.isConnected) return;
+    focusedDismiss.current = null;
+    const history = historyRef.current;
+    if (!history?.isConnected || removed.ownerDocument.activeElement !== removed.ownerDocument.body)
+      return;
+    const controls = history.querySelectorAll<HTMLButtonElement>("button");
+    controls[controls.length - 1]?.focus();
+  }, [log]);
 
   return (
-    <Popover.Root>
+    <Popover.Root
+      onOpenChange={() => {
+        focusedDismiss.current = null;
+      }}
+    >
       <Popover.Trigger
         render={
           <IconButton
@@ -86,7 +103,16 @@ export function NotificationsBadge() {
         >
           {t("notifications.title")}
         </SectionLabel>
-        <div {...stylex.props(styles.list)}>
+        <div
+          ref={historyRef}
+          onFocusCapture={(event) => {
+            if (event.target instanceof HTMLButtonElement) focusedDismiss.current = event.target;
+          }}
+          onBlurCapture={() => {
+            focusedDismiss.current = null;
+          }}
+          {...stylex.props(styles.list)}
+        >
           {log.length === 0 && (
             <EmptyState icon={iconGlyph("bell")} title={t("notifications.empty.title")} />
           )}

@@ -155,6 +155,68 @@ it("keeps current focus and state while other store transitions arrive", async (
   ]);
 });
 
+it("continues at the oldest retained message when a focused entry is evicted", async () => {
+  for (let index = 1; index <= 200; index++) pushInfo(`Event ${index}`);
+  await openHistory();
+  const oldest = screen.getByRole("button", { name: "Dismiss", description: "Event 1" });
+  oldest.focus();
+
+  act(() => {
+    pushInfo("Event 201");
+  });
+  await act(async () => drainBrowserTasks());
+
+  expect(useNotificationStore.getState().log).toHaveLength(200);
+  expect(oldest.isConnected).toBe(false);
+  expect(screen.queryByText("Event 1")).toBeNull();
+  const retained = screen.getByRole("button", { name: "Dismiss", description: "Event 2" });
+  expect(document.activeElement).toBe(retained);
+  fireEvent.click(retained);
+  expect(useNotificationStore.getState().log[0]?.dismissed).toBe(true);
+  expect(document.activeElement).toBe(retained);
+});
+
+it("does not reclaim later draft focus when the previously focused oldest entry is evicted", async () => {
+  for (let index = 1; index <= 200; index++) pushInfo(`Event ${index}`);
+  await openHistory();
+  testClient.render(<textarea aria-label="Later draft" defaultValue="Keep reading." />);
+  const oldest = screen.getByRole("button", { name: "Dismiss", description: "Event 1" });
+  const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Later draft" });
+  oldest.focus();
+  draft.focus();
+  draft.setSelectionRange(5, 12);
+
+  act(() => {
+    pushInfo("Event 201");
+  });
+  await act(async () => drainBrowserTasks());
+
+  expect(useNotificationStore.getState().log).toHaveLength(200);
+  expect(document.activeElement).toBe(draft);
+  expect(draft.value).toBe("Keep reading.");
+  expect([draft.selectionStart, draft.selectionEnd]).toEqual([5, 12]);
+});
+
+it("honors normal popup focus after the user leaves its action", async () => {
+  for (let index = 1; index <= 200; index++) pushInfo(`Event ${index}`);
+  await openHistory();
+  const oldest = screen.getByRole("button", { name: "Dismiss", description: "Event 1" });
+  act(() => {
+    oldest.focus();
+    oldest.blur();
+  });
+  expect(document.activeElement).toBe(document.body);
+
+  act(() => {
+    pushInfo("Event 201");
+  });
+  await act(async () => drainBrowserTasks());
+
+  expect(useNotificationStore.getState().log).toHaveLength(200);
+  expect(oldest.isConnected).toBe(false);
+  expect(document.activeElement).toBe(screen.getByRole("dialog"));
+});
+
 it("keeps Clear all focused on the empty state and returns to the bell on Escape", async () => {
   pushInfo("Saved");
   const bell = await openHistory();
