@@ -10677,20 +10677,21 @@ DEVELOPMENT.md and module conventions remain authoritative.
 Scope of the better-interface review is the document/history pagination flow in
 the existing React, StyleX, Base UI and semantic-token workspace:
 
-| Domain        | Evidence inspected                                                                               | Result                                                   |
-| ------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------- |
-| Accessibility | Shared Button contract; native Tab, Enter, Space, focus during reads, boundaries and later focus | Two fixed findings; VoiceOver and OS IME not reviewed    |
-| Layout        | Actual Dock/main reading, native scroll, 1120/1440 widths, window zoom and 200%                  | Clear for the changed controls and inspected return flow |
-| Writing       | Existing English/Chinese pagination and error copy; off-page revision selection                  | One LOW follow-up below                                  |
-| Typography    | Actual 14/18px control labels and 200% geometry                                                  | Clear for pagination; no global type-scale change        |
-| Colors        | Existing Orange/light and Blue/dark pending, boundary and focus states                           | Clear in inspected states; semantic tokens retained      |
-| UI            | Shared pending/press guards, accepted-page continuity, pointer and keyboard activation           | Clear after the two fixes; no new motion or chrome       |
+| Domain        | Evidence inspected                                                                     | Result                                                                      |
+| ------------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Accessibility | Shared Button/Select contracts, native pagination/selection and current-revision jump  | Two fixed findings; one MEDIUM follow-up; VoiceOver and OS IME not reviewed |
+| Layout        | Actual Dock/main reading, native scroll, 1120/1440 widths, window zoom and 200%        | Clear for the changed controls and inspected return flow                    |
+| Writing       | Existing English/Chinese pagination, revision labels and errors                        | One fixed finding; qualification below                                      |
+| Typography    | Actual 14/18px control labels and 200% geometry                                        | Clear for pagination; no global type-scale change                           |
+| Colors        | Existing Orange/light and Blue/dark pending, boundary and focus states                 | Clear in inspected states; semantic tokens retained                         |
+| UI            | Shared pending/press guards, accepted-page continuity, pointer and keyboard activation | Clear after the two fixes; no new motion or chrome                          |
 
-| Severity | Domain        | Location                                                  | Before                                                                            | After                                                            | Why                                                                |
-| -------- | ------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------ |
-| MEDIUM   | Accessibility | Deliverables document/history pagination                  | Native disabled discarded focused list navigation                                 | Shared pending controls and focusable true boundaries; fixed     | Keyboard reading continues from the current task position          |
-| MEDIUM   | Accessibility | useDeliverables query projection                          | A same-document history cursor read removed its accepted page and controls        | Retain that document's accepted page until settlement; fixed     | Stable controls preserve the reading and retry context             |
-| LOW      | Writing       | Exact revision Select after visiting another history page | Current revision label falls back to its full identity when absent from that page | Open follow-up: derive its label from the selected revision read | The selected object should remain recognizable across page changes |
+| Severity | Domain        | Location                                                  | Before                                                                           | After                                                                             | Why                                                        |
+| -------- | ------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| MEDIUM   | Accessibility | Deliverables document/history pagination                  | Native disabled discarded focused list navigation                                | Shared pending controls and focusable true boundaries; fixed                      | Keyboard reading continues from the current task position  |
+| MEDIUM   | Accessibility | useDeliverables query projection                          | A same-document history cursor read removed its accepted page and controls       | Retain that document's accepted page until settlement; fixed                      | Stable controls preserve the reading and retry context     |
+| MEDIUM   | Accessibility | Inspector Open current revision action                    | Its removal on the revision change leaves native AX focus at HTML content        | Open follow-up: preserve a stable local reading entry when that action disappears | Keyboard users lose the current reading position           |
+| LOW      | Writing       | Exact revision Select after visiting another history page | Current revision label fell back to its full identity when absent from that page | Selected canonical read revision remains one option beside the page; fixed        | The selected object stays recognizable across page changes |
 
 Verification (2026-10-29):
 
@@ -10754,12 +10755,81 @@ root /private/tmp/flame-deliverables-reading-qvO5xy is absent, and preservation 
 retirement. No owned app process or listener remains. The memory-only archive
 round-trips 111 UTF-8 records, 13643218 raw bytes and
 2236787 gzip bytes, SHA-256 d467246a7abe4f5919cb14259c81f4259f0bfff4f826af6df37bcb498992a219.
-This final handoff changes no qualified product source. Continue with the
-selected-revision label follow-up while the continuous UI goal remains active.
+This final handoff changes no qualified product source. The selected-revision label follow-up is qualified below; the continuous UI
+goal remains active.
 
-**Approve** the inspected pagination/return flow; no HIGH finding remains in that
-scope. OS IME and VoiceOver were not reviewed. The LOW revision-label follow-up
-is the next evidence-backed reading task. The broader UI goal remains active.
+**Revision identity qualification (2026-10-30)**
+
+The revision chooser now composes the selected canonical document read with the
+current history page, once per identity. A page change cannot remove the selected
+revision's time, origin and short ID label. Selecting a history entry still opens
+that exact revision; choosing another document withdraws the prior document's
+options. This is a derived option collection in Workspace, with no label cache,
+new selection owner, shared Select API, command, dependency or schema change.
+The module README and normal Deliverables component.js generation follow it.
+
+The preceding actual Wails observation already captures the raw full-ID defect;
+its qualified non-Markdown source map exactly matches this batch's original
+baseline, so the original native launch is not repeated. HeroUI's actual async
+Select example and ZCode ModelConfigSelect were re-read for collection/identity
+separation; neither reference's state or component system is copied. The six
+better-* domains remain covered by the consolidated table above.
+
+- A new public-client regression fails against the unchanged component: expected
+  the complete current-revision label, received its full 64-character ID. After
+  the repair, the complete Deliverables file passes 19 tests. It checks both
+  history directions, selected-item identity, historical revision reads,
+  deduplication, switching documents and absence of mutation handles. The test
+  uses the established pointerDown/click sequence. A no-tests attempt before
+  restaging cleaned UI dependencies is excluded from product evidence.
+- From apps/web, npm run test -- --project frontend
+  visual/tests/deliverablesWorkspace.test.tsx passes. The shared Select anchor and
+  positioning command npm run test --workspace @flame/ui --
+  test/select-anchor.test.tsx test/select-positioning.test.tsx passes four tests.
+  Web/plugin type and lint, plugin format, Web check:plugin-resources,
+  check:bundle and check:plugin-modules pass. make check-native passes in 28.297 s,
+  including normal Web/resource staging, Desktop Go test/vet/build and Wails.
+  Unchanged shared styles, locale catalogs and structural rules retain the
+  preceding batch's checks; no browser or performance suite is run.
+- Actual English/light/Orange at 14px retains the label during and after the held
+  history read. The next-page menu contains the selected current revision and
+  the historical entry. Pointer selection opens Historical native revision;
+  reopening shows that selected entry only once. Previous retains its complete
+  label beside the current-page entry. Arrow Down/Enter selects the current
+  revision. Meeting notes then exposes only its own revision. Native wheel
+  scrolling keeps that identity, and the original draft continues after reading.
+- Chinese/dark/Blue at 18px and 200% retains both readable menu entries and the
+  selection through the native window zoom to 756 × 475 CSS px. Keyboard selection
+  opens the historical Inspector; Previous keeps its label. Closing the main
+  reader continues the original draft to “核对确切版本。 已核对历史版本，继续对话。”
+  ActualSize is restored before quitting.
+- An observer-free native control repeats next-page labeling, keyboard historical
+  selection, Previous, current-revision opening and retained draft continuation.
+  Its 619 assets differ only in two HTML entries; the dark native binary is
+  identical and observer-event delta is zero. That current-revision action also
+  exposes the separate MEDIUM native-focus finding in the table: its Inspector
+  disappears and AX focus becomes HTML content. This path is not claimed as a
+  passed focus-return check. Preserve the successful Select/keyboard path while
+  repairing that action's local focus lifetime next.
+
+The three private producers retain the same declared ESM, installed-component
+lifecycle and public client. Canonical current/historical read replies are
+read-only fixture data, not live release acquisition, Realm admission, native
+rendering, provider execution, file saving or business mutations. OS IME and
+VoiceOver remain unreviewed. Native input uses CUA; the optional observer reads
+only. No Claude CLI or subagent is used.
+
+Cleanup retires three native launches, unregisters the exact bundle, closes its
+listener, removes eight new checkout output/cache roots and three private
+profiles, and restores all four original files/modes. Preservation checks pass
+for 6,379 qualified inputs, 34 resources, 45 references, three instructions,
+21 output baselines and five profile-absence baselines. The installed toolchain
+and primary parallel checkout are preserved. Private evidence remains only until
+publication and retirement below.
+
+**Approve** the inspected pagination and revision-selection changes; no HIGH
+finding remains. One MEDIUM current-revision-jump focus finding remains for the
+next batch. OS IME and VoiceOver were not reviewed. The broader UI goal is active.
 
 ## Shortcut recording and activation
 

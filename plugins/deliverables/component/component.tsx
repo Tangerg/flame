@@ -531,6 +531,12 @@ function Workspace({ context }: { context: ComponentContext }) {
         entry.title.toLocaleLowerCase().includes(search.toLocaleLowerCase()),
     ) ?? [];
   const document = state.read?.value;
+  const history = state.history?.value?.entries ?? [];
+  const revisions =
+    document &&
+    !history.some((revision) => revision.id === document.revision.id)
+      ? [document.revision, ...history]
+      : history;
   return (
     <Panel
       label={t("panel.title")}
@@ -675,7 +681,7 @@ function Workspace({ context }: { context: ComponentContext }) {
               if (state.selection)
                 state.open({ id: state.selection.id, revision });
             }}
-            options={(state.history?.value?.entries ?? []).map((revision) => ({
+            options={revisions.map((revision) => ({
               value: revision.id,
               label: `${revision.createdAt} · ${t(`operation.${revision.operation}`)} · ${revision.id.slice(0, 12)}`,
             }))}

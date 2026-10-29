@@ -85,6 +85,11 @@ async function rig() {
     [doc1, make(doc1, rev1, "Quarterly report")],
     [doc2, make(doc2, rev2, "Meeting notes")],
   ]);
+  const historicalRevision = (document: DocumentRead) => ({
+    ...document.revision,
+    id: (document.document.id === doc1 ? "e" : "f").repeat(64),
+    operation: "edit" as const,
+  });
   const assessments = new Map<string, Assessment>();
   const uploads = new Map<string, Upload>();
   const assets = new Map([[asset.id, { asset, bytes }]]);
@@ -177,12 +182,11 @@ async function rig() {
       return output(assessments.get(input.assessmentId as string));
     if (params.method === METHODS.history) {
       await waitForRead(`history:${input.before ?? ""}`);
-      const revision = documents.get(input.id as string)!.revision;
+      const document = documents.get(input.id as string)!;
+      const revision = document.revision;
       if (paged === "history") {
         if (input.before === "next")
-          return failedPage
-            ? uncertain()
-            : output({ entries: [{ ...revision, id: "e".repeat(64), operation: "edit" }] });
+          return failedPage ? uncertain() : output({ entries: [historicalRevision(document)] });
         assert.equal(input.before, undefined);
         return output({ entries: [revision], next: "next" });
       }
@@ -190,6 +194,8 @@ async function rig() {
     }
     if (params.method === METHODS.read) {
       const captured = structuredClone(documents.get(input.id as string));
+      if (captured && input.revision === historicalRevision(captured).id)
+        captured.revision = historicalRevision(captured);
       await waitForRead(input.id as string);
       if (failedReads) return uncertain();
       return output(captured);
@@ -754,4 +760,66 @@ it("retains a history page only for its document and rejects its late response a
   expect(hook.result.current.history?.value?.entries[0]?.id).toBe(rev2);
   expect(hook.result.current.historyPrevious).toBe(false);
   expect(hook.result.current.selection).toEqual({ id: doc2, revision: rev2 });
+});
+
+it("keeps the selected revision recognizable and selectable across history pages", async () => {
+  const fixture = await rig();
+  fixture.paginate("history", false);
+  fixture.ui.render(<Deliverables context={fixture.context()} />);
+  fireEvent.click(await screen.findByRole("button", { name: /Quarterly report/ }));
+  const select = await screen.findByRole("combobox", { name: "Choose exact revision" });
+  const currentLabel = `${timestamp} · Created · ${rev1.slice(0, 12)}`;
+  const historicalLabel = `${timestamp} · Locally edited · ${"e".repeat(12)}`;
+  await waitFor(() => expect(select.textContent).toBe(currentLabel));
+  const pager = within(await screen.findByRole("group", { name: "Revision history pages" }));
+  fireEvent.click(pager.getByRole("button", { name: "Next" }));
+  await waitFor(() =>
+    expect(pager.getByRole("button", { name: "Previous" }).getAttribute("aria-disabled")).toBe(
+      "false",
+    ),
+  );
+  expect(select.textContent).toBe(currentLabel);
+  fireEvent.click(select);
+  expect(
+    (await screen.findByRole("option", { name: currentLabel })).getAttribute("aria-selected"),
+  ).toBe("true");
+  expect(screen.getAllByRole("option")).toHaveLength(2);
+  fireEvent.pointerDown(screen.getByRole("option", { name: historicalLabel }), {
+    pointerType: "mouse",
+  });
+  fireEvent.click(screen.getByRole("option", { name: historicalLabel }));
+  await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+  await waitFor(() => expect(select.textContent).toBe(historicalLabel));
+  await screen.findByText("Historical native revision");
+  expect(fixture.calls.filter((call) => call.method === METHODS.read).at(-1)?.input).toEqual({
+    id: doc1,
+    revision: "e".repeat(64),
+  });
+  fireEvent.click(pager.getByRole("button", { name: "Previous" }));
+  await waitFor(() =>
+    expect(pager.getByRole("button", { name: "Previous" }).getAttribute("aria-disabled")).toBe(
+      "true",
+    ),
+  );
+  expect(select.textContent).toBe(historicalLabel);
+  fireEvent.click(select);
+  expect(
+    (await screen.findByRole("option", { name: historicalLabel })).getAttribute("aria-selected"),
+  ).toBe("true");
+  expect(screen.getAllByRole("option")).toHaveLength(2);
+  fireEvent.pointerDown(screen.getByRole("option", { name: currentLabel }), {
+    pointerType: "mouse",
+  });
+  fireEvent.click(screen.getByRole("option", { name: currentLabel }));
+  await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+  await waitFor(() => expect(select.textContent).toBe(currentLabel));
+  fireEvent.click(screen.getByRole("button", { name: /Meeting notes/ }));
+  await waitFor(() =>
+    expect(select.textContent).toBe(`${timestamp} · Created · ${rev2.slice(0, 12)}`),
+  );
+  fireEvent.click(select);
+  expect(screen.getAllByRole("option")).toHaveLength(1);
+  expect(screen.queryByRole("option", { name: currentLabel })).toBeNull();
+  expect(screen.queryByRole("option", { name: historicalLabel })).toBeNull();
+  expect(fixture.calls.filter((call) => call.key !== null)).toHaveLength(0);
 });
