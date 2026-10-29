@@ -36,6 +36,13 @@ not persisted or included in the journal digest; credential revisions identify a
 changed injection. Secrets must not be put in command-line arguments. Diagnostics
 do not log arguments or environment values.
 
+The launch attempt retains its executable snapshot until `Start` succeeds. Every
+pre-start failure releases that snapshot and returns any cleanup failure with the
+creation error. Successful creation transfers cleanup to the original child Wait;
+its completion releases the snapshot before publishing the terminal observation.
+Snapshot cleanup diagnostics remain visible in that observation without changing
+the direct-child exit proof.
+
 The attempt record is synchronized to disk before the first creation effect. The
 same attempt never creates twice, including after a failed start or completed exit.
 Repeated requests return its original result, current state or Unknown. Capacity is

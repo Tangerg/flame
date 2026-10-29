@@ -159,6 +159,95 @@ func TestFailedExecutableIsTerminalAndNeverStartsOnRetry(t *testing.T) {
 	}
 }
 
+func executableSnapshots(t *testing.T, server *Server) []string {
+	t.Helper()
+	paths, err := filepath.Glob(filepath.Join(server.config.Directory, "executable-*"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return paths
+}
+
+func TestFailedProcessCreationReleasesVerifiedExecutable(t *testing.T) {
+	for _, failure := range []string{"invalid-format", "missing-directory"} {
+		t.Run(failure, func(t *testing.T) {
+			server, client, ctx := serveFixture(t)
+			if err := client.Fence(ctx, 1); err != nil {
+				t.Fatal(err)
+			}
+			request := launchFixture(t, failure, 1, t.TempDir())
+			if failure == "invalid-format" {
+				data := []byte("not an executable format\n")
+				request.Command = filepath.Join(request.Directory, "invalid")
+				request.ExecutableDigest = qimu.Hash(data)
+				if err := os.WriteFile(request.Command, data, 0700); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				request.Directory = filepath.Join(request.Directory, "missing")
+			}
+			observation, err := client.Launch(ctx, request)
+			if err == nil || observation.State != Exited || observation.ProofID == "" || observation.Reason != "process creation failed" {
+				t.Fatalf("failed creation: %+v, %v", observation, err)
+			}
+			if paths := executableSnapshots(t, server); len(paths) != 0 {
+				t.Fatalf("failed launch retained executable snapshots: %v", paths)
+			}
+			if err := server.Close(); err != nil {
+				t.Fatal(err)
+			}
+			if paths := executableSnapshots(t, server); len(paths) != 0 {
+				t.Fatalf("closed runner retained executable snapshots: %v", paths)
+			}
+		})
+	}
+}
+
+func TestChildWaitOwnsExecutableReleaseAndReportsCleanupFailure(t *testing.T) {
+	for _, refuseRemoval := range []bool{false, true} {
+		t.Run(fmt.Sprint(refuseRemoval), func(t *testing.T) {
+			server, client, ctx := serveFixture(t)
+			if err := client.Fence(ctx, 1); err != nil {
+				t.Fatal(err)
+			}
+			request := launchFixture(t, "live-snapshot", 1, t.TempDir())
+			if _, err := client.Launch(ctx, request); err != nil {
+				t.Fatal(err)
+			}
+			paths := executableSnapshots(t, server)
+			if len(paths) != 1 {
+				t.Fatalf("running child does not retain its snapshot: %v", paths)
+			}
+			if refuseRemoval {
+				if err := os.Rename(paths[0], paths[0]+".held"); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Mkdir(paths[0], 0700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(paths[0], "obstacle"), nil, 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			observation, err := client.CloseAttempt(ctx, request.AttemptID)
+			if err != nil || observation.State != Exited || observation.ProofID == "" {
+				t.Fatalf("child exit: %+v, %v", observation, err)
+			}
+			if refuseRemoval {
+				if !strings.Contains(observation.Reason, "executable snapshot cleanup failed") {
+					t.Fatalf("snapshot removal failure was hidden: %+v", observation)
+				}
+				persisted, err := client.Inspect(ctx, request.AttemptID)
+				if err != nil || persisted.Reason != observation.Reason {
+					t.Fatalf("cleanup diagnostic was not retained: %+v, %v", persisted, err)
+				}
+			} else if paths := executableSnapshots(t, server); len(paths) != 0 {
+				t.Fatalf("completed wait retained executable snapshots: %v", paths)
+			}
+		})
+	}
+}
+
 func TestSeparateRunnerSurvivesClientAndLosesNoAttemptOnRestart(t *testing.T) {
 	directory, err := os.MkdirTemp("", "qimu-daemon-")
 	if err != nil {
