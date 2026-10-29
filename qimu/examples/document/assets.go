@@ -45,7 +45,7 @@ func buildPreview(ctx context.Context, store *distribution.Store, contracts Cont
 	}
 	manifest := distribution.Manifest{SchemaVersion: 1, Package: "example.document-preview", Version: "1", Artifacts: []distribution.Artifact{{Path: "preview.js"}, {Path: "theme.css"}}, Contracts: []qimu.ContractRef{contracts.Previews.Ref(), contracts.Theme.Ref()}, Units: []distribution.Unit{{ID: "preview", Profile: qimu.BrowserJS, Exports: []qimu.ExportDeclaration{{Name: "preview", Contract: contracts.Previews.Ref()}}, Module: &distribution.Module{Entry: "preview.js"}}, {ID: "theme", Profile: qimu.StaticResource, Exports: []qimu.ExportDeclaration{{Name: "theme", Contract: contracts.Theme.Ref()}}, Resources: []string{"theme.css"}}}}
 	var archive bytes.Buffer
-	if _, err := distribution.Build(ctx, directory, manifest, nil, &archive); err != nil {
+	if _, err := distribution.Build(ctx, directory, manifest, &archive); err != nil {
 		return distribution.Release{}, err
 	}
 	path := filepath.Join(directory, "preview.zip")

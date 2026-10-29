@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
@@ -23,7 +24,7 @@ func packageFixture(t *testing.T) (string, Manifest, []byte, Lock) {
 	}
 	manifest := Manifest{SchemaVersion: 1, Package: "test.theme", Version: "1.0.0", Artifacts: []Artifact{{Path: "theme.css"}}, Units: []Unit{{ID: "theme", Profile: "static-resource", Resources: []string{"theme.css"}}}}
 	var archive bytes.Buffer
-	lock, err := Build(context.Background(), directory, manifest, nil, &archive)
+	lock, err := Build(context.Background(), directory, manifest, &archive)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +69,7 @@ func installArchive(t *testing.T, store *Store, data []byte) Release {
 func TestBuildDeterministicAndResourceNeedsNoMethods(t *testing.T) {
 	directory, manifest, archive, lock := packageFixture(t)
 	var second bytes.Buffer
-	other, err := Build(context.Background(), directory, manifest, nil, &second)
+	other, err := Build(context.Background(), directory, manifest, &second)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,6 +89,114 @@ func TestBuildDeterministicAndResourceNeedsNoMethods(t *testing.T) {
 	data, err := lease.Read(context.Background(), "theme.css")
 	if err != nil || string(data) != "body { color: blue; }\n" {
 		t.Fatalf("resource: %q %v", data, err)
+	}
+}
+
+func TestLockCannotIntroduceUnownedReleaseDependencies(t *testing.T) {
+	_, _, archive, _ := packageFixture(t)
+	release := installArchive(t, storeFixture(t, nil), archive)
+	lock := release.Lock
+	lock.Dependencies = []LockedRelease{{Package: "other.release", Release: qimu.Hash([]byte("other"))}}
+	if err := lock.Verify(release.Manifest); !errors.Is(err, ErrIntegrity) {
+		t.Fatalf("lock advanced dependencies without changing the manifest identity: %v", err)
+	}
+}
+
+func TestDuplicateInstallReturnsAndTrustsTheFinalCachedSnapshot(t *testing.T) {
+	source, _, archive, _ := packageFixture(t)
+	store := storeFixture(t, nil)
+	first := installArchive(t, store, archive)
+	manifest := first.Manifest
+	manifest.Release = ""
+	for name, value := range map[string]any{ManifestName: manifest, LockName: first.Lock} {
+		data, err := json.Marshal(value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(source, name), data, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var trusted Release
+	store.trust = func(_ context.Context, _ Source, manifest Manifest, lock Lock) error {
+		trusted = Release{Digest: lock.Release, Manifest: manifest, Lock: lock}
+		return nil
+	}
+	lease, err := store.InstallDirectoryHeld(t.Context(), source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer lease.Close()
+	inspected, err := store.Inspect(t.Context(), first.Digest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(lease.Release(), inspected) {
+		t.Error("duplicate install returned a staged projection instead of the cached release")
+	}
+	if !reflect.DeepEqual(trusted, inspected) {
+		t.Error("trust approved a staged projection instead of the final cached release")
+	}
+	again, err := store.Acquire(t.Context(), first.Digest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer again.Close()
+	if !reflect.DeepEqual(again.Release(), lease.Release()) {
+		t.Error("reacquiring the release changed its snapshot")
+	}
+	refusal := errors.New("cached projection refused")
+	store.trust = func(_ context.Context, _ Source, manifest Manifest, _ Lock) error {
+		if manifest.Release == first.Digest {
+			return refusal
+		}
+		return nil
+	}
+	if _, err := store.InstallDirectoryHeld(t.Context(), source); !errors.Is(err, ErrUntrusted) || !errors.Is(err, refusal) {
+		t.Fatalf("duplicate install bypassed final cache trust: %v", err)
+	}
+	if err := errors.Join(lease.Close(), again.Close()); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Remove(t.Context(), first.Digest); err != nil {
+		t.Fatalf("refused cached projection retained a leaked lease: %v", err)
+	}
+}
+
+func TestManifestDependencyChangesCreateDistinctImmutableReleases(t *testing.T) {
+	source, manifest, _, _ := packageFixture(t)
+	store := storeFixture(t, nil)
+	var releases []Release
+	for _, name := range []string{"first", "second"} {
+		manifest.Dependencies = []LockedRelease{{Package: "dependency", Release: qimu.Hash([]byte(name))}}
+		var archive bytes.Buffer
+		lock, err := Build(t.Context(), source, manifest, &archive)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(lock.Dependencies, manifest.Dependencies) {
+			t.Fatal("lock does not project its manifest dependencies")
+		}
+		releases = append(releases, installArchive(t, store, archive.Bytes()))
+	}
+	if releases[0].Digest == releases[1].Digest {
+		t.Fatal("changed dependency retained the same release identity")
+	}
+	for _, release := range releases {
+		inspected, err := store.Inspect(t.Context(), release.Digest)
+		if err != nil || !reflect.DeepEqual(release, inspected) {
+			t.Fatalf("release changed in cache: %+v, %v", inspected, err)
+		}
+	}
+	for _, invalid := range [][]LockedRelease{
+		{{Package: "invalid package", Release: qimu.Hash([]byte("valid"))}},
+		{{Package: "dependency", Release: "invalid"}},
+		{manifest.Dependencies[0], manifest.Dependencies[0]},
+	} {
+		manifest.Dependencies = invalid
+		if _, err := manifest.Identity(); !errors.Is(err, ErrInvalid) {
+			t.Fatalf("invalid canonical dependencies admitted: %+v, %v", invalid, err)
+		}
 	}
 }
 

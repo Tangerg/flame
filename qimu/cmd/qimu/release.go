@@ -19,7 +19,6 @@ func runPackage(args []string, output io.Writer) (err error) {
 	flags := flag.NewFlagSet("qimu package", flag.ContinueOnError)
 	source := flags.String("source", "", "release source directory")
 	manifestPath := flags.String("manifest", "", "source manifest; defaults to source/manifest.json")
-	dependenciesPath := flags.String("dependencies", "", "JSON array of exact locked dependency releases")
 	destination := flags.String("out", "", "new ZIP artifact path")
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -38,16 +37,6 @@ func runPackage(args []string, output io.Writer) (err error) {
 	if err := json.Unmarshal(data, &manifest, json.RejectUnknownMembers(true)); err != nil {
 		return err
 	}
-	var dependencies []distribution.LockedRelease
-	if *dependenciesPath != "" {
-		data, err := os.ReadFile(*dependenciesPath)
-		if err != nil {
-			return err
-		}
-		if err := json.Unmarshal(data, &dependencies, json.RejectUnknownMembers(true)); err != nil {
-			return err
-		}
-	}
 	file, err := os.OpenFile(*destination, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if err != nil {
 		return err
@@ -60,7 +49,7 @@ func runPackage(args []string, output io.Writer) (err error) {
 		}
 	}()
 	digest := sha256.New()
-	lock, err := distribution.Build(context.Background(), *source, manifest, dependencies, io.MultiWriter(file, digest))
+	lock, err := distribution.Build(context.Background(), *source, manifest, io.MultiWriter(file, digest))
 	if err != nil {
 		return err
 	}

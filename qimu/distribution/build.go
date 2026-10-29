@@ -17,7 +17,7 @@ import (
 // Build computes the artifact inventory from the declared source files, then
 // writes a deterministic ZIP and its exact lock. It does not execute build tools
 // or include undeclared source files. The source remains mutable; its output is not.
-func Build(ctx context.Context, source string, manifest Manifest, dependencies []LockedRelease, output io.Writer) (Lock, error) {
+func Build(ctx context.Context, source string, manifest Manifest, output io.Writer) (Lock, error) {
 	input, err := os.OpenRoot(source)
 	if err != nil {
 		return Lock{}, err
@@ -48,7 +48,7 @@ func Build(ctx context.Context, source string, manifest Manifest, dependencies [
 		files[artifact.Path] = data
 	}
 	manifest.Release = ""
-	lock, err := manifest.Lock(dependencies)
+	lock, err := manifest.Lock()
 	if err != nil {
 		return Lock{}, err
 	}

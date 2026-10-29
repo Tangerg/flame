@@ -389,7 +389,7 @@ func TestNeutralProjectionCannotAddAnExecutableUnit(t *testing.T) {
 	manifest := built.Manifest
 	manifest.Units = append(manifest.Units, distribution.Unit{ID: "invented", Profile: qimu.NativeGo})
 	var output bytes.Buffer
-	lock, err := distribution.Build(t.Context(), source, manifest, nil, &output)
+	lock, err := distribution.Build(t.Context(), source, manifest, &output)
 	if err != nil {
 		t.Fatal(err)
 	}

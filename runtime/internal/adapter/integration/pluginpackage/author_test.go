@@ -31,7 +31,7 @@ func TestNeutralDeclarationCannotSubstituteManagedRuntimeOrCapabilities(t *testi
 				manifest.Units[0].RequestedCapabilities = []string{"undeclared-host-access"}
 			}
 			var output bytes.Buffer
-			if _, err := distribution.Build(t.Context(), source, manifest, nil, &output); err != nil {
+			if _, err := distribution.Build(t.Context(), source, manifest, &output); err != nil {
 				t.Fatal(err)
 			}
 			archive := filepath.Join(t.TempDir(), "changed.zip")
