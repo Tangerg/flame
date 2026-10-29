@@ -319,6 +319,38 @@ func TestRepeatedSessionReleaseCannotRetireItsSuccessor(t *testing.T) {
 	}
 }
 
+func TestAdmissionChangesRetainReleaseOrdering(t *testing.T) {
+	gate := newTestGate(t)
+	first, ok, err := gate.AcquireSession(t.Context(), "ses_first")
+	if err != nil || !ok {
+		t.Fatalf("first admission = %t, %v", ok, err)
+	}
+	observed := gate.Changes()
+	first()
+	select {
+	case <-observed:
+	default:
+		t.Fatal("release did not close the captured version")
+	}
+	next := gate.Changes()
+	second, ok, err := gate.AcquireSession(t.Context(), "ses_second")
+	if err != nil || !ok {
+		t.Fatalf("second admission = %t, %v", ok, err)
+	}
+	first()
+	select {
+	case <-next:
+		t.Fatal("repeated release consumed the next admission version")
+	default:
+	}
+	second()
+	select {
+	case <-next:
+	default:
+		t.Fatal("successor release did not close its captured version")
+	}
+}
+
 func TestRunAdmissionCannotReplaceAnotherSessionsLiveIdentity(t *testing.T) {
 	gate := newTestGate(t)
 	first, ok, err := gate.AcquireRun(t.Context(), "ses_first", "/first")

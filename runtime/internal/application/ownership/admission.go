@@ -235,6 +235,14 @@ func (g *Gate) ActiveSessions() map[string]bool {
 	return set
 }
 
+// Changes captures the current admission version before a durable read. Its
+// closure means a held claim was released; observers must re-read both facts.
+func (g *Gate) Changes() <-chan struct{} {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.changed
+}
+
 // activeSessionsLocked yields every session holding a session-only admission, a
 // pending reservation, a live Run, or a Run in maintenance. Admission asks whether one session is
 // active and observers ask which ones are; both read this, so a session cannot

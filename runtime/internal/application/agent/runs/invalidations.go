@@ -16,7 +16,6 @@ type runPublications struct {
 	barriers      TreeBarrierCommitter
 	workspace     WorkspaceChangeNotifier
 	invalidations invalidation.Publish
-	changes       sessionRunChanges
 	now           func() time.Time
 }
 
@@ -76,7 +75,6 @@ func (r *runPublications) nudge(cwd string, paths []string) {
 // publishRunMoved reports a run whose lifecycle position changed without touching
 // what it is waiting on: a run that started, or one that ended.
 func (r *runPublications) publishRunMoved(sessionID, runID string) {
-	r.changes.notify(sessionID)
 	r.invalidations.Notify(
 		invalidation.InSession(invalidation.Runs, sessionID, runID),
 		invalidation.InSession(invalidation.Sessions, sessionID),
@@ -86,7 +84,6 @@ func (r *runPublications) publishRunMoved(sessionID, runID string) {
 // publishWaitingMoved reports a transition that also opened, answered or dropped
 // the session's open-interrupt set — a park, a resume, or a canceled park.
 func (r *runPublications) publishWaitingMoved(sessionID, runID string) {
-	r.changes.notify(sessionID)
 	r.invalidations.Notify(
 		invalidation.InSession(invalidation.Runs, sessionID, runID),
 		invalidation.InSession(invalidation.Interrupts, sessionID, runID),
