@@ -16,6 +16,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
+	sqlitedriver "modernc.org/sqlite"
+	sqlite3lib "modernc.org/sqlite/lib"
 )
 
 func TestOpenHonorsCanceledContext(t *testing.T) {
@@ -460,29 +462,46 @@ func TestTranscriptStoreKeepsOffloadRelationshipsImmutableAndOneToOne(t *testing
 	}
 }
 
-func TestRevisionTablesRejectNumbersOutsideTheExactEnvelope(t *testing.T) {
+func TestSessionAndPlanRevisionsRequireExactPositiveIntegers(t *testing.T) {
 	t.Parallel()
-
-	db, err := openDatabase(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-
-	for _, revision := range []uint64{0, exactint.Maximum + 1} {
-		for name, statement := range map[string]string{
-			"sessions": `INSERT INTO sessions(
-				id, title, title_search, workspace_path, workspace_search, created_at, updated_at,
-				provider, model, revision
-			) VALUES ('ses_revision', '', '', '/work', '/work', 1, 1, 'provider', 'model', ?)`,
-			"session_plans": `INSERT INTO session_plans(session_id, steps, revision, updated_at)
-				VALUES ('ses_revision', '[]', ?, 1)`,
-			"schedules": `INSERT INTO schedules(id, instructions, cron, created_at, revision)
-				VALUES ('sch_revision', 'review', '@daily', 1, ?)`,
+	const sessionID = "ses_00000000-0000-4000-8000-000000000001"
+	const insertSession = `INSERT INTO sessions(
+    id, title, title_search, workspace_path, workspace_search, created_at, updated_at,
+    provider, model, revision
+  ) VALUES (?, '', '', '/work', '/work', 1, 1, 'provider', 'model', ?)`
+	for _, table := range []string{"sessions", "session_plans"} {
+		for _, test := range []struct {
+			revision uint64
+			rejected bool
+		}{
+			{1, false}, {exactint.Maximum, false}, {0, true}, {exactint.Maximum + 1, true},
 		} {
-			t.Run(fmt.Sprintf("%s/%d", name, revision), func(t *testing.T) {
-				if _, err := db.ExecContext(t.Context(), statement, revision); err == nil {
-					t.Fatalf("%s accepted revision %d", name, revision)
+			t.Run(fmt.Sprintf("%s/%d", table, test.revision), func(t *testing.T) {
+				db, err := openDatabase(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				t.Cleanup(func() { _ = db.Close() })
+				statement := insertSession
+				if table == "session_plans" {
+					if _, err := db.ExecContext(t.Context(), insertSession, sessionID, 1); err != nil {
+						t.Fatalf("seed owning Session: %v", err)
+					}
+					statement = `INSERT INTO session_plans(session_id, steps, revision, updated_at) VALUES (?, '[]', ?, 1)`
+				}
+				result, err := db.ExecContext(t.Context(), statement, sessionID, test.revision)
+				if test.rejected {
+					failure, ok := errors.AsType[*sqlitedriver.Error](err)
+					if !ok || failure.Code() != sqlite3lib.SQLITE_CONSTRAINT_CHECK {
+						t.Fatalf("%s revision %d = %v, want SQLite CHECK refusal", table, test.revision, err)
+					}
+					return
+				}
+				if err != nil {
+					t.Fatalf("valid %s revision %d: %v", table, test.revision, err)
+				}
+				if changed, err := result.RowsAffected(); err != nil || changed != 1 {
+					t.Fatalf("valid insertion changed %d rows: %v", changed, err)
 				}
 			})
 		}

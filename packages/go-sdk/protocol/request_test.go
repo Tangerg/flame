@@ -96,11 +96,38 @@ func TestRequestDecodingRejectsInvalidTargets(t *testing.T) {
 }
 
 func TestRequestDecodingValidatesTypedMapChanges(t *testing.T) {
-	for _, change := range []string{`{"type":"set"}`, `{"type":"clear","value":"replacement"}`, `{"type":"replace","value":"replacement"}`} {
+	requestJSON := func(change string) string {
+		return `{"installationId":"00000000-0000-4000-8000-000000000001","digest":"` + strings.Repeat("1", 64) + `","valueChanges":{"credential":` + change + `},"serverChanges":{},"skillChanges":{}}`
+	}
+	for _, test := range []struct {
+		change string
+		want   protocol.PluginValueChange
+	}{
+		{`{"type":"set","value":"replacement"}`, protocol.PluginValueChange{Type: protocol.PluginValueSet, Value: new("replacement")}},
+		{`{"type":"set","value":""}`, protocol.PluginValueChange{Type: protocol.PluginValueSet, Value: new("")}},
+		{`{"type":"clear"}`, protocol.PluginValueChange{Type: protocol.PluginValueClear}},
+	} {
 		var request protocol.ConfigurePluginRequest
-		raw := `{"installationId":"00000000-0000-4000-8000-000000000001","digest":"` + strings.Repeat("1", 64) + `","valueChanges":{"credential":` + change + `},"disabledServers":[],"disabledSkills":[]}`
-		if err := protocol.DecodeRequest([]byte(raw), &request); !errors.Is(err, protocol.ErrInvalidParams) || !reflect.DeepEqual(request, protocol.ConfigurePluginRequest{}) {
-			t.Fatalf("invalid map change became a command: %s, %+v, %v", change, request, err)
+		if err := protocol.DecodeRequest([]byte(requestJSON(test.change)), &request); err != nil {
+			t.Fatalf("valid map change fixture rejected: %s, %v", test.change, err)
 		}
+		if !reflect.DeepEqual(request.ValueChanges, map[string]protocol.PluginValueChange{"credential": test.want}) {
+			t.Fatalf("valid map change disappeared: %+v", request)
+		}
+	}
+	for _, test := range []struct{ change, field, detail string }{
+		{`{"type":"set"}`, `valueChanges["credential"].value`, "is required"},
+		{`{"type":"clear","value":"replacement"}`, `valueChanges["credential"].value`, "must not be present here"},
+		{`{"type":"replace","value":"replacement"}`, `valueChanges["credential"].type`, "must be one of set, clear"},
+	} {
+		t.Run(test.change, func(t *testing.T) {
+			var request protocol.ConfigurePluginRequest
+			err := protocol.DecodeRequest([]byte(requestJSON(test.change)), &request)
+			constraint, ok := errors.AsType[*protocol.ConstraintError](err)
+			want := []protocol.FieldError{{Field: test.field, Detail: test.detail}}
+			if !errors.Is(err, protocol.ErrInvalidParams) || !ok || constraint.Shape != "ConfigurePluginRequest" || !reflect.DeepEqual(constraint.Fields, want) || !reflect.DeepEqual(request, protocol.ConfigurePluginRequest{}) {
+				t.Fatalf("map change refusal = %+v, %v; want fields %+v and no partial command", request, err, want)
+			}
+		})
 	}
 }
