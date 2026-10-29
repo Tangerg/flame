@@ -6,7 +6,6 @@ import rehypeRaw from "rehype-raw";
 import remarkBreaks from "remark-breaks";
 import remarkCjkFriendly from "remark-cjk-friendly";
 import remarkGfm from "remark-gfm";
-import remarkMath from "remark-math";
 import remend from "remend";
 import { splitStreamingBlocks } from "@/features/chat/message/ui/markdown/splitStreamingBlocks";
 import { createMarkdownComponents } from "@/features/chat/message/ui/markdown/markdownComponents";
@@ -17,7 +16,7 @@ import { rehypeFadeIn } from "@/features/chat/message/ui/markdown/rehypeFadeIn";
 import { rehypeFileRefs } from "@/features/chat/message/ui/markdown/rehypeFileRefs";
 import { rehypeFootnoteLabels } from "@/features/chat/message/ui/markdown/rehypeFootnoteLabels";
 import { rehypeStreamCaret } from "@/features/chat/message/ui/markdown/rehypeStreamCaret";
-import { normalizeMarkdownMath } from "@/features/chat/message/ui/markdown/preprocess";
+import { remarkMathSyntax } from "@/features/chat/message/ui/markdown/remarkMathSyntax";
 import { remarkCallouts } from "@/features/chat/message/ui/markdown/remarkCallouts";
 import { remarkLiteralUnknownHtml } from "@/features/chat/message/ui/markdown/remarkLiteralUnknownHtml";
 import {
@@ -53,7 +52,7 @@ const remarkPlugins = [
   remarkGfm,
   remarkBreaks,
   remarkCjkFriendly,
-  remarkMath,
+  remarkMathSyntax,
   remarkCallouts,
   remarkLiteralUnknownHtml,
 ];
@@ -81,15 +80,17 @@ export function MarkdownRenderer(props: MarkdownMessageProps) {
   const source = instant ? committed : deferred;
   useVisibleTextMaterial(source === text);
 
-  const normalized = useMemo(() => normalizeMarkdownMath(source), [source]);
-
   const repaired = useMemo(() => {
-    if (instant) return normalized;
-    return remend(normalized);
-  }, [instant, normalized]);
+    if (instant) return source;
+    return remend(source);
+  }, [instant, source]);
 
   const blocks = useMemo(() => splitStreamingBlocks(repaired), [repaired]);
   const lastIdx = blocks.length - 1;
+
+  useEffect(() => {
+    ensureKatexCss();
+  }, []);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -124,10 +125,6 @@ const MarkdownBlock = memo(function MarkdownBlock({
   footnotePrefix,
 }: MarkdownBlockProps) {
   const t = useT();
-  const hasMath = text.includes("$");
-  useEffect(() => {
-    if (hasMath) ensureKatexCss();
-  }, [hasMath]);
 
   const rehypePlugins = useMemo(() => {
     const labels: [typeof rehypeFootnoteLabels, string] = [rehypeFootnoteLabels, footnotePrefix];

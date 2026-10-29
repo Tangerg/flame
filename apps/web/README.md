@@ -374,6 +374,15 @@ their existing owners. Save failures lead with the command reason, followed by
 the captured image description, so changing the current image cannot misidentify
 the failed save.
 
+Markdown math syntax is owned by `remarkMathSyntax` inside the Markdown parser.
+It accepts dollar math, LaTeX bracket delimiters (one or two backslashes), and
+the paired `[/inline]` and `[/math]` markers. A single dollar immediately followed
+by a digit is currency; digit-opening formulas use bracket, custom or double-dollar
+delimiters. Display formulas can contain blank lines. The streaming splitter uses
+that same parser grammar and slices original source at its block boundaries.
+Code, link destinations and raw artifacts never pass through math rewriting;
+code display and copying use the parser's literal code value.
+
 Generated SVG fences stay inert images inside their code preview and open through
 the shared image gallery. The gallery keeps source order within the reply, owns
 zoom/pan and source return, and captures the image set for each opening. Code

@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest";
 import { splitStreamingBlocks } from "@/features/chat/message/ui/markdown/splitStreamingBlocks";
 const CASES: readonly [name: string, markdown: string, blocks: readonly string[]][] = [
   ["two paragraphs", "alpha\n\nbeta", ["alpha", "\n\n", "beta"]],
+  [
+    "bracket display math owns its blank lines",
+    "before\n\n\\[\nx^2\n\n+ y^2\n\\]\n\nafter",
+    ["before", "\n\n", "\\[\nx^2\n\n+ y^2\n\\]", "\n\n", "after"],
+  ],
   ["an unclosed fence keeps what follows", "text\n\n```js\ncode", ["text", "\n\n", "```js\ncode"]],
   [
     "a closed fence ends its block",

@@ -1,4 +1,7 @@
-import { Lexer } from "marked";
+import { unified } from "unified";
+import remarkParse from "remark-parse";
+import remarkGfm from "remark-gfm";
+import { remarkMathSyntax } from "@/features/chat/message/ui/markdown/remarkMathSyntax";
 const FOOTNOTE = /\[\^[^\]\r\n]+\]/;
 
 const HTML_BLOCK_TAG = /<([A-Za-z][\w:-]*)[\s>/]/;
@@ -30,17 +33,26 @@ function closingTags(raw: string, tag: string): number {
   return raw.match(new RegExp(`</${tag}(?=[\\s>])[^>]*>`, "gi"))?.length ?? 0;
 }
 
-const mathFences = (raw: string) => raw.match(/\$\$/g)?.length ?? 0;
+const parser = unified().use(remarkParse).use(remarkGfm).use(remarkMathSyntax).freeze();
 
 export function splitStreamingBlocks(markdown: string): string[] {
   if (FOOTNOTE.test(markdown)) return [markdown];
 
-  const tokens = Lexer.lex(markdown, { gfm: true });
-  if (Object.keys(tokens.links).length > 0) return [markdown];
+  const tree = parser.parse(markdown);
+  if (tree.children.some((node) => node.type === "definition")) return [markdown];
+  const tokens: { type: string; raw: string }[] = [];
+  let end = 0;
+  // Parser-created nodes retain source offsets; slicing keeps original material intact.
+  for (const node of tree.children) {
+    const start = node.position!.start.offset!;
+    if (start > end) tokens.push({ type: "space", raw: markdown.slice(end, start) });
+    end = node.position!.end.offset!;
+    tokens.push({ type: node.type, raw: markdown.slice(start, end) });
+  }
+  if (end < markdown.length) tokens.push({ type: "space", raw: markdown.slice(end) });
 
   const blocks: string[] = [];
   const openTags: string[] = [];
-  let afterCode = false;
 
   for (const token of tokens) {
     const raw = token.raw;
@@ -54,18 +66,12 @@ export function splitStreamingBlocks(markdown: string): string[] {
       continue;
     }
 
-    if (token.type === "html" && (token as { block?: boolean }).block) {
+    if (token.type === "html") {
       const tag = HTML_BLOCK_TAG.exec(raw)?.[1];
       if (tag && openingTags(raw, tag) > closingTags(raw, tag)) openTags.push(tag);
     }
 
-    if (blocks.length > 0 && !afterCode && mathFences(blocks[blocks.length - 1]!) % 2 === 1) {
-      blocks[blocks.length - 1] += raw;
-      continue;
-    }
-
     blocks.push(raw);
-    if (token.type !== "space") afterCode = token.type === "code";
   }
   return blocks;
 }
