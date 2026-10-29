@@ -520,17 +520,19 @@ export const en: Record<string, string> = {
   "mcp.importing": "Importing…",
   "mcp.import.ok_one": "Imported {{count}} server",
   "mcp.import.ok_other": "Imported {{count}} servers",
-  "mcp.import.renamed": "Renamed to match what the runtime accepts: {{names}}",
   "mcp.import.interrupted":
     "Imported {{count}} of {{total}} servers before the Runtime connection changed.",
   "mcp.import.partial": "Imported {{count}} of {{total}} servers.",
   "mcp.import.error": "Couldn't import that config.",
-  "mcp.import.nameCollision":
-    'Servers "<first/>" and "<second/>" both become "<canonical/>"; give them distinct names',
   "mcp.import.invalidJson": "Enter valid JSON.",
   "mcp.import.invalidShape": 'Use a valid MCP configuration with a "mcpServers" object.',
-  "mcp.import.invalidName": 'Give server "<server/>" a name containing a–z or 0–9.',
-  "mcp.import.missingTransport": 'Add a command or URL for server "<server/>".',
+  "mcp.import.invalidName":
+    'Server name "<server/>" does not meet the Runtime naming rules; edit the key and retry.',
+  "mcp.import.missingTransport": 'Provide exactly one command or URL for server "<server/>".',
+  "mcp.import.unsupportedTransport":
+    'Unsupported "type" for server "<server/>". Use "stdio" or "streamableHttp".',
+  "mcp.import.headerConflict":
+    'Server "<server/>" declares "<header/>" more than once. Keep one declaration.',
   "mcp.import.missingCommand": 'Add a command for server "<server/>".',
   "mcp.import.missingUrl": 'Add a URL for server "<server/>".',
   "mcp.import.invalidTimeout":

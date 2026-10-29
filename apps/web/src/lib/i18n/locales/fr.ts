@@ -855,17 +855,20 @@ export const fr: Record<string, string> = {
   "mcp.import.ok_one": "{{count}} serveur importé",
   "mcp.import.ok_many": "{{count}} de serveurs importés",
   "mcp.import.ok_other": "{{count}} serveurs importés",
-  "mcp.import.renamed": "Renommés pour que le runtime les accepte : {{names}}",
   "mcp.import.interrupted":
     "Connexion Runtime modifiée : {{count}} serveurs sur {{total}} importés avant l’interruption.",
   "mcp.import.partial": "{{count}} serveurs sur {{total}} importés.",
   "mcp.import.error": "Impossible d'importer cette configuration.",
-  "mcp.import.nameCollision":
-    "Les serveurs « <first/> » et « <second/> » deviennent tous deux « <canonical/> » ; donnez-leur des noms distincts",
   "mcp.import.invalidJson": "Saisissez un JSON valide.",
   "mcp.import.invalidShape": "Utilisez une configuration MCP valide avec un objet « mcpServers ».",
-  "mcp.import.invalidName": "Donnez au serveur « <server/> » un nom contenant a–z ou 0–9.",
-  "mcp.import.missingTransport": "Ajoutez une commande ou une URL pour le serveur « <server/> ».",
+  "mcp.import.invalidName":
+    "Le nom du serveur « <server/> » ne respecte pas les règles de Runtime. Modifie la clé et réessaie.",
+  "mcp.import.missingTransport":
+    "Indique soit une commande, soit une URL pour le serveur « <server/> », mais pas les deux.",
+  "mcp.import.unsupportedTransport":
+    "Le « type » du serveur « <server/> » n’est pas pris en charge. Utilise « stdio » ou « streamableHttp ».",
+  "mcp.import.headerConflict":
+    "Le serveur « <server/> » déclare « <header/> » plusieurs fois. Garde une seule déclaration.",
   "mcp.import.missingCommand": "Ajoutez une commande pour le serveur « <server/> ».",
   "mcp.import.missingUrl": "Ajoutez une URL pour le serveur « <server/> ».",
   "mcp.import.invalidTimeout":

@@ -1,17 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { forEachSeed } from "@/test/arbitrary";
-import { parseMcpImport } from "@/features/mcp/application/mcpImport";
-const WIRE_NAME = /^[a-z0-9][a-z0-9._-]{0,31}$/;
+import { McpImportError, parseMcpImport } from "@/features/mcp/application/mcpImport";
+import { validateWire } from "@flame/runtime-client/validation";
 
 function attempt(text: string): { servers: number; threw: boolean; names: string[] } {
   try {
     const result = parseMcpImport(text);
     return {
-      servers: result.servers.length,
+      servers: result.length,
       threw: false,
-      names: result.servers.map((s) => s.name),
+      names: result.map((s) => s.name),
     };
-  } catch {
+  } catch (error) {
+    if (!(error instanceof McpImportError)) throw error;
     return { servers: 0, threw: true, names: [] };
   }
 }
@@ -46,30 +47,21 @@ describe("pasting an MCP client configuration", () => {
     for (const shape of shapes) expect(() => attempt(shape)).not.toThrow();
   });
 
-  it("never answers with a name the wire would refuse", () => {
-    const refused: string[] = [];
-    const check = (text: string) => {
-      const { threw, names } = attempt(text);
-      if (threw) return;
-      for (const name of names) if (!WIRE_NAME.test(name)) refused.push(name);
+  it("admits exactly the generated Runtime name contract without changing identity", () => {
+    const check = (name: string) => {
+      const accepted =
+        validateWire("MCPServerID", { origin: { type: "user" }, name }, "request").length === 0;
+      const result = attempt(JSON.stringify({ mcpServers: { [name]: { command: "x" } } }));
+      expect(result.threw).toBe(!accepted);
+      expect(result.names).toEqual(accepted ? [name] : []);
     };
-    check('{"mcpServers": {"A B": {"command": "x"}}}');
-    check('{"mcpServers": {"": {"command": "x"}}}');
-    check(`{"mcpServers": {"${"n".repeat(200)}": {"command": "x"}}}`);
-    check('{"mcpServers": {"Git": {"command": "mcp-git"}}}');
-    check('{"mcpServers": {"Brave Search": {"command": "mcp-brave"}}}');
-    forEachSeed(200, (a) => {
-      check(JSON.stringify({ mcpServers: { [a.text()]: { command: "x" } } }));
+    for (const name of ["A B", "", "Git", "Brave Search", "a._-", "0", "___", "__proto__"])
+      check(name);
+    forEachSeed(400, (a) => {
+      check(a.text());
+      check("a".repeat(a.int(256)));
+      check(a.pick(["a", "A", "0", "_"]) + a.pick(["valid", "_x.y-z", " invalid", ""]));
     });
-    expect(refused).toEqual([]);
-  });
-
-  it("renames a client's display-cased name into one the wire accepts", () => {
-    const result = parseMcpImport(
-      '{"mcpServers": {"Brave Search": {"command": "mcp-brave"}, "git": {"command": "mcp-git"}}}',
-    );
-    expect(result.servers.map((server) => server.name)).toEqual(["brave-search", "git"]);
-    expect(result.renamed).toEqual([{ from: "Brave Search", to: "brave-search" }]);
   });
 
   it("explains rather than importing a name nothing can be made of", () => {

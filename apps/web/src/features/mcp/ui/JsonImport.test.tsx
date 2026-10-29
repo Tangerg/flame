@@ -75,7 +75,7 @@ async function openImport(gateway: MCPServerGateway) {
   return source;
 }
 
-const colliding = JSON.stringify(
+const invalidNames = JSON.stringify(
   {
     mcpServers: {
       "safe-first": { command: "safe" },
@@ -94,9 +94,12 @@ describe("JsonImport", () => {
     { text: '{"mcpServers":{}}', message: 'Add at least one server under "mcpServers".' },
     {
       text: '{"mcpServers":{"---":{"command":"npx"}}}',
-      message: 'Give server "---" a name containing a–z or 0–9.',
+      message: 'Server name "---" does not meet the Runtime naming rules; edit the key and retry.',
     },
-    { text: '{"mcpServers":{"empty":{}}}', message: 'Add a command or URL for server "empty".' },
+    {
+      text: '{"mcpServers":{"empty":{}}}',
+      message: 'Provide exactly one command or URL for server "empty".',
+    },
     {
       text: '{"mcpServers":{"slow":{"command":"npx","timeout":0}}}',
       message:
@@ -123,7 +126,9 @@ describe("JsonImport", () => {
     fireEvent.change(source, { target: { value: text } });
     fireEvent.click(screen.getByRole("button", { name: "Import" }));
     const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toBe('Add a command for server "<b>{{server}}</b>".');
+    expect(alert.textContent).toBe(
+      'Server name "<b>{{server}}</b>" does not meet the Runtime naming rules; edit the key and retry.',
+    );
     expect(alert.querySelector("b")).toBeNull();
     expect(source.value).toBe(text);
     expect(create).not.toHaveBeenCalled();
@@ -156,6 +161,35 @@ describe("JsonImport", () => {
       fireEvent.click(screen.getByRole("button", { name: "Import" }));
       await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
       expect(create.mock.calls.map(([input]) => input.name)).toEqual(["safe-first", "bad-second"]);
+    },
+  );
+
+  it.each([
+    {
+      source: { type: "sse", url: "https://example.test" },
+      message: 'Unsupported "type" for server "second". Use "stdio" or "streamableHttp".',
+    },
+    {
+      source: {
+        url: "https://example.test",
+        authorization: "secret-one",
+        headers: { AUTHORIZATION: "secret-two" },
+      },
+      message: 'Server "second" declares "authorization" more than once. Keep one declaration.',
+    },
+  ])(
+    "preflights protocol and credential issues before any creation",
+    async ({ source: invalid, message }) => {
+      const { gateway, create } = runtimeGateway();
+      const source = await openImport(gateway);
+      const text = JSON.stringify({ mcpServers: { first: { command: "node" }, second: invalid } });
+      fireEvent.change(source, { target: { value: text } });
+      fireEvent.click(screen.getByRole("button", { name: "Import" }));
+      const alert = await screen.findByRole("alert");
+      expect(alert.textContent).toBe(message);
+      expect(alert.textContent).not.toContain("secret");
+      expect(source.value).toBe(text);
+      expect(create).not.toHaveBeenCalled();
     },
   );
 
@@ -267,7 +301,7 @@ describe("JsonImport", () => {
   it("clears an unsubmitted JSON draft when its captured Runtime retires", async () => {
     const original = runtimeGateway();
     const source = await openImport(original.gateway);
-    fireEvent.change(source, { target: { value: colliding } });
+    fireEvent.change(source, { target: { value: invalidNames } });
     const successor = runtimeGateway();
     await act(async () => owner!.replaceRuntimeGeneration(() => successor.gateway));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
@@ -309,19 +343,19 @@ describe("JsonImport", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
-  it("rejects names that collide after normalization before creating any server", async () => {
+  it("rejects invalid names before creating any server", async () => {
     const { gateway, create } = runtimeGateway();
     const source = await openImport(gateway);
 
-    fireEvent.change(source, { target: { value: colliding } });
+    fireEvent.change(source, { target: { value: invalidNames } });
     fireEvent.click(screen.getByRole("button", { name: "Import" }));
 
     const message =
-      'Servers "Docs Tools" and "docs-tools" both become "docs-tools"; give them distinct names';
+      'Server name "Docs Tools" does not meet the Runtime naming rules; edit the key and retry.';
     expect((await screen.findByRole("alert")).textContent).toBe(message);
     expect(create).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog")).toBeTruthy();
-    expect(source.value).toBe(colliding);
+    expect(source.value).toBe(invalidNames);
     expect(source.readOnly).toBe(false);
     const describedBy = source.getAttribute("aria-describedby");
     expect(describedBy && document.getElementById(describedBy)?.textContent).toBe(message);
@@ -329,7 +363,7 @@ describe("JsonImport", () => {
     expect(useNotificationStore.getState().log).toEqual([]);
   });
 
-  it("renders colliding source names literally inside the catalog message", async () => {
+  it("renders invalid source names literally inside the catalog message", async () => {
     const { gateway, create } = runtimeGateway();
     const source = await openImport(gateway);
     const markup = JSON.stringify({
@@ -344,23 +378,27 @@ describe("JsonImport", () => {
 
     const message = await screen.findByRole("alert");
     expect(message.textContent).toBe(
-      'Servers "<b>{{second}}</b>" and "b second b" both become "b-second-b"; give them distinct names',
+      'Server name "<b>{{second}}</b>" does not meet the Runtime naming rules; edit the key and retry.',
     );
     expect(message.querySelector("b")).toBeNull();
     expect(create).not.toHaveBeenCalled();
   });
 
-  it("imports every server in order once the source names are made distinct", async () => {
+  it("imports every server in order once the source names are valid", async () => {
     const { gateway, create } = runtimeGateway();
     const source = await openImport(gateway);
-    fireEvent.change(source, { target: { value: colliding } });
+    fireEvent.change(source, { target: { value: invalidNames } });
     fireEvent.click(screen.getByRole("button", { name: "Import" }));
     await waitFor(() =>
-      expect(screen.getByRole("alert").textContent).toContain('both become "docs-tools"'),
+      expect(screen.getByRole("alert").textContent).toContain('Server name "Docs Tools"'),
     );
 
     fireEvent.change(source, {
-      target: { value: colliding.replace('"docs-tools"', '"docs-web"') },
+      target: {
+        value: invalidNames
+          .replace('"docs-tools"', '"docs-web"')
+          .replace('"Docs Tools"', '"docs-tools"'),
+      },
     });
     expect(screen.queryByRole("alert")).toBeNull();
     expect(source.getAttribute("aria-invalid")).toBeNull();
@@ -375,7 +413,6 @@ describe("JsonImport", () => {
     ]);
     expect(useNotificationStore.getState().log.map((entry) => entry.message)).toEqual([
       "Imported 3 servers",
-      "Renamed to match what the runtime accepts: Docs Tools → docs-tools",
     ]);
   });
 });

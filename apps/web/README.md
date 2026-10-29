@@ -459,8 +459,15 @@ field, text and focus.
 The import parser preflights every entry's known source requirements before any
 create command, including the active transport's command or URL. Typed source
 issues are localized at the UI with literal source names. Timeout bounds remain
-with the existing factory, and unexpected failures propagate. Runtime still owns
-creation and final validation; external failures can report a committed prefix.
+derived from the generated Runtime contract, and unexpected failures propagate.
+Server names are accepted exactly by that contract; import never renames or
+truncates them. Explicit transport types must be supported by Runtime. An omitted
+type is inferred only from an unambiguous command or URL. Legacy SSE is rejected.
+Strict JSON rejects duplicate members before conversion. Header names are
+classified case-insensitively once; duplicate names or an Authorization header
+alongside an explicit authorization field are errors, even when values agree.
+Runtime still owns creation and final validation; external failures can report
+a committed prefix.
 
 Tests stay beside their owners. Cross-language Runtime/schema/SDK tests live in
 `tests/integration`; repository Go cross-product checks live in

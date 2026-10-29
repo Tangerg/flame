@@ -29,6 +29,8 @@ const CONFIG_EXAMPLE = JSON.stringify(
 const SERVER_ISSUE_KEYS: Record<Extract<McpImportIssue, { server: string }>["kind"], string> = {
   name: "mcp.import.invalidName",
   transport: "mcp.import.missingTransport",
+  unsupportedTransport: "mcp.import.unsupportedTransport",
+  headerConflict: "mcp.import.headerConflict",
   command: "mcp.import.missingCommand",
   url: "mcp.import.missingUrl",
   timeout: "mcp.import.invalidTimeout",
@@ -43,22 +45,14 @@ function McpImportIssueMessage({ issue }: { issue: McpImportIssue }) {
       return t("mcp.import.invalidShape");
     case "empty":
       return t("mcp.import.empty");
-    case "nameCollision":
-      return (
-        <Trans
-          i18nKey="mcp.import.nameCollision"
-          components={{
-            first: <span>{issue.first}</span>,
-            second: <span>{issue.second}</span>,
-            canonical: <span>{issue.canonical}</span>,
-          }}
-        />
-      );
     default:
       return (
         <Trans
           i18nKey={SERVER_ISSUE_KEYS[issue.kind]}
-          components={{ server: <span>{issue.server}</span> }}
+          components={{
+            server: <span>{issue.server}</span>,
+            ...(issue.kind === "headerConflict" ? { header: <span>{issue.header}</span> } : {}),
+          }}
         />
       );
   }
@@ -98,7 +92,7 @@ function JsonImportGeneration({ currentCommands }: { currentCommands: MCPServerC
       setError({ kind: "operation", message: failureText(err, t("mcp.import.error")) });
       return;
     }
-    const { servers, renamed } = parsed;
+    const servers = parsed;
     setBusy(true);
     try {
       const outcome = await draft.commands.importServers(servers);
@@ -119,14 +113,6 @@ function JsonImportGeneration({ currentCommands }: { currentCommands: MCPServerC
         return;
       }
       notifyInfo(t("mcp.import.ok", { count: servers.length }), { source: "mcp" });
-      if (renamed.length > 0) {
-        notifyInfo(
-          t("mcp.import.renamed", {
-            names: renamed.map((entry) => `${entry.from} → ${entry.to}`).join(", "),
-          }),
-          { source: "mcp" },
-        );
-      }
       setDraft(null);
     } catch (err) {
       setError({ kind: "operation", message: failureText(err, t("mcp.import.error")) });

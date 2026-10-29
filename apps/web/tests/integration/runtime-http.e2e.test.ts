@@ -1,4 +1,7 @@
 import { OperationFailure } from "@flame/runtime-client";
+import { parseMcpImport } from "@/features/mcp/application/mcpImport";
+import { installMCPServerGateway } from "@/features/mcp/adapters/runtimeMcpServerGateway";
+import { MCPServerMutationOwner } from "@/features/mcp/application/mcpServerMutationOwner";
 import {
   addInstalledMemory,
   deleteInstalledMemory,
@@ -3783,6 +3786,78 @@ for await (const line of lines) {
 
     streamController.abort();
     await runtimeEvents.return?.();
+  }, 30_000);
+
+  it("handshakes imported stdio and Streamable HTTP material through the production gateway", async () => {
+    if (!client) throw new Error("runtime client was not initialized");
+    const requests: string[] = [];
+    const authorization: (string | undefined)[] = [];
+    const headers: (string | string[] | undefined)[] = [];
+    const remote = createHttpServer(async (request, response) => {
+      if (request.method !== "POST") {
+        response.writeHead(405).end();
+        return;
+      }
+      const chunks: Buffer[] = [];
+      for await (const chunk of request) chunks.push(Buffer.from(chunk));
+      const message = JSON.parse(Buffer.concat(chunks).toString()) as {
+        method: string;
+        id?: string | number;
+        params: { protocolVersion: string };
+      };
+      requests.push(message.method);
+      authorization.push(request.headers.authorization);
+      headers.push(request.headers["x-import"]);
+      if (message.id === undefined) {
+        response.writeHead(202).end();
+        return;
+      }
+      if (message.method !== "initialize" && message.method !== "tools/list") {
+        response.writeHead(400).end();
+        return;
+      }
+      const result =
+        message.method === "initialize"
+          ? {
+              protocolVersion: message.params.protocolVersion,
+              capabilities: { tools: {} },
+              serverInfo: { name: "import-fixture", version: "1" },
+            }
+          : { tools: [] };
+      response.writeHead(200, { "Content-Type": "application/json" });
+      response.end(JSON.stringify({ jsonrpc: "2.0", id: message.id, result }));
+    });
+    await new Promise<void>((resolve) => remote.listen(0, "127.0.0.1", resolve));
+    const address = remote.address();
+    if (address === null || typeof address === "string") throw new Error("missing fixture address");
+    const gateway = installMCPServerGateway(() => client!);
+    try {
+      const imported = parseMcpImport(
+        JSON.stringify({
+          mcpServers: {
+            "import-stdio": { type: "stdio", command: process.execPath, args: [mcpFixturePath] },
+            "import-http": {
+              type: "streamableHttp",
+              url: `http://127.0.0.1:${address.port}/mcp`,
+              headers: { AuThOrIzAtIoN: "Bearer import-fixture", "X-Import": "exact" },
+            },
+          },
+        }),
+      );
+      for (const input of imported) {
+        await expect(MCPServerMutationOwner.capture()!.test(input)).resolves.toEqual({ ok: true });
+      }
+      expect(requests).toContain("initialize");
+      expect(requests).toContain("tools/list");
+      expect(new Set(authorization)).toEqual(new Set(["Bearer import-fixture"]));
+      expect(new Set(headers)).toEqual(new Set(["exact"]));
+    } finally {
+      gateway.dispose();
+      remote.closeAllConnections();
+      await new Promise<void>((resolve, reject) =>
+        remote.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
   }, 30_000);
 
   it("probes, connects, lists and reconnects a real stdio MCP server", async () => {

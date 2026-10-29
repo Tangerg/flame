@@ -804,17 +804,19 @@ export const ko: Record<string, string> = {
   "mcp.import.confirm": "가져오기",
   "mcp.importing": "가져오는 중…",
   "mcp.import.ok_other": "서버 {{count}}개를 가져왔습니다",
-  "mcp.import.renamed": "런타임이 허용하는 형식으로 이름을 변경했습니다: {{names}}",
   "mcp.import.interrupted":
     "Runtime 연결이 변경되어 중단했습니다. 서버 {{total}}개 중 {{count}}개를 가져왔습니다.",
   "mcp.import.partial": "서버 {{total}}개 중 {{count}}개를 가져왔습니다.",
   "mcp.import.error": "해당 설정을 가져올 수 없습니다.",
-  "mcp.import.nameCollision":
-    '서버 "<first/>" 및 "<second/>"의 이름이 모두 "<canonical/>"(으)로 바뀝니다. 서로 다른 이름을 지정하세요',
   "mcp.import.invalidJson": "올바른 JSON을 입력하세요.",
   "mcp.import.invalidShape": '"mcpServers" 객체가 포함된 올바른 MCP 설정을 사용하세요.',
-  "mcp.import.invalidName": '서버 "<server/>"에 a–z 또는 0–9가 포함된 이름을 지정하세요.',
-  "mcp.import.missingTransport": '서버 "<server/>"에 명령 또는 URL을 추가하세요.',
+  "mcp.import.invalidName":
+    "서버 이름 “<server/>”이 Runtime 이름 규칙에 맞지 않습니다. 키를 수정하고 다시 시도하세요.",
+  "mcp.import.missingTransport": "서버 “<server/>”에 명령 또는 URL 중 하나만 지정하세요.",
+  "mcp.import.unsupportedTransport":
+    "서버 “<server/>”의 “type”은 지원되지 않습니다. “stdio” 또는 “streamableHttp”를 사용하세요.",
+  "mcp.import.headerConflict":
+    "서버 “<server/>”에 “<header/>”이 중복 선언되어 있습니다. 하나만 남겨 두세요.",
   "mcp.import.missingCommand": '서버 "<server/>"에 명령을 추가하세요.',
   "mcp.import.missingUrl": '서버 "<server/>"에 URL을 추가하세요.',
   "mcp.import.invalidTimeout":

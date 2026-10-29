@@ -851,17 +851,20 @@ export const es: Record<string, string> = {
   "mcp.import.ok_one": "{{count}} servidor importado",
   "mcp.import.ok_many": "{{count}} de servidores importados",
   "mcp.import.ok_other": "{{count}} servidores importados",
-  "mcp.import.renamed": "Se renombraron para que el runtime las acepte: {{names}}",
   "mcp.import.interrupted":
     "La conexión de Runtime cambió: se importaron {{count}} de {{total}} servidores antes de la interrupción.",
   "mcp.import.partial": "Se importaron {{count}} de {{total}} servidores.",
   "mcp.import.error": "No se pudo importar esa configuración.",
-  "mcp.import.nameCollision":
-    'Los servidores "<first/>" y "<second/>" se convierten ambos en "<canonical/>"; dales nombres distintos',
   "mcp.import.invalidJson": "Introduce un JSON válido.",
   "mcp.import.invalidShape": 'Usa una configuración MCP válida con un objeto "mcpServers".',
-  "mcp.import.invalidName": 'Dale al servidor "<server/>" un nombre que contenga a–z o 0–9.',
-  "mcp.import.missingTransport": 'Añade un comando o una URL para el servidor "<server/>".',
+  "mcp.import.invalidName":
+    "El nombre del servidor «<server/>» no cumple las reglas de Runtime. Corrige la clave y vuelve a intentarlo.",
+  "mcp.import.missingTransport":
+    "Indica un comando o una URL para el servidor «<server/>», pero no ambos.",
+  "mcp.import.unsupportedTransport":
+    "El «type» del servidor «<server/>» no está admitido. Usa «stdio» o «streamableHttp».",
+  "mcp.import.headerConflict":
+    "El servidor «<server/>» declara «<header/>» más de una vez. Conserva una sola declaración.",
   "mcp.import.missingCommand": 'Añade un comando para el servidor "<server/>".',
   "mcp.import.missingUrl": 'Añade una URL para el servidor "<server/>".',
   "mcp.import.invalidTimeout":

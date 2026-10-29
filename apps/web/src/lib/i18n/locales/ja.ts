@@ -808,17 +808,20 @@ export const ja: Record<string, string> = {
   "mcp.import.confirm": "インポート",
   "mcp.importing": "インポート中…",
   "mcp.import.ok_other": "{{count}} 個のサーバーをインポートしました",
-  "mcp.import.renamed": "ランタイムが受け付ける形式に改名しました: {{names}}",
   "mcp.import.interrupted":
     "Runtime 接続が変更されたため中断しました。{{total}} 件中 {{count}} 件をインポートしました。",
   "mcp.import.partial": "{{total}} 件中 {{count}} 件をインポートしました。",
   "mcp.import.error": "その設定をインポートできませんでした。",
-  "mcp.import.nameCollision":
-    "サーバー「<first/>」と「<second/>」はどちらも「<canonical/>」になります。別々の名前を付けてください",
   "mcp.import.invalidJson": "有効な JSON を入力してください。",
   "mcp.import.invalidShape": "「mcpServers」オブジェクトを含む有効な MCP 設定を使用してください。",
-  "mcp.import.invalidName": "サーバー「<server/>」には a–z または 0–9 を含む名前を付けてください。",
-  "mcp.import.missingTransport": "サーバー「<server/>」にコマンドまたは URL を追加してください。",
+  "mcp.import.invalidName":
+    "サーバー名「<server/>」が Runtime の命名規則に合いません。キーを修正して再試行してください。",
+  "mcp.import.missingTransport":
+    "サーバー「<server/>」にコマンドまたは URL のどちらか一方だけを指定してください。",
+  "mcp.import.unsupportedTransport":
+    "サーバー「<server/>」の「type」は未対応です。「stdio」か「streamableHttp」を使ってください。",
+  "mcp.import.headerConflict":
+    "サーバー「<server/>」で「<header/>」が重複しています。宣言を一つにしてください。",
   "mcp.import.missingCommand": "サーバー「<server/>」にコマンドを追加してください。",
   "mcp.import.missingUrl": "サーバー「<server/>」に URL を追加してください。",
   "mcp.import.invalidTimeout":

@@ -839,19 +839,21 @@ export const de: Record<string, string> = {
   "mcp.importing": "Import läuft…",
   "mcp.import.ok_one": "{{count}} Server importiert",
   "mcp.import.ok_other": "{{count}} Server importiert",
-  "mcp.import.renamed": "Umbenannt, damit die Runtime sie akzeptiert: {{names}}",
   "mcp.import.interrupted":
     "Runtime-Verbindung geändert: {{count}} von {{total}} Servern vor dem Abbruch importiert.",
   "mcp.import.partial": "{{count}} von {{total}} Servern importiert.",
   "mcp.import.error": "Diese Konfiguration konnte nicht importiert werden.",
-  "mcp.import.nameCollision":
-    "Die Server „<first/>“ und „<second/>“ werden beide zu „<canonical/>“; gib ihnen unterschiedliche Namen",
   "mcp.import.invalidJson": "Gib gültiges JSON ein.",
   "mcp.import.invalidShape":
     "Verwende eine gültige MCP-Konfiguration mit einem „mcpServers“-Objekt.",
-  "mcp.import.invalidName": "Gib dem Server „<server/>“ einen Namen mit a–z oder 0–9.",
+  "mcp.import.invalidName":
+    "Der Servername „<server/>“ entspricht nicht den Namensregeln der Runtime. Ändere den Schlüssel und versuche es erneut.",
   "mcp.import.missingTransport":
-    "Füge für den Server „<server/>“ einen Befehl oder eine URL hinzu.",
+    "Gib für Server „<server/>“ entweder einen Befehl oder eine URL an.",
+  "mcp.import.unsupportedTransport":
+    "Nicht unterstützter „type“ für Server „<server/>“. Verwende „stdio“ oder „streamableHttp“.",
+  "mcp.import.headerConflict":
+    "Server „<server/>“ deklariert „<header/>“ mehrfach. Behalte eine Deklaration.",
   "mcp.import.missingCommand": "Füge für den Server „<server/>“ einen Befehl hinzu.",
   "mcp.import.missingUrl": "Füge für den Server „<server/>“ eine URL hinzu.",
   "mcp.import.invalidTimeout":

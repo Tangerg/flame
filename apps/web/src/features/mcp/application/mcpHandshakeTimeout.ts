@@ -1,3 +1,6 @@
+import { validateWire } from "@flame/runtime-client/validation";
+import { projectNumber } from "@qimu/sdk/json";
+
 export type MCPHandshakeTimeout =
   { readonly type: "unbounded" } | { readonly type: "bounded"; readonly seconds: number };
 
@@ -12,16 +15,14 @@ export class MCPHandshakeTimeoutError extends Error {
   }
 }
 
-export function boundedMCPHandshakeTimeout(seconds: number): MCPHandshakeTimeout {
-  if (!Number.isSafeInteger(seconds) || seconds <= 0) {
+export function boundedMCPHandshakeTimeout(seconds: unknown): MCPHandshakeTimeout {
+  if (validateWire("MCPHandshakeTimeout", { type: "bounded", seconds }, "request").length) {
     throw new MCPHandshakeTimeoutError();
   }
-  return { type: "bounded", seconds };
+  return { type: "bounded", seconds: projectNumber(seconds) };
 }
 
-export function mcpHandshakeTimeoutFromOptionalSeconds(
-  seconds: number | undefined,
-): MCPHandshakeTimeout {
+export function mcpHandshakeTimeoutFromOptionalSeconds(seconds: unknown): MCPHandshakeTimeout {
   return seconds === undefined ? UNBOUNDED_MCP_HANDSHAKE : boundedMCPHandshakeTimeout(seconds);
 }
 

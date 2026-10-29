@@ -401,17 +401,17 @@ export const zh: Record<string, string> = {
   "mcp.import.confirm": "导入",
   "mcp.importing": "导入中…",
   "mcp.import.ok_other": "已导入 {{count}} 个服务器",
-  "mcp.import.renamed": "已重命名以符合运行时的要求：{{names}}",
   "mcp.import.interrupted":
     "Runtime 连接已更换，已导入 {{count}} / {{total}} 个服务器，其余导入已中断。",
   "mcp.import.partial": "已导入 {{count}} / {{total}} 个服务器。",
   "mcp.import.error": "无法导入该配置。",
-  "mcp.import.nameCollision":
-    "服务器“<first/>”和“<second/>”都会变成“<canonical/>”，请为它们使用不同的名称",
   "mcp.import.invalidJson": "请输入有效的 JSON。",
   "mcp.import.invalidShape": "请使用包含“mcpServers”对象的有效 MCP 配置。",
-  "mcp.import.invalidName": "请为服务器“<server/>”使用包含 a–z 或 0–9 的名称。",
-  "mcp.import.missingTransport": "请为服务器“<server/>”添加命令或 URL。",
+  "mcp.import.invalidName": "服务器名称“<server/>”不符合 Runtime 命名规则，请修改此键后重试。",
+  "mcp.import.missingTransport": "请为服务器“<server/>”提供命令或 URL，二者只能有一个。",
+  "mcp.import.unsupportedTransport":
+    "服务器“<server/>”的“type”不受支持，请使用“stdio”或“streamableHttp”。",
+  "mcp.import.headerConflict": "服务器“<server/>”重复声明了“<header/>”，请只保留一个声明。",
   "mcp.import.missingCommand": "请为服务器“<server/>”添加命令。",
   "mcp.import.missingUrl": "请为服务器“<server/>”添加 URL。",
   "mcp.import.invalidTimeout":
