@@ -10686,21 +10686,21 @@ the existing React, StyleX, Base UI and semantic-token workspace:
 | Colors        | Existing Orange/light and Blue/dark fields, Facts and focus states                     | Existing tokens retained; earlier measured pairs below; not remeasured this batch |
 | UI            | Shared pending/press guards, accepted-page continuity, pointer and keyboard activation | Identity and draft/file disclosure lifetimes qualified below; no new chrome       |
 
-| Severity | Domain        | Location                                                                         | Before                                                                                                | After                                                                                                 | Why                                                                                                     |
-| -------- | ------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| MEDIUM   | Accessibility | Deliverables document/history pagination                                         | Native disabled discarded focused list navigation                                                     | Shared pending controls and focusable true boundaries; fixed                                          | Keyboard reading continues from the current task position                                               |
-| MEDIUM   | Accessibility | useDeliverables query projection                                                 | A same-document history cursor read removed its accepted page and controls                            | Retain that document's accepted page until settlement; fixed                                          | Stable controls preserve the reading and retry context                                                  |
-| MEDIUM   | Accessibility | Inspector Open current revision action                                           | Its removal on the revision change leaves native AX focus at HTML content                             | Focused activation hands focus to the surviving history region; fixed                                 | Keyboard reading continues at the version controls                                                      |
-| MEDIUM   | Accessibility | Deliverables Refresh action                                                      | Native disabled discarded focus while the list/catalog reread                                         | Shared focusable pending boundary, with the existing availability scope; fixed                        | Recovery remains reachable without restarting navigation                                                |
-| LOW      | Writing       | Exact revision Select after visiting another history page                        | Current revision label fell back to its full identity when absent from that page                      | Selected canonical read revision remains one option beside the page; fixed                            | The selected object stays recognizable across page changes                                              |
-| LOW      | Writing       | plugins/deliverables/component/component.tsx:512                                 | A selected target without accepted metadata renders its full 64-character ID                          | Derived short-ID option plus stable full-identity disclosure; fixed                                   | The selected object stays compact without hiding its full identity                                      |
-| LOW      | Layout        | plugins/deliverables/component/component.tsx:524                                 | Create/Import each has a toolbar button and a same-named Disclosure trigger                           | One inline Disclosure per task, preserving drafts/file and command owners; fixed                      | Duplicate entry points displace retained-document reading                                               |
-| MEDIUM   | Layout        | packages/ui/src/panel.tsx:189, PanelSection                                      | An intrinsic auto grid track inflates the revision trigger and section after the recorded return path | Single-axis column flow preserves natural control and section heights; fixed                          | A correctly named focused control must also remain visually usable                                      |
-| LOW      | Writing       | plugins/deliverables/component/component.tsx:56, Workspace and Inspector         | Document rows, revision options and summary facts show raw UTC serialization                          | Locale-bound browsing formatter with exact recorded values in the existing identity disclosure; fixed | Dates become scannable without hiding precision, interpreting opaque text or changing revision identity |
-| MEDIUM   | Writing       | plugins/deliverables/component/component.tsx:234, StructuredContent              | Closed inspected rows expose only kind and native path                                                | Bounded content excerpt above the complete native identity; fixed                                     | Readers can recognize an item before expanding it                                                       |
-| MEDIUM   | Accessibility | plugins/deliverables/component/component.tsx:259, local item pagination          | Reaching the last page natively disables the focused button and restarts Tab at the sidebar           | Shared focusable disabled boundaries reject unavailable activation and retain local focus; fixed      | Page changes must preserve the keyboard reading position                                                |
-| LOW      | Writing       | plugins/deliverables/component/component.tsx:205, content query                  | A phrase spanning original whitespace does not match its inline preview                               | Search and preview share whitespace normalization; fixed                                              | The visible excerpt and its full-text search must agree                                                 |
-| MEDIUM   | Accessibility | plugins/deliverables/component/component.tsx:259 and unchanged shared Disclosure | Pointer-origin Shift+Tab can stay at the clicked button despite an uncancelled Tab event              | Open native-navigation follow-up; also reproduced on an unchanged enabled Disclosure                  | Mixed input return behavior remains unqualified; no local focus reassignment is added                   |
+| Severity | Domain        | Location                                                                     | Before                                                                                                | After                                                                                                 | Why                                                                                                     |
+| -------- | ------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| MEDIUM   | Accessibility | Deliverables document/history pagination                                     | Native disabled discarded focused list navigation                                                     | Shared pending controls and focusable true boundaries; fixed                                          | Keyboard reading continues from the current task position                                               |
+| MEDIUM   | Accessibility | useDeliverables query projection                                             | A same-document history cursor read removed its accepted page and controls                            | Retain that document's accepted page until settlement; fixed                                          | Stable controls preserve the reading and retry context                                                  |
+| MEDIUM   | Accessibility | Inspector Open current revision action                                       | Its removal on the revision change leaves native AX focus at HTML content                             | Focused activation hands focus to the surviving history region; fixed                                 | Keyboard reading continues at the version controls                                                      |
+| MEDIUM   | Accessibility | Deliverables Refresh action                                                  | Native disabled discarded focus while the list/catalog reread                                         | Shared focusable pending boundary, with the existing availability scope; fixed                        | Recovery remains reachable without restarting navigation                                                |
+| LOW      | Writing       | Exact revision Select after visiting another history page                    | Current revision label fell back to its full identity when absent from that page                      | Selected canonical read revision remains one option beside the page; fixed                            | The selected object stays recognizable across page changes                                              |
+| LOW      | Writing       | plugins/deliverables/component/component.tsx:512                             | A selected target without accepted metadata renders its full 64-character ID                          | Derived short-ID option plus stable full-identity disclosure; fixed                                   | The selected object stays compact without hiding its full identity                                      |
+| LOW      | Layout        | plugins/deliverables/component/component.tsx:524                             | Create/Import each has a toolbar button and a same-named Disclosure trigger                           | One inline Disclosure per task, preserving drafts/file and command owners; fixed                      | Duplicate entry points displace retained-document reading                                               |
+| MEDIUM   | Layout        | packages/ui/src/panel.tsx:189, PanelSection                                  | An intrinsic auto grid track inflates the revision trigger and section after the recorded return path | Single-axis column flow preserves natural control and section heights; fixed                          | A correctly named focused control must also remain visually usable                                      |
+| LOW      | Writing       | plugins/deliverables/component/component.tsx:56, Workspace and Inspector     | Document rows, revision options and summary facts show raw UTC serialization                          | Locale-bound browsing formatter with exact recorded values in the existing identity disclosure; fixed | Dates become scannable without hiding precision, interpreting opaque text or changing revision identity |
+| MEDIUM   | Writing       | plugins/deliverables/component/component.tsx:234, StructuredContent          | Closed inspected rows expose only kind and native path                                                | Bounded content excerpt above the complete native identity; fixed                                     | Readers can recognize an item before expanding it                                                       |
+| MEDIUM   | Accessibility | plugins/deliverables/component/component.tsx:259, local item pagination      | Reaching the last page natively disables the focused button and restarts Tab at the sidebar           | Shared focusable disabled boundaries reject unavailable activation and retain local focus; fixed      | Page changes must preserve the keyboard reading position                                                |
+| LOW      | Writing       | plugins/deliverables/component/component.tsx:205, content query              | A phrase spanning original whitespace does not match its inline preview                               | Search and preview share whitespace normalization; fixed                                              | The visible excerpt and its full-text search must agree                                                 |
+| MEDIUM   | Accessibility | Native pointer/reverse-Tab navigation; Deliverables and unchanged Disclosure | Pointer-origin Shift+Tab can stay at the clicked button despite an uncancelled Tab event              | Reproduced with plain controls in Wails and direct WKWebView; exact native cause remains open         | The independent reproduction does not justify component focus reassignment                              |
 
 Verification (2026-10-29):
 
@@ -11350,10 +11350,11 @@ The read-only diagnostic records Tab with shift=true, defaultPrevented=false,
 native disabled=false and tabIndex=0, while focus stays at the pointer-clicked
 button. The same sequence also stays at an unchanged enabled Disclosure;
 keyboard-origin navigation works. These facts do not establish a defect in the
-new pager or justify a shared focus patch. Next compare native control behavior
-and input delivery before changing that boundary. Its impact is interrupted
-mixed-input reverse navigation; that concrete reproduction is the trigger for
-the next batch. No temporary observer changes product source or sends UI input.
+new pager or justify a shared focus patch. The native-control investigation below
+compares independent controls and Cocoa input before changing that boundary.
+Its impact is interrupted mixed-input reverse navigation; the follow-up trigger
+is recorded with that investigation. No temporary observer changes product
+source or sends UI input.
 
 Removing the diagnostic changes only the two private HTML entries; all **342
 non-HTML assets** match. Both final clean scenes match the complete **344-asset**
@@ -11384,6 +11385,78 @@ push to remote main without another merge/validation loop.
 with the previously qualified reading work. The separate native mixed-input
 reverse-navigation finding remains MEDIUM and open. The broader UI goal stays
 active, without a whole-product award-level completion claim.
+
+### Native reverse-Tab attribution (2026-10-30)
+
+This bounded investigation qualifies commit
+77ffe92600ae5c67d20735be42c19d38188f8d5b on macOS 26.5 (25F71), arm64,
+with the repository's selected Wails **v3.0.0**. It makes no production code,
+dependency, generated-resource or preference change. The MEDIUM mixed-input
+finding remains **open**; the result narrows its attribution rather than claiming
+a repair.
+
+The shared Button still leaves Tab with its existing owner. The installed Wails
+source maps `Mac.WebviewPreferences.TabFocusesLinks` to WKPreferences and passes
+unclaimed modified keys through native handling. Apple's
+[tabFocusesLinks contract](https://developer.apple.com/documentation/webkit/wkpreferences/tabfocuseslinks)
+describes the links/form-controls navigation preference; it does not establish a
+cause or fix for this reproduction. The better-accessibility native-element and
+keyboard-path principles favor this control experiment before a shared focus
+override. Earlier HeroUI/Radix and workspace research remains applicable to the
+product interaction; static references are not keyboard evidence.
+
+Four isolated Wails launches use the actual DesktopHost, services, native menu
+and window composition with a private home, asset directory and application
+identity. The document contains only two text fields, two plain native buttons
+and a native details/summary. There is no React, Base UI, product state,
+pagination, replacement of rows, focus assignment or input injection in the
+fixture. All UI input uses CUA native application actions.
+
+| Control                                                              | Observed result                                                                                                                                                          |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Native buttons with default attributes and original host preferences | Reverse navigation reaches the preceding text field; ordinary Tab omits the buttons. This is not equivalent to the product's explicit tab stops.                         |
+| The same buttons with `tabindex="0"`                                 | Pointer-origin Shift+Tab can stay at the second button; keyboard-origin Shift+Tab moves to the first button. Coordinate input records actual pointer events.             |
+| Same explicit tab stops with only `TabFocusesLinks` enabled          | The mixed-input discrepancy remains; this candidate is rejected.                                                                                                         |
+| Original host preferences plus a read-only Cocoa event monitor       | Both paths deliver key code 48, Shift flag 131072 and Backtab character 25 to WKWebView. DOM Tab is uncancelled. This does not prove equivalence to a physical keyboard. |
+
+Two independent AppKit/WKWebView launches repeat the paths with the same HTML,
+without Wails. Explicit tab stops reproduce the difference. A further variation
+uses native button defaults and explicitly enabled navigation: keyboard Tab
+includes both buttons, while the first reverse step after a pointer click can
+enter the clicked button. Forward Tab followed by reverse navigation traverses
+the controls. This variation changes two factors and is not treated as a
+single-variable product fix. The direct Apple control narrows the reproduction
+outside Flame and Wails; it does not distinguish the exact WebKit/input cause.
+
+Three private Wails production-tag builds and two independent AppKit builds,
+with their signatures, pass. Read-only DOM records contain **160 events**; Cocoa
+records retain the native key information. These are diagnostic control checks,
+not a new whole-product acceptance pass. The prior clean English/Chinese,
+18px/200% product qualification remains recorded above. Physical-keyboard input,
+VoiceOver, other OS versions/platforms and live Runtime business flows are not
+qualified here. Product suites and the normal `make check-native` gate are not
+rerun for this documentation-only result. No browser suite, benchmark, Claude
+CLI or subagent is used.
+
+Both bundles are unregistered, all six owned launches have exited, the listener
+is closed and six newly created private profile directories are removed. No
+repository output needs removal or restoration. Preservation passes before and
+after retirement for **6,385** non-Markdown inputs, **34** installed resources,
+**50** read-only references, three instructions, 21 output baselines, four
+original files/modes and ten profile absences. Four inspected Wails source
+hashes also match. The exact root /private/tmp/flame-native-focus-Z0hKaj is absent;
+the installed toolchain and primary parallel checkout are untouched. The
+memory-only evidence archive round-trips **47 UTF-8 records**, **1,040,318 raw
+bytes** and **312,036 gzip bytes**, SHA-256
+588d285a9fbcf48bfd36d6cd29729436192fa7ddd6e10d2bf487d2091c4e8fb1.
+Screenshots/AX remain in the CUA transcript, without a screenshot-file claim.
+
+**Approve** this bounded attribution and resource cleanup. The navigation finding
+remains MEDIUM and unqualified as a repair. Revisit it with an independent
+physical-input comparison or a demonstrated native fix; do not add local
+refocusing, timers or a global Tab interceptor based on the present evidence.
+Continue the active UI goal with an observed product flow. The interval fetch
+finds no incoming main commit, so no merge/validation loop is added.
 
 ## Shortcut recording and activation
 
