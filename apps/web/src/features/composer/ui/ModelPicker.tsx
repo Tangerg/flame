@@ -5,8 +5,11 @@ import { type Translate, useT } from "@/lib/i18n/index";
 import { Icon } from "@/ui/index";
 import { ProviderIcon, providerDisplayName } from "@/ui/index";
 import { RailCatalogPicker, type CatalogPickerGroup } from "@/ui/index";
-import { SkeletonControl } from "@/ui/index";
-import { Button } from "@flame/ui";
+import { SystemMessage } from "@/ui/index";
+import { Button, FormActions } from "@flame/ui";
+import { useWorkspace } from "@/features/workspace/public/workspace";
+import { openWorkspaceSettingsPane } from "@/features/workspace/public/navigation";
+import { PROVIDERS_PANE } from "@/features/settings/public/paneIDs";
 import { type SelectableModel } from "@/features/providers/public/queries";
 import { useModels } from "@/features/providers/public/queries";
 import { useRecentModelsStore, type RecentModel } from "@/features/composer/adapters/recentModels";
@@ -109,45 +112,23 @@ function modelCapabilities(model: SelectableModel, t: Translate): string {
     .join(" · ");
 }
 
-function ModelPickerPlaceholder() {
-  return <SkeletonControl />;
-}
-
 export function ModelPicker() {
   const t = useT();
-  const { data: models = [], isLoading, isError } = useModels();
+  const workspace = useWorkspace();
+  const { data, isPending, isError, isFetching, refetch } = useModels();
   const setModel = useSetComposerModelPreference();
   const selection = useSelectedModelSelection();
   const selected = selection?.model;
   const recent = useRecentModelsStore((state) => state.recent);
   const remember = useRecentModelsStore((state) => state.remember);
   const groups = useMemo(
-    () => modelGroups(models, selection, recent, t),
-    [models, recent, selection, t],
+    () => modelGroups(data ?? [], selection, recent, t),
+    [data, recent, selection, t],
   );
   const modelsByItemId = useMemo(
-    () => new Map(models.map((model) => [modelItemId(model), model])),
-    [models],
+    () => new Map((data ?? []).map((model) => [modelItemId(model), model])),
+    [data],
   );
-
-  if (models.length === 0 && !selection) {
-    if (isError) {
-      return (
-        <Button
-          variant="wash"
-          tone="negative"
-          size="xs"
-          disabled
-          title={t("providers.models.error")}
-        >
-          <Icon name="alert" size="sm" />
-          <span>{t("providers.models.error")}</span>
-        </Button>
-      );
-    }
-    if (!isLoading) return null;
-    return <ModelPickerPlaceholder />;
-  }
 
   const label = selected?.label ?? selection?.modelId ?? t("composer.switchModel");
 
@@ -161,7 +142,35 @@ export function ModelPicker() {
       }
       label={t("composer.switchModel")}
       placeholder={t("composer.model.search.placeholder")}
-      emptyLabel={t("composer.model.search.empty")}
+      emptyLabel={
+        data === undefined
+          ? isPending
+            ? t("common.loading")
+            : null
+          : t("composer.model.search.empty")
+      }
+      feedback={
+        isError ? (
+          <SystemMessage variant="warning">{t("providers.models.error")}</SystemMessage>
+        ) : undefined
+      }
+      footer={
+        <FormActions label={t("composer.switchModel")}>
+          {data?.length === 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => openWorkspaceSettingsPane(workspace, PROVIDERS_PANE)}
+            >
+              {t("providers.setup.action")}
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" pending={isFetching} onClick={() => void refetch()}>
+            <Icon name="loop" size="sm" />
+            {t("providers.models.refresh")}
+          </Button>
+        </FormActions>
+      }
       clearLabel={t("common.clearSearch")}
       onSelect={(item) => {
         const model = modelsByItemId.get(item.id);
@@ -180,7 +189,7 @@ export function ModelPicker() {
           aria-label={t("composer.switchModel")}
           title={
             selection
-              ? `${label} · ${providerDisplayName(selection.provider)}${selected ? "" : ` · ${t("composer.model.unavailable")}`}`
+              ? `${label} · ${providerDisplayName(selection.provider)}${selected || data === undefined ? "" : ` · ${t("composer.model.unavailable")}`}`
               : undefined
           }
           shrink="gives"

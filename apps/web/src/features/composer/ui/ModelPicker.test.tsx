@@ -24,7 +24,13 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock("@/features/providers/public/queries", () => ({
-  useModels: () => ({ data: state.models, isLoading: false, isError: false }),
+  useModels: () => ({
+    data: state.models,
+    isPending: false,
+    isError: false,
+    isFetching: false,
+    refetch: vi.fn(),
+  }),
 }));
 
 vi.mock("@/features/composer/public/modelPreference", () => ({

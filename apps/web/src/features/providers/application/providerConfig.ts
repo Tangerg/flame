@@ -57,14 +57,12 @@ function useProviderRoleConfig() {
 export function useUtilityModelConfig() {
   const { utilityRole, models, providers } = useProviderRoleConfig();
   const role = utilityRole.data;
-  const modelOptions = models.data ?? [];
   const providerConfigs = providers.data ?? [];
   return {
     role,
-    modelOptions,
+    models,
     isSet: Boolean(role?.model),
     isAvailable: providerRoleIsAvailable(role, providerConfigs),
-    isError: models.isError,
     state: roleConfigState([utilityRole, providers]),
   };
 }

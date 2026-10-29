@@ -163,6 +163,19 @@ also retain the existing workspace-resolution boundary. Known plugin roles keep
 their independent selection-read state and available candidates; model roles,
 approval mode, drafts and commands keep their existing owners.
 
+The shared models query owns candidate-catalog readiness independently of the
+current Composer preference and auxiliary role. Both pickers retain their known
+identity while the first read is pending or fails, show read feedback in the open
+picker and offer Refresh models. Composer keeps one search/trigger/footer across
+unread, failed, empty and populated results; only an accepted catalog can establish
+an empty result or unavailable-model hint. An accepted empty catalog also exposes
+the existing Providers Settings route. Auxiliary refresh stays in its menu and
+does not mutate the role. Explicit model choices, recent models, reasoning options,
+Runtime default and role writes retain their existing owners. The shared rail
+picker owns only presentation: feedback sits outside options, recovery stays in a
+bounded footer, an arriving preferred group respects later explicit browsing,
+and the complete popup fits the available height.
+
 `SettingRow` marks the label and controls as one shared focus unit. `Panel` owns
 revealing that complete unit inside the clipped host when it fits; taller rows
 retain the focused control as the reading target.

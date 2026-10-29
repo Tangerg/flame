@@ -368,6 +368,7 @@ export const zhTW: Record<string, string> = {
   "providers.error.save": "儲存失敗",
   "providers.error.test": "測試失敗",
   "providers.models.error": "無法載入模型。",
+  "providers.models.refresh": "重新整理模型清單",
   "providers.empty": "尚無供應商",
   "providers.empty.sub": "執行時回報沒有受支援的 LLM 供應商。",
   "plugins.errorDetail.show": "顯示錯誤詳情",

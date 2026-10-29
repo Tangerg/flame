@@ -30,10 +30,9 @@ vi.mock("@/features/providers/application/providerConfig", () => ({
   useProviderMutationMaterialGeneration: () => provider.generation,
   useUtilityModelConfig: () => ({
     role: undefined,
-    modelOptions: [],
+    models: { data: [], isPending: false, isError: false, isFetching: false, refetch: vi.fn() },
     isSet: false,
     isAvailable: true,
-    isError: false,
     state: provider.roleState,
   }),
 }));

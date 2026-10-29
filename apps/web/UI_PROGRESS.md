@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Hooks and Plugins now begin with their actual tasks, published as `ca9c60977`: repeated introductory paragraphs are removed while specific trust effects, source identity and search by existing fields/sections remain. All 64 focused Settings/search/draft tests, typecheck, lint and remaining Web/native gates pass; light/dark/18px/200% and observer-free native tasks pass. Evidence, cleanup and delivery are recorded under **Settings headings and task-first reading**. Settings catalog readiness is published as `1bb564a53`, MCP as `17916606d`, Files as `4468c2fc6`, and source-return/long-tooltip delivery as `c126bc235`. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
+Model pickers now distinguish an unread catalog from accepted empty data, retain known model identity and provide local refresh without losing search or later focus. All 76 focused tests, typecheck, lint and the other 11 Web/native gates pass; light, Chinese dark/18px/200% and observer-free native tasks pass. Evidence and cleanup are recorded under **Model catalog reading and recovery**. Hooks/Plugins task-first hierarchy is published as `ca9c60977`, Settings readiness as `1bb564a53`, MCP as `17916606d` and Files as `4468c2fc6`. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -107,6 +107,9 @@ Hooks and Plugins begin with direct settings and named task sections, published
 as `ca9c60977`; see
 **Settings headings and task-first reading** for the original/candidate native
 comparison, search/return path and cleanup.
+The next scoped batch repairs model-catalog reading and local recovery across
+Composer and auxiliary-role selection; see **Model catalog reading and recovery**
+for the real-query regressions, native tasks and publication boundary.
 See **Goal save
 feedback and pending dismissal** and **Computer console
 editing and operation return**. Preserve the
@@ -8297,15 +8300,16 @@ and parallel work remain preserved; the continuous UI goal remains active.
 from resolution of the current model. When a nonempty catalog cannot resolve the
 Session's exact selection, the existing localized Switch model action and neutral
 server glyph remain available. Provider and recent groups still contain only
-known catalog entries, with no row marked as current. Loading, empty and failed
-catalog branches retain their existing behavior.
+known catalog entries, with no row marked as current. The first-read and failed-read
+branches are further repaired under **Model catalog reading and recovery** below.
 
 Integration retains the already-authored primary `main` contract from
 `02ac171c8`: an explicit preference carries its provider/model identity even when
 catalog metadata is unavailable, and sending reads that preference directly.
 Its owner/callers/tests and localized unavailable hint are included as an exact
 frontend dependency. Such a preference still displays its original identity,
-provider and unavailable hint, including an empty catalog. The neutral action is
+provider and, after an accepted catalog, unavailable hint, including an empty
+catalog. The neutral action is
 reserved for absence of a resolved identity. Choosing a replacement remains an
 explicit user decision; this presentation repair does not advance the selection
 on its own.
@@ -8332,6 +8336,140 @@ system. Better-writing guidance favors the existing localized action over an
 indefinite loading signal; better-accessibility/layout review retains Base UI's
 keyboard/focus behavior, shared chip sizing, semantic surfaces and Orange/custom
 accent roles. Static Ace references supply no selection or focus evidence.
+
+### Model catalog reading and recovery
+
+The original native application reproduced two connected task breaks. With the
+first models read paused, the auxiliary menu contained only Runtime default and
+Composer reported No models found plus an unavailable hint for a known identity.
+After a real canonical read failure, the auxiliary error sat outside its menu
+without a local recovery action; Composer still reported an empty result.
+Candidate metadata and the already known selection are different facts. The
+existing models query owns the former; Composer preference and ProviderMutationOwner
+continue to own explicit model selection and role changes respectively.
+
+`providerConfig.ts` now exposes the original models query to `RoleSections.tsx`
+instead of flattening unread data into an empty array. The auxiliary menu keeps
+its known role, shows compact Loading or read-error feedback and offers Refresh
+models outside its radio group. Refresh remains inside the menu, retains action
+focus and is unavailable only during an active read or role save. Runtime default
+and exact role choices still use the existing mutation owner. Read feedback no
+longer competes with role-write feedback in the outer section.
+
+`ModelPicker.tsx` keeps one RailCatalogPicker across pending, failed, empty and
+populated reads, including absence of a resolved current identity. Search,
+provider/recent groups and the focused Refresh action survive result changes.
+Only accepted data establishes an empty result or the unavailable-model hint.
+An accepted empty catalog also offers the existing Configure a provider route;
+opening Settings retires the old popup. Explicit provider/model preferences,
+recent choices and supported reasoning effort retain their existing behavior.
+One shared refresh label is supplied in all eight locales.
+
+`catalog-picker.tsx` accepts presentation-only feedback and footer content. Feedback
+is outside options, recovery remains below the scrollable result area, and the
+whole popup fits its available height. An arriving preferred provider group is
+used when there is no retained explicit group; later user browsing wins. No extra
+catalog cache, selection state machine, event handler, protocol, dependency or
+persisted-data migration is introduced.
+
+Read-only reference work revisited ZCode's actual `useModelSelectionView.ts` and
+model selection components: retained catalog data and effective selection have
+separate responsibilities. Flame uses its existing Query owner rather than
+copying ZCode's service/cache. HeroUI's async Select example specifically describes
+loading more, and its async Autocomplete names active filtering; these guide
+feedback placement but do not establish first-result semantics. The installed
+Query contract, real-query regressions and native counterexamples establish those
+semantics here. The installed Base UI live-region hook adds U+2060 to initially
+announce content; regression text checks remove only that marker and still require
+the exact Loading label. Base UI's announcement mechanism is preserved. Earlier
+Radix semantics/color and Ace composition research is reused within its recorded
+limits; static references prove neither focus behavior nor an award certification.
+
+| Review domain | Finding and scoped outcome                                                                                                                                              |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Writing       | **HIGH repaired:** a failed model read had no local recovery and was described as an empty result. The real error and named Refresh action now share the picker.        |
+| Accessibility | Stable search and action elements retain keyboard focus across read settlement; feedback stays outside selectable options and native Escape/return paths remain usable. |
+| Layout        | The popup, result area and nonshrinking recovery footer fit together at narrow native widths and 200% zoom.                                                             |
+| Typography    | Existing control/secondary identity scales remain; English and Chinese long menu labels fit at the qualified sizes.                                                     |
+| Color         | Existing semantic warning, selected, hover and focus tokens remain legible in light Orange and dark custom blue. No theme repaint or new accent is introduced.          |
+| UI and motion | Shared controls and the existing read glyph express progress; light full-motion and dark reduced-motion tasks pass without a focus animation or new motion system.      |
+
+The original eight focused files passed **61 tests**. Of the first 13 new
+real-query cases, **9 failed and 4 passed** against frozen original sources after
+correcting one asynchronous empty-view wait in the test. Two more boundary cases
+were added later. The final ten files pass **76 tests**, including all original
+cases, the 14 real-query Composer/role cases and the shared rail arrival/browsing
+case. They cover paused first reads, accepted empty/populated rereads, initial and
+cached failure, refresh, absent/current identity, independent role/draft state,
+later focus, exact selection and the Providers route. Query retries are disabled
+only within deterministic unit cases and restored afterward; native retries keep
+their production policy.
+
+Failed candidate attempts remain in the evidence: a nonexistent refresh icon was
+replaced with the existing `loop` glyph; Base UI's announcement marker was handled
+as described above; lint findings corrected query-data memo dependencies and
+conditional test expectations. Keeping the refresh menu open exposed an ambiguous
+trigger/option text locator, corrected to the actual option role. Those attempts
+are not passing results. Final Web typecheck/lint and all **11 remaining serial
+gates** pass: circular/context/layer boundaries, design system, tokens, chrome,
+locales, plugin resources, bundle, module links and `make check-native`
+(**77.479 s**, including Desktop tests/vet/build and the supported Wails production
+build). Shared UI sources/dependencies are unchanged; the prior **194-test** UI
+package result is reused, not rerun.
+
+Native qualification uses production Wails v3 with the actual workspace fixture,
+query adapters, command handlers, pickers and mutation owner. Private canonical
+transport inputs provide captured provider/model/role records and deliberate
+model-list failures or empty results. A private native-command bootstrap pauses,
+resumes or resets that one query. The observer only reads and reports DOM, focus,
+geometry and key facts; all application input uses CUA. The observer-free control
+retains these same inputs and production components.
+
+| Native task                                                | Actual outcome                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Original English light                                     | Paused and failed catalog counterexamples reproduced with a retained exact role/preference. The normal retry delay was allowed to settle before asserting the failure.                                                                                                                                                                                                                                                                                     |
+| Candidate English light, 14px, Orange                      | Loading, `GPT` search arrival, exact captured choice and Recent group, settled failure, failed retry, successful Refresh, accepted empty and Configure route pass. Actual auxiliary-role commands switch to Runtime default and back to `openai / gpt-5.6-sol`. An independent unsaved URL survives; resize from 1440×900 to 1513×950 keeps focused Refresh. Conversation return is exactly `Keep this model-reading draft. Continued.` with caret 41.     |
+| Candidate Chinese dark, 18px, custom `#3366FF`, motion off | Twenty native zoom increments after Actual Size produce measured 560×377 CSS at DPR 4. `模型草稿查询` and search focus survive arrival; Escape clears it before an actual model choice. Failure/Refresh retains `GPT` and the recovery action; accepted empty opens Providers. An unsaved `https://dark-model-draft.invalid/保留草稿` survives menu recovery and return. Conversation return is exactly `模型读取后保留中文草稿。 已继续。` with caret 17. |
+| Observer-free Chinese dark control                         | The same native zoom, pending/search/arrival/choice, failure/Refresh, accepted-empty/Configure, auxiliary refresh/Escape, independent URL draft and conversation-return task pass. Final text is `无观测版本保留草稿。 已继续。`. All 634 non-HTML assets match the observed candidate; only the two observer-bearing entry HTML files differ. Observer event and request deltas are both zero. No DOM/CSS/caret measurement is claimed for this control.  |
+
+One native scroll probe moved the Providers panel from scrollTop 538 to 0: the
+menu ceased painting with its offscreen anchor, Escape dismissed it, and reverse
+keyboard navigation returned to the exact URL draft. This establishes no floating
+menu counterexample and is not claimed as an additional retirement repair. A light
+return attempt was blocked before input by CUA's application-state guard; a fresh
+native field click and Close/Composer path completed the task. A separate script
+binding error and overly broad passive-record predicates performed no input and
+are excluded from the acceptance result. Only one configured provider/model pair
+exists in these captured native inputs; selecting a different pair/reasoning
+combination is covered by the unchanged focused tests, not claimed as a new native
+exercise.
+
+Full Web/Runtime/browser suites, benchmarks, live provider saves/tests, business
+Send, OS input-method composition, VoiceOver audio, RTL, 320px and other operating
+systems were not newly qualified. Native error recovery is an isolated canonical
+read/write exercise, not a live model invocation. The scoped self-review finds no
+remaining blocker in the repaired paths; the whole-product goal remains active.
+Next useful work should return to content/Dock tasks from current evidence. A
+metadata-only context gauge is a review candidate, not a proven defect.
+
+The publication fetch finds **zero incoming main commits** at
+`3e0c95e2a6c608fe7db6dd20bb21eba0af490174`; the normal merge reports already up to
+date. The primary checkout remains untouched. A reused preservation helper first
+resolved relative instruction paths against that primary checkout; explicitly
+binding those paths to the owned checkout proves the original expected hashes
+without changing any baseline content, source or user file.
+
+All four native generations were quit. The exact app registration was removed,
+passive server closed, seven owned outputs and three created profiles removed,
+and four pre-existing files restored byte-for-byte with their original modes.
+All 18 output paths and five profile paths match their baseline; 6,310 source
+inputs (17 changed, 6,293 untouched), 32 resources, 34 read-only references and
+three owned instruction files pass preservation checks. The exact root
+`/private/tmp/flame-model-choices-PBbcIF` is absent and no owned app process remains.
+The final memory-only, gzip round-tripped evidence holds **120 UTF-8 records**,
+**11,240,896 raw bytes / 1,278,417 gzip bytes**, SHA-256
+`e1e3408ebc1813021c0cc655e73459c0135b61e139fd129e6d5c2b7d4b99239d`.
+No qualification files are committed or left on disk.
 
 ## Computer console editing and operation return
 
