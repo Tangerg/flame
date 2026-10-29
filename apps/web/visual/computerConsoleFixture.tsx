@@ -398,6 +398,9 @@ export async function createComputerConsoleFixture(locale: string) {
       }) as unknown as ServerCapabilities,
   });
   const context: ComponentContext = {
+    get sourceSignal() {
+      return this.signal;
+    },
     component: { installationId, digest, componentId: "computer" },
     binding: {
       installationId,

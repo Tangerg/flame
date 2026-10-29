@@ -153,11 +153,8 @@ class ComponentInstance {
     this.context = this.capture();
   }
   private capture(): CapturedContext {
-    const signal = AbortSignal.any([
-      this.controller.signal,
-      this.sources.lifetime.signal,
-      this.sources.resources,
-    ]);
+    const sourceSignal = AbortSignal.any([this.sources.lifetime.signal, this.sources.resources]);
+    const signal = AbortSignal.any([this.controller.signal, sourceSignal]);
     const track: ComponentContext["track"] = (operation) =>
       trackContributionIO(this.sources.lifetime, () => operation(signal));
     const openSession = this.sources.openSession;
@@ -207,6 +204,7 @@ class ComponentInstance {
         return track(() => this.sources.saveFile(request));
       },
       signal,
+      sourceSignal,
       telemetry: captureClientTelemetry(signal),
       track,
     });

@@ -13,6 +13,12 @@ same captured identity, resource lease and command lifetime as workspace views.
 Disabling the installation removes its entry. Locale changes update the display
 projection while preserving accepted work and its original cancellation signal.
 
+`context.signal` ends with the mounted view. `context.sourceSignal` follows the
+captured contribution and resource lifetime, so an installed settings presenter can
+retain drafts and original command observations across page closes. It must clear
+sensitive drafts when that source ends. New I/O still enters the current view's
+`context.track` boundary; the source signal does not grant another execution path.
+
 PNG imports are embedded as data URLs by the component build. Components can
 display those images and transfer their original decoded bytes through
 `context.saveFile` without opening an additional resource request.

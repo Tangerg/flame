@@ -38,6 +38,9 @@ async function openUsage() {
   );
   const summary = vi.spyOn(runtime.usage, "summary");
   const context: ComponentContext = {
+    get sourceSignal() {
+      return this.signal;
+    },
     component: { installationId: "usage-review", digest: "a".repeat(64), componentId: "usage" },
     runtime,
     telemetry: { read: () => ({ spans: [], metrics: [], logs: [] }), clear() {} },

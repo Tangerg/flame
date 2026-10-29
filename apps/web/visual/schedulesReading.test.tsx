@@ -88,6 +88,9 @@ function mountSchedules(subscribeError?: Error) {
     );
   });
   const context: ComponentContext = {
+    get sourceSignal() {
+      return this.signal;
+    },
     component: { ...VISUAL_SCHEDULES_BINDING, componentId: "schedules" },
     binding: VISUAL_SCHEDULES_BINDING,
     runtime,

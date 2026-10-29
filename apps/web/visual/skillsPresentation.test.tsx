@@ -52,6 +52,9 @@ async function mountSkills() {
   const getDiscovered = vi.spyOn(workspace.skills, "getDiscovered");
   vi.spyOn(runtime, "workspace").mockReturnValue(workspace);
   const context: ComponentContext = {
+    get sourceSignal() {
+      return this.signal;
+    },
     component: { installationId: "skills", digest: "b".repeat(64), componentId: "skills" },
     runtime,
     workspace: { ref: { path: VISUAL_WORKSPACE_PATH } },

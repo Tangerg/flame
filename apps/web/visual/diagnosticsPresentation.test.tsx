@@ -67,6 +67,9 @@ function openDiagnostics(
   locale = "en",
 ) {
   const context: ComponentContext = {
+    get sourceSignal() {
+      return this.signal;
+    },
     component: {
       installationId: "diagnostics-reading",
       digest: "a".repeat(64),

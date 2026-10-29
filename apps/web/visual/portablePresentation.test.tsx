@@ -20,6 +20,9 @@ afterEach(cleanup);
 
 function renderCapturedMarkdown(content: string) {
   const context: ComponentContext = {
+    get sourceSignal() {
+      return this.signal;
+    },
     component: { installationId: "captured-file", digest: "a".repeat(64), componentId: "markdown" },
     locale: "en",
     signal: new AbortController().signal,

@@ -284,6 +284,7 @@ async function rig() {
       locale: "en",
       runtime: client,
       signal: controller.signal,
+      sourceSignal: controller.signal,
       track: (factory) => factory(controller.signal),
       telemetry: { read: () => ({ spans: [], metrics: [], logs: [] }), clear: () => undefined },
       saveFile,

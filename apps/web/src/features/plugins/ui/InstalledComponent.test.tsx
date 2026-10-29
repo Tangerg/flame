@@ -81,6 +81,46 @@ it("updates language without retiring the component's accepted file transfer", a
   expect(saveFile).toHaveBeenCalledOnce();
 });
 
+it("retains source state through view unmount and retires it with its resources", async () => {
+  let lifetime!: ContributionLifetime;
+  const host = await startKernel([
+    definePlugin({
+      name: "test.source-lifetime",
+      setup(context) {
+        lifetime = context.lifetime("settings");
+      },
+    }),
+  ]);
+  finishTestClient(() => stopKernel(host));
+  const resources = new AbortController();
+  let captured!: ComponentContext;
+  function View({ context }: { context: ComponentContext }) {
+    useEffect(() => {
+      captured = context;
+    }, [context]);
+    return <p>Source lifetime</p>;
+  }
+  const view = testClient.render(
+    <InstalledComponent
+      scope="installation"
+      entry={View}
+      component={{ installationId: "installed", digest: "a".repeat(64), componentId: "settings" }}
+      generation={RuntimeConnectionGeneration.forProcess("source-lifetime")}
+      compose={() => null}
+      saveFile={async () => "requested"}
+      runtime={{} as FlameClient}
+      binding={undefined}
+      lifetime={lifetime}
+      resources={resources.signal}
+    />,
+  );
+  view.unmount();
+  expect(captured.signal.aborted).toBe(true);
+  expect(captured.sourceSignal.aborted).toBe(false);
+  resources.abort();
+  expect(captured.sourceSignal.aborted).toBe(true);
+});
+
 it("injects the captured interaction into an installed result without querying during render", async () => {
   let lifetime!: ContributionLifetime;
   const host = await startKernel([

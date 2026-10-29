@@ -137,6 +137,9 @@ export interface ComponentContext {
   // The host owns the active locale; a component projects it, never selects it.
   readonly locale: string;
   readonly signal: AbortSignal;
+  // Source-owned drafts may outlive a mounted view. Retiring the installed
+  // contribution or its resources ends this lifetime and must clear them.
+  readonly sourceSignal: AbortSignal;
   // Reserve work before starting it; preserve the original command promise and
   // its retry identity. The factory is invoked synchronously after admission.
   track<P extends Promise<unknown>>(operation: (signal: AbortSignal) => P): P;

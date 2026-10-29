@@ -51,6 +51,9 @@ function mountDiff(
   const get = vi.spyOn(workspace.diff, "get");
   vi.spyOn(runtime, "workspace").mockReturnValue(workspace);
   const context: ComponentContext = {
+    get sourceSignal() {
+      return this.signal;
+    },
     component: { installationId: "diff-review", digest: "a".repeat(64), componentId: "diff" },
     runtime,
     workspace: { ref: { path: "/Users/visual/scope" }, focus: { path, revision: 1n } },

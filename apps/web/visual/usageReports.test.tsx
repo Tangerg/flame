@@ -120,6 +120,9 @@ function mount(
     .spyOn(runtime.plugins, "call")
     .mockImplementation((request) => handle(request) as never);
   const context: ComponentContext = {
+    get sourceSignal() {
+      return this.signal;
+    },
     component: { ...binding, componentId: "usage-reports" },
     binding,
     runtime,
@@ -205,6 +208,9 @@ it("recovers the original capture and preserves exact numbers, zero prices and m
     }) as never;
   });
   const context: ComponentContext = {
+    get sourceSignal() {
+      return this.signal;
+    },
     component: { ...binding, componentId: "usage-reports" },
     binding,
     runtime,

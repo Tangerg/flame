@@ -283,6 +283,9 @@ function fixture(
   });
   vi.stubGlobal("fetch", fetchControl);
   const context: ComponentContext = {
+    get sourceSignal() {
+      return this.signal;
+    },
     component: {
       installationId: installation.id,
       digest: installation.selected.digest,
