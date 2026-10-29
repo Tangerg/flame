@@ -82,6 +82,9 @@ func (r Result) Validate() error {
 	if r.Decision != nil && !r.Decision.Verdict.Valid() {
 		return errors.New("hooks: invalid command decision")
 	}
+	if r.Decision != nil && len(r.Decision.Reason)+len(r.Decision.InjectContext)+len(r.Decision.RewriteArguments) > MaxCommandOutputBytes {
+		return errors.New("hooks: command decision exceeds its output envelope")
+	}
 	if r.Failure != nil && ((r.Failure.Kind != Failed && r.Failure.Kind != Canceled && r.Failure.Kind != TimedOut) || r.Failure.Message == "") {
 		return errors.New("hooks: invalid command failure")
 	}

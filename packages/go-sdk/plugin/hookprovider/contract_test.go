@@ -1,6 +1,7 @@
 package hookprovider
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/hook"
@@ -43,6 +44,18 @@ func TestContractCarriesBoundedOriginalHookMaterial(t *testing.T) {
 	input.Input.CWD = "/other"
 	if input.Validate() == nil {
 		t.Fatal("command directory differs from the event")
+	}
+}
+
+func TestCommandOutcomeBoundsTheCompleteDecisionMaterial(t *testing.T) {
+	decision := &hook.CommandDecision{Verdict: hook.CommandAllow, InjectContext: strings.Repeat("x", MaxCommandOutputBytes)}
+	result := Result{Decision: decision}
+	if err := result.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	decision.Reason = "x"
+	if result.Validate() == nil {
+		t.Fatal("combined decision material exceeded the command output envelope")
 	}
 }
 
