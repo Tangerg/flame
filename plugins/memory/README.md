@@ -7,6 +7,11 @@ configuration. It supplies a captured conversation and the actual compaction fac
 the backend decides whether extraction and curation are due. Publication uses the
 same watermark compare-and-set and human-review invariants as every other write.
 
+Generation Fold receives the complete current project target, including user
+items, pinned proposals and rejection tombstones. The Domain alone decides
+pruning: only absent, unpinned automatic pending proposals are eligible. Storage
+applies that plan inside publication; it does not preselect pruning candidates.
+
 Each item owns a positive exact `Revision`. Editing content, pinning, reviewing,
 or explicitly reactivating a record advances that revision; derived embeddings
 and unchanged edits do not. Update, review and deletion require the caller's

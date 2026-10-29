@@ -30,7 +30,7 @@ func Fold(existing []Item, contents []string) (FoldPlan, error) {
 	}
 
 	for _, item := range existing {
-		if item.status != StatusPending {
+		if item.origin != OriginAuto || item.status != StatusPending || item.pinned {
 			continue
 		}
 		if _, keep := desired[Digest(item.content)]; !keep {

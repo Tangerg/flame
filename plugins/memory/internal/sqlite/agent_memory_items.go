@@ -43,7 +43,7 @@ func decodeVec(encoded []byte) ([]float32, error) {
 }
 
 func (a *AgentMemoryStore) reconcileItems(ctx context.Context, project string, contents []string, now time.Time) error {
-	existing, err := a.autoItems(ctx, project)
+	existing, err := a.targetItems(ctx, project)
 	if err != nil {
 		return err
 	}
@@ -80,11 +80,10 @@ func (a *AgentMemoryStore) reconcileItems(ctx context.Context, project string, c
 	return nil
 }
 
-func (a *AgentMemoryStore) autoItems(ctx context.Context, project string) ([]agentmemory.Item, error) {
+func (a *AgentMemoryStore) targetItems(ctx context.Context, project string) ([]agentmemory.Item, error) {
 	rows, err := sqlite.Connection(ctx, a.db).QueryContext(ctx,
 		`SELECT `+agentMemoryItemColumns+` FROM agent_memory_items
-		 WHERE scope = 'project' AND project = ? AND origin = 'auto'
-		   AND (pinned = 0 OR status = 'rejected')
+		 WHERE scope = 'project' AND project = ?
 		 LIMIT ?`, project, agentmemory.MaxVisiblePerTarget+agentmemory.MaxRejectedPerTarget+1)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list agent memory items: %w", err)
