@@ -1,3 +1,4 @@
+import { IMAGE_FILENAME_STEM } from "@/app/product";
 import { runtimeRequestMeta } from "@/app/runtimeProtocol";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createRuntimeConnection } from "@/features/connection/adapters/runtimeConnection";
@@ -10,7 +11,7 @@ let connection: ReturnType<typeof createRuntimeConnection>;
 
 beforeEach(async () => {
   connection = createRuntimeConnection(
-    createBrowserHost(),
+    createBrowserHost(IMAGE_FILENAME_STEM),
     runtimeRequestMeta,
     createRuntimeMutationJournalStorage(createStorage("test.runtime")),
   );
@@ -99,7 +100,11 @@ describe("Runtime mutation journal storage adapter", () => {
   it("captures journal storage before constructing its first client", async () => {
     await connection.dispose();
     const storage = createRuntimeMutationJournalStorage(createStorage("test.runtime"));
-    connection = createRuntimeConnection(createBrowserHost(), runtimeRequestMeta, storage);
+    connection = createRuntimeConnection(
+      createBrowserHost(IMAGE_FILENAME_STEM),
+      runtimeRequestMeta,
+      storage,
+    );
     await connection.initialize();
     const first = connection.client();
     const close = vi.spyOn(first, "close");

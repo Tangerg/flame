@@ -100,9 +100,10 @@ func TestEqualNamesAcrossOriginsKeepSeparateRelations(t *testing.T) {
 	db := openStore(t)
 	servers := newMCPServerStore(db)
 	rules := newApprovalRuleStore(db)
-	installations := newInstallationStore(db)
+	catalog := newReleaseStore(db)
+	installations := newInstallationStore(catalog)
 	release := testsupport.Release(t, "release", plugin.Declaration{Name: "package", Servers: []plugin.Server{{Name: testsupport.ServerName("files"), Transport: mcpserver.TransportStdio, Command: "files"}}})
-	if err := newReleaseStore(db).Admit(t.Context(), release); err != nil {
+	if err := catalog.Admit(t.Context(), release); err != nil {
 		t.Fatal(err)
 	}
 	installation, err := plugin.New(testsupport.InstallationID(t), "/package", release)

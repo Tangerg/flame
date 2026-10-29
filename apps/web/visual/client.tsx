@@ -1,3 +1,4 @@
+import { IMAGE_FILENAME_STEM } from "@/app/product";
 import { type ReactNode } from "react";
 import { type FlameClient } from "@flame/runtime-client";
 import { createMemoryNavigator } from "@/lib/navigation.testkit";
@@ -39,7 +40,7 @@ function useRecordedChatSession() {
 
 /** One browser fixture owns these feature instances; production has no default instance. */
 export function createVisualClient(runtimeClient: () => FlameClient) {
-  const host = createBrowserHost();
+  const host = createBrowserHost(IMAGE_FILENAME_STEM);
   const theme = createTheme(document, window);
   const navigation = createMemoryNavigator();
   const projection = createRuntimeConnectionProjection();

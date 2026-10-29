@@ -1,4 +1,4 @@
-import { type ItemStatus as AgentItemStatus } from "@flame/runtime-client/wire";
+import { type ItemStatus as AgentItemStatus } from "@/foundation/protocolValues.generated";
 export type { AgentItemStatus };
 import { type ApprovalDecision } from "@/features/agent/domain/hitl";
 import {

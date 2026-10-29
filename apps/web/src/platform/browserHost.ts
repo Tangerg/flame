@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { PRODUCT_SLUG } from "@/app/product";
 import { type NotificationAuthorization } from "@/foundation/notificationAuthorization";
 import { downloadBlob } from "@/platform/download";
 import { type ClientHost } from "@/platform/host";
@@ -11,7 +10,7 @@ function browserAuthorization(): NotificationAuthorization {
   return typeof Notification === "undefined" ? "unsupported" : Notification.permission;
 }
 
-export function createBrowserHost(): ClientHost {
+export function createBrowserHost(imageFilenameStem: string): ClientHost {
   const listeners = new Set<(target: string) => void>();
   return {
     kind: "web",
@@ -30,7 +29,7 @@ export function createBrowserHost(): ClientHost {
         char.charCodeAt(0),
       );
       downloadBlob(
-        `${PRODUCT_SLUG}-image.${mime === "image/jpeg" ? "jpg" : mime.slice(6)}`,
+        `${imageFilenameStem}.${mime === "image/jpeg" ? "jpg" : mime.slice(6)}`,
         new Blob([bytes], { type: mime }),
       );
       return true;

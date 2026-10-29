@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createBrowserHost } from "@/platform/browserHost";
 import { createClientHost } from "@/platform/clientHost";
+const imageFilenameStem = "fixture-image";
 const image = "data:image/png;base64,aW1hZ2U=";
 
 afterEach(() => {
@@ -10,7 +11,7 @@ afterEach(() => {
 
 describe("browser host", () => {
   it("boots against the serving origin without assuming a local filesystem", async () => {
-    const host = createClientHost();
+    const host = createClientHost(imageFilenameStem);
     expect(host.kind).toBe("web");
     await expect(host.bootstrap()).resolves.toEqual({
       runtime: { endpoint: window.location.origin },
@@ -22,9 +23,9 @@ describe("browser host", () => {
     await expect(host.revealPath("/remote/workspace")).resolves.toBe(false);
   });
 
-  it("downloads image bytes and releases its object URL", async () => {
+  it("downloads image bytes with the supplied filename and releases its object URL", async () => {
     vi.useFakeTimers();
-    const create = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:flame-image");
+    const create = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:fixture-image");
     const revoke = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
     let name = "";
     const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (
@@ -32,15 +33,15 @@ describe("browser host", () => {
     ) {
       name = this.download;
     });
-    await expect(createBrowserHost().saveImage(image)).resolves.toBe(true);
-    expect(name).toBe("flame-image.png");
+    await expect(createClientHost(imageFilenameStem).saveImage(image)).resolves.toBe(true);
+    expect(name).toBe("fixture-image.png");
     expect(click).toHaveBeenCalledOnce();
     const blob = create.mock.calls[0]![0] as Blob;
     expect(blob.type).toBe("image/png");
     expect(await blob.text()).toBe("image");
-    expect(document.querySelector('a[download="flame-image.png"]')).toBeNull();
+    expect(document.querySelector('a[download="fixture-image.png"]')).toBeNull();
     await vi.runAllTimersAsync();
-    expect(revoke).toHaveBeenCalledWith("blob:flame-image");
+    expect(revoke).toHaveBeenCalledWith("blob:fixture-image");
   });
 
   it("hands exact exported text and MIME to the browser download", async () => {
@@ -56,9 +57,9 @@ describe("browser host", () => {
     const content = "# Captured result\n\n中文证据 🔥\n";
     const mime = "text/markdown;charset=utf-8";
 
-    await expect(createBrowserHost().saveTextFile("flame-session.md", content, mime)).resolves.toBe(
-      true,
-    );
+    await expect(
+      createBrowserHost(imageFilenameStem).saveTextFile("flame-session.md", content, mime),
+    ).resolves.toBe(true);
 
     expect(names).toEqual(["flame-session.md"]);
     const blob = create.mock.calls[0]![0] as Blob;
@@ -76,7 +77,9 @@ describe("browser host", () => {
       "data:text/html;base64,aW1hZ2U=",
       "data:image/svg+xml;base64,aW1hZ2U=",
     ]) {
-      await expect(createBrowserHost().saveImage(source)).rejects.toThrow("Invalid string");
+      await expect(createBrowserHost(imageFilenameStem).saveImage(source)).rejects.toThrow(
+        "Invalid string",
+      );
     }
     expect(create).not.toHaveBeenCalled();
   });

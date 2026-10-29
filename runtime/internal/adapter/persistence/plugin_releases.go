@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/qimu/sqlite"
@@ -14,9 +15,20 @@ import (
 // ReleaseStore is the admitted release catalog: the only owner of release
 // content. Rows are insert-only by digest, so an installation names a release
 // and can never replace its declaration.
-type ReleaseStore struct{ db *sql.DB }
+type ReleaseStore struct {
+	db          *sql.DB
+	mu          sync.Mutex
+	projections map[identity.Digest]releaseProjection
+}
 
-func newReleaseStore(db *sql.DB) *ReleaseStore { return &ReleaseStore{db: db} }
+type releaseProjection struct {
+	declaration string
+	release     plugin.Release
+}
+
+func newReleaseStore(db *sql.DB) *ReleaseStore {
+	return &ReleaseStore{db: db, projections: make(map[identity.Digest]releaseProjection)}
+}
 
 func (s *ReleaseStore) Get(ctx context.Context, digest identity.Digest) (plugin.Release, error) {
 	var body string
@@ -27,11 +39,23 @@ func (s *ReleaseStore) Get(ctx context.Context, digest identity.Digest) (plugin.
 	if err != nil {
 		return plugin.Release{}, err
 	}
+	// The current SQL read owns existence and transaction visibility. Only
+	// admission of its complete declaration may be reused across snapshots.
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if projection, ok := s.projections[digest]; ok && projection.declaration == body {
+		return projection.release, nil
+	}
 	var declaration plugin.Declaration
 	if err := decodeStoredJSON([]byte(body), &declaration); err != nil {
 		return plugin.Release{}, fmt.Errorf("sqlite: decode release %s: %w", digest, err)
 	}
-	return plugin.NewRelease(digest, declaration)
+	release, err := plugin.NewRelease(digest, declaration)
+	if err != nil {
+		return plugin.Release{}, err
+	}
+	s.projections[digest] = releaseProjection{declaration: body, release: release}
+	return release, nil
 }
 
 // Admit records a release and, in the same transaction, the names of the
@@ -90,5 +114,11 @@ func (s *ReleaseStore) Digests(ctx context.Context) ([]identity.Digest, error) {
 // cannot be removed whatever its caller believes.
 func (s *ReleaseStore) Remove(ctx context.Context, digest identity.Digest) error {
 	_, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM plugin_releases WHERE digest=?`, digest.String())
-	return err
+	if err != nil {
+		return err
+	}
+	s.mu.Lock()
+	delete(s.projections, digest)
+	s.mu.Unlock()
+	return nil
 }

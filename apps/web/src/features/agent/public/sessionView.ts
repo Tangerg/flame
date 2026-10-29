@@ -4,7 +4,7 @@ import {
   type ToolCategory,
   type RunStatus as AgentRunStatus,
   type InterruptType as PendingInterruptKind,
-} from "@flame/runtime-client/wire";
+} from "@/foundation/protocolValues.generated";
 export type { AgentMessagePhase, ToolCategory, AgentRunStatus };
 import { type CapturedToolResult, type RecordedFileChange } from "@flame/component-sdk";
 import { type ContentBlock } from "@/features/agent/public/contentBlock";

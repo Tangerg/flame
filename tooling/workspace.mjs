@@ -246,6 +246,8 @@ export async function generate(repository = root) {
         "../packages/go-sdk/protocol",
         "--ts",
         "../packages/runtime-client",
+        "--client-values",
+        "../apps/web/src/foundation/protocolValues.generated.ts",
         "--samples",
         "contract/samples",
         "--go-local",
@@ -254,6 +256,18 @@ export async function generate(repository = root) {
         "../packages/go-sdk/client",
       ],
       "runtime",
+    );
+    run(
+      "npm",
+      [
+        "exec",
+        "--",
+        "prettier",
+        "--write",
+        "src/foundation/protocolValues.generated.ts",
+      ],
+      join(repository, "apps/web"),
+      env,
     );
     go(["generate", "./..."], "plugins");
     go(

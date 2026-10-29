@@ -11,9 +11,14 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
-type InstallationStore struct{ db *sql.DB }
+type InstallationStore struct {
+	db       *sql.DB
+	releases *ReleaseStore
+}
 
-func newInstallationStore(db *sql.DB) *InstallationStore { return &InstallationStore{db: db} }
+func newInstallationStore(releases *ReleaseStore) *InstallationStore {
+	return &InstallationStore{db: releases.db, releases: releases}
+}
 
 const (
 	disabledServer = "server"
@@ -134,14 +139,13 @@ func (s *InstallationStore) restore(ctx context.Context, record plugin.Record) (
 	if err := disabled.Err(); err != nil {
 		return plugin.Snapshot{}, err
 	}
-	catalog := newReleaseStore(s.db)
-	selected, err := catalog.Get(ctx, record.Selected)
+	selected, err := s.releases.Get(ctx, record.Selected)
 	if err != nil {
 		return plugin.Snapshot{}, fmt.Errorf("sqlite: read installation %s selected release: %w", id, err)
 	}
 	var staged *plugin.Release
 	if record.Staged != nil {
-		candidate, err := catalog.Get(ctx, *record.Staged)
+		candidate, err := s.releases.Get(ctx, *record.Staged)
 		if err != nil {
 			return plugin.Snapshot{}, fmt.Errorf("sqlite: read installation %s staged release: %w", id, err)
 		}

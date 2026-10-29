@@ -1,4 +1,4 @@
-import { type MCPServerStateType, type MCPTransport } from "@flame/runtime-client/wire";
+import { type MCPServerStateType, type MCPTransport } from "@/foundation/protocolValues.generated";
 export type { MCPTransport };
 import { mcpServerLabel } from "@/lib/toolSource";
 import { type MCPServerID } from "@/features/mcp/public/serverIdentity";

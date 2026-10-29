@@ -36,6 +36,11 @@ There is no graphical-client copy of the protocol implementation and no global
 client locator. `app/` constructs dependencies and passes them outward through
 plugin factories; consumers never import the composition root.
 
+`foundation/protocolValues.generated.ts` publishes the closed scalar vocabularies
+shared by client read models. Runtime contract generation derives this limited
+projection from the same Go enum and schema owners as the wire binding, without
+bringing Runtime records or operation handles into the client models.
+
 The pure `@qimu/sdk/json` entry supplies exact JSON data handling.
 Its checked dependency closure excludes Runtime calls and wire records; those
 remain translated at adapters rather than entering context application models.

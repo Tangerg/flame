@@ -94,7 +94,7 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 	if chmodErr := os.Chmod(config.DataDirectory, 0o700); chmodErr != nil {
 		return nil, fmt.Errorf("persistence: protect data directory %q: %w", config.DataDirectory, chmodErr)
 	}
-	store, admission, err := openFrameworkDatabase(ctx, dataDirectory.DatabasePath())
+	store, admission, installations, err := openFrameworkDatabase(ctx, dataDirectory.DatabasePath())
 	if err != nil {
 		return nil, err
 	}
@@ -134,8 +134,8 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		Feedback:              newFeedbackStore(db),
 		Providers:             newProviderStore(db),
 		MCPServers:            newMCPServerStore(db),
-		Installations:         newInstallationStore(db),
-		PluginReleases:        newReleaseStore(db),
+		Installations:         installations,
+		PluginReleases:        installations.releases,
 		PluginCommands:        newPluginCommandStore(db, nil),
 		ProviderSelections:    newProviderSelectionStore(db),
 		PluginCompositions:    newCompositionStore(db),

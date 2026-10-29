@@ -1,3 +1,4 @@
+import { IMAGE_FILENAME_STEM } from "@/app/product";
 import { type createRuntimeConnection } from "@/features/connection/adapters/runtimeConnection";
 import { type ClientHost } from "@/platform/host";
 import { createTheme } from "@/features/theme/adapters/theme";
@@ -95,7 +96,7 @@ export function createTestClient(
     scope,
   );
   if (options.start !== false) composer.start();
-  const host = options.host ?? createBrowserHost();
+  const host = options.host ?? createBrowserHost(IMAGE_FILENAME_STEM);
   const workspace = createWorkspace(client, navigation, host, () => false, agent.access, runtime);
   workspace.dock.activate(runtime.endpoint.currentRuntimeEndpoint());
   const directory = createWorkingDirectoryPicker(

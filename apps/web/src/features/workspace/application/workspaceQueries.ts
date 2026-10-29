@@ -1,4 +1,4 @@
-import { type FileEntryType } from "@flame/runtime-client/wire";
+import { type FileEntryType } from "@/foundation/protocolValues.generated";
 import { createDataQuery, createParameterizedDataQuery } from "@/extensions/dataQuery";
 export interface WorkspaceProjectSummary {
   id: string;

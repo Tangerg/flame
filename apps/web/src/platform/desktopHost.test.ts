@@ -1,3 +1,4 @@
+import { IMAGE_FILENAME_STEM } from "@/app/product";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { RpcTransportError } from "@flame/runtime-client";
 import { createClientHost } from "@/platform/clientHost";
@@ -284,7 +285,7 @@ describe("DesktopHostClient", () => {
       wailsCall.mockResolvedValueOnce({
         localRuntime: { endpoint: "http://127.0.0.1:17171", localToken: "token" },
       });
-      const bootstrap = await createClientHost().bootstrap();
+      const bootstrap = await createClientHost(IMAGE_FILENAME_STEM).bootstrap();
       expect(bootstrap.runtime.localToken).toBe("token");
       expect(wailsCall).toHaveBeenCalledWith(BOOTSTRAP);
     });

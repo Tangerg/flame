@@ -1,4 +1,4 @@
-import { type RestoreType } from "@flame/runtime-client/wire";
+import { type RestoreType } from "@/foundation/protocolValues.generated";
 export type { RestoreType };
 import { type MCPServerID } from "@/features/mcp/public/serverIdentity";
 import {

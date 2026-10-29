@@ -1,3 +1,4 @@
+import { IMAGE_FILENAME_STEM } from "@/app/product";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { stubInstance } from "@/test/stubInstance";
 import { type Navigator } from "@/lib/navigation";
@@ -103,7 +104,7 @@ function installTargets(name: string, navigation: Navigator = createMemoryNaviga
   const workspace = createWorkspace(
     client,
     navigation,
-    createBrowserHost(),
+    createBrowserHost(IMAGE_FILENAME_STEM),
     () => false,
     agent.access,
     runtime,

@@ -1,5 +1,5 @@
 import { type RecordedFileChange } from "@flame/component-sdk";
-import { WIRE_ENUMS } from "@flame/runtime-client/wire";
+import { CHANGE_STATUSES } from "@/foundation/protocolValues.generated";
 import { isJSONNumber, parseJSON, projectNumber } from "@qimu/sdk/json";
 
 export interface CommandResult {
@@ -45,7 +45,7 @@ function readRepresentableNumber(value: unknown): number | undefined {
 function readRecordedFileChange(value: unknown): RecordedFileChange | undefined {
   const change = readToolResultObject(value);
   if (!change || typeof change.path !== "string") return undefined;
-  const status = WIRE_ENUMS.ChangeStatus.find((candidate) => candidate === change.status);
+  const status = CHANGE_STATUSES.find((candidate) => candidate === change.status);
   const added = readRepresentableNumber(change.added);
   const removed = readRepresentableNumber(change.removed);
   if (

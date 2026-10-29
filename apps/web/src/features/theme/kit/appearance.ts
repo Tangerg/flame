@@ -19,7 +19,7 @@ export const PAPER_TEXTURES = ["off", "xuan", "cotton", "grain"] as const;
 
 export type PaperTexture = (typeof PAPER_TEXTURES)[number];
 
-export const DEFAULT_PAPER_TEXTURE_STRENGTH = 3;
+const DEFAULT_PAPER_TEXTURE_STRENGTH = 3;
 
 interface CustomTheme {
   bg: string;

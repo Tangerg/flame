@@ -3,7 +3,7 @@ import {
   type ApprovalGate,
   type ApprovalMode,
   type RememberScopeKind as RememberScope,
-} from "@flame/runtime-client/wire";
+} from "@/foundation/protocolValues.generated";
 export type { ApprovalDecision, ApprovalGate, ApprovalMode, RememberScope };
 export interface ApprovalModePolicy {
   exec: ApprovalGate;

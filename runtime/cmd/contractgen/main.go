@@ -38,6 +38,7 @@ func main() {
 	out := flag.String("out", ".", "directory for generated artifacts; empty writes only requested projections")
 	validators := flag.String("validators", "", "directory the generated Go wire validator is written to; skipped when empty")
 	ts := flag.String("ts", "", "directory the TypeScript protocol binding is written to; skipped when empty")
+	clientValues := flag.String("client-values", "", "file for consumer-neutral client scalar contracts; skipped when empty")
 	localBinding := flag.String("go-local", "", "local typed Go binding output directory")
 	remoteBinding := flag.String("go-client", "", "remote typed Go client output directory")
 	sampleSource := flag.String("samples", "", "directory of canonical Runtime JSON samples; required with -ts")
@@ -45,7 +46,7 @@ func main() {
 
 	err := writeGoBindings(*localBinding, *remoteBinding)
 	if err == nil {
-		err = run(*out, *validators, *ts, *sampleSource)
+		err = run(*out, *validators, *ts, *sampleSource, *clientValues)
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "contractgen:", err)
@@ -53,12 +54,14 @@ func main() {
 	}
 }
 
-func run(dir, validatorDir, tsDir, sampleDir string) error {
+func run(dir, validatorDir, tsDir, sampleDir, clientValuesFile string) error {
 	if tsDir != "" && sampleDir == "" {
 		return fmt.Errorf("canonical sample directory is required with TypeScript output")
 	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return fmt.Errorf("create %s: %w", dir, err)
+	if dir != "" {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return fmt.Errorf("create %s: %w", dir, err)
+		}
 	}
 	// Built once: every artifact must describe the same registry snapshot, and a
 	// second build would let them disagree if anything about it were not pure.
@@ -78,21 +81,35 @@ func run(dir, validatorDir, tsDir, sampleDir string) error {
 		}
 	}
 
-	for _, artifact := range []struct {
-		name    string
-		content any
-	}{
-		{"manifest.json", built},
-		{"schema.json", newBundle(walked)},
-		{"openrpc.json", newOpenRPC(registry, shapes, walked)},
-	} {
-		if err := writeJSON(filepath.Join(dir, artifact.name), artifact.content); err != nil {
-			return err
+	if dir != "" {
+		for _, artifact := range []struct {
+			name    string
+			content any
+		}{
+			{"manifest.json", built},
+			{"schema.json", newBundle(walked)},
+			{"openrpc.json", newOpenRPC(registry, shapes, walked)},
+		} {
+			if err := writeJSON(filepath.Join(dir, artifact.name), artifact.content); err != nil {
+				return err
+			}
+		}
+		path := filepath.Join(dir, "API_REFERENCE.md")
+		if err := os.WriteFile(path, []byte(reference(built)), 0o644); err != nil {
+			return fmt.Errorf("write %s: %w", path, err)
 		}
 	}
-	path := filepath.Join(dir, "API_REFERENCE.md")
-	if err := os.WriteFile(path, []byte(reference(built)), 0o644); err != nil {
-		return fmt.Errorf("write %s: %w", path, err)
+	if clientValuesFile != "" {
+		values, err := newClientValues(walked)
+		if err != nil {
+			return err
+		}
+		if err := os.MkdirAll(filepath.Dir(clientValuesFile), 0o755); err != nil {
+			return fmt.Errorf("create client scalar directory: %w", err)
+		}
+		if err := os.WriteFile(clientValuesFile, []byte(values), 0o644); err != nil {
+			return fmt.Errorf("write %s: %w", clientValuesFile, err)
+		}
 	}
 	if tsDir == "" {
 		return nil
@@ -117,7 +134,7 @@ func run(dir, validatorDir, tsDir, sampleDir string) error {
 		if artifact.name == tsSamplesFileName {
 			directory = testing
 		}
-		path = filepath.Join(directory, artifact.name)
+		path := filepath.Join(directory, artifact.name)
 		if err := os.WriteFile(path, []byte(artifact.content), 0o644); err != nil {
 			return fmt.Errorf("write %s: %w", path, err)
 		}

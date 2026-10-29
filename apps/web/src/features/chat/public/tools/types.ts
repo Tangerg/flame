@@ -1,6 +1,6 @@
 import { type ComponentType, type ReactNode } from "react";
 import { type ToolCall } from "@/features/agent/public/sessionView";
-import { type RendererSelectorKind } from "@flame/runtime-client/wire";
+import { type RendererSelectorKind } from "@/foundation/protocolValues.generated";
 export interface PluginRendererSelector {
   name: string;
   type: RendererSelectorKind;

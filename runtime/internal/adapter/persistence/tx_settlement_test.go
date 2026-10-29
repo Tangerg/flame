@@ -259,7 +259,7 @@ func TestTransactionSettlesBeforeGoroutineExit(t *testing.T) {
 func TestMissingInstallationReadRequiresAcceptedSettlement(t *testing.T) {
 	failure := errors.New("installation read commit failed")
 	db := settlementDatabase(t, &transactionFaults{commitFailure: failure})
-	snapshot, found, err := newInstallationStore(db).Get(t.Context(), testsupport.InstallationID(t))
+	snapshot, found, err := newInstallationStore(newReleaseStore(db)).Get(t.Context(), testsupport.InstallationID(t))
 	if found || snapshot.Installation != nil || !errors.Is(err, failure) {
 		t.Fatalf("installation = (%v, %t, %v), want rejected read settlement", snapshot.Installation, found, err)
 	}
@@ -267,13 +267,14 @@ func TestMissingInstallationReadRequiresAcceptedSettlement(t *testing.T) {
 
 func TestInstallationLookupSeparatesAbsentRecordFromMissingRelease(t *testing.T) {
 	db := settlementDatabase(t, &transactionFaults{})
-	store := newInstallationStore(db)
+	catalog := newReleaseStore(db)
+	store := newInstallationStore(catalog)
 	id := testsupport.InstallationID(t)
 	if _, found, err := store.Get(t.Context(), id); err != nil || found {
 		t.Fatalf("absent installation = (%t, %v), want admitted absence", found, err)
 	}
 	release := testsupport.Release(t, "1", plugin.Declaration{Name: "package"})
-	if err := newReleaseStore(db).Admit(t.Context(), release); err != nil {
+	if err := catalog.Admit(t.Context(), release); err != nil {
 		t.Fatal(err)
 	}
 	installation, err := plugin.New(id, "/package", release)
@@ -282,6 +283,9 @@ func TestInstallationLookupSeparatesAbsentRecordFromMissingRelease(t *testing.T)
 	}
 	if err := store.projectRecord(t.Context(), installation.Snapshot()); err != nil {
 		t.Fatal(err)
+	}
+	if _, found, err := store.Get(t.Context(), id); err != nil || !found {
+		t.Fatalf("admitted installation = (%t, %v)", found, err)
 	}
 	if _, err := db.ExecContext(t.Context(), `PRAGMA foreign_keys=OFF`); err != nil {
 		t.Fatal(err)

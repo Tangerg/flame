@@ -1,4 +1,4 @@
-import { type ApprovalRuleDecision } from "@flame/runtime-client/wire";
+import { type ApprovalRuleDecision } from "@/foundation/protocolValues.generated";
 import { type MCPServerID } from "@/features/mcp/public/serverIdentity";
 type ApprovalSubject =
   { type: "all" } | { type: "exact"; value: string } | { type: "glob"; value: string };
