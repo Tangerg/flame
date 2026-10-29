@@ -20,8 +20,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
 	"github.com/Tangerg/scope/core/chat"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 // toolEnvironment groups the tool resolver with the separately-owned MCP
@@ -76,7 +79,7 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 	}
 	admission := cfg.stores.Admission
 	commands, callers := deps.framework.commands, deps.framework.callers
-	mcpPool, err := mcp.Open(ctx, deps.lifetime, deps.mcp.servers, cfg.stores.MCPAuthorization(), deps.registry, deps.modelServices.callbacks, prepareTool, deps.publish, callers, deps.framework.installed)
+	mcpPool, err := mcp.Open(ctx, deps.lifetime, deps.mcp.servers, cfg.stores.MCPAuthorization(), deps.registry, deps.modelServices.callbacks, deps.publish, callers, deps.framework.installed)
 	if err != nil {
 		return toolEnvironment{}, fmt.Errorf("runtime: open MCP connections: %w", err)
 	}
@@ -141,8 +144,10 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		Plan:             deps.plan,
 		Interrupt:        runinput.Require,
 		MCPToolDisabled:  deps.mcp.exposure.ToolDisabled,
-		RestoreMCP:       mcpPool.RestoreTools,
-		SkillProposals:   deps.skillProposals,
+		RestoreMCP: func(ctx context.Context, refs []tool.Ref, activations []plugin.Activation) ([]toolcontract.Tool, func() error, error) {
+			return mcpPool.RestoreTools(ctx, refs, activations, prepareTool)
+		},
+		SkillProposals: deps.skillProposals,
 		// Opt-in per-command OS isolation for the shell tools (off by default).
 		SandboxShell:         cfg.sandboxShell,
 		SandboxReadOnlyPaths: cfg.sandboxReadOnlyPaths,
@@ -157,7 +162,7 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 	if err != nil {
 		return environment, fmt.Errorf("runtime: build tools: %w", err)
 	}
-	mcpPool.SetToolSink(builtToolset.Resolver.SetMCPTools)
+	mcpPool.SetToolSink(builtToolset.Resolver.SetMCPTools, prepareTool)
 	environment.tools = builtToolset
 	environment.closers = append(environment.closers, terminalClosers(builtToolset.Closers)...)
 	return environment, nil

@@ -16,7 +16,7 @@ import (
 // RestoreTools acquires the original checkpoint graphs before discovering their
 // tools. The returned release belongs to the restored Run manifest; none of
 // these sessions are published as today's catalog for new executions.
-func (p *Pool) RestoreTools(ctx context.Context, refs []domaintool.Ref, activations []plugin.Activation) (_ []toolcontract.Tool, _ func() error, err error) {
+func (p *Pool) RestoreTools(ctx context.Context, refs []domaintool.Ref, activations []plugin.Activation, prepare ToolPreparation) (_ []toolcontract.Tool, _ func() error, err error) {
 	groups := make(map[mcpserver.ID]struct{})
 	var sources []mcpserver.ID
 	seen := make(map[domaintool.Ref]struct{}, len(refs))
@@ -93,7 +93,7 @@ func (p *Pool) RestoreTools(ctx context.Context, refs []domaintool.Ref, activati
 			}
 			candidate.held, candidate.owner = use, p.inner
 			tools[ref] = authorizedTool{Tool: candidate, pool: p, registry: p.registry, source: candidate,
-				config: config, prepare: p.prepare, host: p.toolHost(candidate)}
+				config: config, prepare: prepare, host: p.toolHost(candidate)}
 		}
 	}
 	result := make([]toolcontract.Tool, 0, len(refs))

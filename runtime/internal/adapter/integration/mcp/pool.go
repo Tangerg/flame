@@ -31,7 +31,6 @@ type Pool struct {
 	commands  invocationRestorer
 	registry  sourceRegistry
 	inner     *connections
-	prepare   ToolPreparation
 	publish   invalidation.Publish
 	lifetime  context.Context
 	callbacks *qimumcp.Callbacks
@@ -51,7 +50,6 @@ func Open(
 	servers []mcpserver.Server,
 	oauthSessions oauthSessionStore, registry sourceRegistry,
 	callbacks *qimumcp.Callbacks,
-	prepare ToolPreparation,
 	publish invalidation.Publish,
 	commands invocationRestorer, installed *Installed,
 ) (*Pool, error) {
@@ -62,7 +60,7 @@ func Open(
 	for index, server := range servers {
 		configs[index] = ServerConfig{Server: server.Clone()}
 	}
-	pool := &Pool{commands: commands, registry: registry, prepare: prepare, publish: publish, lifetime: lifetime, callbacks: callbacks, installed: installed}
+	pool := &Pool{commands: commands, registry: registry, publish: publish, lifetime: lifetime, callbacks: callbacks, installed: installed}
 	client := newClient()
 	if err := qimumcp.RegisterClient(client); err != nil {
 		return nil, err
@@ -167,9 +165,9 @@ func (p *Pool) Detach(name mcpserver.ID) error {
 
 // setToolSink publishes the initial catalog and live connection changes to the
 // resolver through the connection owner's publication boundary.
-func (p *Pool) SetToolSink(sink func([]toolcontract.Tool, []mcpserver.ID)) {
+func (p *Pool) SetToolSink(sink func([]toolcontract.Tool, []mcpserver.ID), prepare ToolPreparation) {
 	p.inner.setToolSink(func(catalog []Executable, pending, changed []mcpserver.ID) {
-		sink(p.authorizedTools(catalog), pending)
+		sink(p.authorizedTools(catalog, prepare), pending)
 		if len(changed) > 0 {
 			p.publish.Notify(invalidation.ForMCP(changed...))
 		}

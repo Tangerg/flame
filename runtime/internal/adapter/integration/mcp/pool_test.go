@@ -36,7 +36,7 @@ func TestRefusedConnectionWithdrawsTheLiveSession(t *testing.T) {
 			t.Cleanup(transport.Close)
 			server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}
 			registry := &mutableSourceRegistry{server: server.Clone()}
-			pool, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry, nil, nil, nil, nil, nil)
+			pool, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry, nil, nil, nil, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -47,12 +47,12 @@ func TestRefusedConnectionWithdrawsTheLiveSession(t *testing.T) {
 			})
 			var initial []toolcontract.Tool
 			awaitPoolStartup(t, pool)
-			pool.SetToolSink(func(tools []toolcontract.Tool, _ []mcpserver.ID) { initial = tools })
+			pool.SetToolSink(func(tools []toolcontract.Tool, _ []mcpserver.ID) { initial = tools }, nil)
 			if len(initial) != 1 {
 				t.Fatalf("initial tools = %d", len(initial))
 			}
 			published := []toolcontract.Tool{nil}
-			pool.SetToolSink(func(tools []toolcontract.Tool, _ []mcpserver.ID) { published = tools })
+			pool.SetToolSink(func(tools []toolcontract.Tool, _ []mcpserver.ID) { published = tools }, nil)
 			registry.refuse(tt.refusal)
 			for operation, connect := range map[string]func() error{
 				"configure": func() error { return connectPool(pool, t.Context(), server.ID()) },
@@ -83,7 +83,7 @@ func TestRefusedConnectionWithdrawsTheLiveSession(t *testing.T) {
 func TestSupersededRefusalRecordsNothing(t *testing.T) {
 	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: "https://mcp.example/tools"}
 	registry := &mutableSourceRegistry{server: server.Clone(), refusal: errors.New("unreadable source")}
-	pool, err := Open(t.Context(), t.Context(), nil, nil, registry, nil, nil, nil, nil, nil)
+	pool, err := Open(t.Context(), t.Context(), nil, nil, registry, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -74,7 +74,7 @@ func TestPreparedToolRechecksAuthorityAndReleasesBeforeRefusedDispatch(t *testin
 			t.Cleanup(finish)
 			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 			defer cancel()
-			pool, err := Open(ctx, ctx, []mcpserver.Server{server}, nil, registry, nil, func(ctx context.Context, source Executable, _ ToolHost) (ToolCall, func(), error) {
+			prepare := func(ctx context.Context, source Executable, _ ToolHost) (ToolCall, func(), error) {
 				close(prepared)
 				select {
 				case <-resume:
@@ -87,7 +87,8 @@ func TestPreparedToolRechecksAuthorityAndReleasesBeforeRefusedDispatch(t *testin
 					defer settled.Add(1)
 					return source.Call(ctx, invocation)
 				}, func() { releases.Add(1) }, nil
-			}, nil, nil, nil)
+			}
+			pool, err := Open(ctx, ctx, []mcpserver.Server{server}, nil, registry, nil, nil, nil, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -99,7 +100,7 @@ func TestPreparedToolRechecksAuthorityAndReleasesBeforeRefusedDispatch(t *testin
 			})
 			awaitPoolStartup(t, pool)
 			var tools []toolcontract.Tool
-			pool.SetToolSink(func(current []toolcontract.Tool, _ []mcpserver.ID) { tools = current })
+			pool.SetToolSink(func(current []toolcontract.Tool, _ []mcpserver.ID) { tools = current }, prepare)
 			if len(tools) != 1 {
 				t.Fatal("fixture did not publish its remote tool")
 			}

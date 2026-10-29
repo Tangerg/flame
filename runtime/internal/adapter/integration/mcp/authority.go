@@ -119,10 +119,10 @@ func rejected(reason string) error {
 	return failure
 }
 
-func (p *Pool) authorizedTools(catalog []Executable) []toolcontract.Tool {
+func (p *Pool) authorizedTools(catalog []Executable, prepare ToolPreparation) []toolcontract.Tool {
 	result := make([]toolcontract.Tool, 0, len(catalog))
 	for _, executable := range catalog {
-		result = append(result, authorizedTool{Tool: executable, pool: p, registry: p.registry, source: executable, config: executable.SourceConfig(), prepare: p.prepare, host: p.toolHost(executable)})
+		result = append(result, authorizedTool{Tool: executable, pool: p, registry: p.registry, source: executable, config: executable.SourceConfig(), prepare: prepare, host: p.toolHost(executable)})
 	}
 	return result
 }

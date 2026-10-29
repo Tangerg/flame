@@ -35,7 +35,7 @@ func TestOriginalScheduleSourceAvailabilityPreservesRecoveryFailures(t *testing.
 			}
 			server := mcpserver.Server{Source: source, Name: name, Enabled: true, Transport: mcpserver.TransportStdio, Command: "echo"}
 			poolSource := toolSourceRegistry{server: server}
-			pool, err := mcp.Open(t.Context(), t.Context(), nil, nil, poolSource, nil, nil, nil, nil, nil)
+			pool, err := mcp.Open(t.Context(), t.Context(), nil, nil, poolSource, nil, nil, nil, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
