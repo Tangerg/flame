@@ -1,4 +1,11 @@
-import { parseTree, printParseErrorCode, visit, type Node } from "jsonc-parser";
+import {
+  applyEdits,
+  format,
+  parseTree,
+  printParseErrorCode,
+  visit,
+  type Node,
+} from "jsonc-parser";
 
 // Unicode mode consumes a valid surrogate pair as one code point.
 const unpairedSurrogate = /\p{Surrogate}/u;
@@ -296,4 +303,16 @@ export function stringifyJSON(value: unknown, sortKeys = false): string {
   if (text === undefined) throw new TypeError("value is not JSON serializable");
   validateJSON(text);
   return text;
+}
+
+export function prettyJSON(value: unknown): string {
+  return formatJSONText(stringifyJSON(value));
+}
+
+// Change whitespace alone so displayed evidence retains its numeric lexemes.
+export function formatJSONText(source: string): string {
+  return applyEdits(
+    source,
+    format(source, undefined, { tabSize: 2, insertSpaces: true, eol: "\n" }),
+  );
 }

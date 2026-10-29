@@ -10317,6 +10317,111 @@ owned orphan process remains. This receipt changes no qualified product source.
 Primary user data, parallel work and read-only references remain preserved.
 Continue from fresh task evidence; the continuous goal remains active.
 
+### Trajectory exact JSON evidence
+
+A valid completed Tool can make the whole Trajectory panel fail before any
+filter or disclosure is activated. Runtime retains opaque arguments/results as
+exact JSON; wide integers are `bigint` and other preserved numeric literals use
+`ExactNumber`. The report's ordinary `JSON.stringify` calls cannot encode either.
+The original actual Wails view reports `JSON.stringify cannot serialize BigInt`
+inside the installed-component boundary while the conversation remains readable.
+This is a high-severity reading failure, separate from the completed search-key
+boundary above. Ordinary typed statistics remain safe JavaScript numbers.
+
+`plugins/trajectory/component/report.tsx` now uses the existing exact codec for
+search and two-space raw evidence. The pure formatting functions move from Web's
+`lib/json.ts` into their existing owner, `@qimu/sdk/json`. All five Web callers
+(Agent folding, pending Run openings, approval drafts, Tool inspection and
+conversation archives) import that owner directly; the superseded Web file is
+deleted. `prettyJSON` serializes values before formatting. `formatJSONText` changes
+only source whitespace, retaining numeric literals, string escapes, member order
+and repeated members without becoming a decoder or validator.
+
+There is no new dependency, state, cache, protocol or persisted-data migration.
+Search keeps the same reasoning redaction and canonical message-image exclusion;
+business `data` remains searchable. Existing page, Run/type, disclosure, focus,
+copy and command owners remain. Normal plugin generation changes only
+Trajectory's `component.js` and `modules.generated.json` among the **32** resource
+inputs. Its new import uses the already declared Host-shared `@qimu/sdk/json`
+specifier, preserving the codec's class identity. Select/reinstall the rebuilt
+resource with the matching Host SDK; source generation does not update a running
+Runtime installation or an evaluated window.
+
+Read-only ZCode `ModelTrajectorySearch.ts` and `ModelTrajectoryToolPayload.ts`
+again support a common search/reading payload boundary. Their ordinary serializer
+and catch-to-string fallback do not satisfy Flame's exact JSON contract and are
+not copied. The established better-* typography, grouping, focus, semantic-color
+and motion review is reused. Existing evidence indentation, syntax colors,
+bounded scrolling and full-width navigation stay intact; this batch adds no
+surface chrome, explanatory label or motion rule.
+
+Verification (2026-10-29):
+
+- Baseline: **6 Web files / 120 tests** pass. The new four cases use the real
+  public client and canonical memory transport, with independent arguments/result
+  cases for wide integers and exact decimals/exponents. Initial test-only drafts
+  lacking completed Tool facts are correctly refused by wire validation and are
+  excluded from the defect evidence. The corrected cases all fail on the old
+  search serializer. Keeping corrected search but restoring only the old raw
+  serializer makes all four fail again on expansion. Each comparison restores
+  the candidate source byte for byte.
+- Final: **4 SDK files / 57 tests** and **8 Web files / 136 tests** pass, including
+  unchanged ordinary evidence, redaction/image boundaries, accepted-page/focus
+  continuity, exact unquoted numeric literals, Chinese consecutive spaces and no
+  additional read while filtering. SDK type/lint/format checks, Web type/lint,
+  normal plugin generation and its five checks, and the **11 Web/native gates**
+  pass serially. `make check-native` completes in **22.646 s**, including native
+  Go test/vet/build and the supported Wails build; existing macOS linker warnings
+  remain nonfatal. No shared UI source changes require repeating its earlier
+  qualified suite.
+- Actual EN/light/14 px/Orange/full motion at **1440 × 900 CSS px**: read the
+  reply, retain the original draft, search `9007199254740993`, expand the Tool,
+  read Files/DockResizer and return with the same query/disclosure. Cmd+L returns
+  to the retained 28-character draft at caret 28; native paste continues it to
+  `Draft before exact evidence. Continued.`. Full-width reading retains the query;
+  observed Tab navigation reaches Recorded evidence and End reaches its
+  **383 / 831 / 448 px** scroll position/content/viewport.
+- Native Copy code followed by ordinary system paste creates the existing long
+  pasted-text attachment. Its actual review editor contains the complete
+  **1,048-byte UTF-8** record, including exact arguments and result, exponent,
+  negative zero, both wide integers and the two consecutive Chinese spaces.
+  Removing only whitespace outside strings yields the expected complete captured
+  record. The editor retains two-space indentation; source SHA-256 is
+  `8291016e1a4cf23839bdc0afbbed1cdd317fe0ab773e9a0a4619ba4394899319`.
+  Escape closes that review; its temporary attachment is removed without Send.
+- Actual ZH/dark/18 px/custom blue/motion off: exact decimal search remains
+  expanded when twenty native Zoom In commands establish **560 × 377 CSS px /
+  200%**. The existing narrow-window action opens full-width reading. Native Tab
+  reaches the named evidence reader, wheel moves it and End reaches
+  **841 / 1,068 / 227 px**. Native window zoom changes the viewport to
+  **756 × 475** and back, retaining query, disclosure and reading focus. Explicit
+  Close and Cmd+L return to the original draft/caret 9; native paste continues it
+  to `精确证据前的草稿。继续核对。`. Actual Size is restored before Quit.
+- A separate observer-free production fixture build has **616** identical output
+  paths; only the two entry HTML files differ from the observed build. The actual
+  ZH/dark/18 px app searches `1e999999999`, reaches the Tool with Tab/Enter, reads
+  the file and returns with its query and disclosure retained. Cmd+L and native
+  paste continue the exact draft to `无观测精确记录草稿。继续输入。` with the input
+  focused. Observer request/event deltas are both **zero**. No DOM identity or
+  unobserved caret measurement is claimed for this launch.
+
+The native producer changes only private canonical Tool data and the fixture's
+static composition import to the rebuilt declared Trajectory ESM. The real
+InstalledComponent lifecycle, shared UI and validated public reads are exercised.
+Live Runtime release acquisition/realm admission, provider execution, replay,
+business mutation, Send, VoiceOver, OS IME, RTL, browser suites and performance
+baselines are **not run**. No Claude CLI or delegated agent is used. The scoped
+task is approved; this does not establish whole-product or award-level completion.
+
+All four native launches are stopped, the exact private bundle is unregistered
+and the passive collector is closed. Cleanup removes **8** new checkout outputs
+and **3** private profiles, restoring all **4** preserved files and modes. Checks
+confirm **6,311** accepted source inputs, **32** resources, **41** read-only
+references, **3** owned instruction files, **20** output baselines and **5**
+profile-absence baselines. The primary parallel checkout remains untouched.
+Evidence retirement and remote publication follow in this batch's receipt.
+Continue with fresh content/Dock task observations; the continuous goal stays active.
+
 ## Shortcut recording and activation
 
 `apps/web/src/lib/combo.ts` now includes the canonical `space` / physical `Space`

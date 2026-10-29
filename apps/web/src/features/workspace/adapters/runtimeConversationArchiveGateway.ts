@@ -2,7 +2,7 @@ import { asSessionId, type FlameClient, type SessionArtifact } from "@flame/runt
 import { type ConversationArchive } from "@/features/workspace/application/conversationExport";
 import { type ConversationArchiveGateway } from "@/features/workspace/application/ports/conversationArchiveGateway";
 import { type FileTransferPort } from "@/features/workspace/application/ports/fileTransfer";
-import { prettyJSON } from "@/lib/json";
+import { prettyJSON } from "@qimu/sdk/json";
 function runtimeConversationArchiveGateway(client: FlameClient): ConversationArchiveGateway {
   return {
     async exportConversation(sessionId, format) {

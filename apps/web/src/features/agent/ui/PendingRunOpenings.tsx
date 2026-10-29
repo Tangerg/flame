@@ -1,5 +1,5 @@
 import { useAgentDependencies } from "@/features/agent/application/agentContext";
-import { prettyJSON } from "@/lib/json";
+import { prettyJSON } from "@qimu/sdk/json";
 import * as stylex from "@stylexjs/stylex";
 import { Button, Disclosure } from "@flame/ui";
 import { color, face, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";

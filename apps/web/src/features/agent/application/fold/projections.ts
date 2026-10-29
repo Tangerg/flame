@@ -1,5 +1,4 @@
-import { stringifyJSON } from "@qimu/sdk/json";
-import { prettyJSON } from "@/lib/json";
+import { prettyJSON, stringifyJSON } from "@qimu/sdk/json";
 import {
   commandToolResult,
   patchToolResult,

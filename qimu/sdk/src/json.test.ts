@@ -4,6 +4,8 @@ import {
   ExactNumber,
   parseJSON,
   stringifyJSON,
+  prettyJSON,
+  formatJSONText,
   compareJSONNumbers,
   equalJSON,
   isJSONInteger,
@@ -88,6 +90,42 @@ describe("feature JSON values", () => {
     expect(stringifyJSON({ optional: undefined, values: holes })).toBe(
       '{"values":[null,null,null]}',
     );
+  });
+});
+
+describe("recorded JSON presentation", () => {
+  it("indents exact values without quoting or rounding their numeric literals", () => {
+    const source =
+      '{"id":9007199254740993,"data":[0.1000000000000000000001,1e999999999,-0],"中文":"保留两处  空格"}';
+    const value = parseJSON(source);
+    const text = prettyJSON(value);
+    expect(text).toBe(
+      [
+        "{",
+        '  "id": 9007199254740993,',
+        '  "data": [',
+        "    0.1000000000000000000001,",
+        "    1e999999999,",
+        "    -0",
+        "  ],",
+        '  "中文": "保留两处  空格"',
+        "}",
+      ].join("\n"),
+    );
+    expect(stringifyJSON(parseJSON(text))).toBe(source);
+    expect(stringifyJSON(value)).toBe(source);
+  });
+
+  it("changes only source whitespace, retaining repeated members and string escapes", () => {
+    const source = '{"n":1.0,"n":1e+99,"text":"a  b\\u4e2d\\n"}';
+    expect(formatJSONText(source)).toBe(
+      '{\n  "n": 1.0,\n  "n": 1e+99,\n  "text": "a  b\\u4e2d\\n"\n}',
+    );
+  });
+
+  it("retains the serializer's refusal of unsafe and unsupported values", () => {
+    for (const value of [undefined, NaN, 9007199254740992, new Map()])
+      expect(() => prettyJSON(value)).toThrow(TypeError);
   });
 });
 

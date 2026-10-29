@@ -81,3 +81,10 @@ Ordinary `data` properties in Tool arguments, results and extensions remain
 searchable, including nested arrays and image-shaped business values. This local
 search projection never changes accepted records or their complete raw evidence;
 Run/type selection, page identity and disclosure/focus owners remain unchanged.
+
+Search encodes accepted records with `@qimu/sdk/json`'s `stringifyJSON`; raw
+evidence uses its shared two-space `prettyJSON` formatter. Opaque Tool arguments
+and results retain wide integers, exact decimals, exponent literals and negative
+zero as JSON numbers. Neither projection converts them to JavaScript numbers or
+quoted strings. The existing Host-shared JSON module owns their encoding and
+formatting; rebuild/select the matching package resource with that Host SDK.

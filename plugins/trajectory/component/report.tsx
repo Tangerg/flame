@@ -3,6 +3,7 @@ import type { ReactNode, Ref } from "react";
 import type { Translate } from "@flame/component-sdk";
 import { Activity, Cpu, Terminal, FileText, Server } from "@flame/icons/react";
 import type { Page, TrajectoryEntry } from "@flame/runtime-client/wire";
+import { prettyJSON, stringifyJSON } from "@qimu/sdk/json";
 import {
   Button,
   Badge,
@@ -106,13 +107,13 @@ function evidence(row: TrajectoryEntry): TrajectoryEntry {
 }
 function searchable(row: TrajectoryEntry): string {
   const recorded = evidence(row);
-  if (recorded.type !== "item") return JSON.stringify(recorded);
+  if (recorded.type !== "item") return stringifyJSON(recorded);
   const item = recorded.item;
   if (
     (item.type !== "userMessage" && item.type !== "agentMessage") ||
     !item.content
   )
-    return JSON.stringify(recorded);
+    return stringifyJSON(recorded);
   // Only canonical message image bytes are opaque encoding; every other data
   // property, including tool arguments and results, is recorded evidence.
   const content = item.content.map((part) => {
@@ -120,7 +121,7 @@ function searchable(row: TrajectoryEntry): string {
     const { data: _bytes, ...metadata } = part;
     return metadata;
   });
-  return JSON.stringify({ ...recorded, item: { ...item, content } });
+  return stringifyJSON({ ...recorded, item: { ...item, content } });
 }
 function identity(row: TrajectoryEntry): string {
   return row.type === "run"
@@ -299,7 +300,7 @@ function Observation({
     notes.push(t("note.reasoningRedacted"));
   const raw = (
     <CodeBlock label={t("evidence.recorded")} language="json">
-      {JSON.stringify(row, null, 2)}
+      {prettyJSON(row)}
     </CodeBlock>
   );
   return (
