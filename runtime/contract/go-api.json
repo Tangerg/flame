@@ -962,6 +962,10 @@
           "signature": "func(path string, expected os.FileInfo, maximumBytes int64) (*os.File, os.FileInfo, error)"
         },
         {
+          "name": "PathsOverlap",
+          "signature": "func(first string, second string) (bool, error)"
+        },
+        {
           "name": "ResolvePath",
           "signature": "func(root string, path string) (string, error)"
         },
