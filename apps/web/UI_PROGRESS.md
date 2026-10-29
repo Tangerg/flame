@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Current batch makes the existing full-width return destination visible and repairs continuous long labels in the shared Tooltip. The exact source-return chain, compact Dock, current material, focus and drafts retain their owners. Shared UI checks (194 tests), workspace/installed continuity (152 tests), Web typecheck, the 12 gates and actual light/dark/18px/200%/observer-free tasks pass. Evidence and cleanup are complete; the qualified source is ready for publication under **Full-width return destinations and complete labels**. Prior notification-cap delivery remains `c46bd7c5a`. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
+Current batch makes the existing full-width return destination visible and repairs continuous long labels in the shared Tooltip. The exact source-return chain, compact Dock, current material, focus and drafts retain their owners. Shared UI checks (194 tests), workspace/installed continuity (152 tests), Web typecheck, the 12 gates and actual light/dark/18px/200%/observer-free tasks pass. Implementation `c126bc235` is published to remote main; evidence and cleanup are complete. See **Full-width return destinations and complete labels**. Prior notification-cap delivery remains `c46bd7c5a`. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -96,6 +96,8 @@ return and editing. The notification-cap follow-up is published as `c46bd7c5a`,
 after integrating 31 main commits through `aee40a542`
 and qualifies visible adjacent-action continuity, later draft focus and the
 observer-free native control; see **Notification history and current action focus**.
+Full-width source-return destinations and complete shared Tooltip labels are
+published as `c126bc235`; see **Full-width return destinations and complete labels**.
 See **Goal save
 feedback and pending dismissal** and **Computer console
 editing and operation return**. Preserve the
@@ -6615,8 +6617,12 @@ The round-tripped in-memory gzip retains **102 UTF-8 records**, **7,951,234 raw
 bytes** and **1,048,331 gzip bytes**, including private canonical inputs, serial
 build/gate logs, before/after snapshots, asset/source maps and cleanup proof.
 SHA-256: `9831365157ce9bc5cc46e6871a3007a3ea52fbf89b7470abfc04ca9bb697eb3c`.
-Publication of the qualified source follows this completed verification and
-cleanup boundary.
+Implementation `c126bc23549a806054d4a45bfde5e925313db515` is committed and
+pushed to remote main. Normal staged formatting, all-workspace lint and commit
+message hooks pass. Exact remote `refs/heads/main`, local HEAD and origin/main
+match after that push, with zero unpushed commits and a clean owned checkout.
+This documentation-only receipt preserves the qualified source and cleanup
+boundary; it does not repeat native or code checks.
 
 Verdict: **Approve** for the inspected source-return and complete-label task;
 no HIGH finding remains in this scope. This is not whole-product award-level
