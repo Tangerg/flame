@@ -1,19 +1,7 @@
+import { METHODS } from "./methods";
 import { z } from "zod";
 import { PROTOCOL, type CapabilityDescriptor } from "@qimu/node";
 import { LIMITS } from "./limits";
-
-export const METHODS = Object.freeze({
-  read: "flame.computer/read.v1",
-  watch: "flame.computer/watch.v1",
-  open: "flame.computer/open.v1",
-  close: "flame.computer/close.v1",
-  stop: "flame.computer/stop.v1",
-  execute: "flame.computer/execute.v1",
-  reply: "flame.computer/reply.v1",
-  context: "flame.computer/context.v1",
-  history: "flame.computer/history.v1",
-  result: "flame.computer/result.v1",
-} as const);
 
 const token = z.string().min(1).max(256);
 const digest = z.string().regex(/^[a-f0-9]{64}$/);

@@ -1,7 +1,8 @@
+import { METHODS } from "./methods";
 import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
 import { Capability, parseJSON, type CapabilityDescriptor } from "@qimu/node";
-import descriptor, { METHODS, schemas } from "./capability";
+import descriptor, { schemas } from "./capability";
 
 it("publishes projections of the one descriptor owner", () => {
   const generated = parseJSON(

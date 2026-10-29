@@ -11,7 +11,7 @@ import type { CallPluginRequest, ServerCapabilities } from "@flame/runtime-clien
 import { createTestClient } from "@/test/renderClient";
 import { mockSelectLayout } from "@/test/selectLayout";
 import { Computer } from "../../../../plugins/computer/component/component";
-import { methods } from "../../../../plugins/computer/component/useComputer";
+import { METHODS } from "../../../../plugins/computer/contracts/methods";
 import { CAPABILITY_JSON } from "../../../../plugins/computer/component/methods.generated";
 import type {
   Approval,
@@ -131,7 +131,7 @@ function fixture(value = initial) {
       return success(original);
     }
     if (request.method === "plugins.stream") {
-      if (params.method !== methods.watch)
+      if (params.method !== METHODS.watch)
         throw new Error("fixture only streams control snapshots");
       let controller: ReadableStreamDefaultController<Uint8Array>;
       const stop = () => {
@@ -156,8 +156,8 @@ function fixture(value = initial) {
     }
     if (request.method !== "plugins.call")
       throw new Error("unexpected fixture operation: " + request.method);
-    if (params.method === methods.read) return output(snapshot);
-    if (params.method === methods.context) {
+    if (params.method === METHODS.read) return output(snapshot);
+    if (params.method === METHODS.context) {
       if (unavailableContext) return unknown();
       const captured = context();
       if (contextGate) {
@@ -168,7 +168,7 @@ function fixture(value = initial) {
       }
       return output(captured);
     }
-    if (params.method === methods.history) {
+    if (params.method === METHODS.history) {
       const start = Number((JSON.parse(params.input) as { before?: string }).before ?? 0);
       const entries = [...records.values()];
       const end = start + (historyPageSize ?? entries.length);
@@ -182,7 +182,7 @@ function fixture(value = initial) {
         ...(end < entries.length ? { next: String(end) } : {}),
       });
     }
-    if (params.method === methods.result) {
+    if (params.method === METHODS.result) {
       const record = structuredClone(records.get((JSON.parse(params.input) as { id: string }).id));
       const gate = resultGate;
       resultGate = undefined;
@@ -200,7 +200,7 @@ function fixture(value = initial) {
       if (JSON.stringify(params) !== JSON.stringify(originals.get(key)))
         throw new Error("fixture command replay changed its captured input");
       if (unknownLifecycleCommands.has(key)) return unknown();
-      if (executeMode === "unknown" && params.method === methods.execute) return unknown();
+      if (executeMode === "unknown" && params.method === METHODS.execute) return unknown();
       return output(outcomes.get(key));
     }
     originals.set(key, structuredClone(params));
@@ -215,13 +215,13 @@ function fixture(value = initial) {
       invocationJSON: '{"origin":"human"}',
     });
     let result: unknown;
-    if (params.method === methods.open) {
+    if (params.method === METHODS.open) {
       publish({ ...snapshot, session: structuredClone(initial.session) });
       result = snapshot.session;
-    } else if (params.method === methods.close || params.method === methods.stop) {
+    } else if (params.method === METHODS.close || params.method === METHODS.stop) {
       if (input.sessionId !== snapshot.session?.id)
         throw new Error("fixture command changed its captured session");
-      if (params.method === methods.stop && input.operationId !== snapshot.session?.operation?.id)
+      if (params.method === METHODS.stop && input.operationId !== snapshot.session?.operation?.id)
         throw new Error("fixture stop changed its original operation");
       publish({
         ...snapshot,
@@ -248,7 +248,7 @@ function fixture(value = initial) {
         );
         blocked = undefined;
       }
-    } else if (params.method === methods.reply) {
+    } else if (params.method === METHODS.reply) {
       await replyGate;
       if (input.requestId !== snapshot.session?.approval?.id)
         return success({
@@ -256,7 +256,7 @@ function fixture(value = initial) {
         });
       publish({ ...snapshot, session: { ...snapshot.session!, approval: undefined } });
       result = true;
-    } else if (params.method === methods.execute) {
+    } else if (params.method === METHODS.execute) {
       result = {
         commandId: key,
         result: { content: [{ type: "text", text: "Original fixture result." }] },
@@ -571,7 +571,7 @@ it("opens an explicit bounded lease on the displayed Runtime host only after a h
   fireEvent.click(screen.getByRole("button", { name: "Authorize and open control" }));
   await screen.findByRole("button", { name: "End control lease" });
   const [original] = setup.server.originals.values();
-  expect(original!.method).toBe(methods.open);
+  expect(original!.method).toBe(METHODS.open);
   expect(JSON.parse(original!.input)).toEqual({ leaseSeconds: 300 });
 });
 
@@ -645,7 +645,7 @@ it.each(["editor", "outside action"])(
     await waitFor(() => expect(screen.queryByRole("button", { name: "Decline" })).toBeNull());
     expect(document.activeElement).toBe(destination === "editor" ? editor : outside);
     expect(
-      [...server.originals.values()].filter((item) => item.method === methods.reply),
+      [...server.originals.values()].filter((item) => item.method === METHODS.reply),
     ).toHaveLength(1);
   },
 );
@@ -805,7 +805,7 @@ it("recovers the original unknown command after remount without another command 
   expect(setup.server.originals.size).toBe(1);
   expect(
     setup.server.calls
-      .filter((call) => call.params.method === methods.execute)
+      .filter((call) => call.params.method === METHODS.execute)
       .every(
         (call) =>
           call.key === originalKey && JSON.stringify(call.params) === JSON.stringify(originalInput),
@@ -828,7 +828,7 @@ it("keeps stop available during an outstanding execution and preserves its unkno
   await screen.findByRole("button", { name: "Check original outcome" });
   expect(setup.server.originals.size).toBe(2);
   const [execution, cancellation] = [...setup.server.originals.entries()];
-  expect(cancellation![1].method).toBe(methods.stop);
+  expect(cancellation![1].method).toBe(METHODS.stop);
   expect(JSON.parse(cancellation![1].input)).toEqual({
     sessionId: "control-1",
     operationId: execution![0],
@@ -837,8 +837,8 @@ it("keeps stop available during an outstanding execution and preserves its unkno
 });
 
 it.each([
-  { method: methods.close, action: "End control lease" },
-  { method: methods.stop, action: "Stop current operation" },
+  { method: METHODS.close, action: "End control lease" },
+  { method: METHODS.stop, action: "Stop current operation" },
 ])(
   "keeps $action available for a later lease while its original command remains unknown",
   async ({ method, action }) => {
@@ -876,7 +876,7 @@ it.each([
       expect(
         setup.server.calls.some(
           (call) =>
-            call.params.method === methods.result &&
+            call.params.method === METHODS.result &&
             (JSON.parse(call.params.input) as { id: string }).id === originalKey,
         ),
       ).toBe(true),
@@ -887,7 +887,7 @@ it.each([
     const [newKey, current] = [...setup.server.originals.entries()][1]!;
     expect(newKey).not.toBe(originalKey);
     expect(JSON.parse(current.input)).toEqual(
-      method === methods.stop
+      method === METHODS.stop
         ? { sessionId: "control-2", operationId: "operation-2" }
         : { sessionId: "control-2" },
     );
@@ -961,7 +961,7 @@ it.each(["Refresh status", "Reconnect observation"])(
     fireEvent.click(screen.getByRole("button", { name: action }));
     const editor = await screen.findByRole("textbox", { name: "Tool arguments (JSON)" });
     await waitFor(() => expect(editor.hasAttribute("disabled")).toBe(false));
-    expect(setup.server.calls.filter((call) => call.params.method === methods.context).length).toBe(
+    expect(setup.server.calls.filter((call) => call.params.method === METHODS.context).length).toBe(
       2,
     );
     expect(setup.server.originals.size).toBe(0);
@@ -1399,9 +1399,9 @@ it("retains evidence and refresh focus while rereading the same original record"
   expect(screen.getByText("Recorded original-operation.")).toBe(evidence);
   expect(document.activeElement).toBe(refresh);
   expect(refresh.getAttribute("aria-disabled")).toBe("true");
-  const calls = setup.server.calls.filter((call) => call.params.method === methods.result).length;
+  const calls = setup.server.calls.filter((call) => call.params.method === METHODS.result).length;
   fireEvent.click(refresh);
-  expect(setup.server.calls.filter((call) => call.params.method === methods.result)).toHaveLength(
+  expect(setup.server.calls.filter((call) => call.params.method === METHODS.result)).toHaveLength(
     calls,
   );
   await act(async () => held.release());
@@ -1480,7 +1480,7 @@ it("marks retained evidence stale after a failed reread and retries the same ori
   setup.server.setResultUnavailable(false);
   fireEvent.click(refresh);
   await waitFor(() => expect(screen.queryByText(/Retained evidence may be outdated/)).toBeNull());
-  const reads = setup.server.calls.filter((call) => call.params.method === methods.result);
+  const reads = setup.server.calls.filter((call) => call.params.method === METHODS.result);
   expect(reads).toHaveLength(3);
   expect(
     reads.every(

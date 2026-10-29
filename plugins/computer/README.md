@@ -190,6 +190,9 @@ rebinding old calls to a new surface.
 `contracts/capability.ts` is the source of the capability descriptor, schemas and
 local structural types. The ordinary contract generator produces installed
 resources and component methods. There is no hand-maintained parallel descriptor.
+`contracts/methods.ts` owns the pure method identity map shared by the descriptor,
+backend and browser consumers. The component does not maintain another alias map
+or import the Node descriptor implementation.
 
 ## Model tools and typed operations
 

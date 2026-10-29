@@ -1,14 +1,11 @@
+import { METHODS } from "../contracts/methods";
 import { mkdirSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import { toolReceipts } from "@flame/backend-sdk";
 import { Backend, Capability, canonicalJSON } from "@qimu/node";
 import { projectNumber } from "@qimu/sdk/json";
 import { z } from "zod";
-import descriptor, {
-  METHODS,
-  schemas,
-  type Snapshot,
-} from "../contracts/capability";
+import descriptor, { schemas, type Snapshot } from "../contracts/capability";
 import { LIMITS } from "../contracts/limits";
 import manifest from "../package/plugin.json";
 import { configuration } from "./configuration";

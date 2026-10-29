@@ -1,3 +1,4 @@
+import { METHODS } from "../contracts/methods";
 import { randomUUID } from "node:crypto";
 import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -21,7 +22,6 @@ import {
 import { z } from "zod";
 import { parseJSON, stringifyJSON } from "@qimu/sdk/json";
 import descriptor, {
-  METHODS,
   type ControlSession,
   type ExecuteInput,
   type ExecutionResult,

@@ -1,3 +1,4 @@
+import { METHODS } from "../contracts/methods";
 import { toolCommandId } from "@flame/backend-sdk";
 import { randomUUID } from "node:crypto";
 import { hostname } from "node:os";
@@ -18,7 +19,6 @@ import type {
   ElicitResult,
 } from "@modelcontextprotocol/sdk/types.js";
 import {
-  METHODS,
   schemas,
   type Approval,
   type ControlSession,
