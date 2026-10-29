@@ -45,10 +45,9 @@ type Servers struct {
 	table    *serverTable
 	launch   clientLauncher
 
-	mu       sync.Mutex
-	clients  map[serverClientKey]*client
-	starting map[serverClientKey]*clientStart // one component-owned launch per key
-	closed   bool
+	mu     sync.Mutex
+	slots  map[serverClientKey]*clientSlot
+	closed bool
 
 	closeOnce sync.Once
 	closeErr  error
@@ -56,11 +55,10 @@ type Servers struct {
 
 type clientLauncher func(context.Context, ServerSpec, string) (*client, error)
 
-// clientStart is one in-flight first-use launch shared by every concurrent
-// caller for the same workspace/server key. The launch belongs to Servers, not
-// to the request that happened to arrive first: callers may stop waiting
-// independently, while Close cancels and joins the actual launch.
-type clientStart struct {
+// clientSlot is one connection generation for a workspace/server. Its pending
+// boundary owns both retirement of the previous generation and initialization
+// of its replacement. Callers may stop waiting without canceling that boundary.
+type clientSlot struct {
 	done       chan struct{}
 	cancel     context.CancelFunc
 	client     *client
@@ -82,8 +80,7 @@ func NewServers(lifetime context.Context, specs []ServerSpec) (*Servers, error) 
 		lifetime: lifetime,
 		table:    table,
 		launch:   startClient,
-		clients:  map[serverClientKey]*client{},
-		starting: map[serverClientKey]*clientStart{},
+		slots:    map[serverClientKey]*clientSlot{},
 	}, nil
 }
 
@@ -125,26 +122,38 @@ func (s *Servers) clientFor(ctx context.Context, root string, spec ServerSpec) (
 		s.mu.Unlock()
 		return nil, errClosed
 	}
-	if c, ok := s.clients[key]; ok {
-		s.mu.Unlock()
-		return c, nil
+	var previous *client
+	if slot, ok := s.slots[key]; ok {
+		select {
+		case <-slot.done:
+			if slot.err != nil {
+				s.mu.Unlock()
+				return nil, slot.err
+			}
+			select {
+			case <-slot.client.conn.DisconnectNotify():
+				previous = slot.client
+			default:
+				s.mu.Unlock()
+				return slot.client, nil
+			}
+		default:
+			s.mu.Unlock()
+			return awaitClientStart(ctx, slot)
+		}
 	}
-	if pending, ok := s.starting[key]; ok {
-		s.mu.Unlock()
-		return awaitClientStart(ctx, pending)
-	}
-	if err := ctx.Err(); err != nil {
+	if err := cancellation.Err(ctx); err != nil {
 		s.mu.Unlock()
 		return nil, err
 	}
 
 	startCtx, cancel := context.WithCancel(s.lifetime)
-	pending := &clientStart{done: make(chan struct{}), cancel: cancel}
-	s.starting[key] = pending
+	pending := &clientSlot{done: make(chan struct{}), cancel: cancel}
+	s.slots[key] = pending
 	launch := s.launch
 	s.mu.Unlock()
 
-	go s.launchClient(startCtx, key, root, spec, pending, launch)
+	go s.launchClient(startCtx, key, root, spec, pending, previous, launch)
 	return awaitClientStart(ctx, pending)
 }
 
@@ -172,11 +181,26 @@ func (s *Servers) launchClient(
 	key serverClientKey,
 	root string,
 	spec ServerSpec,
-	pending *clientStart,
+	pending *clientSlot,
+	previous *client,
 	launch clientLauncher,
 ) {
 	defer pending.cancel()
-	c, err := runClientLaunch(ctx, launch, spec, root)
+	if previous != nil {
+		if err := previous.retire(); err != nil {
+			s.mu.Lock()
+			pending.client = previous
+			pending.err = fmt.Errorf("lsp: retire %s before replacement: %w", spec.Name, err)
+			close(pending.done)
+			s.mu.Unlock()
+			return
+		}
+	}
+	var c *client
+	err := cancellation.Err(ctx)
+	if err == nil {
+		c, err = runClientLaunch(ctx, launch, spec, root)
+	}
 	if err == nil && c == nil {
 		err = fmt.Errorf("lsp: start %s returned a nil client", spec.Name)
 	}
@@ -186,12 +210,11 @@ func (s *Servers) launchClient(
 	}
 
 	s.mu.Lock()
-	delete(s.starting, key)
 	if !s.closed {
 		pending.client = c
 		pending.err = err
-		if err == nil {
-			s.clients[key] = c
+		if err != nil && s.slots[key] == pending {
+			delete(s.slots, key)
 		}
 		close(pending.done)
 		s.mu.Unlock()
@@ -199,9 +222,6 @@ func (s *Servers) launchClient(
 	}
 	s.mu.Unlock()
 
-	// Close won the race with a successful handshake. Reclaim the process before
-	// publishing completion so Servers.Close really joins every resource it
-	// owned, and preserve a cleanup failure in the owner's shutdown result.
 	if c != nil {
 		pending.cleanupErr = c.close()
 	}
@@ -209,7 +229,7 @@ func (s *Servers) launchClient(
 	close(pending.done)
 }
 
-func awaitClientStart(ctx context.Context, pending *clientStart) (*client, error) {
+func awaitClientStart(ctx context.Context, pending *clientSlot) (*client, error) {
 	// Prefer a completed launch over a racing caller cancellation.
 	select {
 	case <-pending.done:
@@ -220,7 +240,7 @@ func awaitClientStart(ctx context.Context, pending *clientStart) (*client, error
 	case <-pending.done:
 		return pending.client, pending.err
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return nil, cancellation.Err(ctx)
 	}
 }
 
@@ -363,37 +383,29 @@ func (s *Servers) Close() error {
 	s.closeOnce.Do(func() {
 		s.mu.Lock()
 		s.closed = true
-		clients := maps.Clone(s.clients)
-		starting := maps.Clone(s.starting)
-		s.clients = nil
-		s.starting = nil
+		slots := maps.Clone(s.slots)
+		s.slots = nil
 		s.mu.Unlock()
 
-		startKeys := make([]serverClientKey, 0, len(starting))
-		for key := range starting {
-			startKeys = append(startKeys, key)
+		keys := make([]serverClientKey, 0, len(slots))
+		for key := range slots {
+			keys = append(keys, key)
 		}
-		slices.SortFunc(startKeys, compareServerClientKeys)
-		for _, key := range startKeys {
-			starting[key].cancel()
+		slices.SortFunc(keys, compareServerClientKeys)
+		for _, key := range keys {
+			slots[key].cancel()
 		}
-
-		clientKeys := make([]serverClientKey, 0, len(clients))
-		for key := range clients {
-			clientKeys = append(clientKeys, key)
-		}
-		slices.SortFunc(clientKeys, compareServerClientKeys)
 		var errs []error
-		for _, key := range clientKeys {
-			if err := clients[key].close(); err != nil {
-				errs = append(errs, err)
+		for _, key := range keys {
+			slot := slots[key]
+			<-slot.done
+			if slot.client != nil {
+				if err := slot.client.close(); err != nil {
+					errs = append(errs, err)
+				}
 			}
-		}
-		for _, key := range startKeys {
-			pending := starting[key]
-			<-pending.done
-			if pending.cleanupErr != nil {
-				errs = append(errs, pending.cleanupErr)
+			if slot.cleanupErr != nil {
+				errs = append(errs, slot.cleanupErr)
 			}
 		}
 		s.closeErr = errors.Join(errs...)

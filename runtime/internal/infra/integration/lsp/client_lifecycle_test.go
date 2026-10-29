@@ -46,9 +46,9 @@ func TestKillAndJoinProcessReapsWaiter(t *testing.T) {
 		t.Fatalf("start helper process: %v", err)
 	}
 	t.Cleanup(func() { _ = cmd.Process.Kill() })
-	wait := make(chan error, 1)
+	wait := make(chan processEnd, 1)
 	go func() {
-		wait <- cmd.Wait()
+		wait <- processEnd{exitErr: cmd.Wait()}
 		close(wait)
 	}()
 
@@ -57,6 +57,18 @@ func TestKillAndJoinProcessReapsWaiter(t *testing.T) {
 	}
 	if _, open := <-wait; open {
 		t.Fatal("process waiter was not joined")
+	}
+}
+
+func TestKillAndJoinProcessPreservesUnconfirmedWaitAndCleanup(t *testing.T) {
+	waitErr := errors.New("process wait failed")
+	cleanupErr := errors.New("descendant retirement failed")
+	wait := make(chan processEnd, 1)
+	wait <- processEnd{exitErr: waitErr, cleanupErr: cleanupErr}
+	close(wait)
+	err := killAndJoinProcess("test", func() error { return nil }, wait)
+	if !errors.Is(err, waitErr) || !errors.Is(err, cleanupErr) {
+		t.Fatalf("hard-stop evidence = %v", err)
 	}
 }
 

@@ -45,7 +45,7 @@ func (c *client) diagnostics(ctx context.Context, abs string, settle time.Durati
 		}
 		select {
 		case <-c.conn.DisconnectNotify():
-			return nil, fmt.Errorf("lsp: diagnostics connection ended: %w", jsonrpc2.ErrClosed)
+			return nil, fmt.Errorf("lsp: diagnostics connection ended: %w", errors.Join(jsonrpc2.ErrClosed, c.close()))
 		default:
 		}
 		c.mu.Lock()

@@ -1272,6 +1272,10 @@ including an explicitly empty analysis. Missing or stale pushes report pending
 with their observed version, and older pushes cannot replace newer diagnostics.
 Workspace symbol searches retain every failed language alongside successful
 symbols; partial results are explicitly marked incomplete.
+One connection slot per workspace/server owns startup, the live connection and
+retirement before replacement. A later query replaces a disconnected server
+after joining its resources, without replaying the failed operation. Concurrent
+queries share that replacement; shutdown cancels and joins the entire slot.
 
 Formatting admits complete output up to the existing 8 MiB file bound. An external
 formatter owns its process group through cleanup, including after a successful root

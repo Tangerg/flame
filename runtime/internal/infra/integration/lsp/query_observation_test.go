@@ -22,7 +22,7 @@ func (h rpcHandler) Handle(ctx context.Context, conn *jsonrpc2.Conn, request *js
 func connectedTestClient(t *testing.T, handler rpcHandler) (*client, *jsonrpc2.Conn) {
 	t.Helper()
 	agent, server := net.Pipe()
-	wait := make(chan error)
+	wait := make(chan processEnd)
 	close(wait)
 	c := &client{
 		spec: ServerSpec{Name: "test", LanguageID: "go"}, shutdownBase: context.WithoutCancel(t.Context()),
@@ -31,7 +31,7 @@ func connectedTestClient(t *testing.T, handler rpcHandler) (*client, *jsonrpc2.C
 	}
 	remote := jsonrpc2.NewConn(t.Context(), jsonrpc2.NewBufferedStream(server, lspObjectCodec{}), handler)
 	c.conn = jsonrpc2.NewConn(t.Context(), jsonrpc2.NewBufferedStream(agent, lspObjectCodec{}), jsonrpc2.AsyncHandler(c))
-	t.Cleanup(func() { _ = c.close(); _ = remote.Close() })
+	t.Cleanup(func() { _ = c.close(); _ = c.conn.Close(); _ = remote.Close() })
 	return c, remote
 }
 

@@ -60,7 +60,7 @@ func startClient(ctx context.Context, spec ServerSpec, root string) (*client, er
 		}
 		return err
 	})
-	wait := make(chan error, 1)
+	wait := make(chan processEnd, 1)
 	go func() {
 		err := cmd.Wait()
 		if errors.Is(err, exec.ErrWaitDelay) && cmd.ProcessState != nil && cmd.ProcessState.Success() {
@@ -68,7 +68,7 @@ func startClient(ctx context.Context, spec ServerSpec, root string) (*client, er
 		}
 		// Server launchers may exit while their children retain the pipes.
 		// Completion owns those descendants even without an explicit Close.
-		wait <- errors.Join(err, stopProcess())
+		wait <- processEnd{exitErr: err, cleanupErr: stopProcess()}
 		close(wait)
 	}()
 
@@ -142,9 +142,12 @@ func (c *client) close() error {
 		}
 
 		select {
-		case err := <-c.wait:
-			if err != nil {
-				errs = append(errs, fmt.Errorf("lsp: wait for %s shutdown: %w", c.spec.Name, err))
+		case end := <-c.wait:
+			if end.exitErr != nil {
+				c.processErr = fmt.Errorf("lsp: %s process ended: %w", c.spec.Name, end.exitErr)
+			}
+			if end.cleanupErr != nil {
+				errs = append(errs, end.cleanupErr)
 			}
 		case <-ctx.Done():
 			errs = append(errs, fmt.Errorf(
@@ -157,21 +160,38 @@ func (c *client) close() error {
 				errs = append(errs, err)
 			}
 		}
-		c.closeErr = errors.Join(errs...)
+		c.cleanupErr = errors.Join(errs...)
 	})
-	return c.closeErr
+	return errors.Join(c.processErr, c.cleanupErr)
+}
+
+// retire joins a disconnected server before replacement. Its exit status is
+// the previous connection's outcome; cleanup failure still prevents replacement.
+func (c *client) retire() error {
+	_ = c.close()
+	if c.processErr != nil {
+		if _, exited := errors.AsType[*exec.ExitError](c.processErr); !exited {
+			return errors.Join(c.processErr, c.cleanupErr)
+		}
+	}
+	return c.cleanupErr
 }
 
 // killAndJoinProcess is the hard-stop half of client ownership. cmd.Wait has a
 // dedicated goroutine, so this function sends the terminal signal and consumes
 // that goroutine's result before returning. The resulting ExitError is expected
 // after Kill; the caller already reports why a hard stop was necessary.
-func killAndJoinProcess(name string, stop func() error, wait <-chan error) error {
+func killAndJoinProcess(name string, stop func() error, wait <-chan processEnd) error {
 	if err := stop(); err != nil {
 		return fmt.Errorf("lsp: kill unresponsive %s: %w", name, err)
 	}
-	<-wait
-	return nil
+	end := <-wait
+	if end.exitErr != nil {
+		if _, exited := errors.AsType[*exec.ExitError](end.exitErr); !exited {
+			return errors.Join(end.exitErr, end.cleanupErr)
+		}
+	}
+	return end.cleanupErr
 }
 
 // pipeRWC adapts a child process's separate stdout (read) and stdin (write)
