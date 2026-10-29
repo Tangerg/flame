@@ -186,7 +186,12 @@ const styles = stylex.create({
   fieldLabel: { color: color.fgSoft, fontWeight: weight.medium },
   context: { marginTop: space.s2, minWidth: 0 },
   hostedContext: { marginTop: 0 },
-  section: { display: "grid", gap: layout.contentGap, minWidth: 0 },
+  section: {
+    display: "flex",
+    flexDirection: "column",
+    gap: layout.contentGap,
+    minWidth: 0,
+  },
   sectionHeading: {
     margin: 0,
     fontWeight: weight.semibold,

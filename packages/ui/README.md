@@ -125,7 +125,10 @@ the focused-control fallback.
 `PanelHeader` owns the page title, description and contextual navigation.
 Its title size can use the smaller existing display roles for workbench views.
 Page actions belong to the persistent `Panel.controls` zone, alongside filters.
-`PanelSection` groups one heading, supporting context, filters and content;
+`PanelSection` groups one heading, supporting context, filters and content in
+a single vertical flex flow. Wrapped controls keep their natural height when
+retained content moves between main reading and a narrow Dock; the section
+does not keep an inflated intrinsic grid row after native page zoom.
 `PanelFooter` groups paging only when another page exists. `RecordGroup variant="list"` owns the shared resource surface, corners
 and separators. Its rows follow their natural content height in a vertical flow,
 including complete wrapping paths in native WebKit. Callers own read and empty state: a truly empty group uses the
