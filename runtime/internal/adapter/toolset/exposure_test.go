@@ -6,22 +6,11 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
-
-func newTestCodeIntel(t *testing.T) *codeintel.Analyzer {
-	t.Helper()
-	analyzer, err := codeintel.New(t.Context(), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = analyzer.Close() })
-	return analyzer
-}
 
 // The Runtime exposes two ways to change a file and no more. They are one
 // vocabulary: same guard stack, same read-before-write stamp, and a path the
@@ -76,10 +65,8 @@ func TestResolverInitialManifestSeparatesDirectAndDeferredCapabilities(t *testin
 		}
 		return candidate
 	}
-	analyzer := newTestCodeIntel(t)
 	resolver, err := newResolver(resolverDeps{
 		A2A:          []toolcontract.Tool{named("remote_agent")},
-		LSP:          []toolcontract.Tool{named(string(domaintool.LSP))},
 		Shell:        []toolcontract.Tool{named(string(domaintool.Shell))},
 		AskUser:      named(string(domaintool.AskUser)),
 		EnterPlan:    named(string(domaintool.EnterPlanMode)),
@@ -88,7 +75,6 @@ func TestResolverInitialManifestSeparatesDirectAndDeferredCapabilities(t *testin
 		ToolResult:   named(string(domaintool.ReadToolResult)),
 		GoalGet:      named(string(domaintool.GetGoal)),
 		ProposeSkill: named(string(domaintool.ProposeSkill)),
-		CodeIntel:    analyzer,
 		ReadTracker:  newReadTracker(),
 	})
 	if err != nil {
@@ -118,7 +104,7 @@ func TestResolverInitialManifestSeparatesDirectAndDeferredCapabilities(t *testin
 		}
 	}
 	for _, name := range []string{
-		"remote_agent", "lsp", "linear_create_issue",
+		"remote_agent", "linear_create_issue",
 		"propose_skill",
 	} {
 		if !registered[name] {

@@ -23,7 +23,6 @@ func TestPresentToolCategoryGroupsBuiltInTools(t *testing.T) {
 		{string(tool.Edit), protocol.ToolCategoryEdit},
 		{string(tool.Read), protocol.ToolCategoryRead},
 		{string(tool.Grep), protocol.ToolCategorySearch},
-		{string(tool.LSP), protocol.ToolCategorySearch},
 		{string(tool.WebSearch), protocol.ToolCategoryWeb},
 		{string(tool.WebFetch), protocol.ToolCategoryWeb},
 		{string(tool.DelegateTask), protocol.ToolCategoryTask},

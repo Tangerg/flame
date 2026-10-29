@@ -11,7 +11,7 @@ import (
 // resolveRootManifest builds one exact root visibility snapshot.
 func resolveRootManifest(t *testing.T, mcpTools []toolcontract.Tool) Manifest {
 	t.Helper()
-	built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(), UserHome: t.TempDir()})
+	built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(), UserHome: t.TempDir(), SkillProposals: allWiredSkillProposals{}})
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
@@ -61,7 +61,7 @@ func TestResolverOffersSearchToolsOverDeferredCatalog(t *testing.T) {
 		t.Fatal("no tool reports deferred names")
 	}
 	deferred := nameSliceSet(search.DeferredToolNames())
-	for _, want := range []string{"files_read", "files_write", "lsp"} {
+	for _, want := range []string{"files_read", "files_write", "propose_skill"} {
 		if !deferred[want] {
 			t.Errorf("deferred names = %v, missing %q", deferred, want)
 		}
@@ -76,7 +76,7 @@ func TestResolverDefersRuntimeToolsWithoutMCP(t *testing.T) {
 			t.Errorf("initial manifest = %v, missing direct tool %q", advertised, direct)
 		}
 	}
-	for _, deferred := range []string{"lsp"} {
+	for _, deferred := range []string{"propose_skill"} {
 		if advertised[deferred] {
 			t.Errorf("initial manifest = %v, unexpectedly advertised deferred tool %q", advertised, deferred)
 		}
@@ -92,7 +92,7 @@ func nameSliceSet(names []string) map[string]bool {
 }
 
 func TestResolverRetainsCapturedMCPAuthorityBeforeDiscovery(t *testing.T) {
-	built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(), UserHome: t.TempDir()})
+	built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(), UserHome: t.TempDir(), SkillProposals: allWiredSkillProposals{}})
 	if err != nil {
 		t.Fatal(err)
 	}

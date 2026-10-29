@@ -31,8 +31,6 @@ func TestPresenterActivity(t *testing.T) {
 		{name: "load Skill", ref: testsupport.BuiltInTool(t, tool.LoadSkill), arguments: `{"name":"go-review"}`, want: "Loading Skill: go-review"},
 		{name: "propose named Skill", ref: testsupport.BuiltInTool(t, tool.ProposeSkill), arguments: `{"name":"review-go-api"}`, want: "Proposing Skill: review-go-api"},
 		{name: "propose unnamed Skill", ref: testsupport.BuiltInTool(t, tool.ProposeSkill), arguments: `{}`, want: "Proposing a Skill"},
-		{name: "LSP references", ref: testsupport.BuiltInTool(t, tool.LSP), arguments: `{"operation":"references"}`, want: "Finding symbol references"},
-		{name: "unknown LSP operation", ref: testsupport.BuiltInTool(t, tool.LSP), arguments: `{"operation":"rename"}`, want: "Querying the language server"},
 		{name: "unknown tool", ref: tool.Ref{}, arguments: `{}`, want: ""},
 	}
 	for _, test := range tests {

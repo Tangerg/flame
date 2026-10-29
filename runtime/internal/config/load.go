@@ -90,7 +90,6 @@ func Load(configDirectories []string) (Settings, error) {
 		BaseURL:      source.BaseURL,
 		UtilityModel: source.UtilityModel,
 		A2AAgents:    a2aAgents,
-		LSPServers:   source.LSP.Servers,
 
 		ToolResultOffload:    source.ToolResultOffload,
 		SandboxShell:         source.Sandbox.Shell,
@@ -157,9 +156,6 @@ type configShape struct {
 		ReadOnlyPaths []string `mapstructure:"readOnlyPaths"`
 	} `mapstructure:"sandbox"`
 	Server Server `mapstructure:"server"`
-	LSP    struct {
-		Servers []LSPServer `mapstructure:"servers"`
-	} `mapstructure:"lsp"`
 }
 
 func decodeConfig(v *viper.Viper) (configShape, error) {

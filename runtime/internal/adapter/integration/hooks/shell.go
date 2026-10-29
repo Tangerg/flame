@@ -15,7 +15,7 @@ import (
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
-	"github.com/Tangerg/flame/runtime/internal/infra/process/procgroup"
+	"github.com/Tangerg/flame/packages/go-sdk/procgroup"
 )
 
 const (

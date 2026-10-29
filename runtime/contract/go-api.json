@@ -2193,6 +2193,153 @@
       ]
     },
     {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/codeintel",
+      "imports": [
+        "github.com/Tangerg/flame/qimu/mcp",
+        "github.com/Tangerg/flame/qimu/portable"
+      ],
+      "constants": [
+        {
+          "name": "MaxDocumentBytes",
+          "type": "untyped int",
+          "value": "2097152"
+        },
+        {
+          "name": "MaxProblems",
+          "type": "untyped int",
+          "value": "4096"
+        },
+        {
+          "name": "MaxSummaryBytes",
+          "type": "untyped int",
+          "value": "65536"
+        }
+      ],
+      "functions": [
+        {
+          "name": "Contract",
+          "signature": "func() (*portable.Capability, error)"
+        },
+        {
+          "name": "FormatMethod",
+          "signature": "func() (*mcp.Method[Document, Transformation], error)"
+        },
+        {
+          "name": "InspectMethod",
+          "signature": "func() (*mcp.Method[Inspection, Report], error)"
+        },
+        {
+          "name": "NewDocument",
+          "signature": "func(workspace string, path string, content string) (Document, error)"
+        }
+      ],
+      "types": [
+        {
+          "name": "Document",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Workspace",
+              "type": "string",
+              "tag": "json:\"workspace\""
+            },
+            {
+              "name": "Path",
+              "type": "string",
+              "tag": "json:\"path\""
+            },
+            {
+              "name": "Version",
+              "type": "string",
+              "tag": "json:\"version\" jsonschema:\"pattern=^[a-f0-9]{64}$\""
+            },
+            {
+              "name": "Content",
+              "type": "string",
+              "tag": "json:\"content\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Inspection",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Document",
+              "type": "Document",
+              "tag": "json:\"document\""
+            },
+            {
+              "name": "Baseline",
+              "type": "[]string",
+              "tag": "json:\"baseline\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Report",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Version",
+              "type": "string",
+              "tag": "json:\"version\" jsonschema:\"pattern=^[a-f0-9]{64}$\""
+            },
+            {
+              "name": "Problems",
+              "type": "[]string",
+              "tag": "json:\"problems\""
+            },
+            {
+              "name": "Summary",
+              "type": "string",
+              "tag": "json:\"summary\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func(source Document) error"
+            }
+          ]
+        },
+        {
+          "name": "Transformation",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Version",
+              "type": "string",
+              "tag": "json:\"version\" jsonschema:\"pattern=^[a-f0-9]{64}$\""
+            },
+            {
+              "name": "Content",
+              "type": "*string",
+              "tag": "json:\"content,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func(source Document) error"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/memory",
       "imports": [
         "time"
@@ -2817,6 +2964,22 @@
               "signature": "func() bool"
             }
           ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/procgroup",
+      "imports": [
+        "os/exec"
+      ],
+      "functions": [
+        {
+          "name": "Prepare",
+          "signature": "func(command *exec.Cmd)"
+        },
+        {
+          "name": "Stop",
+          "signature": "func(command *exec.Cmd) error"
         }
       ]
     },

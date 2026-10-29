@@ -1,11 +1,17 @@
 # First-party portable packages
 
 Memory, Schedules, Knowledge base, GitHub, Model router, Guardrails, Web research,
-Saved usage reports, Generated interfaces, Computer use, Native sandbox and File watch are complete
-optional backends. Memory, Schedules, Saved usage reports, Generated interfaces and Computer use expose
+Saved usage reports, Generated interfaces, Deliverables, Computer use, Native sandbox,
+File watch and Code intelligence are complete
+optional backends. Memory, Schedules, Saved usage reports, Generated interfaces, Deliverables and Computer use expose
 ordinary public components; the remaining packages are backend-only.
 MCP model Tools and human Runtime commands
 enter the same existing backend owners. A component does not create a second store.
+
+Code intelligence (`codeintel`) owns language-server queries and version-bound
+formatting and diagnostics. Runtime retains the only file mutation path; the
+provider computes against supplied snapshots and never commits those transformations.
+See [`codeintel/README.md`](codeintel/README.md).
 
 Generated interfaces (`genui`) accepts a bounded interactive document through
 `genui_ui_present`. Its immutable presentation owner supplies the component,
@@ -105,7 +111,7 @@ is for replacing an owned build output after the new distribution has been built
 
 See [Memory](memory/README.md) and [Schedules](schedules/README.md) for fact owners
 and lifecycle contracts, [Knowledge base](knowledgebase/README.md) for document
-publication/retrieval, and [GitHub](github/README.md) for the read-only connector and
+publication/retrieval, and [GitHub](github/README.md) for repository read/write operations and
 credential/cache boundaries. [Model router](modelrouter/README.md) owns role and
 captured-envelope routing policy while core constructs and prices the model.
 [Guardrails](guardrails/README.md) owns protected phrases and refuses matching

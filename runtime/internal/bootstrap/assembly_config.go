@@ -9,7 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
@@ -61,8 +60,7 @@ type assemblyConfig struct {
 	// Tool-environment inputs; the runtime reads these to assemble the tool
 	// environment via toolset.Build and inject only its role resolver into the
 	// Agent execution adapter.
-	a2aAgents  []toolset.A2AAgentConfig
-	lspServers []codeintel.ServerSpec
+	a2aAgents []toolset.A2AAgentConfig
 
 	// SandboxShell opts the shell tools into per-command OS isolation (an
 	// in-place jail rooted at the command's cwd: workspace-write only, network

@@ -23,6 +23,7 @@ func initializeFirstPartyPlugins(ctx context.Context, stores *persistence.Bundle
 	}, stores.ProviderSelections, []plugins.DefaultProvider{
 		{Role: "memory", Package: "flame.memory", Contribution: "memory-provider"},
 		{Role: "schedules", Package: "flame.schedules", Contribution: "schedules-provider"},
+		{Role: "flame.code-intelligence.v1", Package: "flame.codeintel", Contribution: "code-intelligence"},
 	})
 }
 

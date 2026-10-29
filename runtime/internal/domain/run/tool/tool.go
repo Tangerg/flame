@@ -45,7 +45,6 @@ const (
 	Grep              BuiltInName = "grep"
 	ListSkills        BuiltInName = "list_skills"
 	LoadSkill         BuiltInName = "load_skill"
-	LSP               BuiltInName = "lsp"
 	ProposeSkill      BuiltInName = "propose_skill"
 	Read              BuiltInName = "read"
 	ReadShellOutput   BuiltInName = "read_shell_output"
@@ -65,7 +64,7 @@ const (
 var builtInNames = []BuiltInName{
 	ApplyPatch, AskUser, CreateGoal, DelegateTask, Edit,
 	EnterPlanMode, ExitPlanMode, GetGoal, Glob, Grep, ListSkills,
-	LoadSkill, LSP, ProposeSkill, Read, ReadShellOutput, ReadSkillResource, ReadToolResult,
+	LoadSkill, ProposeSkill, Read, ReadShellOutput, ReadSkillResource, ReadToolResult,
 	ReportGoalOutcome, SearchTools, SetPlan, Shell, StopShell, WebFetch, WebSearch,
 }
 

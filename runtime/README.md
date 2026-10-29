@@ -1262,13 +1262,18 @@ when its actual input did not fail; buffered text cannot conceal a pending read
 failure. Read, version verification, capacity and close failures survive together,
 and no matches enter the result until the file passes that complete admission.
 
-Filesystem tool manifests require an explicit absolute workspace and share one pinned directory authority with Scope. Tool paths are absolute or workspace-relative; home shorthand (`~` or `~/...`) is rejected rather than consulting ambient process state. Read stamps, mutation protection, edits, patches, and in-process formatting continue to address that directory after a rename or pathname replacement. Path-based search and external formatter configuration require the original named workspace; detached searches fail explicitly, and unavailable formatting or LSP diagnostics are reported with the successful mutation. Multi-file patches are not transactions: their failed results and mutation metadata retain Scope's acknowledged partial effects.
+Filesystem tool manifests require an explicit absolute workspace and share one pinned directory authority with Scope. Tool paths are absolute or workspace-relative; home shorthand (`~` or `~/...`) is rejected rather than consulting ambient process state. Read stamps, mutation protection, edits, and patches continue to address that directory after a rename or pathname replacement. Path-based search and installed code intelligence require the original named workspace; detached searches fail explicitly, and unavailable formatting or LSP diagnostics are reported with the successful mutation. Multi-file patches are not transactions: their failed results and mutation metadata retain Scope's acknowledged partial effects.
 
-Formatting admits complete output up to the existing 8 MiB file bound. An external
-formatter owns its process group through cleanup, including after a successful root
-exit. Its failure retains process, capacity, cleanup and cancellation evidence;
-formatting diagnostics never replace an acknowledged file mutation. An absent
-optional formatter is skipped; other executable lookup failures remain explicit.
+The selected `flame.code-intelligence.v1` provider receives source snapshots up to
+2 MiB and returns version-bound transformations and diagnostic reports. Runtime
+borrows one exact activation across baseline capture, formatting and diagnostics,
+checks source identity before applying results, and commits through Scope's
+filesystem executor. The installed Code intelligence package owns formatter
+selection, language servers and process cleanup. Missing optional formatters are
+unsupported; other failures remain explicit alongside the acknowledged edit.
+The former built-in `lsp` Tool identity and `lsp.servers` configuration are removed.
+Move server settings to the package's `lsp-servers` installation input and rebuild
+all protocol consumers. See [`plugins/codeintel`](../plugins/codeintel/README.md).
 
 Only the model's successful stable `read` creates read evidence. An admitted
 `edit` or `apply_patch` consumes its targets' evidence before execution, even

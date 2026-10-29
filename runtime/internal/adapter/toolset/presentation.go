@@ -8,7 +8,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
 	"github.com/Tangerg/scope/tools/content"
@@ -90,15 +89,6 @@ func proposeSkillActivity(arguments tool.Arguments) string {
 	return "Proposing a Skill"
 }
 
-func lspActivity(arguments tool.Arguments) string {
-	if args, ok := decodeArguments[lspActivityArguments](arguments, "operation"); ok {
-		if activity := lspOperationActivity(args.Operation); activity != "" {
-			return activity
-		}
-	}
-	return "Querying the language server"
-}
-
 type shellActivityArguments struct {
 	Description string `json:"description"`
 }
@@ -111,10 +101,6 @@ type skillActivityArguments struct {
 	Name string `json:"name"`
 }
 
-type lspActivityArguments struct {
-	Operation string `json:"operation"`
-}
-
 func isConciseActivityText(value string, maxRunes int) bool {
 	return value != "" && value == strings.TrimSpace(value) && utf8.RuneCountInString(value) <= maxRunes
 }
@@ -123,31 +109,6 @@ func isConciseActivityText(value string, maxRunes int) bool {
 // belongs to the tool, so name its values rather than respelling them: a
 // renamed operation must break here rather than silently fall through to the
 // generic label.
-func lspOperationActivity(operation string) string {
-	switch builtin.LSPOperation(operation) {
-	case builtin.LSPDefinition:
-		return "Finding a symbol definition"
-	case builtin.LSPReferences:
-		return "Finding symbol references"
-	case builtin.LSPImplementation:
-		return "Finding symbol implementations"
-	case builtin.LSPHover:
-		return "Inspecting a symbol"
-	case builtin.LSPIncomingCalls:
-		return "Finding incoming calls"
-	case builtin.LSPOutgoingCalls:
-		return "Finding outgoing calls"
-	case builtin.LSPDocumentSymbols:
-		return "Listing document symbols"
-	case builtin.LSPWorkspaceSymbols:
-		return "Searching workspace symbols"
-	case builtin.LSPDiagnostics:
-		return "Checking file diagnostics"
-	default:
-		return ""
-	}
-}
-
 // Present projects a known tool's canonical arguments and result into the
 // client transcript shape. The second result is optional plain output for
 // clients that render command text separately.

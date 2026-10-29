@@ -70,7 +70,7 @@ func TestFilesystemPoliciesShareScopeDirectoryAuthority(t *testing.T) {
 		}
 	}
 	got, err := os.ReadFile(filepath.Join(detached, "data.json"))
-	if err != nil || string(got) != "{\n  \"name\": \"latest\"\n}\n" {
+	if err != nil || string(got) != `{"name":"latest"}` {
 		t.Fatalf("original directory = %q, %v", got, err)
 	}
 	got, err = os.ReadFile(filepath.Join(workspace, "data.json"))

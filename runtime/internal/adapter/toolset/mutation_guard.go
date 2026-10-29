@@ -12,7 +12,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/qimu/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/fs"
@@ -214,44 +213,4 @@ func observeFingerprintExistingFile(ctx context.Context, root *filesystemRoot, p
 
 func sameFingerprintObservation(left, right fingerprintObservation) bool {
 	return left.fingerprint == right.fingerprint && filesystem.SameVersion(left.info, right.info)
-}
-
-// withMutationDiagnostics wraps a file-mutating tool so a successful change is
-// immediately type-checked. The baseline diff and best-effort semantics live in
-// [codeintel.Analyzer.DiagnoseMutation]; this adapter supplies the mutation
-// closure and resolved workspace root. It is a filesystem decorator, not an LSP
-// query tool, so it lives here rather than in package lsp.
-func withMutationDiagnostics(inner toolcontract.Tool, ci *codeintel.Analyzer, root *filesystemRoot) toolcontract.Tool {
-	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
-		paths, err := mutationPaths(inner, invocation)
-		if err != nil {
-			return toolcontract.Result{}, fmt.Errorf("inspect mutation paths before diagnostics: %w", err)
-		}
-		path := ""
-		if len(paths) == 1 {
-			path = paths[0]
-		}
-		var output toolcontract.Result
-		if ci != nil {
-			if err := verifyWorkspacePath(root); err != nil {
-				result, callErr := inner.Call(ctx, invocation)
-				if callErr != nil {
-					return result, callErr
-				}
-				return toolcontract.Result{Output: appendToolOutputText(result.Output, "\n\nDiagnostics unavailable: "+err.Error())}, nil
-			}
-		}
-		section, err := ci.DiagnoseMutation(ctx, root.Name(), path, func() error {
-			var callErr error
-			output, callErr = inner.Call(ctx, invocation)
-			return callErr
-		})
-		if err != nil || section == "" {
-			return output, err
-		}
-		if err := verifyWorkspacePath(root); err != nil {
-			return toolcontract.Result{Output: appendToolOutputText(output.Output, "\n\nDiagnostics unavailable: "+err.Error())}, nil
-		}
-		return toolcontract.Result{Output: appendToolOutputText(output.Output, "\n\n"+section)}, nil
-	})
 }

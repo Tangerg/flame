@@ -1,0 +1,21 @@
+{
+  "protocol": "io.github.tangerg.flame/plugin/1",
+  "inputs": [
+    {
+      "id": "lsp-servers",
+      "server": "codeintel",
+      "target": "env",
+      "key": "LSP_SERVERS",
+      "secret": false,
+      "required": false
+    }
+  ],
+  "contributions": [
+    {
+      "id": "code-intelligence",
+      "server": "codeintel",
+      "export": "code-intelligence",
+      "contract": "io.github.tangerg.flame/contracts/capability.generated.json"
+    }
+  ]
+}

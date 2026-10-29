@@ -18,7 +18,6 @@ var rejectedArguments = map[string]string{
 	string(domaintool.Edit):              `{"path":"seed.txt","old_string":"absent from the file","new_string":"x"}`,
 	string(domaintool.Glob):              `{"pattern":"["}`,
 	string(domaintool.Grep):              `{"pattern":"("}`,
-	string(domaintool.LSP):               `{"operation":"definition"}`,
 	string(domaintool.Read):              `{"path":"no/such/file.txt"}`,
 	string(domaintool.ReadShellOutput):   `{"shell_id":"shell_x","timeout_millis":10}`,
 	string(domaintool.SearchTools):       `{"query":"   "}`,

@@ -8,7 +8,6 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -19,8 +18,7 @@ import (
 )
 
 // This file is the tool-assembly entry point. It is the SOLE place that
-// constructs the capability adapters the tools wrap (code intelligence,
-// background exec, A2A) and wires them into the resolver — so the engine
+// constructs the local shell and A2A adapters the tools wrap and wires them into the resolver — so the engine
 // CORE imports none of them; it receives the assembled [Built]. Tool capability
 // construction therefore stays outside Agent
 // execution (doc/ARCHITECTURE.md).
@@ -30,20 +28,20 @@ import (
 type BuildConfig struct {
 	// Lifetime is the process-owned root for local capability resources that
 	// outlive the startup call and individual Tool invocations.
-	Lifetime       context.Context
-	UserHome       string
-	PackageSkills  promptsource.PackageSkills
-	SkillsUserDir  string
-	LSPServers     []codeintel.ServerSpec
-	A2AAgents      []A2AAgentConfig
-	Plan           builtin.PlanUseCases   // backs set_plan + exit_plan_mode; nil → both are omitted
-	PlanMode       builtin.PlanModePolicy // session-scoped Plan mode; nil → enter/exit are omitted
-	Interrupt      runs.InterruptFunc
-	ToolResults    builtin.ToolResultStore        // backs read_tool_result (reads offloaded tool output); nil → omitted
-	SkillUsage     builtin.SkillUsageRecorder     // records skill loads for the idle-lifecycle curator; nil → use recording off
-	SkillProposals builtin.SkillProposalSubmitter // backs root-only propose_skill; nil → omitted
-	GoalReader     goalReader                     // backs get_goal; nil → omitted
-	GoalReporter   builtin.GoalOutcomeReporter    // backs report_goal_outcome; nil → omitted
+	Lifetime         context.Context
+	UserHome         string
+	PackageSkills    promptsource.PackageSkills
+	SkillsUserDir    string
+	CodeIntelligence CodeIntelligence
+	A2AAgents        []A2AAgentConfig
+	Plan             builtin.PlanUseCases   // backs set_plan + exit_plan_mode; nil → both are omitted
+	PlanMode         builtin.PlanModePolicy // session-scoped Plan mode; nil → enter/exit are omitted
+	Interrupt        runs.InterruptFunc
+	ToolResults      builtin.ToolResultStore        // backs read_tool_result (reads offloaded tool output); nil → omitted
+	SkillUsage       builtin.SkillUsageRecorder     // records skill loads for the idle-lifecycle curator; nil → use recording off
+	SkillProposals   builtin.SkillProposalSubmitter // backs root-only propose_skill; nil → omitted
+	GoalReader       goalReader                     // backs get_goal; nil → omitted
+	GoalReporter     builtin.GoalOutcomeReporter    // backs report_goal_outcome; nil → omitted
 
 	// MCPToolDisabled reports whether an identified MCP tool is hidden. The
 	// runtime updates the underlying policy after every registry change.
@@ -96,18 +94,6 @@ func Build(ctx context.Context, config BuildConfig) (_ Built, err error) {
 	if !filepath.IsAbs(config.UserHome) {
 		return Built{}, errors.New("toolset: user home must be absolute")
 	}
-	// Code intelligence: one analyzer wrapping LSP clients; servers launch
-	// lazily per (workspace root, language). Tools are cwd-independent (the
-	// analyzer keys by root, read per call off the blackboard).
-	codeIntel, err := codeintel.New(config.Lifetime, config.LSPServers)
-	if err != nil {
-		return Built{}, fmt.Errorf("toolset: build code intelligence: %w", err)
-	}
-	lspTools, err := builtin.BuildLSP(codeIntel)
-	if err != nil {
-		return Built{}, fmt.Errorf("toolset: build lsp tools: %w", err)
-	}
-
 	tracker := newReadTracker()
 
 	// Isolated sessions jail their shell even when the global sandbox.shell
@@ -126,7 +112,7 @@ func Build(ctx context.Context, config BuildConfig) (_ Built, err error) {
 	cleanupOnError := true
 	defer func() {
 		if cleanupOnError {
-			err = errors.Join(err, a2aTools.Close(), shells.KillAll(), codeIntel.Close())
+			err = errors.Join(err, a2aTools.Close(), shells.KillAll())
 		}
 	}()
 
@@ -193,7 +179,6 @@ func Build(ctx context.Context, config BuildConfig) (_ Built, err error) {
 		SkillUsage:    config.SkillUsage,
 		SkillsUserDir: config.SkillsUserDir, PackageSkills: config.PackageSkills,
 		A2A:             a2aExecutables,
-		LSP:             lspTools,
 		Shell:           shellTools,
 		AskUser:         askUserTool,
 		EnterPlan:       planFamily.Enter,
@@ -203,7 +188,7 @@ func Build(ctx context.Context, config BuildConfig) (_ Built, err error) {
 		GoalGet:         goalGetTool,
 		GoalReport:      goalReportTool,
 		ProposeSkill:    proposeSkillTool,
-		CodeIntel:       codeIntel,
+		CodeIntel:       config.CodeIntelligence,
 		ReadTracker:     tracker,
 		MCPToolDisabled: config.MCPToolDisabled,
 		RestoreMCP:      config.RestoreMCP,
@@ -216,7 +201,6 @@ func Build(ctx context.Context, config BuildConfig) (_ Built, err error) {
 		Resolver: resolver,
 		Shells:   shells,
 		Closers: []func() error{
-			codeIntel.Close,
 			shells.KillAll,
 			a2aTools.Close,
 		},

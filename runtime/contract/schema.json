@@ -12234,7 +12234,6 @@
                 "grep",
                 "list_skills",
                 "load_skill",
-                "lsp",
                 "propose_skill",
                 "read",
                 "read_shell_output",
