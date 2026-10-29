@@ -232,8 +232,8 @@ func (d *Driver) Prepare(ctx context.Context, setup *qimu.Setup) ([]qimu.ExportV
 		return nil, err
 	}
 	channel := &transport{ReadWriteCloser: attached}
-	client := sdk.NewClient(&sdk.Implementation{Name: "qimu", Version: "1"}, nil)
-	if err := mcp.RegisterClient(client); err != nil {
+	client, err := mcp.NewProcessClient()
+	if err != nil {
 		return nil, errors.Join(err, channel.Close())
 	}
 	session, err := client.Connect(ownedCtx, &sdk.IOTransport{Reader: channel, Writer: channel, MaxLineLength: d.config.MaxFrameBytes}, nil)

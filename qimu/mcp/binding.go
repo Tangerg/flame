@@ -95,6 +95,24 @@ func (b *Binding) invoke(ctx context.Context, id string, input jsonvalue.Value, 
 }
 
 func (b *Binding) invokeMode(ctx context.Context, id string, input jsonvalue.Value, meta sdk.ParamsBase) (*methodResult[jsontext.Value], error) {
+	params, err := b.invocationParams(ctx, id, input, meta)
+	if err != nil {
+		return nil, err
+	}
+	result, err := sdk.CallCustomMethod[*invokeParams, *methodResult[jsontext.Value]](ctx, b.session, InvokeMethod, params)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := result.value(b.method.Name()); err != nil {
+		return nil, err
+	}
+	if err := b.method.ValidateOutput(result.valueJSON); err != nil {
+		return nil, fmt.Errorf("plugin: %s output: %w", b.method.Name(), err)
+	}
+	return result, nil
+}
+
+func (b *Binding) invocationParams(ctx context.Context, id string, input jsonvalue.Value, meta sdk.ParamsBase) (*invokeParams, error) {
 	var err error
 	meta, err = invocationMetadata(ctx, meta)
 	if err != nil {
@@ -113,17 +131,7 @@ func (b *Binding) invokeMode(ctx context.Context, id string, input jsonvalue.Val
 	if err := b.method.ValidateInput(input); err != nil {
 		return nil, fmt.Errorf("plugin: %s input: %w", b.method.Name(), err)
 	}
-	result, err := sdk.CallCustomMethod[*invokeParams, *methodResult[jsontext.Value]](ctx, b.session, InvokeMethod, &invokeParams{ParamsBase: meta, Protocol: portable.Protocol, Method: b.method.Name(), Contract: b.method.Identity().Digest(), Export: b.export, Capability: b.capability, Input: input.JSON(), CommandID: id})
-	if err != nil {
-		return nil, err
-	}
-	if _, err := result.value(b.method.Name()); err != nil {
-		return nil, err
-	}
-	if err := b.method.ValidateOutput(result.valueJSON); err != nil {
-		return nil, fmt.Errorf("plugin: %s output: %w", b.method.Name(), err)
-	}
-	return result, nil
+	return &invokeParams{ParamsBase: meta, Protocol: portable.Protocol, Method: b.method.Name(), Contract: b.method.Identity().Digest(), Export: b.export, Capability: b.capability, Input: input.JSON(), CommandID: id}, nil
 }
 
 func (b *Binding) Invoke(ctx context.Context, id string, input jsonvalue.Value) (jsonvalue.Value, error) {
