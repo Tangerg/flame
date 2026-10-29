@@ -43,31 +43,69 @@ func Run(ctx context.Context, overrides []string, args ...string) (Result, error
 	command.WaitDelay = processWaitDelay
 	procgroup.Prepare(command)
 	command.Cancel = func() error { return procgroup.Stop(command) }
-	stdout, err := command.StdoutPipe()
+	stdout, stdoutWriter, err := os.Pipe()
 	if err != nil {
 		return Result{}, fmt.Errorf("process: stdout pipe: %w", err)
 	}
-	stderr := capture.NewWriter(maxErrorBytes)
-	command.Stderr = stderr
+	defer stdout.Close()
+	defer stdoutWriter.Close()
+	stderrReader, stderrWriter, err := os.Pipe()
+	if err != nil {
+		return Result{}, fmt.Errorf("process: stderr pipe: %w", err)
+	}
+	defer stderrReader.Close()
+	defer stderrWriter.Close()
+	command.Stdout = stdoutWriter
+	command.Stderr = stderrWriter
 	if err := command.Start(); err != nil {
 		return Result{}, fmt.Errorf("process: start: %w", errors.Join(err, cancellation.Err(ctx)))
 	}
-	output, readErr := readOutput(ctx, stdout)
-	var stopErr error
-	if readErr != nil {
-		stopErr = procgroup.Stop(command)
-		if errors.Is(stopErr, os.ErrProcessDone) {
-			stopErr = nil
+	_ = stdoutWriter.Close()
+	_ = stderrWriter.Close()
+	stop := func() error {
+		err := procgroup.Stop(command)
+		if errors.Is(err, os.ErrProcessDone) {
+			return nil
 		}
+		return err
 	}
+	var output []byte
+	stdoutDone := make(chan error, 1)
+	go func() {
+		var err error
+		output, err = readOutput(ctx, stdout)
+		if err != nil {
+			err = errors.Join(err, stop())
+		}
+		stdoutDone <- err
+	}()
+	stderr := capture.NewWriter(maxErrorBytes)
+	stderrDone := make(chan error, 1)
+	go func() {
+		_, err := io.Copy(stderr, stderrReader)
+		if err != nil {
+			err = errors.Join(err, stop())
+		}
+		stderrDone <- err
+	}()
+
+	// Files belong to this invocation, so Wait observes only the root process.
+	// Its exit starts retirement and the drain budget, never an operation timeout.
 	waitErr := command.Wait()
-	cleanupErr := procgroup.Stop(command)
-	if errors.Is(cleanupErr, os.ErrProcessDone) {
-		cleanupErr = nil
+	cleanupErr := stop()
+	drainDone := make(chan struct{})
+	drain := time.AfterFunc(processWaitDelay, func() {
+		defer close(drainDone)
+		_ = stdout.Close()
+		_ = stderrReader.Close()
+	})
+	readErr := errors.Join(<-stdoutDone, <-stderrDone)
+	if !drain.Stop() {
+		<-drainDone
 	}
 	cancelErr := cancellation.Err(ctx)
-	if readErr != nil || stopErr != nil || cleanupErr != nil || cancelErr != nil {
-		return Result{}, errors.Join(readErr, stopErr, waitErr, cleanupErr, cancelErr)
+	if readErr != nil || cleanupErr != nil || cancelErr != nil {
+		return Result{}, errors.Join(readErr, waitErr, cleanupErr, cancelErr)
 	}
 	stderrText := stderr.Diagnostic()
 	if stderr.Truncated() {

@@ -48,6 +48,30 @@ func TestRunKeepsDocumentedNonzeroExitAsData(t *testing.T) {
 	}
 }
 
+func TestRootExitDoesNotWaitForInheritedPipes(t *testing.T) {
+	for _, redirect := range []string{"2>/dev/null", ">/dev/null", ""} {
+		t.Run(redirect, func(t *testing.T) {
+			gitFixture(t, "sleep 3 "+redirect+" &\nprintf 'complete'\nprintf 'diagnostic' >&2\nexit 17\n")
+			started := time.Now()
+			result, err := Run(t.Context(), nil, "status")
+			if err != nil || result.ExitCode != 17 || string(result.Stdout) != "complete" || result.Stderr != "diagnostic" {
+				t.Fatalf("root result = %+v, %v", result, err)
+			}
+			if elapsed := time.Since(started); elapsed >= 2*time.Second {
+				t.Fatalf("root completion waited %v for inherited pipes", elapsed)
+			}
+		})
+	}
+}
+
+func TestDrainBudgetDoesNotLimitAnExecutingRoot(t *testing.T) {
+	gitFixture(t, "sleep 1.2\nprintf 'complete'\n")
+	result, err := Run(t.Context(), nil, "status")
+	if err != nil || string(result.Stdout) != "complete" {
+		t.Fatalf("long-running root = %+v, %v", result, err)
+	}
+}
+
 func TestRunKeepsBinaryDiagnosticPrintable(t *testing.T) {
 	gitFixture(t, "printf '\\377' >&2\nexit 17\n")
 	result, err := Run(t.Context(), nil, "status")

@@ -1310,6 +1310,8 @@ and cancellation failures. Output above 64 MiB is refused; cancellation does not
 erase that capacity failure or its owner-supplied cause. Each invocation owns and
 stops its process group, including after a normal root exit. Ordinary nonzero
 exits remain observed data for Git's predicate and diff semantics.
+Root exit is observed independently of pipe EOF. It starts group retirement and
+a bounded output drain; the drain budget never limits a still-executing root.
 
 Checkpoint predicates accept exit codes only from admitted Git command results.
 A process failure carrying the same status remains a failed observation. Object
