@@ -7,6 +7,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/statefile"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 )
 
 type queueWriteFailure struct {
@@ -14,9 +15,9 @@ type queueWriteFailure struct {
 	fail string
 }
 
-func (p *queueWriteFailure) Replace(name string, body []byte) error {
+func (p *queueWriteFailure) Replace(name string, body []byte) filesystem.CommitResult {
 	if name == p.fail {
-		return errors.New("authoring disk unavailable")
+		return filesystem.CommitResult{Err: errors.New("authoring disk unavailable")}
 	}
 	return p.Persistence.Replace(name, body)
 }

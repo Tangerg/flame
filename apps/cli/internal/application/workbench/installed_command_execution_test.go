@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
@@ -24,6 +25,8 @@ type persistence struct {
 	fail  bool
 }
 
+func (*persistence) ConfirmDurability() error { return nil }
+
 func (p *persistence) Read(name string, _ int64) ([]byte, error) {
 	value, found := p.files[name]
 	if !found {
@@ -32,14 +35,17 @@ func (p *persistence) Read(name string, _ int64) ([]byte, error) {
 	return slices.Clone(value), nil
 }
 func (*persistence) ListFiles(string, string) ([]string, error) { return nil, nil }
-func (p *persistence) Replace(name string, body []byte) error {
+func (p *persistence) Replace(name string, body []byte) filesystem.CommitResult {
 	if p.fail {
-		return errors.New("storage unavailable")
+		return filesystem.CommitResult{Err: errors.New("storage unavailable")}
 	}
 	p.files[name] = slices.Clone(body)
-	return nil
+	return filesystem.CommitResult{State: filesystem.CommitDurable}
 }
-func (p *persistence) Remove(name string) error { delete(p.files, name); return nil }
+func (p *persistence) Remove(name string) filesystem.CommitResult {
+	delete(p.files, name)
+	return filesystem.CommitResult{State: filesystem.CommitDurable}
+}
 
 type callerFunc func(context.Context, protocol.CallPluginRequest, authoring.CommandID) (*protocol.CallPluginResponse, error)
 

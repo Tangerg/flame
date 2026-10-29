@@ -155,6 +155,10 @@ func TestExecuteRejectsAnExpiredDeletionWhenTheSessionStillExists(t *testing.T) 
 }
 
 func TestSettlePreservesDeletionRejectedByAnotherRuntimeStore(t *testing.T) {
+	store, err := openTestWorkbench(t, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	runtime := &deletionRuntimeStub{deleteErr: conversation.ErrCommandStoreMismatch}
 	request := conversation.DeleteSession{
 		CommandID: "cli_66666666666666666666666666666666", SessionID: "ses_1",
@@ -162,7 +166,7 @@ func TestSettlePreservesDeletionRejectedByAnotherRuntimeStore(t *testing.T) {
 	deadline := time.Now().UTC().Add(time.Hour)
 	policy := replayPolicy(t, "runtime-a", time.Hour, time.Now)
 	outcome, err := settleDeletion(
-		t.Context(), runtime, request, protectedGuard(t, "runtime-a", deadline),
+		t.Context(), runtime, store, request, protectedGuard(t, "runtime-a", deadline),
 		policy, fastBackoff(t),
 	)
 	if outcome != mutation.Unknown || !errors.Is(err, conversation.ErrCommandStoreMismatch) {

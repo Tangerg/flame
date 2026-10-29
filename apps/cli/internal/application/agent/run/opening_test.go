@@ -172,6 +172,15 @@ func TestResumeLookupCannotSettleAnotherRunOrDifferentInput(t *testing.T) {
 }
 
 func TestPendingOpeningLooksUpAcceptanceBeforeRequiringPreparedInput(t *testing.T) {
+	store, err := workbench.OpenMemory(workbench.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := store.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	policy := testReplayPolicy(t)
 	guard, err := policy.NewGuard()
 	if err != nil {
@@ -187,7 +196,7 @@ func TestPendingOpeningLooksUpAcceptanceBeforeRequiringPreparedInput(t *testing.
 				}
 				return protocol.RunAcceptance{Type: protocol.RunAcceptanceAccepted, RunID: "run_original", SegmentID: "seg_original", SessionID: "ses_original", UserItemID: "item_original"}, nil
 			}}
-			_, err := OpenPendingStart(t.Context(), probe, pending, policy)
+			_, err := OpenPendingStart(t.Context(), probe, store, pending, policy)
 			if len(probe.queries) != 1 || len(probe.starts) != 0 || (accepted && err != nil) || (!accepted && !errors.Is(err, authoring.ErrCommandInputUnavailable)) {
 				t.Fatalf("input availability changed acceptance lookup: queries=%+v starts=%+v err=%v", probe.queries, probe.starts, err)
 			}
@@ -200,7 +209,7 @@ func TestPendingOpeningLooksUpAcceptanceBeforeRequiringPreparedInput(t *testing.
 				}
 				return protocol.RunAcceptance{Type: protocol.RunAcceptanceAccepted, RunID: "run_original", SegmentID: "seg_original", SessionID: "ses_original", UserItemID: "item_original"}, nil
 			}}
-			_, err := OpenPendingResume(t.Context(), probe, pending, policy)
+			_, err := OpenPendingResume(t.Context(), probe, store, pending, policy)
 			if len(probe.queries) != 1 || len(probe.resumes) != 0 || (accepted && err != nil) || (!accepted && !errors.Is(err, authoring.ErrCommandInputUnavailable)) {
 				t.Fatalf("input availability changed acceptance lookup: queries=%+v resumes=%+v err=%v", probe.queries, probe.resumes, err)
 			}

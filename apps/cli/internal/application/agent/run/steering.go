@@ -64,11 +64,15 @@ type SteerResult struct {
 func DeliverSteer(
 	ctx context.Context,
 	runtime steerRuntime,
+	store *workbench.Store,
 	pending workbench.PendingSteer,
 	policy mutation.ReplayPolicy,
 	backoff retry.Backoff,
 ) (SteerResult, error) {
 	result := SteerResult{Pending: pending, Outcome: mutation.Unknown}
+	if store == nil {
+		return result, workbench.ErrUnavailable
+	}
 	if runtime == nil {
 		return result, errors.New("steer runtime is unavailable")
 	}
@@ -78,6 +82,9 @@ func DeliverSteer(
 	}
 	receipt, err := mutation.ConfirmAdmitted(ctx, backoff,
 		mutation.ReplayAdmission(policy, pending.Replay()), func(ctx context.Context) (protocol.SteerRunResponse, error) {
+			if err := store.DispatchReady(); err != nil {
+				return protocol.SteerRunResponse{}, err
+			}
 			return runtime.SteerRun(ctx, command)
 		})
 	if err == nil {
@@ -137,7 +144,7 @@ func RecoverSteers(
 			deferredSessions = append(deferredSessions, pending.SessionID())
 			continue
 		}
-		result, err := DeliverSteer(ctx, runtime, pending, policy, backoff)
+		result, err := DeliverSteer(ctx, runtime, authoring, pending, policy, backoff)
 		switch result.Outcome {
 		case mutation.Confirmed:
 			recovered.Accepted = append(recovered.Accepted, result)

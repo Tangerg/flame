@@ -14,6 +14,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -123,7 +124,7 @@ func TestUnavailableInputPreservesOriginalRunResumeAndSteer(t *testing.T) {
 					{SessionID: "ses_resume", PendingResume: &resume},
 					{SessionID: steer.SessionID(), PendingSteer: new(steer.record())},
 				} {
-					if err := store.save(store.sessionStateName(state.SessionID), state); err != nil {
+					if err := store.save(store.sessionStateName(state.SessionID), state, func() {}); err != nil {
 						t.Fatal(err)
 					}
 				}
@@ -183,9 +184,9 @@ type inputWriteFailure struct {
 	prefix string
 }
 
-func (p inputWriteFailure) Replace(name string, body []byte) error {
+func (p inputWriteFailure) Replace(name string, body []byte) filesystem.CommitResult {
 	if strings.HasPrefix(name, p.prefix) {
-		return errors.New("injected input publication failure")
+		return filesystem.CommitResult{Err: errors.New("injected input publication failure")}
 	}
 	return p.Persistence.Replace(name, body)
 }
@@ -299,7 +300,7 @@ type pausedInputPersistence struct {
 	release chan struct{}
 }
 
-func (p pausedInputPersistence) Replace(name string, body []byte) error {
+func (p pausedInputPersistence) Replace(name string, body []byte) filesystem.CommitResult {
 	if strings.HasPrefix(name, "inputs/") {
 		close(p.entered)
 		<-p.release

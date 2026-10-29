@@ -156,7 +156,7 @@ func TestDeliverPreservesACommandRejectedByAnotherRuntimeStore(t *testing.T) {
 	pending := fixture.pending
 	runtime := &steerRuntimeStub{err: conversation.ErrCommandStoreMismatch}
 	fixture.now = pending.StagedAt().Add(time.Minute)
-	result, err := DeliverSteer(t.Context(), runtime, pending, fixture.policy(t), fastBackoff(t))
+	result, err := DeliverSteer(t.Context(), runtime, fixture.store, pending, fixture.policy(t), fastBackoff(t))
 	if !errors.Is(err, conversation.ErrCommandStoreMismatch) || result.Outcome != mutation.Unknown {
 		t.Fatalf("store mismatch settlement = outcome %v, error %v", result.Outcome, err)
 	}
@@ -168,7 +168,7 @@ func TestDeliverPreservesACommandRejectedByAnotherRuntimeStore(t *testing.T) {
 func TestSteerConflictCannotRetireAnUncertainOriginalCommand(t *testing.T) {
 	fixture := stagedSteer(t)
 	runtime := &steerRuntimeStub{err: conversation.ErrCommandConflict}
-	result, err := DeliverSteer(t.Context(), runtime, fixture.pending, fixture.policy(t), fastBackoff(t))
+	result, err := DeliverSteer(t.Context(), runtime, fixture.store, fixture.pending, fixture.policy(t), fastBackoff(t))
 	if result.Outcome != mutation.Unknown || !errors.Is(err, conversation.ErrCommandConflict) {
 		t.Fatalf("conflict settlement = %s, %v", result.Outcome, err)
 	}
@@ -193,7 +193,7 @@ func TestUnpreparedLegacySteerHasUnknownOutcomeWithoutADispatch(t *testing.T) {
 		t.Fatal(err)
 	}
 	runtime := new(steerRuntimeStub)
-	result, err := DeliverSteer(t.Context(), runtime, legacy, fixture.policy(t), fastBackoff(t))
+	result, err := DeliverSteer(t.Context(), runtime, fixture.store, legacy, fixture.policy(t), fastBackoff(t))
 	if result.Outcome != mutation.Unknown || !errors.Is(err, authoring.ErrCommandInputUnavailable) || len(runtime.requests) != 0 {
 		t.Fatalf("legacy steer = %s, %v, %d dispatches", result.Outcome, err, len(runtime.requests))
 	}
@@ -201,7 +201,7 @@ func TestUnpreparedLegacySteerHasUnknownOutcomeWithoutADispatch(t *testing.T) {
 
 func TestDeliverRetainsTheExactSteerAcceptanceReceipt(t *testing.T) {
 	fixture := stagedSteer(t)
-	result, err := DeliverSteer(t.Context(), new(steerRuntimeStub), fixture.pending, fixture.policy(t), fastBackoff(t))
+	result, err := DeliverSteer(t.Context(), new(steerRuntimeStub), fixture.store, fixture.pending, fixture.policy(t), fastBackoff(t))
 	if err != nil || result.Outcome != mutation.Confirmed || result.Receipt.UserItemID != "item_steer" {
 		t.Fatalf("steer acceptance = %+v, error %v", result, err)
 	}
@@ -210,7 +210,7 @@ func TestDeliverRetainsTheExactSteerAcceptanceReceipt(t *testing.T) {
 func TestMissingSteerReceiptCannotRejectOrRetryAcceptedInput(t *testing.T) {
 	fixture := stagedSteer(t)
 	runtime := &steerRuntimeStub{err: conversation.ErrSteerReceiptUnavailable}
-	result, err := DeliverSteer(t.Context(), runtime, fixture.pending, fixture.policy(t), fastBackoff(t))
+	result, err := DeliverSteer(t.Context(), runtime, fixture.store, fixture.pending, fixture.policy(t), fastBackoff(t))
 	if !errors.Is(err, conversation.ErrSteerReceiptUnavailable) || result.Outcome != mutation.Unknown || len(runtime.requests) != 1 {
 		t.Fatalf("missing receipt settlement = %+v, error %v, attempts %d", result, err, len(runtime.requests))
 	}

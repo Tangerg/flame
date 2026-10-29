@@ -174,8 +174,11 @@ func TestRetiringSessionStateClearsTheQueueAfterDurableTombstone(t *testing.T) {
 
 	application := &app{workbench: store, queue: prompts}
 	discarded, err := application.retireSessionState(sessionID)
-	if err != nil {
-		t.Fatal(err)
+	if err == nil {
+		t.Fatal("retirement hid the blocked physical cleanup")
+	}
+	if _, ok := errors.AsType[*workbench.WriteError](err); !ok {
+		t.Fatalf("retirement lost physical write evidence: %v", err)
 	}
 	if discarded != 1 {
 		t.Fatalf("retirement reported %d discarded prompts", discarded)

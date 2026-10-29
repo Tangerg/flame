@@ -990,6 +990,15 @@ func TestCommandReplayGuaranteeExpiresAtItsDeadline(t *testing.T) {
 }
 
 func TestRecoveredStartRefusesAGuardFromAnotherReplayStore(t *testing.T) {
+	store, err := memoryTestWorkbench()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := store.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	base := runtimefixture.New()
 	profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
 	profile = profileWithReplay(t, profile, "idp_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", 10*time.Minute)
@@ -1003,7 +1012,7 @@ func TestRecoveredStartRefusesAGuardFromAnotherReplayStore(t *testing.T) {
 		Message: authoring.Message{Text: "do not replay outside the owning store"}, Options: authoring.RunOptions{},
 	}
 	_, err = openStartRunWithBackoff(
-		t.Context(), runtime, workbench.PendingRun{Command: command,
+		t.Context(), runtime, store, workbench.PendingRun{Command: command,
 			Replay: protectedCommandReplayGuard(t, "idp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", time.Now().UTC().Add(time.Hour))},
 		policy, runtimeRecoveryBackoff,
 	)

@@ -405,7 +405,7 @@ func (a *app) deliverInterruptResume(
 	a.status.active("resuming")
 	a.syncAnimation()
 	a.followOpening(func(ctx context.Context) (conversation.SegmentStream, error) {
-		stream, err := runworkflow.OpenPendingResume(ctx, a.runtime, pending, a.replayPolicy)
+		stream, err := runworkflow.OpenPendingResume(ctx, a.runtime, a.workbench, pending, a.replayPolicy)
 		if err != nil {
 			if _, accepted := conversation.AcceptedMutationReceipt(err); accepted {
 				return conversation.SegmentStream{}, err

@@ -54,7 +54,7 @@ func TestStoreRejectsInvalidPersistedSessionDraft(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := persistence.Replace(memory.sessionStateName(sessionID), encoded); err != nil {
+	if err := persistence.Replace(memory.sessionStateName(sessionID), encoded).Err; err != nil {
 		t.Fatal(err)
 	}
 	if _, err := Open(persistence, Config{}); err == nil || !strings.Contains(err.Error(), "session draft") {
@@ -324,12 +324,12 @@ func TestStoreCompletesInterruptedStashTransfersOnOpen(t *testing.T) {
 					Message: draft,
 				},
 			}
-			if saveErr := store.save(stashTransferName, transfer); saveErr != nil {
+			if saveErr := store.save(stashTransferName, transfer, func() {}); saveErr != nil {
 				t.Fatal(saveErr)
 			}
 			if phase == "stash saved" || phase == "source retired" {
 				next := tailStashes(append(slices.Clone(store.stashes), transfer.Stash), store.stashCapacity)
-				if saveErr := store.save(stashesName, next); saveErr != nil {
+				if saveErr := store.save(stashesName, next, func() {}); saveErr != nil {
 					t.Fatal(saveErr)
 				}
 			}
@@ -434,7 +434,7 @@ func TestStoreDoesNotReplayAStashTransferOverANewerDraft(t *testing.T) {
 		SessionID: sessionID, Draft: old,
 		Stash: Stash{ID: "0123456789abcdef", CreatedAt: time.Now().UTC(), Message: old},
 	}
-	if saveErr := store.save(stashTransferName, transfer); saveErr != nil {
+	if saveErr := store.save(stashTransferName, transfer, func() {}); saveErr != nil {
 		t.Fatal(saveErr)
 	}
 	newer := authoring.Message{Text: "new owner"}
@@ -529,8 +529,8 @@ func TestStoreRetiresCompleteSessionStateBehindADurableTombstone(t *testing.T) {
 		t.Fatal(writeFileErr)
 	}
 
-	if retireSessionStateErr := store.RetireSessionState(sessionID); retireSessionStateErr != nil {
-		t.Fatal(retireSessionStateErr)
+	if retireSessionStateErr := store.RetireSessionState(sessionID); retireSessionStateErr == nil {
+		t.Fatal("blocked physical retirement became successful cleanup")
 	}
 	if got, found := store.Draft(sessionID); found {
 		t.Fatalf("retired draft = %+v, %v", got, found)
@@ -549,17 +549,8 @@ func TestStoreRetiresCompleteSessionStateBehindADurableTombstone(t *testing.T) {
 		t.Fatal(err)
 	}
 	reopened, err := OpenDirectory(t, directory, Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got, found := reopened.Draft(sessionID); found || len(reopened.PendingRuns(sessionID)) != 0 {
-		t.Fatalf("reopened retired state has draft=%+v found=%v runs=%+v", got, found, reopened.PendingRuns(sessionID))
-	}
-	if pending, found := reopened.PendingResume(sessionID); found {
-		t.Fatalf("reopened retired resume = %+v", pending)
-	}
-	if deletions := reopened.PendingSessionDeletions(); len(deletions) != 1 || deletions[0].Phase != SessionDeletionConfirmed {
-		t.Fatalf("reopened deletion tombstones = %+v", deletions)
+	if err == nil || reopened != nil {
+		t.Fatal("recovery hid the unresolved physical retirement")
 	}
 
 	if removeErr := os.Remove(blocker); removeErr != nil {
@@ -570,9 +561,6 @@ func TestStoreRetiresCompleteSessionStateBehindADurableTombstone(t *testing.T) {
 	}
 	if renameErr := os.Rename(backupPath, statePath); renameErr != nil {
 		t.Fatal(renameErr)
-	}
-	if err := reopened.Close(); err != nil {
-		t.Fatal(err)
 	}
 	reopened, err = OpenDirectory(t, directory, Config{})
 	if err != nil {

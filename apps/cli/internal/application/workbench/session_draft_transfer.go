@@ -163,10 +163,10 @@ func (s *Store) ApplyDraftTransfer(transfer DraftTransfer) error {
 	if err := transfer.expect(s.drafts); err != nil {
 		return err
 	}
-	if err := s.save(sessionDraftTransferName, transfer); err != nil {
+	if err := s.save(sessionDraftTransferName, transfer, func() { s.draftTransfer = &transfer }); err != nil {
 		return fmt.Errorf("stage session draft transfer: %w", err)
 	}
-	s.draftTransfer = &transfer
+
 	return s.completeDraftTransferLocked()
 }
 
@@ -218,10 +218,10 @@ func (s *Store) completeDraftTransferLocked() error {
 	); err != nil {
 		return fmt.Errorf("save source draft transfer: %w", err)
 	}
-	if err := s.remove(sessionDraftTransferName); err != nil {
+	if err := s.remove(sessionDraftTransferName, func() { s.draftTransfer = nil }); err != nil {
 		return fmt.Errorf("retire session draft transfer: %w", err)
 	}
-	s.draftTransfer = nil
+
 	return nil
 }
 
@@ -240,18 +240,10 @@ func (s *Store) advanceDraftTransferSide(sessionID string, before, after authori
 	if !current.Equal(before) {
 		return errors.New("draft no longer matches its transfer precondition")
 	}
-	if err := s.saveSessionStateRecordUnfenced(
+	return s.saveSessionStateRecordUnfenced(
 		sessionID, after, s.pendingRuns[sessionID], s.pendingResumePointer(sessionID),
 		s.pendingRollbackPointer(sessionID), s.pendingSteerPointer(sessionID),
-	); err != nil {
-		return err
-	}
-	if after.IsEmpty() {
-		delete(s.drafts, sessionID)
-	} else {
-		s.drafts[sessionID] = after.Clone()
-	}
-	return nil
+	)
 }
 
 func (s *Store) draftTransferBlocks(sessionID string) bool {

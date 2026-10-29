@@ -26,10 +26,10 @@ func openStore(t *testing.T, root string) *Store {
 
 func TestStoreReplacesReadsListsAndRemovesState(t *testing.T) {
 	store := openStore(t, t.TempDir())
-	if err := store.Replace(filepath.Join("sessions", "one.json"), []byte("first")); err != nil {
+	if err := store.Replace(filepath.Join("sessions", "one.json"), []byte("first")).Err; err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Replace(filepath.Join("sessions", "one.json"), []byte("second")); err != nil {
+	if err := store.Replace(filepath.Join("sessions", "one.json"), []byte("second")).Err; err != nil {
 		t.Fatal(err)
 	}
 	body, err := store.Read(filepath.Join("sessions", "one.json"), 6)
@@ -46,7 +46,7 @@ func TestStoreReplacesReadsListsAndRemovesState(t *testing.T) {
 	if !slices.Equal(names, []string{"one.json"}) {
 		t.Fatalf("names = %v", names)
 	}
-	if err := store.Remove(filepath.Join("sessions", "one.json")); err != nil {
+	if err := store.Remove(filepath.Join("sessions", "one.json")).Err; err != nil {
 		t.Fatal(err)
 	}
 	if _, err := store.Read(filepath.Join("sessions", "one.json"), 6); !errors.Is(err, os.ErrNotExist) {
@@ -65,7 +65,7 @@ func TestStoreUsesPhysicalParentAfterSymlinkTraversal(t *testing.T) {
 		t.Fatal(err)
 	}
 	store := openStore(t, alias+string(filepath.Separator)+"..")
-	if err := store.Replace("state.json", []byte("original owner")); err != nil {
+	if err := store.Replace("state.json", []byte("original owner")).Err; err != nil {
 		t.Fatal(err)
 	}
 	value, err := os.ReadFile(filepath.Join(physical, "state.json"))
@@ -81,7 +81,7 @@ func TestStoreUsesPhysicalParentAfterSymlinkTraversal(t *testing.T) {
 func TestStorePreservesWhitespaceInDirectoryIdentity(t *testing.T) {
 	directory := filepath.Join(t.TempDir(), "state ")
 	store := openStore(t, directory)
-	if err := store.Replace("state.json", []byte("exact path")); err != nil {
+	if err := store.Replace("state.json", []byte("exact path")).Err; err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(directory, "state.json")); err != nil {
@@ -92,7 +92,7 @@ func TestStorePreservesWhitespaceInDirectoryIdentity(t *testing.T) {
 func TestStoreListFilesFiltersAcrossReadBatches(t *testing.T) {
 	root := t.TempDir()
 	store := openStore(t, root)
-	if err := store.Replace(filepath.Join("sessions", "one.json"), nil); err != nil {
+	if err := store.Replace(filepath.Join("sessions", "one.json"), nil).Err; err != nil {
 		t.Fatal(err)
 	}
 	for index := range listReadBatchSize + 1 {
@@ -101,7 +101,7 @@ func TestStoreListFilesFiltersAcrossReadBatches(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := store.Replace(filepath.Join("sessions", "two.json"), nil); err != nil {
+	if err := store.Replace(filepath.Join("sessions", "two.json"), nil).Err; err != nil {
 		t.Fatal(err)
 	}
 	names, err := store.ListFiles("sessions", ".json")
@@ -118,7 +118,7 @@ func TestStoreRejectsUnsafeNamesAndNonRegularState(t *testing.T) {
 	root := t.TempDir()
 	store := openStore(t, root)
 	for _, name := range []string{"", ".", "../outside", "/outside", `sessions\outside`} {
-		if err := store.Replace(name, []byte("state")); err == nil {
+		if err := store.Replace(name, []byte("state")).Err; err == nil {
 			t.Fatalf("Replace(%q) unexpectedly succeeded", name)
 		}
 	}
@@ -144,7 +144,7 @@ func TestStoreRejectsSymlinksAndRequiresReopenAfterRootReplacement(t *testing.T)
 	parent := t.TempDir()
 	configured := filepath.Join(parent, "state")
 	store := openStore(t, configured)
-	if err := store.Replace(filepath.Join("sessions", "one.json"), []byte("before")); err != nil {
+	if err := store.Replace(filepath.Join("sessions", "one.json"), []byte("before")).Err; err != nil {
 		t.Fatal(err)
 	}
 
@@ -156,7 +156,7 @@ func TestStoreRejectsSymlinksAndRequiresReopenAfterRootReplacement(t *testing.T)
 	if err := os.Symlink(outside, configured); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Replace(filepath.Join("sessions", "two.json"), []byte("inside")); err == nil {
+	if err := store.Replace(filepath.Join("sessions", "two.json"), []byte("inside")).Err; err == nil {
 		t.Fatal("Replace followed a symbolic-link state root")
 	}
 	entries, err := os.ReadDir(outside)
@@ -172,14 +172,14 @@ func TestStoreRejectsSymlinksAndRequiresReopenAfterRootReplacement(t *testing.T)
 	if err := os.Mkdir(configured, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Replace(filepath.Join("sessions", "two.json"), []byte("inside")); err == nil {
+	if err := store.Replace(filepath.Join("sessions", "two.json"), []byte("inside")).Err; err == nil {
 		t.Fatal("live Store switched ownership to a replacement root")
 	}
 	if entries, err := os.ReadDir(configured); err != nil || len(entries) != 0 {
 		t.Fatalf("replacement root received old owner state: %v, %v", entries, err)
 	}
 	reopened := openStore(t, configured)
-	if err := reopened.Replace(filepath.Join("sessions", "two.json"), []byte("inside")); err != nil {
+	if err := reopened.Replace(filepath.Join("sessions", "two.json"), []byte("inside")).Err; err != nil {
 		t.Fatal(err)
 	}
 	body, err := reopened.Read(filepath.Join("sessions", "two.json"), 16)
@@ -208,10 +208,10 @@ func TestStoreCloseIsIdempotentAndRejectsFurtherOperations(t *testing.T) {
 	if _, err := store.ListFiles("sessions", ".json"); err == nil {
 		t.Fatal("ListFiles succeeded after Close")
 	}
-	if err := store.Replace("state.json", nil); err == nil {
+	if err := store.Replace("state.json", nil).Err; err == nil {
 		t.Fatal("Replace succeeded after Close")
 	}
-	if err := store.Remove("state.json"); err == nil {
+	if err := store.Remove("state.json").Err; err == nil {
 		t.Fatal("Remove succeeded after Close")
 	}
 }
@@ -257,14 +257,14 @@ func TestConcurrentReplacementsPublishWholeFiles(t *testing.T) {
 	root := t.TempDir()
 	store := openStore(t, root)
 	bodies := [][]byte{bytes.Repeat([]byte("a"), 64<<10), bytes.Repeat([]byte("b"), 64<<10)}
-	if err := store.Replace("shared.json", bodies[0]); err != nil {
+	if err := store.Replace("shared.json", bodies[0]).Err; err != nil {
 		t.Fatal(err)
 	}
 	finished := make(chan error, len(bodies))
 	for _, body := range bodies {
 		go func() {
 			for range 8 {
-				if err := store.Replace("shared.json", body); err != nil {
+				if err := store.Replace("shared.json", body).Err; err != nil {
 					finished <- err
 					return
 				}

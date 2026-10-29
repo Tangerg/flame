@@ -203,6 +203,9 @@ func (a *app) deleteSessionFromCenter(id string) {
 				return
 			}
 			if err := session.ConfirmDeletion(a.workbench, result); err != nil {
+				if a.queue != nil {
+					err = errors.Join(err, a.queue.Restore(result.Request.SessionID))
+				}
 				a.message("deleted session; local state cleanup failed: " + err.Error())
 				return
 			}
@@ -510,7 +513,13 @@ func (a *app) prepareDestinationDraft(
 func (a *app) retireSessionState(sessionID string) (int, error) {
 	if a.workbench != nil {
 		if err := a.workbench.RetireSessionState(sessionID); err != nil {
-			return 0, fmt.Errorf("discard session authoring state: %w", err)
+			discarded := 0
+			if a.queue != nil {
+				before := len(a.queue.Snapshot(sessionID).Entries)
+				err = errors.Join(err, a.queue.Restore(sessionID))
+				discarded = before - len(a.queue.Snapshot(sessionID).Entries)
+			}
+			return discarded, fmt.Errorf("discard session authoring state: %w", err)
 		}
 	}
 	discarded := 0

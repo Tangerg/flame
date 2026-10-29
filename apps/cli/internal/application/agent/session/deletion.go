@@ -66,7 +66,7 @@ func Delete(
 			return DeletionResult{}, errors.New("staged session deletion is absent")
 		}
 	}
-	outcome, err := settleDeletion(ctx, runtime, request, pending.Replay, policy, backoff)
+	outcome, err := settleDeletion(ctx, runtime, authoring, request, pending.Replay, policy, backoff)
 	return DeletionResult{Request: request, Outcome: outcome}, err
 }
 
@@ -76,12 +76,16 @@ func Delete(
 func settleDeletion(
 	ctx context.Context,
 	runtime deletionRuntime,
+	store *workbench.Store,
 	request conversation.DeleteSession,
 	replayGuard flameauthoring.ReplayGuard,
 	policy mutation.ReplayPolicy,
 	backoff retry.Backoff,
 ) (mutation.Outcome, error) {
 	_, err := mutation.ConfirmAdmitted(ctx, backoff, mutation.ReplayAdmission(policy, replayGuard), func(ctx context.Context) (struct{}, error) {
+		if err := store.DispatchReady(); err != nil {
+			return struct{}{}, err
+		}
 		return struct{}{}, runtime.DeleteSession(ctx, request)
 	})
 	if err == nil || errors.Is(err, conversation.ErrSessionNotFound) {
@@ -160,7 +164,7 @@ func RecoverDeletions(
 			}
 			continue
 		}
-		outcome, err := settleDeletion(ctx, runtime, result.Request, pending.Replay, policy, backoff)
+		outcome, err := settleDeletion(ctx, runtime, authoring, result.Request, pending.Replay, policy, backoff)
 		result.Outcome = outcome
 		switch outcome {
 		case mutation.Confirmed:

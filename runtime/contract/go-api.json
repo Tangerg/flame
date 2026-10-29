@@ -890,6 +890,23 @@
         "context",
         "os"
       ],
+      "constants": [
+        {
+          "name": "CommitDurable",
+          "type": "CommitState",
+          "value": "2"
+        },
+        {
+          "name": "CommitUncommitted",
+          "type": "CommitState",
+          "value": "0"
+        },
+        {
+          "name": "CommitVisible",
+          "type": "CommitState",
+          "value": "1"
+        }
+      ],
       "variables": [
         {
           "name": "ErrAbsolutePathRequired",
@@ -987,6 +1004,31 @@
         }
       ],
       "types": [
+        {
+          "name": "CommitResult",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "State",
+              "type": "CommitState"
+            },
+            {
+              "name": "Err",
+              "type": "error"
+            }
+          ],
+          "methods": [
+            {
+              "name": "Committed",
+              "signature": "func() bool"
+            }
+          ]
+        },
+        {
+          "name": "CommitState",
+          "kind": "defined",
+          "underlying": "uint8"
+        },
         {
           "name": "DirectoryLease",
           "kind": "struct",

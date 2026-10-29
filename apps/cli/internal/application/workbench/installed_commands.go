@@ -139,11 +139,7 @@ func (s *Store) stageInstalledCommand(command PendingInstalledCommand) error {
 	}
 	next := maps.Clone(s.installedCommands)
 	next[command.Intent] = command
-	if err := s.save(installedCommandsName, sortedInstalledCommands(next)); err != nil {
-		return err
-	}
-	s.installedCommands = next
-	return nil
+	return s.save(installedCommandsName, sortedInstalledCommands(next), func() { s.installedCommands = next })
 }
 
 func (s *Store) retireInstalledCommand(command PendingInstalledCommand) error {
@@ -158,11 +154,7 @@ func (s *Store) retireInstalledCommand(command PendingInstalledCommand) error {
 	}
 	next := maps.Clone(s.installedCommands)
 	delete(next, command.Intent)
-	if err := s.save(installedCommandsName, sortedInstalledCommands(next)); err != nil {
-		return err
-	}
-	s.installedCommands = next
-	return nil
+	return s.save(installedCommandsName, sortedInstalledCommands(next), func() { s.installedCommands = next })
 }
 
 func installedCommandEqual(left, right PendingInstalledCommand) bool {
@@ -226,6 +218,9 @@ func executeInstalledCommand[T any](ctx context.Context, caller InstalledCaller,
 	}
 	var ownerRefusal *portable.Refusal
 	result, err := mutation.ConfirmAdmitted(ctx, mutation.AcknowledgementBackoff(), mutation.ReplayAdmission(policy, pending.Replay), func(ctx context.Context) (T, error) {
+		if err := store.DispatchReady(); err != nil {
+			return zero, err
+		}
 		request := pending.Request
 		reply, err := caller.CallPlugin(ctx, request, pending.CommandID)
 		ownerRefusal = nil

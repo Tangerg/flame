@@ -122,8 +122,8 @@ type historyEntry struct {
 	CommandID authoring.CommandID `json:"commandId,omitzero"`
 }
 
-// Store owns CLI authoring persistence and lifetime. Every mutating method
-// updates memory only after its durable replacement succeeds.
+// Store owns CLI authoring persistence and lifetime. Visible writes publish
+// their projections before reporting a later durability failure.
 type Store struct {
 	mu                sync.Mutex
 	persistence       Persistence
@@ -162,6 +162,11 @@ func Open(storage Persistence, config Config) (*Store, error) {
 		return nil, errors.New("workbench persistence is not configured")
 	}
 	store, err := newStore(storage, config)
+	if err == nil {
+		if confirmErr := storage.ConfirmDurability(); confirmErr != nil {
+			err = fmt.Errorf("confirm workbench durability: %w", confirmErr)
+		}
+	}
 	if err == nil {
 		err = store.loadState()
 	}
@@ -247,11 +252,7 @@ func (s *Store) Remember(message authoring.Message) error {
 	}
 	next := append(cloneHistory(s.history), historyEntry{Message: message})
 	next = s.trimHistory(next)
-	if err := s.save(historyName, next); err != nil {
-		return err
-	}
-	s.history = next
-	return nil
+	return s.save(historyName, next, func() { s.history = next })
 }
 
 // Draft returns a detached session-specific prompt without consuming it.
@@ -275,15 +276,7 @@ func (s *Store) SaveDraft(sessionID string, message authoring.Message) error {
 	if (present && current.Equal(message)) || (!present && message.IsEmpty()) {
 		return nil
 	}
-	if err := s.saveSessionState(sessionID, message, s.pendingRuns[sessionID]); err != nil {
-		return err
-	}
-	if message.IsEmpty() {
-		delete(s.drafts, sessionID)
-	} else {
-		s.drafts[sessionID] = message
-	}
-	return nil
+	return s.saveSessionState(sessionID, message, s.pendingRuns[sessionID])
 }
 
 // newStash mints the value both stash entry points store. They differ in what
@@ -314,17 +307,16 @@ func (s *Store) StashPrompt(message authoring.Message) (Stash, error) {
 	}
 	next := append(slices.Clone(s.stashes), stash)
 	next = tailStashes(next, s.stashCapacity)
-	if err := s.save(stashesName, next); err != nil {
+	if err := s.save(stashesName, next, func() { s.stashes = next }); err != nil {
 		return Stash{}, err
 	}
-	s.stashes = next
+
 	return cloneStash(stash), nil
 }
 
 // StashDraft transfers one session draft into the bounded stash collection.
-// A durable intent makes the cross-file move restart-safe; synchronous failure
-// restores the complete pre-transaction stash collection so capacity eviction
-// cannot turn compensation into data loss.
+// A durable intent makes the cross-file move restart-safe. Only an uncommitted
+// step may be compensated; a committed failure leaves forward recovery in charge.
 func (s *Store) StashDraft(sessionID string, message authoring.Message) (Stash, error) {
 	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return Stash{}, err
@@ -343,29 +335,40 @@ func (s *Store) StashDraft(sessionID string, message authoring.Message) (Stash, 
 	}
 	previous := slices.Clone(s.stashes)
 	next := tailStashes(append(slices.Clone(s.stashes), stash), s.stashCapacity)
-	if err := s.save(stashTransferName, transfer); err != nil {
+	if err := s.save(stashTransferName, transfer, func() {}); err != nil {
+		if writeCommitted(err) {
+			return Stash{}, s.blockWrites(fmt.Errorf("save stash transfer: %w", err))
+		}
 		return Stash{}, fmt.Errorf("save stash transfer: %w", err)
 	}
-	if err := s.save(stashesName, next); err != nil {
-		if cleanupErr := s.remove(stashTransferName); cleanupErr != nil {
+	if err := s.save(stashesName, next, func() { s.stashes = next }); err != nil {
+		if writeCommitted(err) {
+			return Stash{}, s.blockWrites(err)
+		}
+		if cleanupErr := s.remove(stashTransferName, func() {}); cleanupErr != nil {
 			failure := errors.Join(err, fmt.Errorf("retire prompt stash transfer: %w", cleanupErr))
 			return Stash{}, s.blockWrites(failure)
 		}
 		return Stash{}, err
 	}
 	if err := s.saveSessionState(sessionID, authoring.Message{}, s.pendingRuns[sessionID]); err != nil {
-		rollbackErr := s.save(stashesName, previous)
+		if writeCommitted(err) {
+			return Stash{}, s.blockWrites(fmt.Errorf("clear session draft: %w", err))
+		}
+		rollbackErr := s.save(stashesName, previous, func() { s.stashes = previous })
 		if rollbackErr != nil {
-			s.stashes = next
 			return Stash{}, s.blockWrites(errors.Join(
 				fmt.Errorf("clear session draft: %w", err),
 				fmt.Errorf("restore prompt stashes: %w", rollbackErr),
 			))
 		}
-		if cleanupErr := s.remove(stashTransferName); cleanupErr != nil {
+		if cleanupErr := s.remove(stashTransferName, func() {}); cleanupErr != nil {
+			if writeCommitted(cleanupErr) {
+				return Stash{}, errors.Join(err, cleanupErr)
+			}
 			// Re-publish the intended stash so a surviving journal always describes
 			// a forward-recoverable state rather than reviving a rolled-back move.
-			if restoreErr := s.save(stashesName, next); restoreErr != nil {
+			if restoreErr := s.save(stashesName, next, func() { s.stashes = next }); restoreErr != nil {
 				failure := errors.Join(
 					fmt.Errorf("clear session draft: %w", err),
 					fmt.Errorf("remove stash transfer: %w", cleanupErr),
@@ -373,7 +376,7 @@ func (s *Store) StashDraft(sessionID string, message authoring.Message) (Stash, 
 				)
 				return Stash{}, s.blockWrites(failure)
 			}
-			s.stashes = next
+
 			failure := errors.Join(
 				fmt.Errorf("clear session draft: %w", err),
 				fmt.Errorf("remove stash transfer: %w", cleanupErr),
@@ -382,12 +385,11 @@ func (s *Store) StashDraft(sessionID string, message authoring.Message) (Stash, 
 		}
 		return Stash{}, fmt.Errorf("clear session draft: %w", err)
 	}
-	s.stashes = next
-	delete(s.drafts, sessionID)
+
 	// Once the source draft is absent, the transfer is committed. A stale
 	// journal must not survive while new authoring writes are accepted: a later
 	// identical draft has the same value but is not the old source owner.
-	if err := s.remove(stashTransferName); err != nil {
+	if err := s.remove(stashTransferName, func() {}); err != nil {
 		return Stash{}, s.blockWrites(fmt.Errorf("retire prompt stash transfer: %w", err))
 	}
 	return cloneStash(stash), nil
@@ -412,22 +414,20 @@ func (s *Store) recoverStashTransfer() error {
 			return errors.New("stash transfer identity belongs to another prompt")
 		case index < 0:
 			next := tailStashes(append(slices.Clone(s.stashes), transfer.Stash), s.stashCapacity)
-			if err := s.save(stashesName, next); err != nil {
+			if err := s.save(stashesName, next, func() { s.stashes = next }); err != nil {
 				return fmt.Errorf("save recovered prompt stash: %w", err)
 			}
-			s.stashes = next
 		}
 		if present {
 			if err := s.saveSessionState(transfer.SessionID, authoring.Message{}, s.pendingRuns[transfer.SessionID]); err != nil {
 				return fmt.Errorf("retire recovered session draft: %w", err)
 			}
-			delete(s.drafts, transfer.SessionID)
 		}
 	}
 	// A newer draft supersedes a merely staged transfer. An absent source proves
 	// the transfer crossed its retirement boundary, so the journal remains
 	// authoritative for restoring a destination lost by a crash.
-	if err := s.remove(stashTransferName); err != nil {
+	if err := s.remove(stashTransferName, func() {}); err != nil {
 		return fmt.Errorf("retire recovered prompt stash transfer: %w", err)
 	}
 	return nil
@@ -464,10 +464,10 @@ func (s *Store) DeleteStash(id string) (bool, error) {
 	if len(next) == len(s.stashes) {
 		return false, nil
 	}
-	if err := s.save(stashesName, next); err != nil {
+	if err := s.save(stashesName, next, func() { s.stashes = next }); err != nil {
 		return false, err
 	}
-	s.stashes = next
+
 	return true, nil
 }
 
@@ -482,11 +482,7 @@ func (s *Store) RememberWorkspace(path string) error {
 	next := slices.DeleteFunc(slices.Clone(s.workspaces), func(item Workspace) bool { return item.Path == path })
 	next = slices.Insert(next, 0, workspace)
 	next = next[:min(len(next), s.workspaceCapacity)]
-	if err := s.save(workspacesName, next); err != nil {
-		return err
-	}
-	s.workspaces = next
-	return nil
+	return s.save(workspacesName, next, func() { s.workspaces = next })
 }
 
 // Workspaces returns recent workspaces in newest-first order.
@@ -564,11 +560,7 @@ func (s *Store) recordPromptHistoryLocked(commandID authoring.CommandID, message
 		return nil
 	}
 	next = s.trimHistory(append(next, historyEntry{Message: message, CommandID: commandID}))
-	if err := s.save(historyName, next); err != nil {
-		return err
-	}
-	s.history = next
-	return nil
+	return s.save(historyName, next, func() { s.history = next })
 }
 
 // trimHistory keeps every prompt an unsettled command still owns, plus the most
@@ -620,22 +612,6 @@ func cloneHistory(history []historyEntry) []historyEntry {
 	out := make([]historyEntry, len(history))
 	for index, entry := range history {
 		out[index] = historyEntry{Message: entry.Clone(), CommandID: entry.CommandID}
-	}
-	return out
-}
-
-func clonePendingRuns(pending map[string][]PendingRun) map[string][]PendingRun {
-	out := make(map[string][]PendingRun, len(pending))
-	for sessionID, commands := range pending {
-		out[sessionID] = clonePendingRunSlice(commands)
-	}
-	return out
-}
-
-func clonePendingResumes(pending map[string]PendingResume) map[string]PendingResume {
-	out := make(map[string]PendingResume, len(pending))
-	for sessionID, command := range pending {
-		out[sessionID] = clonePendingResume(command)
 	}
 	return out
 }

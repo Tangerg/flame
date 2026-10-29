@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	goruntime "runtime"
@@ -228,87 +229,178 @@ func (s *Store) ListFiles(name, extension string) (_ []string, err error) {
 // Replace atomically publishes one complete state file. The temporary file is
 // created beside the destination, so Rename cannot cross filesystems and
 // intentionally replaces the prior snapshot instead of conflict-renaming it.
-func (s *Store) Replace(name string, body []byte) error {
+func (s *Store) Replace(name string, body []byte) (result filesystem.CommitResult) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := s.ensureRoot(); err != nil {
-		return err
+		return filesystem.CommitResult{Err: err}
 	}
 	relative, err := stateName(name)
 	if err != nil {
-		return err
+		return filesystem.CommitResult{Err: err}
 	}
 	directory, err := s.openDirectory(filepath.Dir(relative), true)
 	if err != nil {
-		return err
+		return filesystem.CommitResult{Err: err}
 	}
-	defer func() { _ = directory.Close() }()
+	defer func() { result.Err = errors.Join(result.Err, directory.Close()) }()
 	return replaceStateFile(directory, filepath.Base(relative), body)
 }
 
-func replaceStateFile(directory *os.Root, base string, body []byte) error {
+func replaceStateFile(directory *os.Root, base string, body []byte) (result filesystem.CommitResult) {
 	temporary, temporaryName, err := createTemporary(directory)
 	if err != nil {
-		return fmt.Errorf("create state snapshot: %w", err)
+		return filesystem.CommitResult{Err: fmt.Errorf("create state snapshot: %w", err)}
 	}
-	removeTemporary := true
 	defer func() {
-		if removeTemporary {
-			_ = directory.Remove(temporaryName)
+		if !result.Committed() {
+			if err := directory.Remove(temporaryName); err != nil && !errors.Is(err, os.ErrNotExist) {
+				result.Err = errors.Join(result.Err, fmt.Errorf("remove temporary snapshot: %w", err))
+			}
 		}
 	}()
+	return publishSnapshot(temporary, body, func() error {
+		return directory.Rename(temporaryName, base)
+	}, func() error { return syncDirectoryAt(directory, ".") })
+}
+
+type snapshotFile interface {
+	io.Writer
+	Sync() error
+	Close() error
+}
+
+func publishSnapshot(temporary snapshotFile, body []byte, rename, confirm func() error) filesystem.CommitResult {
 	if _, err := temporary.Write(body); err != nil {
-		_ = temporary.Close()
-		return fmt.Errorf("write state snapshot: %w", err)
+		return filesystem.CommitResult{Err: errors.Join(fmt.Errorf("write state snapshot: %w", err), temporary.Close())}
 	}
 	if err := temporary.Sync(); err != nil {
-		_ = temporary.Close()
-		return fmt.Errorf("sync state snapshot: %w", err)
+		return filesystem.CommitResult{Err: errors.Join(fmt.Errorf("sync state snapshot: %w", err), temporary.Close())}
 	}
 	if err := temporary.Close(); err != nil {
-		return fmt.Errorf("close state snapshot: %w", err)
+		return filesystem.CommitResult{Err: fmt.Errorf("close state snapshot: %w", err)}
 	}
-	if err := directory.Rename(temporaryName, base); err != nil {
-		return fmt.Errorf("replace state snapshot: %w", err)
+	if err := rename(); err != nil {
+		return filesystem.CommitResult{Err: fmt.Errorf("replace state snapshot: %w", err)}
 	}
-	removeTemporary = false
-	// Rename is the logical commit point. A directory-sync refusal cannot be
-	// returned as an apparent failed replacement after the new state is visible,
-	// because callers would retain an older in-memory fact or retry a committed
-	// mutation. Strengthen crash durability where the filesystem supports it.
-	syncCommittedDirectory(directory)
-	return nil
+	return confirmedCommit(confirm())
 }
 
 // Remove retires one state file. Missing files are already removed.
-func (s *Store) Remove(name string) error {
+func (s *Store) Remove(name string) (result filesystem.CommitResult) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := s.ensureRoot(); err != nil {
-		return err
+		return filesystem.CommitResult{Err: err}
 	}
 	relative, err := stateName(name)
 	if err != nil {
-		return err
+		return filesystem.CommitResult{Err: err}
 	}
 	directory, err := s.openDirectory(filepath.Dir(relative), false)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil
+			return filesystem.CommitResult{State: filesystem.CommitDurable}
 		}
-		return err
+		return filesystem.CommitResult{Err: err}
 	}
-	defer func() { _ = directory.Close() }()
+	defer func() { result.Err = errors.Join(result.Err, directory.Close()) }()
 	if err := directory.Remove(filepath.Base(relative)); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return filesystem.CommitResult{Err: err}
+	}
+	return confirmedCommit(syncDirectoryAt(directory, "."))
+}
+
+func confirmedCommit(err error) filesystem.CommitResult {
+	if err != nil {
+		return filesystem.CommitResult{State: filesystem.CommitVisible, Err: fmt.Errorf("confirm state directory: %w", err)}
+	}
+	return filesystem.CommitResult{State: filesystem.CommitDurable}
+}
+
+// ConfirmDurability establishes the current visible records before an owner
+// recovers their command identities. It never invents records lost by a crash.
+func (s *Store) ConfirmDurability() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.ensureRoot(); err != nil {
 		return err
 	}
-	syncCommittedDirectory(directory)
-	return nil
+	if err := s.confirmDirectory("."); err != nil {
+		return fmt.Errorf("confirm state records: %w", err)
+	}
+	// A newly created root also depends on the links in its physical ancestors.
+	for name := filepath.Dir(s.root.Name()); ; name = filepath.Dir(name) {
+		directory, err := os.OpenRoot(name)
+		if err != nil {
+			return fmt.Errorf("open state ancestor: %w", err)
+		}
+		err = errors.Join(syncDirectoryAt(directory, "."), directory.Close())
+		if err != nil {
+			return fmt.Errorf("confirm state ancestor: %w", err)
+		}
+		if name == filepath.Dir(name) {
+			break
+		}
+	}
+	return s.ensureRoot()
+}
+
+func (s *Store) confirmDirectory(name string) (err error) {
+	directory, err := s.openDirectory(name, false)
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, directory.Close()) }()
+	entries, _, err := filesystem.OpenDirectoryAt(directory, ".")
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, entries.Close()) }()
+	for {
+		batch, readErr := entries.ReadDir(listReadBatchSize)
+		for _, entry := range batch {
+			info, err := entry.Info()
+			if err != nil {
+				return err
+			}
+			if info.IsDir() {
+				if err := s.confirmDirectory(filepath.Join(name, entry.Name())); err != nil {
+					return err
+				}
+				continue
+			}
+			file, opened, err := filesystem.OpenFileAtExpected(directory, entry.Name(), info, math.MaxInt64)
+			if err != nil {
+				return err
+			}
+			if err := errors.Join(file.Sync(), filesystem.VerifyAtVersion(file, opened, directory, entry.Name()), file.Close()); err != nil {
+				return err
+			}
+		}
+		switch {
+		case errors.Is(readErr, io.EOF):
+			return entries.Sync()
+		case readErr != nil:
+			return readErr
+		}
+	}
 }
 
 func (s *Store) ensureRoot() error {
 	if s.root == nil || s.boundary == nil {
 		return errors.New("state store is closed")
+	}
+	visibleBoundary, err := os.Stat(s.boundary.Name())
+	if err != nil {
+		return err
+	}
+	pinnedBoundary, err := s.boundary.Stat(".")
+	if err != nil {
+		return err
+	}
+	if !os.SameFile(visibleBoundary, pinnedBoundary) {
+		return errors.New("state boundary changed; reopen the workbench before using the replacement directory")
 	}
 	expected, err := s.boundary.Lstat(s.rootName)
 	if err != nil {
@@ -391,9 +483,7 @@ func (s *Store) directory(name string, create bool) (string, os.FileInfo, error)
 		}
 		current = filepath.Join(current, part)
 		info, err = s.root.Lstat(current)
-		created := false
 		if errors.Is(err, os.ErrNotExist) && create {
-			created = true
 			if mkdirErr := s.root.Mkdir(current, 0o700); mkdirErr != nil && !errors.Is(mkdirErr, os.ErrExist) {
 				return "", nil, fmt.Errorf("create state directory: %w", mkdirErr)
 			}
@@ -405,7 +495,7 @@ func (s *Store) directory(name string, create bool) (string, os.FileInfo, error)
 		if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 			return "", nil, fmt.Errorf("state path %q contains a component that is not a directory", name)
 		}
-		if created {
+		if create {
 			if syncErr := syncDirectoryAt(s.root, parent); syncErr != nil {
 				return "", nil, fmt.Errorf("commit state directory: %w", syncErr)
 			}
@@ -426,8 +516,4 @@ func syncDirectoryAt(root *os.Root, name string) error {
 		return err
 	}
 	return errors.Join(directory.Sync(), directory.Close())
-}
-
-func syncCommittedDirectory(directory *os.Root) {
-	_ = syncDirectoryAt(directory, ".")
 }

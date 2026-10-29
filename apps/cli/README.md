@@ -308,7 +308,10 @@ provider discovery. An unresolved creation reuses the original draft instead of
 opening a fresh form. Startup reports pending intents. An unavailable original
 owner, expired replay guarantee or changed Runtime store leaves intent unconfirmed;
 it cannot resubmit the command to another installation. Only a decoded owner
-acknowledgement or business refusal retires it. This record contains no result.
+acknowledgement or business refusal retires it. This record contains no result. If local publication becomes visible but directory
+synchronization fails, the original intent remains pending and delivery is fenced.
+Close and reopen the workbench to confirm the actual records before retrying;
+retries cannot create a replacement command identity.
 
 Forms and the binding adapter use the same generated publisher Go projection in
 `internal/domain/schedule`; no private backend import or handwritten create DTO

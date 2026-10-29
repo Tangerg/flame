@@ -6,11 +6,24 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/statefile"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 )
 
 type closeTrackingPersistence struct {
-	closed  int
-	listErr error
+	closed     int
+	listErr    error
+	confirmErr error
+}
+
+func (p *closeTrackingPersistence) ConfirmDurability() error { return p.confirmErr }
+
+func TestOpenClosesPersistenceWhenDurabilityCannotBeConfirmed(t *testing.T) {
+	cause := errors.New("directory sync unavailable")
+	persistence := &closeTrackingPersistence{confirmErr: cause}
+	store, err := Open(persistence, Config{})
+	if store != nil || !errors.Is(err, cause) || persistence.closed != 1 {
+		t.Fatalf("unconfirmed store opened or leaked: store=%v error=%v closes=%d", store, err, persistence.closed)
+	}
 }
 
 func (*closeTrackingPersistence) Read(string, int64) ([]byte, error) { return nil, os.ErrNotExist }
@@ -20,8 +33,12 @@ func (p *closeTrackingPersistence) ListFiles(string, string) ([]string, error) {
 	}
 	return nil, os.ErrNotExist
 }
-func (*closeTrackingPersistence) Replace(string, []byte) error { return nil }
-func (*closeTrackingPersistence) Remove(string) error          { return nil }
+func (*closeTrackingPersistence) Replace(string, []byte) filesystem.CommitResult {
+	return filesystem.CommitResult{State: filesystem.CommitDurable}
+}
+func (*closeTrackingPersistence) Remove(string) filesystem.CommitResult {
+	return filesystem.CommitResult{State: filesystem.CommitDurable}
+}
 func (p *closeTrackingPersistence) Close() error {
 	p.closed++
 	return nil
@@ -80,9 +97,9 @@ type removeFailurePersistence struct {
 	enabled bool
 }
 
-func (r *removeFailurePersistence) Remove(name string) error {
+func (r *removeFailurePersistence) Remove(name string) filesystem.CommitResult {
 	if r.enabled && name == r.name {
-		return errors.New("injected remove failure")
+		return filesystem.CommitResult{Err: errors.New("injected remove failure")}
 	}
 	return r.Persistence.Remove(name)
 }

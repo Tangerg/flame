@@ -61,6 +61,16 @@ func (p PendingSessionDeletion) Request() conversation.DeleteSession {
 	return conversation.DeleteSession{CommandID: p.CommandID, SessionID: p.SessionID}
 }
 
+func (s *Store) publishSessionDeletions(next map[string]PendingSessionDeletion) {
+	s.sessionDeletions = next
+	for sessionID, pending := range next {
+		if pending.Phase == SessionDeletionConfirmed {
+			s.installSessionState(sessionID, authoring.Message{}, nil, nil, nil, nil)
+		}
+	}
+	s.history = s.trimHistory(s.history)
+}
+
 func (s *Store) loadSessionDeletions() error {
 	var deletions []PendingSessionDeletion
 	if err := s.loadOptional(sessionDeletionsName, &deletions); err != nil {
@@ -123,11 +133,7 @@ func (s *Store) StageSessionDeletion(request conversation.DeleteSession, replayG
 	}
 	next := cloneSessionDeletions(s.sessionDeletions)
 	next[request.SessionID] = pending
-	if err := s.save(sessionDeletionsName, sortedSessionDeletions(next)); err != nil {
-		return err
-	}
-	s.sessionDeletions = next
-	return nil
+	return s.save(sessionDeletionsName, sortedSessionDeletions(next), func() { s.publishSessionDeletions(next) })
 }
 
 // RejectSessionDeletion retires a prepared journal after the runtime
@@ -147,17 +153,12 @@ func (s *Store) RejectSessionDeletion(sessionID string, commandID authoring.Comm
 	}
 	next := cloneSessionDeletions(s.sessionDeletions)
 	delete(next, sessionID)
-	if err := s.save(sessionDeletionsName, sortedSessionDeletions(next)); err != nil {
-		return err
-	}
-	s.sessionDeletions = next
-	return nil
+	return s.save(sessionDeletionsName, sortedSessionDeletions(next), func() { s.publishSessionDeletions(next) })
 }
 
 // ConfirmSessionDeletion converts the exact prepared command into a durable
-// local tombstone, then retires all CLI-owned state. Once the tombstone is
-// durable, physical cleanup is best-effort: an undeletable old aggregate can
-// no longer be observed and will be retried on the next Open.
+// local tombstone, then retires all CLI-owned state. A cleanup failure preserves
+// the tombstone and its cause; the obsolete aggregate cannot become live again.
 func (s *Store) ConfirmSessionDeletion(sessionID string, commandID authoring.CommandID) error {
 	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return err
@@ -165,7 +166,7 @@ func (s *Store) ConfirmSessionDeletion(sessionID string, commandID authoring.Com
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	pending, exists := s.sessionDeletions[sessionID]
-	if !exists || pending.Phase != SessionDeletionPrepared || pending.CommandID != commandID {
+	if !exists || pending.CommandID != commandID {
 		return errors.New("session deletion journal does not match the confirmed command")
 	}
 	return s.retireSessionStateLocked(sessionID, pending)
@@ -191,15 +192,15 @@ func (s *Store) ActivateSessionState(sessionID string) error {
 	if pending.Phase == SessionDeletionPrepared {
 		return errors.New("session deletion acknowledgement is still pending")
 	}
-	if err := s.remove(s.sessionStateName(sessionID)); err != nil {
+	if err := s.remove(s.sessionStateName(sessionID), func() {}); err != nil {
 		return fmt.Errorf("remove retired session state: %w", err)
 	}
 	next := cloneSessionDeletions(s.sessionDeletions)
 	delete(next, sessionID)
-	if err := s.save(sessionDeletionsName, sortedSessionDeletions(next)); err != nil {
+	if err := s.save(sessionDeletionsName, sortedSessionDeletions(next), func() { s.publishSessionDeletions(next) }); err != nil {
 		return fmt.Errorf("clear retired session tombstone: %w", err)
 	}
-	s.sessionDeletions = next
+
 	return nil
 }
 
@@ -229,27 +230,22 @@ func (s *Store) retireSessionStateLocked(sessionID string, pending PendingSessio
 	if pending.Phase != SessionDeletionConfirmed {
 		next := cloneSessionDeletions(s.sessionDeletions)
 		next[sessionID] = confirmed
-		if err := s.save(sessionDeletionsName, sortedSessionDeletions(next)); err != nil {
+		if err := s.save(sessionDeletionsName, sortedSessionDeletions(next), func() { s.publishSessionDeletions(next) }); err != nil {
 			return fmt.Errorf("save retired session tombstone: %w", err)
 		}
-		s.sessionDeletions = next
 	}
-	delete(s.drafts, sessionID)
-	delete(s.pendingRuns, sessionID)
-	delete(s.pendingResumes, sessionID)
-	delete(s.pendingRollbacks, sessionID)
-	delete(s.pendingSteers, sessionID)
+
 	// Retirement is committed by the confirmed tombstone above. It stays until
 	// both cleanup writes succeed, so recovery retries a failure here.
-	if err := s.remove(s.sessionStateName(sessionID)); err != nil {
-		return nil
+	if err := s.remove(s.sessionStateName(sessionID), func() {}); err != nil {
+		return fmt.Errorf("remove retired session state: %w", err)
 	}
 	next := cloneSessionDeletions(s.sessionDeletions)
 	delete(next, sessionID)
-	if err := s.save(sessionDeletionsName, sortedSessionDeletions(next)); err != nil {
-		return nil
+	if err := s.save(sessionDeletionsName, sortedSessionDeletions(next), func() { s.publishSessionDeletions(next) }); err != nil {
+		return fmt.Errorf("clear retired session tombstone: %w", err)
 	}
-	s.sessionDeletions = next
+
 	return nil
 }
 
@@ -262,24 +258,16 @@ func (s *Store) confirmedSessionStateFile(name string) bool {
 	return false
 }
 
-// recoverConfirmedSessionDeletions performs cleanup which is no longer on the
-// correctness path. Failures deliberately leave the tombstone in place; the
-// obsolete aggregate remains unreachable and a later Open retries it.
-func (s *Store) recoverConfirmedSessionDeletions() {
+func (s *Store) recoverConfirmedSessionDeletions() error {
 	for _, pending := range sortedSessionDeletions(s.sessionDeletions) {
 		if pending.Phase != SessionDeletionConfirmed {
 			continue
 		}
-		if err := s.remove(s.sessionStateName(pending.SessionID)); err != nil {
-			continue
+		if err := s.retireSessionStateLocked(pending.SessionID, pending); err != nil {
+			return err
 		}
-		next := cloneSessionDeletions(s.sessionDeletions)
-		delete(next, pending.SessionID)
-		if err := s.save(sessionDeletionsName, sortedSessionDeletions(next)); err != nil {
-			continue
-		}
-		s.sessionDeletions = next
 	}
+	return nil
 }
 
 func cloneSessionDeletions(source map[string]PendingSessionDeletion) map[string]PendingSessionDeletion {

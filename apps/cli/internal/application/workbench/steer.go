@@ -189,8 +189,7 @@ func (s *Store) StagePendingSteer(pending PendingSteer, sourceDraft authoring.Me
 	); err != nil {
 		return PendingSteer{}, err
 	}
-	delete(s.drafts, pending.sessionID)
-	s.pendingSteers[pending.sessionID] = pending
+
 	return pending.clone(), nil
 }
 
@@ -224,14 +223,10 @@ func (s *Store) AcknowledgePendingSteer(sessionID string, commandID authoring.Co
 	if err := s.recordPromptHistoryLocked(commandID, pending.command.Message.Clone()); err != nil {
 		return err
 	}
-	if err := s.saveSessionStateRecord(
+	return s.saveSessionStateRecord(
 		sessionID, s.drafts[sessionID], s.pendingRuns[sessionID],
 		s.pendingResumePointer(sessionID), s.pendingRollbackPointer(sessionID), nil,
-	); err != nil {
-		return err
-	}
-	delete(s.pendingSteers, sessionID)
-	return nil
+	)
 }
 
 // RejectPendingSteer returns borrowed attachments after a definitive runtime
@@ -273,12 +268,6 @@ func (s *Store) RejectPendingSteer(
 	); err != nil {
 		return authoring.Message{}, err
 	}
-	if recovered.IsEmpty() {
-		delete(s.drafts, sessionID)
-	} else {
-		s.drafts[sessionID] = recovered.Clone()
-	}
-	delete(s.pendingSteers, sessionID)
 	return recovered, nil
 }
 

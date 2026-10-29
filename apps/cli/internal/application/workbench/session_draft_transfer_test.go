@@ -137,7 +137,7 @@ func TestStoreRecoversRetiredSourceDraftWithoutDuplicatingOwnership(t *testing.T
 	if saveDraftErr := store.SaveDraft(transfer.SourceSessionID, transfer.SourceBefore); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
-	if saveErr := store.save(sessionDraftTransferName, transfer); saveErr != nil {
+	if saveErr := store.save(sessionDraftTransferName, transfer, func() {}); saveErr != nil {
 		t.Fatal(saveErr)
 	}
 	// Simulate a crash after the source retirement but before the destination
@@ -174,7 +174,7 @@ func TestStoreRefusesToReplayDraftTransferOverNewerAuthoringState(t *testing.T) 
 	if saveDraftErr := store.SaveDraft(transfer.SourceSessionID, transfer.SourceBefore); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
-	if saveErr := store.save(sessionDraftTransferName, transfer); saveErr != nil {
+	if saveErr := store.save(sessionDraftTransferName, transfer, func() {}); saveErr != nil {
 		t.Fatal(saveErr)
 	}
 	newer := authoring.Message{Text: "authored after the stale journal"}

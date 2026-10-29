@@ -169,7 +169,7 @@ func Rollback(
 	if err := authoring.StageSessionRollback(pending); err != nil {
 		return RollbackResult{}, fmt.Errorf("stage session rollback: %w", err)
 	}
-	return settleRollback(ctx, runtime, pending, policy, backoff)
+	return settleRollback(ctx, runtime, authoring, pending, policy, backoff)
 }
 
 // settleRollback observes or replays one prepared command. History projections can
@@ -178,6 +178,7 @@ func Rollback(
 func settleRollback(
 	ctx context.Context,
 	runtime rollbackRuntime,
+	store *workbench.Store,
 	pending workbench.PendingSessionRollback,
 	policy mutation.ReplayPolicy,
 	backoff retry.Backoff,
@@ -204,7 +205,7 @@ func settleRollback(
 		return result, errors.New("file rollback replay guarantee expired or belongs to another runtime")
 	}
 
-	rollbackResult, rollbackErr := executeRollback(ctx, runtime, pending, policy, backoff)
+	rollbackResult, rollbackErr := executeRollback(ctx, runtime, store, pending, policy, backoff)
 	if errors.Is(rollbackErr, conversation.ErrCommandStoreMismatch) {
 		result.Outcome = mutation.Unknown
 		return result, fmt.Errorf("rollback session outcome is unknown: %w", rollbackErr)
@@ -224,6 +225,7 @@ func settleRollback(
 func executeRollback(
 	ctx context.Context,
 	runtime rollbackRuntime,
+	store *workbench.Store,
 	pending workbench.PendingSessionRollback,
 	policy mutation.ReplayPolicy,
 	backoff retry.Backoff,
@@ -232,9 +234,15 @@ func executeRollback(
 		// History rollback has an authoritative before/after projection. One call
 		// followed by another read converges an uncertain acknowledgement without
 		// blindly replaying beyond an unrecorded command-store deadline.
+		if err := store.DispatchReady(); err != nil {
+			return conversation.RollbackResult{}, err
+		}
 		return runtime.RollbackSession(ctx, pending.Request())
 	}
 	return mutation.ConfirmAdmitted(ctx, backoff, mutation.ReplayAdmission(policy, pending.Replay), func(ctx context.Context) (conversation.RollbackResult, error) {
+		if err := store.DispatchReady(); err != nil {
+			return conversation.RollbackResult{}, err
+		}
 		return runtime.RollbackSession(ctx, pending.Request())
 	})
 }
@@ -380,7 +388,7 @@ func RecoverRollbacks(
 		if pending.Phase == workbench.SessionRollbackConfirmed {
 			continue
 		}
-		result, err := settleRollback(ctx, runtime, pending, policy, backoff)
+		result, err := settleRollback(ctx, runtime, authoring, pending, policy, backoff)
 		switch result.Outcome {
 		case mutation.Confirmed:
 			if confirmErr := ConfirmRollback(authoring, result); confirmErr != nil {

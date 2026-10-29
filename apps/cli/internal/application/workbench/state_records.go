@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -71,7 +72,9 @@ func (s *Store) loadState() error {
 	if err := s.loadDraftTransfer(); err != nil {
 		return err
 	}
-	s.recoverConfirmedSessionDeletions()
+	if err := s.recoverConfirmedSessionDeletions(); err != nil {
+		return fmt.Errorf("recover retired sessions: %w", err)
+	}
 	s.history = s.trimHistory(s.history)
 	s.stashes = tailStashes(s.stashes, s.stashCapacity)
 	s.workspaces = slices.Clone(s.workspaces[:min(len(s.workspaces), s.workspaceCapacity)])
@@ -196,33 +199,25 @@ func (s *Store) restoreSessionState(name string, state sessionState) error {
 	if err := validatePendingRunSequence(state.SessionID, state.PendingRuns); err != nil {
 		return fmt.Errorf("state %s: %w", name, err)
 	}
-	if !state.Draft.IsEmpty() {
-		s.drafts[state.SessionID] = state.Draft.Clone()
-	}
-	if len(state.PendingRuns) > 0 {
-		for index := range state.PendingRuns {
-			pending := &state.PendingRuns[index]
-			pending.Command.Input, pending.inputFailure = s.readInput(pending.InputDigest)
-		}
-		s.pendingRuns[state.SessionID] = clonePendingRunSlice(state.PendingRuns)
+	for index := range state.PendingRuns {
+		pending := &state.PendingRuns[index]
+		pending.Command.Input, pending.inputFailure = s.readInput(pending.InputDigest)
 	}
 	if state.PendingResume != nil {
 		if err := state.PendingResume.validate(); err != nil {
 			return fmt.Errorf("state %s pending resume: %w", name, err)
 		}
 		state.PendingResume.Command.Input, state.PendingResume.inputFailure = s.readInput(state.PendingResume.InputDigest)
-		s.pendingResumes[state.SessionID] = clonePendingResume(*state.PendingResume)
 	}
 	if state.PendingRollback != nil {
-		pending := state.PendingRollback.clone()
-		if err := pending.Validate(); err != nil {
+		if err := state.PendingRollback.Validate(); err != nil {
 			return fmt.Errorf("state %s pending rollback: %w", name, err)
 		}
-		if pending.SessionID != state.SessionID {
+		if state.PendingRollback.SessionID != state.SessionID {
 			return fmt.Errorf("state %s pending rollback belongs to another session", name)
 		}
-		s.pendingRollbacks[state.SessionID] = pending
 	}
+	var steer *PendingSteer
 	if state.PendingSteer != nil {
 		pending, err := restorePendingSteer(*state.PendingSteer)
 		if err != nil {
@@ -232,8 +227,9 @@ func (s *Store) restoreSessionState(name string, state sessionState) error {
 			return fmt.Errorf("state %s pending steer: %w", name, err)
 		}
 		pending.command.Input, pending.inputFailure = s.readInput(pending.inputDigest)
-		s.pendingSteers[state.SessionID] = pending
+		steer = &pending
 	}
+	s.installSessionState(state.SessionID, state.Draft, state.PendingRuns, state.PendingResume, state.PendingRollback, steer)
 	return nil
 }
 
@@ -297,7 +293,7 @@ func (s *Store) saveSessionStateRecordUnfenced(
 	}
 	name := s.sessionStateName(sessionID)
 	if draft.IsEmpty() && len(pending) == 0 && resume == nil && rollback == nil && steer == nil {
-		return s.remove(name)
+		return s.remove(name, func() { s.publishSessionState(sessionID, draft, pending, resume, rollback, steer) })
 	}
 	state := sessionState{
 		SessionID: sessionID, Draft: draft.Clone(), PendingRuns: clonePendingRunSlice(pending),
@@ -314,7 +310,7 @@ func (s *Store) saveSessionStateRecordUnfenced(
 		record := steer.record()
 		state.PendingSteer = &record
 	}
-	return s.save(name, state)
+	return s.save(name, state, func() { s.publishSessionState(sessionID, draft, pending, resume, rollback, steer) })
 }
 
 // writable reports whether a durable write may proceed. An incomplete
@@ -331,9 +327,14 @@ func (s *Store) writable() (bool, error) {
 	return s.persistence != nil, nil
 }
 
-func (s *Store) save(name string, value any) error {
-	if ok, err := s.writable(); err != nil || !ok {
-		return err
+func (s *Store) save(name string, value any, publish func()) error {
+	writable, err := s.writable()
+	if err != nil {
+		return &WriteError{Record: name, Result: filesystem.CommitResult{Err: err}}
+	}
+	if !writable {
+		publish()
+		return nil
 	}
 	// A state file is read by a person and compared between runs, so the same
 	// value must produce the same bytes.
@@ -349,14 +350,111 @@ func (s *Store) save(name string, value any) error {
 	if len(encoded) > maximumStateBytes {
 		return fmt.Errorf("workbench state %q exceeds %d bytes", name, maximumStateBytes)
 	}
-	return s.persistence.Replace(name, encoded)
+	return s.acceptCommit(name, s.persistence.Replace(name, encoded), publish)
 }
 
-func (s *Store) remove(name string) error {
-	if ok, err := s.writable(); err != nil || !ok {
-		return err
+func (s *Store) remove(name string, publish func()) error {
+	writable, err := s.writable()
+	if err != nil {
+		return &WriteError{Record: name, Result: filesystem.CommitResult{Err: err}}
 	}
-	return s.persistence.Remove(name)
+	if !writable {
+		publish()
+		return nil
+	}
+	return s.acceptCommit(name, s.persistence.Remove(name), publish)
+}
+
+func (s *Store) acceptCommit(name string, result filesystem.CommitResult, publish func()) error {
+	switch result.State {
+	case filesystem.CommitUncommitted:
+		if result.Err == nil {
+			return s.blockWrites(errors.New("persistence returned an uncommitted write without a cause"))
+		}
+		return &WriteError{Record: name, Result: result}
+	case filesystem.CommitVisible, filesystem.CommitDurable:
+		publish()
+	default:
+		return s.blockWrites(errors.New("persistence returned an unknown commit state"))
+	}
+	if result.State == filesystem.CommitVisible {
+		if result.Err == nil {
+			result.Err = errors.New("persistence did not confirm record durability")
+		}
+		s.blockWrites(fmt.Errorf("record %q durability is unconfirmed: %w", name, result.Err))
+	}
+	if result.Err != nil {
+		return &WriteError{Record: name, Result: result}
+	}
+	return nil
+}
+
+// DispatchReady fences external effects that depend on this Store's command
+// identities. Receipt reads do not require another local publication.
+func (s *Store) DispatchReady() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.dispatchReadyLocked()
+}
+
+func (s *Store) dispatchReadyLocked() error {
+	_, err := s.writable()
+	if err != nil {
+		return fmt.Errorf("%w: command record durability: %w", authoring.ErrCommandOutcomeUnknown, err)
+	}
+	return nil
+}
+
+// CancellationReady checks retained cancellation identities. A live Run can
+// still be stopped with an independent, process-owned cancellation intent.
+func (s *Store) CancellationReady(commandID authoring.CommandID) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, commands := range s.pendingRuns {
+		for _, pending := range commands {
+			if pending.CancelCommandID == commandID && commandID != "" {
+				return s.dispatchReadyLocked()
+			}
+		}
+	}
+	return nil
+}
+
+func (s *Store) publishSessionState(sessionID string, draft authoring.Message, pending []PendingRun, resume *PendingResume, rollback *PendingSessionRollback, steer *PendingSteer) {
+	s.installSessionState(sessionID, draft, pending, resume, rollback, steer)
+	// Live publication has the complete outbox catalog. Cold restore trims only
+	// after all Sessions have loaded, so another Session's pinned history survives.
+	s.history = s.trimHistory(s.history)
+}
+
+func (s *Store) installSessionState(
+	sessionID string,
+	draft authoring.Message,
+	pending []PendingRun,
+	resume *PendingResume,
+	rollback *PendingSessionRollback,
+	steer *PendingSteer,
+) {
+	delete(s.drafts, sessionID)
+	if !draft.IsEmpty() {
+		s.drafts[sessionID] = draft.Clone()
+	}
+	delete(s.pendingRuns, sessionID)
+	if len(pending) > 0 {
+		s.pendingRuns[sessionID] = clonePendingRunSlice(pending)
+	}
+	delete(s.pendingResumes, sessionID)
+	if resume != nil {
+		s.pendingResumes[sessionID] = clonePendingResume(*resume)
+	}
+	delete(s.pendingRollbacks, sessionID)
+	if rollback != nil {
+		s.pendingRollbacks[sessionID] = rollback.clone()
+	}
+	delete(s.pendingSteers, sessionID)
+	if steer != nil {
+		s.pendingSteers[sessionID] = steer.clone()
+	}
 }
 
 func (s *Store) blockWrites(cause error) error {
@@ -366,7 +464,7 @@ func (s *Store) blockWrites(cause error) error {
 			cause,
 		)
 	}
-	return s.writeBarrier
+	return errors.Join(cause, s.writeBarrier)
 }
 
 func (s *Store) sessionStateName(sessionID string) string {

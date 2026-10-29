@@ -13,8 +13,9 @@ import (
 var ErrDispatchCanceling = errors.New("queued prompt is awaiting cancellation")
 
 // Queue owns the transaction between the live FIFO and the durable authoring
-// outbox. A failed write leaves the reservation and every editable entry intact;
-// an acknowledged start releases its FIFO position only after durable settlement.
+// outbox. An uncommitted write leaves the reservation and editable entries intact;
+// an acknowledged start releases its FIFO position after outbox retirement is
+// visible. The Store fences delivery while durability remains unconfirmed.
 type Queue struct {
 	mu    sync.Mutex
 	store *Store
@@ -196,13 +197,15 @@ func (q *Queue) retire(sessionID string, commandID authoring.CommandID) (authori
 	if entry.CommandID != commandID {
 		return authoring.QueueEntry{}, false, errors.New("dispatching prompt command identity changed")
 	}
+	var settlementErr error
 	if pending {
-		if err := q.store.AcknowledgePendingRun(sessionID, commandID); err != nil {
-			return authoring.QueueEntry{}, false, err
+		settlementErr = q.store.AcknowledgePendingRun(sessionID, commandID)
+		if _, retained := q.pendingRun(sessionID, commandID); retained {
+			return authoring.QueueEntry{}, false, settlementErr
 		}
 	}
 	retired, err := q.fifo.RetireCommand(sessionID, commandID)
-	return retired, err == nil, err
+	return retired, err == nil, errors.Join(settlementErr, err)
 }
 
 // RequeueDispatch is valid only after Runtime definitively refused this exact
@@ -215,10 +218,10 @@ func (q *Queue) RequeueDispatch(sessionID string, commandID authoring.CommandID)
 		return errors.New("dispatching prompt command identity changed")
 	}
 	replacement, err := q.store.RequeuePendingRun(sessionID, commandID)
-	if err != nil {
+	if replacement == "" {
 		return err
 	}
-	return q.fifo.RequeueDispatch(sessionID, commandID, replacement)
+	return errors.Join(err, q.fifo.RequeueDispatch(sessionID, commandID, replacement))
 }
 
 func (q *Queue) pendingRun(sessionID string, commandID authoring.CommandID) (PendingRun, bool) {
@@ -263,6 +266,9 @@ func (q *Queue) persist(sessionID string) error {
 }
 
 func (q *Queue) rollback(sessionID string, before authoring.QueueState, cause error) error {
+	if writeCommitted(cause) {
+		return cause
+	}
 	if err := q.fifo.RestoreState(sessionID, before); err != nil {
 		return errors.Join(cause, fmt.Errorf("restore prompt queue: %w", err))
 	}
