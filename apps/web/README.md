@@ -52,6 +52,11 @@ returns to the current input with its draft and selection intact; later focus or
 an input replacement retires the capture. The exit is an ordinary named action.
 Automatic mode retirement and Goal execution keep their existing owners.
 
+TextEditorDialog derives modal dismissal from its existing busy state. While
+saving, Close, Escape and outside dismissal share the same unavailable contract
+as Cancel and Save. Settlement restores dismissal; draft, error, command and
+return-focus ownership remain with their existing callers and shared controls.
+
 The empty conversation owns keeping its focused control inside its scroll
 viewport when the window, text or surrounding content reflows. Its existing
 spacing token supplies focus clearance. Native keyboard return reveals that

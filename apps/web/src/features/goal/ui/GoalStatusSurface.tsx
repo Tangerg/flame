@@ -268,9 +268,7 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
       )}
       <TextEditorDialog
         open={editing}
-        onOpenChange={(open) => {
-          if (!editAction.busy) setEditing(open);
-        }}
+        onOpenChange={setEditing}
         icon={<Icon name="target" size="lg" className={stylex.props(vocab.muted).className} />}
         title={t("goal.edit.title")}
         closeLabel={t("common.close")}

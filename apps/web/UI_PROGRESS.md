@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Current batch continues from main `841643e08`, which publishes consistent reading-action names and roles. Manual Goal-mode exit now returns to the current editable draft and its selection through the existing captured-focus owner; see **Goal authoring exit and draft continuity**. Native reading, file return, empty/nonempty exit and continued editing pass, with scoped checks and resource retirement complete. The publication fetch finds zero incoming commits; merging main reports already up to date. Basic objective-editor cancellation is already qualified; next inspect edit submission, pending/error feedback and recovery to the retained draft. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
+Current batch continues from main `353cfd86e`, which publishes Goal-mode exit and draft continuity. Shared text editors now derive all manual dismissal from the existing pending state; see **Goal save feedback and pending dismissal**. Native pending/rejection, retained drafts, file return and continued editing pass in light and dark/18 px/200% scenes, including a build without observation code. Scoped checks and resource retirement are complete. The publication fetch finds zero incoming commits; merging main reports already up to date. Next inspect package configuration entry, correction and return through the other asynchronous TextEditorDialog caller. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -79,7 +79,11 @@ incoming commits at `e2208f04f`; merging reports already up to date.
 The Goal-mode follow-up qualifies manual exit, retained text selection, ordinary
 action semantics and continued drafting across related-file return. Its publication
 fetch finds zero incoming commits at `841643e08`; merging reports already up to date.
-See **Computer console
+The Goal-mode repair is published as `353cfd86e`. The Goal-save follow-up
+qualifies shared pending dismissal, known rejection, retained drafts and
+continued editing after file return. Its publication fetch finds zero incoming
+commits at `353cfd86e`; merging reports already up to date. See **Goal save
+feedback and pending dismissal** and **Computer console
 editing and operation return**. Preserve the
 separate exact-Run and Skills object contract limits already recorded below.
 The user resumed the paused goal.
@@ -1022,6 +1026,124 @@ resources and four read-only references remain preserved. The private root
 The unverified scenarios above retain their boundaries. The batch stays local;
 the continuous whole-product UI goal remains active.
 
+### Goal save feedback and pending dismissal
+
+At main `353cfd86ec495ee3de5527c1a77fa8b5da89f2cc`, an actual native Goal
+save exposes an enabled Close action while the editor, Cancel and Save are
+pending. Close takes focus but does nothing because the Goal caller silently
+ignores its callback. The shared TextEditorDialog does not pass its existing
+busy fact into ModalDialog's existing dismissal contract. The package
+configuration caller can instead close that same pending editor. This is one
+shared presentation-boundary defect, not a Runtime lifecycle change.
+
+`src/ui/atoms/text-editor-dialog.tsx:89` now passes `dismissible={!busy}`.
+ModalDialog already cancels primitive dismissal and disables its header Close;
+Cancel, Save, the editor and optional secondary action already consume the same
+busy fact. GoalStatusSurface therefore forwards `setEditing` directly instead
+of retaining a second silent closing rule. Existing task identity, request
+admission, command recovery, draft/error state, focus restoration and IME
+handling remain with their owners. There is no new API, state, listener, timer,
+visual token, dependency or persisted-data migration.
+
+The task is read the reply and retain a conversation draft → edit the paused
+Goal → submit → understand the pending boundary and a known refusal → revise
+or cancel → inspect the related source file → explicitly return → continue the
+original conversation. A modal remains appropriate for this bounded edit;
+file reading retains its separate full-width workspace. All three production
+callers are inspected: GoalStatusSurface, PackageManager configuration and
+ComposerAttachments paste review. The latter has no asynchronous busy state;
+its existing editing contract remains. Native task qualification here covers
+the Goal caller; package configuration is the next task to inspect.
+
+Read-only HeroUI Modal implementation and DismissBehavior stories distinguish
+outside and keyboard dismissal at the primitive boundary. The existing Button
+research supplies truthful availability. Flame reuses its own shared Base UI
+modal contract rather than adding another event handler or adopting HeroUI's
+component API. Existing better-interface guidance, especially accessibility
+forms/focus, supplies the review dimensions below. These references guide the
+repair; they do not prove Flame's native behavior.
+
+| Domain        | Evidence inspected                                                                                                      | Result and boundary                                                                      |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Accessibility | Actual pending Close, Escape, Cmd+Enter, retained textarea focus, settled cancellation and file-return keyboard path    | One MEDIUM finding repaired; no VoiceOver audio or new OS IME qualification.             |
+| Layout        | 1440 × 900 and native 200% at 756 × 475 CSS px / DPR 4, multiline objective, error and persistent footer                | Inspected text and actions remain reachable; fresh 320 px and RTL are not run.           |
+| Writing       | Existing EN/ZH names and canonical captured refusal detail                                                              | Pending and settled actions describe their actual availability; no helper copy is added. |
+| Typography    | Existing 14/18 px editor text and 21.7/27.9 px line-height, mixed-language multiline draft                              | Text, error wrapping and retained draft hierarchy remain readable.                       |
+| Colors        | Light/Flame Orange and dark/custom blue, neutral canvas, existing focus and error tokens                                | Painted keyboard focus and feedback retained; no new contrast-ratio claim.               |
+| UI            | Existing modal geometry, disabled header Close, focusable pending field and footer actions, full/motion-off preferences | One busy fact determines availability; no new visual skin or animation.                  |
+
+| Severity         | Domain           | Location                                 | Before                                                                          | After                                                                   | Why                                                    |
+| ---------------- | ---------------- | ---------------------------------------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------ |
+| MEDIUM, repaired | Accessibility/UI | `src/ui/atoms/text-editor-dialog.tsx:89` | Pending Close appears usable and either does nothing or leaves the saving task. | Close, Escape and outside dismissal share the modal's pending contract. | Visible availability and the edit task boundary agree. |
+
+Four qualified native process generations use the actual Wails host and
+production workspace, components, SDK, useAgentSession, projection
+synchronization and shared-material registry. The private captured input
+advertises Goal capability, includes its Goal in the canonical snapshot and
+stages that snapshot through the actual registry on repair. Public
+`goals.update` travels through the real command path to a loopback responder,
+which waits 15 seconds and returns a canonical known refusal. Run execution
+ports remain inert. All UI input uses CUA; the optional observer only reads
+rendered text, roles, geometry, focus and selection.
+
+- The qualified original light instance shows enabled Close beside pending
+  Cancel/Save; activating Close takes focus without closing. A canonical refused
+  save retains its exact objective draft and readable cause.
+- EN/light/14 px/Orange: Cmd+Enter submits the edit; Close is disabled, Escape
+  keeps the pending dialog, and a repeated shortcut issues no second command.
+  Rejection retains the exact draft and textarea focus. Further editing clears
+  the old error. Escape then returns to Edit goal. Related-file entry, four Tabs
+  to its body, four Shift-Tabs to Close and Return preserve the conversation;
+  continued editing produces `Continue after the captured goal review. Ready to continue.`
+- ZH/dark/18 px/custom blue/motion off: native window adjustment and 200% retain
+  the complete mixed-language multiline objective, including its final sentence.
+  Pending Escape and repeat submission preserve one command and the task. The
+  known refusal remains readable; native scrolling and Tab reach Cancel, whose
+  Return returns to Edit goal. Full-width file reading and explicit Close retain
+  the conversation; continued editing produces `在查看目标后继续这份对话草稿。 现在继续。`.
+- The final dark/200% instance omits the observer. All 617 assets match the
+  observed build except the two HTML entries. It repeats pending Escape,
+  single-command submission, retained draft/reason, settled cancellation and
+  keyboard file return, then continues `普通版本保留这份对话草稿。 继续。`. There are
+  zero observation requests or events; its one business request is expected.
+
+Two earlier private process generations diagnose missing fixture capability
+and are excluded from qualification. Three early synthetic replies violate
+the SDK error schema and are excluded from known-refusal evidence. The accepted
+responder uses code -32600, message/type invalid_request and the human cause in
+data.detail. No scene proves a successful durable Goal update, live provider
+execution or recovery from an unknown outcome. The existing Session/Goal task
+key and recovery semantics remain unchanged.
+
+The focused unchanged baseline passes 2 Web files / 32 tests. Both new shared
+editor cases fail against the original production source. The final focused
+frontend run passes 14 files / 85 tests, covering Goal, shared editor/fields,
+Composer attachment rendering and existing package settings regressions. Web
+typecheck, lint, circular/context/layer, design-system/token/chrome/locale,
+resource reproducibility, production bundle/module checks and make check-native
+pass serially. All 32 installed resources retain their hashes. Full Web/Runtime
+suites, browser suites, performance benchmarks, Claude CLI and subagents do not
+run. Existing shared ModalDialog tests cover its primitive dismissal/IME rule;
+no new shared-library API is introduced.
+
+All six native generations are stopped; the bundle is unregistered and its
+loopback port is closed. Cleanup removes 7 new checkout output/cache roots and
+3 owned profile paths, restores 4 original files and modes, and passes all 18
+output and 5 profile baselines. All 6,269 qualified non-Markdown inputs, 32
+resources, five read-only references and three instruction files pass
+preservation. The existing Web Vite-temp directory remains empty. The private
+root `flame-goal-save-0emSL4` is absent. The round-tripped in-memory archive holds
+95 UTF-8 records, 19,988,080 raw bytes and 1,531,148 gzip bytes; SHA-256
+`ed10bef7d00aa340f6f0d9ee15317c64fa2d313e886fedc83ee479d61b46c8d1`.
+The primary checkout and unrelated work remain untouched.
+
+Verdict: Approve for shared editor pending dismissal and the inspected Goal
+refusal/file-return task. Typography, whitespace, hierarchy, color, motion,
+interaction, responsive and originality checks preserve the established design
+in these scenes; this does not establish whole-product award-level acceptance.
+The full UI goal remains active. Next inspect configuration entry, correction
+and return in PackageManager, using the same shared editor and command owner.
+
 ### Goal authoring exit and draft continuity
 
 At main `841643e08e9b66db8df3555d826eb49b74bd4d64`, native `/goal` authoring
@@ -1117,9 +1239,9 @@ The primary checkout and unrelated user work remain untouched.
 Verdict: **Approve for manual Goal-mode exit and the inspected file-return task**.
 The whole-product UI goal remains active. Basic objective-editor entry and
 cancellation are already qualified under **Goal stop-reason reading** below.
-Next inspect edit submission, pending/error feedback and recovery through the
-existing TextEditorDialog before returning to the retained conversation draft.
-Source inspection has begun; native command feedback is not newly qualified.
+That submission/rejection task is now qualified in **Goal save feedback and
+pending dismissal** above. Live Goal execution retains its existing owner and
+its separate qualification boundary.
 
 ### Goal stop-reason reading
 

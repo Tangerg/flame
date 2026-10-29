@@ -86,6 +86,7 @@ export function TextEditorDialog({
     <ModalDialog
       open={open}
       onOpenChange={onOpenChange}
+      dismissible={!busy}
       title={title}
       description={description}
       icon={icon}
