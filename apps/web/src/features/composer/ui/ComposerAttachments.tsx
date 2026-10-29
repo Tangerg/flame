@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { chipPresence } from "@/lib/motion";
 import { basename } from "@/lib/path";
 import { Chip } from "@/ui/index";
-import { LightboxDialog } from "@/ui/index";
+import { LightboxDialog } from "@flame/ui";
 import { Pressable } from "@/ui/index";
 import { TextEditorDialog } from "@/ui/index";
 import { reveal } from "@/ui/index";

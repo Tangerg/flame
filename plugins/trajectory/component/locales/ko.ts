@@ -94,4 +94,9 @@ export const ko: Record<string, string> = {
   "rename.actions": "세션 제목 저장",
   "rename.factRevision": "리비전",
   "rename.captured": "캡처된 세션",
+  "image.view": "이미지 보기",
+  "image.close": "이미지 미리보기 닫기",
+  "image.zoomIn": "이미지 확대",
+  "image.zoomOut": "이미지 축소",
+  "image.description": "이미지 설명",
 };

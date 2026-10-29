@@ -68,4 +68,9 @@ export const fr: Record<string, string> = {
   "code.copied": "Copié",
   "code.wrap": "Activer le retour à la ligne",
   "code.unwrap": "Désactiver le retour à la ligne",
+  "image.view": "Voir l’image",
+  "image.close": "Fermer l’aperçu de l’image",
+  "image.zoomIn": "Agrandir l’image",
+  "image.zoomOut": "Réduire l’image",
+  "image.description": "Description de l’image",
 };

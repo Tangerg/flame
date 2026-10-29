@@ -410,6 +410,22 @@ to continue through the enclosing reading viewport. Bounded image and diagram
 viewers explicitly contain both axes in their own viewport styles.
 Read-only code regions follow the same horizontal-only containment policy.
 
+`LightboxDialog` owns expanded figure, document and media reading over Base UI.
+It retires when its inherited content becomes hidden, releases only its own
+portal focus and keeps that capture closed when the owner returns. Ordinary
+dismissal retains Base UI's trigger return; an explicit final-focus policy stays
+with the caller. These are the same semantics used by transcript previews.
+
+`ImageViewport` owns fitting, anchored zoom, keyboard panning and pointer dragging
+for one captured `ImageSource`. Its flex frame owns its bounded scroll region and
+zoom tray. A source identity or viewport-size change resets the fit; the detached
+decoder keeps SVG natural geometry independent of displayed size and page zoom.
+`EvidenceImage` retains a bounded inline thumbnail and opens that same original
+source in a media Lightbox. Replacing its source ends the old capture. Its labels
+are supplied by the host or portable component; it owns no image acquisition,
+permission, download, document review or business command. The transcript gallery
+shares this viewport while retaining its own image collection and save outcomes.
+
 The shared stylesheet owns search emphasis: `search-match` and
 `search-match-active` CSS highlights use the host's selected wash and paired accent
 fill and ink. A `search-line` slot with `data-current-match` marks a line-based

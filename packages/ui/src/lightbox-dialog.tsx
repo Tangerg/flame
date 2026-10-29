@@ -8,12 +8,14 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
-import { cn } from "@/lib/classNames";
-import { iconGlyph } from "@/ui/icons/index";
-import { layout, space, surface, type, weight } from "@flame/ui/tokens.stylex";
+import { clsx as cn } from "clsx";
+import { X } from "@flame/icons/react";
+import { layout, space, surface, type, weight } from "./tokens.stylex";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
-import { IconButton, ScrollRegion, useContentVisible } from "@flame/ui";
-import { MODAL_SCRIM, modalPanel } from "@flame/ui/floating-surface";
+import { IconButton } from "./icon-button";
+import { ScrollRegion } from "./scroll-region";
+import { useContentVisible } from "./content-visibility";
+import { MODAL_SCRIM, modalPanel } from "./floating-surface";
 const styles = stylex.create({
   figure: {
     width: "fit-content",
@@ -95,8 +97,11 @@ interface LightboxBaseProps {
   styles?: stylex.StyleXArray<stylex.StyleXStyles | null | false>;
 }
 
-type LightboxDialogProps = LightboxBaseProps &
-  ({ kind?: "figure" | "media" } | { kind: "document"; closeLabel: string; contentLabel: string });
+export type LightboxDialogProps = LightboxBaseProps &
+  (
+    | { kind?: "figure" | "media" }
+    | { kind: "document"; closeLabel: string; contentLabel: string }
+  );
 
 export function LightboxDialog(props: LightboxDialogProps) {
   const {
@@ -130,7 +135,9 @@ export function LightboxDialog(props: LightboxDialogProps) {
     <DialogPrimitive.Root open={open && visible} onOpenChange={onOpenChange}>
       <DialogPrimitive.Trigger render={trigger} />
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Backdrop {...stylex.props(MODAL_SCRIM, styles.dismiss)} />
+        <DialogPrimitive.Backdrop
+          {...stylex.props(MODAL_SCRIM, styles.dismiss)}
+        />
         <DialogPrimitive.Popup
           ref={popupRef}
           initialFocus={kind === "document" ? documentRef : popupRef}
@@ -144,13 +151,15 @@ export function LightboxDialog(props: LightboxDialogProps) {
           {props.kind === "document" ? (
             <>
               <div {...stylex.props(styles.documentHeader)}>
-                <DialogPrimitive.Title {...stylex.props(styles.documentTitle, type.displaySm)}>
+                <DialogPrimitive.Title
+                  {...stylex.props(styles.documentTitle, type.displaySm)}
+                >
                   {title}
                 </DialogPrimitive.Title>
                 <DialogPrimitive.Close
                   render={
                     <IconButton
-                      icon={iconGlyph("x")}
+                      icon={X}
                       size="sm"
                       quiet
                       aria-label={props.closeLabel}

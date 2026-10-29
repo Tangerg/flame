@@ -90,4 +90,9 @@ export const zh: Record<string, string> = {
   "rename.actions": "保存会话标题",
   "rename.factRevision": "修订版本",
   "rename.captured": "已捕获的会话",
+  "image.view": "查看图片",
+  "image.close": "关闭图片预览",
+  "image.zoomIn": "放大图片",
+  "image.zoomOut": "缩小图片",
+  "image.description": "图片说明",
 };

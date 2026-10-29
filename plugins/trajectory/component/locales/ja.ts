@@ -94,4 +94,9 @@ export const ja: Record<string, string> = {
   "rename.actions": "セッションのタイトルを保存",
   "rename.factRevision": "リビジョン",
   "rename.captured": "取得したセッション",
+  "image.view": "画像を表示",
+  "image.close": "画像プレビューを閉じる",
+  "image.zoomIn": "画像を拡大",
+  "image.zoomOut": "画像を縮小",
+  "image.description": "画像の説明",
 };

@@ -237,4 +237,9 @@ export const de = {
     "Render-Engines in den Einstellungen dieser Installation für Office-Dokumente und PDF-Seiten konfigurieren.",
   "capabilities.engines": "Konfigurierte Engine-Pfade",
   "capabilities.limits": "Installierte Grenzen",
+  "image.view": "Bild anzeigen",
+  "image.close": "Bildvorschau schließen",
+  "image.zoomIn": "Bild vergrößern",
+  "image.zoomOut": "Bild verkleinern",
+  "image.description": "Bildbeschreibung",
 } satisfies Record<keyof typeof en, string>;

@@ -71,6 +71,12 @@ page previews, attributed reviews and download controls. The same published
 operations are available as model tools. The additional read-only `page` tool
 returns an actual retained PNG so a model can examine the render it is reviewing.
 
+Each rendered page thumbnail opens its original PNG in the shared image reader
+for local zoom and panning. The captured revision, render and page identity remain
+with the preview owner. Opening, zooming or closing the image does not mark a
+review accepted or change the selected page. Existing review controls continue
+to own those observations.
+
 The ordinary workflow is create/import, inspect, revise, recalculate if required,
 render, examine pages, record review, and export. Each edit captures the expected
 current revision. Each review captures its revision, render and reviewed page set.

@@ -75,6 +75,11 @@ present, complete JSON remains available under Recorded evidence; structured
 records keep primary JSON evidence. Both projections use the same redacted
 evidence, preserving unknown fields while omitting redacted reasoning text.
 
+Recorded message images retain their bounded inline thumbnail and open the
+original captured bytes in the shared image reader. Zoom, panning and dismissal
+do not change the accepted page, its filters or the recorded message. Closing
+returns to the image trigger; hiding the owning view ends that open capture.
+
 Page search uses the same redacted evidence as reading. It excludes only the data
 bytes of canonical user/agent message image blocks, retaining their metadata.
 Ordinary `data` properties in Tool arguments, results and extensions remain

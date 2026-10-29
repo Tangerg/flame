@@ -10446,6 +10446,105 @@ transcript; no screenshot-file archive is claimed. This handoff-only receipt
 uses the same normal publication path and changes no qualified product source.
 Continue with fresh content/Dock task observations; the continuous goal stays active.
 
+### Full image reading across portable evidence
+
+Trajectory, GenUI images/Markdown images and Deliverables rendered-page previews
+shared a bounded image without an expansion action. Actual Wails demonstrates a
+valid **1800 × 2400** recorded page reduced to **240 × 320 CSS px**; its 36 px body
+becomes **4.8 px**, and clicking or tabbing cannot open the original. Moving the
+record into the main area does not remove that limit. This prevents the user from
+reading evidence before returning to the conversation.
+
+The existing Web Lightbox and image viewport move to **@flame/ui**. Every former
+Lightbox consumer imports that owner directly; the old Web module/export and
+superseded global media-edge rule are removed. The transcript gallery retains
+captured collection, navigation, identity and save-command ownership. Shared
+ImageViewport retains its fit-relative **100–400%** steps, anchored wheel zoom,
+keyboard panning, pointer drag/cancel, detached decoder and source/resize reset.
+Its flex frame now owns the bounded pan region and zoom tray.
+
+EvidenceImage keeps the bounded thumbnail and opens that exact source with a
+localized description, close action and shared viewport. Its minimum target and
+focus treatment use existing control tokens. Source replacement ends the old
+capture; inherited hidden-content retirement retains the established Lightbox
+focus policy. All three portable consumers supply five labels in all eight
+catalogs. This introduces no dependency, Runtime command, persistence schema,
+review decision or acquisition policy. Normal generation changes only the three
+component.js resources among **34** resource inputs. Install/select rebuilt
+components with the matching Host; generation alone cannot replace an evaluated
+component in a running window.
+
+Read-only ZCode previewPaneImageContent and ChatMediaAttachmentPreviewDialog,
+and ChatGPT's actual image-lightbox entry/viewer support source identity,
+bounded full-image inspection and return to context. Existing HeroUI/Radix,
+semantic color and better-* accessibility/layout/typography/UI review apply.
+The implementation reuses Flame's Base UI, StyleX, media surfaces and interaction
+model without a second component system or decorative chrome.
+
+Verification (2026-10-29):
+
+- Original Web baseline: **6 files / 109 tests** pass. All **four** valid-source
+  shared regressions fail against the old absent image action. Final shared UI
+  check passes **12 files / 198 tests** plus the offline packed-consumer case,
+  including source identity, dismissal/focus/draft return, hidden retirement,
+  replacement and localized controls. Existing Web image/Lightbox/table/trajectory
+  checks pass **7 files / 113 tests**; additional Mermaid, Markdown and Composer
+  consumers pass **4 files / 48 tests**. Assertions are not weakened.
+- UI type/lint/format/build, Web type/lint, normal plugin build and five plugin
+  checks pass. All **11** structural/style/resource/module/native gates pass
+  serially. After the final target-size adjustment, UI, the additional consumers,
+  resource reproduction, bundle and native gates pass again. The final
+  **make check-native** takes **24.816 s**, including Desktop Go test/vet/build
+  and the supported Wails build. Existing macOS linker warnings remain nonfatal.
+- Incoming-main dependencies initially expose missing backend packages in the
+  stale installed graph. The default npm 11.6.2 does not meet the repository's
+  npm ≥11.21.1 requirement. Official npm **11.21.1** is installed only under the
+  owned out/toolchains prefix and used with the existing Node **24.22.1** runtime.
+  Root **npm ci --ignore-scripts** repairs isolated dependency roots from the
+  unchanged lock; no global configuration, hook configuration, manifest or lock
+  changes. All affected checks then pass. This installed toolchain and dependency
+  graph are retained for continuing work.
+- Actual EN/light/14/Orange/full-motion Wails at **1440 × 900**: read the reply,
+  keep a draft, filter Q7-104, expand and Tab/Enter into the image. The full page
+  exposes the checkpoint and Core owner. Native zoom reaches **200%** and **400%**;
+  arrows and pointer drag change bounded scroll positions. Escape returns focus
+  to the same thumbnail. Files/DockResizer and back retain query/disclosure;
+  Cmd+L continues the draft to **Draft before image review. Continued.** The
+  existing conversation image independently opens the same 1800 × 2400 source,
+  zooms/pans and returns to its own trigger. Main-area reading and native window
+  resizing preserve source identity with the existing resize-to-fit policy.
+- Actual ZH/dark/18/custom-blue/motion-off Wails: at **200%** page zoom the viewport
+  is **560 × 377 CSS px**. Native Tab reaches the image below the fixed controls;
+  Enter opens it with visible close/description/zoom actions. **200%** image zoom,
+  Shift+Down and wheel zoom to **300%** retain access to checkpoint detail. Native
+  window zoom yields **756 × 475**, resets fit and keeps the same source. Escape
+  returns to the image; leaving the main-area view continues the original draft
+  to **从图片证据继续。 已核对原图。** ActualSize is restored before quitting.
+- The ordinary production control repeats image opening, zoom/pan, dismissal,
+  original query/disclosure and continued draft, and opens the conversation image.
+  Its **619** assets differ from the observed build only in the two HTML entries;
+  the native binary is identical. It emits **zero** observer events. Its native
+  task observations remain in the CUA transcript; no screenshot-file archive is
+  claimed. The private PNG is deterministic synthetic evidence, not a product
+  asset or user-data capture.
+
+The isolated fixtures supply canonical snapshot data before the real public
+client folds it and select the normally built, declared Trajectory ESM through
+the actual installed-component lifecycle. The candidate additionally supplies the
+same PNG to the terminal conversation constructor. No live Runtime release
+acquisition/Realm admission, live provider, image download/save, Deliverables
+review mutation, Send, OS IME or VoiceOver is qualified. No browser suite,
+performance baseline, Claude CLI or subagent is used. All native input uses CUA;
+the optional observer only reads and reports.
+
+Cleanup closes the listener, retires the four native launches, unregisters the
+bundle, removes **eight** new checkout outputs and **three** private profiles,
+and restores **four** original files and modes. Independent checks retain
+**6,379** qualified non-Markdown inputs, **34** resources, **45** read-only
+references, **three** owned instruction files, **20** output-presence and **five**
+profile-absence baselines. The primary parallel checkout remains untouched.
+Publication and final evidence retirement follow this qualification.
+
 ## Shortcut recording and activation
 
 `apps/web/src/lib/combo.ts` now includes the canonical `space` / physical `Space`

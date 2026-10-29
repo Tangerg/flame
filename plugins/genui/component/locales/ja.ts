@@ -68,4 +68,9 @@ export const ja: Record<string, string> = {
   "code.copied": "コピー済み",
   "code.wrap": "折り返しを有効にする",
   "code.unwrap": "折り返しを無効にする",
+  "image.view": "画像を表示",
+  "image.close": "画像プレビューを閉じる",
+  "image.zoomIn": "画像を拡大",
+  "image.zoomOut": "画像を縮小",
+  "image.description": "画像の説明",
 };

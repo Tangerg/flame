@@ -101,4 +101,9 @@ export const de: Record<string, string> = {
   "rename.actions": "Sitzungstitel speichern",
   "rename.factRevision": "Revision",
   "rename.captured": "Erfasste Sitzung",
+  "image.view": "Bild anzeigen",
+  "image.close": "Bildvorschau schließen",
+  "image.zoomIn": "Bild vergrößern",
+  "image.zoomOut": "Bild verkleinern",
+  "image.description": "Bildbeschreibung",
 };

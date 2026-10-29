@@ -230,4 +230,9 @@ export const ko = {
     "Office 문서와 PDF 페이지를 렌더링하려면 이 설치의 설정에서 엔진을 구성하세요.",
   "capabilities.engines": "설정된 엔진 경로",
   "capabilities.limits": "설치된 제한",
+  "image.view": "이미지 보기",
+  "image.close": "이미지 미리보기 닫기",
+  "image.zoomIn": "이미지 확대",
+  "image.zoomOut": "이미지 축소",
+  "image.description": "이미지 설명",
 } satisfies Record<keyof typeof en, string>;

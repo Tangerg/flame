@@ -36,6 +36,11 @@ whitespace. Agent projections, approval drafts, Tool inspection and conversation
 archives consume those helpers directly, sharing numeric preservation with
 portable reading components.
 
+Expanded images, figures and captured documents use shared `LightboxDialog`.
+The transcript gallery retains collection, active-image and save-command ownership
+and uses shared `ImageViewport` for fitting, zoom and panning. Portable evidence
+images use the same reading boundary, with their captured source and local labels.
+
 The composition root creates each feature instance and its backing state once.
 React consumers use that owner's Provider; commands and plugin factories capture
 explicit dependencies. Tests construct independent instances in `test/renderClient.tsx`,

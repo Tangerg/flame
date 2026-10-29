@@ -90,4 +90,9 @@ export const zhTW: Record<string, string> = {
   "rename.actions": "儲存工作階段標題",
   "rename.factRevision": "修訂版本",
   "rename.captured": "已擷取的工作階段",
+  "image.view": "檢視圖片",
+  "image.close": "關閉圖片預覽",
+  "image.zoomIn": "放大圖片",
+  "image.zoomOut": "縮小圖片",
+  "image.description": "圖片說明",
 };

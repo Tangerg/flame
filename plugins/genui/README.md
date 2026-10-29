@@ -83,6 +83,12 @@ route is displayed as supplied geometry, not represented as newly computed road
 routing. Image search, geocoding, routing and remote business facts belong to
 existing tools or provider plugins, rather than hidden GenUI service calls.
 
+Image and Markdown-image thumbnails open their original source in the shared
+image reader. The authored alternative text and caption retain their meaning;
+local zoom and panning do not advance OpenUI fields or operation state. Resource
+loading, failure and explicit retry keep their existing owner. Hiding the report
+or replacing an image source ends its open reading capture.
+
 ## Local computation
 
 The document declares `state`, `nodes`, `actions` and `operations`. Expressions

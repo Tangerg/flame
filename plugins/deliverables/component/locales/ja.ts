@@ -232,4 +232,9 @@ export const ja = {
     "Office 文書と PDF をレンダリングするには、このインストールの設定でエンジンを構成してください。",
   "capabilities.engines": "設定済みエンジンのパス",
   "capabilities.limits": "インストール済み上限",
+  "image.view": "画像を表示",
+  "image.close": "画像プレビューを閉じる",
+  "image.zoomIn": "画像を拡大",
+  "image.zoomOut": "画像を縮小",
+  "image.description": "画像の説明",
 } satisfies Record<keyof typeof en, string>;

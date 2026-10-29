@@ -4,7 +4,7 @@ import { FileReferencePresentationContext } from "@/features/workspace/public/Fi
 import { copyRichText } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n/index";
 import { useCopyFeedback } from "@flame/ui";
-import { LightboxDialog } from "@/ui/index";
+import { LightboxDialog } from "@flame/ui";
 import { IconButton } from "@flame/ui";
 import { useScrollReach } from "@/ui/atoms/use-scroll-reach";
 interface Props {

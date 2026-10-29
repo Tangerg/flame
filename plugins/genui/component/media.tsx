@@ -57,7 +57,17 @@ function ImageResource({
           onLoadCapture={() => setStatus("ready")}
           onErrorCapture={() => setStatus("failed")}
         >
-          <EvidenceImage src={src} alt={alt} />
+          <EvidenceImage
+            src={src}
+            alt={alt}
+            labels={{
+              view: t("image.view"),
+              close: t("image.close"),
+              zoomIn: t("image.zoomIn"),
+              zoomOut: t("image.zoomOut"),
+              description: t("image.description"),
+            }}
+          />
         </span>
       )}
       {caption && <figcaption>{caption}</figcaption>}

@@ -65,6 +65,13 @@ export {
   FormGroup,
 } from "./panel";
 export { ModalDialog } from "./modal-dialog";
+export { LightboxDialog, type LightboxDialogProps } from "./lightbox-dialog";
+export {
+  ImageViewport,
+  type ImageSource,
+  type ImageViewportLabels,
+} from "./image-viewport";
+export { EvidenceImage, type EvidenceImageLabels } from "./evidence-image";
 export {
   type Fact,
   RecordGroup,
@@ -79,7 +86,6 @@ export {
   DocumentBody,
   Facts,
   Stats,
-  EvidenceImage,
   TileGrid,
   Tile,
 } from "./records";

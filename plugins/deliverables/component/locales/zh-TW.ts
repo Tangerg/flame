@@ -222,4 +222,9 @@ export const zhTW = {
     "請在此安裝的設定中配置轉譯引擎，以轉譯 Office 文件與 PDF 頁面。",
   "capabilities.engines": "已設定引擎路徑",
   "capabilities.limits": "目前安裝的限制",
+  "image.view": "檢視圖片",
+  "image.close": "關閉圖片預覽",
+  "image.zoomIn": "放大圖片",
+  "image.zoomOut": "縮小圖片",
+  "image.description": "圖片說明",
 } satisfies Record<keyof typeof en, string>;

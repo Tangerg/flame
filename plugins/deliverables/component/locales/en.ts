@@ -233,4 +233,9 @@ export const en = {
     "Configure the rendering engines in this installation’s settings to render Office documents and PDF pages.",
   "capabilities.engines": "Configured engine paths",
   "capabilities.limits": "Installed limits",
+  "image.view": "View image",
+  "image.close": "Close image preview",
+  "image.zoomIn": "Zoom in image",
+  "image.zoomOut": "Zoom out image",
+  "image.description": "Image description",
 } as const;

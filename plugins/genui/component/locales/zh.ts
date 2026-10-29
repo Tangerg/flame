@@ -67,4 +67,9 @@ export const zh: Record<string, string> = {
   "code.copied": "已复制",
   "code.wrap": "开启自动换行",
   "code.unwrap": "关闭自动换行",
+  "image.view": "查看图片",
+  "image.close": "关闭图片预览",
+  "image.zoomIn": "放大图片",
+  "image.zoomOut": "缩小图片",
+  "image.description": "图片说明",
 };

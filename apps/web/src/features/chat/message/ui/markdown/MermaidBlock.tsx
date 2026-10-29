@@ -2,7 +2,7 @@ import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import { useEffect, useMemo, useState } from "react";
 import { useDebouncedValue } from "@tanstack/react-pacer";
-import { LightboxDialog } from "@/ui/index";
+import { LightboxDialog } from "@flame/ui";
 import { ShikiCodeBlock } from "@/ui/index";
 import { reveal } from "@/ui/index";
 import { IconButton } from "@flame/ui";

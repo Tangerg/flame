@@ -234,4 +234,9 @@ export const fr = {
     "Configurez les moteurs dans les réglages de cette installation pour produire les rendus Office et PDF.",
   "capabilities.engines": "Chemins des moteurs",
   "capabilities.limits": "Limites installées",
+  "image.view": "Voir l’image",
+  "image.close": "Fermer l’aperçu de l’image",
+  "image.zoomIn": "Agrandir l’image",
+  "image.zoomOut": "Réduire l’image",
+  "image.description": "Description de l’image",
 } satisfies Record<keyof typeof en, string>;

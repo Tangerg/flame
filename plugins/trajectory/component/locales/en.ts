@@ -97,4 +97,9 @@ export const en: Record<string, string> = {
   "rename.actions": "Save session title",
   "rename.factRevision": "Revision",
   "rename.captured": "Captured session",
+  "image.view": "View image",
+  "image.close": "Close image preview",
+  "image.zoomIn": "Zoom in image",
+  "image.zoomOut": "Zoom out image",
+  "image.description": "Image description",
 };

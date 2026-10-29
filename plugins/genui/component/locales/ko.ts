@@ -68,4 +68,9 @@ export const ko: Record<string, string> = {
   "code.copied": "복사됨",
   "code.wrap": "줄 바꿈 사용",
   "code.unwrap": "줄 바꿈 해제",
+  "image.view": "이미지 보기",
+  "image.close": "이미지 미리보기 닫기",
+  "image.zoomIn": "이미지 확대",
+  "image.zoomOut": "이미지 축소",
+  "image.description": "이미지 설명",
 };

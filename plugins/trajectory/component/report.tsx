@@ -208,6 +208,13 @@ function Observation({
               key={index}
               src={`data:${part.mime};base64,${part.data}`}
               alt={t("image.alt", { mime: part.mime })}
+              labels={{
+                view: t("image.view"),
+                close: t("image.close"),
+                zoomIn: t("image.zoomIn"),
+                zoomOut: t("image.zoomOut"),
+                description: t("image.description"),
+              }}
             />,
           );
         }

@@ -105,4 +105,9 @@ export const fr: Record<string, string> = {
   "rename.actions": "Enregistrer le titre de la session",
   "rename.factRevision": "Révision",
   "rename.captured": "Session capturée",
+  "image.view": "Voir l’image",
+  "image.close": "Fermer l’aperçu de l’image",
+  "image.zoomIn": "Agrandir l’image",
+  "image.zoomOut": "Réduire l’image",
+  "image.description": "Description de l’image",
 };
