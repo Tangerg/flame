@@ -26,7 +26,8 @@ func TestPublishCleansStagingFileAfterWriteFailure(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		path, err := (Store{}).Publish(workspace, "Session", "session.md", document)
+		publication := (Store{}).Publish(workspace, "Session", "session.md", document)
+		path, err := publication.Path, publication.Err
 		if !errors.Is(err, syscall.EFBIG) || path != "" {
 			t.Fatalf("Publish = %q, %v; want no path and file size limit error", path, err)
 		}

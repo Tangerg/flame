@@ -81,6 +81,11 @@ attachments, prompt editing, imports, and exports throughout Session switches.
 Remote workspace references retain their exact spelling and are interpreted and
 validated by the executing Runtime, including when it uses another operating system.
 
+Session export reports the selected file path even if durability confirmation or
+staging cleanup fails after publication. An unconfirmed notice means the file is
+visible but its crash durability was not established; it is not an instruction
+to export another copy. Export never overwrites different existing content.
+
 Closing a terminal attached to a shared Runtime detaches its observations and saves
 its authoring state. It leaves accepted Runs running. `Ctrl-C` remains an explicit
 Run cancellation; one-shot `flame run` also cancels its own Run when interrupted.
