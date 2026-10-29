@@ -157,6 +157,7 @@ func (c *connections) closeAll(attempt *shutdownAttempt) {
 			errs = append(errs, closeAttempt.err)
 		}
 	}
+	c.observers.Wait()
 
 	c.mu.Lock()
 	// Transfer joined retirement diagnostics into the immutable shutdown result.

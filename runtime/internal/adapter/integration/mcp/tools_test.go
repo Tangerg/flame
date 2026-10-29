@@ -342,12 +342,15 @@ func TestSourceToolsCarryTheRealizedServerIdentity(t *testing.T) {
 func ownTestSession(t *testing.T, session *sdkmcp.ClientSession, config ServerConfig) *connections {
 	t.Helper()
 	owner := newTestConnections(t)
-	if err := owner.ownSessionLocked(session, func() error { return nil }, nil); err != nil {
-		t.Fatal(err)
-	}
+	owner.mu.Lock()
+	err := owner.ownSessionLocked(session, func() error { return nil }, nil)
 	current := &server{id: config.ID(), config: config}
 	current.settle(session, nil, mcpserver.ConnectionConnected, "", nil)
 	owner.servers = []*server{current}
+	owner.mu.Unlock()
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Cleanup(func() {
 		if err := owner.shutdown(context.Background()); err != nil {
 			t.Error(err)

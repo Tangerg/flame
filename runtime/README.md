@@ -1703,6 +1703,11 @@ concurrent read failures retain both cancellation categories and owner causes.
 The supervisor checks the dial lifetime under its publication
 lock; an expired authorization cannot publish a verified session. An already published
 session retains its successful result if the caller later cancels.
+Remote termination of an ordinary MCP session withdraws that exact session and
+its tools through the same connection outcome owner. The failure retains the
+terminal evidence, and a late predecessor exit cannot withdraw a replacement.
+Retirement still runs once; shutdown closes sessions before joining their
+termination observers. No failed RPC is replayed.
 The handshake owns its temporary callback, timer and untransferred session lifetime.
 Admission rejects an expired request or stopped session owner before connection I/O.
 Failures retain transport diagnostics, the handshake's timeout or cancellation and

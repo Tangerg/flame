@@ -66,6 +66,12 @@ type ownedSession struct {
 	managed  *installedObservation
 	close    *sessionCloseAttempt
 	bindings *plugin.RequiredBindings
+	end      *sessionEnd
+}
+
+type sessionEnd struct {
+	done chan struct{}
+	err  error
 }
 
 // connections owns ordinary MCP sessions and observes managed Host instances.
@@ -97,7 +103,8 @@ type connections struct {
 
 	// attempts joins every in-flight dial/OAuth operation during Shutdown. Add is
 	// performed under mu before closed can be set, so no Add races the Wait.
-	attempts sync.WaitGroup
+	attempts  sync.WaitGroup
+	observers sync.WaitGroup
 }
 
 func (c *connections) cancellationErr(ctx context.Context) error {
@@ -150,12 +157,15 @@ func (c *connections) ownSessionLocked(session *sdkmcp.ClientSession, cleanup se
 		if c.callbacks != nil {
 			err = c.callbacks.AdmitSession(session)
 		}
-		c.sessions[session] = &ownedSession{bindings: bindings, closeFn: func() error {
+		owned := &ownedSession{bindings: bindings, end: &sessionEnd{done: make(chan struct{})}, closeFn: func() error {
 			if c.callbacks != nil {
 				c.callbacks.RevokeSession(session)
 			}
 			return retireSession(session, cleanup)
 		}}
+		c.sessions[session] = owned
+		c.observers.Add(1)
+		go c.observeSessionEnd(session, owned)
 	}
 	return err
 }
