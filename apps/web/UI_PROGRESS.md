@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Full-width material switching is published to main as `0f604b4e8`, with all 142 scoped tests and native light/dark/18 px/200% tasks passing. Its native option-name follow-up reproduces partial reporting in plain HTML, grid and explicitly named controls; it establishes no Flame-specific repair. See **Full-width material switching** and **Native catalog option reporting** under **Global Composer focus and retained material**. Resource retirement is complete; the publication fetch finds zero incoming commits. Next inspect the full-width header's lifetime when the Session changes, using the existing Session-owned material boundary. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
+Current batch continues from main `d78c293f0`. Full-width material switching is published as `0f604b4e8`; its header picker now also follows the active Session's lifetime. Open queries and closing selections retire when history restores another Session. All 144 scoped tests, native light/dark/18 px/200% tasks and the observer-free control pass; resource retirement is complete. See **Picker ownership across Session history** under **Global Composer focus and retained material**. The publication fetch finds zero incoming commits. The preceding native option-reporting comparison establishes no Flame-specific repair. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -89,7 +89,9 @@ known refusal and file return, including the observer-free native control.
 Full-width material switching is published as `0f604b4e8` and qualifies direct
 selection, retained source return, nested picker Escape and continued drafting
 without changing zoom. Its native catalog-reporting follow-up is a scoped
-diagnosis with no product implementation change.
+diagnosis published as `d78c293f0`, with no product implementation change.
+The Session-history follow-up now qualifies retirement of header queries and
+pending selections while preserving same-Session source return and editing.
 See **Goal save
 feedback and pending dismissal** and **Computer console
 editing and operation return**. Preserve the
@@ -6535,9 +6537,112 @@ The round-tripped in-memory archive retains **23** UTF-8 records, **813,645** ra
 bytes and **289,012** gzip bytes; SHA-256
 `014966de70410c3d590414874db1625b789dbaf4bf0aae03fe0013350f3b49c1`.
 The publication fetch finds zero incoming commits; merging main is already up to
-date. The primary checkout and unrelated work remain untouched. Next trace the
-full-width header's Session lifetime against the existing material owner before
-deciding whether it needs a repair.
+date. The primary checkout and unrelated work remain untouched. The header's
+Session-lifetime follow-up is qualified below.
+
+### Picker ownership across Session history
+
+At frozen main `d78c293f04b0395ca53a896d775d57006720e901`, full-width
+material bodies already retire with their exact Session. The header picker sits
+outside that keyed boundary. Restoring a location with another Session and the
+same main material therefore retains its open query and closing selection.
+Two regressions expose the consequences: `Subagents` remains open in the next
+Session, and an earlier selection's delayed completion changes the next
+Session's view from Files to Subagents.
+
+`ChatPanel` now keys only that full-width `WorkspaceViewPicker` by the existing
+active Session ID. React and the shared Popover retain ownership of its query,
+selection and cleanup. A Session replacement retires the pending callback;
+existing presentation focus enters the current material. Same-Session material
+changes preserve the trigger identity and accepted source-return contract.
+The Dock picker already lives inside `SessionOwnedWorkspaceState`. No new state,
+effect, navigation guard, listener, timer, token, Runtime transition or persisted
+schema is introduced. Root instructions and the Web/native/visual READMEs retain
+the existing React 19, Base UI 1.9, StyleX and Wails v3.0.0-beta.34 contracts.
+
+Read-only ZCode `WorkspaceShellLayout.tsx` distinguishes workspace identity and
+active task in pane-session persistence; `AnimatedSidePanePanel.tsx` separates
+retained content from current-task visibility and scoped error reset. This
+informs the ownership distinction without importing its retention or error model.
+Flame's existing Session-owned body and native history task determine the change.
+Prior HeroUI, Radix, ChatGPT and Ace research retains its stated scope; no static
+reference supplies this native lifecycle result.
+
+| Domain        | Evidence inspected                                                                 | Result and boundary                                                                                       |
+| ------------- | ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Accessibility | Native history commands from search, current-region focus, empty reopen and return | Old query retires; current material remains the focus context. VoiceOver audio and OS IME are unverified. |
+| Layout        | EN 1440 × 900; ZH 18 px, adjusted window and 756 × 475 at 200%                     | Header entry, Close and source return remain reachable. Fresh 320 px Dock and RTL are not run.            |
+| Writing       | Existing EN/ZH search, empty result, Clear, Close and source-return names          | Existing task labels retained; no new explanatory copy or locale strings.                                 |
+| Typography    | Native 14/18 px controls, file identity, reply and literal code reader             | Existing ladder, control weights and 27.9 px dark material line height remain.                            |
+| Colors        | Neutral light/Orange and dark/custom-blue scenes, popup and current-material focus | Existing surfaces and visible focus indicators retained; no new contrast-ratio claim.                     |
+| UI            | Open-query retirement, interrupted selection regression and same-Session return    | One MEDIUM lifetime finding repaired. Existing popup motion and material continuity retain their owners.  |
+
+| Severity         | Domain | Location                                           | Before                                                            | After                                                         | Why                                                            |
+| ---------------- | ------ | -------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------- |
+| MEDIUM, repaired | UI     | `src/features/shell/workbench/panel/ChatPanel.tsx` | A header query or delayed selection survives Session replacement. | The picker retires with the existing active Session identity. | An old interaction cannot redirect or filter the current task. |
+
+Actual native qualification uses production workspace views, default history
+commands, shortcut dispatch and Workspace Session binding. The private fixture
+freezes two adjacent full-width locations in its existing memory navigator and
+adds a read-only Session output. The second Session has no captured workspace;
+its existing Loading state qualifies presentation ownership while waiting, not
+a successful second-Session read. The canonical in-memory transport is unchanged.
+CUA supplies all input; observers only read rendered facts. No live Runtime
+command, alternate Session state model or production debug path is introduced.
+
+- **Original EN/light:** Browse → `Subagents` → native Mod+] restores
+  `ses_scope_waiting`, while the old query and popup remain over the new Files
+  Loading surface. The actual screenshot and passive Session output agree.
+- **Final EN/light/14 px/Orange:** the same history command retires the popup
+  and focuses current Files. Reopen is empty. A new query followed by Mod+[
+  restores the original `ses_visual` file with a closed picker. Reopening is
+  empty; Escape, Close, reply reading, native drafting, Files selection,
+  full-width reading and Close continue
+  `Continue after returning to the original Session. Keep writing.`
+- **Final ZH/dark/18 px/custom blue/motion off:** native window adjustment,
+  sidebar collapse and twenty Zoom In actions reach **200% / 756 × 475 CSS px**.
+  The same scope transition, empty reopen, no-result/Clear and history Back pass.
+  Same-material selection keeps its original route. Within the original Session,
+  Diff → Files → literal reader → Back to Diff → Close preserves native input
+  `回到原对话后继续。 保留。`. Return restores Browse focus.
+- **Observer-free control:** all **627** assets match the measured build except
+  the two HTML entry files that remove the observer. Native dark/18 px/200%
+  repeats scope/query retirement, empty reopen, history Back, file-body entry,
+  Close and `无观察器历史返回后继续。`. Zero observer events or requests arrive.
+
+The initial private readout transform ran after JSX processing and is excluded;
+the corrected pre-transform produces the named Session output. An unsupported
+native key spelling and a combined selection/Tab timing attempt are excluded.
+After a stable AX observation, three Tabs from Back to files reach the body.
+The closing-selection crossing is covered by the deterministic regression;
+native timing of that particular race is not newly qualified.
+
+The preceding **3 files / 142 tests** remain an exact-source baseline. Both new
+cases fail against the original production source. Final focused inspection,
+Session-ownership and navigation coverage passes **3 files / 144 tests**. Web
+typecheck, lint, formatting, circular/context/layer, design-system/token/chrome/locale,
+resource reproducibility, production bundle/module checks and `make check-native`
+pass serially. All **32** installed resources retain their hashes. Full
+Web/Runtime suites, browser suites, performance benchmarks, Claude CLI and
+subagents do not run. Live cross-Session execution and backend recovery retain
+their existing owner qualifications.
+
+All **5** recorded native generations are stopped; the app is unregistered and
+the loopback port is closed. Cleanup removes **7** new output/cache roots and
+**3** owned profile paths, restores **4** originals and passes **18** output /
+**5** profile baselines, **6,269** non-Markdown inputs, **32** resources,
+**9** read-only references and **3** instruction files. The existing Web
+Vite-temp directory remains empty. The private root `flame-picker-scope-T68D0C`
+is absent. The round-tripped in-memory archive retains **76** UTF-8 records,
+**10,453,547** raw bytes and **1,123,370** gzip bytes; SHA-256
+`24f4e9e1fbaf7e00913279e97bede3f69607bba797520fba3b0b3e7cf189c188`.
+The primary checkout remains untouched.
+
+Verdict: **Approve** for the inspected header Session lifetime and return task.
+Typography, whitespace, hierarchy, color, motion, interaction, responsive and
+originality checks retain the established design in these scenes. The
+whole-product award-level goal remains active and unfinished; continue with a
+fresh observed task on the accepted base.
 
 ### Stop and command availability preserve authoring
 

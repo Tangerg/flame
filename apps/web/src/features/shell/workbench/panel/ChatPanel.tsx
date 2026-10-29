@@ -379,6 +379,7 @@ export function ChatPanel({ onSend, ref }: Props) {
             fullPaneViewId !== WORKSPACE_DOCK_CATALOG &&
             viewsById.get(fullPaneViewId)?.dock !== undefined && (
               <WorkspaceViewPicker
+                key={activeSessionId}
                 groups={catalog}
                 openViewIds={openViewIds}
                 activeViewId={fullPaneViewId}
