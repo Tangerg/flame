@@ -55,17 +55,17 @@ describe("ShikiCodeBlock", () => {
     expect(screen.queryByText("Show 30 lines")).toBeNull();
   });
 
-  it("offers the Codex code-wrap toggle with pressed-state feedback", async () => {
+  it("offers the next code-wrap action without an inverted pressed state", async () => {
     testClient.render(<ShikiCodeBlock lang="text" code="a very long line" />);
     await act(async () => Promise.resolve());
     const toggle = screen.getByRole("button", { name: "Enable word wrap" });
 
-    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+    expect(toggle.getAttribute("aria-pressed")).toBeNull();
     fireEvent.click(toggle);
 
     expect(
       screen.getByRole("button", { name: "Disable word wrap" }).getAttribute("aria-pressed"),
-    ).toBe("true");
+    ).toBeNull();
     expect(screen.getByRole("region", { name: "Code content" }).getAttribute("data-wrap")).toBe(
       "true",
     );

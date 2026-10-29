@@ -588,6 +588,39 @@ describe("recorded code", () => {
     expect(region.querySelector("span")).toBeNull();
   });
 
+  it("keeps changing wrap labels as ordinary actions without an inverted pressed state", () => {
+    render(
+      <CodeBlock label="Captured source">
+        {"first line\nsecond line"}
+      </CodeBlock>,
+    );
+    const action = screen.getByRole("button", { name: "Enable word wrap" });
+    expect(action.getAttribute("aria-pressed")).toBeNull();
+    action.focus();
+    fireEvent.click(action);
+    expect(screen.getByRole("button", { name: "Disable word wrap" })).toBe(
+      action,
+    );
+    expect(action.getAttribute("aria-pressed")).toBeNull();
+    expect(document.activeElement).toBe(action);
+    expect(
+      screen
+        .getByRole("region", { name: "Captured source" })
+        .getAttribute("data-wrap"),
+    ).toBe("true");
+    fireEvent.click(action);
+    expect(screen.getByRole("button", { name: "Enable word wrap" })).toBe(
+      action,
+    );
+    expect(action.getAttribute("aria-pressed")).toBeNull();
+    expect(document.activeElement).toBe(action);
+    expect(
+      screen
+        .getByRole("region", { name: "Captured source" })
+        .getAttribute("data-wrap"),
+    ).toBe("false");
+  });
+
   it("shares one wrap preference across every block on the page", () => {
     render(
       <>
@@ -601,7 +634,7 @@ describe("recorded code", () => {
       screen
         .getAllByRole("button", { name: "Disable word wrap" })
         .map((button) => button.getAttribute("aria-pressed")),
-    ).toEqual(["true", "true"]);
+    ).toEqual([null, null]);
     expect(
       screen
         .getAllByRole("region")

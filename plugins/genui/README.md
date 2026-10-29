@@ -71,6 +71,10 @@ label and localized percentage remain visible above the track, including zero,
 completion and a supplied maximum other than 100. The admitted values and local
 expressions retain their existing meaning; no simulated execution or new state
 owner is introduced.
+Flashcard face controls name the next reading action. They retain ordinary
+button semantics as their labels change between showing the answer and question;
+the current face remains expressed by the existing face label and body.
+Local flip state stays in the same OpenUI field.
 Native chart geometry uses labels, patterns and a data table rather than color
 alone. Markdown uses the established renderer with raw HTML disabled. KaTeX
 produces MathML with trusted commands disabled. Map tiles use OpenStreetMap with

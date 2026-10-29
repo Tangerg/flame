@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Current source continues from main `d9f3ac78e`, which shares generated-report popup boundaries. Report progress now uses the themed shared track, a complete wrapping caption and a localized visible percentage; see **Generated-report progress reading**. Native qualification and the scoped UI gates pass, with the separate Runtime test-startup environment failure recorded below. Resource retirement is complete. Next inspect the report's timed and flipped explanations through source return before selecting another repair. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
+Current batch continues from main `e2208f04f`, which publishes generated-report progress reading. Flashcard and code-wrap controls now expose ordinary actions whose names describe the next operation; see **Reading action names and native roles**. The complete reading, file-return and drafting paths pass native qualification, and scoped checks and resource retirement are complete. The publication fetch finds zero incoming commits; merging main reports already up to date. Next inspect Goal authoring and its exit action from source and actual Wails behavior. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -64,13 +64,17 @@ zoom reflow, published as `8a00266d3`. Generated-report popup qualification, pub
 as `d9f3ac78e`, adds
 clipped-reader escape, nested choices, local completion, file-material return
 and continued authoring. Its publication fetch finds zero incoming main commits
-at `8a00266d3`; merging reports already up to date. The progress-reading follow-up
+at `8a00266d3`; merging reports already up to date. The progress-reading follow-up,
+published as `e2208f04f`,
 qualifies themed values, arbitrary admitted maxima, native keyboard changes,
 200% reading, file-material return and continued drafting. Its publication fetch
 finds zero incoming commits at `d9f3ac78e`; merging reports already up to date.
 The full Web invocation also attempts the separate Runtime test group and records
 its existing missing offline-Node-artifact precondition below. It is not reported
-as a passing integration suite.
+as a passing integration suite. The reading-action follow-up qualifies the existing
+timer and card explanation, ordinary next-action names, shared code wrapping,
+file-material return and continued drafting. Its publication fetch finds zero
+incoming commits at `e2208f04f`; merging reports already up to date.
 See **Computer console
 editing and operation return**. Preserve the
 separate exact-Run and Skills object contract limits already recorded below.
@@ -2177,6 +2181,108 @@ composed report controls and their original-evidence return path in the actual
 content/Dock workspace; choose another repair only from a concrete failure.
 The whole-product UI goal remains active.
 
+### Reading action names and native roles
+
+At main `e2208f04f86c519624e7111793726ab5e3e7d791`, the shared CodeCaption and
+GenUI Flashcard both change their labels to name the next action while also
+exposing `aria-pressed`. Actual Wails exposes **Show question, on** while the
+answer is visible and **Disable word wrap, on** while wrapping is enabled.
+This combines an action name with the inverse state. It is one accessibility
+presentation finding, with two owners of that presentation; execution and local
+report state already behave correctly.
+
+`packages/ui/src/code-block.tsx` and `plugins/genui/component/media.tsx` remove
+only those two `aria-pressed` attributes. The controls remain ordinary buttons
+with the existing next-action names. CodeCaption retains its active appearance
+and page-wide wrap preference; Flashcard retains its face label, body and OpenUI
+field. No clock, listener, local state, dependency, translation, geometry, theme,
+Runtime or command transition is added. Existing stable-label feedback toggles,
+map markers and selection controls retain their pressed semantics.
+
+The read-only references are HeroUI's actual Button and ToggleButton implementations
+and static-label toggle stories. The official
+[ARIA APG Button Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/button/)
+distinguishes a stable-label pressed toggle from an ordinary button whose label
+changes with its action. These are semantic/design references, not Flame native
+evidence. Existing better-interface and all six better-domain guides inform the
+complete reading task:
+
+| Domain        | Inspected evidence                                                                                    | Result and boundary                                                                                             |
+| ------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Accessibility | Native roles/names, Space/Return, same control focus, code selection, file body and explicit Close    | One MEDIUM finding repaired. VoiceOver audio is not newly run.                                                  |
+| Layout        | Light normal size, dark 18 px, native window resize, 200% at 756 × 475 CSS px and full-width material | Focused controls and code bodies remain reachable. An oversized frame can use the existing body-focus fallback. |
+| Writing       | Existing EN/ZH next-action names and current question/answer body                                     | No added copy. The ordinary action name matches what activation does next.                                      |
+| Typography    | UI 14/18 px, complete source selection, dark code at 15 px / 24.75 px line-height                     | Existing readable type and wrapping retained; no new typeface or truncation.                                    |
+| Colors        | Light/Flame Orange and dark/custom blue, active wrap skin and visible focus                           | Existing theme owners retained. No new color pair or contrast-ratio claim.                                      |
+| UI            | Pointer activation, native keyboard reverse actions, timer start/pause/reset and motion-off scene     | Existing local state and timing preserved. No new animation or execution feedback.                              |
+
+| Severity         | Domain        | Location                                                                      | Before                                                | After                                                      | Why                                                                    |
+| ---------------- | ------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------- |
+| MEDIUM, repaired | Accessibility | `packages/ui/src/code-block.tsx:177`; `plugins/genui/component/media.tsx:275` | A reversed action label also exposes a pressed state. | An ordinary button names the next action, retaining focus. | The accessible operation and current reading state no longer conflict. |
+
+Four native instances use the actual Wails **v3.0.0-beta.34** host and installed
+GenUI resource with deterministic captured-result providers. The private accepted
+document derives from the current report: **23 state values, zero operations**,
+existing card/timer views first, and a long captured code explanation. All UI
+input uses CUA. Passive observers only read rendered roles, focus, geometry,
+selection, text and timing; no script mutates DOM, stores or input.
+
+- The original light instance reproduces the two misleading toggle states.
+- EN/light/14 px/Flame Orange: pointer, Space and Return reverse the card and
+  code actions with focus retained. Complete code selection includes the final
+  return line. File material opens full width, keyboard navigation reaches its
+  body and explicit Close restores the report. The running timer continues
+  across retained material, pauses at **1:15**, stays there through further
+  editing, and Reset returns **2:00**. Continued draft:
+  `Continue after reading the explanation. Review complete.`.
+- ZH/dark/18 px/custom blue/motion off: native window adjustment and **200% /
+  756 × 475 CSS px / DPR 4** preserve the answer and wrapped code. The focused
+  wrap control is **24 × 24 px** and fully visible; the focused code body is
+  **690.5 × 259 px**. The entire original source remains selectable. Keyboard
+  file reading, Close and Actual Size retain the answer, wrapping and exact
+  continued draft `保留阅读解释后的对话草稿。 已返回，继续。`.
+- The final dark instance removes observers. All **617** built assets match the
+  observed build except the two HTML entries that held the observer. Native
+  200%, Space/Return, complete code selection, file entry, four Tabs to its body,
+  four Shift-Tabs to Close, Return and Actual Size pass. Draft continues as
+  `保留普通版本的阅读草稿。 已返回，继续。`; there are **zero** observation requests
+  or events. CUA text typing did not insert Chinese in this scene; ordinary
+  native paste supplied the verified text. OS IME behavior is not newly qualified.
+
+The three new regressions fail against the original attributes: one shared code
+case and both initial Flashcard faces. Final checks pass **11 UI files / 194
+tests**, the independent packed UI/icons consumer, and **3 frontend Web files /
+98 tests**, including code consumers, eight-locale Diff actions and the existing
+timer clock/unmount contract. Existing pressed-state expectations are updated
+only for the intentional action-role change; shared wrapping assertions remain.
+Web typecheck, lint, design-system/token/chrome, bundle/module checks and
+`make check-native` pass. The plugin check passes **43 author checks** and
+**16 files / 274 tests**, with the existing **13 Linux-only cases** skipped on
+macOS; all 13 catalogs cover eight locales. The independent GenUI package has
+**18 files**, and its component matches the qualified installed resource:
+SHA-256 `e0f22fae1b7739ffb6f8124af2c1e67fb3906dab09723a4f20a874e7983fcd32`.
+Only that component changes among **32** resources. All checks/builds run serially.
+The full Web and separate Runtime suites are not rerun for this bounded change;
+the preceding Runtime startup limitation remains recorded in its own section.
+There is no browser suite, performance benchmark, Claude CLI or subagent.
+
+All four native instances are stopped, the private bundle is unregistered and
+the observer is closed. Cleanup removes **9** new checkout output/cache roots
+and **3** owned profile paths, restores **4** original files and modes, and passes
+all **18** output and **5** profile baselines. All **6,268** qualified non-Markdown
+inputs, **32** resources, three read-only reference files, three instruction files
+and original UI/Web caches pass preservation. The private root
+`flame-reading-actions-nIPcG0` is absent. Its round-tripped in-memory archive holds
+**69** UTF-8 records, **64,432,625** raw bytes and **4,354,168** gzip bytes;
+SHA-256 `dc8336715d490312cf577ee0dccaddd5919306f6e48c7b482c153a1ab40fb900`.
+The primary checkout and unrelated user work remain untouched.
+
+Verdict: **Approve for the inspected explanation/code/file-return task**. The
+whole-product UI goal remains active. Next trace Goal authoring, its clear/exit
+control in `features/goal/ui/GoalModeIndicator.tsx` and continued drafting. Its
+current action label plus `aria-pressed="true"` is an inspection candidate, not
+a newly qualified native failure or authorization to alter Goal execution.
+
 ### Generated-report progress reading
 
 At main `d9f3ac78ef364355cdac9ec1d8862b094ca78d6f`, GenUI renders a bare
@@ -2302,9 +2408,9 @@ bytes; SHA-256
 The primary checkout and unrelated user work remain untouched.
 
 Verdict: **Approve for the inspected report-progress and file-return tasks**.
-The whole-product UI goal remains active. Next inspect the existing report's
-timed and flipped explanations through their complete reading/return flow;
-select another repair only from a concrete failure.
+The whole-product UI goal remains active. The timed and flipped explanation
+inspection is completed in **Reading action names and native roles** above;
+its timer retains its existing owner and hidden-material timing behavior.
 
 ### Generated-report popup boundaries
 

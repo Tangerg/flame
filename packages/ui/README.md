@@ -287,10 +287,13 @@ reconciliation cannot shorten the browser's whole-reader range.
 `CodeFrame` is that frame alone, for portable views
 that own their own body, such as recorded Tool results. `CodeCaption` is the one code
 header for every renderer, including the transcript's highlighted blocks: the recorded
-label (or `text`), any consumer actions passed as children, a wrap toggle bound to
+label (or `text`), any consumer actions passed as children, a wrap action bound to
 the single page-wide `useCodeWrap` preference, and a copy action that writes the exact
 literal and reports success only after the clipboard accepts it. Callers supply
-localized `CodeActionLabels`; portable packages use English labels. Syntax color is a host capability:
+localized `CodeActionLabels`; the defaults are English. The wrap label names
+the next action. It is an ordinary button rather
+than a pressed toggle whose label reverses meaning; its active visual indicator
+and the shared wrap preference remain unchanged. Syntax color is a host capability:
 `CodeHighlightProvider` supplies one `CodeSourceComponent`, which React renders
 inside the stable `pre` region as `<Source source language />` and which returns
 the `code` element for exactly that source: escaped highlighted markup when ready,

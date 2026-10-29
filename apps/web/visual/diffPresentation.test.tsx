@@ -252,9 +252,10 @@ it.each([
     );
     fireEvent.click(await screen.findByRole("button", { name: open }));
     await screen.findByRole("button", { name: copy });
-    const toggle =
-      screen.queryByRole("button", { name: wrap }) ?? screen.getByRole("button", { name: unwrap });
-    const next = toggle.getAttribute("aria-pressed") === "true" ? wrap : unwrap;
+    const enable = screen.queryByRole("button", { name: wrap });
+    const toggle = enable ?? screen.getByRole("button", { name: unwrap });
+    const next = enable ? unwrap : wrap;
+    expect(toggle.getAttribute("aria-pressed")).toBeNull();
     fireEvent.click(toggle);
     expect(screen.getByRole("button", { name: next })).toBe(toggle);
     fireEvent.click(toggle);

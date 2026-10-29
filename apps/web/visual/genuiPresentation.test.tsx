@@ -612,6 +612,46 @@ it("filters, sorts, pages and selects rows without changing the captured data", 
   expect(JSON.stringify(GENUI_REPORT)).toBe(original);
 });
 
+it.each([false, true])(
+  "names the next flashcard action without an inverted toggle state from %s",
+  async (flipped) => {
+    show(
+      document(
+        [
+          {
+            id: "card",
+            type: "Flashcard",
+            props: {
+              field: "flipped",
+              front: "Who owns execution receipts?",
+              back: "Runtime owns execution and recovery.",
+            },
+          },
+        ],
+        [{ id: "flipped", value: flipped }],
+      ),
+    );
+    await act(async () => {});
+    const card = screen.getByRole("region", { name: "Flashcard" });
+    const action = within(card).getByRole("button", {
+      name: flipped ? "Show question" : "Show answer",
+    });
+    expect(action.getAttribute("aria-pressed")).toBeNull();
+    act(() => action.focus());
+    fireEvent.click(action);
+    expect(
+      within(card).getByRole("button", { name: flipped ? "Show answer" : "Show question" }),
+    ).toBe(action);
+    expect(action.getAttribute("aria-pressed")).toBeNull();
+    expect(
+      within(card).getByText(
+        flipped ? "Who owns execution receipts?" : "Runtime owns execution and recovery.",
+      ),
+    ).toBeTruthy();
+    expect(window.document.activeElement).toBe(action);
+  },
+);
+
 it("owns timer values in the same Store and releases its clock on unmount", async () => {
   const value = document(
     [

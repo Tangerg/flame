@@ -181,7 +181,6 @@ export function CodeCaption({
             icon={wrapped ? WrapText : UnfoldHorizontal}
             size="xs"
             active={wrapped}
-            aria-pressed={wrapped}
             onClick={() => setCodeWrap(!wrapped)}
             aria-label={wrapped ? labels.unwrap : labels.wrap}
           />

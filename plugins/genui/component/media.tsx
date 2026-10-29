@@ -272,7 +272,7 @@ export function FlashcardView({
         {t(flipped ? "flashcard.answer" : "flashcard.question")}
       </Metadata>
       <RecordBody>{flipped ? props.back : props.front}</RecordBody>
-      <Button aria-pressed={flipped} onClick={() => flip(!flipped)}>
+      <Button onClick={() => flip(!flipped)}>
         {t(flipped ? "flashcard.showQuestion" : "flashcard.showAnswer")}
       </Button>
     </RecordForm>
