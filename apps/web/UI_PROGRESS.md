@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Model pickers now distinguish an unread catalog from accepted empty data, retain known model identity and provide local refresh without losing search or later focus. All 76 focused tests, typecheck, lint and the other 11 Web/native gates pass; light, Chinese dark/18px/200% and observer-free native tasks pass. Evidence and cleanup are recorded under **Model catalog reading and recovery**. Hooks/Plugins task-first hierarchy is published as `ca9c60977`, Settings readiness as `1bb564a53`, MCP as `17916606d` and Files as `4468c2fc6`. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
+Model pickers now distinguish an unread catalog from accepted empty data, retain known model identity and provide local refresh without losing search or later focus, published as `147c7dcae`. All 76 focused tests, typecheck, lint and the other 11 Web/native gates pass; light, Chinese dark/18px/200% and observer-free native tasks pass. Evidence, cleanup and delivery are recorded under **Model catalog reading and recovery**. Hooks/Plugins task-first hierarchy is published as `ca9c60977`, Settings readiness as `1bb564a53`, MCP as `17916606d` and Files as `4468c2fc6`. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -107,8 +107,8 @@ Hooks and Plugins begin with direct settings and named task sections, published
 as `ca9c60977`; see
 **Settings headings and task-first reading** for the original/candidate native
 comparison, search/return path and cleanup.
-The next scoped batch repairs model-catalog reading and local recovery across
-Composer and auxiliary-role selection; see **Model catalog reading and recovery**
+Model-catalog reading and local recovery across Composer and auxiliary-role
+selection are published as `147c7dcae`; see **Model catalog reading and recovery**
 for the real-query regressions, native tasks and publication boundary.
 See **Goal save
 feedback and pending dismissal** and **Computer console
@@ -8470,6 +8470,15 @@ The final memory-only, gzip round-tripped evidence holds **120 UTF-8 records**,
 **11,240,896 raw bytes / 1,278,417 gzip bytes**, SHA-256
 `e1e3408ebc1813021c0cc655e73459c0135b61e139fd129e6d5c2b7d4b99239d`.
 No qualification files are committed or left on disk.
+
+Delivery: normal formatting, workspace lint and commit-message hooks pass for
+implementation `147c7dcae02ab4b34357ff2eef080a7b5a9f0b87`. A normal push advances
+remote main from `3e0c95e2a`; an independent remote read, HEAD and origin/main all
+agree on that implementation with 0/0 divergence and a clean owned checkout.
+All 17 qualified source hashes and the complete preservation proof still match
+after the hooks and push. This receipt changes only this maintained document;
+the already qualified code, retired native resources and parallel checkout remain
+as verified above. The next batch must start from current content/Dock evidence.
 
 ## Computer console editing and operation return
 
