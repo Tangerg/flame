@@ -10643,6 +10643,117 @@ The memory-only archive round-trips **82 UTF-8 records**,
 e6cdcd77c6689537eb95ed2072a429cc0e72e72889d8b91afd70ff66ef57146f. This final handoff changes no qualified product source;
 continue from fresh content/Dock task evidence with the continuous goal active.
 
+### Deliverables pagination and reading continuity
+
+The retained-document list and revision-history page controls now use shared
+Button pending behavior and focusable disabled boundaries. Native HTML disabled
+previously moved keyboard focus to BODY during a list read; the next Tab restarted
+at the fixture sidebar. Pending and last-page buttons now keep their place, reject
+pointer/Enter/Space repeats, and leave later search or Composer focus alone. No
+imperative focus recovery or second navigation state is added.
+
+The existing Deliverables query projection also retains an accepted history page
+while reading another cursor for the same document. Previously its exact-input
+retention rule removed the history value and pager during that read. A different
+document still clears the old projection, and the existing request/selection
+lifetime rejects its late response. Successful reads alone advance the existing
+cursor stack; failures retain the accepted page and retry path. Runtime, command
+receipts, edits, exports and review decisions keep their existing owners.
+
+Implementation is in plugins/deliverables/component/component.tsx and
+useDeliverables.ts, with public-client regressions in
+apps/web/visual/tests/deliverablesWorkspace.test.tsx and the module README.
+Normal generation changes only Deliverables component.js among 34 installed
+resource inputs. Rebuild/select that package with its matching Host; generating a
+resource does not replace an already evaluated Runtime installation.
+
+Read-only HeroUI Button and its actual loading-state example support pending
+activation with retained context; Flame implements that behavior through its
+existing Base UI control. Established ZCode workspace and HeroUI/Radix research
+informs return paths and semantic focus surfaces. Static references are not used
+as evidence of native behavior. The applicable AGENTS.md, PROJECT_RULES.md,
+DEVELOPMENT.md and module conventions remain authoritative.
+
+Scope of the better-interface review is the document/history pagination flow in
+the existing React, StyleX, Base UI and semantic-token workspace:
+
+| Domain        | Evidence inspected                                                                               | Result                                                   |
+| ------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------- |
+| Accessibility | Shared Button contract; native Tab, Enter, Space, focus during reads, boundaries and later focus | Two fixed findings; VoiceOver and OS IME not reviewed    |
+| Layout        | Actual Dock/main reading, native scroll, 1120/1440 widths, window zoom and 200%                  | Clear for the changed controls and inspected return flow |
+| Writing       | Existing English/Chinese pagination and error copy; off-page revision selection                  | One LOW follow-up below                                  |
+| Typography    | Actual 14/18px control labels and 200% geometry                                                  | Clear for pagination; no global type-scale change        |
+| Colors        | Existing Orange/light and Blue/dark pending, boundary and focus states                           | Clear in inspected states; semantic tokens retained      |
+| UI            | Shared pending/press guards, accepted-page continuity, pointer and keyboard activation           | Clear after the two fixes; no new motion or chrome       |
+
+| Severity | Domain        | Location                                                  | Before                                                                            | After                                                            | Why                                                                |
+| -------- | ------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------ |
+| MEDIUM   | Accessibility | Deliverables document/history pagination                  | Native disabled discarded focused list navigation                                 | Shared pending controls and focusable true boundaries; fixed     | Keyboard reading continues from the current task position          |
+| MEDIUM   | Accessibility | useDeliverables query projection                          | A same-document history cursor read removed its accepted page and controls        | Retain that document's accepted page until settlement; fixed     | Stable controls preserve the reading and retry context             |
+| LOW      | Writing       | Exact revision Select after visiting another history page | Current revision label falls back to its full identity when absent from that page | Open follow-up: derive its label from the selected revision read | The selected object should remain recognizable across page changes |
+
+Verification (2026-10-29):
+
+- The original nine Deliverables tests pass. After correcting setup-only role and
+  label lookups, all eight focus cases fail against the original implementation:
+  list controls become natively disabled and history controls disappear. Those
+  setup lookup failures are excluded from product evidence. Final regression
+  suite passes 18 tests, including success/refusal, both page kinds, repeated
+  activation, first/last boundaries, Previous, later focus, document replacement
+  and rejection of an older held history response. The shared Button contract
+  passes 28 tests. Conditional test assertions were restructured to satisfy the
+  existing lint rule; checks and valid behavioral assertions were not disabled.
+- Normal make stage-web, plugin type/lint/format/i18n, Web type/lint and all ten
+  selected Web structure/design/token/chrome/locale/resource/bundle/module gates
+  pass. The supported make check-native passes in 17.641 s, including Desktop
+  Go test/vet/build and the Wails production build. Builds and checks run serially.
+  Final type, owned-format and diff checks pass after the test lint repair.
+- Actual original Wails reproduces the list focus loss and sidebar restart.
+  Candidate English/light/Orange at 14px retains Next during the held read and
+  at the last boundary; repeated Enter/Space produce one page request. Two
+  Shift+Tabs reach the new result, and Enter opens its actual Inspector. History
+  navigation retains its selected document and controls. Previous returns to the
+  prior page. Moving to Files and back keeps the document/page and draft.
+- Native list refusal retains the accepted rows, visible warning and available
+  Next focus; an explicit retry adds one request and succeeds. List settlement
+  leaves a later Composer edit alone; history settlement leaves a later title
+  search alone. The conversation continues its original draft after inspection.
+- Chinese/dark/Blue at 18px and reduced motion retains visible pending/last-page
+  focus. At 200%, the actual native window zoom yields a 756 × 475 CSS viewport;
+  the focused history Next is inside it with the existing 1.5px Blue outline.
+  Previous remains reachable. Closing the main reader continues the original
+  draft to “从成果阅读处继续。 已核对分页与版本历史。” ActualSize is restored before quit.
+- An observer-free production control repeats list pagination, document opening,
+  history pending and later Composer focus/draft continuation. Its 619 assets
+  differ only in the two HTML entries; the native binary is identical to the
+  qualified dark build and observer-event delta is zero. Screenshots and native
+  AX observations are in the CUA transcript, without a screenshot-file archive
+  claim.
+
+The isolated composition selects the normally generated Deliverables ESM through
+InstalledComponent, declared capability binding and the actual public client.
+Three private data/composition producers provide canonical read-only documents,
+catalog and cursor replies; HTTP holds expose actual asynchronous WebKit focus
+behavior. The first blank fixture setup had an obsolete tab ID, was corrected
+before the original counterexample, and is excluded from product evidence.
+Live release acquisition/Realm admission, native document generation/rendering,
+provider execution, file saving, mutations, OS IME and VoiceOver are not qualified.
+No browser/performance suite, Claude CLI or subagent is used. Native input uses
+CUA; the optional observer only reads.
+
+Cleanup retires five native launches (including the excluded setup), unregisters
+the exact bundle, closes the loopback listener, removes eight new checkout
+output/cache roots and three private profiles, and restores all four original
+files and modes. Independent preservation checks pass for 6,379 qualified inputs,
+34 resources, 45 read-only references, three instruction files, 21 output-presence
+and five profile-absence baselines. The installed npm toolchain and the user's
+primary parallel checkout are preserved. Private acceptance evidence is retained
+only until publication and retirement below.
+
+**Approve** the inspected pagination/return flow; no HIGH finding remains in that
+scope. OS IME and VoiceOver were not reviewed. The LOW revision-label follow-up
+is the next evidence-backed reading task. The broader UI goal remains active.
+
 ## Shortcut recording and activation
 
 `apps/web/src/lib/combo.ts` now includes the canonical `space` / physical `Space`

@@ -71,6 +71,11 @@ page previews, attributed reviews and download controls. The same published
 operations are available as model tools. The additional read-only `page` tool
 returns an actual retained PNG so a model can examine the render it is reviewing.
 
+Document and revision-history pagination keeps its controls focusable while a
+read is pending and at page boundaries. Pending controls reject repeat activation;
+settlement preserves the user's current focus, including a later move to another
+control. Read failures retain the accepted page and its available navigation.
+
 Each rendered page thumbnail opens its original PNG in the shared image reader
 for local zoom and panning. The captured revision, render and page identity remain
 with the preview owner. Opening, zooming or closing the image does not mark a

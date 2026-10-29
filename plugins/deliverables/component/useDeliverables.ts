@@ -179,6 +179,11 @@ export function useDeliverables(context: ComponentContext) {
           method === METHODS.list ||
           method === METHODS.catalog ||
           method === METHODS.uploads ||
+          (method === METHODS.history &&
+            prior &&
+            "id" in prior.input &&
+            "id" in input &&
+            prior.input.id === input.id) ||
           (prior && stringifyJSON(prior.input) === stringifyJSON(input));
         return {
           context,

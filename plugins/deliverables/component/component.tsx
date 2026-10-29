@@ -636,7 +636,10 @@ function Workspace({ context }: { context: ComponentContext }) {
         {(state.listPrevious || state.list?.value?.next) && (
           <Toolbar label={t("list.paging")}>
             <Button
-              disabled={!state.listPrevious || state.list?.loading}
+              disabled={!state.listPrevious}
+              pending={state.list?.loading}
+              aria-busy={state.list?.loading || undefined}
+              focusableWhenDisabled
               onClick={() => {
                 void state.page("list", "previous");
               }}
@@ -644,7 +647,10 @@ function Workspace({ context }: { context: ComponentContext }) {
               {t("previous")}
             </Button>
             <Button
-              disabled={!state.list?.value?.next || state.list.loading}
+              disabled={!state.list?.value?.next}
+              pending={state.list?.loading}
+              aria-busy={state.list?.loading || undefined}
+              focusableWhenDisabled
               onClick={() => {
                 void state.page("list", "next");
               }}
@@ -677,7 +683,10 @@ function Workspace({ context }: { context: ComponentContext }) {
           {(state.historyPrevious || state.history?.value?.next) && (
             <Toolbar label={t("history.paging")}>
               <Button
-                disabled={!state.historyPrevious || state.history?.loading}
+                disabled={!state.historyPrevious}
+                pending={state.history?.loading}
+                aria-busy={state.history?.loading || undefined}
+                focusableWhenDisabled
                 onClick={() => {
                   void state.page("history", "previous");
                 }}
@@ -685,7 +694,10 @@ function Workspace({ context }: { context: ComponentContext }) {
                 {t("previous")}
               </Button>
               <Button
-                disabled={!state.history?.value?.next || state.history.loading}
+                disabled={!state.history?.value?.next}
+                pending={state.history?.loading}
+                aria-busy={state.history?.loading || undefined}
+                focusableWhenDisabled
                 onClick={() => {
                   void state.page("history", "next");
                 }}
