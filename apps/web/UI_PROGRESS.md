@@ -10901,13 +10901,37 @@ document engines, Save/Send mutations, OS IME, VoiceOver or a 320px viewport.
 No Claude CLI or subagent is used. Native input uses CUA; the removed observer
 only read state. No Runtime, command, wire or persisted-data migration is needed.
 
-Four native launches are retired. The exact bundle is unregistered and listener
-closed; eight new checkout output/cache roots and three private profiles are
-removed, and all four original files/modes restored. Independent checks preserve
-6,379 qualified inputs, 34 resources, 45 read-only references, three instruction
-files, 21 output and five profile-absence baselines. The installed toolchain and
-primary parallel checkout are preserved. Publication and private-root retirement
-are recorded after the ordinary main push.
+The interval fetch finds two incoming main commits, ending at 67ff2b426. They
+change 62 files, including Wails Go/JS from beta.34 to 3.0.0 and shared rendering
+dependencies. The merge is clean and preserves this batch's component, tests and
+generated resource exactly. Root npm ci follows the new lock file. Because the
+native host version changes, a bounded integration check runs instead of
+repeating the full UI matrix: make check-native passes in 23.688 s and the same
+26 Deliverables tests pass. One new observer-free Wails 3.0.0 launch at
+Chinese/dark/18px confirms current-revision handoff, settlement, next Tab,
+Refresh pending/repeat guards, list-only availability, later Composer focus and
+draft through refusal, and explicit retry. Its 344 assets reflect main's changed
+build; they are not claimed identical to the earlier 619-asset baseline. The
+observer-event delta remains zero. Earlier English/200%/contrast qualification
+is tied to the pre-merge source snapshot, not presented as a repeated matrix on
+the new host.
+
+Five native launches are retired, including that integration check. The exact
+bundle is unregistered and listener closed. The first cleanup removes eight new
+checkout output/cache roots and three private profiles; integration recreates
+and removes seven of those roots and the same three profiles. All four original
+files/modes are restored after each phase. Independent final checks preserve
+6,385 merged non-Markdown inputs, 34 resources, 45 read-only references, three
+instruction files, 21 output and five profile-absence baselines. The installed
+toolchain and primary parallel checkout are preserved. The implementation commit
+is f443728a6 and the main integration commit is 262e3fbd3. The ordinary push
+targets remote main. The exact private root
+/private/tmp/flame-current-revision-focus-p1y9Cg is absent after retirement;
+the full merged preservation check passes again, with no owned app process or
+listener remaining. The memory-only archive round-trips 104 UTF-8 records,
+22,112,733 raw bytes and 3,718,181 gzip bytes, SHA-256
+2ebe90e1a7602a1343401c35d4b3e1b5aa9aca01e7170d4eda2f2ebd5985f389.
+This final handoff changes no qualified product source.
 
 **Approve** the inspected pagination, revision-selection and focus repairs; no
 HIGH or MEDIUM finding remains in that qualified scope. A LOW unread-target
