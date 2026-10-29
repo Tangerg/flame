@@ -10824,8 +10824,16 @@ listener, removes eight new checkout output/cache roots and three private
 profiles, and restores all four original files/modes. Preservation checks pass
 for 6,379 qualified inputs, 34 resources, 45 references, three instructions,
 21 output baselines and five profile-absence baselines. The installed toolchain
-and primary parallel checkout are preserved. Private evidence remains only until
-publication and retirement below.
+and primary parallel checkout are preserved. Implementation a04c5a978bf8513e88005bebc0f52cebff384210 is independently verified on remote main.
+The interval fetch found no incoming commits; the ordinary push left HEAD and
+origin/main at zero divergence with a clean owned checkout. The private root
+/private/tmp/flame-revision-identity-t2K67l is absent. Post-retirement checks pass again for all
+qualified inputs/resources, references, instructions, originals, output and profile
+baselines. No owned app process or listener remains. The memory-only archive
+round-trips 70 UTF-8 records, 10636064 raw bytes and
+2018595 gzip bytes, SHA-256 46f4990e4d978c4751c56b3e00dd27de0d1eb1fa16da323ee3d2064c37aa027f.
+The final handoff changes no qualified product source. The observed
+current-revision-jump focus loss is the next concrete task for the active goal.
 
 **Approve** the inspected pagination and revision-selection changes; no HIGH
 finding remains. One MEDIUM current-revision-jump focus finding remains for the
