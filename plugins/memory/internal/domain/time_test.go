@@ -14,7 +14,7 @@ func TestMemoryTimesRemainExactlyRepresentable(t *testing.T) {
 		if _, err := (FactBatch{Project: "/repo", SessionID: "session", Day: at.Format(time.DateOnly), CapturedAt: at}).Normalize(); err != nil {
 			t.Fatalf("FactBatch at %s: %v", at, err)
 		}
-		if _, err := NewPublication("/repo", State{}, 1, nil, at); err != nil {
+		if _, err := NewPublication("/repo", State{}, 1, nil, nil, at); err != nil {
 			t.Fatalf("NewPublication at %s: %v", at, err)
 		}
 	}
@@ -28,7 +28,7 @@ func TestMemoryTimesRemainExactlyRepresentable(t *testing.T) {
 		if err := (LedgerFact{Sequence: 1, Day: at.Format(time.DateOnly), Content: "fact", CapturedAt: at}).Validate(); err == nil {
 			t.Errorf("LedgerFact at %s succeeded", at)
 		}
-		if _, err := NewPublication("/repo", State{}, 1, nil, at); err == nil {
+		if _, err := NewPublication("/repo", State{}, 1, nil, nil, at); err == nil {
 			t.Errorf("NewPublication at %s succeeded", at)
 		}
 	}

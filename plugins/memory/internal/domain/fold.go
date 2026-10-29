@@ -6,13 +6,16 @@ type FoldPlan struct {
 }
 
 // Approved facts and rejected tombstones outlive curator output; only unpinned auto proposals may be pruned.
-func Fold(existing []Item, contents []string) (FoldPlan, error) {
-	contents, err := normalizeGeneration(contents)
-	if err != nil {
+func (p Publication) Fold(existing []Item) (FoldPlan, error) {
+	if err := p.Validate(); err != nil {
 		return FoldPlan{}, err
 	}
+	contents := p.contents
 	present := make(map[string]struct{}, len(existing))
 	for _, item := range existing {
+		if err := validateGenerationItem(p.project, item); err != nil {
+			return FoldPlan{}, err
+		}
 		present[Digest(item.content)] = struct{}{}
 	}
 
@@ -20,9 +23,6 @@ func Fold(existing []Item, contents []string) (FoldPlan, error) {
 	desired := make(map[string]struct{}, len(contents))
 	for _, content := range contents {
 		digest := Digest(content)
-		if _, dup := desired[digest]; dup {
-			continue
-		}
 		desired[digest] = struct{}{}
 		if _, seen := present[digest]; !seen {
 			plan.InsertContents = append(plan.InsertContents, content)
@@ -31,6 +31,10 @@ func Fold(existing []Item, contents []string) (FoldPlan, error) {
 
 	for _, item := range existing {
 		if item.origin != OriginAuto || item.status != StatusPending || item.pinned {
+			continue
+		}
+		// Omitted context and intervening human changes cannot authorize deletion.
+		if revision, observed := p.basis[item.id]; !observed || revision != item.Revision() {
 			continue
 		}
 		if _, keep := desired[Digest(item.content)]; !keep {

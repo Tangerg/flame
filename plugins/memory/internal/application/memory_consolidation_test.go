@@ -3,6 +3,7 @@ package coordination
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -49,6 +50,12 @@ func memoryConsolidationFixture(t *testing.T, replies ...scriptedReply) (*Memory
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	memory := sqlite.NewAgentMemoryStore(db)
+	consolidator, model := memoryConsolidatorForStore(t, memory, replies...)
+	return consolidator, memory, model
+}
+
+func memoryConsolidatorForStore(t *testing.T, memory *sqlite.AgentMemoryStore, replies ...scriptedReply) (*MemoryConsolidator, *scriptedModel) {
+	t.Helper()
 	memoryCuration, err := NewCuration(CurationConfig{Store: memory})
 	if err != nil {
 		t.Fatal(err)
@@ -64,7 +71,105 @@ func memoryConsolidationFixture(t *testing.T, replies ...scriptedReply) (*Memory
 	}
 	consolidator.policy.minPendingFacts = 1
 	consolidator.now = func() time.Time { return time.Date(2026, 7, 19, 9, 30, 0, 0, time.FixedZone("CST", 8*60*60)) }
-	return consolidator, memory, model
+	return consolidator, model
+}
+
+func TestConsolidatorIncludesUnreviewedPredecessorAcrossMaintenance(t *testing.T) {
+	for _, restart := range []bool{false, true} {
+		t.Run(fmt.Sprintf("restart=%t", restart), func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "memory.db")
+			db, err := sqlite.Open(t.Context(), path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = db.Close() }()
+			store := sqlite.NewAgentMemoryStore(db)
+			first, _ := memoryConsolidatorForStore(t, store, scriptedReply{text: "- fact A"}, scriptedReply{text: "- fact A"})
+			if err := first.Consolidate(t.Context(), "ses_first", "/repo"); err != nil {
+				t.Fatal(err)
+			}
+			before, err := store.List(t.Context(), agentmemory.ScopeProject, "/repo")
+			if err != nil || len(before) != 1 || before[0].Status() != agentmemory.StatusPending {
+				t.Fatalf("first proposal: %+v, %v", before, err)
+			}
+			if restart {
+				if err := db.Close(); err != nil {
+					t.Fatal(err)
+				}
+				reopened, err := sqlite.Open(t.Context(), path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				db = reopened
+				store = sqlite.NewAgentMemoryStore(db)
+			}
+			second, model := memoryConsolidatorForStore(t, store, scriptedReply{text: "- fact B"}, scriptedReply{text: "- fact A\n- fact B"})
+			if err := second.Consolidate(t.Context(), "ses_second", "/repo"); err != nil {
+				t.Fatal(err)
+			}
+			if len(model.requests) != 2 || !strings.Contains(model.requests[1].UserPrompt, "CURRENT CURATED MEMORY\n---\n- fact A\n") {
+				t.Fatalf("curation omitted unreviewed predecessor: %+v", model.requests)
+			}
+			item, found, err := store.Get(t.Context(), before[0].ID())
+			if err != nil || !found || item.Content() != "fact A" || item.Status() != agentmemory.StatusPending {
+				t.Fatalf("predecessor changed: %+v, %t, %v", item.Snapshot(), found, err)
+			}
+		})
+	}
+}
+
+func TestConsolidatorPreservesProposalsOmittedByTheModelInputBudget(t *testing.T) {
+	consolidator, store, model := memoryConsolidationFixture(t,
+		scriptedReply{text: "- new fact"}, scriptedReply{text: "- new fact"},
+	)
+	at := consolidator.now()
+	facts, err := store.AppendLedger(t.Context(), agentmemory.FactBatch{
+		Project: "/repo", SessionID: "ses_seed", Day: at.Format(time.DateOnly),
+		Facts: []string{"seed"}, CapturedAt: at,
+	})
+	if err != nil || len(facts) != 1 {
+		t.Fatalf("seed ledger: %v", err)
+	}
+	var contents []string
+	for index := 0; index < 12; index++ {
+		contents = append(contents, fmt.Sprintf("%02d %s", index, strings.Repeat("界", agentmemory.MaxContentCharacters-8)))
+	}
+	publication, err := agentmemory.NewPublication("/repo", agentmemory.State{}, facts[0].Sequence, nil, contents, at)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if published, err := store.Reconcile(t.Context(), publication); err != nil || !published {
+		t.Fatalf("seed publication: %t, %v", published, err)
+	}
+	before, err := store.GenerationItems(t.Context(), "/repo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := consolidator.Consolidate(t.Context(), "ses_next", "/repo"); err != nil {
+		t.Fatal(err)
+	}
+	if len(model.requests) != 2 {
+		t.Fatalf("model calls: %d", len(model.requests))
+	}
+	seen, omitted := 0, 0
+	for _, previous := range before {
+		observed := strings.Contains(model.requests[1].UserPrompt, previous.Content())
+		if observed {
+			seen++
+		} else {
+			omitted++
+		}
+		current, found, err := store.Get(t.Context(), previous.ID())
+		if err != nil || found == observed {
+			t.Fatalf("proposal %s observed=%t retained=%t error=%v", previous.ID(), observed, found, err)
+		}
+		if found && (current.Content() != previous.Content() || current.Revision() != previous.Revision()) {
+			t.Fatal("omitted proposal changed")
+		}
+	}
+	if seen == 0 || omitted == 0 {
+		t.Fatalf("input did not exercise its envelope: seen=%d omitted=%d", seen, omitted)
+	}
 }
 
 func TestConsolidatorRejectsMissingDependencies(t *testing.T) {

@@ -42,12 +42,13 @@ func decodeVec(encoded []byte) ([]float32, error) {
 	return vector, nil
 }
 
-func (a *AgentMemoryStore) reconcileItems(ctx context.Context, project string, contents []string, now time.Time) error {
-	existing, err := a.targetItems(ctx, project)
+func (a *AgentMemoryStore) reconcileItems(ctx context.Context, publication agentmemory.Publication) error {
+	project, now := publication.Project(), publication.State().UpdatedAt
+	existing, err := a.GenerationItems(ctx, project)
 	if err != nil {
 		return err
 	}
-	plan, err := agentmemory.Fold(existing, contents)
+	plan, err := publication.Fold(existing)
 	if err != nil {
 		return fmt.Errorf("sqlite: plan agent memory fold: %w", err)
 	}
@@ -80,7 +81,10 @@ func (a *AgentMemoryStore) reconcileItems(ctx context.Context, project string, c
 	return nil
 }
 
-func (a *AgentMemoryStore) targetItems(ctx context.Context, project string) ([]agentmemory.Item, error) {
+func (a *AgentMemoryStore) GenerationItems(ctx context.Context, project string) ([]agentmemory.Item, error) {
+	if err := agentmemory.ValidateTarget(agentmemory.ScopeProject, project); err != nil {
+		return nil, err
+	}
 	rows, err := sqlite.Connection(ctx, a.db).QueryContext(ctx,
 		`SELECT `+agentMemoryItemColumns+` FROM agent_memory_items
 		 WHERE scope = 'project' AND project = ?

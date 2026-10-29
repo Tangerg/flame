@@ -48,6 +48,7 @@ func appendAgentFacts(t *testing.T, store *AgentMemoryStore, project, day string
 
 func agentMemoryPublication(
 	t *testing.T,
+	store *AgentMemoryStore,
 	project string,
 	expected agentmemory.State,
 	through int64,
@@ -55,7 +56,11 @@ func agentMemoryPublication(
 	now time.Time,
 ) agentmemory.Publication {
 	t.Helper()
-	publication, err := agentmemory.NewPublication(project, expected, through, contents, now)
+	observed, err := store.GenerationItems(t.Context(), project)
+	if err != nil {
+		t.Fatal(err)
+	}
+	publication, err := agentmemory.NewPublication(project, expected, through, observed, contents, now)
 	if err != nil {
 		t.Fatalf("prepare agent memory publication: %v", err)
 	}
@@ -111,7 +116,7 @@ func TestAgentMemoryReconcileAdvancesWatermarkAndItems(t *testing.T) {
 	through := facts[len(facts)-1].Sequence
 
 	now := time.Unix(0, 0).UTC()
-	publication := agentMemoryPublication(t, "/repo", agentmemory.State{}, through, []string{"one", "two"}, now)
+	publication := agentMemoryPublication(t, store, "/repo", agentmemory.State{}, through, []string{"one", "two"}, now)
 	published, err := store.Reconcile(t.Context(), publication)
 	if err != nil || !published {
 		t.Fatalf("Reconcile = (%v, %v)", published, err)
@@ -134,7 +139,7 @@ func TestAgentMemoryReconcileAdvancesWatermarkAndItems(t *testing.T) {
 		}
 	}
 
-	stalePublication := agentMemoryPublication(t, "/repo", agentmemory.State{}, through, []string{"three"}, now.Add(time.Hour))
+	stalePublication := agentMemoryPublication(t, store, "/repo", agentmemory.State{}, through, []string{"three"}, now.Add(time.Hour))
 	stale, err := store.Reconcile(t.Context(), stalePublication)
 	if err != nil || stale {
 		t.Fatalf("stale reconcile = (%v, %v), want false, nil", stale, err)
@@ -151,7 +156,7 @@ func TestAgentMemoryReconcilePreservesUnchangedAndPrunesRemoved(t *testing.T) {
 	store := newAgentMemoryStore(t)
 	facts := appendAgentFacts(t, store, "/repo", "2026-07-19", "one", "two", "three")
 	now := time.Date(2026, 7, 19, 4, 0, 0, 0, time.UTC)
-	firstPublication := agentMemoryPublication(t, "/repo", agentmemory.State{}, facts[1].Sequence, []string{"one", "two"}, now)
+	firstPublication := agentMemoryPublication(t, store, "/repo", agentmemory.State{}, facts[1].Sequence, []string{"one", "two"}, now)
 	if _, err := store.Reconcile(t.Context(), firstPublication); err != nil {
 		t.Fatal(err)
 	}
@@ -162,7 +167,7 @@ func TestAgentMemoryReconcilePreservesUnchangedAndPrunesRemoved(t *testing.T) {
 	}
 
 	expected := agentmemory.State{Watermark: facts[1].Sequence, UpdatedAt: now}
-	nextPublication := agentMemoryPublication(t, "/repo", expected, facts[2].Sequence, []string{"one", "three"}, now.Add(time.Hour))
+	nextPublication := agentMemoryPublication(t, store, "/repo", expected, facts[2].Sequence, []string{"one", "three"}, now.Add(time.Hour))
 	if _, err := store.Reconcile(t.Context(), nextPublication); err != nil {
 		t.Fatal(err)
 	}
@@ -187,7 +192,7 @@ func TestAgentMemoryReviewLifecycle(t *testing.T) {
 	store := newAgentMemoryStore(t)
 	facts := appendAgentFacts(t, store, "/repo", "2026-07-19", "one", "two")
 	now := time.Date(2026, 7, 19, 4, 0, 0, 0, time.UTC)
-	publication := agentMemoryPublication(t, "/repo", agentmemory.State{}, facts[1].Sequence, []string{"one", "two"}, now)
+	publication := agentMemoryPublication(t, store, "/repo", agentmemory.State{}, facts[1].Sequence, []string{"one", "two"}, now)
 	if _, err := store.Reconcile(t.Context(), publication); err != nil {
 		t.Fatal(err)
 	}
@@ -229,7 +234,7 @@ func TestAgentMemoryReviewLifecycle(t *testing.T) {
 	appendAgentFacts(t, store, "/repo", "2026-07-20", "three")
 	pending, _ := store.PendingLedger(t.Context(), "/repo", facts[1].Sequence, 10)
 	expected := agentmemory.State{Watermark: facts[1].Sequence, UpdatedAt: now}
-	nextPublication := agentMemoryPublication(t, "/repo", expected, pending[len(pending)-1].Sequence,
+	nextPublication := agentMemoryPublication(t, store, "/repo", expected, pending[len(pending)-1].Sequence,
 		[]string{"one", "two", "three"}, now.Add(time.Hour))
 	if _, err := store.Reconcile(t.Context(), nextPublication); err != nil {
 		t.Fatal(err)
@@ -258,7 +263,7 @@ func TestAgentMemoryReviewPreservesPendingItemWhenClockRegresses(t *testing.T) {
 			t.Run(string(decision)+"/"+clock.name, func(t *testing.T) {
 				store := newAgentMemoryStore(t)
 				facts := appendAgentFacts(t, store, "/repo", "2026-07-19", "fact")
-				publication := agentMemoryPublication(t, "/repo", agentmemory.State{}, facts[0].Sequence, []string{"fact"}, createdAt)
+				publication := agentMemoryPublication(t, store, "/repo", agentmemory.State{}, facts[0].Sequence, []string{"fact"}, createdAt)
 				if _, err := store.Reconcile(t.Context(), publication); err != nil {
 					t.Fatal(err)
 				}
@@ -393,7 +398,7 @@ func TestRejectedMemoryContentEditPreservesTheCompleteProposal(t *testing.T) {
 	store := newAgentMemoryStore(t)
 	now := time.Date(2026, 7, 19, 4, 0, 0, 0, time.UTC)
 	facts := appendAgentFacts(t, store, "/repo", "2026-07-19", "proposal")
-	publication := agentMemoryPublication(t, "/repo", agentmemory.State{}, facts[0].Sequence, []string{"proposal"}, now)
+	publication := agentMemoryPublication(t, store, "/repo", agentmemory.State{}, facts[0].Sequence, []string{"proposal"}, now)
 	if published, err := store.Reconcile(t.Context(), publication); err != nil || !published {
 		t.Fatalf("curation = %t, %v", published, err)
 	}
@@ -423,7 +428,7 @@ func TestUserEditedAutomaticMemorySurvivesCuration(t *testing.T) {
 			store := newAgentMemoryStore(t)
 			createdAt := time.Date(2026, 7, 19, 4, 0, 0, 0, time.UTC)
 			facts := appendAgentFacts(t, store, "/repo", "2026-07-19", "automatic proposal", "obsolete proposal")
-			publication := agentMemoryPublication(t, "/repo", agentmemory.State{}, facts[1].Sequence,
+			publication := agentMemoryPublication(t, store, "/repo", agentmemory.State{}, facts[1].Sequence,
 				[]string{"automatic proposal", "obsolete proposal"}, createdAt)
 			if published, err := store.Reconcile(t.Context(), publication); err != nil || !published {
 				t.Fatalf("first curation = %t, %v", published, err)
@@ -454,7 +459,7 @@ func TestUserEditedAutomaticMemorySurvivesCuration(t *testing.T) {
 				t.Fatal(err)
 			}
 			nextFacts := appendAgentFacts(t, store, "/repo", "2026-07-19", "later fact")
-			next := agentMemoryPublication(t, "/repo", publication.State(), nextFacts[0].Sequence, nil, editedAt.Add(time.Minute))
+			next := agentMemoryPublication(t, store, "/repo", publication.State(), nextFacts[0].Sequence, nil, editedAt.Add(time.Minute))
 			if published, err := store.Reconcile(t.Context(), next); err != nil || !published {
 				t.Fatalf("next curation = %t, %v", published, err)
 			}
@@ -587,7 +592,7 @@ func TestAgentMemoryReconcilePublishesOnlyAvailableTargetCapacity(t *testing.T) 
 		}
 	}
 	facts := appendAgentFacts(t, store, "/repo", "2026-08-24", "ledger fact")
-	publication := agentMemoryPublication(t, "/repo", agentmemory.State{}, facts[0].Sequence,
+	publication := agentMemoryPublication(t, store, "/repo", agentmemory.State{}, facts[0].Sequence,
 		[]string{"highest priority proposal", "lower priority proposal"}, now.Add(time.Second))
 	published, err := store.Reconcile(t.Context(), publication)
 	if err != nil || !published {
@@ -662,7 +667,7 @@ func TestAgentMemoryExplicitAddRevivesRejectedProposal(t *testing.T) {
 	store := newAgentMemoryStore(t)
 	facts := appendAgentFacts(t, store, "/repo", "2026-08-24", "revive me")
 	now := time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC)
-	publication := agentMemoryPublication(t, "/repo", agentmemory.State{}, facts[0].Sequence, []string{"revive me"}, now)
+	publication := agentMemoryPublication(t, store, "/repo", agentmemory.State{}, facts[0].Sequence, []string{"revive me"}, now)
 	if _, err := store.Reconcile(t.Context(), publication); err != nil {
 		t.Fatal(err)
 	}
@@ -741,7 +746,7 @@ func TestAgentMemoryEmbeddingBackfillRoundTrip(t *testing.T) {
 	store := newAgentMemoryStore(t)
 	facts := appendAgentFacts(t, store, "/repo", "2026-07-19", "one", "two")
 	now := time.Date(2026, 7, 19, 4, 0, 0, 0, time.UTC)
-	publication := agentMemoryPublication(t, "/repo", agentmemory.State{}, facts[1].Sequence, []string{"one", "two"}, now)
+	publication := agentMemoryPublication(t, store, "/repo", agentmemory.State{}, facts[1].Sequence, []string{"one", "two"}, now)
 	if _, err := store.Reconcile(t.Context(), publication); err != nil {
 		t.Fatal(err)
 	}
@@ -848,7 +853,7 @@ func TestAgentMemoryReconcileCASHasOneWinner(t *testing.T) {
 	store := newAgentMemoryStore(t)
 	facts := appendAgentFacts(t, store, "/repo", "2026-07-19", "one")
 	through := facts[0].Sequence
-	publication := agentMemoryPublication(t, "/repo", agentmemory.State{}, through, []string{"body"}, time.Now())
+	publication := agentMemoryPublication(t, store, "/repo", agentmemory.State{}, through, []string{"body"}, time.Now())
 	var winners atomic.Int32
 	var wg sync.WaitGroup
 	for range 2 {

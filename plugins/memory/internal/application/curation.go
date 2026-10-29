@@ -16,7 +16,7 @@ type CurationStore interface {
 	PendingLedger(ctx context.Context, project string, watermark int64, limit int) ([]domain.LedgerFact, error)
 	State(ctx context.Context, project string) (domain.State, error)
 	Reconcile(ctx context.Context, publication domain.Publication) (bool, error)
-	Items(ctx context.Context, scope domain.Scope, project string) ([]domain.Item, error)
+	GenerationItems(ctx context.Context, project string) ([]domain.Item, error)
 }
 
 type CurationConfig struct {
@@ -77,11 +77,11 @@ func (c *Curation) PublishGeneration(ctx context.Context, publication domain.Pub
 	return published, nil
 }
 
-func (c *Curation) Items(ctx context.Context, scope domain.Scope, project string) ([]domain.Item, error) {
-	if err := domain.ValidateTarget(scope, project); err != nil {
+func (c *Curation) GenerationItems(ctx context.Context, project string) ([]domain.Item, error) {
+	if err := domain.ValidateTarget(domain.ScopeProject, project); err != nil {
 		return nil, err
 	}
-	items, err := c.store.Items(ctx, scope, project)
+	items, err := c.store.GenerationItems(ctx, project)
 	if err != nil {
 		return nil, err
 	}

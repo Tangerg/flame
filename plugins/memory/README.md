@@ -12,6 +12,13 @@ items, pinned proposals and rejection tombstones. The Domain alone decides
 pruning: only absent, unpinned automatic pending proposals are eligible. Storage
 applies that plan inside publication; it does not preselect pruning candidates.
 
+Curation reads pending and active automatic predecessors independently of the
+active-only prompt/search view. Each publication captures the IDs and revisions
+of whole records actually included in its model input. Fold may prune an obsolete
+proposal only when that exact revision was observed. Records omitted by the input
+budget or revised during model work survive. Restart reads the same durable
+predecessors; no second generation store or compatibility reader is introduced.
+
 Each item owns a positive exact `Revision`. Editing content, pinning, reviewing,
 or explicitly reactivating a record advances that revision; derived embeddings
 and unchanged edits do not. Update, review and deletion require the caller's

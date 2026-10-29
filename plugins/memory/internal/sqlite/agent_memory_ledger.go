@@ -140,7 +140,6 @@ func (a *AgentMemoryStore) Reconcile(
 	expectedWatermark := publication.ExpectedState().Watermark
 	state := publication.State()
 	through := state.Watermark
-	contents := publication.Contents()
 	err = sqlite.RunInTx(ctx, a.db, func(ctx context.Context) error {
 		var one int
 		if scanErr := sqlite.Connection(ctx, a.db).QueryRowContext(ctx,
@@ -171,7 +170,7 @@ func (a *AgentMemoryStore) Reconcile(
 			published = false
 			return nil
 		}
-		if reconcileItemsErr := a.reconcileItems(ctx, project, contents, state.UpdatedAt); reconcileItemsErr != nil {
+		if reconcileItemsErr := a.reconcileItems(ctx, publication); reconcileItemsErr != nil {
 			return reconcileItemsErr
 		}
 		published = true
