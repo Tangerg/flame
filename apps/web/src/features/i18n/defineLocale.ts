@@ -12,12 +12,18 @@ export function defineLocale(
       let activation: Promise<void> | undefined;
       const activate = (): Promise<void> => {
         ctx.signal.throwIfAborted();
-        return (activation ??= ctx.spawn(async (signal) => {
-          if (!spec.load) return;
-          const dict = await spec.load();
-          signal.throwIfAborted();
-          ctx.cleanup(mountLocaleBundle(spec.id, dict));
-        }).result);
+        if (!activation) {
+          activation = ctx.spawn(async (signal) => {
+            if (!spec.load) return;
+            const dict = await spec.load();
+            signal.throwIfAborted();
+            ctx.cleanup(mountLocaleBundle(spec.id, dict));
+          }).result;
+          void activation.catch(() => {
+            activation = undefined;
+          });
+        }
+        return activation;
       };
       ctx.contribute(LOCALE, { id: spec.id, label: spec.label, order: spec.order, activate });
       if (spec.id === activeLocale()) void activate();

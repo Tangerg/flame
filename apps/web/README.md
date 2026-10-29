@@ -176,6 +176,16 @@ picker owns only presentation: feedback sits outside options, recovery stays in 
 bounded footer, an arriving preferred group respects later explicit browsing,
 and the complete popup fits the available height.
 
+Language selection records the requested preference before activating its source,
+including synchronous activation failures. A source shares its current or successful
+dictionary task, but a failed task permits another explicit attempt. Settings
+shows Loading or the actual failure with Retry; Retry hands focus to the surviving
+language trigger before its transient action disappears. Completion does not move
+later focus or replace a later preference. React consumers subscribe to dictionary
+arrival and withdrawal through react-i18next and receive its current translator,
+so ordinary and memoized copy update together. Dictionary ownership, locale storage,
+English fallback, BCP-47 mapping and Runtime commands retain their existing owners.
+
 `SettingRow` marks the label and controls as one shared focus unit. `Panel` owns
 revealing that complete unit inside the clipped host when it fits; taller rows
 retain the focused control as the reading target.

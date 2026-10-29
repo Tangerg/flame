@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Model pickers now distinguish an unread catalog from accepted empty data, retain known model identity and provide local refresh without losing search or later focus, published as `147c7dcae`. All 76 focused tests, typecheck, lint and the other 11 Web/native gates pass; light, Chinese dark/18px/200% and observer-free native tasks pass. Evidence, cleanup and delivery are recorded under **Model catalog reading and recovery**. Hooks/Plugins task-first hierarchy is published as `ca9c60977`, Settings readiness as `1bb564a53`, MCP as `17916606d` and Files as `4468c2fc6`. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
+Language loading now has explicit recovery and updates complete reading surfaces, including memoized copy, while retaining later preferences, drafts and focus. All 172 focused/related tests, typecheck, lint and the other 11 Web/native gates pass; light, Chinese dark/18px/200%, native resize and observer-free tasks pass. Evidence and cleanup are recorded under **Language loading and complete reading updates**. Model-catalog recovery is published as `147c7dcae`, Hooks/Plugins hierarchy as `ca9c60977`, Settings readiness as `1bb564a53`, MCP as `17916606d` and Files as `4468c2fc6`. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -110,6 +110,9 @@ comparison, search/return path and cleanup.
 Model-catalog reading and local recovery across Composer and auxiliary-role
 selection are published as `147c7dcae`; see **Model catalog reading and recovery**
 for the real-query regressions, native tasks and publication boundary.
+The following language-loading batch repairs failed dictionary recovery and
+complete translated reading updates across Settings, Composer and Dock; see
+**Language loading and complete reading updates** for its native task boundary.
 See **Goal save
 feedback and pending dismissal** and **Computer console
 editing and operation return**. Preserve the
@@ -3017,6 +3020,127 @@ newly verified. Production views use canonical deterministic read fixtures;
 no Runtime mutation or saved business data is exercised. Font-menu scroll-following
 and synthetic slider dragging are not newly qualified by that earlier batch.
 Do not reopen the delivered paper material or preferences.
+
+### Language loading and complete reading updates
+
+Current source inspection rejected the context-gauge readiness hypothesis: missing
+model metadata does not establish a false empty result. Detailed earlier receipts
+also show that saved-report archive/read/return already has native coverage; that
+completed flow was not repeated. A separate current language-loading investigation
+produced actual native counterexamples and became this batch's scope.
+
+In the original English/light application, Japanese activation failed and Settings
+showed only the error. The known preference remained Japanese, but there was no
+Retry. After restoring the private loader input, choosing English and then Japanese
+still returned the cached failure. A second original launch selected the healthy
+German dictionary: only the Language row became German while Settings, navigation
+and the other fields stayed English. This is a reading-state defect rather than a
+request for different colors or density.
+
+`features/i18n/defineLocale.ts` remains the dictionary task owner. Concurrent calls
+share one attempt; success remains cached, and failure clears only that cache so
+an explicit retry can start. It returns the original owned task promise, preserving
+its rejection and retirement contracts. The selection application records the
+requested preference before activation, so even a synchronous failure belongs to
+the language the user just selected. Retired sources still cannot mount a dictionary.
+
+`LanguageSection.tsx` keeps the selected identity and uses existing shared
+SystemMessage Loading/error feedback with the existing localized Retry action.
+Retry focuses the surviving language trigger before its temporary action is removed.
+No asynchronous completion moves focus; newer input, another preference, inactive
+Settings and the current conversation retain their existing owners.
+
+`lib/i18n/index.ts` enables react-i18next's public `added removed` resource
+subscription. `useT` returns the library's current translator instead of the same
+global function on every render. The former updates mounted readers when a lazy
+dictionary arrives or withdraws; the latter invalidates translated `useMemo([t])`
+values on that same revision and on language selection. Off-React `t`, dictionary
+mounting, stored preference identity, English fallback and BCP-47 mapping remain
+with their existing owners. No locale mirror, refresh timer, global focus handler,
+new translation key, theme override, dependency or Runtime/storage migration is added.
+
+Read-only references include ZCode's actual IntlProvider and LocaleSwitcher:
+preference and displayed labels are distinct concerns, but its eagerly loaded
+two-language catalogs do not prove lazy-load recovery. HeroUI's actual pending
+Button example guides named action/status feedback rather than a replacement
+component. The installed react-i18next defaults and subscription/snapshot source
+establish the resource-event and translator-identity contracts. Earlier Radix
+focus/semantic-color and Ace composition research remains within its recorded
+limits; static work does not prove keyboard behavior or an award-level verdict.
+
+| Review domain | Finding and scoped outcome                                                                                                                                                                                                                    |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Writing       | **HIGH repaired:** an unrecoverable cached failure had no local recovery; a selected language could leave the rest of the page in a different language. Error, Retry, Loading and complete translated reading now reflect their actual facts. |
+| Accessibility | Named existing menu/actions remain keyboard reachable. Retry hands focus off before disappearing; later editing and language choices retain focus after settlement.                                                                           |
+| Layout        | The complete long warning and Retry are visible at measured 560×377 CSS, DPR 4/200%; native resize to 756×475 and back retains the pending trigger and status.                                                                                |
+| Typography    | Existing 14px/18px scales, wrapping and quiet controls hold English, Chinese and Japanese identities and recovery copy. No type ladder or reading-width override is introduced.                                                               |
+| Color         | Existing warning wash/text and Orange/custom-blue focus roles remain distinct and readable in the qualified native scenes. No new palette or fresh numeric contrast measurement is claimed.                                                   |
+| UI and motion | One transient, purposeful feedback area follows the selected control; existing light full-motion and dark motion-off paths pass without new animation or decorative chrome.                                                                   |
+
+The original six focused files passed **33 tests**. The first seven added
+regressions produced **7 failed / 33 passed** on frozen original sources. The first
+candidate passed its 40 assertions but failed on an unhandled retirement AbortError:
+catch-and-rethrow had created an extra promise for fire-and-forget startup activation.
+Keeping the original task promise fixes that error without suppressing caller
+failure or changing cancellation. The next candidate passed 40 tests and its gates,
+but consumer review found the stable-translator memo defect. Its new isolated
+regression produced **1 failed / 1 passed** before the final `useT` repair. The
+intermediate native build was never launched and is excluded from acceptance.
+
+Final validation passes **21 files / 172 tests**: **7 files / 41 core cases** and
+**14 files / 131 existing consumer cases** across Settings/search/drafts, installed
+components, workspace navigation, models and provider roles. Cases cover shared
+attempts, explicit retry, retirement, synchronous/asynchronous failures, resource
+arrival/withdrawal, memoized copy, newer preference, later independent draft/caret,
+and the retained existing owner contracts. Web typecheck/lint and all **11 other
+serial gates** pass: circular/context/layer boundaries, design system, tokens,
+chrome, locales, plugin resources, bundle, module links and `make check-native`
+(**34.395 s**, including Desktop tests/vet/build and the supported Wails production
+build). The unchanged shared UI package retains its prior 194-test qualification;
+it is not a newly repeated result.
+
+Native qualification exercises production Wails v3, the real workspace,
+Settings, locale sources, query adapters, Composer and installed Dock components.
+Only private canonical inputs wrap the actual Japanese dictionary loader with a
+failure or held read, and native commands allow/release that input. The observer
+is read-only; CUA performs all application input. It does not qualify retrying a
+browser-cached failed module URL or a live network recovery.
+
+| Native task                                                | Actual result                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Original light, English/14px/Orange                        | Failure without Retry, cached failure after input recovery, and partial-page German translation reproduced across two app launches.                                                                                                                                                                                                                                                                                                                                                                              |
+| Final light, English/14px/Orange → Japanese                | Keyboard Retry transfers focus to Language with Loading. While held, the user returns to Providers and continues an unsaved URL. Actual dictionary arrival translates the entire pane while preserving `https://kept-locale-draft.invalid/v1/continued` and its focus. Appearance, conversation, model capability/search copy and Dock controls also update. Closing/read-return retains exactly `Keep this locale-reading draft. Continued.` with caret 42.                                                     |
+| Final dark, Chinese/18px/custom `#3366FF`, motion off/200% | The error and keyboard-focused Retry fit at 560×377 CSS/DPR 4. Native window zoom gives 756×475 and restores the narrow view while Loading and Language focus remain. The user explicitly chooses Chinese during the held Japanese retry, returns to Composer and releases the older input; Chinese and the current draft remain. Final text is `语言切换后继续阅读和编辑。 保留草稿。`, caret 19. Exact later-settlement semantics are also covered by the deferred core regression.                            |
+| Observer-free dark control                                 | The same native zoom/scroll/menu/failure/Retry path passes. Settings is closed while the retry is held; the user continues Composer. Release translates conversation controls into Japanese while preserving the later input focus, and continued typing succeeds: `无观测语言切换保留草稿。 继续编辑。 已继续。`. All 618 non-HTML assets match; only the two observer-bearing entry HTML files differ. Observer event and POST deltas are both zero. No DOM/CSS/caret measurement is claimed for this control. |
+
+An initial CUA timeout was followed by an exact live-process/passive-record check
+and rebinding the same application, without rebuilding or relaunching it. One
+closing-menu AX index expired before input, and one field helper used incorrect
+Base/base capitalization; fresh native states completed both paths. Those attempts
+are not product failures or successful acceptance steps. Four native builds were
+exercised in five app launches; the additional intermediate build was unqualified.
+
+Full Web/Runtime/browser suites, benchmarks, live business Send, real provider
+saves/tests, OS IME composition, VoiceOver audio, RTL, 320px and other operating
+systems were not newly qualified. Native failure is a loader-input exercise before
+the real module import, not proof of browser module-cache or external-network retry.
+The separately recorded unsupported-startup-locale debt remains outside this repair;
+registered preference identity is deliberately preserved. No HIGH blocker remains
+in the inspected flow; the whole-product goal remains active. Continue from fresh
+content/Dock task evidence rather than repeating completed locale/report paths.
+
+The publication fetch finds **zero incoming main commits** at
+`bc5f208b19804cead30ae7613f5fa29c33a3505e`; normal merge reports already up to date.
+All owned app processes exited, the exact registration was removed and the passive
+server closed. Seven generated outputs and three created profiles were removed;
+four pre-existing files and their modes were restored. All 18 output paths, five
+profile paths, **6,311 source inputs** (eight changed, 6,303 untouched), 32 resources,
+39 read-only references and three explicitly owned instruction paths pass before
+and after removal of `/private/tmp/flame-locale-recovery-4tF8dr`. The primary
+checkout was not modified. The memory-only, gzip round-tripped evidence holds
+**91 UTF-8 records**, **9,871,101 raw / 1,385,666 gzip bytes**, SHA-256
+`72055d8b3413ef2325b5551e9285cc124cec63448de6e0e88dfaf4d51afbaa36`.
+No private qualification files are committed or left on disk.
 
 ### Settings focus and pointer activation
 
