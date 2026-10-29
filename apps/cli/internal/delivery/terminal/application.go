@@ -477,9 +477,8 @@ func (a *app) dispatchPrompt(message authoring.Message) {
 		a.enqueueDeferredPrompt()
 		return
 	}
-	a.operations.Cancel(pickerCatalogOperation)
 	a.dialogs.sessionDialog.Dismiss()
-	a.dialogs.modelDialog.Dismiss()
+	a.dismissModelPicker()
 	a.resetComposer()
 	a.operations.Cancel(completionOperation)
 	a.completion.Dismiss()

@@ -105,7 +105,7 @@ func (a *app) refreshModelReader(affected bool) {
 		return
 	}
 	if a.dialogs.modelDialog.Open() {
-		a.loadModelPicker(false)
+		a.refreshModelPicker()
 	}
 	if !a.dialogs.readerDialog.Open() {
 		return
