@@ -168,7 +168,6 @@ const FEATURES = [
   "git",
   "checkpoints",
   "fileWatch",
-  "lsp",
   "sessionExport",
   "relocate",
   "isolation",

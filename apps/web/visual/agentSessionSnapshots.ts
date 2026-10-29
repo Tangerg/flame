@@ -88,7 +88,7 @@ const SAFETY_CLASS: Record<string, "safe" | "write" | "exec" | "network"> = {
   read: "safe",
   grep: "safe",
   glob: "safe",
-  lsp: "safe",
+  codeintel_lsp: "exec",
   inspect_workspace: "safe",
   read_shell_output: "safe",
   list_schedules: "safe",
@@ -110,7 +110,7 @@ const SAFETY_CLASS: Record<string, "safe" | "write" | "exec" | "network"> = {
   stop_shell: "exec",
   web_search: "network",
   web_fetch: "network",
-  http_request: "network",
+  web_http_request: "exec",
 };
 
 function safetyClassOf(name: string): "safe" | "write" | "exec" | "network" {

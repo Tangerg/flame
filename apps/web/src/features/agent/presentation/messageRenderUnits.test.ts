@@ -217,10 +217,15 @@ describe("planRenderUnits · read-only grouping", () => {
     ]);
   });
 
-  it("groups lsp lookups", () => {
-    const tools = { one: tool("one", "codeintel_lsp"), two: tool("two", "codeintel_lsp") };
-    expect(planRenderUnits([tb("one"), tb("two")], tools, NO_AWAITING)).toEqual([
-      { kind: "toolGroup", tools: [tools.one, tools.two], superseded: false },
+  it("keeps installed code intelligence outside read-only groups", () => {
+    const tools = {
+      one: tool("one", "codeintel_lsp", "exec"),
+      two: tool("two", "codeintel_lsp", "exec"),
+    };
+    const blocks = [tb("one"), tb("two")];
+    expect(planRenderUnits(blocks, tools, NO_AWAITING)).toEqual([
+      { kind: "block", block: blocks[0], index: 0, superseded: false },
+      { kind: "block", block: blocks[1], index: 1, superseded: false },
     ]);
   });
 

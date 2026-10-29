@@ -35,7 +35,6 @@ function makeCaps(overrides: Partial<ServerCapabilities> = {}): ServerCapabiliti
       checkpoints: feature(false),
       git: feature(true),
       fileWatch: feature(false),
-      lsp: feature(false),
       subagents: feature(false),
       skills: feature(false),
       mcp: feature(true),

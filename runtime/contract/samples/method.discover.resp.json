@@ -67,11 +67,6 @@
         "clientOptIn": false,
         "requiredByRunProtocol": false
       },
-      "lsp": {
-        "enabled": true,
-        "clientOptIn": false,
-        "requiredByRunProtocol": false
-      },
       "subagents": {
         "enabled": false,
         "clientOptIn": true,

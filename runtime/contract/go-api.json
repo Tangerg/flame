@@ -3551,11 +3551,6 @@
           "value": "\"isolation\""
         },
         {
-          "name": "FeatureLSP",
-          "type": "untyped string",
-          "value": "\"lsp\""
-        },
-        {
           "name": "FeatureMCP",
           "type": "untyped string",
           "value": "\"mcp\""

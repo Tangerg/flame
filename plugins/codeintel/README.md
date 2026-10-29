@@ -37,3 +37,5 @@ Rebuild the Runtime and its consumers together after removing the built-in `lsp`
 Tool identity. Select the new installed release and move custom server settings
 to its installation input. Preserve earlier data and executable versions for
 unresolved work; there is no old configuration reader or built-in fallback.
+Discovery no longer advertises a core `lsp` feature; installed providers and
+their current MCP Tools describe availability.
