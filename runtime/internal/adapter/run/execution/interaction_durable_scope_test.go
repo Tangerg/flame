@@ -2,8 +2,13 @@ package execution
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 
+	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
@@ -104,6 +109,31 @@ func (s scopeCapturingMemorySearch) Search(
 	return nil, nil
 }
 
+type memoryTargetRead struct {
+	scope   memorycontract.ItemsV2InputScope
+	project string
+}
+
+type scopeCapturingPinnedMemory struct {
+	workspace string
+	reads     *[]memoryTargetRead
+}
+
+func (s scopeCapturingPinnedMemory) Items(_ context.Context, scope memorycontract.ItemsV2InputScope, project string) ([]MemoryPromptItem, error) {
+	*s.reads = append(*s.reads, memoryTargetRead{scope, project})
+	content := ""
+	if scope == memorycontract.ItemsV2InputScopeProject && project == s.workspace {
+		content = "project pinned fact"
+	}
+	if scope == memorycontract.ItemsV2InputScopeUser && project == "" {
+		content = "user pinned fact"
+	}
+	if content == "" {
+		return nil, nil
+	}
+	return []MemoryPromptItem{testMemoryPromptItem(MemoryPromptItem{Content: content, Pinned: true})}, nil
+}
+
 // TestWorkingContextResolvesHooksAndMemoryAgainstTheWorkspace pins the other
 // half of the same rule. Hook discovery decides which hooks exist and whether
 // the project was trusted to run them, and recall reads memory consolidation
@@ -112,24 +142,45 @@ func (s scopeCapturingMemorySearch) Search(
 func TestWorkingContextResolvesHooksAndMemoryAgainstTheWorkspace(t *testing.T) {
 	workspace := t.TempDir()
 	execution := t.TempDir()
-	var hooksResolvedAt, memorySearchedAt string
-
-	composer := newTestWorkingContextComposer(t, WorkingContextConfig{
-		Hooks:             scopeCapturingHookResolver{resolvedAt: &hooksResolvedAt},
-		AgentMemorySearch: scopeCapturingMemorySearch{searchedAt: &memorySearchedAt},
-	})
-	if _, err := composer.ComposeWorkingContext(t.Context(), runs.WorkingContextInput{
-		SessionID: "session:one", CWD: execution, WorkspaceCWD: workspace,
-		PromptText: "question",
-		Seed:       []chat.Message{chat.NewUserMessage(chat.NewTextPart("question"))},
-	}); err != nil {
-		t.Fatalf("ComposeWorkingContext: %v", err)
+	for path, content := range map[string]string{workspace: "workspace instruction", execution: "isolated execution instruction"} {
+		if err := os.WriteFile(filepath.Join(path, "AGENTS.md"), []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
 	}
-
-	if hooksResolvedAt != workspace {
-		t.Fatalf("hooks resolved against %q, want the workspace %q", hooksResolvedAt, workspace)
-	}
-	if memorySearchedAt != workspace {
-		t.Fatalf("memory searched under %q, want the workspace %q", memorySearchedAt, workspace)
+	for _, tc := range []struct{ name, cwd, doc, excluded string }{
+		{"ordinary", workspace, "workspace instruction", "isolated execution instruction"},
+		{"isolated", execution, "isolated execution instruction", "workspace instruction"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var hooksResolvedAt, memorySearchedAt string
+			var reads []memoryTargetRead
+			composer := newTestWorkingContextComposer(t, WorkingContextConfig{
+				Hooks:             scopeCapturingHookResolver{resolvedAt: &hooksResolvedAt},
+				AgentMemorySearch: scopeCapturingMemorySearch{searchedAt: &memorySearchedAt},
+				AgentMemory:       scopeCapturingPinnedMemory{workspace: workspace, reads: &reads},
+			})
+			messages, err := composer.ComposeWorkingContext(t.Context(), runs.WorkingContextInput{
+				SessionID: "session:one", CWD: tc.cwd, WorkspaceCWD: workspace,
+				PromptText: "question", Seed: []chat.Message{chat.NewUserMessage(chat.NewTextPart("question"))},
+			})
+			if err != nil {
+				t.Fatalf("ComposeWorkingContext: %v", err)
+			}
+			if hooksResolvedAt != workspace || memorySearchedAt != workspace {
+				t.Fatalf("durable scope: hooks=%q recall=%q", hooksResolvedAt, memorySearchedAt)
+			}
+			if !slices.Equal(reads, []memoryTargetRead{{memorycontract.ItemsV2InputScopeProject, workspace}, {memorycontract.ItemsV2InputScopeUser, ""}}) {
+				t.Fatalf("pinned targets = %+v", reads)
+			}
+			instructions := messages[0].Text()
+			for _, text := range []string{"project pinned fact", "user pinned fact", tc.doc} {
+				if !strings.Contains(instructions, text) {
+					t.Fatalf("missing context %q", text)
+				}
+			}
+			if strings.Contains(instructions, tc.excluded) {
+				t.Fatalf("agent documents escaped execution directory: %q", tc.excluded)
+			}
+		})
 	}
 }

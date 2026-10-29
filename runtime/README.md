@@ -1078,6 +1078,12 @@ Completed observations survive restart for as long as their source records remai
 
 ## Agent Memory authoring
 
+Working-context composition addresses pinned project memory, relevance recall,
+hooks and maintenance by the Session's durable `WorkspaceCWD`. The execution
+`CWD` continues to own filesystem tools and Agent document discovery. Isolated
+Runs therefore read the same project and user memory without copying it into
+their disposable execution directories.
+
 Agent Memory content edits transfer the item to active user authorship while preserving
 its identity and creation time. Automatic curation cannot prune that correction. Pin-only
 updates leave authorship and review state unchanged. Persistence stores the Item's complete

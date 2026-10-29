@@ -38,7 +38,7 @@ func TestSystemPromptProvenanceMatchesVisibleComposition(t *testing.T) {
 		AgentMemory: memory,
 		Plan:        provenancePlanReader{},
 	})
-	message, composeErr := composer.composeSystemMessage(t.Context(), cwd)
+	message, composeErr := composer.composeSystemMessage(t.Context(), cwd, cwd)
 	if composeErr != nil {
 		t.Fatal(composeErr)
 	}
@@ -173,7 +173,8 @@ func TestInteractionInstructionContextStopsBeforeDurableSummary(t *testing.T) {
 
 func TestInteractionInstructionContextStopsBeforeReplaceableSessionPlan(t *testing.T) {
 	composer := newTestWorkingContextComposer(t, WorkingContextConfig{Plan: provenancePlanReader{}})
-	instructions, err := composer.composeSystemMessage(t.Context(), t.TempDir())
+	cwd := t.TempDir()
+	instructions, err := composer.composeSystemMessage(t.Context(), cwd, cwd)
 	if err != nil {
 		t.Fatal(err)
 	}
