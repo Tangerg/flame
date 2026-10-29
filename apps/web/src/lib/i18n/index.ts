@@ -26,6 +26,7 @@ void i18next.use(initReactI18next).init({
   resources: { en: { translation: en } },
   lng: initial,
   fallbackLng: "en",
+  react: { bindI18nStore: "added removed" },
   keySeparator: false,
   nsSeparator: false,
   interpolation: { escapeValue: false },
@@ -74,8 +75,7 @@ export function useLocale(): Locale {
 }
 
 export function useT(): typeof t {
-  useTranslation();
-  return t;
+  return useTranslation().t;
 }
 
 export function mountLocaleBundle(locale: string, dict: Record<string, string>): () => void {

@@ -395,6 +395,7 @@ export const es: Record<string, string> = {
   "providers.error.save": "Error al guardar",
   "providers.error.test": "Error en la prueba",
   "providers.models.error": "No se pudieron cargar los modelos.",
+  "providers.models.refresh": "Actualizar modelos",
   "providers.empty": "Sin proveedores",
   "providers.empty.sub": "El runtime no informa proveedores de LLM compatibles.",
   "plugins.errorDetail.show": "Mostrar detalle del error",

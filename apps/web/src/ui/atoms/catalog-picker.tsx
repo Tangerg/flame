@@ -36,6 +36,7 @@ const styles = stylex.create({
     display: "flex",
     width: "400px",
     maxWidth: "var(--available-width)",
+    maxHeight: "var(--available-height)",
     flexDirection: "column",
     overflow: "hidden",
   },
@@ -94,7 +95,8 @@ const styles = stylex.create({
     padding: space.s1,
   },
   railBody: { display: "flex", maxHeight: "min(280px, var(--available-height))", minHeight: 0 },
-  railColumn: { display: "flex", minWidth: 0, flex: 1, flexDirection: "column" },
+  railColumn: { display: "flex", minWidth: 0, minHeight: 0, flex: 1, flexDirection: "column" },
+  railFooter: { flexShrink: 0, minWidth: 0, padding: space.s2 },
   railHead: {
     display: "flex",
     flexShrink: 0,
@@ -157,7 +159,7 @@ export interface CatalogPickerGroup {
 interface CatalogSurfaceProps {
   label: string;
   placeholder: string;
-  emptyLabel: string;
+  emptyLabel: ReactNode;
   clearLabel: string;
   onSelect: (item: CatalogPickerItem) => void;
   className?: string;
@@ -390,6 +392,8 @@ export function CatalogPicker({
 export function RailCatalogPicker({
   groups,
   openAtGroupId,
+  feedback,
+  footer,
   label,
   placeholder,
   emptyLabel,
@@ -403,6 +407,8 @@ export function RailCatalogPicker({
 }: CatalogSurfaceProps & {
   groups: CatalogPickerGroup[];
   openAtGroupId?: string;
+  feedback?: ReactNode;
+  footer?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -411,7 +417,10 @@ export function RailCatalogPicker({
   const searchRef = useRef<HTMLInputElement>(null);
 
   const searching = query.trim().length > 0;
-  const active = groups.find((group) => group.id === groupId) ?? groups[0];
+  const active =
+    groups.find((group) => group.id === groupId) ??
+    groups.find((group) => group.id === openAtGroupId) ??
+    groups[0];
   const items = searching
     ? [...new Map(groups.flatMap((group) => group.items).map((item) => [item.id, item])).values()]
     : (active?.items ?? []);
@@ -498,6 +507,7 @@ export function RailCatalogPicker({
                   onClear={() => setQuery("")}
                 />
               </div>
+              {feedback}
               <ComboboxPrimitive.Empty
                 className={
                   stylex.props(styles.emptySplit, styles.hideWhenEmpty, type.uiSm).className
@@ -517,6 +527,7 @@ export function RailCatalogPicker({
               </ComboboxPrimitive.List>
             </div>
           </div>
+          {footer && <div {...stylex.props(styles.railFooter)}>{footer}</div>}
         </ComboboxPrimitive.Root>
       </Popover.Content>
     </Popover.Root>

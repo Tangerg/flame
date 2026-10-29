@@ -398,6 +398,7 @@ export const fr: Record<string, string> = {
   "providers.error.save": "Échec de l'enregistrement",
   "providers.error.test": "Échec du test",
   "providers.models.error": "Impossible de charger les modèles.",
+  "providers.models.refresh": "Actualiser les modèles",
   "providers.empty": "Aucun fournisseur",
   "providers.empty.sub": "Le runtime ne signale aucun fournisseur LLM pris en charge.",
   "plugins.errorDetail.show": "Afficher le détail de l'erreur",

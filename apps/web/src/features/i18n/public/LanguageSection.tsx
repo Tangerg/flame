@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { useRef } from "react";
 import { DropdownMenu } from "@/ui/index";
 import { Icon } from "@/ui/index";
 import { SelectTrigger } from "@/ui/index";
@@ -6,6 +7,7 @@ import { SystemMessage } from "@/ui/index";
 import { vocab } from "@flame/ui";
 import { useLocale, useT } from "@/lib/i18n/index";
 import { LOCALE } from "@/features/i18n/public/extensionPoints";
+import { type LocaleSpec } from "@/features/i18n/public/types";
 import { useExtensionPoint } from "@/extensions/selectors/extensions";
 import { selectLocale } from "@/features/i18n/application/localeSelection";
 import { SettingRow } from "@/ui/settings/SettingRow";
@@ -15,8 +17,16 @@ export function LanguageSection() {
   const locale = useLocale();
   const locales = useExtensionPoint(LOCALE);
   const { feedback, run } = useAsyncFeedback(locales);
+  const trigger = useRef<HTMLButtonElement>(null);
   const active = locales.find((l) => l.id === locale);
   if (locales.length === 0) return null;
+
+  const choose = (chosen: LocaleSpec) => {
+    void run(async () => {
+      await selectLocale(chosen);
+      return { ok: true };
+    }, t("settings.language.label"));
+  };
 
   return (
     <SettingRow label={t("settings.language.label")}>
@@ -24,6 +34,7 @@ export function LanguageSection() {
         <DropdownMenu.Trigger
           render={
             <SelectTrigger
+              ref={trigger}
               label={active?.label ?? locale}
               aria-label={t("settings.language.label")}
             />
@@ -34,11 +45,7 @@ export function LanguageSection() {
             value={locale}
             onValueChange={(id) => {
               const chosen = locales.find((l) => l.id === id);
-              if (chosen)
-                void run(async () => {
-                  await selectLocale(chosen);
-                  return { ok: true };
-                }, t("settings.language.label"));
+              if (chosen) choose(chosen);
             }}
           >
             {locales.map((l) => (
@@ -52,8 +59,24 @@ export function LanguageSection() {
           </DropdownMenu.RadioGroup>
         </DropdownMenu.Content>
       </DropdownMenu.Root>
+      {feedback.state === "busy" && <SystemMessage hideIcon>{t("common.loading")}</SystemMessage>}
       {feedback.state === "error" && (
-        <SystemMessage variant="warning">{feedback.reason}</SystemMessage>
+        <SystemMessage
+          variant="warning"
+          action={
+            active
+              ? {
+                  label: t("common.retry"),
+                  onClick: () => {
+                    trigger.current?.focus();
+                    choose(active);
+                  },
+                }
+              : undefined
+          }
+        >
+          {feedback.reason}
+        </SystemMessage>
       )}
     </SettingRow>
   );

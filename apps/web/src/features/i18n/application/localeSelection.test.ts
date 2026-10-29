@@ -44,3 +44,18 @@ it("reports failed activation while preserving the requested preference", async 
   ).rejects.toBe(failure);
   expect(activeLocale()).toBe("ja");
 });
+
+it("retains the requested preference when activation throws before returning a promise", async () => {
+  const failure = new Error("dictionary could not start");
+  await expect(
+    selectLocale({
+      id: "ja",
+      label: "Japanese",
+      activate: () => {
+        throw failure;
+      },
+    }),
+  ).rejects.toBe(failure);
+  expect(activeLocale()).toBe("ja");
+  expect(localStorage.getItem("flame.locale")).toBe("ja");
+});

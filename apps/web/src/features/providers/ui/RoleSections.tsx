@@ -6,6 +6,7 @@ import { Icon } from "@/ui/index";
 import { ProviderIcon } from "@/ui/index";
 import { SelectTrigger } from "@/ui/index";
 import { SystemMessage } from "@/ui/index";
+import { SkeletonList } from "@/ui/index";
 import { Button, gap, vocab } from "@flame/ui";
 import {
   type RoleConfigState,
@@ -63,6 +64,7 @@ function RoleModelPicker({
   role,
   isSet,
   choices,
+  catalogControls,
   busy,
   onPick,
 }: {
@@ -71,6 +73,7 @@ function RoleModelPicker({
   role?: ProviderRole;
   isSet: boolean;
   choices: readonly ModelChoice[];
+  catalogControls?: ReactNode;
   busy: boolean;
   onPick: (role: ProviderRole | null) => Promise<void>;
 }) {
@@ -143,6 +146,7 @@ function RoleModelPicker({
             </DropdownMenu.RadioItem>
           ))}
         </DropdownMenu.RadioGroup>
+        {catalogControls}
       </DropdownMenu.Content>
     </DropdownMenu.Root>
   );
@@ -196,7 +200,7 @@ function RoleSectionShell({
 
 export function UtilityModelSection() {
   const t = useT();
-  const { role, modelOptions, isSet, isAvailable, isError, state } = useUtilityModelConfig();
+  const { role, models, isSet, isAvailable, state } = useUtilityModelConfig();
   const materialGeneration = useProviderMutationMaterialGeneration();
   const { feedback, run } = useAsyncFeedback(materialGeneration);
   const pick = (next: ProviderRole | null): Promise<void> =>
@@ -207,9 +211,7 @@ export function UtilityModelSection() {
       title={t("providers.utility.title")}
       description={t("providers.utility.desc")}
       state={state}
-      error={
-        feedback.state === "error" ? feedback.reason : isError ? t("providers.models.error") : null
-      }
+      error={feedback.state === "error" ? feedback.reason : null}
       note={isSet && !isAvailable ? <p>{t("providers.notConfigured")}</p> : null}
     >
       <RoleModelPicker
@@ -217,11 +219,30 @@ export function UtilityModelSection() {
         defaultLabel={t("providers.utility.main")}
         role={role}
         isSet={isSet}
-        choices={modelOptions.map((model) => ({
+        choices={(models.data ?? []).map((model) => ({
           provider: model.provider,
           model: model.id,
           label: model.label,
         }))}
+        catalogControls={
+          <>
+            {models.isPending ? (
+              <SkeletonList count={2} variant="compact" label={t("common.loading")} />
+            ) : models.isError ? (
+              <SystemMessage variant="warning">{t("providers.models.error")}</SystemMessage>
+            ) : null}
+            <DropdownMenu.Separator />
+            <DropdownMenu.Item
+              layout="glyph"
+              closeOnClick={false}
+              disabled={feedback.state === "busy" || models.isFetching}
+              onClick={() => void models.refetch()}
+            >
+              <Icon name="loop" size="sm" {...stylex.props(models.isFetching && ss.spin)} />
+              <span>{t("providers.models.refresh")}</span>
+            </DropdownMenu.Item>
+          </>
+        }
         busy={feedback.state === "busy"}
         onPick={pick}
       />

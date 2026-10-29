@@ -507,6 +507,7 @@ export const zh: Record<string, string> = {
   "providers.error.save": "保存失败",
   "providers.error.test": "测试失败",
   "providers.models.error": "无法加载模型。",
+  "providers.models.refresh": "刷新模型列表",
   "providers.empty": "暂无提供方",
   "providers.empty.sub": "运行时报告没有受支持的 LLM 提供方。",
   "providers.utility.title": "辅助模型",

@@ -392,6 +392,7 @@ export const de: Record<string, string> = {
   "providers.error.save": "Speichern fehlgeschlagen",
   "providers.error.test": "Test fehlgeschlagen",
   "providers.models.error": "Modelle konnten nicht geladen werden.",
+  "providers.models.refresh": "Modelle aktualisieren",
   "providers.empty": "Keine Anbieter",
   "providers.empty.sub": "Die Runtime meldet keine unterstützten LLM-Anbieter.",
   "plugins.errorDetail.show": "Fehlerdetails anzeigen",

@@ -437,6 +437,7 @@ export const en: Record<string, string> = {
   "providers.error.save": "Save failed",
   "providers.error.test": "Test failed",
   "providers.models.error": "Couldn't load models.",
+  "providers.models.refresh": "Refresh models",
   "providers.empty": "No providers",
   "providers.empty.sub": "The runtime reports no supported LLM providers.",
   "providers.utility.title": "Utility model",

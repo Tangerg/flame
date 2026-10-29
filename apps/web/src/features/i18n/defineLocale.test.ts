@@ -48,3 +48,44 @@ it("shares one lazy activation and withdraws its dictionary on disposal", async 
   await resetKernelForTest();
   expect(t(key)).toBe(key);
 });
+
+it("shares each load attempt and permits a new attempt after failure", async () => {
+  const failure = new Error("dictionary unavailable");
+  const load = vi
+    .fn()
+    .mockRejectedValueOnce(failure)
+    .mockResolvedValue({ [key]: "recovered" });
+  await loadPluginsForTest(defineLocale({ id: locale, label: "Owner", load }));
+  const spec = lookupExtensionByKey(LOCALE, locale)!;
+  const first = spec.activate();
+  expect(spec.activate()).toBe(first);
+  await expect(first).rejects.toBe(failure);
+
+  const retry = spec.activate();
+  expect(spec.activate()).toBe(retry);
+  await retry;
+  expect(load).toHaveBeenCalledTimes(2);
+  expect(spec.activate()).toBe(retry);
+  setLocale(locale);
+  expect(t(key)).toBe("recovered");
+});
+
+it("does not publish a retried dictionary after its source retires", async () => {
+  const dictionary = Promise.withResolvers<Record<string, string>>();
+  const load = vi
+    .fn()
+    .mockRejectedValueOnce(new Error("first read failed"))
+    .mockImplementationOnce(() => dictionary.promise);
+  await loadPluginsForTest(defineLocale({ id: locale, label: "Owner", load }));
+  const spec = lookupExtensionByKey(LOCALE, locale)!;
+  await expect(spec.activate()).rejects.toThrow("first read failed");
+  const retry = spec.activate();
+  const settled = Promise.allSettled([retry]);
+  const stopped = resetKernelForTest();
+  dictionary.resolve({ [key]: "retired retry" });
+  await stopped;
+  await settled;
+  expect(load).toHaveBeenCalledTimes(2);
+  setLocale(locale);
+  expect(t(key)).toBe(key);
+});
