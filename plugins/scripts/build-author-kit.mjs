@@ -300,6 +300,9 @@ try {
     const lock = JSON.parse(
       await readFile(join(frozenTree, "package-lock.json"), "utf8"),
     );
+    const rootManifest = JSON.parse(
+      await readFile(join(frozenTree, "package.json"), "utf8"),
+    );
     const { dependencies, devDependencies, packages } =
       await authorDependencies({
         source: output,
@@ -380,6 +383,7 @@ try {
       },
       dependencies,
       devDependencies,
+      overrides: rootManifest.overrides,
     };
     await writeFile(
       join(output, "package.json"),

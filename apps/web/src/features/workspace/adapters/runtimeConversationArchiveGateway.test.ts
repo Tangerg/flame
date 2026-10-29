@@ -175,9 +175,9 @@ describe("runtimeConversationArchiveGateway", () => {
     await testClient.workspace.access.archive.exportConversationMarkdown();
 
     expect(call).toHaveBeenCalledExactlyOnceWith(
-      "main.DesktopHost.SaveTextFile",
+      "main.DesktopHost.SaveFile",
       expect.stringMatching(/^flame-session-current-[0-9T-]+\.md$/),
-      "# Résumé",
+      "IyBSw6lzdW3DqQ==",
     );
     expect(notifyError).not.toHaveBeenCalled();
   });

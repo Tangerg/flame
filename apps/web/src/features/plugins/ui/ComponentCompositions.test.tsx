@@ -143,6 +143,7 @@ function mount(entry: PluginComponent = Root, strict = false) {
         component={root}
         generation={generation}
         compose={composeHost.renderer(lifetime, [root])}
+        saveFile={async () => "requested"}
         runtime={client}
         binding={undefined}
         lifetime={lifetime}

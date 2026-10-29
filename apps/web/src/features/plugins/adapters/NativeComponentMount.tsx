@@ -8,7 +8,11 @@ import {
 } from "react";
 import { mount, useCurrentUse, type Mounted } from "@qimu/react";
 import { type Use } from "@qimu/browser";
-import { type ComponentContext, type PluginComponent } from "@flame/component-sdk";
+import {
+  type ComponentContext,
+  type PluginComponent,
+  type SaveFileRequest,
+} from "@flame/component-sdk";
 import { type ComponentAcquisition } from "@/features/plugins/adapters/componentModules";
 import * as stylex from "@stylexjs/stylex";
 
@@ -35,6 +39,7 @@ function ownedInput(
   const context: ComponentContext = Object.freeze({
     ...input.context,
     signal: AbortSignal.any([input.context.signal, lifetime.signal]),
+    saveFile: (request: SaveFileRequest) => context.track(() => input.context.saveFile(request)),
     track: <P extends Promise<unknown>>(operation: (signal: AbortSignal) => P): P => {
       context.signal.throwIfAborted();
       let original!: P;

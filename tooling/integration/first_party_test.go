@@ -143,9 +143,16 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 			t.Fatal("restart restored revoked trust")
 		}
 	}
+	// Destructive removal requires every backend's captured dependencies to retire.
+	for _, item := range restarted.Data {
+		disabled, err := current.SetPluginEnablement(t.Context(), protocol.SetPluginEnablementRequest{InstallationID: item.ID, Enabled: false}, protocol.CommandOptions{})
+		if err != nil || disabled.Enabled {
+			t.Fatalf("disable %s before removal: %+v, %v", item.Selected.Name, disabled, err)
+		}
+	}
 	for _, item := range restarted.Data {
 		if err := current.UninstallPlugin(t.Context(), protocol.PluginRequest{InstallationID: item.ID}, protocol.CommandOptions{}); err != nil {
-			t.Fatal(err)
+			t.Fatalf("uninstall %s: %v", item.Selected.Name, err)
 		}
 	}
 	if err := current.Close(); err != nil {

@@ -36,6 +36,7 @@ const pluginsPane = (client: () => FlameClient) => {
     client,
     () => "http://runtime.test",
     testClient.theme.access,
+    async () => "requested",
   );
   installed = owned;
   onTestFinished(() => owned.dispose());

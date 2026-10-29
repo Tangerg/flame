@@ -109,6 +109,7 @@ export function createTestClient(
     client,
     runtime.endpoint.currentRuntimeEndpoint,
     theme.access,
+    (request) => host.saveFile(request),
     (children) => <Wrapper>{children}</Wrapper>,
   );
   const selectors = createAgentViewSelectors(agent.projection.store, navigation);

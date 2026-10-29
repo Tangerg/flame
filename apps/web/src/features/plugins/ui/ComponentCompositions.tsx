@@ -377,6 +377,7 @@ function InstalledComposition({
       component={entry.reference}
       generation={host.generation}
       compose={entry.compose}
+      saveFile={context.saveFile}
       workspace={context.workspace}
       sessionId={context.sessionId}
       file={context.file}

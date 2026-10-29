@@ -62,6 +62,7 @@ it("injects the captured interaction into an installed result without querying d
       component={{ installationId: "installed", digest: "a".repeat(64), componentId: "result" }}
       generation={RuntimeConnectionGeneration.forProcess("test")}
       compose={() => null}
+      saveFile={async () => "requested"}
       runtime={{ runs: { get } } as unknown as FlameClient}
       binding={undefined}
       lifetime={lifetime}
@@ -91,6 +92,72 @@ it("injects the captured interaction into an installed result without querying d
   expect(() => original.submit({ action: "Continue", payloadJSON: "{}" })).toThrow(/abort/i);
   expect(send).toHaveBeenCalledOnce();
 });
+
+it.each(["unmount", "resources", "lifetime"] as const)(
+  "joins the original file save and refuses new saves after %s retirement",
+  async (retirement) => {
+    let lifetime!: ContributionLifetime;
+    const host = await startKernel([
+      definePlugin({
+        name: "test.file-transfer",
+        setup(context) {
+          lifetime = context.lifetime("files");
+        },
+      }),
+    ]);
+    const choice = Promise.withResolvers<"saved">();
+    finishTestClient(async () => {
+      choice.resolve("saved");
+      await stopKernel(host);
+    });
+    const saveFile = vi.fn<ComponentContext["saveFile"]>(() => choice.promise);
+    const resources = new AbortController();
+    let captured!: ComponentContext;
+    function Export({ context }: { context: ComponentContext }) {
+      useEffect(() => {
+        captured = context;
+      }, [context]);
+      return <p>Captured export</p>;
+    }
+    const mounted = testClient.render(
+      <InstalledComponent
+        scope="installation"
+        entry={Export}
+        component={{ installationId: "installed", digest: "a".repeat(64), componentId: "export" }}
+        generation={RuntimeConnectionGeneration.forProcess("file-transfer")}
+        compose={() => null}
+        saveFile={saveFile}
+        runtime={{} as FlameClient}
+        binding={undefined}
+        lifetime={lifetime}
+        resources={resources.signal}
+      />,
+    );
+    const file = {
+      filename: "report.pdf",
+      mime: "application/pdf",
+      bytes: new Uint8Array([0, 255]),
+    };
+    const saving = captured.saveFile(file);
+    expect(saving).toBe(choice.promise);
+    expect(saveFile).toHaveBeenCalledExactlyOnceWith(file);
+    if (retirement === "unmount") mounted.unmount();
+    else if (retirement === "resources") await act(async () => resources.abort());
+    let closed = false;
+    const closing = stopKernel(host).then(() => {
+      closed = true;
+    });
+    await Promise.resolve();
+    expect(captured.signal.aborted).toBe(true);
+    expect(closed).toBe(false);
+    expect(() => captured.saveFile(file)).toThrow(captured.signal.reason);
+    expect(saveFile).toHaveBeenCalledOnce();
+    choice.resolve("saved");
+    await expect(saving).resolves.toBe("saved");
+    await closing;
+    expect(closed).toBe(true);
+  },
+);
 
 it("keeps reload behind the original cleanup gate and exposes an unconfirmed exit", async () => {
   vi.spyOn(console, "error").mockImplementation(() => {});
@@ -195,6 +262,7 @@ it.each(["unmount", "resources", "contribution"] as const)(
         component={{ installationId: "installed", digest: "a".repeat(64), componentId: "receipt" }}
         generation={RuntimeConnectionGeneration.forProcess("test")}
         compose={() => null}
+        saveFile={async () => "requested"}
         runtime={{} as FlameClient}
         binding={undefined}
         lifetime={lifetime}

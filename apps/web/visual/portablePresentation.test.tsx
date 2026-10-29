@@ -39,6 +39,9 @@ function renderCapturedMarkdown(content: string) {
     track() {
       throw new Error("Captured Markdown must not start I/O");
     },
+    saveFile() {
+      throw new Error("This captured read must not save files");
+    },
     compose() {
       throw new Error("Captured Markdown must not compose another component");
     },

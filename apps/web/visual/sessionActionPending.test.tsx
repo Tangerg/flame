@@ -53,6 +53,7 @@ function mountRename() {
       tracked.push(original);
       return original;
     },
+    saveFile: async () => "requested",
     compose: () => null,
   };
   const dispose = async () => {

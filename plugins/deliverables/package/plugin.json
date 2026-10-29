@@ -1,0 +1,11 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "flame.deliverables",
+  "version": "1.0.0",
+  "description": "Create, revise, render, inspect and export editable professional documents, workbooks and presentations with version-bound evidence.",
+  "extensions": {
+    "io.github.tangerg.flame": {
+      "declaration": "io.github.tangerg.flame/declaration.json"
+    }
+  }
+}

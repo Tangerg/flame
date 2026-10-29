@@ -127,6 +127,7 @@ function mount(
     locale: "en",
     signal: owner.signal,
     track: (operation) => operation(owner.signal),
+    saveFile: async () => "requested",
     compose: () => null,
   };
   testClient.render(<UsageReports context={context} />);
@@ -211,6 +212,7 @@ it("recovers the original capture and preserves exact numbers, zero prices and m
     locale: "en",
     signal: owner.signal,
     track: (operation) => operation(owner.signal),
+    saveFile: async () => "requested",
     compose: () => null,
   };
   testClient.render(<UsageReports context={context} />);

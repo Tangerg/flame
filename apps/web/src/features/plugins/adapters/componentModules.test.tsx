@@ -293,6 +293,7 @@ function fixture(
     locale: "en",
     signal: scope.signal,
     track: (operation) => operation(scope.signal),
+    saveFile: async () => "requested",
     compose: () => null,
   };
   const load = (generation: object = originalGeneration, nextEndpoint = endpoint) =>
@@ -379,6 +380,40 @@ it("unmounts the native root but keeps tracked component work owned until it set
   expect(closed).toBe(false);
   work.resolve();
   await closing;
+  expect(f.proofs.some((proof) => proof.scopeKind === "use")).toBe(true);
+});
+
+it("retains a component Use until its native file save settles", async () => {
+  const choice = Promise.withResolvers<"saved">();
+  let context: ComponentContext | undefined;
+  let saving: Promise<"requested" | "saved" | "cancelled"> | undefined;
+  const file = { filename: "report.pdf", mime: "application/pdf", bytes: new Uint8Array([0, 255]) };
+  const f = fixture((props) => {
+    useEffect(() => {
+      context = props.context;
+      saving = context.saveFile(file);
+    }, [props.context]);
+    return createElement("p", null, "Saving panel");
+  });
+  const saveFile = vi.fn(() => choice.promise);
+  const Native = (await f.load()).component;
+  const scene = render(<Native context={{ ...f.context, saveFile }} />);
+  await screen.findByText("Saving panel");
+  expect(saving).toBe(choice.promise);
+  scene.unmount();
+  await waitFor(() => expect(context!.signal.aborted).toBe(true));
+  expect(() => context!.saveFile(file)).toThrow(context!.signal.reason);
+  expect(saveFile).toHaveBeenCalledExactlyOnceWith(file);
+  expect(f.proofs.filter((proof) => proof.scopeKind === "use")).toHaveLength(0);
+  let closed = false;
+  const closing = f.modules.close().then(() => {
+    closed = true;
+  });
+  await Promise.resolve();
+  expect(closed).toBe(false);
+  choice.resolve("saved");
+  await closing;
+  await expect(saving).resolves.toBe("saved");
   expect(f.proofs.some((proof) => proof.scopeKind === "use")).toBe(true);
 });
 

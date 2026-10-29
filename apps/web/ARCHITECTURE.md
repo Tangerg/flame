@@ -239,6 +239,15 @@ constructed at the application boundary; the Context only passes it through and
 has no installation protocol, mutable service slot, or independent state. Error
 classification and Task readout remain pure functions.
 
+Installed components receive an explicit `saveFile` collaborator captured at the
+composition root. The existing Browser/Native host owns file transfer and the
+user-selected destination; Workspace text exports encode UTF-8 through that same
+owner. Plugins supply exact bytes and keep their document, review and delivery
+facts private. Browser download dispatch is `requested`; only a completed native
+write is `saved`, and native cancellation is `cancelled`. Component and Qimu Use
+lifetimes join accepted saves and refuse new saves after retirement. No file
+ledger, artifact state or download implementation is added to the client.
+
 Publication identity remains private to owners that need generation retirement.
 A predecessor's late reply or cleanup cannot publish into, or withdraw, its successor.
 Plugin cleanup and renderer teardown converge on the same idempotent disposers.

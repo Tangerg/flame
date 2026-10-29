@@ -80,6 +80,7 @@ const installedPlugins = createInstalledPlugins(
   connection.client,
   connection.endpoint,
   theme.access,
+  (request) => host.saveFile(request),
   (children) => (
     <ApplicationContext>
       <ApplicationSurface>{children}</ApplicationSurface>

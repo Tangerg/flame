@@ -15,7 +15,7 @@ import { createFileTransfer } from "@/features/workspace/adapters/fileTransfer";
 export function createWorkspace(
   client: () => FlameClient,
   navigation: Navigator,
-  host: Pick<ClientHost, "openPath" | "revealPath" | "saveTextFile">,
+  host: Pick<ClientHost, "openPath" | "revealPath" | "saveFile">,
   canAccessLocalWorkspace: () => boolean,
   agent: AgentAccess,
   runtime: RuntimeAccess,

@@ -73,5 +73,12 @@ Vite owns frontend HMR at the one `VITE_PORT` selected by the Taskfile. Wails
 watches native Go sources and ignores generated Web staging. Teardown closes the
 window generation and its client resources; the native host attaches to its configured local Runtime and reads its credential through local-runtime.
 
+`SaveFile` accepts a suggested basename and canonical base64 bytes. The native
+save panel owns the actual destination and reports completion only after the write
+finishes; cancellation remains distinct from an error. This is the single file
+save owner for text exports and binary plugin deliverables. It does not own a
+plugin's document revisions, validation or delivery decisions. The specialized
+inline-image decoder retains its existing image-saving behavior.
+
 `make check-native` stages the same Web product, runs native Go test/vet/build
 and the supported Wails build. A browser bundle alone is not native verification.

@@ -48,6 +48,9 @@ function capturedContext(
     track(): never {
       throw new Error("Captured results must not start I/O");
     },
+    saveFile(): never {
+      throw new Error("Captured results must not save files");
+    },
     compose(): never {
       throw new Error("Captured results must not compose another component");
     },

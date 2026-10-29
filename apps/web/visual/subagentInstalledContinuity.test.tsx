@@ -173,6 +173,7 @@ it("keeps an installed result in the retained parent reader alive until the read
                 component={component}
                 generation={generation}
                 compose={compose}
+                saveFile={async () => "requested"}
                 runtime={runtime}
                 binding={undefined}
                 lifetime={lifetime}

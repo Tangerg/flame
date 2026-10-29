@@ -1,4 +1,5 @@
 import { type NotificationAuthorization } from "@/foundation/notificationAuthorization";
+import { type FileSaveResult, type SaveFileRequest } from "@flame/component-sdk";
 interface RuntimeTarget {
   endpoint: string;
   localToken?: string;
@@ -21,9 +22,9 @@ export interface ClientHost {
   bootstrap(): Promise<ClientBootstrap>;
   chooseWorkingDirectory(): Promise<string | null>;
   saveImage(source: string): Promise<boolean>;
-  // Native resolves after writing or cancellation; Browser resolves after requesting a
-  // download. False means cancellation. Only Browser uses the MIME type.
-  saveTextFile(filename: string, content: string, mime: string): Promise<boolean>;
+  // Capture bytes before yielding. Native resolves after writing or cancellation;
+  // Browser reports only download dispatch. Only Browser consumes the MIME type.
+  saveFile(request: SaveFileRequest): Promise<FileSaveResult>;
   windowChrome(): Promise<{ controlsCentreY: number; controlsInlineEnd: number } | null>;
   revealWindow(): Promise<void>;
   revealPath(path: string): Promise<boolean>;

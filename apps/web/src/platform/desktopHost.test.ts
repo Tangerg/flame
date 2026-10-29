@@ -17,7 +17,7 @@ const CHOOSE_WORKING_DIRECTORY = DesktopMethods.ChooseWorkingDirectory.name;
 
 const SAVE_IMAGE = DesktopMethods.SaveImage.name;
 
-const SAVE_TEXT_FILE = DesktopMethods.SaveTextFile.name;
+const SAVE_FILE = DesktopMethods.SaveFile.name;
 
 const WINDOW_CHROME = DesktopMethods.WindowChrome.name;
 
@@ -37,7 +37,7 @@ function hostBinding(
     }),
     [CHOOSE_WORKING_DIRECTORY]: async () => "/tmp/project",
     [SAVE_IMAGE]: async () => true,
-    [SAVE_TEXT_FILE]: async () => true,
+    [SAVE_FILE]: async () => true,
     [WINDOW_CHROME]: async () => ({
       controlsCentreY: 20,
       controlsInlineEnd: 72,
@@ -141,45 +141,64 @@ describe("DesktopHostClient", () => {
     ).rejects.toBeInstanceOf(RpcTransportError);
   });
 
-  it("awaits native text saving with only the suggested name and exact content", async () => {
+  it("captures the exact binary range and awaits the native write or cancellation", async () => {
     const choice = Promise.withResolvers<boolean>();
-    const binding = hostBinding({ [SAVE_TEXT_FILE]: () => choice.promise });
+    const binding = hostBinding({ [SAVE_FILE]: () => choice.promise });
     const client = createDesktopHostClient(binding);
-    const content = "# Captured result\n\n中文证据 🔥\n";
-    const saving = client.saveTextFile("flame-session.md", content, "text/markdown;charset=utf-8");
-    expect(binding.call).toHaveBeenCalledExactlyOnceWith(
-      SAVE_TEXT_FILE,
-      "flame-session.md",
-      content,
-    );
+    const backing = new Uint8Array([1, 0x50, 0x4b, 0, 0xff, 0x80, 2]);
+    const bytes = backing.subarray(1, 6);
+    const saving = client.saveFile({
+      filename: "财务报告.xlsx",
+      mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      bytes,
+    });
+    backing.fill(0);
+    expect(binding.call).toHaveBeenCalledExactlyOnceWith(SAVE_FILE, "财务报告.xlsx", "UEsA/4A=");
     choice.resolve(false);
-    await expect(saving).resolves.toBe(false);
+    await expect(saving).resolves.toBe("cancelled");
 
     const completed = hostBinding();
     await expect(
-      createDesktopHostClient(completed).saveTextFile(
-        "flame-session.json",
-        "{}",
-        "application/json",
-      ),
-    ).resolves.toBe(true);
+      createDesktopHostClient(completed).saveFile({
+        filename: "flame-session.json",
+        mime: "application/json",
+        bytes: new TextEncoder().encode("{}"),
+      }),
+    ).resolves.toBe("saved");
   });
 
-  it("rejects malformed text-save responses and native failures", async () => {
+  it("encodes large binary payloads without argument expansion or UTF-8 replacement", async () => {
+    const binding = hostBinding();
+    const bytes = Uint8Array.from({ length: 200_000 }, (_, index) => index % 256);
+    await createDesktopHostClient(binding).saveFile({
+      filename: "bundle.zip",
+      mime: "application/zip",
+      bytes,
+    });
+    const encoded = binding.call.mock.calls[0]![2] as string;
+    expect(Uint8Array.from(atob(encoded), (character) => character.charCodeAt(0))).toEqual(bytes);
+  });
+
+  it("rejects malformed file-save responses and native failures", async () => {
+    const file = {
+      filename: "flame.pdf",
+      mime: "application/pdf",
+      bytes: new Uint8Array([0, 255]),
+    };
     for (const value of [undefined, null, "saved", {}, 1]) {
-      const binding = hostBinding({ [SAVE_TEXT_FILE]: async () => value });
-      await expect(
-        createDesktopHostClient(binding).saveTextFile("flame.md", "# Result", "text/markdown"),
-      ).rejects.toBeInstanceOf(RpcTransportError);
+      const binding = hostBinding({ [SAVE_FILE]: async () => value });
+      await expect(createDesktopHostClient(binding).saveFile(file)).rejects.toBeInstanceOf(
+        RpcTransportError,
+      );
     }
     const failed = hostBinding({
-      [SAVE_TEXT_FILE]: async () => {
+      [SAVE_FILE]: async () => {
         throw new Error("selected file could not be written");
       },
     });
-    await expect(
-      createDesktopHostClient(failed).saveTextFile("flame.md", "# Result", "text/markdown"),
-    ).rejects.toBeInstanceOf(RpcTransportError);
+    await expect(createDesktopHostClient(failed).saveFile(file)).rejects.toBeInstanceOf(
+      RpcTransportError,
+    );
   });
 
   it("saves inline images through the packaged host and preserves cancellation", async () => {

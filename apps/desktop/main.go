@@ -38,7 +38,7 @@ func main() {
 		dialogs: app.Dialog,
 		window:  window,
 	})
-	host.useTextFileSaver(wailsTextFileSaver{
+	host.useFileSaver(wailsFileSaver{
 		dialogs: app.Dialog,
 		window:  window,
 	})

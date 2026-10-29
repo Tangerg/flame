@@ -34,9 +34,12 @@ export function createBrowserHost(imageFilenameStem: string): ClientHost {
       );
       return true;
     },
-    async saveTextFile(filename, content, mime) {
-      downloadBlob(filename, new Blob([content], { type: mime }));
-      return true;
+    async saveFile({ filename, bytes, mime }) {
+      if (!filename || filename === "." || filename === ".." || /[/\\:\p{Cc}]/u.test(filename)) {
+        throw new Error("The file name must be a basename without control characters.");
+      }
+      downloadBlob(filename, new Blob([new Uint8Array(bytes)], { type: mime }));
+      return "requested";
     },
     windowChrome: async () => null,
     async revealWindow() {
