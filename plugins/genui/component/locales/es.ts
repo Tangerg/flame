@@ -51,6 +51,7 @@ export const es: Record<string, string> = {
   "map.coordinates": "Coordenadas",
   "map.description": "Descripción",
   "interaction.running": "Esperando el resultado…",
+  "interaction.inputFailed": "No se pudo actualizar este campo.",
   "interaction.failed": "La operación ha fallado.",
   "interaction.complete": "Acción aceptada.",
   "interaction.unknown":

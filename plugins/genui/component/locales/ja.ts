@@ -50,6 +50,7 @@ export const ja: Record<string, string> = {
   "map.coordinates": "座標",
   "map.description": "説明",
   "interaction.running": "操作の結果を待っています…",
+  "interaction.inputFailed": "この項目を更新できませんでした。",
   "interaction.failed": "操作に失敗しました。",
   "interaction.complete": "操作が受理されました。",
   "interaction.unknown":

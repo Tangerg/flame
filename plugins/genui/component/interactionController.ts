@@ -35,13 +35,19 @@ type Recovery = { label: string; key?: string } & (
   { recover(): Promise<void> } | { error: unknown }
 );
 
-export type InteractionView =
+export type InteractionView = Readonly<
   | { status: "idle" }
   | { status: "running"; label: string }
   | { status: "review"; review: Review }
   | { status: "unknown"; recoveries: readonly Recovery[] }
   | { status: "failed"; error: unknown }
-  | { status: "complete" };
+  | { status: "complete" }
+>;
+
+export interface InteractionSnapshot {
+  readonly action: InteractionView;
+  readonly inputIssue: Readonly<{ field: string; error: unknown }> | null;
+}
 
 class Unconfirmed extends Error {
   constructor(
@@ -81,7 +87,10 @@ export class InteractionController {
   readonly #state: InteractionState;
   readonly #effects: InteractionEffects;
   readonly #listeners = new Set<() => void>();
-  #view: InteractionView = { status: "idle" };
+  #snapshot: InteractionSnapshot = {
+    action: { status: "idle" },
+    inputIssue: null,
+  };
   #initialized = false;
 
   constructor(
@@ -96,7 +105,7 @@ export class InteractionController {
     this.#effects = effects;
   }
 
-  readonly snapshot = (): InteractionView => this.#view;
+  readonly snapshot = (): InteractionSnapshot => this.#snapshot;
   readonly subscribe = (listener: () => void): (() => void) => {
     this.#listeners.add(listener);
     return () => {
@@ -106,15 +115,19 @@ export class InteractionController {
 
   get blocked(): boolean {
     return (
-      this.#view.status === "running" ||
-      this.#view.status === "review" ||
-      this.#view.status === "unknown"
+      this.#snapshot.action.status === "running" ||
+      this.#snapshot.action.status === "review" ||
+      this.#snapshot.action.status === "unknown"
     );
   }
 
   #publish(view: InteractionView): void {
+    this.#commit({ ...this.#snapshot, action: view });
+  }
+
+  #commit(snapshot: InteractionSnapshot): void {
     if (this.#context.signal.aborted) return;
-    this.#view = view;
+    this.#snapshot = snapshot;
     for (const listener of this.#listeners) listener();
   }
 
@@ -162,10 +175,16 @@ export class InteractionController {
   update(id: string, value: unknown): void {
     if (this.#context.signal.aborted) return;
     try {
-      this.#state.writeState(id, this.#presentation.validateState(id, value));
+      this.#writeState(id, value);
     } catch (error) {
-      this.#publish({ status: "failed", error });
+      this.#commit({ ...this.#snapshot, inputIssue: { field: id, error } });
     }
+  }
+
+  #writeState(id: string, value: unknown): void {
+    this.#state.writeState(id, this.#presentation.validateState(id, value));
+    if (this.#snapshot.inputIssue?.field === id)
+      this.#commit({ ...this.#snapshot, inputIssue: null });
   }
 
   #reset(fields?: string[]): void {
@@ -175,7 +194,7 @@ export class InteractionController {
     }
     for (const field of initial) {
       if (fields === undefined || fields.includes(field.id))
-        this.#state.writeState(field.id, field.value);
+        this.#writeState(field.id, field.value);
     }
   }
 
@@ -188,7 +207,7 @@ export class InteractionController {
     try {
       this.#context.signal.throwIfAborted();
       await run();
-      if (this.#view.status === "running")
+      if (this.#snapshot.action.status === "running")
         this.#publish({ status: completed ? "complete" : "idle" });
     } catch (error) {
       if (this.#context.signal.aborted) return;
@@ -202,8 +221,8 @@ export class InteractionController {
 
   async recover(recovery: Recovery): Promise<void> {
     if (
-      this.#view.status !== "unknown" ||
-      !this.#view.recoveries.includes(recovery) ||
+      this.#snapshot.action.status !== "unknown" ||
+      !this.#snapshot.action.recoveries.includes(recovery) ||
       !("recover" in recovery)
     )
       return;
@@ -220,13 +239,7 @@ export class InteractionController {
       try {
         switch (step.type) {
           case "set":
-            this.#state.writeState(
-              step.state,
-              this.#presentation.validateState(
-                step.state,
-                this.#evaluate(step.value),
-              ),
-            );
+            this.#writeState(step.state, this.#evaluate(step.value));
             break;
           case "reset":
             this.#reset(step.states);

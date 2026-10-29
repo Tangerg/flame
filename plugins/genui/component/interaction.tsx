@@ -99,7 +99,7 @@ export function GenUIInteractionProvider({
       ),
     [context, presentation, initial, get, set],
   );
-  const view = useSyncExternalStore(
+  const { action: view, inputIssue } = useSyncExternalStore(
     controller.subscribe,
     controller.snapshot,
     controller.snapshot,
@@ -118,8 +118,15 @@ export function GenUIInteractionProvider({
   useEffect(() => {
     void controller.initialize();
   }, [controller]);
+  const inputFailure = inputIssue ? failureText(inputIssue.error, "") : "";
   const feedback = (
     <>
+      {inputIssue && (
+        <div role="alert">
+          <p>{t("interaction.inputFailed")}</p>
+          {inputFailure && <p>{inputFailure}</p>}
+        </div>
+      )}
       {view.status === "running" && (
         <p role="status" aria-live="polite">
           {t("interaction.running")}

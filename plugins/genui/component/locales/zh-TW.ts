@@ -49,6 +49,7 @@ export const zhTW: Record<string, string> = {
   "map.coordinates": "座標",
   "map.description": "說明",
   "interaction.running": "正在等候操作結果…",
+  "interaction.inputFailed": "無法更新這個欄位。",
   "interaction.failed": "操作失敗。",
   "interaction.complete": "動作已接受。",
   "interaction.unknown": "原動作尚未確認。請先復原原動作，確認結果後再提交。",

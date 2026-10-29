@@ -17,6 +17,7 @@ import {
   InteractionController,
   type InteractionState,
 } from "../../../plugins/genui/component/interactionController";
+import { limits } from "../../../plugins/genui/contracts/expression";
 
 const installationId = "12345678-1234-1234-1234-123456789abc";
 const contract = stringifyJSON({
@@ -282,8 +283,8 @@ function controller(
 }
 
 async function commandReview(value: InteractionController) {
-  await vi.waitFor(() => expect(value.snapshot().status).toBe("review"));
-  const review = value.snapshot();
+  await vi.waitFor(() => expect(value.snapshot().action.status).toBe("review"));
+  const review = value.snapshot().action;
   if (review.status !== "review") throw new Error("missing command review");
   return review.review;
 }
@@ -297,12 +298,87 @@ async function approve(value: InteractionController, actionId = "submit") {
 }
 
 async function recover(value: InteractionController) {
-  const current = value.snapshot();
+  const current = value.snapshot().action;
   if (current.status !== "unknown") throw new Error("missing original recovery");
   await value.recover(current.recoveries[0]!);
 }
 
 describe("GenUI remote interaction through the public Runtime client", () => {
+  it("retains an unknown action and its original recovery after an invalid field update", async () => {
+    const remote = server();
+    const current = runtime(remote);
+    const ui = controller(current.client, presentation());
+    await ui.value.initialize();
+    await approve(ui.value);
+    const original = ui.value.snapshot().action;
+    if (original.status !== "unknown") throw new Error("missing original recovery");
+    const key = current.client.plugins.pendingCommands()[0]!.idempotencyKey;
+    ui.value.update("amount", "x".repeat(limits.valueText + 1));
+    expect(ui.value.snapshot().action).toBe(original);
+    expect(ui.value.snapshot().inputIssue?.field).toBe("amount");
+    expect(ui.value.blocked).toBe(true);
+    expect(ui.state.get("amount")).toBe("original");
+    await ui.value.execute("submit");
+    expect(remote.originals.size).toBe(1);
+    expect(current.client.plugins.pendingCommands()[0]!.idempotencyKey).toBe(key);
+    ui.value.update("amount", "corrected draft");
+    expect(ui.value.snapshot().inputIssue).toBeNull();
+    expect(ui.value.snapshot().action).toBe(original);
+    remote.setMode("success");
+    await ui.value.recover(original.recoveries[0]!);
+    expect(ui.value.snapshot().action.status).toBe("complete");
+    expect(ui.value.blocked).toBe(false);
+    expect(remote.originals.size).toBe(1);
+  });
+
+  it("retains the same review and pending execution after invalid field input", async () => {
+    const remote = server();
+    const current = runtime(remote);
+    const ui = controller(current.client, presentation());
+    await ui.value.initialize();
+    const execution = ui.value.execute("submit");
+    const review = await commandReview(ui.value);
+    const original = ui.value.snapshot().action;
+    try {
+      ui.value.update("amount", "x".repeat(limits.valueText + 1));
+      expect(ui.value.snapshot().action).toBe(original);
+      expect(ui.value.blocked).toBe(true);
+      expect(ui.state.get("amount")).toBe("original");
+      expect(remote.originals.size).toBe(0);
+    } finally {
+      review.decide(false);
+      await execution;
+    }
+    expect(ui.value.snapshot().action.status).toBe("idle");
+  });
+
+  it("keeps admitted work blocked through invalid field feedback until its own reply", async () => {
+    const remote = server();
+    remote.setMode("success");
+    const current = runtime(remote);
+    const ui = controller(current.client, presentation());
+    await ui.value.initialize();
+    const held = remote.holdNextCall();
+    const execution = ui.value.execute("submit");
+    const review = await commandReview(ui.value);
+    review.decide(true);
+    await held.arrived;
+    const original = ui.value.snapshot().action;
+    try {
+      expect(original.status).toBe("running");
+      ui.value.update("amount", "x".repeat(limits.valueText + 1));
+      expect(ui.value.snapshot().action).toBe(original);
+      expect(ui.value.blocked).toBe(true);
+      await ui.value.execute("submit");
+    } finally {
+      held.release();
+      await execution;
+    }
+    expect(ui.value.snapshot().action.status).toBe("complete");
+    expect(ui.value.blocked).toBe(false);
+    expect(remote.originals.size).toBe(1);
+  });
+
   it("reviews the exact numeric input and resumes the original command before continuing the action", async () => {
     const remote = server();
     const original = runtime(remote);
@@ -311,16 +387,16 @@ describe("GenUI remote interaction through the public Runtime client", () => {
     const review = await approve(ui.value);
     expect(review.binding).toEqual({ ...route, contract, method: "records.save" });
     expect(review.input).toBe('{"amount":9007199254740993,"ratio":1.00}');
-    expect(ui.value.snapshot().status).toBe("unknown");
+    expect(ui.value.snapshot().action.status).toBe("unknown");
     expect(ui.copy).not.toHaveBeenCalled();
     ui.state.set("amount", "changed draft");
     ui.operations.set("lookup", { status: "success", data: { amount: "changed result" } });
     await recover(ui.value);
-    expect(ui.value.snapshot().status).toBe("unknown");
+    expect(ui.value.snapshot().action.status).toBe("unknown");
     expect(ui.copy).not.toHaveBeenCalled();
     remote.setMode("success");
     await recover(ui.value);
-    expect(ui.value.snapshot().status).toBe("complete");
+    expect(ui.value.snapshot().action.status).toBe("complete");
     expect(ui.copy).toHaveBeenCalledExactlyOnceWith("after acceptance");
     expect(remote.originals.size).toBe(1);
     const commands = remote.calls.filter((call) => call.method === "plugins.call" && call.key);
@@ -354,7 +430,7 @@ describe("GenUI remote interaction through the public Runtime client", () => {
     );
     next.state.set("amount", "replacement draft");
     await next.value.initialize();
-    expect(next.value.snapshot()).toMatchObject({
+    expect(next.value.snapshot().action).toMatchObject({
       status: "unknown",
       recoveries: [{ key: firstCall.key }],
     });
@@ -374,18 +450,18 @@ describe("GenUI remote interaction through the public Runtime client", () => {
     const ui = controller(current.client, presentation());
     await ui.value.initialize();
     await approve(ui.value);
-    const original = ui.value.snapshot();
+    const original = ui.value.snapshot().action;
     if (original.status !== "unknown") throw new Error("missing original recovery");
     const recovery = current.client.plugins.pendingCommands()[0]!;
     const originalKey = recovery.idempotencyKey;
     remote.setMode("success");
     await expect(recovery.recover((value) => value)).resolves.toEqual({ saved: true });
     expect(current.client.plugins.pendingCommands()).toEqual([]);
-    expect(ui.value.snapshot().status).toBe("unknown");
+    expect(ui.value.snapshot().action.status).toBe("unknown");
 
     await ui.value.recover(original.recoveries[0]!);
 
-    expect(ui.value.snapshot().status).toBe("complete");
+    expect(ui.value.snapshot().action.status).toBe("complete");
     expect(ui.copy).toHaveBeenCalledExactlyOnceWith("after acceptance");
     expect(remote.originals.size).toBe(1);
     expect(new Set(remote.calls.filter((call) => call.key).map((call) => call.key))).toEqual(
@@ -402,11 +478,11 @@ describe("GenUI remote interaction through the public Runtime client", () => {
     await approve(first.value);
     const otherDocument = controller(current.client, presentation(), "item_other");
     await otherDocument.value.initialize();
-    expect(otherDocument.value.snapshot().status).toBe("idle");
+    expect(otherDocument.value.snapshot().action.status).toBe("idle");
     expect(otherDocument.operations.has("save")).toBe(false);
     const otherAction = controller(current.client, presentation({ actionId: "different" }));
     await otherAction.value.initialize();
-    expect(otherAction.value.snapshot().status).toBe("idle");
+    expect(otherAction.value.snapshot().action.status).toBe("idle");
     expect(otherAction.operations.has("save")).toBe(false);
     expect(remote.originals.size).toBe(1);
   });
@@ -420,14 +496,14 @@ describe("GenUI remote interaction through the public Runtime client", () => {
     current.replaceStore();
     const dispatched = remote.calls.length;
     await recover(ui.value);
-    expect(ui.value.snapshot().status).toBe("unknown");
+    expect(ui.value.snapshot().action.status).toBe("unknown");
     expect(ui.value.blocked).toBe(true);
     expect(current.store.keys()).toHaveLength(1);
     expect(remote.calls).toHaveLength(dispatched);
     current.restoreStore();
     remote.setMode("success");
     await recover(ui.value);
-    expect(ui.value.snapshot().status).toBe("complete");
+    expect(ui.value.snapshot().action.status).toBe("complete");
   });
 
   it("treats the owner's confirmed refusal as failed and does not run continuation steps", async () => {
@@ -437,7 +513,7 @@ describe("GenUI remote interaction through the public Runtime client", () => {
     const ui = controller(current.client, presentation());
     await ui.value.initialize();
     await approve(ui.value);
-    expect(ui.value.snapshot()).toMatchObject({
+    expect(ui.value.snapshot().action).toMatchObject({
       status: "failed",
       error: { code: "not_found", message: "owner refused" },
     });
@@ -454,7 +530,7 @@ describe("GenUI remote interaction through the public Runtime client", () => {
     const first = controller(current.client, document);
     await first.value.initialize();
     await approve(first.value);
-    expect(first.value.snapshot().status).toBe("unknown");
+    expect(first.value.snapshot().action.status).toBe("unknown");
     expect(
       first.writes
         .filter(({ value }) => value !== null && typeof value === "object" && "chunk" in value)
@@ -490,12 +566,12 @@ describe("GenUI remote interaction through the public Runtime client", () => {
     const ui = controller(current.client, presentation());
     await ui.value.initialize();
     const execution = ui.value.execute("submit");
-    await vi.waitFor(() => expect(ui.value.snapshot().status).toBe("review"));
-    const review = ui.value.snapshot();
+    await vi.waitFor(() => expect(ui.value.snapshot().action.status).toBe("review"));
+    const review = ui.value.snapshot().action;
     if (review.status !== "review") throw new Error("missing command review");
     review.review.decide(false);
     await execution;
-    expect(ui.value.snapshot().status).toBe("idle");
+    expect(ui.value.snapshot().action.status).toBe("idle");
     expect(remote.calls).toEqual([]);
     expect(current.store.keys()).toEqual([]);
   });
@@ -527,7 +603,7 @@ describe("GenUI remote interaction through the public Runtime client", () => {
     const ui = controller(current.client, document);
     await ui.value.initialize();
     await ui.value.execute("submit");
-    expect(ui.value.snapshot()).toMatchObject({
+    expect(ui.value.snapshot().action).toMatchObject({
       status: "failed",
       error: { message: expect.stringContaining("slider state is outside its declared range") },
     });
@@ -579,7 +655,7 @@ describe("GenUI remote interaction through the public Runtime client", () => {
     const ui = controller(current.client, document);
     await ui.value.initialize();
     await ui.value.execute("submit");
-    expect(ui.value.snapshot().status).toBe(status);
+    expect(ui.value.snapshot().action.status).toBe(status);
     expect(ui.copy).toHaveBeenCalledTimes(copyCount);
     expect(remote.calls).toEqual([]);
   });
