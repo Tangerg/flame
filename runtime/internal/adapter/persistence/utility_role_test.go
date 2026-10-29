@@ -24,12 +24,10 @@ func TestUtilityRoleStore_RoundTrip(t *testing.T) {
 	s := utilityRoleStoreFixture(t)
 	ctx := context.Background()
 
-	// Unset → zero role, no error.
 	if role, present, err := s.LoadUtilityRole(ctx); err != nil || present || role.Configured() {
 		t.Fatalf("empty load = (%+v, %t, %v); want (zero, false, nil)", role, present, err)
 	}
 
-	// Save then load round-trips.
 	if err := s.SaveUtilityRole(ctx, mustStoredRole(t, "anthropic", "claude-haiku-4-5")); err != nil {
 		t.Fatalf("save: %v", err)
 	}
@@ -37,7 +35,6 @@ func TestUtilityRoleStore_RoundTrip(t *testing.T) {
 		t.Fatalf("load = (%+v, %t, %v); want (anthropic, claude-haiku-4-5, true, nil)", role, present, err)
 	}
 
-	// Save again upserts the single row (no duplicate, latest wins).
 	if err := s.SaveUtilityRole(ctx, mustStoredRole(t, "openai", "gpt-5-mini")); err != nil {
 		t.Fatalf("re-save: %v", err)
 	}
@@ -45,7 +42,6 @@ func TestUtilityRoleStore_RoundTrip(t *testing.T) {
 		t.Fatalf("load after re-save = %+v; want (openai, gpt-5-mini)", role)
 	}
 
-	// Clearing (zero role) round-trips as unset.
 	if err := s.SaveUtilityRole(ctx, modelref.Role{}); err != nil {
 		t.Fatalf("clear: %v", err)
 	}

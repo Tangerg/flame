@@ -277,12 +277,14 @@ func assertRestartedWaitingBoundary(
 	}
 	siblingQuestion := pending.Interrupts[0]
 	item, found, err := transcriptStore.Item(fixture.ctx, siblingQuestion.ItemID)
-	if err != nil || !found || item.Status() != transcript.ItemCompleted {
+	const wantItemStatus = transcript.ItemCompleted
+	if err != nil || !found || item.Status() != wantItemStatus {
 		t.Fatalf(
-			"surviving interrupt Item after restart = found:%t value:%+v err:%v, want Running",
+			"surviving interrupt Item after restart = found:%t value:%+v err:%v, want %v",
 			found,
 			item,
 			err,
+			wantItemStatus,
 		)
 	}
 

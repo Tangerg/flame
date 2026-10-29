@@ -492,7 +492,7 @@ func TestPendingCompletionRejectsKeyReuse(t *testing.T) {
 	}
 }
 
-func TestReplayRejectsUnversionedStoredOutcome(t *testing.T) {
+func TestReplayRejectsStoredOutcomeMissingRequiredResultFields(t *testing.T) {
 	t.Parallel()
 
 	method, ok := contract.lookup("runs.cancel")

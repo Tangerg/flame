@@ -9,7 +9,7 @@ import (
 	"github.com/Tangerg/oolong/core/grid"
 )
 
-func TestToolGroupObserverIdentityExhaustionPreservesExistingSubscription(t *testing.T) {
+func TestToolGroupObserverUnsubscribeIsIdempotentAndPreservesOtherSubscriptions(t *testing.T) {
 	oldCalls, replacementCalls := 0, 0
 	group := &toolGroupBlock{}
 	unsubscribeOld := group.Observe(func(readerDocument) { oldCalls++ })

@@ -1,4 +1,4 @@
-// Package prompt owns CLI-authored messages, options and immutable command input.
+// Package authoring owns CLI-authored messages, options and immutable command input.
 package authoring
 
 import (

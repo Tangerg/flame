@@ -681,7 +681,7 @@ ink cannot be:
 - **HeroUI 3.2.6** — semantic color roles (canvas, surface, overlay, field, separator, status), blue primary actions, scalable rounded buttons and fields, layered fills and contact shadows. Adaptations retain 24/28/32/36px desktop control roles, native cursors, 3:1 field boundaries and AA text contrast. The application theme owns token values; `@flame/ui` owns their rendering.
 - **ChatGPT / Codex** — conversation reading measure and tool disclosure behavior.
 - **JetBrains tool windows** — the surrounding workbench region model.
-- Flame Runtime Protocol — `src/rpc/` — drives the shape of the data this UI
+- Flame Runtime Protocol — [`packages/go-sdk/protocol`](../../packages/go-sdk/protocol) — drives the shape of the data this UI
   renders.
 
 ## 13. Iteration guide

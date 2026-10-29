@@ -68,7 +68,6 @@ func TestSessionExportImport_RoundTrip(t *testing.T) {
 		t.Fatalf("seed tool item: %v", appendItemErr)
 	}
 
-	// Export (json).
 	exp, err := s.ExportSession(ctx, protocol.ExportSessionRequest{SessionID: ses.ID()})
 	if err != nil {
 		t.Fatalf("export: %v", err)
@@ -86,7 +85,6 @@ func TestSessionExportImport_RoundTrip(t *testing.T) {
 	wantToolResult := `{"exit_code":0,"stderr":"","stdout":"total 0\n"}`
 	assertArtifactToolResult(t, art.Items, "item2", wantToolResult)
 
-	// Wipe the session entirely.
 	if deleteErr := rt.sess.Delete(ctx, ses.ID()); deleteErr != nil {
 		t.Fatalf("delete: %v", deleteErr)
 	}
@@ -98,7 +96,6 @@ func TestSessionExportImport_RoundTrip(t *testing.T) {
 		t.Fatal("session should be gone before import")
 	}
 
-	// Import restores it under the same id.
 	imp, err := s.ImportSession(ctx, protocol.ImportSessionRequest{Artifact: *art})
 	if err != nil {
 		t.Fatalf("import: %v", err)
@@ -107,12 +104,10 @@ func TestSessionExportImport_RoundTrip(t *testing.T) {
 		t.Fatalf("imported session = %+v, want id/title/workspace restored", imp.Session)
 	}
 
-	// Chat history restored.
 	msgs, _ := rt.ReadHistory(ctx, ses.ID())
 	if len(msgs) != 2 {
 		t.Errorf("restored messages = %d, want 2", len(msgs))
 	}
-	// Items + runs restored (items.list).
 	items, err := s.ListItems(ctx, protocol.ListItemsRequest{Scope: protocol.ItemListScope{Type: protocol.ItemScopeSession, SessionID: ses.ID()}})
 	if err != nil {
 		t.Fatalf("items.list: %v", err)

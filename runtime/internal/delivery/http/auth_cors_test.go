@@ -127,7 +127,6 @@ func TestAuthGate401HasChallenge(t *testing.T) {
 	}
 }
 
-// TestAuthGateWrongToken — wrong bearer also 401.
 func TestAuthGateWrongToken(t *testing.T) {
 	ts := newGatedServer(t)
 	defer ts.Close()
@@ -146,13 +145,10 @@ func TestAuthGateWrongToken(t *testing.T) {
 	}
 }
 
-// TestAuthGateCorrectToken — correct bearer goes through to the
-// router. We only care that the token gate was cleared.
 func TestAuthGateCorrectToken(t *testing.T) {
 	ts := newGatedServer(t)
 	defer ts.Close()
 
-	// discover is an ordinary authenticated RPC method.
 	body := []byte(`{"jsonrpc":"2.0","id":"1","method":"runtime.discover","params":{}}`)
 	req, _ := netHTTP.NewRequest("POST", ts.URL+"/v2/rpc", bytes.NewReader(body))
 	req.Header.Set("Authorization", "Bearer test-token")

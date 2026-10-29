@@ -4307,7 +4307,7 @@ func multiInterruptReviewScript(answers chan<- []conversation.InterruptAnswer) r
 	}
 }
 
-func TestApprovalRememberFlameliesToLaterRuns(t *testing.T) {
+func TestApprovalRememberAppliesToLaterRuns(t *testing.T) {
 	backend := runtimefixture.New()
 	backend.Instant = true
 	host, stop := runUIWith(t, backend)

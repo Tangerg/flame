@@ -89,14 +89,10 @@ type runCancellationRecord struct {
 	Root     runJSONFrame `json:"root"`
 }
 
-// WriteSessionJSON writes one session using the same field contract as session
-// pages and cold snapshots.
 func writeSessionJSON(w io.Writer, session conversation.Session) error {
 	return writeJSONLine(w, encodeSession(session))
 }
 
-// WriteSessionPageJSON writes a validated runtime page without losing its
-// opaque continuation cursor.
 func writeSessionPageJSON(w io.Writer, page conversation.SessionPage) error {
 	record := sessionPageRecord{Items: make([]sessionFrame, 0, len(page.Items)), NextCursor: page.NextCursor}
 	for _, session := range page.Items {
@@ -105,7 +101,6 @@ func writeSessionPageJSON(w io.Writer, page conversation.SessionPage) error {
 	return writeJSONLine(w, record)
 }
 
-// WriteSessionSnapshotJSON writes the CLI's stable cold-read JSON projection.
 // Domain values intentionally carry no encoding tags, so this adapter owns the
 // external field names instead of leaking a delivery format into the core.
 func writeSessionSnapshotJSON(w io.Writer, snapshot conversation.SessionSnapshot) error {
@@ -141,8 +136,6 @@ func encodeSession(session conversation.Session) sessionFrame {
 	}
 }
 
-// WriteRunJSON writes one durable run projection using the same field contract
-// as runs embedded in a session snapshot.
 func writeRunJSON(w io.Writer, run conversation.Run) error {
 	if err := run.Validate(); err != nil {
 		return fmt.Errorf("render run: %w", err)

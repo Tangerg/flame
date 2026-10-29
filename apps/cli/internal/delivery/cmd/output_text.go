@@ -1,10 +1,3 @@
-// Package render writes a run's events out for a reader — a person at a
-// terminal, or a program on the other end of a pipe.
-//
-// The renderers here are write-only projections. Text remembers only the live
-// block identities needed to route deltas, NDJSON writes each event directly, and
-// ResultJSON retains only final assistant prose. None keeps a full transcript;
-// holding the whole conversation in memory is the TUI's job.
 package cmd
 
 import (
@@ -24,8 +17,8 @@ import (
 // prints ten thousand lines should not bury the answer that follows it.
 const maxToolOutputLines = 12
 
-// Text renders events as plain text, with no color and no cursor movement, so
-// the same bytes are correct on a terminal, in a pipe and in a log file.
+// No color or cursor movement keeps the same bytes readable in terminals,
+// pipes and logs.
 //
 // Assistant prose is written as it streams, because that is the content a reader
 // is waiting for. Everything else is held until its block completes and then
@@ -59,7 +52,6 @@ type pendingTextBlock struct {
 	body strings.Builder
 }
 
-// NewText builds a plain-text renderer over w.
 func newTextRenderer(w io.Writer) *textRenderer {
 	return &textRenderer{
 		w: w, streaming: make(map[string]*plainTextStream),
@@ -568,6 +560,3 @@ func (t *textRenderer) write(s string) {
 	}
 	t.column = !strings.HasSuffix(s, "\n")
 }
-
-// formatDuration prints a span the way a person reads one: sub-second in
-// milliseconds, otherwise seconds with one decimal.

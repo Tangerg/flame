@@ -13,7 +13,7 @@ import (
 	"github.com/Tangerg/oolong/highlight"
 )
 
-func TestToolObserverIdentityExhaustionPreservesExistingSubscription(t *testing.T) {
+func TestToolObserverUnsubscribeIsIdempotentAndPreservesOtherSubscriptions(t *testing.T) {
 	oldCalls, replacementCalls := 0, 0
 	block := &toolBlock{}
 	unsubscribeOld := block.Observe(func(readerDocument) { oldCalls++ })

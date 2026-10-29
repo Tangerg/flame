@@ -13,8 +13,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// NDJSON renders one event per line as a JSON object, so
-// a consumer can read a run incrementally without waiting for it to end.
+// Consumers can read each event without waiting for the Run to end.
 //
 // The shape is the CLI's own output contract, not the runtime's wire format. A
 // caller here wants what happened, already folded; the wire additionally carries
@@ -26,7 +25,6 @@ type ndjsonRenderer struct {
 	scope outputRunScope
 }
 
-// NewNDJSON builds an event-stream renderer over w.
 func newNDJSONRenderer(w io.Writer) *ndjsonRenderer {
 	return &ndjsonRenderer{out: w}
 }
