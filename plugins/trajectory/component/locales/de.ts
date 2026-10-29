@@ -106,4 +106,6 @@ export const de: Record<string, string> = {
   "image.zoomIn": "Bild vergrößern",
   "image.zoomOut": "Bild verkleinern",
   "image.description": "Bildbeschreibung",
+  "image.unavailable":
+    "Dieses aufgezeichnete Bild konnte nicht angezeigt werden.",
 };

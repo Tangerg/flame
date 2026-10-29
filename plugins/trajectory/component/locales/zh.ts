@@ -95,4 +95,5 @@ export const zh: Record<string, string> = {
   "image.zoomIn": "放大图片",
   "image.zoomOut": "缩小图片",
   "image.description": "图片说明",
+  "image.unavailable": "无法显示这张已记录的图片。",
 };

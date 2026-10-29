@@ -99,4 +99,5 @@ export const ko: Record<string, string> = {
   "image.zoomIn": "이미지 확대",
   "image.zoomOut": "이미지 축소",
   "image.description": "이미지 설명",
+  "image.unavailable": "기록된 이미지를 표시할 수 없습니다.",
 };

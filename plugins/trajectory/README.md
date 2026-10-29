@@ -79,6 +79,10 @@ Recorded message images retain their bounded inline thumbnail and open the
 original captured bytes in the shared image reader. Zoom, panning and dismissal
 do not change the accepted page, its filters or the recorded message. Closing
 returns to the image trigger; hiding the owning view ends that open capture.
+A decoder failure shows the recorded image identity with a local unavailable
+notice. The original bytes remain under Recorded evidence, the recorded status
+does not change, and adjacent images stay independent. A replacement source
+gets its own decode result; reading does not retry a completed operation.
 
 Page search uses the same redacted evidence as reading. It excludes only the data
 bytes of canonical user/agent message image blocks, retaining their metadata.

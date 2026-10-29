@@ -10555,6 +10555,86 @@ remains. The memory-only archive round-trips **110 UTF-8 records**,
 handoff changes no qualified product bytes. Continue from new content/Dock task
 evidence; the continuous goal remains active.
 
+### Recorded-image decoder feedback
+
+The expanded reading path above exposes a separate existing Trajectory failure:
+a canonical message can contain valid base64 that the browser cannot decode.
+Actual Wails shows natural dimensions **0 × 0**, a broken thumbnail and an active
+View image action leading to another broken image with zoom controls. The next
+valid **1800 × 2400** image decodes normally. The message is still a completed
+record; presentation failure is not a Runtime outcome transition.
+
+The report's private RecordedImage owns one source-specific browser-error witness
+and uses the existing shared ImageNotice for the captured identity and localized
+failure description. It withdraws the unavailable image's expansion action while
+leaving adjacent images, literal text, raw bytes, accepted page and filters alone.
+A replacement source is decoded independently. The existing shared viewport,
+Lightbox, acquisition and command owners are unchanged; there is no automatic
+retry, business mutation, dependency or schema change. All eight Trajectory
+catalogs contain the failure sentence. Normal generation changes only
+Trajectory's component.js among **34** installed resource inputs; module links
+remain unchanged. Rebuild/select that package with the matching Host as usual.
+
+Flame's existing ImageBlock and Computer CapturedImage provide the same local
+decoder-witness/notice boundary. Read-only ZCode previewPaneImageContent's actual
+onError handling was also inspected; it is not treated as evidence of a Flame
+notice. The established better-* writing, accessibility, typography, layout and
+semantic-color review supports a quiet named notice, without new rails, chrome,
+color literals or motion. Runtime record and JSON ownership are retained.
+
+Verification (2026-10-29):
+
+- Baseline: **2 Web files / 28 tests** pass. After correcting two test lookups to
+  the record's actual scope, all **four** regressions fail against the original
+  report and catalogs for the missing failure description. The setup-only lookup
+  failures are excluded. Restoring the candidate yields **3 files / 48 tests**
+  passing: user/Agent images, exact raw evidence and completed status, independent
+  neighboring image, replacement source, Chinese copy, existing page/navigation
+  and transcript-image behavior. No valid assertion is weakened.
+- Web type/lint and normal plugin build plus its five checks pass. All **11**
+  structural/style/resource/module/native gates pass serially. The supported
+  **make check-native** completes in **17.081 s**, including Desktop Go
+  test/vet/build and the Wails build. Existing linker warnings remain nonfatal.
+  Shared UI source is unchanged; its preceding **198** tests and offline-consumer
+  qualification retain their recorded scope. Unrelated Runtime/backend suites
+  are not rerun for this presentation-only fix.
+- Actual EN/light/14/Orange/full-motion at **1440 × 900 CSS px** shows the named
+  failure and preserves the completed record. Refresh retains the local notice,
+  query and disclosure. Keyboard navigation skips the unavailable expansion and
+  reaches the valid image; Enter opens it, **125%** zoom works, and Escape returns
+  to that thumbnail. Recorded evidence remains reachable. Files/DockResizer and
+  back retain the query and expanded raw reader; Cmd+L continues the original
+  draft to **Draft before recorded image failure. Continued.** Exact raw-payload
+  equality belongs to the controlled regressions rather than a native copy claim.
+- Actual ZH/dark/18/custom-blue/motion-off at **200%** page zoom has a **560 × 377**
+  CSS viewport. Native scrolling exposes the complete image identity and failure
+  sentence together; Tab reaches the independent valid image and Enter opens it.
+  Native window zoom yields **756 × 475**, and Escape returns to the original
+  image trigger. Leaving the main-area reader continues the retained draft to
+  **从图片失败处继续。 已核对后续图片。** ActualSize is restored before quitting.
+- An observer-free production control shows the same notice, completed status
+  and independent valid image, opens/closes that image by keyboard and continues
+  its original draft. Its **619** assets differ only in the two HTML entries;
+  the native binary is identical and observer-event delta is **zero**. Native
+  screenshots and AX task observations remain in the CUA transcript, without a
+  screenshot-file archive claim.
+
+The two private data-only producers supply the canonical paired-image message
+before the actual public-client fold and select the normal declared Trajectory
+ESM through the installed-component lifecycle. The decoder-error event is real
+WebKit behavior. Live release acquisition/Realm admission, provider execution,
+Send, saving, OS IME and VoiceOver are not qualified. No browser/performance suite,
+Claude CLI or subagent is used; native actions use CUA and the observer only reads.
+
+Cleanup retires four native launches, unregisters the bundle, closes the listener,
+removes **7** new checkout output/cache roots and **3** private profiles,
+and restores all **four** original files and modes. Independent checks preserve
+**6,379** qualified non-Markdown inputs, **34** resources, **45** read-only
+references, **three** owned instruction files, **21** output-presence and **five**
+profile-absence baselines, including the retained installed npm toolchain. The
+primary parallel checkout remains untouched. Publication and final evidence
+retirement follow this decoder qualification.
+
 ## Shortcut recording and activation
 
 `apps/web/src/lib/combo.ts` now includes the canonical `space` / physical `Space`

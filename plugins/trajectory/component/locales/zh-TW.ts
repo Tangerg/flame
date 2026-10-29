@@ -95,4 +95,5 @@ export const zhTW: Record<string, string> = {
   "image.zoomIn": "放大圖片",
   "image.zoomOut": "縮小圖片",
   "image.description": "圖片說明",
+  "image.unavailable": "無法顯示這張已記錄的圖片。",
 };

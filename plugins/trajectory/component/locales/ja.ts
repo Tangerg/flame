@@ -99,4 +99,5 @@ export const ja: Record<string, string> = {
   "image.zoomIn": "画像を拡大",
   "image.zoomOut": "画像を縮小",
   "image.description": "画像の説明",
+  "image.unavailable": "記録された画像を表示できません。",
 };

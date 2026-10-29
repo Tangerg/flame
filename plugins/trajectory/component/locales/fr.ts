@@ -110,4 +110,5 @@ export const fr: Record<string, string> = {
   "image.zoomIn": "Agrandir l’image",
   "image.zoomOut": "Réduire l’image",
   "image.description": "Description de l’image",
+  "image.unavailable": "Impossible d’afficher cette image enregistrée.",
 };

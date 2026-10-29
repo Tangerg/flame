@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { ReactNode, Ref } from "react";
 import type { Translate } from "@flame/component-sdk";
 import { Activity, Cpu, Terminal, FileText, Server } from "@flame/icons/react";
@@ -11,6 +11,7 @@ import {
   Disclosure,
   EmptyState,
   EvidenceImage,
+  ImageNotice,
   Facts,
   Metadata,
   RecordBody,
@@ -186,6 +187,37 @@ function title(row: TrajectoryEntry, t: Translate, clock: Intl.DateTimeFormat) {
     />
   );
 }
+function RecordedImage({
+  mime,
+  data,
+  t,
+}: {
+  mime: string;
+  data: string;
+  t: Translate;
+}) {
+  const src = `data:${mime};base64,${data}`;
+  const alt = t("image.alt", { mime });
+  const [failedSource, setFailedSource] = useState<string>();
+  if (failedSource === src)
+    return <ImageNotice label={alt} detail={t("image.unavailable")} />;
+  return (
+    <span onErrorCapture={() => setFailedSource(src)}>
+      <EvidenceImage
+        src={src}
+        alt={alt}
+        labels={{
+          view: t("image.view"),
+          close: t("image.close"),
+          zoomIn: t("image.zoomIn"),
+          zoomOut: t("image.zoomOut"),
+          description: t("image.description"),
+        }}
+      />
+    </span>
+  );
+}
+
 function Observation({
   row: recorded,
   t,
@@ -204,17 +236,11 @@ function Observation({
             body.push(<RecordBody key={index}>{part.text}</RecordBody>);
         } else {
           body.push(
-            <EvidenceImage
+            <RecordedImage
               key={index}
-              src={`data:${part.mime};base64,${part.data}`}
-              alt={t("image.alt", { mime: part.mime })}
-              labels={{
-                view: t("image.view"),
-                close: t("image.close"),
-                zoomIn: t("image.zoomIn"),
-                zoomOut: t("image.zoomOut"),
-                description: t("image.description"),
-              }}
+              mime={part.mime}
+              data={part.data}
+              t={t}
             />,
           );
         }
