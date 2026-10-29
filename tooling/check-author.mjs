@@ -102,8 +102,8 @@ async function snapshot(directory) {
 }
 try {
   await buildShared();
-  for (const name of ["memory", "guardrails", "usagereports"]) {
-    const managed = name === "usagereports";
+  for (const name of ["memory", "guardrails", "usagereports", "deliverables"]) {
+    const managed = ["usagereports", "deliverables"].includes(name);
     const project = join(
       scratch,
       name === "memory" ? "memory author 作者" : name,
@@ -171,7 +171,7 @@ try {
         throw new Error(
           "managed author project retains a Go compiler prerequisite",
         );
-      const noGo = join(scratch, "no-go");
+      const noGo = join(scratch, name + "-no-go");
       await mkdir(noGo);
       await writeFile(
         join(noGo, "go"),
@@ -205,7 +205,12 @@ try {
         ];
     if (existsSync(join(project, "package.json")))
       for (const command of npmCommands)
-        isolated(policy, ["npm", ...command], project, env);
+        isolated(
+          command[0] === "test" ? callbackPolicy : policy,
+          ["npm", ...command],
+          project,
+          env,
+        );
     const after = new Map(await snapshot(project));
     if (
       before.size !== after.size ||
