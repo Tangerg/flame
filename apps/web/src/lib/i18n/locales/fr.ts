@@ -81,8 +81,10 @@ export const fr: Record<string, string> = {
   "approval.what.webSearch": "Lancer la recherche web",
   "approval.what.subagent": "Déléguer à un sous-agent",
   "approval.what.generic": "Exécuter {{tool}}",
-  "session.regenerate.switchedAway":
-    "Vous avez changé de session avant la fin de la régénération — rien n'a été renvoyé.",
+  "session.regenerate.notReady":
+    "La session d’origine ne peut pas recevoir la demande de régénération. Rien n’a été renvoyé.",
+  "session.regenerate.noInput":
+    "L’historique a été restauré, mais Runtime n’a pas renvoyé la demande d’origine. Rien n’a été renvoyé.",
   "session.editRerun.draftRetained":
     "L'historique de la conversation d'origine a été restauré. Votre brouillon actuel a été conservé.",
   "session.restore.files": "Arbre de travail restauré à ce point de contrôle.",

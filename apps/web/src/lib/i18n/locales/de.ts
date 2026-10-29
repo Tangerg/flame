@@ -81,8 +81,10 @@ export const de: Record<string, string> = {
   "approval.what.webSearch": "Websuche ausführen",
   "approval.what.subagent": "An Subagenten delegieren",
   "approval.what.generic": "{{tool}} ausführen",
-  "session.regenerate.switchedAway":
-    "Vor Abschluss der Neugenerierung gewechselt — es wurde nichts erneut gesendet.",
+  "session.regenerate.notReady":
+    "Die ursprüngliche Sitzung kann die Eingabe zur Neugenerierung nicht annehmen. Es wurde nichts erneut gesendet.",
+  "session.regenerate.noInput":
+    "Der Verlauf wurde wiederhergestellt, aber Runtime hat die ursprüngliche Eingabe nicht zurückgegeben. Es wurde nichts erneut gesendet.",
   "session.editRerun.draftRetained":
     "Der Verlauf des ursprünglichen Chats wurde wiederhergestellt. Dein aktueller Entwurf wurde beibehalten.",
   "session.restore.files": "Arbeitsverzeichnis auf diesen Checkpoint zurückgesetzt.",

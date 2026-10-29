@@ -82,8 +82,10 @@ export const es: Record<string, string> = {
   "approval.what.webSearch": "Ejecutar búsqueda web",
   "approval.what.subagent": "Delegar a un subagente",
   "approval.what.generic": "Ejecutar {{tool}}",
-  "session.regenerate.switchedAway":
-    "Cambiaste de sesión antes de terminar la regeneración: no se reenvió nada.",
+  "session.regenerate.notReady":
+    "La sesión original no puede recibir la entrada para regenerar. No se reenvió nada.",
+  "session.regenerate.noInput":
+    "Se restauró el historial, pero Runtime no devolvió la entrada original. No se reenvió nada.",
   "session.editRerun.draftRetained":
     "Se restauró el historial de la conversación original. Se conservó tu borrador actual.",
   "session.restore.files": "Árbol de trabajo restaurado a este punto de control.",

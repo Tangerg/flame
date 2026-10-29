@@ -80,7 +80,10 @@ export const ja: Record<string, string> = {
   "approval.what.webSearch": "ウェブ検索を実行",
   "approval.what.subagent": "サブエージェントに委任",
   "approval.what.generic": "{{tool}} を実行",
-  "session.regenerate.switchedAway": "再生成の完了前に切り替えたため、何も再送信されませんでした。",
+  "session.regenerate.notReady":
+    "元のセッションは再生成の入力を受け付けられません。何も再送信されませんでした。",
+  "session.regenerate.noInput":
+    "履歴は復元されましたが、Runtime から元の入力が返されませんでした。何も再送信されませんでした。",
   "session.editRerun.draftRetained":
     "元の会話の履歴を復元しました。現在の下書きは保持されています。",
   "session.restore.files": "作業ツリーをこのチェックポイントに復元しました。",

@@ -23,8 +23,15 @@ export function canForkMessage(message: Message): message is Message & { runId: 
   return message.role === "user" && Boolean(message.runId);
 }
 
-export function canRegenerateMessage(message: Message, conversation: readonly Message[]): boolean {
-  return message.role === "assistant" && conversation.some(({ id }) => id === message.id);
+export function canRegenerateMessage(
+  message: Message,
+  conversation: readonly Message[],
+): message is Message & { runId: string } {
+  return (
+    message.role === "assistant" &&
+    Boolean(message.runId) &&
+    conversation.some(({ id, runId }) => id === message.id && runId === message.runId)
+  );
 }
 
 export function canRateMessage(message: Message): boolean {

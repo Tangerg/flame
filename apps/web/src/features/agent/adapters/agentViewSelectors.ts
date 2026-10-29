@@ -11,6 +11,7 @@ import { EMPTY_AGENT_SESSION_VIEW } from "@/features/agent/public/sessionView";
 import {
   selectCurrentRootRun,
   selectRootNarrativeMessages,
+  selectRootRollbackBoundary,
 } from "@/features/agent/application/view/runTree";
 import {
   EMPTY_PROBLEM_PRESENTATION,
@@ -78,6 +79,12 @@ export function createAgentViewSelectors(
 
   function useCurrentRootRunning(): boolean {
     return useActiveAgentView((view) => selectCurrentRootRun(view)?.status === "running");
+  }
+
+  function useHasPrecedingRootRun(runId: string | null): boolean {
+    return useActiveAgentView((view) =>
+      Boolean(runId && selectRootRollbackBoundary(view, runId)?.toRunId),
+    );
   }
 
   function useAgentAction(kind: "stop"): StopCurrentRootRunAction | null;
@@ -163,6 +170,7 @@ export function createAgentViewSelectors(
     useAgentOpeningCommands,
     useCurrentRootRun,
     useCurrentRootRunning,
+    useHasPrecedingRootRun,
     useAgentAction,
     useRootNarrativeMessages,
     useTranscriptRows,

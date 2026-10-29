@@ -67,11 +67,13 @@ describe("message action availability", () => {
   });
 
   it("regenerates only an assistant in the main conversation, while child feedback stays available", () => {
-    const assistant = message({ role: "assistant" });
+    const assistant = message({ role: "assistant", runId: "root" });
     const user = message({ id: "user", role: "user" });
     const conversation = [user, assistant];
     expect(canRegenerateMessage(assistant, conversation)).toBe(true);
     expect(canRegenerateMessage(user, conversation)).toBe(false);
+    expect(canRegenerateMessage({ ...assistant, runId: null }, conversation)).toBe(false);
+    expect(canRegenerateMessage({ ...assistant, runId: "stale" }, conversation)).toBe(false);
     expect(canRegenerateMessage(message({ id: "child-answer" }), conversation)).toBe(false);
     expect(canRateMessage(message({ role: "assistant" }))).toBe(true);
     expect(canRateMessage(message({ role: "user" }))).toBe(false);

@@ -79,8 +79,10 @@ export const ko: Record<string, string> = {
   "approval.what.webSearch": "웹 검색 실행",
   "approval.what.subagent": "서브에이전트에 위임",
   "approval.what.generic": "{{tool}} 실행",
-  "session.regenerate.switchedAway":
-    "재생성이 끝나기 전에 이동했습니다 — 아무것도 다시 전송되지 않았습니다.",
+  "session.regenerate.notReady":
+    "원래 세션이 재생성 입력을 받을 수 없습니다. 아무 내용도 다시 보내지 않았습니다.",
+  "session.regenerate.noInput":
+    "기록은 복원되었지만 Runtime이 원래 입력을 반환하지 않았습니다. 아무 내용도 다시 보내지 않았습니다.",
   "session.editRerun.draftRetained": "원래 대화의 기록을 복원했습니다. 현재 초안은 유지되었습니다.",
   "session.restore.files": "작업 트리를 이 체크포인트로 복원했습니다.",
   "session.restore.both": "대화와 파일을 이 체크포인트로 복원했습니다.",

@@ -75,6 +75,13 @@ input replacement remain with the existing captured-focus owner. Send, Steer and
 Stop use the shared focusable-disabled contract while commands are unavailable.
 The Runtime retains cancellation admission and Run settlement ownership.
 
+Regeneration keeps rollback and follow-up admission under one captured Agent
+command lease. Only a committed rollback with Runtime's original dropped input
+can submit another Run in that Session. Missing targets, unavailable checkpoints,
+retired endpoints and joined operations never fall back to a displayed prompt.
+File-restoring actions require a preceding root Run in the current projection;
+the fresh Runtime read and rollback still decide whether restoration can commit.
+
 Manual Goal-mode exit uses that same captured Composer focus. Accepted exit
 returns to the current input with its draft and selection intact; later focus or
 an input replacement retires the capture. The exit is an ordinary named action.

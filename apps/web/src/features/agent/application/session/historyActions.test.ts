@@ -8,7 +8,9 @@ prepareTestClient(() => {
   testClient = owned;
   finishTestClient(() => owned.dispose());
 });
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { EMPTY_AGENT_SESSION_VIEW } from "@/features/agent/public/sessionView";
+import { type AgentInput } from "@/features/agent/public/input";
 import { type AgentRunFact as RunRef } from "@/features/agent/public/events";
 import { type FlameClient } from "@flame/runtime-client";
 
@@ -21,6 +23,7 @@ import { type AgentSessionViewPort } from "@/features/agent/application/session/
 import {
   forkAgentSessionAtRun,
   rollbackSessionToBeforeRun,
+  regenerateSessionRun,
 } from "@/features/agent/application/session/historyActions";
 import { loadPluginsForTest } from "@/test/kernel";
 let runtimeClient: () => FlameClient = () => {
@@ -198,6 +201,171 @@ describe("rollbackSessionToBeforeRun", () => {
       expect(rollbackSession).not.toHaveBeenCalled();
     },
   );
+});
+
+describe("regenerateSessionRun", () => {
+  const originalInput: AgentInput = {
+    parts: [
+      { kind: "text", text: "original Runtime input" },
+      { kind: "image", mime: "image/png", data: "aW1hZ2U=" },
+    ],
+  };
+  let read: ReturnType<typeof vi.fn>;
+  let rollback: ReturnType<typeof vi.fn>;
+  let send: ReturnType<typeof vi.fn>;
+  let otherSend: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    read = vi.fn().mockResolvedValue(material(snapshot()));
+    rollback = vi.fn().mockResolvedValue({
+      droppedRuns: [{ runId: "run_2", userInput: originalInput }],
+    });
+    send = vi.fn().mockResolvedValue({
+      status: "accepted",
+      sessionId: "ses_1",
+      runId: "run_new",
+      userItemId: "it_new",
+    });
+    otherSend = vi.fn();
+    restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
+      loadSessionSnapshot: read,
+      rollbackSession: rollback,
+    } as unknown as AgentRuntimeGateway);
+    restoreView = stubInstance(testClient.agent.dependencies.view, {
+      getSession: (id: string) => ({
+        view: EMPTY_AGENT_SESSION_VIEW,
+        openingCommands: [],
+        synchronize: vi.fn().mockResolvedValue(true),
+        send: id === "ses_1" ? send : otherSend,
+      }),
+    } as unknown as AgentSessionViewPort);
+  });
+
+  it.each(["history", "both"] as const)(
+    "submits only original dropped input after committed %s rollback",
+    async (restoreType) => {
+      await expect(
+        regenerateSessionRun(testClient.agent.dependencies, "ses_1", "run_2", restoreType),
+      ).resolves.toEqual({ status: "submitted" });
+      expect(rollback).toHaveBeenCalledWith({
+        sessionId: "ses_1",
+        toRunId: "run_1",
+        ...(restoreType === "both" ? { restoreType } : {}),
+      });
+      expect(send.mock.calls).toEqual([[originalInput, {}]]);
+      expect(otherSend).not.toHaveBeenCalled();
+    },
+  );
+
+  it("does not roll back or send before the first file checkpoint", async () => {
+    read.mockResolvedValue(material({ ...snapshot(), runs: [snapshot().runs[0]!] }));
+    await expect(
+      regenerateSessionRun(testClient.agent.dependencies, "ses_1", "run_1", "both"),
+    ).resolves.toEqual({ status: "unavailable" });
+    expect(rollback).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it.each(["history", "both"] as const)(
+    "does not convert a missing target into appended %s input",
+    async (restoreType) => {
+      await expect(
+        regenerateSessionRun(testClient.agent.dependencies, "ses_1", "run_gone", restoreType),
+      ).resolves.toEqual({ status: "unavailable" });
+      expect(rollback).not.toHaveBeenCalled();
+      expect(send).not.toHaveBeenCalled();
+    },
+  );
+
+  it("does not synthesize input when the committed result has none", async () => {
+    rollback.mockResolvedValue({ droppedRuns: [] });
+    await expect(
+      regenerateSessionRun(testClient.agent.dependencies, "ses_1", "run_2"),
+    ).resolves.toEqual({ status: "noInput" });
+    expect(rollback).toHaveBeenCalledOnce();
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("preserves definite rollback failure without sending", async () => {
+    const refusal = new Error("checkpoint refused");
+    rollback.mockRejectedValue(refusal);
+    await expect(
+      regenerateSessionRun(testClient.agent.dependencies, "ses_1", "run_2", "both"),
+    ).rejects.toBe(refusal);
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("keeps duplicate regeneration out of the original rollback lease", async () => {
+    const pending = Promise.withResolvers<AgentSessionMaterialRead>();
+    read.mockReturnValue(pending.promise);
+    const first = regenerateSessionRun(testClient.agent.dependencies, "ses_1", "run_2");
+    await expect(
+      regenerateSessionRun(testClient.agent.dependencies, "ses_1", "run_2"),
+    ).resolves.toEqual({ status: "inFlight" });
+    expect(send).not.toHaveBeenCalled();
+    pending.resolve(material(snapshot()));
+    await expect(first).resolves.toEqual({ status: "submitted" });
+    expect(rollback).toHaveBeenCalledOnce();
+    expect(send).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the lease until the follow-up is admitted", async () => {
+    let duplicate: ReturnType<typeof regenerateSessionRun> | undefined;
+    send.mockImplementation(() => {
+      duplicate = regenerateSessionRun(testClient.agent.dependencies, "ses_1", "run_2");
+      return Promise.resolve({
+        status: "accepted",
+        sessionId: "ses_1",
+        runId: "run_new",
+        userItemId: "it_new",
+      });
+    });
+    await expect(
+      regenerateSessionRun(testClient.agent.dependencies, "ses_1", "run_2"),
+    ).resolves.toEqual({ status: "submitted" });
+    await expect(duplicate).resolves.toEqual({ status: "inFlight" });
+    expect(send).toHaveBeenCalledOnce();
+  });
+
+  it("reports a follow-up refused by the original Session without selecting another", async () => {
+    send.mockReturnValue(null);
+    await expect(
+      regenerateSessionRun(testClient.agent.dependencies, "ses_1", "run_2"),
+    ).resolves.toEqual({ status: "notReady" });
+    expect(otherSend).not.toHaveBeenCalled();
+  });
+
+  it("keeps the captured Session after navigation changes", async () => {
+    const pending = Promise.withResolvers<AgentSessionMaterialRead>();
+    read.mockReturnValue(pending.promise);
+    const result = regenerateSessionRun(testClient.agent.dependencies, "ses_1", "run_2");
+    testClient.agent.access.selectAgentSession("ses_other");
+    pending.resolve(material(snapshot()));
+    await expect(result).resolves.toEqual({ status: "submitted" });
+    expect(rollback).toHaveBeenCalledWith({ sessionId: "ses_1", toRunId: "run_1" });
+    expect(send.mock.calls).toEqual([[originalInput, {}]]);
+    expect(otherSend).not.toHaveBeenCalled();
+  });
+
+  it("does not deliver a retired endpoint's follow-up to its successor", async () => {
+    const pending = Promise.withResolvers<AgentSessionMaterialRead>();
+    read.mockReturnValue(pending.promise);
+    const result = regenerateSessionRun(testClient.agent.dependencies, "ses_1", "run_2");
+    const successorRollback = vi.fn();
+    runtimeClient = () => ({ sessions: { rollback: successorRollback } }) as unknown as FlameClient;
+    const successor = createAgentGatewayFixture(testClient, getRuntimeClient);
+    try {
+      await expect(result).resolves.toEqual({ status: "unavailable" });
+      pending.resolve(material(snapshot()));
+      await flushMicrotasks();
+      expect(rollback).not.toHaveBeenCalled();
+      expect(successorRollback).not.toHaveBeenCalled();
+      expect(send).not.toHaveBeenCalled();
+      expect(otherSend).not.toHaveBeenCalled();
+    } finally {
+      successor.dispose();
+    }
+  });
 });
 
 describe("forkAgentSessionAtRun", () => {

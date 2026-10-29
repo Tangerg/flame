@@ -23,6 +23,7 @@ import { drainBrowserTasks } from "@/test/browserTasks";
 import { MessageContextMenu } from "@/features/chat/message/ui/MessageContextMenu";
 const material = vi.hoisted(() => ({
   messages: [] as Message[],
+  precedingRootRunIds: new Set<string>(),
   rollback: vi.fn(),
   fork: vi.fn(),
 }));
@@ -30,6 +31,8 @@ const material = vi.hoisted(() => ({
 vi.mock("@/features/agent/public/conversation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/agent/public/conversation")>()),
   useActiveConversationMessages: () => material.messages,
+  useHasPrecedingRootRun: (runId: string | null) =>
+    runId !== null && material.precedingRootRunIds.has(runId),
 }));
 
 prepareTestClient(() => {
@@ -109,6 +112,7 @@ async function openFocusMenu() {
 describe("messageContextMenu", () => {
   beforeEach(() => {
     material.messages = [];
+    material.precedingRootRunIds.clear();
     material.fork.mockReset().mockResolvedValue(undefined);
     material.rollback.mockReset().mockResolvedValue({
       status: "committed",
@@ -136,7 +140,7 @@ describe("messageContextMenu", () => {
   });
 
   it("shows Regenerate + copy items for an assistant message", () => {
-    const assistant = buildMessage({ role: "assistant" });
+    const assistant = buildMessage({ role: "assistant", runId: "run-1" });
     material.messages = [assistant];
     testClient.render(
       <MessageContextMenu msg={assistant} label="Assistant">
@@ -158,6 +162,18 @@ describe("messageContextMenu", () => {
     openMenu("user message");
     expect(await screen.findByRole("menu", { name: "You" })).toBeTruthy();
   });
+
+  it.each(["user", "assistant"] as const)(
+    "omits file restoration before the first %s Run",
+    async (role) => {
+      mountFocusMenu(buildMessage({ role, runId: "first" }));
+      await openFocusMenu();
+      expect(screen.queryByRole("menuitem", { name: "Edit & rerun, restore files" })).toBeNull();
+      expect(screen.queryByRole("menuitem", { name: "Regenerate, restore files" })).toBeNull();
+      const historyAction = role === "assistant" ? "Regenerate response" : "Edit & rerun from here";
+      expect(screen.getByRole("menuitem", { name: historyAction })).toBeTruthy();
+    },
+  );
 
   it("does not show copy items when the message body is empty", () => {
     testClient.render(
@@ -261,6 +277,7 @@ describe("messageContextMenu", () => {
       rollback: [["menu-session", "run-1", "both"]],
     },
   ])("leaves focus in the composer after $label closes the menu", async (action) => {
+    material.precedingRootRunIds.add("run-1");
     const draft = mountFocusMenu();
     await openFocusMenu();
 

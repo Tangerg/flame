@@ -33,7 +33,7 @@ const model = vi.hoisted(() => ({
   conversation: null as { sessionId: string; messages: Message[] } | null,
   rollback: vi.fn(),
   fork: vi.fn(),
-  send: vi.fn(),
+  regenerate: vi.fn(),
 }));
 
 prepareTestClient(() => {
@@ -41,7 +41,7 @@ prepareTestClient(() => {
     activeAgentConversation: () => model.conversation,
     forkAgentSessionAtRun: model.fork,
     rollbackSessionToBeforeRun: model.rollback,
-    sendToAgentSession: model.send,
+    regenerateSessionRun: model.regenerate,
   });
 });
 
@@ -61,8 +61,7 @@ vi.mock("@/lib/rpcErrors", () => ({ describeRpcError: () => undefined }));
 beforeEach(() => {
   model.rollback.mockReset();
   model.fork.mockReset().mockResolvedValue(undefined);
-  model.send.mockReset();
-  model.send.mockReturnValue(true);
+  model.regenerate.mockReset().mockResolvedValue({ status: "submitted" });
   vi.mocked(notifyInfo).mockClear();
   testClient.agent.access.selectAgentSession("ses_1");
   replaceComposerDraft(testClient.composer.access, { text: "waiting draft" });
@@ -186,36 +185,53 @@ describe("message history actions", () => {
     },
   );
 
-  it("regenerates from the Runtime-authored dropped input", async () => {
-    model.rollback.mockResolvedValue({
-      status: "committed",
-      userInput: {
-        parts: [
-          { kind: "text", text: "authoritative prompt" },
-          { kind: "image", mime: "image/png", data: "aW1hZ2U=" },
-        ],
-      },
+  it.each([false, true])(
+    "delegates regeneration as one original-Run operation with restoreFiles=%s",
+    async (restoreFiles) => {
+      regenerateMessage(testClient.agent.access, model.conversation!.messages[1]!, {
+        restoreFiles,
+      });
+      await model.regenerate.mock.results[0]!.value;
+      expect(model.regenerate).toHaveBeenCalledWith(
+        "ses_1",
+        "run_1",
+        restoreFiles ? "both" : "history",
+      );
+      expect(model.rollback).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["unavailable", "inFlight"])(
+    "does not issue another operation after regeneration is %s",
+    async (status) => {
+      model.regenerate.mockResolvedValue({ status });
+      regenerateMessage(testClient.agent.access, model.conversation!.messages[1]!);
+      await model.regenerate.mock.results[0]!.value;
+      expect(model.regenerate).toHaveBeenCalledOnce();
+      expect(model.rollback).not.toHaveBeenCalled();
+      expect(notifyInfo).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["noInput", "notReady"])(
+    "reports the original regeneration result %s",
+    async (status) => {
+      model.regenerate.mockResolvedValue({ status });
+      regenerateMessage(testClient.agent.access, model.conversation!.messages[1]!);
+      await model.regenerate.mock.results[0]!.value;
+      expect(notifyInfo).toHaveBeenCalledWith(`session.regenerate.${status}`, {
+        source: "session",
+      });
+    },
+  );
+
+  it("does not reinterpret a stale assistant Run as another prompt", () => {
+    regenerateMessage(testClient.agent.access, {
+      ...model.conversation!.messages[1]!,
+      runId: "run_stale",
     });
-
-    regenerateMessage(testClient.agent.access, model.conversation!.messages[1]!);
-
-    await vi.waitFor(() =>
-      expect(model.send).toHaveBeenCalledWith("ses_1", {
-        parts: [
-          { kind: "text", text: "authoritative prompt" },
-          { kind: "image", mime: "image/png", data: "aW1hZ2U=" },
-        ],
-      }),
-    );
-  });
-
-  it("does not run a second follow-up for a joined history rewrite", async () => {
-    model.rollback.mockResolvedValue({ status: "inFlight" });
-
-    regenerateMessage(testClient.agent.access, model.conversation!.messages[1]!);
-
-    await vi.waitFor(() => expect(model.rollback).toHaveBeenCalledOnce());
-    expect(model.send).not.toHaveBeenCalled();
+    expect(model.regenerate).not.toHaveBeenCalled();
+    expect(model.rollback).not.toHaveBeenCalled();
   });
 
   it("prefills an earlier root edit-and-rerun from the Runtime-authored dropped input", async () => {

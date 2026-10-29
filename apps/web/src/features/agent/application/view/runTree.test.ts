@@ -9,6 +9,7 @@ import {
   selectCurrentRootAttention,
   selectDelegatedRunNarratives,
   selectRootNarrativeMessages,
+  selectRootRollbackBoundary,
 } from "@/features/agent/application/view/runTree";
 function rootRun(id: string, createdAt: string, status: AgentRunView["status"] = "finished") {
   return run({
@@ -74,6 +75,17 @@ function view(runs: AgentRunView[], messages: Message[] = []): AgentSessionView 
 }
 
 describe("root narrative", () => {
+  it("projects root rollback boundaries without inventing a predecessor for first, child or missing Runs", () => {
+    const first = rootRun("first", "2026-01-01T00:00:00.000Z");
+    const second = rootRun("second", "2026-01-02T00:00:00.000Z");
+    const child = childRun("child", second.id, second.id, "spawn", "2026-01-02T00:00:01.000Z");
+    const projection = view([second, child, first]);
+    expect(selectRootRollbackBoundary(projection, first.id)).toEqual({});
+    expect(selectRootRollbackBoundary(projection, second.id)).toEqual({ toRunId: first.id });
+    expect(selectRootRollbackBoundary(projection, child.id)).toBeNull();
+    expect(selectRootRollbackBoundary(projection, "missing")).toBeNull();
+  });
+
   it("keeps all root turns and local messages while excluding descendant material", () => {
     const rootA = rootRun("root-a", "2026-01-01T00:00:00.000Z");
     const rootB = rootRun("root-b", "2026-01-02T00:00:00.000Z");

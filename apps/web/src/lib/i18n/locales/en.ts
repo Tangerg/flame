@@ -79,8 +79,10 @@ export const en: Record<string, string> = {
   "approval.what.webSearch": "Run web search",
   "approval.what.subagent": "Delegate to sub-agent",
   "approval.what.generic": "Run {{tool}}",
-  "session.regenerate.switchedAway":
-    "Switched away before regenerate finished — nothing was resent.",
+  "session.regenerate.notReady":
+    "The original session cannot accept regenerated input. Nothing was resent.",
+  "session.regenerate.noInput":
+    "History was restored, but Runtime returned no original input. Nothing was resent.",
   "session.editRerun.draftRetained":
     "History was restored in the original conversation. Your current draft was kept.",
   "session.restore.files": "Working tree restored to this checkpoint.",

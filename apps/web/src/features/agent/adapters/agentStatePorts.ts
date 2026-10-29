@@ -23,6 +23,7 @@ export function createAgentState(
     useAgentAction,
     useCurrentRootRun,
     useCurrentRootRunning,
+    useHasPrecedingRootRun,
     useAgentProblem,
     useAgentPlan,
     useRootNarrativeMessages,
@@ -130,6 +131,7 @@ export function createAgentState(
   const view: AgentSessionViewPort = {
     useCurrentRootRun,
     useCurrentRootRunning,
+    useHasPrecedingRootRun,
     useRootNarrativeMessages,
     useTranscriptRows,
     useProblem: useAgentProblem,

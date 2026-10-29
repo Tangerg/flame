@@ -84,6 +84,7 @@ export interface AgentProjectionMaterial<T> {
 export interface AgentSessionViewPort {
   useCurrentRootRun(): AgentRunView | null;
   useCurrentRootRunning(): boolean;
+  useHasPrecedingRootRun(runId: string | null): boolean;
   useRootNarrativeMessages(): Message[];
   useTranscriptRows(): readonly TranscriptRow[];
   useProblem(): AgentProblem | null;
