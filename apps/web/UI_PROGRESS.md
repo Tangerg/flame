@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Language loading now has explicit recovery and updates complete reading surfaces, including memoized copy, while retaining later preferences, drafts and focus. All 172 focused/related tests, typecheck, lint and the other 11 Web/native gates pass; light, Chinese dark/18px/200%, native resize and observer-free tasks pass. Evidence and cleanup are recorded under **Language loading and complete reading updates**. Model-catalog recovery is published as `147c7dcae`, Hooks/Plugins hierarchy as `ca9c60977`, Settings readiness as `1bb564a53`, MCP as `17916606d` and Files as `4468c2fc6`. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
+Language loading now has explicit recovery and updates complete reading surfaces, including memoized copy, while retaining later preferences, drafts and focus, published as `1029a1052`. All 172 focused/related tests, typecheck, lint and the other 11 Web/native gates pass; light, Chinese dark/18px/200%, native resize and observer-free tasks pass. Evidence, cleanup and delivery are recorded under **Language loading and complete reading updates**. Model-catalog recovery is published as `147c7dcae`, Hooks/Plugins hierarchy as `ca9c60977`, Settings readiness as `1bb564a53`, MCP as `17916606d` and Files as `4468c2fc6`. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -110,8 +110,8 @@ comparison, search/return path and cleanup.
 Model-catalog reading and local recovery across Composer and auxiliary-role
 selection are published as `147c7dcae`; see **Model catalog reading and recovery**
 for the real-query regressions, native tasks and publication boundary.
-The following language-loading batch repairs failed dictionary recovery and
-complete translated reading updates across Settings, Composer and Dock; see
+Language-loading recovery and complete translated reading updates across Settings,
+Composer and Dock are published as `1029a1052`; see
 **Language loading and complete reading updates** for its native task boundary.
 See **Goal save
 feedback and pending dismissal** and **Computer console
@@ -3141,6 +3141,15 @@ checkout was not modified. The memory-only, gzip round-tripped evidence holds
 **91 UTF-8 records**, **9,871,101 raw / 1,385,666 gzip bytes**, SHA-256
 `72055d8b3413ef2325b5551e9285cc124cec63448de6e0e88dfaf4d51afbaa36`.
 No private qualification files are committed or left on disk.
+
+Delivery: implementation `1029a1052a87b47ec27f7049a906d108422e66b5` passes normal
+formatting, workspace lint and commit-message hooks, then a normal push to main.
+An independent remote read, HEAD and origin/main agree on that implementation,
+with 0/0 divergence and a clean owned checkout. All eight qualified source hashes
+and the complete preservation proof still match after hooks/publication, including
+the absent private root and zero app processes. This delivery receipt changes
+only the maintained handoff; no tests or native tasks are repeated for it. The
+whole-product goal remains active for the next evidence-backed content/Dock task.
 
 ### Settings focus and pointer activation
 
