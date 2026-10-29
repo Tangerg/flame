@@ -126,7 +126,9 @@ published as `58cce6221`; see **Captured code reader action locale** for the
 70-test and native qualification. Panel now supplies the same clipped viewport
 to source sizing and focus visibility, and recognizes its own queued reflow
 scrolls; see **Panel reader budget and owned reflow scroll**. The separate native
-reverse-Tab finding remains open.
+reverse-Tab finding remains open. Its hit-position follow-up distinguishes a
+button's text from its padding without changing the product focus model; physical
+input remains unqualified under **Native reverse-Tab attribution**.
 The user resumed the paused goal.
 Completed batches are verified, explicitly committed and pushed to main under the
 goal publication policy. Preserve parallel work in the primary checkout. Do not
@@ -11467,6 +11469,59 @@ physical-input comparison or a demonstrated native fix; do not add local
 refocusing, timers or a global Tab interceptor based on the present evidence.
 Continue the active UI goal with an observed product flow. The interval fetch
 finds no incoming main commit, so no merge/validation loop is added.
+
+The hit-position follow-up qualifies the unchanged product inputs at
+`5762dabb9cff540f70b22d64bae6bce5d55a8055`, using a fresh plain-HTML document in
+the normal Wails production host. macOS remains 26.5 (25F71), arm64; the installed
+WebKit bundle reports `21624.2.5.11.4`. The private observer only reads events and
+geometry and updates its diagnostic output. It assigns no focus, intercepts no
+key and contains no product component or Runtime task. An omitted CORS preflight
+response initially prevented observation; the private listener was corrected
+before the accepted input comparisons. That setup failure is retained in the
+evidence and is not attributed to the product.
+
+Coordinate clicks at `(371, 266)` and `(280, 266)` hit the same explicit-tabindex
+native button. The former is inside its measured text rectangle; the latter is
+inside the button's left padding. After the text click, Shift+Tab stays on Button
+B, including a repeated reverse step. After the padding click, the first reverse
+step reaches Button A. An accessibility-center click also stays on B. Forward
+Tab to the following field, then two Shift+Tabs, reaches B and A in order. All
+seven observed Tab events are trusted and uncancelled; **42 events** are recorded.
+This adds a hit-position comparison to the earlier independent WKWebView result,
+not a physical-input equivalence claim. The requested physical-keyboard comparison
+received no result before the automated window was retired and remains unqualified.
+
+The result is consistent with the previously inspected
+[HTML focus-navigation issue](https://github.com/whatwg/html/issues/12514) and
+[proposed specification repair](https://github.com/whatwg/html/pull/12843).
+Current upstream WebKit's
+[mouse handler](https://raw.githubusercontent.com/WebKit/WebKit/main/Source/WebCore/page/EventHandler.cpp)
+sets the navigation starting node from the hit target;
+[Document](https://raw.githubusercontent.com/WebKit/WebKit/main/Source/WebCore/dom/Document.cpp)
+can retain a descendant of the focused element, and
+[FocusController](https://raw.githubusercontent.com/WebKit/WebKit/main/Source/WebCore/page/FocusController.cpp)
+can find that same focused element. This is an explanatory inference from upstream
+source, not proof that the installed framework contains the identical revision.
+No application Tab interceptor, refocusing, timer or host-preference change is
+justified by this result. The MEDIUM mixed-input finding remains open.
+
+The private production-tag native build and signature pass, with the existing
+non-failing duplicate `-lobjc` warning. Product suites and `make check-native` are
+not rerun for this documentation-only attribution. No whole-product, physical
+keyboard, VoiceOver, IME, other-platform or live Runtime qualification is added.
+The one owned launch exits through native Quit, its bundle is unregistered, the
+listener is closed and three newly created private profile directories are
+removed. No repository output or original file needs restoration. Preservation
+passes before and after retirement for **6,386** non-Markdown inputs, **34**
+installed resources, **55** read-only references, three instructions, 21 output
+baselines, four original files/modes and five profile absences. The exact root
+`/private/tmp/flame-keyboard-origin-whsTcd` is absent. The memory-only archive
+round-trips **17 UTF-8 records**, **837,790 raw bytes** and **302,753 gzip bytes**,
+SHA-256 `4a7f9bd82bdd7c9bf08ddb0757ecc51c2ad7f29aed4ca4f99a630f04090c4e3b`.
+CUA retains screenshots/AX in its transcript; no screenshot file is claimed.
+The interval fetch finds zero incoming main commits at `5762dabb9`. Continue with
+an observed product task; revisit this native finding when physical-input evidence
+or a demonstrated platform repair supplies a new factor.
 
 ## Shortcut recording and activation
 
