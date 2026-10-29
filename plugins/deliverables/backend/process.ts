@@ -7,6 +7,18 @@ import type { ProcessPlan } from "./confinement";
 
 export class UnconfirmedProcessExit extends Error {}
 
+// Darwin's /bin/ps is setuid and cannot execute inside an inherited Seatbelt.
+// These proc_info constants and the 96-byte proc_taskinfo layout come from
+// sys/syscall.h and sys/proc_info.h; resident size is the second uint64_t.
+const residentProbe = `use strict;
+use warnings;
+my $task_info = "\\0" x 96;
+my $read = syscall(336, 2, 0 + $ARGV[0], 4, 0, $task_info, length($task_info));
+exit 3 if $read < 0 && $!{ESRCH};
+die "deliverables: proc_info failed: $!" unless $read == length($task_info);
+print unpack("x8 Q", $task_info);
+`;
+
 interface ProcessIO {
   input?: Uint8Array;
   inputBytes?: number;
@@ -34,8 +46,8 @@ function groupExists(pid: number): boolean {
 function residentBytes(pid: number): Promise<number> {
   return new Promise((resolve, reject) => {
     execFile(
-      "/bin/ps",
-      ["-o", "rss=", "-p", String(pid)],
+      "/usr/bin/perl",
+      ["-e", residentProbe, "--", String(pid)],
       {
         encoding: "utf8",
         env: { LANG: "C", LC_ALL: "C" },
@@ -44,9 +56,12 @@ function residentBytes(pid: number): Promise<number> {
         maxBuffer: 1024,
       },
       (error, stdout) => {
-        if (error) return reject(error);
+        if (error)
+          return reject(
+            error.code === 3 ? Object.assign(error, { code: "ESRCH" }) : error,
+          );
         const value = stdout.trim();
-        const bytes = Number(value) * 1024;
+        const bytes = Number(value);
         if (!/^\d+$/.test(value) || !Number.isSafeInteger(bytes))
           return reject(
             new Error("deliverables: invalid resident memory observation"),
@@ -103,6 +118,15 @@ export async function runProcess(
   const monitoring = new AbortController();
   let monitor = Promise.resolve();
   const unconfirmed = Promise.withResolvers<never>();
+  const awaitExit = () => {
+    exitTimer ??= setTimeout(() => {
+      unconfirmed.reject(
+        new UnconfirmedProcessExit(
+          "deliverables: confined process exit is unconfirmed",
+        ),
+      );
+    }, LIMITS.processExitMs);
+  };
   const stop = () => {
     monitoring.abort();
     if (child.pid) {
@@ -120,13 +144,7 @@ export async function runProcess(
         }
       }
     }
-    exitTimer ??= setTimeout(() => {
-      unconfirmed.reject(
-        new UnconfirmedProcessExit(
-          "deliverables: confined process exit is unconfirmed",
-        ),
-      );
-    }, LIMITS.processExitMs);
+    awaitExit();
   };
   const capture = (target: Buffer[], chunk: Buffer, isError: boolean) => {
     if (isError) errorSize += chunk.byteLength;
@@ -197,6 +215,12 @@ export async function runProcess(
           }
         } catch (cause) {
           if (monitoring.signal.aborted) return;
+          // The kernel may observe exit before Node delivers the child event.
+          // Only the original close and status can settle that operation.
+          if (missing(cause)) {
+            awaitExit();
+            return;
+          }
           failure ??=
             cause instanceof Refusal
               ? cause

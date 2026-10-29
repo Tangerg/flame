@@ -144,8 +144,8 @@ describe("single-process resident memory", () => {
         ) => void;
         queueMicrotask(() =>
           callback(
-            observation === "unavailable" ? new Error("ps failed") : null,
-            observation === "invalid" ? "" : "2\n",
+            observation === "unavailable" ? new Error("probe failed") : null,
+            observation === "invalid" ? "" : "2048\n",
           ),
         );
         return {} as ReturnType<typeof execFile>;
@@ -162,8 +162,8 @@ describe("single-process resident memory", () => {
       expect(child.kill).toHaveBeenCalledWith("SIGKILL");
       expect(process.kill).not.toHaveBeenCalled();
       expect(execFile).toHaveBeenCalledWith(
-        "/bin/ps",
-        ["-o", "rss=", "-p", String(child.pid)],
+        "/usr/bin/perl",
+        ["-e", expect.any(String), "--", String(child.pid)],
         expect.objectContaining({ timeout: 1000, killSignal: "SIGKILL" }),
         expect.any(Function),
       );
@@ -189,6 +189,31 @@ describe("single-process resident memory", () => {
     await expect(running).resolves.toEqual({ stdout: "", stderr: "" });
     expect(child.kill).not.toHaveBeenCalled();
   });
+
+  it.each([0, 1])(
+    "awaits the original exit status %i after the kernel reports an absent process",
+    async (status) => {
+      vi.mocked(execFile).mockImplementation((...args: unknown[]) => {
+        const callback = args.at(-1) as (
+          error: Error | null,
+          stdout: string,
+        ) => void;
+        queueMicrotask(() =>
+          callback(Object.assign(new Error("process absent"), { code: 3 }), ""),
+        );
+        return {} as ReturnType<typeof execFile>;
+      });
+      const running = runProcess(single, new AbortController().signal);
+      child.emit("spawn");
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(child.kill).not.toHaveBeenCalled();
+      finish(status);
+      if (status === 0)
+        await expect(running).resolves.toEqual({ stdout: "", stderr: "" });
+      else
+        await expect(running).rejects.toMatchObject({ code: "process_failed" });
+    },
+  );
 });
 
 it("confines a parser without write or network authority using its own resource limits", () => {

@@ -91,7 +91,8 @@ argument can name an executable, shell command, host path or remote resource.
 Linux also requires `/usr/bin/prlimit`; the sandbox applies address-space, CPU,
 single-file and diagnostic-output limits before executing any renderer, including
 version probes. macOS applies CPU, single-file and open-file limits before execution
-and samples resident memory every 25 ms, terminating the process on excess or
+and uses the system Perl interpreter to sample Darwin's `proc_info` resident
+memory every 25 ms, terminating the process on excess or
 measurement failure. This sampled threshold allows brief overshoot; it is not a
 kernel address-space limit. All bounds are published by `contracts/limits.ts`. Optional
 `FLAME_DELIVERABLES_TOOL_ROOTS` is a JSON array of specific canonical installation

@@ -341,7 +341,7 @@ it("model tools create editable workbook and chart slides through the same owner
     };
     const id = `tool-${format}`;
     const output = await backend.tool("create", input, id);
-    expect(output.isError).not.toBe(true);
+    expect(output.isError, JSON.stringify(output)).not.toBe(true);
     const native = output.structuredContent.value;
     expect(native.format).toBe(format);
     const read = await backend.invoke(METHODS.read, { id: native.documentId });
