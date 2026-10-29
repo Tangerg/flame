@@ -66,6 +66,11 @@ function ownedInput(
   return { ...input, context };
 }
 
+function readingHost(root: HTMLElement): HTMLElement | null {
+  if (!root.isConnected || root.closest('[hidden], [inert], [aria-hidden="true"]')) return null;
+  return root.parentElement?.closest<HTMLElement>("[tabindex]") ?? null;
+}
+
 export function NativeComponentMount({ acquire, wrap, report, ...input }: Props) {
   const parent = useCurrentUse();
   const visible = useContentVisible();
@@ -85,6 +90,19 @@ export function NativeComponentMount({ acquire, wrap, report, ...input }: Props)
     latest.current = input;
     if (!visible) focused.current = null;
   });
+  useLayoutEffect(() => {
+    if (!visible) return;
+    const root = container.current!;
+    const signal = input.context.signal;
+    // Context retirement removes the reader without a React render error.
+    const retire = () => {
+      if (root.contains(root.ownerDocument.activeElement)) {
+        readingHost(root)?.focus({ preventScroll: true });
+      }
+    };
+    signal.addEventListener("abort", retire, { once: true });
+    return () => signal.removeEventListener("abort", retire);
+  }, [input.context.signal, visible]);
   useLayoutEffect(() => {
     const root = container.current!;
     // An earlier inner-root update must not leave a stale recovery target.
@@ -107,11 +125,10 @@ export function NativeComponentMount({ acquire, wrap, report, ...input }: Props)
       if (
         source &&
         !source.isConnected &&
-        root?.isConnected &&
-        !root.closest('[hidden], [inert], [aria-hidden="true"]') &&
+        root &&
         root.ownerDocument.activeElement === root.ownerDocument.body
       ) {
-        root.parentElement?.closest<HTMLElement>("[tabindex]")?.focus({ preventScroll: true });
+        readingHost(root)?.focus({ preventScroll: true });
       }
       setFailure({ error });
     };

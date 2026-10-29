@@ -28,9 +28,10 @@ import { definePlugin, type ContributionLifetime } from "@/extensions/definePlug
 import { startKernel, stopKernel } from "@/extensions/bootstrap";
 import { captureClientTelemetry } from "@/lib/observability/clientTelemetry";
 import { ComponentModules } from "@/features/plugins/adapters/componentModules";
-import { ComponentBoundary } from "@/features/plugins/ui/InstalledComponent";
+import { ComponentBoundary, InstalledComponent } from "@/features/plugins/ui/InstalledComponent";
 import { createTestClient } from "@/test/renderClient";
 import { ContentVisibility } from "@flame/ui";
+import { RuntimeConnectionGeneration } from "@/features/connection/public/services";
 
 const component: PluginClientComponent = {
   id: "panel",
@@ -507,6 +508,112 @@ it("retires focus when an inner update already removed the control", async () =>
 
     await screen.findByText("Recorded source");
     expect(document.activeElement).toBe(document.body);
+    expect(f.acquireComponent).toHaveBeenCalledOnce();
+  } finally {
+    await client.dispose();
+  }
+});
+
+it.each([
+  "owned",
+  "outside",
+  "blurred",
+  "hidden",
+  "inert",
+  "aria-hidden",
+  "visibility",
+  "no-host",
+  "unmount",
+  "replacement",
+  "fallback",
+])("keeps native resource retirement focus with its current owner through %s", async (mode) => {
+  const f = fixture(() => <button>Read captured result</button>);
+  const Native = (await f.load()).component;
+  const client = createTestClient();
+  const resources = new AbortController();
+  const replacement = new AbortController();
+  function RecordedAction() {
+    const action = useRef<HTMLButtonElement>(null);
+    useLayoutEffect(() => action.current?.focus(), []);
+    return <button ref={action}>Recorded result action</button>;
+  }
+  const sources = {
+    entry: Native,
+    component: f.context.component,
+    generation: RuntimeConnectionGeneration.forProcess("captured-reader"),
+    compose: () => null,
+    saveFile: f.context.saveFile,
+    runtime: f.context.runtime,
+    binding: undefined,
+    lifetime: scope,
+    fallback: (
+      <>
+        <p>Recorded source remains available</p>
+        {mode === "fallback" && <RecordedAction />}
+      </>
+    ),
+  };
+  const scene = (retired: boolean) => (
+    <>
+      <input aria-label="Later draft" defaultValue="Continue reading — 保留" />
+      <ContentVisibility visible={mode !== "visibility" || !retired}>
+        <div
+          role="group"
+          aria-label="Captured result"
+          tabIndex={mode === "no-host" ? undefined : -1}
+          hidden={mode === "hidden" && retired}
+          inert={mode === "inert" && retired}
+          aria-hidden={mode === "aria-hidden" && retired ? true : undefined}
+        >
+          {(mode !== "unmount" || !retired) && (
+            <InstalledComponent
+              scope="installation"
+              {...sources}
+              resources={mode === "replacement" && retired ? replacement.signal : resources.signal}
+            />
+          )}
+        </div>
+      </ContentVisibility>
+    </>
+  );
+  try {
+    const mounted = client.render(scene(false));
+    const host = screen.getByRole("group", { name: "Captured result" });
+    const draft = screen.getByRole("textbox", { name: "Later draft" }) as HTMLInputElement;
+    const reader = await screen.findByRole("button", { name: "Read captured result" });
+    reader.focus();
+    draft.setSelectionRange(8, 15);
+    if (mode === "outside") draft.focus();
+    if (mode === "blurred") reader.blur();
+    mounted.rerender(scene(true));
+
+    await act(() => resources.abort());
+
+    const remainsMounted = mode === "replacement";
+    const unavailable = !remainsMounted && mode !== "unmount";
+    if (unavailable) await screen.findByText("Recorded source remains available");
+    expect(reader.isConnected).toBe(remainsMounted);
+    expect(screen.queryByRole("alert", { hidden: true })?.textContent ?? null).toBe(
+      unavailable ? "The plugin is unavailable." : null,
+    );
+    const expected =
+      mode === "owned"
+        ? host
+        : mode === "outside"
+          ? draft
+          : mode === "fallback"
+            ? screen.getByRole("button", { name: "Recorded result action" })
+            : remainsMounted
+              ? reader
+              : document.body;
+    expect(document.activeElement).toBe(expected);
+    if (unavailable) mounted.rerender(scene(false));
+    expect(document.activeElement).toBe(expected);
+    await waitFor(() =>
+      expect(f.proofs.some((proof) => proof.scopeKind === "use")).toBe(!remainsMounted),
+    );
+    expect(draft.value).toBe("Continue reading — 保留");
+    expect([draft.selectionStart, draft.selectionEnd]).toEqual([8, 15]);
     expect(f.acquireComponent).toHaveBeenCalledOnce();
   } finally {
     await client.dispose();

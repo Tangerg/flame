@@ -85,6 +85,9 @@ its existing reading host before fallback appears. Later outside focus, explicit
 blur, hidden content and ordinary unmount retain their own navigation. This
 handoff belongs to the native DOM mount, which retires stale focus records when
 an earlier inner-root update removes their node. Runtime cleanup remains separate.
+The same mount hands current reader focus to that host before its upstream
+context retires. Live context replacement and ordinary unmount retain their
+existing navigation, and a fallback's own focus takes precedence after mounting.
 
 Package configuration keeps local validation feedback with the open edit. It
 formats syntax, object-shape and request-field errors as correction instructions

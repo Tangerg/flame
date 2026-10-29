@@ -16361,6 +16361,115 @@ active; the native reverse-Tab finding remains separate. Next inspect failures
 during an actual reader input/context update and the return from error details,
 using current evidence before extending the repair.
 
+### Reader continuity through resource retirement (2026-10-30)
+
+The next native comparison distinguishes an outer input update from resource
+retirement. Current published input-update failure already retains Result focus
+through the separate-root error callback. Resource retirement instead changes
+`RenderingInstance` from its mounted entry to captured source and unavailable
+feedback. Original Wails preserves all 24 README source lines, but focus falls to
+HTML content; the next Tab reaches Collapse right workspace. That store-driven
+child replacement does not update the enclosing Tool/File focus snapshot.
+
+`src/features/plugins/adapters/NativeComponentMount.tsx:98` now handles upstream
+context retirement while its DOM still owns focus. A scoped layout subscription
+hands that focus to the existing reading host before the context removes the
+reader. It detaches for hidden content, live context replacement and normal
+unmount. Later outside focus, explicit blur and a fallback's own mounted focus
+retain their destinations. The local `readingHost` function shares existing-host,
+connected and hidden/inert eligibility with render-failure recovery. It adds no
+new destination, wrapper, global listener, timer, business state or dependency.
+Context cancellation, captured data, actual Use close/proofs and window reload
+remain with their existing owners. The module README records this responsibility.
+
+Read-only installed Qimu React/Lifetime code and the actual ComponentInstance
+subscription establish the separate transition. Earlier ZCode error-boundary and
+Radix focus research informs bounded diagnostics and local return; neither is
+native-behavior evidence for Flame. All six better-series domains were loaded
+for this complete reading/retirement/return flow, with current React, Base UI,
+StyleX and semantic tokens retained.
+
+| Domain        | Evidence and result                                                                                                     |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Accessibility | Real resource cancellation, owned/outside focus, selection, blur, hidden/inert, replacement, fallback and unmount pass. |
+| Layout        | Native combined workspace, full-width material, selected-row return and window zoom/restore retain task context.        |
+| Writing       | Existing localized unavailable/render-error copy, captured identity and diagnostic source remain accurate.              |
+| Typography    | EN 14px and ZH 18px/200% keep complete source available; File End reaches line 24 and wheel returns to earlier lines.   |
+| Colors        | Existing Orange/light and Blue/dark reading rings remain visible; no changed color or new contrast measurement.         |
+| UI            | Keyboard/pointer retirement, wrap/Arguments, diagnostic open/close, hidden reveal and continued drafts pass.            |
+
+| Severity         | Domain        | Location                                                     | Before                                    | After                                               | Why                                                            |
+| ---------------- | ------------- | ------------------------------------------------------------ | ----------------------------------------- | --------------------------------------------------- | -------------------------------------------------------------- |
+| MEDIUM, repaired | Accessibility | `NativeComponentMount.tsx:98`, Tool/File resource retirement | Current reader removal loses local focus. | Its surviving reading host keeps keyboard position. | Continue from captured evidence without restarting navigation. |
+
+Verification:
+
+- Prepared original two-file baseline passes **30 tests**. The actual module,
+  SDK Lifetime and InstalledComponent retirement matrix against unchanged
+  product fails only owned focus (**1 fail / 27 pass**). Captured fallback,
+  unavailable feedback, later input and ordinary lifecycle behavior remain.
+- Final **4 files / 152 tests** pass across module acquisition, installed recovery,
+  Tool focus and File workspace. Coverage adds hidden/inert/aria-hidden and
+  visibility, missing host, ordinary unmount, live resource replacement,
+  fallback autofocus, retained input selection and actual Use close proofs.
+- The first final run passes tests/types but stops at conditional-expect lint.
+  Assertions are made unconditional without weakening their contracts; the
+  complete final serial sequence passes format, Web types/lint/layers/design
+  system/chrome, bundle/modules and normal `make check-native` (**43.719 s**).
+  Existing SDK/deployment linker warnings remain. A private runner initially
+  retained an old log prefix; it is corrected before successful preparation.
+
+Three actual Wails launches use a fresh private identity/home and the normal
+DesktopHost/services/menu/window composition: original EN, final EN and final
+ZH. Private presentation inputs hold a read, update mounted props or abort only
+that reader's resource signal. The real RenderingInstance, native mount, Qimu
+React root and SDK Lifetime perform the transition. Acquisition is a private
+presentation stub; real Runtime/Realm admission is covered by module tests,
+not claimed as native validation. No input script or extra observer is injected.
+All **344** final Web assets remain byte-identical across both candidate scenes
+and match after each acceptance; only native locale/window options change.
+
+EN/light/14px/Orange verifies keyboard Tool and File retirement, original JSON,
+captured Arguments, all 24 README lines and return to the selected README row.
+A delayed reading-guide retirement retains the Composer's selected `ng`; typing
+replaces it with `NG`. A hidden reading-blocks reader retires without moving
+Workspace diff focus; revealing Files keeps its tab focused. An outer-input
+render fault in another Tool retains Result focus, exposes the original error
+through keyboard Details, closes it and returns through the same tool summary.
+The draft continues exactly `Keep retirement draft while waitiNG resumed`.
+
+ZH/dark/18px/custom Blue/reduced motion at **200% native page zoom** verifies
+the same owned Tool handoff and the full-width File handoff. Keyboard End reads
+line 24 and unavailable feedback; wheel reading and native window zoom/restore
+retain the file reader. Back restores the same row. Closing a later full-width
+reader while retirement is held returns to Conversation; its later settlement
+preserves Composer focus. Actual Size restores the retained raw File and the
+continued draft `资源退役后继续阅读。保留草稿。大字号下继续。已继续。`.
+
+All **10** private read/retirement requests settle, with none pending. Successful
+reload, live plugin withdrawal/admission, VoiceOver, OS IME and other-platform
+GUIs are not newly qualified. Chinese uses native paste. No business command,
+Send, browser suite, benchmark, Claude CLI or subagent is used. Screenshots/AX
+remain in the CUA transcript, without a screenshot-file archive claim.
+
+Cleanup stops all launches/listeners, unregisters the bundle, removes **seven**
+new output/cache roots and **three** private profiles, and restores four original
+files/modes. Before and after retirement, preservation passes **6,385** qualified
+non-Markdown inputs, **34** resources, **55** read-only references, three
+instructions, 21 output baselines and five profile absences. The exact root
+/private/tmp/flame-reader-retirement-dWPW1a is absent. The memory-only archive
+round-trips **63 UTF-8 records**, **2,108,037 raw bytes**, **707,701 gzip bytes**,
+SHA-256 `81db3383906c476e49ab48120f365ed3f3a4b14b391adc943d85f90e7d541272`.
+The managed toolchain and primary parallel checkout remain preserved. The one
+interval fetch finds no incoming main commit; no redundant merge is needed.
+
+**Approve** the inspected resource-retirement flow. The broad UI goal stays
+active and the separate native reverse-Tab finding remains open. Next inspect
+nested Tool source scrolling at 200%: End advances its inner reader while the
+retained Composer can still cover its lower portion until the next Tab changes
+outer position. This observation does not yet establish a keyboard dead end;
+compare unchanged source and trace scroll ownership before changing behavior.
+
 ### Settings pane error identity
 
 Actual Wails showed the Appearance heading and selected tab beside a failure
