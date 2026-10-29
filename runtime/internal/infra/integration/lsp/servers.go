@@ -22,6 +22,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Tangerg/flame/qimu/cancellation"
 	"github.com/samber/lo"
 )
 
@@ -33,7 +34,7 @@ var ErrNoServer = errors.New("lsp: no language server for target")
 var errClosed = errors.New("lsp: servers closed")
 
 // diagnosticsSettle bounds how long a diagnostics query waits for the server
-// to (re)analyze a just-synced document before returning what it has.
+// to analyze a just-synced document before reporting a pending observation.
 const diagnosticsSettle = 3 * time.Second
 
 // Servers owns the live language-server connections for one engine. It is safe
@@ -306,8 +307,8 @@ func (s *Servers) DocumentSymbols(ctx context.Context, root, file string) ([]Sym
 
 // WorkspaceSymbols searches the whole workspace for symbols matching query,
 // across every language whose root marker is present. A failed language does
-// not discard another language's successful result; when every applicable
-// server fails, their errors are joined in configured-server order. Returns
+// not discard another language's successful result. Every failure is joined in
+// configured-server order alongside any successful symbols. Returns
 // ErrNoServer when no configured language applies to root.
 func (s *Servers) WorkspaceSymbols(ctx context.Context, root, query string) ([]Symbol, error) {
 	specs := s.table.forRoot(root)
@@ -316,10 +317,9 @@ func (s *Servers) WorkspaceSymbols(ctx context.Context, root, query string) ([]S
 	}
 	var out []Symbol
 	var errs []error
-	succeeded := false
 	for _, spec := range specs {
-		if err := ctx.Err(); err != nil {
-			return nil, err
+		if err := cancellation.Err(ctx); err != nil {
+			return nil, errors.Join(append(errs, err)...)
 		}
 		c, err := s.clientFor(ctx, root, spec)
 		if err != nil {
@@ -331,13 +331,12 @@ func (s *Servers) WorkspaceSymbols(ctx context.Context, root, query string) ([]S
 			errs = append(errs, fmt.Errorf("lsp: query workspace symbols from %s: %w", spec.Name, err))
 			continue
 		}
-		succeeded = true
 		out = append(out, syms...)
 	}
-	if !succeeded {
-		return nil, errors.Join(errs...)
+	if err := cancellation.Err(ctx); err != nil {
+		return nil, errors.Join(append(errs, err)...)
 	}
-	return out, nil
+	return out, errors.Join(errs...)
 }
 
 // Diagnostics returns the server's current problems for file, syncing it first

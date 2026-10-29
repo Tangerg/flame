@@ -135,6 +135,9 @@ func TestServers_Diagnostics(t *testing.T) {
 		d, err := servers.Diagnostics(ctx, root, "bad.go")
 		cancel()
 		if err != nil {
+			if _, pending := errors.AsType[*DiagnosticsPendingError](err); pending {
+				continue
+			}
 			t.Fatalf("Diagnostics: %v", err)
 		}
 		if len(d) > 0 {

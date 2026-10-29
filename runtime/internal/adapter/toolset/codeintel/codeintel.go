@@ -191,7 +191,10 @@ func (a *Analyzer) WorkspaceSymbols(ctx context.Context, root, query string) (st
 		return msg, nil
 	}
 	if err != nil {
-		return "", err
+		if len(syms) == 0 {
+			return "", err
+		}
+		return formatSymbols(root, syms) + "\n\nWorkspace symbol search incomplete: " + err.Error(), nil
 	}
 	return formatSymbols(root, syms), nil
 }

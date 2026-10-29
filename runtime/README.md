@@ -1267,6 +1267,12 @@ and no matches enter the result until the file passes that complete admission.
 
 Filesystem tool manifests require an explicit absolute workspace and share one pinned directory authority with Scope. Tool paths are absolute or workspace-relative; home shorthand (`~` or `~/...`) is rejected rather than consulting ambient process state. Read stamps, mutation protection, edits, patches, and in-process formatting continue to address that directory after a rename or pathname replacement. Path-based search and external formatter configuration require the original named workspace; detached searches fail explicitly, and unavailable formatting or LSP diagnostics are reported with the successful mutation. Multi-file patches are not transactions: their failed results and mutation metadata retain Scope's acknowledged partial effects.
 
+LSP diagnostics succeed only after observing the synchronized document version,
+including an explicitly empty analysis. Missing or stale pushes report pending
+with their observed version, and older pushes cannot replace newer diagnostics.
+Workspace symbol searches retain every failed language alongside successful
+symbols; partial results are explicitly marked incomplete.
+
 Formatting admits complete output up to the existing 8 MiB file bound. An external
 formatter owns its process group through cleanup, including after a successful root
 exit. Its failure retains process, capacity, cleanup and cancellation evidence;
