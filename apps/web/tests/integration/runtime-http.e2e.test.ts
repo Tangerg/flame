@@ -77,6 +77,8 @@ const compactionContextPressure = "context ".repeat(4_200);
 
 const defaultTestDeadlineMilliseconds = 5_000;
 
+const runtimeFixtureStartupMilliseconds = 60_000;
+
 const compactionCutpointDeadlineMilliseconds = 15_000;
 
 async function unusedLoopbackPort(): Promise<number> {
@@ -674,8 +676,12 @@ function writeChatCompletion(
   response.end("data: [DONE]\n\n");
 }
 
-async function waitUntilReady(baseUrl: string, processError: () => string): Promise<void> {
-  for (let attempt = 0; attempt < 200; attempt++) {
+async function waitUntilReady(
+  baseUrl: string,
+  processError: () => string,
+  readyBefore = Date.now() + 20_000,
+): Promise<void> {
+  while (Date.now() < readyBefore) {
     try {
       const response = await fetch(`${baseUrl}/v2/health/ready`);
       await response.arrayBuffer();
@@ -767,7 +773,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
     Awaited<ReturnType<FlameClient["plugins"]["install"]>>
   >();
 
-  const activateManagedOwner = async (feature: "memory" | "schedules") => {
+  const activateManagedOwner = async (feature: "memory" | "schedules", readyBefore?: number) => {
     if (!client) throw new Error("runtime client was not initialized");
     let installation = (await client.plugins.list()).data.find(
       (item) => item.selected.name === `flame.${feature}`,
@@ -793,10 +799,13 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
       origin: { type: "installation" as const, installationId: installation.id },
       name: feature,
     };
-    await awaitMCPTools(server, (tools) =>
-      tools.some(
-        (tool) => tool.name === (feature === "memory" ? "search_memory" : "list_schedules"),
-      ),
+    await awaitMCPTools(
+      server,
+      (tools) =>
+        tools.some(
+          (tool) => tool.name === (feature === "memory" ? "search_memory" : "list_schedules"),
+        ),
+      readyBefore,
     );
     return installation;
   };
@@ -804,14 +813,16 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
   const awaitMCPTools = async (
     server: Parameters<FlameClient["mcp"]["listTools"]>[0],
     ready: (tools: MCPTool[]) => boolean,
+    readyBefore = Date.now() + defaultTestDeadlineMilliseconds,
   ) => {
     if (!client) throw new Error("runtime client was not initialized");
-    const deadline = Date.now() + defaultTestDeadlineMilliseconds;
     while (!ready((await client.mcp.listTools(server)).data)) {
-      if (Date.now() >= deadline)
+      if (Date.now() >= readyBefore) {
+        const statuses = (await client.mcp.list()).data.map(({ id, status }) => ({ id, status }));
         throw new Error(
-          `MCP source did not become ready: ${JSON.stringify(server)}; ${processOutput}`,
+          `MCP source did not become ready: ${JSON.stringify(server)}; servers=${JSON.stringify(statuses)}; ${processOutput}`,
         );
+      }
       await new Promise((resolve) => setTimeout(resolve, 25));
     }
   };
@@ -845,7 +856,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
     OTEL_SDK_DISABLED: "true",
   });
 
-  const startRunnerProcess = async () => {
+  const startRunnerProcess = async (readyBefore = Date.now() + defaultTestDeadlineMilliseconds) => {
     const directory = join(runtimeStore, "runner");
     const socketPath = join(directory, "control.sock");
     const child = spawn(
@@ -871,10 +882,9 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
         `runner exited before fixture shutdown (${code}, ${signal}): ${runnerOutput}`,
       );
     });
-    const deadline = Date.now() + defaultTestDeadlineMilliseconds;
     // The fixture owns this process across deliberate Host crashes. This probe
     // only orders startup; Runtime still performs the original identity handshake.
-    while (Date.now() < deadline) {
+    while (Date.now() < readyBefore) {
       const socket = createConnection(socketPath);
       try {
         await within(
@@ -886,7 +896,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
             stopped,
           ]),
           "runner control listener",
-          deadline - Date.now(),
+          readyBefore - Date.now(),
         );
         return;
       } catch (error) {
@@ -914,7 +924,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
     processRunner = undefined;
   };
 
-  const startRuntimeProcess = async () => {
+  const startRuntimeProcess = async (readyBefore?: number) => {
     const { spawn } = await import("node:child_process");
     processOutput = "";
     runtime = spawn(runtimeExecutable, [], {
@@ -928,7 +938,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
     runtime.stderr?.on("data", (chunk: Buffer) => {
       processOutput += chunk.toString();
     });
-    await waitUntilReady(baseUrl, () => processOutput);
+    await waitUntilReady(baseUrl, () => processOutput, readyBefore);
   };
 
   const stopRuntimeProcess = async () => {
@@ -1018,6 +1028,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
   };
 
   beforeAll(async () => {
+    const readyBefore = Date.now() + runtimeFixtureStartupMilliseconds;
     environmentRoot = await mkdtemp(join(tmpdir(), "flame-runtime-e2e-"));
     root = join(environmentRoot, "workspace");
     runtimeHome = join(environmentRoot, "home");
@@ -1190,14 +1201,15 @@ for await (const line of lines) {
       ]),
     ]);
 
-    await startRunnerProcess();
+    await startRunnerProcess(readyBefore);
     runtimePort = await unusedLoopbackPort();
     baseUrl = `http://127.0.0.1:${runtimePort}`;
-    await startRuntimeProcess();
+    await startRuntimeProcess(readyBefore);
     client = createRuntimeClient();
     negotiated = (await client.runtime.discover()).capabilities;
-    await awaitManagedOwners();
-  }, 60_000);
+    for (const feature of ["memory", "schedules"] as const)
+      await activateManagedOwner(feature, readyBefore);
+  }, runtimeFixtureStartupMilliseconds);
 
   beforeEach(async () => {
     if (client) negotiated = (await client.runtime.discover()).capabilities;
