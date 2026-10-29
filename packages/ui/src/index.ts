@@ -111,7 +111,13 @@ export { isImeKey } from "./keyboard";
 export { copyWholeReader, selectAllInReader } from "./reader-selection";
 export { readingUnitFor } from "./reading-unit";
 export { TaskListItem } from "./task-list-item";
-export { Callout, readCalloutMarker, type CalloutKind } from "./callout";
+export {
+  Callout,
+  CalloutLabelsProvider,
+  readCalloutMarker,
+  type CalloutKind,
+  type CalloutLabels,
+} from "./callout";
 export { ImageNotice } from "./image-notice";
 export { DiffStat } from "./diff-stat";
 export { Checkbox } from "./checkbox";

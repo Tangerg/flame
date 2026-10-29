@@ -51,7 +51,10 @@ vi.mock("@/features/notifications/public/notifications", async (importOriginal) 
   return { ...actual, notifyError: vi.fn(), notifyInfo: vi.fn() };
 });
 
-vi.mock("@/lib/i18n/index", () => ({ t: (key: string) => key }));
+vi.mock("@/lib/i18n/index", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/i18n/index")>()),
+  t: (key: string) => key,
+}));
 
 vi.mock("@/lib/rpcErrors", () => ({ describeRpcError: () => undefined }));
 

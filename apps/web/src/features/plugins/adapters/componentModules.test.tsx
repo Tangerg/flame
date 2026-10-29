@@ -364,7 +364,7 @@ it("unmounts the native root but keeps tracked component work owned until it set
   const Native = (await f.load()).component;
   const scene = render(<Native context={f.context} />);
   await screen.findByText("Working panel");
-  expect(tracked).toBe(work.promise);
+  await waitFor(() => expect(tracked).toBe(work.promise));
   scene.unmount();
   await waitFor(() => expect(unmounted).toBe(true));
   expect(context!.signal.aborted).toBe(true);
@@ -399,7 +399,7 @@ it("retains a component Use until its native file save settles", async () => {
   const Native = (await f.load()).component;
   const scene = render(<Native context={{ ...f.context, saveFile }} />);
   await screen.findByText("Saving panel");
-  expect(saving).toBe(choice.promise);
+  await waitFor(() => expect(saving).toBe(choice.promise));
   scene.unmount();
   await waitFor(() => expect(context!.signal.aborted).toBe(true));
   expect(() => context!.saveFile(file)).toThrow(context!.signal.reason);

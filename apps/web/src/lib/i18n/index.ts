@@ -26,6 +26,7 @@ void i18next.use(initReactI18next).init({
   resources: { en: { translation: en } },
   lng: initial,
   fallbackLng: "en",
+  react: { bindI18nStore: "added removed" },
   keySeparator: false,
   nsSeparator: false,
   interpolation: { escapeValue: false },

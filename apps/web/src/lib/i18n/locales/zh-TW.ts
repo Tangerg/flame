@@ -1,4 +1,9 @@
 export const zhTW: Record<string, string> = {
+  "callout.note": "說明",
+  "callout.tip": "提示",
+  "callout.important": "重要",
+  "callout.warning": "警告",
+  "callout.caution": "注意",
   "packages.installTitle": "安裝外掛",
   "packages.installedTitle": "已安裝的外掛",
   "packages.refreshError.title": "無法重新整理已安裝的外掛",

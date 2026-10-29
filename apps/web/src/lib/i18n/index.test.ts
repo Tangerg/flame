@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { activeLocale, setLocale } from "@/lib/i18n/index";
+import { createElement } from "react";
+import { act, render, screen } from "@testing-library/react";
+import { activeLocale, mountLocaleBundle, setLocale, useT } from "@/lib/i18n/index";
 afterEach(async () => {
   setLocale("en");
   await Promise.resolve();
@@ -33,5 +35,32 @@ describe("locale selection identity", () => {
     await Promise.resolve();
 
     expect(activeLocale()).toBe("fixture-locale-without-a-bundle");
+  });
+
+  it("refreshes mounted text when its requested dictionary arrives or retires", async () => {
+    function Label() {
+      const t = useT();
+      return createElement("p", null, t("callout.note"));
+    }
+    setLocale("fr-x-late");
+    const view = render(createElement(Label));
+    let remove: (() => void) | undefined;
+    try {
+      expect(screen.getByText("Note")).toBeTruthy();
+      await act(async () => {
+        remove = mountLocaleBundle("fr-x-late", { "callout.note": "Deferred host label" });
+      });
+      expect(screen.getByText("Deferred host label")).toBeTruthy();
+      expect(activeLocale()).toBe("fr-x-late");
+      await act(async () => {
+        remove!();
+        remove = undefined;
+      });
+      expect(screen.getByText("Note")).toBeTruthy();
+      expect(activeLocale()).toBe("fr-x-late");
+    } finally {
+      view.unmount();
+      remove?.();
+    }
   });
 });

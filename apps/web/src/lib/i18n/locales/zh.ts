@@ -1,4 +1,9 @@
 export const zh: Record<string, string> = {
+  "callout.note": "说明",
+  "callout.tip": "提示",
+  "callout.important": "重要",
+  "callout.warning": "警告",
+  "callout.caution": "注意",
   "packages.installTitle": "安装插件",
   "packages.installedTitle": "已安装的插件",
   "packages.refreshError.title": "无法刷新已安装的插件",

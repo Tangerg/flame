@@ -1,4 +1,9 @@
 export const ja: Record<string, string> = {
+  "callout.note": "注記",
+  "callout.tip": "ヒント",
+  "callout.important": "重要",
+  "callout.warning": "警告",
+  "callout.caution": "注意",
   "packages.installTitle": "プラグインをインストール",
   "packages.installedTitle": "インストール済みパッケージ",
   "packages.refreshError.title": "インストール済みパッケージを更新できませんでした",

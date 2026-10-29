@@ -6,6 +6,11 @@ semantics; Web owns inputs, view projections, navigation and presentation.
 The [native host](../desktop/README.md) supplies macOS capabilities without owning
 another UI application.
 
+Shared Callouts receive their kind titles from the application locale through
+`CalloutLabelsProvider` at window and installed-component roots. The i18n React
+binding observes dictionary additions and removals, so lazy activation and locale
+retirement update mounted readers without another label store.
+
 Image previews and exports share one inline-image contract. Export decodes the
 image in an inert image context and rasterizes it as PNG before calling the host's
 file-save boundary. SVG source never crosses that boundary as executable material;

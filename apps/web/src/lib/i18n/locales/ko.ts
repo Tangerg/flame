@@ -1,4 +1,9 @@
 export const ko: Record<string, string> = {
+  "callout.note": "참고",
+  "callout.tip": "팁",
+  "callout.important": "중요",
+  "callout.warning": "경고",
+  "callout.caution": "주의",
   "packages.installTitle": "플러그인 설치",
   "packages.installedTitle": "설치된 패키지",
   "packages.refreshError.title": "설치된 패키지를 새로 고칠 수 없습니다",

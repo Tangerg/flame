@@ -1,5 +1,6 @@
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { ApplicationCalloutLabels } from "@/app/calloutLabels";
 import { afterEach, beforeEach, expect, it, onTestFinished, vi } from "vitest";
 import {
   type CapturedToolResult,
@@ -1141,7 +1142,9 @@ it.each([
 
 it("renders the recorded first frame on the server without component context I/O", () => {
   const html = renderToStaticMarkup(
-    <GenUIResult context={capturedContext(JSON.stringify(GENUI_REPORT))} />,
+    <ApplicationCalloutLabels>
+      <GenUIResult context={capturedContext(JSON.stringify(GENUI_REPORT))} />
+    </ApplicationCalloutLabels>,
   );
   expect(html).toContain("Agent plugin delivery review");
   expect(html).toContain("9007199254740993");

@@ -7,6 +7,12 @@ without its own callable contribution; `bindOperations` refuses such a context.
 Static content uses ordinary Hooks and shared UI controls without a backend. The
 SDK exposes no application alias, private state store or ambient service lookup.
 
+Hosts render shared `Callout` controls under `CalloutLabelsProvider` from
+`@flame/ui`, supplying their own complete localized `CalloutLabels` record. The
+shared control owns kinds and icons; the host owns visible titles and locale
+changes. Rebuild hosts using Callouts with this required label contract; there
+is no English-title fallback inside the component.
+
 ## Consumer-owned component composition
 
 An installed component can call `context.compose({ contract, target, attributes,

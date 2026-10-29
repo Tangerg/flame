@@ -1,4 +1,5 @@
 import { IMAGE_FILENAME_STEM } from "@/app/product";
+import { ApplicationCalloutLabels } from "@/app/calloutLabels";
 import { type createRuntimeConnection } from "@/features/connection/adapters/runtimeConnection";
 import { type ClientHost } from "@/platform/host";
 import { createTheme } from "@/features/theme/adapters/theme";
@@ -134,7 +135,7 @@ export function createTestClient(
                     <ImageSaveProvider saveImage={saveImage}>
                       <NotificationProvider value={notifications.access}>
                         <InstalledPluginsProvider value={installedPlugins.access}>
-                          {children}
+                          <ApplicationCalloutLabels>{children}</ApplicationCalloutLabels>
                         </InstalledPluginsProvider>
                       </NotificationProvider>
                     </ImageSaveProvider>

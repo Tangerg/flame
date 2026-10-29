@@ -1,4 +1,33 @@
 import { expect, test } from "./test";
+
+test("mounted Callouts follow their host's locale", async ({ page }) => {
+  await page.goto("/visual/?fixture=agent&state=callouts&locale=en");
+  await page.locator("html[data-visual-ready]").waitFor();
+  const callouts = page.locator('[data-slot="callout"]');
+  const titles = callouts.locator('[data-slot="callout-title"]');
+  await expect(titles).toHaveText(["Note", "Warning"]);
+  const body = await callouts.locator("p:not([data-slot=callout-title])").allTextContents();
+  await page.evaluate(async () => {
+    const selectionModule = "/src/features/i18n/application/localeSelection.ts";
+    const pointModule = "/src/features/i18n/public/extensionPoints.ts";
+    const extensionModule = "/src/extensions/selectors/extensions.ts";
+    const { selectLocale }: typeof import("@/features/i18n/application/localeSelection") =
+      await import(selectionModule);
+    const { LOCALE }: typeof import("@/features/i18n/public/extensionPoints") = await import(
+      pointModule
+    );
+    const { lookupExtensionByKey }: typeof import("@/extensions/selectors/extensions") =
+      await import(extensionModule);
+    const locale = lookupExtensionByKey(LOCALE, "zh");
+    if (!locale) throw new Error("Chinese locale is not registered");
+    await selectLocale(locale);
+  });
+  await expect(titles).toHaveText(["说明", "警告"]);
+  expect(await callouts.locator("p:not([data-slot=callout-title])").allTextContents()).toEqual(
+    body,
+  );
+});
+
 test("callout titles keep their icons on the same line and inherit the theme color", async ({
   page,
 }) => {

@@ -66,6 +66,13 @@ percentage from the same `value` and `max`. The default maximum remains 100.
 The host supplies the locale and the meaning of the progress; the component owns
 neither an elapsed-time estimate nor an execution state.
 
+`Callout` owns its closed kinds, marker parser, icon mapping and geometry. Every
+host supplies the visible kind titles through `CalloutLabelsProvider` with a
+complete `CalloutLabels` record. Changing the host labels updates mounted
+Callouts. The component has no built-in English titles; a missing provider or
+empty label is an explicit contract error. Standalone and component-SDK hosts
+must wrap their roots in this provider when using Callouts.
+
 ```tsx
 import { Button, IconButton, FontScaleProvider } from "@flame/ui";
 import { Brain } from "@flame/icons/react";
@@ -334,8 +341,8 @@ Prose color comes only from the host's accent roles: headings and inline code us
 `--color-accent-line`; body and strong text keep the neutral ink. Panel titles use
 the same heading role.
 `Callout` owns the GitHub alert presentation for every Markdown adapter: the
-marker grammar (`readCalloutMarker`), the natural-case title and icon per kind,
-and each kind's title and icon ink. A callout stays on the surrounding reading
+marker grammar (`readCalloutMarker`), the icon per kind and the host-supplied
+title's layout and ink. A callout stays on the surrounding reading
 plane without its own fill, rule or corners: its content keeps the paragraph
 reading edge and the shared block rhythm. `ImageNotice` is the one inert image
 description: an alternative text and a muted detail, used for unavailable

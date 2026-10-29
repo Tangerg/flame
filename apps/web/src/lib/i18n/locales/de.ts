@@ -1,4 +1,9 @@
 export const de: Record<string, string> = {
+  "callout.note": "Hinweis",
+  "callout.tip": "Tipp",
+  "callout.important": "Wichtig",
+  "callout.warning": "Warnung",
+  "callout.caution": "Vorsicht",
   "packages.installTitle": "Plugin installieren",
   "packages.installedTitle": "Installierte Pakete",
   "packages.refreshError.title": "Installierte Pakete konnten nicht aktualisiert werden",

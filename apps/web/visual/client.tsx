@@ -1,4 +1,5 @@
 import { IMAGE_FILENAME_STEM } from "@/app/product";
+import { ApplicationCalloutLabels } from "@/app/calloutLabels";
 import { createImageExport } from "@/foundation/imageExport";
 import { type ReactNode } from "react";
 import { type FlameClient } from "@flame/runtime-client";
@@ -139,7 +140,7 @@ export function createVisualClient(runtimeClient: () => FlameClient) {
                   <ImageSaveProvider saveImage={saveImage}>
                     <NotificationProvider value={notifications.access}>
                       <InstalledPluginsProvider value={installedPlugins.access}>
-                        {children}
+                        <ApplicationCalloutLabels>{children}</ApplicationCalloutLabels>
                       </InstalledPluginsProvider>
                     </NotificationProvider>
                   </ImageSaveProvider>
