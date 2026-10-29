@@ -73,6 +73,19 @@ Independent implementations import that pinned contract instead of regenerating
 it from their own module names. Go definition names inside Schema are opaque
 contract data; structural similarity never substitutes for exact identity.
 
+`modelprovider` publishes `flame.model-provider.v1` for an installed model
+adapter. Provider profiles own authentication, endpoint and catalog facts. Open
+captures one immutable client shared by ordinary chat, its actual optional
+streaming and complete-request counter, or embedding execution. Handles and
+original command receipts survive backend restart. Closing fences future work
+and joins accepted exchanges. Unknown receipts never authorize redispatch.
+Runtime retains exact selection, credentials, admission, endpoint evidence,
+accounting and recovery. Connection snapshots are private backend inputs, with
+credential-safe formatting. Chat uses complete native Scope values. Embedding
+retains Scope's complete encoded envelopes and its strict native codec, which
+does not publish a derivable JSON schema; it is never reduced to vectors or
+reconstructed from usage projections.
+
 `qimumcp.Binding.ValidateInput(ctx, input)` checks the exact backend's complete structural
 contract without a command identity or business dispatch. Schema cannot express
 every Go decoder constraint, including integer token spelling and custom JSON

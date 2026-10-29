@@ -14,6 +14,7 @@ including in tests and development commands.
 | `plugin/memory`                                                                        | Published Memory consumer contract                                    |
 | `plugin/skilllearning`                                                                 | Skill learning advice and bounded call-scoped source/model contracts  |
 | `plugin/codeintel`                                                                     | Versioned source transformations and diagnostic consumer contract     |
+| `plugin/modelprovider`                                                                 | Installed chat, token counting, model facts and embedding adapters    |
 | `plugin/sqlite`                                                                        | Atomic plugin mutations and durable receipts                          |
 | `model`                                                                                | Provider/model selection, generation values and token estimates       |
 | `model/catalog`                                                                        | Translation of Scope's released model catalog                         |
