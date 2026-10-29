@@ -10432,7 +10432,18 @@ are retired again. Incoming file-save/Deliverables behavior is not requalified b
 this batch's earlier native receipts; those retain their recorded input scope.
 The final merge inventory contains **6,376** non-Markdown inputs and **34**
 resources, with the incoming development-instruction change explicitly retained.
-Evidence retirement and remote publication follow in this batch's receipt.
+Implementation `a2cf36f7c36730908352176d337b9a71e72a1a40` and the merge/test-host
+integration are verified on remote main at
+`23f40a37d70a5f6c13a55f90ec291fb67272ffe7`, with zero divergence and a clean owned
+checkout. The exact root `/private/tmp/flame-trajectory-exact-YuFiqg` is absent
+after evidence retirement; independent post-retirement preservation checks pass
+for the final inventory and all output/profile/original/reference baselines.
+The memory-only archive round-trips **99 UTF-8 records**, **20,941,405 raw bytes**
+and **2,741,380 gzip bytes**, SHA-256
+`78b94f3fee66786bbb8701d0fd79590bdebabac1976e920f69fbf46c3b0016a6`.
+Native screenshots and the observer-free AX task observations remain in the CUA
+transcript; no screenshot-file archive is claimed. This handoff-only receipt
+uses the same normal publication path and changes no qualified product source.
 Continue with fresh content/Dock task observations; the continuous goal stays active.
 
 ## Shortcut recording and activation
