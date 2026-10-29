@@ -1158,6 +1158,11 @@ Only the accepted atomic barrier transaction advances all live reducers, before
 publishing any of its events. Refusal or cancellation retains the previously
 committed model/tool starts so terminal settlement can close them completely.
 
+A committed waiting Run has no active Segment. Its Run-tree owner retains the
+join and admission through parked maintenance; cancellation during that boundary
+returns `session_busy` and can be retried after the owner releases it. A live
+Running Run must still match its exact active Segment.
+
 Manual and cron firings pass only their captured Run request into the scheduled Run
 entry point. That request owns instructions, model selection, title, workspace and stable
 Session/Run identities; the launcher cannot author parallel overrides. An omitted workspace

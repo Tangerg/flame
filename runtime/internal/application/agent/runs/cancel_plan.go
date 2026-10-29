@@ -210,7 +210,7 @@ func (c *Coordinator) resolveCancellationOwner(
 				),
 			)
 		}
-		if err := validateCancellationLiveRoot(live, root); err != nil {
+		if err := live.owner.admitCancellation(root, live.record); err != nil {
 			return ExecutorRef{}, nil, c.classifyCancellationOwnerDrift(
 				ctx, targetRunID, root.State(), err,
 			)
@@ -247,11 +247,7 @@ func (c *Coordinator) resolveCancellationOwner(
 					),
 				)
 			}
-			if err := validateCancellationLiveRoot(live, root); err != nil {
-				return ExecutorRef{}, nil, c.classifyCancellationOwnerDrift(
-					ctx, targetRunID, root.State(), err,
-				)
-			}
+
 			if live.record.ExecutorID != pending.ExecutorID {
 				return ExecutorRef{}, nil, c.classifyCancellationOwnerDrift(
 					ctx,
@@ -263,6 +259,11 @@ func (c *Coordinator) resolveCancellationOwner(
 						live.record.ExecutorID,
 						pending.ExecutorID,
 					),
+				)
+			}
+			if err := live.owner.admitCancellation(root, live.record); err != nil {
+				return ExecutorRef{}, nil, c.classifyCancellationOwnerDrift(
+					ctx, targetRunID, root.State(), err,
 				)
 			}
 		}
@@ -320,28 +321,6 @@ func (c *Coordinator) classifyCancellationOwnerDrift(
 		)
 	default:
 		return cause
-	}
-}
-
-func validateCancellationLiveRoot(live liveSegment, root rundomain.Run) error {
-	switch {
-	case live.record.ID != root.ID():
-		return fmt.Errorf(
-			"runs: cancellation root %q is owned by registry entry %q",
-			root.ID(),
-			live.record.ID,
-		)
-	case live.record.ExecutorID == "":
-		return fmt.Errorf("runs: cancellation root %q live owner has no executor ID", root.ID())
-	case live.record.SegmentID != root.ActiveSegmentID():
-		return fmt.Errorf(
-			"runs: cancellation root %q durable segment %q differs from live owner %q",
-			root.ID(),
-			root.ActiveSegmentID(),
-			live.record.SegmentID,
-		)
-	default:
-		return nil
 	}
 }
 
