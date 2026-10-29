@@ -322,6 +322,52 @@ it("hands focus from a removed full-width trigger to the material and back to th
 });
 
 describe("full-width material picker", () => {
+  it("retires its open query when history restores another Session's full-width material", async () => {
+    openWorkspaceView(testClient.workspace.access, "file");
+    const view = testClient.render(<ChatPanel onSend={() => true} />);
+    fireEvent.click(screen.getByRole("button", { name: "Browse panels" }));
+    const search = await screen.findByRole<HTMLInputElement>("combobox", { name: "Find a panel…" });
+    fireEvent.change(search, { target: { value: "Subagents" } });
+
+    act(() => {
+      model.sessionId = "ses_second";
+      testClient.navigation.go({ session: model.sessionId });
+      activateWorkspaceSessionScope(testClient.workspace.access, model.sessionId);
+    });
+    view.rerender(<ChatPanel onSend={() => true} />);
+
+    expect(screen.queryByRole("combobox", { name: "Find a panel…" })).toBeNull();
+    expect(testClient.navigation.get().view).toBe("file");
+    await act(async () => drainBrowserTasks());
+    expect(screen.getByRole("region", { name: "Files" }).contains(document.activeElement)).toBe(
+      true,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Browse panels" }));
+    expect(await screen.findByRole("combobox", { name: "Find a panel…" })).toHaveProperty(
+      "value",
+      "",
+    );
+  });
+
+  it("retires a closing selection before it can navigate another Session", async () => {
+    openWorkspaceView(testClient.workspace.access, "file");
+    const view = testClient.render(<ChatPanel onSend={() => true} />);
+    fireEvent.click(screen.getByRole("button", { name: "Browse panels" }));
+    await screen.findByRole("combobox", { name: "Find a panel…" });
+    fireEvent.click(screen.getByRole("option", { name: "Subagents" }));
+
+    act(() => {
+      model.sessionId = "ses_second";
+      testClient.navigation.go({ session: model.sessionId });
+      activateWorkspaceSessionScope(testClient.workspace.access, model.sessionId);
+    });
+    view.rerender(<ChatPanel onSend={() => true} />);
+    await act(async () => drainBrowserTasks());
+
+    expect(testClient.navigation.get()).toMatchObject({ session: "ses_second", view: "file" });
+    expect(screen.queryByRole("button", { name: "Back to Files" })).toBeNull();
+  });
+
   it.each([700, 1200])(
     "switches material and returns to its full-width source at %i px",
     async (width) => {

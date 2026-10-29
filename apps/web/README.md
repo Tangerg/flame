@@ -316,6 +316,8 @@ Dock. Choosing a different material preserves full-width presentation and captur
 the actual trigger through Workspace navigation's existing inspection owner.
 Back restores the retained source and its trigger; selecting the current material
 only closes the picker. Its delayed completion respects later outside focus.
+The picker lifetime follows the active Session, retiring both an open query and
+any closing selection when history restores another Session's material.
 Settings, unavailable views and the catalog retain their separate task headers.
 
 Image galleries keep the complete captured description in a named, keyboard

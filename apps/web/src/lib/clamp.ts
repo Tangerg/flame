@@ -1,5 +1,5 @@
 // A non-finite input propagates because its substitute belongs to the caller’s domain.
-export function clamp(value: number, min: number, max: number): number {
+function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
