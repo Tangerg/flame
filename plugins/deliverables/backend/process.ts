@@ -7,18 +7,6 @@ import type { ProcessPlan } from "./confinement";
 
 export class UnconfirmedProcessExit extends Error {}
 
-// Darwin's /bin/ps is setuid and cannot execute inside an inherited Seatbelt.
-// These proc_info constants and the 96-byte proc_taskinfo layout come from
-// sys/syscall.h and sys/proc_info.h; resident size is the second uint64_t.
-const residentProbe = `use strict;
-use warnings;
-my $task_info = "\\0" x 96;
-my $read = syscall(336, 2, 0 + $ARGV[0], 4, 0, $task_info, length($task_info));
-exit 3 if $read < 0 && $!{ESRCH};
-die "deliverables: proc_info failed: $!" unless $read == length($task_info);
-print unpack("x8 Q", $task_info);
-`;
-
 interface ProcessIO {
   input?: Uint8Array;
   inputBytes?: number;
@@ -46,8 +34,8 @@ function groupExists(pid: number): boolean {
 function residentBytes(pid: number): Promise<number> {
   return new Promise((resolve, reject) => {
     execFile(
-      "/usr/bin/perl",
-      ["-e", residentProbe, "--", String(pid)],
+      "/bin/ps",
+      ["-o", "rss=", "-p", String(pid)],
       {
         encoding: "utf8",
         env: { LANG: "C", LC_ALL: "C" },
@@ -55,13 +43,15 @@ function residentBytes(pid: number): Promise<number> {
         killSignal: "SIGKILL",
         maxBuffer: 1024,
       },
-      (error, stdout) => {
+      (error, stdout, stderr) => {
         if (error)
           return reject(
-            error.code === 3 ? Object.assign(error, { code: "ESRCH" }) : error,
+            error.code === 1 && stdout.trim() === "" && stderr === ""
+              ? Object.assign(error, { code: "ESRCH" })
+              : error,
           );
         const value = stdout.trim();
-        const bytes = Number(value);
+        const bytes = Number(value) * 1024;
         if (!/^\d+$/.test(value) || !Number.isSafeInteger(bytes))
           return reject(
             new Error("deliverables: invalid resident memory observation"),

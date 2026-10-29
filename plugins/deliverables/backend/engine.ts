@@ -737,7 +737,7 @@ export class Engine {
     const confinement =
       process.platform === "linux"
         ? ["/usr/bin/bwrap", "/usr/bin/prlimit"]
-        : ["/usr/bin/sandbox-exec", DARWIN_SHELL, "/usr/bin/perl"];
+        : ["/usr/bin/sandbox-exec", DARWIN_SHELL, "/bin/ps"];
     for (const path of confinement) {
       try {
         await access(path, constants.X_OK);

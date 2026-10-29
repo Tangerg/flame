@@ -145,7 +145,7 @@ describe("single-process resident memory", () => {
         queueMicrotask(() =>
           callback(
             observation === "unavailable" ? new Error("probe failed") : null,
-            observation === "invalid" ? "" : "2048\n",
+            observation === "invalid" ? "" : "2\n",
           ),
         );
         return {} as ReturnType<typeof execFile>;
@@ -162,8 +162,8 @@ describe("single-process resident memory", () => {
       expect(child.kill).toHaveBeenCalledWith("SIGKILL");
       expect(process.kill).not.toHaveBeenCalled();
       expect(execFile).toHaveBeenCalledWith(
-        "/usr/bin/perl",
-        ["-e", expect.any(String), "--", String(child.pid)],
+        "/bin/ps",
+        ["-o", "rss=", "-p", String(child.pid)],
         expect.objectContaining({ timeout: 1000, killSignal: "SIGKILL" }),
         expect.any(Function),
       );
@@ -197,9 +197,14 @@ describe("single-process resident memory", () => {
         const callback = args.at(-1) as (
           error: Error | null,
           stdout: string,
+          stderr: string,
         ) => void;
         queueMicrotask(() =>
-          callback(Object.assign(new Error("process absent"), { code: 3 }), ""),
+          callback(
+            Object.assign(new Error("process absent"), { code: 1 }),
+            "",
+            "",
+          ),
         );
         return {} as ReturnType<typeof execFile>;
       });
