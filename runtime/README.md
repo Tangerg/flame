@@ -1302,10 +1302,27 @@ stops its process group, including after a normal root exit. Ordinary nonzero
 exits remain observed data for Git's predicate and diff semantics.
 
 Checkpoint predicates accept exit codes only from admitted Git command results.
-A process failure carrying the same status remains a failed observation. Source
-index and alternate-file admission preserves cancellation and I/O failures;
-only opening an absent source permits an empty seed. Destination failures and
-source changes never become successful absence.
+A process failure carrying the same status remains a failed observation. Object
+alternate admission preserves cancellation and I/O failures; only opening an
+absent alternate file permits an empty seed.
+
+The source Git repository selects tracked and non-ignored untracked paths under
+the exact workspace, including parent/global ignores and `info/exclude`. Build
+backstops exclude only untracked paths. Git interprets its own ordinary, linked
+worktree and split indexes; Runtime never copies their bytes or flags. Each
+snapshot replaces the shadow index's admitted path set, bounded to 20,000 paths
+and 512 MiB of file material, with the per-file limit below. Object borrowing is
+storage reuse only. The `flame-source-workspace` metadata binds this ownership
+contract; former checkpoint directories are refused without conversion. Retain
+old data separately and use a fresh Runtime data directory after upgrading.
+
+Working-tree admission compares physically resolved path ranges. A destructive
+mutation excludes pending, live and maintenance Runs in either ancestor or
+descendant workspaces, and excludes another overlapping mutation. Disjoint sibling
+trees remain independent. Detached shells whose workspace ranges intersect the restore are joined before
+checkout. The same path relation fences new and resumed Run admission against
+retained mutation intents after restart; recovery refuses an inconsistent set of
+overlapping retained intents instead of choosing an order that can erase work.
 
 `sessions.rollback` with `files` or `both` restores a Run's checkpoint for that
 Session and workspace. Checkpoints archive admitted regular files and symlinks,

@@ -56,6 +56,22 @@ func ContainsPath(root, target string) (bool, error) {
 	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)), nil
 }
 
+// PathsOverlap compares physically resolved directory trees. Callers retain the
+// resolved identities so admission and recovery compare the same resources.
+func PathsOverlap(first, second string) (bool, error) {
+	if !filepath.IsAbs(first) || !filepath.IsAbs(second) {
+		return false, ErrAbsolutePathRequired
+	}
+	if !strings.EqualFold(filepath.VolumeName(first), filepath.VolumeName(second)) {
+		return false, nil
+	}
+	contains, err := ContainsPath(first, second)
+	if err != nil || contains {
+		return contains, err
+	}
+	return ContainsPath(second, first)
+}
+
 func resolve(abs string, depth int) (string, error) {
 	if depth > maxSymlinkDepth {
 		return "", errors.New("too many symbolic links")

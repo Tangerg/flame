@@ -10,11 +10,9 @@
 // that tag. The only OS dependency is the git binary, which flame already
 // requires for workspace diffs — so this is platform-agnostic.
 //
-// To avoid re-hashing a project that git already has, a fresh shadow repo SEEDS
-// itself from the real repo at cwd (see [Store.seedFrom]): it temporarily shares
-// the real object store and copies its index. Once the first boundary commits,
-// the reachable borrowed objects are packed into the shadow repo and the link is
-// removed, so completed checkpoints remain self-contained.
+// A fresh shadow may borrow the source object store while Git selects admitted
+// workspace paths. Before publishing the first boundary, it materializes every
+// reachable object so source pruning cannot invalidate completed checkpoints.
 package checkpoint
 
 import (

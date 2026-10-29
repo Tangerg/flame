@@ -56,6 +56,28 @@ func TestContainsRequiresPhysicalTargets(t *testing.T) {
 	}
 }
 
+func TestPathsOverlapUsesDirectoryComponentsSymmetrically(t *testing.T) {
+	root := t.TempDir()
+	for _, test := range []struct {
+		first, second string
+		want          bool
+	}{
+		{root, root, true},
+		{root, filepath.Join(root, "child"), true},
+		{filepath.Join(root, "a"), filepath.Join(root, "ab"), false},
+		{filepath.Join(root, "a"), filepath.Join(root, "b"), false},
+	} {
+		for _, pair := range [][2]string{{test.first, test.second}, {test.second, test.first}} {
+			if got, err := PathsOverlap(pair[0], pair[1]); err != nil || got != test.want {
+				t.Errorf("PathsOverlap(%q, %q) = %t, %v; want %t", pair[0], pair[1], got, err, test.want)
+			}
+		}
+	}
+	if _, err := PathsOverlap(root, "relative"); !errors.Is(err, ErrAbsolutePathRequired) {
+		t.Fatalf("relative scope = %v, want absolute-path refusal", err)
+	}
+}
+
 func TestRelativePathRequiresExplicitAbsoluteRoot(t *testing.T) {
 	if _, err := ResolvePath("", "relative.txt"); err == nil {
 		t.Fatal("Resolve accepted a relative path without a root")

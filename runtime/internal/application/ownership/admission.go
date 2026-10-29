@@ -6,6 +6,7 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/qimu/cancellation"
 )
@@ -166,8 +167,8 @@ func (g *Gate) AcquireRun(ctx context.Context, sessionID, cwd string) (RunAdmiss
 		return RunAdmission{}, false, nil
 	}
 	if cwd != "" {
-		if _, busy := g.treeMutations[cwd]; busy {
-			return RunAdmission{}, false, nil
+		if busy, err := g.treeMutationLocked(cwd); err != nil || busy {
+			return RunAdmission{}, false, err
 		}
 	}
 	admission := &runAdmissionLease{gate: g}
@@ -177,7 +178,7 @@ func (g *Gate) AcquireRun(ctx context.Context, sessionID, cwd string) (RunAdmiss
 
 // BeginMaintenance converts a live run into a maintenance reservation. Both
 // its session and working tree remain unavailable until Release returns, so a
-// checkpoint snapshot cannot race a destructive mutation of the same tree.
+// checkpoint snapshot cannot race a destructive mutation of an overlapping tree.
 func (g *Gate) BeginMaintenance(runID string) (release func(), ok bool) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -201,7 +202,7 @@ func (g *Gate) BeginMaintenance(runID string) (release func(), ok bool) {
 
 // AcquireWorkingTreeMutation reserves exclusive access for a destructive
 // operation such as a checkpoint restore. It rejects a run while it is pending,
-// live, or executing synchronous terminal maintenance on that working tree.
+// live, or executing synchronous terminal maintenance in an overlapping tree.
 func (g *Gate) AcquireWorkingTreeMutation(cwd string) (release func(), ok bool, err error) {
 	if cwd == "" {
 		return func() {}, true, nil
@@ -212,8 +213,11 @@ func (g *Gate) AcquireWorkingTreeMutation(cwd string) (release func(), ok bool, 
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	if _, busy := g.treeMutations[cwd]; busy || g.treeReservedLocked(cwd) {
-		return nil, false, nil
+	if busy, err := g.treeMutationLocked(cwd); err != nil || busy {
+		return nil, false, err
+	}
+	if busy, err := g.treeReservedLocked(cwd); err != nil || busy {
+		return nil, false, err
 	}
 	g.treeMutations[cwd] = struct{}{}
 	return g.releaseTreeMutation(cwd), true, nil
@@ -241,25 +245,15 @@ func (g *Gate) activeSessionsLocked(yield func(string) bool) {
 			return
 		}
 	}
-	for _, pending := range g.pending {
-		if !yield(pending.sessionID) {
-			return
-		}
-	}
-	for _, run := range g.runs {
+	for run := range g.reservedRunsLocked {
 		if !yield(run.sessionID) {
-			return
-		}
-	}
-	for reservation := range g.maintenance {
-		if !yield(reservation.run.sessionID) {
 			return
 		}
 	}
 }
 
 // WaitRunStartable blocks until sessionID has no pending, live, maintenance, or
-// session-only admission and cwd has no destructive working-tree mutation. It
+// session-only admission and cwd overlaps no destructive working-tree mutation. It
 // is an observation boundary, not a reservation: callers must still acquire
 // their own Run admission after it returns and may wait again if another owner
 // wins that race.
@@ -283,7 +277,11 @@ func (g *Gate) WaitRunStartable(ctx context.Context, sessionID, cwd string) erro
 			g.mu.Unlock()
 			return err
 		}
-		_, treeMutation := g.treeMutations[cwd]
+		treeMutation, err := g.treeMutationLocked(cwd)
+		if err != nil {
+			g.mu.Unlock()
+			return err
+		}
 		if !g.activeSessionLocked(sessionID) && (cwd == "" || !treeMutation) {
 			g.mu.Unlock()
 			return nil
@@ -330,25 +328,46 @@ func (g *Gate) activeSessionLocked(sessionID string) bool {
 	return false
 }
 
-// treeReservedLocked reports whether a pending, live, or maintenance Run holds
-// cwd.
-func (g *Gate) treeReservedLocked(cwd string) bool {
+func (g *Gate) reservedRunsLocked(yield func(reservedRun) bool) {
 	for _, run := range g.pending {
-		if run.cwd == cwd {
-			return true
+		if !yield(run) {
+			return
 		}
 	}
 	for _, run := range g.runs {
-		if run.cwd == cwd {
-			return true
+		if !yield(run) {
+			return
 		}
 	}
 	for reservation := range g.maintenance {
-		if reservation.run.cwd == cwd {
-			return true
+		if !yield(reservation.run) {
+			return
 		}
 	}
-	return false
+}
+
+func (g *Gate) treeMutationLocked(cwd string) (bool, error) {
+	if cwd == "" {
+		return false, nil
+	}
+	for tree := range g.treeMutations {
+		if overlaps, err := filesystem.PathsOverlap(tree, cwd); err != nil || overlaps {
+			return overlaps, err
+		}
+	}
+	return false, nil
+}
+
+func (g *Gate) treeReservedLocked(cwd string) (bool, error) {
+	for run := range g.reservedRunsLocked {
+		if run.cwd == "" {
+			continue
+		}
+		if overlaps, err := filesystem.PathsOverlap(run.cwd, cwd); err != nil || overlaps {
+			return overlaps, err
+		}
+	}
+	return false, nil
 }
 
 func (g *Gate) addClaimLocked(sessionID string, kind sessionClaimKind) func() {

@@ -24,9 +24,8 @@ const commonExcludes = "node_modules/\n.venv/\nvenv/\n__pycache__/\ndist/\nbuild
 const (
 	maxSourceAlternatesBytes  = 64 << 10
 	maxSourceAlternates       = 256
-	maxSourceIndexBytes       = 64 << 20
 	maxWorkspaceIdentityBytes = 64 << 10
-	workspaceIdentityFile     = "flame-workspace"
+	workspaceIdentityFile     = "flame-source-workspace"
 )
 
 // ensureRepo lazily initializes the session's shadow repo (idempotent).
@@ -130,17 +129,8 @@ func publishRepo(stagingDir, dst string) error {
 	return nil
 }
 
-// seedFrom wires a freshly-initialized shadow repo to reuse the real repo's
-// object store and index, so the first snapshot doesn't re-store the whole tree.
-// Sharing objects/info/alternates lets `git add` resolve every unchanged blob
-// through the real .git instead of writing a copy; seeding the index reuses the
-// existing hashes instead of re-hashing every file — the cost that becomes
-// significant on large checkouts.
-//
-// If cwd isn't a git repo, the shadow starts empty and the first `git add` does
-// the full work. Once a source repo has been discovered, however, the seed is
-// all-or-nothing: publishing an index without every configured object store
-// would create a repository that cannot resolve unchanged files.
+// Object borrowing never transfers the source index's path coordinates, ignore
+// policy or flags. Git selects source paths separately for each snapshot.
 func (s *Store) seedFrom(ctx context.Context, gitDir, cwd string) error {
 	repository, err := workspacegit.IsRepo(ctx, cwd)
 	if err != nil {
@@ -168,10 +158,7 @@ func (seed sourceRepositorySeed) apply() error {
 	if err != nil {
 		return err
 	}
-	if err := seed.writeAlternates(alternates); err != nil {
-		return err
-	}
-	return seed.copyIndex()
+	return seed.writeAlternates(alternates)
 }
 
 func (seed sourceRepositorySeed) sourceObjectStore() (string, bool, error) {
@@ -265,51 +252,6 @@ func (seed sourceRepositorySeed) writeAlternates(alternates []string) error {
 	return nil
 }
 
-func (seed sourceRepositorySeed) copyIndex() error {
-	sourceIndex, err := gitIn(seed.ctx, seed.cwd, "rev-parse", "--path-format=absolute", "--git-path", "index")
-	if err != nil {
-		return fmt.Errorf("checkpoint: discover source index: %w", err)
-	}
-	if err := copySourceIndex(seed.ctx, sourceIndex, filepath.Join(seed.gitDir, "index")); err != nil {
-		return fmt.Errorf("checkpoint: copy source index: %w", err)
-	}
-	return nil
-}
-
-func copySourceIndex(ctx context.Context, src, dst string) (err error) {
-	if err := cancellation.Err(ctx); err != nil {
-		return err
-	}
-	in, opened, err := filesystem.OpenFile(src, maxSourceIndexBytes)
-	// A new source repository may have no index. Only opening that source can
-	// establish its absence; destination and verification failures cannot.
-	if errors.Is(err, os.ErrNotExist) {
-		return cancellation.Err(ctx)
-	}
-	if err != nil {
-		return errors.Join(checkpointSourceError(err), cancellation.Err(ctx))
-	}
-	defer func() { err = errors.Join(err, in.Close()) }()
-	if err := cancellation.Err(ctx); err != nil {
-		return err
-	}
-	out, err := os.Create(dst)
-	if err != nil {
-		return errors.Join(err, cancellation.Err(ctx))
-	}
-	defer func() { err = errors.Join(err, out.Close()) }()
-	written, copyErr := io.CopyN(out, cancellation.Reader(ctx, in), maxSourceIndexBytes+1)
-	if copyErr == io.EOF {
-		copyErr = nil
-	}
-	var capacityErr error
-	if written > maxSourceIndexBytes {
-		capacityErr = fmt.Errorf("%w: source index exceeds %d bytes", errSnapshotTooLarge, maxSourceIndexBytes)
-	}
-	verifyErr := checkpointSourceError(filesystem.VerifyPathVersion(in, opened, src))
-	return errors.Join(copyErr, capacityErr, verifyErr, cancellation.Err(ctx))
-}
-
 func readSourceAlternates(ctx context.Context, path string) (data []byte, err error) {
 	if err := cancellation.Err(ctx); err != nil {
 		return nil, err
@@ -371,9 +313,8 @@ func repoExists(gitDir string) (bool, error) {
 }
 
 // materializeAlternates copies every object reachable from the shadow refs out
-// of borrowed object stores, then removes the alternates link. This preserves
-// the cheap source-index seed while making completed checkpoints independent of
-// future pruning or deletion of the source repository.
+// of borrowed object stores, then removes the alternates link. Completed
+// checkpoints remain independent of source object retention.
 //
 // The pending file closes the crash window around verification: if a process
 // stops after hiding alternates but before deleting the file, the next call

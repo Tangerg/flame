@@ -132,7 +132,7 @@ func TestCheckpointCandidatesRejectPathAndAggregateOverflow(t *testing.T) {
 		for index := range maxCheckpointPaths + 1 {
 			fmt.Fprintf(&output, "missing-%05d\x00", index)
 		}
-		if _, _, err := checkpointCandidates(t.Context(), t.TempDir(), []byte(output.String())); !errors.Is(err, errSnapshotTooLarge) {
+		if _, err := checkpointCandidates(t.Context(), t.TempDir(), []byte(output.String())); !errors.Is(err, errSnapshotTooLarge) {
 			t.Fatalf("checkpointCandidates() error = %v, want ErrSnapshotTooLarge", err)
 		}
 	})
@@ -157,97 +157,41 @@ func TestCheckpointCandidatesRejectPathAndAggregateOverflow(t *testing.T) {
 			output.WriteString(name)
 			output.WriteByte(0)
 		}
-		if _, _, err := checkpointCandidates(t.Context(), root, []byte(output.String())); !errors.Is(err, errSnapshotTooLarge) {
+		if _, err := checkpointCandidates(t.Context(), root, []byte(output.String())); !errors.Is(err, errSnapshotTooLarge) {
 			t.Fatalf("checkpointCandidates() error = %v, want ErrSnapshotTooLarge", err)
 		}
 	})
 }
 
 func TestCheckpointCandidateRecordsAndSeedFilesAreBounded(t *testing.T) {
-	if _, _, err := checkpointCandidates(t.Context(), t.TempDir(), []byte("unterminated")); err == nil {
+	if _, err := checkpointCandidates(t.Context(), t.TempDir(), []byte("unterminated")); err == nil {
 		t.Fatal("checkpointCandidates() accepted an unterminated Git record")
 	}
-
 	oversizedAlternates := filepath.Join(t.TempDir(), "alternates")
 	if err := os.WriteFile(oversizedAlternates, []byte(strings.Repeat("x", maxSourceAlternatesBytes+1)), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := readSourceAlternates(t.Context(), oversizedAlternates); !errors.Is(err, errSnapshotTooLarge) || !errors.Is(err, filesystem.ErrFileTooLarge) {
-		t.Fatalf("readSourceAlternates() lost its snapshot category or source cause: %v", err)
+		t.Fatalf("source alternates lost their capacity category or cause: %v", err)
 	}
-	oversizedIdentity := strings.NewReader(strings.Repeat("x", maxWorkspaceIdentityBytes+1))
-	if _, err := readWorkspaceIdentity(oversizedIdentity); !errors.Is(err, errSnapshotTooLarge) {
-		t.Fatalf("readWorkspaceIdentity() error = %v, want ErrSnapshotTooLarge", err)
+	if _, err := readWorkspaceIdentity(strings.NewReader(strings.Repeat("x", maxWorkspaceIdentityBytes+1))); !errors.Is(err, errSnapshotTooLarge) {
+		t.Fatalf("workspace identity error = %v, want snapshot capacity refusal", err)
 	}
-
-	source := filepath.Join(t.TempDir(), "index")
-	file, err := os.Create(source)
-	if err != nil {
-		t.Fatal(err)
-	}
-	truncateErr := file.Truncate(maxSourceIndexBytes + 1)
-	if err := errors.Join(truncateErr, file.Close()); err != nil {
-		t.Fatal(err)
-	}
-	if err := copySourceIndex(t.Context(), source, filepath.Join(t.TempDir(), "copy")); !errors.Is(err, errSnapshotTooLarge) || !errors.Is(err, filesystem.ErrFileTooLarge) {
-		t.Fatalf("copySourceIndex() lost its snapshot category or source cause: %v", err)
-	}
-
-	invalidSource := t.TempDir()
-	if _, err := readSourceAlternates(t.Context(), invalidSource); !errors.Is(err, filesystem.ErrNotRegular) {
-		t.Fatalf("readSourceAlternates(directory) error = %v, want fileinput.ErrNotRegular", err)
-	}
-	invalidDestination := filepath.Join(t.TempDir(), "copy")
-	if err := copySourceIndex(t.Context(), invalidSource, invalidDestination); !errors.Is(err, filesystem.ErrNotRegular) {
-		t.Fatalf("copySourceIndex(directory) error = %v, want fileinput.ErrNotRegular", err)
-	}
-	if _, err := os.Stat(invalidDestination); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("invalid copy destination stat error = %v, want os.ErrNotExist", err)
+	if _, err := readSourceAlternates(t.Context(), t.TempDir()); !errors.Is(err, filesystem.ErrNotRegular) {
+		t.Fatalf("source alternates directory error = %v, want regular-file refusal", err)
 	}
 }
 
-func TestCheckpointSourceAdmissionPreservesCancellationBeforeDestinationCreation(t *testing.T) {
+func TestCheckpointSourceAlternatesPreserveCancellationAndAbsence(t *testing.T) {
 	cause := errors.New("checkpoint source inspection retired")
 	ctx, cancel := context.WithCancelCause(t.Context())
 	cancel(cause)
-	source := filepath.Join(t.TempDir(), "index")
-	if err := os.WriteFile(source, []byte("source index"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	destination := filepath.Join(t.TempDir(), "index")
-	if err := copySourceIndex(ctx, source, destination); !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
-		t.Fatalf("source index copy error = %v, want cancellation category and owner cause", err)
-	}
-	if _, err := os.Stat(destination); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("canceled source copy created a destination: %v", err)
-	}
-	if _, err := readSourceAlternates(ctx, filepath.Join(t.TempDir(), "missing")); !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
-		t.Fatalf("source alternates read error = %v, want cancellation category and owner cause", err)
-	}
-}
-
-func TestCheckpointSourceAdmissionAllowsMissingInputAndCopiesExactIndex(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "missing")
-	destination := filepath.Join(t.TempDir(), "index")
-	if err := copySourceIndex(t.Context(), missing, destination); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := os.Stat(destination); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("missing source created a destination: %v", err)
+	if _, err := readSourceAlternates(ctx, missing); !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
+		t.Fatalf("source alternates lost cancellation category or owner cause: %v", err)
 	}
 	if data, err := readSourceAlternates(t.Context(), missing); err != nil || len(data) != 0 {
 		t.Fatalf("missing source alternates = %q, %v; want no borrowed stores", data, err)
-	}
-	source := filepath.Join(t.TempDir(), "index")
-	input := "index\x00\xff\n"
-	if err := os.WriteFile(source, []byte(input), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := copySourceIndex(t.Context(), source, destination); err != nil {
-		t.Fatal(err)
-	}
-	if got, err := os.ReadFile(destination); err != nil || string(got) != input {
-		t.Fatalf("copied source index = %q, %v; want complete source", got, err)
 	}
 }
 
@@ -320,17 +264,6 @@ func gitCmd(t *testing.T, dir string, args ...string) {
 	}
 }
 
-func TestSourceIndexCopyDoesNotConflateMissingDestinationWithMissingSource(t *testing.T) {
-	_, cwd := newTestStore(t)
-	gitCmd(t, cwd, "init", "-q")
-	write(t, cwd, "committed.txt", "source")
-	gitCmd(t, cwd, "add", ".")
-	seed := sourceRepositorySeed{ctx: t.Context(), cwd: cwd, gitDir: filepath.Join(t.TempDir(), "missing")}
-	if err := seed.copyIndex(); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("source index copy error = %v, want failed destination creation", err)
-	}
-}
-
 // TestStore_NoChangeRunReusesHeadCommit: a run that changed nothing must NOT
 // mint an empty commit — it re-tags the existing HEAD, so the commit count is
 // unchanged and both run tags resolve to the same commit. Restore still works.
@@ -366,8 +299,7 @@ func TestStore_NoChangeRunReusesHeadCommit(t *testing.T) {
 	}
 }
 
-// TestStore_MaterializesSourceRepoSeed: a source index avoids re-hashing the
-// baseline, but the completed checkpoint owns every reachable object and still
+// A completed checkpoint owns every reachable object and still
 // restores after the source object database disappears.
 func TestStore_MaterializesSourceRepoSeed(t *testing.T) {
 	s, cwd := newTestStore(t)
@@ -480,10 +412,10 @@ func TestStore_AppliesSizeLimitToSourceIndex(t *testing.T) {
 		t.Fatalf("snapshot: %v", err)
 	}
 	if _, err := s.git(ctx, s.gitDir("ses1", cwd), cwd, "cat-file", "-e", tagFor("run1")+":tracked-large.bin"); err == nil {
-		t.Fatal("baseline snapshot retained oversized file copied from source index")
+		t.Fatal("baseline snapshot retained oversized source file")
 	}
 	if _, err := s.git(ctx, s.gitDir("ses1", cwd), cwd, "cat-file", "-e", tagFor("run1")+":small.txt"); err != nil {
-		t.Fatalf("baseline snapshot lost small source-index file: %v", err)
+		t.Fatalf("baseline snapshot lost small source file: %v", err)
 	}
 
 	write(t, cwd, "tracked-large.bin", strings.Repeat("B", maxCheckpointFileSize+1))
@@ -491,12 +423,12 @@ func TestStore_AppliesSizeLimitToSourceIndex(t *testing.T) {
 		t.Fatalf("restore: %v", err)
 	}
 	if got := read(t, cwd, "tracked-large.bin"); !strings.HasPrefix(got, "B") {
-		t.Fatalf("oversized source-index file was changed by restore; got prefix %.1q", got)
+		t.Fatalf("oversized source file was changed by restore; got prefix %.1q", got)
 	}
 }
 
 // TestStore_FailedSeedDoesNotPublishRepository verifies that initialization is
-// transactional. A malformed source index fails after the staging repo has
+// transactional. Malformed object-store alternates fail after staging has
 // already been initialized, but no HEAD or partial seed becomes visible at the
 // session's final path; fixing the source allows the next attempt to start
 // cleanly and complete.
@@ -505,12 +437,12 @@ func TestStore_FailedSeedDoesNotPublishRepository(t *testing.T) {
 	ctx := context.Background()
 
 	gitCmd(t, cwd, "init", "-q")
-	sourceIndex := filepath.Join(cwd, ".git", "index")
-	if err := os.Mkdir(sourceIndex, 0o755); err != nil {
-		t.Fatalf("create malformed source index: %v", err)
+	sourceAlternates := filepath.Join(cwd, ".git", "objects", "info", "alternates")
+	if err := os.Mkdir(sourceAlternates, 0o755); err != nil {
+		t.Fatalf("create malformed source alternates: %v", err)
 	}
-	if _, err := s.ensureRepo(ctx, "ses1", cwd); err == nil || !strings.Contains(err.Error(), "source index") {
-		t.Fatalf("ensure repo error = %v, want source-index error", err)
+	if _, err := s.ensureRepo(ctx, "ses1", cwd); err == nil || !strings.Contains(err.Error(), "alternates") {
+		t.Fatalf("ensure repo error = %v, want source-alternates error", err)
 	}
 	if _, err := os.Stat(s.gitDir("ses1", cwd)); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("failed initialization published repository: %v", err)
@@ -523,8 +455,8 @@ func TestStore_FailedSeedDoesNotPublishRepository(t *testing.T) {
 		t.Fatalf("failed initialization left staging entries: %v", entries)
 	}
 
-	if err := os.Remove(sourceIndex); err != nil {
-		t.Fatalf("remove malformed source index: %v", err)
+	if err := os.Remove(sourceAlternates); err != nil {
+		t.Fatalf("remove malformed source alternates: %v", err)
 	}
 	write(t, cwd, "a.txt", "v1")
 	if err := s.Snapshot(ctx, "ses1", cwd, "run1"); err != nil {

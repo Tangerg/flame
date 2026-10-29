@@ -3,8 +3,6 @@ package checkpoint
 import (
 	"context"
 	"fmt"
-	"path/filepath"
-	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/qimu/cancellation"
@@ -25,17 +23,12 @@ func (s *Store) checkStorageBoundary(ctx context.Context, cwd string) error {
 	if err != nil {
 		return fmt.Errorf("checkpoint: resolve storage: %w", err)
 	}
-	if !strings.EqualFold(filepath.VolumeName(workspace), filepath.VolumeName(storage)) {
-		return nil
+	overlaps, err := filesystem.PathsOverlap(workspace, storage)
+	if err != nil {
+		return fmt.Errorf("checkpoint: compare workspace and storage: %w", err)
 	}
-	for _, pair := range [][2]string{{workspace, storage}, {storage, workspace}} {
-		contains, err := filesystem.ContainsPath(pair[0], pair[1])
-		if err != nil {
-			return fmt.Errorf("checkpoint: compare workspace and storage: %w", err)
-		}
-		if contains {
-			return fmt.Errorf("%w: workspace overlaps checkpoint storage", ErrUnavailable)
-		}
+	if overlaps {
+		return fmt.Errorf("%w: workspace overlaps checkpoint storage", ErrUnavailable)
 	}
 	return nil
 }

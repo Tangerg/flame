@@ -79,12 +79,8 @@ func (r *RunStore) Admit(ctx context.Context, draft rundomain.Draft) error {
 	// after admission, and the way to guarantee that is to have nothing able to
 	// change it.
 	return sqlite.RunInTx(ctx, r.db, func(ctx context.Context) error {
-		pendingWorkspaceMutation, err := r.pendingWorkspaceMutation(ctx, draft.SessionID)
-		if err != nil {
+		if err := r.requireWorkspaceAdmission(ctx, draft.SessionID); err != nil {
 			return err
-		}
-		if pendingWorkspaceMutation {
-			return rundomain.ErrSessionBusy
 		}
 		if lineage.IsChild() {
 			if err := r.validateChildPlacement(
@@ -127,27 +123,41 @@ func (r *RunStore) Admit(ctx context.Context, draft rundomain.Draft) error {
 	})
 }
 
-// pendingWorkspaceMutation reports whether a recoverable destructive mutation
-// still owns either this Session or the canonical working tree recorded on it.
+// An unfinished destructive mutation retains its physical range, including
+// through a refused live operation and across restart.
 // The check shares the admission transaction, so completing an intent and
 // admitting the next Run have one serial order across Runtime processes.
-func (r *RunStore) pendingWorkspaceMutation(ctx context.Context, sessionID string) (bool, error) {
-	var pending bool
-	if err := sqlite.Connection(ctx, r.db).QueryRowContext(ctx,
-		`SELECT EXISTS (
-			SELECT 1
-			  FROM pending_workspace_mutations AS pending
-			 WHERE pending.session_id = ?
-			    OR pending.cwd = (
-				SELECT workspace_path FROM sessions WHERE id = ?
-			    )
-		)`,
-		sessionID,
-		sessionID,
-	).Scan(&pending); err != nil {
-		return false, fmt.Errorf("sqlite: inspect pending workspace mutation: %w", err)
+func (r *RunStore) requireWorkspaceAdmission(ctx context.Context, sessionID string) error {
+	connection := sqlite.Connection(ctx, r.db)
+	var cwd string
+	if err := connection.QueryRowContext(ctx, `SELECT workspace_path FROM sessions WHERE id = ?`, sessionID).Scan(&cwd); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
+		return fmt.Errorf("sqlite: read Run workspace: %w", err)
 	}
-	return pending, nil
+	rows, err := connection.QueryContext(ctx, `SELECT session_id, cwd FROM pending_workspace_mutations`)
+	if err != nil {
+		return fmt.Errorf("sqlite: inspect pending workspace mutations: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var pending workspaceMutationRecord
+		if err := rows.Scan(&pending.SessionID, &pending.CWD); err != nil {
+			return fmt.Errorf("sqlite: read pending workspace mutation: %w", err)
+		}
+		conflicts, err := pending.conflictsWith(sessionID, cwd)
+		if err != nil {
+			return fmt.Errorf("sqlite: compare pending workspace mutation: %w", err)
+		}
+		if conflicts {
+			return rundomain.ErrSessionBusy
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("sqlite: iterate pending workspace mutations: %w", err)
+	}
+	return nil
 }
 
 // validateChildPlacement proves immutable Run-to-Run topology before inserting
@@ -330,6 +340,9 @@ func (r *RunStore) Resume(ctx context.Context, replacement rundomain.Replacement
 		return fmt.Errorf("sqlite: resume run %q: %w", next.ID(), err)
 	}
 	return sqlite.RunInTx(ctx, r.db, func(ctx context.Context) error {
+		if err := r.requireWorkspaceAdmission(ctx, expected.SessionID()); err != nil {
+			return err
+		}
 		if err := r.requireExpected(ctx, "resume", expected); err != nil {
 			return err
 		}
