@@ -165,6 +165,7 @@ export function createAgentState(
     replaceServerScope: (sessionIds) => refreshOwner.replaceServerScope(sessionIds),
     clearProblem: (sessionId) => useAgentStore.getState().clearProblem(sessionId),
     subscribeSessions: (onChange) => useAgentStore.subscribe((state) => onChange(state.sessions)),
+    subscribeRootRunSettlements: projection.subscribeRootRunSettlements,
   };
   return {
     state,

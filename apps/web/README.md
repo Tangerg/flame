@@ -69,6 +69,13 @@ retires its pending selections. Endpoint storage replacement also retires pendin
 reads; replacement at the same endpoint preserves them. Image bytes and read
 intents remain in memory; only draft text and pasted text are persisted.
 
+Root Run notifications consume settlements published after an atomic live-event
+commit, including Runs that start and finish in the same frame. Each settlement
+carries its Run and Segment identity; a parked cancellation receipt has no active
+Segment. Duplicate event folds, rejected batches and retired projection generations
+cannot publish another settlement. Cold reads and history refreshes stay quiet.
+Accepted cancellation receipts use the same committed transition projection.
+
 Accepted Composer Stop returns to the captured input without consuming its draft
 or moving its selection. Refused Stop keeps its action context; later focus and
 input replacement remain with the existing captured-focus owner. Send, Steer and

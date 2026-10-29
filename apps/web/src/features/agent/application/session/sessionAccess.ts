@@ -1,3 +1,4 @@
+import { type RootRunSettlement } from "@/features/agent/application/run/rootAttention";
 import { type AgentOpenSessions } from "@/features/agent/application/session/sessionSelectionModel";
 import { type AgentRunStartOptions } from "@/features/agent/public/runOptions";
 import { type AgentInput } from "@/features/agent/domain/input";
@@ -82,6 +83,7 @@ export interface AgentProjectionMaterial<T> {
 }
 
 export interface AgentSessionViewPort {
+  subscribeRootRunSettlements(onSettled: (settlement: RootRunSettlement) => void): () => void;
   useCurrentRootRun(): AgentRunView | null;
   useCurrentRootRunning(): boolean;
   useHasPrecedingRootRun(runId: string | null): boolean;

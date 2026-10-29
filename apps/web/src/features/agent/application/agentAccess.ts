@@ -26,7 +26,7 @@ import {
   dismissActiveSessionProblem,
   stopCurrentRootRun,
 } from "./run/runCommands";
-import { subscribeAnySessionRunning, subscribeRootRunSettlements } from "./run/rootAttention";
+import { subscribeAnySessionRunning } from "./run/rootAttention";
 import { retrySteerInput } from "./input/steering";
 import { allowMCPTool, forgetRule, forgetRules, setApprovalMode } from "./approvalPolicy";
 import { getActiveConversationMessages } from "./conversation/readModel";
@@ -57,7 +57,7 @@ export function createAgentAccess(dependencies: AgentDependencies) {
     dismissActiveSessionProblem: dismissActiveSessionProblem.bind(undefined, dependencies),
     stopCurrentRootRun: stopCurrentRootRun.bind(undefined, dependencies),
     subscribeAnySessionRunning: subscribeAnySessionRunning.bind(undefined, dependencies),
-    subscribeRootRunSettlements: subscribeRootRunSettlements.bind(undefined, dependencies),
+    subscribeRootRunSettlements: dependencies.view.subscribeRootRunSettlements,
     retrySteerInput: retrySteerInput.bind(undefined, dependencies),
     allowMCPTool: allowMCPTool.bind(undefined, dependencies),
     forgetRule: forgetRule.bind(undefined, dependencies),

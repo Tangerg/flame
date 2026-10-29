@@ -1,15 +1,15 @@
 import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
 import { type AgentRunView, type AgentSessionView } from "@/features/agent/public/sessionView";
 import { type AgentSessionViewEntry } from "@/features/agent/application/session/sessionAccess";
-import { type AgentRootAttention } from "@/features/agent/application/view/runTree";
 import {
   selectCurrentRootAttention,
-  selectCurrentRootRun,
   selectRunProblem,
 } from "@/features/agent/application/view/runTree";
 import { isAgentRunFailure } from "@/features/agent/application/view/runOutcome";
 export interface RootRunSettlement {
   sessionId: string;
+  runId: string;
+  segmentId: string | null;
   status: "needsInput" | "finished" | "error" | "canceled";
   errorMessage: string | null;
 }
@@ -51,42 +51,29 @@ export function subscribeAnySessionRunning(
   });
 }
 
-export function subscribeRootRunSettlements(
-  agentAccess: AgentDependencies,
-  onSettled: (settlement: RootRunSettlement) => void,
-): () => void {
-  const previousBySession = new Map<string, AgentRootAttention>();
-  for (const [sessionId, entry] of Object.entries(agentAccess.view.getSessions())) {
-    previousBySession.set(sessionId, selectCurrentRootAttention(entry.view));
-  }
-  return agentAccess.view.subscribeSessions((sessions) => {
-    for (const sessionId in sessions) {
-      const view = sessions[sessionId]!.view;
-      const current = selectCurrentRootAttention(view);
-      const previous = previousBySession.get(sessionId) ?? { status: "idle", runId: null };
-      if (current.runId === previous.runId && current.status === previous.status) continue;
-      previousBySession.set(sessionId, current);
-
-      const sameRunSettled =
-        previous.runId !== null &&
-        previous.runId === current.runId &&
-        (previous.status === "running" || previous.status === "waiting") &&
-        (current.status === "waiting" || current.status === "finished");
-      if (sameRunSettled) {
-        const root = selectCurrentRootRun(view);
-        onSettled({
-          sessionId,
-          status:
-            current.status === "waiting"
-              ? "needsInput"
-              : terminalSettlementStatus(root?.outcome ?? null),
-          errorMessage:
-            current.status === "finished" ? (selectRunProblem(root)?.message ?? null) : null,
-        });
-      }
-    }
-    for (const sessionId of [...previousBySession.keys()]) {
-      if (!(sessionId in sessions)) previousBySession.delete(sessionId);
-    }
-  });
+export function projectRootRunSettlement(
+  previous: AgentSessionView,
+  next: AgentSessionView,
+  runId: string,
+  segmentId: string | null,
+): RootRunSettlement | null {
+  if (previous === next) return null;
+  const before = previous.runsById[runId];
+  const run = next.runsById[runId];
+  if (
+    !before ||
+    !run ||
+    run.parentRunId !== null ||
+    before.status === run.status ||
+    before.status === "finished" ||
+    run.status === "running"
+  )
+    return null;
+  return {
+    sessionId: run.sessionId,
+    runId,
+    segmentId,
+    status: run.status === "waiting" ? "needsInput" : terminalSettlementStatus(run.outcome),
+    errorMessage: run.status === "finished" ? (selectRunProblem(run)?.message ?? null) : null,
+  };
 }

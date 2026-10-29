@@ -17,10 +17,7 @@ import {
   type AgentSessionViewEntry,
   type AgentSessionViewPort,
 } from "@/features/agent/application/session/sessionAccess";
-import {
-  subscribeAnySessionRunning,
-  subscribeRootRunSettlements,
-} from "@/features/agent/application/run/rootAttention";
+import { subscribeAnySessionRunning } from "@/features/agent/application/run/rootAttention";
 let disposePort: (() => void) | undefined;
 
 afterEach(() => {
@@ -91,17 +88,6 @@ function wire(initial: AgentSessionView) {
   };
 }
 
-const terminalCases: Array<{
-  outcome: AgentRunView["outcome"];
-  status: "finished" | "error" | "canceled";
-}> = [
-  { outcome: { type: "completed" }, status: "finished" },
-  { outcome: { type: "failed", error: { message: "Provider failed" } }, status: "error" },
-  { outcome: { type: "timedOut", error: { message: "Provider timed out" } }, status: "error" },
-  { outcome: { type: "lost", error: { message: "Runtime restarted" } }, status: "error" },
-  { outcome: { type: "canceled" }, status: "canceled" },
-];
-
 describe("root Run attention", () => {
   it("publishes the current any-running state immediately and only on change", () => {
     const publish = wire(view(root("running")));
@@ -113,46 +99,5 @@ describe("root Run attention", () => {
     expect(onChange).toHaveBeenCalledOnce();
     publish(view(root("waiting")));
     expect(onChange).toHaveBeenLastCalledWith(false);
-  });
-
-  it("reports waiting and terminal transitions for the same root without treating resume as settle", () => {
-    const publish = wire(view(root("running")));
-    const onSettled = vi.fn();
-    subscribeRootRunSettlements(testClient.agent.dependencies, onSettled);
-
-    publish(view(root("waiting")));
-    expect(onSettled).toHaveBeenLastCalledWith({
-      sessionId: "session-1",
-      status: "needsInput",
-      errorMessage: null,
-    });
-
-    publish(view(root("running")));
-    expect(onSettled).toHaveBeenCalledOnce();
-
-    publish(view(root("finished", { type: "failed", error: { message: "Provider failed" } })));
-    expect(onSettled).toHaveBeenLastCalledWith({
-      sessionId: "session-1",
-      status: "error",
-      errorMessage: "Provider failed",
-    });
-    expect(onSettled).toHaveBeenCalledTimes(2);
-  });
-
-  it.each(terminalCases)("maps $outcome.type to the $status settlement", ({ outcome, status }) => {
-    const publish = wire(view(root("running")));
-    const onSettled = vi.fn();
-    subscribeRootRunSettlements(testClient.agent.dependencies, onSettled);
-
-    publish(view(root("finished", outcome)));
-
-    expect(onSettled).toHaveBeenCalledWith({
-      sessionId: "session-1",
-      status,
-      errorMessage:
-        outcome?.type === "failed" || outcome?.type === "timedOut" || outcome?.type === "lost"
-          ? (outcome.error.message ?? null)
-          : null,
-    });
   });
 });

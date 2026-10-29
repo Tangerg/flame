@@ -14,7 +14,7 @@ export interface DelegatedRunNarrative {
 
 export type DelegatedRunNarrativesByItemId = Record<string, DelegatedRunNarrative[]>;
 
-export type AgentRootAttention =
+type AgentRootAttention =
   { status: "idle"; runId: null } | { status: AgentRunView["status"]; runId: string };
 
 function compareRuns(left: AgentRunView, right: AgentRunView): number {

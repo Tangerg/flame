@@ -7,6 +7,7 @@ prepareTestClient(() => {
   finishTestClient(() => owned.dispose());
 });
 
+import { type RunEvent, type RunRef } from "@flame/runtime-client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   announceSettlement,
@@ -70,7 +71,13 @@ describe("announceSettlement", () => {
   it("opens the session the notification is about when it is clicked", async () => {
     await announceSettlement(
       testClient.notifications.access,
-      { sessionId: "s-b", status: "needsInput", errorMessage: null },
+      {
+        sessionId: "s-b",
+        runId: "run-notify",
+        segmentId: "segment-notify",
+        status: "needsInput",
+        errorMessage: null,
+      },
       "Flame",
     );
     expect(FakeNotification.last?.title).toMatch(/needs you/i);
@@ -84,7 +91,13 @@ describe("announceSettlement", () => {
     testClient.notifications.access.systemNotifications.setState({ systemNotifications: false });
     await announceSettlement(
       testClient.notifications.access,
-      { sessionId: "s-a", status: "finished", errorMessage: null },
+      {
+        sessionId: "s-a",
+        runId: "run-notify",
+        segmentId: "segment-notify",
+        status: "finished",
+        errorMessage: null,
+      },
       "Flame",
     );
     expect(FakeNotification.last).toBeNull();
@@ -94,9 +107,67 @@ describe("announceSettlement", () => {
     FakeNotification.permission = "denied";
     await announceSettlement(
       testClient.notifications.access,
-      { sessionId: "s-a", status: "finished", errorMessage: null },
+      {
+        sessionId: "s-a",
+        runId: "run-notify",
+        segmentId: "segment-notify",
+        status: "finished",
+        errorMessage: null,
+      },
       "Flame",
     );
     expect(FakeNotification.last).toBeNull();
   });
+  it.each([false, true])(
+    "notifies a background Run after committed events (separate batches=$0)",
+    async (separateBatches) => {
+      const sent = vi.spyOn(testClient.notifications.access.notifier, "sendSystemNotification");
+      const sessionId = "notification-session";
+      const segmentId = "notification-segment";
+      const run: RunRef = {
+        id: "notification-run",
+        sessionId,
+        status: "running",
+        activeSegmentId: segmentId,
+        createdAt: "2026-06-03T00:00:00.000Z",
+        metrics: { steps: 0, activeDurationMillis: 0 },
+        protocolProfile: { interruptTypes: [], requiredFeatures: [] },
+        provider: "openai",
+        model: "gpt-5",
+      };
+      const store = testClient.agent.projection.store;
+      store.getState().ensureSession(sessionId);
+      finishTestClient(() => {
+        sent.mockRestore();
+      });
+      const event = (id: string, value: RunEvent["event"]): RunEvent => ({
+        event: value,
+        eventId: id,
+        runId: run.id,
+        segmentId,
+        timestamp: "2026-06-03T00:00:01.000Z",
+      });
+      const start = event("start", { type: "segment.started", run });
+      if (separateBatches) store.getState().applyRunEvents(sessionId, [start]);
+      const { activeSegmentId: _active, ...rest } = run;
+      const finish = event("finish", {
+        type: "segment.finished",
+        run: {
+          ...rest,
+          status: "finished",
+          outcome: { type: "completed" },
+          finishedAt: "2026-06-03T00:00:01.000Z",
+        },
+      });
+      store.getState().applyRunEvents(sessionId, separateBatches ? [finish] : [start, finish]);
+      await vi.waitFor(() =>
+        expect(sent).toHaveBeenCalledExactlyOnceWith(
+          expect.objectContaining({ target: sessionId }),
+        ),
+      );
+      expect(FakeNotification.last?.title).toMatch(/finished/i);
+      store.getState().applyRunEvents(sessionId, [finish]);
+      expect(sent).toHaveBeenCalledOnce();
+    },
+  );
 });
