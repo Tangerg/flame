@@ -1383,13 +1383,30 @@ func TestLaunchRequiresTheExactReceiptToSettleAnExpiredResume(t *testing.T) {
 			})
 			if proof {
 				host.Shows(t, "complete")
+				awaitState(t, "the original resume receipt to settle locally", func() bool {
+					store := workbenchForHost()
+					if store == nil {
+						return false
+					}
+					_, pending := store.PendingResume("ses_demo_1")
+					return !pending
+				})
 			} else {
 				host.Shows(t, "mutation replay guarantee is unavailable")
 			}
 			if attempts := runtime.resumeAttempts(); len(attempts) != 0 {
 				t.Fatalf("authoritatively settled resume was replayed: %+v", attempts)
 			}
-			reopened := workbenchForHost()
+			stop()
+			reopened, err := openTestWorkbench(t, stateDirectory)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				if err := reopened.Close(); err != nil {
+					t.Error(err)
+				}
+			})
 			durable, found := reopened.PendingResume("ses_demo_1")
 			if proof && found {
 				t.Fatalf("settled resume remains durable: %+v", durable)
@@ -1397,7 +1414,6 @@ func TestLaunchRequiresTheExactReceiptToSettleAnExpiredResume(t *testing.T) {
 			if !proof && (!found || !durable.Command.Equal(command)) {
 				t.Fatalf("another command's completed snapshot settled this resume: %+v, found %t", durable, found)
 			}
-			stop()
 		})
 	}
 }
