@@ -5,20 +5,21 @@ It consumes the independent Qimu module. It has no dependency on Runtime,
 products, first-party plugins or repository tooling,
 including in tests and development commands.
 
-| Package                                                     | Owner                                                                 |
-| ----------------------------------------------------------- | --------------------------------------------------------------------- |
-| `client`                                                    | Remote HTTP/SSE lifecycle and generated typed operations              |
-| `protocol`                                                  | Runtime wire values, complete tree admission and strict RPC envelopes |
-| `extension`                                                 | Flame invocation origins and installation/call scope policy           |
-| `plugin`                                                    | Flame model roles, tool authoring and product receipt contracts       |
-| `plugin/memory`                                             | Published Memory consumer contract                                    |
-| `plugin/sqlite`                                             | Atomic plugin mutations and durable receipts                          |
-| `model`                                                     | Provider/model selection, generation values and token estimates       |
-| `model/catalog`                                             | Translation of Scope's released model catalog                         |
-| `identity`                                                  | Shared resource identities, canonical digests and lexical constraints |
-| `filesystem`                                                | File admission, path identity, directory resolution and leases        |
-| `pagination`                                                | Page limits and bounded opaque cursors                                |
-| `capture`, `exactint`, `httpresponse`, `instant`, `sandbox` | Focused technical guarantees used across owners                       |
+| Package                                                                  | Owner                                                                 |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------- |
+| `client`                                                                 | Remote HTTP/SSE lifecycle and generated typed operations              |
+| `protocol`                                                               | Runtime wire values, complete tree admission and strict RPC envelopes |
+| `extension`                                                              | Flame invocation origins and installation/call scope policy           |
+| `plugin`                                                                 | Flame model roles, tool authoring and product receipt contracts       |
+| `plugin/memory`                                                          | Published Memory consumer contract                                    |
+| `plugin/codeintel`                                                       | Versioned source transformations and diagnostic consumer contract     |
+| `plugin/sqlite`                                                          | Atomic plugin mutations and durable receipts                          |
+| `model`                                                                  | Provider/model selection, generation values and token estimates       |
+| `model/catalog`                                                          | Translation of Scope's released model catalog                         |
+| `identity`                                                               | Shared resource identities, canonical digests and lexical constraints |
+| `filesystem`                                                             | File admission, path identity, directory resolution and leases        |
+| `pagination`                                                             | Page limits and bounded opaque cursors                                |
+| `capture`, `exactint`, `httpresponse`, `instant`, `procgroup`, `sandbox` | Focused technical guarantees used across owners                       |
 
 `cmd/flame-sdk` generates Flame model-role contracts and projects Flame backend
 policy. Runtime's `cmd/pluginpack` translates Flame declarations into Qimu releases;
