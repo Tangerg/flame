@@ -105,8 +105,9 @@ is for replacing an owned build output after the new distribution has been built
 
 See [Memory](memory/README.md) and [Schedules](schedules/README.md) for fact owners
 and lifecycle contracts, [Knowledge base](knowledgebase/README.md) for document
-publication/retrieval, and [GitHub](github/README.md) for the read-only connector and
-credential/cache boundaries. [Model router](modelrouter/README.md) owns role and
+publication/retrieval, and [GitHub](github/README.md) for connector behavior and
+credential/cache boundaries. Its [generated operation reference](github/package/io.github.tangerg.flame/contracts/API_REFERENCE.md)
+describes the published methods. [Model router](modelrouter/README.md) owns role and
 captured-envelope routing policy while core constructs and prices the model.
 [Guardrails](guardrails/README.md) owns protected phrases and refuses matching
 model-visible inputs before provider dispatch.
