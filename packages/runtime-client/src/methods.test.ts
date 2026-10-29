@@ -966,6 +966,7 @@ describe("methods factory", () => {
       idempotencyKey: "new-action-key",
       idempotencyNamespace: "idp_original",
       requestMeta: null,
+      beforeDispatch: expect.any(Function),
     });
     journal.dispose();
   });

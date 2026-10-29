@@ -12,7 +12,7 @@ import { cloneJSON, parseJSON, stringifyJSON } from "@qimu/sdk/json";
 const MAX_ENTRIES = 256;
 const ENTRY_PREFIX = "entry:";
 const FINGERPRINT_FIELD_SEPARATOR = "\u0000";
-const JOURNAL_ENTRY_FIELD_COUNT = 10;
+const JOURNAL_ENTRY_FIELD_COUNT = 11;
 const MAX_IDENTITY_LENGTH = 255;
 const FINGERPRINT_HEX_LENGTH = 32;
 const MILLISECONDS_PER_SECOND = 1_000;
@@ -57,6 +57,7 @@ export type RunCommand =
   | { operation: "steer"; params: SteerRunRequest };
 
 interface JournalEntry {
+  delivery: "reserved" | "dispatched";
   method: string;
   steerItemId: string | null;
   salt: string;
@@ -109,6 +110,8 @@ export interface DurableMutationJournal {
     requestMeta: RequestMeta | null,
   ): DurableMutationIdentity;
   authorizeDispatch(identity: DurableMutationIdentity): string;
+  markDispatched(identity: DurableMutationIdentity): void;
+  wasDispatched(identity: DurableMutationIdentity): boolean;
   lookupNamespace(identity: DurableMutationIdentity): string;
   bindSteerItem(identity: DurableMutationIdentity, userItemId: string): void;
   retain(identity: DurableMutationIdentity): void;
@@ -144,6 +147,7 @@ function validEntry(value: unknown): value is JournalEntry {
   return (
     Object.keys(value).length ===
       JOURNAL_ENTRY_FIELD_COUNT + (entry.installed === undefined ? 0 : 1) &&
+    (entry.delivery === "reserved" || entry.delivery === "dispatched") &&
     (entry.steerItemId === null ||
       (validSteerItem(entry.steerItemId) && entry.command?.operation === "steer")) &&
     validText(entry.salt, MAX_IDENTITY_LENGTH) &&
@@ -381,6 +385,7 @@ function matchesCommand(
 
 function sameEntry(left: JournalEntry, right: JournalEntry): boolean {
   return (
+    left.delivery === right.delivery &&
     left.steerItemId === right.steerItemId &&
     left.method === right.method &&
     left.salt === right.salt &&
@@ -461,6 +466,7 @@ export function openDurableMutationJournal(
     const createdAt = options.now();
     const salt = crypto.randomUUID();
     const entry: JournalEntry = {
+      delivery: "reserved",
       method,
       steerItemId: null,
       salt,
@@ -622,6 +628,16 @@ export function openDurableMutationJournal(
       validateIdentity(identity, scope);
       readReservedEntry(identity);
       return identity.entry.namespace;
+    },
+    markDispatched(identity) {
+      journal.authorizeDispatch(identity);
+      if (identity.entry.delivery === "dispatched") return;
+      persistEntry({ ...identity.entry, delivery: "dispatched" });
+      identity.entry.delivery = "dispatched";
+    },
+    wasDispatched(identity) {
+      readReservedEntry(identity);
+      return identity.entry.delivery === "dispatched";
     },
     lookupNamespace(identity) {
       readReservedEntry(identity);

@@ -61,6 +61,13 @@ export class RpcTransportError extends Error {
   }
 }
 
+export class RpcCancellationError extends RpcTransportError {
+  constructor() {
+    super("aborted");
+    this.name = "RpcCancellationError";
+  }
+}
+
 export class RpcConnectionError extends RpcTransportError {
   constructor(message: string, requestId?: string) {
     super(message, undefined, requestId);

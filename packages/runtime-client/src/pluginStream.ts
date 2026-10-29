@@ -118,7 +118,7 @@ export async function callPluginStream<T>(
   if (pluginDeliveryMethod(input) !== "plugins.stream" || pluginOperationKind(input) !== "command")
     throw new TypeError("Plugin stream requires a streaming command method");
   parseJSON(input.input);
-  const { request, reservation } = await wire.capturePluginCommand(intent, input, prepare);
+  const { request, reservation } = await wire.capturePluginCommand(intent, input, prepare, signal);
   return wire.openMutation(
     "plugins.stream",
     request,
@@ -170,6 +170,7 @@ export async function deliverPluginStream<T>(
       idempotencyKey: key,
       idempotencyNamespace: reservation.authorizeDispatch(),
       requestMeta: reservation.requestMeta,
+      beforeDispatch: reservation.markDispatched,
     });
     const final = await outcome;
     if ("error" in final) throw final.error;

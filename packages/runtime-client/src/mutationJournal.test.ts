@@ -49,6 +49,7 @@ function deliver<T>(
   return reservation.track(() =>
     createMutationPromise(async () => {
       reservation.authorizeDispatch();
+      reservation.markDispatched();
       return execute();
     }, reservation.idempotencyKey),
   );
@@ -133,6 +134,7 @@ describe("mutation journal", () => {
     expect(Object.keys(entry).sort()).toEqual([
       "command",
       "createdAt",
+      "delivery",
       "expiresAt",
       "fingerprint",
       "idempotencyKey",
@@ -324,7 +326,10 @@ describe("mutation journal", () => {
         restoreType: "files",
       };
       const reservation = current.reserve("sessions.rollback", params)!;
-      const original = structuredClone([...storage.values.entries()]);
+      const original = structuredClone([...storage.values.entries()]).map(([key, entry]) => [
+        key,
+        { ...(entry as Record<string, unknown>), delivery: "dispatched" },
+      ]);
       const failure = new RpcError({
         message: "restore outcome unknown",
         data: { type },

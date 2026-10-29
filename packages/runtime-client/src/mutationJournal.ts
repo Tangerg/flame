@@ -13,6 +13,7 @@ import {
 } from "./durableMutationJournal";
 import { MutationLookupError, mutationSettlementIsUnknown, type MutationPromise } from "./mutation";
 import type { CallPluginRequest } from "@flame/runtime-client/wire";
+import { RpcCancellationError } from "./errors";
 
 export type { PluginCommandInput, PluginCommandBinding } from "./durableMutationJournal";
 import type { RequestMeta } from "./generated/wire.generated";
@@ -32,6 +33,7 @@ export interface MutationReservation {
   readonly requestMeta: RequestMeta | null;
   lookupNamespace(): string;
   authorizeDispatch(): string;
+  markDispatched(): void;
   track<T>(create: () => MutationPromise<T>): MutationPromise<T>;
 }
 
@@ -42,6 +44,7 @@ export interface MutationJournal {
     input: PluginCommandInput,
     prepare: () => Promise<PluginCommandBinding>,
     requestMeta?: () => RequestMeta | undefined,
+    signal?: AbortSignal,
   ): Promise<{ request: CallPluginRequest; reservation: MutationReservation }>;
   pendingCommands(): PendingRunCommand[];
   reserve(
@@ -176,8 +179,10 @@ class MutationAuthority implements MutationJournal {
     input: PluginCommandInput,
     prepare: () => Promise<PluginCommandBinding>,
     requestMeta?: () => RequestMeta | undefined,
+    signal?: AbortSignal,
   ): Promise<{ request: CallPluginRequest; reservation: MutationReservation }> {
     this.#assertCurrent();
+    if (signal?.aborted) throw new RpcCancellationError();
     if (this.#preparing.has(intent))
       throw new MutationJournalOwnershipError("plugin command intent is already being prepared");
     this.#preparing.add(intent);
@@ -190,6 +195,7 @@ class MutationAuthority implements MutationJournal {
         const metadata = cloneJSON(requestMeta?.() ?? null);
         const binding = await prepare();
         this.#assertCurrent();
+        if (signal?.aborted) throw new RpcCancellationError();
         captured = this.#journal.stagePluginCommand(
           intent,
           { ...binding, ...preparedInput },
@@ -268,6 +274,10 @@ class MutationAuthority implements MutationJournal {
         this.#assertClaim(identity);
         return this.#journal.authorizeDispatch(identity);
       },
+      markDispatched: () => {
+        this.#assertClaim(identity);
+        this.#journal.markDispatched(identity);
+      },
       track: (create) => trackedMutation(create, lifecycle),
     };
   }
@@ -282,14 +292,16 @@ class MutationAuthority implements MutationJournal {
     const idempotencyKey = identity.entry.idempotencyKey;
     let activeAttempts = 0;
     let definitiveOutcome = false;
-    const finish = (definitive: boolean) => {
+    const finish = (definitive: boolean, canceled = false) => {
       // Retirement revokes delivery, not a result's authority over its original
       // identity. The durable owner checks the exact record before removing it.
       activeAttempts = Math.max(0, activeAttempts - 1);
       definitiveOutcome ||= definitive;
       if (activeAttempts > 0) return;
       try {
-        if (definitiveOutcome) this.#journal.settle(identity);
+        if (definitiveOutcome || (canceled && !this.#journal.wasDispatched(identity))) {
+          this.#journal.settle(identity);
+        }
       } finally {
         definitiveOutcome = false;
         if (this.#claims.get(idempotencyKey) === identity) this.#claims.delete(idempotencyKey);
@@ -315,7 +327,10 @@ class MutationAuthority implements MutationJournal {
       },
       resolve: () => finish(true),
       reject: (error) =>
-        finish(!mutationSettlementIsUnknown(error) && !(error instanceof MutationJournalError)),
+        finish(
+          !mutationSettlementIsUnknown(error) && !(error instanceof MutationJournalError),
+          error instanceof RpcCancellationError,
+        ),
     };
   }
 

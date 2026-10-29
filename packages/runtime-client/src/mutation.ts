@@ -1,4 +1,4 @@
-import { isErrorType, RpcProtocolError, RpcTransportError } from "./errors";
+import { isErrorType, RpcProtocolError, RpcTransportError, RpcCancellationError } from "./errors";
 
 const MILLISECONDS_PER_SECOND = 1_000;
 
@@ -80,6 +80,7 @@ async function settleMutation<T>(
   let waitedForInProgress = false;
   for (;;) {
     try {
+      if (options.signal?.aborted) throw new RpcCancellationError();
       return await execute(idempotencyKey, options);
     } catch (error) {
       if (options.signal?.aborted) throw error;

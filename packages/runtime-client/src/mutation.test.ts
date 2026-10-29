@@ -78,7 +78,7 @@ describe("mutation settlement", () => {
     await expect(mutation).rejects.toBeInstanceOf(RpcTransportError);
     await expect(mutation.retry({ signal: fresh.signal })).resolves.toBe("settled");
 
-    expect(execute.mock.calls.map(([key]) => key)).toEqual(["logical-command", "logical-command"]);
-    expect(execute.mock.calls[1]?.[1]?.signal).toBe(fresh.signal);
+    expect(execute.mock.calls.map(([key]) => key)).toEqual(["logical-command"]);
+    expect(execute.mock.calls[0]?.[1]?.signal).toBe(fresh.signal);
   });
 });

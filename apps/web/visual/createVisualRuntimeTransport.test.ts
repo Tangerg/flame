@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createFlameClient } from "@flame/runtime-client";
+import { createFlameClient, RpcCancellationError } from "@flame/runtime-client";
 import { createVisualRuntimeTransport } from "./createVisualRuntimeTransport";
 import { RUNTIME_AGENT_SESSION_SNAPSHOTS } from "./agentSessionSnapshots";
 import { VISUAL_CAPABILITIES, VISUAL_WORKSPACE_PATH } from "./agentFixtureFacts";
@@ -285,10 +285,9 @@ describe("visual Runtime transport", () => {
     const cancelled = new Error("visual read cancelled");
     controller.abort(cancelled);
     try {
-      await expect(client.providers.list(controller.signal)).rejects.toMatchObject({
-        name: "RpcTransportError",
-        message: "aborted",
-      });
+      await expect(client.providers.list(controller.signal)).rejects.toBeInstanceOf(
+        RpcCancellationError,
+      );
       await client.close();
       await expect(client.providers.list()).rejects.toThrow("client closed");
     } finally {
