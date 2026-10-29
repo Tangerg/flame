@@ -122,7 +122,7 @@ func (c Connection) Validate() error {
 		return nil
 	}
 	endpoint, err := url.Parse(c.BaseURL)
-	if err != nil || endpoint.Host == "" || endpoint.User != nil || endpoint.Fragment != "" || (endpoint.Scheme != "http" && endpoint.Scheme != "https") {
+	if err != nil || endpoint.Hostname() == "" || endpoint.User != nil || endpoint.Fragment != "" || (endpoint.Scheme != "http" && endpoint.Scheme != "https") {
 		return errors.New("model provider: endpoint must be an absolute HTTP(S) URL without userinfo or fragment")
 	}
 	return nil
@@ -155,13 +155,18 @@ func (h Handle) Validate() error {
 type Chat struct {
 	Handle
 	Original      string         `json:"original" jsonschema:"pattern=\\S,maxLength=256"`
+	Provider      string         `json:"provider"`
+	Model         string         `json:"model"`
 	Streaming     bool           `json:"streaming"`
 	TokenCounting bool           `json:"tokenCounting"`
 	Metadata      *catalog.Model `json:"metadata,omitzero"`
 }
 
-func (c Chat) Validate(model string) error {
-	if _, err := modelchoice.NewModelIdentity(model); err != nil {
+func (c Chat) Validate() error {
+	if _, err := modelchoice.NewProviderIdentity(c.Provider); err != nil {
+		return err
+	}
+	if _, err := modelchoice.NewModelIdentity(c.Model); err != nil {
 		return err
 	}
 	if err := errors.Join(c.Handle.Validate(), qimumcp.ValidateCommandID(c.Original)); err != nil {
@@ -171,7 +176,7 @@ func (c Chat) Validate(model string) error {
 		if err := c.Metadata.Validate(); err != nil {
 			return err
 		}
-		if c.Metadata.ID != model {
+		if c.Metadata.ID != c.Model {
 			return errors.New("model provider: metadata belongs to another model")
 		}
 	}
@@ -186,7 +191,25 @@ func (r Reopen) Validate() error { return qimumcp.ValidateCommandID(r.Original) 
 
 type Embedder struct {
 	Handle
-	Space string `json:"space" jsonschema:"pattern=\\S"`
+	Provider string `json:"provider"`
+	Model    string `json:"model"`
+	Space    string `json:"space" jsonschema:"pattern=\\S"`
+}
+
+func (e Embedder) Validate() error {
+	if err := e.Handle.Validate(); err != nil {
+		return err
+	}
+	if _, err := modelchoice.NewProviderIdentity(e.Provider); err != nil {
+		return err
+	}
+	if _, err := modelchoice.NewModelIdentity(e.Model); err != nil {
+		return err
+	}
+	if strings.TrimSpace(e.Space) == "" {
+		return errors.New("model provider: vector space is required")
+	}
+	return nil
 }
 
 type ChatRequest struct {

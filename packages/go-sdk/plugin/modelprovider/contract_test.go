@@ -8,6 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/scope/models/catalog"
 )
 
 func TestContractAdmitsTheCompleteNativeRequestAndRefusesMissingInput(t *testing.T) {
@@ -71,7 +72,7 @@ func TestConnectionFormattingNeverExposesCredentialsOrEndpointSecrets(t *testing
 			t.Fatalf("connection leaked through %s", format)
 		}
 	}
-	for _, endpoint := range []string{"relative/path", "file:///tmp/secret", "https://user:password@host/", "https://host/#fragment"} {
+	for _, endpoint := range []string{"relative/path", "file:///tmp/secret", "https://user:password@host/", "https://host/#fragment", "https://:443/"} {
 		connection.BaseURL = endpoint
 		if err := connection.Validate(); err == nil {
 			t.Fatalf("invalid endpoint admitted: %s", endpoint)
@@ -93,5 +94,21 @@ func TestFailureEvidenceCannotTurnAnUnknownExchangeIntoSuccess(t *testing.T) {
 	}
 	if err := (TokenCount{Count: new(int64(1)), Failure: &Failure{Kind: Internal, Execution: chat.CallFailureUnknown}}).Validate(); err == nil {
 		t.Fatal("conflicting count outcomes admitted")
+	}
+}
+
+func TestConstructionDeclaresItsExactIdentityWhenCatalogFactsAreUnknown(t *testing.T) {
+	client := Chat{Handle: Handle{ID: strings.Repeat("a", 64)}, Original: "original-open", Provider: "custom-provider", Model: "private-model"}
+	if err := client.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	client.Metadata = &catalog.Model{ID: "another-model"}
+	if err := client.Validate(); err == nil {
+		t.Fatal("metadata replaced the captured model")
+	}
+	client.Metadata = nil
+	client.Provider = ""
+	if err := client.Validate(); err == nil {
+		t.Fatal("unknown catalog facts hid a missing provider identity")
 	}
 }
