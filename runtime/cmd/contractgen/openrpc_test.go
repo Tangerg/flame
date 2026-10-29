@@ -1,13 +1,38 @@
 package main
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/qimu/contractgen"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 )
+
+func TestTrajectoryCapabilityPublicationsFollowRegistry(t *testing.T) {
+	registry, shapes := delivery.Contract(), dispatch.WireShapes()
+	set := testWalkWireTypes(t, registry, shapes)
+	want := []capabilityRow{{
+		When:     []conditionRow{{Field: "includeDescendants", Operator: "present"}},
+		Requires: []string{protocol.FeatureSubagents},
+	}}
+	method := openRPCMethod(t, newOpenRPC(registry, shapes, set), delivery.SessionsTrajectory.String())
+	if !reflect.DeepEqual(method.Capabilities, want) {
+		t.Fatalf("OpenRPC trajectory admission = %+v, want %+v", method.Capabilities, want)
+	}
+	manifest := testBuild(t, set)
+	for _, policy := range manifest.CapabilityPolicy {
+		if policy.Method == delivery.SessionsTrajectory.String() {
+			if !reflect.DeepEqual(policy.Rules, want) {
+				t.Fatalf("manifest trajectory admission = %+v, want %+v", policy.Rules, want)
+			}
+			return
+		}
+	}
+	t.Fatal("trajectory admission is absent from the manifest")
+}
 
 func TestOpenRPCPublishesAckNullableAndNotificationResults(t *testing.T) {
 	t.Parallel()

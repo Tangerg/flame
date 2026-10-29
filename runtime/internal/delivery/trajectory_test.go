@@ -2,7 +2,7 @@ package delivery
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -36,10 +36,58 @@ func TestTrajectoryUnknownInvocationPreservesObservationWithoutTimingEstimates(t
 	}
 }
 
-func TestTrajectoryDescendantsRequireNegotiatedCapability(t *testing.T) {
+func TestTrajectoryHandlerUsesAlreadyAdmittedRequest(t *testing.T) {
 	handler := &Handler{queries: mustQueryCoordinator(sessions.QueryDependencies{})}
-	if _, err := handler.ListSessionTrajectory(t.Context(), protocol.ListSessionTrajectoryRequest{SessionID: "ses_1", IncludeDescendants: true}); !errors.Is(err, protocol.ErrCapabilityNotNeg) {
-		t.Fatalf("descendant read without capability = %v", err)
+	page, err := handler.ListSessionTrajectory(t.Context(), protocol.ListSessionTrajectoryRequest{SessionID: "ses_1", IncludeDescendants: true})
+	if err != nil || page == nil || len(page.Data) != 0 {
+		t.Fatalf("admitted descendant read = %+v, %v", page, err)
+	}
+}
+
+type trajectoryCapabilityTarget struct {
+	enabled  bool
+	requests []protocol.ListSessionTrajectoryRequest
+}
+
+func (s *trajectoryCapabilityTarget) Discover(context.Context) (*protocol.DiscoverResponse, error) {
+	return &protocol.DiscoverResponse{Capabilities: protocol.ServerCapabilities{
+		Features: map[string]protocol.FeatureCapability{
+			protocol.FeatureSubagents: {Enabled: s.enabled, ClientOptIn: true},
+		},
+	}}, nil
+}
+
+func (s *trajectoryCapabilityTarget) ListSessionTrajectory(_ context.Context, request protocol.ListSessionTrajectoryRequest) (*protocol.Page[protocol.TrajectoryEntry], error) {
+	s.requests = append(s.requests, request)
+	return protocol.NewPage([]protocol.TrajectoryEntry{}), nil
+}
+
+func TestTrajectoryEndpointAdmitsOnlyNegotiatedDescendantRequests(t *testing.T) {
+	for _, descendants := range []bool{false, true} {
+		for _, enabled := range []bool{false, true} {
+			for _, supported := range []bool{false, true} {
+				t.Run(fmt.Sprintf("descendants=%v/runtime=%v/client=%v", descendants, enabled, supported), func(t *testing.T) {
+					target := &trajectoryCapabilityTarget{enabled: enabled}
+					endpoint := mustNewEndpoint(t, target, EndpointConfig{})
+					request := protocol.ListSessionTrajectoryRequest{SessionID: "ses_1", IncludeDescendants: descendants}
+					result := endpoint.Invoke(t.Context(), SessionsTrajectory, request, Options{RequestMeta: protocol.RequestMeta{
+						ClientCapabilities: &protocol.ClientCapabilities{Features: map[string]protocol.FeaturePreference{
+							protocol.FeatureSubagents: {Enabled: supported},
+						}},
+					}})
+					if descendants && (!enabled || !supported) {
+						assertSubagentCapabilityGap(t, "sessions.trajectory", result.Failure)
+						if result.Value != nil || len(target.requests) != 0 {
+							t.Fatalf("refused read reached handler: %+v, %+v", result, target.requests)
+						}
+						return
+					}
+					if result.Failure != nil || result.Value == nil || len(target.requests) != 1 || target.requests[0] != request {
+						t.Fatalf("admitted read = %+v, requests = %+v", result, target.requests)
+					}
+				})
+			}
+		}
 	}
 }
 

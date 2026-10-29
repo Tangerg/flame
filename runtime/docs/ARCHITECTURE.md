@@ -399,6 +399,11 @@ MCP OAuth persistence fences each authorization grant independently of the live 
 
 The Contract Registry is the method and policy source used by delivery and contract generation. Generated artifacts in `contract` are the machine truth for methods, schemas, capabilities, errors, unions, and transport endpoints. Discovery identity and capability-catalog constraints are declared there and enforced by the generated validators, so consumers do not maintain another schema.
 
+Registry rules exclusively own capability requirements determined by request shape.
+Handlers check requirements revealed by durable state, such as an existing Run's
+child identity. Internal composition that needs request admission enters the same
+Endpoint; calling a Handler directly assumes that admission has already occurred.
+
 Plan, Goal and file-observation use cases are present in every complete Runtime. Memory and Schedule operations bind only to their enabled managed backend owner. Discovery advertises them directly; Session snapshots include the current Plan and any current Goal, and portable import restores Plan as part of the atomic Session write. Git availability remains a host fact, and repository observation failures remain errors at registration. Capability negotiation still governs optional client behavior and host-dependent integrations.
 
 The module-root Go binding and HTTP/JSON-RPC binding enter the same delivery endpoint before:

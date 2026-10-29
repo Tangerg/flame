@@ -27,11 +27,6 @@ func registerSessionTrajectory(registry *Registry) {
 }
 
 func (s *Handler) ListSessionTrajectory(ctx context.Context, in protocol.ListSessionTrajectoryRequest) (*protocol.Page[protocol.TrajectoryEntry], error) {
-	if in.IncludeDescendants {
-		if err := s.requireFeature(ctx, protocol.FeatureSubagents); err != nil {
-			return nil, err
-		}
-	}
 	limit, err := requestedPageLimit(in.Limit)
 	if err != nil {
 		return nil, wirePageError(err)
