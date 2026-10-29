@@ -17,6 +17,7 @@ import (
 
 func TestRuntimeMutationRequiresNewReadEvidenceAndKeepsRefusalDurable(t *testing.T) {
 	calls := []chat.ToolCall{
+		{ID: "directory_edit", Name: "edit", Arguments: `{"path":"folder","old_string":"before","new_string":"applied"}`},
 		{ID: "read_before", Name: "read", Arguments: `{"path":"notes.txt"}`},
 		{ID: "first_edit", Name: "edit", Arguments: `{"path":"notes.txt","old_string":"before","new_string":"applied"}`},
 		{ID: "unread_edit", Name: "edit", Arguments: `{"path":"notes.txt","old_string":"applied","new_string":"overwritten"}`},
@@ -37,10 +38,16 @@ func TestRuntimeMutationRequiresNewReadEvidenceAndKeepsRefusalDurable(t *testing
 			}
 		}
 		for index, result := range results {
-			if index >= len(calls) || result.ID != calls[index].ID || result.IsError != (index == 2) {
+			if index >= len(calls) || result.ID != calls[index].ID || result.IsError != (index == 0 || index == 3) {
 				return nil, fmt.Errorf("read evidence result[%d] = %+v", index, result)
 			}
-			if index == 2 {
+			if index == 0 {
+				text, _ := result.Output.Text()
+				if !strings.Contains(text, "unsupported file mode") {
+					return nil, fmt.Errorf("missing directory refusal: %q", text)
+				}
+			}
+			if index == 3 {
 				text, _ := result.Output.Text()
 				if !strings.Contains(text, "must read") {
 					return nil, fmt.Errorf("missing fresh-read refusal: %q", text)
@@ -58,6 +65,9 @@ func TestRuntimeMutationRequiresNewReadEvidenceAndKeepsRefusalDurable(t *testing
 		t.Fatal(err)
 	}
 	path := filepath.Join(home, "notes.txt")
+	if err := os.Mkdir(filepath.Join(home, "folder"), 0o700); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(path, []byte("before\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}

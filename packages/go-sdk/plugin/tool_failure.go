@@ -22,6 +22,9 @@ func DefiniteToolFailure(cause error) error {
 	if cause == nil || errors.Is(cause, context.Canceled) || errors.Is(cause, context.DeadlineExceeded) {
 		return cause
 	}
+	if _, known := toolcontract.ClassifyFailure(cause); known {
+		return cause
+	}
 	failure, err := toolcontract.NewFailure(toolcontract.FailureConfig{
 		Kind:   toolcontract.FailureKindFailed,
 		Cause:  cause,

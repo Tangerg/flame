@@ -1307,6 +1307,13 @@ The guard performs no post-write filesystem observation, so cancellation after
 an acknowledged write cannot erase that result. This changes only process-local
 Tool policy and requires no protocol or persisted-data migration.
 
+Filesystem admission retains the evidence that the mutable Tool has not been
+called. Path preparation and fingerprint failures become known failed calls;
+protected-path and read-evidence policy refusals retain their rejected category.
+Every pre-dispatch stage uses the same failure projection and preserves owner
+cancellation. Errors returned after mutable dispatch retain their original
+classification, including partial effects and unknown acknowledgements.
+
 Read and local search share the non-mutating Tool failure boundary. Unsuccessful queries, including invalid patterns and missing paths, become explicit failed Tool outcomes, so Scope commits their feedback before model continuation. Cancellation remains execution control. The generic Tool observer still preserves unknown external outcomes and host or publication failures.
 
 Structured diff code rows always carry `code`, including `""` for a blank line; hunk rows omit it. The Go binding represents this presence with `DiffRow.Code *string`. Go consumers must migrate string construction and access; JSON consumers retain the existing required-string contract. Missing or null code remains invalid for code rows. No persisted-data migration is needed.

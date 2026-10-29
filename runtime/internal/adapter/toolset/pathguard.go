@@ -37,7 +37,8 @@ func withPathGuard(inner toolcontract.Tool, root *filesystemRoot) toolcontract.T
 	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
 		paths, err := mutationPaths(inner, invocation)
 		if err != nil {
-			return toolcontract.Result{}, fmt.Errorf("inspect mutation paths: %w", err)
+			err = fmt.Errorf("inspect mutation paths: %w", err)
+			return toolcontract.Result{}, beforeCallFailure(ctx, err)
 		}
 		for _, path := range paths {
 			if refusal, ok := guardMutationPath(root, path); !ok {
@@ -45,9 +46,9 @@ func withPathGuard(inner toolcontract.Tool, root *filesystemRoot) toolcontract.T
 					Kind: toolcontract.FailureKindRejected, Output: chat.NewTextToolOutput(refusal),
 				})
 				if err != nil {
-					return toolcontract.Result{}, err
+					return toolcontract.Result{}, beforeCallFailure(ctx, err)
 				}
-				return toolcontract.Result{}, failure
+				return toolcontract.Result{}, beforeCallFailure(ctx, failure)
 			}
 		}
 		return inner.Call(ctx, invocation)

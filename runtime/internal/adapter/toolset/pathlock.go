@@ -14,14 +14,14 @@ func withPathLock(inner toolcontract.Tool, locker *keylock.Set, root *filesystem
 	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
 		paths, err := resolvedMutationPaths(inner, invocation, root)
 		if err != nil {
-			return toolcontract.Result{}, err
+			return toolcontract.Result{}, beforeCallFailure(ctx, err)
 		}
 		for i, path := range paths {
 			paths[i] = filepath.Join(root.identity, path)
 		}
 		release, err := locker.AcquireAll(ctx, paths...)
 		if err != nil {
-			return toolcontract.Result{}, err
+			return toolcontract.Result{}, beforeCallFailure(ctx, err)
 		}
 		defer release()
 		return inner.Call(ctx, invocation)

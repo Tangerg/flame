@@ -36,6 +36,11 @@ are encoded through `qimu/mcp.EncodeReply`; only the business owner commits thei
 representation. Protocol consumers validate complete values with
 `ValidateWireTree`; individual generated node validators are private.
 
+`plugin.DefiniteToolFailure` projects failures only when a caller can prove no
+external mutation. An existing Scope Failure already owns its kind, public
+output and diagnostic cause; the SDK returns it and any boundary wrapping
+unchanged. Execution cancellation remains control rather than model feedback.
+
 Use the Go version in `go.mod`. From this directory run `GOWORK=off go test ./...`.
 Cross-module regeneration is coordinated from the repository root by
 `make generate`. Publishers own contract identities; the SDK holds generated

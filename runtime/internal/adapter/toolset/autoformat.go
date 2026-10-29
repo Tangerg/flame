@@ -34,7 +34,8 @@ func withAutoFormat(inner toolcontract.Tool, root *filesystemRoot, executor *fs.
 	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
 		paths, err := mutationPaths(inner, invocation)
 		if err != nil {
-			return toolcontract.Result{}, fmt.Errorf("inspect mutation paths before formatting: %w", err)
+			err = fmt.Errorf("inspect mutation paths before formatting: %w", err)
+			return toolcontract.Result{}, beforeCallFailure(ctx, err)
 		}
 		out, err := inner.Call(ctx, invocation)
 		if err != nil || len(paths) == 0 {

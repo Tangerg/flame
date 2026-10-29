@@ -4,13 +4,13 @@ import (
 	json "encoding/json/v2"
 	"slices"
 
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/fs"
 )
 
 // FileMutationReporter supplies prospective paths for approval, locking, and
-// mutation guards. These paths do not acknowledge actual file effects.
+// mutation guards. MutationPaths must be side-effect-free; its result never
+// acknowledges actual file effects.
 type FileMutationReporter interface {
 	MutationPaths(arguments []byte) ([]string, error)
 }
@@ -26,12 +26,7 @@ func mutationPaths(tool toolcontract.Tool, invocation toolcontract.Invocation) (
 	if ok {
 		reported, err := reporter.MutationPaths(invocation.Arguments())
 		if err != nil {
-			// A reporter that cannot read this call's own arguments is describing
-			// what the model wrote, and every guard asks before the Tool runs, so
-			// nothing happened that could be in doubt. Left unclassified it would
-			// reach the Host as an operation of unknown outcome and settle the Run
-			// tree as lost, which is how one malformed patch ends a Session.
-			return nil, pluginsdk.DefiniteToolFailure(err)
+			return nil, err
 		}
 		paths = append(paths, reported...)
 	}
