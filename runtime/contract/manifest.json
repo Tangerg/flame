@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-24.1",
+  "protocolVersion": "2026-10-29.1",
   "features": [
     "reasoning",
     "multimodal",
@@ -4389,7 +4389,6 @@
                 "get_goal",
                 "glob",
                 "grep",
-                "http_request",
                 "list_skills",
                 "load_skill",
                 "lsp",

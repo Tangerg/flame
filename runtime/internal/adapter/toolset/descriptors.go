@@ -57,7 +57,6 @@ var builtInDescriptors = map[tool.BuiltInName]builtInDescriptor{
 	tool.ApplyPatch:        builtInDescriptor{safety: tool.SafetyClassWrite, activityText: "Applying a patch", result: patchResultContract()},
 	tool.Shell:             builtInDescriptor{safety: tool.SafetyClassExec, activity: shellActivity, result: commandResultContract()},
 	tool.StopShell:         builtInDescriptor{safety: tool.SafetyClassExec, activityText: "Stopping command"},
-	tool.HTTPRequest:       builtInDescriptor{safety: tool.SafetyClassNetwork, activity: httpActivity},
 }
 
 func descriptors() iter.Seq2[tool.BuiltInName, builtInDescriptor] {

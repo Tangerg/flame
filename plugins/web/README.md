@@ -1,8 +1,8 @@
 # Web research
 
-The installed backend owns Jina Reader fetching, Tavily search and a private page
-snapshot archive. Typed `flame.web.v1` operations and the `web_search`, `web_fetch`
-and `web_browse` MCP tools enter the same use cases. Provider clients come from
+The installed backend owns Jina Reader fetching, Tavily search, allowlisted HTTP
+requests and a private page snapshot archive. Typed `flame.web.v1` operations and
+the `web_search`, `web_fetch`, `web_browse` and `http_request` MCP tools enter the same use cases. Provider clients come from
 released Scope; credentials are optional private installation inputs `jina-key`
 and `tavily-key`. An unset input explicitly refuses that provider's operation.
 Malformed configured values refuse backend startup. Parent process credentials
@@ -46,8 +46,27 @@ configure this installed package's secret inputs. The former
 or seed plugin values. Current tools have installed MCP identities. Historical
 built-in web references and normalized result schemas remain readable; there is
 no old executable, alias or automatic retargeting. Finish waiting work captured
-by an older build with that original build. The method-selectable HTTP tool keeps
-its separately owned host allowlist.
+by an older build with that original build.
+
+HTTP requests use the installed package's `http-allowed-hosts` input, a JSON
+array such as `["api.example.com", "*.example.org"]`. This host-supplied grant
+is fixed for an activation and cannot be widened by model arguments. An absent
+or empty grant refuses HTTP requests. Scope enforces the same grant on redirects,
+allows GET and HEAD, and bounds responses to 256 KiB and requests to two minutes.
+The request and response retain Scope's byte-preserving content encoding.
+
+`request.v1` is a command. Its private admission records the exact input before
+network dispatch. A successful response or proved pre-dispatch refusal produces
+one original receipt shared by typed calls and model Tool recovery. Cancellation,
+transport failure and incomplete responses leave the command unconfirmed; neither
+receipt lookup nor another invocation of that identity can resend it.
+
+Remove `online.httpAllowedHosts` and `FLAME_HTTP_ALLOWED_HOSTS` from Runtime
+configuration and configure the installation explicitly. The old built-in HTTP
+identity, configuration parser and executable are removed without aliases or
+automatic retargeting. The Web database now includes command evidence; retain the
+old installation data separately and use a fresh directory. Finish unresolved work
+with its original executable before selecting the new release.
 
 Regenerate contracts with `make generate`.
 Provider contracts: [Scope web](https://github.com/Tangerg/scope/tree/main/tools/web),

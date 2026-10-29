@@ -78,11 +78,6 @@ server:
   # /v2/rpc still requires the token. Overridden by FLAME_SERVER_WEBDIRECTORY.
   webDirectory: ""
 
-# Optional host allowlist for the method-selectable HTTP tool.
-# Web search/fetch credentials are configured on the installed web plugin.
-online:
-  httpAllowedHosts: []
-
 # Optional language-server table for the code-intelligence tools
 # (lsp_definition / lsp_references / lsp_hover / lsp_document_symbols /
 # lsp_diagnostics / lsp_workspace_symbols, plus auto type-check after edits).

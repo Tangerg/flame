@@ -12,6 +12,7 @@ import (
 	"github.com/Tangerg/flame/plugins/web/internal/wire"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/scope/tools/httpreq"
 	"github.com/Tangerg/scope/tools/web"
 )
 
@@ -42,5 +43,9 @@ func define() (*portable.Capability, error) {
 	if err != nil {
 		return nil, err
 	}
-	return portable.NewCapability(portable.CapabilityConfig{Reference: "flame.web.v1", Composition: portable.Collection, Scope: extension.ScopeInstallation}, search.Descriptor(), fetch.Descriptor(), browse.Descriptor())
+	request, err := qimumcp.NewMethod[httpreq.Request, wire.HTTPResponse](qimumcp.MethodConfig{Name: "flame.web/request.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Execute one HTTP request within the installed host allowlist. GET and HEAD are allowed; other methods are refused. Responses are bounded to 256 KiB. Preserve the command identity: an unconfirmed request must never be resubmitted."})
+	if err != nil {
+		return nil, err
+	}
+	return portable.NewCapability(portable.CapabilityConfig{Reference: "flame.web.v1", Composition: portable.Collection, Scope: extension.ScopeInstallation}, search.Descriptor(), fetch.Descriptor(), browse.Descriptor(), request.Descriptor())
 }

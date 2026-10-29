@@ -34,7 +34,6 @@ type BuildConfig struct {
 	UserHome       string
 	PackageSkills  promptsource.PackageSkills
 	SkillsUserDir  string
-	Online         OnlineConfig
 	LSPServers     []codeintel.ServerSpec
 	A2AAgents      []A2AAgentConfig
 	Plan           builtin.PlanUseCases   // backs set_plan + exit_plan_mode; nil → both are omitted
@@ -97,11 +96,6 @@ func Build(ctx context.Context, config BuildConfig) (_ Built, err error) {
 	if !filepath.IsAbs(config.UserHome) {
 		return Built{}, errors.New("toolset: user home must be absolute")
 	}
-	online, err := buildOnline(config.Online)
-	if err != nil {
-		return Built{}, err
-	}
-
 	// Code intelligence: one analyzer wrapping LSP clients; servers launch
 	// lazily per (workspace root, language). Tools are cwd-independent (the
 	// analyzer keys by root, read per call off the blackboard).
@@ -198,7 +192,6 @@ func Build(ctx context.Context, config BuildConfig) (_ Built, err error) {
 	resolver, err := newResolver(resolverDeps{
 		SkillUsage:    config.SkillUsage,
 		SkillsUserDir: config.SkillsUserDir, PackageSkills: config.PackageSkills,
-		Online:          online,
 		A2A:             a2aExecutables,
 		LSP:             lspTools,
 		Shell:           shellTools,

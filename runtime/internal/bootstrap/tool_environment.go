@@ -124,7 +124,6 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		Lifetime:      deps.lifetime,
 		UserHome:      cfg.userHome,
 		SkillsUserDir: cfg.skillsUserDir, PackageSkills: deps.packageSkills,
-		Online:          cfg.online,
 		LSPServers:      cfg.lspServers,
 		A2AAgents:       cfg.a2aAgents,
 		Plan:            deps.plan,

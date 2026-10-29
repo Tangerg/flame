@@ -163,9 +163,6 @@ func TestDescriptorCatalogMatchesBuiltInTools(t *testing.T) {
 		GoalReporter:   activeGoalStub{},
 		ToolResults:    allWiredToolResults{}, // backs read_tool_result
 		SkillProposals: allWiredSkillProposals{},
-		Online: OnlineConfig{
-			HTTPAllowedHosts: []string{"example.com"}, // backs http_request
-		},
 		Interrupt: func(context.Context, toolcontract.Invocation, string, runs.Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
 			return run.InterruptResolution{}, nil, nil
 		},

@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/web/internal/contract"
 	capture "github.com/Tangerg/flame/plugins/web/internal/domain"
 	"github.com/Tangerg/flame/plugins/web/internal/wire"
@@ -13,6 +14,7 @@ import (
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/tool"
+	"github.com/Tangerg/scope/tools/httpreq"
 	"github.com/Tangerg/scope/tools/web"
 )
 
@@ -37,15 +39,15 @@ func readTool[P, R any](name, description string, read func(context.Context, P) 
 	})
 }
 
-func newServer(research *research) (*sdk.Server, error) {
-	if research == nil {
-		return nil, errors.New("web: research owner is required")
+func newServer(research *research, requests *requests) (*sdk.Server, error) {
+	if research == nil || requests == nil {
+		return nil, errors.New("web: research and request owners are required")
 	}
 	contracts, err := rpc.NewContracts()
 	if err != nil {
 		return nil, err
 	}
-	server := sdk.NewServer(&sdk.Implementation{Name: "flame.web", Version: "1.0.0"}, nil)
+	server := sdk.NewServer(&sdk.Implementation{Name: "flame.web", Version: "2.0.0"}, nil)
 	backend, err := qimumcp.NewBackend(server)
 	if err != nil {
 		return nil, err
@@ -62,10 +64,45 @@ func newServer(research *research) (*sdk.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := pluginsdk.RegisterTools(server, search, fetch, browse); err != nil {
+	request, err := tool.NewFunc(tool.FuncConfig{Name: "http_request", Description: contracts.Request.Descriptor().Description}, func(ctx context.Context, _ httpreq.Request) (wire.HTTPResponse, error) {
+		id, err := pluginsdk.ToolCommandID(ctx)
+		if err != nil {
+			return wire.HTTPResponse{}, err
+		}
+		input, err := qimumcp.RequestInput(ctx)
+		if err != nil {
+			return wire.HTTPResponse{}, err
+		}
+		response, err := requests.execute(ctx, contracts.Request.Name(), id, input)
+		return response, requestToolFailure(err)
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := pluginsdk.RegisterTools(server, search, fetch, browse, request); err != nil {
+		return nil, err
+	}
+	toolReceipts, err := pluginsdk.ToolReceiptQuery()
+	if err != nil {
 		return nil, err
 	}
 	if err := errors.Join(
+		pluginstorage.RegisterReceipts(backend, requests.db),
+		contracts.Request.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[httpreq.Request]) (wire.HTTPResponse, error) {
+			input, err := command.RequestInput()
+			if err != nil {
+				return wire.HTTPResponse{}, err
+			}
+			return requests.execute(ctx, contracts.Request.Name(), command.ID, input)
+		}),
+		toolReceipts.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[qimumcp.ReceiptRequest]) (pluginsdk.ToolReceipt, error) {
+			input := command.Input
+			if input.Method != "http_request" {
+				return pluginsdk.ToolReceipt{}, nil
+			}
+			input.Method = contracts.Request.Name()
+			return requests.receipt(ctx, input)
+		}),
 		contracts.Search.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[web.SearchRequest]) (web.SearchResponse, error) {
 			return research.searchWeb(ctx, command.Input)
 		}),

@@ -61,7 +61,6 @@ type assemblyConfig struct {
 	// Tool-environment inputs; the runtime reads these to assemble the tool
 	// environment via toolset.Build and inject only its role resolver into the
 	// Agent execution adapter.
-	online     toolset.OnlineConfig
 	a2aAgents  []toolset.A2AAgentConfig
 	lspServers []codeintel.ServerSpec
 

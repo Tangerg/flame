@@ -33,8 +33,6 @@ func TestPresenterActivity(t *testing.T) {
 		{name: "propose unnamed Skill", ref: testsupport.BuiltInTool(t, tool.ProposeSkill), arguments: `{}`, want: "Proposing a Skill"},
 		{name: "LSP references", ref: testsupport.BuiltInTool(t, tool.LSP), arguments: `{"operation":"references"}`, want: "Finding symbol references"},
 		{name: "unknown LSP operation", ref: testsupport.BuiltInTool(t, tool.LSP), arguments: `{"operation":"rename"}`, want: "Querying the language server"},
-		{name: "HTTP default method", ref: testsupport.BuiltInTool(t, tool.HTTPRequest), arguments: `{"url":"https://example.com"}`, want: "Sending GET request"},
-		{name: "HTTP explicit method", ref: testsupport.BuiltInTool(t, tool.HTTPRequest), arguments: `{"url":"https://example.com","method":"POST"}`, want: "Sending POST request"},
 		{name: "unknown tool", ref: tool.Ref{}, arguments: `{}`, want: ""},
 	}
 	for _, test := range tests {

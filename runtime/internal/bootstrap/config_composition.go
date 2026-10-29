@@ -23,7 +23,6 @@ func composeConfig(cfg config.Settings, stores *persistence.Bundle, resolver cha
 		chatResolver:             resolver,
 		pricing:                  modeladapter.Pricing(),
 		skillsUserDir:            filepath.Join(stores.DataDirectory, "skills"),
-		online:                   toolset.OnlineConfig(cfg.Online),
 		a2aAgents:                toolsetA2AAgents(cfg.A2AAgents),
 		lspServers:               codeintelServers(cfg.LSPServers),
 		sandboxShell:             cfg.SandboxShell,

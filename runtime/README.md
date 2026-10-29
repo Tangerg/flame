@@ -1,5 +1,12 @@
 # Flame Runtime
 
+Core `2026-10-29.1` removes the built-in HTTP Tool and its `online` configuration.
+The installed Web package owns HTTP execution, network grants and original request
+receipts. Configure its `http-allowed-hosts` input explicitly; no former environment
+overlay or built-in Tool identity is accepted. Rebuild protocol consumers and select
+the new Web release together. Retain the old data directory and finish unresolved
+work with its original executable; the new Web command schema requires fresh data.
+
 Flame Runtime is the local product backend for Flame. It owns durable agent semantics and exposes the same behavior through an in-process Go binding and the Runtime Protocol.
 
 Atomic Session/Run openings admit an omitted workspace and use the same default

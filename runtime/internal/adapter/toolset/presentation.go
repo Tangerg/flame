@@ -99,15 +99,6 @@ func lspActivity(arguments tool.Arguments) string {
 	return "Querying the language server"
 }
 
-func httpActivity(arguments tool.Arguments) string {
-	if args, ok := decodeArguments[httpActivityArguments](arguments, "url"); ok {
-		if method := httpMethod(args.Method); method != "" {
-			return "Sending " + method + " request"
-		}
-	}
-	return "Sending an HTTP request"
-}
-
 type shellActivityArguments struct {
 	Description string `json:"description"`
 }
@@ -122,11 +113,6 @@ type skillActivityArguments struct {
 
 type lspActivityArguments struct {
 	Operation string `json:"operation"`
-}
-
-type httpActivityArguments struct {
-	URL    string `json:"url"`
-	Method string `json:"method"`
 }
 
 func isConciseActivityText(value string, maxRunes int) bool {
@@ -157,19 +143,6 @@ func lspOperationActivity(operation string) string {
 		return "Searching workspace symbols"
 	case builtin.LSPDiagnostics:
 		return "Checking file diagnostics"
-	default:
-		return ""
-	}
-}
-
-func httpMethod(method string) string {
-	method = strings.ToUpper(strings.TrimSpace(method))
-	if method == "" {
-		return "GET"
-	}
-	switch method {
-	case "GET", "HEAD", "POST", "PUT", "PATCH", "DELETE":
-		return method
 	default:
 		return ""
 	}

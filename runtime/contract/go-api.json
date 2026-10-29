@@ -4543,7 +4543,7 @@
         {
           "name": "Version",
           "type": "untyped string",
-          "value": "\"2026-10-24.1\""
+          "value": "\"2026-10-29.1\""
         },
         {
           "name": "WorkspaceAvailable",

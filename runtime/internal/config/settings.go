@@ -59,10 +59,6 @@ type Server struct {
 	WebDirectory   string   // optional absolute path to the built browser application
 }
 
-type Online struct {
-	HTTPAllowedHosts []string
-}
-
 type LSPServer struct {
 	Name        string
 	Command     string
@@ -85,7 +81,6 @@ type Settings struct {
 	BaseURL      string
 	UtilityModel string
 
-	Online    Online
 	A2AAgents []A2AAgent
 
 	// A non-empty table replaces the built-in language-server defaults.

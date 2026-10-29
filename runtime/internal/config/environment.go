@@ -10,7 +10,6 @@ const (
 
 	a2aAgentsEnvironment  environmentVariable = "FLAME_A2A_AGENTS"
 	a2aOriginsEnvironment environmentVariable = "FLAME_A2A_RPC_ORIGINS"
-	httpHostsEnvironment  environmentVariable = "FLAME_HTTP_ALLOWED_HOSTS"
 )
 
 func (e environmentVariable) String() string { return string(e) }

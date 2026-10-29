@@ -89,7 +89,6 @@ func Load(configDirectories []string) (Settings, error) {
 		APIKey:       apiKey,
 		BaseURL:      source.BaseURL,
 		UtilityModel: source.UtilityModel,
-		Online:       loadOnline(source.Online),
 		A2AAgents:    a2aAgents,
 		LSPServers:   source.LSP.Servers,
 
@@ -158,7 +157,6 @@ type configShape struct {
 		ReadOnlyPaths []string `mapstructure:"readOnlyPaths"`
 	} `mapstructure:"sandbox"`
 	Server Server `mapstructure:"server"`
-	Online Online `mapstructure:"online"`
 	LSP    struct {
 		Servers []LSPServer `mapstructure:"servers"`
 	} `mapstructure:"lsp"`

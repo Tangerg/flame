@@ -78,7 +78,6 @@ func TestResolverInitialManifestSeparatesDirectAndDeferredCapabilities(t *testin
 	}
 	analyzer := newTestCodeIntel(t)
 	resolver, err := newResolver(resolverDeps{
-		Online:       []toolcontract.Tool{named(string(domaintool.HTTPRequest))},
 		A2A:          []toolcontract.Tool{named("remote_agent")},
 		LSP:          []toolcontract.Tool{named(string(domaintool.LSP))},
 		Shell:        []toolcontract.Tool{named(string(domaintool.Shell))},
@@ -119,7 +118,7 @@ func TestResolverInitialManifestSeparatesDirectAndDeferredCapabilities(t *testin
 		}
 	}
 	for _, name := range []string{
-		"http_request", "remote_agent", "lsp", "linear_create_issue",
+		"remote_agent", "lsp", "linear_create_issue",
 		"propose_skill",
 	} {
 		if !registered[name] {

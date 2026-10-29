@@ -41,7 +41,6 @@ type Resolver struct {
 	packageSkills promptsource.PackageSkills
 	skillsUserDir string                     // user-scope skills dir; merged under each Run's project skills
 	skillUsage    builtin.SkillUsageRecorder // records skill loads for the idle-lifecycle curator; nil → off
-	online        []toolcontract.Tool        // working-directory-independent network tools
 	a2a           []toolcontract.Tool        // working-directory-independent remote A2A agents
 	lsp           []toolcontract.Tool        // code-intelligence tools; cwd read per-call (analyzer keys servers by root)
 	codeIntel     *codeintel.Analyzer        // backs post-patch diagnostics (rebuilt per resolution with the Run's cwd)
@@ -108,7 +107,6 @@ type resolverDeps struct {
 	PackageSkills promptsource.PackageSkills
 	SkillsUserDir string
 	SkillUsage    builtin.SkillUsageRecorder
-	Online        []toolcontract.Tool // network tools (web/httpreq)
 	A2A           []toolcontract.Tool // remote A2A delegation tools
 	LSP           []toolcontract.Tool // code-intelligence tools
 	Shell         []toolcontract.Tool // shell tools (shell / read_shell_output / stop_shell); nil means omitted
@@ -146,7 +144,6 @@ func newResolver(d resolverDeps) (*Resolver, error) {
 		telemetry:     telemetry,
 		skillsUserDir: d.SkillsUserDir, packageSkills: d.PackageSkills,
 		skillUsage: d.SkillUsage,
-		online:     slices.Clone(d.Online),
 		a2a:        slices.Clone(d.A2A),
 		lsp:        slices.Clone(d.LSP),
 		shell:      slices.Clone(d.Shell),
@@ -422,7 +419,6 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group, retained
 	tools.direct(localTools.readSearch...)
 	tools.direct(localTools.edit)
 	tools.direct(localTools.applyPatch)
-	tools.deferTools(r.online...)
 	mcpTools, pending, closeMCP, err := r.mcpTools(ctx, retained)
 	if err != nil {
 		return manifestBuilder{}, err
