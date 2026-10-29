@@ -358,13 +358,16 @@ for (const theme of ["light", "dark"] as const) {
 
     const mode = page.getByRole("button", { name: "Exit Goal mode" });
     await expect(mode).toBeVisible();
-    await expect(mode).toHaveAttribute("aria-pressed", "true");
+    await expect(mode).not.toHaveAttribute("aria-pressed");
     await expect(input).toHaveValue("");
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(page.getByRole("spinbutton")).toHaveCount(0);
 
+    await input.fill("Keep this objective draft.");
     await mode.click();
     await expect(mode).toHaveCount(0);
+    await expect(input).toBeFocused();
+    await expect(input).toHaveValue("Keep this objective draft.");
   });
 }
 

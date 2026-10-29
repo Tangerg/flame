@@ -51,13 +51,71 @@ describe("GoalModeIndicator", () => {
     testClient.render(<GoalModeIndicator />);
 
     const indicator = screen.getByRole("button", { name: "Exit Goal mode" });
-    expect(indicator.getAttribute("aria-pressed")).toBe("true");
+    expect(indicator.getAttribute("aria-pressed")).toBeNull();
     expect(screen.getByText("Goal")).toBeTruthy();
     expect(screen.queryAllByRole("textbox")).toHaveLength(0);
     expect(screen.queryAllByRole("spinbutton")).toHaveLength(0);
 
     fireEvent.click(indicator);
     expect(screen.queryByText("Goal")).toBeNull();
+  });
+
+  it.each(["", "Keep this objective draft."])(
+    "returns an accepted exit to the same editable draft (%j)",
+    (draft) => {
+      owner.activate("session-a");
+      testClient.render(
+        <>
+          <textarea
+            aria-label="Message composer"
+            defaultValue={draft}
+            ref={testClient.composer.access.registerFocusTarget}
+          />
+          <GoalModeIndicator />
+        </>,
+      );
+      const input = screen.getByRole("textbox", {
+        name: "Message composer",
+      }) as HTMLTextAreaElement;
+      input.focus();
+      input.setSelectionRange(2, 8);
+      const selection = [input.selectionStart, input.selectionEnd];
+      const exit = screen.getByRole("button", { name: "Exit Goal mode" });
+      exit.focus();
+
+      fireEvent.click(exit);
+
+      expect(screen.queryByRole("button", { name: "Exit Goal mode" })).toBeNull();
+      expect(document.activeElement).toBe(input);
+      expect(input.value).toBe(draft);
+      expect([input.selectionStart, input.selectionEnd]).toEqual(selection);
+      expect(owner.snapshot().phase).toBe("inactive");
+    },
+  );
+
+  it("keeps later source focus when the mode exits", () => {
+    owner.activate("session-a");
+    testClient.render(
+      <>
+        <textarea
+          aria-label="Message composer"
+          defaultValue="Keep this draft."
+          ref={testClient.composer.access.registerFocusTarget}
+        />
+        <GoalModeIndicator />
+        <button>Later source action</button>
+      </>,
+    );
+    const later = screen.getByRole("button", { name: "Later source action" });
+    const release = owner.subscribe(() => later.focus());
+    const exit = screen.getByRole("button", { name: "Exit Goal mode" });
+    exit.focus();
+
+    fireEvent.click(exit);
+
+    expect(screen.queryByRole("button", { name: "Exit Goal mode" })).toBeNull();
+    expect(document.activeElement).toBe(later);
+    release();
   });
 
   it("keeps replacement confirmation separate from the composer draft", () => {

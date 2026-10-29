@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Current batch continues from main `e2208f04f`, which publishes generated-report progress reading. Flashcard and code-wrap controls now expose ordinary actions whose names describe the next operation; see **Reading action names and native roles**. The complete reading, file-return and drafting paths pass native qualification, and scoped checks and resource retirement are complete. The publication fetch finds zero incoming commits; merging main reports already up to date. Next inspect Goal authoring and its exit action from source and actual Wails behavior. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
+Current batch continues from main `841643e08`, which publishes consistent reading-action names and roles. Manual Goal-mode exit now returns to the current editable draft and its selection through the existing captured-focus owner; see **Goal authoring exit and draft continuity**. Native reading, file return, empty/nonempty exit and continued editing pass, with scoped checks and resource retirement complete. The publication fetch finds zero incoming commits; merging main reports already up to date. Basic objective-editor cancellation is already qualified; next inspect edit submission, pending/error feedback and recovery to the retained draft. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -71,10 +71,14 @@ qualifies themed values, arbitrary admitted maxima, native keyboard changes,
 finds zero incoming commits at `d9f3ac78e`; merging reports already up to date.
 The full Web invocation also attempts the separate Runtime test group and records
 its existing missing offline-Node-artifact precondition below. It is not reported
-as a passing integration suite. The reading-action follow-up qualifies the existing
+as a passing integration suite. The reading-action follow-up, published as
+`841643e08`, qualifies the existing
 timer and card explanation, ordinary next-action names, shared code wrapping,
 file-material return and continued drafting. Its publication fetch finds zero
 incoming commits at `e2208f04f`; merging reports already up to date.
+The Goal-mode follow-up qualifies manual exit, retained text selection, ordinary
+action semantics and continued drafting across related-file return. Its publication
+fetch finds zero incoming commits at `841643e08`; merging reports already up to date.
 See **Computer console
 editing and operation return**. Preserve the
 separate exact-Run and Skills object contract limits already recorded below.
@@ -1017,6 +1021,105 @@ resources and four read-only references remain preserved. The private root
 **Approve** for the inspected Plan state semantics and keyboard reading flow.
 The unverified scenarios above retain their boundaries. The batch stays local;
 the continuous whole-product UI goal remains active.
+
+### Goal authoring exit and draft continuity
+
+At main `841643e08e9b66db8df3555d826eb49b74bd4d64`, native `/goal` authoring
+retains its draft but keyboard exit drops focus. Five Option-Tabs from the input
+reach **Exit Goal mode, on**; Space removes that focused control and Wails exposes
+the HTML root as the active element. The next Option-Tab reaches Send rather
+than editing the retained objective. This is one presentation/focus finding in
+`src/features/goal/ui/GoalModeIndicator.tsx:55`.
+
+Explicit exit now captures the existing Composer focus lease, asks the same
+GoalComposerModeOwner to deactivate, and restores that input only when the owner
+accepts. Later user focus or an input replacement retires the lease. No effect
+or automatic Goal retirement acquires focus. The exit control is an ordinary
+named button; its existing compact Goal label, target/close glyphs, disabled
+starting state and theme skin remain. There is no new state, listener, timer,
+layout, token, dependency, Runtime transition or persisted-data migration.
+
+The existing read-only HeroUI Button/ToggleButton research supplies the ordinary
+action distinction. The official
+[ARIA APG Button Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/button/)
+supplies Space/Enter activation and moving focus into the next logical action
+context. Flame's captured-focus contract and actual native task determine this
+destination. These references do not establish native Flame behavior. Root
+instructions and the Web/native/visual READMEs retain their current boundaries;
+the host remains Wails **v3.0.0-beta.34**.
+
+| Domain        | Evidence inspected                                                                                           | Result and boundary                                                                                    |
+| ------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| Accessibility | Native ordinary exit, Space/Return, same input/selection, pointer exit and later-focus regression            | One MEDIUM finding repaired. VoiceOver audio is not newly qualified.                                   |
+| Layout        | Native 1440 × 900, window adjustment, 200% at 756 × 475, full-width file body and explicit return            | Inspected controls and drafts remain visible/reachable. Fresh 320 px reflow and RTL are not run.       |
+| Writing       | Existing EN/ZH exit name, visible Goal chip and retained objective text                                      | The existing action name describes exit without a pressed-state claim; no helper copy is added.        |
+| Typography    | Native 14/18 px Goal label, 500 weight and 18.9/24.3 px line-height, English transcript in both host locales | Existing type, wrapping and reading hierarchy retained.                                                |
+| Colors        | Neutral light/Orange and dark/custom-blue scenes, existing button and Composer focus indicators              | Visible keyboard perimeters retained; button outlines are 1.5 px. No new contrast-ratio claim is made. |
+| UI            | Compact chip, target/close glyph, pointer and keyboard exit, light full-motion and dark motion-off           | Existing appearance and motion retain their owners; no new animation or active-state skin.             |
+
+| Severity         | Domain        | Location                                        | Before                                                                | After                                                                  | Why                                                        |
+| ---------------- | ------------- | ----------------------------------------------- | --------------------------------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------- |
+| MEDIUM, repaired | Accessibility | `src/features/goal/ui/GoalModeIndicator.tsx:55` | Manual exit removes focused authoring context and lands at HTML root. | Accepted exit restores the same editable input and its retained range. | The next typing action continues the user's current draft. |
+
+Four private native instances use the actual Wails host, production workspace
+contributions and canonical deterministic providers. `/goal` enters through the
+real Composer submit mode. No fixture script activates the mode or writes draft
+or focus state. All UI input uses CUA; observers only read rendered controls,
+geometry, focus, text and selection.
+
+- The original EN/light instance reproduces root focus, the still-retained
+  `Keep this objective draft.` and the subsequent Send stop.
+- EN/light/14 px/Flame Orange: native Space exit restores the original **5–9**
+  selection of `this`. Immediate paste replaces it with `the`; related-file
+  entry, four Tabs to its body, four Shift-Tabs to Close and Return preserve
+  `Keep the objective draft.`. Continued editing produces
+  `Keep the objective draft. Continue.`. A separate pointer exit in that same
+  instance also returns to editing and continues as
+  `Pointer exit keeps this draft. Continue.`.
+- ZH/dark/18 px/custom blue/motion off: native window adjustment and **200% /
+  756 × 475 CSS px / DPR 4** keep Goal mode and its exact draft while the file
+  opens full width. Explicit Close returns to that same armed mode. Its focused
+  exit control is **74.59 × 30 px**, fully visible, with a **1.5 px** blue outline.
+  Return exit restores the backward **11–15** selection of `后继续。`; immediate
+  paste and Actual Size produce `保留目标草稿，核对材料再出发。`. A subsequent
+  deliberate empty-mode check also exits to the input and immediately continues
+  as `空白模式已退出，继续对话。`.
+- The final dark instance omits the observer. All **617** assets match the
+  observed build except its two HTML entries. At native **200%**, Goal mode and
+  `普通版本的目标草稿。` survive keyboard file reading and explicit Close. Space
+  exit focuses the same input; immediate paste and Actual Size continue exactly
+  `普通版本的目标草稿。 继续。`. There are **zero** observation requests or events.
+
+The initial focused baseline passes **3 files / 21 tests**. Both new empty and
+nonempty focus cases fail against the original production handler. The final
+focused run passes **13 files / 109 tests**, covering the Goal feature, Composer
+submission, captured-focus contracts and a later-focus regression. Existing
+pressed-state expectations migrate only for the intentional ordinary-action
+contract; the existing browser case additionally checks retained draft/focus,
+but the browser suite is not run. Web typecheck, lint, circular/context/layer,
+design-system/token/chrome/locale, bundle/module and resource checks pass,
+followed by `make check-native`. All **32** installed resources remain identical.
+Checks and builds run serially. Full Web/Runtime suites, browser suites,
+performance benchmarks, Claude CLI and subagents do not run. Live Goal start,
+replacement, provider recovery and OS IME are not newly qualified by these scenes.
+
+All four instances are stopped, the bundle is unregistered and the observer is
+closed. Cleanup removes **7** new checkout output/cache roots and **3** owned
+profile paths, restores **4** original files and modes, and passes all **18**
+output and **5** profile baselines. All **6,268** qualified non-Markdown inputs,
+**32** resources, three read-only references, three instruction files and original
+UI/Web cache contents pass preservation. The private root
+`flame-goal-authoring-abVD68` is absent. The round-tripped in-memory archive holds
+**66** UTF-8 records, **7,180,441** raw bytes and **1,020,083** gzip bytes;
+SHA-256 `7b07d5e3faf5d16f3334e833c4fc0b5bf489eda70f3da6d71fdbda4b676f7beb`.
+The primary checkout and unrelated user work remain untouched.
+
+Verdict: **Approve for manual Goal-mode exit and the inspected file-return task**.
+The whole-product UI goal remains active. Basic objective-editor entry and
+cancellation are already qualified under **Goal stop-reason reading** below.
+Next inspect edit submission, pending/error feedback and recovery through the
+existing TextEditorDialog before returning to the retained conversation draft.
+Source inspection has begun; native command feedback is not newly qualified.
 
 ### Goal stop-reason reading
 
@@ -2278,10 +2381,9 @@ SHA-256 `dc8336715d490312cf577ee0dccaddd5919306f6e48c7b482c153a1ab40fb900`.
 The primary checkout and unrelated user work remain untouched.
 
 Verdict: **Approve for the inspected explanation/code/file-return task**. The
-whole-product UI goal remains active. Next trace Goal authoring, its clear/exit
-control in `features/goal/ui/GoalModeIndicator.tsx` and continued drafting. Its
-current action label plus `aria-pressed="true"` is an inspection candidate, not
-a newly qualified native failure or authorization to alter Goal execution.
+whole-product UI goal remains active. That Goal authoring candidate is now
+qualified in **Goal authoring exit and draft continuity** above, including the
+native focus repair and continued editing. Goal execution retains its owner.
 
 ### Generated-report progress reading
 
@@ -19388,10 +19490,11 @@ set-size/position through the partially-rendered ("show more") list, not a smell
 
 ## Settings panes and Goal surface audit
 
-The Goal surface (`GoalStatusSurface`, `GoalModeIndicator`) was read and is clean:
-stable per-goal keys, the edit draft is reset on open (no stale draft), the
-elapsed timer is isolated in its own component, `aria-pressed`/`aria-busy`/labels
-are correct, and the replace `ConfirmDialog` names its target objective.
+The earlier source-only Goal surface audit covered stable per-goal keys, edit
+draft reset, the isolated elapsed timer and the named replacement confirmation.
+It did not qualify native Goal-mode exit focus. **Goal authoring exit and draft
+continuity** above supersedes its former pressed-state assessment and records the
+current complete task qualification.
 
 A deep audit of the settings/configuration panes (providers, mcp, approvals,
 connection, settings shell, theme, plugins) found them in good shape — one owner

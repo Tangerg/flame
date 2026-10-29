@@ -8,6 +8,8 @@ import { useActiveSessionId } from "@/features/agent/public/session";
 import { useGoalMaterial } from "@/features/goal/application/goalReadModel";
 import { GoalComposerModeOwner } from "@/features/goal/application/goalComposerMode";
 import { goalCanEnterComposerMode } from "@/features/goal/application/goalComposerSubmitMode";
+import { useComposer } from "@/features/composer/public/composer";
+import { captureComposerFocus } from "@/features/composer/public/focus";
 export function GoalModeIndicator() {
   const sessionId = useActiveSessionId();
   if (!sessionId) return null;
@@ -16,6 +18,7 @@ export function GoalModeIndicator() {
 
 function SessionGoalModeIndicator({ sessionId }: { sessionId: string }) {
   const t = useT();
+  const composer = useComposer();
   const owner = GoalComposerModeOwner.current();
   const snapshot = useSyncExternalStore(owner.subscribe, owner.snapshot, owner.snapshot);
   const material = useGoalMaterial().value;
@@ -47,10 +50,12 @@ function SessionGoalModeIndicator({ sessionId }: { sessionId: string }) {
         variant="ghost"
         size="md"
         aria-label={t("goal.mode.clear")}
-        aria-pressed="true"
         disabled={starting}
         chip
-        onClick={() => owner.deactivate(sessionId)}
+        onClick={() => {
+          const restoreFocus = captureComposerFocus(composer);
+          if (owner.deactivate(sessionId)) restoreFocus();
+        }}
       >
         <GlyphSwap
           rest={

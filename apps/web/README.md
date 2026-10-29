@@ -47,6 +47,11 @@ input replacement remain with the existing captured-focus owner. Send, Steer and
 Stop use the shared focusable-disabled contract while commands are unavailable.
 The Runtime retains cancellation admission and Run settlement ownership.
 
+Manual Goal-mode exit uses that same captured Composer focus. Accepted exit
+returns to the current input with its draft and selection intact; later focus or
+an input replacement retires the capture. The exit is an ordinary named action.
+Automatic mode retirement and Goal execution keep their existing owners.
+
 The empty conversation owns keeping its focused control inside its scroll
 viewport when the window, text or surrounding content reflows. Its existing
 spacing token supplies focus clearance. Native keyboard return reveals that
