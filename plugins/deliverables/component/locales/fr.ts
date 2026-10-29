@@ -2,8 +2,6 @@ import type { en } from "./en";
 
 export const fr = {
   "panel.title": "Livrables professionnels",
-  "panel.description":
-    "Créez, révisez et livrez des documents natifs avec des preuves liées à chaque révision.",
   "panel.controls": "Actions sur les livrables",
   refresh: "Actualiser",
   reading: "Lecture…",

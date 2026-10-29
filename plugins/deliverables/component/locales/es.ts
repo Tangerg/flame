@@ -2,8 +2,6 @@ import type { en } from "./en";
 
 export const es = {
   "panel.title": "Entregables profesionales",
-  "panel.description":
-    "Cree, revise y entregue documentos nativos con evidencias vinculadas a cada revisión.",
   "panel.controls": "Acciones de entregables",
   refresh: "Actualizar",
   reading: "Leyendo…",

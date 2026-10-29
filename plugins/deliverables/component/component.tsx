@@ -464,8 +464,6 @@ function Workspace({ context }: { context: ComponentContext }) {
   );
   const state = useDeliverables(context);
   const historyEntry = useRef<HTMLElement>(null);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [format, setFormat] = useState("all");
   const catalog = useMemo(() => {
@@ -526,23 +524,9 @@ function Workspace({ context }: { context: ComponentContext }) {
   return (
     <Panel
       label={t("panel.title")}
-      header={
-        <PanelHeader
-          title={t("panel.title")}
-          description={t("panel.description")}
-        />
-      }
+      header={<PanelHeader title={t("panel.title")} />}
       controls={
         <Toolbar label={t("panel.controls")}>
-          <Button
-            variant="primary"
-            onClick={() => setCreateOpen((open) => !open)}
-          >
-            {t("author.new")}
-          </Button>
-          <Button onClick={() => setImportOpen((open) => !open)}>
-            {t("import.open")}
-          </Button>
           <Button
             pending={state.list?.loading || state.catalog?.loading}
             aria-busy={
@@ -564,20 +548,10 @@ function Workspace({ context }: { context: ComponentContext }) {
           {state.catalog?.error ?? catalog?.error}
         </Callout>
       )}
-      <Disclosure
-        title={t("author.new")}
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        keepMounted
-      >
+      <Disclosure title={t("author.new")} keepMounted>
         <CreateForm state={state} catalog={catalog?.formats} t={t} />
       </Disclosure>
-      <Disclosure
-        title={t("import.open")}
-        open={importOpen}
-        onOpenChange={setImportOpen}
-        keepMounted
-      >
+      <Disclosure title={t("import.open")} keepMounted>
         <ImportForm state={state} t={t} />
       </Disclosure>
       <PanelSection title={t("list.title")}>

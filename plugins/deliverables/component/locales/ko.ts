@@ -2,8 +2,6 @@ import type { en } from "./en";
 
 export const ko = {
   "panel.title": "전문 결과물",
-  "panel.description":
-    "원본 문서를 만들고 수정·검토하며 각 버전에 연결된 근거와 함께 전달합니다.",
   "panel.controls": "결과물 작업",
   refresh: "새로 고침",
   reading: "읽는 중…",

@@ -1,7 +1,5 @@
 export const en = {
   "panel.title": "Professional deliverables",
-  "panel.description":
-    "Create, revise, inspect and deliver native documents with evidence tied to each revision.",
   "panel.controls": "Deliverable actions",
   refresh: "Refresh",
   reading: "Reading…",

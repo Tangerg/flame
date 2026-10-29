@@ -2,8 +2,6 @@ import type { en } from "./en";
 
 export const zh = {
   "panel.title": "专业成果交付",
-  "panel.description":
-    "创建、修订、检查和交付原生文档，每次检查都绑定确切版本。",
   "panel.controls": "成果操作",
   refresh: "刷新",
   reading: "读取中…",

@@ -2,8 +2,6 @@ import type { en } from "./en";
 
 export const de = {
   "panel.title": "Professionelle Arbeitsergebnisse",
-  "panel.description":
-    "Native Dokumente erstellen, prüfen und mit Nachweisen zur jeweiligen Revision übergeben.",
   "panel.controls": "Aktionen für Arbeitsergebnisse",
   refresh: "Aktualisieren",
   reading: "Wird geladen…",

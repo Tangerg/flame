@@ -71,6 +71,11 @@ page previews, attributed reviews and download controls. The same published
 operations are available as model tools. The additional read-only `page` tool
 returns an actual retained PNG so a model can examine the render it is reviewing.
 
+Create and import each have one inline disclosure entry. Closing either keeps
+its local draft and native-file selection; reopening resumes the same form.
+Disclosure owns expansion, while the existing forms and command/upload owners
+retain their inputs and recovery state.
+
 Document and revision-history pagination keeps its controls focusable while a
 read is pending and at page boundaries. Pending controls reject repeat activation;
 settlement preserves the user's current focus, including a later move to another

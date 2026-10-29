@@ -456,22 +456,47 @@ it("recovers the same uncertain command after remount without creating another n
   });
 });
 
-it("preserves the selected revision and draft when a refresh fails", async () => {
+it.each(["Create a deliverable", "Import native file"])(
+  "offers one inline entry for %s with its expanded state and local return focus",
+  async (name) => {
+    const fixture = await rig();
+    fixture.ui.render(<Deliverables context={fixture.context()} />);
+    await screen.findByRole("button", { name: /Quarterly report/ });
+    const entries = screen.getAllByRole<HTMLButtonElement>("button", { name });
+    expect(entries).toHaveLength(1);
+    const entry = entries[0]!;
+    expect(entry.getAttribute("aria-expanded")).toBe("false");
+    act(() => entry.focus());
+    fireEvent.click(entry);
+    expect(entry.getAttribute("aria-expanded")).toBe("true");
+    expect(document.getElementById(entry.getAttribute("aria-controls") ?? "")).toBeTruthy();
+    expect(document.activeElement).toBe(entry);
+    fireEvent.click(entry);
+    expect(entry.getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).toBe(entry);
+    expect(screen.getByRole("button", { name: /Quarterly report/ })).toBeTruthy();
+    expect(fixture.calls.filter((call) => call.key !== null)).toHaveLength(0);
+  },
+);
+
+it("preserves the selected revision and draft through closing, reopening and a refused refresh", async () => {
   const fixture = await rig();
   fixture.ui.render(<Deliverables context={fixture.context()} />);
   fireEvent.click(await screen.findByRole("button", { name: /Quarterly report/ }));
   await screen.findByText("Current native revision");
-  fireEvent.click(
-    within(screen.getByRole("group", { name: "Deliverable actions" })).getByRole("button", {
-      name: "Create a deliverable",
-    }),
-  );
-  const body = await screen.findByRole("textbox", { name: "Document text" });
-  const form = body.closest("form")!;
+  const entry = screen.getByRole("button", { name: "Create a deliverable", expanded: false });
+  fireEvent.click(entry);
+  let body = await screen.findByRole("textbox", { name: "Document text" });
+  let form = body.closest("form")!;
   fireEvent.change(within(form).getByRole("textbox", { name: "Title" }), {
     target: { value: "Unsaved title" },
   });
   fireEvent.change(body, { target: { value: "Keep this original draft." } });
+  fireEvent.click(entry);
+  await waitFor(() => expect(screen.queryByRole("textbox", { name: "Document text" })).toBeNull());
+  fireEvent.click(entry);
+  body = await screen.findByRole("textbox", { name: "Document text" });
+  form = body.closest("form")!;
   fixture.failReads(true);
   fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
   await waitFor(() =>
@@ -539,21 +564,24 @@ it("binds visual review to the loaded page and revokes its preview on revision n
   expect(screen.queryByRole("img", { name: "Page 1" })).toBeNull();
 });
 
-it("resumes an imported file from the canonical staged offset", async () => {
+it("retains a chosen file and resumes its canonical staged offset after closing and reopening", async () => {
   const fixture = await rig();
   fixture.stage();
   fixture.ui.render(<Deliverables context={fixture.context()} />);
-  fireEvent.click(
-    within(screen.getByRole("group", { name: "Deliverable actions" })).getByRole("button", {
-      name: "Import native file",
-    }),
-  );
+  const entry = screen.getByRole("button", { name: "Import native file", expanded: false });
+  fireEvent.click(entry);
   fireEvent.click(await screen.findByRole("button", { name: "Resume this upload" }));
   const file = new File([fixture.bytes], "original.docx", {
     type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   });
   fireEvent.change(screen.getByLabelText("Choose native file"), { target: { files: [file] } });
   await screen.findByText("original.docx");
+  fireEvent.click(entry);
+  await waitFor(() =>
+    expect(screen.queryByRole("button", { name: "Resume and import" })).toBeNull(),
+  );
+  fireEvent.click(entry);
+  expect(screen.getByLabelText<HTMLInputElement>("Choose native file").files?.[0]).toBe(file);
   fireEvent.click(screen.getByRole("button", { name: "Resume and import" }));
   await screen.findByText("The original file was imported as a new revision.");
   const appended = fixture.calls.filter((call) => call.method === METHODS.append);
@@ -592,11 +620,7 @@ it("refuses lossy guided workbook numbers before they become native cells", () =
 it("refuses duplicate keys and lossy numbers in advanced creation before dispatch", async () => {
   const fixture = await rig();
   fixture.ui.render(<Deliverables context={fixture.context()} />);
-  fireEvent.click(
-    within(screen.getByRole("group", { name: "Deliverable actions" })).getByRole("button", {
-      name: "Create a deliverable",
-    }),
-  );
+  fireEvent.click(screen.getByRole("button", { name: "Create a deliverable", expanded: false }));
   await chooseOption("Format", "Workbook · XLSX");
   await chooseOption("Authoring mode", "Advanced JSON editor");
   const source = screen.getByRole("textbox", { name: "Native content specification (JSON)" });
