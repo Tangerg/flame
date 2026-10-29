@@ -195,6 +195,9 @@ material tabs unselected. Expanding and restoring material changes presentation
 without adding an inspection source. The existing return chain and native scroll
 position remain intact. A truncated tab title uses the shared Tooltip on hover
 or keyboard focus; resizing the title does not replace its trigger.
+Full-width reading shows the existing return action's destination beside its
+arrow. Compact Dock headers keep the named icon action. Source return and the
+file reader's local return to its list retain their separate navigation owners.
 
 Project choices retain complete wrapping names. When projects share a display
 name, both the new-conversation tray and active-project menu show their full

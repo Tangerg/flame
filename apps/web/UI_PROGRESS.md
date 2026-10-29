@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Current batch integrates 31 incoming main commits through `aee40a542`. Notification history now continues at a visible adjacent action when its oldest focused record is evicted at the existing 200-entry cap. Later draft focus wins, and long arrivals receive ordinary browser focus reveal. All 13 scoped regressions, typecheck, applicable Web gates, final supported native build and light/dark/18 px/200%/observer-free tasks pass. Implementation `c46bd7c5a` is published to remote main, and owned native/build resources are retired. See **Reading through capacity eviction** under **Notification history and current action focus**. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
+Current batch makes the existing full-width return destination visible and repairs continuous long labels in the shared Tooltip. The exact source-return chain, compact Dock, current material, focus and drafts retain their owners. Shared UI checks (194 tests), workspace/installed continuity (152 tests), Web typecheck, the 12 gates and actual light/dark/18px/200%/observer-free tasks pass. Evidence and cleanup are complete; the qualified source is ready for publication under **Full-width return destinations and complete labels**. Prior notification-cap delivery remains `c46bd7c5a`. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -3261,8 +3261,9 @@ The primary checkout, user data, references and unrelated processes remain intac
 
 Appearance offers Off, Xuan paper, Cotton paper and Fine grain through the existing
 Segmented control. Strength uses the shared Slider from 1 to 5 and retains its
-value across Off and restart. Existing installations start with Off and strength
-3; valid older appearance records retain their other settings. Both paper fields
+value across Off and restart. Defaults are Off and strength 3. Complete current
+appearance records retain their settings across restart; incomplete records are
+rejected under the repository's pre-release storage policy. Both paper fields
 participate in settings search. New rows use labels without helper copy, and
 SettingRow no longer reserves space for an absent description.
 
@@ -6494,6 +6495,133 @@ and originality checks retain the established design in these scenes. This does
 not establish whole-product award-level acceptance. The native option-name
 comparison below retains the existing semantics; the whole UI goal remains active
 and unfinished.
+
+### Full-width return destinations and complete labels
+
+At main `0384cdaf3`, native full-width Diff → Browse panels → Files leaves two
+separate return arrows on screen. The outer action already knows its exact
+source, but reveals that destination only through its tooltip. The file reader's
+inner action returns to the file list. Showing the existing source name makes
+those two tasks distinguishable without hovering.
+
+`ReturnButton.tsx` composes the existing Button, Icon and Tooltip. The full-width
+`WorkspaceWindowHeader` opts into its visible label; compact Dock headers retain
+the named icon action and their tab space. The same inspection owner supplies
+the destination and return action. The bounded, ellipsized label yields room to
+the current material and actions; the shared tooltip exposes its complete value.
+Navigation, source-instance retention, captured focus, Close, Runtime operations,
+locale strings and draft ownership retain their existing contracts.
+
+The long-name native review exposes a second defect in the shared plain Tooltip:
+its 280px popup contains a 496px unbroken path. The floating surface clips that
+text. `packages/ui/src/tooltip.tsx` now permits emergency wrapping in its existing
+label measure. RichTooltip composition, popup timing, placement, surfaces and
+focus behavior are unchanged. The same fix qualifies the actual truncated Dock
+tab's complete source name. No local path splitting or replacement popup is added.
+
+Read-only HeroUI breadcrumb demos show parent links followed by the current
+object, and ZCode's actual `PreviewPane.tsx` keeps path segments and current file
+identity together. Those are hierarchy examples. The
+[W3C APG breadcrumb pattern](https://www.w3.org/WAI/ARIA/apg/patterns/breadcrumb/)
+and [HeroUI Breadcrumbs](https://heroui.com/en/docs/react/components/breadcrumbs)
+describe parent hierarchy. Flame's inspection source is a return history, so the
+design inference is to retain its ordinary action button and current material
+identity rather than introduce a breadcrumb landmark. Existing broader ChatGPT,
+Arc, Radix and Ace research retains its earlier evidence boundaries.
+
+| Domain        | Evidence inspected                                                                                         | Result and boundary                                                                                                          |
+| ------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Accessibility | Actual named buttons, keyboard tooltip, Escape, local list return, source return and continued editing     | Existing focus and action semantics retained. VoiceOver audio and OS IME are not newly qualified.                            |
+| Layout        | 1440×900 light, actual window adjustment, 200% light and 560×377 dark CSS viewport; 700/1200px regressions | Return, current material and Browse remain visible. Fresh RTL and unsupported 320px native width are not run.                |
+| Writing       | Existing EN/ZH source-return, Files, list-return, Close and Browse labels                                  | One existing destination label becomes visible; no new locale copy or helper text.                                           |
+| Typography    | 14/18px controls, long path, actual shared Tooltip and Dock tab                                            | Existing type roles remain. Continuous identifiers wrap completely within the popup.                                         |
+| Colors        | Captured neutral foreground and actual painted focus backgrounds                                           | Quiet return text measures 4.563:1 light and 4.616:1 dark. These two pairs pass 4.5:1; this is not a new palette-wide claim. |
+| UI            | Shared quiet button, arrow, popup and full/reduced-motion scenes                                           | Existing spacing, corners, pointer feedback and motion owners retained.                                                      |
+
+| Severity         | Domain     | Location                                          | Before                                                            | After                                                     | Why                                                                  |
+| ---------------- | ---------- | ------------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------- |
+| HIGH, repaired   | Typography | `packages/ui/src/tooltip.tsx` plain label         | An unbroken long path is clipped inside the bounded popup.        | The complete value wraps inside the same popup.           | A truncated source needs a usable route to its complete identity.    |
+| MEDIUM, repaired | Writing    | `ReturnButton.tsx` in `WorkspaceWindowHeader.tsx` | The full-width source destination appears only on hover or focus. | The existing source-return name appears beside its arrow. | Distinguish returning to the source from returning to the file list. |
+
+Verification passed:
+
+- The focused baseline passes **3 files / 144 tests**. Strengthening the existing
+  wide/narrow material-return tasks produces **two expected failures**, with the
+  compact Dock case passing. Final workspace inspection, Session ownership,
+  navigation and installed-component continuity pass **4 files / 152 tests**.
+  No valid assertion is removed. CSS geometry is qualified natively rather than
+  by a test that merely repeats a style value.
+- `npm run check --workspace @flame/ui` passes build, both type checks, lint,
+  format, **11 files / 194 tests** and independent packed UI/icon consumption.
+  Web typecheck and the 12 serial gates pass: lint, circular, contexts, layers,
+  design-system, tokens, chrome, locales, resource reproduction, bundle, module
+  links and `make check-native`. The final supported native gate takes
+  **20.620s** and includes Desktop test/vet/build and the production Wails build.
+- The initial EN/light/14px/Orange native task confirms visible destination text,
+  keyboard activation, retained Diff receipt and Browse focus. Close resumes
+  `Keep the source review draft. Continued.`. Native window adjustment changes
+  **1440×900 → 1513×950**; actual 200% yields **756×475 CSS px**. The named
+  conversation return then continues that same draft with ` Returned at zoom.`.
+  The compact inspection action remains an empty-text, named 28×28px button.
+- Final ZH/dark/18px/custom-blue/motion-off uses actual native 200% at
+  **560×377 CSS px**. The source name contains a long path. The return label
+  remains bounded at 224px, the button is 264px and the current Files title
+  retains 200px. The tooltip changes from **496px content / 280px viewport**
+  to **280 / 280**, with its full four-line value visible. Its popup fits at
+  **(5,36,280,102)**. Escape retains the action, inner Return opens the Files
+  list, and outer Return restores the same Diff receipt and Browse focus.
+  Wheel reading and keyboard Close preserve
+  `长来源阅读后保留这份草稿。 已返回继续。`, caret **20**. Actual Size then
+  qualifies the real Dock tab's complete wrapping tooltip and visible focus.
+- The additional-observer-free dark control has **617 assets**, with every
+  non-HTML asset identical to the measured build. Only `index.html` and
+  `visual/index.html` omit the observer. Native keyboard 200%, complete tooltip,
+  source return, Close and `最终版本保留来源草稿。 已继续。` pass; there are
+  **zero** additional observation records or requests. It makes no passive DOM
+  geometry, selection or object-identity claim.
+- Final EN/light/14px/Orange/full-motion long-name review also wraps completely,
+  **280 / 280**. Keyboard Back restores the original Diff receipt and Browse
+  focus; Close continues `Keep the final source draft. Continued.`, caret **39**.
+
+Seven native generations include the original, intermediate and final scenes.
+The first private dark URL mistakenly requests unregistered `zh-CN`; the fixture
+correctly rejects it before rendering. Correcting the input to the actual `zh`
+registration restores the canonical scene. That blank launch is excluded from
+qualification. An expected empty-process probe and a corrected diagnostic
+expression are setup evidence, not product failures. No browser suite, benchmark,
+Claude CLI or subagent runs. Full Web/Runtime suites and fresh live provider data
+are not qualified; the existing unrelated aggregate-suite limits remain recorded.
+
+The paper-texture paragraph above is also reconciled with current main's explicit
+pre-release storage policy: complete current appearance records persist, while
+incomplete old shapes are rejected. No compatibility reader or implicit migration
+is restored. This is a documentation correction, not an appearance implementation
+change.
+
+The publication fetch finds zero incoming commits at `0384cdaf3`; merging reports
+already up to date. All seven native generations are stopped, the exact bundle
+is unregistered and its loopback observer is closed. Cleanup removes **eight** new
+checkout output/cache roots and **three** owned profile paths, restores **four**
+original files and modes, and passes all **18** output and **five** profile
+baselines. All **6,306** qualified non-Markdown inputs, **32** resources,
+**12** read-only references and **three** instruction files pass preservation;
+**6,302** source inputs outside the four changed files remain identical. The
+original UI cache keeps its two files and Web Vite-temp remains empty. Primary
+checkout work, user data, reference repositories and unrelated processes remain
+untouched. The exact private root `/private/tmp/flame-return-destination-OTrfbK`
+is absent. Independent preservation after removal repeats every count above.
+
+The round-tripped in-memory gzip retains **102 UTF-8 records**, **7,951,234 raw
+bytes** and **1,048,331 gzip bytes**, including private canonical inputs, serial
+build/gate logs, before/after snapshots, asset/source maps and cleanup proof.
+SHA-256: `9831365157ce9bc5cc46e6871a3007a3ea52fbf89b7470abfc04ca9bb697eb3c`.
+Publication of the qualified source follows this completed verification and
+cleanup boundary.
+
+Verdict: **Approve** for the inspected source-return and complete-label task;
+no HIGH finding remains in this scope. This is not whole-product award-level
+acceptance. Continue with a different evidence-backed content/Dock task after
+publication.
 
 ### Native catalog option reporting
 

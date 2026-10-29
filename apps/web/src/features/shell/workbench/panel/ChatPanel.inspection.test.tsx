@@ -390,7 +390,9 @@ describe("full-width material picker", () => {
         );
       });
 
-      fireEvent.click(screen.getByRole("button", { name: "Back to Subagents" }));
+      const back = screen.getByRole("button", { name: "Back to Subagents" });
+      expect(back.textContent).toBe("Back to Subagents");
+      fireEvent.click(back);
       expect(testClient.navigation.get().view).toBe("subagents");
       expect(screen.getByRole("button", { name: "Evidence 1" })).toBe(evidence);
       expect(document.activeElement).toBe(browse);
@@ -1667,7 +1669,7 @@ describe("material inspection focus", () => {
     const view = testClient.render(<ChatPanel onSend={() => true} />);
     fireEvent.click(screen.getByRole("button", { name: "src/main.ts:4" }));
     const dock = screen.getByRole("complementary", { name: "Files" });
-    expect(within(dock).getByRole("button", { name: "Back to conversation" })).toBeTruthy();
+    expect(within(dock).getByRole("button", { name: "Back to conversation" }).textContent).toBe("");
     act(() => {
       model.sessionId = "ses_second";
       activateWorkspaceSessionScope(testClient.workspace.access, model.sessionId);

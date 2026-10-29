@@ -47,7 +47,8 @@ components do not maintain another modality or ring owner.
 
 `Tooltip` and `RichTooltip` accept the primitive's `disabled` state. Consumers
 that reveal a label only while it is truncated keep the same trigger mounted
-and disable its tooltip when the complete text fits.
+and disable its tooltip when the complete text fits. Plain `Tooltip` labels wrap
+unbroken paths and identifiers within their existing bounded width.
 
 `Popover` owns the same portal, floating surface, Base UI nesting and focus
 contract for application controls and portable views. A consumer that retains

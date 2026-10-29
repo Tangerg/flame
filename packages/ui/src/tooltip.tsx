@@ -12,7 +12,7 @@ const tip = stylex.create({
     fontFamily: "var(--font-sans)",
     lineHeight: leading.snug,
   },
-  label: { maxWidth: "280px" },
+  label: { maxWidth: "280px", overflowWrap: "anywhere" },
 });
 
 export interface TooltipProviderProps {
