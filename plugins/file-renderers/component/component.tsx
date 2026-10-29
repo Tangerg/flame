@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import { Lexer, type Token, type Tokens } from "marked";
+import { decodeHTMLStrict } from "entities/decode";
 import {
   createTranslator,
   type ComponentContext,
@@ -54,7 +55,7 @@ function calloutOf(
   if (!authored) return null;
   const [first, ...inline] = (lead as Tokens.Paragraph).tokens;
   if (first?.type !== "text") return null;
-  const marker = readCalloutMarker((first as Tokens.Text).text);
+  const marker = readCalloutMarker(first.raw);
   if (marker?.kind !== authored.kind) return null;
   const body = marker.rest
     ? [
@@ -146,26 +147,35 @@ function renderTokens(tokens: Token[], t: Translate): ReactNode[] {
       }
       case "link": {
         const value = token as Tokens.Link;
-        const label = renderTokens(value.tokens, t);
+        const label = value.autolink
+          ? value.text
+          : renderTokens(value.tokens, t);
+        const destination = value.autolink
+          ? value.href
+          : decodeHTMLStrict(value.href);
         return (
-          <span key={key} title={value.title ?? undefined}>
+          <span
+            key={key}
+            title={value.title ? decodeHTMLStrict(value.title) : undefined}
+          >
             {label}
-            {value.href && visibleText(label) !== value.href && (
-              <small data-slot="link-destination"> ({value.href})</small>
+            {destination && visibleText(label) !== destination && (
+              <small data-slot="link-destination"> ({destination})</small>
             )}
           </span>
         );
       }
       case "image": {
         const value = token as Tokens.Image;
+        const destination = decodeHTMLStrict(value.href);
         return (
           <ImageNotice
             key={key}
-            label={value.text || undefined}
+            label={visibleText(renderTokens(value.tokens, t)) || undefined}
             detail={
-              /^data:/i.test(value.href) ? t("image.embedded") : value.href
+              /^data:/i.test(destination) ? t("image.embedded") : destination
             }
-            title={value.title ?? undefined}
+            title={value.title ? decodeHTMLStrict(value.title) : undefined}
           />
         );
       }
@@ -246,11 +256,10 @@ function renderTokens(tokens: Token[], t: Translate): ReactNode[] {
       }
       case "text": {
         const value = token as Tokens.Text;
-        return value.tokens ? (
-          <span key={key}>{renderTokens(value.tokens, t)}</span>
-        ) : (
-          value.text
-        );
+        if (value.tokens)
+          return <span key={key}>{renderTokens(value.tokens, t)}</span>;
+        // Marked's text already rewrites numeric entities; raw preserves one decode.
+        return value.escaped ? value.raw : decodeHTMLStrict(value.raw);
       }
       case "html":
       case "escape":
