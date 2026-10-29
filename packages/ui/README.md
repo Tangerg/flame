@@ -334,7 +334,8 @@ Prose color comes only from the host's accent roles: headings and inline code us
 `--color-accent-line`; body and strong text keep the neutral ink. Panel titles use
 the same heading role.
 `Callout` owns the GitHub alert presentation for every Markdown adapter: the
-marker grammar (`readCalloutMarker`), the natural-case title and icon per kind,
+marker grammar (`readCalloutMarker`), the shared remark transform (`remarkCallouts`),
+the natural-case title and icon per kind,
 and each kind's title and icon ink. A callout stays on the surrounding reading
 plane without its own fill, rule or corners: its content keeps the paragraph
 reading edge and the shared block rhythm. `ImageNotice` is the one inert image
@@ -342,6 +343,11 @@ description: an alternative text and a muted detail, used for unavailable
 transcript images and for captured file images that are never loaded.
 Quotes and loose lists retain paragraph boundaries around nested blocks; quote
 spacing applies to direct content without overriding a nested list's own flow.
+`taskListContent` projects remark task checkboxes into one captured state and primary
+visible label; `visibleText` reads the same React content for labels and inert links.
+The transcript and file preview share these reading projections while retaining their
+own HTML, link, image and math policies.
+
 `TaskListItem` renders one recorded task as a list item with an immutable,
 named checkbox marker. Its caller supplies the captured checked state and primary
 visible label; paragraphs and nested lists remain selectable document content.

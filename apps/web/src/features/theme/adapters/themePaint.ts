@@ -1,4 +1,4 @@
-import { colord } from "colord";
+import { formatHex, formatHex8, rgbColor } from "@/lib/color";
 import { type Scheme } from "@/lib/appearance";
 import { THEME_PAINT_STORAGE_KEY } from "@/features/theme/kit/documentTheme";
 
@@ -8,12 +8,17 @@ export function rememberThemePaint(
   scheme: Scheme,
   background: string,
 ): void {
-  const color = colord(background);
-  if (!color.isValid()) return;
+  const color = rgbColor(background);
+  if (!color) return;
   writeStorage(() =>
     storage().setItem(
       THEME_PAINT_STORAGE_KEY,
-      JSON.stringify({ theme, scheme, background: color.toHex() }),
+      JSON.stringify({
+        theme,
+        scheme,
+        background:
+          color.alpha !== undefined && color.alpha < 1 ? formatHex8(color) : formatHex(color),
+      }),
     ),
   );
 }

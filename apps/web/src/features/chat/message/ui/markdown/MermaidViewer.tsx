@@ -1,9 +1,10 @@
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
-import { type PointerEvent, useRef, useState } from "react";
+import { type PointerEvent, useId, useMemo, useRef, useState } from "react";
 import { useT } from "@/lib/i18n/index";
 import { Button, IconButton, ScrollRegion } from "@flame/ui";
 import { space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
+import { copyMermaidSvg } from "@/features/chat/message/ui/markdown/mermaid";
 const ZOOM_STEPS = [0.5, 0.75, 1, 1.5, 2, 3] as const;
 
 const styles = stylex.create({
@@ -56,6 +57,8 @@ function naturalWidth(svg: string): number | null {
 
 export function MermaidViewer({ svg, onClose }: { svg: string; onClose: () => void }) {
   const t = useT();
+  const id = useId().replace(/[^A-Za-z0-9_-]/g, "_");
+  const displayedSvg = useMemo(() => copyMermaidSvg(svg, `viewer-${id}`), [svg, id]);
   const [scale, setScale] = useState<number | "fit">("fit");
   const [panning, setPanning] = useState(false);
   const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
@@ -154,7 +157,7 @@ export function MermaidViewer({ svg, onClose }: { svg: string; onClose: () => vo
             aria-label={t("markdown.diagram")}
             {...stylex.props(styles.fit)}
             data-mermaid-fit=""
-            dangerouslySetInnerHTML={{ __html: svg }}
+            dangerouslySetInnerHTML={{ __html: displayedSvg }}
           />
         ) : (
           <div
@@ -163,7 +166,7 @@ export function MermaidViewer({ svg, onClose }: { svg: string; onClose: () => vo
             {...stylex.props(styles.sized)}
             style={width ? { width: width * scale } : undefined}
             data-mermaid-scale={scale}
-            dangerouslySetInnerHTML={{ __html: svg }}
+            dangerouslySetInnerHTML={{ __html: displayedSvg }}
           />
         )}
       </ScrollRegion>

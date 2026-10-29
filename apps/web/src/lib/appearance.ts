@@ -13,7 +13,6 @@ export interface AppearanceSnapshot {
   scheme: Scheme;
   motionScale: number;
   motion: VisualStyleMotion;
-  tokenRevision: object;
   uiFontSize: number;
 }
 
@@ -28,7 +27,6 @@ export function createAppearanceProjection() {
     scheme: "dark",
     motionScale: 1,
     motion: DEFAULT_MOTION,
-    tokenRevision: {},
     uiFontSize: UI_FONT_SIZE_DEFAULT_PX,
   };
   const listeners = new Set<() => void>();
@@ -46,9 +44,6 @@ export function createAppearanceProjection() {
     },
     publishScheme(next: Scheme) {
       if (next !== current.scheme) update({ scheme: next });
-    },
-    publishTokens() {
-      update({ tokenRevision: {} });
     },
     publishUiFontSize(value: number | null) {
       const next = normalizeUiFontSize(value);
@@ -86,11 +81,6 @@ export function useAppearanceProjection(): AppearanceProjection {
 export function useScheme(): Scheme {
   const appearance = useAppearanceProjection();
   return useSyncExternalStore(appearance.subscribe, () => appearance.read().scheme);
-}
-
-export function useTokenRevision(): object {
-  const appearance = useAppearanceProjection();
-  return useSyncExternalStore(appearance.subscribe, () => appearance.read().tokenRevision);
 }
 
 export function useUiFontSize(): number {

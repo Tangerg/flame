@@ -12,11 +12,11 @@ Partial and truncated reads use the existing source view before loading the modu
 line navigation starts in source mode. Loading, render failure, connection retirement
 and disablement preserve the recorded source.
 
-Marked parses Markdown tokens. React renders semantic elements with text content;
+The shared remark pipeline parses Markdown. React renders semantic elements with text content;
 authored HTML, MDX expressions, images and URLs remain text. Code fences remain
 readable code. This is ordinary trusted workbench code, using shared React, the public
-SDK and `@flame/ui`. Marked is a declared private dependency bundled in the ESM;
-its license is retained in the namespace resources.
+SDK and `@flame/ui`. The declared remark and react-markdown dependencies are bundled
+in the ESM; their licenses are retained in `package/THIRD_PARTY_NOTICES.txt`.
 
 The preview describes each image with the shared `ImageNotice`: its alternative
 text and a short source caption, never a loaded image. Complete payloads remain
@@ -41,8 +41,8 @@ grammar. A quote that opens with a GitHub alert marker (`[!NOTE]`, `[!TIP]`,
 `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]`) renders as the shared `Callout`, read
 by the same `readCalloutMarker` the transcript uses; other quotes and markers stay
 literal. Prose direction follows its content; code remains left to right.
-Task tokens supply one immutable `TaskListItem` marker with the primary visible
-task name and captured checked state. Parser checkbox tokens do not become a
+Parsed task items supply one immutable `TaskListItem` marker with the primary visible
+task name and captured checked state. Parser checkboxes do not become a
 second text prefix; ordinary checkbox notation inside code stays literal.
 Ordered lists retain their authored starting number and ordinary items.
 

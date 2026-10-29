@@ -12,7 +12,7 @@ vi.mock("@/lib/appearance", () => ({ useScheme: () => "light" }));
 it("keeps plain code available when the highlighter cannot load", async () => {
   const failure = new Error("chunk unavailable");
   highlighter.getHighlighter.mockRejectedValue(failure);
-  const { result } = renderHook(() => useCodeHighlighter());
+  const { result } = renderHook(() => useCodeHighlighter("typescript"));
   await waitFor(() =>
     expect(highlighter.reportHighlightFailure).toHaveBeenCalledExactlyOnceWith(
       "highlighter unavailable",

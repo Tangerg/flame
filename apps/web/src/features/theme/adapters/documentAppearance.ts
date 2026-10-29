@@ -144,7 +144,6 @@ export function installDocumentAppearance<T extends AppearancePreference>(
   const initial = store.getState();
   applyColorTheme(initial.theme, initial.contrast);
   applyVisualStyle(initial.visualStyle);
-  appearance.publishTokens();
   applyFonts(
     initial.uiFont,
     initial.codeFont,
@@ -163,10 +162,8 @@ export function installDocumentAppearance<T extends AppearancePreference>(
     ) {
       applyColorTheme(state.theme, state.contrast);
       applyVisualStyle(state.visualStyle);
-      appearance.publishTokens();
     } else if (state.visualStyle !== previous.visualStyle) {
       applyVisualStyle(state.visualStyle);
-      appearance.publishTokens();
     }
     if (
       state.paperTexture !== previous.paperTexture ||
@@ -197,7 +194,6 @@ export function installDocumentAppearance<T extends AppearancePreference>(
     ) {
       applyShape(state.density, state.radiusScale, state.motionScale);
     }
-    appearance.publishTokens();
   });
 
   const unsubscribePlugins = subscribeContributions(() => {
@@ -205,7 +201,6 @@ export function installDocumentAppearance<T extends AppearancePreference>(
     applyColorTheme(current.theme, current.contrast);
     applyVisualStyle(current.visualStyle);
     applyPaperTexture(current);
-    appearance.publishTokens();
   });
 
   const unsubscribeScheme = system.subscribe(() => {
@@ -214,7 +209,6 @@ export function installDocumentAppearance<T extends AppearancePreference>(
     applyColorTheme(current.theme, current.contrast);
     applyVisualStyle(current.visualStyle);
     applyPaperTexture(current);
-    appearance.publishTokens();
   });
 
   let disposed = false;

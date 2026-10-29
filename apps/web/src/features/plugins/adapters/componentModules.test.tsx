@@ -363,24 +363,28 @@ it("unmounts the native root but keeps tracked component work owned until it set
   });
   const Native = (await f.load()).component;
   const scene = render(<Native context={f.context} />);
-  await screen.findByText("Working panel");
-  expect(tracked).toBe(work.promise);
-  scene.unmount();
-  await waitFor(() => expect(unmounted).toBe(true));
-  expect(context!.signal.aborted).toBe(true);
-  const startAfterClose = vi.fn(() => Promise.resolve());
-  expect(() => context!.track(startAfterClose)).toThrow("lifetime is closing");
-  expect(startAfterClose).not.toHaveBeenCalled();
-  expect(f.proofs.filter((proof) => proof.scopeKind === "use")).toHaveLength(0);
-  let closed = false;
-  const closing = f.modules.close().then(() => {
-    closed = true;
-  });
-  await Promise.resolve();
-  expect(closed).toBe(false);
-  work.resolve();
-  await closing;
-  expect(f.proofs.some((proof) => proof.scopeKind === "use")).toBe(true);
+  try {
+    await screen.findByText("Working panel");
+    await waitFor(() => expect(tracked).toBe(work.promise));
+    scene.unmount();
+    await waitFor(() => expect(unmounted).toBe(true));
+    expect(context!.signal.aborted).toBe(true);
+    const startAfterClose = vi.fn(() => Promise.resolve());
+    expect(() => context!.track(startAfterClose)).toThrow("lifetime is closing");
+    expect(startAfterClose).not.toHaveBeenCalled();
+    expect(f.proofs.filter((proof) => proof.scopeKind === "use")).toHaveLength(0);
+    let closed = false;
+    const closing = f.modules.close().then(() => {
+      closed = true;
+    });
+    await Promise.resolve();
+    expect(closed).toBe(false);
+    work.resolve();
+    await closing;
+    expect(f.proofs.some((proof) => proof.scopeKind === "use")).toBe(true);
+  } finally {
+    work.resolve();
+  }
 });
 
 it("retains a component Use until its native file save settles", async () => {
@@ -398,23 +402,27 @@ it("retains a component Use until its native file save settles", async () => {
   const saveFile = vi.fn(() => choice.promise);
   const Native = (await f.load()).component;
   const scene = render(<Native context={{ ...f.context, saveFile }} />);
-  await screen.findByText("Saving panel");
-  expect(saving).toBe(choice.promise);
-  scene.unmount();
-  await waitFor(() => expect(context!.signal.aborted).toBe(true));
-  expect(() => context!.saveFile(file)).toThrow(context!.signal.reason);
-  expect(saveFile).toHaveBeenCalledExactlyOnceWith(file);
-  expect(f.proofs.filter((proof) => proof.scopeKind === "use")).toHaveLength(0);
-  let closed = false;
-  const closing = f.modules.close().then(() => {
-    closed = true;
-  });
-  await Promise.resolve();
-  expect(closed).toBe(false);
-  choice.resolve("saved");
-  await closing;
-  await expect(saving).resolves.toBe("saved");
-  expect(f.proofs.some((proof) => proof.scopeKind === "use")).toBe(true);
+  try {
+    await screen.findByText("Saving panel");
+    await waitFor(() => expect(saving).toBe(choice.promise));
+    scene.unmount();
+    await waitFor(() => expect(context!.signal.aborted).toBe(true));
+    expect(() => context!.saveFile(file)).toThrow(context!.signal.reason);
+    expect(saveFile).toHaveBeenCalledExactlyOnceWith(file);
+    expect(f.proofs.filter((proof) => proof.scopeKind === "use")).toHaveLength(0);
+    let closed = false;
+    const closing = f.modules.close().then(() => {
+      closed = true;
+    });
+    await Promise.resolve();
+    expect(closed).toBe(false);
+    choice.resolve("saved");
+    await closing;
+    await expect(saving).resolves.toBe("saved");
+    expect(f.proofs.some((proof) => proof.scopeKind === "use")).toBe(true);
+  } finally {
+    choice.resolve("saved");
+  }
 });
 
 it("retains the original exit proof after lost acknowledgement and does not seal a second Realm", async () => {

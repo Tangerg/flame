@@ -1,4 +1,3 @@
-import { nanoid } from "nanoid";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { fileToInputImage } from "@/features/composer/public/input";
@@ -89,7 +88,10 @@ export function createComposerStore() {
           },
           replaceDraft: (input) => {
             imageStaging.delete(get().composer.activeSessionId);
-            const images = (input.images ?? []).map((image) => ({ id: nanoid(), ...image }));
+            const images = (input.images ?? []).map((image) => ({
+              id: crypto.randomUUID(),
+              ...image,
+            }));
             edit(() => ComposerDraft.restoreText(input.text).withImages(images));
           },
           captureDraftReplacement: () => {
@@ -114,7 +116,7 @@ export function createComposerStore() {
             edit((draft) =>
               draft.withImages([
                 ...draft.images,
-                ...images.map((image) => ({ id: nanoid(), ...image })),
+                ...images.map((image) => ({ id: crypto.randomUUID(), ...image })),
               ]),
             ),
           addImageFiles: (files) => {
@@ -147,7 +149,10 @@ export function createComposerStore() {
             edit((draft) => draft.withImages(draft.images.filter((image) => image.id !== id))),
           addPaste: (text) =>
             edit((draft) =>
-              draft.withPastes([...draft.pastes, { id: nanoid(), text, lines: countLines(text) }]),
+              draft.withPastes([
+                ...draft.pastes,
+                { id: crypto.randomUUID(), text, lines: countLines(text) },
+              ]),
             ),
           removePaste: (id) =>
             edit((draft) => draft.withPastes(draft.pastes.filter((paste) => paste.id !== id))),

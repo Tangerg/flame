@@ -1,4 +1,4 @@
-import { type Highlighter } from "shiki";
+import { type HighlighterCore } from "shiki/core";
 import { useEffect, useState } from "react";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { measureShikiHighlight } from "@/lib/metrics";
@@ -9,21 +9,24 @@ function useShikiTheme(): string {
   return useScheme() === "light" ? "github-light-high-contrast" : "github-dark";
 }
 
-export function useCodeHighlighter(): { highlighter: Highlighter | null; theme: string } {
+export function useCodeHighlighter(lang: string): {
+  highlighter: HighlighterCore | null;
+  theme: string;
+} {
   const theme = useShikiTheme();
-  const [highlighter, setHighlighter] = useState<Highlighter | null>(null);
+  const [ready, setReady] = useState<{ lang: string; highlighter: HighlighterCore } | null>(null);
   useEffect(() => {
     let cancelled = false;
-    void getHighlighter()
+    void getHighlighter(lang)
       .then((h) => {
-        if (!cancelled) setHighlighter(h);
+        if (!cancelled) setReady({ lang, highlighter: h });
       })
       .catch((error: unknown) => reportHighlightFailure("highlighter unavailable", error));
     return () => {
       cancelled = true;
     };
-  }, []);
-  return { highlighter, theme };
+  }, [lang]);
+  return { highlighter: ready?.lang === lang ? ready.highlighter : null, theme };
 }
 
 export function stripCodeWrapper(html: string, fallback: string): string {
@@ -48,7 +51,7 @@ export function useHighlightedCode(code: string, lang: string): string | null {
   useEffect(() => {
     if (cached !== undefined) return;
     let cancelled = false;
-    getHighlighter()
+    getHighlighter(lang)
       .then((highlighter) => {
         if (cancelled) return;
         try {
