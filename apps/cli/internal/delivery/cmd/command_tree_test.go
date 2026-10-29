@@ -510,7 +510,7 @@ func TestReadPipedPromptRejectsUnboundedOrInvalidInput(t *testing.T) {
 		{name: "invalid UTF-8", input: bytes.NewReader([]byte{0xff})},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			if authoredPrompt, err := readPipedPrompt(test.input); err == nil {
+			if authoredPrompt, err := readPipedPrompt(t.Context(), test.input); err == nil {
 				t.Fatalf("invalid piped prompt was accepted with %d bytes", len(authoredPrompt))
 			}
 		})

@@ -140,6 +140,7 @@ require (
 	github.com/Tangerg/oolong/mermaid v0.25.0
 	github.com/Tangerg/oolong/ptytest v0.25.0
 	github.com/mattn/go-shellwords v1.0.16
+	github.com/muesli/cancelreader v0.2.2
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/fileflow v0.1.0
 	github.com/spf13/pathologize v1.1.0

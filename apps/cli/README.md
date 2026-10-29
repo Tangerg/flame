@@ -36,6 +36,13 @@ The process working directory is never an implicit Runtime configuration source.
 
 Run subscriptions reconnect with bounded backoff until canceled.
 
+`flame run` reads nonterminal stdin through EOF before opening Runtime. On Linux and macOS,
+canceling that read interrupts its descriptor poll without closing the borrowed
+input. Embedded callers may provide finite memory or regular-file readers; a
+blocking reader must implement `ReadContext(context.Context, []byte) (int, error)`
+and interrupt its own reads. Other platforms require that context-aware input
+contract for raw pipes; an unsupported descriptor backend is refused before reading.
+
 ## Connect to a shared Runtime
 
 CLI defaults to remote mode at `http://127.0.0.1:17171`. Use `--runtime-mode embedded`
