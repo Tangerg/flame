@@ -10419,6 +10419,19 @@ and **3** private profiles, restoring all **4** preserved files and modes. Check
 confirm **6,311** accepted source inputs, **32** resources, **41** read-only
 references, **3** owned instruction files, **20** output baselines and **5**
 profile-absence baselines. The primary parallel checkout remains untouched.
+
+The interval fetch accepts ten incoming main commits through
+`24d4dc69c0ccc8133d73262c9a26f4fd81047351`, merged normally as
+`f234066500e4b3d3f0ce93aa2b3f05ad3c4d59ed`. All **131** incoming paths match their
+remote bytes or deletion, with no overlap in the implementation commit's paths.
+The new required `ComponentContext.saveFile` collaborator is supplied by this
+batch's test host and refuses unexpected saving. Qualified product/ESM bytes
+remain unchanged. After rebuilding only the shared prerequisites, the merged
+**8 files / 136 tests** and Web typecheck pass. Three recreated output directories
+are retired again. Incoming file-save/Deliverables behavior is not requalified by
+this batch's earlier native receipts; those retain their recorded input scope.
+The final merge inventory contains **6,376** non-Markdown inputs and **34**
+resources, with the incoming development-instruction change explicitly retained.
 Evidence retirement and remote publication follow in this batch's receipt.
 Continue with fresh content/Dock task observations; the continuous goal stays active.
 

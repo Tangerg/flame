@@ -76,6 +76,9 @@ it.each([
     locale: "en",
     signal: owner.signal,
     track: (operation) => operation(owner.signal),
+    saveFile: async () => {
+      throw new Error("Recorded evidence must not save files");
+    },
     compose: () => null,
   };
   const failures: unknown[] = [];
