@@ -309,10 +309,7 @@ func (a *app) mcpFormFields(flow *mcpFormFlow) ([]headless.Field, []*headless.Te
 		headersMode.SetOptions(secretOptions)
 		fields = append(fields, headersMode)
 		headers := textField("Headers JSON", `{"X-Key":"secret"}`, &draft.headers, func(value string) error {
-			if !draft.headersMode.SetsValue() {
-				return nil
-			}
-			_, err := parseMCPStringMap(value)
+			_, err := mcpHeadersChange(draft.headersMode, value)
 			return err
 		})
 		headers.SetMask("•")
@@ -328,10 +325,7 @@ func (a *app) mcpFormFields(flow *mcpFormFlow) ([]headless.Field, []*headless.Te
 		environmentMode.SetOptions(secretOptions)
 		fields = append(fields, environmentMode)
 		environment := textField("Environment JSON", `{"TOKEN":"secret"}`, &draft.environment, func(value string) error {
-			if !draft.environmentMode.SetsValue() {
-				return nil
-			}
-			_, err := parseMCPStringMap(value)
+			_, err := mcpEnvironmentChange(draft.environmentMode, value)
 			return err
 		})
 		environment.SetMask("•")
@@ -417,14 +411,6 @@ func parseMCPStringMap(value string) (map[string]string, error) {
 	var parsed map[string]string
 	if err := json.Unmarshal([]byte(value), &parsed); err != nil {
 		return nil, fmt.Errorf("parse JSON object: %w", err)
-	}
-	if len(parsed) == 0 {
-		return nil, errors.New("a non-empty JSON object is required")
-	}
-	for key, item := range parsed {
-		if strings.TrimSpace(key) == "" || strings.TrimSpace(item) == "" {
-			return nil, errors.New("JSON object names and values must be non-empty")
-		}
 	}
 	return parsed, nil
 }

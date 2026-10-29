@@ -1,6 +1,7 @@
 package terminal
 
 import (
+	"maps"
 	"slices"
 	"testing"
 
@@ -9,6 +10,21 @@ import (
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/program"
 )
+
+func TestMCPEnvironmentFormPreservesProcessValues(t *testing.T) {
+	change, err := mcpEnvironmentChange(formChangeSet, `{"EMPTY":"","SPACES":" \t "," PADDED ":" value "}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if change.Kind != protocol.MCPSecretSet || !maps.Equal(change.Value, map[string]string{"EMPTY": "", "SPACES": " \t ", " PADDED ": " value "}) {
+		t.Fatalf("environment change = %#v", change)
+	}
+	for _, input := range []string{"", "null", "{}", `{"EMPTY":2}`, `{"EMPTY":"","EMPTY":"duplicate"}`} {
+		if _, err := mcpEnvironmentChange(formChangeSet, input); err == nil {
+			t.Errorf("accepted invalid edit %s", input)
+		}
+	}
+}
 
 func TestMCPFormRejectsSubmissionFromAReplacedStepPresentation(t *testing.T) {
 	transcript := testTranscriptView(t)

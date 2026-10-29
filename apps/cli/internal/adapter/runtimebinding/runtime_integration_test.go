@@ -812,6 +812,50 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 	}
 }
 
+func TestMCPEnvironmentEditsMatchRuntimeAdmission(t *testing.T) {
+	configureIntegrationRuntime(t)
+	runtime := openIntegrationRuntime(t, runtimefixture.TempDirectory(t))
+	for _, test := range []struct {
+		name   string
+		values map[string]string
+		valid  bool
+	}{
+		{"empty", map[string]string{"OPTIONAL_FEATURE": ""}, true},
+		{"whitespace", map[string]string{"OPTIONAL_FEATURE": " \t "}, true},
+		{"padded-key", map[string]string{" PADDED ": " value "}, true},
+		{"nul-value", map[string]string{"TOKEN": "bad\x00value"}, false},
+		{"nul-key", map[string]string{"BAD\x00KEY": "value"}, false},
+		{"empty-key", map[string]string{"": "value"}, false},
+		{"separator", map[string]string{"A=B": "value"}, false},
+		{"loader", map[string]string{"ld_preload": "value"}, false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			candidate := mcp.Candidate{Name: "cli-" + test.name, Connection: mcp.ConnectionInput{
+				Transport: protocol.MCPTransportStdio, Command: "unused-disabled-server",
+				Environment: &mcp.EnvironmentChange{Kind: protocol.MCPSecretSet, Value: test.values},
+			}}
+			_, cliErr := runtime.CreateServer(t.Context(), candidate)
+			request, err := projectMCPCandidate(candidate)
+			if err != nil {
+				t.Fatal(err)
+			}
+			request.Name = "direct-" + test.name
+			_, directErr := runtime.mcp.CreateMCPServer(t.Context(), request, runtime.commandOptions())
+			if test.valid {
+				if cliErr != nil || directErr != nil {
+					t.Fatalf("CLI: %v; Runtime: %v", cliErr, directErr)
+				}
+				_, err = runtime.UpdateServer(t.Context(), mcp.ServerUpdate{Server: mcp.UserServer(candidate.Name), Connection: &candidate.Connection})
+				if err != nil {
+					t.Fatal(err)
+				}
+			} else if !errors.Is(cliErr, protocol.ErrInvalidParams) || !errors.Is(directErr, protocol.ErrInvalidParams) {
+				t.Fatalf("want Runtime invalid params; CLI: %v; Runtime: %v", cliErr, directErr)
+			}
+		})
+	}
+}
+
 func requireIntegrationMCPServer(
 	t *testing.T, server protocol.MCPServer, description string, timeoutSeconds int, authorized bool, headers ...string,
 ) {

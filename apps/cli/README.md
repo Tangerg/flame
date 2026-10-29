@@ -232,6 +232,10 @@ specific rule. Connection forms contain connection configuration only. Setting
 an allow or deny replaces the existing decision for the same scope, source, and
 subject type and value; distinct matching patterns of equal specificity still favor deny.
 Approval changes do not wait for MCP connection or authorization operations.
+MCP secret forms validate their set/clear shape through the generated protocol
+contract. Runtime owns environment and HTTP header admission. Environment keys
+and values reach that owner unchanged, including empty and whitespace values;
+an empty value sets `KEY=` rather than removing the variable.
 `flame approvals ls` lists global rules; `--session` adds that session's visible
 rules. `/mcp-tools` includes disabled tools across configured servers, and tool
 listings explain name collisions that exclude connected tools from the model.

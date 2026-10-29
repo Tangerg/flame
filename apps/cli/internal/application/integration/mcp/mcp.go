@@ -90,7 +90,7 @@ type HeadersChange struct {
 }
 
 func (h HeadersChange) Validate() error {
-	return validateMapChange("MCP headers", h.Kind, h.Value)
+	return protocol.ValidateWireTree(protocol.MCPHeadersChange{Type: h.Kind, Value: h.Value})
 }
 
 type EnvironmentChange struct {
@@ -99,7 +99,7 @@ type EnvironmentChange struct {
 }
 
 func (e EnvironmentChange) Validate() error {
-	return validateMapChange("MCP environment", e.Kind, e.Value)
+	return protocol.ValidateWireTree(protocol.MCPEnvironmentChange{Type: e.Kind, Value: e.Value})
 }
 
 type ConnectionInput struct {
@@ -328,29 +328,4 @@ func ValidateAuthorizationAttempt(attempt protocol.MCPAuthorizationAttempt) erro
 // response that crosses server ownership.
 func AuthorizationReferenceFrom(attempt protocol.MCPAuthorizationAttempt) AuthorizationReference {
 	return AuthorizationReference{ID: attempt.ID, Server: attempt.Server}
-}
-
-func validateMapChange(label string, kind protocol.MCPSecretChangeType, values map[string]string) error {
-	switch kind {
-	case protocol.MCPSecretClear:
-		if len(values) != 0 {
-			return fmt.Errorf("%s clear carries values", label)
-		}
-	case protocol.MCPSecretSet:
-		if len(values) == 0 {
-			return fmt.Errorf("%s set value is empty", label)
-		}
-	default:
-		return fmt.Errorf("MCP secret change %q is invalid", kind)
-	}
-	return validateStringMap(label, values)
-}
-
-func validateStringMap(label string, values map[string]string) error {
-	for key, value := range values {
-		if strings.TrimSpace(key) == "" || strings.TrimSpace(value) == "" {
-			return fmt.Errorf("%s contains an empty name or value", label)
-		}
-	}
-	return nil
 }
