@@ -23,8 +23,8 @@ github.com/Tangerg/flame/packages/local-runtime v0.1.0-quality.20261029.1 h1:K4h
 github.com/Tangerg/flame/packages/local-runtime v0.1.0-quality.20261029.1/go.mod h1:k7GImwPntRgT/FNYEO+2Bx351W/ULxJUH2cU0y3zKRg=
 github.com/Tangerg/flame/qimu v0.1.0-quality.20261029.3 h1:oAdu4c8rUVN9YiWku362AisKap56baJgQw8ccEIHic8=
 github.com/Tangerg/flame/qimu v0.1.0-quality.20261029.3/go.mod h1:uGlLRUYXDfFZvsuAv+I88PHtYeIX+w2sK5CJLGXu/qA=
-github.com/Tangerg/flame/runtime v0.1.0-quality.20261030.plugin-boundaries.1 h1:/n7fU0V1/I/Gstnhrnq8hKv7mtJjm+uMwnqNDZg8UKw=
-github.com/Tangerg/flame/runtime v0.1.0-quality.20261030.plugin-boundaries.1/go.mod h1:p3OAEQV6hEzActVOqVHNfaQ61BMPv2yIHToCk/PgACE=
+github.com/Tangerg/flame/runtime v0.1.0-quality.20261030.plugin-boundaries.2 h1:FG3rtEhOnNhTujKQRBffgE4lQvfGBx17yRGRn0cLVco=
+github.com/Tangerg/flame/runtime v0.1.0-quality.20261030.plugin-boundaries.2/go.mod h1:Qsfw7TGkeaByatizT6RUHMS9O68wwrmwTXw2vi7onEQ=
 github.com/Tangerg/go-sdk v1.8.1-scope.3 h1:hMC4qrvwu38L4/bLwnPiCYi9BTRFQxGb6Cs97pa/CzQ=
 github.com/Tangerg/go-sdk v1.8.1-scope.3/go.mod h1:9ZBcxdycY3/8/I1dCH3Uo5rCY3Run9Y4ZmEmiQIulUw=
 github.com/Tangerg/oolong/components v0.25.0 h1:FvMkzeNBLCW5zxVyUiUjvSyhvMYoJkdKeqckG9hh63E=
