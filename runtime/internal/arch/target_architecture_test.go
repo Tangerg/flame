@@ -53,7 +53,7 @@ func sdkLayer(path string) string {
 		return ringMechanism
 	case "protocol":
 		return ringProtocol
-	case "plugin", "plugin/memory", "plugin/codeintel", "plugin/sqlite", "filesystem", "model/catalog", "sandbox", "httpresponse", "procgroup", "client":
+	case "plugin", "plugin/memory", "plugin/codeintel", "plugin/skilllearning", "plugin/sqlite", "filesystem", "model/catalog", "sandbox", "httpresponse", "procgroup", "client":
 		return ringInfra
 	case "cmd/flame-sdk":
 		return ringGenerator

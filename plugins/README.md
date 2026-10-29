@@ -2,8 +2,8 @@
 
 Memory, Schedules, Knowledge base, GitHub, Model router, Guardrails, Web research,
 Saved usage reports, Generated interfaces, Deliverables, Computer use, Native sandbox,
-File watch, Code intelligence and Remote agents are complete
-optional backends. Memory, Schedules, Saved usage reports, Generated interfaces, Deliverables and Computer use expose
+File watch, Code intelligence, Remote agents and Skill learning have optional
+backends. Memory, Schedules, Saved usage reports, Generated interfaces, Deliverables, Computer use and Skills expose
 ordinary public components; the remaining packages are backend-only.
 MCP model Tools and human Runtime commands
 enter the same existing backend owners. A component does not create a second store.
@@ -16,6 +16,12 @@ See [`codeintel/README.md`](codeintel/README.md).
 Remote agents (`a2a`) owns A2A discovery, remote requests and durable task
 bindings. Runtime retains Tool admission and internal delegation. See
 [`a2a/README.md`](a2a/README.md).
+
+Skill learning (`skills`) owns optional mining prompts, learning cadence and
+archive advice. Runtime grants bounded call-scoped history, source-document and
+model access, and retains proposals, human approval, active documents and archive
+commits. The Skills component consumes those same Runtime operations. See
+[`skills/README.md`](skills/README.md).
 
 Generated interfaces (`genui`) accepts a bounded interactive document through
 `genui_ui_present`. Its immutable presentation owner supplies the component,
@@ -263,8 +269,8 @@ with captured revisions and original uncertain-command handles. It consumes the
 existing public Runtime change subscription; no private Host forms remain.
 Icon gallery bundles the icon owner's canonical exports.
 Diagnostics uses the public SDK client-telemetry collaborator for detached local
-reads and owner-directed clearing. These packages require no own callable contribution
-or backend process.
+reads and owner-directed clearing. These page resources use public Runtime or client capabilities. The Skills
+backend separately contributes optional automatic learning advice.
 
 Build `icons` and `ui` first, then run:
 

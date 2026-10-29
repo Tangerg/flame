@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "Method_flame_2eskill_2dlearning_2farchive_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fArchiveRequest"
+    },
+    "Method_flame_2eskill_2dlearning_2farchive_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fArchiveAdvice"
+    },
+    "Method_flame_2eskill_2dlearning_2fmine_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fRun"
+    },
+    "Method_flame_2eskill_2dlearning_2fmine_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fMineResult"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fArchiveAdvice": {
+      "additionalProperties": false,
+      "properties": {
+        "afterMillis": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fArchiveRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "now": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "now"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fMineResult": {
+      "additionalProperties": false,
+      "properties": {
+        "proposal": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fProposal"
+        }
+      },
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fProposal": {
+      "additionalProperties": false,
+      "properties": {
+        "revises": {
+          "type": "boolean"
+        },
+        "skill": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fSkill"
+        }
+      },
+      "required": [
+        "skill",
+        "revises"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fRun": {
+      "additionalProperties": false,
+      "properties": {
+        "sessionId": {
+          "type": "string"
+        },
+        "toolCalls": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sessionId",
+        "toolCalls"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fSkill": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "instructions": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "description",
+        "instructions"
+      ],
+      "type": "object"
+    }
+  }
+}

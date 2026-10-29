@@ -236,6 +236,7 @@ func buildExecutionComposition(
 		plan:           policy.plans,
 		skillStore:     workspaceServices.skillStore,
 		skillProposals: workspaceServices.skills,
+		skillArchives:  workspaceServices.skillMaintenance,
 	})
 	lifetime.toolResources = append(lifetime.toolResources, toolRuntime.closers...)
 	if err != nil {
@@ -270,8 +271,7 @@ func buildExecutionComposition(
 		cfg,
 		conversation,
 		toolRuntime.tools.Shells,
-		workspaceServices.skills,
-		workspaceServices.skillMaintenance,
+		toolRuntime.skillLearning,
 		toolRuntime.memory,
 		modelServices.utilityModel,
 	)

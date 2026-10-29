@@ -2918,6 +2918,201 @@
       ]
     },
     {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning",
+      "imports": [
+        "github.com/Tangerg/flame/qimu/mcp",
+        "github.com/Tangerg/flame/qimu/portable",
+        "time"
+      ],
+      "constants": [
+        {
+          "name": "MaxCallbackBytes",
+          "type": "int64",
+          "value": "16777216"
+        },
+        {
+          "name": "MaxModelCalls",
+          "type": "untyped int",
+          "value": "2"
+        },
+        {
+          "name": "MaxModelInputBytes",
+          "type": "untyped int",
+          "value": "524288"
+        },
+        {
+          "name": "MaxModelOutputTokens",
+          "type": "int64",
+          "value": "4096"
+        },
+        {
+          "name": "MaxTranscriptBytes",
+          "type": "untyped int",
+          "value": "2097152"
+        }
+      ],
+      "functions": [
+        {
+          "name": "ArchiveMethod",
+          "signature": "func() (*mcp.Method[ArchiveRequest, ArchiveAdvice], error)"
+        },
+        {
+          "name": "Contract",
+          "signature": "func() (*portable.Capability, error)"
+        },
+        {
+          "name": "ConversationMethod",
+          "signature": "func() (*mcp.Method[struct{}, Conversation], error)"
+        },
+        {
+          "name": "MineMethod",
+          "signature": "func() (*mcp.Method[Run, MineResult], error)"
+        },
+        {
+          "name": "ReadSkillMethod",
+          "signature": "func() (*mcp.Method[ReadSkill, ReadResult], error)"
+        }
+      ],
+      "types": [
+        {
+          "name": "ArchiveAdvice",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "AfterMillis",
+              "type": "*int64",
+              "tag": "json:\"afterMillis,omitzero\" jsonschema:\"minimum=1\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Duration",
+              "signature": "func() (time.Duration, error)"
+            }
+          ]
+        },
+        {
+          "name": "ArchiveRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Now",
+              "type": "time.Time",
+              "tag": "json:\"now\""
+            }
+          ]
+        },
+        {
+          "name": "Conversation",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "MessageCount",
+              "type": "int64",
+              "tag": "json:\"messageCount\" jsonschema:\"minimum=0\""
+            },
+            {
+              "name": "Transcript",
+              "type": "string",
+              "tag": "json:\"transcript\""
+            }
+          ]
+        },
+        {
+          "name": "MineResult",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Proposal",
+              "type": "*Proposal",
+              "tag": "json:\"proposal,omitzero\""
+            }
+          ]
+        },
+        {
+          "name": "Proposal",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Skill",
+              "type": "Skill",
+              "tag": "json:\"skill\""
+            },
+            {
+              "name": "Revises",
+              "type": "bool",
+              "tag": "json:\"revises\""
+            }
+          ]
+        },
+        {
+          "name": "ReadResult",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Skill",
+              "type": "*Skill",
+              "tag": "json:\"skill,omitzero\""
+            }
+          ]
+        },
+        {
+          "name": "ReadSkill",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Name",
+              "type": "string",
+              "tag": "json:\"name\""
+            }
+          ]
+        },
+        {
+          "name": "Run",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "SessionID",
+              "type": "string",
+              "tag": "json:\"sessionId\""
+            },
+            {
+              "name": "ToolCalls",
+              "type": "int64",
+              "tag": "json:\"toolCalls\" jsonschema:\"minimum=0\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Skill",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Name",
+              "type": "string",
+              "tag": "json:\"name\""
+            },
+            {
+              "name": "Description",
+              "type": "string",
+              "tag": "json:\"description\""
+            },
+            {
+              "name": "Instructions",
+              "type": "string",
+              "tag": "json:\"instructions\""
+            }
+          ]
+        }
+      ]
+    },
+    {
       "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite",
       "imports": [
         "context",

@@ -1,0 +1,190 @@
+{
+  "protocol": "io.github.tangerg.qimu/portable/1",
+  "reference": "flame.skill-learning.v1",
+  "composition": "selection",
+  "scope": "installation",
+  "methods": [
+    {
+      "name": "flame.skill-learning/archive.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Return an optional inactivity threshold when an archive check is due at the caller's time. The caller alone admits and commits archival.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_ArchiveRequest": {
+            "additionalProperties": false,
+            "properties": {
+              "now": {
+                "format": "date-time",
+                "type": "string"
+              }
+            },
+            "required": [
+              "now"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "now": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "now"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_ArchiveAdvice": {
+            "additionalProperties": false,
+            "properties": {
+              "afterMillis": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "afterMillis": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.skill-learning/mine.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Apply learning cadence to a completed Run and return optional proposal advice using call-scoped history, current skill and model callbacks. Never publish or store active skills.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_Run": {
+            "additionalProperties": false,
+            "properties": {
+              "sessionId": {
+                "type": "string"
+              },
+              "toolCalls": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "sessionId",
+              "toolCalls"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          },
+          "toolCalls": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sessionId",
+          "toolCalls"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_MineResult": {
+            "additionalProperties": false,
+            "properties": {
+              "proposal": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_Proposal"
+              }
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_Proposal": {
+            "additionalProperties": false,
+            "properties": {
+              "revises": {
+                "type": "boolean"
+              },
+              "skill": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_Skill"
+              }
+            },
+            "required": [
+              "skill",
+              "revises"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_Skill": {
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "type": "string"
+              },
+              "instructions": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "description",
+              "instructions"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "proposal": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_Proposal"
+          }
+        },
+        "type": "object"
+      }
+    }
+  ]
+}

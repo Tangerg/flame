@@ -1094,7 +1094,7 @@ not reclassified by inference. Explicit review can retain an existing pending co
 
 ## Auxiliary model observation
 
-Compaction, memory extraction and curation, skill mining, and title generation emit an `auxiliary model` OpenTelemetry span through the existing Runtime exporter. `auxiliary.operation` identifies the caller's purpose. Auxiliary calls follow their caller's cancellation and deadline; the adapter adds no wall-clock timeout. Input and output envelopes remain bounded. The span covers selection resolution, the model request, and response acceptance; its duration is not isolated provider latency. The live resolver records the exact provider/model selection, and a valid response contributes its finish reason and reported token usage. Optional cache and reasoning counts remain absent when unreported, including the distinction between absence and an explicit zero. A valid but incomplete response retains its reported usage even though its text is rejected.
+Compaction and title generation emit an `auxiliary model` OpenTelemetry span through the existing Runtime exporter. Optional Memory and Skill learning backends call captured models through bounded callbacks; those model calls retain the original plugin invocation ancestry and ordinary model telemetry. `auxiliary.operation` identifies the caller's purpose. Auxiliary calls follow their caller's cancellation and deadline; the adapter adds no wall-clock timeout. Input and output envelopes remain bounded. The span covers selection resolution, the model request, and response acceptance; its duration is not isolated provider latency. The live resolver records the exact provider/model selection, and a valid response contributes its finish reason and reported token usage. Optional cache and reasoning counts remain absent when unreported, including the distinction between absence and an explicit zero. A valid but incomplete response retains its reported usage even though its text is rejected.
 
 Failed attempts record the `resolve`, `call`, or `response` stage and distinguish cancellation from deadline expiry. These spans do not record prompt text, output text, or raw provider errors. They are diagnostic telemetry, not durable `modelInvocations.list` records or additional Run accounting. Telemetry retention depends on the configured exporter. Physical requests and known outcomes are separately recorded by the same endpoint observer used for Interaction, in the existing invocation journal. Session-associated records participate in trajectory/export and Session deletion; calls without that association are accessible by their original caller ancestry. Physical evidence includes auxiliary consumption in public usage summaries; Run-linked calls accrue through the existing Run accounting owner, while unattached evidence is retained without automatic expiry.
 
@@ -1398,6 +1398,25 @@ entries; the resolved configuration consumes the same values that were validated
 | Skill archive/restore | Subsequent resolution; existing conversation context is not erased                                            |
 
 An unset utility role uses the Runtime composition's default model selection. It does not follow each Run's explicit main-model override. Changing the utility role does not replace the main-model deployment of a live or waiting Run. Saving configuration is not a universal live-reload guarantee. Restart recovery validates the retained model and tool deployment; it does not silently reinterpret an existing execution using arbitrary current settings.
+
+## Automatic Skill learning
+
+The selected `flame.skill-learning.v1` provider runs after successful root Run
+completion. The first-party `flame.skills` backend owns mining prompts, the
+per-session complex-Run cadence, revision generation and archive-check timing.
+Runtime grants one committed-history read, one admitted current user-Skill read,
+and at most two bounded utility-model calls for each mining attempt. A revision
+must name the source actually read through that grant. Cancellation and plugin
+retirement revoke and join these callbacks.
+
+The backend returns advice and retains immutable command receipts. It has no
+proposal library and cannot publish an active Skill. Runtime validates and submits
+mined proposals with forced user scope and source-Session provenance; the existing
+human approval command remains the publication boundary. Archive advice enters
+the existing library lease, provenance and usage checks. Mining failure does not
+skip archive advice or Memory maintenance. Disabling the selected provider stops
+new learning while discovery, proposal review and library operations remain
+available. See [`../plugins/skills/README.md`](../plugins/skills/README.md).
 
 ## Discovered Skill inspection
 

@@ -3,9 +3,11 @@ module github.com/Tangerg/flame/plugins
 go 1.27.3
 
 require (
+	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/Tangerg/scope/models/catalog v0.58.0 // indirect
 	github.com/Tangerg/scope/otel v0.58.0 // indirect
 	github.com/Tangerg/sse v0.0.6 // indirect
+	github.com/adrg/frontmatter v0.2.0 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/buger/jsonparser v1.6.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -14,6 +16,7 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-resty/resty/v2 v2.17.2 // indirect
 	github.com/google/jsonschema-go v0.4.3 // indirect
+	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/ncruces/go-strftime v1.1.0 // indirect
 	github.com/pb33f/go-yaml v0.1.1 // indirect
@@ -26,6 +29,7 @@ require (
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel/log v1.47.0 // indirect
 	go.opentelemetry.io/otel/trace v1.47.0 // indirect
+	go.yaml.in/yaml/v4 v4.0.0-rc.6 // indirect
 	golang.org/x/mod v0.42.0 // indirect
 	golang.org/x/net v0.61.0 // indirect
 	golang.org/x/oauth2 v0.37.0 // indirect
@@ -33,6 +37,7 @@ require (
 	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
 	golang.org/x/time v0.16.0 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 	modernc.org/libc v1.79.0 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
@@ -40,11 +45,12 @@ require (
 )
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.plugin-boundaries.2
+	github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.plugin-boundaries.3
 	github.com/Tangerg/flame/qimu v0.1.0-quality.20261029.3
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
 	github.com/Tangerg/scope/core v0.58.0
 	github.com/Tangerg/scope/mcp v0.58.0
+	github.com/Tangerg/scope/skills v0.58.0
 	github.com/Tangerg/scope/tools v0.58.0
 	github.com/a2aproject/a2a-go/v2 v2.7.0
 	github.com/google/uuid v1.6.0

@@ -1,9 +1,43 @@
-# Skills component
+# Skills
 
-This optional component consumes the public Runtime Skills operations through
-`@flame/component-sdk`. It ships ordinary prebuilt ESM with no executable or own
-callable contribution. Runtime owns discovery, managed documents, proposal revision
-checks, publication, archiving and their command outcomes.
+`flame.skills` provides the library and proposal component plus an optional
+`flame.skill-learning.v1` backend. Runtime remains the sole owner of proposals,
+active documents, human approval, usage observations and archive commits.
+
+## Learning policy
+
+After successful root Run completion, the selected backend considers a Run
+complex at eight completed Tool calls. Every third complex Run in a Session may
+mine a reusable procedure from at least four committed messages. A revision first
+reads the actual current user Skill and keeps that name. The backend also advises
+an archive check at most once per six hours, with a thirty-day inactivity threshold.
+These cost controls reset when the backend restarts; they are not product history.
+
+Mining uses a call-scoped grant for one conversation read, one current Skill read
+and at most two utility-model calls. The complete model input is limited to
+512 KiB and output to 4096 tokens. Refused, incomplete or failed model exchanges
+cannot become drafts. Runtime confines and validates source documents, checks
+proposal content and provenance, and requires an admitted source before accepting
+a revision. Only the existing human approval operation publishes the proposal.
+Archive advice passes through Runtime's existing provenance, usage, library-lease
+and invalidation rules; human-authored Skills remain outside automatic archival.
+
+`PLUGIN_DATA/learning.db` stores original command inputs and immutable advice
+receipts. It contains no Skill or proposal library. A pending command is
+unconfirmed and is never redelivered to the model, including after restart.
+Reading an advice receipt does not publish a Skill. Mining and archive advice are
+independent commands, so a mining failure does not prevent the archive check.
+
+Disable or deselect this provider to stop new automatic learning. Library
+inspection, proposal review and human decisions continue through the same public
+Runtime operations. The former static Runtime mining and archive schedulers are
+removed; no fallback worker or compatibility path remains.
+
+Generate and package through the root `make generate` and plugin build commands.
+The SDK owns the consumer and callback contracts; generated package JSON and
+TypeScript files project those contracts.
+
+## Component
 
 Client scope receives an optional frozen workspace. Available catalogs, document
 inspection and proposals bind that reference; the user library is available without
@@ -54,6 +88,4 @@ When an accepted read removes a focused catalog row, focus returns to the catalo
 search. Focus already moved to another control, including an open document, is
 preserved.
 
-Build `component/component.tsx` through `../build-components.mjs`; the declared namespace
-resource is tracked and exact rebuilds are checked. Disablement or uninstall
-withdraws presentation/resources and preserves all canonical Skill business data.
+The component consumes public Runtime Skills operations through `@flame/component-sdk`. Its declared namespace resource is tracked and exact rebuilds are checked. Disablement or uninstall withdraws presentation/resources and preserves canonical Skill business data.

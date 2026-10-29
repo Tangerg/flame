@@ -1,4 +1,4 @@
-package maintenance
+package pluginservices
 
 import (
 	"context"
@@ -9,14 +9,7 @@ import (
 	"go.opentelemetry.io/otel/metric"
 )
 
-// The self-evolving skill loop is request-detached Run-boundary maintenance;
-// without counters it runs blind — no client event reports how often the agent
-// mines or the idle-Skill archiver archives. No-op until a MeterProvider is installed.
-//
-// Per-operation spans are deliberately omitted: the sibling compaction and
-// extraction workers carry none, so instrumenting only the skill ops with spans
-// would be inconsistent. A coherent maintenance-tracing pass is a separate
-// concern; these counters cover the self-evolving loop's activity meanwhile.
+// Counters follow the Runtime outcome; advice alone cannot advance them.
 const skillMetricsScope = "scope/flame/skill"
 
 var minedSkillProposalCounter = sync.OnceValue(func() metric.Int64Counter {

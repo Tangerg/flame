@@ -31,6 +31,7 @@ type toolEnvironment struct {
 	tools           toolset.Built
 	mcp             *mcp.Pool
 	memory          *pluginservices.Memory
+	skillLearning   *pluginservices.SkillLearning
 	toolResults     *pluginservices.ToolResults
 	pluginCalls     *pluginservices.CommandCalls
 	callComposition *pluginservices.CallComposition
@@ -62,6 +63,7 @@ type toolEnvironmentDependencies struct {
 	plan           *sessions.PlanCoordinator
 	skillStore     *skillauthoring.Store
 	skillProposals builtin.SkillProposalSubmitter
+	skillArchives  *workspace.SkillMaintenance
 }
 
 type toolEnvironmentBuilder func(context.Context, toolEnvironmentDependencies) (toolEnvironment, error)
@@ -113,6 +115,17 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 	}
 	environment.utilityModel = environment.callComposition.Auxiliary(utility)
 	environment.memory, err = pluginservices.NewMemory(pluginservices.MemoryConfig{Installations: cfg.stores.Installations, Connections: mcpPool, Callbacks: deps.modelServices.callbacks, Utility: environment.utilityModel, Embeddings: deps.modelServices.liveEmbedder.Resolve, Conversation: deps.conversation, Commands: commandCalls})
+	if err != nil {
+		return environment, err
+	}
+	skillSource, err := promptsource.NewSkillSource(cfg.skillsUserDir, cfg.skillsUserDir)
+	if err != nil {
+		return environment, fmt.Errorf("runtime: user skill source: %w", err)
+	}
+	environment.skillLearning, err = pluginservices.NewSkillLearning(pluginservices.SkillLearningConfig{
+		Commands: commandCalls, Callbacks: deps.modelServices.callbacks, Utility: environment.utilityModel,
+		Conversation: deps.conversation, Source: skillSource, Proposals: deps.skillProposals, Archives: deps.skillArchives,
+	})
 	if err != nil {
 		return environment, err
 	}

@@ -11,7 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
 
-func TestClientPresentationPackagesAdmitComponentsWithoutBackend(t *testing.T) {
+func TestClientComponentsRemainAvailableWithoutBackend(t *testing.T) {
 	for _, name := range []string{"diagnostics", "icon-gallery", "skills"} {
 		t.Run(name, func(t *testing.T) {
 			r := poMCPOpen(t, poMCPConfig(t))
@@ -21,9 +21,19 @@ func TestClientPresentationPackagesAdmitComponentsWithoutBackend(t *testing.T) {
 				t.Fatalf("admission: %+v", installed.Selected)
 			}
 			release := protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}
+			if len(installed.Selected.Servers) != 0 {
+				changes := make(map[string]protocol.PluginComponentChange)
+				for _, server := range installed.Selected.Servers {
+					changes[server.Name] = protocol.PluginComponentDisable
+				}
+				r.must(delivery.PluginsConfigure, protocol.ConfigurePluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, ServerChanges: changes}, "disable-backends")
+			}
 			r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable")
-			if len(installed.Selected.Components) != 1 || len(installed.Selected.Contributions) != 0 || installed.Selected.Components[0].Contribution != "" {
-				t.Fatalf("component-only admission: %+v", installed.Selected)
+			if len(installed.Selected.Servers) != 0 {
+				waitCallContributorState(t, r, installed.ID, protocol.MCPServerDisabled)
+			}
+			if len(installed.Selected.Components) != 1 || installed.Selected.Components[0].Contribution != "" {
+				t.Fatalf("independent client component admission: %+v", installed.Selected)
 			}
 			component := installed.Selected.Components[0]
 			path := component.Entry
