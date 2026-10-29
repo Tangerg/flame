@@ -11,6 +11,7 @@ import (
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/scope/core/jsonschema"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -248,43 +249,42 @@ func TestRuntimeSearchContractsContainOnlyComposableInputs(t *testing.T) {
 	}
 }
 
-// Struct tags cannot name constants, so the advertised bounds are spelled as
-// literals. This keeps each literal equal to the limit its owner enforces: a
-// schema-valid request must never reach a stricter rule underneath.
 func TestRuntimeSearchSchemasAdvertiseTheirOwnersLimits(t *testing.T) {
-	type bounds struct {
-		Properties struct {
-			Pattern struct {
-				MaxLength int `json:"maxLength"`
-			} `json:"pattern"`
-			Path struct {
-				MaxLength int `json:"maxLength"`
-			} `json:"path"`
-			MaxResults struct {
-				Maximum int `json:"maximum"`
-			} `json:"max_results"`
-		} `json:"properties"`
-	}
 	for _, test := range []struct {
 		name          string
 		patternLength int
 	}{
-		{name: "grep", patternLength: maxRuntimeSearchPatternBytes},
-		{name: "glob", patternLength: maxRuntimeGlobPatternBytes},
+		{"grep", maxRuntimeSearchPatternBytes}, {"glob", maxRuntimeGlobPatternBytes},
 	} {
-		var schema bounds
-		if err := json.Unmarshal(namedDirectTool(t, t.TempDir(), test.name).Definition().InputSchema, &schema); err != nil {
-			t.Fatalf("decode %s schema: %v", test.name, err)
-		}
-		if got := schema.Properties.MaxResults.Maximum; got != workspaceapp.MaxGrepLimit {
-			t.Errorf("%s max_results maximum = %d, want %d", test.name, got, workspaceapp.MaxGrepLimit)
-		}
-		if got := schema.Properties.Pattern.MaxLength; got != test.patternLength {
-			t.Errorf("%s pattern maxLength = %d, want %d", test.name, got, test.patternLength)
-		}
-		if got := schema.Properties.Path.MaxLength; got != maxRuntimeSearchPathBytes {
-			t.Errorf("%s path maxLength = %d, want %d", test.name, got, maxRuntimeSearchPathBytes)
-		}
+		t.Run(test.name, func(t *testing.T) {
+			schema, err := jsonschema.Parse(namedDirectTool(t, t.TempDir(), test.name).Definition().InputSchema)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, field := range []struct {
+				name  string
+				limit int
+			}{
+				{"pattern", test.patternLength}, {"path", maxRuntimeSearchPathBytes},
+			} {
+				for _, length := range []int{field.limit, field.limit + 1} {
+					input := map[string]any{"pattern": "x"}
+					input[field.name] = strings.Repeat("x", length)
+					raw, err := json.Marshal(input)
+					if err != nil {
+						t.Fatal(err)
+					}
+					err = schema.Validate(raw)
+					if length > field.limit {
+						if !errors.Is(err, jsonschema.ErrValidation) {
+							t.Fatalf("excess %s length admitted: %v", field.name, err)
+						}
+					} else if err != nil {
+						t.Fatalf("valid %s length refused: %v", field.name, err)
+					}
+				}
+			}
+		})
 	}
 }
 
@@ -295,6 +295,62 @@ func TestRuntimeSearchRejectsNumericDefaultSentinels(t *testing.T) {
 		if _, err := callTextTool(t.Context(), namedDirectTool(t, root, name), `{"pattern":"x","max_results":0}`); err == nil {
 			t.Errorf("%s accepted max_results=0 instead of requiring omission", name)
 		}
+	}
+}
+
+func TestRuntimeSearchSchemaAndExecutionUseExplicitTextUnits(t *testing.T) {
+	for _, test := range []struct {
+		name         string
+		patternBytes int
+	}{
+		{"grep", maxRuntimeSearchPatternBytes}, {"glob", maxRuntimeGlobPatternBytes},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			tools := newRuntimeSearchTools("")
+			executable := tools.grep
+			if test.name == "glob" {
+				executable = tools.glob
+			}
+			schema, err := jsonschema.Parse(executable.Definition().InputSchema)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, field := range []struct {
+				name    string
+				budget  int
+				failure string
+			}{
+				{"pattern", test.patternBytes, "invalid " + test.name + " pattern"},
+				{"path", maxRuntimeSearchPathBytes, "invalid search path"},
+			} {
+				input := map[string]any{"pattern": "x"}
+				input[field.name] = strings.Repeat("界", field.budget/len("界")+1)
+				raw, err := json.Marshal(input)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := schema.Validate(raw); err != nil {
+					t.Fatalf("Unicode characters within schema bound refused: %v", err)
+				}
+				if _, err := callTextTool(t.Context(), executable, string(raw)); err == nil || !strings.Contains(err.Error(), field.failure) {
+					t.Fatalf("%s must refuse UTF-8 bytes before resolving the empty root: %v", field.name, err)
+				}
+			}
+			for _, limit := range []int{1, workspaceapp.MaxGrepLimit, workspaceapp.MaxGrepLimit + 1} {
+				raw, err := json.Marshal(runtimeGrepRequest{Pattern: "x", MaxResults: &limit})
+				if err != nil {
+					t.Fatal(err)
+				}
+				err = schema.Validate(raw)
+				if limit > workspaceapp.MaxGrepLimit {
+					if !errors.Is(err, jsonschema.ErrValidation) {
+						t.Fatalf("excess result limit admitted: %v", err)
+					}
+				} else if err != nil {
+					t.Fatalf("valid result limit %d refused: %v", limit, err)
+				}
+			}
+		})
 	}
 }
 

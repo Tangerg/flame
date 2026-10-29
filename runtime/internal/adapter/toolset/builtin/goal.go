@@ -34,16 +34,16 @@ stop reason, accumulated usage, model selection, and timestamps.
 Returns goal=null when no Goal exists. Use this before creating a Goal when its
 current state is uncertain.`
 
-const reportDescription = `Report the terminal outcome of the autonomous Goal you are currently pursuing.
+var reportDescription = fmt.Sprintf(`Report the terminal outcome of the autonomous Goal you are currently pursuing.
 
 Call this only from an autonomous Goal Run:
-  - outcome="completed" only when the entire objective is achieved and verified;
-  - outcome="blocked" only when progress genuinely requires user input or an
+  - outcome="%s" only when the entire objective is achieved and verified;
+  - outcome="%s" only when progress genuinely requires user input or an
     external state change, with a concrete reason.
 
 Do not report completion for a plan, partial result, intention, or because one
 Run ended. While no terminal outcome is reported, the Goal loop supplies the
-next Run automatically.`
+next Run automatically.`, goals.OutcomeCompleted, goals.OutcomeBlocked)
 
 type createArgs struct {
 	Objective string `json:"objective" jsonschema:"required,minLength=1" jsonschema_description:"The complete end state to achieve autonomously, in natural language."`
@@ -52,8 +52,8 @@ type createArgs struct {
 type getArgs struct{}
 
 type reportArgs struct {
-	Outcome goals.Outcome `json:"outcome" jsonschema:"required,enum=completed,enum=blocked" jsonschema_description:"completed = the whole objective is achieved and verified; blocked = progress requires the user or an external state change."`
-	Reason  *string       `json:"reason,omitzero" jsonschema_description:"Concrete blocker and what must change. Required for blocked; omit for completed."`
+	Outcome goals.Outcome `json:"outcome" jsonschema:"required" jsonschema_description:"The terminal outcome described by this Tool's reporting contract."`
+	Reason  *string       `json:"reason,omitzero" jsonschema_description:"Concrete blocker and what must change. Required when reporting a blocker; omit when reporting completion."`
 }
 
 // GoalReader is get_goal's complete consumer view.

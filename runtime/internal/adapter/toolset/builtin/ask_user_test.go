@@ -3,6 +3,8 @@ package builtin
 import (
 	"context"
 	json "encoding/json/v2"
+	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -10,6 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/scope/core/jsonschema"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -104,45 +107,51 @@ func TestAnswerText(t *testing.T) {
 	}
 }
 
-// Struct tags cannot name constants, so the advertised schema restates the
-// question limits the transcript owns. This pins that projection to its owner:
-// a changed limit must change what the model is told.
 func TestAskUserSchemaProjectsTheTranscriptLimits(t *testing.T) {
-	tool, err := NewAskUser(nil)
+	executable, err := NewAskUser(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	type property struct {
-		MaxItems  *int `json:"maxItems"`
-		MaxLength *int `json:"maxLength"`
-	}
-	type definition struct {
-		Properties map[string]property `json:"properties"`
-	}
-	var schema struct {
-		Properties map[string]property   `json:"properties"`
-		Defs       map[string]definition `json:"$defs"`
-	}
-	if err := json.Unmarshal(tool.Definition().InputSchema, &schema); err != nil {
+	schema, err := jsonschema.Parse(executable.Definition().InputSchema)
+	if err != nil {
 		t.Fatal(err)
 	}
-	var question definition
-	for name, candidate := range schema.Defs {
-		if strings.HasSuffix(name, "_questionArg") {
-			question = candidate
-		}
-	}
-	for _, limit := range []struct {
-		name string
-		got  *int
-		want int
+	for _, test := range []struct {
+		name                       string
+		questions, options, header int
+		valid                      bool
 	}{
-		{"questions.maxItems", schema.Properties["questions"].MaxItems, transcript.MaximumQuestionFields},
-		{"header.maxLength", question.Properties["header"].MaxLength, transcript.MaximumQuestionHeaderCharacters},
-		{"options.maxItems", question.Properties["options"].MaxItems, transcript.MaximumQuestionOptions},
+		{"maximum questions", transcript.MaximumQuestionFields, transcript.MinimumQuestionOptions, 0, true},
+		{"excess questions", transcript.MaximumQuestionFields + 1, transcript.MinimumQuestionOptions, 0, false},
+		{"minimum options", 1, transcript.MinimumQuestionOptions, 0, true},
+		{"too few options", 1, transcript.MinimumQuestionOptions - 1, 0, false},
+		{"maximum options", 1, transcript.MaximumQuestionOptions, 0, true},
+		{"excess options", 1, transcript.MaximumQuestionOptions + 1, 0, false},
+		{"maximum Unicode header", 1, transcript.MinimumQuestionOptions, transcript.MaximumQuestionHeaderCharacters, true},
+		{"excess Unicode header", 1, transcript.MinimumQuestionOptions, transcript.MaximumQuestionHeaderCharacters + 1, false},
 	} {
-		if limit.got == nil || *limit.got != limit.want {
-			t.Errorf("ask_user schema %s = %v, want %d", limit.name, limit.got, limit.want)
-		}
+		t.Run(test.name, func(t *testing.T) {
+			args := askUserArgs{}
+			for i := range test.questions {
+				question := questionArg{Question: fmt.Sprintf("Question %d", i), Header: strings.Repeat("界", test.header)}
+				for j := range test.options {
+					question.Options = append(question.Options, optionArg{Label: fmt.Sprintf("Option %d", j)})
+				}
+				args.Questions = append(args.Questions, question)
+			}
+			raw, err := json.Marshal(args)
+			if err != nil {
+				t.Fatal(err)
+			}
+			schemaErr := schema.Validate(raw)
+			_, _, ownerErr := askUserPlan(t.Context(), args)
+			if test.valid {
+				if schemaErr != nil || ownerErr != nil {
+					t.Fatalf("valid question refused: schema=%v owner=%v", schemaErr, ownerErr)
+				}
+			} else if !errors.Is(schemaErr, jsonschema.ErrValidation) || ownerErr == nil {
+				t.Fatalf("invalid question admitted: schema=%v owner=%v", schemaErr, ownerErr)
+			}
+		})
 	}
 }

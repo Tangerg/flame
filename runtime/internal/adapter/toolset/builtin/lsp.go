@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
@@ -40,11 +41,11 @@ func BuildLSP(ci *codeintel.Analyzer) ([]toolcontract.Tool, error) {
 // and parsed value cannot drift. Only `operation` is structurally required —
 // which operand each operation needs is validated per-operation in the handler.
 type lspInput struct {
-	Operation LSPOperation `json:"operation" jsonschema:"enum=definition,enum=references,enum=implementation,enum=hover,enum=incoming_calls,enum=outgoing_calls,enum=document_symbols,enum=workspace_symbols,enum=diagnostics" jsonschema_description:"Language-server query to run."`
-	Path      string       `json:"path,omitempty" jsonschema_description:"File path, absolute or relative to the workspace root. Required except for workspace_symbols."`
+	Operation LSPOperation `json:"operation" jsonschema_description:"Language-server query to run."`
+	Path      string       `json:"path,omitempty" jsonschema_description:"File path, absolute or relative to the workspace root. Required except for workspace-wide symbol searches."`
 	Line      *int         `json:"line,omitzero" jsonschema:"minimum=1" jsonschema_description:"1-based line of the symbol. Required for position operations and omitted otherwise."`
 	Character *int         `json:"character,omitzero" jsonschema:"minimum=1" jsonschema_description:"1-based character (column) of the symbol. Required for position operations and omitted otherwise."`
-	Query     string       `json:"query,omitempty" jsonschema_description:"Symbol name or substring to search for. Required for workspace_symbols."`
+	Query     string       `json:"query,omitempty" jsonschema_description:"Symbol name or substring to search for. Required for workspace-wide symbol searches."`
 }
 
 // lspPosition is the validated, complete coordinate used inside the adapter.
@@ -76,10 +77,26 @@ const (
 	LSPDiagnostics      LSPOperation = "diagnostics"
 )
 
+var lspOperations = [...]LSPOperation{
+	LSPDefinition, LSPReferences, LSPImplementation, LSPHover, LSPIncomingCalls,
+	LSPOutgoingCalls, LSPDocumentSymbols, LSPWorkspaceSymbols, LSPDiagnostics,
+}
+
+func (LSPOperation) JSONSchemaEnum() []string {
+	values := make([]string, len(lspOperations))
+	for index, operation := range lspOperations {
+		values[index] = string(operation)
+	}
+	return values
+}
+
 func (l lspInput) normalize() (lspQuery, error) {
 	position, hasPosition, err := l.position()
 	if err != nil {
 		return lspQuery{}, err
+	}
+	if !slices.Contains(lspOperations[:], l.Operation) {
+		return lspQuery{}, fmt.Errorf("lsp: unknown operation %q", l.Operation)
 	}
 	query := lspQuery{
 		operation:   l.Operation,
@@ -108,13 +125,11 @@ func (l lspInput) normalize() (lspQuery, error) {
 		}
 	case LSPWorkspaceSymbols:
 		if strings.TrimSpace(l.Query) == "" {
-			return lspQuery{}, errors.New("lsp workspace_symbols: query is required")
+			return lspQuery{}, fmt.Errorf("lsp %s: query is required", l.Operation)
 		}
 		if strings.TrimSpace(l.Path) != "" || hasPosition {
-			return lspQuery{}, errors.New("lsp workspace_symbols: only query is accepted")
+			return lspQuery{}, fmt.Errorf("lsp %s: only query is accepted", l.Operation)
 		}
-	default:
-		return lspQuery{}, fmt.Errorf("lsp: unknown operation %q", l.Operation)
 	}
 	return query, nil
 }
@@ -132,10 +147,12 @@ func (l lspInput) position() (lspPosition, bool, error) {
 	}
 }
 
-const lspDesc = "Query the language server (LSP) about code at a position or across the workspace. " +
-	"Use definition, references, implementation, hover, incoming_calls, or outgoing_calls with path + 1-based line + character; " +
-	"document_symbols or diagnostics with path; workspace_symbols with query. " +
-	"diagnostics returns the current compile errors and warnings for one file."
+var lspDesc = fmt.Sprintf("Query the language server (LSP) about code at a position or across the workspace. "+
+	"Use %s, %s, %s, %s, %s, or %s with path + 1-based line + character; "+
+	"%s or %s with path; %s with query. "+
+	"%s returns the current compile errors and warnings for one file.",
+	LSPDefinition, LSPReferences, LSPImplementation, LSPHover, LSPIncomingCalls, LSPOutgoingCalls,
+	LSPDocumentSymbols, LSPDiagnostics, LSPWorkspaceSymbols, LSPDiagnostics)
 
 type lspRunner struct {
 	analyzer *codeintel.Analyzer

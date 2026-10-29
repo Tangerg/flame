@@ -1143,6 +1143,19 @@ twice. Goal usage derives cost and steps from its terminal trees while counting 
 their root Runs as Goal executions. The document carries these limitations
 alongside its evidence so downstream evaluation can preserve the distinctions.
 
+## Built-in Tool input policies
+
+Built-in input schemas derive search budgets and Question limits from their
+existing owners through Scope's per-type constraints. Closed argument vocabularies
+derive from `LSPOperation`, Goal `Outcome` and Plan `Status`; their schema methods
+project the same declarations used by runtime admission. Input-only requirements
+remain on the input types.
+
+Search pattern and path budgets count UTF-8 bytes. Their JSON Schema `maxLength`
+projections count Unicode characters and express only a necessary bound; exact
+byte validation still runs before filesystem access. Question headers count
+Unicode characters in both the transcript owner and its schema projection.
+
 ## Background shell lifetime
 
 Background commands remain addressable after they exit until `read_shell_output` consumes their final output. That final read reports completion and releases the shell handle and retained buffer; later reads report that the shell is absent. Compaction reminders preserve these retained handles, including commands that have finished with unread output. Reads while a command is running keep its handle available. Stopping a command preserves its unread output for the final read. Session teardown and Runtime shutdown also reclaim owned commands.

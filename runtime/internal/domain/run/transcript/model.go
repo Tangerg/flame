@@ -158,6 +158,7 @@ const (
 	// MaximumQuestionOptions bounds one choice field. Custom input is modelled
 	// separately by AllowCustom and does not consume an advertised option.
 	MaximumQuestionOptions = 4
+	MinimumQuestionOptions = 2
 	// MaximumQuestionHeaderCharacters keeps the optional presentation chip
 	// compact while Prompt retains the complete question.
 	MaximumQuestionHeaderCharacters = 12
@@ -398,10 +399,11 @@ func (field QuestionField) validate(index int) error {
 			return fmt.Errorf("text question field %d cannot carry choice settings", index)
 		}
 	case QuestionChoice:
-		if len(field.Options) < 2 || len(field.Options) > MaximumQuestionOptions {
+		if len(field.Options) < MinimumQuestionOptions || len(field.Options) > MaximumQuestionOptions {
 			return fmt.Errorf(
-				"choice question field %d option count must be between 2 and %d, got %d",
+				"choice question field %d option count must be between %d and %d, got %d",
 				index,
+				MinimumQuestionOptions,
 				MaximumQuestionOptions,
 				len(field.Options),
 			)

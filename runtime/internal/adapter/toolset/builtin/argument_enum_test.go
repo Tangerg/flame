@@ -1,65 +1,111 @@
 package builtin
 
 import (
-	"reflect"
+	json "encoding/json/v2"
+	"errors"
 	"slices"
-	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
+	plandomain "github.com/Tangerg/flame/runtime/internal/domain/session/plan"
+	"github.com/Tangerg/scope/core/jsonschema"
 )
 
-// TestArgumentEnumsMatchTheirVocabulary compares the two spellings of a closed
-// tool argument. The model reads the jsonschema tag; the tool reads the
-// constants, and a struct tag cannot be derived from them. An added value is
-// otherwise invisible to the model, and a renamed one is offered and then
-// rejected on arrival.
 func TestArgumentEnumsMatchTheirVocabulary(t *testing.T) {
 	t.Parallel()
-	tests := []struct {
+	lsp, lspErr := jsonschema.For[lspInput]()
+	report, reportErr := jsonschema.For[reportArgs]()
+	plan, planErr := jsonschema.For[setArgs]()
+	for _, err := range []error{lspErr, reportErr, planErr} {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, test := range []struct {
 		name     string
-		args     any
-		field    string
+		schema   jsonschema.Schema
 		declared []string
+		input    func(string) any
 	}{
 		{
-			name:  "lsp operation",
-			args:  lspInput{},
-			field: "Operation",
-			declared: []string{
-				string(LSPDefinition), string(LSPReferences), string(LSPImplementation),
+			name: "lsp operation", schema: lsp,
+			declared: []string{string(LSPDefinition), string(LSPReferences), string(LSPImplementation),
 				string(LSPHover), string(LSPIncomingCalls), string(LSPOutgoingCalls),
-				string(LSPDocumentSymbols), string(LSPWorkspaceSymbols), string(LSPDiagnostics),
-			},
+				string(LSPDocumentSymbols), string(LSPWorkspaceSymbols), string(LSPDiagnostics)},
+			input: func(value string) any { return lspInput{Operation: LSPOperation(value)} },
 		},
 		{
-			name:     "goal report outcome",
-			args:     reportArgs{},
-			field:    "Outcome",
+			name: "goal report outcome", schema: report,
 			declared: []string{string(goals.OutcomeCompleted), string(goals.OutcomeBlocked)},
+			input:    func(value string) any { return reportArgs{Outcome: goals.Outcome(value)} },
 		},
-	}
-	for _, test := range tests {
+		{
+			name: "plan step status", schema: plan,
+			declared: []string{string(plandomain.StatusPending), string(plandomain.StatusInProgress), string(plandomain.StatusCompleted)},
+			input: func(value string) any {
+				return setArgs{Steps: []stepArg{{Description: "Work", Status: plandomain.Status(value)}}}
+			},
+		},
+	} {
 		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			field, ok := reflect.TypeOf(test.args).FieldByName(test.field)
-			if !ok {
-				t.Fatalf("%s has no field %s", reflect.TypeOf(test.args), test.field)
+			for _, got := range advertisedEnums(t, test.schema) {
+				if !slices.Equal(got, test.declared) {
+					t.Fatalf("schema offers %v, owner declares %v", got, test.declared)
+				}
 			}
-			offered := schemaEnumValues(field.Tag.Get("jsonschema"))
-			if !slices.Equal(offered, test.declared) {
-				t.Fatalf("schema offers %v, the tool accepts %v", offered, test.declared)
+			for _, value := range append(test.declared, "unsupported") {
+				raw, err := json.Marshal(test.input(value))
+				if err != nil {
+					t.Fatal(err)
+				}
+				err = test.schema.Validate(raw)
+				if value == "unsupported" {
+					if !errors.Is(err, jsonschema.ErrValidation) {
+						t.Fatalf("unknown value admitted: %v", err)
+					}
+				} else if err != nil {
+					t.Fatalf("owner value %q refused: %v", value, err)
+				}
 			}
 		})
 	}
 }
 
-func schemaEnumValues(tag string) []string {
-	var values []string
-	for _, part := range strings.Split(tag, ",") {
-		if value, found := strings.CutPrefix(part, "enum="); found {
-			values = append(values, value)
+func advertisedEnums(t *testing.T, schema jsonschema.Schema) [][]string {
+	t.Helper()
+	var document any
+	if err := json.Unmarshal(schema.JSON(), &document); err != nil {
+		t.Fatal(err)
+	}
+	var declarations [][]string
+	var visit func(any)
+	visit = func(value any) {
+		switch value := value.(type) {
+		case map[string]any:
+			for key, child := range value {
+				if key == "enum" {
+					raw, err := json.Marshal(child)
+					if err != nil {
+						t.Fatal(err)
+					}
+					var words []string
+					if err := json.Unmarshal(raw, &words); err != nil {
+						t.Fatal(err)
+					}
+					declarations = append(declarations, words)
+				} else {
+					visit(child)
+				}
+			}
+		case []any:
+			for _, child := range value {
+				visit(child)
+			}
 		}
 	}
-	return values
+	visit(document)
+	if len(declarations) == 0 {
+		t.Fatal("schema does not advertise its closed argument vocabulary")
+	}
+	return declarations
 }

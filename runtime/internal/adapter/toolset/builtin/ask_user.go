@@ -11,6 +11,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/scope/core/jsonschema"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -19,14 +21,27 @@ import (
 // schema and parsed value cannot drift. The handler maps its LLM-oriented names
 // into the application-owned [runs.QuestionPrompt] contract.
 type askUserArgs struct {
-	Questions []questionArg `json:"questions" jsonschema:"required,minItems=1,maxItems=4" jsonschema_description:"The question(s) to ask the user (1-4)."`
+	Questions []questionArg `json:"questions" jsonschema:"required,minItems=1" jsonschema_description:"The questions to ask the user."`
 }
 
 type questionArg struct {
 	Question    string      `json:"question" jsonschema:"minLength=1" jsonschema_description:"The full question text."`
-	Header      string      `json:"header,omitempty" jsonschema:"maxLength=12" jsonschema_description:"Short label of at most 12 characters that identifies the question."`
-	Options     []optionArg `json:"options,omitempty" jsonschema:"minItems=2,maxItems=4" jsonschema_description:"Two to four choices for a multiple-choice question. Omit for a free-text answer."`
+	Header      string      `json:"header,omitempty" jsonschema_description:"Short label that identifies the question, measured in Unicode characters."`
+	Options     []optionArg `json:"options,omitempty" jsonschema_description:"Choices for a multiple-choice question. Omit for a free-text answer."`
 	MultiSelect bool        `json:"multi_select,omitzero" jsonschema_description:"Allow the user to pick more than one option (only meaningful with options)."`
+}
+
+func (askUserArgs) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
+		"questions": {MaxItems: new(uint64(transcript.MaximumQuestionFields))},
+	}}
+}
+
+func (questionArg) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
+		"header":  {MaxLength: new(uint64(transcript.MaximumQuestionHeaderCharacters))},
+		"options": {MinItems: new(uint64(transcript.MinimumQuestionOptions)), MaxItems: new(uint64(transcript.MaximumQuestionOptions))},
+	}}
 }
 
 type optionArg struct {
@@ -64,7 +79,7 @@ func NewAskUser(interrupt runs.InterruptFunc) (toolcontract.Tool, error) {
 	return newInterruptTool[askUserArgs](
 		toolcontract.FuncConfig{
 			Name:        string(tool.AskUser),
-			Description: "Ask the user one to four questions and wait for their answers. Use this only when progress requires a decision, clarification, or information only the user can provide, not for routine progress updates. Give two to four `options` for a multiple-choice question and put the recommended option first; the user may still provide a custom answer. Omit `options` for free text, and set `multi_select` only when options are present and more than one may apply.",
+			Description: fmt.Sprintf("Ask the user 1 to %d questions and wait for their answers. Use this only when progress requires a decision, clarification, or information only the user can provide, not for routine progress updates. Give %d to %d `options` for a multiple-choice question and put the recommended option first; the user may still provide a custom answer. Omit `options` for free text, and set `multi_select` only when options are present and more than one may apply. Headers contain at most %d Unicode characters.", transcript.MaximumQuestionFields, transcript.MinimumQuestionOptions, transcript.MaximumQuestionOptions, transcript.MaximumQuestionHeaderCharacters),
 		},
 		interrupt,
 		askUserPlan,
