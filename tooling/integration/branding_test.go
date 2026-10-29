@@ -1,8 +1,12 @@
 package integration
 
 import (
+	"bufio"
 	"bytes"
+	"encoding/base64"
 	"errors"
+	"image"
+	"image/png"
 	"io"
 	"os"
 	"os/exec"
@@ -80,14 +84,33 @@ func retiredBrandInFile(path string) (string, error) {
 
 	var window [brandScanChunkBytes + maxRetiredBrandTokenBytes - 1]byte
 	overlap := 0
+	var position, skipUntil int64
 	for {
 		n, readErr := file.Read(window[overlap:])
 		chunk := window[:overlap+n]
-		for _, token := range retiredProductBrandTokens {
-			if bytes.Contains(chunk, token) {
+		start := position - int64(overlap)
+		for from := int(min(int64(len(chunk)), max(0, skipUntil-start))); from < len(chunk); {
+			found := -1
+			var token []byte
+			for _, candidate := range retiredProductBrandTokens {
+				if at := bytes.Index(chunk[from:], candidate); at >= 0 && (found < 0 || from+at < found) {
+					found, token = from+at, candidate
+				}
+			}
+			if found < 0 {
+				break
+			}
+			end, err := inlinePNGEnd(file, start+int64(found))
+			if err != nil {
+				return "", err
+			}
+			if end == 0 {
 				return string(token), nil
 			}
+			skipUntil = end
+			from = int(min(int64(len(chunk)), end-start))
 		}
+		position += int64(n)
 		if readErr != nil {
 			if errors.Is(readErr, io.EOF) {
 				return "", nil
@@ -96,6 +119,115 @@ func retiredBrandInFile(path string) (string, error) {
 		}
 		overlap = min(len(chunk), maxRetiredBrandTokenBytes-1)
 		copy(window[:overlap], chunk[len(chunk)-overlap:])
+	}
+}
+
+// Encoded artwork remains binary content when embedded in a source string.
+// ReadAt leaves the streaming scanner's file position unchanged.
+func inlinePNGEnd(file *os.File, tokenOffset int64) (int64, error) {
+	var window [brandScanChunkBytes]byte
+	for before := tokenOffset; before > 0; {
+		n := int(min(before, int64(len(window))))
+		before -= int64(n)
+		if _, err := file.ReadAt(window[:n], before); err != nil {
+			return 0, err
+		}
+		quoteAt := bytes.LastIndexAny(window[:n], "\"'`")
+		if quoteAt < 0 {
+			continue
+		}
+		quote := window[quoteAt]
+		start := before + int64(quoteAt) + 1
+		const prefix = "data:image/png;base64,"
+		var header [len(prefix)]byte
+		if _, err := file.ReadAt(header[:], start); err != nil {
+			if errors.Is(err, io.EOF) {
+				return 0, nil
+			}
+			return 0, err
+		}
+		if string(header[:]) != prefix {
+			return 0, nil
+		}
+		info, err := file.Stat()
+		if err != nil {
+			return 0, err
+		}
+		bodyStart := start + int64(len(prefix))
+		reader := bufio.NewReader(io.NewSectionReader(file, bodyStart, info.Size()-bodyStart))
+		end := bodyStart
+		for {
+			part, err := reader.ReadSlice(quote)
+			end += int64(len(part))
+			if errors.Is(err, bufio.ErrBufferFull) {
+				continue
+			}
+			if errors.Is(err, io.EOF) {
+				return 0, nil
+			}
+			if err != nil {
+				return 0, err
+			}
+			end--
+			decoded := base64.NewDecoder(base64.StdEncoding, io.NewSectionReader(file, bodyStart, end-bodyStart))
+			_, err = png.DecodeConfig(decoded)
+			if err == nil {
+				_, err = io.Copy(io.Discard, decoded)
+			}
+			if err != nil {
+				var corrupt base64.CorruptInputError
+				var malformed png.FormatError
+				var unsupported png.UnsupportedError
+				if errors.As(err, &corrupt) || errors.As(err, &malformed) || errors.As(err, &unsupported) || errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+					return 0, nil
+				}
+				return 0, err
+			}
+			return end, nil
+		}
+	}
+	return 0, nil
+}
+
+func TestProductBrandScanDistinguishesInlinePNGFromSourceText(t *testing.T) {
+	var imageBytes bytes.Buffer
+	if err := png.Encode(&imageBytes, image.NewRGBA(image.Rect(0, 0, 1, 1))); err != nil {
+		t.Fatal(err)
+	}
+	payload := imageBytes.Bytes()
+	for len(payload)%3 != 0 {
+		payload = append(payload, 0)
+	}
+	encodedToken := string(retiredProductBrandTokens[0])
+	noise, err := base64.StdEncoding.DecodeString(encodedToken)
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload = append(payload, bytes.Repeat(noise, brandScanChunkBytes/len(noise)+1)...)
+	url := "data:image/png;base64," + base64.StdEncoding.EncodeToString(payload)
+	source := `const image = "` + url + `";`
+	visibleToken := string(retiredProductBrandTokens[2])
+	for _, test := range []struct{ name, source, token string }{
+		{"embedded image", source, ""},
+		{"single quotes", "const image = '" + url + "';", ""},
+		{"template string", "const image = `" + url + "`;", ""},
+		{"prefix across chunks", strings.Repeat(" ", brandScanChunkBytes-30) + source, ""},
+		{"visible before image", `const name = "` + visibleToken + `";` + source, visibleToken},
+		{"visible after image", source + `const name = "` + visibleToken + `";`, visibleToken},
+		{"wrong media type", strings.Replace(source, "image/png", "text/plain", 1), encodedToken},
+		{"invalid image", strings.Replace(source, "base64,", "base64,AAAAAAAA", 1), encodedToken},
+		{"invalid encoding", `const image = "` + url + `!";`, encodedToken},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "component.js")
+			if err := os.WriteFile(path, []byte(test.source), 0600); err != nil {
+				t.Fatal(err)
+			}
+			actual, err := retiredBrandInFile(path)
+			if err != nil || actual != test.token {
+				t.Fatalf("retired brand = %q, %v; want %q", actual, err, test.token)
+			}
+		})
 	}
 }
 
