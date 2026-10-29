@@ -10747,8 +10747,15 @@ output/cache roots and three private profiles, and restores all four original
 files and modes. Independent preservation checks pass for 6,379 qualified inputs,
 34 resources, 45 read-only references, three instruction files, 21 output-presence
 and five profile-absence baselines. The installed npm toolchain and the user's
-primary parallel checkout are preserved. Private acceptance evidence is retained
-only until publication and retirement below.
+primary parallel checkout are preserved. Implementation b7925dfc25d23f802f2d02ecdd0e3c13a6498b50 is independently verified on remote main.
+The interval fetch found no incoming commits; the ordinary push left HEAD and
+origin/main at zero divergence with a clean owned checkout. The exact private
+root /private/tmp/flame-deliverables-reading-qvO5xy is absent, and preservation checks pass again after
+retirement. No owned app process or listener remains. The memory-only archive
+round-trips 111 UTF-8 records, 13643218 raw bytes and
+2236787 gzip bytes, SHA-256 d467246a7abe4f5919cb14259c81f4259f0bfff4f826af6df37bcb498992a219.
+This final handoff changes no qualified product source. Continue with the
+selected-revision label follow-up while the continuous UI goal remains active.
 
 **Approve** the inspected pagination/return flow; no HIGH finding remains in that
 scope. OS IME and VoiceOver were not reviewed. The LOW revision-label follow-up
