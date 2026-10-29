@@ -10543,7 +10543,17 @@ and restores **four** original files and modes. Independent checks retain
 **6,379** qualified non-Markdown inputs, **34** resources, **45** read-only
 references, **three** owned instruction files, **20** output-presence and **five**
 profile-absence baselines. The primary parallel checkout remains untouched.
-Publication and final evidence retirement follow this qualification.
+Implementation 6390468e92f558b623cfa7eed70409ffb4611fc0 is independently verified on remote main.
+One interval fetch finds no incoming commits from the frozen base; HEAD and
+origin/main have zero divergence and the owned checkout is clean after the normal
+push. Final retirement removes the exact root /private/tmp/flame-image-reading-hUGcBC; independent preservation
+checks pass again for all qualified source/resource, original, output/profile,
+instruction and read-only-reference baselines. No owned app process or listener
+remains. The memory-only archive round-trips **110 UTF-8 records**,
+**14,121,538 raw bytes** and **3,036,605 gzip bytes**, SHA-256
+810971be40c0ead9d1bdc52c05325829ffd71bdda3080f96d961370712477972. Native screenshots remain in the CUA transcript. This final
+handoff changes no qualified product bytes. Continue from new content/Dock task
+evidence; the continuous goal remains active.
 
 ## Shortcut recording and activation
 
