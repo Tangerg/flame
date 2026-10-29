@@ -116,7 +116,8 @@ func openRetirementFixture(t *testing.T, root, cut string) *retirementFixture {
 	})
 	stores, _, _ := newWriteSetStores(t, db.Bundle)
 	gate, err := ownership.NewGate(ownership.GateConfig{
-		ResolveTree: filesystem.CanonicalPath, RetirementPending: db.ResourceRetirements.Pending,
+		TreesOverlap: filesystem.PathsOverlap,
+		ResolveTree:  filesystem.CanonicalPath, RetirementPending: db.ResourceRetirements.Pending,
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -239,7 +239,7 @@ func newDelegateProjection(t *testing.T, current session.Session, executor *Inte
 	if err != nil {
 		t.Fatal(err)
 	}
-	admissions, err := ownership.NewGate(ownership.GateConfig{ResolveTree: filesystem.CanonicalPath, RetirementPending: stores.ResourceRetirements.Pending})
+	admissions, err := ownership.NewGate(ownership.GateConfig{TreesOverlap: filesystem.PathsOverlap, ResolveTree: filesystem.CanonicalPath, RetirementPending: stores.ResourceRetirements.Pending})
 	if err != nil {
 		t.Fatal(err)
 	}

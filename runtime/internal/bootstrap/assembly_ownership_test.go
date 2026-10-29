@@ -20,7 +20,7 @@ func TestWorkingTreeAdmissionUsesTheWorkspacePhysicalIdentity(t *testing.T) {
 		if err := os.Symlink(root, alias); err != nil {
 			t.Fatal(err)
 		}
-		gate, err := ownership.NewGate(ownership.GateConfig{ResolveTree: filesystem.CanonicalPath, RetirementPending: testsupport.NoResourceRetirements})
+		gate, err := ownership.NewGate(ownership.GateConfig{TreesOverlap: filesystem.PathsOverlap, ResolveTree: filesystem.CanonicalPath, RetirementPending: testsupport.NoResourceRetirements})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -78,7 +78,7 @@ func TestWorkingTreeAdmissionUsesTheWorkspacePhysicalIdentity(t *testing.T) {
 }
 
 func TestWorkingTreeIdentityFailureRemainsAnError(t *testing.T) {
-	gate, err := ownership.NewGate(ownership.GateConfig{ResolveTree: filesystem.CanonicalPath, RetirementPending: testsupport.NoResourceRetirements})
+	gate, err := ownership.NewGate(ownership.GateConfig{TreesOverlap: filesystem.PathsOverlap, ResolveTree: filesystem.CanonicalPath, RetirementPending: testsupport.NoResourceRetirements})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +99,7 @@ func TestMissingWorkingTreeRetainsOnePhysicalAdmissionIdentity(t *testing.T) {
 	if err := os.Symlink(root, alias); err != nil {
 		t.Fatal(err)
 	}
-	gate, err := ownership.NewGate(ownership.GateConfig{ResolveTree: filesystem.CanonicalPath, RetirementPending: testsupport.NoResourceRetirements})
+	gate, err := ownership.NewGate(ownership.GateConfig{TreesOverlap: filesystem.PathsOverlap, ResolveTree: filesystem.CanonicalPath, RetirementPending: testsupport.NoResourceRetirements})
 	if err != nil {
 		t.Fatal(err)
 	}

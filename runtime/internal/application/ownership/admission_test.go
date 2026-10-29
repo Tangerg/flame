@@ -6,11 +6,13 @@ import (
 	"testing"
 	"testing/synctest"
 	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 )
 
 func newTestGate(t *testing.T) *Gate {
 	t.Helper()
-	gate, err := NewGate(GateConfig{ResolveTree: func(path string) (string, error) { return path, nil }, RetirementPending: noResourceRetirements})
+	gate, err := NewGate(GateConfig{TreesOverlap: filesystem.PathsOverlap, ResolveTree: func(path string) (string, error) { return path, nil }, RetirementPending: noResourceRetirements})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -20,6 +22,12 @@ func newTestGate(t *testing.T) *Gate {
 func TestNewGateRequiresPhysicalIdentityResolver(t *testing.T) {
 	if gate, err := NewGate(GateConfig{}); err == nil || gate != nil {
 		t.Fatalf("NewGate(GateConfig{}) = %#v, %v", gate, err)
+	}
+}
+
+func TestNewGateRequiresPhysicalTreeComparison(t *testing.T) {
+	if gate, err := NewGate(GateConfig{ResolveTree: filesystem.CanonicalPath, RetirementPending: noResourceRetirements}); err == nil || gate != nil {
+		t.Fatalf("NewGate without tree comparison = %#v, %v", gate, err)
 	}
 }
 
@@ -225,7 +233,7 @@ func TestWaitRunStartableIsContextBounded(t *testing.T) {
 func TestFailedIdentityResolutionDoesNotLeaveAdmissionHeld(t *testing.T) {
 	cause := errors.New("filesystem failed")
 	var resolveErr error = cause
-	gate, err := NewGate(GateConfig{ResolveTree: func(path string) (string, error) { return path, resolveErr }, RetirementPending: noResourceRetirements})
+	gate, err := NewGate(GateConfig{TreesOverlap: filesystem.PathsOverlap, ResolveTree: func(path string) (string, error) { return path, resolveErr }, RetirementPending: noResourceRetirements})
 	if err != nil {
 		t.Fatal(err)
 	}

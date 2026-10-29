@@ -93,7 +93,7 @@ func buildAssemblyCore(
 	if err != nil {
 		return nil, fmt.Errorf("runtime: Goal Run recorder: %w", err)
 	}
-	admissionGate, err := ownership.NewGate(ownership.GateConfig{ResolveTree: filesystem.CanonicalPath, RetirementPending: cfg.stores.ResourceRetirements.Pending})
+	admissionGate, err := ownership.NewGate(ownership.GateConfig{TreesOverlap: filesystem.PathsOverlap, ResolveTree: filesystem.CanonicalPath, RetirementPending: cfg.stores.ResourceRetirements.Pending})
 	if err != nil {
 		return nil, fmt.Errorf("runtime: session admission: %w", err)
 	}

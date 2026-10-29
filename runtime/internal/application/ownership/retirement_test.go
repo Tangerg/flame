@@ -6,6 +6,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"testing/synctest"
+
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 )
 
 func TestCommittedRetirementFencesForegroundUntilRecoveryReleases(t *testing.T) {
@@ -13,7 +15,8 @@ func TestCommittedRetirementFencesForegroundUntilRecoveryReleases(t *testing.T) 
 		var pending atomic.Bool
 		pending.Store(true)
 		gate, err := NewGate(GateConfig{
-			ResolveTree: func(path string) (string, error) { return path, nil },
+			TreesOverlap: filesystem.PathsOverlap,
+			ResolveTree:  func(path string) (string, error) { return path, nil },
 			RetirementPending: func(_ context.Context, sessionID string) (bool, error) {
 				return sessionID == "ses_1" && pending.Load(), nil
 			},
@@ -63,7 +66,8 @@ func TestRetirementReadOwnsLocalClaimWithoutHoldingGlobalLock(t *testing.T) {
 		entered, releaseRead := make(chan struct{}), make(chan struct{})
 		var pending atomic.Bool
 		gate, err := NewGate(GateConfig{
-			ResolveTree: func(path string) (string, error) { return path, nil },
+			TreesOverlap: filesystem.PathsOverlap,
+			ResolveTree:  func(path string) (string, error) { return path, nil },
 			RetirementPending: func(_ context.Context, sessionID string) (bool, error) {
 				if sessionID == "ses_1" {
 					close(entered)
@@ -125,6 +129,7 @@ func TestRetirementReadOwnsLocalClaimWithoutHoldingGlobalLock(t *testing.T) {
 func TestRetirementReadFailureReleasesBothAdmissionKinds(t *testing.T) {
 	failure := errors.New("retirement catalog unavailable")
 	gate, err := NewGate(GateConfig{
+		TreesOverlap:      filesystem.PathsOverlap,
 		ResolveTree:       func(path string) (string, error) { return path, nil },
 		RetirementPending: func(context.Context, string) (bool, error) { return false, failure },
 	})

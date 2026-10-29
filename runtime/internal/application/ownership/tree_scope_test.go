@@ -1,6 +1,7 @@
 package ownership
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -8,6 +9,43 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 )
+
+func TestGateRejectsAdmissionWhenTreeComparisonFails(t *testing.T) {
+	for _, first := range []string{"run", "mutation"} {
+		t.Run(first, func(t *testing.T) {
+			root := t.TempDir()
+			comparisonErr := errors.New("tree identity comparison failed")
+			gate, err := NewGate(GateConfig{
+				ResolveTree:       filesystem.CanonicalPath,
+				TreesOverlap:      func(string, string) (bool, error) { return false, comparisonErr },
+				RetirementPending: noResourceRetirements,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if first == "run" {
+				hold, ok, err := gate.AcquireRun(t.Context(), "ses_first", root)
+				if err != nil || !ok {
+					t.Fatalf("first Run: %t, %v", ok, err)
+				}
+				t.Cleanup(hold.Release)
+				if release, ok, err := gate.AcquireWorkingTreeMutation(filepath.Join(root, "child")); release != nil || ok || !errors.Is(err, comparisonErr) {
+					t.Fatalf("uncertain mutation admitted: %t, %v", ok, err)
+				}
+			} else {
+				release, ok, err := gate.AcquireWorkingTreeMutation(root)
+				if err != nil || !ok {
+					t.Fatalf("first mutation: %t, %v", ok, err)
+				}
+				t.Cleanup(release)
+				if hold, ok, err := gate.AcquireRun(t.Context(), "ses_next", filepath.Join(root, "child")); ok || !errors.Is(err, comparisonErr) {
+					hold.Release()
+					t.Fatalf("uncertain Run admitted: %t, %v", ok, err)
+				}
+			}
+		})
+	}
+}
 
 func TestGateExcludesOverlappingRunAndMutationScopes(t *testing.T) {
 	root := t.TempDir()
@@ -22,7 +60,7 @@ func TestGateExcludesOverlappingRunAndMutationScopes(t *testing.T) {
 	for _, pair := range [][2]string{{root, child}, {child, root}, {child, alias}} {
 		for _, phase := range []string{"pending", "live", "maintenance"} {
 			t.Run(phase+"/"+pair[0]+"/"+pair[1], func(t *testing.T) {
-				gate, err := NewGate(GateConfig{ResolveTree: filesystem.CanonicalPath, RetirementPending: noResourceRetirements})
+				gate, err := NewGate(GateConfig{TreesOverlap: filesystem.PathsOverlap, ResolveTree: filesystem.CanonicalPath, RetirementPending: noResourceRetirements})
 				if err != nil {
 					t.Fatal(err)
 				}

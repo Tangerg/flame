@@ -6,7 +6,6 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/qimu/cancellation"
 )
@@ -24,11 +23,14 @@ type Gate struct {
 	treeMutations     map[string]struct{}
 	changed           chan struct{}
 	resolveTree       func(string) (string, error)
+	treesOverlap      func(string, string) (bool, error)
 	retirementPending func(context.Context, string) (bool, error)
 }
 
+// GateConfig binds resolution and comparison to the same physical path semantics.
 type GateConfig struct {
 	ResolveTree       func(string) (string, error)
+	TreesOverlap      func(string, string) (bool, error)
 	RetirementPending func(context.Context, string) (bool, error)
 }
 
@@ -38,11 +40,15 @@ func NewGate(cfg GateConfig) (*Gate, error) {
 	if cfg.ResolveTree == nil {
 		return nil, errors.New("session admission: working-tree resolver is required")
 	}
+	if cfg.TreesOverlap == nil {
+		return nil, errors.New("session admission: working-tree comparison is required")
+	}
 	if cfg.RetirementPending == nil {
 		return nil, errors.New("session admission: resource retirement reader is required")
 	}
 	return &Gate{
 		resolveTree:       cfg.ResolveTree,
+		treesOverlap:      cfg.TreesOverlap,
 		retirementPending: cfg.RetirementPending,
 		runs:              make(map[string]reservedRun),
 		pending:           make(map[*runAdmissionLease]reservedRun),
@@ -399,7 +405,7 @@ func (g *Gate) treeMutationLocked(cwd string) (bool, error) {
 		return false, nil
 	}
 	for tree := range g.treeMutations {
-		if overlaps, err := filesystem.PathsOverlap(tree, cwd); err != nil || overlaps {
+		if overlaps, err := g.treesOverlap(tree, cwd); err != nil || overlaps {
 			return overlaps, err
 		}
 	}
@@ -411,7 +417,7 @@ func (g *Gate) treeReservedLocked(cwd string) (bool, error) {
 		if run.cwd == "" {
 			continue
 		}
-		if overlaps, err := filesystem.PathsOverlap(run.cwd, cwd); err != nil || overlaps {
+		if overlaps, err := g.treesOverlap(run.cwd, cwd); err != nil || overlaps {
 			return overlaps, err
 		}
 	}
