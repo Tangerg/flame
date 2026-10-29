@@ -10677,26 +10677,30 @@ DEVELOPMENT.md and module conventions remain authoritative.
 Scope of the better-interface review is the document/history pagination flow in
 the existing React, StyleX, Base UI and semantic-token workspace:
 
-| Domain        | Evidence inspected                                                                         | Result                                                                            |
-| ------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
-| Accessibility | Shared Button/Select/Panel contracts, native pagination, revision jump and recovery        | Four MEDIUM findings fixed; VoiceOver and OS IME not reviewed                     |
-| Layout        | Actual Dock/main reading, native scroll, 1120/1440 widths, window zoom and 200%            | Single authoring entries and natural-height sections qualified below              |
-| Writing       | Existing English/Chinese pagination, revision labels, authoring entries and recorded dates | Eight locales retain existing vocabulary; browsing dates follow the host locale   |
-| Typography    | Actual 14/18px labels, full-ID/exact-time access and keyboard reading at 200%              | Local dates stay readable; complete UTC values wrap without losing recorded text  |
-| Colors        | Existing Orange/light and Blue/dark fields, Facts and focus states                         | Existing tokens retained; earlier measured pairs below; not remeasured this batch |
-| UI            | Shared pending/press guards, accepted-page continuity, pointer and keyboard activation     | Identity and draft/file disclosure lifetimes qualified below; no new chrome       |
+| Domain        | Evidence inspected                                                                     | Result                                                                            |
+| ------------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Accessibility | Shared Button/Select/Panel contracts, native pagination, content reading and recovery  | Local boundaries retain focus; mixed pointer/reverse-Tab follow-up remains below  |
+| Layout        | Actual Dock/main reading, native scroll, 1120/1440 widths, window zoom and 200%        | Content excerpts, single entries and natural-height sections qualified below      |
+| Writing       | English/Chinese labels, native content previews/search, authoring and recorded dates   | Readable excerpts retain exact native identities, full text and truthful metadata |
+| Typography    | Actual 14/18px labels, grapheme boundaries, full-ID/exact-time access and 200% reading | Existing text roles wrap; excerpts preserve graphemes and full-value access       |
+| Colors        | Existing Orange/light and Blue/dark fields, Facts and focus states                     | Existing tokens retained; earlier measured pairs below; not remeasured this batch |
+| UI            | Shared pending/press guards, accepted-page continuity, pointer and keyboard activation | Identity and draft/file disclosure lifetimes qualified below; no new chrome       |
 
-| Severity | Domain        | Location                                                                 | Before                                                                                                | After                                                                                                 | Why                                                                                                     |
-| -------- | ------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| MEDIUM   | Accessibility | Deliverables document/history pagination                                 | Native disabled discarded focused list navigation                                                     | Shared pending controls and focusable true boundaries; fixed                                          | Keyboard reading continues from the current task position                                               |
-| MEDIUM   | Accessibility | useDeliverables query projection                                         | A same-document history cursor read removed its accepted page and controls                            | Retain that document's accepted page until settlement; fixed                                          | Stable controls preserve the reading and retry context                                                  |
-| MEDIUM   | Accessibility | Inspector Open current revision action                                   | Its removal on the revision change leaves native AX focus at HTML content                             | Focused activation hands focus to the surviving history region; fixed                                 | Keyboard reading continues at the version controls                                                      |
-| MEDIUM   | Accessibility | Deliverables Refresh action                                              | Native disabled discarded focus while the list/catalog reread                                         | Shared focusable pending boundary, with the existing availability scope; fixed                        | Recovery remains reachable without restarting navigation                                                |
-| LOW      | Writing       | Exact revision Select after visiting another history page                | Current revision label fell back to its full identity when absent from that page                      | Selected canonical read revision remains one option beside the page; fixed                            | The selected object stays recognizable across page changes                                              |
-| LOW      | Writing       | plugins/deliverables/component/component.tsx:512                         | A selected target without accepted metadata renders its full 64-character ID                          | Derived short-ID option plus stable full-identity disclosure; fixed                                   | The selected object stays compact without hiding its full identity                                      |
-| LOW      | Layout        | plugins/deliverables/component/component.tsx:524                         | Create/Import each has a toolbar button and a same-named Disclosure trigger                           | One inline Disclosure per task, preserving drafts/file and command owners; fixed                      | Duplicate entry points displace retained-document reading                                               |
-| MEDIUM   | Layout        | packages/ui/src/panel.tsx:189, PanelSection                              | An intrinsic auto grid track inflates the revision trigger and section after the recorded return path | Single-axis column flow preserves natural control and section heights; fixed                          | A correctly named focused control must also remain visually usable                                      |
-| LOW      | Writing       | plugins/deliverables/component/component.tsx:56, Workspace and Inspector | Document rows, revision options and summary facts show raw UTC serialization                          | Locale-bound browsing formatter with exact recorded values in the existing identity disclosure; fixed | Dates become scannable without hiding precision, interpreting opaque text or changing revision identity |
+| Severity | Domain        | Location                                                                         | Before                                                                                                | After                                                                                                 | Why                                                                                                     |
+| -------- | ------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| MEDIUM   | Accessibility | Deliverables document/history pagination                                         | Native disabled discarded focused list navigation                                                     | Shared pending controls and focusable true boundaries; fixed                                          | Keyboard reading continues from the current task position                                               |
+| MEDIUM   | Accessibility | useDeliverables query projection                                                 | A same-document history cursor read removed its accepted page and controls                            | Retain that document's accepted page until settlement; fixed                                          | Stable controls preserve the reading and retry context                                                  |
+| MEDIUM   | Accessibility | Inspector Open current revision action                                           | Its removal on the revision change leaves native AX focus at HTML content                             | Focused activation hands focus to the surviving history region; fixed                                 | Keyboard reading continues at the version controls                                                      |
+| MEDIUM   | Accessibility | Deliverables Refresh action                                                      | Native disabled discarded focus while the list/catalog reread                                         | Shared focusable pending boundary, with the existing availability scope; fixed                        | Recovery remains reachable without restarting navigation                                                |
+| LOW      | Writing       | Exact revision Select after visiting another history page                        | Current revision label fell back to its full identity when absent from that page                      | Selected canonical read revision remains one option beside the page; fixed                            | The selected object stays recognizable across page changes                                              |
+| LOW      | Writing       | plugins/deliverables/component/component.tsx:512                                 | A selected target without accepted metadata renders its full 64-character ID                          | Derived short-ID option plus stable full-identity disclosure; fixed                                   | The selected object stays compact without hiding its full identity                                      |
+| LOW      | Layout        | plugins/deliverables/component/component.tsx:524                                 | Create/Import each has a toolbar button and a same-named Disclosure trigger                           | One inline Disclosure per task, preserving drafts/file and command owners; fixed                      | Duplicate entry points displace retained-document reading                                               |
+| MEDIUM   | Layout        | packages/ui/src/panel.tsx:189, PanelSection                                      | An intrinsic auto grid track inflates the revision trigger and section after the recorded return path | Single-axis column flow preserves natural control and section heights; fixed                          | A correctly named focused control must also remain visually usable                                      |
+| LOW      | Writing       | plugins/deliverables/component/component.tsx:56, Workspace and Inspector         | Document rows, revision options and summary facts show raw UTC serialization                          | Locale-bound browsing formatter with exact recorded values in the existing identity disclosure; fixed | Dates become scannable without hiding precision, interpreting opaque text or changing revision identity |
+| MEDIUM   | Writing       | plugins/deliverables/component/component.tsx:234, StructuredContent              | Closed inspected rows expose only kind and native path                                                | Bounded content excerpt above the complete native identity; fixed                                     | Readers can recognize an item before expanding it                                                       |
+| MEDIUM   | Accessibility | plugins/deliverables/component/component.tsx:259, local item pagination          | Reaching the last page natively disables the focused button and restarts Tab at the sidebar           | Shared focusable disabled boundaries reject unavailable activation and retain local focus; fixed      | Page changes must preserve the keyboard reading position                                                |
+| LOW      | Writing       | plugins/deliverables/component/component.tsx:205, content query                  | A phrase spanning original whitespace does not match its inline preview                               | Search and preview share whitespace normalization; fixed                                              | The visible excerpt and its full-text search must agree                                                 |
+| MEDIUM   | Accessibility | plugins/deliverables/component/component.tsx:259 and unchanged shared Disclosure | Pointer-origin Shift+Tab can stay at the clicked button despite an uncancelled Tab event              | Open native-navigation follow-up; also reproduced on an unchanged enabled Disclosure                  | Mixed input return behavior remains unqualified; no local focus reassignment is added                   |
 
 Verification (2026-10-29):
 
@@ -11278,11 +11282,108 @@ f9e3ce4bb0be44aec5c8a15ef26244175fe70bb9d92f3b355ef63f41804fdbf2.
 The interval fetch finds no incoming main commit; publication uses an ordinary
 push to remote main without another merge/validation loop.
 
-**Approve** the inspected pagination, identity, authoring, natural-height and
-date-reading flow. No HIGH or MEDIUM finding remains in that scope. Next inspect
-the native content-reading and return path before choosing another batch; do
-not infer a defect from a disclosure label alone. The broader UI goal remains
-active without a whole-product award-level completion claim.
+**Native content recognition, search and paging (2026-10-30)**
+
+StructuredContent now presents a bounded excerpt as each row's primary text and
+its complete native kind/identity as secondary text through existing RecordSummary
+and Disclosure. The original native Wails view shows 25 path-only row labels
+until each is opened. The candidate lets the reader recognize the content
+before opening its complete unchanged RecordBody. Previews fold whitespace and
+retain at most 160 complete graphemes; longer text has an ellipsis and a visible
+expansion cue. Empty text keeps its identity without invented content. The
+backend's bounded inspection text, native IDs, revision selection and command
+owners remain authoritative; no parsed cell model, editable reconstruction,
+shared UI override, new state/cache or dependency is introduced.
+
+Search uses the complete retained text and native ID, with the same whitespace
+normalization as the inline excerpt. A focused regression proves that a visible
+phrase spanning a newline otherwise yields no result. Existing search/page state
+and Disclosure expansion keep their owners. Local Previous/Next use the shared
+focusable-disabled boundary, so reaching the first/last page preserves focus and
+rejects repeat activation. The original native last-page Next moved AX focus to
+HTML content; the next Tab restarted at the fixture sidebar.
+
+Read-only HeroUI's actual Accordion basic demo and sectioned ListBox distinguish
+recognizable trigger text, secondary description and stable identity. ZCode's
+ModelTrajectorySearch keeps content and identity searchable; its index, reveal
+context and offset mapping are not copied. The scoped better-* review above uses
+Flame's existing semantic text/color roles, Base UI controls and StyleX layout.
+No extra status label, caption, colored rail or motion is added.
+
+- The unchanged **37-test** baseline passes. New regressions against the original
+  component fail **three** and pass **one**; the incomplete preview-only candidate
+  then fails the cross-line search case. Final portable contracts pass **three
+  files / 103 tests**, including **41** Deliverables tests. They cover local page
+  boundaries/repeats, recognizable excerpts, complete graphemes, unchanged raw
+  whitespace, empty text, full-text/identity search, close/reopen retention and
+  retirement after selecting another document. An introduced test-fixture type error
+  is repaired by parsing with the existing inspection schema; no assertion or
+  check is weakened.
+- Final plugin type/lint/format/i18n, Web type/lint, design-system, token, chrome,
+  resource reproduction, bundle and installed-module checks pass. Normal
+  make check-native passes in **13.316 s**, including staging, Desktop Go
+  test/vet/build and Wails production building. Existing linker warnings remain
+  in the successful log. Checks/builds run serially. Generation changes only
+  Deliverables component.js among 34 installed resource inputs.
+- Five actual Wails **3.0.0** launches cover the original, clean English candidate,
+  one read-only diagnostic scene, a clean English return-flow control and clean
+  Chinese. They use the same bounded 26-item inspection and the declared generated
+  ESM through InstalledComponent/public client. Original and English candidate
+  native binaries match; their normal Web assets supply the product change.
+- Clean English/light/Orange 14px verifies recognizable mixed-language rows,
+  cross-line/case/outer-whitespace search, Tab/Return reading of the exact original
+  multiline text, outer close/reopen retention, first/last focus, unavailable
+  Return/Space guards, and keyboard-origin reverse navigation. The final clean
+  control verifies ID search, expanded text, main open/close and Files/back.
+  Its original draft continues to “Continue after native content inspection.
+  Search, expansion and return context are intact.”
+- Clean Chinese/dark/Blue 18px with reduced motion verifies Chinese search and
+  complete content at **200% native page zoom**, native window zoom/restore and
+  the narrower 1120px window. Twenty-seven Tabs traverse all 25 rows and both
+  page controls; Return reaches the final page, rejected repeats preserve its
+  focus, and two Shift+Tabs/Return open the complete new item. Main close,
+  ActualSize and Files/back retain that page and expanded text. The original
+  pasted draft continues to “核对原生内容后继续。 已核对正文、分页和返回位置。”
+
+The mixed pointer/reverse-Tab observation remains **open**, not a passed check.
+The read-only diagnostic records Tab with shift=true, defaultPrevented=false,
+native disabled=false and tabIndex=0, while focus stays at the pointer-clicked
+button. The same sequence also stays at an unchanged enabled Disclosure;
+keyboard-origin navigation works. These facts do not establish a defect in the
+new pager or justify a shared focus patch. Next compare native control behavior
+and input delivery before changing that boundary. Its impact is interrupted
+mixed-input reverse navigation; that concrete reproduction is the trigger for
+the next batch. No temporary observer changes product source or sends UI input.
+
+Removing the diagnostic changes only the two private HTML entries; all **342
+non-HTML assets** match. Both final clean scenes match the complete **344-asset**
+map and produce zero new diagnostic events. The diagnostic's 24 events and all
+15 owned list/history/read GETs are retained as evidence. No native business
+command or message is submitted. Live release/Realm admission, document engines,
+other platforms, VoiceOver and OS IME remain outside qualification. Long/emoji
+truncation has public-client regression coverage; the native fixture's 156-character
+opening text verifies multiline reading without a truncation claim. Existing
+colors and text roles remain; contrast is not remeasured. No browser suite,
+performance benchmark, Claude CLI or subagent is used. Screenshots/AX remain in
+the CUA transcript, with no screenshot-file archive claim.
+
+Cleanup retires all five launches, unregisters the bundle, closes its listener,
+removes **seven** new output/cache roots and **three** private profiles, and
+restores four original files/modes. Before and after retirement, preservation
+passes for **6,385** qualified non-Markdown inputs, **34** resources, **50** read-only
+references, three instructions, 21 outputs and five profile-absence baselines.
+The exact root /private/tmp/flame-native-content-9Niuz5 is absent; no owned process
+or listener remains. The installed toolchain and primary parallel checkout are
+preserved. The memory-only archive round-trips **90 UTF-8 records**, **8,089,923
+raw bytes** and **2,888,911 gzip bytes**, SHA-256
+74b70c95d2044650f25d199cd1a26d9ee2495245b86e91d70c06bdd9453cafbd.
+The interval fetch finds no incoming main commit; publication uses an ordinary
+push to remote main without another merge/validation loop.
+
+**Approve** the introduced preview, search and local-page focus repairs together
+with the previously qualified reading work. The separate native mixed-input
+reverse-navigation finding remains MEDIUM and open. The broader UI goal stays
+active, without a whole-product award-level completion claim.
 
 ## Shortcut recording and activation
 

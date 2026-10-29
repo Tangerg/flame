@@ -97,6 +97,14 @@ The identity disclosure retains exact document and revision creation times from
 accepted metadata, including milliseconds and the UTC designation. Missing
 metadata does not acquire an inferred time.
 
+Inspected items show a bounded content excerpt before their native kind and
+identity. Expanding an item exposes the complete retained text with its original
+whitespace. Preview boundaries preserve whole graphemes; empty items retain their
+identity instead of invented content. Search continues to use the full retained
+text and exact native identity, with the same whitespace normalization as the
+excerpt. Local page boundaries stay focusable and reject unavailable activation,
+keeping keyboard reading in the inspected list.
+
 Each rendered page thumbnail opens its original PNG in the shared image reader
 for local zoom and panning. The captured revision, render and page identity remain
 with the preview owner. Opening, zooming or closing the image does not mark a

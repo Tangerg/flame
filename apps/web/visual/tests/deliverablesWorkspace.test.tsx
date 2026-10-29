@@ -24,6 +24,7 @@ import { guidedContent } from "../../../../plugins/deliverables/component/author
 import { useDeliverables } from "../../../../plugins/deliverables/component/useDeliverables";
 import { CAPABILITY_JSON } from "../../../../plugins/deliverables/component/methods.generated";
 import { METHODS } from "../../../../plugins/deliverables/contracts/methods";
+import { inspectionSchema } from "../../../../plugins/deliverables/contracts/content";
 import {
   emptyProvenance,
   type Assessment,
@@ -901,6 +902,133 @@ it.each([
     expect(select.textContent).toBe(`${recordedTime} · Created · ${rev1.slice(0, 12)}`),
   );
   expect(screen.getAllByText(recordedTime, { exact: true })).toHaveLength(2);
+  expect(fixture.calls.filter((call) => call.key !== null)).toHaveLength(0);
+});
+
+it("keeps inspected-item paging focus at both boundaries and rejects repeated activation", async () => {
+  const fixture = await rig();
+  const retained = fixture.documents.get(doc1)!;
+  const inspection = inspectionSchema.parse(JSON.parse(retained.inspectionJSON));
+  inspection.items = Array.from({ length: 26 }, (_, index) => ({
+    id: `word/document.xml#text:${index}`,
+    kind: "text",
+    text: `Retained review paragraph ${index + 1}`,
+  }));
+  retained.inspectionJSON = JSON.stringify(inspection);
+  fixture.ui.render(<Deliverables context={fixture.context()} />);
+  fireEvent.click(await screen.findByRole("button", { name: /Quarterly report/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "Inspect native content" }));
+  const pager = within(screen.getByRole("group", { name: "Inspected item pages" }));
+  const next = pager.getByRole<HTMLButtonElement>("button", { name: "Next" });
+  const previous = pager.getByRole<HTMLButtonElement>("button", { name: "Previous" });
+  act(() => next.focus());
+  fireEvent.click(next);
+  expect(document.activeElement).toBe(next);
+  expect(next.disabled).toBe(false);
+  expect(next.getAttribute("aria-disabled")).toBe("true");
+  const last = screen.getByRole("button", { name: /word\/document.xml#text:25/ });
+  expect(screen.queryByRole("button", { name: /word\/document.xml#text:0\b/ })).toBeNull();
+  fireEvent.click(next);
+  fireEvent.keyDown(next, { key: "Enter" });
+  fireEvent.keyUp(next, { key: "Enter" });
+  fireEvent.keyDown(next, { key: " " });
+  fireEvent.keyUp(next, { key: " " });
+  expect(screen.getByRole("button", { name: /word\/document.xml#text:25/ })).toBe(last);
+  act(() => previous.focus());
+  fireEvent.click(previous);
+  expect(document.activeElement).toBe(previous);
+  expect(previous.disabled).toBe(false);
+  expect(previous.getAttribute("aria-disabled")).toBe("true");
+  fireEvent.click(previous);
+  expect(screen.getByRole("button", { name: /word\/document.xml#text:0\b/ })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: /word\/document.xml#text:25/ })).toBeNull();
+  expect(fixture.calls.filter((call) => call.key !== null)).toHaveLength(0);
+});
+
+it("previews inspected content and expands the complete unchanged native text", async () => {
+  const fixture = await rig();
+  const retained = fixture.documents.get(doc1)!;
+  const inspection = inspectionSchema.parse(JSON.parse(retained.inspectionJSON));
+  const text = `  Revenue increased by 12%.\n\t${"👩🏽‍💻 ".repeat(200)}\nComplete retained evidence.  `;
+  inspection.items = [{ id: "word/document.xml#text:0", kind: "text", text }];
+  retained.inspectionJSON = JSON.stringify(inspection);
+  fixture.ui.render(<Deliverables context={fixture.context()} />);
+  fireEvent.click(await screen.findByRole("button", { name: /Quarterly report/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "Inspect native content" }));
+  const row = screen.getByRole("button", { name: /Revenue increased by 12%/ });
+  expect(row.textContent).toContain("text · word/document.xml#text:0");
+  expect(row.textContent).toContain("…");
+  expect(row.textContent).not.toContain("Complete retained evidence.");
+  expect(row.textContent).not.toMatch(/[\n\t]/u);
+  expect(row.textContent).not.toContain("\uFFFD");
+  expect(row.textContent!.split("…")[0]).toMatch(/👩🏽‍💻 ?$/u);
+  fireEvent.click(row);
+  const body = document.getElementById(row.getAttribute("aria-controls")!)!;
+  expect(body.textContent).toBe(text);
+  const search = screen.getByRole("searchbox", { name: "Search inspected items" });
+  fireEvent.change(search, { target: { value: "complete retained evidence" } });
+  expect(screen.getByRole("button", { name: /Revenue increased by 12%/ })).toBe(row);
+  expect(body.textContent).toBe(text);
+  fireEvent.change(search, { target: { value: "  REVENUE increased by 12%.  👩🏽‍💻  " } });
+  expect(screen.getByRole("button", { name: /Revenue increased by 12%/ })).toBe(row);
+  expect(body.textContent).toBe(text);
+  expect(fixture.calls.filter((call) => call.key !== null)).toHaveLength(0);
+});
+
+it("keeps empty inspected items identifiable without inventing content", async () => {
+  const fixture = await rig();
+  const retained = fixture.documents.get(doc1)!;
+  const inspection = inspectionSchema.parse(JSON.parse(retained.inspectionJSON));
+  inspection.items = [{ id: "word/document.xml#text:0", kind: "text", text: " \n\t " }];
+  retained.inspectionJSON = JSON.stringify(inspection);
+  fixture.ui.render(<Deliverables context={fixture.context()} />);
+  fireEvent.click(await screen.findByRole("button", { name: /Quarterly report/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "Inspect native content" }));
+  const row = screen.getByRole("button", { name: "text · word/document.xml#text:0" });
+  fireEvent.click(row);
+  expect(document.getElementById(row.getAttribute("aria-controls")!)!.textContent).toBe(" \n\t ");
+  expect(fixture.calls.filter((call) => call.key !== null)).toHaveLength(0);
+});
+
+it("retains inspected search and expansion locally and retires them for another revision", async () => {
+  const fixture = await rig();
+  const retained = fixture.documents.get(doc1)!;
+  const inspection = inspectionSchema.parse(JSON.parse(retained.inspectionJSON));
+  inspection.items = Array.from({ length: 26 }, (_, index) => ({
+    id: `word/document.xml#text:${index}`,
+    kind: "text",
+    text: index === 25 ? "Final audit evidence" : `Retained review paragraph ${index + 1}`,
+  }));
+  retained.inspectionJSON = JSON.stringify(inspection);
+  fixture.ui.render(<Deliverables context={fixture.context()} />);
+  fireEvent.click(await screen.findByRole("button", { name: /Quarterly report/ }));
+  const content = await screen.findByRole("button", { name: "Inspect native content" });
+  fireEvent.click(content);
+  const search = screen.getByRole<HTMLInputElement>("searchbox", {
+    name: "Search inspected items",
+  });
+  fireEvent.change(search, { target: { value: "final audit" } });
+  const row = screen.getByRole("button", { name: /Final audit evidence/ });
+  fireEvent.click(row);
+  fireEvent.click(content);
+  fireEvent.click(content);
+  expect(search.value).toBe("final audit");
+  expect(screen.getByRole("button", { name: /Final audit evidence/ })).toBe(row);
+  expect(row.getAttribute("aria-expanded")).toBe("true");
+  fireEvent.change(search, { target: { value: "#text:25" } });
+  expect(screen.getByRole("button", { name: /Final audit evidence/ })).toBe(row);
+  fireEvent.click(screen.getByRole("button", { name: /Meeting notes/ }));
+  await screen.findByRole("heading", { name: "Meeting notes" });
+  const other = screen.getByRole("button", { name: "Inspect native content" });
+  expect(other.getAttribute("aria-expanded")).toBe("false");
+  fireEvent.click(other);
+  expect(
+    screen.getByRole<HTMLInputElement>("searchbox", { name: "Search inspected items" }).value,
+  ).toBe("");
+  expect(screen.queryByRole("button", { name: /Final audit evidence/ })).toBeNull();
+  expect(
+    screen.getByRole("button", { name: /Meeting notes.*word\/document.xml#text:0/ }),
+  ).toBeTruthy();
   expect(fixture.calls.filter((call) => call.key !== null)).toHaveLength(0);
 });
 

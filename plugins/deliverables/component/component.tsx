@@ -202,12 +202,13 @@ function StructuredContent({
 }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
+  const query = inlineContent(search).toLocaleLowerCase();
   const rows = inspection.items.filter(
     (item) =>
-      !search ||
-      `${item.id} ${item.text}`
+      !query ||
+      inlineContent(`${item.id} ${item.text}`)
         .toLocaleLowerCase()
-        .includes(search.toLocaleLowerCase()),
+        .includes(query),
   );
   const pageSize = 25;
   const shown = rows.slice(page * pageSize, (page + 1) * pageSize);
@@ -231,24 +232,38 @@ function StructuredContent({
         }}
       />
       <RecordGroup variant="list" hidden={!shown.length}>
-        {shown.map((item) => (
-          <Disclosure
-            key={item.id}
-            variant="row"
-            title={`${item.kind} · ${item.id}`}
-          >
-            <RecordBody>{item.text}</RecordBody>
-          </Disclosure>
-        ))}
+        {shown.map((item) => {
+          const preview = contentPreview(item.text);
+          const identity = `${item.kind} · ${item.id}`;
+          return (
+            <Disclosure
+              key={item.id}
+              variant="row"
+              title={
+                <RecordSummary
+                  title={preview || identity}
+                  description={preview ? identity : undefined}
+                />
+              }
+            >
+              <RecordBody>{item.text}</RecordBody>
+            </Disclosure>
+          );
+        })}
       </RecordGroup>
       {!shown.length && <Metadata>{t("content.empty")}</Metadata>}
       {(page > 0 || rows.length > (page + 1) * pageSize) && (
         <Toolbar label={t("content.paging")}>
-          <Button disabled={page === 0} onClick={() => setPage(page - 1)}>
+          <Button
+            disabled={page === 0}
+            focusableWhenDisabled
+            onClick={() => setPage(page - 1)}
+          >
             {t("previous")}
           </Button>
           <Button
             disabled={rows.length <= (page + 1) * pageSize}
+            focusableWhenDisabled
             onClick={() => setPage(page + 1)}
           >
             {t("next")}
@@ -257,6 +272,19 @@ function StructuredContent({
       )}
     </Disclosure>
   );
+}
+
+function contentPreview(value: string): string {
+  const text = inlineContent(value);
+  const segments = Array.from(
+    new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(text),
+  );
+  const boundary = segments[160]?.index;
+  return boundary === undefined ? text : `${text.slice(0, boundary)}…`;
+}
+
+function inlineContent(value: string): string {
+  return value.replace(/\s+/gu, " ").trim();
 }
 
 function safeSource(uri: string): string | undefined {
