@@ -1,7 +1,7 @@
 interface ComposerDraftImage {
-  mime: string;
-  data: string;
-  name?: string;
+  readonly mime: string;
+  readonly data: string;
+  readonly name?: string;
 }
 
 export interface ComposerDraftInput {
@@ -10,13 +10,20 @@ export interface ComposerDraftInput {
 }
 
 export interface ComposerImage extends ComposerDraftImage {
-  id: string;
+  readonly id: string;
 }
 
+export type ComposerImageAttachment =
+  | Readonly<ComposerImage & { status: "ready" }>
+  | { readonly status: "pending" | "failed"; readonly id: string; readonly name: string };
+
+export type ImageReadResult =
+  { status: "ready"; image: Omit<ComposerImage, "id"> } | { status: "failed" };
+
 export interface PastedText {
-  id: string;
-  text: string;
-  lines: number;
+  readonly id: string;
+  readonly text: string;
+  readonly lines: number;
 }
 
 export function joinDraftParts(parts: readonly string[]): string {

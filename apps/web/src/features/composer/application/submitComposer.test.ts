@@ -14,6 +14,7 @@ import { type SlashCommandRunCtx } from "@/features/composer/public/types";
 import { SLASH_COMMAND } from "@/features/composer/public/extensionPoints";
 import { submitComposer, type SubmitDeps } from "@/features/composer/application/submitComposer";
 import { loadPluginsForTest, resetKernelForTest } from "@/test/kernel";
+import * as imageInput from "@/features/composer/public/input";
 
 import {
   captureComposerFocus,
@@ -26,7 +27,7 @@ vi.mock("@/extensions/errors", async (importOriginal) => {
 
 function deps(value: string, input: Partial<SubmitDeps> = {}): SubmitDeps {
   return {
-    draft: { value, images: [], pastes: [], consume: vi.fn(() => true) },
+    draft: { value, images: [], attachmentsReady: true, pastes: [], consume: vi.fn(() => true) },
     sendInput: vi.fn(() => true),
     canSend: () => true,
     restoreFocus: () => {},
@@ -48,7 +49,34 @@ async function command(run: (context: SlashCommandRunCtx) => void | Promise<void
 describe("submitComposer", () => {
   afterEach(() => {
     resetKernelForTest();
+    vi.restoreAllMocks();
     vi.clearAllMocks();
+  });
+
+  it("keeps a selected image in its draft when send happens before reading completes", async () => {
+    const reading =
+      Promise.withResolvers<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
+    vi.spyOn(imageInput, "fileToInputImage").mockReturnValue(reading.promise);
+    const store = testClient.composer.store.getState;
+    store().setValue("look at this");
+    store().addImageFiles([new File([""], "selected.png")]);
+    const input = deps("", { draft: store().captureSubmission() });
+
+    submitComposer(input);
+    expect(input.sendInput).not.toHaveBeenCalled();
+    expect(store().composer.draft.value).toBe("look at this");
+    expect(input.draft.consume()).toBe(false);
+
+    reading.resolve({ mime: "image/png", data: "selected-image", name: "selected.png" });
+    await vi.waitFor(() => expect(store().composer.draft.images).toHaveLength(1));
+    submitComposer({ ...input, draft: store().captureSubmission() });
+    expect(input.sendInput).toHaveBeenCalledExactlyOnceWith({
+      parts: [
+        { kind: "text", text: "look at this" },
+        { kind: "image", mime: "image/png", data: "selected-image" },
+      ],
+    });
+    expect(store().composer.draft.images).toEqual([]);
   });
 
   it("ignores whitespace without consuming the draft", () => {

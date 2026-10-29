@@ -1,12 +1,20 @@
 import { useComposer } from "@/features/composer/public/composer";
-import { type ComposerImage, type PastedText } from "@/features/composer/domain/draft";
+import { type ComposerImageAttachment, type PastedText } from "@/features/composer/domain/draft";
 
-export type { ComposerImage, PastedText } from "@/features/composer/domain/draft";
+export type {
+  ComposerImage,
+  ComposerImageAttachment,
+  PastedText,
+} from "@/features/composer/domain/draft";
 
-export function useComposerImages(): readonly ComposerImage[] {
+export function useComposerImageAttachments(): readonly ComposerImageAttachment[] {
   const composerAccess = useComposer();
 
-  return composerAccess.useImages();
+  return composerAccess.useImageAttachments();
+}
+
+export function useComposerAttachmentsReady(): boolean {
+  return useComposer().useAttachmentsReady();
 }
 
 export function useComposerPastes(): readonly PastedText[] {

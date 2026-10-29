@@ -3,10 +3,12 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { fileToInputImage } from "@/features/composer/public/input";
 import { countLines } from "@/features/composer/public/largePaste";
-import { t } from "@/lib/i18n/index";
 import { ScopedPersistence } from "@/lib/persistedStore";
-import { notifyError } from "@/features/notifications/public/notifications";
-import { type ComposerDraftInput, type ComposerImage } from "@/features/composer/domain/draft";
+import {
+  type ComposerDraftInput,
+  type ComposerImage,
+  type ImageReadResult,
+} from "@/features/composer/domain/draft";
 import {
   type ComposerDraftReplacement,
   type ComposerModelPreference,
@@ -47,8 +49,6 @@ interface ComposerActions {
 export function createComposerStore() {
   const persistence = new ScopedPersistence<ComposerState>(STORAGE_KEY);
 
-  const imageStaging = new Map<string, { latestIntake: object }>();
-
   let storageGeneration: object = {};
 
   function emptyComposerState(): ComposerState {
@@ -67,7 +67,6 @@ export function createComposerStore() {
           setValue: (value) => edit((draft) => draft.withValue(value)),
           setModel: (modelPreference) => set({ modelPreference }),
           clear: () => {
-            imageStaging.delete(get().composer.activeSessionId);
             set((s) => ({ composer: s.composer.clear() }));
           },
           captureSubmission: () => {
@@ -76,33 +75,31 @@ export function createComposerStore() {
             return {
               value: draft.value,
               images: draft.images,
+              attachmentsReady: draft.attachmentsReady,
               pastes: draft.pastes,
               consume: (historyText) => {
                 if (generation !== storageGeneration) return false;
                 const current = get().composer;
-                const matches = current.activate(sessionId).draft === draft;
+                const matches =
+                  draft.attachmentsReady && current.activate(sessionId).draft === draft;
                 set({ composer: current.consumeDraft(sessionId, draft, historyText) });
-                if (matches) imageStaging.delete(sessionId);
                 return matches && current.activeSessionId === sessionId;
               },
             };
           },
           replaceDraft: (input) => {
-            imageStaging.delete(get().composer.activeSessionId);
-            const images = (input.images ?? []).map((image) => ({ id: nanoid(), ...image }));
+            const images = (input.images ?? []).map((image) => ({ ...image, id: nanoid() }));
             edit(() => ComposerDraft.restoreText(input.text).withImages(images));
           },
           captureDraftReplacement: () => {
             const generation = storageGeneration;
             const { activeSessionId: sessionId, draft } = get().composer;
-            const imageIntake = imageStaging.get(sessionId)?.latestIntake;
             return (input) => {
               if (generation !== storageGeneration) return false;
               const current = get();
               if (
                 current.composer.activeSessionId !== sessionId ||
-                current.composer.draft !== draft ||
-                imageStaging.get(sessionId)?.latestIntake !== imageIntake
+                current.composer.draft !== draft
               ) {
                 return false;
               }
@@ -112,39 +109,27 @@ export function createComposerStore() {
           },
           addImages: (images) =>
             edit((draft) =>
-              draft.withImages([
-                ...draft.images,
-                ...images.map((image) => ({ id: nanoid(), ...image })),
-              ]),
+              draft.appendImages(images.map((image) => ({ ...image, id: nanoid() }))),
             ),
           addImageFiles: (files) => {
             if (files.length === 0) return;
             const sessionId = get().composer.activeSessionId;
-            const intake = {};
-            const lease = imageStaging.get(sessionId) ?? { latestIntake: intake };
-            lease.latestIntake = intake;
-            imageStaging.set(sessionId, lease);
-            void Promise.allSettled(files.map(fileToInputImage)).then((results) => {
-              if (
-                lease !== imageStaging.get(sessionId) ||
-                get().composer.activeSessionId !== sessionId
-              )
-                return;
-              const ok = results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
-              if (ok.length > 0) get().addImages(ok);
-              const failed = results.length - ok.length;
-              if (failed > 0) {
-                notifyError(
-                  failed > 1
-                    ? t("composer.error.readImages", { count: failed })
-                    : t("composer.error.readImage"),
-                  { source: "composer" },
-                );
-              }
+            const generation = storageGeneration;
+            const selected = files.map((file) => ({ id: nanoid(), name: file.name }));
+            edit((draft) => draft.beginImageRead(selected));
+            const settle = (id: string, result: ImageReadResult) => {
+              if (generation !== storageGeneration) return;
+              set((state) => ({ composer: state.composer.settleImageRead(sessionId, id, result) }));
+            };
+            files.forEach((file, index) => {
+              const { id } = selected[index]!;
+              void fileToInputImage(file).then(
+                (image) => settle(id, { status: "ready", image }),
+                () => settle(id, { status: "failed" }),
+              );
             });
           },
-          removeImage: (id) =>
-            edit((draft) => draft.withImages(draft.images.filter((image) => image.id !== id))),
+          removeImage: (id) => edit((draft) => draft.removeImage(id)),
           addPaste: (text) =>
             edit((draft) =>
               draft.withPastes([...draft.pastes, { id: nanoid(), text, lines: countLines(text) }]),
@@ -158,7 +143,6 @@ export function createComposerStore() {
           restorePaste: (id, text) => edit((draft) => draft.restorePaste(id, text)),
           loadSession: (sessionId) => set((s) => ({ composer: s.composer.activate(sessionId) })),
           discardSession: (sessionId) => {
-            imageStaging.delete(sessionId);
             set((s) => ({ composer: s.composer.discardSession(sessionId) }));
           },
           historyPrev: () => {
@@ -193,7 +177,6 @@ export function createComposerStore() {
 
   function activateComposerStorage(endpoint: string): boolean {
     if (persistence.isActive(endpoint)) return false;
-    imageStaging.clear();
     storageGeneration = {};
     return persistence.activate(endpoint, useComposerStore);
   }
@@ -202,7 +185,6 @@ export function createComposerStore() {
     store: useComposerStore,
     activate: activateComposerStorage,
     dispose() {
-      imageStaging.clear();
       storageGeneration = {};
     },
   };

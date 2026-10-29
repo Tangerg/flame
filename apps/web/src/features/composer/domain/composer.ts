@@ -1,5 +1,7 @@
 import {
   type ComposerImage,
+  type ComposerImageAttachment,
+  type ImageReadResult,
   type PastedText,
   joinDraftParts,
 } from "@/features/composer/domain/draft";
@@ -16,11 +18,26 @@ export interface ComposerDraftText {
 export class ComposerDraft {
   private static readonly EMPTY = new ComposerDraft("", Object.freeze([]), Object.freeze([]));
 
+  readonly images: readonly ComposerImage[];
+
   private constructor(
     readonly value: string,
-    readonly images: readonly ComposerImage[],
+    readonly imageAttachments: readonly ComposerImageAttachment[],
     readonly pastes: readonly PastedText[],
-  ) {}
+  ) {
+    this.images = imageAttachments.flatMap((attachment) =>
+      attachment.status === "ready"
+        ? [
+            {
+              id: attachment.id,
+              mime: attachment.mime,
+              data: attachment.data,
+              name: attachment.name,
+            },
+          ]
+        : [],
+    );
+  }
 
   static empty(): ComposerDraft {
     return ComposerDraft.EMPTY;
@@ -30,16 +47,71 @@ export class ComposerDraft {
     return new ComposerDraft(value, [], []);
   }
 
+  get attachmentsReady(): boolean {
+    return this.imageAttachments.every((attachment) => attachment.status === "ready");
+  }
+
   withValue(value: string): ComposerDraft {
-    return value === this.value ? this : new ComposerDraft(value, this.images, this.pastes);
+    return value === this.value
+      ? this
+      : new ComposerDraft(value, this.imageAttachments, this.pastes);
   }
 
   withImages(images: readonly ComposerImage[]): ComposerDraft {
-    return new ComposerDraft(this.value, images, this.pastes);
+    return new ComposerDraft(
+      this.value,
+      images.map((image) => ({ ...image, status: "ready" })),
+      this.pastes,
+    );
+  }
+
+  appendImages(images: readonly ComposerImage[]): ComposerDraft {
+    return new ComposerDraft(
+      this.value,
+      [
+        ...this.imageAttachments,
+        ...images.map((image) => ({ ...image, status: "ready" as const })),
+      ],
+      this.pastes,
+    );
+  }
+
+  beginImageRead(images: readonly { id: string; name: string }[]): ComposerDraft {
+    return new ComposerDraft(
+      this.value,
+      [
+        ...this.imageAttachments,
+        ...images.map((image) => ({ ...image, status: "pending" as const })),
+      ],
+      this.pastes,
+    );
+  }
+
+  settleImageRead(id: string, result: ImageReadResult): ComposerDraft {
+    const pending = this.imageAttachments.find((attachment) => attachment.id === id);
+    if (!pending || pending.status !== "pending") return this;
+    const settled: ComposerImageAttachment =
+      result.status === "ready"
+        ? { ...result.image, id, name: pending.name, status: "ready" }
+        : { id, name: pending.name, status: "failed" };
+    return new ComposerDraft(
+      this.value,
+      this.imageAttachments.map((attachment) => (attachment === pending ? settled : attachment)),
+      this.pastes,
+    );
+  }
+
+  removeImage(id: string): ComposerDraft {
+    if (!this.imageAttachments.some((attachment) => attachment.id === id)) return this;
+    return new ComposerDraft(
+      this.value,
+      this.imageAttachments.filter((attachment) => attachment.id !== id),
+      this.pastes,
+    );
   }
 
   withPastes(pastes: readonly PastedText[]): ComposerDraft {
-    return new ComposerDraft(this.value, this.images, pastes);
+    return new ComposerDraft(this.value, this.imageAttachments, pastes);
   }
 
   editPaste(id: string, text: string): ComposerDraft {
@@ -53,7 +125,7 @@ export class ComposerDraft {
     if (!this.pastes.some((paste) => paste.id === id)) return this;
     return new ComposerDraft(
       text.trim() ? joinDraftParts([this.value.trimEnd(), text]) : this.value,
-      this.images,
+      this.imageAttachments,
       this.pastes.filter((paste) => paste.id !== id),
     );
   }
@@ -117,8 +189,21 @@ export class Composer {
     return this.replaceDraft(ComposerDraft.restoreText(""), NOT_RECALLING);
   }
 
+  settleImageRead(sessionId: string, id: string, result: ImageReadResult): Composer {
+    const draft = this.drafts.get(sessionId);
+    if (!draft) return this;
+    const settled = draft.settleImageRead(id, result);
+    if (settled === draft) return this;
+    return new Composer(
+      new Map(this.drafts).set(sessionId, settled),
+      this.rings,
+      this.activeSessionId,
+      this.recall,
+    );
+  }
+
   consumeDraft(sessionId: string, draft: ComposerDraft, historyText?: string): Composer {
-    if (!this.drafts.has(sessionId)) return this;
+    if (!draft.attachmentsReady || !this.drafts.has(sessionId)) return this;
     const recorded = historyText ? this.record(historyText, sessionId) : this;
     if (this.drafts.get(sessionId) !== draft) return recorded;
     return new Composer(

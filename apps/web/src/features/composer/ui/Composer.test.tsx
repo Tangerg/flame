@@ -8,7 +8,7 @@ prepareTestClient(() => {
 });
 import { type ReactElement, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { contributeLayout } from "@/extensions/contributeHelpers";
 import { definePlugin } from "@/extensions/definePlugin";
@@ -16,12 +16,13 @@ import { COMPOSER_KEY_BINDING, SLASH_COMMAND } from "@/features/composer/public/
 import { mountLocaleBundle, setLocale } from "@/lib/i18n/index";
 import { WORKSPACE_LIST_FILES_KEY } from "@/features/workspace/public/queries";
 import { Composer } from "@/features/composer/ui/Composer";
+import * as imageInput from "@/features/composer/public/input";
 import { loadPluginsForTest } from "@/test/kernel";
 
 import {
   useAddComposerImageFiles,
   useAddComposerPaste,
-  useComposerImages,
+  useComposerImageAttachments,
   useComposerPastes,
   useEditComposerPaste,
   useRemoveComposerImage,
@@ -86,6 +87,7 @@ function composerProps(value: string) {
     captureSubmission: () => ({
       value,
       images: baseProps.images,
+      attachmentsReady: true,
       pastes: baseProps.pastes,
       consume: () => true,
     }),
@@ -93,6 +95,7 @@ function composerProps(value: string) {
 }
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   await act(async () => {
     setLocale("en");
     await Promise.resolve();
@@ -207,8 +210,8 @@ describe("composer", () => {
         onChange={() => {}}
         onSend={() => true}
         images={[
-          { id: "a1", mime: "image/png", data: "AAAA", name: "shot1.png" },
-          { id: "a2", mime: "image/jpeg", data: "BBBB", name: "shot2.jpg" },
+          { status: "ready", id: "a1", mime: "image/png", data: "AAAA", name: "shot1.png" },
+          { status: "ready", id: "a2", mime: "image/jpeg", data: "BBBB", name: "shot2.jpg" },
         ]}
       />,
     );
@@ -323,7 +326,7 @@ function DraftComposer() {
       onChange={useSetComposerText()}
       captureSubmission={() => captureComposerSubmission(testClient.composer.access)}
       onSend={() => true}
-      images={useComposerImages()}
+      images={useComposerImageAttachments()}
       onRemoveImage={useRemoveComposerImage()}
       onAddImages={useAddComposerImageFiles()}
       pastes={useComposerPastes()}
@@ -335,6 +338,36 @@ function DraftComposer() {
     />
   );
 }
+
+it("announces pending and failed image input and returns focus after removal", async () => {
+  const reading = Promise.withResolvers<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
+  vi.spyOn(imageInput, "fileToInputImage").mockReturnValue(reading.promise);
+  await withEnterKeymap();
+  const { container } = wrap(<DraftComposer />);
+  const composerRoot = container.querySelector('[data-slot="composer-root"]') as HTMLElement;
+  const live = within(composerRoot).getByRole("status");
+  expect(live.textContent).toBe("");
+  act(() => {
+    testClient.composer.store.getState().setValue("keep the draft");
+    testClient.composer.store.getState().addImageFiles([new File([""], "selected.png")]);
+  });
+  const input = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message composer" });
+  expect(live.textContent).toBe("Reading selected.png…");
+  fireEvent.keyDown(input, { key: "Enter" });
+  expect(input.value).toBe("keep the draft");
+  await act(async () => {
+    reading.reject(new Error("file read failed"));
+    await reading.promise.catch(() => {});
+  });
+  expect(within(composerRoot).getByRole("status")).toBe(live);
+  expect(live.textContent).toContain("Couldn't read selected.png");
+  const remove = screen.getByRole("button", { name: "Remove image" });
+  remove.focus();
+  fireEvent.click(remove);
+  expect(document.activeElement).toBe(input);
+  expect(live.textContent).toBe("");
+  expect(input.value).toBe("keep the draft");
+});
 
 describe("reviewing a pasted text", () => {
   const PASTE = Array.from({ length: 18 }, (_, i) => `第 ${i + 1} 行 · mixed line ${i + 1}`).join(

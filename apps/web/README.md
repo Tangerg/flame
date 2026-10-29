@@ -55,6 +55,15 @@ conversation region, with the same recovery action next in the Tab order. Once
 Session data arrives, the existing Composer presents connection feedback and
 retains its draft and focus through later connection status changes.
 
+Image selections belong to their Session draft as pending, ready or failed
+attachments from the moment they are chosen. Send remains unavailable until all
+retained images are ready. Failed selections stay visible for removal and
+reselection. Reads complete against the original Session, in selection order,
+even while another Session is active. Clearing, replacing or discarding that draft
+retires its pending selections. Endpoint storage replacement also retires pending
+reads; replacement at the same endpoint preserves them. Image bytes and read
+intents remain in memory; only draft text and pasted text are persisted.
+
 Accepted Composer Stop returns to the captured input without consuming its draft
 or moving its selection. Refused Stop keeps its action context; later focus and
 input replacement remain with the existing captured-focus owner. Send, Steer and

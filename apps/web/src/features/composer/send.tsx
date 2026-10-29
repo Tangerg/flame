@@ -7,7 +7,11 @@ import { useStopCurrentRootRun } from "@/features/agent/public/run";
 import { useT } from "@/lib/i18n/index";
 import { contributeLayout } from "@/extensions/contributeHelpers";
 import { definePlugin } from "@/extensions/definePlugin";
-import { useComposerImages, useComposerPastes } from "@/features/composer/public/attachments";
+import {
+  useComposerAttachmentsReady,
+  useComposerImageAttachments,
+  useComposerPastes,
+} from "@/features/composer/public/attachments";
 import { captureComposerSubmission, useComposerText } from "@/features/composer/public/draft";
 import { captureComposerFocus } from "@/features/composer/public/focus";
 import { composerActionLayout } from "@/features/composer/application/composerActionLayout";
@@ -23,7 +27,8 @@ function SendButton() {
 
   const t = useT();
   const value = useComposerText();
-  const images = useComposerImages();
+  const images = useComposerImageAttachments();
+  const attachmentsReady = useComposerAttachmentsReady();
   const pastes = useComposerPastes();
   const send = useChatSend();
   const stop = useStopCurrentRootRun();
@@ -31,7 +36,7 @@ function SendButton() {
   const runtimeAvailable = useRuntimeCommandsAvailable();
   const agentCanSend = useCanSendToAgent();
   const activeSessionId = useActiveSessionId();
-  const canSend = runtimeAvailable && agentCanSend;
+  const canSend = runtimeAvailable && agentCanSend && attachmentsReady;
 
   const hasInput = hasSendableContent({ value, images, pastes });
   const layout = composerActionLayout({ running, hasInput });
@@ -65,6 +70,7 @@ function SendButton() {
       iconSize={16}
       focusableWhenDisabled
       disabled={!enabled}
+      aria-busy={images.some((image) => image.status === "pending")}
       aria-label={label}
       onClick={submit}
       variant="primary"

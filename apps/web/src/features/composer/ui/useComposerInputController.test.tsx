@@ -71,7 +71,13 @@ function mount(options: Partial<Parameters<typeof useComposerInputController>[0]
     useComposerInputController({
       value: "你好",
       onChange: () => {},
-      captureSubmission: () => ({ value: "你好", images: [], pastes: [], consume: () => true }),
+      captureSubmission: () => ({
+        value: "你好",
+        images: [],
+        attachmentsReady: true,
+        pastes: [],
+        consume: () => true,
+      }),
       onSend: () => true,
       onAddImages: () => {},
       onAddPaste: () => {},

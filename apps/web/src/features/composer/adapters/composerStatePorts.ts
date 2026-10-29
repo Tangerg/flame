@@ -82,7 +82,8 @@ export function createComposer(
       store.setValue(value);
       presentFocus(() => focus(value.length));
     },
-    useImages: () => useComposerStore((state) => state.composer.draft.images),
+    useImageAttachments: () => useComposerStore((state) => state.composer.draft.imageAttachments),
+    useAttachmentsReady: () => useComposerStore((state) => state.composer.draft.attachmentsReady),
     usePastes: () => useComposerStore((state) => state.composer.draft.pastes),
     useAddImageFiles: () => useComposerStore((state) => state.addImageFiles),
     useRemoveImage: () => useComposerStore((state) => state.removeImage),
