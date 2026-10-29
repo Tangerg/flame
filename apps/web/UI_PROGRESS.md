@@ -10643,6 +10643,202 @@ The memory-only archive round-trips **82 UTF-8 records**,
 e6cdcd77c6689537eb95ed2072a429cc0e72e72889d8b91afd70ff66ef57146f. This final handoff changes no qualified product source;
 continue from fresh content/Dock task evidence with the continuous goal active.
 
+### Deliverables pagination and reading continuity
+
+The retained-document list and revision-history page controls now use shared
+Button pending behavior and focusable disabled boundaries. Native HTML disabled
+previously moved keyboard focus to BODY during a list read; the next Tab restarted
+at the fixture sidebar. Pending and last-page buttons now keep their place, reject
+pointer/Enter/Space repeats, and leave later search or Composer focus alone. No
+imperative focus recovery or second navigation state is added.
+
+The existing Deliverables query projection also retains an accepted history page
+while reading another cursor for the same document. Previously its exact-input
+retention rule removed the history value and pager during that read. A different
+document still clears the old projection, and the existing request/selection
+lifetime rejects its late response. Successful reads alone advance the existing
+cursor stack; failures retain the accepted page and retry path. Runtime, command
+receipts, edits, exports and review decisions keep their existing owners.
+
+Implementation is in plugins/deliverables/component/component.tsx and
+useDeliverables.ts, with public-client regressions in
+apps/web/visual/tests/deliverablesWorkspace.test.tsx and the module README.
+Normal generation changes only Deliverables component.js among 34 installed
+resource inputs. Rebuild/select that package with its matching Host; generating a
+resource does not replace an already evaluated Runtime installation.
+
+Read-only HeroUI Button and its actual loading-state example support pending
+activation with retained context; Flame implements that behavior through its
+existing Base UI control. Established ZCode workspace and HeroUI/Radix research
+informs return paths and semantic focus surfaces. Static references are not used
+as evidence of native behavior. The applicable AGENTS.md, PROJECT_RULES.md,
+DEVELOPMENT.md and module conventions remain authoritative.
+
+Scope of the better-interface review is the document/history pagination flow in
+the existing React, StyleX, Base UI and semantic-token workspace:
+
+| Domain        | Evidence inspected                                                                     | Result                                                                      |
+| ------------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Accessibility | Shared Button/Select contracts, native pagination/selection and current-revision jump  | Two fixed findings; one MEDIUM follow-up; VoiceOver and OS IME not reviewed |
+| Layout        | Actual Dock/main reading, native scroll, 1120/1440 widths, window zoom and 200%        | Clear for the changed controls and inspected return flow                    |
+| Writing       | Existing English/Chinese pagination, revision labels and errors                        | One fixed finding; qualification below                                      |
+| Typography    | Actual 14/18px control labels and 200% geometry                                        | Clear for pagination; no global type-scale change                           |
+| Colors        | Existing Orange/light and Blue/dark pending, boundary and focus states                 | Clear in inspected states; semantic tokens retained                         |
+| UI            | Shared pending/press guards, accepted-page continuity, pointer and keyboard activation | Clear after the two fixes; no new motion or chrome                          |
+
+| Severity | Domain        | Location                                                  | Before                                                                           | After                                                                             | Why                                                        |
+| -------- | ------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| MEDIUM   | Accessibility | Deliverables document/history pagination                  | Native disabled discarded focused list navigation                                | Shared pending controls and focusable true boundaries; fixed                      | Keyboard reading continues from the current task position  |
+| MEDIUM   | Accessibility | useDeliverables query projection                          | A same-document history cursor read removed its accepted page and controls       | Retain that document's accepted page until settlement; fixed                      | Stable controls preserve the reading and retry context     |
+| MEDIUM   | Accessibility | Inspector Open current revision action                    | Its removal on the revision change leaves native AX focus at HTML content        | Open follow-up: preserve a stable local reading entry when that action disappears | Keyboard users lose the current reading position           |
+| LOW      | Writing       | Exact revision Select after visiting another history page | Current revision label fell back to its full identity when absent from that page | Selected canonical read revision remains one option beside the page; fixed        | The selected object stays recognizable across page changes |
+
+Verification (2026-10-29):
+
+- The original nine Deliverables tests pass. After correcting setup-only role and
+  label lookups, all eight focus cases fail against the original implementation:
+  list controls become natively disabled and history controls disappear. Those
+  setup lookup failures are excluded from product evidence. Final regression
+  suite passes 18 tests, including success/refusal, both page kinds, repeated
+  activation, first/last boundaries, Previous, later focus, document replacement
+  and rejection of an older held history response. The shared Button contract
+  passes 28 tests. Conditional test assertions were restructured to satisfy the
+  existing lint rule; checks and valid behavioral assertions were not disabled.
+- Normal make stage-web, plugin type/lint/format/i18n, Web type/lint and all ten
+  selected Web structure/design/token/chrome/locale/resource/bundle/module gates
+  pass. The supported make check-native passes in 17.641 s, including Desktop
+  Go test/vet/build and the Wails production build. Builds and checks run serially.
+  Final type, owned-format and diff checks pass after the test lint repair.
+- Actual original Wails reproduces the list focus loss and sidebar restart.
+  Candidate English/light/Orange at 14px retains Next during the held read and
+  at the last boundary; repeated Enter/Space produce one page request. Two
+  Shift+Tabs reach the new result, and Enter opens its actual Inspector. History
+  navigation retains its selected document and controls. Previous returns to the
+  prior page. Moving to Files and back keeps the document/page and draft.
+- Native list refusal retains the accepted rows, visible warning and available
+  Next focus; an explicit retry adds one request and succeeds. List settlement
+  leaves a later Composer edit alone; history settlement leaves a later title
+  search alone. The conversation continues its original draft after inspection.
+- Chinese/dark/Blue at 18px and reduced motion retains visible pending/last-page
+  focus. At 200%, the actual native window zoom yields a 756 × 475 CSS viewport;
+  the focused history Next is inside it with the existing 1.5px Blue outline.
+  Previous remains reachable. Closing the main reader continues the original
+  draft to “从成果阅读处继续。 已核对分页与版本历史。” ActualSize is restored before quit.
+- An observer-free production control repeats list pagination, document opening,
+  history pending and later Composer focus/draft continuation. Its 619 assets
+  differ only in the two HTML entries; the native binary is identical to the
+  qualified dark build and observer-event delta is zero. Screenshots and native
+  AX observations are in the CUA transcript, without a screenshot-file archive
+  claim.
+
+The isolated composition selects the normally generated Deliverables ESM through
+InstalledComponent, declared capability binding and the actual public client.
+Three private data/composition producers provide canonical read-only documents,
+catalog and cursor replies; HTTP holds expose actual asynchronous WebKit focus
+behavior. The first blank fixture setup had an obsolete tab ID, was corrected
+before the original counterexample, and is excluded from product evidence.
+Live release acquisition/Realm admission, native document generation/rendering,
+provider execution, file saving, mutations, OS IME and VoiceOver are not qualified.
+No browser/performance suite, Claude CLI or subagent is used. Native input uses
+CUA; the optional observer only reads.
+
+Cleanup retires five native launches (including the excluded setup), unregisters
+the exact bundle, closes the loopback listener, removes eight new checkout
+output/cache roots and three private profiles, and restores all four original
+files and modes. Independent preservation checks pass for 6,379 qualified inputs,
+34 resources, 45 read-only references, three instruction files, 21 output-presence
+and five profile-absence baselines. The installed npm toolchain and the user's
+primary parallel checkout are preserved. Implementation b7925dfc25d23f802f2d02ecdd0e3c13a6498b50 is independently verified on remote main.
+The interval fetch found no incoming commits; the ordinary push left HEAD and
+origin/main at zero divergence with a clean owned checkout. The exact private
+root /private/tmp/flame-deliverables-reading-qvO5xy is absent, and preservation checks pass again after
+retirement. No owned app process or listener remains. The memory-only archive
+round-trips 111 UTF-8 records, 13643218 raw bytes and
+2236787 gzip bytes, SHA-256 d467246a7abe4f5919cb14259c81f4259f0bfff4f826af6df37bcb498992a219.
+This final handoff changes no qualified product source. The selected-revision label follow-up is qualified below; the continuous UI
+goal remains active.
+
+**Revision identity qualification (2026-10-30)**
+
+The revision chooser now composes the selected canonical document read with the
+current history page, once per identity. A page change cannot remove the selected
+revision's time, origin and short ID label. Selecting a history entry still opens
+that exact revision; choosing another document withdraws the prior document's
+options. This is a derived option collection in Workspace, with no label cache,
+new selection owner, shared Select API, command, dependency or schema change.
+The module README and normal Deliverables component.js generation follow it.
+
+The preceding actual Wails observation already captures the raw full-ID defect;
+its qualified non-Markdown source map exactly matches this batch's original
+baseline, so the original native launch is not repeated. HeroUI's actual async
+Select example and ZCode ModelConfigSelect were re-read for collection/identity
+separation; neither reference's state or component system is copied. The six
+better-* domains remain covered by the consolidated table above.
+
+- A new public-client regression fails against the unchanged component: expected
+  the complete current-revision label, received its full 64-character ID. After
+  the repair, the complete Deliverables file passes 19 tests. It checks both
+  history directions, selected-item identity, historical revision reads,
+  deduplication, switching documents and absence of mutation handles. The test
+  uses the established pointerDown/click sequence. A no-tests attempt before
+  restaging cleaned UI dependencies is excluded from product evidence.
+- From apps/web, npm run test -- --project frontend
+  visual/tests/deliverablesWorkspace.test.tsx passes. The shared Select anchor and
+  positioning command npm run test --workspace @flame/ui --
+  test/select-anchor.test.tsx test/select-positioning.test.tsx passes four tests.
+  Web/plugin type and lint, plugin format, Web check:plugin-resources,
+  check:bundle and check:plugin-modules pass. make check-native passes in 28.297 s,
+  including normal Web/resource staging, Desktop Go test/vet/build and Wails.
+  Unchanged shared styles, locale catalogs and structural rules retain the
+  preceding batch's checks; no browser or performance suite is run.
+- Actual English/light/Orange at 14px retains the label during and after the held
+  history read. The next-page menu contains the selected current revision and
+  the historical entry. Pointer selection opens Historical native revision;
+  reopening shows that selected entry only once. Previous retains its complete
+  label beside the current-page entry. Arrow Down/Enter selects the current
+  revision. Meeting notes then exposes only its own revision. Native wheel
+  scrolling keeps that identity, and the original draft continues after reading.
+- Chinese/dark/Blue at 18px and 200% retains both readable menu entries and the
+  selection through the native window zoom to 756 × 475 CSS px. Keyboard selection
+  opens the historical Inspector; Previous keeps its label. Closing the main
+  reader continues the original draft to “核对确切版本。 已核对历史版本，继续对话。”
+  ActualSize is restored before quitting.
+- An observer-free native control repeats next-page labeling, keyboard historical
+  selection, Previous, current-revision opening and retained draft continuation.
+  Its 619 assets differ only in two HTML entries; the dark native binary is
+  identical and observer-event delta is zero. That current-revision action also
+  exposes the separate MEDIUM native-focus finding in the table: its Inspector
+  disappears and AX focus becomes HTML content. This path is not claimed as a
+  passed focus-return check. Preserve the successful Select/keyboard path while
+  repairing that action's local focus lifetime next.
+
+The three private producers retain the same declared ESM, installed-component
+lifecycle and public client. Canonical current/historical read replies are
+read-only fixture data, not live release acquisition, Realm admission, native
+rendering, provider execution, file saving or business mutations. OS IME and
+VoiceOver remain unreviewed. Native input uses CUA; the optional observer reads
+only. No Claude CLI or subagent is used.
+
+Cleanup retires three native launches, unregisters the exact bundle, closes its
+listener, removes eight new checkout output/cache roots and three private
+profiles, and restores all four original files/modes. Preservation checks pass
+for 6,379 qualified inputs, 34 resources, 45 references, three instructions,
+21 output baselines and five profile-absence baselines. The installed toolchain
+and primary parallel checkout are preserved. Implementation a04c5a978bf8513e88005bebc0f52cebff384210 is independently verified on remote main.
+The interval fetch found no incoming commits; the ordinary push left HEAD and
+origin/main at zero divergence with a clean owned checkout. The private root
+/private/tmp/flame-revision-identity-t2K67l is absent. Post-retirement checks pass again for all
+qualified inputs/resources, references, instructions, originals, output and profile
+baselines. No owned app process or listener remains. The memory-only archive
+round-trips 70 UTF-8 records, 10636064 raw bytes and
+2018595 gzip bytes, SHA-256 46f4990e4d978c4751c56b3e00dd27de0d1eb1fa16da323ee3d2064c37aa027f.
+The final handoff changes no qualified product source. The observed
+current-revision-jump focus loss is the next concrete task for the active goal.
+
+**Approve** the inspected pagination and revision-selection changes; no HIGH
+finding remains. One MEDIUM current-revision-jump focus finding remains for the
+next batch. OS IME and VoiceOver were not reviewed. The broader UI goal is active.
+
 ## Shortcut recording and activation
 
 `apps/web/src/lib/combo.ts` now includes the canonical `space` / physical `Space`

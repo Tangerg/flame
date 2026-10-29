@@ -531,6 +531,12 @@ function Workspace({ context }: { context: ComponentContext }) {
         entry.title.toLocaleLowerCase().includes(search.toLocaleLowerCase()),
     ) ?? [];
   const document = state.read?.value;
+  const history = state.history?.value?.entries ?? [];
+  const revisions =
+    document &&
+    !history.some((revision) => revision.id === document.revision.id)
+      ? [document.revision, ...history]
+      : history;
   return (
     <Panel
       label={t("panel.title")}
@@ -636,7 +642,10 @@ function Workspace({ context }: { context: ComponentContext }) {
         {(state.listPrevious || state.list?.value?.next) && (
           <Toolbar label={t("list.paging")}>
             <Button
-              disabled={!state.listPrevious || state.list?.loading}
+              disabled={!state.listPrevious}
+              pending={state.list?.loading}
+              aria-busy={state.list?.loading || undefined}
+              focusableWhenDisabled
               onClick={() => {
                 void state.page("list", "previous");
               }}
@@ -644,7 +653,10 @@ function Workspace({ context }: { context: ComponentContext }) {
               {t("previous")}
             </Button>
             <Button
-              disabled={!state.list?.value?.next || state.list.loading}
+              disabled={!state.list?.value?.next}
+              pending={state.list?.loading}
+              aria-busy={state.list?.loading || undefined}
+              focusableWhenDisabled
               onClick={() => {
                 void state.page("list", "next");
               }}
@@ -669,7 +681,7 @@ function Workspace({ context }: { context: ComponentContext }) {
               if (state.selection)
                 state.open({ id: state.selection.id, revision });
             }}
-            options={(state.history?.value?.entries ?? []).map((revision) => ({
+            options={revisions.map((revision) => ({
               value: revision.id,
               label: `${revision.createdAt} · ${t(`operation.${revision.operation}`)} · ${revision.id.slice(0, 12)}`,
             }))}
@@ -677,7 +689,10 @@ function Workspace({ context }: { context: ComponentContext }) {
           {(state.historyPrevious || state.history?.value?.next) && (
             <Toolbar label={t("history.paging")}>
               <Button
-                disabled={!state.historyPrevious || state.history?.loading}
+                disabled={!state.historyPrevious}
+                pending={state.history?.loading}
+                aria-busy={state.history?.loading || undefined}
+                focusableWhenDisabled
                 onClick={() => {
                   void state.page("history", "previous");
                 }}
@@ -685,7 +700,10 @@ function Workspace({ context }: { context: ComponentContext }) {
                 {t("previous")}
               </Button>
               <Button
-                disabled={!state.history?.value?.next || state.history.loading}
+                disabled={!state.history?.value?.next}
+                pending={state.history?.loading}
+                aria-busy={state.history?.loading || undefined}
+                focusableWhenDisabled
                 onClick={() => {
                   void state.page("history", "next");
                 }}
