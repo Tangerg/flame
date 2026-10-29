@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-First-result readiness in five remaining Settings catalogs is published as `1bb564a53`: providers, hooks, remembered approval rules, installed Runtime packages and selections without known roles. Paused first reads retain Loading; accepted data, independent roles and drafts remain available. All 130 focused tests, typecheck, lint and remaining Web/native gates pass; light/dark/18px/200% and observer-free native tasks pass. Evidence, cleanup and delivery are recorded under **Settings catalog first-result readiness**. MCP readiness is published as `17916606d`, Files as `4468c2fc6`, and source-return/long-tooltip delivery as `c126bc235`. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
+Current batch makes Hooks and Plugins begin with their actual tasks, removing repeated introductory paragraphs while retaining specific trust effects, source identity and search by existing fields/sections. All 64 focused Settings/search/draft tests, typecheck, lint and remaining Web/native gates pass; light/dark/18px/200% and observer-free native tasks pass. Evidence and cleanup are recorded under **Settings headings and task-first reading**; publication is next. Settings catalog readiness is published as `1bb564a53`, MCP as `17916606d`, Files as `4468c2fc6`, and source-return/long-tooltip delivery as `c126bc235`. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -103,6 +103,9 @@ Initial MCP server/tool readiness is published as `17916606d`; see **First MCP-r
 The five remaining Settings catalogs retain their own initial-read state,
 published as `1bb564a53`;
 see **Settings catalog first-result readiness** for native task and cleanup evidence.
+Hooks and Plugins now begin with direct settings and named task sections; see
+**Settings headings and task-first reading** for the original/candidate native
+comparison, search/return path and cleanup.
 See **Goal save
 feedback and pending dismissal** and **Computer console
 editing and operation return**. Preserve the
@@ -10756,6 +10759,130 @@ remote confirmation. Implementation
 exact remote hash, clean owned checkout, zero unpushed commits, unchanged accepted
 inputs and restored preexisting outputs are verified. Continue with fresh task
 evidence at the separate workspace refresh boundary.
+
+### Settings headings and task-first reading
+
+At main `79249addb`, actual dark Chinese18 Wails at measured **200% / 560×377
+CSS px / DPR 4** shows a Hooks introduction taking **82.5px** inside a **197px**
+settings content viewport. Its next trust row repeats the concrete scope and
+execution consequence below that introduction. Plugins similarly announces
+installation, provider selection and loaded plugins before rendering those
+same named sections. This is unnecessary hierarchy and reading work, rather
+than missing control behavior.
+
+The two feature-owned Settings registrations replace `description` with
+`keywords` using existing field/section locale keys. Hooks search includes trust,
+its shell-execution consequence, matcher, injection, scope and configuration
+paths. Plugins search includes installation, installed packages, provider
+selections and loaded client plugins. Both obsolete introduction entries are
+removed from all **eight** locales; source review finds no remaining consumer.
+The shared heading-only PanelHeader already retains accessible pane identity
+without repeating visible navigation, so no shared component, CSS override,
+breakpoint or focus handler is added. Concrete trust effects, active/inactive
+state, source paths, installation consequences and actionable empty guidance
+remain with the existing records and controls. Brand and other meaningful
+descriptions retain their owners; command/data boundaries are unchanged.
+
+Read-only ZCode's actual PluginsSection organizes installed and built-in groups
+and places the workspace/remote context beside the affected task. HeroUI's
+actual ListBox `with-sections` demo supplies named group structure, not a native
+focus contract or copy template. Better-writing's removal of words that do no
+work and better-layout's content-first hierarchy guide this repair. Existing
+Flame Panel, Base UI, StyleX, spacing/type/color tokens and density remain.
+
+| Domain        | Evidence inspected                                                                  | Result and boundary                                                                      |
+| ------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Accessibility | Named panes, real search/Enter/Escape, trust focus, configuration cancellation      | Existing identity and focus owners pass; no VoiceOver audio or new OS IME qualification. |
+| Layout        | Original/candidate 200% reading; light native window adjustment                     | Actual content moves forward; existing scrolling and control reachability remain.        |
+| Writing       | Two introductions, eight locale pairs, specific effects and existing search keys    | Repeated opening copy is removed; concrete context remains beside its task.              |
+| Typography    | EN14 and ZH18 settings, source paths, section headings and JSON input               | Existing wrapping/type roles retained; no new type scale.                                |
+| Colors        | Light/Orange and dark/custom-blue focus                                             | Existing semantic colors retained; no new numerical contrast claim.                      |
+| UI            | Existing heading-only policy, filled input, retained panes and configuration dialog | No added motion, decoration or component system.                                         |
+
+| Severity         | Domain           | Location                                                 | Before                                                    | After                                                        | Why                                                                    |
+| ---------------- | ---------------- | -------------------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| MEDIUM, repaired | Layout / Writing | `features/hooks/index.tsx`; `features/plugins/index.tsx` | A repeated introduction precedes concrete settings/tasks. | Existing scope, settings and section structure lead reading. | Put identifying content first and remove words that repeat the layout. |
+
+Verification passed:
+
+- Existing search, Settings retention, Hooks, Plugins and package-configuration
+  coverage passes **five files / 64 tests** both before and after the repair.
+  Web typecheck and lint pass. No tests freeze the removed wording or mirror
+  registration metadata. The initial baseline attempt stops before running any
+  tests because shared UI output is absent after the previous cleanup. Building
+  icons then UI repairs that prerequisite; its failed import logs are retained.
+- The other **11** serial Web/native gates pass: circular/context/layer,
+  design-system/token/chrome/locale, resource reproduction, production bundle,
+  module links and `make check-native`. Native takes **65.780s**, including
+  Desktop test/vet/build and the supported Wails production build. Shared UI
+  source/dependencies remain unchanged; the earlier **194-test** package check
+  is reused, not a new run.
+- EN/light/14px/Orange: `shell` finds only Hooks; `Provider selections` finds
+  only Plugins. Search Enter navigates and Escape clears while retaining the
+  current task. An installation draft `/captured/保留设置层级草稿.zip` survives
+  Configure inputs/Escape, source reading and category return. Native window
+  adjustment changes **1440×900 → 1513×950** while preserving its input focus.
+  Close and Cmd+L retain `Keep this settings-task draft. Continued.`, caret
+  **41**. One changed-app input guard is excluded; fresh AX state and an
+  explicit search-field click establish the completed keyboard path.
+- ZH/dark/18px/custom-blue/motion-off: at actual **200%**, Hooks content height
+  changes **626 → 520px**, with the same **197px** viewport. Its specific trust
+  consequence and project root now lead the content. Tab reaches the still-off
+  trust switch at **[47, 335.5, 40, 24]**, visible inside its panel with existing
+  blue keyboard focus; no trust mutation runs. `提供者选择` finds only Plugins.
+  The real Memory configuration accepts an unsubmitted private JSON draft;
+  Tab/Return on Cancel restores Configure inputs. Both hook source paths and
+  project/global state remain readable. Category return retains
+  `/captured/中文层级草稿.zip`. End reads to the final local plugin at
+  **3,505 / 3,702 / 197** (scrollTop/content/viewport), with horizontal width
+  **556/556**. Closing Settings retains
+  `设置层级打磨后保留草稿。 已继续。`, caret **17**.
+- The observer-free native control repeats large-zoom trust focus, Chinese
+  section search, installation draft, real configuration/Escape, source reading,
+  category return and continued conversation: `无观察器层级草稿。 已继续。`.
+  It has **617 assets**; only `index.html` and `visual/index.html` differ from
+  the captured candidate by removing the additional observer. Extra observation
+  records and requests are both **zero**. Actual Size completes before 20 native
+  Zoom In actions; no passive CSS geometry or selection measurement is claimed
+  for the control. Actual Size is restored before Quit.
+
+Four native generations cover original dark, candidate light, candidate dark
+and observer-free control. The private canonical producer uses actual protocol
+records through memory transport/adapters and the production workspace, pane
+registrations and controls. There is no availability bootstrap or observer input
+mutation. All native input is CUA. No install, provider save/test, permission
+change or live Runtime/provider runs. The observer's window-intersection filter
+alone does not establish clipping-ancestor visibility; panel geometry, native
+focus and screenshots determine the stated result. A guarded locale-preparation
+attempt stops on single-line string spacing; validating all eight candidates
+against original files completes the scoped edit before candidate verification.
+No product failure or passing task is inferred from that preparation attempt.
+
+Publication fetch finds zero incoming main commits at `79249addb`. All four
+native generations are stopped, the exact bundle is unregistered and the
+loopback observer is closed. Cleanup removes **seven** new checkout output/cache
+roots and **three** owned profile paths, restores **four** original files/modes,
+and passes **18** output and **five** profile baselines. All **6,308** qualified
+non-Markdown inputs, **32** resources, **29** read-only references and **three**
+instruction files pass preservation; **6,298** source inputs outside this change
+remain identical. UI cache keeps its two original files; Web Vite-temp stays
+empty. The primary checkout, user data, references and unrelated processes are
+preserved. Exact private root `/private/tmp/flame-settings-hierarchy-Mcfuds` is
+absent, and independent post-removal preservation repeats every count above.
+
+The round-tripped in-memory gzip retains **83 UTF-8 records**, **11,389,996 raw
+bytes** and **1,339,621 gzip bytes**, including canonical inputs, initial attempts,
+baseline/candidate/gate results, native observations, source/asset maps and
+cleanup proof. SHA-256:
+`695454ef5e5cee54702e51b96c79d50ef98ecbc107a9c7c549a64f3e550bf56a`.
+No full Web/Runtime/browser suite, benchmark, live business chain, RTL/320px or
+other-OS qualification is claimed.
+
+Verdict: **Approve** for these Settings hierarchy/search/return paths.
+Publication remains to complete. The whole-product UI objective is unfinished.
+Next inspect independently arriving model-choice data against actual role and
+provider readiness; establish a native counterexample before changing its
+contract. Keep content/Dock task continuity as the broader review focus.
 
 ### Settings catalog first-result readiness
 

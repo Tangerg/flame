@@ -379,8 +379,6 @@ export const ja: Record<string, string> = {
   "providers.models.error": "モデルを読み込めませんでした。",
   "providers.empty": "プロバイダーがありません",
   "providers.empty.sub": "ランタイムはサポートされている LLM プロバイダーを報告していません。",
-  "plugins.hero":
-    "プラグインパッケージの管理、プロバイダーの選択、読み込まれたクライアントプラグインの確認を行います。",
   "plugins.errorDetail.show": "エラー詳細を表示",
   "plugins.errorDetail.hide": "エラー詳細を非表示",
   "plugins.errors_other": "{{count}} 件のエラー",
@@ -713,8 +711,6 @@ export const ja: Record<string, string> = {
   "approvals.gate.prompt": "事前に確認",
   "approvals.gate.deny": "拒否",
   "approvals.gate.entry": "{{toolClass}}：{{gate}}",
-  "hooks.intro":
-    "フックはターン内の決まった時点であなた自身のコマンドを実行します — ツール実行前、プロンプト後、コンパクション時。グローバルフック（~/.flame）は常に実行され、プロジェクトのフックは信頼した後にのみ実行されます。",
   "hooks.trust": "このプロジェクトのフックを信頼する",
   "hooks.trust.sub":
     "このプロジェクトのフックはあなたのマシンでシェルコマンドを実行します。信頼できるリポジトリでのみ有効にしてください。次のターンから反映されます。",

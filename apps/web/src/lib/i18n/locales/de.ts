@@ -394,8 +394,6 @@ export const de: Record<string, string> = {
   "providers.models.error": "Modelle konnten nicht geladen werden.",
   "providers.empty": "Keine Anbieter",
   "providers.empty.sub": "Die Runtime meldet keine unterstützten LLM-Anbieter.",
-  "plugins.hero":
-    "Plugin-Pakete installieren und verwalten, Anbieter auswählen und geladene Client-Plugins prüfen.",
   "plugins.errorDetail.show": "Fehlerdetails anzeigen",
   "plugins.errorDetail.hide": "Fehlerdetails ausblenden",
   "plugins.errors_one": "{{count}} Fehler",
@@ -740,8 +738,6 @@ export const de: Record<string, string> = {
   "approvals.gate.prompt": "fragt vorher",
   "approvals.gate.deny": "abgelehnt",
   "approvals.gate.entry": "{{toolClass}}: {{gate}}",
-  "hooks.intro":
-    "Hooks führen deine eigenen Befehle an festen Punkten eines Zugs aus — vor einem Tool, nach einem Prompt, bei der Verdichtung. Globale Hooks (~/.flame) laufen immer; die Hooks eines Projekts erst, wenn du ihm vertraust.",
   "hooks.trust": "Hooks dieses Projekts vertrauen",
   "hooks.trust.sub":
     "Die Hooks dieses Projekts führen Shell-Befehle auf deinem Rechner aus. Aktiviere sie nur für Repositories, denen du vertraust. Wirkt ab dem nächsten Zug.",

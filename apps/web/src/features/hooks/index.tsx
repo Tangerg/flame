@@ -33,7 +33,15 @@ export function createHooksPlugin(runtimeClient: () => FlameClient) {
       registerSettingsPane(ctx, {
         id: HOOKS_PANE,
         label: "settings.pane.hooks",
-        description: "hooks.intro",
+        keywords: [
+          "hooks.trust",
+          "hooks.trust.sub",
+          "hooks.matcher",
+          "hooks.kind.inject",
+          "hooks.scope.global",
+          "hooks.scope.project",
+          "hooks.empty.sub",
+        ],
         group: "agent",
         icon: "lightning",
         order: 57,

@@ -399,8 +399,6 @@ export const en: Record<string, string> = {
   "approvals.error.mode": "Couldn't change the approval mode.",
   "approvals.error.forget": "Couldn't clear the decision.",
 
-  "hooks.intro":
-    "Hooks run your own command at fixed points in a turn — before a tool runs, after a prompt, on compaction. Global hooks (~/.flame) always run; a project's hooks run only after you trust it.",
   "hooks.trust": "Trust this project's hooks",
   "hooks.trust.sub":
     "This project's hooks run shell commands on your machine. Only enable for repositories you trust. Takes effect on the next turn.",
@@ -554,8 +552,6 @@ export const en: Record<string, string> = {
     "The server didn't respond in time — check the command or URL and retry.",
   "mcp.testOutcome.failed":
     "The server did not connect or did not offer a valid tool list. Check its settings and retry.",
-  "plugins.hero":
-    "Install and manage plugin packages, choose providers, and inspect loaded client plugins.",
   "plugins.errorDetail.show": "Show error detail",
   "plugins.errorDetail.hide": "Hide error detail",
   "plugins.errors_one": "{{count}} error",

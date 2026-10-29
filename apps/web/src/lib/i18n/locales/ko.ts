@@ -378,8 +378,6 @@ export const ko: Record<string, string> = {
   "providers.models.error": "모델을 불러올 수 없습니다.",
   "providers.empty": "공급자 없음",
   "providers.empty.sub": "런타임이 지원되는 LLM 공급자를 보고하지 않습니다.",
-  "plugins.hero":
-    "플러그인 패키지를 설치·관리하고 공급자를 선택하며 로드된 클라이언트 플러그인을 확인하세요.",
   "plugins.errorDetail.show": "오류 세부 정보 표시",
   "plugins.errorDetail.hide": "오류 세부 정보 숨기기",
   "plugins.errors_other": "오류 {{count}}건",
@@ -709,8 +707,6 @@ export const ko: Record<string, string> = {
   "approvals.gate.prompt": "먼저 확인",
   "approvals.gate.deny": "거부",
   "approvals.gate.entry": "{{toolClass}}: {{gate}}",
-  "hooks.intro":
-    "훅은 턴 안의 정해진 시점에 사용자의 명령을 실행합니다 — 도구 실행 전, 프롬프트 후, 압축 시. 전역 훅(~/.flame)은 항상 실행되며, 프로젝트 훅은 신뢰한 뒤에만 실행됩니다.",
   "hooks.trust": "이 프로젝트의 훅을 신뢰",
   "hooks.trust.sub":
     "이 프로젝트의 훅은 사용자 머신에서 셸 명령을 실행합니다. 신뢰하는 저장소에만 켜세요. 다음 턴부터 적용됩니다.",

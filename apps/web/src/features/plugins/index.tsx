@@ -18,7 +18,12 @@ export function createPluginsPlugin(installed: InstalledPluginsOwner) {
       registerSettingsPane(ctx, {
         id: PLUGINS_PANE,
         label: "settings.pane.plugins",
-        description: "plugins.hero",
+        keywords: [
+          "packages.installTitle",
+          "packages.installedTitle",
+          "packages.providers.title",
+          "plugins.loadedTitle",
+        ],
         group: "integrations",
         icon: "blocks",
         order: 99,

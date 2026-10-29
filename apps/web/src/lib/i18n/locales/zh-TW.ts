@@ -370,7 +370,6 @@ export const zhTW: Record<string, string> = {
   "providers.models.error": "無法載入模型。",
   "providers.empty": "尚無供應商",
   "providers.empty.sub": "執行時回報沒有受支援的 LLM 供應商。",
-  "plugins.hero": "安裝和管理外掛套件，選擇提供者，查看用戶端已載入的外掛。",
   "plugins.errorDetail.show": "顯示錯誤詳情",
   "plugins.errorDetail.hide": "隱藏錯誤詳情",
   "plugins.errors_other": "{{count}} 個錯誤",
@@ -704,8 +703,6 @@ export const zhTW: Record<string, string> = {
   "approvals.gate.prompt": "先詢問",
   "approvals.gate.deny": "拒絕",
   "approvals.gate.entry": "{{toolClass}}：{{gate}}",
-  "hooks.intro":
-    "Hooks 會在回合中的固定時點執行你自己的命令 —— 工具執行前、提示之後、壓縮時。全域 hooks（~/.flame）一律執行；專案的 hooks 只有在你信任它之後才會執行。",
   "hooks.trust": "信任此專案的 hooks",
   "hooks.trust.sub":
     "此專案的 hooks 會在你的機器上執行 shell 命令。只對你信任的儲存庫啟用。下一個回合起生效。",

@@ -120,6 +120,13 @@ Each active settings tab panel owns its scroll viewport and keyboard focus.
 Shared Select closes when Base UI reports its trigger fully clipped; dismissal
 keeps the current value and viewport position, then returns focus to that panel.
 
+Hooks and Plugins also begin with their actual settings and named sections,
+without an introductory paragraph repeating those tasks. Specific trust effects,
+source paths, installation consequences and empty-state guidance remain beside
+their relevant controls or records. Their search keywords reuse existing field
+and section locale keys. The shared heading-only PanelHeader policy retains
+accessible pane identity without repeating visible navigation.
+
 Custom foreground and background edits remain a local paired preview until Apply.
 The palette owner reports their minimum text contrast over its actual reading
 planes and paper bounds; the editor admits pairs at the existing 4.5:1 text

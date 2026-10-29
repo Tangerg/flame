@@ -400,8 +400,6 @@ export const fr: Record<string, string> = {
   "providers.models.error": "Impossible de charger les modèles.",
   "providers.empty": "Aucun fournisseur",
   "providers.empty.sub": "Le runtime ne signale aucun fournisseur LLM pris en charge.",
-  "plugins.hero":
-    "Installez et gérez les paquets, choisissez les fournisseurs et consultez les extensions chargées dans le client.",
   "plugins.errorDetail.show": "Afficher le détail de l'erreur",
   "plugins.errorDetail.hide": "Masquer le détail de l'erreur",
   "plugins.errors_one": "{{count}} erreur",
@@ -754,8 +752,6 @@ export const fr: Record<string, string> = {
   "approvals.gate.prompt": "demande d'abord",
   "approvals.gate.deny": "refusé",
   "approvals.gate.entry": "{{toolClass}} : {{gate}}",
-  "hooks.intro":
-    "Les hooks exécutent vos propres commandes à des points fixes d'un tour — avant un outil, après un prompt, lors d'un compactage. Les hooks globaux (~/.flame) s'exécutent toujours ; ceux d'un projet seulement après que vous lui accordez votre confiance.",
   "hooks.trust": "Faire confiance aux hooks de ce projet",
   "hooks.trust.sub":
     "Les hooks de ce projet exécutent des commandes shell sur votre machine. N'activez que pour des dépôts de confiance. Effectif au prochain tour.",

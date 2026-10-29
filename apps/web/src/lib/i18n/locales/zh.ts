@@ -470,8 +470,6 @@ export const zh: Record<string, string> = {
   "approvals.error.mode": "无法更改审批模式。",
   "approvals.error.forget": "无法清除该决定。",
 
-  "hooks.intro":
-    "钩子在一个 turn 的固定时点跑你自己的命令——工具执行前、prompt 提交后、压缩前。全局钩子（~/.flame）始终运行；项目的钩子只在你信任它后才运行。",
   "hooks.trust": "信任此项目的钩子",
   "hooks.trust.sub":
     "此项目的钩子会在你的机器上执行 shell 命令。只对你信任的仓库启用。下一个 turn 起生效。",
@@ -522,7 +520,6 @@ export const zh: Record<string, string> = {
   "providers.embedding.off": "关闭",
   "providers.embedding.none": "尚未配置支持 embedding 的 provider —— 先在上方添加一个(如 OpenAI)。",
   "providers.embedding.error": "设置嵌入模型失败。",
-  "plugins.hero": "安装和管理插件包，选择提供者，查看客户端已加载的插件。",
   "plugins.errorDetail.show": "显示错误详情",
   "plugins.errorDetail.hide": "隐藏错误详情",
   "plugins.errors_other": "{{count}} 个错误",
