@@ -1406,67 +1406,83 @@ func stageDispatchingPendingRun(t *testing.T, store *Store, command authoring.St
 }
 
 func TestStorePersistsPendingInterruptResumeUntilExactSettlement(t *testing.T) {
-	directory := t.TempDir()
-	store, err := OpenDirectory(directory, Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	approval := conversation.Approval{
-		RunID: "run_1", ItemID: "item_approval_1", Title: "Delete generated files",
-		Tool:         &conversation.ToolCall{Kind: protocol.ToolCategoryEdit, Name: "delete", Status: conversation.ToolRunning},
-		Rememberable: true,
-	}
-	override, err := conversation.ParseToolArgumentOverride([]byte(`{"path":"generated/fixture.go"}`))
-	if err != nil {
-		t.Fatal(err)
-	}
-	pending := PendingResume{
-		Command: conversation.ResumeRun{
-			CommandID: authoring.CommandID("cli_33333333333333333333333333333333"), RunID: approval.RunID,
-			Answers: []conversation.InterruptAnswer{{
-				ItemID: approval.ItemID,
-				Answer: conversation.ApprovalAnswer{
-					Decision: protocol.ApprovalApprove, ArgumentOverride: override,
+	for _, arguments := range []string{"", "{}", `{"path":"generated/fixture.go"}`} {
+		t.Run(arguments, func(t *testing.T) {
+			directory := t.TempDir()
+			store, err := OpenDirectory(directory, Config{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				if err := store.Close(); err != nil {
+					t.Error(err)
+				}
+			})
+			approval := conversation.Approval{
+				RunID: "run_1", ItemID: "item_approval_1", Title: "Delete generated files",
+				Tool:         &conversation.ToolCall{Kind: protocol.ToolCategoryEdit, Name: "delete", Status: conversation.ToolRunning},
+				Rememberable: true,
+			}
+			var override *conversation.ToolArgumentOverride
+			if arguments != "" {
+				override, err = conversation.ParseToolArgumentOverride([]byte(arguments))
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			pending := PendingResume{
+				Command: conversation.ResumeRun{
+					CommandID: authoring.CommandID("cli_33333333333333333333333333333333"), RunID: approval.RunID,
+					Answers: []conversation.InterruptAnswer{{
+						ItemID: approval.ItemID,
+						Answer: conversation.ApprovalAnswer{
+							Decision: protocol.ApprovalApprove, ArgumentOverride: override,
+						},
+					}},
 				},
-			}},
-		},
-		Interrupts: []conversation.Interrupt{approval}, Replay: authoring.UnprotectedGuard(),
-	}
-	if stagePendingResumeErr := store.StagePendingResume("ses_1", pending, nil); stagePendingResumeErr != nil {
-		t.Fatal(stagePendingResumeErr)
-	}
-	pending.Command.Answers[0].Answer = conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove}
-	pending.Interrupts[0] = conversation.Approval{RunID: "mutated"}
+				Interrupts: []conversation.Interrupt{approval}, Replay: authoring.UnprotectedGuard(),
+			}
+			if stagePendingResumeErr := store.StagePendingResume("ses_1", pending, nil); stagePendingResumeErr != nil {
+				t.Fatal(stagePendingResumeErr)
+			}
+			pending.Command.Answers[0].Answer = conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove}
+			pending.Interrupts[0] = conversation.Approval{RunID: "mutated"}
 
-	if err := store.Close(); err != nil {
-		t.Fatal(err)
-	}
+			if err := store.Close(); err != nil {
+				t.Fatal(err)
+			}
 
-	reopened, err := OpenDirectory(directory, Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	restored, ok := reopened.PendingResume("ses_1")
-	if !ok || restored.Command.CommandID != authoring.CommandID("cli_33333333333333333333333333333333") ||
-		restored.Command.RunID != approval.RunID || len(restored.Interrupts) != 1 {
-		t.Fatalf("restored pending resume = %+v, present = %v", restored, ok)
-	}
-	answer, ok := restored.Command.Answers[0].Answer.(conversation.ApprovalAnswer)
-	if !ok || answer.Decision != protocol.ApprovalApprove || answer.ArgumentOverride == nil ||
-		string(answer.ArgumentOverride.JSON()) != `{"path":"generated/fixture.go"}` {
-		t.Fatalf("restored pending answer = %#v", restored.Command.Answers[0].Answer)
-	}
-	if err := reopened.AcknowledgePendingResume("ses_1", authoring.CommandID("cli_44444444444444444444444444444444")); err == nil {
-		t.Fatal("mismatched acknowledgement retired pending resume")
-	}
-	if _, ok := reopened.PendingResume("ses_1"); !ok {
-		t.Fatal("mismatched acknowledgement removed pending resume")
-	}
-	if err := reopened.AcknowledgePendingResume("ses_1", restored.Command.CommandID); err != nil {
-		t.Fatal(err)
-	}
-	if _, ok := reopened.PendingResume("ses_1"); ok {
-		t.Fatal("acknowledged pending resume remains")
+			reopened, err := OpenDirectory(directory, Config{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				if err := reopened.Close(); err != nil {
+					t.Error(err)
+				}
+			})
+			restored, ok := reopened.PendingResume("ses_1")
+			if !ok || restored.Command.CommandID != authoring.CommandID("cli_33333333333333333333333333333333") ||
+				restored.Command.RunID != approval.RunID || len(restored.Interrupts) != 1 {
+				t.Fatalf("restored pending resume = %+v, present = %v", restored, ok)
+			}
+			answer, ok := restored.Command.Answers[0].Answer.(conversation.ApprovalAnswer)
+			if !ok || answer.Decision != protocol.ApprovalApprove || !answer.ArgumentOverride.Equal(override) {
+				t.Fatalf("restored pending answer = %#v", restored.Command.Answers[0].Answer)
+			}
+			if err := reopened.AcknowledgePendingResume("ses_1", authoring.CommandID("cli_44444444444444444444444444444444")); err == nil {
+				t.Fatal("mismatched acknowledgement retired pending resume")
+			}
+			if _, ok := reopened.PendingResume("ses_1"); !ok {
+				t.Fatal("mismatched acknowledgement removed pending resume")
+			}
+			if err := reopened.AcknowledgePendingResume("ses_1", restored.Command.CommandID); err != nil {
+				t.Fatal(err)
+			}
+			if _, ok := reopened.PendingResume("ses_1"); ok {
+				t.Fatal("acknowledged pending resume remains")
+			}
+		})
 	}
 }
 

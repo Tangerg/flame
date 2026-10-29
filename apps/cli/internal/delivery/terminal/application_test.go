@@ -3984,70 +3984,76 @@ func approvalRuleScope(scope protocol.RememberScopeKind) protocol.ApprovalRuleSc
 }
 
 func TestApprovalCanEditToolArgumentsOnceAcrossValidationAndResize(t *testing.T) {
-	backend := runtimefixture.New()
-	backend.Instant = true
-	answers := make(chan conversation.ApprovalAnswer, 1)
-	backend.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{
-			Interrupts: []conversation.Interrupt{conversation.Approval{
-				ItemID: "edit-approval", Title: "Run generated command",
-				Rememberable: true,
-				Tool: &conversation.ToolCall{
-					Kind: protocol.ToolCategoryShell, Name: "shell", Command: "rm generated.txt", Status: conversation.ToolRunning,
-					ArgumentsJSON: []byte(`{"command":"rm generated.txt","timeout":30}`),
-				},
-			}},
-			Continue: func(provided []conversation.InterruptAnswer) []runtimefixture.Step {
-				answers <- provided[0].Answer.(conversation.ApprovalAnswer)
-				return []runtimefixture.Step{{Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}
-			},
-		}
-	}
-	host, stop := runUIWith(t, backend)
-	host.Shows(t, "Ask flame")
-	host.Type("run a safer generated command")
-	host.Press(input.Enter)
-	host.Shows(t, "Tool approval")
-	host.Press(input.End)
-	showsPlain(t, host, "● Edit arguments before deciding")
-	host.Press(input.Enter)
-	host.Shows(t, "Edit tool arguments")
-	host.Shows(t, `"command": "rm generated.txt"`)
+	for _, edited := range []string{"{}", `{"command":"echo safe","timeout":45}`} {
+		t.Run(edited, func(t *testing.T) {
+			backend := runtimefixture.New()
+			backend.Instant = true
+			answers := make(chan conversation.ApprovalAnswer, 1)
+			backend.Script = func(string) runtimefixture.Script {
+				return runtimefixture.Script{
+					Interrupts: []conversation.Interrupt{conversation.Approval{
+						ItemID: "edit-approval", Title: "Run generated command",
+						Rememberable: true,
+						Tool: &conversation.ToolCall{
+							Kind: protocol.ToolCategoryShell, Name: "shell", Command: "rm generated.txt", Status: conversation.ToolRunning,
+							ArgumentsJSON: []byte(`{"command":"rm generated.txt","timeout":30}`),
+						},
+					}},
+					Continue: func(provided []conversation.InterruptAnswer) []runtimefixture.Step {
+						answers <- provided[0].Answer.(conversation.ApprovalAnswer)
+						return []runtimefixture.Step{{Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}
+					},
+				}
+			}
+			host, stop := runUIWith(t, backend)
+			host.Shows(t, "Ask flame")
+			host.Type("run a safer generated command")
+			host.Press(input.Enter)
+			host.Shows(t, "Tool approval")
+			host.Press(input.End)
+			showsPlain(t, host, "● Edit arguments before deciding")
+			host.Press(input.Enter)
+			host.Shows(t, "Edit tool arguments")
+			host.Shows(t, `"command": "rm generated.txt"`)
 
-	host.Send(input.Key{Code: input.Character, Rune: 'a', Mods: input.Alt})
-	host.Type(`{"command":"echo safe","timeout":`)
-	host.Send(input.Key{Code: input.Character, Rune: 's', Mods: input.Ctrl})
-	host.Shows(t, "tool argument override")
-	host.Shows(t, `{"command":"echo safe","timeout":`)
-	select {
-	case premature := <-answers:
-		t.Fatalf("invalid argument override resumed runtime: %+v", premature)
-	default:
-	}
+			host.Send(input.Key{Code: input.Character, Rune: 'a', Mods: input.Alt})
+			host.Type(`{"command":"echo safe","timeout":`)
+			host.Send(input.Key{Code: input.Character, Rune: 's', Mods: input.Ctrl})
+			host.Shows(t, "tool argument override")
+			host.Shows(t, `{"command":"echo safe","timeout":`)
+			select {
+			case premature := <-answers:
+				t.Fatalf("invalid argument override resumed runtime: %+v", premature)
+			default:
+			}
 
-	host.Send(input.Key{Code: input.Character, Rune: 'a', Mods: input.Alt})
-	host.Type(`{"command":"echo safe","timeout":45}`)
-	if !host.Resize(1, 1) || !host.Repaint() || !host.Resize(96, 28) {
-		t.Fatal("argument editor did not survive a minimal viewport")
-	}
-	host.Shows(t, `{"command":"echo safe","timeout":45}`)
-	host.Send(input.Key{Code: input.Character, Rune: 's', Mods: input.Ctrl})
-	host.Shows(t, "Edited arguments · one-shot")
-	showsPlain(t, host, `"command": "echo safe"`)
-	showsPlain(t, host, "● Allow once")
-	host.Press(input.Down)
-	showsPlain(t, host, "● Allow for this session")
-	host.Press(input.Enter)
-	host.Shows(t, "complete")
-	answer := <-answers
-	if answer.Decision != protocol.ApprovalApprove || answer.Remember != protocol.RememberSession ||
-		answer.ArgumentOverride == nil ||
-		string(answer.ArgumentOverride.JSON()) != `{"command":"echo safe","timeout":45}` {
-		t.Fatalf("edited approval answer = %+v", answer)
-	}
+			host.Send(input.Key{Code: input.Character, Rune: 'a', Mods: input.Alt})
+			host.Type(edited)
+			if !host.Resize(1, 1) || !host.Repaint() || !host.Resize(96, 28) {
+				t.Fatal("argument editor did not survive a minimal viewport")
+			}
+			host.Shows(t, edited)
+			host.Send(input.Key{Code: input.Character, Rune: 's', Mods: input.Ctrl})
+			host.Shows(t, "Edited arguments · one-shot")
+			if edited != "{}" {
+				showsPlain(t, host, `"command": "echo safe"`)
+			}
+			showsPlain(t, host, "● Allow once")
+			host.Press(input.Down)
+			showsPlain(t, host, "● Allow for this session")
+			host.Press(input.Enter)
+			host.Shows(t, "complete")
+			answer := <-answers
+			if answer.Decision != protocol.ApprovalApprove || answer.Remember != protocol.RememberSession ||
+				answer.ArgumentOverride == nil ||
+				string(answer.ArgumentOverride.JSON()) != edited {
+				t.Fatalf("edited approval answer = %+v", answer)
+			}
 
-	host.Send(input.Key{Code: input.Character, Rune: 'c', Mods: input.Ctrl})
-	stop()
+			host.Send(input.Key{Code: input.Character, Rune: 'c', Mods: input.Ctrl})
+			stop()
+		})
+	}
 }
 
 func TestCancelingApprovalArgumentEditReturnsToTheUnchangedApproval(t *testing.T) {
