@@ -140,7 +140,10 @@ func TestReleaseReadRejectsChangedInvalidDeclaration(t *testing.T) {
 			requireStoredRelease(t, t.Context(), catalog, original)
 			abort := errors.New("abort invalid declaration")
 			err := sqlite.RunInTx(t.Context(), db, func(ctx context.Context) error {
-				if _, err := sqlite.Connection(ctx, db).ExecContext(ctx, `UPDATE plugin_releases SET declaration=? WHERE digest=?`, test.body, original.Digest().String()); err != nil {
+				if _, err := sqlite.Connection(ctx, db).ExecContext(ctx, `DELETE FROM plugin_releases WHERE digest=?`, original.Digest().String()); err != nil {
+					return err
+				}
+				if _, err := sqlite.Connection(ctx, db).ExecContext(ctx, `INSERT INTO plugin_releases(digest,declaration) VALUES(?,?)`, original.Digest().String(), test.body); err != nil {
 					return err
 				}
 				if _, err := catalog.Get(ctx, original.Digest()); err == nil {
