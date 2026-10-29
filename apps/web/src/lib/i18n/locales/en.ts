@@ -1226,6 +1226,9 @@ export const en: Record<string, string> = {
   "packages.editTitle": "{{action}}: {{name}}",
   "packages.editTitleVersion": "{{action}}: {{name}} {{version}}",
   "packages.configureInput": "Input changes (JSON)",
+  "packages.configureJson": "Enter valid JSON with unique property names.",
+  "packages.configureObject": "Use a JSON object for input changes.",
+  "packages.configureField": "Correct {{field}}: {{reason}}.",
   "packages.configureContext": "Reviewed release digest: {{digest}}.",
   "packages.stageContext":
     "Staging prepares a new release without changing the selected one. Select the staged release separately afterward.",

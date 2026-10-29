@@ -1268,6 +1268,9 @@ export const fr: Record<string, string> = {
   "packages.editTitle": "{{action}} : {{name}}",
   "packages.editTitleVersion": "{{action}} : {{name}} {{version}}",
   "packages.configureInput": "Modifications des entrées (JSON)",
+  "packages.configureJson": "Entrez un JSON valide avec des noms de propriétés uniques.",
+  "packages.configureObject": "Utilisez un objet JSON pour modifier les entrées.",
+  "packages.configureField": "Corrigez {{field}} : {{reason}}.",
   "packages.configureContext": "Empreinte de la version examinée : {{digest}}.",
   "packages.stageContext":
     "Préparer la mise à jour ne change pas la version sélectionnée. Sélectionnez ensuite la version préparée séparément.",

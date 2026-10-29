@@ -1262,6 +1262,9 @@ export const es: Record<string, string> = {
   "packages.editTitle": "{{action}}: {{name}}",
   "packages.editTitleVersion": "{{action}}: {{name}} {{version}}",
   "packages.configureInput": "Cambios de entradas (JSON)",
+  "packages.configureJson": "Introduce JSON válido con nombres de propiedad únicos.",
+  "packages.configureObject": "Usa un objeto JSON para los cambios de entradas.",
+  "packages.configureField": "Corrige {{field}}: {{reason}}.",
   "packages.configureContext": "Huella de la versión revisada: {{digest}}.",
   "packages.stageContext":
     "Preparar la actualización no cambia la versión seleccionada. Selecciona la versión preparada por separado después.",

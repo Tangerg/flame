@@ -1,7 +1,6 @@
 import { useInstalledPlugins } from "@/features/plugins/context";
-import { pluginContract } from "@flame/runtime-client";
+import { checkRequest, pluginContract, RpcProtocolError } from "@flame/runtime-client";
 import { parseJSON } from "@qimu/sdk/json";
-import { checkRequest } from "@flame/runtime-client";
 import { useRef, useState } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { z } from "zod";
@@ -55,7 +54,7 @@ const styles = stylex.create({
 
 // The dialog presents the identity captured when the edit opened, so a live
 // catalog replacement cannot relabel a task that still submits the old target.
-type PackageEdit = { name: string; version?: string; value: string; invalid?: boolean } & (
+type PackageEdit = { name: string; version?: string; value: string; validationError?: string } & (
   { type: "configure"; target: PluginReleaseRequest } | { type: "stage"; target: PluginRequest }
 );
 
@@ -212,7 +211,7 @@ function PackageRow({
   const t = useT();
   const codeLabels = useCodeActionLabels();
   const [edit, setEdit] = useState<PackageEdit>();
-  const { feedback, reset, fail, run: runFeedback } = useAsyncFeedback(operations.signal);
+  const { feedback, reset, run: runFeedback } = useAsyncFeedback(operations.signal);
   const busy = feedback.state === "busy";
   const error = feedback.state === "error" ? feedback.reason : "";
   const request = { installationId: installation.id, digest: installation.selected.digest };
@@ -274,8 +273,8 @@ function PackageRow({
       const configuration = checkRequest("plugins.configure", { ...edit.target, ...changes });
       return run(t("packages.configure"), () => operations.configure(configuration));
     } catch (error) {
-      setEdit((current) => current && { ...current, invalid: true });
-      fail(failureText(error, t("packages.configure")));
+      const validationError = configurationErrorText(error, t);
+      setEdit((current) => current && { ...current, validationError });
     }
   };
   const editTitle =
@@ -417,14 +416,14 @@ function PackageRow({
         value={edit?.value ?? ""}
         onChange={(value) => {
           reset();
-          setEdit((current) => current && { ...current, value, invalid: false });
+          setEdit((current) => current && { ...current, value, validationError: undefined });
         }}
         cancelLabel={t("common.cancel")}
         saveLabel={edit ? t(EDIT_SAVE[edit.type]) : ""}
         savingLabel={t("packages.loading")}
         busy={busy}
-        error={error}
-        invalid={edit?.invalid}
+        error={edit?.validationError ?? error}
+        invalid={edit?.validationError !== undefined}
         onSave={() => void save()}
         font="mono"
         autoCapitalize="none"
@@ -436,6 +435,22 @@ function PackageRow({
 }
 
 type Translate = ReturnType<typeof useT>;
+
+function configurationErrorText(error: unknown, t: Translate): string {
+  if (error instanceof SyntaxError) return t("packages.configureJson");
+  if (error instanceof z.ZodError) return t("packages.configureObject");
+  if (error instanceof RpcProtocolError) {
+    return error.violations
+      .map(({ path, detail }) =>
+        t("packages.configureField", {
+          field: path.replace(/^plugins\.configure\.params\./, ""),
+          reason: detail,
+        }),
+      )
+      .join("\n");
+  }
+  return failureText(error, t("packages.configure"));
+}
 
 function describeDiagnostic(t: Translate, diagnostic: PluginDiagnostic): string {
   const { component } = diagnostic;

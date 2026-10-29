@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Current batch continues from main `353cfd86e`, which publishes Goal-mode exit and draft continuity. Shared text editors now derive all manual dismissal from the existing pending state; see **Goal save feedback and pending dismissal**. Native pending/rejection, retained drafts, file return and continued editing pass in light and dark/18 px/200% scenes, including a build without observation code. Scoped checks and resource retirement are complete. The publication fetch finds zero incoming commits; merging main reports already up to date. Next inspect package configuration entry, correction and return through the other asynchronous TextEditorDialog caller. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
+Current batch continues from main `679f39230`, which publishes shared editor pending dismissal. Package configuration now keeps readable local validation with its edit rather than command feedback; see **Current configuration correction and feedback scope** under **Plugin installation and edit recovery**. Final scoped tests, native light/dark/18 px/200% tasks and the observer-free control pass. Original drafts, cancellation, known command refusal, related-file return and continued editing are qualified; resource retirement is complete. The publication fetch finds zero incoming commits and merging main reports already up to date. Next inspect material switching while the Dock is collapsed at large zoom. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -82,7 +82,11 @@ fetch finds zero incoming commits at `841643e08`; merging reports already up to 
 The Goal-mode repair is published as `353cfd86e`. The Goal-save follow-up
 qualifies shared pending dismissal, known rejection, retained drafts and
 continued editing after file return. Its publication fetch finds zero incoming
-commits at `353cfd86e`; merging reports already up to date. See **Goal save
+commits at `353cfd86e`; merging reports already up to date. The shared
+editor repair is published as `679f39230`. Package configuration correction and
+feedback scope now qualify correction, cancellation, known refusal and file
+return, including the observer-free native control.
+See **Goal save
 feedback and pending dismissal** and **Computer console
 editing and operation return**. Preserve the
 separate exact-Run and Skills object contract limits already recorded below.
@@ -1141,8 +1145,9 @@ Verdict: Approve for shared editor pending dismissal and the inspected Goal
 refusal/file-return task. Typography, whitespace, hierarchy, color, motion,
 interaction, responsive and originality checks preserve the established design
 in these scenes; this does not establish whole-product award-level acceptance.
-The full UI goal remains active. Next inspect configuration entry, correction
-and return in PackageManager, using the same shared editor and command owner.
+The full UI goal remains active. That PackageManager follow-up is now qualified
+under **Current configuration correction and feedback scope**, including final
+native correction, cancellation and operation-feedback ownership.
 
 ### Goal authoring exit and draft continuity
 
@@ -13175,6 +13180,141 @@ capture hashes (gzip SHA-256
 Continue only with fresh task evidence.
 
 ### Plugin installation and edit recovery
+
+#### Current configuration correction and feedback scope
+
+This task follows published main `679f392305cd81e1c912cf0bf4581e67c2fceab4`:
+read the conversation → retain a draft → enter Plugins → configure the reviewed
+release → correct local input → understand a refused command → cancel and return
+through related material → continue the conversation. Runtime admission,
+reviewed identity, Stage semantics and recovery retain their owners.
+
+Actual original Wails shows a 529 px-high dialog after entering `[]`: its error
+is a multiline Zod implementation record with expected/code/path/message fields.
+Malformed JSON instead shows `CloseBraceExpected at offset 1`. A wrong value
+shows the method/params diagnostic prefix. A copy-only intermediate scene makes
+those errors readable, then exposes a second defect: Escape cancels the edit but
+leaves its local validation beside the installed package. That generation is
+investigative evidence, not final task acceptance.
+
+`src/features/plugins/ui/PackageManager.tsx` now keeps the local validation
+message on PackageEdit and derives invalid state from its presence. The same
+edit owns both the draft and its validation; correction or cancellation retires
+them together. useAsyncFeedback retains command feedback and can still show a
+known operation failure after its editor closes. The previous separate invalid
+boolean and publication of validation into asynchronous feedback are removed.
+
+The local presentation formatter recognizes the actual parser's SyntaxError,
+Zod object-shape error and Runtime client's structured request violations.
+Eight existing dictionaries supply concise correction instructions. Field
+messages retain every actual JSON path and validator reason while omitting the
+protocol envelope prefix. The parser, Zod shape check, public checkRequest,
+protected identity and command payload remain unchanged. Remote failure causes
+retain failureText and the existing asynchronous path; there is no duplicate
+schema, new API, state machine, dependency or migration.
+
+Better-writing's error guidance requires a stated correction beside the field.
+The prior HeroUI TextField/FieldError research and modal dismissal evidence
+remain applicable; its current Form implementation delegates semantics to its
+primitive and supplies no competing application validation owner. Flame retains
+its Base UI controls, related alert, draft focus, existing error/focus tokens and
+bounded modal body/footer. References guide review; actual Wails determines
+interaction acceptance.
+
+| Domain        | Evidence inspected                                                                                    | Result and boundary                                                                                             |
+| ------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Accessibility | Related invalid field/alert, native Cmd+Enter, pending Escape, Tab to Cancel and explicit file return | Validation and command failure remain distinct; no new VoiceOver audio or OS IME qualification.                 |
+| Layout        | Light 1440 × 900 and dark 200% at 756 × 475 CSS px / DPR 4, multiple issues and body scrolling        | Existing header/footer stay reachable; 320 px and RTL are not newly run.                                        |
+| Writing       | All eight instruction dictionaries, actual EN/ZH feedback and preserved validator paths/reasons       | One HIGH finding repaired; literal validator reasons remain supplied by the SDK. Other locale GUIs are not run. |
+| Typography    | Existing mono 14/18 px input, 21.7/27.9 px line-height and multiline feedback                         | Correction instructions replace implementation records without changing the type scale.                         |
+| Colors        | Neutral light/Orange and dark/custom-blue surfaces, error edge and independent keyboard perimeter     | Existing tokens and both validity/focus indicators retained; no new contrast-ratio claim.                       |
+| UI            | Correction, cancel/reopen, pending command, known refusal and continued drafting with full/off motion | Edit-scoped validation retires naturally; asynchronous command feedback keeps its owner.                        |
+
+| Severity         | Domain  | Location                                         | Before                                                                                 | After                                                                                                | Why                                                                             |
+| ---------------- | ------- | ------------------------------------------------ | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| HIGH, repaired   | Writing | `src/features/plugins/ui/PackageManager.tsx:439` | Parser tokens, a Zod record and protocol-envelope prefixes replace a clear correction. | Localized syntax/shape instructions and every concrete invalid field are readable.                   | Errors state a fix beside the field without requiring implementation knowledge. |
+| MEDIUM, repaired | UI      | `src/features/plugins/ui/PackageManager.tsx:54`  | Local validation is published as command feedback and survives cancellation.           | One edit-owned validation message supplies feedback and invalid state; retiring the edit retires it. | An abandoned draft cannot leave an unrelated list-level error.                  |
+
+Verification:
+
+- Unchanged focused baseline: 3 files / 34 tests pass. Four correction-message
+  cases fail against original production code. The cancellation regression then
+  fails against the copy-only implementation, while preserving command feedback
+  already passes; this distinguishes the two actual ownership contracts.
+- Final focused frontend tests pass 3 files / 37 tests. Web typecheck, lint,
+  circular/context/layer, design-system/token/chrome/locale, resource
+  reproducibility, production bundle/module checks, formatting and
+  make check-native pass. Checks and builds run serially. All 32 installed
+  resources retain their qualified hashes.
+- The original native instance reproduces array, syntax and field diagnostics
+  without sending a command. The intermediate instance verifies the readable
+  messages and a known refusal, then proves local validation outlives Escape.
+  That intermediate generation is excluded from final task acceptance.
+- Final EN/light/14 px/Orange: an existing reply and retained conversation draft
+  lead through Cmd+, to Plugins. Array correction is readable; Escape returns
+  to Configure inputs and leaves no local error in the list. Reopening starts
+  with the original JSON. Syntax and both field issues remain readable. The
+  shape-error dialog is 382.69 px high rather than the original 529 px.
+- Correcting that input clears validation. Cmd+Enter admits one command; Close
+  is unavailable, Escape retains the pending task, and a repeated shortcut adds
+  no request. The known refusal keeps the complete JSON and textarea focus.
+  Escape then returns to Configure inputs while the operation cause remains
+  beside its package. Closing Settings, selecting Files, full-width entry,
+  four Tabs to the body, four Shift-Tabs to Close and Return preserve the draft.
+  Native continued editing ends as
+  `Continue after the package configuration review. Ready to continue.`.
+- Final ZH/dark/18 px/custom blue/motion off: native window adjustment and 200%
+  qualify localized shape/syntax/multiple-field instructions, cancellation with
+  no list-level validation, retained JSON, one pending request and known refusal.
+  Native body scrolling and Tab/Return to Cancel retain reachable actions.
+  Operation feedback remains in the list. Actual Size is used to select Files;
+  the subsequent 200% full-width file keyboard task returns to the same draft.
+  Continued editing ends as `保留对话草稿，配置审阅后继续。 现在继续。`.
+- The final dark/200% control omits the observer and preselects Files before
+  entering Settings. All 617 assets match the observed build except the two
+  HTML entries. Shape and multiple-field corrections, validation cancellation,
+  single pending command, retained JSON/cause and operation feedback on cancel
+  pass. The same keyboard file task returns to
+  `普通构建保留这份对话草稿。 继续。`. It issues one business request and zero
+  observation requests or events.
+
+The Mac briefly locked before final acceptance; it subsequently became available
+and all final scenes above completed. The first private Web build used the
+wrong working directory for its root-entry copy. That copy stage failed;
+correcting the private command's directory and resuming its four remaining
+stages succeeds without a product change. Neither event is a product pass.
+
+No full Web/Runtime suite, browser suite, benchmark, live Runtime write, Claude
+CLI or subagent runs. The private loopback responder refuses the captured
+plugins.configure request after 12 seconds through the actual SDK and package
+operation adapter. Canonical captured reads, the production workspace/components
+and actual Wails host qualify presentation and operation feedback. They do not
+install, enable or configure a real package, qualify production bootstrap,
+prove a successful durable update or exercise unknown-outcome recovery. Other
+locale GUIs, forced-colors, RTL and fresh OS IME/VoiceOver remain outside this
+qualification.
+
+All five native generations are stopped; the bundle is unregistered and the
+loopback responder is closed. Cleanup removes seven new checkout output/cache
+roots and three owned profile paths, restores four original files/modes and
+passes all 18 output and five profile baselines. All 6,269 qualified non-Markdown
+inputs, 32 resources, six read-only references and three instruction files pass
+preservation. The private root `flame-package-review-8JkMxV` is absent; the
+primary checkout and unrelated work remain untouched. The round-tripped
+in-memory archive holds 95 UTF-8 records, 17,307,073 raw bytes and 1,344,998 gzip
+bytes; SHA-256
+`a67e628d0929caf2c054a6bf5f0624a631576969f482cf28dde97f70e3d9ecec`.
+The publication fetch finds zero incoming main commits at `679f39230`; merging
+reports already up to date.
+
+Verdict: Approve for configuration correction and the inspected feedback/return
+task. Typography, whitespace, hierarchy, color, motion, interaction, responsive
+and originality checks preserve the established design in these scenes; this
+is not a whole-product award-level verdict. The goal remains active. Next inspect
+material switching while the Dock is collapsed at large zoom: this task qualifies
+return to a selected file, not object switching entirely within the narrow layout.
+
+#### Earlier installation and edit qualification
 
 Scope: the feedback review's G03/G05/G07 concerns, verified against main
 `73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. This covers Plugins installation,

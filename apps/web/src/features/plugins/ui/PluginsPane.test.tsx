@@ -429,31 +429,45 @@ describe("PluginsPane installation facts", () => {
   });
 
   it.each([
-    "{",
-    "[]",
-    '{"valueChanges":{"root":{"type":"set","value":5}},"serverChanges":{},"skillChanges":{}}',
-  ])("marks invalid configuration and clears its feedback on correction: %s", async (draft) => {
-    const configure = vi.fn(async (_request: unknown) => reviewedInstallation());
-    await renderPackages({ configure });
-    fireEvent.click(await screen.findByRole("button", { name: "Configure inputs" }));
-    const dialog = screen.getByRole("dialog");
-    const field = within(dialog).getByRole("textbox");
-    const valid = (field as HTMLTextAreaElement).value;
-    fireEvent.change(field, { target: { value: draft } });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
-    const alert = await within(dialog).findByRole("alert");
-    expect(field.getAttribute("aria-invalid")).toBe("true");
-    expect(field.getAttribute("aria-describedby")).toBe(alert.id);
-    expect(field).toHaveProperty("value", draft);
-    expect(configure).not.toHaveBeenCalled();
+    { draft: "{", message: "Enter valid JSON with unique property names." },
+    { draft: "[]", message: "Use a JSON object for input changes." },
+    {
+      draft:
+        '{"valueChanges":{"root":{"type":"set","value":5}},"serverChanges":{},"skillChanges":{}}',
+      message: 'Correct valueChanges["root"].value: expected a string.',
+    },
+    {
+      draft:
+        '{"valueChanges":{"root":{"type":"set","value":5},"region":{"type":"set","value":false}},"serverChanges":{},"skillChanges":{}}',
+      message:
+        'Correct valueChanges["root"].value: expected a string.\nCorrect valueChanges["region"].value: expected a string.',
+    },
+  ])(
+    "marks invalid configuration and clears its feedback on correction: $draft",
+    async ({ draft, message }) => {
+      const configure = vi.fn(async (_request: unknown) => reviewedInstallation());
+      await renderPackages({ configure });
+      fireEvent.click(await screen.findByRole("button", { name: "Configure inputs" }));
+      const dialog = screen.getByRole("dialog");
+      const field = within(dialog).getByRole("textbox");
+      const valid = (field as HTMLTextAreaElement).value;
+      fireEvent.change(field, { target: { value: draft } });
+      fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+      const alert = await within(dialog).findByRole("alert");
+      expect(alert.textContent).toBe(message);
+      expect(field.getAttribute("aria-invalid")).toBe("true");
+      expect(field.getAttribute("aria-describedby")).toBe(alert.id);
+      expect(field).toHaveProperty("value", draft);
+      expect(configure).not.toHaveBeenCalled();
 
-    fireEvent.change(field, { target: { value: valid } });
-    expect(within(dialog).queryByRole("alert")).toBeNull();
-    expect(field.getAttribute("aria-invalid")).not.toBe("true");
-    fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    expect(configure).toHaveBeenCalledOnce();
-  });
+      fireEvent.change(field, { target: { value: valid } });
+      expect(within(dialog).queryByRole("alert")).toBeNull();
+      expect(field.getAttribute("aria-invalid")).not.toBe("true");
+      fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      expect(configure).toHaveBeenCalledOnce();
+    },
+  );
 
   it.each(["Configure"])("binds %s to the release opened for review", async () => {
     const reviewedDigest = "1".repeat(64);
@@ -645,6 +659,47 @@ describe("PluginsPane installation facts", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     const request = { installationId: installation.id, source: "/next.zip" };
     expect(stage.mock.calls).toEqual([[request], [request]]);
+  });
+
+  it("retires validation feedback with a cancelled configuration edit", async () => {
+    const configure = vi.fn(async () => reviewedInstallation());
+    await renderPackages({ configure });
+    fireEvent.click(await screen.findByRole("button", { name: "Configure inputs" }));
+    const dialog = screen.getByRole("dialog");
+    const field = within(dialog).getByRole<HTMLTextAreaElement>("textbox");
+    const initial = field.value;
+    fireEvent.change(field, { target: { value: "[]" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    expect((await within(dialog).findByRole("alert")).textContent).toBe(
+      "Use a JSON object for input changes.",
+    );
+
+    fireEvent.keyDown(field, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(configure).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Configure inputs" }));
+    expect(within(screen.getByRole("dialog")).getByRole("textbox")).toHaveProperty(
+      "value",
+      initial,
+    );
+    expect(within(screen.getByRole("dialog")).queryByRole("alert")).toBeNull();
+  });
+
+  it("retains command feedback after cancelling configuration review", async () => {
+    const configure = vi.fn(async () => {
+      throw new Error("The reviewed release is no longer selected.");
+    });
+    await renderPackages({ configure });
+    fireEvent.click(await screen.findByRole("button", { name: "Configure inputs" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    await within(dialog).findByText("The reviewed release is no longer selected.");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    expect(screen.getByText("The reviewed release is no longer selected.")).toBeTruthy();
+    expect(configure).toHaveBeenCalledOnce();
   });
 
   it("discards a cancelled configure draft without submitting", async () => {

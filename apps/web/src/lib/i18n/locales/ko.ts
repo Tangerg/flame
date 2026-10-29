@@ -1184,6 +1184,9 @@ export const ko: Record<string, string> = {
   "packages.editTitle": "{{action}}: {{name}}",
   "packages.editTitleVersion": "{{action}}: {{name}} {{version}}",
   "packages.configureInput": "입력 변경(JSON)",
+  "packages.configureJson": "속성 이름이 중복되지 않는 올바른 JSON을 입력하세요.",
+  "packages.configureObject": "입력 변경에는 JSON 객체를 사용하세요.",
+  "packages.configureField": "{{field}} 수정: {{reason}}.",
   "packages.configureContext": "검토한 릴리스의 다이제스트: {{digest}}.",
   "packages.stageContext":
     "업데이트 준비는 새 릴리스를 준비할 뿐 선택된 릴리스는 바꾸지 않습니다. 준비된 릴리스는 나중에 별도로 선택하세요.",

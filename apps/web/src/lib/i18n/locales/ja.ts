@@ -1201,6 +1201,9 @@ export const ja: Record<string, string> = {
   "packages.editTitle": "{{action}}: {{name}}",
   "packages.editTitleVersion": "{{action}}: {{name}} {{version}}",
   "packages.configureInput": "入力の変更（JSON）",
+  "packages.configureJson": "プロパティ名が重複しない有効な JSON を入力してください。",
+  "packages.configureObject": "入力の変更には JSON オブジェクトを使用してください。",
+  "packages.configureField": "{{field}} を修正してください：{{reason}}。",
   "packages.configureContext": "レビュー対象リリースのダイジェスト: {{digest}}。",
   "packages.stageContext":
     "ステージは新しいリリースを準備するだけで、選択中のリリースは変わりません。ステージ済みリリースは後で別途選択してください。",

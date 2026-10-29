@@ -1254,6 +1254,9 @@ export const de: Record<string, string> = {
   "packages.editTitle": "{{action}}: {{name}}",
   "packages.editTitleVersion": "{{action}}: {{name}} {{version}}",
   "packages.configureInput": "Eingabeänderungen (JSON)",
+  "packages.configureJson": "Gib gültiges JSON mit eindeutigen Eigenschaftsnamen ein.",
+  "packages.configureObject": "Verwende ein JSON-Objekt für Eingabeänderungen.",
+  "packages.configureField": "Korrigiere {{field}}: {{reason}}.",
   "packages.configureContext": "Prüfsumme des geprüften Releases: {{digest}}.",
   "packages.stageContext":
     "Das Vorbereiten ändert das ausgewählte Release nicht. Das vorbereitete Release wird anschließend separat ausgewählt.",

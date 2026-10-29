@@ -57,6 +57,12 @@ saving, Close, Escape and outside dismissal share the same unavailable contract
 as Cancel and Save. Settlement restores dismissal; draft, error, command and
 return-focus ownership remain with their existing callers and shared controls.
 
+Package configuration keeps local validation feedback with the open edit. It
+formats syntax, object-shape and request-field errors as correction instructions
+and derives field validity from that one message. Editing or cancelling retires
+that validation. Command feedback retains the existing asynchronous owner and
+remains available after a refused edit closes.
+
 The empty conversation owns keeping its focused control inside its scroll
 viewport when the window, text or surrounding content reflows. Its existing
 spacing token supplies focus clearance. Native keyboard return reveals that
