@@ -86,7 +86,7 @@ export const es: Record<string, string> = {
     "No se observó el resultado final. La hora de resolución no es el tiempo de ejecución medido.",
   "note.providerUnobserved":
     "No se observó el resultado del proveedor. La falta de uso no significa consumo cero.",
-  "note.reasoningRedacted": "El razonamiento fue redactado.",
+  "note.reasoningRedacted": "El contenido del razonamiento se ha ocultado.",
   "evidence.recorded": "Evidencia registrada",
   "rename.section": "Detalles de la sesión",
   "rename.titleLabel": "Título de la sesión",
