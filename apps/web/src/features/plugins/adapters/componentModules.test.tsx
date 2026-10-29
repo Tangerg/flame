@@ -9,6 +9,7 @@ import {
   type PluginInstallation,
 } from "@flame/runtime-client/wire";
 import { type ComponentContext, type PluginComponent } from "@flame/component-sdk";
+import { componentExport } from "@flame/component-sdk/runtime-profile";
 import {
   PROTOCOL,
   type CloseProof,
@@ -90,6 +91,7 @@ function fixture(
   renderComponent: (
     props: ComponentProps<PluginComponent>,
   ) => ReturnType<typeof createElement> = () => createElement("p", null, "Native panel"),
+  resourcesReady: Promise<void> = Promise.resolve(),
 ) {
   const modules = new ComponentModules();
   owners.push(modules);
@@ -141,7 +143,7 @@ function fixture(
         profile: "browser-js",
         module: { path: component.entry, digest: "d".repeat(64) },
         imports: [],
-        exports: [{ name: "component", contract: session.componentContract }],
+        exports: [{ name: componentExport, contract: session.componentContract }],
       },
     ],
   };
@@ -158,11 +160,14 @@ function fixture(
     ended.resolve();
     await ended.promise;
   });
-  const openResources = vi.fn<FlameClient["plugins"]["openResources"]>(async () => ({
-    result: { token: "lease", entry: component.entry },
-    closed: ended.promise,
-    close: closeResources,
-  }));
+  const openResources = vi.fn<FlameClient["plugins"]["openResources"]>(async () => {
+    await resourcesReady;
+    return {
+      result: { token: "lease", entry: component.entry },
+      closed: ended.promise,
+      close: closeResources,
+    };
+  });
   const openBrowserRealm = vi.fn<FlameClient["plugins"]["openBrowserRealm"]>(() =>
     mutation(async () => session),
   );
@@ -236,6 +241,10 @@ function fixture(
         const proof = message.input as CloseProof;
         validateProof(proof);
         proofs.push(proof);
+        if (proof.scopeKind === "execution" && !ready) {
+          requested = false;
+          prepared.reject(new Error("component execution retired before publication"));
+        }
         if (loseProof) {
           loseProof = false;
           throw new Error("proof acknowledgement lost");
@@ -286,8 +295,8 @@ function fixture(
     track: (operation) => operation(scope.signal),
     compose: () => null,
   };
-  const load = (generation: object = originalGeneration) =>
-    modules.component(scope, client, endpoint, generation, installation, component);
+  const load = (generation: object = originalGeneration, nextEndpoint = endpoint) =>
+    modules.component(scope, client, nextEndpoint, generation, installation, component);
   const originalGeneration = {};
   return {
     modules,
@@ -410,4 +419,22 @@ it("reconnects the original Realm as cleanup-only after authority replacement", 
   expect(f.acquireComponent).toHaveBeenCalledOnce();
   expect(f.source.evaluations).toBe(1);
   await act(() => f.modules.close());
+});
+
+it("retains the artifact origin captured before a pending lease crosses reconnection", async () => {
+  const resourcesReady = Promise.withResolvers<void>();
+  const f = fixture(undefined, resourcesReady.promise);
+  const Native = (await f.load()).component;
+  const scene = render(<Native context={f.context} />);
+  await waitFor(() => expect(f.openResources).toHaveBeenCalledOnce());
+  const replacement = f.load(
+    {},
+    `data:text/javascript,${encodeURIComponent('throw new Error("resource crossed Runtime origin")')}#`,
+  );
+  scene.unmount();
+  resourcesReady.resolve();
+  await replacement;
+  expect(f.source.evaluations).toBe(1);
+  expect(f.closeResources).toHaveBeenCalledOnce();
+  expect(f.proofs.some((proof) => proof.scopeKind === "execution")).toBe(true);
 });

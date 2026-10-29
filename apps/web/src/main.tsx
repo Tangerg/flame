@@ -4,7 +4,7 @@ import { createNotifications } from "@/features/notifications/adapters/notificat
 import { NotificationProvider } from "@/features/notifications/public/notifier";
 import { createInstalledPlugins } from "@/features/plugins/adapters/installedPlugins";
 import { InstalledPluginsProvider } from "@/features/plugins/context";
-import { PRODUCT_NAME } from "@/app/product";
+import { IMAGE_FILENAME_STEM, PRODUCT_NAME } from "@/app/product";
 import { createAgent } from "@/features/agent/adapters/agent";
 import { createComposer } from "@/features/composer/adapters/composerStatePorts";
 import { ComposerProvider } from "@/features/composer/public/composer";
@@ -33,7 +33,7 @@ import { disposeOnHmr } from "@/lib/hmr";
 import "@/styles/markdown.css";
 import "@/styles/overlays.css";
 import "@/styles/globals.css";
-const host = createClientHost();
+const host = createClientHost(IMAGE_FILENAME_STEM);
 const theme = createTheme(document, window);
 
 const connection = createRuntimeConnection(

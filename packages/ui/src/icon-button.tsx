@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import type { IconSize } from "./font-scale";
+import type { IconSize } from "./icon-scale";
 import { color, corner, space, surface, type, weight } from "./tokens.stylex";
 import { Icon, type IconGlyph } from "./font-scale";
 import { Button, type ButtonProps, type ButtonSize } from "./button";

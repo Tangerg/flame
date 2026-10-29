@@ -80,6 +80,7 @@ describe("in a locale that writes decimals with a comma", () => {
 describe("durationText", () => {
   it("reads an elapsed run in the largest unit it fills", () => {
     expect(durationText(t, 1_000, null)).toBe("—");
+    expect(durationText(t, 0, 0)).toBe("0s");
     expect(durationText(t, 1_000, 1_000)).toBe("0s");
     expect(durationText(t, 1_000, 31_400)).toBe("30s");
     expect(durationText(t, 1_000, 61_000)).toBe("1m 0s");

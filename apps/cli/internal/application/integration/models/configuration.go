@@ -34,10 +34,9 @@ const (
 )
 
 type Role struct {
-	kind     RoleKind
-	mode     roleMode
-	provider string
-	model    string
+	kind      RoleKind
+	mode      roleMode
+	selection flamemodel.Selection
 }
 
 func InheritedUtilityRole() Role {
@@ -49,7 +48,11 @@ func DisabledEmbeddingRole() Role {
 }
 
 func NewConfiguredRole(kind RoleKind, provider, model string) (Role, error) {
-	role := Role{kind: kind, mode: configuredRole, provider: provider, model: model}
+	selection, err := flamemodel.New(provider, model)
+	if err != nil {
+		return Role{}, fmt.Errorf("configured model role: %w", err)
+	}
+	role := Role{kind: kind, mode: configuredRole, selection: selection}
 	if err := role.Validate(); err != nil {
 		return Role{}, err
 	}
@@ -66,7 +69,7 @@ func (r Role) Validate() error {
 	// name one, and neither takes a provider or a model to disagree with.
 	case inheritedRole, disabledRole:
 	case configuredRole:
-		if err := flamemodel.ValidateSelection(r.provider, r.model, ""); err != nil {
+		if err := r.selection.ValidateExact(); err != nil {
 			return fmt.Errorf("configured model role: %w", err)
 		}
 	default:
@@ -80,7 +83,7 @@ func (r Role) Kind() RoleKind { return r.kind }
 func (r Role) Configured() bool { return r.mode == configuredRole }
 
 func (r Role) ProviderModel() (string, string, bool) {
-	return r.provider, r.model, r.mode == configuredRole
+	return r.selection.Provider(), r.selection.Model(), r.mode == configuredRole
 }
 
 func (r Role) Label() (string, error) {
@@ -93,7 +96,7 @@ func (r Role) Label() (string, error) {
 	case disabledRole:
 		return "disabled", nil
 	case configuredRole:
-		return r.provider + "/" + r.model, nil
+		return r.selection.String(), nil
 	default:
 		panic("validated model role mode became unreachable")
 	}

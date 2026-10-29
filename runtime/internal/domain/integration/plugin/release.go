@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -85,9 +86,12 @@ type ThemeColors struct {
 }
 
 func (c ThemeColors) validate() error {
-	for name, value := range map[string]string{"background": c.Background, "foreground": c.Foreground, "accent": c.Accent, "muted": c.Muted, "border": c.Border} {
-		if value != "" && !themeColor.MatchString(value) {
-			return fmt.Errorf("color %q", name)
+	for _, color := range []struct{ name, value string }{
+		{"background", c.Background}, {"foreground", c.Foreground},
+		{"accent", c.Accent}, {"muted", c.Muted}, {"border", c.Border},
+	} {
+		if color.value != "" && !themeColor.MatchString(color.value) {
+			return fmt.Errorf("color %q", color.name)
 		}
 	}
 	return nil
@@ -331,7 +335,7 @@ func (b *Builder) AdmitTheme(theme Theme) error {
 	if duplicate || !identity.ValidDeclarationID(theme.ID) {
 		return refuse(DiagnosticInvalidDeclaration, "theme identity %q", theme.ID)
 	}
-	if theme.Title == "" || len(theme.Title) > 128 {
+	if theme.Title == "" || len(theme.Title) > maxPresentationTitleBytes || !utf8.ValidString(theme.Title) {
 		return refuse(DiagnosticInvalidDeclaration, "theme %q title", theme.ID)
 	}
 	if theme.Scheme != dark && theme.Scheme != light {

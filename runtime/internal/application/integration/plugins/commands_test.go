@@ -3,14 +3,13 @@ package plugins_test
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/qimu"
 	"path/filepath"
 	"reflect"
 	"testing"
 	"testing/synctest"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
+	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
@@ -30,7 +29,7 @@ func TestCommandsKeepOriginalRouteAndAdmitDispatchOnlyOnce(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	provider := plugins.ContributionBinding{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1"), ServerName: testsupport.ServerName("backend"), Contract: testsupport.CommandContract(t, "review.update", "installation"), ContributionID: "original-provider", Export: "operations"}
+	provider := plugins.ContributionBinding{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1"), ServerName: testsupport.ServerName("backend"), Contract: testsupport.CommandContract(t, "review.update", extension.ScopeInstallation), ContributionID: "original-provider", Export: "operations"}
 	resolve := func(context.Context) (plugins.CommandAdmission, error) { return commandAdmission(provider), nil }
 	bound, err := commands.Bind(t.Context(), "command", "review.update", testsupport.JSONInput(t, `{"revision":2}`), resolve, capturedCommand)
 	if err != nil {
@@ -125,7 +124,7 @@ func TestCommandBindingAndInstallationChangeShareAdmission(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		provider := plugins.ContributionBinding{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1"), ServerName: testsupport.ServerName("backend"), Contract: testsupport.CommandContract(t, "review.update", "installation"), ContributionID: "original-provider", Export: "operations"}
+		provider := plugins.ContributionBinding{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1"), ServerName: testsupport.ServerName("backend"), Contract: testsupport.CommandContract(t, "review.update", extension.ScopeInstallation), ContributionID: "original-provider", Export: "operations"}
 		bound := make(chan error, 1)
 		go func() {
 			_, err := commands.Bind(t.Context(), "command", "review.update", testsupport.JSONInput(t, `{"revision":2}`), func(context.Context) (plugins.CommandAdmission, error) { return commandAdmission(provider), nil }, capturedCommand)
@@ -159,7 +158,7 @@ func TestCommandBindingAndInstallationChangeShareAdmission(t *testing.T) {
 }
 
 func capturedCommand(binding plugins.ContributionBinding) (portable.Invocation, error) {
-	invocation := portable.Invocation{ID: "command", Origin: extension.Human, Target: portable.Target{Scope: "installation", Reference: binding.InstallationID.String()}}
+	invocation := portable.Invocation{ID: "command", Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: binding.InstallationID.String()}}
 	return invocation, invocation.Validate()
 }
 
@@ -173,7 +172,7 @@ func TestBackgroundRestoresOnlyItsDispatchedOriginalCaller(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	provider := plugins.ContributionBinding{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1"), ServerName: testsupport.ServerName("backend"), Contract: testsupport.CommandContract(t, "review.update", "installation"), ContributionID: "owner", Export: "operations"}
+	provider := plugins.ContributionBinding{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1"), ServerName: testsupport.ServerName("backend"), Contract: testsupport.CommandContract(t, "review.update", extension.ScopeInstallation), ContributionID: "owner", Export: "operations"}
 	original, err := capturedCommand(provider)
 	if err != nil {
 		t.Fatal(err)
@@ -289,7 +288,7 @@ func TestBackgroundRestoresOriginalResourceTargetAfterRestart(t *testing.T) {
 				for _, change := range []func(*portable.Invocation){
 					func(v *portable.Invocation) { v.Target.Reference = "different-resource" },
 					func(v *portable.Invocation) {
-						v.Target = portable.Target{Scope: "installation", Reference: actor.InstallationID().String()}
+						v.Target = portable.Target{Scope: extension.ScopeInstallation, Reference: actor.InstallationID().String()}
 					},
 					func(v *portable.Invocation) { v.Parent = "different-parent" },
 				} {

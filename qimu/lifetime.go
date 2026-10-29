@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
+	"unicode/utf8"
 )
 
 type ReleaseState string
@@ -202,8 +204,9 @@ func (w *Work) Own(resource Resource, dependencies ...*ResourceHandle) (*Resourc
 	l.mu.Unlock()
 	if err == nil && closing && resource.Cancel != nil {
 		if cancelErr := invokeCancel(resource.Cancel, cause); cancelErr != nil {
+			detail := closeFailureDetail(cancelErr)
 			l.mu.Lock()
-			l.recordFailureLocked(resource.Name, cancelErr)
+			l.recordFailureLocked(resource.Name, detail)
 			l.mu.Unlock()
 		}
 	}
@@ -321,8 +324,9 @@ func (l *Lifetime) BeginClose(cause error) *Close {
 func (l *Lifetime) retire(operation *Close, cancellations []func(error), cause error) {
 	for _, cancel := range cancellations {
 		if err := invokeCancel(cancel, cause); err != nil {
+			detail := closeFailureDetail(err)
 			l.mu.Lock()
-			l.recordFailureLocked("cancellation", err)
+			l.recordFailureLocked("cancellation", detail)
 			l.mu.Unlock()
 		}
 	}
@@ -432,13 +436,14 @@ func invokeResourceClose(closeResource func(context.Context) (ReleaseState, erro
 
 func (l *Lifetime) closeResource(entry *resourceEntry, closeResource func(context.Context) (ReleaseState, error)) {
 	state, err := invokeResourceClose(closeResource, context.WithoutCancel(l.Context()))
+	detail := closeFailureDetail(err)
 	l.mu.Lock()
 	entry.running = false
 	if state == ResourceReleased {
 		entry.released = true
 	}
 	if err != nil {
-		l.recordFailureLocked(entry.resource.Name, err)
+		l.recordFailureLocked(entry.resource.Name, detail)
 	}
 	if entry.released {
 		entry.resource.Cancel = nil
@@ -450,19 +455,28 @@ func (l *Lifetime) closeResource(entry *resourceEntry, closeResource func(contex
 	l.mu.Unlock()
 }
 
-func (l *Lifetime) recordFailureLocked(name string, err error) {
+// Error formatting may call back into its resource owner. Keep it outside the
+// state lock, and retain a bounded valid JSON string as the diagnostic projection.
+func closeFailureDetail(err error) string {
 	if err == nil {
-		return
+		return ""
 	}
-	const maxFailures = 32
 	const maxDetailBytes = 2048
+	detail := strings.ToValidUTF8(fmt.Sprint(err), "\uFFFD")
+	if len(detail) > maxDetailBytes {
+		detail = detail[:maxDetailBytes]
+		for !utf8.ValidString(detail) {
+			detail = detail[:len(detail)-1]
+		}
+	}
+	return detail
+}
+
+func (l *Lifetime) recordFailureLocked(name, detail string) {
+	const maxFailures = 32
 	if len(l.failures) == maxFailures {
 		l.omittedFailures++
 		return
-	}
-	detail := err.Error()
-	if len(detail) > maxDetailBytes {
-		detail = detail[:maxDetailBytes]
 	}
 	l.failures = append(l.failures, CloseFailure{Resource: name, Detail: detail})
 }
@@ -471,6 +485,7 @@ func (h *ResourceHandle) ConfirmReleased(diagnostic error) error {
 	if h == nil || h.lifetime == nil || h.entry == nil {
 		return ErrInvalid
 	}
+	detail := closeFailureDetail(diagnostic)
 	l := h.lifetime
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -478,7 +493,9 @@ func (h *ResourceHandle) ConfirmReleased(diagnostic error) error {
 		return nil
 	}
 	h.entry.released = true
-	l.recordFailureLocked(h.entry.resource.Name, diagnostic)
+	if diagnostic != nil {
+		l.recordFailureLocked(h.entry.resource.Name, detail)
+	}
 	if !h.entry.running {
 		h.entry.resource.Cancel = nil
 		h.entry.resource.Close = nil

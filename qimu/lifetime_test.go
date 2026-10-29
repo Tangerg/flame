@@ -3,11 +3,59 @@ package qimu_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync/atomic"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/Tangerg/flame/qimu"
 )
+
+type lifetimeDiagnostic struct{ owner *qimu.Lifetime }
+
+func (e lifetimeDiagnostic) Error() string {
+	_ = e.owner.Context()
+	return strings.Repeat("界", 1000)
+}
+
+func TestCleanupDiagnosticsCanObserveTheirOwnerAndRemainValidJSON(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		proof bool
+	}{{"close", false}, {"late proof", true}} {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := testContext(t)
+			owner := qimu.NewLifetime(context.Background())
+			resource, err := owner.Own(qimu.Resource{Name: "original", Close: func(context.Context) (qimu.ReleaseState, error) {
+				if test.proof {
+					return qimu.ResourceUnconfirmed, nil
+				}
+				return qimu.ResourceReleased, lifetimeDiagnostic{owner}
+			}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			completed := make(chan qimu.CloseOutcome, 1)
+			go func() {
+				closing := owner.BeginClose(qimu.ErrClosed)
+				if test.proof {
+					_, _ = closing.Wait(ctx)
+					_ = resource.ConfirmReleased(lifetimeDiagnostic{owner})
+				}
+				outcome, _ := closing.WaitReleased(ctx)
+				completed <- outcome
+			}()
+			select {
+			case outcome := <-completed:
+				if !outcome.Released || len(outcome.Failures) != 1 || !utf8.ValidString(outcome.Failures[0].Detail) || len(outcome.Failures[0].Detail) >= len(lifetimeDiagnostic{owner}.Error()) {
+					t.Fatalf("cleanup diagnostic lost its bounded JSON representation: %+v", outcome)
+				}
+			case <-ctx.Done():
+				t.Fatal("error formatting blocked its own lifetime")
+			}
+		})
+	}
+}
 
 func TestUnconfirmedConsumerPinsProviderAndLateProofResumesOriginalClose(t *testing.T) {
 	ctx := testContext(t)

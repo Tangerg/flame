@@ -1,8 +1,14 @@
 import type { RpcCallOptions, RpcClient } from "./client";
+import { cloneJSON } from "@qimu/sdk/json";
 import { RpcError } from "./errors";
 import { checkRequest, requestRequiresIdempotency } from "./request";
 import { createMutationPromise, type MutationPromise } from "./mutation";
-import type { MutationJournal, MutationReservation } from "./mutationJournal";
+import type {
+  MutationJournal,
+  MutationReservation,
+  PluginCommandInput,
+  PluginCommandBinding,
+} from "./mutationJournal";
 import { unnegotiated } from "./preflight";
 import {
   createAutoPagingPromise,
@@ -61,6 +67,19 @@ export interface WireCallPath {
   call: WireCall;
   perform: WirePerform;
   openMutation: OpenMutation;
+  capturePluginCommand(
+    intent: string,
+    input: PluginCommandInput,
+    prepare: () => Promise<PluginCommandBinding>,
+  ): ReturnType<MutationJournal["capturePluginCommand"]>;
+}
+
+interface MutationOpeningOptions {
+  signal?: AbortSignal;
+  requestedKey?: string;
+  journalKey?: string;
+  reserveOriginal?: () => MutationReservation;
+  requestMeta?: RequestMeta | null;
 }
 
 type OpenMutation = <M extends WireMethodName, Result>(
@@ -71,10 +90,7 @@ type OpenMutation = <M extends WireMethodName, Result>(
     attempt: MutationDelivery,
     preparedParams: WireParams<M>,
   ) => Promise<Result>,
-  signal?: AbortSignal,
-  requestedKey?: string,
-  journalKey?: string,
-  reserveOriginal?: () => MutationReservation,
+  options?: MutationOpeningOptions,
 ) => MutationPromise<Result>;
 
 interface MutationDelivery {
@@ -133,24 +149,28 @@ export function createWireCallPath(
       attempt: MutationDelivery,
       preparedParams: WireParams<M>,
     ) => Promise<Result>,
-    signal?: AbortSignal,
-    requestedKey?: string,
-    journalKey?: string,
-    reserveOriginal?: () => MutationReservation,
+    opening: MutationOpeningOptions = {},
   ): MutationPromise<Result> => {
-    const preparedParams = structuredClone(params);
+    const { signal, requestedKey, journalKey, reserveOriginal, requestMeta } = opening;
+    let preparedParams: WireParams<M>;
     const preferredJournalKey = requestedKey ?? journalKey ?? crypto.randomUUID();
     let reservation: MutationReservation;
     try {
-      checkRequest(method, preparedParams);
-      reservation = reserveOriginal
-        ? reserveOriginal()
-        : options.mutationJournal.reserve(
-            method,
-            preparedParams,
-            preferredJournalKey,
-            structuredClone(options.requestMeta?.() ?? null),
-          );
+      preparedParams = cloneJSON(params);
+      if (reserveOriginal) {
+        reservation = reserveOriginal();
+      } else {
+        const metadata = cloneJSON(
+          requestMeta === undefined ? (options.requestMeta?.() ?? null) : requestMeta,
+        );
+        checkRequest(method, preparedParams, metadata);
+        reservation = options.mutationJournal.reserve(
+          method,
+          preparedParams,
+          preferredJournalKey,
+          metadata,
+        );
+      }
     } catch (error) {
       const failedKey = requestedKey ?? preferredJournalKey;
       const refused = (): MutationPromise<Result> =>
@@ -194,7 +214,7 @@ export function createWireCallPath(
     if (!requestRequiresIdempotency(method, params)) {
       return perform(method, params, callOptions) as WireInvokeResult<M>;
     }
-    const { signal, idempotencyKey, ...stableCallOptions } = callOptions ?? {};
+    const { signal, idempotencyKey, requestMeta, ...stableCallOptions } = callOptions ?? {};
     return openMutation(
       method,
       params,
@@ -202,13 +222,13 @@ export function createWireCallPath(
         const idempotencyNamespace = attempt.authorizeDispatch();
         return perform(method, preparedParams, {
           ...stableCallOptions,
+          requestMeta: attempt.requestMeta,
           ...(attempt.signal ? { signal: attempt.signal } : {}),
           idempotencyKey,
           ...(idempotencyNamespace ? { idempotencyNamespace } : {}),
         });
       },
-      signal,
-      idempotencyKey,
+      { signal, requestedKey: idempotencyKey, requestMeta },
     ) as WireInvokeResult<M>;
   }) as WireInvoke;
 
@@ -218,7 +238,7 @@ export function createWireCallPath(
     callOptions?: RpcCallOptions,
   ): WireCallResult<M> => {
     if (wireMethodIsPaginated(method)) {
-      const query = structuredClone(params);
+      const query = cloneJSON(params);
       const initialCursor = (query as { cursor?: string }).cursor;
       return createAutoPagingPromise<CursorPage>(
         (cursor) => {
@@ -235,5 +255,8 @@ export function createWireCallPath(
     return invoke(method, params, callOptions) as WireCallResult<M>;
   }) as WireCall;
 
-  return { call, perform, openMutation };
+  const capturePluginCommand: WireCallPath["capturePluginCommand"] = (intent, input, prepare) =>
+    options.mutationJournal.capturePluginCommand(intent, input, prepare, options.requestMeta);
+
+  return { call, perform, openMutation, capturePluginCommand };
 }

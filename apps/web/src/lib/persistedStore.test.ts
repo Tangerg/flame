@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { rehydrateOrDefault } from "@/lib/persistedStore";
+import { rehydrateOrDefault, ScopedPersistence } from "@/lib/persistedStore";
 const schema = z.object({ theme: z.string(), scale: z.number() });
 
 const defaults = { theme: "light", scale: 1, setTheme: () => undefined };
@@ -61,4 +61,18 @@ describe("rehydrateOrDefault", () => {
     merge({ nonsense: true }, defaults);
     expect(project).not.toHaveBeenCalled();
   });
+});
+
+it("does not delete an unscoped record when opening a scoped store", () => {
+  const storageKey = "flame.test.scope";
+  const retained = "old storage evidence";
+  localStorage.setItem(storageKey, retained);
+  const persistence = new ScopedPersistence<{ value: string }>(storageKey);
+  persistence.activate("runtime", {
+    getState: () => ({ value: "" }),
+    setState: () => undefined,
+    persist: { setOptions: () => undefined, rehydrate: () => undefined },
+  });
+  expect(localStorage.getItem(storageKey)).toBe(retained);
+  localStorage.removeItem(storageKey);
 });

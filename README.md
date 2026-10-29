@@ -49,7 +49,7 @@ plugin-state reader or automatic conversion is supplied.
 
 ## Connect to a Runtime
 
-CLI without an endpoint opens an embedded Runtime. Explicit remote connections use the base URL and `FLAME_RUNTIME_TOKEN`; a failed remote connection remains an error.
+CLI defaults to a remote Runtime at `http://127.0.0.1:17171`. Select `--runtime-mode embedded` to host a Runtime in the CLI process. Remote connections use the base URL and `FLAME_RUNTIME_TOKEN`; a failed remote connection remains an error.
 
 ```sh
 ./out/cli/darwin-arm64/flame --runtime-url http://127.0.0.1:17171

@@ -167,8 +167,12 @@ var refusalProblems = map[string]int{
 }
 
 const (
-	rpcPath                  = "/v2/rpc"
-	notificationRunEvent     = "notifications.run.event"
-	notificationRuntimeEvent = "notifications.runtime.event"
-	notificationPluginStream = "notifications.plugin.stream"
+	rpcPath                    = "/v2/rpc"
+	headerIdempotencyKey       = "Idempotency-Key"
+	headerIdempotencyNamespace = "Idempotency-Namespace"
+	headerLastEventID          = "Last-Event-Id"
+	headerRequestID            = "Request-Id"
+	notificationRunEvent       = "notifications.run.event"
+	notificationRuntimeEvent   = "notifications.runtime.event"
+	notificationPluginStream   = "notifications.plugin.stream"
 )

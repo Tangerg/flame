@@ -150,22 +150,19 @@ func discoverDirectory(result *extensions.SourceResult, seen map[string]struct{}
 }
 
 func canonicalDirectory(path string) (string, error) {
-	absolute, err := filepath.Abs(path)
+	root := ""
+	if !filepath.IsAbs(path) {
+		var err error
+		root, err = os.Getwd()
+		if err != nil {
+			return "", err
+		}
+	}
+	canonical, err := filesystem.ResolvePath(root, path)
 	if err != nil {
 		return "", err
 	}
-	canonical, err := filepath.EvalSymlinks(absolute)
-	if err != nil {
-		return "", err
-	}
-	info, err := os.Stat(canonical)
-	if err != nil {
-		return "", err
-	}
-	if !info.IsDir() {
-		return "", errors.New("not a directory")
-	}
-	return filepath.Clean(canonical), nil
+	return (filesystem.DirectoryResolver{}).ResolveExistingDir(canonical)
 }
 
 func pathKey(path string) string {

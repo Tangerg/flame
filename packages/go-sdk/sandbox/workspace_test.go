@@ -94,3 +94,15 @@ func TestWorkspaceCopyDoesNotMaterializeSourceInHeap(t *testing.T) {
 		t.Fatalf("copying %d bytes allocated %d heap bytes; want chunk-bounded copy below %d", sourceBytes, allocated, sourceBytes/2)
 	}
 }
+
+func TestCanceledEmptyWorkspaceDoesNotAllocateStorage(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	base := filepath.Join(t.TempDir(), "scratch")
+	if _, err := newWorkspace(ctx, Config{BaseDir: base}, "", recordingRunner{}); !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled workspace error = %v", err)
+	}
+	if _, err := os.Stat(base); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("canceled workspace created storage: %v", err)
+	}
+}

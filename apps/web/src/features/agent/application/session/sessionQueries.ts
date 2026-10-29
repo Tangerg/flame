@@ -1,7 +1,7 @@
-type SessionStatus = "running" | "waiting" | "idle";
-
-type WorkspaceAvailability = "available" | "missing";
-
+import {
+  type SessionStatus,
+  type WorkspaceAvailability,
+} from "@/foundation/protocolValues.generated";
 import { createDataQuery } from "@/extensions/dataQuery";
 import { queryClient } from "@/lib/queryClient";
 import { type AgentCommandOwner } from "@/features/agent/application/agentCommandOwner";

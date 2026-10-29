@@ -1,7 +1,6 @@
 package execution
 
 import (
-	"context"
 	"errors"
 	"slices"
 	"strings"
@@ -9,7 +8,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
 func TestInteractionExecutorRestoresWaitingDelegateChildWithoutReadmission(t *testing.T) {
@@ -21,6 +20,8 @@ func TestInteractionExecutorRestoresWaitingDelegateChildWithoutReadmission(t *te
 
 	barrier := fixture.waitForBarrier(t, 2*time.Second)
 	pending := barrier.Pending()
+	<-initialEventsReady
+	<-fixture.observations.completed
 	reservationsBeforeRestore, outcomesBeforeRestore := fixture.admissionCounts()
 	assertWaitingDelegateBoundary(t, barrier)
 	if err := fixture.executor.Release(t.Context(), runs.ExecutorRef{
@@ -66,31 +67,21 @@ func TestInteractionExecutorRestoresWaitingDelegateChildWithoutReadmission(t *te
 			}
 		})
 	}
-	ref, err := fixture.executor.StageAcceptedContinuation(t.Context(), continuation)
-	if err != nil {
-		t.Fatal(err)
-	}
-	sequence, err := observeTestInteraction(t, fixture.executor, context.Background(), ref)
-	if err != nil {
-		t.Fatal(err)
-	}
-	eventsReady := collectInteractionEvents(sequence)
 	binding := pending.Bindings[0]
-	if err := fixture.executor.BeginContinuation(t.Context(), ref, []runs.InterruptAnswer{{
-		InterruptItemID: binding.InterruptItemID, MemberID: binding.MemberID,
-		RequestID:  binding.RequestID,
-		Resolution: testsupport.QuestionAnswer(t, [][]string{{"restored value"}}),
-	}}, nil); err != nil {
+	resumed, err := fixture.coordinator.Resume(t.Context(), runs.ResumeCommand{
+		RunID: pending.RootRunID, CallerCapabilities: continuation.Capabilities,
+		Responses: []runs.ResumeResponse{{ItemID: binding.InterruptItemID, Kind: run.InterruptQuestion, Question: &runs.QuestionResponse{Answers: [][]string{{"restored value"}}}}},
+	})
+	if err != nil {
 		t.Fatal(err)
+	}
+	for range resumed.Events {
 	}
 	var observed []runs.ExecutorEvent
 	select {
-	case observed = <-eventsReady:
+	case observed = <-fixture.observations.completed:
 	case <-time.After(waitBudget(2 * time.Second)):
 		t.Fatal("restored waiting Delegate did not finish")
-	}
-	if err := fixture.executor.Release(t.Context(), ref); err != nil {
-		t.Fatal(err)
 	}
 	reservationsAfterRestore, outcomesAfterRestore := fixture.admissionCounts()
 	assertDelegateAdmissionUnchanged(
@@ -114,11 +105,7 @@ func TestInteractionExecutorRestoresWaitingDelegateChildWithoutReadmission(t *te
 		t.Fatalf("provider calls = %d, want 4 without replay", fixture.model.Calls())
 	}
 	fixture.shutdown(t)
-	select {
-	case <-initialEventsReady:
-	case <-time.After(waitBudget(time.Second)):
-		t.Fatal("initial waiting Delegate event stream did not close at shutdown")
-	}
+
 }
 
 func assertWaitingDelegateBoundary(t *testing.T, barrier runs.TreeBarrierCommit) {

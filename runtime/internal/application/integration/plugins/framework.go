@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
@@ -27,6 +28,11 @@ type FrameworkRelease struct {
 	Plugin    *qimu.Plugin
 	Contracts []ContractDocument
 }
+
+const (
+	backendUnitPrefix   = "backend/"
+	componentUnitPrefix = "component/"
+)
 
 // FrameworkConfiguration contains only Flame-owned configuration. Installation
 // identity, selected release and desired enablement belong to Qimu's record.
@@ -75,11 +81,11 @@ func DecodeFrameworkConfiguration(record qimu.InstallationRecord) (plugin.Record
 }
 
 func BackendUnit(server mcpserver.ServerName) qimu.UnitID {
-	return qimu.UnitID("backend/" + server.String())
+	return qimu.UnitID(backendUnitPrefix + server.String())
 }
 
 func BackendServer(unit qimu.UnitID) (mcpserver.ServerName, error) {
-	value, found := strings.CutPrefix(string(unit), "backend/")
+	value, found := strings.CutPrefix(string(unit), backendUnitPrefix)
 	if !found {
 		return mcpserver.ServerName{}, plugin.ErrInvalid
 	}
@@ -93,7 +99,7 @@ func RequirementSlot(contribution, requirement plugin.ContributionID) string {
 const PointValuesUnit qimu.UnitID = "point-values"
 
 func ComponentUnit(id plugin.ContributionID) qimu.UnitID {
-	return qimu.UnitID("component/" + id.String())
+	return qimu.UnitID(componentUnitPrefix + id.String())
 }
 
 func ComponentContract() (qimu.Contract[any], error) {
@@ -108,18 +114,18 @@ type ComponentConfiguration struct {
 }
 
 type ComponentMetadata struct {
-	ID           string             `json:"id"`
-	Title        string             `json:"title"`
-	Scope        string             `json:"scope"`
-	Placement    string             `json:"placement"`
-	Contribution string             `json:"contribution,omitempty"`
-	Material     string             `json:"material,omitempty"`
-	Selector     *ComponentSelector `json:"selector,omitempty"`
+	ID           string                       `json:"id"`
+	Title        string                       `json:"title"`
+	Scope        extension.ComponentScope     `json:"scope"`
+	Placement    extension.ComponentPlacement `json:"placement"`
+	Contribution string                       `json:"contribution,omitempty"`
+	Material     string                       `json:"material,omitempty"`
+	Selector     *ComponentSelector           `json:"selector,omitempty"`
 }
 
 type ComponentSelector struct {
-	Kind string `json:"kind"`
-	Name string `json:"name"`
+	Kind extension.RendererSelectorKind `json:"kind"`
+	Name string                         `json:"name"`
 }
 
 // PublicComponentConfiguration is the complete browser setup projection. It
@@ -129,9 +135,9 @@ func PublicComponentConfiguration(release plugin.Release, id plugin.Contribution
 		if component.ID != id {
 			continue
 		}
-		metadata := ComponentMetadata{ID: id.String(), Title: component.Title, Scope: string(component.Scope), Placement: string(component.Placement), Contribution: component.Contribution.String(), Material: component.Material}
+		metadata := ComponentMetadata{ID: id.String(), Title: component.Title, Scope: component.Scope, Placement: component.Placement, Contribution: component.Contribution.String(), Material: component.Material}
 		if component.Selector != nil {
-			metadata.Selector = &ComponentSelector{Kind: string(component.Selector.Kind), Name: component.Selector.Name}
+			metadata.Selector = &ComponentSelector{Kind: component.Selector.Kind, Name: component.Selector.Name}
 		}
 		value, err := jsonvalue.Encode(ComponentConfiguration{Export: component.Export, Component: metadata, SharedModules: []string{}})
 		if err != nil {
@@ -271,7 +277,7 @@ func ProjectFrameworkDeclaration(declaration plugin.Declaration) (FrameworkDefin
 		}
 		contracts[contract.Ref()] = contract.Descriptor()
 		for _, component := range declaration.Components {
-			units = append(units, qimu.Unit{Declaration: qimu.UnitDeclaration{ID: ComponentUnit(component.ID), Profile: qimu.BrowserJS, Imports: []qimu.ImportDeclaration{}, Exports: []qimu.ExportDeclaration{{Name: "component", Contract: contract.Ref()}}}})
+			units = append(units, qimu.Unit{Declaration: qimu.UnitDeclaration{ID: ComponentUnit(component.ID), Profile: qimu.BrowserJS, Imports: []qimu.ImportDeclaration{}, Exports: []qimu.ExportDeclaration{{Name: extension.ComponentExport, Contract: contract.Ref()}}}})
 		}
 	}
 	result := FrameworkDefinition{Units: units}

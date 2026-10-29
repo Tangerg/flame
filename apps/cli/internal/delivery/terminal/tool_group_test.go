@@ -1,6 +1,7 @@
 package terminal
 
 import (
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"strings"
 	"testing"
 
@@ -25,9 +26,9 @@ func TestToolGroupObserverIdentityExhaustionPreservesExistingSubscription(t *tes
 
 func TestAdjacentResourceToolsShareOneDisclosureWithoutLosingChildDetails(t *testing.T) {
 	view := testTranscriptView(t)
-	read := resourceTool(view, conversation.ToolRead, "read · main.go", "package main")
+	read := resourceTool(view, protocol.ToolCategoryRead, "read · main.go", "package main")
 	first := view.addGroupedTool("run-1", read)
-	search := resourceTool(view, conversation.ToolSearch, "search · TODO", "main.go:8")
+	search := resourceTool(view, protocol.ToolCategorySearch, "search · TODO", "main.go:8")
 	second := view.addGroupedTool("run-1", search)
 	if first != second || view.content.Len() != 1 || len(first.block.tools) != 2 {
 		t.Fatalf("adjacent group = first %p second %p blocks %d children %d", first, second, view.content.Len(), len(first.block.tools))
@@ -57,9 +58,9 @@ func TestAdjacentResourceToolsShareOneDisclosureWithoutLosingChildDetails(t *tes
 
 func TestAConversationBlockClosesToolAdjacency(t *testing.T) {
 	view := testTranscriptView(t)
-	first := view.addGroupedTool("run-1", resourceTool(view, conversation.ToolRead, "read · a.go", "a"))
+	first := view.addGroupedTool("run-1", resourceTool(view, protocol.ToolCategoryRead, "read · a.go", "a"))
 	view.Append(newUserMessageBlock(view.theme, selfSpeaker, "semantic boundary"))
-	second := view.addGroupedTool("run-1", resourceTool(view, conversation.ToolWeb, "web · docs", "docs"))
+	second := view.addGroupedTool("run-1", resourceTool(view, protocol.ToolCategoryWeb, "web · docs", "docs"))
 	if first == second || view.content.Len() != 3 {
 		t.Fatalf("boundary did not split groups: first %p second %p blocks %d", first, second, view.content.Len())
 	}
@@ -70,7 +71,7 @@ func TestAConversationBlockClosesToolAdjacency(t *testing.T) {
 
 func TestLiveGroupedToolFinishesOnlyAfterItsAdjacencyWindowCloses(t *testing.T) {
 	view := testTranscriptView(t)
-	call := conversation.ToolCall{Kind: conversation.ToolRead, Path: "live.go", Status: conversation.ToolRunning}
+	call := conversation.ToolCall{Kind: protocol.ToolCategoryRead, Path: "live.go", Status: conversation.ToolRunning}
 	tool := newToolBlock(toolGroupPresentation(view), conversation.Block{ID: "read", RunID: "run-1", Kind: conversation.BlockTool, Tool: &call})
 	group := view.addGroupedTool("run-1", tool)
 	tracked := trackedTool{id: group.id, block: tool}
@@ -97,14 +98,14 @@ func TestLiveGroupedToolFinishesOnlyAfterItsAdjacencyWindowCloses(t *testing.T) 
 	}
 }
 
-func resourceTool(view *transcriptView, kind conversation.ToolKind, summary, output string) *toolBlock {
+func resourceTool(view *transcriptView, kind protocol.ToolCategory, summary, output string) *toolBlock {
 	call := conversation.ToolCall{Kind: kind, Summary: summary, Output: output, Status: conversation.ToolOK}
 	switch kind {
-	case conversation.ToolRead:
+	case protocol.ToolCategoryRead:
 		call.Path = strings.TrimPrefix(summary, "read · ")
-	case conversation.ToolSearch:
+	case protocol.ToolCategorySearch:
 		call.Query = strings.TrimPrefix(summary, "search · ")
-	case conversation.ToolWeb:
+	case protocol.ToolCategoryWeb:
 		call.URL = strings.TrimPrefix(summary, "web · ")
 	}
 	return newToolBlock(toolGroupPresentation(view), conversation.Block{Kind: conversation.BlockTool, Tool: &call})

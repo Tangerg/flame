@@ -230,10 +230,10 @@ func (m *StreamingMethod[P, C, R]) StreamWithMetadata(ctx context.Context, bindi
 			var value StreamValue[C, R]
 			if raw.Chunk != nil {
 				value.Chunk = new(C)
-				err = json.Unmarshal(*raw.Chunk, value.Chunk, json.RejectUnknownMembers(true))
+				err = json.Unmarshal(*raw.Chunk, value.Chunk, json.RejectUnknownMembers(true), jsonvalue.Numbers())
 			} else {
 				value.Result = new(R)
-				err = json.Unmarshal(*raw.Result, value.Result, json.RejectUnknownMembers(true))
+				err = json.Unmarshal(*raw.Result, value.Result, json.RejectUnknownMembers(true), jsonvalue.Numbers())
 			}
 			if err != nil {
 				yield(StreamValue[C, R]{}, errors.Join(ErrStreamUnconfirmed, err))

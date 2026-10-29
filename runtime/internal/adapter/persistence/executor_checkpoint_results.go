@@ -5,12 +5,13 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/qimu/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
 // References and payload advance in the same checkpoint transaction. A waiting
 // checkpoint is a durable owner even before result publication binds an Item.
-func (s *ExecutorCheckpointStore) replaceToolResultReferences(ctx context.Context, checkpoint executorCheckpointRecord) error {
+func (s *ExecutorCheckpointStore) replaceToolResultReferences(ctx context.Context, checkpoint runs.ExecutorCheckpoint) error {
 	if _, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM executor_checkpoint_tool_results WHERE root_member_id = ?`, checkpoint.RootMemberID); err != nil {
 		return err
 	}

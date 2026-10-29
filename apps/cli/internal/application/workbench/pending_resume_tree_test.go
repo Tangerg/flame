@@ -16,7 +16,7 @@ func TestPendingResumePreservesMixedMemberReviewsAcrossRestart(t *testing.T) {
 	}
 	approval := conversation.Approval{
 		RunID: "run_child_a", ItemID: "item_approval", Title: "Approve child",
-		Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Command: "printf approved", Status: conversation.ToolRunning},
+		Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Command: "printf approved", Status: conversation.ToolRunning},
 	}
 	question := conversation.Question{
 		RunID: "run_child_b", ItemID: "item_question", Title: "Choose child strategy",

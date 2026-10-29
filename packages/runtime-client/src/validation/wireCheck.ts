@@ -1,21 +1,7 @@
-// The Runtime-owned vocabulary a generated wire check is written in.
-//
-// Protocol §11.3 asks for a terminal runtime validator on the client side, and
-// TypeScript's types are erased long before a frame arrives — so without this,
-// nothing about an inbound result or event is checked at all. The rules themselves
-// are NOT here: they are compiled out of the published schema into
-// `wire.validate.generated.ts`. This file says what each JSON Schema keyword MEANS,
-// once, exactly as `required` / `positive` / `oneOf` stay hand-written beside the
-// generated Go validators.
-//
-// Two deliberate silences, both of them agreement with the published schema rather
-// than an opinion of this file:
-//
-//   - Shared result shapes accept unknown properties so optional result growth
-//     does not break readers. Request validation closes typed objects because
-//     Runtime rejects unknown request members. Maps and opaque values stay open.
-//   - `format` and `contentEncoding` are annotations, not assertions — the default
-//     reading of both keywords. A malformed timestamp is caught where it is decoded.
+// TypeScript types disappear at the transport boundary. Generated checks consume
+// Runtime schemas; this module owns only the JSON Schema keyword semantics.
+// Request objects are closed by the Runtime contract; result objects may carry
+// fields unknown to this projection, and format/contentEncoding stay annotations.
 
 import {
   ExactNumber,
@@ -27,21 +13,12 @@ import {
   type JSONNumber,
 } from "@qimu/sdk/json";
 
-/** One rule a value broke, and where. */
 export interface WireViolation {
-  /**
-   * Rooted at the validated type's name, so a report reads
-   * `RunEvent.event.outcome.type`. An array element carries its index.
-   */
   path: string;
   detail: string;
 }
 
-/**
- * A check appends every violation it finds to `out` rather than returning at the
- * first — a caller fixing a frame wants the whole list, and `oneOf` needs to count
- * how badly each variant missed.
- */
+// Union diagnostics need all violations to identify the nearest admissible branch.
 export type WireCheck = ((
   value: unknown,
   path: string,
@@ -59,14 +36,8 @@ export function projectWireValue(check: WireCheck, value: unknown): unknown {
   return check.project ? check.project(value) : value;
 }
 
-/**
- * The distinct facts a check found, in the order it found them.
- *
- * A schema may state one constraint twice — a request that narrows a field of a
- * shared shape restates the shape's own bound in an `allOf` branch, and both
- * branches then report the same miss. That is one fact about the frame, not two,
- * and a caller rendering the list would otherwise show it twice.
- */
+// An allOf refinement can repeat its shared shape's bound; reporting that miss
+// twice would present one invalid field as two independent failures.
 export function distinctViolations(violations: readonly WireViolation[]): WireViolation[] {
   if (violations.length < 2) return [...violations];
   const seen = new Set<string>();
@@ -80,7 +51,6 @@ export function distinctViolations(violations: readonly WireViolation[]): WireVi
   return out;
 }
 
-/** `type: "object"` together with the `properties` / `required` it carries. */
 export function object(
   properties: Record<string, WireCheck>,
   required: readonly string[],
@@ -104,12 +74,8 @@ export function object(
   );
 }
 
-/**
- * `properties` and `required` WITHOUT asserting the value is an object — the
- * faithful reading of both keywords, and the one a union branch or a presence rule
- * needs: the enclosing definition already asserted the type, and a branch that
- * re-asserted it would report the same wrong type once per variant.
- */
+// Union refinements inherit the enclosing type check. Reasserting it here would
+// report the same wrong type once for every branch.
 export function fields(
   properties: Record<string, WireCheck>,
   required: readonly string[],
@@ -134,10 +100,6 @@ export function fields(
   );
 }
 
-/**
- * The boolean schema `false` on a property: this variant may not carry the field.
- * `fields` only reaches a property that is present, so this fires exactly then.
- */
 export function absent(): WireCheck {
   return (_value, path, out) => out.push({ path, detail: "must not be present here" });
 }
@@ -164,14 +126,7 @@ export function numeric(): WireCheck {
   }, projectNumber);
 }
 
-/**
- * `minLength`, which constrains a string and says nothing about anything else.
- *
- * It is its own check rather than an argument to `text` because the schema states
- * it BOTH ways: beside a type keyword on a request's own field, and alone in the
- * allOf branch that constrains a field of a shared shape. One rule reads as one
- * call either way.
- */
+// A schema may refine an inherited string without restating its type.
 export function minLength(least: number): WireCheck {
   return (value, path, out) => {
     if (typeof value === "string" && Array.from(value).length < least) {
@@ -180,7 +135,6 @@ export function minLength(least: number): WireCheck {
   };
 }
 
-/** `maxLength`, counted as Unicode code points as required by JSON Schema. */
 export function maxLength(most: number): WireCheck {
   return (value, path, out) => {
     if (typeof value === "string" && Array.from(value).length > most) {
@@ -189,7 +143,6 @@ export function maxLength(most: number): WireCheck {
   };
 }
 
-/** `pattern`, applied only to strings as JSON Schema specifies. */
 export function pattern(expression: string): WireCheck {
   // JSON Schema patterns use ECMAScript's Unicode-aware regular-expression
   // dialect. The explicit flag makes property escapes such as \p{C} mean the
@@ -202,7 +155,6 @@ export function pattern(expression: string): WireCheck {
   };
 }
 
-/** `minimum`, which constrains a number and says nothing about anything else. */
 export function minimum(least: number | string): WireCheck {
   const bound: JSONNumber = typeof least === "string" ? new ExactNumber(least) : least;
   return (value, path, out) => {
@@ -212,7 +164,6 @@ export function minimum(least: number | string): WireCheck {
   };
 }
 
-/** `exclusiveMinimum`, applied only to numbers as JSON Schema specifies. */
 export function exclusiveMinimum(boundary: number | string): WireCheck {
   const bound: JSONNumber = typeof boundary === "string" ? new ExactNumber(boundary) : boundary;
   return (value, path, out) => {
@@ -222,7 +173,6 @@ export function exclusiveMinimum(boundary: number | string): WireCheck {
   };
 }
 
-/** `maximum`, which constrains a number and says nothing about anything else. */
 export function maximum(most: number | string): WireCheck {
   const bound: JSONNumber = typeof most === "string" ? new ExactNumber(most) : most;
   return (value, path, out) => {
@@ -232,7 +182,6 @@ export function maximum(most: number | string): WireCheck {
   };
 }
 
-/** `minItems`, which constrains an array's length and says nothing about its elements. */
 export function minItems(least: number): WireCheck {
   return (value, path, out) => {
     if (Array.isArray(value) && value.length < least) {
@@ -241,7 +190,6 @@ export function minItems(least: number): WireCheck {
   };
 }
 
-/** `maxItems`, which constrains an array's length and says nothing about its elements. */
 export function maxItems(most: number): WireCheck {
   return (value, path, out) => {
     if (Array.isArray(value) && value.length > most) {
@@ -250,7 +198,6 @@ export function maxItems(most: number): WireCheck {
   };
 }
 
-/** `minProperties`, which constrains an object's own-property count. */
 export function minProperties(least: number): WireCheck {
   return (value, path, out) => {
     if (isObject(value) && Object.keys(value).length < least) {
@@ -260,11 +207,8 @@ export function minProperties(least: number): WireCheck {
   };
 }
 
-/**
- * `uniqueItems`. Elements are compared by their JSON text, which is what the
- * keyword means: two array entries are the same item when they are the same value,
- * not when they are the same object.
- */
+// JSON value equality ignores object order and number spelling, unlike the
+// exact byte identity retained for command recovery.
 export function uniqueItems(): WireCheck {
   return (value, path, out) => {
     if (!Array.isArray(value)) return;
@@ -285,17 +229,12 @@ export function flag(): WireCheck {
   };
 }
 
-/** `const`: the discriminator a union branch pins. */
 export function literal(expected: string): WireCheck {
   return (value, path, out) => {
     if (value !== expected) out.push({ path, detail: `expected ${JSON.stringify(expected)}` });
   };
 }
 
-/**
- * `enum`. The value set implies the string type keyword it sits beside, so a
- * non-string is reported once — as "not one of these" rather than twice.
- */
 export function enumOf(values: readonly string[]): WireCheck {
   return (value, path, out) => {
     if (typeof value !== "string" || !values.includes(value)) {
@@ -307,12 +246,10 @@ export function enumOf(values: readonly string[]): WireCheck {
   };
 }
 
-/** The empty schema: an opaque passthrough carries any JSON value, by design. */
 export function anything(): WireCheck {
   return () => {};
 }
 
-/** A nullable result: JSON null or the declared non-null shape. */
 export function nullable(value: WireCheck): WireCheck {
   return withProjection(
     (candidate, path, out, boundary) => {
@@ -335,7 +272,6 @@ export function array(items: WireCheck): WireCheck {
   );
 }
 
-/** `additionalProperties`: a map keyed by any string. */
 export function record(values: WireCheck): WireCheck {
   return withProjection(
     (value, path, out, boundary) => {
@@ -356,7 +292,6 @@ export function record(values: WireCheck): WireCheck {
   );
 }
 
-/** `propertyNames`: validate every own key of an object as a string value. */
 export function propertyNames(check: WireCheck): WireCheck {
   return (value, path, out, boundary) => {
     if (!isObject(value)) return;
@@ -365,12 +300,7 @@ export function propertyNames(check: WireCheck): WireCheck {
   };
 }
 
-/**
- * `$ref`. The target is resolved on each call, not captured: the definitions
- * reference one another (an item carries content blocks, a block carries items),
- * and a value captured at construction time would be undefined for whichever half
- * of a cycle is built second.
- */
+// Recursive definitions cannot capture a check before the referenced type exists.
 export function ref(resolve: () => WireCheck): WireCheck {
   return withProjection(
     (value, path, out, boundary) => resolve()(value, path, out, boundary),
@@ -378,14 +308,8 @@ export function ref(resolve: () => WireCheck): WireCheck {
   );
 }
 
-/**
- * `oneOf`: exactly one variant applies.
- *
- * The verdict is exact. The report is a heuristic — when nothing matched, the
- * nearest miss is appended, so a caller reads "outcome.result is required" instead
- * of only "no variant matched". Matching MORE than one variant is a defect in the
- * union's exclusivity rather than in the frame, and says so.
- */
+// A nearest-branch diagnostic explains rejected content without changing the
+// exact requirement that only one branch may admit it.
 export function oneOf(branches: readonly WireCheck[]): WireCheck {
   return withProjection(
     (value, path, out, boundary) => {
@@ -428,7 +352,6 @@ export function oneOf(branches: readonly WireCheck[]): WireCheck {
   );
 }
 
-/** `anyOf`: one or more alternatives may apply. */
 export function anyOf(branches: readonly WireCheck[]): WireCheck {
   return withProjection(
     (value, path, out, boundary) => {
@@ -464,7 +387,6 @@ export function allOf(members: readonly WireCheck[]): WireCheck {
   );
 }
 
-/** `if` / `then`: a cross-field presence rule. */
 export function ifThen(condition: WireCheck, consequence: WireCheck): WireCheck {
   return withProjection(
     (value, path, out, boundary) => {

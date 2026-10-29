@@ -20,6 +20,7 @@ type Limits struct {
 	MaxDescriptorNodes int `json:"maxDescriptorNodes"`
 	MaxValueNodes      int `json:"maxValueNodes"`
 	MaxMethods         int `json:"maxMethods"`
+	MaxTokenBytes      int `json:"maxTokenBytes"`
 	MaxReferences      int `json:"maxReferences"`
 	MaxReferenceDepth  int `json:"maxReferenceDepth"`
 	MaxReferenceWork   int `json:"maxReferenceWork"`
@@ -40,6 +41,7 @@ func ProfileLimits() Limits {
 		MaxDescriptorNodes: 16_384,
 		MaxValueNodes:      32 << 20,
 		MaxMethods:         256,
+		MaxTokenBytes:      256,
 		MaxReferences:      1_024,
 		MaxReferenceDepth:  64,
 		MaxReferenceWork:   16_384,

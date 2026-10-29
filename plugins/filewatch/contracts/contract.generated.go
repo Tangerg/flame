@@ -3,40 +3,51 @@ package contracts
 
 import "time"
 
-type Method_flame_2efilewatch_2fconfigure_2ev1Input Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL3dpcmU_5fConfigureInput
+type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fCaptureKind string
 
-type Method_flame_2efilewatch_2fconfigure_2ev1Output Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fSnapshot
+const (
+	Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fCaptureKindChanged Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fCaptureKind = "changed"
+	Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fCaptureKindResync  Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fCaptureKind = "resync"
+)
 
-type Method_flame_2efilewatch_2fevent_2ev1Input Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL3dpcmU_5fEventInput
+type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fHeaderKind string
 
-type Method_flame_2efilewatch_2fevent_2ev1Output Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fEvent
+const (
+	Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fHeaderKindChanged Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fHeaderKind = "changed"
+	Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fHeaderKindResync  Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fHeaderKind = "resync"
+)
 
-type Method_flame_2efilewatch_2fevents_2ev1Input struct {
+type StatusV1OutputPhase string
+
+const (
+	StatusV1OutputPhaseInactive StatusV1OutputPhase = "inactive"
+	StatusV1OutputPhaseDisabled StatusV1OutputPhase = "disabled"
+	StatusV1OutputPhaseWatching StatusV1OutputPhase = "watching"
+	StatusV1OutputPhaseFailed   StatusV1OutputPhase = "failed"
+)
+
+type EventsV1Input struct {
 }
 
-type Method_flame_2efilewatch_2fevents_2ev1Output []Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fHeader
+type EventsV1Output []Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fHeader
 
-type Method_flame_2efilewatch_2fget_2ev1Input struct {
+type GetV1Input struct {
 }
 
-type Method_flame_2efilewatch_2fget_2ev1Output Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fSnapshot
-
-type Method_flame_2efilewatch_2fstatus_2ev1Input struct {
+type StatusV1Input struct {
 }
-
-type Method_flame_2efilewatch_2fstatus_2ev1Output Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fStatus
 
 type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fCapture struct {
-	Generation string                                                                                             `json:"generation"`
-	Invocation Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvcG9ydGFibGU_5fInvocation                       `json:"invocation"`
-	Kind       string                                                                                             `json:"kind"`
-	ObservedAt time.Time                                                                                          `json:"observedAt"`
-	Paths      []string                                                                                           `json:"paths"`
-	Revision   int64                                                                                              `json:"revision"`
-	RunId      string                                                                                             `json:"runId"`
-	Sequence   uint64                                                                                             `json:"sequence"`
-	SessionId  string                                                                                             `json:"sessionId"`
-	Trigger    Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fDraft `json:"trigger"`
+	Generation string                                                                                                   `json:"generation"`
+	Invocation Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvcG9ydGFibGU_5fInvocation                             `json:"invocation"`
+	Kind       Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fCaptureKind `json:"kind"`
+	ObservedAt time.Time                                                                                                `json:"observedAt"`
+	Paths      []string                                                                                                 `json:"paths"`
+	Revision   int64                                                                                                    `json:"revision"`
+	RunId      string                                                                                                   `json:"runId"`
+	Sequence   uint64                                                                                                   `json:"sequence"`
+	SessionId  string                                                                                                   `json:"sessionId"`
+	Trigger    Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fDraft       `json:"trigger"`
 }
 
 type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fDraft struct {
@@ -49,40 +60,40 @@ type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGV
 	Workspace       string   `json:"workspace"`
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fEvent struct {
+type EventV1Output struct {
 	Accepted bool                                                                                                 `json:"accepted"`
 	Capture  Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fCapture `json:"capture"`
 }
 
 type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fHeader struct {
-	Accepted   bool      `json:"accepted"`
-	Id         string    `json:"id"`
-	Kind       string    `json:"kind"`
-	ObservedAt time.Time `json:"observedAt"`
-	PathCount  int64     `json:"pathCount"`
-	Revision   int64     `json:"revision"`
-	RunId      string    `json:"runId"`
-	SessionId  string    `json:"sessionId"`
+	Accepted   bool                                                                                                    `json:"accepted"`
+	Id         string                                                                                                  `json:"id"`
+	Kind       Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fHeaderKind `json:"kind"`
+	ObservedAt time.Time                                                                                               `json:"observedAt"`
+	PathCount  int64                                                                                                   `json:"pathCount"`
+	Revision   int64                                                                                                   `json:"revision"`
+	RunId      string                                                                                                  `json:"runId"`
+	SessionId  string                                                                                                  `json:"sessionId"`
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fSnapshot struct {
+type ConfigureV1Output struct {
 	Revision uint64                                                                                              `json:"revision"`
 	Trigger  *Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fDraft `json:"trigger,omitzero"`
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fStatus struct {
-	DispatchError *string `json:"dispatchError,omitzero"`
-	Error         *string `json:"error,omitzero"`
-	Phase         string  `json:"phase"`
-	Revision      int64   `json:"revision"`
+type StatusV1Output struct {
+	DispatchError *string             `json:"dispatchError,omitzero"`
+	Error         *string             `json:"error,omitzero"`
+	Phase         StatusV1OutputPhase `json:"phase"`
+	Revision      int64               `json:"revision"`
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL3dpcmU_5fConfigureInput struct {
+type ConfigureV1Input struct {
 	ExpectedRevision uint64                                                                                              `json:"expectedRevision"`
 	Trigger          *Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fDraft `json:"trigger,omitzero"`
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL3dpcmU_5fEventInput struct {
+type EventV1Input struct {
 	Id string `json:"id"`
 }
 
@@ -102,25 +113,12 @@ const CapabilityJSON = "{\"protocol\":\"io.github.tangerg.qimu/portable/1\",\"re
 
 const ConfigureV1Method = "flame.filewatch/configure.v1"
 
-type ConfigureV1Input Method_flame_2efilewatch_2fconfigure_2ev1Input
-type ConfigureV1Output Method_flame_2efilewatch_2fconfigure_2ev1Output
-
 const EventV1Method = "flame.filewatch/event.v1"
-
-type EventV1Input Method_flame_2efilewatch_2fevent_2ev1Input
-type EventV1Output Method_flame_2efilewatch_2fevent_2ev1Output
 
 const EventsV1Method = "flame.filewatch/events.v1"
 
-type EventsV1Input Method_flame_2efilewatch_2fevents_2ev1Input
-type EventsV1Output Method_flame_2efilewatch_2fevents_2ev1Output
-
 const GetV1Method = "flame.filewatch/get.v1"
 
-type GetV1Input Method_flame_2efilewatch_2fget_2ev1Input
-type GetV1Output Method_flame_2efilewatch_2fget_2ev1Output
+type GetV1Output ConfigureV1Output
 
 const StatusV1Method = "flame.filewatch/status.v1"
-
-type StatusV1Input Method_flame_2efilewatch_2fstatus_2ev1Input
-type StatusV1Output Method_flame_2efilewatch_2fstatus_2ev1Output

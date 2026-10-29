@@ -7,6 +7,7 @@ import { test } from "node:test";
 import { pathToFileURL } from "node:url";
 import { rolldown } from "rolldown";
 import { buildComponent } from "./build.mjs";
+import profile from "./runtime-profile.generated.json" with { type: "json" };
 
 test("published components preserve the Host's Runtime error and exact JSON instances", async () => {
   const directory = await mkdtemp(join(tmpdir(), "flame-component-runtime-"));
@@ -110,10 +111,10 @@ test("bundles private static and dynamic modules into an executable browser grap
     });
     assert.deepEqual([...emitted.exports].sort(), ["lazy", "value"]);
     const graph = JSON.parse(
-      await readFile(join(output, "modules.generated.json"), "utf8"),
+      await readFile(join(output, profile.moduleGraph.filename), "utf8"),
     );
     assert.deepEqual(graph, emitted.graph);
-    assert.equal(graph.schemaVersion, 1);
+    assert.equal(graph.schemaVersion, profile.moduleGraph.schemaVersion);
     assert.equal(graph.entry, "component.js");
     assert.deepEqual(graph.sharedSpecifiers, []);
     assert.equal(graph.modules.length, 2);

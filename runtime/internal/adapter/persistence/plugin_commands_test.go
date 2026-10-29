@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -131,12 +130,12 @@ func TestPluginCommandHistoryNeverEvictsEarlierIdentityOrCapsLifetimeUsage(t *te
 	t.Cleanup(func() { _ = db.Close() })
 	provider := plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1")}
 	_, err = db.ExecContext(t.Context(), `WITH RECURSIVE slots(n) AS (VALUES(1) UNION ALL SELECT n+1 FROM slots WHERE n<?)
-INSERT INTO plugin_commands(id,method,business_input_json,contract_json,installation_id,release_digest,server_name,contribution_id,export_name,invocation_json,activation_json,phase) SELECT 'command-'||n,'review.update',?,?,?,?,'backend','original-provider','operations',json_object('id','command-'||n,'origin','human','target',json_object('scope','installation','reference',?)),?,'dispatched' FROM slots`, 4096, testsupport.JSONInput(t, `{"revision":2}`).String(), testsupport.CommandContract(t, "review.update", "installation").String(), provider.InstallationID.String(), provider.Digest.String(), provider.InstallationID.String(), testsupport.ServerActivation("activation", "backend", provider).Binding.String())
+INSERT INTO plugin_commands(id,method,business_input_json,contract_json,installation_id,release_digest,server_name,contribution_id,export_name,invocation_json,activation_json,phase) SELECT 'command-'||n,'review.update',?,?,?,?,'backend','original-provider','operations',json_object('id','command-'||n,'origin','human','target',json_object('scope','installation','reference',?)),?,'dispatched' FROM slots`, 4096, testsupport.JSONInput(t, `{"revision":2}`).String(), testsupport.CommandContract(t, "review.update", extension.ScopeInstallation).String(), provider.InstallationID.String(), provider.Digest.String(), provider.InstallationID.String(), testsupport.ServerActivation("activation", "backend", provider).Binding.String())
 	if err != nil {
 		t.Fatal(err)
 	}
 	store := newPluginCommandStore(db, nil)
-	command, err := plugin.NewCommand(plugin.CommandBinding{ID: "new", Invocation: portable.Invocation{ID: "new", Origin: extension.Human, Target: portable.Target{Scope: "installation", Reference: provider.InstallationID.String()}}, Method: "review.update", Input: testsupport.JSONInput(t, `{"revision":2}`), Contract: testsupport.CommandContract(t, "review.update", "installation"), Provider: provider, Activation: testsupport.ServerActivation("activation", "backend", provider), Server: testsupport.ServerName("backend"), Contribution: "original-provider", Export: "operations"})
+	command, err := plugin.NewCommand(plugin.CommandBinding{ID: "new", Invocation: portable.Invocation{ID: "new", Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: provider.InstallationID.String()}}, Method: "review.update", Input: testsupport.JSONInput(t, `{"revision":2}`), Contract: testsupport.CommandContract(t, "review.update", extension.ScopeInstallation), Provider: provider, Activation: testsupport.ServerActivation("activation", "backend", provider), Server: testsupport.ServerName("backend"), Contribution: "original-provider", Export: "operations"})
 	if err != nil {
 		t.Fatal(err)
 	}

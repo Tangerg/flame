@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { RpcError, RpcTransportError } from "./errors";
+import { RpcError, RpcProtocolError, RpcTransportError } from "./errors";
 import { createMutationPromise, type MutationPromise } from "./mutation";
 import { parseJSON, stringifyJSON } from "@qimu/sdk/json";
 import {
@@ -138,6 +138,7 @@ describe("mutation journal", () => {
       "idempotencyKey",
       "method",
       "namespace",
+      "requestMeta",
       "salt",
       "steerItemId",
     ]);
@@ -222,6 +223,50 @@ describe("mutation journal", () => {
     expect(replay.idempotencyKey).toBe(pending.idempotencyKey);
     expect(storage.keys()).toHaveLength(1);
   });
+
+  it("keeps an older retry handle from borrowing another active recovery claim", async () => {
+    const storage = new MemoryStorage();
+    const current = journal(storage);
+    const params = { sessionId: "ses_1", input: [{ type: "text", text: "original" }] };
+    const original = current.reserve("runs.start", params);
+    const unknown = new RpcProtocolError("acknowledgement", [{ path: "$", detail: "lost" }]);
+    const execute = vi.fn().mockRejectedValue(unknown);
+    const first = deliver(original, execute);
+    await expect(first).rejects.toBe(unknown);
+    const recovered = current.pendingCommands()[0]!.reserve();
+    const result = Promise.withResolvers<string>();
+    const recovery = deliver(recovered, () => result.promise);
+
+    await expect(first.retry()).rejects.toBeInstanceOf(MutationJournalOwnershipError);
+    expect(execute).toHaveBeenCalledOnce();
+    expect(current.pendingCommands()).toEqual([]);
+    expect(recovered.lookupNamespace()).toBe(scope().namespace);
+    result.resolve("accepted");
+    await expect(recovery).resolves.toBe("accepted");
+    expect(storage.keys()).toEqual([]);
+  });
+
+  it.each([400, 401, 403, 404, 409, 429])(
+    "preserves original command evidence when a transport replay receives HTTP %d",
+    async (status) => {
+      const storage = new MemoryStorage();
+      const current = journal(storage);
+      const params = { sessionId: "ses_1", input: [{ type: "text", text: "original" }] };
+      const reservation = current.reserve("runs.start", params);
+      const failure = new RpcTransportError("HTTP boundary refused the replay", status);
+      const execute = vi
+        .fn()
+        .mockRejectedValueOnce(new RpcTransportError("original response lost"))
+        .mockRejectedValueOnce(failure);
+      const original = deliver(reservation, execute);
+      await expect(original).rejects.toBe(failure);
+      expect(execute).toHaveBeenCalledTimes(2);
+      expect(current.pendingCommands()[0]!.idempotencyKey).toBe(original.idempotencyKey);
+      execute.mockResolvedValueOnce("accepted");
+      await expect(original.retry()).resolves.toBe("accepted");
+      expect(storage.keys()).toEqual([]);
+    },
+  );
 
   it("retains an ambiguous result and reuses its exact identity on explicit retry", async () => {
     const storage = new MemoryStorage();

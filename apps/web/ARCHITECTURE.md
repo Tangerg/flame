@@ -36,6 +36,11 @@ There is no graphical-client copy of the protocol implementation and no global
 client locator. `app/` constructs dependencies and passes them outward through
 plugin factories; consumers never import the composition root.
 
+`foundation/protocolValues.generated.ts` publishes the closed scalar vocabularies
+shared by client read models. Runtime contract generation derives this limited
+projection from the same Go enum and schema owners as the wire binding, without
+bringing Runtime records or operation handles into the client models.
+
 The pure `@qimu/sdk/json` entry supplies exact JSON data handling.
 Its checked dependency closure excludes Runtime calls and wire records; those
 remain translated at adapters rather than entering context application models.
@@ -473,7 +478,7 @@ image-save dependencies rather than a host bag.
 The Go module under `apps/desktop` remains a small Wails host. Its actual
 `DesktopHost` receiver methods own the method list; `internal/bridge` owns the pure
 wire DTOs and their existing refinements. `cmd/bridgegen` reads the actual method AST,
-uses the public SDK schema/TypeScript renderer, and generates
+uses Qimu’s public schema/TypeScript renderer, and generates
 `platform/desktop.generated.ts` plus `foundation/notificationAuthorization.ts`.
 The host adapter validates those generated wire contracts. Native
 `bridge_contract_test.go` compares the actual binding surface; pure generator drift
@@ -490,6 +495,10 @@ refactor does not introduce another visual system.
 
 Observability installs through an explicit product plugin. It owns telemetry
 setup and cleanup, while shared telemetry mechanisms stay in `lib/observability`.
+A telemetry session owns its SDK providers, global registrations and instruments.
+Replacement waits for the previous session to close; an older teardown cannot
+unbind a later provider. Metric identity includes instrumentation scope and
+structured attributes, preserving distinct values without delimiter collisions.
 Transport and execution instrumentation remain at their respective boundaries;
 no per-token UI instrumentation is needed to express these lifetimes.
 
@@ -579,3 +588,12 @@ UI atoms own both control semantics and presentation. They import Base UI at
 the actual control owner, or implement native semantics when needed. Tree's
 keyboard, ARIA and styling live together in `ui/atoms/tree.tsx`. The design-system
 gate keeps native interaction and Base UI inside the design system.
+
+## Client persistence encoding
+
+Plugin storage keys encode the plugin namespace as a JSON tuple before appending
+its opaque key. Hierarchical plugin names cannot alias another plugin's keys or
+expand its `clear` authority. The former dotted namespace encoding is not read,
+migrated or deleted. Current mutation records also require original request
+metadata captured at admission; retry and recovery keep that original value.
+Upgrading this development client is a breaking storage change.

@@ -1,3 +1,4 @@
+import { cloneJSON, parseJSON, stringifyJSON } from "@qimu/sdk/json";
 import { mkdtempSync, readFileSync, writeFileSync, rmSync, readdirSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -25,9 +26,9 @@ function diskStorage(directory: string): MutationJournalStorage {
   return {
     get: (key) =>
       readdirSync(directory).includes(encodeURIComponent(key))
-        ? JSON.parse(readFileSync(path(key), "utf8"))
+        ? parseJSON(readFileSync(path(key), "utf8"))
         : undefined,
-    set: (key, value) => writeFileSync(path(key), JSON.stringify(value)),
+    set: (key, value) => writeFileSync(path(key), stringifyJSON(value)),
     remove: (key) => unlinkSync(path(key)),
     keys: () => readdirSync(directory).map(decodeURIComponent),
   };
@@ -53,7 +54,9 @@ const resume: ResumeRunRequest = {
       response: {
         type: "approval",
         decision: "approve",
-        editedArgs: { path: "/original", nested: { value: 1 } },
+        editedArgs: parseJSON(
+          '{"path":"/original","nested":{"value":1.0,"wide":9007199254740993}}',
+        ) as Record<string, unknown>,
         reason: "reviewed reason",
         remember: { scope: "project" },
       },
@@ -109,7 +112,7 @@ function fixture() {
 }
 
 async function leaveUncertain(f: ReturnType<typeof fixture>, operation: "start" | "resume") {
-  const original = structuredClone(operation === "start" ? start : resume);
+  const original = cloneJSON(operation === "start" ? start : resume);
   const first = f.open(
     vi.fn(async (method: string, _params: unknown, options?: RpcCallOptions) => {
       if (method === "runs.getAcceptance") return { type: "notRecorded" };
@@ -273,10 +276,9 @@ describe("original opening evidence integrity", () => {
         delete entry.command;
       } else if (damage === "changed request")
         (entry.command as { params: ResumeRunRequest }).params.responses = [];
-      else if (damage === "missing metadata")
-        delete (entry.command as { requestMeta?: RequestMeta | null }).requestMeta;
+      else if (damage === "missing metadata") delete entry.requestMeta;
       else
-        (entry.command as { requestMeta: RequestMeta }).requestMeta = {
+        entry.requestMeta = {
           clientInfo: { name: "changed", version: "1" },
         };
       cold.storage.set(key, entry);

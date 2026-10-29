@@ -92,7 +92,7 @@ func TestCallbackInstalledStreamKeepsCapturedOwnerAndRefusesRetiredOrMissingCont
 	if chunks != 1 || results != 1 || target.calls.Load() != 1 {
 		t.Fatalf("callback chunks=%d results=%d calls=%d", chunks, results, target.calls.Load())
 	}
-	invoked, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "original", Origin: extension.Model, Parent: "parent", Target: portable.Target{Scope: "call", Reference: "original"}})
+	invoked, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "original", Origin: extension.Model, Parent: "parent", Target: portable.Target{Scope: extension.ScopeCall, Reference: "original"}})
 	if err != nil {
 		t.Fatal(err)
 	}

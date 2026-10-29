@@ -63,7 +63,7 @@ func TestRetiringSessionStateClearsOnlyTheRetiredSession(t *testing.T) {
 		}
 		approval := conversation.Approval{
 			RunID: sessionID + "_run", ItemID: sessionID + "_approval", Title: "Approve",
-			Tool: &conversation.ToolCall{Kind: conversation.ToolRead, Name: "read", Path: "README.md", Status: conversation.ToolRunning},
+			Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryRead, Name: "read", Path: "README.md", Status: conversation.ToolRunning},
 		}
 		if stagePendingResumeErr := store.StagePendingResume(sessionID, workbench.PendingResume{
 			Replay: authoring.UnprotectedGuard(),

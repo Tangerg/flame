@@ -99,7 +99,7 @@ func New(draft Draft) (Session, error) {
 	snapshot := Snapshot{
 		ID: draft.ID, Title: strings.TrimSpace(draft.Title),
 		Workspace: draft.Workspace, Selection: draft.Selection,
-		CreatedAt: createdAt, UpdatedAt: createdAt, Revision: 1,
+		CreatedAt: createdAt, UpdatedAt: createdAt, Revision: exactint.First().Value(),
 	}
 	return Restore(snapshot)
 }
@@ -202,7 +202,7 @@ func (s Session) Fork(id, title string, createdAt time.Time) (Session, error) {
 	return Restore(Snapshot{
 		ID: id, Title: title, Workspace: s.workspace, ParentID: s.id,
 		CreatedAt: createdAt, UpdatedAt: createdAt,
-		Selection: s.selection, Isolated: s.isolated, Revision: 1,
+		Selection: s.selection, Isolated: s.isolated, Revision: exactint.First().Value(),
 	})
 }
 

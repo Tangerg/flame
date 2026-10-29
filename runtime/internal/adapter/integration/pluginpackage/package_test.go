@@ -195,10 +195,10 @@ func writePackage(t *testing.T, files map[string]string) string {
 			if !plugin.ValidResourcePath(component.Entry) || component.Export == "" {
 				continue
 			}
-			graphPath := path.Join(path.Dir(component.Entry), "modules.generated.json")
+			graphPath := path.Join(path.Dir(component.Entry), moduleGraphFilename)
 			graph := graphs[graphPath]
 			if graph == nil {
-				graph = &moduleGraph{SchemaVersion: 1, Entry: path.Base(component.Entry), Modules: []moduleEntry{{Path: path.Base(component.Entry), Imports: []string{}, DynamicImports: []string{}, Exports: []string{}}}, SharedSpecifiers: []string{}}
+				graph = &moduleGraph{SchemaVersion: moduleGraphSchemaVersion, Entry: path.Base(component.Entry), Modules: []moduleEntry{{Path: path.Base(component.Entry), Imports: []string{}, DynamicImports: []string{}, Exports: []string{}}}, SharedSpecifiers: []string{}}
 				graphs[graphPath] = graph
 			}
 			graph.Modules[0].Exports = append(graph.Modules[0].Exports, component.Export)

@@ -228,7 +228,7 @@ func TestTypedAndToolEntrancesShareTheBusinessReceipt(t *testing.T) {
 		t.Fatal(err)
 	}
 	for index := receipts; index < 4096; index++ {
-		result, err := store.update(t.Context(), fmt.Sprintf("history-%d", index), missing, admitted)
+		result, err := store.update(t.Context(), fmt.Sprintf("history-%d", index), admitted)
 		if err != nil || result.Type != reviews.NotFound {
 			t.Fatalf("retain receipt history: %+v, %v", result, err)
 		}

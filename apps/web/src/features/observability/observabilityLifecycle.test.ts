@@ -21,7 +21,7 @@ describe("startObservability", () => {
     const dispose = startObservability(() => Promise.resolve(teardown), vi.fn());
     await tick();
 
-    dispose();
+    await dispose();
 
     expect(teardown).toHaveBeenCalledOnce();
   });
@@ -37,4 +37,24 @@ describe("startObservability", () => {
 
     expect(teardown).toHaveBeenCalledOnce();
   });
+});
+
+it("observes rejected teardown and joins repeated disposal", async () => {
+  const failure = new Error("flush failed");
+  const teardown = vi.fn(() => Promise.reject(failure));
+  const reportFailure = vi.fn();
+  const dispose = startObservability(() => Promise.resolve(teardown), reportFailure);
+  await tick();
+  await Promise.all([dispose(), dispose()]);
+  expect(teardown).toHaveBeenCalledOnce();
+  expect(reportFailure).toHaveBeenCalledExactlyOnceWith(failure);
+});
+
+it("reports a synchronous initializer failure", async () => {
+  const failure = new Error("setup refused");
+  const reportFailure = vi.fn();
+  await startObservability(() => {
+    throw failure;
+  }, reportFailure)();
+  expect(reportFailure).toHaveBeenCalledExactlyOnceWith(failure);
 });

@@ -350,7 +350,7 @@ func TestToolStreamingPreservesAReadersScrollPosition(t *testing.T) {
 	view := testTranscriptView(t)
 	root := headless.NewRoot(view)
 	surface := grid.NewSurface(40, 5)
-	running := conversation.ToolCall{Kind: conversation.ToolShell, Command: "long command", Status: conversation.ToolRunning}
+	running := conversation.ToolCall{Kind: protocol.ToolCategoryShell, Command: "long command", Status: conversation.ToolRunning}
 	tool := beginTestTool(view, running)
 	tool.SetExpanded(true)
 	initial := strings.Repeat("tool output long enough to occupy rows\n", 20)
@@ -381,7 +381,7 @@ func TestToolStreamingPreservesAReadersScrollPosition(t *testing.T) {
 func TestLiveToolStreamsInPlaceAndCompletesFromAuthoritativeOutput(t *testing.T) {
 	view := testTranscriptView(t)
 	running := conversation.ToolCall{
-		Kind: conversation.ToolShell, Command: "go test ./...", Status: conversation.ToolRunning,
+		Kind: protocol.ToolCategoryShell, Command: "go test ./...", Status: conversation.ToolRunning,
 		ArgumentsJSON: []byte(`{"phase":"provisional-arguments"}`),
 	}
 	tool := beginTestTool(view, running)
@@ -395,7 +395,7 @@ func TestLiveToolStreamsInPlaceAndCompletesFromAuthoritativeOutput(t *testing.T)
 		t.Fatalf("live tool rows = %q", got)
 	}
 	completed := conversation.ToolCall{
-		Kind: conversation.ToolShell, Command: "go test ./...", Status: conversation.ToolOK, Output: "final\n",
+		Kind: protocol.ToolCategoryShell, Command: "go test ./...", Status: conversation.ToolOK, Output: "final\n",
 		ArgumentsJSON: []byte(`{"phase":"authoritative-arguments"}`),
 		ResultJSON:    []byte(`{"resultMarker":"authoritative-result"}`),
 	}
@@ -416,12 +416,12 @@ func TestLiveToolStreamsInPlaceAndCompletesFromAuthoritativeOutput(t *testing.T)
 func TestObservationFailureRetainsRuntimeToolStatus(t *testing.T) {
 	for _, test := range []struct {
 		name   string
-		kind   conversation.ToolKind
+		kind   protocol.ToolCategory
 		sealed bool
 	}{
-		{name: "single", kind: conversation.ToolShell},
-		{name: "active group", kind: conversation.ToolRead},
-		{name: "sealed group", kind: conversation.ToolRead, sealed: true},
+		{name: "single", kind: protocol.ToolCategoryShell},
+		{name: "active group", kind: protocol.ToolCategoryRead},
+		{name: "sealed group", kind: protocol.ToolCategoryRead, sealed: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			view := testTranscriptView(t)
@@ -433,7 +433,7 @@ func TestObservationFailureRetainsRuntimeToolStatus(t *testing.T) {
 			if err := view.Apply(conversation.BlockDelta{BlockID: "tool", Text: "observed output"}); err != nil {
 				t.Fatal(err)
 			}
-			if test.kind == conversation.ToolRead {
+			if test.kind == protocol.ToolCategoryRead {
 				if err := view.Apply(conversation.BlockStarted{Block: conversation.Block{ID: "tool-2", Kind: conversation.BlockTool, Tool: &call}}); err != nil {
 					t.Fatal(err)
 				}
@@ -463,7 +463,7 @@ func TestDetailFreeCompletedToolIsNotAnnouncedExpandable(t *testing.T) {
 	view := testTranscriptView(t)
 	var selection transcriptSelection
 	view.OnSelection(func(next transcriptSelection) { selection = next })
-	call := conversation.ToolCall{Kind: conversation.ToolShell, Command: "true", Status: conversation.ToolOK}
+	call := conversation.ToolCall{Kind: protocol.ToolCategoryShell, Command: "true", Status: conversation.ToolOK}
 	block := newToolBlock(blockPresentation{Theme: view.theme, Glyphs: view.glyphs, Look: view.look, Syntax: view.syntax}, conversation.Block{
 		ID: "tool", Kind: conversation.BlockTool, Tool: &call,
 	})
@@ -482,7 +482,7 @@ func TestCompletingASelectedToolWithoutDetailsRemovesItsExpansionAction(t *testi
 	view := testTranscriptView(t)
 	var selection transcriptSelection
 	view.OnSelection(func(next transcriptSelection) { selection = next })
-	running := conversation.ToolCall{Kind: conversation.ToolShell, Command: "true", Status: conversation.ToolRunning}
+	running := conversation.ToolCall{Kind: protocol.ToolCategoryShell, Command: "true", Status: conversation.ToolRunning}
 	tool := beginTestTool(view, running)
 	view.Focus(true)
 	tool.SetExpanded(true)
@@ -490,7 +490,7 @@ func TestCompletingASelectedToolWithoutDetailsRemovesItsExpansionAction(t *testi
 	if !selection.Expandable || !selection.Expanded {
 		t.Fatalf("running selection = %+v", selection)
 	}
-	completed := conversation.ToolCall{Kind: conversation.ToolShell, Command: "true", Status: conversation.ToolOK}
+	completed := conversation.ToolCall{Kind: protocol.ToolCategoryShell, Command: "true", Status: conversation.ToolOK}
 	if err := view.Apply(conversation.BlockCompleted{Block: conversation.Block{ID: "tool", Kind: conversation.BlockTool, Tool: &completed}}); err != nil {
 		t.Fatal(err)
 	}
@@ -501,7 +501,7 @@ func TestCompletingASelectedToolWithoutDetailsRemovesItsExpansionAction(t *testi
 
 func TestCompletingASelectedToolThatLosesDetailsKeepsItsHeaderVisible(t *testing.T) {
 	view := testTranscriptView(t)
-	tool := beginTestTool(view, conversation.ToolCall{Kind: conversation.ToolShell, Command: "long command", Status: conversation.ToolRunning})
+	tool := beginTestTool(view, conversation.ToolCall{Kind: protocol.ToolCategoryShell, Command: "long command", Status: conversation.ToolRunning})
 	toolID := view.toolViews[0].id
 	tool.SetExpanded(true)
 	if err := view.Apply(conversation.BlockDelta{BlockID: "tool", Text: strings.Repeat("partial output\n", 20)}); err != nil {
@@ -509,7 +509,7 @@ func TestCompletingASelectedToolThatLosesDetailsKeepsItsHeaderVisible(t *testing
 	}
 	viewport := scrollBelowSelectedToolHeader(t, view, toolID)
 
-	completed := conversation.ToolCall{Kind: conversation.ToolShell, Command: "long command", Status: conversation.ToolOK}
+	completed := conversation.ToolCall{Kind: protocol.ToolCategoryShell, Command: "long command", Status: conversation.ToolOK}
 	if err := view.Apply(conversation.BlockCompleted{Block: conversation.Block{ID: "tool", Kind: conversation.BlockTool, Tool: &completed}}); err != nil {
 		t.Fatal(err)
 	}
@@ -522,13 +522,13 @@ func TestCompletingASelectedToolThatLosesDetailsKeepsItsHeaderVisible(t *testing
 
 func TestCancelingASelectedEmptyToolKeepsItsHeaderVisible(t *testing.T) {
 	view := testTranscriptView(t)
-	tool := beginTestTool(view, conversation.ToolCall{Kind: conversation.ToolShell, Command: "pending command", Status: conversation.ToolRunning})
+	tool := beginTestTool(view, conversation.ToolCall{Kind: protocol.ToolCategoryShell, Command: "pending command", Status: conversation.ToolRunning})
 	toolID := view.toolViews[0].id
 	tool.SetExpanded(true)
 	view.content.Changed(toolID)
 	viewport := scrollBelowSelectedToolHeader(t, view, toolID)
 
-	canceled := conversation.ToolCall{Kind: conversation.ToolShell, Command: "pending command", Status: conversation.ToolCanceled}
+	canceled := conversation.ToolCall{Kind: protocol.ToolCategoryShell, Command: "pending command", Status: conversation.ToolCanceled}
 	if err := view.Apply(conversation.BlockCompleted{Block: conversation.Block{
 		ID: "tool", Kind: conversation.BlockTool, Status: conversation.BlockStatusIncomplete, Tool: &canceled,
 	}}); err != nil {
@@ -549,13 +549,13 @@ func TestCanceledRunRendersRuntimeClosedLiveBlocks(t *testing.T) {
 	if err := view.Apply(conversation.BlockDelta{BlockID: "answer", Text: "partial answer"}); err != nil {
 		t.Fatal(err)
 	}
-	tool := beginTestTool(view, conversation.ToolCall{Kind: conversation.ToolShell, Command: "long command", Status: conversation.ToolRunning})
+	tool := beginTestTool(view, conversation.ToolCall{Kind: protocol.ToolCategoryShell, Command: "long command", Status: conversation.ToolRunning})
 	tool.SetExpanded(true)
 	if err := view.Apply(conversation.BlockDelta{BlockID: "tool", Text: "partial tool output\n"}); err != nil {
 		t.Fatal(err)
 	}
 	canceled := conversation.ToolCall{
-		Kind: conversation.ToolShell, Command: "long command", Status: conversation.ToolCanceled, Output: "partial tool output\n",
+		Kind: protocol.ToolCategoryShell, Command: "long command", Status: conversation.ToolCanceled, Output: "partial tool output\n",
 	}
 	for _, block := range []conversation.Block{
 		{ID: "answer", Kind: conversation.BlockAssistant, Status: conversation.BlockStatusIncomplete, Text: "partial answer"},
@@ -894,7 +894,7 @@ func TestCompletingALiveToolPreservesItsExpandedState(t *testing.T) {
 	view.tools[conversation.BlockKey("", "tool")] = liveTool{ids: []headless.BlockID{tracked.id}, blocks: []trackedTool{tracked}}
 	tool.ToggleExpanded()
 
-	completed := conversation.ToolCall{Kind: conversation.ToolShell, Command: "echo tool", Output: "complete", Status: conversation.ToolOK}
+	completed := conversation.ToolCall{Kind: protocol.ToolCategoryShell, Command: "echo tool", Output: "complete", Status: conversation.ToolOK}
 	if !view.completeLiveTool(conversation.Block{ID: "tool", Kind: conversation.BlockTool, Tool: &completed}) {
 		t.Fatal("live tool was not completed in place")
 	}
@@ -1075,7 +1075,7 @@ func (s selectedToolViewport) requireHeaderVisible(t *testing.T) {
 }
 
 func appendTestTool(view *transcriptView, id, output string) *toolBlock {
-	call := conversation.ToolCall{Kind: conversation.ToolShell, Command: "echo " + id, Output: output, Status: conversation.ToolOK}
+	call := conversation.ToolCall{Kind: protocol.ToolCategoryShell, Command: "echo " + id, Output: output, Status: conversation.ToolOK}
 	block := newToolBlock(blockPresentation{Theme: view.theme, Glyphs: view.glyphs, Look: view.look, Syntax: view.syntax}, conversation.Block{
 		ID: id, Kind: conversation.BlockTool, Tool: &call,
 	})

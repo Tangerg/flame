@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -23,7 +24,7 @@ func TestPreparedCommandRetiresAcrossRestartWithoutLosingItsIdentity(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	provider := plugins.ContributionBinding{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1"), ServerName: testsupport.ServerName("backend"), Contract: testsupport.CommandContract(t, "review.update", "installation"), ContributionID: "owner", Export: "operations"}
+	provider := plugins.ContributionBinding{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1"), ServerName: testsupport.ServerName("backend"), Contract: testsupport.CommandContract(t, "review.update", extension.ScopeInstallation), ContributionID: "owner", Export: "operations"}
 	resolve := func(context.Context) (plugins.CommandAdmission, error) { return commandAdmission(provider), nil }
 	input := testsupport.JSONInput(t, `{"revision":2}`)
 	if _, err := commands.Bind(t.Context(), "command", "review.update", input, resolve, capturedCommand); err != nil {
@@ -94,7 +95,7 @@ func TestCommandDispatchAndRetirementHaveExactlyOneWinner(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			provider := plugins.ContributionBinding{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1"), ServerName: testsupport.ServerName("backend"), Contract: testsupport.CommandContract(t, "review.update", "installation"), ContributionID: "owner", Export: "operations"}
+			provider := plugins.ContributionBinding{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1"), ServerName: testsupport.ServerName("backend"), Contract: testsupport.CommandContract(t, "review.update", extension.ScopeInstallation), ContributionID: "owner", Export: "operations"}
 			if _, err := commands.Bind(t.Context(), "command", "review.update", testsupport.JSONInput(t, `{}`), func(context.Context) (plugins.CommandAdmission, error) { return commandAdmission(provider), nil }, capturedCommand); err != nil {
 				t.Fatal(err)
 			}

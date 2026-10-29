@@ -60,7 +60,7 @@ func TestExecutionTreeWriterFencingSurvivesRestart(t *testing.T) {
 	if err := store.saveExecutionTreeRecord(canceled, next.Writer, next.Digest, stale); err == nil {
 		t.Fatal("canceled write succeeded")
 	}
-	if err := store.deleteSessionCheckpoints(ctx, first.SessionID); err != nil {
+	if err := store.DeleteSessionCheckpoints(ctx, first.SessionID); err != nil {
 		t.Fatal(err)
 	}
 	if _, found, err := store.loadExecutionTreeRecord(ctx, first.SessionID, first.RootID); err != nil || found {
@@ -141,7 +141,7 @@ func TestExecutionTreeEffectIdentitySurvivesActivation(t *testing.T) {
 	if err := store.saveExecutionTreeRecord(ctx, activated.Writer, activated.Digest, replay); !errors.Is(err, errExecutionTreeConflict) {
 		t.Fatalf("effect re-admitted by new writer: %v", err)
 	}
-	if err := store.deleteSessionCheckpoints(ctx, head.SessionID); err != nil {
+	if err := store.DeleteSessionCheckpoints(ctx, head.SessionID); err != nil {
 		t.Fatal(err)
 	}
 	var count int

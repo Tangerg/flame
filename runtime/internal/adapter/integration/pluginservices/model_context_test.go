@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
@@ -24,7 +23,7 @@ func TestInstalledModelContextPreservesOriginalQueryAndRejectsInvalidOrWithdrawn
 	for _, mode := range []string{"valid", "invalid", "failure"} {
 		t.Run(mode, func(t *testing.T) {
 			composition, bindings, store := installedContextFixture(t, mode)
-			ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "original-context", Origin: extension.Automatic, Parent: "original-effect", Target: portable.Target{Scope: "call", Reference: "original-context"}})
+			ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "original-context", Origin: extension.Automatic, Parent: "original-effect", Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-context"}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -55,7 +54,7 @@ func TestInstalledModelContextPreservesOriginalQueryAndRejectsInvalidOrWithdrawn
 
 func TestInstalledModelContextComposesInCapturedOrder(t *testing.T) {
 	composition, bindings, _ := installedContextFixture(t, "ordered")
-	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "original-context", Origin: extension.Automatic, Target: portable.Target{Scope: "call", Reference: "original-context"}})
+	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "original-context", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-context"}})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -184,12 +184,9 @@ func (i *interactionSession) interactionCheckpointPayload(
 	i.accounting.mu.Lock()
 	i.state.mu.Lock()
 	usageByProcess, contexts := i.accounting.checkpointLocked()
-	pendingSteers := make(map[agent.SignalID]pendingInteractionSteer, len(i.state.pendingSteers))
+	pendingSteers := make(map[agent.SignalID]runs.PreparedSteer, len(i.state.pendingSteers))
 	for signalID, pending := range i.state.pendingSteers {
-		pendingSteers[signalID] = pendingInteractionSteer{
-			itemID:  pending.itemID,
-			content: transcript.CloneContent(pending.content),
-		}
+		pendingSteers[signalID] = pending.Clone()
 	}
 	var pendingContinuation *pendingInteractionContinuation
 	if pending := i.state.pendingContinuation; pending != nil {

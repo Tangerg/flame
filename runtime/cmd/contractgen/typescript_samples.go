@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
+
+	"github.com/Tangerg/flame/qimu/contractgen"
 )
 
 // The canonical sample index, projected for the side that cannot read Go.
@@ -36,7 +37,7 @@ export interface WireSample {
 export const WIRE_SAMPLES: readonly WireSample[] = [
 `)
 	for _, sample := range contractSamples() {
-		fmt.Fprintf(&out, "  { file: %s, shape: %s },\n", strconv.Quote(sample.File), strconv.Quote(defName(sample.Type)))
+		fmt.Fprintf(&out, "  { file: %s, shape: %s },\n", contractgen.TypeScriptStringLiteral(sample.File), contractgen.TypeScriptStringLiteral(defName(sample.Type)))
 	}
 	out.WriteString("];\n")
 	return out.String()

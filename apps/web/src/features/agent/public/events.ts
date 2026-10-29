@@ -1,3 +1,5 @@
+import { type ItemStatus as AgentItemStatus } from "@/foundation/protocolValues.generated";
+export type { AgentItemStatus };
 import { type ApprovalDecision } from "@/features/agent/domain/hitl";
 import {
   type AgentProblem,
@@ -13,8 +15,6 @@ import {
 } from "@/features/agent/public/sessionView";
 export type AgentMessagePart =
   { type: "text"; text: string } | { type: "image"; data: string; mime: string };
-
-export type AgentItemStatus = "running" | "completed" | "incomplete";
 
 interface AgentQuestionOption {
   label: string;

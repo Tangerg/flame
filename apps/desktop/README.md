@@ -22,10 +22,16 @@ Root staging builds shared icons/UI, installed components and `apps/web/dist`,
 then replaces ignored `assets/web`. The host embeds only that package-local
 staging directory. Edit Web sources in `apps/web`; do not edit staged assets.
 The native Taskfile delegates this shared graph to the root and owns platform
-compilation, icon packaging, bundle metadata and signing steps. Packaging inputs
-under `build/` are source. Deliveries are under `out/desktop/<platform>`.
+compilation, icon packaging and signing steps. Product name and slug belong to
+`apps/web/src/app/product.ts`; native identifier, version, description and copyright
+belong to `build/product.mjs`. `tooling/presentation.mjs` projects these owners and
+the Web theme canvas into the native Go constants, Task metadata and both plists.
+Run `make generate` after changing an owner; generated files are not packaging
+configuration. Deliveries are under `out/desktop/darwin-<architecture>`.
 
 Each macOS distribution targets one explicit `amd64` or `arm64` architecture.
+`ARCH` selects `TARGET_ARCH` once; binary output, bundle output, Go compilation and
+companions consume that same target, including cross-architecture builds.
 The bundle's `Contents/MacOS` contains the Desktop executable, a separately
 started `flame-runtime`, `qimu-runner`, the verified Node companion and first-party
 plugin packages built for that same target. Packaging uses the existing pinned
@@ -39,7 +45,7 @@ endpoint and credential handoff.
 The actual exported `DesktopHost` receiver methods own the native IPC entrance.
 `internal/bridge` owns its pure wire types, typed notification constants and value
 refinements. `cmd/bridgegen` reads those declarations without compiling Wails,
-reuses the public Go SDK's Schema/TypeScript renderer and emits the Web method,
+reuses Qimu's public Schema/TypeScript renderer and emits the Web method,
 type and Zod projection. Unsupported types or schema keywords fail generation.
 The notification permission projection is generated in Web foundation so Browser
 does not depend on the native platform adapter.

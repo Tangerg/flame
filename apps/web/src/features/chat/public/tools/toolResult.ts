@@ -1,63 +1,105 @@
 import { type RecordedFileChange } from "@flame/component-sdk";
+import { CHANGE_STATUSES } from "@/foundation/protocolValues.generated";
+import { isJSONNumber, parseJSON, projectNumber } from "@qimu/sdk/json";
 
 export interface CommandResult {
   exitCode?: number;
-  output: string;
+  output?: string;
 }
 
 export interface PatchResult {
   changes: RecordedFileChange[];
 }
 
-interface SearchHit {
-  lineNumber?: number;
-  path: string;
-  snippet?: string;
-}
-
 export interface SearchResult {
-  hits: SearchHit[];
-}
-
-interface WebSearchHit {
-  faviconUrl?: string;
-  snippet?: string;
-  title?: string;
-  url: string;
+  hits: unknown[];
 }
 
 export interface WebSearchResult {
-  results: WebSearchHit[];
+  results: unknown[];
 }
 
-function parsed<T>(value: unknown): Partial<T> | undefined {
+function readToolResultObject(value: unknown): Record<string, unknown> | undefined {
   if (typeof value === "string") {
     if (!value) return undefined;
     try {
-      return parsed<T>(JSON.parse(value));
+      return readToolResultObject(parseJSON(value));
     } catch {
       return undefined;
     }
   }
   return typeof value === "object" && value !== null && !Array.isArray(value)
-    ? (value as Partial<T>)
+    ? (value as Record<string, unknown>)
     : undefined;
 }
 
-export function searchToolResult(raw: unknown): Partial<SearchResult> | undefined {
-  return parsed<SearchResult>(raw);
+function readRepresentableNumber(value: unknown): number | undefined {
+  if (!isJSONNumber(value)) return undefined;
+  try {
+    return projectNumber(value);
+  } catch {
+    return undefined;
+  }
 }
 
-export function patchToolResult(raw: unknown): Partial<PatchResult> | undefined {
-  return parsed<PatchResult>(raw);
+function readRecordedFileChange(value: unknown): RecordedFileChange | undefined {
+  const change = readToolResultObject(value);
+  if (!change || typeof change.path !== "string") return undefined;
+  const status = CHANGE_STATUSES.find((candidate) => candidate === change.status);
+  const added = readRepresentableNumber(change.added);
+  const removed = readRepresentableNumber(change.removed);
+  if (
+    status === undefined ||
+    added === undefined ||
+    removed === undefined ||
+    !Number.isSafeInteger(added) ||
+    added < 0 ||
+    !Number.isSafeInteger(removed) ||
+    removed < 0 ||
+    (change.from !== undefined && typeof change.from !== "string")
+  )
+    return undefined;
+  return {
+    path: change.path,
+    status,
+    added,
+    removed,
+    ...(typeof change.from === "string" ? { from: change.from } : {}),
+  };
 }
 
-export function commandToolResult(raw: unknown): Partial<CommandResult> | undefined {
-  return parsed<CommandResult>(raw);
+export function searchToolResult(raw: unknown): SearchResult | undefined {
+  const value = readToolResultObject(raw);
+  return Array.isArray(value?.hits) ? { hits: value.hits } : undefined;
 }
 
-export function webSearchToolResult(raw: unknown): Partial<WebSearchResult> | undefined {
-  return parsed<WebSearchResult>(raw);
+export function patchToolResult(raw: unknown): PatchResult | undefined {
+  const value = readToolResultObject(raw);
+  if (!Array.isArray(value?.changes)) return undefined;
+  const changes: RecordedFileChange[] = [];
+  for (const entry of value.changes) {
+    const change = readRecordedFileChange(entry);
+    if (!change) return undefined;
+    changes.push(change);
+  }
+  return { changes };
+}
+
+export function commandToolResult(raw: unknown): CommandResult | undefined {
+  const value = readToolResultObject(raw);
+  if (!value) return undefined;
+  const output = typeof value.output === "string" ? value.output : undefined;
+  const exitCode = readRepresentableNumber(value.exitCode);
+  if (output === undefined && exitCode === undefined) return undefined;
+  return {
+    ...(output === undefined ? {} : { output }),
+    ...(exitCode === undefined ? {} : { exitCode }),
+  };
+}
+
+export function webSearchToolResult(raw: unknown): WebSearchResult | undefined {
+  const value = readToolResultObject(raw);
+  return Array.isArray(value?.results) ? { results: value.results } : undefined;
 }
 
 export const TOOL_RESULT_SHAPES = ["search", "patch", "command", "webSearch"] as const;
@@ -65,10 +107,10 @@ export const TOOL_RESULT_SHAPES = ["search", "patch", "command", "webSearch"] as
 export type ToolResultShape = (typeof TOOL_RESULT_SHAPES)[number];
 
 export function toolResultShape(raw: unknown): ToolResultShape | undefined {
-  if (Array.isArray(searchToolResult(raw)?.hits)) return "search";
-  if (Array.isArray(patchToolResult(raw)?.changes)) return "patch";
-  if (Array.isArray(webSearchToolResult(raw)?.results)) return "webSearch";
-  const command = commandToolResult(raw);
-  if (typeof command?.output === "string") return "command";
+  const value = readToolResultObject(raw);
+  if (Array.isArray(value?.hits)) return "search";
+  if (Array.isArray(value?.changes)) return "patch";
+  if (Array.isArray(value?.results)) return "webSearch";
+  if (typeof value?.output === "string") return "command";
   return undefined;
 }

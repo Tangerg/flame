@@ -6,7 +6,7 @@ import {
   useRef,
   type KeyboardEvent,
 } from "react";
-import type { IconSize } from "./font-scale";
+import type { IconSize } from "./icon-scale";
 import { clsx as cn } from "clsx";
 import {
   color,

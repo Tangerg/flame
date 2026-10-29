@@ -50,6 +50,9 @@ func GrantMemoryModels(ctx context.Context, callbacks *qimumcp.Callbacks, sessio
 	if callbacks == nil {
 		return qimumcp.CallbackRef{}, nil, errors.New("memory: callback owner is required")
 	}
+	if model != nil && lo.IsNil(model) || embed != nil && lo.IsNil(embed) {
+		return qimumcp.CallbackRef{}, nil, errors.New("memory: model and embedding collaborators cannot be typed nil")
+	}
 	admission := &memoryModelAdmission{invocations: make(map[string]memoryModelInvocation)}
 	completion, err := pluginsdk.NewModelCallback(func(ctx context.Context, command qimumcp.Command[chat.Request]) (*chat.Response, error) {
 		request := command.Input

@@ -370,6 +370,9 @@ func (q *Queue) RequeueDispatch(sessionID string, previous, replacement CommandI
 	if err := replacement.Validate(); err != nil {
 		return fmt.Errorf("prompt queue: replacement command: %w", err)
 	}
+	if previous == replacement {
+		return errors.New("prompt queue: a rejected dispatch requires a new command identity")
+	}
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	id, reserved := q.dispatching[sessionID]

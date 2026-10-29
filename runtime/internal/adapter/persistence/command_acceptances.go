@@ -66,8 +66,8 @@ func (s *commandAcceptanceStore) Save(ctx context.Context, acceptance runs.Comma
 	_, err := sqlite.Connection(ctx, s.db).ExecContext(ctx,
 		`INSERT INTO idempotency_records(
 			key, kind, fingerprint, operation, session_id, run_id, segment_id, user_item_id, material_run_id, steer_input
-		) VALUES (?, 'run_acceptance', ?, ?, ?, ?, ?, ?, ?, ?)`,
-		acceptance.Key, acceptance.Fingerprint, string(acceptance.Operation),
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		acceptance.Key, idempotencyRunAcceptance, acceptance.Fingerprint, string(acceptance.Operation),
 		acceptance.SessionID, acceptance.RunID, acceptance.SegmentID, acceptance.UserItemID,
 		acceptance.RunID, steerInput,
 	)
@@ -96,8 +96,8 @@ func (s *commandAcceptanceStore) Lookup(ctx context.Context, key string) (runs.C
 
 func (s *commandAcceptanceStore) SessionSteerInputs(ctx context.Context, sessionID string) ([]runs.CommandAcceptance, error) {
 	rows, err := sqlite.Connection(ctx, s.db).QueryContext(ctx, `SELECT key FROM idempotency_records
-		WHERE kind='run_acceptance' AND operation='steer' AND session_id=? AND material_run_id IS NOT NULL
-		ORDER BY key`, sessionID)
+		WHERE kind=? AND operation=? AND session_id=? AND material_run_id IS NOT NULL
+		ORDER BY key`, idempotencyRunAcceptance, runs.CommandSteerInput, sessionID)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +149,7 @@ func (s *commandAcceptanceStore) lookup(ctx context.Context, key string) (runs.C
 	if err != nil {
 		return runs.CommandAcceptanceRecord{}, fmt.Errorf("sqlite: look up command acceptance: %w", err)
 	}
-	if kind != "run_acceptance" {
+	if kind != idempotencyRunAcceptance {
 		return runs.CommandAcceptanceRecord{OtherOperation: true}, nil
 	}
 	acceptance := runs.CommandAcceptance{

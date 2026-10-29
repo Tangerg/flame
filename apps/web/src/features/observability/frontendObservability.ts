@@ -7,12 +7,11 @@ export async function initFrontendObservability(
   },
   config: ConfigService,
 ): Promise<ObservabilityTeardown> {
-  const { setupObservability, teardownObservability } = await import("@/lib/observability/setup");
+  const { setupObservability } = await import("@/lib/observability/setup");
   const configuredEndpoint = config.get("otel.endpoint");
-  await setupObservability({
+  return setupObservability({
     serviceName: service.name,
     serviceVersion: service.version,
     otlpEndpoint: typeof configuredEndpoint === "string" ? configuredEndpoint : undefined,
   });
-  return teardownObservability;
 }

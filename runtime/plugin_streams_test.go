@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -38,16 +39,16 @@ func (c *typedStreamCaller) StreamPlugin(_ context.Context, request protocol.Cal
 
 func bindTypedStream(t *testing.T, caller runtimeclient.PluginStreamer) *runtimeclient.PluginStreamingMethod[map[string]string, uint64, bool] {
 	t.Helper()
-	method, err := qimumcp.NewStreamingMethod[map[string]string, uint64, bool](qimumcp.MethodConfig{Name: "records.stream", Kind: portable.Mutation, Target: "installation", Description: "Stream original records."})
+	method, err := qimumcp.NewStreamingMethod[map[string]string, uint64, bool](qimumcp.MethodConfig{Name: "records.stream", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Stream original records."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "records", Composition: portable.Selection, Scope: "installation"}, method.Descriptor())
+	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "records", Composition: portable.Selection, Scope: extension.ScopeInstallation}, method.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}
 	id := testsupport.InstallationID(t).String()
-	bound, err := runtimeclient.BindPluginStreamingMethod(caller, runtimeclient.PluginBinding{InstallationID: id, Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: contract, Target: portable.Target{Scope: "installation", Reference: id}}, method)
+	bound, err := runtimeclient.BindPluginStreamingMethod(caller, runtimeclient.PluginBinding{InstallationID: id, Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: contract, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: id}}, method)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,11 +118,11 @@ func TestTypedInstalledStreamDistinguishesRefusalFromInvalidOrMissingFinal(t *te
 }
 
 func TestTypedInstalledQueryStreamRetainsWideValuesWithoutCommandUncertainty(t *testing.T) {
-	method, err := qimumcp.NewStreamingMethod[struct{}, uint64, bool](qimumcp.MethodConfig{Name: "records.query", Kind: portable.Query, Target: "installation", Description: "Read streamed records."})
+	method, err := qimumcp.NewStreamingMethod[struct{}, uint64, bool](qimumcp.MethodConfig{Name: "records.query", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read streamed records."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "records", Composition: portable.Selection, Scope: "installation"}, method.Descriptor())
+	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "records", Composition: portable.Selection, Scope: extension.ScopeInstallation}, method.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +132,7 @@ func TestTypedInstalledQueryStreamRetainsWideValuesWithoutCommandUncertainty(t *
 			caller.events = append(caller.events, protocol.PluginStreamEvent{Kind: protocol.PluginStreamResult, Value: `true`})
 		}
 		id := testsupport.InstallationID(t).String()
-		bound, err := runtimeclient.BindPluginStreamingMethod(caller, runtimeclient.PluginBinding{InstallationID: id, Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: contract, Target: portable.Target{Scope: "installation", Reference: id}}, method)
+		bound, err := runtimeclient.BindPluginStreamingMethod(caller, runtimeclient.PluginBinding{InstallationID: id, Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: contract, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: id}}, method)
 		if err != nil {
 			t.Fatal(err)
 		}

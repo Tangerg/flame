@@ -3,69 +3,47 @@ package testsupport
 
 import "time"
 
-type SchedulesMethod_flame_2eschedules_2fcreate_2ev1Input SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_5fDraft
-
-type SchedulesMethod_flame_2eschedules_2fcreate_2ev1Output SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_5fSnapshot
-
-type SchedulesMethod_flame_2eschedules_2fdelete_2ev1Input SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fItemInput
-
-type SchedulesMethod_flame_2eschedules_2fdelete_2ev1Output SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fAck
-
-type SchedulesMethod_flame_2eschedules_2flist_2ev1Input SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fListInput
-
-type SchedulesMethod_flame_2eschedules_2flist_2ev1Output SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fPage
-
-type SchedulesMethod_flame_2eschedules_2frunNow_2ev1Input SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fItemInput
-
-type SchedulesMethod_flame_2eschedules_2frunNow_2ev1Output SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2FwcGxpY2F0aW9u_5fRunReference
-
-type SchedulesMethod_flame_2eschedules_2fupdate_2ev1Input SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fUpdateInput
-
-type SchedulesMethod_flame_2eschedules_2fupdate_2ev1Output SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_5fSnapshot
-
-type SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fSelection SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fselectionJSON_5bstring_5d
-
 type SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fselectionJSON_5bstring_5d struct {
 	Model           string `json:"model"`
 	Provider        string `json:"provider"`
 	ReasoningEffort string `json:"reasoningEffort"`
 }
 
-type SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2FwcGxpY2F0aW9u_5fRunReference struct {
+type SchedulesRunNowV1Output struct {
 	RunID     string `json:"RunID"`
 	SessionID string `json:"SessionID"`
 }
 
-type SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_5fDraft struct {
-	CWD            string                                                                                          `json:"CWD"`
-	Cron           string                                                                                          `json:"Cron"`
-	Enabled        bool                                                                                            `json:"Enabled"`
-	Instructions   string                                                                                          `json:"Instructions"`
-	ModelSelection SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fSelection `json:"ModelSelection"`
-	Title          string                                                                                          `json:"Title"`
+type SchedulesCreateV1Input struct {
+	CWD            string                                                                                                          `json:"CWD"`
+	Cron           string                                                                                                          `json:"Cron"`
+	Enabled        bool                                                                                                            `json:"Enabled"`
+	Instructions   string                                                                                                          `json:"Instructions"`
+	ModelSelection SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fselectionJSON_5bstring_5d `json:"ModelSelection"`
+	Title          string                                                                                                          `json:"Title"`
 }
 
-type SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_5fSnapshot struct {
-	CWD            string                                                                                          `json:"CWD"`
-	CreatedAt      time.Time                                                                                       `json:"CreatedAt"`
-	Cron           string                                                                                          `json:"Cron"`
-	ID             string                                                                                          `json:"ID"`
-	Instructions   string                                                                                          `json:"Instructions"`
-	LastRunAt      time.Time                                                                                       `json:"LastRunAt"`
-	ModelSelection SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fSelection `json:"ModelSelection"`
-	NextRunAt      time.Time                                                                                       `json:"NextRunAt"`
-	Revision       uint64                                                                                          `json:"Revision"`
-	Title          string                                                                                          `json:"Title"`
+type SchedulesCreateV1Output struct {
+	CWD            string                                                                                                          `json:"CWD"`
+	CreatedAt      time.Time                                                                                                       `json:"CreatedAt"`
+	Cron           string                                                                                                          `json:"Cron"`
+	ID             string                                                                                                          `json:"ID"`
+	Instructions   string                                                                                                          `json:"Instructions"`
+	LastRunAt      time.Time                                                                                                       `json:"LastRunAt"`
+	ModelSelection SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fselectionJSON_5bstring_5d `json:"ModelSelection"`
+	NextRunAt      time.Time                                                                                                       `json:"NextRunAt"`
+	Revision       uint64                                                                                                          `json:"Revision"`
+	Title          string                                                                                                          `json:"Title"`
 }
 
-type SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fAck struct {
+type SchedulesDeleteV1Output struct {
 }
 
-type SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fItemInput struct {
+type SchedulesDeleteV1Input struct {
 	ID string `json:"ID"`
 }
 
-type SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fListInput struct {
+type SchedulesListV1Input struct {
 	Cursor string `json:"Cursor"`
 	Limit  *int64 `json:"Limit,omitzero"`
 }
@@ -76,12 +54,12 @@ type SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bG
 	ReasoningEffort *string `json:"ReasoningEffort,omitzero"`
 }
 
-type SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fPage struct {
-	NextCursor string                                                                                                           `json:"NextCursor"`
-	Rows       []SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_5fSnapshot `json:"Rows"`
+type SchedulesListV1Output struct {
+	NextCursor string                    `json:"NextCursor"`
+	Rows       []SchedulesCreateV1Output `json:"Rows"`
 }
 
-type SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fUpdateInput struct {
+type SchedulesUpdateV1Input struct {
 	CWD              *string                                                                                                       `json:"CWD,omitzero"`
 	Cron             *string                                                                                                       `json:"Cron,omitzero"`
 	Enabled          *bool                                                                                                         `json:"Enabled,omitzero"`
@@ -96,25 +74,14 @@ const SchedulesCapabilityJSON = "{\"protocol\":\"io.github.tangerg.qimu/portable
 
 const SchedulesCreateV1Method = "flame.schedules/create.v1"
 
-type SchedulesCreateV1Input SchedulesMethod_flame_2eschedules_2fcreate_2ev1Input
-type SchedulesCreateV1Output SchedulesMethod_flame_2eschedules_2fcreate_2ev1Output
-
 const SchedulesDeleteV1Method = "flame.schedules/delete.v1"
-
-type SchedulesDeleteV1Input SchedulesMethod_flame_2eschedules_2fdelete_2ev1Input
-type SchedulesDeleteV1Output SchedulesMethod_flame_2eschedules_2fdelete_2ev1Output
 
 const SchedulesListV1Method = "flame.schedules/list.v1"
 
-type SchedulesListV1Input SchedulesMethod_flame_2eschedules_2flist_2ev1Input
-type SchedulesListV1Output SchedulesMethod_flame_2eschedules_2flist_2ev1Output
-
 const SchedulesRunNowV1Method = "flame.schedules/runNow.v1"
 
-type SchedulesRunNowV1Input SchedulesMethod_flame_2eschedules_2frunNow_2ev1Input
-type SchedulesRunNowV1Output SchedulesMethod_flame_2eschedules_2frunNow_2ev1Output
+type SchedulesRunNowV1Input SchedulesDeleteV1Input
 
 const SchedulesUpdateV1Method = "flame.schedules/update.v1"
 
-type SchedulesUpdateV1Input SchedulesMethod_flame_2eschedules_2fupdate_2ev1Input
-type SchedulesUpdateV1Output SchedulesMethod_flame_2eschedules_2fupdate_2ev1Output
+type SchedulesUpdateV1Output SchedulesCreateV1Output

@@ -281,7 +281,7 @@ func TestBlockJSONPreservesRuntimeItemMetadata(t *testing.T) {
 	tool := encodeBlock(conversation.Block{
 		ID: "tool", RunID: "run_1", Status: conversation.BlockStatusIncomplete, Kind: conversation.BlockTool,
 		Tool: &conversation.ToolCall{
-			Kind: conversation.ToolShell, Name: "shell", Status: conversation.ToolError, Safety: protocol.SafetyClassExec,
+			Kind: protocol.ToolCategoryShell, Name: "shell", Status: conversation.ToolError, Safety: protocol.SafetyClassExec,
 			StartedAt: started, FinishedAt: finished,
 			Problem: &protocol.ProblemData{Type: protocol.ProblemRateLimited, RetryAfterSeconds: 2},
 		},
@@ -494,7 +494,7 @@ func TestNDJSONPreservesCompleteToolArgumentsAndResult(t *testing.T) {
 	}
 	event := testEvent("tool", conversation.BlockCompleted{Block: conversation.Block{
 		ID: "tool_1", Kind: conversation.BlockTool, Tool: &conversation.ToolCall{
-			Kind: conversation.ToolUnknown, Name: "mcp__calendar__create", Status: conversation.ToolOK,
+			Kind: protocol.ToolCategoryUnknown, Name: "mcp__calendar__create", Status: conversation.ToolOK,
 			ArgumentsJSON: []byte(`{"guests":["a@example.com"]}`), ResultJSON: []byte(`{"eventId":"evt_123"}`),
 		},
 	}})
@@ -780,7 +780,7 @@ func testEvents() []conversation.RunEvent {
 		testEvent("evt_message_delta_2", conversation.BlockDelta{BlockID: "msg_1", Text: "world"}),
 		testEvent("evt_message_done", conversation.BlockCompleted{Block: conversation.Block{ID: "msg_1", Kind: conversation.BlockAssistant, Text: "hello world"}}),
 		testEvent("evt_tool", conversation.BlockCompleted{Block: conversation.Block{ID: "tool_1", Kind: conversation.BlockTool, Tool: &conversation.ToolCall{
-			Kind: conversation.ToolShell, Name: "shell", Summary: "go test ./...", Status: conversation.ToolOK,
+			Kind: protocol.ToolCategoryShell, Name: "shell", Summary: "go test ./...", Status: conversation.ToolOK,
 			Command: "go test ./...", Output: "PASS", ExitCode: &code,
 		}}}),
 		testEvent("evt_done", finishedSegment(testRun(), conversation.Outcome{Status: protocol.OutcomeCompleted},
@@ -862,7 +862,7 @@ func testApproval(itemID, title string) conversation.Approval {
 	return conversation.Approval{
 		RunID: "run_1", ItemID: itemID, Title: title, Rememberable: true,
 		Tool: &conversation.ToolCall{
-			Kind: conversation.ToolShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning,
+			Kind: protocol.ToolCategoryShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning,
 			ArgumentsJSON: []byte(`{"command":"go test ./...","timeoutMs":30000}`),
 		},
 	}

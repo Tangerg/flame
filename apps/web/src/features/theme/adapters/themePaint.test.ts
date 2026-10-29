@@ -9,6 +9,11 @@ import { resolveThemeScheme, retainThemeSelection } from "@/features/theme/appli
 const theme = "package:installation:light";
 
 const html = readFileSync("index.html", "utf8");
+const entry = new DOMParser().parseFromString(html, "text/html");
+const script = entry.querySelector('script[src]:not([type="module"])');
+const source = script?.getAttribute("src");
+if (!source?.startsWith("/")) throw new Error("Web entry omitted its first-paint script");
+const bootstrap = readFileSync(`public${source}`, "utf8");
 
 beforeEach(() => {
   localStorage.clear();
@@ -26,9 +31,7 @@ afterEach(async () => {
 it("uses the rendered projection for first paint without admitting a runtime theme", () => {
   rememberThemePaint(() => localStorage, theme, "light", "#fafafa");
   localStorage.setItem("flame.appearance", JSON.stringify({ state: { theme } }));
-  const bootstrap = html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
-  expect(bootstrap).toBeDefined();
-  Function(bootstrap!)();
+  Function(bootstrap)();
   expect(document.documentElement.classList.contains("theme-light")).toBe(true);
   expect(document.documentElement.style.backgroundColor).toBe("#fafafa");
   expect(resolveThemeScheme(owner.access.system, theme)).toBe("dark");
@@ -43,7 +46,7 @@ it.each([
     rememberThemePaint(() => localStorage, theme, theme, old);
     localStorage.setItem("flame.appearance", JSON.stringify({ state: { theme } }));
 
-    Function(html.match(/<script>([\s\S]*?)<\/script>/)![1]!)();
+    Function(bootstrap)();
 
     expect(document.documentElement.className).toBe(`theme-${theme}`);
     expect(document.documentElement.style.backgroundColor).toBe(canvas);
@@ -59,7 +62,7 @@ it.each([
     vi.stubGlobal("matchMedia", (query: string) => ({ matches: systemDark, media: query }));
     try {
       localStorage.setItem("flame.appearance", JSON.stringify({ state: { theme } }));
-      Function(html.match(/<script>([\s\S]*?)<\/script>/)![1]!)();
+      Function(bootstrap)();
       expect(document.documentElement.className).toBe(schemeClass);
     } finally {
       vi.unstubAllGlobals();
@@ -83,8 +86,7 @@ it("refuses malformed paint data and ignores another source's selection", () => 
     JSON.stringify({ theme, scheme: "light", background: "url(https://example.test)" }),
   );
   localStorage.setItem("flame.appearance", JSON.stringify({ state: { theme } }));
-  const bootstrap = html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
-  Function(bootstrap!)();
+  Function(bootstrap)();
   expect(document.documentElement.style.backgroundColor).not.toContain("url(");
   owner.store.setState({ theme: "light" });
   retainThemeSelection(owner.access.preference, [], "package:");
@@ -114,7 +116,7 @@ it("forgets the paint of a package theme Runtime stops admitting so cold boot fo
     document.documentElement.removeAttribute("style");
     vi.stubGlobal("matchMedia", (query: string) => ({ matches: true, media: query }));
     try {
-      Function(html.match(/<script>([\s\S]*?)<\/script>/)![1]!)();
+      Function(bootstrap)();
     } finally {
       vi.unstubAllGlobals();
     }

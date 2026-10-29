@@ -15,9 +15,13 @@ func TestCommandDescriptorValidatesItsIdentityNamespace(t *testing.T) {
 		{name: "valid", descriptor: CommandDescriptor{Name: "inspect", Title: "inspect workspace", Aliases: []string{"look"}}},
 		{name: "missing name", descriptor: CommandDescriptor{Title: "inspect workspace"}, want: "has no name"},
 		{name: "invalid name", descriptor: CommandDescriptor{Name: "in spect", Title: "inspect workspace"}, want: "invalid name"},
+		{name: "carriage return", descriptor: CommandDescriptor{Name: "inspect\rhidden", Title: "inspect workspace"}, want: "invalid name"},
+		{name: "unicode space", descriptor: CommandDescriptor{Name: "inspect\u00a0hidden", Title: "inspect workspace"}, want: "invalid name"},
+		{name: "invalid UTF-8", descriptor: CommandDescriptor{Name: "inspect\xff", Title: "inspect workspace"}, want: "invalid name"},
 		{name: "missing title", descriptor: CommandDescriptor{Name: "inspect"}, want: "has no title"},
 		{name: "invalid arguments", descriptor: CommandDescriptor{Name: "inspect", Title: "inspect workspace", Arguments: ArgumentMode("invalid")}, want: "argument mode"},
 		{name: "invalid alias", descriptor: CommandDescriptor{Name: "inspect", Title: "inspect workspace", Aliases: []string{"bad alias"}}, want: "invalid alias"},
+		{name: "invisible alias", descriptor: CommandDescriptor{Name: "inspect", Title: "inspect workspace", Aliases: []string{"look\u200b"}}, want: "invalid alias"},
 		{name: "duplicate alias", descriptor: CommandDescriptor{Name: "inspect", Title: "inspect workspace", Aliases: []string{"look", "look"}}, want: "repeats name or alias"},
 		{name: "alias repeats name", descriptor: CommandDescriptor{Name: "inspect", Title: "inspect workspace", Aliases: []string{"inspect"}}, want: "repeats name or alias"},
 	}

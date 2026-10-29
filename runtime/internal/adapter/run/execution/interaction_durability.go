@@ -53,7 +53,7 @@ func (i *interactionSession) CommitCheckpoint(ctx context.Context, checkpoint ag
 }
 
 func (i *interactionSession) commitTree(ctx context.Context, tree agent.TreeSnapshot, update runs.ExecutionTreeUpdate) error {
-	ctx, cancel := i.lifetime.treeCommitContext(ctx)
+	ctx, cancel := i.lifetime.publicationContext(ctx)
 	defer cancel()
 	if err := ctx.Err(); err != nil {
 		return err
@@ -176,7 +176,7 @@ func (i *interactionSession) commitTree(ctx context.Context, tree agent.TreeSnap
 	if len(fact.Facts) == 0 && len(fact.Children) == 0 && fact.Context == nil && len(fact.InputAcceptances) == 0 {
 		err = i.executionTrees.SaveExecutionTree(ctx, update)
 		if err != nil {
-			readCtx, stop := i.lifetime.treeCommitContext(ctx)
+			readCtx, stop := i.lifetime.publicationContext(ctx)
 			head, found, readErr := i.executionTrees.LoadExecutionTree(readCtx, update.Head.SessionID, update.Head.RootID)
 			stop()
 			if readErr == nil && found && head.SameCommit(update.Head) {

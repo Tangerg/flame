@@ -338,14 +338,14 @@ func (m budgetStopCompleteModel) Stream(context.Context, *chat.Request) iter.Seq
 
 func scopeTestCoordinator(t *testing.T, executor *InteractionExecutor) *runs.Coordinator {
 	t.Helper()
-	sessions := &delegateSessionStore{value: testsupport.MustRestoreSession(session.Snapshot{ID: "session_1", Title: "scope", Workspace: testsupport.MustWorkspace(t.TempDir())})}
-	projection := newDelegateProjection(t)
+	current := testsupport.MustRestoreSession(session.Snapshot{ID: "session_1", Title: "scope", Workspace: testsupport.MustWorkspace(t.TempDir())})
+	projection := newDelegateProjection(t, current, executor)
 	var id int
 	coordinator := mustNewRunCoordinator(t, runs.Dependencies{
 		RootStarts: executor, Observations: executor, Releases: executor, RootCancellation: executor,
-		Conversation: delegateConversation{}, Session: runs.SessionPorts{Reader: sessions, Creator: sessions, ActiveRuns: sessions},
+		Conversation: projection.history, Session: runs.SessionPorts{Reader: projection.sessions, Creator: projection.sessions, ActiveRuns: projection.sessions},
 		Projection: runs.ProjectionPorts{Openings: projection, ChildStarts: projection, Events: projection, Barriers: projection, Checkpoints: projection, Workspace: projection, Finalizer: projection},
-		Admissions: testsupport.NewAdmissionGate(), Now: time.Now,
+		Admissions: projection.admissions, Now: time.Now,
 		NewRunID: func() string { id++; return fmt.Sprintf("run_%d", id) }, NewSegmentID: func() string { id++; return fmt.Sprintf("segment_%d", id) },
 	})
 	t.Cleanup(func() {
@@ -370,7 +370,7 @@ func TestNestedDelegatesInheritGenerationPolicy(t *testing.T) {
 		}
 		return interactionToolResponse(chat.ToolCall{ID: "delegate", Name: "delegate_task", Arguments: fmt.Sprintf(`{"summary":"child","instructions":%q}`, instruction)}, 2, 1), nil
 	})
-	executor := newTestInteractionExecutor(t, model)
+	executor := newProductInteractionExecutor(t, model, nil, InteractionExecutorConfig{})
 	coordinator := scopeTestCoordinator(t, executor)
 	selection, err := modelchoice.NewWithReasoningEffort("test-provider", "test-model", "high")
 	if err != nil {
@@ -420,7 +420,7 @@ func TestFifthDelegateIsRejectedWhileFourRemainActive(t *testing.T) {
 		}
 		return response, nil
 	})
-	executor := newTestInteractionExecutor(t, model)
+	executor := newProductInteractionExecutor(t, model, nil, InteractionExecutorConfig{})
 	coordinator := scopeTestCoordinator(t, executor)
 	running, err := coordinator.Start(t.Context(), runs.StartCommand{SessionID: "session_1", Capabilities: run.Capabilities{ChildRuns: true}, Input: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "root task"}}})
 	if err != nil {
@@ -473,7 +473,7 @@ func TestJoinedDelegateTreePublishesEveryTerminalBeforeRoot(t *testing.T) {
 		}
 		return interactionToolResponse(chat.ToolCall{ID: "delegate", Name: "delegate_task", Arguments: fmt.Sprintf(`{"summary":"delegate","instructions":%q}`, instruction)}, 2, 1), nil
 	})
-	executor := newTestInteractionExecutor(t, model)
+	executor := newProductInteractionExecutor(t, model, nil, InteractionExecutorConfig{})
 	coordinator := scopeTestCoordinator(t, executor)
 	started, err := coordinator.Start(t.Context(), runs.StartCommand{SessionID: "session_1", Capabilities: run.Capabilities{ChildRuns: true}, Input: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "root"}}})
 	if err != nil {
@@ -663,7 +663,7 @@ func TestRootAndDelegateCompleteLongExecution(t *testing.T) {
 		}
 		return interactionUsageTextResponse("finished", 1_000_000, 1_000), nil
 	})
-	executor = newPricedObservedTestInteractionExecutor(t, model, fixedInteractionPricing(100), InteractionExecutorConfig{ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "tick")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}}, ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{}})
+	executor = newProductInteractionExecutor(t, model, fixedInteractionPricing(100), InteractionExecutorConfig{ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "tick")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}}, ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{}})
 	coordinator := scopeTestCoordinator(t, executor)
 	started, err := coordinator.Start(t.Context(), runs.StartCommand{SessionID: "session_1", Capabilities: run.Capabilities{ChildRuns: true}, Input: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "long root"}}})
 	if err != nil {

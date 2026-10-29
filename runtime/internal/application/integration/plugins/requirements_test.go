@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -44,7 +45,7 @@ func (s requirementSelections) List(context.Context) ([]plugin.ProviderSelection
 
 func requirementContract(t *testing.T, reference string, composition portable.Composition) *portable.Capability {
 	t.Helper()
-	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: reference, Composition: composition, Scope: "installation"}, portable.MethodDescriptor{Name: reference + ".read", Kind: portable.Query, Target: "installation", Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)})
+	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: reference, Composition: composition, Scope: extension.ScopeInstallation}, portable.MethodDescriptor{Name: reference + ".read", Kind: portable.Query, Target: extension.ScopeInstallation, Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)})
 	if err != nil {
 		t.Fatal(err)
 	}

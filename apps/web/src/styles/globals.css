@@ -1,3 +1,5 @@
+@import "./presentation.generated.css";
+
 :root {
   --spacing: 0.25rem;
 }
@@ -27,11 +29,6 @@
 }
 :root {
   --color-line-soft: transparent;
-  --color-negative-wash: color-mix(in srgb, var(--tone-negative) 10%, transparent);
-  --color-warning-wash: color-mix(in srgb, var(--tone-warning) 10%, transparent);
-  --color-success-wash: color-mix(in srgb, var(--tone-success) 10%, transparent);
-  --color-info-wash: color-mix(in srgb, var(--tone-info) 10%, transparent);
-  --color-accent-wash: color-mix(in srgb, var(--tone-accent) 10%, transparent);
   --color-text-reasoning: color-mix(in oklab, var(--color-text) 58%, transparent);
   --color-negative-badge: color-mix(in srgb, var(--tone-negative) 18%, transparent);
   --color-warning-badge: color-mix(in srgb, var(--tone-warning) 18%, transparent);
@@ -109,20 +106,7 @@
   }
 }
 
-/* prettier-ignore */
-
 :root {
-  --color-accent: #fb6e30;
-  --color-accent-line: #f2aa8e;
-  --color-accent-text: #ae3f00;
-  --color-accent-strong: #592108;
-
-  --color-bg: #f5f5f5;
-  --color-surface: #f0f0f0;
-  --color-elevated: #fdfdfd;
-  --color-sunken: #eaeaea;
-  --color-drawer: #f0f0f0;
-  --depth-step: 4%;
   --color-surface-2: color-mix(
     in oklab,
     var(--color-text) calc(var(--depth-step) * 1),
@@ -134,13 +118,6 @@
     var(--color-surface)
   );
   --wash-step: max(3%, var(--depth-step));
-  --wash-hover: #eaeaea;
-  --wash-selected: color-mix(in srgb, var(--color-accent) 6.7%, var(--color-bg));
-  --wash-selected-hover: color-mix(
-    in srgb,
-    var(--color-accent) 10.05%,
-    var(--color-bg)
-  );
   --color-sunken-hover: color-mix(
     in oklab,
     var(--color-text) calc(var(--wash-step) * 1.25),
@@ -149,54 +126,10 @@
 
   --shadow-cast: rgb(0 0 0 / 0.2);
 
-  --color-text: #1b1b1b;
-  --color-text-bright: #111111;
-  --color-text-soft: color-mix(in oklab, var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)), #303030);
-  --color-text-muted: color-mix(in oklab, var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)), #4c4c4c);
-  --color-text-faint: color-mix(in oklab, var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)), #696969);
-  --color-text-on-accent: #000000;
-
-  --color-border: #dfdfdf;
-  --color-border-strong: #cbcbcb;
-  --color-control-edge: #868686;
-  --color-divider: #e5e5e5;
   --color-scrim: #00000022;
   --gauge-track: color-mix(in oklab, currentColor 22%, transparent);
   --scrollbar-thumb: color-mix(in oklab, var(--color-text) 17%, transparent);
   --scrollbar-thumb-strong: color-mix(in oklab, var(--color-text) 28%, transparent);
-
-  --color-negative: #b42e35;
-  --color-warning: #856200;
-  --color-info: #0062b0;
-  --color-success: #006f43;
-
-  --tone-negative: #d83b43;
-  --tone-warning: #ffc53d;
-  --tone-info: #0078d6;
-  --tone-success: #008853;
-  --tone-accent: #fb6e30;
-
-  --color-cta: #fb6e30;
-  --color-cta-hover: #ee662a;
-  --color-cta-text: #000000;
-
-  --fs-ui-2xs: 10px;
-  --fs-ui-xs: 12px;
-  --fs-ui-sm: 13px;
-  --fs-ui-md: 14px;
-  --fs-prose: 16px;
-  --fs-code: 12px;
-
-  --fs-display-sm: 18px;
-  --fs-display-md: 20px;
-  --fs-display-lg: 24px;
-
-  --icon-xs: 12px;
-  --icon-sm: 14px;
-  --icon-md: 16px;
-  --icon-lg: 20px;
-  --icon-xl: 28px;
-  --icon-composer: 16px;
 
   --fw-regular: 400;
   --fw-medium: 500;
@@ -210,15 +143,6 @@
   --tracking-ui: 0em;
   --tracking-display: -0.02em;
 
-  --style-shape-2xs: 2px;
-  --style-shape-xs: 4px;
-  --style-shape-sm: 6px;
-  --style-shape-md: 8px;
-  --style-shape-lg: 10px;
-  --style-shape-xl: 12px;
-  --style-shape-composer: 20px;
-  --style-shape-bubble: 16px;
-  --radius-scale: 1;
   --corner-scale: 1;
   --shape-2xs: calc(var(--style-shape-2xs) * var(--radius-scale));
   --shape-xs: calc(var(--style-shape-xs) * var(--radius-scale));
@@ -230,56 +154,16 @@
   --shape-bubble: calc(var(--style-shape-bubble) * var(--radius-scale) * var(--corner-scale));
   --shape-pill: 9999px;
 
-  --layout-page-width: 56rem;
-  --layout-page-gutter: calc(var(--spacing) * 6);
-  --layout-page-block: calc(var(--spacing) * 8);
-  --layout-compact-gutter: calc(var(--spacing) * 4);
-  --layout-content-gap: calc(var(--spacing) * 3);
-  --layout-label-gap: calc(var(--spacing) * 1.5);
-  --layout-row-padding: calc(var(--spacing) * 3);
-  --layout-section-gap: calc(var(--spacing) * 6);
-  --layout-card-padding: calc(var(--spacing) * 5);
-  --layout-field-gap: calc(var(--spacing) * 4);
-  --layout-control-gap: calc(var(--spacing) * 2);
-  --layout-menu-inset: calc(var(--spacing) * 1);
-  --field-background: var(--color-sunken);
-  --field-border: transparent;
-  --field-shadow: none;
-  --mark-radius: var(--shape-sm);
-  --menu-item-radius: max(0px, calc(var(--floating-panel-radius) - var(--layout-menu-inset)));
-  --button-radius: var(--shape-xl);
   --button-join-seam: color-mix(in oklab, var(--color-cta-text) 20%, transparent);
-  --field-radius: var(--shape-xl);
-  --segmented-radius: var(--shape-lg);
-  --segment-radius: max(0px, calc(var(--segmented-radius) - var(--spacing) * 0.5));
-  --surface-card-radius: var(--shape-bubble);
-  --row-radius: var(--shape-lg);
-  --floating-panel-radius: var(--shape-bubble);
-  --floating-tip-radius: var(--shape-md);
-  --dock-tab-radius: var(--shape-lg);
-  --control-height-xs: 24px;
-  --control-height-sm: 28px;
-  --control-height-md: 32px;
-  --control-height-lg: 36px;
   --control-height-xl: 40px;
-  --menu-row-height: 30px;
   --select-min-width: 220px;
-  --dock-tab-height: 28px;
   --composer-attachment-radius: max(
     0px,
     calc(var(--shape-composer) - var(--composer-editor-start))
   );
   --composer-control-height: 28px;
-  --control-edge-width: 1px;
   --control-mark-size: 18px;
-  --hairline-width: 0.5px;
-  --composer-edge-width: var(--hairline-width);
 
-  --density-row-height: 30px;
-  --density-row-gap: 8px;
-  --density-navigation-gutter: 12px;
-  --density-navigation-section-gap: 18px;
-  --density-navigation-group-gap: 10px;
   --nested-row-indent: calc(var(--spacing) * 2 + var(--icon-md) + var(--density-row-gap));
   --reading-gutter: 12px;
   --reading-gutter-wide: 20px;
@@ -290,18 +174,10 @@
   --composer-footer: 6px;
   --composer-footer-end: 8px;
 
-  --motion-scale: 1;
   --dur-color-base: 100ms;
-  --dur-instant-base: 80ms;
-  --dur-fast-base: 150ms;
-  --dur-med-base: 200ms;
-  --dur-slow-base: 300ms;
-  --dur-drawer-base: 500ms;
-  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-state: cubic-bezier(0.4, 0, 0.2, 1);
 
   --dur-instant: calc(var(--dur-instant-base) * var(--motion-scale));
-  --press-scale: 0.96;
   --control-disabled-opacity: 0.64;
   --glyph-step: 0.8;
 
@@ -320,66 +196,15 @@
   --layer-floating: 50;
   --layer-modal: 100;
 
-  --shadow-control: 0 1px 2px color-mix(in oklab, var(--shadow-cast) 20%, transparent);
-  --shadow-ring: 0 0 0 0.5px var(--seam-line);
-  --shadow-raised:
-    var(--shadow-ring), 0 1px 2px -1px color-mix(in oklab, var(--shadow-cast) 40%, transparent);
-  --shadow-overlay:
-    var(--shadow-ring), 0 4px 8px -2px color-mix(in oklab, var(--shadow-cast) 50%, transparent);
-  --shadow-popover:
-    var(--shadow-ring), 0 8px 16px -4px color-mix(in oklab, var(--shadow-cast) 60%, transparent);
-  --shadow-modal:
-    var(--shadow-ring), 0 16px 32px -8px color-mix(in oklab, var(--shadow-cast) 95%, transparent);
-  --shadow-composer-depth:
-    0 2px 8px 0 color-mix(in oklab, var(--shadow-cast) 20%, transparent),
-    0 4px 80px 8px color-mix(in oklab, var(--shadow-cast) 12%, transparent);
-  --shadow-well: none;
-  --shadow-surface-card: 0 2px 4px color-mix(in oklab, var(--shadow-cast) 20%, transparent), 0 1px 2px color-mix(in oklab, var(--shadow-cast) 30%, transparent);
   --shadow-live-glow: 0 0 6px var(--color-accent);
   --shadow-swatch-selected: 0 0 0 1.5px var(--color-text);
-  --color-focus-ring: #d86231;
 
-  --app-drawer-surface: var(--color-drawer);
-  --app-content-surface: var(--color-bg);
-  --app-header-surface: transparent;
-  --app-dock-surface: color-mix(in oklab, var(--color-bg) 25%, var(--color-surface));
-  --app-dock-tabstrip-surface: color-mix(
-    in oklab,
-    var(--color-text) calc(var(--depth-step) * 0.75),
-    var(--app-dock-surface)
-  );
-  --dock-tab-active-surface: var(--app-dock-surface);
   --dock-tab-active-hover-surface: color-mix(
     in oklab,
     var(--color-text) calc(var(--wash-step) * 1.25),
     var(--dock-tab-active-surface)
   );
-  --app-card-surface: var(--color-elevated);
-  --surface-emphasis: linear-gradient(
-    145deg,
-    color-mix(in oklab, var(--color-accent) 18%, var(--app-card-surface)),
-    color-mix(in oklab, var(--color-accent) 5%, var(--app-card-surface))
-  );
   --app-user-message-surface: color-mix(in oklab, var(--tone-accent) 10%, transparent);
-  --app-composer-surface: color-mix(in oklab, var(--app-content-surface) 86%, transparent);
-  --composer-backdrop: blur(20px) saturate(1.4);
-  --app-composer-tray-surface: color-mix(in oklab, var(--app-content-surface) 70%, transparent);
-  --app-composer-project-tray-surface: color-mix(
-    in srgb,
-    var(--color-text) 4%,
-    var(--app-content-surface)
-  );
-  --composer-tray-backdrop: blur(8px);
-  --composer-tray-edge-color: color-mix(in oklab, var(--color-border) 80%, transparent);
-  --app-floating-surface: var(--color-elevated);
-  --floating-backdrop: blur(8px) saturate(1.4);
-  --app-card-edge: inset 0.5px 0 0 0;
-  --app-pane-split: inset 0.5px 0 0 0;
-  --app-pane-split-end: inset -0.5px 0 0 0;
-  --app-header-edge: inset 0 -0.5px 0 0;
-  --app-pane-wash: inset 12px 0 12px -6px;
-  --app-pane-wash-end: inset -12px 0 12px -6px;
-  --seam-line: var(--color-border-strong);
   --seam-wash: color-mix(in oklab, var(--shadow-cast) 20%, transparent);
   --boundary-emphasis: color-mix(in oklab, var(--color-text) 28%, var(--color-border-strong));
   --content-max: 768px;
@@ -451,61 +276,12 @@ html.theme-dark {
   --wash-step: max(3%, calc(var(--depth-step) / 2));
   --app-user-message-surface: color-mix(in oklab, var(--tone-accent) 18%, transparent);
 
-  --color-accent: #fb6e30;
-  --color-accent-line: #8b3d1c;
-  --color-accent-text: #fb9871;
-  --color-accent-strong: #ffd5c5;
-  --tone-accent: #fb6e30;
-  --color-focus-ring: #fb6e30;
-
-  --color-bg: #0f0f0f;
-  --color-surface: #1e1e1e;
-  --color-elevated: #1e1e1e;
-  --color-sunken: #242424;
-  --color-drawer: #0f0f0f;
-  --depth-step: 8%;
-
   --shadow-cast: rgb(0 0 0 / 0.55);
   --color-media-edge: rgb(255 255 255 / 0.1);
 
-  --color-text: #eeeeee;
-  --color-text-bright: #f1f1f1;
-  --color-text-soft: color-mix(
-    in oklab,
-    var(--color-text) max(0%, calc((var(--depth-step) - 8%) * 3)),
-    #cccccc
-  );
-  --color-text-muted: color-mix(
-    in oklab,
-    var(--color-text) max(0%, calc((var(--depth-step) - 8%) * 3)),
-    #a3a3a3
-  );
-  --color-text-faint: color-mix(
-    in oklab,
-    var(--color-text) max(0%, calc((var(--depth-step) - 8%) * 3)),
-    #8c8c8c
-  );
   --color-text-reasoning: color-mix(in oklab, var(--color-text) 45%, transparent);
-  --color-text-on-accent: #000000;
-  --color-cta: #fb6e30;
-  --color-cta-hover: #ff8452;
-  --color-cta-text: #000000;
 
-  --color-border: #2b2b2b;
-  --color-border-strong: #424242;
-  --color-control-edge: #6d6d6d;
-  --color-divider: #242424;
   --color-scrim: #00000022;
-
-  --color-negative: #ff928d;
-  --color-warning: #d7b05e;
-  --color-info: #7cbaff;
-  --color-success: #83c79f;
-
-  --tone-negative: #d83b43;
-  --tone-warning: #ffc53d;
-  --tone-success: #008853;
-  --tone-info: #0078d6;
 }
 
 * {
@@ -522,7 +298,6 @@ html.theme-dark {
   --window-sidebar-control-span: calc(var(--control-height-sm) + var(--spacing) * 2.5);
   --dock-control-span: calc(var(--control-height-sm) + var(--spacing) * 2.5);
   --dock-tab-inset: calc(var(--spacing) * 2);
-  --surface-header-height: 46px;
   --notification-gutter: 1rem;
   --notification-list-padding: calc(var(--spacing) * 2);
   --notification-toast-padding: 16px;
@@ -535,29 +310,6 @@ html.theme-dark {
     var(--notification-min-reading-height) + 2 * var(--notification-gutter)
   );
   --dur-drawer: calc(var(--dur-drawer-base) * var(--motion-scale));
-  --ease-drawer: linear(
-    0,
-    0.06981,
-    0.21761,
-    0.38345,
-    0.53716,
-    0.66615,
-    0.76765,
-    0.84375,
-    0.89859,
-    0.93672,
-    0.96233,
-    0.97894,
-    0.98929,
-    0.99544,
-    0.99887,
-    1.00061,
-    1.00135,
-    1.00152,
-    1.00142,
-    1.00119,
-    1
-  );
 }
 @media (pointer: coarse) {
   :root {

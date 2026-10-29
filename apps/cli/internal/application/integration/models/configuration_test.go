@@ -19,6 +19,11 @@ func TestRoleAndProviderChangesHaveExplicitSemantics(t *testing.T) {
 	if _, err := NewConfiguredRole(EmbeddingRole, "deepseek", ""); err == nil {
 		t.Fatal("half-configured role was constructed")
 	}
+	for _, kind := range []RoleKind{UtilityRole, EmbeddingRole} {
+		if _, err := NewConfiguredRole(kind, "", ""); err == nil {
+			t.Fatalf("configured %s role accepted an absent model selection", kind)
+		}
+	}
 	if _, err := NewConfiguredRole(UtilityRole, " deepseek", "chat"); err == nil {
 		t.Fatal("non-canonical role was constructed")
 	}

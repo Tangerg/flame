@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -64,7 +63,7 @@ func NewMemory(config MemoryConfig) (*Memory, error) {
 	return &Memory{contract: contract, installations: config.Installations, pool: config.Connections, callbacks: config.Callbacks, utility: config.Utility, embedder: config.Embeddings, history: config.Conversation, commands: config.Commands}, nil
 }
 
-func (m *Memory) Items(ctx context.Context, scope, project string) ([]execution.MemoryPromptItem, error) {
+func (m *Memory) Items(ctx context.Context, scope memorycontract.ItemsV2InputScope, project string) ([]execution.MemoryPromptItem, error) {
 	ctx = operation.Start(ctx, extension.Automatic, "memory.context", uuid.NewString())
 	location, borrowed, err := contributionSession(ctx, m.commands.framework, m.installations, m.commands.selections, m.pool, m.contract)
 	if errors.Is(err, errInactive) {
@@ -81,11 +80,11 @@ func (m *Memory) Items(ctx context.Context, scope, project string) ([]execution.
 		return nil, err
 	}
 	for _, item := range values {
-		if item.Status != "active" || item.Scope != scope || item.Project != project {
+		if item.Status != memorycontract.UpdateV2OutputStatusActive || item.Scope != memorycontract.UpdateV2OutputScope(scope) || item.Project != project {
 			return nil, errors.New("memory: backend returned items outside the requested active target")
 		}
 	}
-	return memoryPromptItems(memorycontract.ItemsV2Output(values))
+	return memoryPromptItems(values)
 }
 func (m *Memory) Search(ctx context.Context, project, text string, topK int) ([]execution.MemoryPromptItem, error) {
 	location, borrowed, err := contributionSession(ctx, m.commands.framework, m.installations, m.commands.selections, m.pool, m.contract)
@@ -127,8 +126,8 @@ func (m *Memory) Search(ctx context.Context, project, text string, topK int) ([]
 		return nil, errors.New("memory: backend exceeded requested search bound")
 	}
 	for _, item := range values {
-		visibleTarget := item.Scope == "user" && item.Project == "" || item.Scope == "project" && item.Project == project
-		if item.Status != "active" || !visibleTarget {
+		visibleTarget := item.Scope == memorycontract.UpdateV2OutputScopeUser && item.Project == "" || item.Scope == memorycontract.UpdateV2OutputScopeProject && item.Project == project
+		if item.Status != memorycontract.UpdateV2OutputStatusActive || !visibleTarget {
 			return nil, errors.New("memory: backend returned search outside the active target")
 		}
 	}

@@ -5,7 +5,7 @@ import {
   type Point,
   type Service,
 } from "./contracts";
-import { nonempty } from "./errors";
+import { identity } from "./identity";
 import { type Awaitable, type Lifetime } from "./lifetime";
 
 export type Imports = Readonly<
@@ -52,14 +52,14 @@ export interface Unit<
 export function defineUnit<const R extends Imports, const P extends Exports>(
   definition: Unit<R, P>,
 ): Unit<R, P> {
-  nonempty(definition.id, "unit id");
+  identity(definition.id, "unit id");
   if (typeof definition.setup !== "function")
     throw new TypeError("unit setup must be a function");
   for (const name of [
     ...Object.keys(definition.imports),
     ...Object.keys(definition.exports),
   ])
-    nonempty(name, "unit slot");
+    identity(name, "unit slot");
   return Object.freeze({
     ...definition,
     imports: Object.freeze({ ...definition.imports }),

@@ -3,42 +3,53 @@ package main
 
 import "time"
 
-type UsageReportsMethod_flame_2eusage_2dreports_2fcapture_2ev1Input UsageReportsMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fCaptureInput
+type UsageReportsCaptureV1InputPeriod string
 
-type UsageReportsMethod_flame_2eusage_2dreports_2fcapture_2ev1Output UsageReportsMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fHeader
+const (
+	UsageReportsCaptureV1InputPeriodDaily  UsageReportsCaptureV1InputPeriod = "daily"
+	UsageReportsCaptureV1InputPeriodWeekly UsageReportsCaptureV1InputPeriod = "weekly"
+)
 
-type UsageReportsMethod_flame_2eusage_2dreports_2fdelete_2ev1Input UsageReportsMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fReportInput
+type UsageReportsCaptureV1OutputPeriod string
 
-type UsageReportsMethod_flame_2eusage_2dreports_2fdelete_2ev1Output bool
+const (
+	UsageReportsCaptureV1OutputPeriodDaily  UsageReportsCaptureV1OutputPeriod = "daily"
+	UsageReportsCaptureV1OutputPeriodWeekly UsageReportsCaptureV1OutputPeriod = "weekly"
+)
 
-type UsageReportsMethod_flame_2eusage_2dreports_2fget_2ev1Input UsageReportsMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fReportInput
+type UsageReportsGetV1OutputPeriod string
 
-type UsageReportsMethod_flame_2eusage_2dreports_2fget_2ev1Output UsageReportsMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fReport_5bgithub_2ecom_2fTangerg_2fflame_2fruntime_2fprotocol_2eUsageSummary_5d
+const (
+	UsageReportsGetV1OutputPeriodDaily  UsageReportsGetV1OutputPeriod = "daily"
+	UsageReportsGetV1OutputPeriodWeekly UsageReportsGetV1OutputPeriod = "weekly"
+)
 
-type UsageReportsMethod_flame_2eusage_2dreports_2flist_2ev1Input struct {
+type UsageReportsDeleteV1Output bool
+
+type UsageReportsListV1Input struct {
 }
 
-type UsageReportsMethod_flame_2eusage_2dreports_2flist_2ev1Output []UsageReportsMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fHeader
+type UsageReportsListV1Output []UsageReportsCaptureV1Output
 
-type UsageReportsMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fCaptureInput struct {
-	Period string `json:"period"`
+type UsageReportsCaptureV1Input struct {
+	Period UsageReportsCaptureV1InputPeriod `json:"period"`
 }
 
-type UsageReportsMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fHeader struct {
-	Id         string     `json:"id"`
-	ObservedAt time.Time  `json:"observedAt"`
-	Period     string     `json:"period"`
-	Since      *time.Time `json:"since,omitzero"`
+type UsageReportsCaptureV1Output struct {
+	Id         string                            `json:"id"`
+	ObservedAt time.Time                         `json:"observedAt"`
+	Period     UsageReportsCaptureV1OutputPeriod `json:"period"`
+	Since      *time.Time                        `json:"since,omitzero"`
 }
 
-type UsageReportsMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fReportInput struct {
+type UsageReportsDeleteV1Input struct {
 	Id string `json:"id"`
 }
 
-type UsageReportsMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fReport_5bgithub_2ecom_2fTangerg_2fflame_2fruntime_2fprotocol_2eUsageSummary_5d struct {
+type UsageReportsGetV1Output struct {
 	Id         string                                                                                         `json:"id"`
 	ObservedAt time.Time                                                                                      `json:"observedAt"`
-	Period     string                                                                                         `json:"period"`
+	Period     UsageReportsGetV1OutputPeriod                                                                  `json:"period"`
 	Since      *time.Time                                                                                     `json:"since,omitzero"`
 	Summary    UsageReportsMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageSummary `json:"summary"`
 }
@@ -88,20 +99,10 @@ const UsageReportsCapabilityJSON = "{\"protocol\":\"io.github.tangerg.qimu/porta
 
 const UsageReportsCaptureV1Method = "flame.usage-reports/capture.v1"
 
-type UsageReportsCaptureV1Input UsageReportsMethod_flame_2eusage_2dreports_2fcapture_2ev1Input
-type UsageReportsCaptureV1Output UsageReportsMethod_flame_2eusage_2dreports_2fcapture_2ev1Output
-
 const UsageReportsDeleteV1Method = "flame.usage-reports/delete.v1"
-
-type UsageReportsDeleteV1Input UsageReportsMethod_flame_2eusage_2dreports_2fdelete_2ev1Input
-type UsageReportsDeleteV1Output UsageReportsMethod_flame_2eusage_2dreports_2fdelete_2ev1Output
 
 const UsageReportsGetV1Method = "flame.usage-reports/get.v1"
 
-type UsageReportsGetV1Input UsageReportsMethod_flame_2eusage_2dreports_2fget_2ev1Input
-type UsageReportsGetV1Output UsageReportsMethod_flame_2eusage_2dreports_2fget_2ev1Output
+type UsageReportsGetV1Input UsageReportsDeleteV1Input
 
 const UsageReportsListV1Method = "flame.usage-reports/list.v1"
-
-type UsageReportsListV1Input UsageReportsMethod_flame_2eusage_2dreports_2flist_2ev1Input
-type UsageReportsListV1Output UsageReportsMethod_flame_2eusage_2dreports_2flist_2ev1Output

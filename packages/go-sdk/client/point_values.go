@@ -4,6 +4,7 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
+	"reflect"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
@@ -28,6 +29,9 @@ type PointValue[T any] struct {
 func ResolvePointValues[T any](ctx context.Context, caller PointResolver, contract *portable.Point, target portable.Target, attributes any, order []protocol.PluginPointReference, options protocol.CallOptions) ([]PointValue[T], error) {
 	if lo.IsNil(caller) || contract == nil {
 		return nil, errors.New("runtime: point resolver and admitted contract are required")
+	}
+	if err := jsonvalue.ValidateType(reflect.TypeFor[T]()); err != nil {
+		return nil, err
 	}
 	schema, err := jsonschema.For[T]()
 	if err != nil {
@@ -71,7 +75,7 @@ func ResolvePointValues[T any](ctx context.Context, caller PointResolver, contra
 			return nil, errors.Join(protocol.ErrInvalidResponse, err)
 		}
 		var value T
-		if err := json.Unmarshal(input.JSON(), &value, json.RejectUnknownMembers(true)); err != nil {
+		if err := json.Unmarshal(input.JSON(), &value, json.RejectUnknownMembers(true), jsonvalue.Numbers()); err != nil {
 			return nil, errors.Join(protocol.ErrInvalidResponse, err)
 		}
 		values = append(values, PointValue[T]{InstallationID: binding.InstallationID, Digest: binding.Digest, Contribution: binding.Contribution, Value: value})

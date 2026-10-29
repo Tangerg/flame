@@ -3,11 +3,11 @@ package execution
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/qimu"
 	"iter"
 	"path/filepath"
 	"sync"
 	"testing"
+	"time"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
@@ -23,10 +23,9 @@ import (
 var testTreeStores sync.Map
 
 type testExecutionTrees struct {
+	stores       *persistencefixture.Stores
 	mu           sync.Mutex
-	heads        map[string]runs.ExecutionTreeHead
 	publications map[string]runs.ResultPublication
-	commits      map[string]string
 }
 
 func testTrees(t *testing.T) *testExecutionTrees {
@@ -34,22 +33,64 @@ func testTrees(t *testing.T) *testExecutionTrees {
 	if value, found := testTreeStores.Load(t); found {
 		return value.(*testExecutionTrees)
 	}
-	store := &testExecutionTrees{heads: make(map[string]runs.ExecutionTreeHead), publications: make(map[string]runs.ResultPublication)}
+	stores, err := persistencefixture.Open(t, t.Context(), t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := &testExecutionTrees{stores: stores, publications: make(map[string]runs.ResultPublication)}
 	actual, loaded := testTreeStores.LoadOrStore(t, store)
-	if !loaded {
-		t.Cleanup(func() { testTreeStores.Delete(t) })
+	if loaded {
+		if err := stores.Close(); err != nil {
+			t.Fatal(err)
+		}
+	} else {
+		t.Cleanup(func() {
+			testTreeStores.Delete(t)
+			if err := stores.Close(); err != nil {
+				t.Error(err)
+			}
+		})
 	}
 	return actual.(*testExecutionTrees)
 }
+func newProductInteractionExecutor(t *testing.T, model chat.Model, pricing accounting.Pricing, config InteractionExecutorConfig) *InteractionExecutor {
+	t.Helper()
+	config.Lifetime = t.Context()
+	config.BuildID = interactionTestBuildID
+	var counter modeladapter.InputTokenCounter
+	if value, ok := model.(modeladapter.InputTokenCounter); ok {
+		counter = value
+	}
+	config.ChatResolver = interactionChatResolver(model, counter)
+	executor, err := newProductPricedConfiguredInteractionExecutor(t, config, pricing)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return executor
+}
+
+func newProductConfiguredInteractionExecutor(t *testing.T, config InteractionExecutorConfig) (*InteractionExecutor, error) {
+	return newProductPricedConfiguredInteractionExecutor(t, config, nil)
+}
+
+func newProductPricedConfiguredInteractionExecutor(t *testing.T, config InteractionExecutorConfig, pricing accounting.Pricing) (*InteractionExecutor, error) {
+	t.Helper()
+	stores := testTrees(t).stores
+	resolver, err := modeladapter.NewObservedResolver(config.ChatResolver, stores.ModelInvocations, pricing)
+	if err != nil {
+		t.Fatal(err)
+	}
+	config.ChatResolver = resolver
+	config.ModelEvidence = stores.ModelInvocations
+	config.ExecutionTrees = stores.ExecutorCheckpoints
+	return newTestConfiguredInteractionExecutor(t, config)
+}
+
 func newTestConfiguredInteractionExecutor(t *testing.T, config InteractionExecutorConfig) (*InteractionExecutor, error) {
 	if config.ModelEvidence == nil && config.ChatResolver != nil {
-		db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "model-evidence.db")))
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Cleanup(func() { _ = db.Close() })
+		db := testTrees(t).stores
 		journal := db.ModelInvocations
-		resolver, err := modeladapter.NewObservedResolver(config.ChatResolver, fixtureEndpointJournal{ModelInvocationStore: journal, db: db}, nil)
+		resolver, err := modeladapter.NewObservedResolver(config.ChatResolver, newSessionEndpointJournal(db), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -57,53 +98,33 @@ func newTestConfiguredInteractionExecutor(t *testing.T, config InteractionExecut
 		config.ModelEvidence = journal
 	}
 	if config.Admission == nil {
-		config.Admission = qimu.NewAdmission()
+		config.Admission = testTrees(t).stores.Admission
 	}
 	if config.ExecutionTrees == nil {
 		config.ExecutionTrees = testTrees(t)
 	}
-	return NewInteractionExecutor(config)
+	executor, err := NewInteractionExecutor(config)
+	if err == nil {
+		t.Cleanup(func() {
+			executor.BeginShutdown()
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			if err := executor.AwaitShutdown(ctx); err != nil {
+				t.Error(err)
+			}
+		})
+	}
+	return executor, err
 }
 
-func (s *testExecutionTrees) LoadExecutionTree(_ context.Context, sessionID, rootID string) (runs.ExecutionTreeHead, bool, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	h, found := s.heads[rootID]
-	if found && h.SessionID != sessionID {
-		return runs.ExecutionTreeHead{}, false, errors.New("foreign tree")
-	}
-	return h, found, nil
+func (s *testExecutionTrees) LoadExecutionTree(ctx context.Context, sessionID, rootID string) (runs.ExecutionTreeHead, bool, error) {
+	return s.stores.ExecutorCheckpoints.LoadExecutionTree(ctx, sessionID, rootID)
 }
+
 func (s *testExecutionTrees) SaveExecutionTree(ctx context.Context, update runs.ExecutionTreeUpdate) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if err := update.Validate(); err != nil {
-		return err
-	}
-	h := s.heads[update.Head.RootID]
-	if s.commits == nil {
-		s.commits = make(map[string]string)
-	}
-	key := update.Head.RootID + "|" + update.Head.CommitID
-	if h.SameCommit(update.Head) {
-		return nil
-	}
-	if _, exists := s.commits[key]; exists {
-		return errors.New("historical commit")
-	}
-	if h.Writer == "" && update.Head.Sequence != 1 || h.Writer != "" && h.Writer != update.Head.Writer && update.Head.Sequence != 0 || h.Writer == update.Head.Writer && update.Head.Sequence != h.Sequence+1 {
-		return errors.New("invalid commit sequence")
-	}
-	if h.Writer != update.PreviousWriter || h.Digest != update.PreviousDigest {
-		return errors.New("stale tree writer")
-	}
-	s.heads[update.Head.RootID] = update.Head
-	s.commits[key] = update.Head.CommitDigest
-	return nil
+	return s.stores.ExecutorCheckpoints.SaveExecutionTree(ctx, update)
 }
+
 func (s *testExecutionTrees) ExecutionResultCommitted(_ context.Context, _ string, publication runs.ResultPublication) (bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -177,12 +198,16 @@ func observeTestInteraction(t *testing.T, executor *InteractionExecutor, ctx con
 // evidence database needs the same Session admission before recording a call.
 // This Session-only model fixture does not simulate relational Run association;
 // that boundary is verified with admitted SQLite Model/Tool owners.
-type fixtureEndpointJournal struct {
+type sessionEndpointJournal struct {
 	*persistence.ModelInvocationStore
 	db *persistencefixture.Stores
 }
 
-func (j fixtureEndpointJournal) StartEndpointInvocation(ctx context.Context, invocation modelref.EndpointInvocation, _ string) error {
+func newSessionEndpointJournal(db *persistencefixture.Stores) sessionEndpointJournal {
+	return sessionEndpointJournal{ModelInvocationStore: db.ModelInvocations, db: db}
+}
+
+func (j sessionEndpointJournal) StartEndpointInvocation(ctx context.Context, invocation modelref.EndpointInvocation, _ string) error {
 	if invocation.SessionID != "" {
 		sessions := j.db.Sessions
 		if _, err := sessions.Get(ctx, invocation.SessionID); errors.Is(err, session.ErrNotFound) {
@@ -208,7 +233,7 @@ func newPricedObservedTestInteractionExecutor(t *testing.T, model chat.Model, pr
 	if value, ok := model.(modeladapter.InputTokenCounter); ok {
 		counter = value
 	}
-	resolver, err := modeladapter.NewObservedResolver(interactionChatResolver(model, counter), fixtureEndpointJournal{ModelInvocationStore: journal, db: db}, pricing)
+	resolver, err := modeladapter.NewObservedResolver(interactionChatResolver(model, counter), newSessionEndpointJournal(db), pricing)
 	if err != nil {
 		t.Fatal(err)
 	}

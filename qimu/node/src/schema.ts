@@ -7,6 +7,7 @@ import {
   isJSONNumber as numeric,
   equalJSON as equal,
   isJSONInteger,
+  compareJSONNumbers,
   type JSONNumber,
 } from "@qimu/sdk/json";
 import {
@@ -18,7 +19,21 @@ import {
 } from "./limits.ts";
 
 type RecordValue = Record<string, unknown>;
-const decimal = (value: JSONNumber) => new Decimal(value.toString());
+const maximumNumberMagnitude =
+  PORTABLE_LIMITS.maxAbsExponent + PORTABLE_LIMITS.maxNumberBytes;
+// The admitted profile bounds every coefficient and exponent before arithmetic.
+// A private constructor keeps unrelated Decimal configuration from changing a verdict.
+const ProfileDecimal = Decimal.clone({
+  precision: 2 * maximumNumberMagnitude + 1,
+  minE: -maximumNumberMagnitude,
+  maxE: maximumNumberMagnitude,
+  rounding: Decimal.ROUND_DOWN,
+  modulo: Decimal.ROUND_DOWN,
+});
+
+function multipleOf(value: JSONNumber, divisor: JSONNumber): boolean {
+  return new ProfileDecimal(value.toString()).mod(divisor.toString()).isZero();
+}
 
 const maps = new Set([
   "$defs",
@@ -126,20 +141,22 @@ export function compileSchema(source: unknown): (value: unknown) => void {
   }) as CustomProperty;
   for (const name of annotations) validator.attributes[name] = () => "";
   for (const [keyword, compare] of Object.entries({
-    minimum: (left: Decimal, right: Decimal) => left.gte(right),
-    maximum: (left: Decimal, right: Decimal) => left.lte(right),
-    exclusiveMinimum: (left: Decimal, right: Decimal) => left.gt(right),
-    exclusiveMaximum: (left: Decimal, right: Decimal) => left.lt(right),
-    multipleOf: (left: Decimal, right: Decimal) => left.mod(right).isZero(),
+    minimum: (left: JSONNumber, right: JSONNumber) =>
+      compareJSONNumbers(left, right) >= 0,
+    maximum: (left: JSONNumber, right: JSONNumber) =>
+      compareJSONNumbers(left, right) <= 0,
+    exclusiveMinimum: (left: JSONNumber, right: JSONNumber) =>
+      compareJSONNumbers(left, right) > 0,
+    exclusiveMaximum: (left: JSONNumber, right: JSONNumber) =>
+      compareJSONNumbers(left, right) < 0,
+    multipleOf,
   })) {
     validator.attributes[keyword] = ((value: unknown, schema: Schema) => {
       if (!numeric(value)) return "";
       const bound = (schema as RecordValue)[keyword];
       if (!numeric(bound))
         throw new Error("plugin: invalid numeric schema constraint");
-      return compare(decimal(value), decimal(bound))
-        ? ""
-        : "numeric constraint failed";
+      return compare(value, bound) ? "" : "numeric constraint failed";
     }) as CustomProperty;
   }
   validator.attributes.enum = ((value: unknown, schema: Schema) =>
@@ -194,7 +211,8 @@ export function compileSchema(source: unknown): (value: unknown) => void {
           "exclusiveMaximum",
           "multipleOf",
         ].includes(key) &&
-        (!numeric(field) || (key === "multipleOf" && !decimal(field).gt(0)))
+        (!numeric(field) ||
+          (key === "multipleOf" && compareJSONNumbers(field, 0) <= 0))
       )
         throw new Error("plugin: numeric schema constraint is invalid");
       if (

@@ -3,19 +3,22 @@ package plugin
 import (
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 func TestRendererComponentAdmissionAndReleaseCopies(t *testing.T) {
-	valid := ClientComponent{ID: "search", Title: "Search", Scope: "toolResult", Placement: "toolResultRenderer", Entry: Namespace + "/components/component.js", Export: "Result", Selector: &RendererSelector{Kind: rendererResultShape, Name: "search"}}
+	valid := ClientComponent{ID: "search", Title: "Search", Scope: "toolResult", Placement: "toolResultRenderer", Entry: Namespace + "/components/component.js", Export: "Result", Selector: &RendererSelector{Kind: extension.RendererResultShape, Name: "search"}}
 	for _, test := range []struct {
 		name   string
 		change func(*ClientComponent)
 	}{
 		{"unknown selector", func(v *ClientComponent) { v.Selector.Kind = "execute" }},
 		{"unknown shape", func(v *ClientComponent) { v.Selector.Name = "arbitrary" }},
-		{"blank tool name", func(v *ClientComponent) { v.Selector = &RendererSelector{Kind: rendererToolName, Name: " "} }},
-		{"file selector", func(v *ClientComponent) { v.Selector = &RendererSelector{Kind: rendererFileExtension, Name: "md"} }},
+		{"blank tool name", func(v *ClientComponent) { v.Selector = &RendererSelector{Kind: extension.RendererToolName, Name: " "} }},
+		{"file selector", func(v *ClientComponent) {
+			v.Selector = &RendererSelector{Kind: extension.RendererFileExtension, Name: "md"}
+		}},
 		{"wrong scope", func(v *ClientComponent) { v.Scope = "workspace" }},
 		{"missing selector", func(v *ClientComponent) { v.Selector = nil }},
 		{"escaped entry", func(v *ClientComponent) { v.Entry = "../component.js" }},
@@ -47,7 +50,7 @@ func TestRendererComponentAdmissionAndReleaseCopies(t *testing.T) {
 }
 
 func TestFileComponentReleaseCopies(t *testing.T) {
-	selector := RendererSelector{Kind: rendererFileExtension, Name: "md"}
+	selector := RendererSelector{Kind: extension.RendererFileExtension, Name: "md"}
 	component := ClientComponent{ID: "markdown", Title: "Markdown", Scope: "file", Placement: "fileRenderer", Entry: Namespace + "/components/component.js", Export: "Markdown", Selector: &selector}
 	release, err := NewRelease(identity.DigestStrings("file-component"), Declaration{Name: "file-component", Components: []ClientComponent{component}})
 	if err != nil {

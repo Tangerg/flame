@@ -13,7 +13,6 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
@@ -123,11 +122,11 @@ func newStreamFixture(t *testing.T, mode string) *streamFixture {
 	if mode == "query" {
 		kind = portable.Query
 	}
-	method, err := qimumcp.NewStreamingMethod[streamInput, string, bool](qimumcp.MethodConfig{Name: "records.stream", Kind: kind, Target: "installation", Description: "Stream owned records."})
+	method, err := qimumcp.NewStreamingMethod[streamInput, string, bool](qimumcp.MethodConfig{Name: "records.stream", Kind: kind, Target: extension.ScopeInstallation, Description: "Stream owned records."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "records", Composition: portable.Selection, Scope: "installation"}, method.Descriptor())
+	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "records", Composition: portable.Selection, Scope: extension.ScopeInstallation}, method.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -238,7 +237,7 @@ func newStreamFixture(t *testing.T, mode string) *streamFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.request = plugins.CallRequest{Installation: installation.ID(), Digest: release.Digest(), Contribution: "records", Contract: contract, Method: "records.stream", Input: input, Target: portable.Target{Scope: "installation", Reference: installation.ID().String()}}
+	f.request = plugins.CallRequest{Installation: installation.ID(), Digest: release.Digest(), Contribution: "records", Contract: contract, Method: "records.stream", Input: input, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: installation.ID().String()}}
 	return f
 }
 

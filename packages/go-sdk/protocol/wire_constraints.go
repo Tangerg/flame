@@ -36,6 +36,9 @@ func ValidateWireTree(value any) error {
 	if !root.IsValid() {
 		return nil
 	}
+	if err := jsonvalue.ValidateType(root.Type()); err != nil {
+		return err
+	}
 	rootType := root.Type()
 	for rootType.Kind() == reflect.Pointer {
 		rootType = rootType.Elem()
@@ -125,15 +128,13 @@ func prefixedWireErrors(path string, err error) []FieldError {
 		}
 		return fields
 	}
-	field := path
-	if field == "" {
-		field = "$"
-	}
-	return []FieldError{{Field: field, Detail: err.Error()}}
+	return []FieldError{{Field: joinWirePath(path, ""), Detail: err.Error()}}
 }
 
 func joinWirePath(prefix, field string) string {
 	switch {
+	case prefix == "" && field == "":
+		return "$"
 	case prefix == "":
 		return field
 	case field == "":

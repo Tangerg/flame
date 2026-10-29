@@ -22,6 +22,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"os"
 	"os/exec"
@@ -467,10 +468,15 @@ func (s *Shells) KillAll() error {
 		defer s.lifecycle.Unlock()
 		s.mu.Lock()
 		s.closed = true
-		shells := s.shells
-		s.shells = map[shellID]*Shell{}
+		shells := maps.Clone(s.shells)
 		s.mu.Unlock()
-		_, s.closeErr = stopDetachedShells(shells, "during shutdown")
+		stopped, err := stopDetachedShells(shells, "during shutdown")
+		s.mu.Lock()
+		for _, id := range stopped {
+			delete(s.shells, id)
+		}
+		s.closeErr = err
+		s.mu.Unlock()
 	})
 	return s.closeErr
 }
@@ -498,14 +504,17 @@ func stopDetachedShells(shells map[shellID]*Shell, action string) ([]shellID, er
 		}
 		stopped = append(stopped, id)
 	}
+	released := make([]shellID, 0, len(stopped))
 	for _, id := range stopped {
 		sh := shells[id]
 		<-sh.done
 		if err := sh.cleanupFailure(); err != nil {
 			errs = append(errs, fmt.Errorf("exec: clean shell %q %s: %w", id, action, err))
+			continue
 		}
+		released = append(released, id)
 	}
-	return stopped, errors.Join(errs...)
+	return released, errors.Join(errs...)
 }
 
 type shellProcessOwner struct {

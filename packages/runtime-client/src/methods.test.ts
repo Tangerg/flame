@@ -965,6 +965,7 @@ describe("methods factory", () => {
     expect(call).toHaveBeenCalledExactlyOnceWith("sessions.fork", params, {
       idempotencyKey: "new-action-key",
       idempotencyNamespace: "idp_original",
+      requestMeta: null,
     });
     journal.dispose();
   });

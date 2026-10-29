@@ -4,16 +4,17 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"iter"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/scope/core/chat"
 )
 
 func ModelStreamMethod() (*qimumcp.StreamingMethod[chat.Request, chat.ResponseDelta, ModelResult], error) {
 	return qimumcp.NewStreamingMethod[chat.Request, chat.ResponseDelta, ModelResult](qimumcp.MethodConfig{
-		Name: "flame.model/stream.v1", Kind: portable.Mutation, Target: "call",
+		Name: "flame.model/stream.v1", Kind: portable.Mutation, Target: extension.ScopeCall,
 		Description: "Consume the captured model's canonical stream and final outcome.",
 	})
 }

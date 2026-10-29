@@ -101,7 +101,7 @@ func (m *ModelInvocationStore) StartModelInvocation(
 		   call_id, session_id, run_id, segment_id, state, started_at, finished_at, logical_purpose)
 		 SELECT ?, session_id, run_id, ?, ?, ?, NULL, ?
 		   FROM runs
-		  WHERE run_id = ? AND session_id = ? AND state != ?`,
+		  WHERE run_id = ? AND session_id = ? AND state = ? AND active_segment_id = ?`,
 		callID,
 		segmentID,
 		modelInvocationStarted.databaseValue(),
@@ -109,7 +109,8 @@ func (m *ModelInvocationStore) StartModelInvocation(
 		purpose.String(),
 		runID,
 		sessionID,
-		runStateTerminal.databaseValue(),
+		runStateRunning.databaseValue(),
+		segmentID,
 	)
 	if err != nil {
 		return fmt.Errorf("sqlite: start model invocation %q: %w", callID, err)

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/qimu"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
@@ -93,7 +94,7 @@ func (r *Registry) ComponentPlan(ctx context.Context, realm qimu.RealmID, id ide
 		InstallationID: qimu.InstallationID(id.String()),
 		Release:        qimu.Digest(digest.String()),
 		UnitID:         ComponentUnit(component),
-		Export:         "component",
+		Export:         extension.ComponentExport,
 		Contract:       contract.Ref(),
 	})
 }

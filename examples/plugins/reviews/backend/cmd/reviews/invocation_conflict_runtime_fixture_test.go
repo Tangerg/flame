@@ -40,7 +40,7 @@ func TestInvocationConflictRuntimeFixture(t *testing.T) {
 	claim := func(ctx context.Context, id string) error {
 		// A real prior private call owns the identity before the unchanged public
 		// handler sees different input; no fabricated response or receipt is used.
-		result, err := store.update(ctx, id, prior, admitted)
+		result, err := store.update(ctx, id, admitted)
 		if err != nil {
 			return fmt.Errorf("prepare prior private binding: %w", err)
 		}

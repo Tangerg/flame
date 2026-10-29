@@ -112,7 +112,7 @@ func BuildRelease(ctx context.Context, source string, target BuildTarget, archiv
 }
 
 func authorManifest(ctx context.Context, root *os.Root, declaration plugin.Declaration, projection plugins.FrameworkDefinition, target BuildTarget) (distribution.Manifest, error) {
-	manifest := distribution.Manifest{SchemaVersion: 1, Package: declaration.Name, Version: declaration.Version, Artifacts: []distribution.Artifact{}, Units: []distribution.Unit{}}
+	manifest := distribution.Manifest{SchemaVersion: distribution.ManifestSchemaVersion, Package: declaration.Name, Version: declaration.Version, Artifacts: []distribution.Artifact{}, Units: []distribution.Unit{}}
 	if manifest.Version == "" {
 		return manifest, fmt.Errorf("%w: a release version is required", plugin.ErrInvalid)
 	}

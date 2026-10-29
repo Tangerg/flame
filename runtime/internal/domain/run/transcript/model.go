@@ -1,6 +1,7 @@
 package transcript
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"slices"
@@ -124,6 +125,10 @@ type ContentBlock struct {
 }
 
 // Clone returns an ownership-isolated content value.
+func (c ContentBlock) Equal(other ContentBlock) bool {
+	return c.Kind == other.Kind && c.Text == other.Text && c.MediaType == other.MediaType && bytes.Equal(c.Bytes, other.Bytes)
+}
+
 func (c ContentBlock) Clone() ContentBlock {
 	c.Bytes = slices.Clone(c.Bytes)
 	return c

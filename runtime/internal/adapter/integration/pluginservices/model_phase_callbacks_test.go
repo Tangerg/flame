@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
@@ -62,7 +61,7 @@ func TestModelPreparationPhasesCaptureReentrantHostAuthorityAndReleaseIt(t *test
 				var backendCalls atomic.Int32
 				selection := testsupport.DefaultModelSelection()
 				request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("question")))
-				original := portable.Invocation{ID: "preparing-model", Origin: extension.Model, Parent: "original-tool", Target: portable.Target{Scope: "call", Reference: "preparing-model"}}
+				original := portable.Invocation{ID: "preparing-model", Origin: extension.Model, Parent: "original-tool", Target: portable.Target{Scope: extension.ScopeCall, Reference: "preparing-model"}}
 				callers := make(chan portable.Invocation, 1)
 				refs := make(chan qimumcp.CallbackRef, 1)
 				host := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

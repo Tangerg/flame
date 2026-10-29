@@ -189,21 +189,6 @@ const (
 	ToolCanceled ToolStatus = "canceled"
 )
 
-// ToolKind is a terminal-relevant semantic category assigned by a runtime
-// adapter. Delivery adapters switch on this closed projection, never on a
-// provider's tool name.
-type ToolKind string
-
-const (
-	ToolUnknown ToolKind = "unknown"
-	ToolShell   ToolKind = "shell"
-	ToolEdit    ToolKind = "edit"
-	ToolRead    ToolKind = "read"
-	ToolSearch  ToolKind = "search"
-	ToolWeb     ToolKind = "web"
-	ToolTask    ToolKind = "task"
-)
-
 // ToolCall is a tool invocation as the Runtime binding chose to present it.
 //
 // Every field is a projection the adapter already computed. Name preserves the
@@ -211,7 +196,7 @@ const (
 // are the stable vocabulary renderers use. This keeps provider tool semantics in
 // one adapter rather than rediscovering them in every UI.
 type ToolCall struct {
-	Kind       ToolKind
+	Kind       protocol.ToolCategory
 	Name       string
 	Summary    string
 	Status     ToolStatus
@@ -280,7 +265,7 @@ func (t ToolCall) sameInvocation(other ToolCall) bool {
 func (t ToolCall) Validate() error {
 	var problems []error
 	switch t.Kind {
-	case ToolUnknown, ToolShell, ToolEdit, ToolRead, ToolSearch, ToolWeb, ToolTask:
+	case protocol.ToolCategoryUnknown, protocol.ToolCategoryShell, protocol.ToolCategoryEdit, protocol.ToolCategoryRead, protocol.ToolCategorySearch, protocol.ToolCategoryWeb, protocol.ToolCategoryTask:
 	default:
 		problems = append(problems, fmt.Errorf("kind %q is invalid", t.Kind))
 	}
@@ -294,7 +279,7 @@ func (t ToolCall) Validate() error {
 	default:
 		problems = append(problems, fmt.Errorf("safety class %q is invalid", t.Safety))
 	}
-	if t.Kind == ToolUnknown && strings.TrimSpace(t.Name) == "" {
+	if t.Kind == protocol.ToolCategoryUnknown && strings.TrimSpace(t.Name) == "" {
 		problems = append(problems, errors.New("unknown tool has no provider name"))
 	}
 	if t.Status == ToolRunning && t.ExitCode != nil {
@@ -316,7 +301,7 @@ func (t ToolCall) Validate() error {
 		problems = append(problems, errors.New("tool finish time precedes start time"))
 	}
 	if len(t.ArgumentsJSON) > 0 {
-		var arguments map[string]any
+		var arguments map[string]jsontext.Value
 		if !jsontext.Value(t.ArgumentsJSON).IsValid() || json.Unmarshal(t.ArgumentsJSON, &arguments) != nil || arguments == nil {
 			problems = append(problems, errors.New("arguments JSON is not an object"))
 		}

@@ -20,6 +20,9 @@ import (
 const ManifestName = "manifest.json"
 const LockName = "plugin.lock.json"
 
+const ManifestSchemaVersion = 1
+const LockSchemaVersion = 1
+
 var (
 	ErrInvalid   = errors.New("distribution: invalid release")
 	ErrIntegrity = errors.New("distribution: content integrity failure")
@@ -130,12 +133,12 @@ func ParseLock(data []byte) (Lock, error) {
 	if err := jsonv2.Unmarshal(data, &lock, jsonv2.RejectUnknownMembers(true)); err != nil {
 		return lock, errors.Join(ErrInvalid, err)
 	}
-	if lock.SchemaVersion != 1 || !name(lock.Package) || lock.Release.Validate() != nil {
+	if lock.SchemaVersion != LockSchemaVersion || !qimu.ValidName(lock.Package) || lock.Release.Validate() != nil {
 		return lock, ErrInvalid
 	}
 	seen := map[string]struct{}{}
 	for _, dependency := range lock.Dependencies {
-		if !name(dependency.Package) || dependency.Release.Validate() != nil {
+		if !qimu.ValidName(dependency.Package) || dependency.Release.Validate() != nil {
 			return lock, ErrInvalid
 		}
 		if _, ok := seen[dependency.Package]; ok {
@@ -147,7 +150,7 @@ func ParseLock(data []byte) (Lock, error) {
 }
 
 func (m Manifest) Validate() error {
-	if m.SchemaVersion != 1 || !name(m.Package) || !name(m.Version) {
+	if m.SchemaVersion != ManifestSchemaVersion || !qimu.ValidName(m.Package) || !qimu.ValidName(m.Version) {
 		return ErrInvalid
 	}
 	if m.Release != "" && m.Release.Validate() != nil {
@@ -191,7 +194,7 @@ func (m Manifest) Validate() error {
 		units[unit.ID] = unit
 		slots := map[string]struct{}{}
 		for _, imported := range unit.Imports {
-			if !name(imported.Slot) {
+			if !qimu.ValidName(imported.Slot) {
 				return fmt.Errorf("%w: import slot", ErrInvalid)
 			}
 			if _, exists := slots[imported.Slot]; exists {
@@ -204,7 +207,7 @@ func (m Manifest) Validate() error {
 		}
 		exports := map[string]struct{}{}
 		for _, export := range unit.Exports {
-			if !name(export.Name) {
+			if !qimu.ValidName(export.Name) {
 				return fmt.Errorf("%w: export name", ErrInvalid)
 			}
 			if _, exists := exports[export.Name]; exists {
@@ -218,7 +221,7 @@ func (m Manifest) Validate() error {
 		targets := map[string]struct{}{}
 		for _, variant := range unit.Variants {
 			artifact, exists := artifacts[variant.Path]
-			if !exists || !name(variant.OS) || !name(variant.Arch) {
+			if !exists || !qimu.ValidName(variant.OS) || !qimu.ValidName(variant.Arch) {
 				return fmt.Errorf("%w: unit artifact", ErrInvalid)
 			}
 			if variant.Runtime == nil && !artifact.Executable {
@@ -239,7 +242,7 @@ func (m Manifest) Validate() error {
 			}
 			specifiers := map[string]struct{}{}
 			for _, imported := range unit.Module.Imports {
-				if !name(imported.Specifier) || (imported.Path == "") == (imported.Shared == nil) {
+				if !qimu.ValidName(imported.Specifier) || (imported.Path == "") == (imported.Shared == nil) {
 					return fmt.Errorf("%w: module import", ErrInvalid)
 				}
 				if _, exists := specifiers[imported.Specifier]; exists {
@@ -247,7 +250,7 @@ func (m Manifest) Validate() error {
 				}
 				specifiers[imported.Specifier] = struct{}{}
 				if imported.Shared != nil {
-					if !name(imported.Shared.Profile) {
+					if !qimu.ValidName(imported.Shared.Profile) {
 						return fmt.Errorf("%w: shared module", ErrInvalid)
 					}
 				} else if _, exists := artifacts[imported.Path]; !exists {
@@ -261,12 +264,12 @@ func (m Manifest) Validate() error {
 			}
 		}
 		for _, capability := range unit.RequestedCapabilities {
-			if !name(capability) {
+			if !qimu.ValidName(capability) {
 				return fmt.Errorf("%w: capability name", ErrInvalid)
 			}
 		}
 		switch unit.Profile {
-		case "mcp-process":
+		case qimu.MCPProcess:
 			if len(unit.Variants) == 0 || unit.Module != nil {
 				return fmt.Errorf("%w: process unit entry", ErrInvalid)
 			}
@@ -280,15 +283,15 @@ func (m Manifest) Validate() error {
 					return fmt.Errorf("%w: process export is native", ErrInvalid)
 				}
 			}
-		case "browser-js":
+		case qimu.BrowserJS:
 			if unit.Module == nil || len(unit.Variants) != 0 {
 				return fmt.Errorf("%w: browser unit entry", ErrInvalid)
 			}
-		case "static-resource":
+		case qimu.StaticResource:
 			if len(unit.Resources) == 0 || unit.Module != nil || len(unit.Variants) != 0 || len(unit.Imports) != 0 {
 				return fmt.Errorf("%w: resource unit entry", ErrInvalid)
 			}
-		case "native-go":
+		case qimu.NativeGo:
 			if unit.Module != nil || len(unit.Variants) != 0 {
 				return fmt.Errorf("%w: native unit is supplied by the host build", ErrInvalid)
 			}
@@ -299,10 +302,10 @@ func (m Manifest) Validate() error {
 	keys := map[string]struct{}{}
 	for _, contribution := range m.Contributions {
 		unit, ok := units[contribution.Unit]
-		if !ok || !name(contribution.Key) || !name(contribution.Export) {
+		if !ok || !qimu.ValidName(contribution.Key) || !qimu.ValidName(contribution.Export) {
 			return fmt.Errorf("%w: contribution", ErrInvalid)
 		}
-		if _, ok := contracts[contribution.Point]; !ok || string(contribution.Point.Kind) != "point" {
+		if _, ok := contracts[contribution.Point]; !ok || contribution.Point.Kind != qimu.PointKind {
 			return fmt.Errorf("%w: contribution point", ErrInvalid)
 		}
 		if !slices.ContainsFunc(unit.Exports, func(export qimu.ExportDeclaration) bool {
@@ -357,7 +360,7 @@ func (m Manifest) Lock(dependencies []LockedRelease) (Lock, error) {
 	if err != nil {
 		return Lock{}, err
 	}
-	lock := Lock{SchemaVersion: 1, Package: m.Package, Release: digest, Artifacts: slices.Clone(m.Artifacts), Contracts: slices.Clone(m.Contracts), Dependencies: slices.Clone(dependencies)}
+	lock := Lock{SchemaVersion: LockSchemaVersion, Package: m.Package, Release: digest, Artifacts: slices.Clone(m.Artifacts), Contracts: slices.Clone(m.Contracts), Dependencies: slices.Clone(dependencies)}
 	slices.SortFunc(lock.Artifacts, func(a, b Artifact) int { return strings.Compare(a.Path, b.Path) })
 	data, err := json.Marshal(lock)
 	if err != nil {
@@ -381,21 +384,21 @@ func (l Lock) Verify(m Manifest) error {
 	return nil
 }
 
-func name(value string) bool {
-	return value != "" && len(value) <= 256 && !strings.ContainsAny(value, "\x00\r\n\t ")
-}
 func validRuntime(value RuntimeReference) bool {
-	return name(value.Name) && name(value.Version) && value.Digest.Validate() == nil
+	return qimu.ValidName(value.Name) && qimu.ValidName(value.Version) && value.Digest.Validate() == nil
 }
 
 // Portable archive paths deliberately use ASCII. This rejects Unicode and
 // case-fold aliases rather than depending on a destination filesystem's rules.
+const maxArtifactPathBytes = 1024
+const maxArtifactPathSegmentBytes = 240
+
 func validPath(value string) bool {
-	if value == "" || len(value) > 1024 || !fs.ValidPath(value) || value == "." || strings.Contains(value, "\\") {
+	if value == "" || len(value) > maxArtifactPathBytes || !fs.ValidPath(value) || value == "." || strings.Contains(value, "\\") {
 		return false
 	}
 	for _, segment := range strings.Split(value, "/") {
-		if strings.HasSuffix(segment, ".") || strings.HasSuffix(segment, " ") || len(segment) > 240 {
+		if strings.HasSuffix(segment, ".") || strings.HasSuffix(segment, " ") || len(segment) > maxArtifactPathSegmentBytes {
 			return false
 		}
 		stem := strings.ToLower(strings.SplitN(segment, ".", 2)[0])

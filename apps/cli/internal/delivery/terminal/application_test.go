@@ -1046,7 +1046,7 @@ func TestClosingDuringAnAcceptedResumeCancelsTheRunAndRetiresTheDecision(t *test
 			Interrupts: []conversation.Interrupt{conversation.Approval{
 				ItemID: "approval", Title: "Close during resume",
 				Tool: &conversation.ToolCall{
-					Kind: conversation.ToolShell, Name: "shell", Command: "true", Status: conversation.ToolRunning,
+					Kind: protocol.ToolCategoryShell, Name: "shell", Command: "true", Status: conversation.ToolRunning,
 				},
 			}},
 			Continue: func([]conversation.InterruptAnswer) []runtimefixture.Step {
@@ -1192,7 +1192,7 @@ func TestPendingMixedInterruptResumeSurvivesRestartWithoutLosingAnswers(t *testi
 					ItemID: "approval", Title: "Run checks", Rememberable: true,
 					RuleHint: "shell:go test ./...",
 					Tool: &conversation.ToolCall{
-						Kind: conversation.ToolShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning,
+						Kind: protocol.ToolCategoryShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning,
 						ArgumentsJSON: []byte(`{"command":"go test ./...","count":1}`),
 					},
 				},
@@ -1317,7 +1317,7 @@ func TestLaunchRequiresTheExactReceiptToSettleAnExpiredResume(t *testing.T) {
 				return runtimefixture.Script{
 					Interrupts: []conversation.Interrupt{conversation.Approval{
 						ItemID: "approval", Title: "Already accepted",
-						Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Status: conversation.ToolRunning},
+						Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Status: conversation.ToolRunning},
 					}},
 					Continue: func([]conversation.InterruptAnswer) []runtimefixture.Step {
 						return []runtimefixture.Step{{Finish: &runtimefixture.Finish{
@@ -1408,7 +1408,7 @@ func TestLaunchPreservesAnExpiredResumeWithoutAcceptanceProof(t *testing.T) {
 		return runtimefixture.Script{
 			Interrupts: []conversation.Interrupt{conversation.Approval{
 				ItemID: "approval", Title: "Retry safely",
-				Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Status: conversation.ToolRunning},
+				Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Status: conversation.ToolRunning},
 			}},
 			Continue: func([]conversation.InterruptAnswer) []runtimefixture.Step {
 				return []runtimefixture.Step{{Finish: &runtimefixture.Finish{
@@ -1477,7 +1477,7 @@ func TestActiveResumePreservesUncertaintyWhenReplayExpires(t *testing.T) {
 		return runtimefixture.Script{
 			Interrupts: []conversation.Interrupt{conversation.Approval{
 				ItemID: "approval", Title: "Expire during delivery",
-				Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Status: conversation.ToolRunning},
+				Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Status: conversation.ToolRunning},
 			}},
 			Continue: func([]conversation.InterruptAnswer) []runtimefixture.Step {
 				return []runtimefixture.Step{{Finish: &runtimefixture.Finish{
@@ -1565,7 +1565,7 @@ func TestSwitchingSessionsRecoversTheDestinationPendingResume(t *testing.T) {
 		return runtimefixture.Script{
 			Interrupts: []conversation.Interrupt{conversation.Approval{
 				ItemID: "destination-approval", Title: "Approve destination run",
-				Tool: &conversation.ToolCall{Kind: conversation.ToolRead, Name: "read", Path: "README.md", Status: conversation.ToolRunning},
+				Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryRead, Name: "read", Path: "README.md", Status: conversation.ToolRunning},
 			}},
 			Continue: func([]conversation.InterruptAnswer) []runtimefixture.Step {
 				return []runtimefixture.Step{{Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}
@@ -1688,7 +1688,7 @@ func TestTranscriptReaderSearchesBeyondInlineToolSummary(t *testing.T) {
 			{Event: conversation.BlockCompleted{Block: conversation.Block{
 				ID: "long_tool", Kind: conversation.BlockTool,
 				Tool: &conversation.ToolCall{
-					Kind: conversation.ToolShell, Command: "long output", Status: conversation.ToolOK,
+					Kind: protocol.ToolCategoryShell, Command: "long output", Status: conversation.ToolOK,
 					Output: strings.Join(lines, "\n"),
 				},
 			}}},
@@ -3804,7 +3804,7 @@ func TestApprovalDenialSubmitsOptionalUserFeedback(t *testing.T) {
 			Interrupts: []conversation.Interrupt{conversation.Approval{
 				ItemID: "approval-feedback", Title: "Run destructive command", Detail: "Review this request carefully",
 				Tool: &conversation.ToolCall{
-					Kind: conversation.ToolShell, Name: "shell", Command: "rm generated.txt", Status: conversation.ToolRunning,
+					Kind: protocol.ToolCategoryShell, Name: "shell", Command: "rm generated.txt", Status: conversation.ToolRunning,
 					ArgumentsJSON: []byte(`{"command":"rm generated.txt","generatedFixture":"cache_test.go"}`),
 				},
 			}},
@@ -3846,7 +3846,7 @@ func TestApprovalCanRememberADenialWithoutLosingFeedback(t *testing.T) {
 				ItemID: "remember-denial", Title: "Delete generated fixtures", Rememberable: true,
 				RuleHint: "shell:rm generated/*",
 				Tool: &conversation.ToolCall{
-					Kind: conversation.ToolShell, Name: "shell", Command: "rm generated/*", Status: conversation.ToolRunning,
+					Kind: protocol.ToolCategoryShell, Name: "shell", Command: "rm generated/*", Status: conversation.ToolRunning,
 				},
 			}},
 			Continue: func(provided []conversation.InterruptAnswer) []runtimefixture.Step {
@@ -3909,7 +3909,7 @@ func TestApprovalFormSubmitsEveryDecisionAndRememberScope(t *testing.T) {
 						ItemID: "approval-matrix", Title: "Review generated command", Rememberable: true,
 						RuleHint: "shell:go test ./...",
 						Tool: &conversation.ToolCall{
-							Kind: conversation.ToolShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning,
+							Kind: protocol.ToolCategoryShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning,
 						},
 					}},
 					Continue: func(provided []conversation.InterruptAnswer) []runtimefixture.Step {
@@ -3993,7 +3993,7 @@ func TestApprovalCanEditToolArgumentsOnceAcrossValidationAndResize(t *testing.T)
 				ItemID: "edit-approval", Title: "Run generated command",
 				Rememberable: true,
 				Tool: &conversation.ToolCall{
-					Kind: conversation.ToolShell, Name: "shell", Command: "rm generated.txt", Status: conversation.ToolRunning,
+					Kind: protocol.ToolCategoryShell, Name: "shell", Command: "rm generated.txt", Status: conversation.ToolRunning,
 					ArgumentsJSON: []byte(`{"command":"rm generated.txt","timeout":30}`),
 				},
 			}},
@@ -4059,7 +4059,7 @@ func TestCancelingApprovalArgumentEditReturnsToTheUnchangedApproval(t *testing.T
 			Interrupts: []conversation.Interrupt{conversation.Approval{
 				ItemID: "cancel-edit-approval", Title: "Run generated command",
 				Tool: &conversation.ToolCall{
-					Kind: conversation.ToolShell, Name: "shell", Command: "echo original", Status: conversation.ToolRunning,
+					Kind: protocol.ToolCategoryShell, Name: "shell", Command: "echo original", Status: conversation.ToolRunning,
 					ArgumentsJSON: []byte(`{"command":"echo original"}`),
 				},
 			}},
@@ -4102,7 +4102,7 @@ func TestApprovalStateSurvivesMinimalViewportAndRestores(t *testing.T) {
 		return runtimefixture.Script{
 			Interrupts: []conversation.Interrupt{conversation.Approval{
 				ItemID: "resize-approval", Title: "Run generated command",
-				Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Command: "rm generated.txt", Status: conversation.ToolRunning},
+				Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Command: "rm generated.txt", Status: conversation.ToolRunning},
 			}},
 			Continue: func(provided []conversation.InterruptAnswer) []runtimefixture.Step {
 				answers <- provided[0].Answer.(conversation.ApprovalAnswer)
@@ -4145,7 +4145,7 @@ func TestNonRememberableApprovalOverridesConfiguredRememberDefault(t *testing.T)
 		return runtimefixture.Script{
 			Interrupts: []conversation.Interrupt{conversation.Approval{
 				ItemID: "one-shot-approval", Title: "Read generated report",
-				Tool: &conversation.ToolCall{Kind: conversation.ToolRead, Name: "read", Path: "report.txt", Status: conversation.ToolRunning},
+				Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryRead, Name: "read", Path: "report.txt", Status: conversation.ToolRunning},
 			}},
 			Continue: func(provided []conversation.InterruptAnswer) []runtimefixture.Step {
 				answers <- provided[0].Answer.(conversation.ApprovalAnswer)
@@ -4271,7 +4271,7 @@ func multiInterruptReviewScript(answers chan<- []conversation.InterruptAnswer) r
 		Interrupts: []conversation.Interrupt{
 			conversation.Approval{
 				ItemID: "approval", Title: "Run tests", Rememberable: true,
-				Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning},
+				Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning},
 			},
 			conversation.Question{
 				ItemID: "question", Title: "Choose platform",
@@ -4601,20 +4601,20 @@ func TestToolKindsRenderLiveAndDetailToggleChangesTheTranscript(t *testing.T) {
 		return runtimefixture.Script{
 			Prelude: []runtimefixture.Step{
 				{Event: conversation.BlockStarted{Block: conversation.Block{ID: "shell", Kind: conversation.BlockTool, Tool: &conversation.ToolCall{
-					Kind: conversation.ToolShell, Name: "provider.exec", Command: "go test ./...", Summary: "run tests", Status: conversation.ToolRunning,
+					Kind: protocol.ToolCategoryShell, Name: "provider.exec", Command: "go test ./...", Summary: "run tests", Status: conversation.ToolRunning,
 				}}}},
 				{Event: conversation.BlockDelta{BlockID: "shell", Text: "SHELL_DETAIL_"}},
 				{Event: conversation.BlockDelta{BlockID: "shell", Text: "OK\nsecond line"}},
 				{Event: conversation.BlockCompleted{Block: conversation.Block{ID: "shell", Kind: conversation.BlockTool, Tool: &conversation.ToolCall{
-					Kind: conversation.ToolShell, Name: "provider.exec", Command: "go test ./...", Summary: "run tests", Status: conversation.ToolOK,
+					Kind: protocol.ToolCategoryShell, Name: "provider.exec", Command: "go test ./...", Summary: "run tests", Status: conversation.ToolOK,
 					Output: "SHELL_DETAIL_OK\nsecond line", ExitCode: &zero,
 				}}}},
 				{Event: conversation.BlockCompleted{Block: conversation.Block{ID: "edit", Kind: conversation.BlockTool, Tool: &conversation.ToolCall{
-					Kind: conversation.ToolEdit, Name: "provider.patch", Path: "internal/cache.go", Summary: "update cache", Status: conversation.ToolOK,
+					Kind: protocol.ToolCategoryEdit, Name: "provider.patch", Path: "internal/cache.go", Summary: "update cache", Status: conversation.ToolOK,
 					Diff: "--- a/internal/cache.go\n+++ b/internal/cache.go\n@@ -1,2 +1,2 @@\n package cache\n-oldTicker()\n+newSweepSignal()\n",
 				}}}},
 				{Event: conversation.BlockCompleted{Block: conversation.Block{ID: "search", Kind: conversation.BlockTool, Tool: &conversation.ToolCall{
-					Kind: conversation.ToolSearch, Name: "provider.grep", Query: "cache expiry", Summary: "find expiry", Status: conversation.ToolOK,
+					Kind: protocol.ToolCategorySearch, Name: "provider.grep", Query: "cache expiry", Summary: "find expiry", Status: conversation.ToolOK,
 					Output: "internal/cache.go:22\ninternal/cache_test.go:18",
 				}}}},
 				{Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
@@ -4650,12 +4650,12 @@ func TestRunningToolOutputStreamsIntoAnExpandedTranscript(t *testing.T) {
 		zero := 0
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: conversation.BlockStarted{Block: conversation.Block{ID: "shell", Kind: conversation.BlockTool, Tool: &conversation.ToolCall{
-				Kind: conversation.ToolShell, Command: "go test ./...", Status: conversation.ToolRunning,
+				Kind: protocol.ToolCategoryShell, Command: "go test ./...", Status: conversation.ToolRunning,
 			}}}},
 			{Delay: 100 * time.Millisecond, Event: conversation.BlockDelta{BlockID: "shell", Text: "LIVE_TOOL_FIRST\n"}},
 			{Delay: 400 * time.Millisecond, Event: conversation.BlockDelta{BlockID: "shell", Text: "LIVE_TOOL_SECOND\n"}},
 			{Delay: 400 * time.Millisecond, Event: conversation.BlockCompleted{Block: conversation.Block{ID: "shell", Kind: conversation.BlockTool, Tool: &conversation.ToolCall{
-				Kind: conversation.ToolShell, Command: "go test ./...", Status: conversation.ToolOK,
+				Kind: protocol.ToolCategoryShell, Command: "go test ./...", Status: conversation.ToolOK,
 				Output: "LIVE_TOOL_FIRST\nLIVE_TOOL_SECOND\n", ExitCode: &zero,
 			}}}},
 			{Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
@@ -4680,11 +4680,11 @@ func TestCancelingARunSettlesItsLiveToolProjection(t *testing.T) {
 	backend.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: conversation.BlockStarted{Block: conversation.Block{ID: "shell", Kind: conversation.BlockTool, Tool: &conversation.ToolCall{
-				Kind: conversation.ToolShell, Command: "long command", Status: conversation.ToolRunning,
+				Kind: protocol.ToolCategoryShell, Command: "long command", Status: conversation.ToolRunning,
 			}}}},
 			{Event: conversation.BlockDelta{BlockID: "shell", Text: "PARTIAL_TOOL_OUTPUT\n"}},
 			{Delay: time.Hour, Event: conversation.BlockCompleted{Block: conversation.Block{ID: "shell", Kind: conversation.BlockTool, Tool: &conversation.ToolCall{
-				Kind: conversation.ToolShell, Command: "long command", Status: conversation.ToolOK, Output: "never reached",
+				Kind: protocol.ToolCategoryShell, Command: "long command", Status: conversation.ToolOK, Output: "never reached",
 			}}}},
 			{Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
@@ -4767,7 +4767,7 @@ func approvalWidthScript(string) runtimefixture.Script {
 			Title:  "Review the proposed change",
 			Detail: "Confirm that the approval form remains usable at this terminal width.",
 			Tool: &conversation.ToolCall{
-				Kind: conversation.ToolShell, Name: "responsive-check", Command: "go test ./...", Status: conversation.ToolRunning,
+				Kind: protocol.ToolCategoryShell, Name: "responsive-check", Command: "go test ./...", Status: conversation.ToolRunning,
 			},
 		}},
 		Continue: func(answers []conversation.InterruptAnswer) []runtimefixture.Step {

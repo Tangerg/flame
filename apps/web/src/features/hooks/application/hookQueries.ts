@@ -1,5 +1,4 @@
-type HookScope = "global" | "project";
-
+import { type HookScope } from "@/foundation/protocolValues.generated";
 import { createParameterizedDataQuery } from "@/extensions/dataQuery";
 export interface HookReadModel {
   event: string;

@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/planpresentation"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	plandomain "github.com/Tangerg/flame/runtime/internal/domain/session/plan"
@@ -71,16 +72,16 @@ func (w *WorkingContextComposer) composeSystemMessage(
 	// growing corpus never bloats every prompt.
 	var pinned []MemoryPromptItem
 	if project := strings.TrimSpace(cwd); project != "" {
-		items, err := w.config.AgentMemory.Items(ctx, "project", filepath.Clean(project))
+		items, err := w.config.AgentMemory.Items(ctx, memorycontract.ItemsV2InputScopeProject, filepath.Clean(project))
 		if err != nil {
-			slog.WarnContext(ctx, "execution: load pinned memory", "scope", "project", "error", err)
+			slog.WarnContext(ctx, "execution: load pinned memory", "scope", memorycontract.ItemsV2InputScopeProject, "error", err)
 		} else {
 			pinned = appendPinned(pinned, items)
 		}
 	}
-	userItems, err := w.config.AgentMemory.Items(ctx, "user", "")
+	userItems, err := w.config.AgentMemory.Items(ctx, memorycontract.ItemsV2InputScopeUser, "")
 	if err != nil {
-		slog.WarnContext(ctx, "execution: load pinned memory", "scope", "user", "error", err)
+		slog.WarnContext(ctx, "execution: load pinned memory", "scope", memorycontract.ItemsV2InputScopeUser, "error", err)
 	} else {
 		pinned = appendPinned(pinned, userItems)
 	}

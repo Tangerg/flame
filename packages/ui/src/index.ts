@@ -24,14 +24,8 @@ export {
   type UiTypeStep,
   normalizeUiFontSize,
 } from "./typography";
-export {
-  type IconSize,
-  type IconGlyph,
-  iconSizePx,
-  FontScaleProvider,
-  Icon,
-  iconScaleCssVariables,
-} from "./font-scale";
+export { type IconSize, iconSizePx, iconScaleCssVariables } from "./icon-scale";
+export { type IconGlyph, FontScaleProvider, Icon } from "./font-scale";
 export {
   FIELD_SURFACE,
   MENU_SURFACE,

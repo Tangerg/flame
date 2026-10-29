@@ -2,10 +2,11 @@ package plugin
 
 import (
 	"errors"
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"sync"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -24,7 +25,7 @@ func (r ModelInputRequest) Validate() error {
 	return r.Request.Validate()
 }
 func ModelInputMethod() (*qimumcp.Method[ModelInputRequest, chat.Request], error) {
-	return qimumcp.NewMethod[ModelInputRequest, chat.Request](qimumcp.MethodConfig{Name: "flame.model-input/transform.v1", Kind: portable.Query, Target: "call", Description: "Transform the model-visible request before its final capacity admission while preserving the captured route and Tool contracts."})
+	return qimumcp.NewMethod[ModelInputRequest, chat.Request](qimumcp.MethodConfig{Name: "flame.model-input/transform.v1", Kind: portable.Query, Target: extension.ScopeCall, Description: "Transform the model-visible request before its final capacity admission while preserving the captured route and Tool contracts."})
 }
 func ModelInputContract() (*portable.Capability, error) { return modelInputContract() }
 
@@ -35,7 +36,7 @@ var modelInputContract = sync.OnceValues(func() (*portable.Capability, error) {
 	if err != nil {
 		return nil, err
 	}
-	return portable.NewCapability(portable.CapabilityConfig{Reference: "flame.model-input.v1", Composition: portable.Decoration, Scope: "call"}, method.Descriptor())
+	return portable.NewCapability(portable.CapabilityConfig{Reference: "flame.model-input.v1", Composition: portable.Decoration, Scope: extension.ScopeCall}, method.Descriptor())
 })
 
 // ValidateModelInput preserves facts owned by selection, Tool preparation and

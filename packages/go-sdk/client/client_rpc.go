@@ -87,15 +87,9 @@ func (r *Client) invokeOperation(ctx context.Context, name string, parameters an
 	} else if r.token != "" {
 		request.Header.Set("Authorization", "Bearer "+r.token)
 	}
-	for header, value := range map[string]string{
-		"Idempotency-Key":       options.IdempotencyKey,
-		"Idempotency-Namespace": options.IdempotencyNamespace,
-		"Last-Event-Id":         options.AfterEventID,
-	} {
-		if value != "" {
-			request.Header.Set(header, value)
-		}
-	}
+	setOptionalHeader(request.Header, headerIdempotencyKey, options.IdempotencyKey)
+	setOptionalHeader(request.Header, headerIdempotencyNamespace, options.IdempotencyNamespace)
+	setOptionalHeader(request.Header, headerLastEventID, options.AfterEventID)
 	if err := call.ctx.Err(); err != nil {
 		return callResult{}, context.Cause(call.ctx)
 	}
@@ -158,6 +152,12 @@ func (r *Client) invokeOperation(ctx context.Context, name string, parameters an
 		return result, nil
 	}
 	return callResult{}, call.readError(io.ErrUnexpectedEOF)
+}
+
+func setOptionalHeader(headers http.Header, name, value string) {
+	if value != "" {
+		headers.Set(name, value)
+	}
 }
 
 func encodeRemoteRequest(id jsonrpc.ID, name string, parameters any, metadata protocol.RequestMeta) ([]byte, error) {
@@ -243,7 +243,7 @@ func readRemoteMessage(reader io.Reader, limit int) ([]byte, error) {
 }
 
 func decodeTransportError(response *http.Response, mediaType string, limit int) error {
-	failure := &TransportError{StatusCode: response.StatusCode, RequestID: response.Header.Get("Request-Id")}
+	failure := &TransportError{StatusCode: response.StatusCode, RequestID: response.Header.Get(headerRequestID)}
 	if mediaType != "application/problem+json" {
 		return failure
 	}

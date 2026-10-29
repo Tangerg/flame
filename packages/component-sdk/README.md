@@ -195,7 +195,8 @@ replaying chunks. Both handles expose `retire()` for Runtime-confirmed
 never-dispatched work; a failed retirement preserves the original journal and
 cannot authorize a replacement command.
 
-The client journal now requires method metadata. Former records are retained
+The client journal requires method metadata and captured original request metadata.
+Recovery uses that original metadata even after client defaults change. Former records are retained
 and refused unchanged; use their original client to reconcile pending work before
 upgrading, and a fresh client profile for this pre-release cut. There is no
 automatic conversion, deletion or fallback fingerprint. Neither client journal
@@ -209,6 +210,10 @@ qualification; it is not the evidence for command recovery.
 Use `buildComponent` from `@flame/component-sdk/build` with a source entry, output
 directory and `compiler: rolldown` imported from the author toolchain's declared
 `rolldown` dependency. The compiler has one owner: the author's locked build graph.
+The authored `runtime-profile.json` owns the shared module profile, component export
+name, and module graph filename/version. Its generated TS, JSON and Go projections
+are rebuilt together by `make generate`.
+
 The SDK owns shared-module externalization and the prebuilt ESM/relative-asset
 format. The former implicit compiler lookup is removed; all in-repository build
 callers supply the compiler explicitly. Private dependencies are bundled. `HOST_MODULES` names shared React,

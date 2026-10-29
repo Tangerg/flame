@@ -79,7 +79,7 @@ func TestApprovalAnswerOwnsOnlyApprovedArgumentOverrides(t *testing.T) {
 func runningApproval(itemID, title string) Approval {
 	return Approval{
 		RunID: "run_1", ItemID: itemID, Title: title,
-		Tool: &ToolCall{Kind: ToolShell, Name: "shell", Status: ToolRunning},
+		Tool: &ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Status: ToolRunning},
 	}
 }
 

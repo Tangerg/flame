@@ -1,6 +1,7 @@
 package runs
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"slices"
@@ -127,4 +128,12 @@ func (e ExecutorCheckpoint) ValidateOwnership(rootMemberID, sessionID string) er
 		)
 	}
 	return nil
+}
+
+func (e ExecutorCheckpoint) Equal(other ExecutorCheckpoint) bool {
+	return e.RootMemberID == other.RootMemberID && e.SessionID == other.SessionID &&
+		e.BuildID == other.BuildID && bytes.Equal(e.Payload, other.Payload) &&
+		slices.Equal(e.ToolResultIDs, other.ToolResultIDs) &&
+		slices.Equal(e.Resources, other.Resources) &&
+		slices.EqualFunc(e.Bindings, other.Bindings, plugin.Activation.Equal)
 }

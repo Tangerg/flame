@@ -63,7 +63,7 @@ func newServer(store *store) (*sdk.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	update, err := tool.NewFunc(tool.FuncConfig{Name: "update_review", Description: contracts.Update.Descriptor().Description + " Runtime supplies the invocation identity; do not add a retry key to arguments."}, func(ctx context.Context, input reviews.Update) (reviews.UpdateResult, error) {
+	update, err := tool.NewFunc(tool.FuncConfig{Name: "update_review", Description: contracts.Update.Descriptor().Description + " Runtime supplies the invocation identity; do not add a retry key to arguments."}, func(ctx context.Context, _ reviews.Update) (reviews.UpdateResult, error) {
 		id, err := pluginsdk.InvocationID(ctx)
 		if err != nil {
 			return reviews.UpdateResult{}, rejected("bounded invocation identity is required")
@@ -72,7 +72,7 @@ func newServer(store *store) (*sdk.Server, error) {
 		if err != nil {
 			return reviews.UpdateResult{}, err
 		}
-		result, err := store.update(ctx, id, input, admitted)
+		result, err := store.update(ctx, id, admitted)
 		if err != nil {
 			return reviews.UpdateResult{}, err
 		}
@@ -152,7 +152,7 @@ func newServer(store *store) (*sdk.Server, error) {
 		if err != nil {
 			return reviews.UpdateResult{}, err
 		}
-		return store.update(ctx, command.ID, command.Input, admitted)
+		return store.update(ctx, command.ID, admitted)
 	}); err != nil {
 		return nil, err
 	}

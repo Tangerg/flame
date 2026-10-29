@@ -4,9 +4,10 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"iter"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -61,10 +62,10 @@ func (r ModelCallRequest) Validate() error {
 }
 
 func SelectedModelMethod() (*qimumcp.Method[ModelCallRequest, ModelResult], error) {
-	return qimumcp.NewMethod[ModelCallRequest, ModelResult](qimumcp.MethodConfig{Name: "flame.model/selected-call.v1", Kind: portable.Mutation, Target: "call", Description: "Perform one independently selected, budgeted and observed model exchange."})
+	return qimumcp.NewMethod[ModelCallRequest, ModelResult](qimumcp.MethodConfig{Name: "flame.model/selected-call.v1", Kind: portable.Mutation, Target: extension.ScopeCall, Description: "Perform one independently selected, budgeted and observed model exchange."})
 }
 func SelectedModelStreamMethod() (*qimumcp.StreamingMethod[ModelCallRequest, chat.ResponseDelta, ModelResult], error) {
-	return qimumcp.NewStreamingMethod[ModelCallRequest, chat.ResponseDelta, ModelResult](qimumcp.MethodConfig{Name: "flame.model/selected-stream.v1", Kind: portable.Mutation, Target: "call", Description: "Consume one independently selected, budgeted and observed model stream."})
+	return qimumcp.NewStreamingMethod[ModelCallRequest, chat.ResponseDelta, ModelResult](qimumcp.MethodConfig{Name: "flame.model/selected-stream.v1", Kind: portable.Mutation, Target: extension.ScopeCall, Description: "Consume one independently selected, budgeted and observed model stream."})
 }
 func CallSelectedModel(ctx context.Context, ref qimumcp.CallbackRef, id string, input ModelCallRequest) (*chat.Response, error) {
 	if err := input.Validate(); err != nil {

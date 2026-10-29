@@ -13,6 +13,7 @@ import {
 } from "./generated/wire.validate.generated";
 import {
   HTTP_ENDPOINTS,
+  HTTP_HEADERS,
   type HTTPSidecarEndpointName,
   type HTTPSidecarResponses,
   type LivenessStatus,
@@ -54,7 +55,7 @@ export function createSidecarClient(config: SidecarClientConfig): SidecarClient 
     } catch (err) {
       throw new RpcConnectionError(`sidecar ${path}: ${errorMessage(err)}`);
     }
-    const requestId = res.headers.get("Request-Id") ?? undefined;
+    const requestId = res.headers.get(HTTP_HEADERS.requestId) ?? undefined;
     let bytes: ArrayBuffer;
     try {
       bytes = await res.arrayBuffer();
@@ -78,7 +79,7 @@ export function createSidecarClient(config: SidecarClientConfig): SidecarClient 
     }
     if (!specification.responseStatuses.some((status) => status === res.status)) {
       const problem = parseTransportProblem(text);
-      const requestId = problem?.requestId ?? res.headers.get("Request-Id") ?? undefined;
+      const requestId = problem?.requestId ?? res.headers.get(HTTP_HEADERS.requestId) ?? undefined;
       const detail = problem?.detail || res.statusText || "sidecar request failed";
       throw new RpcTransportError(
         `sidecar ${path}: http ${res.status}: ${detail}`,

@@ -175,15 +175,10 @@ func (b *Bundle) PendingPluginBindings(ctx context.Context) ([]plugin.Activation
 	return result, err
 }
 
-func validateReferenceWrite(ctx context.Context, checkpoint executorCheckpointRecord) error {
+func validateReferenceWrite(ctx context.Context, checkpoint runs.ExecutorCheckpoint) error {
 	write, exists := ctx.Value(referenceWriteKey{}).(referenceWrite)
-	if !exists || write.checkpoint.RootMemberID != checkpoint.RootMemberID || write.checkpoint.SessionID != checkpoint.SessionID || !slices.Equal(write.checkpoint.Resources, checkpoint.Resources) || len(write.checkpoint.Bindings) != len(checkpoint.Bindings) {
-		return errors.New("persistence: plugin references require their original admitted transaction")
-	}
-	for index, binding := range checkpoint.Bindings {
-		if !binding.Equal(write.checkpoint.Bindings[index]) {
-			return errors.New("persistence: checkpoint binding differs from its admitted write-set")
-		}
+	if !exists || !write.checkpoint.Equal(checkpoint) {
+		return errors.New("persistence: checkpoint differs from its original admitted write-set")
 	}
 	return nil
 }

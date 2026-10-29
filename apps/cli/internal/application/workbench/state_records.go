@@ -41,7 +41,7 @@ func validateSessionDraft(draft authoring.Message) error {
 }
 
 func (s *Store) loadState() error {
-	if err := s.loadOptional("history.json", &s.history); err != nil {
+	if err := s.loadOptional(historyName, &s.history); err != nil {
 		return fmt.Errorf("load prompt history: %w", err)
 	}
 	if err := validateHistory(s.history); err != nil {
@@ -53,7 +53,7 @@ func (s *Store) loadState() error {
 	if err := validateStashes(s.stashes); err != nil {
 		return fmt.Errorf("load prompt stashes: %w", err)
 	}
-	if err := s.loadOptional("workspaces.json", &s.workspaces); err != nil {
+	if err := s.loadOptional(workspacesName, &s.workspaces); err != nil {
 		return fmt.Errorf("load recent workspaces: %w", err)
 	}
 	if err := validateWorkspaces(s.workspaces); err != nil {
@@ -322,6 +322,9 @@ func (s *Store) saveSessionStateRecordUnfenced(
 // with no persistence at all writes nowhere; both writers ask here so a barred
 // Store cannot be barred for one of them and open for the other.
 func (s *Store) writable() (bool, error) {
+	if s.closed {
+		return false, errors.New("workbench is closed")
+	}
 	if s.writeBarrier != nil {
 		return false, s.writeBarrier
 	}

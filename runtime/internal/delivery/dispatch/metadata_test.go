@@ -101,6 +101,13 @@ func TestExtractRequestMetaRejectsNullMeta(t *testing.T) {
 	if rpcErr.Code != codeInvalidParams {
 		t.Fatalf("code = %d, want %d", rpcErr.Code, codeInvalidParams)
 	}
+	var problem protocol.ProblemData
+	if err := json.Unmarshal(rpcErr.Data, &problem); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(problem.Errors, []protocol.FieldError{{Field: "$", Detail: "must not be null"}}) {
+		t.Fatalf("null metadata lost its root field: %+v", problem)
+	}
 }
 
 func TestDispatchRejectsUnsupportedProtocolVersion(t *testing.T) {

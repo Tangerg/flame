@@ -2,15 +2,16 @@ package plugin
 
 import (
 	"errors"
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"sync"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/scope/core/chat"
 )
 
 func ToolProposalMethod() (*qimumcp.Method[chat.ToolCall, chat.ToolCall], error) {
-	return qimumcp.NewMethod[chat.ToolCall, chat.ToolCall](qimumcp.MethodConfig{Name: "flame.tool-proposal/transform.v1", Kind: portable.Query, Target: "call", Description: "Transform a captured Tool proposal's arguments before final schema admission and approval, preserving its logical identity and Tool name."})
+	return qimumcp.NewMethod[chat.ToolCall, chat.ToolCall](qimumcp.MethodConfig{Name: "flame.tool-proposal/transform.v1", Kind: portable.Query, Target: extension.ScopeCall, Description: "Transform a captured Tool proposal's arguments before final schema admission and approval, preserving its logical identity and Tool name."})
 }
 
 func ToolProposalContract() (*portable.Capability, error) { return toolProposalContract() }
@@ -20,7 +21,7 @@ var toolProposalContract = sync.OnceValues(func() (*portable.Capability, error) 
 	if err != nil {
 		return nil, err
 	}
-	return portable.NewCapability(portable.CapabilityConfig{Reference: "flame.tool-proposal.v1", Composition: portable.Decoration, Scope: "call"}, method.Descriptor())
+	return portable.NewCapability(portable.CapabilityConfig{Reference: "flame.tool-proposal.v1", Composition: portable.Decoration, Scope: extension.ScopeCall}, method.Descriptor())
 })
 
 // Identity and Tool authority belong to execution. Only the final Tool owner can

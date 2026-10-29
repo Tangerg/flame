@@ -19,6 +19,9 @@ const (
 	headerIdempotencyKey       = "Idempotency-Key"
 	headerIdempotencyNamespace = "Idempotency-Namespace"
 	headerLastEventID          = "Last-Event-Id"
+	headerRequestID            = "Request-Id"
+	headerServer               = "X-Server"
+	headerMethod               = "X-Method"
 )
 
 // requestHeaders is every header this transport reads, in one list so the
@@ -94,9 +97,22 @@ type EnumSpec struct {
 	Values []string
 }
 
-// ContractSpec is the delivery-owned machine description used by both routing
-// helpers and the out-of-graph contract generator.
+// Clients derive header names from this contract so transport and browser
+// preflight rules cannot evolve under separate owners.
+type HeaderSpec struct {
+	Authorization        string
+	ContentType          string
+	IdempotencyKey       string
+	IdempotencyNamespace string
+	LastEventID          string
+	RequestID            string
+	Server               string
+	Method               string
+}
+
+// Routing and generated clients consume the same delivery-owned declaration.
 type ContractSpec struct {
+	Headers   HeaderSpec
 	Endpoints []EndpointSpec
 	Enums     []EnumSpec
 }
@@ -179,6 +195,12 @@ var endpointRegistry = struct {
 // the process's routing authority.
 func Contract() ContractSpec {
 	contract := ContractSpec{
+		Headers: HeaderSpec{
+			Authorization: headerAuthorization, ContentType: headerContentType,
+			IdempotencyKey: headerIdempotencyKey, IdempotencyNamespace: headerIdempotencyNamespace,
+			LastEventID: headerLastEventID, RequestID: headerRequestID,
+			Server: headerServer, Method: headerMethod,
+		},
 		Endpoints: make([]EndpointSpec, len(endpointRegistry.Endpoints)),
 		Enums:     make([]EnumSpec, len(endpointRegistry.Enums)),
 	}

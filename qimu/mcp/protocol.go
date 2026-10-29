@@ -22,6 +22,7 @@ type ProtocolConstants struct {
 	InvocationHeader      string `json:"InvocationHeader"`
 	InvocationMetadataKey string `json:"InvocationMetadataKey"`
 	ReceiptMethod         string `json:"ReceiptMethod"`
+	MaxCommandIDBytes     int    `json:"maxCommandIDBytes"`
 }
 
 func ProtocolJSON() ([]byte, error) {
@@ -38,6 +39,7 @@ func ProtocolJSON() ([]byte, error) {
 		InvocationHeader:      InvocationHeader,
 		InvocationMetadataKey: InvocationMetadataKey,
 		ReceiptMethod:         ReceiptMethod,
+		MaxCommandIDBytes:     MaxCommandIDBytes,
 	}
 	receipt, err := ReceiptQuery()
 	if err != nil {

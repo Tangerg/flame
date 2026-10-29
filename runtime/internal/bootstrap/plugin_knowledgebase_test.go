@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
@@ -122,7 +123,7 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 		if err != nil {
 			t.Fatal(err)
 		}
-		response := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "knowledgebase-operations", Contract: contracts.Identity().String(), Method: method, Input: admitted.String(), Target: portable.Target{Scope: "installation", Reference: installed.ID}}, key).(*protocol.CallPluginResponse)
+		response := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "knowledgebase-operations", Contract: contracts.Identity().String(), Method: method, Input: admitted.String(), Target: portable.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}, key).(*protocol.CallPluginResponse)
 		if response.Failure != nil {
 			t.Fatalf("knowledge operation: %+v", response.Failure)
 		}

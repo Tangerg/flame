@@ -6,6 +6,7 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
+	"reflect"
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/qimu/jsonvalue"
@@ -39,10 +40,16 @@ func ImplementMethod[P, R any](owner *portable.Capability, name string) (*Method
 	if len(method.Descriptor().Stream) != 0 {
 		return nil, errors.New("plugin: streaming contract requires a streaming implementation")
 	}
+	if err := validateMethodCodecs[P, R](name); err != nil {
+		return nil, err
+	}
 	return &Method[P, R]{contract: method}, nil
 }
 
 func NewMethod[P, R any](config MethodConfig) (*Method[P, R], error) {
+	if err := validateMethodCodecs[P, R](config.Name); err != nil {
+		return nil, err
+	}
 	if config.Description == "" || !utf8.ValidString(config.Description) {
 		return nil, errors.New("plugin: method description is required")
 	}
@@ -59,6 +66,16 @@ func NewMethod[P, R any](config MethodConfig) (*Method[P, R], error) {
 		return nil, err
 	}
 	return &Method[P, R]{contract: contract}, nil
+}
+
+func validateMethodCodecs[P, R any](name string) error {
+	if err := jsonvalue.ValidateType(reflect.TypeFor[P]()); err != nil {
+		return fmt.Errorf("plugin: %s input codec: %w", name, err)
+	}
+	if err := jsonvalue.ValidateType(reflect.TypeFor[R]()); err != nil {
+		return fmt.Errorf("plugin: %s output codec: %w", name, err)
+	}
+	return nil
 }
 
 func (m *Method[P, R]) Name() string                          { return m.contract.Name() }
@@ -215,7 +232,7 @@ func (m *BoundMethod[P, R]) ReadReceipt(ctx context.Context, id string, input P)
 		return zero, found, err
 	}
 	var result R
-	if err := json.Unmarshal(value.JSON(), &result, json.RejectUnknownMembers(true)); err != nil {
+	if err := json.Unmarshal(value.JSON(), &result, json.RejectUnknownMembers(true), jsonvalue.Numbers()); err != nil {
 		return zero, false, err
 	}
 	return result, true, nil

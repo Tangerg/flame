@@ -67,8 +67,7 @@ func Connect(ctx context.Context, cfg RemoteConfig) (*Client, error) {
 	if cfg.MaxMessageBytes < 0 {
 		return nil, errors.New("runtime: max message bytes must not be negative")
 	}
-	base.Path = strings.TrimRight(base.Path, "/") + rpcPath
-	base.RawPath = ""
+	base = base.JoinPath(rpcPath)
 
 	transport := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,

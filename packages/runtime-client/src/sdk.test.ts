@@ -108,6 +108,35 @@ describe("createFlameClient", () => {
     ]);
   });
 
+  it("replays ordinary mutations with the metadata captured before dispatch", async () => {
+    const transport = createMemoryTransport();
+    let current = { clientInfo: { name: "original", version: "1" } };
+    const client = createFlameClient(transport, {
+      capabilities: () => discoverResponse.capabilities as ServerCapabilities,
+      requestMeta: () => current,
+    });
+    const command = client.sessions.delete(asSessionId("ses_1"));
+    current.clientInfo.name = "mutated after admission";
+    const original = await waitForRequest(transport, "sessions.delete");
+    expect(original.params).toMatchObject({
+      _meta: { clientInfo: { name: "original", version: "1" } },
+    });
+    transport.inject({
+      jsonrpc: "2.0",
+      id: original.id,
+      error: { code: -32000, message: "garbled" },
+    });
+    await expect(command).rejects.toBeInstanceOf(RpcProtocolError);
+    current = { clientInfo: { name: "replacement", version: "2" } };
+    const replay = command.retry();
+    await vi.waitFor(() => expect(transport.outbox()).toHaveLength(2));
+    const retried = transport.outbox()[1]!;
+    expect(retried.params).toEqual(original.params);
+    transport.inject({ jsonrpc: "2.0", id: retried.id, result: {} });
+    await expect(replay).resolves.toBeUndefined();
+    await client.close();
+  });
+
   it("attaches request metadata to typed calls", async () => {
     const transport = createMemoryTransport();
     const client = createFlameClient(transport, {

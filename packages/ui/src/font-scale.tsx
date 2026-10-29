@@ -2,17 +2,10 @@ import { createContext, useContext } from "react";
 import type { ComponentType, ReactNode } from "react";
 import type { IconProps } from "@flame/icons/react";
 import { normalizeUiFontSize, UI_FONT_SIZE_DEFAULT_PX } from "./typography";
+import { iconSizePx, type IconSize } from "./icon-scale";
 
-export type IconSize = "xs" | "sm" | "md" | "lg" | "xl";
 export type IconGlyph = ComponentType<IconProps>;
 const FontScale = createContext(UI_FONT_SIZE_DEFAULT_PX);
-const ICON_SIZES: readonly IconSize[] = ["xs", "sm", "md", "lg", "xl"];
-const OFFSETS = { xs: -2, sm: 0, md: 2, lg: 6 } as const;
-
-export function iconSizePx(size: IconSize, fontSize: number): number {
-  const base = normalizeUiFontSize(fontSize);
-  return size === "xl" ? base * 2 : base + OFFSETS[size];
-}
 
 export function FontScaleProvider({
   fontSize,
@@ -45,13 +38,4 @@ export function Icon({
 
 export function useFontSize(): number {
   return useContext(FontScale);
-}
-
-export function iconScaleCssVariables(
-  fontSize: number | null | undefined,
-): Readonly<Record<string, string>> {
-  const base = normalizeUiFontSize(fontSize);
-  return Object.fromEntries(
-    ICON_SIZES.map((size) => [`--icon-${size}`, `${iconSizePx(size, base)}px`]),
-  );
 }

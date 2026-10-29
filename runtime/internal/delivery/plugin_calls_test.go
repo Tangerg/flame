@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -45,8 +44,8 @@ func (s *pluginStreamOwner) Stream(ctx context.Context) iter.Seq2[plugins.Stream
 }
 
 func TestPluginStreamProjectsKnownRefusalWithoutSettlingUnknownError(t *testing.T) {
-	contract := testsupport.CommandContract(t, "records.stream", "installation")
-	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(contract.JSON()), Method: "records.stream", Input: `{}`, Target: portable.Target{Scope: "installation", Reference: testsupport.InstallationID(t).String()}}
+	contract := testsupport.CommandContract(t, "records.stream", extension.ScopeInstallation)
+	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(contract.JSON()), Method: "records.stream", Input: `{}`, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: testsupport.InstallationID(t).String()}}
 	owner := &pluginStreamOwner{err: &portable.Refusal{Code: "refused", Message: "owner refused"}}
 	handler := &Handler{pluginCalls: owner, features: featureAvailability{plugins: true}}
 	endpoint := mustNewEndpoint(t, handler, EndpointConfig{})
@@ -103,11 +102,11 @@ func (s *pluginCallTarget) PreparePluginCall(_ context.Context, request protocol
 }
 
 func TestPluginCallResolvesQueryAndOwnerCommandPoliciesAtTheSharedEndpoint(t *testing.T) {
-	contract, err := portable.ParseCapability(testsupport.CommandContract(t, "review.update", "installation").JSON())
+	contract, err := portable.ParseCapability(testsupport.CommandContract(t, "review.update", extension.ScopeInstallation).JSON())
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "review-operations", Contract: string(contract.Identity().JSON()), Target: portable.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}, Method: "review.update", Input: `{"revision":2}`}
+	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "review-operations", Contract: string(contract.Identity().JSON()), Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "12345678-1234-1234-1234-123456789abc"}, Method: "review.update", Input: `{"revision":2}`}
 	target := &pluginCallTarget{}
 	endpoint := mustNewEndpoint(t, target, EndpointConfig{})
 	ctx := operation.Adopt(t.Context(), "parent-tool", extension.Model, "run_owner")

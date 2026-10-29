@@ -4,6 +4,7 @@ import (
 	"encoding/json/jsontext"
 	"errors"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
@@ -41,15 +42,15 @@ type wirePointValue struct {
 }
 
 type wireComponent struct {
-	Selector     *wireRendererSelector  `json:"selector,omitzero"`
-	ID           plugin.ContributionID  `json:"id"`
-	Title        string                 `json:"title"`
-	Scope        string                 `json:"scope"`
-	Placement    string                 `json:"placement"`
-	Entry        string                 `json:"entry"`
-	Export       string                 `json:"export"`
-	Contribution *plugin.ContributionID `json:"contribution,omitzero"`
-	Material     *string                `json:"material,omitzero"`
+	Selector     *wireRendererSelector        `json:"selector,omitzero"`
+	ID           plugin.ContributionID        `json:"id"`
+	Title        string                       `json:"title"`
+	Scope        extension.ComponentScope     `json:"scope"`
+	Placement    extension.ComponentPlacement `json:"placement"`
+	Entry        string                       `json:"entry"`
+	Export       string                       `json:"export"`
+	Contribution *plugin.ContributionID       `json:"contribution,omitzero"`
+	Material     *string                      `json:"material,omitzero"`
 }
 
 type wireInput struct {
@@ -67,8 +68,8 @@ type wireTheme struct {
 	Colors wireThemeColors `json:"colors"`
 }
 type wireRendererSelector struct {
-	Type string `json:"type"`
-	Name string `json:"name"`
+	Type extension.RendererSelectorKind `json:"type"`
+	Name string                         `json:"name"`
 }
 type wireThemeColors struct {
 	Background *string `json:"background,omitempty"`

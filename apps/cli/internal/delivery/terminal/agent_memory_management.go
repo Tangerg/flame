@@ -89,7 +89,7 @@ func (a *app) AddAgentMemory(argument string) error {
 			return err
 		}
 		if found {
-			a.message("reconciling original " + input.Scope + " memory addition")
+			a.message("reconciling original " + string(input.Scope) + " memory addition")
 			return a.addAgentMemory(nil, input, nil)
 		}
 	}
@@ -107,7 +107,7 @@ func (a *app) AddAgentMemory(argument string) error {
 			if content == "" {
 				return errors.New("memory content is empty")
 			}
-			return a.addAgentMemory(&target, memory.AddV2Input{Scope: string(target.Scope), CWD: target.Workspace, Content: content}, complete)
+			return a.addAgentMemory(&target, memory.AddV2Input{Scope: memory.AddV2InputScope(target.Scope), CWD: target.Workspace, Content: content}, complete)
 		},
 	})
 	return nil
@@ -195,9 +195,9 @@ func (a *app) PrepareAgentMemoryReview(argument string, approve bool) error {
 		return errors.New("this runtime composition has no agent memory service")
 	}
 	action, verb := "Reject", "rejecting"
-	decision := memory.ReviewReject
+	decision := memory.ReviewV2InputDecisionReject
 	if approve {
-		action, verb, decision = "Approve", "approving", memory.ReviewApprove
+		action, verb, decision = "Approve", "approving", memory.ReviewV2InputDecisionApprove
 	}
 	_, identity, err := parseAgentMemoryReference(argument)
 	if err != nil {
@@ -217,7 +217,7 @@ func (a *app) PrepareAgentMemoryReview(argument string, approve bool) error {
 		}
 	}
 	return a.loadAgentMemoryItem(argument, verb+" agent memory", func(target conversation.MemoryTarget, item memory.Item) {
-		if item.Status != memory.StatusPending {
+		if item.Status != memory.UpdateV2OutputStatusPending {
 			a.message("only pending agent memory can be reviewed · " + item.ID)
 			return
 		}
@@ -293,13 +293,13 @@ func resolveAgentMemory(items []memory.Item, identity string) (memory.Item, erro
 func parseAgentMemoryTarget(argument, workspace string) (conversation.MemoryTarget, error) {
 	argument = strings.TrimSpace(argument)
 	if argument == "" {
-		argument = string(memory.ScopeProject)
+		argument = string(memory.UpdateV2OutputScopeProject)
 	}
 	scope, err := conversation.ParseMemoryScope(argument)
 	if err != nil {
 		return conversation.MemoryTarget{}, err
 	}
-	if scope == memory.ScopeUser {
+	if scope == memory.UpdateV2OutputScopeUser {
 		workspace = ""
 	}
 	return conversation.NewMemoryTarget(scope, workspace)
@@ -310,16 +310,16 @@ func parseAgentMemoryIdentity(argument, workspace string) (conversation.MemoryTa
 	if err != nil {
 		return conversation.MemoryTarget{}, "", err
 	}
-	if scope == memory.ScopeUser {
+	if scope == memory.UpdateV2OutputScopeUser {
 		workspace = ""
 	}
 	target, err := conversation.NewMemoryTarget(scope, workspace)
 	return target, identity, err
 }
 
-func parseAgentMemoryReference(argument string) (memory.Scope, string, error) {
+func parseAgentMemoryReference(argument string) (memory.UpdateV2OutputScope, string, error) {
 	fields := strings.Fields(argument)
-	scope, identity := memory.ScopeProject, ""
+	scope, identity := memory.UpdateV2OutputScopeProject, ""
 	switch len(fields) {
 	case 1:
 		identity = fields[0]
@@ -417,7 +417,7 @@ func (a *app) updateAgentMemory(target *conversation.MemoryTarget, request memor
 	return nil
 }
 
-func (a *app) reviewAgentMemory(target *conversation.MemoryTarget, id string, expectedRevision uint64, decision memory.ReviewDecision) {
+func (a *app) reviewAgentMemory(target *conversation.MemoryTarget, id string, expectedRevision uint64, decision memory.ReviewV2InputDecision) {
 	presentation := a.session.context
 	label := string(decision) + " agent memory " + id
 	a.status.note(label)
@@ -432,7 +432,7 @@ func (a *app) reviewAgentMemory(target *conversation.MemoryTarget, id string, ex
 				if a.workbench != nil {
 					if original, found, _ := a.workbench.PendingMemoryReview(id, decision); found {
 						if original.Decision != "" {
-							message += " · retry /memory-" + original.Decision + " " + id + " to reconcile the original command"
+							message += " · retry /memory-" + string(original.Decision) + " " + id + " to reconcile the original command"
 						}
 					}
 				}
@@ -440,7 +440,7 @@ func (a *app) reviewAgentMemory(target *conversation.MemoryTarget, id string, ex
 				return
 			}
 			outcome := "rejected"
-			if decision == memory.ReviewApprove {
+			if decision == memory.ReviewV2InputDecisionApprove {
 				outcome = "approved"
 			}
 			a.message("agent memory " + outcome + " · " + reviewed)

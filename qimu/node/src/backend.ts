@@ -156,8 +156,8 @@ export class Backend {
       const input = freezeJSON(params.arguments ?? {});
       tool.validate(input);
       const call = this.#call(extra.signal);
-      const context = this.#context({ input, _meta: params._meta }, call);
       try {
+        const context = this.#context({ input, _meta: params._meta }, call);
         context.signal.throwIfAborted();
         let output: CallToolResult;
         try {
@@ -220,14 +220,14 @@ export class Backend {
         throw new Error("plugin: invalid command identity for method kind");
       const input = this.#decode(bound, params.input);
       const call = this.#call(extra.signal);
-      const context = this.#context(
-        params,
-        call,
-        bound.method.descriptor.name === wire.constants.ReceiptMethod!
-          ? undefined
-          : bound.method.descriptor.target,
-      );
       try {
+        const context = this.#context(
+          params,
+          call,
+          bound.method.descriptor.name === wire.constants.ReceiptMethod!
+            ? undefined
+            : bound.method.descriptor.target,
+        );
         context.signal.throwIfAborted();
         let value: unknown;
         try {
@@ -402,7 +402,7 @@ export class Backend {
     const meta = this.#metadata(params);
     const invocation = meta[wire.constants.InvocationMetadataKey!] as
       Invocation | undefined;
-    if (invocation) {
+    if (invocation !== undefined) {
       exactFields(invocation, ["id", "origin", "target"], ["parent"]);
       exactFields(invocation.target, ["scope", "reference"]);
       if (
@@ -582,11 +582,7 @@ export class Backend {
     });
   }
   #publish(): void {
-    if (
-      this.#published ||
-      (!this.#methods.size && !this.#tools.size) ||
-      this.#lifetime.signal.aborted
-    )
+    if (this.#published || this.#lifetime.signal.aborted)
       throw new Error("plugin: backend cannot publish");
     for (const contract of this.#capabilities.values())
       for (const descriptor of contract.descriptor.methods)
@@ -684,7 +680,7 @@ export function decodeReceipt(value: unknown): ReceiptRequest {
   const request = value as ReceiptRequest;
   if (
     !validCommand(request.id) ||
-    !validCommand(request.method) ||
+    !validToken(request.method) ||
     !/^[a-f0-9]{64}$/.test(request.inputDigest)
   )
     throw new Error("plugin: invalid receipt identity");

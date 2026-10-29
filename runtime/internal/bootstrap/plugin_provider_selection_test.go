@@ -27,7 +27,7 @@ func TestProviderChoiceDoesNotFollowEnablementAndNeverRetargetsOriginalCommand(t
 	r.poMCPTools(server(first), memoryToolsReady)
 	r.poMCPTools(server(second), memoryToolsReady)
 	list := func() delivery.Result {
-		return memoryQueryResult(r, memorycontract.ListV2Input{Scope: "user"})
+		return memoryQueryResult(r, memorycontract.ListV2Input{Scope: memorycontract.ListV2InputScopeUser})
 	}
 	if response := list(); response.Failure == nil || !errors.Is(response.Failure, protocol.ErrPluginUnavailable) {
 		t.Fatalf("enablement chose a provider: %v", response.Failure)
@@ -49,7 +49,7 @@ func TestProviderChoiceDoesNotFollowEnablementAndNeverRetargetsOriginalCommand(t
 		r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: "memory", InstallationID: value.ID, Contribution: "memory-provider"}, key)
 	}
 	choose(first, "choose-first")
-	request := memoryAddRequest(r, memorycontract.AddV2Input{Scope: "user", Content: "original owner's fact"})
+	request := memoryAddRequest(r, memorycontract.AddV2Input{Scope: memorycontract.AddV2InputScopeUser, Content: "original owner's fact"})
 	if result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "uncertain", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}); result.Failure == nil {
 		t.Fatal("lost response became confirmed")
 	}
@@ -63,14 +63,14 @@ func TestProviderChoiceDoesNotFollowEnablementAndNeverRetargetsOriginalCommand(t
 	r.poMCPTools(server(first), memoryToolsReady)
 	r.must(delivery.PluginsCall, request, "uncertain")
 	r.poMCPTools(server(second), memoryToolsReady)
-	page := readMemoryPage(r, memorycontract.ListV2Input{Scope: "user"})
+	page := readMemoryPage(r, memorycontract.ListV2Input{Scope: memorycontract.ListV2InputScopeUser})
 	if len(page.Data) != 0 {
 		t.Fatalf("original recovery mutated selected replacement: %+v", page.Data)
 	}
-	r.must(delivery.PluginsCall, memoryAddRequest(r, memorycontract.AddV2Input{Scope: "user", Content: "selected owner's fact"}), "new-command")
+	r.must(delivery.PluginsCall, memoryAddRequest(r, memorycontract.AddV2Input{Scope: memorycontract.AddV2InputScopeUser, Content: "selected owner's fact"}), "new-command")
 	r = reopenPluginRuntime(t, r, &cfg)
 	r.poMCPTools(server(second), memoryToolsReady)
-	page = readMemoryPage(r, memorycontract.ListV2Input{Scope: "user"})
+	page = readMemoryPage(r, memorycontract.ListV2Input{Scope: memorycontract.ListV2InputScopeUser})
 	if len(page.Data) != 1 || page.Data[0].Content != "selected owner's fact" {
 		t.Fatalf("restart changed provider choice or private data: %+v", page.Data)
 	}

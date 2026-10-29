@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
@@ -224,7 +225,7 @@ func TestModelCapabilityDuringCurrentMCPRequest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	method, err := qimumcp.NewMethod[qimumcp.CallbackRef, string](qimumcp.MethodConfig{Name: "fixture.memory/test.v1", Kind: portable.Query, Target: "call", Description: "Exercise the model callback captured by the Host."})
+	method, err := qimumcp.NewMethod[qimumcp.CallbackRef, string](qimumcp.MethodConfig{Name: "fixture.memory/test.v1", Kind: portable.Query, Target: extension.ScopeCall, Description: "Exercise the model callback captured by the Host."})
 	if err != nil {
 		t.Fatal(err)
 	}

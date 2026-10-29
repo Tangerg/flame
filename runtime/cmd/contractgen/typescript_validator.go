@@ -74,7 +74,7 @@ func newWireChecks(registry *delivery.Registry, shapes *dispatch.Shapes, set *sc
 	}
 	out.WriteString("/** Every shape the protocol publishes. */\nexport type WireTypeName =\n")
 	for _, name := range names {
-		fmt.Fprintf(&out, "  | %s\n", strconv.Quote(name))
+		fmt.Fprintf(&out, "  | %s\n", contractgen.TypeScriptStringLiteral(name))
 	}
 	out.WriteString("  ;\n\n")
 	out.WriteString(body.String())
@@ -95,7 +95,7 @@ func (c *checkEmitter) httpResponses() string {
 		if endpoint.Kind != runtimehttp.EndpointKindSidecar || endpoint.ResponseType == nil {
 			continue
 		}
-		fmt.Fprintf(&out, "  %s: %s,\n", strconv.Quote(endpoint.Name), indent(c.compile(c.set.walk(endpoint.ResponseType))))
+		fmt.Fprintf(&out, "  %s: %s,\n", contractgen.TypeScriptStringLiteral(endpoint.Name), indent(c.compile(c.set.walk(endpoint.ResponseType))))
 	}
 	out.WriteString("};\n")
 	out.WriteString(`
@@ -154,7 +154,7 @@ func (c *checkEmitter) methodParams(registry *delivery.Registry) string {
 	var out strings.Builder
 	out.WriteString("\nconst METHOD_PARAMS: Record<WireMethodName, WireCheck> = {\n")
 	for _, meta := range registry.Metas() {
-		fmt.Fprintf(&out, "  %s: %s,\n", strconv.Quote(meta.Name.String()), indent(c.compile(c.set.walk(meta.Params))))
+		fmt.Fprintf(&out, "  %s: %s,\n", contractgen.TypeScriptStringLiteral(meta.Name.String()), indent(c.compile(c.set.walk(meta.Params))))
 	}
 	out.WriteString("};\n")
 	out.WriteString(`
@@ -182,7 +182,7 @@ func (c *checkEmitter) methodResults(registry *delivery.Registry) string {
 				check = c.call("nullable", check)
 			}
 		}
-		fmt.Fprintf(&out, "  %s: %s,\n", strconv.Quote(meta.Name.String()), indent(check))
+		fmt.Fprintf(&out, "  %s: %s,\n", contractgen.TypeScriptStringLiteral(meta.Name.String()), indent(check))
 	}
 	out.WriteString("};\n")
 	out.WriteString(`
@@ -209,7 +209,7 @@ func (c *checkEmitter) notifications(shapes *dispatch.Shapes) string {
 	var out strings.Builder
 	out.WriteString("\nexport const WIRE_NOTIFICATION_NAMES = [\n")
 	for _, notification := range notifications {
-		fmt.Fprintf(&out, "  %s,\n", strconv.Quote(notification.Name))
+		fmt.Fprintf(&out, "  %s,\n", contractgen.TypeScriptStringLiteral(notification.Name))
 	}
 	out.WriteString("] as const;\n")
 	out.WriteString("\nexport type WireNotificationName = (typeof WIRE_NOTIFICATION_NAMES)[number];\n")
@@ -221,7 +221,7 @@ func (c *checkEmitter) notifications(shapes *dispatch.Shapes) string {
 		if !ok {
 			panic(fmt.Sprintf("contractgen: notification %q params has no published shape", notification.Name))
 		}
-		fmt.Fprintf(&out, "  %s: Wire.%s;\n", strconv.Quote(notification.Name), name)
+		fmt.Fprintf(&out, "  %s: Wire.%s;\n", contractgen.TypeScriptStringLiteral(notification.Name), name)
 	}
 	out.WriteString("}\n")
 	out.WriteString("\nconst NOTIFICATION_PARAMS: Record<WireNotificationName, WireCheck> = {\n")
@@ -229,7 +229,7 @@ func (c *checkEmitter) notifications(shapes *dispatch.Shapes) string {
 		fmt.Fprintf(
 			&out,
 			"  %s: %s,\n",
-			strconv.Quote(notification.Name),
+			contractgen.TypeScriptStringLiteral(notification.Name),
 			indent(c.compile(c.set.walk(notification.ParamsType))),
 		)
 	}
@@ -286,7 +286,7 @@ func (c *checkEmitter) compile(node *contractgen.Schema) string {
 func (c *checkEmitter) baseCheck(node *contractgen.Schema) string {
 	switch {
 	case node.Const != "":
-		return c.call("literal", strconv.Quote(node.Const))
+		return c.call("literal", contractgen.TypeScriptStringLiteral(node.Const))
 	case len(node.Enum) > 0:
 		return c.call("enumOf", "["+strings.Join(contractgen.QuoteAll(node.Enum), ", ")+"]")
 	default:
@@ -303,7 +303,7 @@ func (c *checkEmitter) stringChecks(node *contractgen.Schema) []string {
 		checks = append(checks, c.call("maxLength", strconv.Itoa(*node.MaxLength)))
 	}
 	if node.Pattern != "" {
-		checks = append(checks, c.call("pattern", strconv.Quote(node.Pattern)))
+		checks = append(checks, c.call("pattern", contractgen.TypeScriptStringLiteral(node.Pattern)))
 	}
 	return checks
 }
@@ -311,13 +311,13 @@ func (c *checkEmitter) stringChecks(node *contractgen.Schema) []string {
 func (c *checkEmitter) numericChecks(node *contractgen.Schema) []string {
 	var checks []string
 	if node.Minimum != nil {
-		checks = append(checks, c.call("minimum", strconv.Quote(strconv.FormatInt(*node.Minimum, 10))))
+		checks = append(checks, c.call("minimum", contractgen.TypeScriptStringLiteral(strconv.FormatInt(*node.Minimum, 10))))
 	}
 	if node.ExclusiveMinimum != nil {
-		checks = append(checks, c.call("exclusiveMinimum", strconv.Quote(strconv.FormatInt(*node.ExclusiveMinimum, 10))))
+		checks = append(checks, c.call("exclusiveMinimum", contractgen.TypeScriptStringLiteral(strconv.FormatInt(*node.ExclusiveMinimum, 10))))
 	}
 	if node.Maximum != nil {
-		checks = append(checks, c.call("maximum", strconv.Quote(strconv.FormatInt(*node.Maximum, 10))))
+		checks = append(checks, c.call("maximum", contractgen.TypeScriptStringLiteral(strconv.FormatInt(*node.Maximum, 10))))
 	}
 	return checks
 }

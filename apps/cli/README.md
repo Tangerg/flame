@@ -97,8 +97,8 @@ replace the retained binding.
 `namespace` and `key` to retire work only while Runtime can prove it was never
 dispatched. Retirement preserves the identity and releases captured executable
 dependencies. Dispatched unknown work cannot retire and remains receipt-only.
-This requires Core `2026-10-16.2`; retain former data directories separately and
-use a fresh directory for the changed host phase constraints.
+Runtime and CLI must use the same generated protocol contract. Incompatible host
+storage requires a fresh data directory.
 
 Dynamic value completion loads the effective configuration before opening Runtime
 so it cannot silently query another target. Completion-script generation and help
@@ -283,9 +283,9 @@ retain their Runtime owners.
 Installed operation and point requests carry feature input/attributes and complete
 contracts as JSON strings. Returned feature output/values are JSON strings too.
 Typed Go readers decode the original source, preserving full-width integers and
-receipt lexemes. Rebuild CLI with Core `2026-10-16.2`; former inline payloads are
-refused. Existing private receipts and local pending input records retain their
-original format and owner.
+receipt lexemes. Rebuild Runtime and CLI together; inline payloads are refused.
+Private receipts and local pending input records retain their original JSON and
+owner.
 
 Schedule catalog reads capture the selected installation/contribution and full
 required callable contract once, then page through `plugins.call`. The CLI's Go
@@ -350,7 +350,7 @@ Snapshot validation, including original scope, precedes retirement. Core
 AddAgentMemory/agentMemory.add, its DTO and the Memory-specific Core feature are
 removed. Clients negotiate plugins and resolve the concrete published capability.
 Uncertain requests from retired Core contracts are not translated into fresh
-public commands. Core Memory read models and enums are also removed in Core .17.
+public commands. The publisher owns Memory read models and closed values.
 Terminal presentation owns its compact read projection; generated publisher
 snapshots remain the transport contract. Visible-state and timestamp checks precede
 presentation, while publisher schemas own identity/content admission. Complete
@@ -360,7 +360,7 @@ under the captured binding and reject cumulative overflow or empty continuation.
 Page width uses the backend default, and the publisher alone derives row/request
 limits from its business constants.
 
-Core .19 replaces Memory/Schedule-specific change topics with plugins.dataChanged.
+Memory and Schedule invalidations use `plugins.dataChanged`.
 The CLI subscribes once when either reader exists and refreshes both through their
 public owner reads. The event contains no business state or record IDs. Unknown
 installed command outcomes still invalidate reads without claiming success; ordinary

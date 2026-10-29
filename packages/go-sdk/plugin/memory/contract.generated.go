@@ -3,50 +3,72 @@ package memory
 
 import "time"
 
-type Method_flame_2ememory_2fadd_2ev2Input Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fAddInput
+type AddV2InputScope string
 
-type Method_flame_2ememory_2fadd_2ev2Output Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fAddResult
+const (
+	AddV2InputScopeProject AddV2InputScope = "project"
+	AddV2InputScopeUser    AddV2InputScope = "user"
+)
 
-type Method_flame_2ememory_2fdelete_2ev2Input Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fItemInput
+type ItemsV2InputScope string
 
-type Method_flame_2ememory_2fdelete_2ev2Output Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fAck
+const (
+	ItemsV2InputScopeProject ItemsV2InputScope = "project"
+	ItemsV2InputScopeUser    ItemsV2InputScope = "user"
+)
 
-type Method_flame_2ememory_2fitems_2ev2Input Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fItemsInput
+type ListV2InputScope string
 
-type Method_flame_2ememory_2fitems_2ev2Output []Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot
+const (
+	ListV2InputScopeProject ListV2InputScope = "project"
+	ListV2InputScopeUser    ListV2InputScope = "user"
+)
 
-type Method_flame_2ememory_2flist_2ev2Input Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fListInput
+type ReviewV2InputDecision string
 
-type Method_flame_2ememory_2flist_2ev2Output Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fPage
+const (
+	ReviewV2InputDecisionApprove ReviewV2InputDecision = "approve"
+	ReviewV2InputDecisionReject  ReviewV2InputDecision = "reject"
+)
 
-type Method_flame_2ememory_2fmaintain_2ev1Input Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fMaintenanceInput
+type UpdateV2OutputOrigin string
 
-type Method_flame_2ememory_2fmaintain_2ev1Output Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fMaintenanceResult
+const (
+	UpdateV2OutputOriginAuto UpdateV2OutputOrigin = "auto"
+	UpdateV2OutputOriginUser UpdateV2OutputOrigin = "user"
+)
 
-type Method_flame_2ememory_2freview_2ev2Input Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fReviewInput
+type UpdateV2OutputScope string
 
-type Method_flame_2ememory_2freview_2ev2Output Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fAck
+const (
+	UpdateV2OutputScopeProject UpdateV2OutputScope = "project"
+	UpdateV2OutputScopeUser    UpdateV2OutputScope = "user"
+)
 
-type Method_flame_2ememory_2fsearch_2ev2Input Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fSearchInput
+type UpdateV2OutputStatus string
 
-type Method_flame_2ememory_2fsearch_2ev2Output []Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot
+const (
+	UpdateV2OutputStatusActive   UpdateV2OutputStatus = "active"
+	UpdateV2OutputStatusPending  UpdateV2OutputStatus = "pending"
+	UpdateV2OutputStatusRejected UpdateV2OutputStatus = "rejected"
+)
 
-type Method_flame_2ememory_2fupdate_2ev2Input Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fUpdateInput
+type ItemsV2Output []UpdateV2Output
 
-type Method_flame_2ememory_2fupdate_2ev2Output Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot
+type SearchV2Output []UpdateV2Output
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fAck struct {
+type DeleteV2Output struct {
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fAddInput struct {
-	CWD     string `json:"CWD"`
-	Content string `json:"Content"`
-	Scope   string `json:"Scope"`
+type AddV2Input struct {
+	CWD     string          `json:"CWD"`
+	Content string          `json:"Content"`
+	Scope   AddV2InputScope `json:"Scope"`
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fAddResult struct {
-	Changed bool                                                                                                  `json:"Changed"`
-	Item    Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot `json:"Item"`
+type AddV2Output struct {
+	Changed bool           `json:"Changed"`
+	Item    UpdateV2Output `json:"Item"`
 }
 
 type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fConversation struct {
@@ -54,54 +76,54 @@ type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmF
 	Transcript   string `json:"Transcript"`
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fItemInput struct {
+type DeleteV2Input struct {
 	ExpectedRevision uint64 `json:"ExpectedRevision"`
 	ID               string `json:"ID"`
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fItemsInput struct {
-	Project string `json:"Project"`
-	Scope   string `json:"Scope"`
+type ItemsV2Input struct {
+	Project string            `json:"Project"`
+	Scope   ItemsV2InputScope `json:"Scope"`
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fListInput struct {
-	CWD    string  `json:"CWD"`
-	Cursor string  `json:"Cursor"`
-	Limit  *uint64 `json:"Limit,omitzero"`
-	Scope  string  `json:"Scope"`
+type ListV2Input struct {
+	CWD    string           `json:"CWD"`
+	Cursor string           `json:"Cursor"`
+	Limit  *uint64          `json:"Limit,omitzero"`
+	Scope  ListV2InputScope `json:"Scope"`
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fMaintenanceInput struct {
+type MaintainV1Input struct {
 	Compacted    bool                                                                                                    `json:"Compacted"`
 	Conversation Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fConversation `json:"Conversation"`
 	Project      string                                                                                                  `json:"Project"`
 	SessionID    string                                                                                                  `json:"SessionID"`
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fMaintenanceResult struct {
+type MaintainV1Output struct {
 	Published bool `json:"Published"`
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fPage struct {
-	Capacity   int64                                                                                                   `json:"Capacity"`
-	NextCursor string                                                                                                  `json:"NextCursor"`
-	Rows       []Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot `json:"Rows"`
+type ListV2Output struct {
+	Capacity   int64            `json:"Capacity"`
+	NextCursor string           `json:"NextCursor"`
+	Rows       []UpdateV2Output `json:"Rows"`
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fReviewInput struct {
-	Decision         string `json:"Decision"`
-	ExpectedRevision uint64 `json:"ExpectedRevision"`
-	ID               string `json:"ID"`
+type ReviewV2Input struct {
+	Decision         ReviewV2InputDecision `json:"Decision"`
+	ExpectedRevision uint64                `json:"ExpectedRevision"`
+	ID               string                `json:"ID"`
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fSearchInput struct {
+type SearchV2Input struct {
 	EmbeddingSpace string `json:"EmbeddingSpace"`
 	Project        string `json:"Project"`
 	Query          string `json:"Query"`
 	TopK           int64  `json:"TopK"`
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fUpdateInput struct {
+type UpdateV2Input struct {
 	Content          *string `json:"Content,omitzero"`
 	ExpectedRevision uint64  `json:"ExpectedRevision"`
 	ID               string  `json:"ID"`
@@ -110,20 +132,20 @@ type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmF
 
 type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemID string
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot struct {
+type UpdateV2Output struct {
 	Content        string                                                                                          `json:"Content"`
 	CreatedAt      time.Time                                                                                       `json:"CreatedAt"`
 	Day            string                                                                                          `json:"Day"`
 	Embedding      []float64                                                                                       `json:"Embedding"`
 	EmbeddingSpace string                                                                                          `json:"EmbeddingSpace"`
 	ID             Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemID `json:"ID"`
-	Origin         string                                                                                          `json:"Origin"`
+	Origin         UpdateV2OutputOrigin                                                                            `json:"Origin"`
 	Pinned         bool                                                                                            `json:"Pinned"`
 	Project        string                                                                                          `json:"Project"`
 	Revision       uint64                                                                                          `json:"Revision"`
-	Scope          string                                                                                          `json:"Scope"`
+	Scope          UpdateV2OutputScope                                                                             `json:"Scope"`
 	SessionID      string                                                                                          `json:"SessionID"`
-	Status         string                                                                                          `json:"Status"`
+	Status         UpdateV2OutputStatus                                                                            `json:"Status"`
 	UpdatedAt      time.Time                                                                                       `json:"UpdatedAt"`
 }
 
@@ -131,40 +153,18 @@ const CapabilityJSON = "{\"protocol\":\"io.github.tangerg.qimu/portable/1\",\"re
 
 const AddV2Method = "flame.memory/add.v2"
 
-type AddV2Input Method_flame_2ememory_2fadd_2ev2Input
-type AddV2Output Method_flame_2ememory_2fadd_2ev2Output
-
 const DeleteV2Method = "flame.memory/delete.v2"
-
-type DeleteV2Input Method_flame_2ememory_2fdelete_2ev2Input
-type DeleteV2Output Method_flame_2ememory_2fdelete_2ev2Output
 
 const ItemsV2Method = "flame.memory/items.v2"
 
-type ItemsV2Input Method_flame_2ememory_2fitems_2ev2Input
-type ItemsV2Output Method_flame_2ememory_2fitems_2ev2Output
-
 const ListV2Method = "flame.memory/list.v2"
-
-type ListV2Input Method_flame_2ememory_2flist_2ev2Input
-type ListV2Output Method_flame_2ememory_2flist_2ev2Output
 
 const MaintainV1Method = "flame.memory/maintain.v1"
 
-type MaintainV1Input Method_flame_2ememory_2fmaintain_2ev1Input
-type MaintainV1Output Method_flame_2ememory_2fmaintain_2ev1Output
-
 const ReviewV2Method = "flame.memory/review.v2"
 
-type ReviewV2Input Method_flame_2ememory_2freview_2ev2Input
-type ReviewV2Output Method_flame_2ememory_2freview_2ev2Output
+type ReviewV2Output DeleteV2Output
 
 const SearchV2Method = "flame.memory/search.v2"
 
-type SearchV2Input Method_flame_2ememory_2fsearch_2ev2Input
-type SearchV2Output Method_flame_2ememory_2fsearch_2ev2Output
-
 const UpdateV2Method = "flame.memory/update.v2"
-
-type UpdateV2Input Method_flame_2ememory_2fupdate_2ev2Input
-type UpdateV2Output Method_flame_2ememory_2fupdate_2ev2Output

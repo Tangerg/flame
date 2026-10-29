@@ -1,3 +1,4 @@
+import { parseJSON } from "@qimu/sdk/json";
 import { mutationResult } from "@/test/runtimeClient";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -179,4 +180,37 @@ describe("runtimeRunsGateway", () => {
     expect(successorResume).toHaveBeenCalledOnce();
     expect(retiredRetry).not.toHaveBeenCalled();
   });
+});
+
+it("retains distinct exact JSON identities for resumed approval arguments", async () => {
+  const resume = vi.fn(() =>
+    mutationResult(
+      async () => ({
+        result: { runId: asRunId("run_1"), segmentId: asSegmentId("seg_1") },
+        observation: { type: "stream" as const, events: noEvents() },
+      }),
+      "resume-exact",
+    ),
+  );
+  const gateway = runtimeRunsGateway(() => ({ runs: { resume } }) as unknown as FlameClient);
+  try {
+    for (const source of ['{"number":1.0}', '{"number":9007199254740993}']) {
+      await gateway.resume({
+        runId: asRunId("run_1"),
+        responses: [
+          {
+            itemId: asItemId("item_1"),
+            response: {
+              type: "approval",
+              decision: "approve",
+              editedArgs: parseJSON(source) as Record<string, unknown>,
+            },
+          },
+        ],
+      });
+    }
+    expect(resume).toHaveBeenCalledTimes(2);
+  } finally {
+    gateway.dispose();
+  }
 });

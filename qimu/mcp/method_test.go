@@ -47,9 +47,12 @@ func TestCallsRejectAmbiguousBackendReplies(t *testing.T) {
 
 func TestMethodsPreserveKnownRefusalsAndUnknownFailures(t *testing.T) {
 	refused, storage := errors.New("revision conflict"), errors.New("commit result unknown")
-	for _, command := range []bool{false, true} {
+	for _, operation := range []struct {
+		name string
+		kind portable.MethodKind
+	}{{"query", portable.Query}, {"command", portable.Mutation}} {
 		for _, cause := range []error{refused, storage} {
-			t.Run(cause.Error()+"/"+map[bool]string{false: "method", true: "command"}[command], func(t *testing.T) {
+			t.Run(cause.Error()+"/"+operation.name, func(t *testing.T) {
 				session := methodSession(t, func(server *Backend) error {
 					classify := func(err error) string {
 						if errors.Is(err, refused) {
@@ -57,13 +60,10 @@ func TestMethodsPreserveKnownRefusalsAndUnknownFailures(t *testing.T) {
 						}
 						return ""
 					}
-					if command {
-						return testMethod[string, string](t, "flame.test/failure", portable.Mutation).RegisterServer(server, classify, func(context.Context, *sdk.ServerSession, Command[string]) (string, error) { return "", cause })
-					}
-					return testMethod[string, string](t, "flame.test/failure", portable.Query).RegisterServer(server, classify, func(context.Context, *sdk.ServerSession, Command[string]) (string, error) { return "", cause })
+					return testMethod[string, string](t, "flame.test/failure", operation.kind).RegisterServer(server, classify, func(context.Context, *sdk.ServerSession, Command[string]) (string, error) { return "", cause })
 				}, "flame.test/failure")
 				var err error
-				if command {
+				if operation.kind == portable.Mutation {
 					_, err = testMethod[string, string](t, "flame.test/failure", portable.Mutation).CallCommand(t.Context(), session, "logical-command", "input")
 				} else {
 					_, err = testMethod[string, string](t, "flame.test/failure", portable.Query).Call(t.Context(), session, "input")
@@ -117,7 +117,7 @@ func TestCommandsRejectMalformedEnvelopeBeforeMutation(t *testing.T) {
 		{Input: "input"},
 		{CommandID: "command"},
 		{Input: (*string)(nil), CommandID: "command"},
-		{Input: "input", CommandID: strings.Repeat("c", 257)},
+		{Input: "input", CommandID: strings.Repeat("c", MaxCommandIDBytes+1)},
 		{Input: "input", CommandID: "command", Extra: true},
 	} {
 		params.Protocol = portable.Protocol

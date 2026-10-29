@@ -1,167 +1,32 @@
 #!/usr/bin/env node
-// Boot-contract guard — the pre-module bootstrap must agree with the app it boots.
-//
-// Two jobs run before any module loads, because both have to happen before the
-// first paint: pick the scheme class + canvas colour, and mark the input modality.
-// Neither can import anything — that's the point of running pre-module — so each
-// one restates something another file owns:
-//
-//   - the localStorage key the preference store persists under,
-//   - the class names the theme painter writes,
-//   - the canvas colour per scheme, which lives in globals.css as a token,
-//   - the attribute the focus-ring rule gates on,
-//   - and, across the language boundary, the native window colour in application.go,
-//     which shows for the frame before the WebView paints.
-//
-// Contracts in three languages, held by nothing. One had already drifted: the dark
-// canvas was #121212 against a #101010 token, so a dark cold boot painted one grey and
-// repainted another a moment later. This pins each of them.
-//
-// The same shape recurs one layer in, so the file grew past the bootstrap itself: any
-// value a running app derives and globals.css also states as a literal, plus the motion
-// ladder, which three files state independently. No count here on purpose — it was
-// written as "five", and was wrong by the time anyone read it.
-//
-// Every one of them fails silently when it drifts — the wrong scheme for a frame,
-// a ring that never shows, a flash of the wrong grey — which is exactly the class
-// of defect nobody files a bug for.
+import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+import { checkPresentation } from "../../../tooling/presentation.mjs";
 
-import { readFileSync } from "node:fs";
-
-const read = (path) => readFileSync(new URL(path, import.meta.url).pathname, "utf8");
-
-const MODALITY_FILE = "focus-modality.js";
-
-const html = read("../index.html");
-const visualHtml = read("../visual/index.html");
-const modality = read(`../public/${MODALITY_FILE}`);
-const css = read("../src/styles/globals.css");
-const documentCss = read("../../../packages/ui/src/globals.css");
-const store = read("../src/features/theme/adapters/appearanceStore.ts");
-const painter = read("../src/features/theme/adapters/documentAppearance.ts");
-const shell = read("../../desktop/application.go");
-
-const failures = [];
-
-function expect(condition, message) {
-  if (!condition) failures.push(message);
-}
-
-// ── 1. The persisted-preference key ───────────────────────────────────────────
-// Read from the NAMED constant, not `name:`'s literal: a regex for the inline literal
-// resolves to `undefined` the moment it stops being inline, which is a guard comparing a
-// string to nothing and calling it agreement.
-const htmlStorageKey = html.match(/localStorage\.getItem\("([^"]+)"\)/)?.[1];
-const storeName = store.match(/APPEARANCE_STORAGE_KEY\s*=\s*"([^"]+)"/)?.[1];
-expect(
-  storeName !== undefined,
-  "the appearance store no longer declares APPEARANCE_STORAGE_KEY — this check reads nothing",
-);
-expect(
-  htmlStorageKey !== undefined && htmlStorageKey === storeName,
-  `index.html reads localStorage "${htmlStorageKey}" but the store persists under "${storeName}"`,
-);
-
-// ── 2. The scheme class names ─────────────────────────────────────────────────
-const htmlSchemeClass = html.match(/classList\.add\("([a-z]+)-"\s*\+\s*scheme\)/)?.[1];
-expect(
-  htmlSchemeClass !== undefined &&
-    painter.includes(`\`${htmlSchemeClass}-\${scheme}\``) &&
-    css.includes(`.${htmlSchemeClass}-dark`),
-  `index.html writes "${htmlSchemeClass}-{scheme}", which the painter or globals.css does not use`,
-);
-
-// ── 3. The canvas colour per scheme ───────────────────────────────────────────
-// globals.css declares --color-bg twice: light scheme first, then dark.
-const canvasTokens = [...css.matchAll(/--color-bg:\s*(#[0-9a-fA-F]{3,8})/g)].map((m) =>
-  m[1].toLowerCase(),
-);
-const htmlCanvas = html
-  .match(
-    /backgroundColor\s*=\s*scheme === "light" \? "(#[0-9a-fA-F]{3,8})" : "(#[0-9a-fA-F]{3,8})"/,
-  )
-  ?.slice(1, 3)
-  .map((hex) => hex.toLowerCase());
-expect(
-  canvasTokens.length === 2,
-  `globals.css declares --color-bg ${canvasTokens.length} time(s); expected one per scheme`,
-);
-expect(
-  htmlCanvas !== undefined &&
-    canvasTokens.length === 2 &&
-    htmlCanvas.join() === canvasTokens.join(),
-  `index.html paints ${htmlCanvas?.join(" / ")} where --color-bg is ${canvasTokens.join(" / ")}`,
-);
-
-// ── 4. The input-modality attribute ───────────────────────────────────────────
-// The host owns two explicit modes; an absent owner retains native focus indication.
-const modalityDeclarations = [
-  ...modality.matchAll(/setAttribute\("(data-[a-z-]+)",\s*"([^"]+)"\)/g),
-];
-const modalityAttributes = new Set(modalityDeclarations.map((match) => match[1]));
-const modalityModes = new Set(modalityDeclarations.map((match) => match[2]));
-const modalityAttr = modalityAttributes.size === 1 ? modalityDeclarations[0]?.[1] : undefined;
-expect(
-  modalityAttr !== undefined &&
-    modalityModes.size === 2 &&
-    modalityModes.has("pointer") &&
-    modalityModes.has("keyboard") &&
-    documentCss.includes(`html:not([${modalityAttr}])`) &&
-    documentCss.includes(`html[${modalityAttr}="pointer"]`) &&
-    documentCss.includes(`html[${modalityAttr}="keyboard"]`),
-  `the bootstrap and globals.css must share one pointer/keyboard attribute and its unowned native fallback; found [${modalityAttr}]`,
-);
-
-// Both entries must use the same explicit modality owner. Omitting it would
-// exercise the independent consumer's native fallback instead of product behavior.
-for (const [name, entry] of [
-  ["index.html", html],
-  ["visual/index.html", visualHtml],
-]) {
-  expect(
-    entry.includes(`src="/${MODALITY_FILE}"`),
-    `${name} does not load /${MODALITY_FILE} — its focus modality is whatever happens by default`,
-  );
-}
-
-// ── 5. The native window colour ───────────────────────────────────────────────
-// The window opens before the WebView paints, so its colour has to be the canvas the app
-// is about to paint. The shell can't read a preference the WebView owns — but that
-// preference DEFAULTS to "system", which resolves to the OS appearance the shell reads, so
-// it states both canvases and picks by appearance rather than opening every dark machine
-// on white.
-// v3 spells this `application.NewRGB(r, g, b)` on the WINDOW's options, where v2 had a
-// `&options.RGBA{...}` literal on the application's. Matching the constructor rather than
-// a struct literal is also why this reads as a call: there is no field to name. Light
-// first, the order the token pair is read in.
-const shellCanvases = [
-  ...shell.matchAll(/application\.NewRGB\(\s*(\d+),\s*(\d+),\s*(\d+)\s*\)/g),
-].map(
-  (rgba) =>
-    `#${[rgba[1], rgba[2], rgba[3]].map((v) => Number(v).toString(16).padStart(2, "0")).join("")}`,
-);
-expect(
-  canvasTokens.length === 2 &&
-    shellCanvases.length === 2 &&
-    shellCanvases[0] === canvasTokens[0] &&
-    shellCanvases[1] === canvasTokens[1],
-  `application.go opens the window ${shellCanvases.join(" / ")} where --color-bg is ${canvasTokens.join(" / ")}`,
-);
-
-// The runtime-derived mirrors — the type ladder, the depth step, the motion ladder and the
-// palette — used to be checked here too, by regex over the modules that own them. They are
-// now checked by importing those modules (`theme/stylesheetMirror.test.ts` and
-// `styles/tokenDefaults.test.ts`), which covers the whole of each mirror rather than the
-// handful of values a pattern could reach, and cannot be defeated by moving a function to a
-// better home — which is exactly what silently broke the regex that read `depthStep` out of
-// the painter's source.
-//
-// What stays here is what no test can import: the pre-paint `<script>` in `index.html` and
-// the two values the Go shell states in its own language.
-
-if (failures.length > 0) {
-  console.error(`[check-bootstrap] ${failures.length} boot-contract drift(s):\n`);
-  for (const failure of failures) console.error(`  ${failure}`);
-  process.exit(1);
-}
-console.log("[check-bootstrap] OK — the pre-paint bootstrap agrees with the app");
+const repository = fileURLToPath(new URL("../../../", import.meta.url));
+await checkPresentation(repository);
+const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
+const [html, visualHtml, modality, documentCss] = await Promise.all([
+  read("../index.html"),
+  read("../visual/index.html"),
+  read("../public/focus-modality.js"),
+  read("../../../packages/ui/src/globals.css"),
+]);
+const declarations = [...modality.matchAll(/setAttribute\("(data-[a-z-]+)",\s*"([^"]+)"\)/g)];
+const attributes = new Set(declarations.map((match) => match[1]));
+const modes = new Set(declarations.map((match) => match[2]));
+const attribute = attributes.size === 1 ? declarations[0]?.[1] : undefined;
+if (
+  !attribute ||
+  modes.size !== 2 ||
+  !modes.has("pointer") ||
+  !modes.has("keyboard") ||
+  !documentCss.includes(`html:not([${attribute}])`) ||
+  !documentCss.includes(`html[${attribute}="pointer"]`) ||
+  !documentCss.includes(`html[${attribute}="keyboard"]`)
+)
+  throw new Error("the input-modality owner and shared focus stylesheet disagree");
+for (const entry of [html, visualHtml])
+  if (!entry.includes('src="/focus-modality.js"'))
+    throw new Error("both Web entries must load the input-modality owner");
+console.log("[check-bootstrap] presentation projections and input modality agree");

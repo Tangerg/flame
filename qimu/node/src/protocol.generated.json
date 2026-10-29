@@ -11,7 +11,8 @@
     "CallHeader": "Qimu-Call",
     "InvocationHeader": "Qimu-Invocation",
     "InvocationMetadataKey": "io.github.tangerg.qimu/invocation",
-    "ReceiptMethod": "io.github.tangerg.qimu/commands.get"
+    "ReceiptMethod": "io.github.tangerg.qimu/commands.get",
+    "maxCommandIDBytes": 256
   },
   "limits": {
     "maxDescriptorBytes": 1048576,
@@ -19,6 +20,7 @@
     "maxDescriptorNodes": 16384,
     "maxValueNodes": 33554432,
     "maxMethods": 256,
+    "maxTokenBytes": 256,
     "maxReferences": 1024,
     "maxReferenceDepth": 64,
     "maxReferenceWork": 16384,

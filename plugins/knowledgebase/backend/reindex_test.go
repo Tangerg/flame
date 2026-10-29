@@ -49,7 +49,7 @@ func TestStoredTextRemainsReadableAndReindexUsesOneDurablePublication(t *testing
 	content := knowledge.Content{ID: "guide", Title: "Guide", Source: "docs/guide", Text: strings.Repeat("正文🙂", 400)}
 	input := wire.ImportInput{Content: content}
 	admitted, _ := jsonvalue.Encode(input)
-	original, err := library.importDocument(t.Context(), contracts.Import.Name(), "import", input, admitted)
+	original, err := library.importDocument(t.Context(), contracts.Import.Name(), "import", admitted)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +63,7 @@ func TestStoredTextRemainsReadableAndReindexUsesOneDurablePublication(t *testing
 	}
 	reindex := wire.DocumentInput{ID: content.ID, ExpectedRevision: original.Revision}
 	reindexJSON, _ := jsonvalue.Encode(reindex)
-	rebuilt, err := library.reindexDocument(t.Context(), contracts.Reindex.Name(), "reindex", reindex, reindexJSON)
+	rebuilt, err := library.reindexDocument(t.Context(), contracts.Reindex.Name(), "reindex", reindexJSON)
 	if err != nil || rebuilt.Revision != original.Revision+1 || rebuilt.Space != space || strings.Join(captured, "") != content.Text {
 		t.Fatalf("reindex did not use the captured stored text: %+v %v", rebuilt, err)
 	}
@@ -71,7 +71,7 @@ func TestStoredTextRemainsReadableAndReindexUsesOneDurablePublication(t *testing
 		t.Fatalf("reindex did not restore retrieval: %+v %v", matches, err)
 	}
 	before := calls
-	if _, err := library.reindexDocument(t.Context(), contracts.Reindex.Name(), "stale", reindex, reindexJSON); !errors.Is(err, knowledge.ErrRevisionConflict) || calls != before {
+	if _, err := library.reindexDocument(t.Context(), contracts.Reindex.Name(), "stale", reindexJSON); !errors.Is(err, knowledge.ErrRevisionConflict) || calls != before {
 		t.Fatalf("stale reindex dispatched embedding: calls=%d %v", calls, err)
 	}
 	if err := store.db.Close(); err != nil {
@@ -87,7 +87,7 @@ func TestStoredTextRemainsReadableAndReindexUsesOneDurablePublication(t *testing
 	if err != nil || read.Text != content.Text || read.Document != rebuilt {
 		t.Fatalf("reindex changed the original content: %+v %v", read, err)
 	}
-	if replay, err := library.reindexDocument(t.Context(), contracts.Reindex.Name(), "reindex", reindex, reindexJSON); err != nil || !reflect.DeepEqual(replay, rebuilt) || calls != before {
+	if replay, err := library.reindexDocument(t.Context(), contracts.Reindex.Name(), "reindex", reindexJSON); err != nil || !reflect.DeepEqual(replay, rebuilt) || calls != before {
 		t.Fatalf("restart repeated reindex: %+v calls=%d %v", replay, calls, err)
 	}
 	current := wire.DocumentInput{ID: content.ID, ExpectedRevision: rebuilt.Revision}
@@ -105,7 +105,7 @@ func TestStoredTextRemainsReadableAndReindexUsesOneDurablePublication(t *testing
 			t.Fatal(err)
 		}
 	}
-	if _, err := library.reindexDocument(t.Context(), contracts.Reindex.Name(), "racing", current, currentJSON); !errors.Is(err, knowledge.ErrRevisionConflict) {
+	if _, err := library.reindexDocument(t.Context(), contracts.Reindex.Name(), "racing", currentJSON); !errors.Is(err, knowledge.ErrRevisionConflict) {
 		t.Fatalf("reindex overwrote a later human revision: %v", err)
 	}
 	read, err = library.read(t.Context(), wire.ReadInput{ID: content.ID})
@@ -115,11 +115,11 @@ func TestStoredTextRemainsReadableAndReindexUsesOneDurablePublication(t *testing
 	current.ExpectedRevision = read.Document.Revision
 	currentJSON, _ = jsonvalue.Encode(current)
 	embeddingErr = errors.New("embedding response lost")
-	if _, err := library.reindexDocument(t.Context(), contracts.Reindex.Name(), "unknown", current, currentJSON); !errors.Is(err, embeddingErr) {
+	if _, err := library.reindexDocument(t.Context(), contracts.Reindex.Name(), "unknown", currentJSON); !errors.Is(err, embeddingErr) {
 		t.Fatal(err)
 	}
 	before = calls
-	if _, err := library.reindexDocument(t.Context(), contracts.Reindex.Name(), "unknown", current, currentJSON); !errors.Is(err, pluginstorage.ErrCommandUnconfirmed) || calls != before {
+	if _, err := library.reindexDocument(t.Context(), contracts.Reindex.Name(), "unknown", currentJSON); !errors.Is(err, pluginstorage.ErrCommandUnconfirmed) || calls != before {
 		t.Fatalf("unknown reindex dispatched again: calls=%d %v", calls, err)
 	}
 }

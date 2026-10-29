@@ -29,7 +29,7 @@ func TestProjectToolPreservesStructuredDetails(t *testing.T) {
 	if err != nil {
 		t.Fatalf("projectTool: %v", err)
 	}
-	if tool.Kind != conversation.ToolShell || tool.Command != "go test ./..." || tool.Output != "ok" ||
+	if tool.Kind != protocol.ToolCategoryShell || tool.Command != "go test ./..." || tool.Output != "ok" ||
 		tool.Safety != protocol.SafetyClassExec || !tool.StartedAt.Equal(started) || !tool.FinishedAt.Equal(finished) ||
 		tool.ExitCode == nil || *tool.ExitCode != 0 || tool.Duration != 1250*time.Millisecond ||
 		!jsontext.Value(tool.ArgumentsJSON).IsValid() || !bytes.Contains(tool.ArgumentsJSON, []byte(`"command":"go test ./..."`)) ||
@@ -50,7 +50,7 @@ func TestProjectUnknownToolPreservesCompleteArgumentsAndResult(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if tool.Kind != conversation.ToolUnknown || tool.Name != "mcp__calendar__create_event" ||
+	if tool.Kind != protocol.ToolCategoryUnknown || tool.Name != "mcp__calendar__create_event" ||
 		!bytes.Contains(tool.ArgumentsJSON, []byte(`"guests"`)) ||
 		!bytes.Contains(tool.ArgumentsJSON, []byte(`"source":"flame"`)) ||
 		!bytes.Contains(tool.ResultJSON, []byte(`"eventId":"evt_123"`)) {

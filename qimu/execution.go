@@ -122,6 +122,9 @@ func Import[T any](setup *Setup, slot string, contract Contract[T]) (T, error) {
 
 func OptionalImport[T any](setup *Setup, slot string, contract Contract[T]) (T, bool, error) {
 	var zero T
+	if setup == nil || contract.value == nil {
+		return zero, false, ErrInvalid
+	}
 	values, err := setup.Imports(slot)
 	if err != nil {
 		return zero, false, err

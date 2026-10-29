@@ -43,7 +43,7 @@ func (m *PluginStreamingMethod[P, C, R]) Stream(ctx context.Context, input P, op
 	var consumed atomic.Bool
 	return func(yield func(qimumcp.StreamValue[C, R], error) bool) {
 		fail := func(err error) {
-			if m != nil && m.method.Kind() == portable.Mutation {
+			if m != nil && m.method != nil && m.method.Kind() == portable.Mutation {
 				err = errors.Join(ErrAcknowledgementUnknown, err)
 			}
 			yield(qimumcp.StreamValue[C, R]{}, err)
@@ -52,8 +52,12 @@ func (m *PluginStreamingMethod[P, C, R]) Stream(ctx context.Context, input P, op
 			yield(qimumcp.StreamValue[C, R]{}, ErrClosed)
 			return
 		}
-		if m == nil || inputErr != nil || optionsErr != nil {
+		if m == nil || m.method == nil || inputErr != nil || optionsErr != nil {
 			yield(qimumcp.StreamValue[C, R]{}, errors.Join(inputErr, optionsErr, errors.New("runtime: valid bound stream input and options are required")))
+			return
+		}
+		if m.method.Kind() == portable.Query && (capturedOptions.IdempotencyKey != "" || capturedOptions.IdempotencyNamespace != "") {
+			yield(qimumcp.StreamValue[C, R]{}, errors.New("runtime: plugin query cannot carry a command identity"))
 			return
 		}
 		if err := m.method.ValidateInput(admitted); err != nil {
@@ -94,7 +98,7 @@ func (m *PluginStreamingMethod[P, C, R]) Stream(ctx context.Context, input P, op
 					return
 				}
 				var chunk C
-				if err := json.Unmarshal([]byte(event.Value), &chunk, json.RejectUnknownMembers(true)); err != nil {
+				if err := json.Unmarshal([]byte(event.Value), &chunk, json.RejectUnknownMembers(true), jsonvalue.Numbers()); err != nil {
 					fail(errors.Join(protocol.ErrInvalidResponse, err))
 					return
 				}
@@ -107,7 +111,7 @@ func (m *PluginStreamingMethod[P, C, R]) Stream(ctx context.Context, input P, op
 					return
 				}
 				final = new(R)
-				if err := json.Unmarshal([]byte(event.Value), final, json.RejectUnknownMembers(true)); err != nil {
+				if err := json.Unmarshal([]byte(event.Value), final, json.RejectUnknownMembers(true), jsonvalue.Numbers()); err != nil {
 					fail(errors.Join(protocol.ErrInvalidResponse, err))
 					return
 				}
@@ -127,6 +131,6 @@ func captureStreamOptions(options protocol.PluginCallOptions) (protocol.PluginCa
 		return protocol.PluginCallOptions{}, err
 	}
 	var captured protocol.PluginCallOptions
-	err = json.Unmarshal(encoded, &captured, json.RejectUnknownMembers(true))
+	err = json.Unmarshal(encoded, &captured, json.RejectUnknownMembers(true), jsonvalue.Numbers())
 	return captured, err
 }

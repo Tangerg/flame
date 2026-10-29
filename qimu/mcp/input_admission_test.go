@@ -104,3 +104,31 @@ func TestInputValidationUsesTypedUnaryAndStreamContractsWithoutDispatch(t *testi
 		t.Fatalf("input validation entered business dispatch %d times", calls.Load())
 	}
 }
+
+func TestPublishedMethodImplementationsRefuseAmbiguousCodecs(t *testing.T) {
+	type embedded struct {
+		Value string `json:"value"`
+	}
+	type ambiguous struct {
+		embedded
+		Other string `json:"value"`
+	}
+	method := testMethod[struct{}, struct{}](t, "example.codec/read", portable.Query)
+	stream, err := NewStreamingMethod[struct{}, struct{}, struct{}](MethodConfig{Name: "example.codec/stream", Kind: portable.Query, Target: "installation", Description: "Read codec values."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	owner, err := portable.NewCapability(portable.CapabilityConfig{Reference: "example.codec", Composition: portable.Collection, Scope: "installation"}, method.Descriptor(), stream.Descriptor())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ImplementMethod[ambiguous, struct{}](owner, method.Name()); err == nil {
+		t.Fatal("ambiguous input codec acquired a published method")
+	}
+	if _, err := ImplementMethod[struct{}, ambiguous](owner, method.Name()); err == nil {
+		t.Fatal("ambiguous output codec acquired a published method")
+	}
+	if _, err := ImplementStreamingMethod[struct{}, ambiguous, struct{}](owner, stream.Descriptor().Name); err == nil {
+		t.Fatal("ambiguous chunk codec acquired a published stream")
+	}
+}

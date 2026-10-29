@@ -19,8 +19,6 @@ import (
 	"github.com/Tangerg/flame/qimu/portable"
 )
 
-type memoryFixtureRecord = memory.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot
-
 const (
 	adapterMemoryIDOne   = "mem_00000000000000000000000000000001"
 	adapterMemoryIDTwo   = "mem_00000000000000000000000000000002"
@@ -48,11 +46,11 @@ type agentMemoryBindingStub struct {
 func (a *agentMemoryBindingStub) list(request memory.ListV2Input, options protocol.CallOptions) (*protocol.Page[memory.Item], error) {
 	a.assertMeta(options.RequestMeta)
 	switch request.Scope {
-	case string(memory.ScopeProject):
+	case memory.ListV2InputScopeProject:
 		if request.CWD != "/workspace" {
 			a.t.Fatalf("project list request = %+v", request)
 		}
-	case string(memory.ScopeUser):
+	case memory.ListV2InputScopeUser:
 		if request.CWD != "" {
 			a.t.Fatalf("user list request leaked workspace: %+v", request)
 		}
@@ -69,8 +67,8 @@ func (a *agentMemoryBindingStub) list(request memory.ListV2Input, options protoc
 		return a.listed, nil
 	}
 	return &protocol.Page[memory.Item]{Data: []memory.Item{{
-		Revision: 1, ID: adapterMemoryIDOne, Scope: memory.Scope(request.Scope), Content: "durable fact", Origin: memory.OriginAuto,
-		Status: memory.StatusPending, CreatedAt: a.now, UpdatedAt: a.now,
+		Revision: 1, ID: adapterMemoryIDOne, Scope: memory.UpdateV2OutputScope(request.Scope), Content: "durable fact", Origin: memory.UpdateV2OutputOriginAuto,
+		Status: memory.UpdateV2OutputStatusPending, CreatedAt: a.now, UpdatedAt: a.now,
 	}}}, nil
 }
 
@@ -79,7 +77,7 @@ func TestAgentMemoryAdapterTraversesWithoutPartialSuccess(t *testing.T) {
 	for _, scenario := range []string{"complete", "duplicate", "later failure"} {
 		t.Run(scenario, func(t *testing.T) {
 			calls := 0
-			item := memory.Item{Revision: 1, ID: adapterMemoryIDOne, Scope: memory.ScopeUser, Content: "fact", Origin: memory.OriginUser, Status: memory.StatusActive, CreatedAt: now, UpdatedAt: now}
+			item := memory.Item{Revision: 1, ID: adapterMemoryIDOne, Scope: memory.UpdateV2OutputScopeUser, Content: "fact", Origin: memory.UpdateV2OutputOriginUser, Status: memory.UpdateV2OutputStatusActive, CreatedAt: now, UpdatedAt: now}
 			stub := &agentMemoryBindingStub{t: t, listPage: func(request memory.ListV2Input) (*protocol.Page[memory.Item], error) {
 				calls++
 				if calls == 1 {
@@ -100,7 +98,7 @@ func TestAgentMemoryAdapterTraversesWithoutPartialSuccess(t *testing.T) {
 				return &protocol.Page[memory.Item]{Data: []memory.Item{item}}, nil
 			}}
 			adapter := &AgentMemory{runtime: &Connection{plugins: stub, meta: requestMeta("test")}}
-			target, err := conversation.NewMemoryTarget(memory.ScopeUser, "")
+			target, err := conversation.NewMemoryTarget(memory.UpdateV2OutputScopeUser, "")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -122,8 +120,8 @@ func TestAgentMemoryAdapterTraversesWithoutPartialSuccess(t *testing.T) {
 func TestAgentMemoryAdapterRejectsBrokenRuntimeProjections(t *testing.T) {
 	now := time.Now()
 	valid := memory.Item{
-		Revision: 1, ID: adapterMemoryIDOne, Scope: memory.ScopeProject, Content: "fact",
-		Origin: memory.OriginAuto, Status: memory.StatusPending,
+		Revision: 1, ID: adapterMemoryIDOne, Scope: memory.UpdateV2OutputScopeProject, Content: "fact",
+		Origin: memory.UpdateV2OutputOriginAuto, Status: memory.UpdateV2OutputStatusPending,
 		CreatedAt: now, UpdatedAt: now,
 	}
 	for _, test := range []struct {
@@ -133,8 +131,8 @@ func TestAgentMemoryAdapterRejectsBrokenRuntimeProjections(t *testing.T) {
 	}{
 		{name: "nil list", nilList: true},
 		{name: "wrong scope", listed: &protocol.Page[memory.Item]{Data: []memory.Item{{
-			Revision: 1, ID: adapterMemoryIDOne, Scope: memory.ScopeUser, Content: "fact",
-			Origin: memory.OriginUser, Status: memory.StatusActive,
+			Revision: 1, ID: adapterMemoryIDOne, Scope: memory.UpdateV2OutputScopeUser, Content: "fact",
+			Origin: memory.UpdateV2OutputOriginUser, Status: memory.UpdateV2OutputStatusActive,
 			CreatedAt: now, UpdatedAt: now,
 		}}}},
 		{name: "duplicate identity", listed: &protocol.Page[memory.Item]{Data: []memory.Item{valid, valid}}},
@@ -150,7 +148,7 @@ func TestAgentMemoryAdapterRejectsBrokenRuntimeProjections(t *testing.T) {
 				}},
 				meta: requestMeta("test"),
 			}}
-			target, err := conversation.NewMemoryTarget(memory.ScopeProject, "/workspace")
+			target, err := conversation.NewMemoryTarget(memory.UpdateV2OutputScopeProject, "/workspace")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -170,7 +168,7 @@ func TestMemoryTraversalRejectsCapacityDriftWithoutPartialSuccess(t *testing.T) 
 			t.Fatal("collector replaced the owner's default page width")
 		}
 		if input.Cursor == "" {
-			return &protocol.Page[memory.Item]{Data: []memory.Item{*stub.item(adapterMemoryIDOne, memory.ScopeUser, "fact", false)}, NextCursor: "next"}, nil
+			return &protocol.Page[memory.Item]{Data: []memory.Item{*stub.item(adapterMemoryIDOne, memory.UpdateV2OutputScopeUser, "fact", false)}, NextCursor: "next"}, nil
 		}
 		return &protocol.Page[memory.Item]{Data: []memory.Item{}}, nil
 	}
@@ -181,16 +179,16 @@ func TestMemoryTraversalRejectsCapacityDriftWithoutPartialSuccess(t *testing.T) 
 		return 513
 	}
 	adapter := &AgentMemory{runtime: &Connection{plugins: stub, meta: requestMeta("test")}}
-	items, err := adapter.Items(t.Context(), conversation.MemoryTarget{Scope: memory.ScopeUser})
+	items, err := adapter.Items(t.Context(), conversation.MemoryTarget{Scope: memory.UpdateV2OutputScopeUser})
 	if err == nil || items != nil {
 		t.Fatalf("capacity drift returned partial success: %+v, %v", items, err)
 	}
 }
 
-func (a *agentMemoryBindingStub) item(id string, scope memory.Scope, content string, pinned bool) *memory.Item {
+func (a *agentMemoryBindingStub) item(id string, scope memory.UpdateV2OutputScope, content string, pinned bool) *memory.Item {
 	return &memory.Item{
-		Revision: 1, ID: id, Scope: scope, Content: content, Origin: memory.OriginUser,
-		Status: memory.StatusActive, Pinned: pinned, CreatedAt: a.now, UpdatedAt: a.now,
+		Revision: 1, ID: id, Scope: scope, Content: content, Origin: memory.UpdateV2OutputOriginUser,
+		Status: memory.UpdateV2OutputStatusActive, Pinned: pinned, CreatedAt: a.now, UpdatedAt: a.now,
 	}
 }
 
@@ -237,22 +235,22 @@ func TestAgentMemoryAdapterPreservesTargetReviewAndMutationSemantics(t *testing.
 		}},
 		meta: requestMeta("test"),
 	}}
-	project, err := conversation.NewMemoryTarget(memory.ScopeProject, "/workspace")
+	project, err := conversation.NewMemoryTarget(memory.UpdateV2OutputScopeProject, "/workspace")
 	if err != nil {
 		t.Fatal(err)
 	}
 	items, err := adapter.Items(t.Context(), project)
-	if err != nil || len(items) != 1 || items[0].Status != memory.StatusPending {
+	if err != nil || len(items) != 1 || items[0].Status != memory.UpdateV2OutputStatusPending {
 		t.Fatalf("Items = (%+v, %v)", items, err)
 	}
-	user, err := conversation.NewMemoryTarget(memory.ScopeUser, "")
+	user, err := conversation.NewMemoryTarget(memory.UpdateV2OutputScopeUser, "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, itemsErr := adapter.Items(t.Context(), user); itemsErr != nil {
 		t.Fatal(itemsErr)
 	}
-	review, err := adapter.PrepareReview(t.Context(), adapterMemoryIDOne, 1, memory.ReviewApprove)
+	review, err := adapter.PrepareReview(t.Context(), adapterMemoryIDOne, 1, memory.ReviewV2InputDecisionApprove)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -272,7 +270,7 @@ func TestAgentMemoryAdapterPreservesTargetReviewAndMutationSemantics(t *testing.
 	if err != nil || updated.Content != content || !updated.Pinned {
 		t.Fatalf("Update = (%+v, %v)", updated, err)
 	}
-	addition, err := adapter.PrepareAdd(t.Context(), memory.AddV2Input{Scope: string(user.Scope), Content: "authored"})
+	addition, err := adapter.PrepareAdd(t.Context(), memory.AddV2Input{Scope: memory.AddV2InputScope(user.Scope), Content: "authored"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -312,8 +310,8 @@ func TestAgentMemoryAdapterRejectsAnUnidentifiedAddition(t *testing.T) {
 	t.Parallel()
 	now := time.Now()
 	unidentifiedAdd := memory.Item{
-		Scope: memory.ScopeUser, Content: "authored",
-		Origin: memory.OriginUser, Status: memory.StatusActive,
+		Scope: memory.UpdateV2OutputScopeUser, Content: "authored",
+		Origin: memory.UpdateV2OutputOriginUser, Status: memory.UpdateV2OutputStatusActive,
 		CreatedAt: now, UpdatedAt: now,
 	}
 	tests := []struct {
@@ -327,11 +325,11 @@ func TestAgentMemoryAdapterRejectsAnUnidentifiedAddition(t *testing.T) {
 			name: "add identity",
 			stub: &agentMemoryBindingStub{addResult: &unidentifiedAdd},
 			invoke: func(adapter *AgentMemory) error {
-				target, err := conversation.NewMemoryTarget(memory.ScopeUser, "")
+				target, err := conversation.NewMemoryTarget(memory.UpdateV2OutputScopeUser, "")
 				if err != nil {
 					return err
 				}
-				request, err := adapter.PrepareAdd(t.Context(), memory.AddV2Input{Scope: string(target.Scope), CWD: target.Workspace, Content: "authored"})
+				request, err := adapter.PrepareAdd(t.Context(), memory.AddV2Input{Scope: memory.AddV2InputScope(target.Scope), CWD: target.Workspace, Content: "authored"})
 				if err != nil {
 					return err
 				}
@@ -393,12 +391,12 @@ func (a *agentMemoryBindingStub) CallPlugin(_ context.Context, request protocol.
 		if err := json.Unmarshal([]byte(request.Input), &input); err != nil {
 			a.t.Fatal(err)
 		}
-		a.actions = append(a.actions, "add:"+input.Scope)
+		a.actions = append(a.actions, "add:"+string(input.Scope))
 		result := a.addResult
 		if result == nil {
-			result = a.item(adapterMemoryIDTwo, memory.Scope(input.Scope), input.Content, false)
+			result = a.item(adapterMemoryIDTwo, memory.UpdateV2OutputScope(input.Scope), input.Content, false)
 		}
-		out := memory.AddV2Output{Item: memoryFixtureRecord{Revision: result.Revision, ID: memory.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemID(result.ID), Scope: string(result.Scope), Content: result.Content, Origin: string(result.Origin), Status: string(result.Status), Pinned: result.Pinned, SessionID: result.SessionID, Day: result.Day, CreatedAt: result.CreatedAt, UpdatedAt: result.UpdatedAt, Embedding: []float64{}}}
+		out := memory.AddV2Output{Item: memory.UpdateV2Output{Revision: result.Revision, ID: memory.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemID(result.ID), Scope: result.Scope, Content: result.Content, Origin: result.Origin, Status: result.Status, Pinned: result.Pinned, SessionID: result.SessionID, Day: result.Day, CreatedAt: result.CreatedAt, UpdatedAt: result.UpdatedAt, Embedding: []float64{}}}
 		encoded, err := jsonvalue.Encode(out)
 		return &protocol.CallPluginResponse{Output: string(encoded.JSON())}, err
 	}
@@ -411,9 +409,9 @@ func (a *agentMemoryBindingStub) CallPlugin(_ context.Context, request protocol.
 		a.actions = append(a.actions, "update:"+input.ID)
 		result := a.updateResult
 		if result == nil {
-			result = a.item(input.ID, memory.ScopeProject, "edited", true)
+			result = a.item(input.ID, memory.UpdateV2OutputScopeProject, "edited", true)
 		}
-		output := memory.UpdateV2Output{Revision: result.Revision, ID: memory.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemID(result.ID), Scope: string(result.Scope), Content: result.Content, Origin: string(result.Origin), Status: string(result.Status), Pinned: result.Pinned, SessionID: result.SessionID, Day: result.Day, CreatedAt: result.CreatedAt, UpdatedAt: result.UpdatedAt, Embedding: []float64{}}
+		output := memory.UpdateV2Output{Revision: result.Revision, ID: memory.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemID(result.ID), Scope: result.Scope, Content: result.Content, Origin: result.Origin, Status: result.Status, Pinned: result.Pinned, SessionID: result.SessionID, Day: result.Day, CreatedAt: result.CreatedAt, UpdatedAt: result.UpdatedAt, Embedding: []float64{}}
 		encoded, err := jsonvalue.Encode(output)
 		return &protocol.CallPluginResponse{Output: string(encoded.JSON())}, err
 	}
@@ -423,7 +421,7 @@ func (a *agentMemoryBindingStub) CallPlugin(_ context.Context, request protocol.
 		if err := json.Unmarshal([]byte(request.Input), &input, json.RejectUnknownMembers(true)); err != nil {
 			a.t.Fatal(err)
 		}
-		a.actions = append(a.actions, "review:"+input.ID+":"+input.Decision)
+		a.actions = append(a.actions, "review:"+input.ID+":"+string(input.Decision))
 		return &protocol.CallPluginResponse{Output: `{}`}, nil
 	}
 	if request.Method == memory.DeleteV2Method {
@@ -446,12 +444,12 @@ func (a *agentMemoryBindingStub) CallPlugin(_ context.Context, request protocol.
 	if err != nil || page == nil {
 		return nil, err
 	}
-	output := memory.ListV2Output{Capacity: 512, NextCursor: page.NextCursor, Rows: make([]memoryFixtureRecord, 0, len(page.Data))}
+	output := memory.ListV2Output{Capacity: 512, NextCursor: page.NextCursor, Rows: make([]memory.UpdateV2Output, 0, len(page.Data))}
 	if a.pageCapacity != nil {
 		output.Capacity = a.pageCapacity(input)
 	}
 	for _, row := range page.Data {
-		output.Rows = append(output.Rows, memoryFixtureRecord{Revision: row.Revision, ID: memory.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemID(row.ID), Scope: string(row.Scope), Content: row.Content, Origin: string(row.Origin), Status: string(row.Status), Pinned: row.Pinned, SessionID: row.SessionID, Day: row.Day, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Embedding: []float64{}})
+		output.Rows = append(output.Rows, memory.UpdateV2Output{Revision: row.Revision, ID: memory.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemID(row.ID), Scope: row.Scope, Content: row.Content, Origin: row.Origin, Status: row.Status, Pinned: row.Pinned, SessionID: row.SessionID, Day: row.Day, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Embedding: []float64{}})
 	}
 	encoded, err := jsonvalue.Encode(output)
 	if err != nil {
@@ -499,7 +497,7 @@ func TestMemoryCommandsResumeOriginalBindingAfterSelectionChanges(t *testing.T) 
 						return adapter.PrepareUpdate(ctx, memory.UpdateV2Input{ExpectedRevision: 1, ID: adapterMemoryIDOne, Content: new("original patch"), Pinned: new(false)})
 					}
 					if method == memory.ReviewV2Method {
-						return adapter.PrepareReview(ctx, adapterMemoryIDOne, 1, memory.ReviewApprove)
+						return adapter.PrepareReview(ctx, adapterMemoryIDOne, 1, memory.ReviewV2InputDecisionApprove)
 					}
 					return adapter.PrepareDelete(ctx, adapterMemoryIDOne, 1)
 				}, func(reply *protocol.CallPluginResponse) (struct{}, error) {
@@ -549,7 +547,7 @@ func TestMemoryCommandsResumeOriginalBindingAfterSelectionChanges(t *testing.T) 
 					t.Fatal("delete recovery changed its original command or binding")
 				}
 				if method == memory.AddV2Method {
-					output, err := jsonvalue.Encode(memory.AddV2Output{Changed: true, Item: memoryFixtureRecord{Revision: 1, ID: adapterMemoryIDOne, Scope: "user", Content: "original addition", Origin: "user", Status: "active", CreatedAt: now, UpdatedAt: now, Embedding: []float64{}}})
+					output, err := jsonvalue.Encode(memory.AddV2Output{Changed: true, Item: memory.UpdateV2Output{Revision: 1, ID: adapterMemoryIDOne, Scope: "user", Content: "original addition", Origin: "user", Status: "active", CreatedAt: now, UpdatedAt: now, Embedding: []float64{}}})
 					return &protocol.CallPluginResponse{Output: string(output.JSON())}, err
 				}
 				if method == memory.UpdateV2Method {
@@ -573,7 +571,7 @@ func TestMemoryReadRetainsOriginalProviderAcrossPages(t *testing.T) {
 	now := time.Now()
 	stub := &agentMemoryBindingStub{t: t}
 	stub.listPage = func(input memory.ListV2Input) (*protocol.Page[memory.Item], error) {
-		row := memory.Item{Revision: 1, ID: adapterMemoryIDOne, Scope: memory.ScopeUser, Content: "fact", Origin: memory.OriginUser, Status: memory.StatusActive, CreatedAt: now, UpdatedAt: now}
+		row := memory.Item{Revision: 1, ID: adapterMemoryIDOne, Scope: memory.UpdateV2OutputScopeUser, Content: "fact", Origin: memory.UpdateV2OutputOriginUser, Status: memory.UpdateV2OutputStatusActive, CreatedAt: now, UpdatedAt: now}
 		if input.Cursor == "" {
 			stub.provider = "replacement-installation"
 			return protocol.NewPageWithCursor([]memory.Item{row}, "next"), nil
@@ -582,7 +580,7 @@ func TestMemoryReadRetainsOriginalProviderAcrossPages(t *testing.T) {
 		return protocol.NewPage([]memory.Item{row}), nil
 	}
 	adapter := &AgentMemory{runtime: &Connection{plugins: stub, meta: requestMeta("test")}}
-	target, err := conversation.NewMemoryTarget(memory.ScopeUser, "")
+	target, err := conversation.NewMemoryTarget(memory.UpdateV2OutputScopeUser, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -595,7 +593,7 @@ func TestMemoryReadRetainsOriginalProviderAcrossPages(t *testing.T) {
 func TestMemoryReadRefusesAnotherPublishedProtocolBeforeDispatch(t *testing.T) {
 	stub := &agentMemoryBindingStub{t: t, protocolOverride: "another-protocol"}
 	adapter := &AgentMemory{runtime: &Connection{plugins: stub, meta: requestMeta("test")}}
-	target, err := conversation.NewMemoryTarget(memory.ScopeUser, "")
+	target, err := conversation.NewMemoryTarget(memory.UpdateV2OutputScopeUser, "")
 	if err != nil {
 		t.Fatal(err)
 	}

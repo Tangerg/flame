@@ -74,7 +74,12 @@ let rendererPromise: Promise<MermaidRenderer> | null = null;
 
 function loadRenderer(): Promise<MermaidRenderer> {
   if (!rendererPromise) {
-    rendererPromise = import("beautiful-mermaid").then((m) => m.renderMermaidSVG);
+    rendererPromise = import("beautiful-mermaid")
+      .then((m) => m.renderMermaidSVG)
+      .catch((error: unknown) => {
+        rendererPromise = null;
+        throw error;
+      });
   }
   return rendererPromise;
 }
@@ -83,7 +88,10 @@ interface Props {
   code: string;
 }
 
-type MermaidRenderResult = { status: "loading" | "error" | "rendered"; svg?: string };
+type MermaidRendererLoad =
+  { status: "loading" | "failed" } | { status: "ready"; renderer: MermaidRenderer };
+
+type MermaidRenderResult = { status: "loading" | "error" } | { status: "rendered"; svg: string };
 
 interface SettledMermaidRender {
   code: string;
@@ -92,17 +100,17 @@ interface SettledMermaidRender {
   result: MermaidRenderResult;
 }
 
-function readThemeColors(_tokenRevision: object) {
+function readThemeColors() {
   const root = document.documentElement;
   const cs = getComputedStyle(root);
-  const grab = (name: string, fallback: string) => cs.getPropertyValue(name).trim() || fallback;
+  const grab = (name: string) => cs.getPropertyValue(name).trim() || undefined;
   return {
-    fg: grab("--color-text", "#e6e6e6"),
-    muted: grab("--color-text-muted", "#9a9a9a"),
-    line: grab("--color-text-faint", "#6f6f6f"),
-    accent: grab("--color-accent", "#1ed760"),
-    surface: grab("--color-surface-2", "#1f1f1f"),
-    border: grab("--color-border", "#4d4d4d"),
+    fg: grab("--color-text"),
+    muted: grab("--color-text-muted"),
+    line: grab("--color-text-faint"),
+    accent: grab("--color-accent"),
+    surface: grab("--color-surface-2"),
+    border: grab("--color-border"),
   };
 }
 
@@ -114,12 +122,18 @@ export function MermaidBlock({ code }: Props) {
   const [debouncedCode] = useDebouncedValue(code, { wait: 300 });
   const isSettling = code !== debouncedCode;
 
-  const [renderer, setRenderer] = useState<MermaidRenderer | null>(null);
+  const [rendererLoad, setRendererLoad] = useState<MermaidRendererLoad>({ status: "loading" });
+  const renderer = rendererLoad.status === "ready" ? rendererLoad.renderer : null;
   useEffect(() => {
     let alive = true;
-    loadRenderer().then((fn) => {
-      if (alive) setRenderer(() => fn);
-    });
+    void loadRenderer().then(
+      (renderer) => {
+        if (alive) setRendererLoad({ status: "ready", renderer });
+      },
+      () => {
+        if (alive) setRendererLoad({ status: "failed" });
+      },
+    );
     return () => {
       alive = false;
     };
@@ -132,7 +146,7 @@ export function MermaidBlock({ code }: Props) {
     void Promise.resolve().then(() => {
       let result: MermaidRenderResult;
       try {
-        const c = readThemeColors(tokenRevision);
+        const c = readThemeColors();
         const start = performance.now();
         const svg = withLocalFonts(
           renderer(debouncedCode, {
@@ -158,15 +172,17 @@ export function MermaidBlock({ code }: Props) {
       cancelled = true;
     };
   }, [debouncedCode, isSettling, tokenRevision, renderer]);
-  const current =
-    settledRender?.code === debouncedCode &&
-    settledRender.tokenRevision === tokenRevision &&
-    settledRender.renderer === renderer &&
-    !isSettling
-      ? settledRender.result
-      : { status: "loading" as const };
+  const current: MermaidRenderResult =
+    rendererLoad.status === "failed"
+      ? { status: "error" }
+      : settledRender?.code === debouncedCode &&
+          settledRender.tokenRevision === tokenRevision &&
+          settledRender.renderer === renderer &&
+          !isSettling
+        ? settledRender.result
+        : { status: "loading" };
   const [lastSvg, setLastSvg] = useState<string | null>(null);
-  const currentSvg = current.status === "rendered" ? current.svg! : null;
+  const currentSvg = current.status === "rendered" ? current.svg : null;
   if (currentSvg !== null && currentSvg !== lastSvg) setLastSvg(currentSvg);
   const rendered: MermaidRenderResult =
     current.status === "loading" && lastSvg !== null
@@ -176,7 +192,7 @@ export function MermaidBlock({ code }: Props) {
   const [zoomed, setZoomed] = useState(false);
 
   if (rendered.status === "rendered") {
-    const svg = rendered.svg!;
+    const svg = rendered.svg;
     return (
       <div
         {...stylex.props(reveal.host, artifactFrame.frame, mb.frame)}

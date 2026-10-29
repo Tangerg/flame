@@ -8,7 +8,6 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -41,7 +40,7 @@ func (r ReceiptRequest) Validate() error {
 	if err := ValidateCommandID(r.ID); err != nil {
 		return err
 	}
-	if r.Method == "" || len(r.Method) > 256 || !utf8.ValidString(r.Method) {
+	if !portable.ValidMethodName(r.Method) {
 		return errors.New("plugin: bounded receipt method identity is required")
 	}
 	digest, err := hex.DecodeString(r.InputDigest)
@@ -96,7 +95,7 @@ func ReadReceipt[P, R any](ctx context.Context, session *sdk.ClientSession, id, 
 		return zero, found, err
 	}
 	var typed R
-	if err := json.Unmarshal(value, &typed, json.RejectUnknownMembers(true)); err != nil {
+	if err := json.Unmarshal(value, &typed, json.RejectUnknownMembers(true), jsonvalue.Numbers()); err != nil {
 		return zero, false, err
 	}
 	return typed, true, nil

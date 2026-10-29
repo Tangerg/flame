@@ -1,11 +1,46 @@
 package portable_test
 
 import (
+	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"testing"
 
 	"github.com/Tangerg/flame/qimu/portable"
 )
+
+func TestCapabilityDecodingRequiresDeclaredPrimitiveFields(t *testing.T) {
+	contract := testCapability(t, testMethod("acme/read", portable.Query))
+	for _, absent := range []bool{false, true} {
+		data, err := json.Marshal(contract.Descriptor())
+		if err != nil {
+			t.Fatal(err)
+		}
+		var descriptor map[string]jsontext.Value
+		if err := json.Unmarshal(data, &descriptor); err != nil {
+			t.Fatal(err)
+		}
+		var methods []map[string]jsontext.Value
+		if err := json.Unmarshal(descriptor["methods"], &methods); err != nil {
+			t.Fatal(err)
+		}
+		if absent {
+			delete(methods[0], "description")
+		} else {
+			methods[0]["description"] = jsontext.Value("null")
+		}
+		descriptor["methods"], err = json.Marshal(methods)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err = json.Marshal(descriptor)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := portable.ParseCapability(data); err == nil {
+			t.Fatalf("description absence/null became empty prose: %s", data)
+		}
+	}
+}
 
 func testMethod(name string, kind portable.MethodKind) portable.MethodDescriptor {
 	return portable.MethodDescriptor{Name: name, Kind: kind, Target: "workspace", Description: "Method.", Input: []byte(`{"type":"object","properties":{"revision":{"type":"integer"}},"required":["revision"],"additionalProperties":false}`), Output: []byte(`{"type":"string"}`)}

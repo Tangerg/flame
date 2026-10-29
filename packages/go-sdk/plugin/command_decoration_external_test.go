@@ -83,7 +83,7 @@ func TestExecutableCommandDecoratorFailurePreservesCommittedInnerReceipt(t *test
 		if err != nil {
 			return 0, err
 		}
-		return private.Command(ctx, db, method.Name(), command.ID, command.Input, input, nil, func(ctx context.Context, _ string) (int64, error) {
+		return private.Command(ctx, db, method.Name(), command.ID, input, nil, func(ctx context.Context, _ string) (int64, error) {
 			connection := sqlite.Connection(ctx, db)
 			if _, err := connection.ExecContext(ctx, `UPDATE counter SET value=value+1`); err != nil {
 				return 0, err

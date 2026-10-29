@@ -3,13 +3,14 @@ package model
 import (
 	"context"
 	"errors"
+	"fmt"
+	"math"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -42,7 +43,7 @@ func TestObservedEmbedderJournalsEndpointEvidenceThroughSharedOwner(t *testing.T
 	t.Cleanup(func() { _ = db.Close() })
 	store := db.ModelInvocations
 	subject := &embedder{id: "space", model: embeddingModelFixture{served: "served-embed"}, selection: testsupport.MustModelSelection("openai", "embed-model"), journal: store}
-	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "embed-call", Origin: extension.Automatic, Parent: "owner-operation", Target: portable.Target{Scope: "call", Reference: "embed-call"}})
+	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "embed-call", Origin: extension.Automatic, Parent: "owner-operation", Target: portable.Target{Scope: extension.ScopeCall, Reference: "embed-call"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +85,7 @@ func TestEmbeddingRetainsPhysicalEvidenceWhenPricingFails(t *testing.T) {
 		selection: testsupport.MustModelSelection("openai", "embed-model"), journal: db.ModelInvocations,
 		pricing: func(string, string, *chat.Usage) (accounting.Cost, error) { return accounting.Cost{}, cause },
 	}
-	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "embed-pricing", Origin: extension.Automatic, Target: portable.Target{Scope: "call", Reference: "embed-pricing"}})
+	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "embed-pricing", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "embed-pricing"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,6 +98,46 @@ func TestEmbeddingRetainsPhysicalEvidenceWhenPricingFails(t *testing.T) {
 	}
 	if row := rows[0]; row.State != "failed" || !row.HasResponse() || row.Usage == nil || row.Usage.InputTokens != 13 || row.CostUSD != nil || row.Failure != cause.Error() {
 		t.Fatalf("pricing failure lost embedding evidence or invented a price: %+v", row)
+	}
+}
+
+func TestEmbeddingRefusesUnrepresentableIndexCoordinatesAndRetainsEvidence(t *testing.T) {
+	db, err := persistencefixture.Open(t, t.Context(), t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	for _, coordinate := range []float64{math.MaxFloat64, -math.MaxFloat64} {
+		t.Run(fmt.Sprint(coordinate), func(t *testing.T) {
+			invocationID := t.Name()
+			subject := &embedder{
+				id: "space",
+				model: embedding.ModelFunc(func(context.Context, *embedding.Request) (*embedding.Response, error) {
+					output, err := embedding.NewOutput([]float64{coordinate}, nil)
+					if err != nil {
+						return nil, err
+					}
+					return embedding.NewResponse([]*embedding.Output{output}, &embedding.ResponseMetadata{Model: "served-embed", Usage: &embedding.Usage{InputTokens: 1}})
+				}),
+				selection: testsupport.MustModelSelection("openai", "embed-model"), journal: db.ModelInvocations,
+			}
+			ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: invocationID, Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: invocationID}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			vectors, err := subject.Embed(ctx, []string{"alpha"})
+			if err == nil || vectors != nil {
+				t.Fatalf("unrepresentable index vector escaped: %v, %v", vectors, err)
+			}
+			rows, err := db.ModelInvocations.PageEndpointInvocations(t.Context(), invocationID, 0, "", 10)
+			if err != nil || len(rows) != 1 {
+				t.Fatalf("physical evidence: %+v, %v", rows, err)
+			}
+			row := rows[0]
+			if row.State != "failed" || !row.HasResponse() || row.Usage == nil || row.Usage.InputTokens != 1 || !strings.Contains(row.Failure, "float32 range") {
+				t.Fatalf("index projection failure lost physical evidence: %+v", row)
+			}
+		})
 	}
 }
 

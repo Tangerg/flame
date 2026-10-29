@@ -15,6 +15,13 @@ import (
 
 const modelProcessStopReason = "model call cannot continue"
 
+func steerSignalID(itemID string) (agent.SignalID, error) {
+	if err := identity.ValidateItem(itemID); err != nil {
+		return agent.SignalID{}, err
+	}
+	return agent.ParseSignalID("steer:" + itemID)
+}
+
 // Application retains the exact user note. Scope receives a bounded diagnostic
 // in a separate namespace so that user text cannot impersonate an executor stop.
 func scopeCancellationReason(reason string) string {
@@ -85,7 +92,7 @@ func (i *interactionSession) submitSteer(
 			return "", errors.New("execution: steer acceptance does not name its input owner")
 		}
 	}
-	signalID, err := agent.ParseSignalID("steer:" + itemID)
+	signalID, err := steerSignalID(itemID)
 	if err != nil {
 		return "", fmt.Errorf("execution: construct Interaction steer identity: %w", err)
 	}
@@ -93,18 +100,42 @@ func (i *interactionSession) submitSteer(
 	if err != nil {
 		return "", fmt.Errorf("execution: construct Interaction steer Signal: %w", err)
 	}
+	// Rejected duplicate dispatch must never erase or replace the original
+	// mapping while Scope is committing or applying that same Signal.
+	release, err := i.steerAdmissions.Acquire(ctx, signalID.String())
+	if err != nil {
+		return "", err
+	}
+	defer release()
 	i.state.mu.Lock()
-	if prior, found := i.state.pendingSteers[signalID]; found && prepared.Acceptance != nil {
-		if prior.acceptance == nil || prior.acceptance.Key != prepared.Acceptance.Key || prior.acceptance.Fingerprint != prepared.Acceptance.Fingerprint {
-			i.state.mu.Unlock()
-			return "", runs.ErrCommandKeyConflict
+	prior, present := i.state.pendingSteers[signalID]
+	i.state.mu.Unlock()
+	if present && !prior.Equal(prepared) {
+		return "", runs.ErrCommandKeyConflict
+	}
+	committed, err := i.committedTree(ctx, process.Relation().RootID())
+	if err != nil {
+		return "", err
+	}
+	for _, snapshot := range committed.ProcessSnapshots() {
+		if snapshot.Relation().ProcessID() != process.Relation().ProcessID() {
+			continue
+		}
+		for _, receipt := range snapshot.SignalReceipts() {
+			if receipt.ID() != signalID {
+				continue
+			}
+			if !receipt.Matches(signal) {
+				return "", runs.ErrCommandKeyConflict
+			}
+			return itemID, nil
 		}
 	}
-	i.state.pendingSteers[signalID] = pendingInteractionSteer{
-		itemID:  itemID,
-		content: transcript.CloneContent(prepared.Input), acceptance: prepared.Acceptance,
+	if !present {
+		i.state.mu.Lock()
+		i.state.pendingSteers[signalID] = prepared.Clone()
+		i.state.mu.Unlock()
 	}
-	i.state.mu.Unlock()
 	accepted, deliverErr := process.DeliverSignals(
 		runExecutionContext(ctx, i.scope, i.start), signal,
 	)
@@ -112,7 +143,7 @@ func (i *interactionSession) submitSteer(
 		// A context error only reports that the caller stopped waiting. Engine may
 		// already have accepted the command, so retain its exact product mapping
 		// until ModelInvocation attributes it or the session is released.
-		if !errors.Is(deliverErr, context.Canceled) &&
+		if !present && !errors.Is(deliverErr, context.Canceled) &&
 			!errors.Is(deliverErr, context.DeadlineExceeded) {
 			i.removePendingSteer(signalID)
 		}
@@ -168,8 +199,8 @@ func (i *interactionSession) commitAppliedInputs(
 			return fmt.Errorf("execution: model attribution names unknown steer Signal %s", signalID)
 		}
 		messages = append(messages, runs.AppliedSteerMessage{
-			Content: transcript.CloneContent(pending.content),
-			ItemID:  pending.itemID,
+			Content: transcript.CloneContent(pending.Input),
+			ItemID:  pending.ItemID,
 		})
 	}
 	var continuation pendingInteractionContinuation

@@ -71,6 +71,52 @@ describe("reducer — commandExecution output durability", () => {
     expect(s.toolCalls["t1"]?.result).toBe("/Users/tangerg\n");
   });
 
+  it.each([
+    ["object", { exitCode: 0 }],
+    ["JSON text", '{"exitCode":0}'],
+  ])("preserves streamed output when an %s receipt only reports exit", (_encoding, result) => {
+    let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
+    s = reduce(s, started(item({ id: "t1", type: "toolCall", tool: cmd({}) })));
+    s = reduce(s, delta("t1", { type: "toolOutput", text: "/Users/tangerg\n" }));
+    s = reduce(
+      s,
+      completed(
+        item({
+          id: "t1",
+          status: "completed",
+          type: "toolCall",
+          tool: { ...cmd({}), result },
+        }),
+      ),
+    );
+
+    expect(s.toolCalls["t1"]).toMatchObject({
+      result: "/Users/tangerg\n",
+      exitCode: 0,
+      status: "ok",
+    });
+  });
+
+  it("replaces streamed output with the settled plain-text result", () => {
+    let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
+    s = reduce(s, started(item({ id: "t1", type: "toolCall", tool: cmd({}) })));
+    s = reduce(s, delta("t1", { type: "toolOutput", text: "Starting server..." }));
+    s = reduce(
+      s,
+      completed(
+        item({
+          id: "t1",
+          status: "completed",
+          type: "toolCall",
+          tool: { ...cmd({}), result: "Started background shell bg_1." },
+        }),
+      ),
+    );
+
+    expect(s.toolCalls["t1"]?.result).toBe("Started background shell bg_1.");
+    expect(s.toolCalls["t1"]?.exitCode).toBeUndefined();
+  });
+
   it("while running the toolOutput delta is the live preview (no settled fields yet)", () => {
     let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
     s = reduce(s, started(item({ id: "t1", type: "toolCall", tool: cmd({}) })));

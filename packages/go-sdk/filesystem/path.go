@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 )
 
 const maxSymlinkDepth = 40
@@ -14,7 +15,7 @@ const maxSymlinkDepth = 40
 // and User Home discovery belong to process composition, never path identity.
 func absolute(root, path string) (string, error) {
 	if filepath.IsAbs(path) {
-		return filepath.Clean(path), nil
+		return path, nil
 	}
 	if root == "" {
 		return "", errors.New("resolve filesystem path: root is required for a relative path")
@@ -22,7 +23,14 @@ func absolute(root, path string) (string, error) {
 	if !filepath.IsAbs(root) {
 		return "", errors.New("resolve filesystem path: root must be absolute")
 	}
-	return filepath.Clean(filepath.Join(root, path)), nil
+	if filepath.VolumeName(path) != "" {
+		return "", errors.New("resolve filesystem path: volume-relative paths are not supported")
+	}
+	if len(path) > 0 && os.IsPathSeparator(path[0]) {
+		return "", errors.New("resolve filesystem path: rooted paths require an explicit volume")
+	}
+	// Cleaning before following symlinks changes what a subsequent .. names.
+	return root + string(filepath.Separator) + path, nil
 }
 
 // Path locks and security decisions must resolve aliases to the same resource,
@@ -48,40 +56,62 @@ func resolve(abs string, depth int) (string, error) {
 	if depth > maxSymlinkDepth {
 		return "", errors.New("too many symbolic links")
 	}
-	current := filepath.Clean(abs)
-	var suffix []string
-	for {
-		if resolved, err := filepath.EvalSymlinks(current); err == nil {
-			return filepath.Join(append([]string{resolved}, suffix...)...), nil
-		}
-
-		info, err := os.Lstat(current)
-		if err == nil {
-			if info.Mode()&os.ModeSymlink == 0 {
-				return "", fmt.Errorf("resolve filesystem path %q: existing prefix is not traversable", abs)
-			}
-			target, readErr := os.Readlink(current)
-			if readErr != nil {
-				return "", fmt.Errorf("read symbolic link %q: %w", current, readErr)
-			}
-			if !filepath.IsAbs(target) {
-				target = filepath.Join(filepath.Dir(current), target)
-			}
-			resolved, resolveErr := resolve(target, depth+1)
-			if resolveErr != nil {
-				return "", resolveErr
-			}
-			return filepath.Join(append([]string{resolved}, suffix...)...), nil
-		}
-		if !os.IsNotExist(err) {
-			return "", fmt.Errorf("inspect filesystem path %q: %w", current, err)
-		}
-
-		parent := filepath.Dir(current)
-		if parent == current {
-			return "", fmt.Errorf("resolve filesystem path %q: no existing ancestor", abs)
-		}
-		suffix = append([]string{filepath.Base(current)}, suffix...)
-		current = parent
+	abs = filepath.FromSlash(abs)
+	volume := filepath.VolumeName(abs)
+	separator := string(filepath.Separator)
+	current := volume + separator
+	info, err := os.Stat(current)
+	if err != nil {
+		return "", fmt.Errorf("inspect filesystem root %q: %w", current, err)
 	}
+	parts := strings.Split(abs[len(volume):], separator)
+	for index, name := range parts {
+		if info != nil && !info.IsDir() {
+			return "", &os.PathError{Op: "resolve", Path: abs, Err: syscall.ENOTDIR}
+		}
+		switch name {
+		case "", ".":
+			continue
+		case "..":
+			current = filepath.Dir(current)
+			info = nil
+			continue
+		}
+		candidate := filepath.Join(current, name)
+		info, err = os.Lstat(candidate)
+		if os.IsNotExist(err) {
+			current = candidate
+			info = nil
+			continue
+		}
+		if err != nil {
+			return "", fmt.Errorf("inspect filesystem path %q: %w", candidate, err)
+		}
+		if info.Mode()&os.ModeSymlink == 0 {
+			current = candidate
+			continue
+		}
+		target, err := os.Readlink(candidate)
+		if err != nil {
+			return "", fmt.Errorf("read symbolic link %q: %w", candidate, err)
+		}
+		target = filepath.FromSlash(target)
+		if !filepath.IsAbs(target) {
+			if filepath.VolumeName(target) != "" {
+				return "", fmt.Errorf("symbolic link %q has a volume-relative target", candidate)
+			}
+			if len(target) > 0 && os.IsPathSeparator(target[0]) {
+				target = volume + target
+			} else {
+				target = current + separator + target
+			}
+		}
+		// A missing component can be cancelled by .. and expose an existing
+		// symlink later. Every remaining component still needs physical resolution.
+		if remaining := parts[index+1:]; len(remaining) > 0 {
+			target += separator + strings.Join(remaining, separator)
+		}
+		return resolve(target, depth+1)
+	}
+	return current, nil
 }

@@ -212,6 +212,57 @@ func validSessionImportArtifact() protocol.SessionArtifact {
 	}
 }
 
+func TestSessionImportPreservesRequiredFieldsAndTypedNulls(t *testing.T) {
+	for _, field := range []string{"messages", "toolResults", "favorite"} {
+		t.Run(field, func(t *testing.T) {
+			body, err := json.Marshal(validSessionImportArtifact())
+			if err != nil {
+				t.Fatal(err)
+			}
+			var fields map[string]jsontext.Value
+			if err := json.Unmarshal(body, &fields); err != nil {
+				t.Fatal(err)
+			}
+			switch field {
+			case "messages":
+				delete(fields, field)
+			case "toolResults":
+				fields[field] = jsontext.Value(`null`)
+			case "favorite":
+				var metadata map[string]jsontext.Value
+				if err := json.Unmarshal(fields["session"], &metadata); err != nil {
+					t.Fatal(err)
+				}
+				metadata[field] = jsontext.Value(`null`)
+				fields["session"], err = json.Marshal(metadata)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			body, err = json.Marshal(fields)
+			if err != nil {
+				t.Fatal(err)
+			}
+			document, err := session.NewDocument(protocol.ExportFormatJSON, body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			called := false
+			runtime := &Connection{
+				sessions: sessionBindingStub{imported: func(context.Context, protocol.ImportSessionRequest, protocol.CommandOptions) (*protocol.ImportSessionResponse, error) {
+					called = true
+					return nil, nil
+				}},
+				meta: requestMeta("test"), profile: sessionControlProfile(t, protocol.FeatureSessionExport),
+			}
+			_, err = runtime.ImportSession(t.Context(), session.ImportRequest{Artifact: document})
+			if err == nil || !strings.Contains(err.Error(), field) || called {
+				t.Fatalf("malformed artifact reached import: %v, dispatched %t", err, called)
+			}
+		})
+	}
+}
+
 func assertSessionImportRejectsArtifact(t *testing.T, artifact protocol.SessionArtifact, field string) {
 	t.Helper()
 

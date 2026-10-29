@@ -42,7 +42,7 @@ func serveStream(w http.ResponseWriter, r *http.Request, resp *jsonrpc.Response,
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 	w.Header().Set("X-Accel-Buffering", "no")
 	if methodLabel != "" {
-		w.Header().Set("X-Method", methodLabel)
+		w.Header().Set(headerMethod, methodLabel)
 	}
 
 	sw := sse.NewHTTPWriter(w)

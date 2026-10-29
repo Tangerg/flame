@@ -67,6 +67,95 @@ function params(input: unknown, extra = {}) {
 const response = z.record(z.string(), z.unknown());
 const contribution = { id: "fixture", export: "fixture", requires: [] };
 
+it("rejects malformed invocation evidence without consuming call capacity", async () => {
+  let executions = 0;
+  const backend = new Backend({ name: "fixture", version: "1" });
+  backend.bindCapability("fixture", contract);
+  backend.implement(
+    contract.method("fixture.read"),
+    (value) => value as { value: string },
+    (_context, input) => {
+      executions++;
+      return input.value;
+    },
+  );
+  const client = await connect(backend);
+  const invalidInvocations = [null, false, "", 0];
+  for (let index = 0; index < 300; index++) {
+    const invocation = invalidInvocations[index % invalidInvocations.length];
+    await expect(
+      client.request(
+        {
+          method: wire.constants.invokeMethod!,
+          params: params(
+            { value: "rejected" },
+            {
+              _meta: { [wire.constants.InvocationMetadataKey!]: invocation },
+            },
+          ),
+        },
+        response,
+      ),
+    ).rejects.toThrow();
+  }
+  expect(executions).toBe(0);
+  expect(
+    await client.request(
+      {
+        method: wire.constants.invokeMethod!,
+        params: params({ value: "accepted" }),
+      },
+      response,
+    ),
+  ).toEqual({ value: "accepted" });
+  expect(executions).toBe(1);
+});
+
+it("retains setup, activation, and release ownership for a backend with no exports", async () => {
+  let starts = 0;
+  let closes = 0;
+  const backend = new Backend({ name: "lifecycle-only", version: "1" });
+  backend.onSetup(() => ({
+    start() {
+      starts++;
+    },
+    close() {
+      closes++;
+    },
+  }));
+  const client = await connect(backend);
+  expect(
+    await client.request(
+      {
+        method: wire.constants.describeMethod!,
+        params: { protocol: PROTOCOL },
+      },
+      response,
+    ),
+  ).toEqual({ value: { protocol: PROTOCOL, methods: [], capabilities: [] } });
+  await client.request(
+    {
+      method: wire.constants.setupMethod!,
+      params: { protocol: PROTOCOL, contributions: [] },
+    },
+    response,
+  );
+  expect(starts).toBe(0);
+  for (let index = 0; index < 2; index++) {
+    await client.request(
+      {
+        method: wire.constants.activateMethod!,
+        params: { protocol: PROTOCOL },
+      },
+      response,
+    );
+  }
+  expect(starts).toBe(1);
+  await backend.close();
+  await backend.close();
+  expect(closes).toBe(1);
+});
+
 it("keeps repeated structural admission pure and rejects invalid input before business dispatch", async () => {
   let executions = 0;
   const backend = new Backend({ name: "fixture", version: "1" });

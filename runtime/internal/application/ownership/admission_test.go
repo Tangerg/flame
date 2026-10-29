@@ -318,3 +318,33 @@ func TestRepeatedSessionReleaseCannotRetireItsSuccessor(t *testing.T) {
 		t.Fatal("finished owner retained the Session")
 	}
 }
+
+func TestRunAdmissionCannotReplaceAnotherSessionsLiveIdentity(t *testing.T) {
+	gate := newTestGate(t)
+	first, ok, err := gate.AcquireRun(t.Context(), "ses_first", "/first")
+	if err != nil || !ok || !first.Admit("run_shared") {
+		t.Fatalf("first admission: %t, %v", ok, err)
+	}
+	second, ok, err := gate.AcquireRun(t.Context(), "ses_second", "/second")
+	if err != nil || !ok {
+		t.Fatalf("second admission: %t, %v", ok, err)
+	}
+	if second.Admit("run_shared") {
+		t.Fatal("a duplicate Run identity replaced another Session's reservation")
+	}
+	if sessions := gate.ActiveSessions(); !sessions["ses_first"] || !sessions["ses_second"] {
+		t.Fatalf("refused admission lost an owner: %v", sessions)
+	}
+	second.Release()
+	if sessions := gate.ActiveSessions(); !sessions["ses_first"] || sessions["ses_second"] {
+		t.Fatalf("refused admission could not release its own pending reservation: %v", sessions)
+	}
+	release, ok := gate.BeginMaintenance("run_shared")
+	if !ok {
+		t.Fatal("duplicate admission retired the original live Run")
+	}
+	release()
+	if sessions := gate.ActiveSessions(); len(sessions) != 0 {
+		t.Fatalf("completed admissions retained ownership: %v", sessions)
+	}
+}

@@ -32,8 +32,8 @@ import (
 func (s *Server) instrumentRequests(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		w.Header().Set("Request-Id", newRequestID())
-		w.Header().Set("X-Server", s.serverID)
+		w.Header().Set(headerRequestID, newRequestID())
+		w.Header().Set(headerServer, s.serverID)
 
 		// Continue the client's trace when it sent one, else start fresh —
 		// this is where the request's trace_id comes into being.
@@ -99,9 +99,14 @@ func (r *recordingResponseWriter) WriteHeader(status int) {
 	if r.wroteHeader {
 		return
 	}
+	r.ResponseWriter.WriteHeader(status)
+	// Informational responses leave the final response available; an upgrade
+	// consumes it because the connection no longer carries ordinary HTTP.
+	if status >= http.StatusContinue && status < http.StatusOK && status != http.StatusSwitchingProtocols {
+		return
+	}
 	r.wroteHeader = true
 	r.status = status
-	r.ResponseWriter.WriteHeader(status)
 }
 
 func (r *recordingResponseWriter) Write(p []byte) (int, error) {
@@ -113,14 +118,15 @@ func (r *recordingResponseWriter) Write(p []byte) (int, error) {
 	return n, err
 }
 
-// Flush proxies through so SSE streams keep working.
-func (r *recordingResponseWriter) Flush() {
-	if f, ok := r.ResponseWriter.(http.Flusher); ok {
-		if !r.wroteHeader {
-			r.WriteHeader(http.StatusOK)
-		}
-		f.Flush()
+func (r *recordingResponseWriter) Flush() { _ = r.FlushError() }
+
+// ResponseController must receive an underlying flush failure instead of
+// mistaking this wrapper's Flusher method for a successful transport write.
+func (r *recordingResponseWriter) FlushError() error {
+	if !r.wroteHeader {
+		r.WriteHeader(http.StatusOK)
 	}
+	return http.NewResponseController(r.ResponseWriter).Flush()
 }
 
 // Unwrap exposes the wrapped writer so http.ResponseController can reach the

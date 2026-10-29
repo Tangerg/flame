@@ -4,11 +4,12 @@ import (
 	"encoding/json/jsontext"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/qimu/portable"
 )
 
 func TestRequiredBindingsCannotBeRetargetedThroughInputOrSnapshot(t *testing.T) {
-	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "model", Composition: portable.Selection, Scope: "installation"}, portable.MethodDescriptor{Name: "model.read", Kind: portable.Query, Target: "installation", Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)})
+	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "model", Composition: portable.Selection, Scope: extension.ScopeInstallation}, portable.MethodDescriptor{Name: "model.read", Kind: portable.Query, Target: extension.ScopeInstallation, Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)})
 	if err != nil {
 		t.Fatal(err)
 	}

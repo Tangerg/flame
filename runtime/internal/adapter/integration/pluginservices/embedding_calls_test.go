@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -26,7 +25,7 @@ type roleCallbackEmbedder struct {
 func (*roleCallbackEmbedder) ID() string { return "configured-space" }
 func (e *roleCallbackEmbedder) Embed(ctx context.Context, texts []string) ([][]float32, error) {
 	invocation, err := qimumcp.InvocationFromContext(ctx)
-	if err != nil || invocation.ID == "caller" || invocation.Origin != extension.Model || invocation.Parent != "caller" || invocation.Target != (portable.Target{Scope: "call", Reference: invocation.ID}) {
+	if err != nil || invocation.ID == "caller" || invocation.Origin != extension.Model || invocation.Parent != "caller" || invocation.Target != (portable.Target{Scope: extension.ScopeCall, Reference: invocation.ID}) {
 		e.t.Errorf("ordinary embedding lost original ownership: %+v, %v", invocation, err)
 	}
 	e.calls.Add(1)
@@ -67,7 +66,7 @@ func TestOrdinaryCallbackPublishesEmbeddingRoleWithoutFeaturePolicy(t *testing.T
 			if err := callbacks.AdmitSession(session); err != nil {
 				t.Fatal(err)
 			}
-			ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "caller", Origin: extension.Model, Parent: "executing-owner", Target: portable.Target{Scope: "installation", Reference: "author"}})
+			ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "caller", Origin: extension.Model, Parent: "executing-owner", Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "author"}})
 			if err != nil {
 				t.Fatal(err)
 			}

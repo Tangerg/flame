@@ -1,3 +1,5 @@
+import { type RestoreType } from "@/foundation/protocolValues.generated";
+export type { RestoreType };
 import { type MCPServerID } from "@/features/mcp/public/serverIdentity";
 import {
   type AgentItem,
@@ -14,8 +16,6 @@ import { type AgentInput } from "@/features/agent/domain/input";
 import { type AgentPlan } from "@/features/agent/public/sessionView";
 import { type AgentSessionSummary } from "@/features/agent/application/session/sessionQueries";
 import { type AgentOpeningAcceptance } from "@/features/agent/application/input/inputSubmission";
-export type RestoreType = "history" | "files" | "both";
-
 export interface AgentSessionSnapshot {
   items: AgentItem[];
   runs: AgentRunFact[];

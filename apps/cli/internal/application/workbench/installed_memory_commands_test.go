@@ -47,8 +47,8 @@ func (c *memoryCommands) PrepareUpdate(_ context.Context, input memory.UpdateV2I
 func (*memoryCommands) DecodeUpdate(id string, _ *protocol.CallPluginResponse) (memory.Item, error) {
 	return memory.Item{Revision: 1, ID: id}, nil
 }
-func (c *memoryCommands) PrepareReview(_ context.Context, id string, expectedRevision uint64, decision memory.ReviewDecision) (protocol.CallPluginRequest, error) {
-	return c.prepare(memory.ReviewV2Method, memory.ReviewV2Input{ID: id, ExpectedRevision: expectedRevision, Decision: string(decision)})
+func (c *memoryCommands) PrepareReview(_ context.Context, id string, expectedRevision uint64, decision memory.ReviewV2InputDecision) (protocol.CallPluginRequest, error) {
+	return c.prepare(memory.ReviewV2Method, memory.ReviewV2Input{ID: id, ExpectedRevision: expectedRevision, Decision: decision})
 }
 func (c *memoryCommands) PrepareDelete(_ context.Context, id string, expectedRevision uint64) (protocol.CallPluginRequest, error) {
 	return c.prepare(memory.DeleteV2Method, memory.DeleteV2Input{ID: id, ExpectedRevision: expectedRevision})
@@ -80,7 +80,7 @@ func TestMemoryPendingAdmissionRunsBeforePreparationOrDispatch(t *testing.T) {
 					_, err := workbench.ExecuteMemoryUpdate(t.Context(), caller, store, replayPolicy, update)
 					return err
 				case "review":
-					return workbench.ExecuteMemoryReview(t.Context(), caller, store, replayPolicy, memoryID, 1, memory.ReviewApprove)
+					return workbench.ExecuteMemoryReview(t.Context(), caller, store, replayPolicy, memoryID, 1, memory.ReviewV2InputDecisionApprove)
 				default:
 					return workbench.ExecuteMemoryDeletion(t.Context(), caller, store, replayPolicy, memoryID, 1)
 				}
@@ -124,9 +124,9 @@ func TestMemoryPendingAdmissionRunsBeforePreparationOrDispatch(t *testing.T) {
 				}
 			case "review":
 				changes = append(changes, func() error {
-					return workbench.ExecuteMemoryReview(t.Context(), caller, store, replayPolicy, memoryID, 1, memory.ReviewReject)
+					return workbench.ExecuteMemoryReview(t.Context(), caller, store, replayPolicy, memoryID, 1, memory.ReviewV2InputDecisionReject)
 				}, func() error {
-					return workbench.ExecuteMemoryReview(t.Context(), caller, store, replayPolicy, memoryID, 2, memory.ReviewApprove)
+					return workbench.ExecuteMemoryReview(t.Context(), caller, store, replayPolicy, memoryID, 2, memory.ReviewV2InputDecisionApprove)
 				})
 			case "deletion":
 				changes = append(changes, func() error {
@@ -159,14 +159,14 @@ func TestPendingMemoryReadoutsKeepExactIdentityAndDecision(t *testing.T) {
 		return nil, protocol.ErrPluginUnavailable
 	}}
 	for _, id := range []string{memoryID, "01980000-0000-7000-8000-000000000002"} {
-		if err := workbench.ExecuteMemoryReview(t.Context(), caller, store, policy(t, "store", &now), id, 1, memory.ReviewApprove); err == nil {
+		if err := workbench.ExecuteMemoryReview(t.Context(), caller, store, policy(t, "store", &now), id, 1, memory.ReviewV2InputDecisionApprove); err == nil {
 			t.Fatal("unavailable owner became success")
 		}
 	}
-	if _, _, err := store.PendingMemoryReview(memoryID[:len(memoryID)-1], memory.ReviewApprove); err == nil {
+	if _, _, err := store.PendingMemoryReview(memoryID[:len(memoryID)-1], memory.ReviewV2InputDecisionApprove); err == nil {
 		t.Fatal("ambiguous prefix selected an original intent")
 	}
-	original, found, err := store.PendingMemoryReview(memoryID, memory.ReviewReject)
+	original, found, err := store.PendingMemoryReview(memoryID, memory.ReviewV2InputDecisionReject)
 	if !found || err == nil || original.ID != memoryID || original.Decision != "approve" {
 		t.Fatalf("original review decision was lost: %+v found=%v error=%v", original, found, err)
 	}

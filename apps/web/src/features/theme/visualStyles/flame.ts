@@ -1,5 +1,5 @@
 import { type VisualStyleSpec } from "@/features/theme/public/types";
-import { DEFAULT_MOTION } from "@/lib/appearance";
+import { DEFAULT_MOTION } from "@/lib/visualStyleMotion";
 import { visualStyleTokens } from "@/features/theme/visualStyles/tokens";
 export const flameStyle: VisualStyleSpec = {
   id: "flame",

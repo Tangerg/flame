@@ -31,13 +31,20 @@ func decodeWriteReply[R any](method *portable.Method, reply []byte) (R, error) {
 	if err := method.ValidateOutput(raw); err != nil {
 		return result, err
 	}
-	err = json.Unmarshal(raw, &result, json.RejectUnknownMembers(true))
+	err = json.Unmarshal(raw, &result, json.RejectUnknownMembers(true), jsonvalue.Numbers())
 	return result, err
 }
 
-func mutate[P, R any](ctx context.Context, c *connector, method *portable.Method, id string, input P, admitted jsonvalue.Value, call func(context.Context, P) (R, error)) (R, error) {
+func mutate[P, R any](ctx context.Context, c *connector, method *portable.Method, id string, admitted jsonvalue.Value, call func(context.Context, P) (R, error)) (R, error) {
 	var zero R
+	var input P
 	prepared, original, err := pluginstorage.AdmitCommand(ctx, c.store.db, method.Name(), id, admitted, func(ctx context.Context) error {
+		if err := method.ValidateInput(admitted); err != nil {
+			return err
+		}
+		if err := json.Unmarshal(admitted.JSON(), &input, json.RejectUnknownMembers(true), jsonvalue.Numbers()); err != nil {
+			return err
+		}
 		// Any dispatched write can affect several query pages. Invalidation joins
 		// admission so a lost acknowledgement cannot preserve a pre-write cache.
 		_, err := sqlite.Connection(ctx, c.store.db).ExecContext(ctx, `DELETE FROM responses`)
@@ -79,7 +86,7 @@ func registerWrite[P, R any](backend *qimumcp.Backend, tools *[]tool.Tool, recei
 	if err != nil {
 		return err
 	}
-	model, err := tool.NewFunc(tool.FuncConfig{Name: name, Description: method.Descriptor().Description}, func(ctx context.Context, input P) (R, error) {
+	model, err := tool.NewFunc(tool.FuncConfig{Name: name, Description: method.Descriptor().Description}, func(ctx context.Context, _ P) (R, error) {
 		var zero R
 		id, err := pluginsdk.ToolCommandID(ctx)
 		if err != nil {
@@ -89,7 +96,7 @@ func registerWrite[P, R any](backend *qimumcp.Backend, tools *[]tool.Tool, recei
 		if err != nil {
 			return zero, err
 		}
-		value, err := mutate(ctx, c, contract, id, input, original, call)
+		value, err := mutate(ctx, c, contract, id, original, call)
 		return value, writeFailure(err)
 	})
 	if err != nil {
@@ -101,7 +108,7 @@ func registerWrite[P, R any](backend *qimumcp.Backend, tools *[]tool.Tool, recei
 			var zero R
 			return zero, err
 		}
-		return mutate(ctx, c, contract, command.ID, command.Input, original, call)
+		return mutate(ctx, c, contract, command.ID, original, call)
 	}); err != nil {
 		return err
 	}

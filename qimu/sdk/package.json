@@ -20,7 +20,6 @@
     "check": "npm run typecheck && npm run lint && npm run format:check && npm test"
   },
   "dependencies": {
-    "decimal.js": "10.6.0",
     "jsonc-parser": "3.3.1"
   },
   "devDependencies": {

@@ -1,5 +1,4 @@
-import { type Counter, type Histogram } from "@opentelemetry/api";
-import { metrics } from "@opentelemetry/api";
+import { type Counter, type Histogram, type Meter } from "@opentelemetry/api";
 interface Instruments {
   reducer: Histogram;
   shiki: Histogram;
@@ -9,9 +8,8 @@ interface Instruments {
 
 let inst: Instruments | null = null;
 
-export function bindMetricInstruments(): void {
-  const meter = metrics.getMeter("flame");
-  inst = {
+export function bindMetricInstruments(meter: Meter): () => void {
+  const instruments: Instruments = {
     reducer: meter.createHistogram("flame.reducer.duration", {
       description: "Time spent reducing one StreamEvent",
       unit: "ms",
@@ -27,6 +25,10 @@ export function bindMetricInstruments(): void {
     events: meter.createCounter("flame.run.event.count", {
       description: "Number of run StreamEvents processed",
     }),
+  };
+  inst = instruments;
+  return () => {
+    if (inst === instruments) inst = null;
   };
 }
 

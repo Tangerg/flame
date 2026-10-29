@@ -73,7 +73,7 @@ func admitPluginBinding(binding PluginBinding, descriptor portable.MethodDescrip
 
 func (m *PluginMethod[P, R]) Call(ctx context.Context, input P, options protocol.PluginCallOptions) (R, error) {
 	var zero R
-	if m == nil {
+	if m == nil || m.method == nil {
 		return zero, errors.New("runtime: bound plugin method is required")
 	}
 	if m.method.Kind() == portable.Query && (options.IdempotencyKey != "" || options.IdempotencyNamespace != "") {
@@ -103,7 +103,7 @@ func (m *PluginMethod[P, R]) Call(ctx context.Context, input P, options protocol
 		return zero, fmt.Errorf("runtime: plugin output: %w", errors.Join(protocol.ErrInvalidResponse, err))
 	}
 	var value R
-	if err := json.Unmarshal([]byte(result.Output), &value, json.RejectUnknownMembers(true)); err != nil {
+	if err := json.Unmarshal([]byte(result.Output), &value, json.RejectUnknownMembers(true), jsonvalue.Numbers()); err != nil {
 		return zero, errors.Join(protocol.ErrInvalidResponse, err)
 	}
 	return value, nil

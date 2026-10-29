@@ -81,3 +81,32 @@ func TestArchiveRefusesInvalidSourceWithoutLeavingARelease(t *testing.T) {
 		}
 	}
 }
+
+func TestArchiveResolvesPhysicalOutputParent(t *testing.T) {
+	root := t.TempDir()
+	source := filepath.Join(root, "source")
+	physical := filepath.Join(root, "physical")
+	if err := os.MkdirAll(source, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(source, "entry.js"), []byte("export default 1"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(physical, "child"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join(root, "alias")
+	if err := os.Symlink(filepath.Join(physical, "child"), alias); err != nil {
+		t.Fatal(err)
+	}
+	output := alias + string(filepath.Separator) + ".." + string(filepath.Separator) + "release.zip"
+	if err := archive(source, output, ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(physical, "release.zip")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "release.zip")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("archive published at the lexical parent: %v", err)
+	}
+}

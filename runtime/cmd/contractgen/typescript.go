@@ -52,6 +52,7 @@ func newTypeScript(set *schemaSet, notifications []string) string {
 	emitter.header()
 	emitter.protocolVersion()
 	emitter.httpEndpoints()
+	emitter.httpHeaders()
 	emitter.problemCodes()
 	emitter.notifications(notifications)
 
@@ -77,7 +78,7 @@ func (t *tsEmitter) problemCodes() {
 	t.line("export const PROBLEM_CODES = {")
 	codes := dispatch.ProblemCodes()
 	for _, name := range slices.Sorted(maps.Keys(codes)) {
-		t.line("  %s: %d,", strconv.Quote(name), codes[name])
+		t.line("  %s: %d,", contractgen.TypeScriptStringLiteral(name), codes[name])
 	}
 	t.line("} as const satisfies Partial<Record<ProblemData['type'], number>>;")
 	t.line("")
@@ -87,7 +88,7 @@ func (t *tsEmitter) problemCodes() {
 	}
 	quoted := make([]string, len(actions))
 	for index, action := range actions {
-		quoted[index] = strconv.Quote(action)
+		quoted[index] = contractgen.TypeScriptStringLiteral(action)
 	}
 	t.line("// The default next move a client offers for a problem, by where it arrived.")
 	t.line("export type RecoveryAction = %s;", strings.Join(quoted, " | "))
@@ -99,7 +100,7 @@ func (t *tsEmitter) problemCodes() {
 		if !declared {
 			panic("contractgen: problem type " + name + " declares no recovery action")
 		}
-		t.line("  %s: %s,", strconv.Quote(name), strconv.Quote(string(recovery)))
+		t.line("  %s: %s,", contractgen.TypeScriptStringLiteral(name), contractgen.TypeScriptStringLiteral(string(recovery)))
 	}
 	t.line("} as const satisfies Partial<Record<ProblemData['type'], RecoveryAction>>;")
 	t.line("")
@@ -107,10 +108,25 @@ func (t *tsEmitter) problemCodes() {
 	t.line("export const RUN_PROBLEM_RECOVERY = {")
 	for _, contract := range dispatch.ProblemContracts() {
 		if slices.Contains(contract.Channels, dispatch.ProblemChannelExecution) {
-			t.line("  %s: %s,", strconv.Quote(contract.Type), strconv.Quote(string(contract.ExecutionRecovery)))
+			t.line("  %s: %s,", contractgen.TypeScriptStringLiteral(contract.Type), contractgen.TypeScriptStringLiteral(string(contract.ExecutionRecovery)))
 		}
 	}
 	t.line("} as const satisfies Partial<Record<ProblemData['type'], RecoveryAction>>;")
+	t.line("")
+}
+
+func (t *tsEmitter) httpHeaders() {
+	headers := runtimehttp.Contract().Headers
+	t.line("export const HTTP_HEADERS = {")
+	t.line("  authorization: %s,", contractgen.TypeScriptStringLiteral(headers.Authorization))
+	t.line("  contentType: %s,", contractgen.TypeScriptStringLiteral(headers.ContentType))
+	t.line("  idempotencyKey: %s,", contractgen.TypeScriptStringLiteral(headers.IdempotencyKey))
+	t.line("  idempotencyNamespace: %s,", contractgen.TypeScriptStringLiteral(headers.IdempotencyNamespace))
+	t.line("  lastEventId: %s,", contractgen.TypeScriptStringLiteral(headers.LastEventID))
+	t.line("  requestId: %s,", contractgen.TypeScriptStringLiteral(headers.RequestID))
+	t.line("  server: %s,", contractgen.TypeScriptStringLiteral(headers.Server))
+	t.line("  method: %s,", contractgen.TypeScriptStringLiteral(headers.Method))
+	t.line("} as const;")
 	t.line("")
 }
 
@@ -122,12 +138,12 @@ func (t *tsEmitter) httpEndpoints() {
 	contract := runtimehttp.Contract()
 	for _, endpoint := range contract.Endpoints {
 		t.line("  %s: {", contractgen.PropertyKey(endpoint.Name))
-		t.line("    kind: %s,", strconv.Quote(string(endpoint.Kind)))
-		t.line("    method: %s,", strconv.Quote(endpoint.Method))
-		t.line("    path: %s,", strconv.Quote(endpoint.Path))
-		t.line("    authentication: %s,", strconv.Quote(string(endpoint.Authentication)))
+		t.line("    kind: %s,", contractgen.TypeScriptStringLiteral(string(endpoint.Kind)))
+		t.line("    method: %s,", contractgen.TypeScriptStringLiteral(endpoint.Method))
+		t.line("    path: %s,", contractgen.TypeScriptStringLiteral(endpoint.Path))
+		t.line("    authentication: %s,", contractgen.TypeScriptStringLiteral(string(endpoint.Authentication)))
 		if endpoint.Projects != "" {
-			t.line("    projects: %s,", strconv.Quote(string(endpoint.Projects)))
+			t.line("    projects: %s,", contractgen.TypeScriptStringLiteral(string(endpoint.Projects)))
 		}
 		statuses := make([]string, 0, len(endpoint.ResponseStatuses))
 		for _, status := range endpoint.ResponseStatuses {
@@ -161,7 +177,7 @@ func (t *tsEmitter) httpEndpoints() {
 func (t *tsEmitter) notifications(methods []string) {
 	t.line("// The methods the runtime sends downstream. A client only ever subscribes.")
 	for _, method := range methods {
-		t.line("export const %s = %s;", screamingSnake(method), strconv.Quote(method))
+		t.line("export const %s = %s;", screamingSnake(method), contractgen.TypeScriptStringLiteral(method))
 	}
 	t.line("")
 }
@@ -225,7 +241,7 @@ func (t *tsEmitter) runEventSemantics() {
 		if (protocol.StreamEvent{Type: protocol.StreamEventType(value)}).Authoritative() {
 			reliability = "authoritative"
 		}
-		t.line("  %s: %s,", strconv.Quote(value), strconv.Quote(reliability))
+		t.line("  %s: %s,", contractgen.TypeScriptStringLiteral(value), contractgen.TypeScriptStringLiteral(reliability))
 	}
 	t.line("} as const satisfies Record<StreamEventType, RunEventReliability>;")
 	t.line("")
@@ -238,7 +254,7 @@ func (t *tsEmitter) runEventSemantics() {
 	t.line("export const RUN_EVENT_REPLAYABLE = {")
 	for _, value := range values {
 		replayable := (protocol.StreamEvent{Type: protocol.StreamEventType(value)}).Replayable()
-		t.line("  %s: %t,", strconv.Quote(value), replayable)
+		t.line("  %s: %t,", contractgen.TypeScriptStringLiteral(value), replayable)
 	}
 	t.line("} as const satisfies Record<StreamEventType, boolean>;")
 	t.line("")
@@ -269,7 +285,7 @@ func (t *tsEmitter) header() {
 // makes "the client sends what this build serves" true by construction.
 func (t *tsEmitter) protocolVersion() {
 	t.line("// The wire version this runtime serves; a client states it in request metadata.")
-	t.line("export const PROTOCOL_VERSION = %s;", strconv.Quote(protocol.Version))
+	t.line("export const PROTOCOL_VERSION = %s;", contractgen.TypeScriptStringLiteral(protocol.Version))
 	t.line("")
 	t.line("// The only Session Artifact version this runtime imports or exports.")
 	t.line("export const SESSION_ARTIFACT_VERSION = %d;", protocol.SessionArtifactVersion)
@@ -286,7 +302,7 @@ func (t *tsEmitter) protocolVersion() {
 	t.line("// Public framing of one opaque Schedule resource identity.")
 	t.line("")
 	t.line("// Public framing and maximum length of one opaque Run event identity.")
-	t.line("export const RUN_EVENT_ID_PREFIX = %s;", strconv.Quote(protocol.IDPrefixEvent))
+	t.line("export const RUN_EVENT_ID_PREFIX = %s;", contractgen.TypeScriptStringLiteral(protocol.IDPrefixEvent))
 	t.line("export const MAXIMUM_RUN_EVENT_ID_CHARACTERS = %d;", protocol.MaximumRunEventIDCharacters)
 	t.line("")
 	t.line("// Largest integer identity represented exactly by every supported JSON consumer.")

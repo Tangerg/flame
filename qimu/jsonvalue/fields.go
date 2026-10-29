@@ -1,79 +1,45 @@
 package jsonvalue
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
+	"unicode/utf8"
 )
 
-// How a wire struct becomes JSON is shared contract knowledge, so it is
-// answered here — once. The registration-time shape checks, the schema walker and
-// the TypeScript emitter all need the same answer, and three private copies of
-// encoding/json's naming and inlining rules would be three chances to disagree
-// about what the wire actually looks like.
-
-// Field is one JSON field a struct marshals, with embedded structs inlined
-// the way encoding/json inlines them.
+// Decoding and generated projections must admit the same field ownership.
+// Shadowed fields are refused instead of choosing a competing declaration.
 type Field struct {
 	Name string
 	Type reflect.Type
 
-	// GoName is the struct field's Go name, which a code generator needs to emit a
-	// selector for it. An embedded struct's fields are promoted, so the name alone
-	// addresses them — there is no prefix to carry.
-	GoName string
-
-	// Optional reports that the encoder may omit the field entirely
-	// (`omitempty` / `omitzero`). It is the only honest source for "may this be
-	// absent": a required-looking field with omitempty is absent on the wire
-	// whenever it is zero, whatever the doc says.
+	GoName   string
 	Optional bool
 }
 
-// Fields lists the JSON fields a struct marshals, in declaration order.
-// Fields the encoder never emits — unexported, or tagged "-" — are absent: they
-// are not on the wire, so nothing about the contract may mention them.
 func Fields(owner reflect.Type) []Field {
-	if owner.Kind() != reflect.Struct {
-		return nil
+	if err := ValidateType(owner); err != nil {
+		panic(err)
 	}
-	var out []Field
-	for field := range owner.Fields() {
-		name, options := wireNameOf(field)
-		if options.embedded {
-			out = append(out, Fields(Deref(field.Type))...)
-			continue
-		}
-		if name == "" {
-			continue
-		}
-		out = append(out, Field{Name: name, Type: field.Type, GoName: field.Name, Optional: options.optional})
+	fields, _, err := declaredFields(owner, make(map[reflect.Type]bool))
+	if err != nil {
+		panic(err)
 	}
-	return out
+	return fields
 }
 
-// Embeds lists the wire shapes owner composes by embedding, outermost first.
-// Their fields are inlined into owner's frame, so anything true of those fields
-// is true of owner — which is what lets a rule declared for the embedded shape
-// follow it rather than being restated.
 func Embeds(owner reflect.Type) []reflect.Type {
-	owner = Deref(owner)
-	if owner.Kind() != reflect.Struct {
-		return nil
+	if err := ValidateType(owner); err != nil {
+		panic(err)
 	}
-	var out []reflect.Type
-	for field := range owner.Fields() {
-		if _, options := wireNameOf(field); !options.embedded {
-			continue
-		}
-		embedded := Deref(field.Type)
-		out = append(out, embedded)
-		out = append(out, Embeds(embedded)...)
+	_, embedded, err := declaredFields(Deref(owner), make(map[reflect.Type]bool))
+	if err != nil {
+		panic(err)
 	}
-	return out
+	return embedded
 }
 
-// FieldNames lists just the names, for a caller checking coverage.
 func FieldNames(owner reflect.Type) []string {
 	fields := Fields(owner)
 	out := make([]string, 0, len(fields))
@@ -83,7 +49,6 @@ func FieldNames(owner reflect.Type) []string {
 	return out
 }
 
-// LookupField finds one JSON field by wire name, following embedded structs.
 func LookupField(owner reflect.Type, name string) (Field, bool) {
 	for _, field := range Fields(owner) {
 		if field.Name == name {
@@ -93,8 +58,6 @@ func LookupField(owner reflect.Type, name string) (Field, bool) {
 	return Field{}, false
 }
 
-// HasPath reports whether a dotted JSON path (`payload.tool`) addresses a
-// real field, returning an error naming the segment that does not exist.
 func HasPath(root reflect.Type, path string) error {
 	current := root
 	for segment := range strings.SplitSeq(path, ".") {
@@ -107,7 +70,6 @@ func HasPath(root reflect.Type, path string) error {
 	return nil
 }
 
-// PathFields resolves a dotted JSON path to each declared field it crosses.
 // Callers that project Go expressions need the full path because a pointer or
 // collection parent cannot be read by the same direct selector as a value struct.
 func PathFields(root reflect.Type, path string) ([]Field, bool) {
@@ -124,8 +86,6 @@ func PathFields(root reflect.Type, path string) ([]Field, bool) {
 	return fields, len(fields) > 0
 }
 
-// GoPath resolves a dotted JSON path to the Go selector that reads it, so a
-// generator can emit `r.Artifact.Session.ID` for `artifact.session.id`.
 func GoPath(root reflect.Type, path string) (selector string, leaf Field, ok bool) {
 	fields, ok := PathFields(root, path)
 	if !ok {
@@ -138,10 +98,10 @@ func GoPath(root reflect.Type, path string) (selector string, leaf Field, ok boo
 	return strings.Join(parts, "."), fields[len(fields)-1], true
 }
 
-// Deref unwraps the pointers and slices around a value type, so a path segment
-// can address a field of `*T` and `[]T` alike.
 func Deref(t reflect.Type) reflect.Type {
-	for t.Kind() == reflect.Pointer || t.Kind() == reflect.Slice {
+	seen := make(map[reflect.Type]bool)
+	for t != nil && (t.Kind() == reflect.Pointer || t.Kind() == reflect.Slice) && !seen[t] {
+		seen[t] = true
 		t = t.Elem()
 	}
 	return t
@@ -152,31 +112,63 @@ type wireTagOptions struct {
 	optional bool
 }
 
-// wireNameOf returns a field's wire name and how the encoder treats it. An
-// anonymous struct field with no json name is embedded: its fields are inlined
-// onto the same JSON object.
-func wireNameOf(field reflect.StructField) (string, wireTagOptions) {
+const (
+	omitEmptyOption = "omitempty"
+	omitZeroOption  = "omitzero"
+)
+
+func parseFieldTag(field reflect.StructField) (string, wireTagOptions, error) {
 	tag, tagged := field.Tag.Lookup("json")
-	if field.Anonymous && (!tagged || tag == "") {
-		return "", wireTagOptions{embedded: true}
-	}
-	if !field.IsExported() {
-		return "", wireTagOptions{}
+	if tag == "-" {
+		return "", wireTagOptions{}, nil
 	}
 	name, rest, hasOptions := strings.Cut(tag, ",")
-	options := wireTagOptions{}
-	for option := range strings.SplitSeq(rest, ",") {
-		if option == "omitempty" || option == "omitzero" {
-			options.optional = true
+	options := wireTagOptions{embedded: field.Anonymous && name == ""}
+	if !field.IsExported() && !options.embedded {
+		if tagged {
+			return "", wireTagOptions{}, errors.New("unexported field must be ignored")
+		}
+		return "", wireTagOptions{}, nil
+	}
+	if !utf8.ValidString(name) || strings.ContainsAny(name, "\\'\"`") {
+		return "", wireTagOptions{}, fmt.Errorf("invalid JSON field name %q", name)
+	}
+	if hasOptions {
+		optional, err := parseOmissionOptions(rest)
+		if err != nil {
+			return "", wireTagOptions{}, err
+		}
+		if options.embedded {
+			return "", wireTagOptions{}, errors.New("embedded field cannot declare omission options")
+		}
+		options.optional = optional
+	}
+	if options.embedded {
+		return "", options, nil
+	}
+	if name == "" {
+		name = field.Name
+	}
+	return name, options, nil
+}
+
+func parseOmissionOptions(raw string) (bool, error) {
+	var seenOmitEmpty, seenOmitZero bool
+	for option := range strings.SplitSeq(raw, ",") {
+		var duplicate bool
+		switch option {
+		case omitEmptyOption:
+			duplicate, seenOmitEmpty = seenOmitEmpty, true
+		case omitZeroOption:
+			duplicate, seenOmitZero = seenOmitZero, true
+		case "":
+			return false, errors.New("empty field option")
+		default:
+			return false, fmt.Errorf("unsupported field option %q", option)
+		}
+		if duplicate {
+			return false, fmt.Errorf("duplicate field option %q", option)
 		}
 	}
-	switch {
-	case !tagged, name == "":
-		return field.Name, options
-	case name == "-" && !hasOptions:
-		// A bare "-" skips the field; `json:"-,"` names it "-".
-		return "", wireTagOptions{}
-	default:
-		return name, options
-	}
+	return seenOmitEmpty || seenOmitZero, nil
 }

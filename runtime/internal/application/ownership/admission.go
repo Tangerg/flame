@@ -66,7 +66,6 @@ type RunAdmission struct {
 
 type runAdmissionLease struct {
 	gate *Gate
-	once sync.Once
 }
 
 type sessionClaimKind uint8
@@ -76,9 +75,8 @@ const (
 	sessionRecovery
 )
 
-// Admit converts the pending reservation into the live run identified by
-// runID. It returns false when the reservation had already been released or
-// admitted, or when runID is empty.
+// A Run identity cannot transfer an existing Session reservation. A refused
+// identity leaves the pending admission releasable by its original caller.
 func (r RunAdmission) Admit(runID string) bool {
 	if r.lease == nil {
 		return false
@@ -86,20 +84,19 @@ func (r RunAdmission) Admit(runID string) bool {
 	if err := identity.ValidateRun(runID); err != nil {
 		return false
 	}
-	admitted := false
-	r.lease.once.Do(func() {
-		g := r.lease.gate
-		g.mu.Lock()
-		defer g.mu.Unlock()
-		pending, ok := g.pending[r.lease]
-		if !ok {
-			return
-		}
-		delete(g.pending, r.lease)
-		g.runs[runID] = pending
-		admitted = true
-	})
-	return admitted
+	g := r.lease.gate
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	pending, exists := g.pending[r.lease]
+	if !exists {
+		return false
+	}
+	if _, exists := g.runs[runID]; exists {
+		return false
+	}
+	delete(g.pending, r.lease)
+	g.runs[runID] = pending
+	return true
 }
 
 // Release abandons a pending run reservation. It does nothing after Admit.
@@ -107,18 +104,13 @@ func (r RunAdmission) Release() {
 	if r.lease == nil {
 		return
 	}
-	r.lease.once.Do(func() {
-		g := r.lease.gate
-		g.mu.Lock()
-		_, ok := g.pending[r.lease]
-		if !ok {
-			g.mu.Unlock()
-			return
-		}
+	g := r.lease.gate
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if _, exists := g.pending[r.lease]; exists {
 		delete(g.pending, r.lease)
 		g.notifyLocked()
-		g.mu.Unlock()
-	})
+	}
 }
 
 // AcquireSession reserves one session's single-writer slot. Release is safe to

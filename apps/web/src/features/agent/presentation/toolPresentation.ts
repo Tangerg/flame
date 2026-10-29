@@ -1,3 +1,4 @@
+import { parseJSON } from "@qimu/sdk/json";
 import { type Translate } from "@/lib/i18n/index";
 import { type ToolCall } from "@/features/agent/public/sessionView";
 import { fmtDuration } from "@/lib/format";
@@ -131,7 +132,7 @@ export function summarizeActivity(t: Translate, tools: readonly ToolCall[]): str
 
 function parseToolArgs(args: string): Record<string, unknown> | null {
   try {
-    const parsed: unknown = JSON.parse(args || "{}");
+    const parsed: unknown = parseJSON(args || "{}");
     return parsed && typeof parsed === "object" && !Array.isArray(parsed)
       ? (parsed as Record<string, unknown>)
       : null;

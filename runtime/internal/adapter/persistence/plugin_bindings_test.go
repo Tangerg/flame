@@ -270,11 +270,11 @@ func TestOriginalCommandRetainsBindingUntilItsBusinessOwnerRetires(t *testing.T)
 		}
 		return plugins.CommandAdmission{Activation: f.activation, Binding: plugins.ContributionBinding{
 			InstallationID: f.provider.InstallationID, Digest: f.provider.Digest,
-			ServerName: testsupport.ServerName("backend"), Contract: testsupport.CommandContract(t, "records.write", "installation"), ContributionID: "records", Export: "records",
+			ServerName: testsupport.ServerName("backend"), Contract: testsupport.CommandContract(t, "records.write", extension.ScopeInstallation), ContributionID: "records", Export: "records",
 		}}, nil
 	}
 	command, err := commands.Bind(t.Context(), "original-command", "records.write", testsupport.JSONInput(t, `{}`), resolve, func(plugins.ContributionBinding) (portable.Invocation, error) {
-		return portable.Invocation{ID: "original-command", Origin: extension.Human, Target: portable.Target{Scope: "installation", Reference: f.provider.InstallationID.String()}}, nil
+		return portable.Invocation{ID: "original-command", Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: f.provider.InstallationID.String()}}, nil
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -292,5 +292,37 @@ func TestOriginalCommandRetainsBindingUntilItsBusinessOwnerRetires(t *testing.T)
 	retained, found, err := f.store.PluginCommands.Get(t.Context(), "original-command")
 	if err != nil || !found || !retained.Snapshot().Activation.Equal(f.activation) || retained.Snapshot().Phase != plugin.CommandRetired {
 		t.Fatalf("business retirement erased the original route: %+v, %v", retained, err)
+	}
+}
+
+func TestCheckpointCommitRefusesChangesToItsAdmittedWriteSet(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		mutate func(*runs.ExecutorCheckpoint)
+	}{
+		{name: "payload", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Payload = []byte("different continuation") }},
+		{name: "build", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.BuildID = testsupport.AlternateBuildID }},
+		{name: "references removed", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Bindings = nil; checkpoint.Resources = nil }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			f := newBindingFixture(t)
+			admitted := f.checkpoint()
+			replacement := admitted.Clone()
+			test.mutate(&replacement)
+			err := f.store.CommitPluginReferences(t.Context(), f.host, "altered-checkpoint", admitted, func(ctx context.Context) error {
+				return f.saveCheckpoint(ctx, replacement)
+			})
+			if err == nil {
+				t.Fatal("a changed checkpoint committed under the original write-set identity")
+			}
+			if _, err := f.store.ExecutorCheckpoints.LoadCheckpoint(t.Context(), admitted.RootMemberID); !errors.Is(err, runs.ErrExecutorCheckpointNotFound) {
+				t.Fatalf("rejected checkpoint became durable: %v", err)
+			}
+			if err := f.store.CommitPluginReferences(t.Context(), f.host, "exact-checkpoint", admitted, func(ctx context.Context) error {
+				return f.saveCheckpoint(ctx, admitted)
+			}); err != nil {
+				t.Fatalf("original checkpoint refused: %v", err)
+			}
+		})
 	}
 }

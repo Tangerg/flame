@@ -3,6 +3,7 @@ package plugin
 import (
 	"sync"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/qimu/portable"
 )
 
@@ -21,5 +22,5 @@ var modelObserverContract = sync.OnceValues(func() (*portable.Capability, error)
 	if err != nil {
 		return nil, err
 	}
-	return portable.NewCapability(portable.CapabilityConfig{Reference: "flame.model-observers.v1", Composition: portable.Decoration, Scope: "call"}, call.Descriptor(), stream.Descriptor())
+	return portable.NewCapability(portable.CapabilityConfig{Reference: "flame.model-observers.v1", Composition: portable.Decoration, Scope: extension.ScopeCall}, call.Descriptor(), stream.Descriptor())
 })

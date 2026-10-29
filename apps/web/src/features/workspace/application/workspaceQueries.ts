@@ -1,5 +1,4 @@
-type FileEntryType = "file" | "dir" | "symlink";
-
+import { type FileEntryType } from "@/foundation/protocolValues.generated";
 import { createDataQuery, createParameterizedDataQuery } from "@/extensions/dataQuery";
 export interface WorkspaceProjectSummary {
   id: string;

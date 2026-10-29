@@ -113,7 +113,7 @@ func TestUnfocusedApprovalRequestsAttention(t *testing.T) {
 			}}}},
 			Interrupts: []conversation.Interrupt{conversation.Approval{
 				ItemID: "approval", Title: "Write config", Tool: &conversation.ToolCall{
-					Kind: conversation.ToolEdit, Name: "edit", Path: "config.json", Status: conversation.ToolRunning,
+					Kind: protocol.ToolCategoryEdit, Name: "edit", Path: "config.json", Status: conversation.ToolRunning,
 				},
 			}},
 			Continue: func([]conversation.InterruptAnswer) []runtimefixture.Step {

@@ -41,7 +41,8 @@
     "oxlint": "^1.89.0",
     "@babel/core": "^8.0.7",
     "@babel/preset-typescript": "^8.0.7",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "rolldown": "^1.2.15"
   },
   "overrides": {
     "katex": "0.19.0"

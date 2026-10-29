@@ -122,45 +122,26 @@ func validateDocumentSource(info os.FileInfo) error {
 }
 
 func existingDirectory(path string) (string, error) {
-	path = strings.TrimSpace(path)
-	if path == "" {
-		return "", errors.New("session document workspace is empty")
-	}
-	root, err := filepath.Abs(path)
+	root, err := (filesystem.DirectoryResolver{}).ResolveExistingDir(path)
 	if err != nil {
 		return "", fmt.Errorf("resolve session document workspace: %w", err)
-	}
-	root, err = filepath.EvalSymlinks(root)
-	if err != nil {
-		return "", fmt.Errorf("resolve session document workspace: %w", err)
-	}
-	info, err := os.Stat(root)
-	if err != nil {
-		return "", fmt.Errorf("inspect session document workspace: %w", err)
-	}
-	if !info.IsDir() {
-		return "", errors.New("session document workspace is not a directory")
 	}
 	return root, nil
 }
 
 func resolveInputPath(workspace, selected string) (string, error) {
-	selected = strings.TrimSpace(selected)
-	if selected == "" {
+	if strings.TrimSpace(selected) == "" {
 		return "", errors.New("import path is empty")
 	}
+	root := ""
 	if !filepath.IsAbs(selected) {
-		root, err := existingDirectory(workspace)
+		var err error
+		root, err = existingDirectory(workspace)
 		if err != nil {
 			return "", err
 		}
-		selected = filepath.Join(root, selected)
 	}
-	absolute, err := filepath.Abs(selected)
-	if err != nil {
-		return "", fmt.Errorf("resolve session artifact: %w", err)
-	}
-	resolved, err := filepath.EvalSymlinks(absolute)
+	resolved, err := filesystem.ResolvePath(root, selected)
 	if err != nil {
 		return "", fmt.Errorf("resolve session artifact: %w", err)
 	}

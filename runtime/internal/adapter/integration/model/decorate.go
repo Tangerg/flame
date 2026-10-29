@@ -6,6 +6,7 @@ import (
 	"iter"
 
 	"github.com/Tangerg/scope/core/chat"
+	"github.com/samber/lo"
 )
 
 // modelDecoration replaces one provider instance's behaviour. Each field
@@ -25,11 +26,14 @@ type modelDecoration struct {
 // why every wrapper in this package assembles its result here rather than
 // writing the four combinations again.
 func decorateModel(inner chat.Model, decoration modelDecoration) (chat.Model, error) {
-	if inner == nil {
+	if lo.IsNil(inner) {
 		return nil, fmt.Errorf("model: %s: model is nil", decoration.name)
 	}
-	decorated := decoration.call(inner)
-	if decorated == nil {
+	decorated := inner
+	if decoration.call != nil {
+		decorated = decoration.call(inner)
+	}
+	if lo.IsNil(decorated) {
 		return nil, fmt.Errorf("model: %s: decoration returned no model", decoration.name)
 	}
 	base := decoratedModel{model: decorated}
@@ -37,13 +41,13 @@ func decorateModel(inner chat.Model, decoration modelDecoration) (chat.Model, er
 	counter, counts := inner.(InputTokenCounter)
 	if streams && decoration.stream != nil {
 		streamer = decoration.stream(streamer)
-		if streamer == nil {
+		if lo.IsNil(streamer) {
 			return nil, fmt.Errorf("model: %s: decoration returned no streamer", decoration.name)
 		}
 	}
 	if counts && decoration.count != nil {
 		counter = decoration.count(counter)
-		if counter == nil {
+		if lo.IsNil(counter) {
 			return nil, fmt.Errorf("model: %s: decoration returned no token counter", decoration.name)
 		}
 	}

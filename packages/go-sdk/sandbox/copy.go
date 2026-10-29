@@ -36,8 +36,6 @@ func copyTree(ctx context.Context, source, destination string) error {
 	if !filepath.IsAbs(destination) {
 		return errors.New("workspace copy destination must be absolute")
 	}
-	source = filepath.Clean(source)
-	destination = filepath.Clean(destination)
 	resolvedSource, err := resolveCopyRoot(source, "source")
 	if err != nil {
 		return err
@@ -46,7 +44,11 @@ func copyTree(ctx context.Context, source, destination string) error {
 	if err != nil {
 		return err
 	}
-	if containsPath(resolvedSource.path, resolvedDestination.path) {
+	contained, err := filesystem.ContainsPath(resolvedSource.path, resolvedDestination.path)
+	if err != nil {
+		return err
+	}
+	if contained {
 		return errors.New("workspace copy destination must not be inside source")
 	}
 
@@ -108,14 +110,6 @@ func openCopyRoot(expected copyRoot, role string) (*os.Root, os.FileInfo, error)
 		return nil, nil, fmt.Errorf("workspace copy %s changed while it was being opened", role)
 	}
 	return root, opened, nil
-}
-
-func containsPath(parent, candidate string) bool {
-	relative, err := filepath.Rel(parent, candidate)
-	if err != nil {
-		return false
-	}
-	return relative == "." || relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator))
 }
 
 type directoryMode struct {
@@ -306,6 +300,11 @@ func (t *treeCopier) copySymlink(portableName, localName string, expected fs.Fil
 	portableTarget := filepath.ToSlash(target)
 	if err := validateSymlinkTarget(portableName, portableTarget); err != nil {
 		return err
+	}
+	// A lexically contained target can escape through another symlink followed
+	// by ..; Root resolves that chain against the pinned source authority.
+	if _, err := t.source.Stat(localName); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("resolve source symlink %q: %w", portableName, err)
 	}
 	if err := t.destination.Symlink(filepath.FromSlash(portableTarget), localName); err != nil {
 		return fmt.Errorf("create symlink %q: %w", portableName, err)

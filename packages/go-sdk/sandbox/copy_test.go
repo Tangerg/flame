@@ -240,3 +240,33 @@ func openResolvedCopyRoot(name, role string) (*os.Root, os.FileInfo, error) {
 	}
 	return openCopyRoot(resolved, role)
 }
+
+func TestCopyTreeRejectsEscapeThroughSymlinkAndParent(t *testing.T) {
+	source := t.TempDir()
+	if err := os.Mkdir(filepath.Join(source, "nested"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("..", filepath.Join(source, "nested", "parent")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("nested/parent/../outside", filepath.Join(source, "escape")); err != nil {
+		t.Fatal(err)
+	}
+	if err := copyTree(t.Context(), source, t.TempDir()); err == nil {
+		t.Fatal("accepted a symlink chain that escapes the source root")
+	}
+}
+
+func TestCopyTreeKeepsContainedDanglingSymlinks(t *testing.T) {
+	source, destination := t.TempDir(), t.TempDir()
+	if err := os.Symlink("future.txt", filepath.Join(source, "link")); err != nil {
+		t.Fatal(err)
+	}
+	if err := copyTree(t.Context(), source, destination); err != nil {
+		t.Fatal(err)
+	}
+	target, err := os.Readlink(filepath.Join(destination, "link"))
+	if err != nil || target != "future.txt" {
+		t.Fatalf("copied link = (%q, %v)", target, err)
+	}
+}

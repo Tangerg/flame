@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
@@ -60,7 +59,7 @@ func TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRest
 	request := protocol.CallPluginRequest{
 		InstallationID: installed.ID, Digest: installed.Selected.Digest,
 		Contribution: contribution.ID, Contract: contribution.Contract, Method: method,
-		Target: portable.Target{Scope: "installation", Reference: installed.ID},
+		Target: portable.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
 		Input:  `{"id":"example-review","expectedRevision":1,"status":"resolved"}`,
 	}
 	options := delivery.Options{IdempotencyKey: "original-review-command", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
@@ -458,7 +457,7 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 		t.Fatal(err)
 	}
 	identity := invocation.ID
-	if invocation.Origin != extension.Model || invocation.Parent == "" || invocation.Target.Scope != "installation" {
+	if invocation.Origin != extension.Model || invocation.Parent == "" || invocation.Target.Scope != extension.ScopeInstallation {
 		t.Fatalf("calling-owner evidence was lost: %+v", invocation)
 	}
 	if identity == "" || identity == "provider-reused" || evidence.Response.Result.IsError || evidence.Response.Result.StructuredContent == nil {

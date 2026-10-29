@@ -1,9 +1,10 @@
-export type ApprovalDecision = "approve" | "deny";
-
-export type ApprovalGate = "pass" | "prompt" | "deny";
-
-export type ApprovalMode = "safe" | "balanced" | "yolo";
-
+import {
+  type ApprovalDecision,
+  type ApprovalGate,
+  type ApprovalMode,
+  type RememberScopeKind as RememberScope,
+} from "@/foundation/protocolValues.generated";
+export type { ApprovalDecision, ApprovalGate, ApprovalMode, RememberScope };
 export interface ApprovalModePolicy {
   exec: ApprovalGate;
   mode: ApprovalMode;
@@ -15,8 +16,6 @@ export interface ApprovalModeResult {
   mode: ApprovalMode;
   modes: ApprovalModePolicy[];
 }
-
-export type RememberScope = "session" | "project" | "global";
 
 export type InterruptResumePayload =
   | {

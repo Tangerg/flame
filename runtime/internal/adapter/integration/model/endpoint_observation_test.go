@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -32,7 +31,7 @@ func TestEndpointRecordsOneFailureForInvalidResponse(t *testing.T) {
 		}),
 		journal: store, selection: testsupport.MustModelSelection("anthropic", "captured-model"),
 	}
-	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "invalid-response", Origin: extension.Automatic, Target: portable.Target{Scope: "call", Reference: "invalid-response"}})
+	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "invalid-response", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "invalid-response"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +71,7 @@ func TestEndpointRetainsGenerationWhenCatalogCannotPriceUsage(t *testing.T) {
 		}),
 		journal: db.ModelInvocations, selection: testsupport.MustModelSelection("anthropic", "claude-opus-5"), pricing: Pricing(),
 	}
-	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "pricing-failure", Origin: extension.Automatic, Target: portable.Target{Scope: "call", Reference: "pricing-failure"}})
+	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "pricing-failure", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "pricing-failure"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +124,7 @@ func TestEndpointStreamRecordsCompletionAndConsumerStopWithoutPromotion(t *testi
 	stream, _ := resolved.Streamer()
 	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original input")))
 	for _, id := range []string{"complete", "stop", "stop-final"} {
-		ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: id, Origin: extension.Automatic, Parent: "original-operation", Target: portable.Target{Scope: "call", Reference: id}})
+		ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: id, Origin: extension.Automatic, Parent: "original-operation", Target: portable.Target{Scope: extension.ScopeCall, Reference: id}})
 		if err != nil {
 			t.Fatal(err)
 		}

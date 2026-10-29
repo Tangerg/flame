@@ -1,5 +1,6 @@
 import type { ContractRef } from "./protocol.generated";
-import { nonempty, QimuError } from "./errors";
+import { QimuError } from "./errors";
+import { identity } from "./identity";
 
 export function sameContract(left: ContractRef, right: ContractRef): boolean {
   return (
@@ -12,8 +13,8 @@ export function sameContract(left: ContractRef, right: ContractRef): boolean {
 }
 
 function checked(ref: ContractRef, kind: ContractRef["kind"]): ContractRef {
-  nonempty(ref.name, "contract name");
-  nonempty(ref.version, "contract version");
+  identity(ref.name, "contract name");
+  identity(ref.version, "contract version");
   if (
     !/^[a-f0-9]{64}$/.test(ref.digest) ||
     ref.kind !== kind ||

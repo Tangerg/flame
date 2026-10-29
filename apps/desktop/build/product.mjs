@@ -1,0 +1,6 @@
+export const desktopProduct = Object.freeze({
+  identifier: "com.tangerg.flame",
+  version: "0.0.1",
+  description: "Agent client for the Flame Runtime",
+  copyright: "(c) 2026, tangerg",
+});

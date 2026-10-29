@@ -10,9 +10,8 @@ import (
 )
 
 const (
-	auxiliaryOperationTimeout  = 15 * time.Second
-	executionCleanupTimeout    = 15 * time.Second
-	executionTreeCommitTimeout = 15 * time.Second
+	auxiliaryOperationTimeout = 15 * time.Second
+	executionCleanupTimeout   = 15 * time.Second
 )
 
 // errInteractionReleased reports that a projection could not be delivered
@@ -180,15 +179,6 @@ func (i *interactionLifetime) publicationContext(ctx context.Context) (context.C
 	return bound, func() {
 		stop()
 		cancel()
-	}
-}
-
-func (i *interactionLifetime) treeCommitContext(ctx context.Context) (context.Context, context.CancelFunc) {
-	publication, release := i.publicationContext(ctx)
-	bound, cancel := context.WithTimeout(publication, executionTreeCommitTimeout)
-	return bound, func() {
-		cancel()
-		release()
 	}
 }
 

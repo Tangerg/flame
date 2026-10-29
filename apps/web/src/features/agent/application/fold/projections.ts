@@ -209,13 +209,14 @@ function categoryFields(
 ): Partial<ToolCall> {
   switch (tool.category) {
     case "shell": {
-      const merged = asString(commandToolResult(tool.result)?.output) ?? asString(tool.result);
+      const command = commandToolResult(tool.result);
+      const output = command ? command.output : asString(tool.result);
       return {
-        exitCode: asNumber(commandToolResult(tool.result)?.exitCode),
+        exitCode: command?.exitCode,
         ...(asString(tool.arguments?.command) !== undefined
           ? { command: asString(tool.arguments?.command) }
           : {}),
-        ...(merged !== undefined ? { result: merged } : {}),
+        ...(output !== undefined ? { result: output } : {}),
       };
     }
     case "edit": {

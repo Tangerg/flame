@@ -6,13 +6,14 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestCompositionSurvivesRestartInOriginalOrderWithoutInstallationLookup(t *testing.T) {
-	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "model-observer", Composition: portable.Decoration, Scope: "call"}, portable.MethodDescriptor{Name: "observe", Kind: portable.Query, Target: "call", Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)})
+	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "model-observer", Composition: portable.Decoration, Scope: extension.ScopeCall}, portable.MethodDescriptor{Name: "observe", Kind: portable.Query, Target: extension.ScopeCall, Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)})
 	if err != nil {
 		t.Fatal(err)
 	}

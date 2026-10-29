@@ -15,7 +15,7 @@ describe("createStorage", () => {
     s.set("config", { x: 1, y: "hi" });
     expect(s.get("config")).toEqual({ x: 1, y: "hi" });
 
-    expect(localStorage.getItem("flame.plugin.alpha.config")).toBe(
+    expect(localStorage.getItem('["flame.plugin","alpha"]:config')).toBe(
       JSON.stringify({ x: 1, y: "hi" }),
     );
   });
@@ -32,6 +32,19 @@ describe("createStorage", () => {
     b.set("k", "from-beta");
     expect(a.get("k")).toBe("from-alpha");
     expect(b.get("k")).toBe("from-beta");
+  });
+
+  it("keeps hierarchical plugin names and keys in disjoint storage namespaces", () => {
+    const parent = createStorage("alpha");
+    const child = createStorage("alpha.beta");
+    parent.set("beta.command", "parent command");
+    child.set("command", "child command");
+    expect(parent.get("beta.command")).toBe("parent command");
+    expect(child.get("command")).toBe("child command");
+    expect(parent.keys()).toEqual(["beta.command"]);
+    expect(child.keys()).toEqual(["command"]);
+    parent.clear();
+    expect(child.get("command")).toBe("child command");
   });
 
   it("remove deletes one key, leaves the rest", () => {
@@ -68,7 +81,7 @@ describe("createStorage", () => {
 
   it("gracefully returns non-JSON strings as-is", () => {
     const s = createStorage("alpha");
-    localStorage.setItem("flame.plugin.alpha.raw", "not-json");
+    localStorage.setItem('["flame.plugin","alpha"]:raw', "not-json");
     expect(s.get("raw")).toBe("not-json");
   });
 

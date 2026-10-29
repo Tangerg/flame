@@ -37,7 +37,7 @@ func TestReceiptHistoryRuntimeFixture(t *testing.T) {
 	// Retain the former cutoff through real business calls before publishing the
 	// endpoint, so history setup cannot consume Runtime's handshake window.
 	for index := range 4096 {
-		result, err := store.update(t.Context(), fmt.Sprintf("runtime-history-%d", index), input, admitted)
+		result, err := store.update(t.Context(), fmt.Sprintf("runtime-history-%d", index), admitted)
 		if err != nil || result.Type != reviews.NotFound {
 			t.Fatalf("prepare receipt history: %+v, %v", result, err)
 		}

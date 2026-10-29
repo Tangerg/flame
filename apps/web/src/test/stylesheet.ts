@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-const CSS = readFileSync(join(process.cwd(), "src/styles/globals.css"), "utf8");
+const CSS = ["presentation.generated.css", "globals.css"]
+  .map((name) => readFileSync(join(process.cwd(), "src/styles", name), "utf8"))
+  .join("\n");
 
 export function declaredInCss(property: string): string | undefined {
   return new RegExp(`${property}:\\s*([^;]+);`).exec(CSS)?.[1]?.trim();

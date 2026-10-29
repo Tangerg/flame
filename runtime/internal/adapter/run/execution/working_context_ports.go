@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -40,7 +41,7 @@ type MemoryPromptItem struct {
 
 // AgentMemoryReader supplies the pinned memory included in every fresh root.
 type agentMemoryReader interface {
-	Items(ctx context.Context, scope string, project string) ([]MemoryPromptItem, error)
+	Items(ctx context.Context, scope memorycontract.ItemsV2InputScope, project string) ([]MemoryPromptItem, error)
 }
 
 // AgentMemorySearcher supplies prompt-relevant non-pinned memory.

@@ -12,6 +12,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
 )
 
@@ -77,7 +78,11 @@ func (p PendingInstalledCommand) validate() error {
 	if method.Descriptor().Target != p.Request.Target.Scope {
 		return errors.New("installed command target does not match its method")
 	}
-	return nil
+	input, err := jsonvalue.Parse([]byte(p.Request.Input))
+	if err != nil {
+		return err
+	}
+	return method.ValidateInput(input)
 }
 
 func (s *Store) loadInstalledCommands() error {

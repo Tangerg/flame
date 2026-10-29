@@ -14,9 +14,10 @@ import (
 // The framework authority and original Flame business owners share one file
 // and one admission. The installation tables are indexes of committed Host
 // records; only the Host's transaction can advance them.
-func openFrameworkDatabase(ctx context.Context, path string) (*sqlite.Store, *qimu.Admission, error) {
+func openFrameworkDatabase(ctx context.Context, path string) (*sqlite.Store, *qimu.Admission, *InstallationStore, error) {
 	admission := qimu.NewAdmission()
 	var store *sqlite.Store
+	var installations *InstallationStore
 	var err error
 	store, err = sqlite.Open(ctx, sqlite.Config{
 		Path: path, Admission: admission,
@@ -45,7 +46,6 @@ func openFrameworkDatabase(ctx context.Context, path string) (*sqlite.Store, *qi
 		}},
 		ProjectInstallation: func(ctx context.Context, executor sqlite.Executor, change qimu.InstallationChange) error {
 			return store.WithTransaction(ctx, executor, func(ctx context.Context) error {
-				projection := newInstallationStore(store.Database())
 				if change.After == nil {
 					if change.Before == nil {
 						return plugin.ErrInvalid
@@ -70,19 +70,20 @@ func openFrameworkDatabase(ctx context.Context, path string) (*sqlite.Store, *qi
 						record.Staged = &digest
 					}
 				}
-				return projection.projectRecord(ctx, record)
+				return installations.projectRecord(ctx, record)
 			})
 		},
 	})
 	if err != nil {
-		return nil, nil, errors.Join(err, store.Close())
+		return nil, nil, nil, errors.Join(err, store.Close())
 	}
+	installations = newInstallationStore(newReleaseStore(store.Database()))
 	owner, err := store.Owner("flame")
 	if err == nil {
 		err = admission.RegisterUseOwner(owner)
 	}
 	if err != nil {
-		return nil, nil, errors.Join(err, store.Close())
+		return nil, nil, nil, errors.Join(err, store.Close())
 	}
-	return store, admission, nil
+	return store, admission, installations, nil
 }

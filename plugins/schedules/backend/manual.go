@@ -31,18 +31,21 @@ func runNow(ctx context.Context, db *sql.DB, store store, connect runConnector, 
 	if err != nil {
 		return app.RunReference{}, err
 	}
-	return captureManual(ctx, db, store, connect, manualCommand{id: command.ID, input: command.Input, admitted: input})
+	return captureManual(ctx, db, store, connect, manualCommand{id: command.ID, admitted: input})
 }
 
 type manualCommand struct {
 	id       string
-	input    wire.ItemInput
 	admitted jsonvalue.Value
 }
 
 // A logical caller and its private receipt command have distinct identities.
 // The queue retains both so recovery never guesses a Tool's command namespace.
 func captureManual(ctx context.Context, db *sql.DB, store store, connect runConnector, command manualCommand) (result app.RunReference, err error) {
+	var input wire.ItemInput
+	if err := json.Unmarshal(command.admitted.JSON(), &input, json.RejectUnknownMembers(true), jsonvalue.Numbers()); err != nil {
+		return result, err
+	}
 	invocation, err := qimumcp.InvocationFromContext(ctx)
 	if err != nil {
 		return result, err
@@ -73,7 +76,7 @@ func captureManual(ctx context.Context, db *sql.DB, store store, connect runConn
 			captured, err = store.CapturedRun(ctx, runID)
 			return err
 		}
-		definition, err := store.Get(ctx, command.input.ID)
+		definition, err := store.Get(ctx, input.ID)
 		if err == nil {
 			captured, err = definition.ManualRun(command.id, sessionID, runID, time.Now(), invocation)
 		}
@@ -97,7 +100,7 @@ func captureManual(ctx context.Context, db *sql.DB, store store, connect runConn
 	if prepared == nil {
 		return qimumcp.DecodeReply[app.RunReference](original)
 	}
-	if captured.Invocation() != invocation || captured.CommandID() != command.id || captured.ScheduleID() != command.input.ID || captured.SessionID() != sessionID {
+	if captured.Invocation() != invocation || captured.CommandID() != command.id || captured.ScheduleID() != input.ID || captured.SessionID() != sessionID {
 		return result, errors.New("schedules: manual request differs from its original capture")
 	}
 	runs, close, err := connectRuntime(ctx, db, connect)

@@ -16,6 +16,8 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 )
 
 // Command is a fully specified process to spawn under confinement: the program
@@ -76,10 +78,13 @@ func NewConfiner(userHome string, readOnlyPaths []string) (*Confiner, error) {
 // environment is scrubbed. root must resolve to an existing directory (it is the
 // command's working directory and sole writable grant).
 func (c *Confiner) Confine(root, command string) (Command, error) {
+	if c == nil || len(c.hiddenPaths) == 0 {
+		return Command{}, errors.New("sandbox: constructed confiner is required")
+	}
 	if command == "" {
 		return Command{}, errors.New("sandbox: command is required")
 	}
-	realRoot, err := filepath.EvalSymlinks(root)
+	realRoot, err := (filesystem.DirectoryResolver{}).ResolveExistingDir(root)
 	if err != nil {
 		return Command{}, fmt.Errorf("sandbox: resolve root: %w", err)
 	}

@@ -19,7 +19,7 @@ func DecodeRequest(encoded []byte, target any) error {
 	request := reflect.New(destination.Type().Elem())
 	if err := jsonvalue.DecodeValue(jsontext.Value(encoded), request.Interface(), "params"); err != nil {
 		if shape, ok := errors.AsType[*jsonvalue.ShapeError](err); ok {
-			err = &ConstraintError{Shape: request.Elem().Type().Name(), Fields: []FieldError{{Field: shape.Field, Detail: shape.Detail}}}
+			err = &ConstraintError{Shape: request.Elem().Type().Name(), Fields: []FieldError{{Field: joinWirePath("", shape.Field), Detail: shape.Detail}}}
 		}
 		return fmt.Errorf("%w: %w", ErrInvalidParams, err)
 	}

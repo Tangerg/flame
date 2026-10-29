@@ -2,6 +2,7 @@ package terminal
 
 import (
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"slices"
 	"strings"
 
@@ -233,5 +234,5 @@ func (t *toolGroupBlock) notify() {
 }
 
 func groupableTool(call conversation.ToolCall) bool {
-	return slices.Contains([]conversation.ToolKind{conversation.ToolRead, conversation.ToolSearch, conversation.ToolWeb}, call.Kind)
+	return slices.Contains([]protocol.ToolCategory{protocol.ToolCategoryRead, protocol.ToolCategorySearch, protocol.ToolCategoryWeb}, call.Kind)
 }

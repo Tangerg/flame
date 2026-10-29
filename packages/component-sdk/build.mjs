@@ -114,13 +114,13 @@ export async function buildComponent({ input, directory, compiler }) {
       })
       .sort((left, right) => left.path.localeCompare(right.path, "en"));
     const graph = {
-      schemaVersion: 1,
+      schemaVersion: profile.moduleGraph.schemaVersion,
       entry: entry.fileName,
       modules,
       sharedSpecifiers: [...sharedSpecifiers].sort(),
     };
     await writeFile(
-      join(directory, "modules.generated.json"),
+      join(directory, profile.moduleGraph.filename),
       JSON.stringify(graph, null, 2) + "\n",
     );
     return { exports: entry.exports, graph };

@@ -28,9 +28,9 @@ func (p ModelCallPurpose) String() string {
 }
 func ParseModelCallPurpose(value string) (ModelCallPurpose, error) {
 	switch value {
-	case "conversation":
+	case ModelConversation.String():
 		return ModelConversation, nil
-	case "independent":
+	case ModelIndependent.String():
 		return ModelIndependent, nil
 	default:
 		return 0, fmt.Errorf("run: invalid model call purpose %q", value)

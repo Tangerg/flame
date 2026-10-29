@@ -4,10 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/invopop/jsonschema"
@@ -48,7 +47,7 @@ func (f *ModelFailure) Is(target error) bool {
 // ModelMethod publishes Scope's complete exchange without a text-only projection.
 func ModelMethod() (*qimumcp.Method[chat.Request, ModelResult], error) {
 	return qimumcp.NewMethod[chat.Request, ModelResult](qimumcp.MethodConfig{
-		Name: "flame.model/call.v1", Kind: portable.Mutation, Target: "call",
+		Name: "flame.model/call.v1", Kind: portable.Mutation, Target: extension.ScopeCall,
 		Description: "Perform one complete exchange with the model captured by this call.",
 	})
 }
@@ -96,7 +95,7 @@ func NewModelCallback(call func(context.Context, qimumcp.Command[chat.Request]) 
 }
 
 func modelCallContext(ctx context.Context, id string) (context.Context, error) {
-	call := portable.Invocation{ID: id, Origin: extension.Automatic, Target: portable.Target{Scope: "call", Reference: id}}
+	call := portable.Invocation{ID: id, Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: id}}
 	if parent, err := qimumcp.InvocationFromContext(ctx); err == nil {
 		if parent.ID == id && parent.Target == call.Target {
 			return ctx, nil

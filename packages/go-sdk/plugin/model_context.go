@@ -2,9 +2,10 @@ package plugin
 
 import (
 	"errors"
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"sync"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -26,7 +27,7 @@ type ModelContextResult struct {
 }
 
 func ModelContextMethod() (*qimumcp.Method[ModelContextRequest, ModelContextResult], error) {
-	return qimumcp.NewMethod[ModelContextRequest, ModelContextResult](qimumcp.MethodConfig{Name: "flame.model-context/contribute.v2", Kind: portable.Query, Target: "call", Description: "Contribute additional system context using the captured request and its original user input before capacity admission."})
+	return qimumcp.NewMethod[ModelContextRequest, ModelContextResult](qimumcp.MethodConfig{Name: "flame.model-context/contribute.v2", Kind: portable.Query, Target: extension.ScopeCall, Description: "Contribute additional system context using the captured request and its original user input before capacity admission."})
 }
 
 // ModelContextContract orders independent context contributions before the final
@@ -40,7 +41,7 @@ var modelContextContract = sync.OnceValues(func() (*portable.Capability, error) 
 	if err != nil {
 		return nil, err
 	}
-	return portable.NewCapability(portable.CapabilityConfig{Reference: "flame.model-context.v2", Composition: portable.Decoration, Scope: "call"}, method.Descriptor())
+	return portable.NewCapability(portable.CapabilityConfig{Reference: "flame.model-context.v2", Composition: portable.Decoration, Scope: extension.ScopeCall}, method.Descriptor())
 })
 
 func (r ModelContextResult) Validate() error {
@@ -56,8 +57,8 @@ func (r ModelContextResult) Validate() error {
 }
 
 func (r ModelContextRequest) Validate() error {
-	if r.Provider == "" || r.Model == "" {
-		return errors.New("model context: captured provider and model are required")
+	if err := (ModelSelection{Provider: r.Provider, Model: r.Model}).Validate(); err != nil {
+		return err
 	}
 	if r.UserMessage != nil {
 		if err := r.UserMessage.Validate(); err != nil {

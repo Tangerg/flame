@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"encoding/json/jsontext"
-	jsonv2 "encoding/json/v2"
 	"fmt"
 	"reflect"
 
@@ -147,7 +146,7 @@ func pointDeclaration(ref ContractRef, descriptor []byte) (*declaration, error) 
 		return nil, ErrContractMismatch
 	}
 	var shape PointDescriptor
-	if err := jsonv2.Unmarshal(descriptor, &shape, jsonv2.RejectUnknownMembers(true)); err != nil {
+	if err := jsonvalue.DecodeValue(descriptor, &shape, "point"); err != nil {
 		return nil, err
 	}
 	if shape.Protocol != PointProtocol || shape.Name != ref.Name || shape.Version != ref.Version {

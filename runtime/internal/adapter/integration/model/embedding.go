@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"slices"
 	"time"
 
@@ -131,15 +132,29 @@ func (e *embedder) Embed(ctx context.Context, texts []string) ([][]float32, erro
 	if response == nil && cause == nil {
 		cause = errors.New("model: embedding returned no response")
 	}
+	var vectors [][]float32
+	if cause == nil {
+		vectors, cause = projectEmbeddingVectors(response)
+	}
 	settleErr := e.finish(ctx, invocation, response, cause)
 	if cause = errors.Join(cause, settleErr); cause != nil {
 		return nil, cause
 	}
-	out := make([][]float32, len(response.Outputs))
+	return vectors, nil
+}
+
+func projectEmbeddingVectors(response *embedding.Response) ([][]float32, error) {
+	vectors := make([][]float32, len(response.Outputs))
 	for index, output := range response.Outputs {
-		out[index] = embedding.Float32Vector(output.Embedding)
+		vector := embedding.Float32Vector(output.Embedding)
+		for coordinate, value := range vector {
+			if math.IsInf(float64(value), 0) {
+				return nil, fmt.Errorf("model: embedding output %d coordinate %d exceeds float32 range", index, coordinate)
+			}
+		}
+		vectors[index] = vector
 	}
-	return out, nil
+	return vectors, nil
 }
 
 func (e *embedder) start(ctx context.Context, request *embedding.Request) (modelref.EndpointInvocation, error) {
@@ -158,9 +173,11 @@ func (e *embedder) start(ctx context.Context, request *embedding.Request) (model
 }
 
 func (e *embedder) finish(ctx context.Context, invocation modelref.EndpointInvocation, response *embedding.Response, cause error) error {
-	if response != nil && response.Validate() != nil {
-		cause = errors.Join(cause, response.Validate())
-		response = nil
+	if response != nil {
+		if err := response.Validate(); err != nil {
+			cause = errors.Join(cause, err)
+			response = nil
+		}
 	}
 	var cost accounting.Cost
 	var pricingErr error

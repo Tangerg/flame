@@ -150,7 +150,7 @@ type toolCommands struct {
 func (t toolCommands) ListPage(ctx context.Context, cursor string, limit pagination.RequestedLimit) (pagination.Page[schedule.Schedule], error) {
 	return t.coordinator.ListPage(ctx, cursor, limit)
 }
-func (t toolCommands) Create(ctx context.Context, input schedule.Draft) (schedule.Schedule, error) {
+func (t toolCommands) Create(ctx context.Context, _ createScheduleArgs) (schedule.Schedule, error) {
 	id, err := pluginsdk.ToolCommandID(ctx)
 	if err != nil {
 		return schedule.Schedule{}, decodeError(err)
@@ -159,8 +159,12 @@ func (t toolCommands) Create(ctx context.Context, input schedule.Draft) (schedul
 	if err != nil {
 		return schedule.Schedule{}, decodeError(err)
 	}
-	value, err := pluginstorage.Command(ctx, t.db, wire.Create, id, input, admitted, classify, func(ctx context.Context, input schedule.Draft) (schedule.Snapshot, error) {
-		value, err := t.coordinator.Create(ctx, input)
+	value, err := pluginstorage.Command(ctx, t.db, wire.Create, id, admitted, classify, func(ctx context.Context, input createScheduleArgs) (schedule.Snapshot, error) {
+		draft, err := input.draft()
+		if err != nil {
+			return schedule.Snapshot{}, err
+		}
+		value, err := t.coordinator.Create(ctx, draft)
 		return value.Snapshot(), err
 	})
 	if err != nil {
@@ -168,7 +172,7 @@ func (t toolCommands) Create(ctx context.Context, input schedule.Draft) (schedul
 	}
 	return schedule.Restore(value)
 }
-func (t toolCommands) Update(ctx context.Context, input app.UpdateCommand) (schedule.Schedule, error) {
+func (t toolCommands) Update(ctx context.Context, _ updateScheduleArgs) (schedule.Schedule, error) {
 	id, err := pluginsdk.ToolCommandID(ctx)
 	if err != nil {
 		return schedule.Schedule{}, decodeError(err)
@@ -177,8 +181,8 @@ func (t toolCommands) Update(ctx context.Context, input app.UpdateCommand) (sche
 	if err != nil {
 		return schedule.Schedule{}, decodeError(err)
 	}
-	value, err := pluginstorage.Command(ctx, t.db, wire.Update, id, input, admitted, classify, func(ctx context.Context, input app.UpdateCommand) (schedule.Snapshot, error) {
-		value, err := t.coordinator.Update(ctx, input)
+	value, err := pluginstorage.Command(ctx, t.db, wire.Update, id, admitted, classify, func(ctx context.Context, input updateScheduleArgs) (schedule.Snapshot, error) {
+		value, err := t.coordinator.Update(ctx, input.command())
 		return value.Snapshot(), err
 	})
 	if err != nil {
@@ -187,7 +191,7 @@ func (t toolCommands) Update(ctx context.Context, input app.UpdateCommand) (sche
 	return schedule.Restore(value)
 }
 
-func (t toolCommands) RunNow(ctx context.Context, input wire.ItemInput) (app.RunReference, error) {
+func (t toolCommands) RunNow(ctx context.Context, _ wire.ItemInput) (app.RunReference, error) {
 	id, err := pluginsdk.ToolCommandID(ctx)
 	if err != nil {
 		return app.RunReference{}, err
@@ -196,11 +200,11 @@ func (t toolCommands) RunNow(ctx context.Context, input wire.ItemInput) (app.Run
 	if err != nil {
 		return app.RunReference{}, err
 	}
-	value, err := captureManual(ctx, t.db, t.store, t.connect, manualCommand{id: id, input: input, admitted: admitted})
+	value, err := captureManual(ctx, t.db, t.store, t.connect, manualCommand{id: id, admitted: admitted})
 	return value, decodeError(err)
 }
 
-func (t toolCommands) Delete(ctx context.Context, id string) error {
+func (t toolCommands) Delete(ctx context.Context, _ deleteScheduleArgs) error {
 	invocation, err := pluginsdk.ToolCommandID(ctx)
 	if err != nil {
 		return err
@@ -209,8 +213,8 @@ func (t toolCommands) Delete(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
-	_, err = pluginstorage.Command(ctx, t.db, wire.Delete, invocation, wire.ItemInput{ID: id}, admitted, classify, func(ctx context.Context, input wire.ItemInput) (wire.Ack, error) {
-		return wire.Ack{}, t.coordinator.Delete(ctx, id)
+	_, err = pluginstorage.Command(ctx, t.db, wire.Delete, invocation, admitted, classify, func(ctx context.Context, input deleteScheduleArgs) (wire.Ack, error) {
+		return wire.Ack{}, t.coordinator.Delete(ctx, input.ScheduleID)
 	})
 	return decodeError(err)
 }

@@ -39,16 +39,22 @@ export function freezeJSON<T>(value: T): T {
   freeze(copy);
   return copy;
 }
-export function validCommand(value: unknown): value is string {
+function boundedUTF8(value: unknown, maximumBytes: number): value is string {
   return (
     typeof value === "string" &&
     value.length > 0 &&
-    Buffer.byteLength(value) <= 256 &&
+    Buffer.byteLength(value) <= maximumBytes &&
     !/\p{Surrogate}/u.test(value)
   );
 }
+export function validCommand(value: unknown): value is string {
+  return boundedUTF8(value, wire.constants.maxCommandIDBytes);
+}
 export function validToken(value: unknown): value is string {
-  return validCommand(value) && !/[\p{White_Space}\p{Cc}]/u.test(value);
+  return (
+    boundedUTF8(value, PORTABLE_LIMITS.maxTokenBytes) &&
+    !/[\p{White_Space}\p{Cc}]/u.test(value)
+  );
 }
 export function compareTokens(left: string, right: string): number {
   // Go orders protocol tokens by UTF-8 bytes, independently of JSON key order.

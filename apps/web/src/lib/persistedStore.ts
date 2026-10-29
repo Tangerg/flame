@@ -34,8 +34,7 @@ export class ScopedPersistence<State> {
 
   activate(scope: string, store: ScopedStore<State>): boolean {
     if (this.isActive(scope)) return false;
-    if (this.#scope === null) localStorage.removeItem(this.name);
-    else this.#snapshots.set(this.#scope, store.getState());
+    if (this.#scope !== null) this.#snapshots.set(this.#scope, store.getState());
     this.#scope = scope;
     this.#restoring = true;
     store.persist.setOptions({ name: `${this.name}:${encodeURIComponent(scope)}` });

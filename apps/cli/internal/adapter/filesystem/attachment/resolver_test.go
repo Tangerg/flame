@@ -27,6 +27,27 @@ func TestResolveClassifiesAndCanonicalizesWorkspaceFiles(t *testing.T) {
 	}
 }
 
+func TestResolvePreservesSymlinkParentTraversalAndExactFilename(t *testing.T) {
+	root := t.TempDir()
+	physical := filepath.Join(root, "physical")
+	if err := os.MkdirAll(filepath.Join(physical, "child"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	writeFixture(t, filepath.Join(physical, "notes.txt "), "physical content")
+	if err := os.Symlink(filepath.Join(physical, "child"), filepath.Join(root, "alias")); err != nil {
+		t.Fatal(err)
+	}
+	resolver := newFixtureResolver(t, root)
+	got := resolveFixture(t, resolver, "alias"+string(filepath.Separator)+".."+string(filepath.Separator)+"notes.txt ")
+	want, err := filepath.EvalSymlinks(filepath.Join(physical, "notes.txt "))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Path != want {
+		t.Fatalf("attachment path = %q, want %q", got.Path, want)
+	}
+}
+
 func writeFixture(t *testing.T, path, content string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

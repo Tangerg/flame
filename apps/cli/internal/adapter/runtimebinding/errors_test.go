@@ -2,6 +2,7 @@ package runtimebinding
 
 import (
 	"errors"
+	"net/http"
 	"strings"
 	"testing"
 
@@ -23,6 +24,8 @@ func TestTransportAvailabilityAndMutationCertaintyRemainIndependent(t *testing.T
 		{name: "observation loss", cause: runtimeclient.ErrDisconnected, reconnect: true, unknown: true},
 		{name: "lost acknowledgement", cause: errors.Join(runtimeclient.ErrDisconnected, runtimeclient.ErrAcknowledgementUnknown), reconnect: true, unknown: true},
 		{name: "malformed acknowledgement", cause: errors.Join(protocol.ErrInvalidResponse, runtimeclient.ErrAcknowledgementUnknown), unknown: true},
+		{name: "http admission refusal", cause: &runtimeclient.TransportError{StatusCode: http.StatusUnauthorized, Type: "unauthorized"}, unknown: true},
+		{name: "closed client cannot settle an earlier command", cause: runtimeclient.ErrClosed, unknown: true},
 		{name: "malformed observation", cause: protocol.ErrInvalidResponse},
 		{name: "authoritative refusal", cause: protocol.ErrRevisionConflict},
 	} {

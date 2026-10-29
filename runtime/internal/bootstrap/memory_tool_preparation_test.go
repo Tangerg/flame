@@ -66,8 +66,8 @@ func TestManagedMemoryToolUsesCapturedWorkspaceWithoutAnEmbeddingRole(t *testing
 			server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "memory"}
 			r.poMCPTools(server, memoryToolsReady)
 			if operation == memorycontract.SearchToolName {
-				item := mustMemoryAdd(r, memoryAddRequest(r, memorycontract.AddV2Input{Scope: "project", CWD: cfg.defaultWorkspacePath, Content: fact}), "prepare-fact")
-				if item.Status != "active" {
+				item := mustMemoryAdd(r, memoryAddRequest(r, memorycontract.AddV2Input{Scope: memorycontract.AddV2InputScopeProject, CWD: cfg.defaultWorkspacePath, Content: fact}), "prepare-fact")
+				if item.Status != memorycontract.UpdateV2OutputStatusActive {
 					t.Fatal("human-created fact was not active")
 				}
 			}
@@ -87,7 +87,7 @@ func TestManagedMemoryToolUsesCapturedWorkspaceWithoutAnEmbeddingRole(t *testing
 			if !observed.Load() {
 				t.Fatal("actual Memory backend tool did not return its original workspace fact")
 			}
-			page := readMemoryPage(r, memorycontract.ListV2Input{Scope: "project", CWD: cfg.defaultWorkspacePath})
+			page := readMemoryPage(r, memorycontract.ListV2Input{Scope: memorycontract.ListV2InputScopeProject, CWD: cfg.defaultWorkspacePath})
 			if len(page.Data) != 1 || page.Data[0].Content != fact {
 				t.Fatalf("human read did not observe the model's memory owner: %+v", page.Data)
 			}

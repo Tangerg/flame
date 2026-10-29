@@ -1,9 +1,14 @@
 package plugin
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+)
 
 func TestExportedComponentsHaveNoHostPlacementPolicy(t *testing.T) {
-	for _, scope := range []ComponentScope{"installation", "workspace", "session", "client", "file", "toolResult"} {
+	for _, spelling := range extension.ComponentScope("").Values() {
+		scope := extension.ComponentScope(spelling)
 		t.Run(string(scope), func(t *testing.T) {
 			builder, err := NewBuilder("exports", "", "")
 			if err != nil {
@@ -20,7 +25,7 @@ func TestExportedComponentsHaveNoHostPlacementPolicy(t *testing.T) {
 			}
 			value.ID = "selector"
 			value.Material = ""
-			value.Selector = &RendererSelector{Kind: rendererFileExtension, Name: "md"}
+			value.Selector = &RendererSelector{Kind: extension.RendererFileExtension, Name: "md"}
 			if err := builder.AdmitComponent(value); err == nil {
 				t.Fatal("export acquired host renderer policy")
 			}
@@ -31,7 +36,7 @@ func TestExportedComponentsHaveNoHostPlacementPolicy(t *testing.T) {
 func TestSessionActionPlacementAdmission(t *testing.T) {
 	for _, test := range []struct {
 		name     string
-		scope    ComponentScope
+		scope    extension.ComponentScope
 		material string
 		selector *RendererSelector
 		valid    bool
@@ -40,7 +45,7 @@ func TestSessionActionPlacementAdmission(t *testing.T) {
 		{name: "client", scope: "client"},
 		{name: "workspace", scope: "workspace"},
 		{name: "material", scope: "session", material: "memory"},
-		{name: "selector", scope: "session", selector: &RendererSelector{Kind: rendererToolName, Name: "read"}},
+		{name: "selector", scope: "session", selector: &RendererSelector{Kind: extension.RendererToolName, Name: "read"}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			builder, err := NewBuilder("actions", "", "")

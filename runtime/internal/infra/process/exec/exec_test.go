@@ -34,8 +34,24 @@ func TestShellReadRetainsOutputAndCleanupFailure(t *testing.T) {
 			t.Fatal("failed read discarded its owned shell")
 		}
 	}
+	for _, stop := range []func() error{
+		func() error { return shells.StopSession("session") },
+		func() error { return shells.StopWorkspace(sh.cwd) },
+	} {
+		for range 2 {
+			if err := stop(); !errors.Is(err, cause) {
+				t.Fatalf("repeated cleanup = %v, want original failure", err)
+			}
+			if _, retained := shells.Get("session", id); !retained {
+				t.Fatal("failed cleanup discarded the working-tree quiescence evidence")
+			}
+		}
+	}
 	if err := shells.KillAll(); !errors.Is(err, cause) {
 		t.Fatalf("shutdown = %v, want cleanup failure", err)
+	}
+	if _, retained := shells.Get("session", id); !retained {
+		t.Fatal("shutdown discarded an unconfirmed process resource")
 	}
 }
 

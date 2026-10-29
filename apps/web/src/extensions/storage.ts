@@ -1,4 +1,5 @@
 import { parseJSON, stringifyJSON } from "@qimu/sdk/json";
+import { tupleKey } from "@/lib/tupleKey";
 const ROOT = "flame.plugin";
 
 export interface KeyValueStore {
@@ -28,7 +29,7 @@ function writeStorage(operation: string, write: (storage: Storage) => void): voi
 }
 
 export function createStorage(pluginName: string): KeyValueStore {
-  const prefix = `${ROOT}.${pluginName}.`;
+  const prefix = `${tupleKey(ROOT, pluginName)}:`;
 
   return {
     get(key: string): unknown {

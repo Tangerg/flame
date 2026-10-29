@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Browser, type Locator, type Page } from "./test";
-import { DEFAULT_MOTION } from "@/lib/appearance";
+import { DEFAULT_MOTION } from "@/lib/visualStyleMotion";
 import { VISUAL_AGENT_STATES } from "./agentSessionSnapshots";
 import {
   VISUAL_SHELL_OVERLAYS,

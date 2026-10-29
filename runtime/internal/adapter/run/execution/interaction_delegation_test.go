@@ -29,7 +29,7 @@ func durationPointer(value time.Duration) *time.Duration {
 
 func TestInteractionExecutorRunsDelegateAsProductChildRun(t *testing.T) {
 	model := newDelegatingStubModel()
-	executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{
+	executor, err := newProductConfiguredInteractionExecutor(t, InteractionExecutorConfig{
 		Lifetime:     t.Context(),
 		ChatResolver: staticInteractionChatResolver(model),
 		BuildID:      interactionTestBuildID,
@@ -38,21 +38,21 @@ func TestInteractionExecutorRunsDelegateAsProductChildRun(t *testing.T) {
 		t.Fatal(err)
 	}
 	workspace := t.TempDir()
-	sessions := &delegateSessionStore{value: testsupport.MustRestoreSession(session.Snapshot{
+	current := testsupport.MustRestoreSession(session.Snapshot{
 		ID: "session_1", Title: "delegate", Workspace: testsupport.MustWorkspace(workspace),
-	})}
-	projection := newDelegateProjection(t)
+	})
+	projection := newDelegateProjection(t, current, executor)
 	runIDs := []string{"run_root", "run_child"}
 	segmentIDs := []string{"segment_root", "segment_child"}
 	coordinator := mustNewRunCoordinator(t, runs.Dependencies{
 		RootStarts: executor, Observations: executor, Releases: executor,
-		Conversation: delegateConversation{},
-		Session:      runs.SessionPorts{Reader: sessions, Creator: sessions, ActiveRuns: sessions},
+		Conversation: projection.history,
+		Session:      runs.SessionPorts{Reader: projection.sessions, Creator: projection.sessions, ActiveRuns: projection.sessions},
 		Projection: runs.ProjectionPorts{
 			Openings: projection, ChildStarts: projection, Events: projection,
 			Barriers: projection, Checkpoints: projection, Workspace: projection, Finalizer: projection,
 		},
-		Admissions: testsupport.NewAdmissionGate(), Now: time.Now,
+		Admissions: projection.admissions, Now: time.Now,
 		NewRunID: func() string {
 			id := runIDs[0]
 			runIDs = runIDs[1:]
@@ -171,7 +171,7 @@ func TestInteractionExecutorRunsDelegateAsProductChildRun(t *testing.T) {
 
 func TestInteractionExecutorCanceledDelegateWithUnknownModelOutcomeFailsRoot(t *testing.T) {
 	model := newCancelableDelegateModel()
-	executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{
+	executor, err := newProductConfiguredInteractionExecutor(t, InteractionExecutorConfig{
 		Lifetime:     t.Context(),
 		ChatResolver: staticInteractionChatResolver(model),
 		BuildID:      interactionTestBuildID,
@@ -180,10 +180,10 @@ func TestInteractionExecutorCanceledDelegateWithUnknownModelOutcomeFailsRoot(t *
 		t.Fatal(err)
 	}
 	workspace := t.TempDir()
-	sessions := &delegateSessionStore{value: testsupport.MustRestoreSession(session.Snapshot{
+	current := testsupport.MustRestoreSession(session.Snapshot{
 		ID: "session_1", Title: "running cancellation", Workspace: testsupport.MustWorkspace(workspace),
-	})}
-	projection := newDelegateProjection(t)
+	})
+	projection := newDelegateProjection(t, current, executor)
 	runIDs := []string{"run_root", "run_child"}
 	segmentIDs := []string{"segment_root", "segment_child"}
 	cancelAccepted := make(chan struct{})
@@ -195,17 +195,17 @@ func TestInteractionExecutorCanceledDelegateWithUnknownModelOutcomeFailsRoot(t *
 	}
 	coordinator := mustNewRunCoordinator(t, runs.Dependencies{
 		RootStarts: executor, Observations: executor, Releases: executor,
-		Conversation: delegateConversation{}, RunningSubtreeCanceler: runningSubtreeCanceler,
+		Conversation: projection.history, RunningSubtreeCanceler: runningSubtreeCanceler,
 		Session: runs.SessionPorts{
-			Reader: sessions, Creator: sessions, ActiveRuns: sessions,
-			Interrupts: sessions, Terminations: sessions,
+			Reader: projection.sessions, Creator: projection.sessions, ActiveRuns: projection.sessions,
+			Interrupts: projection.sessions, Terminations: projection.sessions,
 		},
 		Projection: runs.ProjectionPorts{
 			Openings: projection, ChildStarts: projection, Events: projection,
 			Barriers: projection, Checkpoints: projection, Workspace: projection, Finalizer: projection,
 		},
 		Runs: projection, Items: projection,
-		Admissions: testsupport.NewAdmissionGate(), Now: time.Now,
+		Admissions: projection.admissions, Now: time.Now,
 		NewRunID: func() string {
 			id := runIDs[0]
 			runIDs = runIDs[1:]
@@ -530,7 +530,7 @@ func startDelegateTreeWithCompactor(t *testing.T, model chat.Model, input string
 	if compactor != nil {
 		contextState = emptyInteractionModelContextState{}
 	}
-	executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{
+	executor, err := newProductConfiguredInteractionExecutor(t, InteractionExecutorConfig{
 		Lifetime:               t.Context(),
 		ChatResolver:           staticInteractionChatResolver(model),
 		MaxConcurrentToolCalls: intPointer(4), BuildID: interactionTestBuildID,
@@ -540,21 +540,21 @@ func startDelegateTreeWithCompactor(t *testing.T, model chat.Model, input string
 		t.Fatal(err)
 	}
 	workspace := t.TempDir()
-	sessions := &delegateSessionStore{value: testsupport.MustRestoreSession(session.Snapshot{
+	current := testsupport.MustRestoreSession(session.Snapshot{
 		ID: "session_tree", Title: "delegate tree", Workspace: testsupport.MustWorkspace(workspace),
-	})}
-	projection := newDelegateProjection(t)
+	})
+	projection := newDelegateProjection(t, current, executor)
 	var identityMu sync.Mutex
 	runSequence, segmentSequence := 0, 0
 	coordinator := mustNewRunCoordinator(t, runs.Dependencies{
 		RootStarts: executor, Observations: executor, Releases: executor,
-		Conversation: delegateConversation{},
-		Session:      runs.SessionPorts{Reader: sessions, Creator: sessions, ActiveRuns: sessions},
+		Conversation: projection.history,
+		Session:      runs.SessionPorts{Reader: projection.sessions, Creator: projection.sessions, ActiveRuns: projection.sessions},
 		Projection: runs.ProjectionPorts{
 			Openings: projection, ChildStarts: projection, Events: projection,
 			Barriers: projection, Checkpoints: projection, Workspace: projection, Finalizer: projection,
 		},
-		Admissions: testsupport.NewAdmissionGate(), Now: time.Now,
+		Admissions: projection.admissions, Now: time.Now,
 		NewRunID: func() string {
 			identityMu.Lock()
 			defer identityMu.Unlock()

@@ -245,3 +245,59 @@ func TestScopeObservationDoesNotReopenAFencedGenerationDuringRecovery(t *testing
 		t.Fatalf("new scope generation revived an old grant: %v", err)
 	}
 }
+
+func TestInstallationRestorationPreservesScopeRevocation(t *testing.T) {
+	for _, change := range []string{"fence", "disable", "remove"} {
+		t.Run(change, func(t *testing.T) {
+			ctx := testContext(t)
+			host := testHost(t, qimu.HostConfig{})
+			var grant qimu.ScopeGrant
+			plugin := installNative(t, host, "original", qimu.Unit{
+				Declaration: qimu.UnitDeclaration{ID: "main", Profile: qimu.NativeGo},
+				Setup: func(_ context.Context, setup *qimu.Setup) ([]qimu.ExportValue, error) {
+					grant = setup.ScopeGrant()
+					return nil, nil
+				},
+			})
+			plan, err := host.PlanUnit(ctx, "", qimu.UnitRef{InstallationID: "original", Release: plugin.Revision(), UnitID: "main"}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := host.ActivatePlan(ctx, "", plan); err != nil {
+				t.Fatal(err)
+			}
+			if err := host.Retire(ctx, "original"); err != nil {
+				t.Fatal(err)
+			}
+			if err := host.WaitRetired(ctx, "original"); err != nil {
+				t.Fatal(err)
+			}
+			record, found := host.Installation("original")
+			if !found {
+				t.Fatal("retirement erased the installation")
+			}
+			records := []qimu.InstallationRecord{record}
+			switch change {
+			case "fence":
+				host.Admission().FenceScope(grant.ID())
+			case "disable":
+				records[0].Enabled = false
+			case "remove":
+				records = nil
+			}
+			if err := host.Restore(ctx, records, []*qimu.Plugin{plugin}); err != nil {
+				t.Fatal(err)
+			}
+			observed, found := host.Admission().Scope(grant.ID())
+			if !found || !observed.Fenced || observed.Generation != grant.Generation() || !errors.Is(host.Admission().ValidateScope(grant), qimu.ErrFenced) {
+				t.Fatalf("restoration changed original revocation: %+v", observed)
+			}
+			if _, err := host.Close(ctx); err != nil {
+				t.Fatal(err)
+			}
+			if err := host.Restore(ctx, records, []*qimu.Plugin{plugin}); !errors.Is(err, qimu.ErrClosed) {
+				t.Fatalf("closed host accepted restoration: %v", err)
+			}
+		})
+	}
+}

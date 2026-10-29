@@ -44,6 +44,39 @@ func TestSelectionsAdmitInputRejectsMissingModelSelection(t *testing.T) {
 	}
 }
 
+func TestSelectionsAdmitInputIncludesToolResultMedia(t *testing.T) {
+	image, err := media.NewBytes("image/png", []byte("image"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	messages := []chat.Message{chat.NewToolMessage(chat.ToolResult{
+		ID: "image-result", Name: "inspect",
+		Output: chat.ToolOutput{Content: []chat.ToolContent{
+			{Kind: chat.PartText, Text: "Inspect this image"},
+			{Kind: chat.PartMedia, Media: image},
+		}},
+	})}
+	for _, test := range []struct {
+		provider, model string
+		accepts         bool
+	}{
+		{provider: "alibaba", model: "qwen-mt-plus"},
+		{provider: "openai", model: "gpt-5.6-sol", accepts: true},
+	} {
+		selection, err := modelchoice.New(test.provider, test.model)
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = (Selections{}).AdmitInput(selection, messages)
+		if test.accepts && err != nil {
+			t.Fatalf("image-capable model rejected Tool content: %v", err)
+		}
+		if !test.accepts && !errors.Is(err, ErrUnsupportedInputModality) {
+			t.Fatalf("text-only model admitted Tool media: %v", err)
+		}
+	}
+}
+
 func TestSelectionsAdmitInputAllowsPrivateCatalogMiss(t *testing.T) {
 	image, err := media.NewBytes("image/png", []byte("image"))
 	if err != nil {

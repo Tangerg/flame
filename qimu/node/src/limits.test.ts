@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { Decimal } from "decimal.js";
 import { ExactNumber } from "@qimu/sdk/json";
 import {
   Capability,
@@ -231,6 +232,43 @@ describe("Go-owned portable profile budgets", () => {
       PORTABLE_LIMITS.maxDescriptorBytes,
     );
     expect(() => chat(input)).not.toThrow();
+  });
+
+  it("keeps schema arithmetic exact at admitted bounds and independent of Decimal globals", () => {
+    const previous = {
+      precision: Decimal.precision,
+      minE: Decimal.minE,
+      maxE: Decimal.maxE,
+      rounding: Decimal.rounding,
+      modulo: Decimal.modulo,
+    };
+    try {
+      Decimal.set({ precision: 1, minE: -1, maxE: 1 });
+      const exponent = PORTABLE_LIMITS.maxAbsExponent;
+      const unit = new ExactNumber(`1e-${exponent}`);
+      const validate = compileSchema({
+        type: "number",
+        minimum: unit,
+        maximum: new ExactNumber(`1e${exponent}`),
+        multipleOf: unit,
+      });
+      for (const raw of [`1e-${exponent}`, `2e-${exponent}`, `1e${exponent}`])
+        expect(() => validate(new ExactNumber(raw))).not.toThrow();
+      for (const raw of [
+        `1.1e-${exponent}`,
+        `0.1e-${exponent}`,
+        `2e${exponent}`,
+      ])
+        expect(() => validate(new ExactNumber(raw))).toThrow(
+          /does not satisfy/,
+        );
+      const indivisible = compileSchema({
+        multipleOf: new ExactNumber("9".repeat(PORTABLE_LIMITS.maxNumberBytes)),
+      });
+      expect(() => indivisible(1)).toThrow(/does not satisfy/);
+    } finally {
+      Decimal.set(previous);
+    }
   });
 
   it("keeps fixed identifier patterns without admitting variable backtracking", () => {

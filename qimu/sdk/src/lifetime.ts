@@ -314,13 +314,17 @@ export class Lifetime {
   dependsOn(provider: Lifetime): void {
     this.assertOpen();
     provider.assertOpen();
+    // Parent exit joins its children just as provider exit joins its consumers.
+    // Admission must consider both edges before introducing another wait.
     const reaches = (current: Lifetime, seen: Set<Lifetime>): boolean => {
-      if (current === this) return true;
+      if (current === provider) return true;
       if (seen.has(current)) return false;
       seen.add(current);
-      return [...current.#providers].some((next) => reaches(next, seen));
+      return [...current.#children.keys(), ...current.#dependents].some(
+        (next) => reaches(next, seen),
+      );
     };
-    if (reaches(provider, new Set()))
+    if (reaches(this, new Set()))
       throw new QimuError("invalid_plan", "resource dependency cycle");
     this.#providers.add(provider);
     provider.#dependents.add(this);

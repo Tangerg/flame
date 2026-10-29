@@ -11,6 +11,7 @@
     "@flame/ui/floating-surface",
     "@flame/ui/glyph-swap",
     "@flame/ui/icon-button",
+    "@flame/ui/icon-scale",
     "@flame/ui/panel",
     "@flame/ui/select",
     "@flame/ui/text-field",
@@ -28,5 +29,10 @@
     "react-dom/client",
     "react/jsx-dev-runtime",
     "react/jsx-runtime"
-  ]
+  ],
+  "moduleGraph": {
+    "filename": "modules.generated.json",
+    "schemaVersion": 1
+  },
+  "componentExport": "component"
 }

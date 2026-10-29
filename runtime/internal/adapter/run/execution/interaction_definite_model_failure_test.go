@@ -46,7 +46,7 @@ func TestScopeDefiniteModelFailureSettlesWithoutHostCancellation(t *testing.T) {
 						}
 					}),
 				}
-				recorded, err := modeladapter.NewObservedResolver(interactionChatResolver(physical, nil), fixtureEndpointJournal{ModelInvocationStore: journal, db: db}, nil)
+				recorded, err := modeladapter.NewObservedResolver(interactionChatResolver(physical, nil), newSessionEndpointJournal(db), nil)
 				if err != nil {
 					t.Fatal(err)
 				}

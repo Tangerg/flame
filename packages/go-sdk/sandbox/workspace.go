@@ -63,6 +63,12 @@ func New(ctx context.Context, config Config, source string) (*Workspace, error) 
 }
 
 func newWorkspace(ctx context.Context, config Config, source string, runner commandRunner) (_ *Workspace, err error) {
+	if ctx == nil {
+		return nil, errors.New("sandbox: context is required")
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if runner == nil {
 		return nil, errors.New("sandbox: command runner is nil")
 	}

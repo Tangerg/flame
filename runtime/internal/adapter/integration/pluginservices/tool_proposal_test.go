@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/qimu"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
@@ -56,7 +55,7 @@ func TestCapturedContributionActivationClassifiesMissingLiveSource(t *testing.T)
 	if err := composition.calls.framework.WaitRetired(t.Context(), qimu.InstallationID(captured[0].InstallationID.String())); err != nil {
 		t.Fatal(err)
 	}
-	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "original", Origin: extension.Model, Parent: "run_owner", Target: portable.Target{Scope: "call", Reference: "original"}})
+	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "original", Origin: extension.Model, Parent: "run_owner", Target: portable.Target{Scope: extension.ScopeCall, Reference: "original"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +119,7 @@ func TestInstalledToolProposalsPreserveOrderCallerAndWithdrawal(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "original", Origin: extension.Model, Parent: "run_owner", Target: portable.Target{Scope: "call", Reference: "original"}})
+			ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "original", Origin: extension.Model, Parent: "run_owner", Target: portable.Target{Scope: extension.ScopeCall, Reference: "original"}})
 			if err != nil {
 				t.Fatal(err)
 			}

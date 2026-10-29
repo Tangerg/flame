@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/extensions"
+	"github.com/Tangerg/flame/packages/go-sdk/capture"
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
@@ -96,23 +97,22 @@ func (e executableCommand) Execute(ctx context.Context, request extensions.Comma
 	process.Dir = e.directory
 	process.Env = commandEnvironment(e.pluginID, e.command)
 	process.Stdin = bytes.NewReader(append(payload, '\n'))
-	var stdout, stderr cappedBuffer
-	stdout.limit, stderr.limit = maxCommandOutputBytes, maxCommandOutputBytes
-	process.Stdout, process.Stderr = &stdout, &stderr
+	stdout, stderr := capture.NewWriter(maxCommandOutputBytes), capture.NewWriter(maxCommandOutputBytes)
+	process.Stdout, process.Stderr = stdout, stderr
 	if err := process.Run(); err != nil {
 		if cause := context.Cause(ctx); cause != nil {
 			return extensions.CommandResult{}, fmt.Errorf("plugin %s command /%s: %w", e.pluginID, e.command, cause)
 		}
-		detail := strings.TrimSpace(stderr.string())
+		detail := strings.TrimSpace(stderr.Diagnostic())
 		if detail == "" {
 			detail = err.Error()
 		}
 		return extensions.CommandResult{}, fmt.Errorf("plugin %s command /%s failed: %s", e.pluginID, e.command, detail)
 	}
-	if stdout.overflow || stderr.overflow {
+	if stdout.Truncated() || stderr.Truncated() {
 		return extensions.CommandResult{}, fmt.Errorf("plugin %s command /%s exceeded the %d-byte output limit", e.pluginID, e.command, maxCommandOutputBytes)
 	}
-	return decodeCommandResponse(e.pluginID, e.command, stdout.bytes())
+	return decodeCommandResponse(e.pluginID, e.command, stdout.Bytes())
 }
 
 func validateCommandRequest(request extensions.CommandRequest) error {
@@ -175,27 +175,3 @@ func decodeCommandResponse(pluginID, command string, output []byte) (extensions.
 	}
 	return extensions.CommandResult{Message: message}, nil
 }
-
-// cappedBuffer keeps at most limit bytes of a plugin's output. The buffer is a
-// field rather than an embedded type on purpose: bytes.Buffer implements
-// io.ReaderFrom, and os/exec copies a non-file Stdout with io.Copy, which takes
-// that fast path and would read the whole stream past the cap.
-type cappedBuffer struct {
-	buffer   bytes.Buffer
-	limit    int
-	overflow bool
-}
-
-func (c *cappedBuffer) Write(value []byte) (int, error) {
-	length := len(value)
-	remaining := max(c.limit-c.buffer.Len(), 0)
-	if len(value) > remaining {
-		value = value[:remaining]
-		c.overflow = true
-	}
-	_, _ = c.buffer.Write(value)
-	return length, nil
-}
-
-func (c *cappedBuffer) bytes() []byte  { return c.buffer.Bytes() }
-func (c *cappedBuffer) string() string { return c.buffer.String() }

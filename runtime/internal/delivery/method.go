@@ -451,6 +451,11 @@ func (m MethodMeta) validateShapes() error {
 			m.Name, m.Pagination, derivedPagination,
 		)
 	}
+	if m.Event != nil {
+		if err := jsonvalue.ValidateType(m.Event); err != nil {
+			return fmt.Errorf("%s: invalid event declaration: %w", m.Name, err)
+		}
+	}
 	if (m.Kind == KindStream) != (m.Event != nil) {
 		return fmt.Errorf("%s: a stream declares its event type and only a stream has one", m.Name)
 	}
