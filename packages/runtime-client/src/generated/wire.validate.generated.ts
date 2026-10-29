@@ -925,7 +925,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     exitCode: integer(),
     output: text(),
   }, ["output"]),
-  ComponentPlacement: enumOf(["export", "workspaceView", "sessionAction", "fileRenderer", "toolResultRenderer"]),
+  ComponentPlacement: enumOf(["export", "workspaceView", "settingsPane", "sessionAction", "fileRenderer", "toolResultRenderer"]),
   ComponentScope: enumOf(["installation", "workspace", "session", "client", "file", "toolResult"]),
   ConfigurePluginRequest: object({
     digest: allOf([text(), pattern("^[0-9a-f]{64}$")]),

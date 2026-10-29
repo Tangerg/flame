@@ -419,7 +419,7 @@ export interface CommandResult {
   output: string;
 }
 
-export type ComponentPlacement = "export" | "workspaceView" | "sessionAction" | "fileRenderer" | "toolResultRenderer";
+export type ComponentPlacement = "export" | "workspaceView" | "settingsPane" | "sessionAction" | "fileRenderer" | "toolResultRenderer";
 
 export type ComponentScope = "installation" | "workspace" | "session" | "client" | "file" | "toolResult";
 
@@ -2327,7 +2327,7 @@ export const WIRE_ENUMS = {
   CancelRunResponseType: ["root", "child"],
   CapabilityRequirementType: ["feature", "interruptType", "runtimeTopic"],
   ChangeStatus: ["added", "deleted", "modified", "moved"],
-  ComponentPlacement: ["export", "workspaceView", "sessionAction", "fileRenderer", "toolResultRenderer"],
+  ComponentPlacement: ["export", "workspaceView", "settingsPane", "sessionAction", "fileRenderer", "toolResultRenderer"],
   ComponentScope: ["installation", "workspace", "session", "client", "file", "toolResult"],
   ContentBlockType: ["text", "image"],
   DiffBaselineType: ["head", "mergeBase", "emptyTree"],

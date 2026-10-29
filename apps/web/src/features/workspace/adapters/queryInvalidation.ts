@@ -3,7 +3,6 @@ import { queryClient, replaceCachedRead } from "@/lib/queryClient";
 import { AGENT_SESSIONS_KEY } from "@/features/agent/public/session";
 
 import { APPROVAL_MODE_KEY, APPROVAL_RULES_KEY } from "@/features/agent/public/approvalPolicy";
-import { HOOKS_KEY } from "@/features/hooks/public/queries";
 import {
   EMBEDDING_ROLE_KEY,
   MODELS_KEY,
@@ -35,7 +34,6 @@ const QUERY_KEYS: Record<
   fileList: WORKSPACE_LIST_FILES_KEY,
   fileRead: WORKSPACE_READ_FILE_KEY,
   filesChanged: WORKSPACE_FILES_CHANGED_KEY,
-  hooks: HOOKS_KEY,
   models: MODELS_KEY,
   mcpServers: MCP_SERVERS_KEY,
   mcpTools: MCP_TOOLS_KEY,

@@ -9,6 +9,7 @@
   },
   "workspaces": [
     "apps/web",
+    "assets/brand",
     "packages/runtime-client",
     "packages/component-sdk",
     "packages/backend-sdk",

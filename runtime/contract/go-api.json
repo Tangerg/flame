@@ -763,6 +763,11 @@
           "value": "\"sessionAction\""
         },
         {
+          "name": "ComponentPlacementSettingsPane",
+          "type": "ComponentPlacement",
+          "value": "\"settingsPane\""
+        },
+        {
           "name": "ComponentPlacementToolResultRenderer",
           "type": "ComponentPlacement",
           "value": "\"toolResultRenderer\""

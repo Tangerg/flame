@@ -380,26 +380,24 @@ for (const width of [1120, 320]) {
     await page.locator("html[data-visual-ready]").waitFor();
     const command = "./scripts/review-permissions --workspace /Users/visual/a-long-workspace-name";
     await page.evaluate(async (command) => {
-      const moduleUrl = "/src/lib/queryClient.ts";
-      const { queryClient }: typeof import("@/lib/queryClient") = await import(moduleUrl);
-      queryClient.setQueriesData(
-        { queryKey: ["hooks"] },
-        {
-          projectRoot: "/Users/visual/scope",
-          projectTrusted: false,
-          hooks: [
-            {
-              event: "PreToolUse",
-              matcher: "shell",
-              command,
-              scope: "project",
-              source: "/Users/visual/scope/.flame/hooks.json",
-              active: false,
-            },
-          ],
-        },
-      );
+      const moduleUrl = "/visual/hookSnapshot.ts";
+      const { VISUAL_HOOKS }: typeof import("./hookSnapshot") = await import(moduleUrl);
+      Object.assign(VISUAL_HOOKS, {
+        projectRoot: "/Users/visual/scope",
+        projectTrusted: false,
+        hooks: [
+          {
+            event: "PreToolUse",
+            matcher: "shell",
+            command,
+            scope: "project",
+            source: "/Users/visual/scope/.flame/hooks.json",
+            active: false,
+          },
+        ],
+      });
     }, command);
+    await page.getByRole("button", { name: "Refresh", exact: true }).click();
     const toggle = page.getByRole("switch", { name: "Trust this project's hooks", exact: true });
     await expect(toggle).toBeVisible();
     const identity = page.getByText("Trust this project's hooks", { exact: true });

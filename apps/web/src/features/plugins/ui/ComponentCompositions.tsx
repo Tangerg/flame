@@ -45,6 +45,11 @@ type ComponentContextRenderer = (
   composition: ComponentComposition,
 ) => ReactNode;
 
+type CompositionContext = Pick<
+  ComponentContext,
+  "component" | "signal" | "workspace" | "sessionId" | "file" | "toolResult"
+>;
+
 function identity(value: ComponentReference): string {
   return `${value.installationId}/${value.digest}/${value.componentId}`;
 }
@@ -80,7 +85,7 @@ export class ComponentCompositions {
   async resolve(
     request: ResolvePluginPointRequest,
     installations: readonly PluginInstallation[],
-    context: ComponentContext,
+    context: CompositionContext,
     lifetime: ContributionLifetime,
     ancestry: readonly ComponentReference[],
   ): Promise<LoadedContribution[]> {
@@ -219,7 +224,7 @@ class CompositionInstance {
     private readonly host: ComponentCompositions,
     private readonly lifetime: ContributionLifetime,
     private readonly ancestry: readonly ComponentReference[],
-    private readonly context: ComponentContext,
+    private readonly context: CompositionContext,
     private readonly requestKey: string,
   ) {}
 
@@ -346,9 +351,28 @@ function InstalledComposition({
   requestKey: string;
 }) {
   const retiring = useRef(Promise.resolve());
+  const { component, signal, workspace, sessionId, file, toolResult } = context;
   const instance = useMemo(
-    () => new CompositionInstance(host, lifetime, ancestry, context, requestKey),
-    [host, lifetime, ancestry, context, requestKey],
+    () =>
+      new CompositionInstance(
+        host,
+        lifetime,
+        ancestry,
+        { component, signal, workspace, sessionId, file, toolResult },
+        requestKey,
+      ),
+    [
+      host,
+      lifetime,
+      ancestry,
+      component,
+      signal,
+      workspace,
+      sessionId,
+      file,
+      toolResult,
+      requestKey,
+    ],
   );
   const result = useSyncExternalStore(instance.subscribe, instance.getSnapshot);
   useEffect(

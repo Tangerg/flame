@@ -199,28 +199,25 @@ for (const theme of ["light", "dark"]) {
     await page.getByRole("heading", { name: "Hooks", exact: true }).waitFor();
     await page.evaluate(
       async ({ matcher, command }) => {
-        const moduleUrl = "/src/lib/queryClient.ts";
-        const { queryClient }: typeof import("@/lib/queryClient") = await import(moduleUrl);
-        await queryClient.cancelQueries({ queryKey: ["hooks"] });
-        queryClient.setQueriesData(
-          { queryKey: ["hooks"] },
-          {
-            projectTrusted: true,
-            hooks: [
-              {
-                event: "PreToolUse",
-                matcher,
-                command,
-                scope: "global",
-                source: "user-hooks.json",
-                active: false,
-              },
-            ],
-          },
-        );
+        const moduleUrl = "/visual/hookSnapshot.ts";
+        const { VISUAL_HOOKS }: typeof import("./hookSnapshot") = await import(moduleUrl);
+        Object.assign(VISUAL_HOOKS, {
+          projectTrusted: true,
+          hooks: [
+            {
+              event: "PreToolUse",
+              matcher,
+              command,
+              scope: "global",
+              source: "user-hooks.json",
+              active: false,
+            },
+          ],
+        });
       },
       { matcher, command },
     );
+    await page.getByRole("button", { name: "Refresh", exact: true }).click();
     await textFitsRow(page.getByText(matcher, { exact: true }));
     await textFitsRow(page.getByText(command, { exact: true }));
   });

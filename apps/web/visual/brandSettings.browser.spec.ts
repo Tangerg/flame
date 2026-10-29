@@ -11,7 +11,7 @@ for (const theme of ["light", "dark"]) {
       const panel = page.getByRole("tabpanel");
       await expect(
         panel.getByRole("heading", {
-          name: locale === "zh" ? "品牌形象" : "Brand identity",
+          name: "Brand identity",
           level: 1,
           exact: true,
         }),
@@ -62,7 +62,7 @@ test("brand settings can be found, copied and downloaded", async ({
   const save = panel.getByRole("button", { name: "Download Primary logo", exact: true });
   await save.click();
   const download = await downloadEvent;
-  expect(download.suggestedFilename()).toBe("flame-image.png");
+  expect(download.suggestedFilename()).toBe("flame-mark.png");
   expect(await download.failure()).toBeNull();
   await expect(save).toBeFocused();
 });

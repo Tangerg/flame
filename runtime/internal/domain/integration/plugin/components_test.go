@@ -59,3 +59,31 @@ func TestSessionActionPlacementAdmission(t *testing.T) {
 		})
 	}
 }
+
+func TestSettingsPanePlacementAdmitsOnlySettingsContexts(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		scope    extension.ComponentScope
+		selector *RendererSelector
+		valid    bool
+	}{
+		{name: "client", scope: "client", valid: true},
+		{name: "workspace", scope: "workspace", valid: true},
+		{name: "installation", scope: "installation", valid: true},
+		{name: "session", scope: "session"},
+		{name: "file", scope: "file"},
+		{name: "tool result", scope: "toolResult"},
+		{name: "selector", scope: "client", selector: &RendererSelector{Kind: extension.RendererToolName, Name: "read"}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			builder, err := NewBuilder("settings", "", "")
+			if err != nil {
+				t.Fatal(err)
+			}
+			err = builder.AdmitComponent(ClientComponent{ID: "settings", Title: "Provider settings", Scope: test.scope, Placement: "settingsPane", Material: "providers", Selector: test.selector, Entry: Namespace + "/components/component.js", Export: "Settings"})
+			if (err == nil) != test.valid {
+				t.Fatalf("admission: %v, valid %v", err, test.valid)
+			}
+		})
+	}
+}

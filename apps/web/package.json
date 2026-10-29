@@ -50,6 +50,7 @@
     "browser:computer": "playwright test --config playwright.computer.config.ts"
   },
   "dependencies": {
+    "@flame/brand-assets": "*",
     "@base-ui/react": "^1.9.0",
     "@flame/icons": "*",
     "@flame/component-sdk": "*",

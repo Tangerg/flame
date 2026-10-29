@@ -7,11 +7,9 @@ import { type WorkspaceOwner } from "@/features/workspace/adapters/workspace";
 import { type createWorkingDirectoryPicker } from "@/features/navigation/adapters/workingDirectorySelection";
 import { type Navigator } from "@/lib/navigation";
 import { shellServices } from "./shellServices";
-import { type ClientHost } from "@/platform/host";
 import { type createRuntimeConnection } from "@/features/connection/adapters/runtimeConnection";
 import { type AnyPlugin } from "dougong";
 import appearance from "@/features/settings/appearance";
-import { createBrandPlugin } from "@/features/settings/brand/index";
 import approvalsPane from "@/features/approvals/index";
 import personalization from "@/features/settings/personalization/index";
 import chatSearch from "@/features/chat/search/index";
@@ -38,7 +36,6 @@ import { workspaceSessionNavigation } from "@/features/workspace/sessionNavigati
 import { workspaceKeymap } from "@/features/workspace/keymap";
 import sessionSearch from "@/features/navigation/session-search/index";
 import commandMenu from "@/features/command/menu/index";
-import { createHooksPlugin } from "@/features/hooks/index";
 import { createMCPServersPlugin } from "@/features/mcp/index";
 import { createRpcAgentPlugin } from "@/features/agent/rpcAgent";
 import {
@@ -83,7 +80,6 @@ export function createToolRenderingPlugins(workspace: WorkspaceOwner["access"]):
 
 export function createBuiltinPlugins(
   connection: ReturnType<typeof createRuntimeConnection>,
-  host: ClientHost,
   navigation: Navigator,
   agent: AgentOwner,
   composerOwner: ComposerOwner,
@@ -137,14 +133,12 @@ export function createBuiltinPlugins(
 
   const panes: AnyPlugin[] = [
     appearance,
-    createBrandPlugin((source) => host.saveImage(source)),
     approvalsPane,
     personalization,
     connectionSettings,
     createPluginsPlugin(installedPlugins),
     createProvidersPlugin(runtimeClient),
     createMCPServersPlugin(runtimeClient),
-    createHooksPlugin(runtimeClient),
     fileView,
     subagentsView,
   ];

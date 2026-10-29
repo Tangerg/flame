@@ -22,6 +22,7 @@ import { definePlugin } from "@/extensions/definePlugin";
 import { contributionsTo } from "@/extensions/kernel";
 import { COLOR_THEME } from "@/features/theme/public/extensionPoints";
 import { WORKSPACE_VIEW } from "@/features/workspace/public/views";
+import { SETTINGS_PANE } from "@/features/settings/public/panes";
 import { loadPluginsForTest, resetKernelForTest } from "@/test/kernel";
 import { usePluginErrorStore } from "@/extensions/errors";
 import { RuntimeConnectionGeneration, RUNTIME_STREAM } from "@/features/connection/public/services";
@@ -530,6 +531,15 @@ it("presents and retains only the contributions Runtime admits", async () => {
   withheld.selected.components = admitted.selected.components;
   admitted.selected.components.push(
     {
+      id: "settings",
+      title: "Provider settings",
+      scope: "client",
+      placement: "settingsPane",
+      material: "providers",
+      entry: "io.github.tangerg.flame/components/component.js",
+      export: "Settings",
+    },
+    {
       id: "search",
       title: "Search",
       scope: "toolResult",
@@ -580,9 +590,22 @@ it("presents and retains only the contributions Runtime admits", async () => {
   expect(contributionsTo(TOOL_RESULT_RENDERER).map((entry) => entry.item.title)).toEqual([
     "admitted · Search",
   ]);
+  expect(
+    contributionsTo(SETTINGS_PANE)
+      .filter((entry) => entry.item.material === "providers")
+      .map((entry) => ({ id: entry.item.id, label: entry.item.label, group: entry.item.group })),
+  ).toEqual([
+    {
+      id: "package:d3cbafab-ef30-4e20-9583-42f5316dc865:settings",
+      label: "Provider settings",
+      group: "extensions",
+    },
+  ]);
   expect(retainThemeSelection).toHaveBeenLastCalledWith(
     testClient.theme.access.preference,
     ["package:d3cbafab-ef30-4e20-9583-42f5316dc865:theme"],
     "package:",
   );
+  await resetKernelForTest();
+  expect(contributionsTo(SETTINGS_PANE)).toEqual([]);
 });

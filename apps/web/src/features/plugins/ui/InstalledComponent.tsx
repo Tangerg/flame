@@ -143,14 +143,16 @@ function ComponentRecovery({
   );
 }
 
+type CapturedContext = Omit<ComponentContext, "locale" | "compose">;
+
 class ComponentInstance {
   private controller = new AbortController();
   private listeners = new Set<() => void>();
-  private context: ComponentContext;
-  constructor(private readonly sources: ComponentSources & { locale: string }) {
+  private context: CapturedContext;
+  constructor(private readonly sources: ComponentSources) {
     this.context = this.capture();
   }
-  private capture(): ComponentContext {
+  private capture(): CapturedContext {
     const signal = AbortSignal.any([
       this.controller.signal,
       this.sources.lifetime.signal,
@@ -204,14 +206,9 @@ class ComponentInstance {
         signal.throwIfAborted();
         return track(() => this.sources.saveFile(request));
       },
-      locale: this.sources.locale,
       signal,
       telemetry: captureClientTelemetry(signal),
       track,
-      compose: (composition: ComponentComposition) => {
-        signal.throwIfAborted();
-        return this.sources.compose(this.context, composition);
-      },
     });
   }
   retire = () => this.controller.abort();
@@ -240,8 +237,22 @@ function RenderingInstance({
   children,
   fallback,
   reload,
-}: ComponentProps & { instance: ComponentInstance }) {
-  const context = useSyncExternalStore(instance.subscribe, instance.getSnapshot);
+  locale,
+  compose,
+}: ComponentProps & { instance: ComponentInstance; locale: string }) {
+  const captured = useSyncExternalStore(instance.subscribe, instance.getSnapshot);
+  const context = useMemo(() => {
+    if (!captured) return null;
+    const value: ComponentContext = Object.freeze({
+      ...captured,
+      locale,
+      compose: (composition: ComponentComposition) => {
+        captured.signal.throwIfAborted();
+        return compose(value, composition);
+      },
+    });
+    return value;
+  }, [captured, locale, compose]);
   return context ? (
     <Entry context={context} input={input} contribution={contribution}>
       {children}
@@ -289,7 +300,6 @@ export function RenderingComponent(props: ComponentProps & ComponentSources) {
         compose,
         saveFile,
         openSession,
-        locale,
       }),
     [
       runtime,
@@ -306,7 +316,6 @@ export function RenderingComponent(props: ComponentProps & ComponentSources) {
       compose,
       saveFile,
       openSession,
-      locale,
     ],
   );
   return (
@@ -318,7 +327,7 @@ export function RenderingComponent(props: ComponentProps & ComponentSources) {
       reload={props.reload}
     >
       <Suspense fallback={props.fallback ?? <ComponentLoading />}>
-        <RenderingInstance {...props} instance={instance} />
+        <RenderingInstance {...props} instance={instance} locale={locale} />
       </Suspense>
     </ComponentBoundary>
   );

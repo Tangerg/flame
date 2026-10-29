@@ -3,6 +3,7 @@ import { defineExtensionPoint } from "@/extensions/contracts";
 import { useExtensionPoint } from "@/extensions/selectors/extensions";
 export interface SettingsPaneSpec {
   id: string;
+  material?: string;
   label: string;
   description?: string;
   icon?: string;

@@ -159,7 +159,6 @@ describe("workspace session projection invalidation", () => {
       "files-changed",
       "list-files",
       "read-file",
-      "hooks",
     ]);
     expect(cancelQueries.mock.calls).toEqual(invalidateQueries.mock.calls);
     expect(synchronizeMountedAgentSessions).not.toHaveBeenCalled();

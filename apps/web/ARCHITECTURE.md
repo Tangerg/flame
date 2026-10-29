@@ -150,6 +150,12 @@ local React state owns layout, filtering and folding. Navigation resolves admitt
 Workspace view contributions with `material: "diff"` and owns no separate renderer
 registration. The former compiled Diff view and guest carrier are removed.
 
+Optional settings pages use installed `settingsPane` components in the Extensions
+group. They share the ordinary package resource lease, error boundary and captured
+command lifetime. Brand artwork and Hooks management live in `plugins/brand` and
+`plugins/hooks`; Runtime retains project trust and final Hook decisions. Changing
+the display locale preserves each accepted operation's captured signal and owner.
+
 ## Dependencies and public surfaces
 
 A feature uses only the rings it needs. Pure values and transitions belong in

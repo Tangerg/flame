@@ -300,6 +300,20 @@ reproducibility. The graphical loader supplies the actual shared host modules.
 The retired HTML view and renderer sources, resources, channels and build paths are removed. Reinstall changed packages and
 explicitly select their new digests.
 
+## Installed settings
+
+`settingsPane` components use the same installed resources and captured lifetimes
+as workspace views. The host lists them in its Extensions settings group and
+withdraws them when the installation becomes unavailable. Brand identity and
+Hooks management are ordinary installed components; they have no compiled host
+page or second settings registry. Hooks changes use canonical Runtime trust
+commands and retain the original mutation for explicit reconciliation.
+
+The Brand component consumes the canonical `@flame/brand-assets` package. Its
+module embeds the original PNGs; `saveFile` transfers those same bytes through
+the host's destination owner. The author kit packs this asset package whenever
+the selected component imports it.
+
 ## Contextual Session actions
 
 A public component may declare Session scope and `sessionAction` placement. It is

@@ -18,6 +18,7 @@ import { definePlugin } from "@/extensions/definePlugin";
 import { startKernel, stopKernel } from "@/extensions/bootstrap";
 import { type ContributionLifetime } from "@/extensions/definePlugin";
 import { queryClient } from "@/lib/queryClient";
+import { activeLocale, setLocale } from "@/lib/i18n/index";
 import { DATA_PROVIDER } from "@/extensions/dataProvider";
 import { usePluginErrorStore } from "@/extensions/errors";
 import { PACKAGES_KEY } from "@/features/plugins/adapters/packages";
@@ -135,7 +136,11 @@ async function publish(rows: PluginInstallation[], bindings: PluginPointBinding[
   });
 }
 
-function mount(entry: PluginComponent = Root, strict = false) {
+function mount(
+  entry: PluginComponent = Root,
+  strict = false,
+  saveFile: ComponentContext["saveFile"] = async () => "requested",
+) {
   const scene = (
     <QueryClientProvider client={queryClient}>
       <RenderingComponent
@@ -143,7 +148,7 @@ function mount(entry: PluginComponent = Root, strict = false) {
         component={root}
         generation={generation}
         compose={composeHost.renderer(lifetime, [root])}
-        saveFile={async () => "requested"}
+        saveFile={saveFile}
         runtime={client}
         binding={undefined}
         lifetime={lifetime}
@@ -199,6 +204,32 @@ it("composes after StrictMode replays mount effects and retires the final captur
   scene.unmount();
   await waitFor(() => expect(child.signal.aborted).toBe(true));
   expect(parent.signal.aborted).toBe(true);
+});
+
+it("updates composed language without retiring a child's accepted file transfer", async () => {
+  const originalLocale = activeLocale();
+  finishTestClient(() => setLocale(originalLocale));
+  const accepted = Promise.withResolvers<"saved">();
+  const saveFile = vi.fn<ComponentContext["saveFile"]>(() => accepted.promise);
+  mount(Root, false, saveFile);
+  await screen.findByRole("button", { name: "Extension:inspected:0" });
+  const child = contexts.at(-1)!;
+  const saving = child.saveFile({
+    filename: "original.png",
+    mime: "image/png",
+    bytes: new Uint8Array([1, 2, 3]),
+  });
+  const nextLocale = originalLocale === "zh" ? "en" : "zh";
+  try {
+    await act(async () => setLocale(nextLocale));
+    expect(child.signal.aborted).toBe(false);
+    expect(contexts.at(-1)!.signal).toBe(child.signal);
+    expect(contexts.at(-1)!.locale).toBe(nextLocale);
+  } finally {
+    accepted.resolve("saved");
+  }
+  await expect(saving).resolves.toBe("saved");
+  expect(saveFile).toHaveBeenCalledOnce();
 });
 
 it("opens a composition after its parent has committed under StrictMode", async () => {

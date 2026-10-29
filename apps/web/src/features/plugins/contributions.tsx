@@ -18,6 +18,7 @@ import { DATA_PROVIDER } from "@/extensions/dataProvider";
 import { WORKSPACE_VIEW, WORKSPACE_FILE_RENDERER } from "@/features/workspace/public/views";
 import { TOOL_RESULT_RENDERER } from "@/features/chat/public/tools/types";
 import { SESSION_ACTION } from "@/features/navigation/public/sessionActions";
+import { SETTINGS_PANE } from "@/features/settings/public/panes";
 import { ComponentCompositions } from "@/features/plugins/ui/ComponentCompositions";
 import { RecordedFileComponent } from "@/features/plugins/ui/RecordedFileComponent";
 import { RecordedToolComponent } from "@/features/plugins/ui/RecordedToolComponent";
@@ -295,6 +296,30 @@ function createPackageReconciler(
           };
         });
         const id = packageScopedId(installation.id, entry.id);
+        const PlacedComponent = () => (
+          <ComponentBoundary
+            scope={componentFailureScope(component, generation)}
+            reload={() => modules.reload()}
+          >
+            <Suspense fallback={<ComponentLoading />}>
+              <View />
+            </Suspense>
+          </ComponentBoundary>
+        );
+        if (entry.placement === "settingsPane") {
+          lifetime.contribute(
+            SETTINGS_PANE,
+            {
+              id,
+              label: entry.title,
+              material: entry.material,
+              group: "extensions",
+              component: PlacedComponent,
+            },
+            { key: id },
+          );
+          continue;
+        }
         lifetime.contribute(
           WORKSPACE_VIEW,
           {
@@ -302,16 +327,7 @@ function createPackageReconciler(
             title: `${release.name} · ${entry.title}`,
             material: entry.material,
             dock: entry.scope === "session" ? "session" : undefined,
-            component: () => (
-              <ComponentBoundary
-                scope={componentFailureScope(component, generation)}
-                reload={() => modules.reload()}
-              >
-                <Suspense fallback={<ComponentLoading />}>
-                  <View />
-                </Suspense>
-              </ComponentBoundary>
-            ),
+            component: PlacedComponent,
           },
           { key: id },
         );

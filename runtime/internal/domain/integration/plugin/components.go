@@ -48,6 +48,10 @@ func (b *Builder) AdmitComponent(value ClientComponent) error {
 		if (value.Scope == extension.ComponentScopeFile || value.Scope == extension.ComponentScopeToolResult) || value.Selector != nil {
 			return refuse(DiagnosticInvalidDeclaration, "workspace component has a renderer target")
 		}
+	case extension.ComponentPlacementSettingsPane:
+		if (value.Scope != extension.ComponentScopeClient && value.Scope != extension.ComponentScopeWorkspace && value.Scope != extension.ComponentScopeInstallation) || value.Selector != nil {
+			return refuse(DiagnosticInvalidDeclaration, "settings component requires client, workspace or installation context")
+		}
 	case extension.ComponentPlacementSessionAction:
 		if value.Scope != extension.ComponentScopeSession || value.Material != "" || value.Selector != nil {
 			return refuse(DiagnosticInvalidDeclaration, "session action requires session context")

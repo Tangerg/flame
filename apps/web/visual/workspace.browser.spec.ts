@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from "./test";
 import AxeBuilder from "@axe-core/playwright";
 import { type VisualAgentState } from "./agentSessionSnapshots";
 import { en } from "@/lib/i18n/locales/en";
+import { en as hooksEnglish } from "../../../plugins/hooks/component/locales/en";
 import { solidFill } from "@/features/theme/kit/scale";
 import {
   DOCK_MIN_WIDTH_PX,
@@ -838,7 +839,7 @@ for (const pane of VISUAL_SETTINGS_PANES) {
     await waitForWorkspaceState(page, "settings");
     if (pane === "providers") {
       await expect(page.getByRole("button", { name: en["providers.utility.title"]! })).toHaveText(
-        "GPT-5.6 Sol",
+        "GPT-5.6 Sol openai / gpt-5.6-sol",
       );
       await expect(page.getByRole("button", { name: en["providers.embedding.title"]! })).toHaveText(
         en["providers.embedding.off"]!,
@@ -846,7 +847,7 @@ for (const pane of VISUAL_SETTINGS_PANES) {
     }
     const emptyLabel = {
       "mcp-servers": en["mcp.empty"],
-      hooks: en["hooks.empty"],
+      hooks: hooksEnglish.empty,
       approvals: en["approvals.rules.empty"],
     };
     if (pane in emptyLabel) {
@@ -859,9 +860,20 @@ for (const pane of VISUAL_SETTINGS_PANES) {
       await expect(
         page.getByRole("heading", { name: "flame.schedules", exact: true }),
       ).toBeVisible();
-      await expect(
-        page.getByText(en["packages.providers.count"]!.replace("{{count}}", "2"), { exact: true }),
-      ).toBeVisible();
+      for (const [name, contribution] of [
+        ["flame.memory", "memory-provider"],
+        ["flame.schedules", "schedules-provider"],
+      ]) {
+        await expect(
+          page.getByText(
+            en["packages.providers.current"]!.replace("{{name}}", name!).replace(
+              "{{contribution}}",
+              contribution!,
+            ),
+            { exact: true },
+          ),
+        ).toBeVisible();
+      }
     }
   });
 }

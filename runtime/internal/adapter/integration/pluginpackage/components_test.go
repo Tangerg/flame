@@ -6,20 +6,21 @@ import (
 
 func TestComponentOnlyPackageAdmissionDoesNotRequireOrExecuteBackend(t *testing.T) {
 	for _, test := range []struct {
-		name, contribution string
-		admitted           bool
+		name, placement, contribution string
+		admitted                      bool
 	}{
-		{"absent", "", true},
-		{"empty", `,"contribution":""`, false},
-		{"unknown", `,"contribution":"missing"`, false},
-		{"invalid", `,"contribution":"Invalid"`, false},
-		{"null", `,"contribution":null`, false},
+		{"absent", "workspaceView", "", true},
+		{"settings", "settingsPane", "", true},
+		{"empty", "workspaceView", `,"contribution":""`, false},
+		{"unknown", "workspaceView", `,"contribution":"missing"`, false},
+		{"invalid", "workspaceView", `,"contribution":"Invalid"`, false},
+		{"null", "workspaceView", `,"contribution":null`, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			files := map[string]string{
 				"plugin.json": `{"$schema":"` + manifestSchema + `","name":"test.components","extensions":{"io.github.tangerg.flame":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
 				"io.github.tangerg.flame/components/component.js": `throw new Error("installation must not evaluate component code");`,
-				"io.github.tangerg.flame/declaration.json":        flameDeclaration(`"components":[{"id":"gallery","title":"Gallery","scope":"installation","placement":"workspaceView","entry":"io.github.tangerg.flame/components/component.js","export":"Gallery"` + test.contribution + `}]`),
+				"io.github.tangerg.flame/declaration.json":        flameDeclaration(`"components":[{"id":"gallery","title":"Gallery","scope":"installation","placement":"` + test.placement + `","entry":"io.github.tangerg.flame/components/component.js","export":"Gallery"` + test.contribution + `}]`),
 			}
 			release, err := publishPackage(t.Context(), testReleases(t), writePackage(t, files))
 			if err != nil {

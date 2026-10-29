@@ -6,7 +6,6 @@ describe("workspaceInvalidations", () => {
       "filesChanged",
       "fileList",
       "fileRead",
-      "hooks",
     ]);
     expect(workspaceInvalidations({ type: "skills.changed", sequence: 2 })).toEqual([]);
     expect(workspaceInvalidations({ type: "mcp.changed", sequence: 3 })).toEqual([
@@ -17,7 +16,7 @@ describe("workspaceInvalidations", () => {
     ]);
     expect(workspaceInvalidations({ type: "plugins.dataChanged", sequence: 4 })).toEqual([]);
     expect(workspaceInvalidations({ type: "sessions.changed", sequence: 5 })).toEqual(["sessions"]);
-    expect(workspaceInvalidations({ type: "hooks.changed", sequence: 7 })).toEqual(["hooks"]);
+    expect(workspaceInvalidations({ type: "hooks.changed", sequence: 7 })).toEqual([]);
     expect(workspaceInvalidations({ type: "models.changed", sequence: 8 })).toEqual([
       "providers",
       "models",
@@ -35,7 +34,7 @@ describe("workspaceInvalidations", () => {
         sequence: 11,
         topics: ["files.changed", "goals.changed", "files.changed"],
       }),
-    ).toEqual(["filesChanged", "fileList", "fileRead", "hooks", "agentSessionProjection"]);
+    ).toEqual(["filesChanged", "fileList", "fileRead", "agentSessionProjection"]);
     expect(workspaceInvalidations({ type: "resync", sequence: 12 })).toEqual(["all"]);
   });
 

@@ -24,3 +24,9 @@ no built-in discovery or shell fallback. Disabling or uninstalling the backend
 withdraws future rules; project trust and historical facts remain in Runtime.
 Accepted commands retain their original routing and receipt owner. Finish pending
 work with its matching release before replacing it.
+
+The optional settings component inspects rules through public workspace reads and
+changes project trust through Runtime. It retains the last accepted catalog during
+read failures, and an uncertain trust command must be reconciled using its original
+mutation before another intent is admitted. Source retirement cancels observation;
+it does not infer a command's outcome.

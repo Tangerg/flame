@@ -1,0 +1,11 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "flame.brand",
+  "version": "1.0.0",
+  "description": "Brand identity artwork, colors and exact original PNG downloads.",
+  "extensions": {
+    "io.github.tangerg.flame": {
+      "declaration": "io.github.tangerg.flame/declaration.json"
+    }
+  }
+}

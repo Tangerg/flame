@@ -1,5 +1,16 @@
 {
   "protocol": "io.github.tangerg.flame/plugin/1",
+  "components": [
+    {
+      "id": "settings",
+      "title": "Lifecycle hooks",
+      "scope": "client",
+      "placement": "settingsPane",
+      "material": "hooks",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "Hooks"
+    }
+  ],
   "contributions": [
     {
       "id": "hook-provider",

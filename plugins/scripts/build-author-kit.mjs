@@ -77,6 +77,7 @@ const inputs = [
   "plugins/tsconfig.json",
   "plugins/backend.tsconfig.json",
   "plugins/package.json",
+  "assets/brand",
   "tooling",
   "packages/icons",
   "packages/ui",
@@ -245,12 +246,18 @@ try {
     );
   }
   const component = await exists(join(output, "component/component.tsx"));
+  let testCommand = "";
   if (component || managed) {
     const packageDirectories = [
       "qimu/sdk",
       "packages/runtime-client",
       ...(component
-        ? ["packages/icons", "packages/ui", "packages/component-sdk"]
+        ? [
+            "assets/brand",
+            "packages/icons",
+            "packages/ui",
+            "packages/component-sdk",
+          ]
         : []),
       ...(managed ? ["qimu/node", "packages/backend-sdk"] : []),
     ];
@@ -303,7 +310,7 @@ try {
     const rootManifest = JSON.parse(
       await readFile(join(frozenTree, "package.json"), "utf8"),
     );
-    const { dependencies, devDependencies, packages } =
+    const { dependencies, devDependencies, packages, hasTests } =
       await authorDependencies({
         source: output,
         manifest: JSON.parse(
@@ -360,7 +367,7 @@ try {
       "@types/react-dom",
       "@types/node",
       "rolldown",
-      ...(managed ? ["vitest"] : []),
+      ...(managed || hasTests ? ["vitest"] : []),
     ])
       devDependencies[name] = version(name);
     const consumer = {
@@ -377,9 +384,9 @@ try {
           ? {
               generate: "node generate.mjs",
               package: "node package.mjs",
-              test: "node test-backend.mjs",
             }
           : {}),
+        ...(managed || hasTests ? { test: "node test-sources.mjs" } : {}),
       },
       dependencies,
       devDependencies,
@@ -439,7 +446,8 @@ try {
         throw new Error(`author dependency escapes its own project: ${name}`);
     run("npm", ["run", "typecheck"], output);
     if (component) run("npm", ["run", "build"], output);
-    if (managed) {
+    if (managed || hasTests) {
+      testCommand = "npm test\n";
       const node = await stageNode({
         os: process.platform,
         arch: process.arch === "x64" ? "amd64" : process.arch,
@@ -447,10 +455,10 @@ try {
         offline,
       });
       await writeFile(
-        join(output, "test-backend.mjs"),
-        `import { execFileSync } from "node:child_process";\nimport { fileURLToPath } from "node:url";\nexecFileSync(fileURLToPath(new URL(${JSON.stringify(relative(output, node).split(sep).join("/"))}, import.meta.url)), [fileURLToPath(new URL("./node_modules/vitest/vitest.mjs", import.meta.url)), "run", "backend", "contracts"], { cwd: fileURLToPath(new URL("./", import.meta.url)), stdio: "inherit" });\n`,
+        join(output, "test-sources.mjs"),
+        `import { execFileSync } from "node:child_process";\nimport { fileURLToPath } from "node:url";\nexecFileSync(fileURLToPath(new URL(${JSON.stringify(relative(output, node).split(sep).join("/"))}, import.meta.url)), [fileURLToPath(new URL("./node_modules/vitest/vitest.mjs", import.meta.url)), "run", "backend", "contracts", "component"], { cwd: fileURLToPath(new URL("./", import.meta.url)), stdio: "inherit" });\n`,
       );
-      run("npm", ["run", "generate"], output);
+      if (managed) run("npm", ["run", "generate"], output);
       run("npm", ["test"], output);
     }
   }
@@ -458,7 +466,9 @@ try {
     join(output, "README.md"),
     managed && !plan.native
       ? `# ${plugin} TypeScript author project\n\nImplementation source is frozen at ${revision}. Packed public SDKs and this project's lock own the npm graph. There is no Go source or Go compiler prerequisite. The prebuilt contract generators and pluginpack release builder are development-only tools; the included selected Node companion runs backend and contract tests.\n\nFrom this directory:\n\n\`\`\`sh\nnpm ci --ignore-scripts\nnpm run generate\nnpm run typecheck\nnpm test\nnpm run build\nnpm run package -- --output /absolute/new/release --archives /absolute/new/archives\n\`\`\`\n\nThe portable ZIP contains its complete backend graph and declared resources, without node_modules or an interpreter. Install it through Runtime; Runtime supplies its qualified Node companion. Generation projects only the feature contracts named by the package declaration without changing existing opaque schema names; a Tool-only package has none. Rebuild and explicitly select a new release after edits. Preserve prior installations and their original pending work when changing releases.\n`
-      : `# ${plugin} author project\n\nThe backend, component and package resource root use the same layout as Flame.\nYour module is ${modulePath}; its implementation source is frozen at ${revision}. Flame dependencies are immutable module artifacts ${sdk.path}@${sdk.version} from ${sdk.revision}.\nGo production and generation tools are vendored; there is no local replace or Flame checkout dependency.\nJS dependencies use packed SDKs and this project's own lock. They require an ordinary npm install and are not claimed to be fully offline.\n\nRun with the Go version in go.mod:\n\n\`\`\`sh\nGOWORK=off GOTOOLCHAIN=local GOPROXY=off GONOPROXY=none GOFLAGS=-mod=vendor go test ./...\nGOWORK=off GOTOOLCHAIN=local GOPROXY=off GONOPROXY=none GOFLAGS=-mod=vendor go generate ./...\n${component ? "npm ci --ignore-scripts\nnpm run typecheck\nnpm run build\n" : ""}node build.mjs --source "$PWD" --output /absolute/new/release --os darwin --arch arm64\n\`\`\`\n\nInstall the built release; installation needs neither Go nor Node. Existing consumer contracts come from the pinned public SDK or the plugin's published contracts/ projection. Local Go types implement them without redefining their identity. The original publisher retains contractgen/; this implementation kit does not copy that authority. Local go generate refreshes package/UI projections from the published descriptor, preserving its opaque schema names after module relocation. Change an existing contract at its original publisher and regenerate its complete release. New business contracts must be defined and published explicitly by their owner.\n`,
+      : component && !plan.native
+        ? `# ${plugin} component author project\n\nImplementation source is frozen at ${revision}. The component and package resource root use the same layout as Flame. Public SDKs, artwork and UI dependencies are packed from that commit; this project's lock owns their npm graph. There is no backend or Go compiler prerequisite.\n\nFrom this directory:\n\n\`\`\`sh\nnpm ci --ignore-scripts\nnpm run typecheck\n${testCommand}npm run build\nnode build.mjs --source "$PWD" --output /absolute/new/release --os darwin --arch arm64\n\`\`\`\n\nThe release contains the compiled component and declared resources. Install it through Runtime and explicitly select its new digest after edits. The graphical host supplies the public component context and shared runtime modules.\n`
+        : `# ${plugin} author project\n\nThe backend, component and package resource root use the same layout as Flame.\nYour module is ${modulePath}; its implementation source is frozen at ${revision}. Flame dependencies are immutable module artifacts ${sdk.path}@${sdk.version} from ${sdk.revision}.\nGo production and generation tools are vendored; there is no local replace or Flame checkout dependency.\nJS dependencies use packed SDKs and this project's own lock. They require an ordinary npm install and are not claimed to be fully offline.\n\nRun with the Go version in go.mod:\n\n\`\`\`sh\nGOWORK=off GOTOOLCHAIN=local GOPROXY=off GONOPROXY=none GOFLAGS=-mod=vendor go test ./...\nGOWORK=off GOTOOLCHAIN=local GOPROXY=off GONOPROXY=none GOFLAGS=-mod=vendor go generate ./...\n${component ? `npm ci --ignore-scripts\nnpm run typecheck\n${testCommand}npm run build\n` : ""}node build.mjs --source "$PWD" --output /absolute/new/release --os darwin --arch arm64\n\`\`\`\n\nInstall the built release; installation needs neither Go nor Node. Existing consumer contracts come from the pinned public SDK or the plugin's published contracts/ projection. Local Go types implement them without redefining their identity. The original publisher retains contractgen/; this implementation kit does not copy that authority. Local go generate refreshes package/UI projections from the published descriptor, preserving its opaque schema names after module relocation. Change an existing contract at its original publisher and regenerate its complete release. New business contracts must be defined and published explicitly by their owner.\n`,
   );
   console.log(output);
 } catch (error) {

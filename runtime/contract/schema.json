@@ -1559,6 +1559,7 @@
       "enum": [
         "export",
         "workspaceView",
+        "settingsPane",
         "sessionAction",
         "fileRenderer",
         "toolResultRenderer"

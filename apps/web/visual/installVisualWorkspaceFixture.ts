@@ -3,6 +3,8 @@ import { type VisualClient } from "./client";
 import { notifyFrom } from "@/features/notifications/public/notifications";
 import { InstalledComponent } from "@/features/plugins/ui/InstalledComponent";
 import { Schedules } from "../../../plugins/schedules/component/component";
+import { Hooks } from "../../../plugins/hooks/component/component";
+import { type PluginComponent } from "@flame/component-sdk";
 import { visualComponentProps } from "./installedComponentProps";
 import { visualFileRenderers } from "./visualFileRenderers";
 import { Gallery } from "../../../plugins/icon-gallery/component/component";
@@ -19,11 +21,9 @@ import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
 import shortcutsSettings from "@/features/command/shortcuts/index";
 import { workbenchSettings } from "@/features/shell/workbench/index";
 import appearanceSettings from "@/features/settings/appearance";
-import { createBrandPlugin } from "@/features/settings/brand/index";
 import { createProvidersPlugin } from "@/features/providers/index";
 import approvalsSettings from "@/features/approvals/index";
 import connectionSettings from "@/features/connection/settings/index";
-import { createHooksPlugin } from "@/features/hooks/index";
 import { createMCPServersPlugin } from "@/features/mcp/index";
 import personalizationSettings from "@/features/settings/personalization/index";
 import { createPluginsPlugin } from "@/features/plugins/index";
@@ -42,6 +42,7 @@ import { VISUAL_MEMORY_BINDING, VISUAL_SCHEDULES_BINDING } from "./componentSnap
 import { Skills } from "../../../plugins/skills/component/component";
 import { fileView } from "@/features/workspace/views";
 import { DATA_PROVIDER } from "@/extensions/dataProvider";
+import { SETTINGS_PANE } from "@/features/settings/public/panes";
 import { SHORTCUT } from "@/features/command/public/extensionPoints";
 import { WORKSPACE_VIEW } from "@/features/workspace/public/views";
 import { definePlugin } from "@/extensions/definePlugin";
@@ -66,6 +67,12 @@ import {
   type VisualWorkspaceTheme,
   DOCK_VIEW_BY_STATE,
 } from "./workspaceFixtureStates";
+const Brand = Object.values(
+  import.meta.glob<{ Brand: PluginComponent }>(
+    "../../../plugins/brand/package/io.github.tangerg.flame/components/component.js",
+    { eager: true },
+  ),
+)[0]!.Brand;
 const RESIZER_SOURCE: WorkspaceFileContent = {
   startLine: 1,
   totalLines: 8,
@@ -146,6 +153,30 @@ function workspaceDataPlugin(
   return definePlugin({
     name: "flame.visual.workspace-data",
     setup(ctx) {
+      const brandLifetime = ctx.lifetime("visual-brand");
+      const brandSources = visualComponentProps(runtimeClient(), brandLifetime, "brand");
+      const saveBrandFile = createBrowserHost(IMAGE_FILENAME_STEM).saveFile;
+      brandLifetime.contribute(SETTINGS_PANE, {
+        id: "brand",
+        label: "Brand identity",
+        group: "extensions",
+        component: () =>
+          createElement(InstalledComponent, {
+            ...brandSources,
+            scope: "client",
+            entry: Brand,
+            saveFile: saveBrandFile,
+          }),
+      });
+      const hooksLifetime = ctx.lifetime("visual-hooks");
+      const hooksSources = visualComponentProps(runtimeClient(), hooksLifetime, "hooks");
+      hooksLifetime.contribute(SETTINGS_PANE, {
+        id: "hooks",
+        label: "Hooks",
+        group: "extensions",
+        component: () =>
+          createElement(InstalledComponent, { ...hooksSources, scope: "client", entry: Hooks }),
+      });
       const diagnosticsLifetime = ctx.lifetime("visual-diagnostics");
       const diagnosticsSources = visualComponentProps(
         runtimeClient(),
@@ -507,12 +538,10 @@ export async function installVisualWorkspaceFixture(
     fileView,
     workbenchSettings(visual.workspace.access),
     appearanceSettings,
-    createBrandPlugin(createBrowserHost(IMAGE_FILENAME_STEM).saveImage),
     createProvidersPlugin(runtimeClient),
     shortcutsSettings(visual.workspace.access),
     approvalsSettings,
     connectionSettings,
-    createHooksPlugin(runtimeClient),
     createMCPServersPlugin(runtimeClient),
     personalizationSettings,
     createPluginsPlugin(visual.installedPlugins),

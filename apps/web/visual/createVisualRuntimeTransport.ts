@@ -22,6 +22,7 @@ import { VISUAL_MODELS, VISUAL_PROVIDERS } from "./runtimeSnapshots";
 import { VISUAL_WORKSPACE_PATH } from "./agentFixtureFacts";
 import discovery from "@flame/runtime-client/testing/samples/method.discover.resp.json";
 import { visualTrajectory } from "./trajectorySnapshot";
+import { VISUAL_HOOKS } from "./hookSnapshot";
 import { type RuntimeAgentSessionSnapshot } from "./agentSessionSnapshots";
 import {
   VISUAL_SKILL_DISCOVERY,
@@ -80,7 +81,7 @@ function resultFor(
       approval.mode = (request.params as SetApprovalModeRequest).mode;
       return { ...approval };
     case "hooks.list":
-      return { hooks: [], projectTrusted: false };
+      return structuredClone(VISUAL_HOOKS);
     case "runtime.subscribe":
       return {};
     case "plugins.call": {

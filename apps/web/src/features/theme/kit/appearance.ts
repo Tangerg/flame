@@ -1,4 +1,4 @@
-import { FLAME_ORANGE } from "@/lib/brandColor";
+import { FLAME_ORANGE } from "@flame/brand-assets/color";
 export type ColorThemeId = string;
 
 export type VisualStyleId = string;
