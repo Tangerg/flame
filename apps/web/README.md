@@ -104,6 +104,13 @@ nor changes the draft or selection, and retires when the transcript starts or
 the view becomes hidden. Transcript reading and shared Panel focus retain their
 separate owners.
 
+The transcript's reading-focus owner projects its measured safe height as
+`--reading-frame-height` on the attached scroll viewport. The same existing
+resize observation updates this budget when the window or Composer clearance
+changes; hiding or unmounting the transcript removes it. Shared code frames use
+that inherited budget while native source scrolling, selection and later focus
+keep their existing owners.
+
 The work index treats a first pending project read as loading even when its
 network request is paused. The sidebar and project menu use that one navigation
 projection. A known empty snapshot can show the empty state; accepted content

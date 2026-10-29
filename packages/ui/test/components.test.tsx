@@ -7,7 +7,15 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  onTestFinished,
+  vi,
+} from "vitest";
 import type { FormEvent, ReactNode } from "react";
 import { createRef, useRef, useState } from "react";
 import { Brain } from "@flame/icons/react";
@@ -17,6 +25,7 @@ import {
   CodeCaption,
   CodeFrame,
   CodeHighlightProvider,
+  ContentVisibility,
   type CodeSourceProps,
   ImageNotice,
   readCalloutMarker,
@@ -462,6 +471,79 @@ describe("recorded code", () => {
     expect(
       screen.getByRole("region", { name: "Captured source" }).textContent,
     ).toBe(source);
+  });
+
+  it("reserves the actual caption height without replacing the source or moving later focus", () => {
+    const observed = new Set<Element>();
+    let resized!: ResizeObserverCallback;
+    const disconnect = vi.fn(() => observed.clear());
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(callback: ResizeObserverCallback) {
+          resized = callback;
+        }
+        observe(node: Element) {
+          observed.add(node);
+        }
+        disconnect = disconnect;
+      },
+    );
+    const bounds = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockReturnValue(new DOMRect(0, 0, 240, 32.5));
+    onTestFinished(() => {
+      vi.unstubAllGlobals();
+      vi.restoreAllMocks();
+    });
+    function Scene({ visible = true }: { visible?: boolean }) {
+      return (
+        <>
+          <input aria-label="Later draft" defaultValue="Keep this draft" />
+          <ContentVisibility visible={visible}>
+            <CodeBlock label="Captured source" language="html">
+              {"first\n  last <literal>"}
+            </CodeBlock>
+          </ContentVisibility>
+        </>
+      );
+    }
+    const view = render(<Scene />);
+    const region = screen.getByRole("region", { name: "Captured source" });
+    const frame = region.parentElement!;
+    const caption = frame.querySelector('[data-slot="code-caption"]')!;
+    expect(observed.has(caption)).toBe(true);
+    expect(frame.style.getPropertyValue("--code-caption-height")).toBe(
+      "32.5px",
+    );
+    const draft = screen.getByRole("textbox", { name: "Later draft" });
+    act(() => draft.focus());
+    bounds.mockReturnValue(new DOMRect(0, 0, 180, 60));
+
+    act(() => resized([], {} as ResizeObserver));
+
+    expect(frame.style.getPropertyValue("--code-caption-height")).toBe("60px");
+    expect(screen.getByRole("region", { name: "Captured source" })).toBe(
+      region,
+    );
+    expect(region.textContent).toBe("first\n  last <literal>");
+    expect(document.activeElement).toBe(draft);
+    expect((draft as HTMLInputElement).value).toBe("Keep this draft");
+    view.rerender(<Scene visible={false} />);
+    expect(disconnect).toHaveBeenCalledOnce();
+    expect(observed.size).toBe(0);
+    expect(frame.style.getPropertyValue("--code-caption-height")).toBe("");
+    bounds.mockReturnValue(new DOMRect(0, 0, 210, 45));
+    view.rerender(<Scene />);
+    expect(frame.style.getPropertyValue("--code-caption-height")).toBe("45px");
+    expect(document.activeElement).toBe(draft);
+    expect(screen.getByRole("region", { name: "Captured source" })).toBe(
+      region,
+    );
+    view.unmount();
+    expect(disconnect).toHaveBeenCalledTimes(2);
+    expect(observed.size).toBe(0);
+    expect(frame.style.getPropertyValue("--code-caption-height")).toBe("");
   });
 
   it("shows and copies the literal child an installed renderer passes, reporting success only after acceptance", async () => {

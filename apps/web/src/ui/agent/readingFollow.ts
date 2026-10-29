@@ -94,12 +94,20 @@ export function useReadingFocusVisibility(
     const viewport = scrollRef.current;
     const content = contentRef.current;
     if (!attached || !viewport || !content) return;
-    let frame = safeReadingBounds(viewport);
+    const measure = () => {
+      const next = safeReadingBounds(viewport);
+      viewport.style.setProperty(
+        "--reading-frame-height",
+        `${Math.max(0, next.bottom - next.top)}px`,
+      );
+      return next;
+    };
+    let frame = measure();
     let observedScrollTop = viewport.scrollTop;
     let witness: Element | null = null;
     let pressedTarget: Element | null = null;
     const remember = () => {
-      frame = safeReadingBounds(viewport);
+      frame = measure();
       observedScrollTop = viewport.scrollTop;
       const active = content.ownerDocument.activeElement;
       witness = null;
@@ -129,7 +137,7 @@ export function useReadingFocusVisibility(
       remember();
     };
     const reveal = () => {
-      frame = safeReadingBounds(viewport);
+      frame = measure();
       const target = witness;
       if (!target) return;
       if (
@@ -194,6 +202,7 @@ export function useReadingFocusVisibility(
     viewport.addEventListener("wheel", retire, { passive: true, capture: true });
     return () => {
       resize.disconnect();
+      viewport.style.removeProperty("--reading-frame-height");
       content.ownerDocument.removeEventListener("focusin", onFocus);
       content.removeEventListener("pointerdown", onPointerDown, true);
       content.ownerDocument.removeEventListener("pointerup", clearPress, true);

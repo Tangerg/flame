@@ -117,6 +117,11 @@ See **Goal save
 feedback and pending dismissal** and **Computer console
 editing and operation return**. Preserve the
 separate exact-Run and Skills object contract limits already recorded below.
+Nested source readers now use the transcript's measured reading height and the
+shared frame's actual caption minimum. Native End, compact-space reading,
+selection, preview return and continued drafts are qualified under **Nested
+source sizing within the reading frame**. File-preview code actions still need
+their existing locale applied; that separately observed follow-up remains open.
 The user resumed the paused goal.
 Completed batches are verified, explicitly committed and pushed to main under the
 goal publication policy. Preserve parallel work in the primary checkout. Do not
@@ -16463,12 +16468,126 @@ SHA-256 `81db3383906c476e49ab48120f365ed3f3a4b14b391adc943d85f90e7d541272`.
 The managed toolchain and primary parallel checkout remain preserved. The one
 interval fetch finds no incoming main commit; no redundant merge is needed.
 
-**Approve** the inspected resource-retirement flow. The broad UI goal stays
-active and the separate native reverse-Tab finding remains open. Next inspect
-nested Tool source scrolling at 200%: End advances its inner reader while the
-retained Composer can still cover its lower portion until the next Tab changes
-outer position. This observation does not yet establish a keyboard dead end;
-compare unchanged source and trace scroll ownership before changing behavior.
+**Approve** the inspected resource-retirement flow. Its subsequent nested-source
+observation is resolved by the sizing work below. The broad UI goal stays active
+and the separate native reverse-Tab finding remains open.
+
+### Nested source sizing within the reading frame (2026-10-30)
+
+Scope: read an expanded Tool's captured result, enter Arguments, inspect a File
+preview, return to its selected row and continue the retained conversation draft.
+The change owns reader sizing; Runtime admission and recorded values remain with
+their existing owners.
+
+Original Wails at ZH/18px, dark/custom Blue and 200% gives the source 240 CSS px,
+while the transcript's safe reading height is only 146.5px. End advances the
+inner source, but its closing brace remains beneath the retained Composer.
+Down also advances the outer transcript, so this is a sizing defect rather than
+a demonstrated keyboard trap. The authored horizontal containment/vertical
+chaining rule remains unchanged; the native observer separately confirms Y is
+`auto`.
+
+`src/ui/agent/readingFollow.ts:97` now projects that existing owner's safe height
+as `--reading-frame-height` on the attached viewport. Its existing resize
+observation updates the budget even after focus moves to a later draft; hiding
+or unmounting removes the projection. It adds no second geometry observer,
+scroll command or keyboard handler to the transcript.
+
+`packages/ui/src/code-block.tsx:86` uses that budget below the existing Panel,
+disclosure and focus clearances. A visible literal frame measures only its own
+caption, retaining the actual caption and at least one padded source line when
+the budget is too small. That observation and projection retire on content
+visibility and unmount. The source retains its stable PRE, native selection,
+literal copy, shared wrap preference and ordinary scroll chaining.
+`src/ui/atoms/shiki-code-block.tsx:44` composes this same CodeFrame, preserving its
+semantic class, Markdown copy data, compact bound and artifact skin without an
+extra wrapper. Its preview remains a named, keyboard-scrollable region.
+
+The first native candidate reveals two necessary limits: the 42px disclosure
+clearance must also be subtracted, and an intrinsic Grid minimum is still
+clamped/clipped by this WebKit when the Composer leaves less than the complete
+minimum. The final implementation retains the existing flex layout with an
+explicit minimum derived from its measured caption and existing type/spacing
+tokens. It does not retain the rejected Grid layout or add a guessed pixel floor.
+Read-only ZCode `PreviewPane.tsx:1794` separates the persistent header from a
+shrinking reading body. Earlier shared-reader and Radix focus research supplies
+the return model; [CSS Grid track sizing](https://www.w3.org/TR/css-grid-2/#track-sizing)
+informed the rejected intrinsic-only attempt. Actual Flame native behavior is
+the acceptance evidence.
+
+All six better-series domains remain within the existing React, Base UI, StyleX
+and semantic-token system:
+
+| Domain        | Evidence and result                                                                                                                               |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Accessibility | Native Tab, Home/End, wheel, outer chaining, complete Go/JSON selection, caption Copy and image-preview Escape return pass.                       |
+| Layout        | The complete ordinary frame is 104.5px, source 70px and final text bottom 200.5px, within the safe bottom of 216.5px.                             |
+| Writing       | Tool labels retain their current locale. The separate File preview still uses English CodeBlock actions in ZH and remains a follow-up.            |
+| Typography    | EN/14px and ZH/18px, including 200%, retain the code type owner. A four-line draft leaves a 73.25px frame with a full 38.75px padded source line. |
+| Colors        | Existing light/Orange and dark/custom Blue reading rings remain visible. No color value changes or new contrast measurement is claimed.           |
+| UI            | Source/SVG reading, copy feedback, image-dialog return, native window zoom/restore, selected-file return and continued drafts pass.               |
+
+| Severity             | Domain  | Location                                                              | Before                                                                            | After / next action                                                                     | Why                                                                    |
+| -------------------- | ------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| HIGH, repaired       | Layout  | `readingFollow.ts:97`, `code-block.tsx:86`, `shiki-code-block.tsx:44` | Fixed source height extends beneath the Composer at 200%.                         | Shared frame consumes the actual reading budget and retains its caption/source minimum. | Read the captured result without navigating away to expose its tail.   |
+| MEDIUM, pre-existing | Writing | `plugins/file-renderers/component/component.tsx:79`                   | ZH preview names its code region in Chinese but Copy/wrap actions remain English. | Apply the component's active locale in the next scoped batch.                           | Keep reading actions understandable in the current interface language. |
+
+Verification:
+
+- Original reading baseline: **3 files / 67 tests** pass. New budget regressions
+  fail against unchanged product (**3 fail / 38 pass**); the caption regression
+  fails against the first candidate (**1 fail / 76 pass**).
+- Final `npm run check --workspace @flame/ui` passes build, types, lint, format,
+  **12 files / 199 tests**, and the independent packed UI/icons consumer.
+- Final Web reading coverage passes **8 files / 238 tests** across geometry,
+  MessageStream, Shiki, Markdown, Tool inspection/focus and File workspace.
+  Types, lint, format, layers, design system, chrome, tokens, authored classes,
+  shorthand, dead styles, plugin resources, bundle and plugin modules pass.
+  Ordinary `make check-native` passes (**89.913 s**); existing duplicate-library
+  linker warnings remain. The first final sequence stops on the preview's custom
+  StyleX variable type; existing class composition fixes it without weakening the
+  shared type or skipping the check. The final sequence passes in full.
+
+Actual Wails uses a private identity/home, normal DesktopHost/services/menu/window
+composition and deterministic presentation inputs. The Tool contribution is
+unconfigured to exercise its real captured-source fallback; File and Markdown
+rendering remain actual components. No Runtime/Realm admission, provider execution
+or Send is claimed. A private passive observer only reads geometry and posts to
+its own loopback server; it never changes DOM, input, focus or scroll.
+
+Observed ZH acceptance covers original/final End, first-line Home, native wheel,
+outer Down chaining, four-line Composer minimum, Arguments, File source/SVG,
+selected reading-guide return, later draft focus and native window zoom/restore.
+The complete frame and tail remain visible above the Composer; when the full
+minimum exceeds the reserved budget, the existing focused-control fallback
+remains. Source text and the later draft survive the layout changes.
+
+Both final control launches remove the observer asset and entry reference.
+All **340** Web assets are byte-identical across clean EN/light/14px/Orange and
+ZH/dark/18px/Blue launches. EN verifies complete native Go selection, Copy, SVG
+caption/body, image-dialog Escape return, 200% preview End and continued draft
+`Keep the reading draft. Continued.`. ZH repeats the original single-line and
+four-line End cases at 200%, selects the complete JSON and continues the fourth
+draft line with `已继续。` before Actual Size. Chinese input uses native paste;
+OS IME, VoiceOver and other-platform GUIs are not newly qualified. Screenshots
+and AX remain in the CUA transcript, without a screenshot-file archive claim.
+No browser suite, benchmark, Claude CLI or subagent is used.
+
+Cleanup stops the app and loopback listener, unregisters the bundle, removes
+**eight** new output/cache roots and **three** private profiles, and restores
+four original files/modes. Preservation before and after exact-root removal
+passes **6,385** qualified non-Markdown inputs, **34** resources, **55** read-only
+references, three instructions, 21 output baselines and five profile absences.
+`/private/tmp/flame-tool-scroll-sGN0eA` is absent. The memory-only archive
+round-trips **97 UTF-8 records**, **2,749,512 raw bytes**, **802,277 gzip bytes**,
+SHA-256 `1259efb399d592975868a7a81cac0a37152282e55b686b73fd9a90a01d15114d`.
+The managed toolchain and primary parallel checkout remain preserved. The one
+interval fetch finds zero incoming main commits; no redundant merge is needed.
+
+The sizing repair is accepted. **Needs changes** remains the broader reading-flow
+verdict because the pre-existing File action language and separate native
+reverse-Tab finding remain open. The whole UI goal stays active; next trace the
+File CodeBlock locale contract before changing the other captured readers.
 
 ### Settings pane error identity
 

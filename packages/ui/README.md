@@ -265,10 +265,15 @@ its code typography, shared wrap preference and host-supplied highlighting. It
 limits long code to the smaller of 28rem and 60vh, keeping the caption outside
 the scrolling source. A complete `CodeBlock` is one Panel focus unit so its caption
 stays visible with the focused reader when the block fits the available space.
-The complete block also fits within the window below the existing Panel and
-disclosure clearances. Its caption does not shrink; the source flexes within the
-remaining height, so nested reading actions stay visible at large page zoom.
-Oversized blocks retain the Panel's existing focused-control fallback.
+The complete block uses the host's optional `--reading-frame-height` budget,
+falling back to the window height, below the existing Panel and disclosure
+clearances. Its caption does not shrink; the source flexes within the remaining
+height. A visible literal frame observes its actual caption height to retain
+that caption and at least one padded source line when the budget is smaller
+than their minimum. The measurement retires with content visibility and unmount.
+Oversized blocks retain the Panel's existing focused-control fallback. `CodeFrame`
+accepts host StyleX composition and semantic classes; transcript Shiki blocks
+share this frame without adding another wrapper or reading policy.
 A consumer's `styles` override merges on that same `pre`;
 compact Tool inspectors retain their smaller existing bound. Highlighting changes
 only the child `code`, preserving the reading region, scroll position and focus.
