@@ -18,8 +18,8 @@ Wire types and field presence belong to the
 The whole system reduces to five decisions. Everything below elaborates them.
 
 1. **Tool windows around one reading plane.** Permanent regions separate by
-   material value and a half-pixel edge whose shape the visual style owns (see
-   Hairlines). Cards group independently readable
+   material value and the visual style's [boundary roles](#boundary-roles).
+   Cards group independently readable
    content through fill; ordinary tool activity stays linear. Only floating
    menus and popovers receive an optical ring and elevation. The composer is
    an input surface with one real border, accented on focus. Boundary mechanisms
@@ -170,21 +170,29 @@ their remembered background projection.
 `surface-2/3` still derive from `surface` via `--depth-step`, and the focus ring
 and unchecked control edge are derived by the palette to clear 3:1 on the canvas.
 
-### Hairlines
+### Boundary roles
 
-A hairline is the edge of a **control** — a text field, a chip, the composer — and
-of a **region**: the two are the same primitive at two weights. A change of region
-takes `border-strong`, a bar inside one takes `border`. Regions get theirs from
-`--app-card-edge` / `--app-pane-split` / `--app-header-edge`, whose SHAPE the visual
-style owns; a callsite never draws a region boundary itself. Half a pixel, not one:
-on a 2x panel that is exactly one device pixel.
+This section owns the boundary intent; other design documents and checklists
+reference it. The [visual style](src/features/theme/visualStyles/tokens.ts) owns
+token geometry, and shared rendering rules apply it. Feature call sites consume
+those roles rather than drawing their own region boundaries.
 
-The sidebar and Dock flanks share a soft inset wash instead of an additional
-region stroke. Their full-height treatment stays unchanged during hover and drag.
-
-The failed-run banner is the one object that **demands attention**; it takes a 1px
-`--color-negative-edge` over a neutral fill. Hairlines are opaque per theme, because
-a semi-transparent border shifts across surface lifts.
+- **Outer sidebar and Dock flanks** share one full-height soft inset wash,
+  `--app-pane-wash-end` with `--seam-wash`. They take no additional region stroke
+  and do not darken on hover or drag. Resize cursors and keyboard focus remain
+  available independently.
+- **Internal seams** use style-owned half-pixel shapes: `--app-card-edge` inside
+  the reading plane, `--app-pane-split` and its end variant on internal rails,
+  and `--app-header-edge` under a bar. Region separation takes `border-strong`;
+  a bar inside a region takes `border`. At 2x, half a pixel is one device pixel.
+- **Controls** — text fields, chips and the composer — have a real border.
+  Focus uses the shared focus treatment, not a second decorative edge.
+- **Resource surfaces** group through fill and the shared contact shadow.
+  **Floating overlays** use one optical ring with elevation, without a second
+  border. Wells and row states use fill.
+- **Semantic attention** can require an explicit edge: the failed-run banner
+  takes a 1px `--color-negative-edge` over a neutral fill. Hairline colors are
+  opaque per theme so they do not shift across surface lifts.
 
 ### Accent in content
 
@@ -269,7 +277,7 @@ in `globals.css`; `check:tokens` fails the build on a per-callsite pixel value.
 
 ### App shell
 
-Three opaque tool windows and no line between any of them. No bottom status bar:
+Three opaque tool windows around one reading plane. No bottom status bar:
 
 ```
  drawer (fixed, slides)      reading plane (z-15)                    dock
@@ -284,8 +292,8 @@ Three opaque tool windows and no line between any of them. No bottom status bar:
 │ ⚙ settings  ││    │ Composer                             │  │         │
 └─────────────┘└────┴──────────────────────────────────────┴──┴─────────┘
        ↑          ↑ turn rail (44)          outline rail (186) ↑ dock seam
-   --sidebar-width  --app-card-edge: the drawer seam,          soft inset wash
-   (275, 240–520) drawn inside the plane                  (--app-pane-wash-end)
+   --sidebar-width    internal reading-plane edge             outer flank
+   (275, 240–520)     (see Boundary roles)                 (see Boundary roles)
 ```
 
 Both rails are container-query gated on the width of the reading column — not the
@@ -315,9 +323,8 @@ all. Banners and composer take the same gutters, so the three stay on one axis.
   `--sidebar-width`, pointer release commits once, and Arrow/Home/End provide the
   same bounded resize path for keyboard users.
 - The drawer is opaque region chrome (`--app-drawer-surface`), never a translucent
-  sheet. It carries no border and casts no shadow of its own: the plane draws the
-  seam as an inset 0.5px edge, because the plane outranks the drawer on z-index so
-  the drawer can slide underneath it.
+  sheet. The plane outranks it on z-index so it can slide underneath. Its outer
+  flank and the reading plane's internal edge follow [Boundary roles](#boundary-roles).
 
 ### Chat measure
 
@@ -372,10 +379,8 @@ documents consume this same grammar. Activity disclosures keep their quiet
 chevron visible before hover, so the route from summary to evidence is clear.
 
 Shared panels grow with their content inside the host scroller, keeping their
-canvas and sticky-control boundary intact. The conversation plane's fixed edge
-paints the same soft inset wash as the sidebar edge above the scrolling content.
-It has no dark stroke or hover/drag darkening. Both edges share one wash rule;
-the existing resize cursor and keyboard focus treatment remain available.
+canvas and sticky-control boundary intact. The Dock's outer flank stays fixed
+above the scrolling content and follows [Boundary roles](#boundary-roles).
 
 Subagent detail keeps the selected task's identity, status, way back and stop
 action above its scrolling narrative. Overview counts belong to the list. The
@@ -457,14 +462,9 @@ Flame is a **product UI**, not a marketing site. Spacing comes from the `space` 
 
 ## 5. Elevation & Depth
 
-The sidebar and Dock use the same `--app-pane-wash-end` with `--seam-wash`,
-painted at the end of their adjacent plane. Hover and dragging add no darker edge.
-Header and internal navigation seams retain style-owned half-pixel shapes:
-`--app-card-edge` inside the reading plane, `--app-pane-split` on internal rails,
-and `--app-header-edge` under a bar. A call site never draws a region boundary.
-Resource surfaces use the shared contact shadow. Floating overlays (menus,
-popovers, tooltips, command palette, lightbox) use greater depth because they can
-land over any surface.
+[Boundary roles](#boundary-roles) defines which surfaces receive an edge or
+shadow. Floating overlays (menus, popovers, tooltips, command palette, lightbox)
+need greater depth because they can land over any surface.
 
 | Level | Treatment                                              | Use                                                                            |
 | ----- | ------------------------------------------------------ | ------------------------------------------------------------------------------ |
