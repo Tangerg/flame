@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Current batch continues from main `7d359a2cc`, which publishes package configuration correction and feedback scope. Full-width workspace materials now retain Browse panels and a source-aware return without changing zoom; see **Full-width material switching** under **Global Composer focus and retained material**. All 142 scoped tests, native light/dark/18 px/200% tasks and the observer-free control pass; resource retirement is complete. The publication fetch finds zero incoming commits and merging main reports already up to date. Next trace the native picker option-name discrepancy against its shared combobox semantics before deciding whether another repair is warranted. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
+Full-width material switching is published to main as `0f604b4e8`, with all 142 scoped tests and native light/dark/18 px/200% tasks passing. Its native option-name follow-up reproduces partial reporting in plain HTML, grid and explicitly named controls; it establishes no Flame-specific repair. See **Full-width material switching** and **Native catalog option reporting** under **Global Composer focus and retained material**. Resource retirement is complete; the publication fetch finds zero incoming commits. Next inspect the full-width header's lifetime when the Session changes, using the existing Session-owned material boundary. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -86,8 +86,10 @@ commits at `353cfd86e`; merging reports already up to date. The shared
 editor repair is published as `679f39230`. Package configuration correction and
 feedback scope are published as `7d359a2cc` and qualify correction, cancellation,
 known refusal and file return, including the observer-free native control.
-Full-width material switching now qualifies direct selection, retained source
-return, nested picker Escape and continued drafting without changing zoom.
+Full-width material switching is published as `0f604b4e8` and qualifies direct
+selection, retained source return, nested picker Escape and continued drafting
+without changing zoom. Its native catalog-reporting follow-up is a scoped
+diagnosis with no product implementation change.
 See **Goal save
 feedback and pending dismissal** and **Computer console
 editing and operation return**. Preserve the
@@ -6483,10 +6485,59 @@ Primary-checkout parallel work remains untouched.
 Verdict: **Approve** for the inspected full-width material-selection and return
 task. Typography, whitespace, hierarchy, color, motion, interaction, responsive
 and originality checks retain the established design in these scenes. This does
-not establish whole-product award-level acceptance. Next trace the native picker
-option-name discrepancy against its actual shared combobox semantics before
-deciding whether there is another actionable defect. The whole UI goal remains
-active and unfinished.
+not establish whole-product award-level acceptance. The native option-name
+comparison below retains the existing semantics; the whole UI goal remains active
+and unfinished.
+
+### Native catalog option reporting
+
+At main `0f604b4e868cf14991b6d12830b61e0d875752e1`, the production
+`CatalogList` uses Base UI 1.9's input/list relationship, grouped collection,
+`role="option"`, content-derived names and input-held active descendant. The
+official [Base UI Combobox reference](https://base-ui.com/react/components/combobox)
+documents this grouped composition; the
+[ARIA APG Combobox pattern](https://www.w3.org/WAI/ARIA/apg/patterns/combobox/)
+describes retaining DOM focus in the input while moving the active descendant.
+Neither source proves native tool output or VoiceOver speech.
+
+A private Wails v3.0.0-beta.34 host compares two static six-option ARIA lists
+with a six-option native HTML select at 1440 × 900 CSS px. The ARIA lists have
+the same named Workspace/Session groups; one uses plain blocks and one uses
+grid rows with decorative glyphs. Both visibly contain all six options, and
+passive rendered-state reads confirm their exact roles, text and nonzero bounds.
+CUA native AX reports only the first option in each group for both lists.
+Adding the exact visible `aria-label` to every grid option leaves that result
+unchanged. The native select reports all six options; Home then Down selects
+Diagnostics in the native tree and actual screenshot.
+
+This reproduces the reporting discrepancy without React, Base UI, Flame's
+catalog or product data. It does not distinguish the WebKit accessibility layer
+from the native tool's projection. No product state, option label, grouping,
+focus policy, theme, component or generated resource is changed to accommodate
+the observation. These static lists do not implement a production keyboard
+interaction and are not an additional product-task qualification.
+
+The unchanged shared CatalogPicker suite passes **1 file / 9 tests**, including
+query clearing, composing Escape, grouped filtering, trigger return and deferred
+selection. Icon/UI prerequisite builds and the private native build/sign pass
+serially. No full Web/Runtime/native suite, browser suite, performance benchmark,
+Claude CLI or subagent runs for this documentation-only result. Review scope is
+the accessibility-reporting discrepancy; visual layout, writing, typography,
+color and motion are not newly qualified. VoiceOver and OS IME remain unverified.
+No Flame-specific actionable accessibility finding is established in this scope.
+
+The single native generation is stopped, its app unregistered and loopback port
+closed. Cleanup removes **3** new output/cache roots and **3** owned profile paths,
+restores **4** originals and passes **18** output / **5** profile baselines,
+**6,269** non-Markdown inputs, **32** resources, **9** read-only references and
+**3** instruction files. The private root `flame-options-compare-iGE7Xk` is absent.
+The round-tripped in-memory archive retains **23** UTF-8 records, **813,645** raw
+bytes and **289,012** gzip bytes; SHA-256
+`014966de70410c3d590414874db1625b789dbaf4bf0aae03fe0013350f3b49c1`.
+The publication fetch finds zero incoming commits; merging main is already up to
+date. The primary checkout and unrelated work remain untouched. Next trace the
+full-width header's Session lifetime against the existing material owner before
+deciding whether it needs a repair.
 
 ### Stop and command availability preserve authoring
 
