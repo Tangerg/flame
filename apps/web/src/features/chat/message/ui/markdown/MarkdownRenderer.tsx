@@ -3,10 +3,7 @@ import ReactMarkdown from "react-markdown";
 import { defaultUrlTransform } from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
-import remarkBreaks from "remark-breaks";
-import remarkCjkFriendly from "remark-cjk-friendly";
-import remarkGfm from "remark-gfm";
-import remarkMath from "remark-math";
+import { remarkSyntax } from "@/features/chat/message/ui/markdown/remarkSyntax";
 import remend from "remend";
 import { splitStreamingBlocks } from "@/features/chat/message/ui/markdown/splitStreamingBlocks";
 import { createMarkdownComponents } from "@/features/chat/message/ui/markdown/markdownComponents";
@@ -18,7 +15,7 @@ import { rehypeFileRefs } from "@/features/chat/message/ui/markdown/rehypeFileRe
 import { rehypeFootnoteLabels } from "@/features/chat/message/ui/markdown/rehypeFootnoteLabels";
 import { rehypeStreamCaret } from "@/features/chat/message/ui/markdown/rehypeStreamCaret";
 import { normalizeMarkdownMath } from "@/features/chat/message/ui/markdown/preprocess";
-import { remarkCallouts } from "@/features/chat/message/ui/markdown/remarkCallouts";
+import { remarkCallouts } from "@flame/ui";
 import { remarkLiteralUnknownHtml } from "@/features/chat/message/ui/markdown/remarkLiteralUnknownHtml";
 import {
   useCommitThrottle,
@@ -49,14 +46,7 @@ interface MarkdownBlockProps {
   footnotePrefix: string;
 }
 
-const remarkPlugins = [
-  remarkGfm,
-  remarkBreaks,
-  remarkCjkFriendly,
-  remarkMath,
-  remarkCallouts,
-  remarkLiteralUnknownHtml,
-];
+const remarkPlugins = [...remarkSyntax, remarkCallouts, remarkLiteralUnknownHtml];
 
 const DENIED_HTML_TAGS = new Set(["script", "iframe", "object", "embed", "form"]);
 

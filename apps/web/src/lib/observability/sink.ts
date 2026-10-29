@@ -6,7 +6,7 @@ import {
   type ResourceMetrics,
 } from "@opentelemetry/sdk-metrics";
 import { type LogRecordProcessor, type SdkLogRecord } from "@opentelemetry/sdk-logs";
-import { type ReadableSpan, type SpanProcessor } from "@opentelemetry/sdk-trace-web";
+import { type ReadableSpan, type SpanProcessor } from "@opentelemetry/sdk-trace";
 import { type LogRow, type SpanRow } from "@flame/component-sdk";
 import { useTelemetryStore } from "@/lib/observability/stores";
 import { ExactSequence } from "@/foundation/exactSequence";

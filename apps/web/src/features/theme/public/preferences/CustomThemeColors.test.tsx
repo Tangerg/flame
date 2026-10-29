@@ -3,7 +3,7 @@ import { ThemeProvider } from "@/features/theme/public/theme";
 import { CustomThemeColors } from "@/features/theme/public/preferences/CustomThemeColors";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { colord } from "colord";
+import { formatHex } from "@/lib/color";
 
 let owner: Theme;
 const saved = { bg: "#f2ede4", fg: "#202020" };
@@ -53,7 +53,7 @@ it("previews a low-contrast pair without changing the applied colors", () => {
   choose("Background", saved.fg);
   expect(owner.store.getState().customTheme).toEqual(saved);
   expect(
-    colord(screen.getByRole("figure", { name: "Color preview" }).style.backgroundColor).toHex(),
+    formatHex(screen.getByRole("figure", { name: "Color preview" }).style.backgroundColor),
   ).toBe(saved.fg);
   expect(screen.getByRole("status").textContent).toContain("1.00:1");
   expect(screen.getByRole("status").textContent).toContain("4.5:1");

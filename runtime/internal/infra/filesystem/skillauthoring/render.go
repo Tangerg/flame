@@ -6,7 +6,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	skillspec "github.com/Tangerg/scope/skills"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // renderProposal encodes a domain proposal into the SKILL.md storage format. The

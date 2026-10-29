@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { colord } from "colord";
+import { rgbColor } from "@/lib/color";
+function channels(color: string) {
+  const { r, g, b } = rgbColor(color)!;
+  return { r: r * 255, g: g * 255, b: b * 255 };
+}
 import { type Scheme } from "@/lib/appearance";
 import { collapse, declaredInCss } from "@/test/stylesheet";
 import { visualStyleTokens } from "@/features/theme/visualStyles/tokens";
@@ -38,7 +42,7 @@ function paintedPlane(
   plane: ContrastColor,
   washStep = 0,
 ): RgbColor {
-  if (paint?.startsWith("#")) return colord(paint).toRgb();
+  if (paint?.startsWith("#")) return channels(paint);
   const resolved =
     paint === undefined
       ? undefined
@@ -50,9 +54,9 @@ function paintedPlane(
     /^color-mix\(in srgb,\s*var\(--([a-z-]+)\)\s+([\d.]+)%,\s*(transparent|var\(--([a-z-]+)\))\)$/,
   );
   if (!parts) throw new Error(`Unmeasured paint: ${paint}`);
-  const ink = colord(tokens[parts[1]!]!).toRgb();
+  const ink = channels(tokens[parts[1]!]!);
   const backing = parts[3] === "transparent" ? plane : tokens[parts[4]!]!;
-  const base = typeof backing === "string" ? colord(backing).toRgb() : backing;
+  const base = typeof backing === "string" ? channels(backing) : backing;
   const alpha = Number(parts[2]) / 100;
   return {
     r: ink.r * alpha + base.r * (1 - alpha),

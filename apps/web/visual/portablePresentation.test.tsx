@@ -212,6 +212,14 @@ it("gives captured code fences the shared code header while keeping the source l
   expect(view.getAllByRole("button", { name: "Enable word wrap" })).toHaveLength(2);
 });
 
+it("retains code-fence metadata in its caption without changing the source", () => {
+  const view = renderCapturedMarkdown('```ts title="sample.ts"\nconst sample = 1;\n```');
+  expect(
+    view.container.querySelector('[data-slot="code-caption"]')?.firstElementChild?.textContent,
+  ).toBe('ts title="sample.ts"');
+  expect(view.container.querySelector("pre code")?.textContent).toBe("const sample = 1;");
+});
+
 it("shows tool execution status independently of its approval decision", () => {
   const row = visualTrajectory(RUNTIME_AGENT_SESSION_SNAPSHOTS.waiting).find(
     (entry) => entry.type === "item" && entry.item.type === "toolCall",

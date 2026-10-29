@@ -1,5 +1,5 @@
 import { type Components } from "react-markdown";
-import { Callout, TaskListItem, type CalloutKind } from "@flame/ui";
+import { Callout, TaskListItem, taskListContent, visibleText, type CalloutKind } from "@flame/ui";
 import {
   Children,
   cloneElement,
@@ -17,17 +17,6 @@ import { MarkdownMath } from "@/features/chat/message/ui/markdown/MarkdownMath";
 import { MermaidBlock } from "@/features/chat/message/ui/markdown/MermaidBlock";
 import { MarkdownTable } from "@/features/chat/message/ui/markdown/MarkdownTable";
 import { SvgArtifact } from "@/features/chat/message/ui/markdown/SvgArtifact";
-function visibleText(children: ReactNode): string {
-  return Children.toArray(children)
-    .map((child) => {
-      if (typeof child === "string" || typeof child === "number") return String(child);
-      return isValidElement<{ children?: ReactNode }>(child)
-        ? visibleText(child.props.children)
-        : "";
-    })
-    .join("");
-}
-
 const WHITESPACE_ONLY = /^\s*$/;
 
 const NUMERIC_CELL = /^[+-]?\d[\d,\u202f\u00a0]*(?:\.\d+)?\s*(?:%|[a-zA-Z]{1,3})?$/;
@@ -64,59 +53,6 @@ function imagesDeferToTheLink(children: ReactNode): ReactNode {
       ? child
       : cloneElement(child, { children: imagesDeferToTheLink(inner) });
   });
-}
-
-type MarkdownElementProps = {
-  children?: ReactNode;
-  node?: { tagName?: string };
-  checked?: boolean;
-  type?: string;
-};
-
-const BLOCK_TAGS = new Set([
-  "p",
-  "ul",
-  "ol",
-  "blockquote",
-  "pre",
-  "table",
-  "h1",
-  "h2",
-  "h3",
-  "h4",
-  "h5",
-  "h6",
-  "hr",
-]);
-
-function taskListContent(children: ReactNode) {
-  const items = Children.toArray(children).filter(
-    (child) => !(typeof child === "string" && WHITESPACE_ONLY.test(child)),
-  );
-  const lead = items[0];
-  const paragraph =
-    isValidElement<MarkdownElementProps>(lead) && lead.props.node?.tagName === "p" ? lead : null;
-  const [checkbox, ...content] = paragraph ? Children.toArray(paragraph.props.children) : items;
-  if (
-    !isValidElement<MarkdownElementProps>(checkbox) ||
-    (checkbox.type !== "input" && checkbox.props.node?.tagName !== "input") ||
-    checkbox.props.type !== "checkbox"
-  ) {
-    return null;
-  }
-
-  const blockIndex = content.findIndex(
-    (child) =>
-      isValidElement<MarkdownElementProps>(child) &&
-      BLOCK_TAGS.has(child.props.node?.tagName ?? String(child.type)),
-  );
-  return {
-    checked: checkbox.props.checked === true,
-    label: visibleText(paragraph || blockIndex < 0 ? content : content.slice(0, blockIndex)).trim(),
-    children: paragraph
-      ? [cloneElement(paragraph, { children: content }), ...items.slice(1)]
-      : content,
-  };
 }
 
 const sharedMarkdownComponents: Components = {

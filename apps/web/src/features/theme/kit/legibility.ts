@@ -1,4 +1,5 @@
-import { colord } from "colord";
+import { blend, rgbColor, wcagContrast, wcagLuminance } from "@/lib/color";
+import { type Rgb } from "culori/fn";
 import { mixOklab } from "@/features/theme/kit/oklab";
 export const WCAG_AA_TEXT = 4.5;
 
@@ -13,32 +14,26 @@ export interface RgbColor {
 
 export type ContrastColor = string | RgbColor;
 
-function rgb(color: ContrastColor): RgbColor {
-  return typeof color === "string" ? colord(color).toRgb() : color;
+function rgb(color: ContrastColor): Rgb {
+  return typeof color === "string"
+    ? rgbColor(color)!
+    : { mode: "rgb", r: color.r / 255, g: color.g / 255, b: color.b / 255 };
 }
 
 export function relativeLuminance(color: ContrastColor): number {
-  const { r, g, b } = rgb(color);
-  const channel = (value: number) => {
-    const scaled = value / 255;
-    return scaled <= 0.04045 ? scaled / 12.92 : ((scaled + 0.055) / 1.055) ** 2.4;
-  };
-  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+  return wcagLuminance(rgb(color));
 }
 
 export function contrastRatio(one: ContrastColor, two: ContrastColor): number {
-  const [lighter, darker] = [relativeLuminance(one), relativeLuminance(two)].sort((a, b) => b - a);
-  return (lighter! + 0.05) / (darker! + 0.05);
+  return wcagContrast(rgb(one), rgb(two));
 }
 
 export function compositeColor(ink: string, plane: ContrastColor, opacity: number): RgbColor {
-  const foreground = rgb(ink);
-  const background = rgb(plane);
-  return {
-    r: foreground.r * opacity + background.r * (1 - opacity),
-    g: foreground.g * opacity + background.g * (1 - opacity),
-    b: foreground.b * opacity + background.b * (1 - opacity),
-  };
+  const color = blend([
+    { ...rgb(plane), alpha: 1 },
+    { ...rgb(ink), alpha: opacity },
+  ]);
+  return { r: color.r * 255, g: color.g * 255, b: color.b * 255 };
 }
 
 export function inkOnFill(declared: string, fill: string, required: number): string {

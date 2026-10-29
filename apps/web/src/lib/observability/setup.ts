@@ -11,8 +11,12 @@ import { type IMetricReader } from "@opentelemetry/sdk-metrics";
 import { MeterProvider, PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
 import { type LogRecordProcessor } from "@opentelemetry/sdk-logs";
 import { BatchLogRecordProcessor, LoggerProvider } from "@opentelemetry/sdk-logs";
-import { type SpanProcessor } from "@opentelemetry/sdk-trace-web";
-import { BatchSpanProcessor, WebTracerProvider } from "@opentelemetry/sdk-trace-web";
+import {
+  BatchSpanProcessor,
+  StackContextManager,
+  TracerProvider,
+  type SpanProcessor,
+} from "@opentelemetry/sdk-trace";
 import {
   LocalLogProcessor,
   LocalMetricExporter,
@@ -27,7 +31,7 @@ export interface ObservabilityOptions {
 const LOCAL_METRIC_INTERVAL_MS = 500;
 
 class ObservabilitySession {
-  readonly #tracer: WebTracerProvider;
+  readonly #tracer: TracerProvider;
   readonly #meter: MeterProvider;
   readonly #logger: LoggerProvider;
   readonly #unbindInstruments: () => void;
@@ -44,7 +48,7 @@ class ObservabilitySession {
     });
     const spanProcessors: SpanProcessor[] = [new LocalSpanProcessor()];
     if (otlp) spanProcessors.push(otlp.spanProcessor);
-    this.#tracer = new WebTracerProvider({ resource, spanProcessors });
+    this.#tracer = new TracerProvider({ resource, spanProcessors });
 
     const readers: IMetricReader[] = [
       new PeriodicExportingMetricReader({
@@ -59,11 +63,13 @@ class ObservabilitySession {
     if (otlp) processors.push(otlp.logProcessor);
     this.#logger = new LoggerProvider({ resource, processors });
 
-    this.#tracer.register({
-      propagator: new CompositePropagator({
+    trace.setGlobalTracerProvider(this.#tracer);
+    context.setGlobalContextManager(new StackContextManager().enable());
+    propagation.setGlobalPropagator(
+      new CompositePropagator({
         propagators: [new W3CTraceContextPropagator(), new W3CBaggagePropagator()],
       }),
-    });
+    );
     metrics.setGlobalMeterProvider(this.#meter);
     logs.setGlobalLoggerProvider(this.#logger);
     this.#unbindInstruments = bindMetricInstruments(this.#meter.getMeter("flame"));
@@ -133,9 +139,9 @@ async function loadOtlp(endpoint: string): Promise<OtlpBundle> {
     import("@opentelemetry/exporter-logs-otlp-http"),
   ]);
   return {
-    spanProcessor: new BatchSpanProcessor(
-      new traceExp.OTLPTraceExporter({ url: `${base}/v1/traces` }),
-    ),
+    spanProcessor: new BatchSpanProcessor({
+      exporter: new traceExp.OTLPTraceExporter({ url: `${base}/v1/traces` }),
+    }),
     metricReader: new PeriodicExportingMetricReader({
       exporter: new metricExp.OTLPMetricExporter({ url: `${base}/v1/metrics` }),
       exportIntervalMillis: 10_000,

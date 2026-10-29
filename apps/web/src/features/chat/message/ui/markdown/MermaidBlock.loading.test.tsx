@@ -3,7 +3,7 @@ import { expect, it, onTestFinished, vi } from "vitest";
 import { createTestClient } from "@/test/renderClient";
 import { MermaidBlock } from "@/features/chat/message/ui/markdown/MermaidBlock";
 
-vi.mock("beautiful-mermaid", () => {
+vi.mock("pele/lazy", () => {
   throw new Error("renderer chunk unavailable");
 });
 

@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { colord } from "colord";
+import { rgbColor } from "@/lib/color";
 import { useState } from "react";
 import { Button, CARD_SURFACE, PanelSection, useCopyFeedback } from "@flame/ui";
 import { color, face, layout, radius, space, surface, type, weight } from "@flame/ui/tokens.stylex";
@@ -91,9 +91,9 @@ const assets = [
 
 const hex = FLAME_ORANGE.toUpperCase();
 
-const { r, g, b } = colord(FLAME_ORANGE).toRgb();
+const { r, g, b } = rgbColor(FLAME_ORANGE)!;
 
-const rgb = `${r}, ${g}, ${b}`;
+const rgb = `${r * 255}, ${g * 255}, ${b * 255}`;
 
 export function BrandPane({ saveImage }: { saveImage: (source: string) => Promise<boolean> }) {
   const t = useT();

@@ -1,11 +1,6 @@
-import {
-  Children,
-  createElement,
-  isValidElement,
-  useMemo,
-  type ReactNode,
-} from "react";
-import { Lexer, type Token, type Tokens } from "marked";
+import { Children, isValidElement, useMemo, type ReactNode } from "react";
+import ReactMarkdown, { type Components } from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   createTranslator,
   type ComponentContext,
@@ -19,7 +14,9 @@ import {
   Panel,
   ScrollRegion,
   TaskListItem,
-  readCalloutMarker,
+  remarkCallouts,
+  taskListContent,
+  visibleText,
   type CalloutKind,
 } from "@flame/ui";
 import { en } from "./locales/en";
@@ -33,232 +30,143 @@ import { de } from "./locales/de";
 
 const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
 
-function visibleText(children: ReactNode): string {
-  return Children.toArray(children)
-    .map((child) => {
-      if (typeof child === "string" || typeof child === "number")
-        return String(child);
-      return isValidElement<{ children?: ReactNode }>(child)
-        ? visibleText(child.props.children)
-        : "";
-    })
-    .join("");
+function blockChildren(children: ReactNode): ReactNode[] {
+  return Children.toArray(children).filter(
+    (child) => typeof child !== "string" || child.trim() !== "",
+  );
 }
 
-function calloutOf(
-  tokens: Token[],
-): { kind: CalloutKind; tokens: Token[] } | null {
-  const [lead, ...rest] = tokens;
-  if (lead?.type !== "paragraph") return null;
-  const authored = readCalloutMarker(lead.raw);
-  if (!authored) return null;
-  const [first, ...inline] = (lead as Tokens.Paragraph).tokens;
-  if (first?.type !== "text") return null;
-  const marker = readCalloutMarker((first as Tokens.Text).text);
-  if (marker?.kind !== authored.kind) return null;
-  const body = marker.rest
-    ? [
-        { ...first, raw: marker.rest, text: marker.rest } as Tokens.Text,
-        ...inline,
-      ]
-    : inline[0]?.type === "br"
-      ? inline.slice(1)
-      : inline;
+const remarkPlugins = [remarkGfm, remarkCallouts];
+
+// Destinations stay visible as text; no authored URL is assigned to a DOM attribute.
+function markdownComponents(t: Translate): Components {
   return {
-    kind: marker.kind,
-    tokens:
-      body.length > 0
-        ? [{ ...lead, tokens: body } as Tokens.Paragraph, ...rest]
-        : rest,
+    a({ children, href, title }) {
+      return (
+        <span title={title}>
+          {children}
+          {href && visibleText(children) !== href && (
+            <small data-slot="link-destination"> ({href})</small>
+          )}
+        </span>
+      );
+    },
+    img({ src, alt, title }) {
+      const source = typeof src === "string" ? src : "";
+      return (
+        <ImageNotice
+          label={alt || undefined}
+          title={title}
+          detail={/^data:/i.test(source) ? t("image.embedded") : source}
+        />
+      );
+    },
+    pre({ children, node }) {
+      const child = Children.toArray(children)[0];
+      if (
+        !isValidElement<{
+          children?: ReactNode;
+          className?: string;
+          node?: { data?: { meta?: string } };
+        }>(child)
+      )
+        return children;
+      const language = child.props.className?.match(/language-([^\s]+)/)?.[1];
+      const caption = [language, child.props.node?.data?.meta]
+        .filter(Boolean)
+        .join(" ");
+      return (
+        <CodeBlock
+          label={t("code.block", { n: node?.position?.start.line ?? 1 })}
+          language={language}
+          caption={caption || undefined}
+        >
+          {String(child.props.children ?? "").replace(/\n$/, "")}
+        </CodeBlock>
+      );
+    },
+    code({ children }) {
+      return <code dir="ltr">{children}</code>;
+    },
+    li({ children, className }) {
+      const task = className?.includes("task-list-item")
+        ? taskListContent(children)
+        : null;
+      return task ? (
+        <TaskListItem checked={task.checked} label={task.label}>
+          {task.children}
+        </TaskListItem>
+      ) : (
+        <li>{children}</li>
+      );
+    },
+    ol({ children, start, className }) {
+      return (
+        <ol dir="auto" start={start} className={className}>
+          {blockChildren(children)}
+        </ol>
+      );
+    },
+    ul({ children, className }) {
+      return (
+        <ul dir="auto" className={className}>
+          {blockChildren(children)}
+        </ul>
+      );
+    },
+    blockquote({ children, node }) {
+      const kind = node?.properties.dataCallout as CalloutKind | undefined;
+      return kind ? (
+        <Callout kind={kind}>{blockChildren(children)}</Callout>
+      ) : (
+        <blockquote dir="auto">{children}</blockquote>
+      );
+    },
+    table({ children, node }) {
+      return (
+        <ScrollRegion
+          label={t("table.label", { n: node?.position?.start.line ?? 1 })}
+        >
+          <table dir="auto">{children}</table>
+        </ScrollRegion>
+      );
+    },
+    th({ children, style }) {
+      return (
+        <th dir="auto" style={style}>
+          {children}
+        </th>
+      );
+    },
+    td({ children, style }) {
+      return (
+        <td dir="auto" style={style}>
+          {children}
+        </td>
+      );
+    },
+    p({ children }) {
+      return <p dir="auto">{children}</p>;
+    },
+    h1({ children }) {
+      return <h1 dir="auto">{children}</h1>;
+    },
+    h2({ children }) {
+      return <h2 dir="auto">{children}</h2>;
+    },
+    h3({ children }) {
+      return <h3 dir="auto">{children}</h3>;
+    },
+    h4({ children }) {
+      return <h4 dir="auto">{children}</h4>;
+    },
+    h5({ children }) {
+      return <h5 dir="auto">{children}</h5>;
+    },
+    h6({ children }) {
+      return <h6 dir="auto">{children}</h6>;
+    },
   };
-}
-
-// Parsed file content never supplies HTML or executable URL attributes.
-function renderTokens(tokens: Token[], t: Translate): ReactNode[] {
-  return tokens.map((token, key) => {
-    switch (token.type) {
-      case "space":
-      case "def":
-      case "checkbox":
-        return null;
-      case "hr":
-        return <hr key={key} />;
-      case "br":
-        return <br key={key} />;
-      case "heading": {
-        const value = token as Tokens.Heading;
-        return createElement(
-          ["h1", "h2", "h3", "h4", "h5", "h6"][value.depth - 1] ?? "h6",
-          { key, dir: "auto" },
-          renderTokens(value.tokens, t),
-        );
-      }
-      case "paragraph":
-        return (
-          <p key={key} dir="auto">
-            {renderTokens((token as Tokens.Paragraph).tokens, t)}
-          </p>
-        );
-      case "strong":
-        return (
-          <strong key={key}>
-            {renderTokens((token as Tokens.Strong).tokens, t)}
-          </strong>
-        );
-      case "em":
-        return (
-          <em key={key}>{renderTokens((token as Tokens.Em).tokens, t)}</em>
-        );
-      case "del":
-        return (
-          <del key={key}>{renderTokens((token as Tokens.Del).tokens, t)}</del>
-        );
-      case "blockquote": {
-        const quoted = (token as Tokens.Blockquote).tokens;
-        const callout = calloutOf(quoted);
-        return callout ? (
-          <Callout key={key} kind={callout.kind}>
-            {renderTokens(callout.tokens, t)}
-          </Callout>
-        ) : (
-          <blockquote key={key} dir="auto">
-            {renderTokens(quoted, t)}
-          </blockquote>
-        );
-      }
-      case "codespan":
-        return (
-          <code key={key} dir="ltr">
-            {(token as Tokens.Codespan).text}
-          </code>
-        );
-      case "code": {
-        const value = token as Tokens.Code;
-        return (
-          <CodeBlock
-            key={key}
-            label={t("code.block", { n: key + 1 })}
-            language={value.lang || undefined}
-          >
-            {value.text}
-          </CodeBlock>
-        );
-      }
-      case "link": {
-        const value = token as Tokens.Link;
-        const label = renderTokens(value.tokens, t);
-        return (
-          <span key={key} title={value.title ?? undefined}>
-            {label}
-            {value.href && visibleText(label) !== value.href && (
-              <small data-slot="link-destination"> ({value.href})</small>
-            )}
-          </span>
-        );
-      }
-      case "image": {
-        const value = token as Tokens.Image;
-        return (
-          <ImageNotice
-            key={key}
-            label={value.text || undefined}
-            detail={
-              /^data:/i.test(value.href) ? t("image.embedded") : value.href
-            }
-            title={value.title ?? undefined}
-          />
-        );
-      }
-      case "list": {
-        const value = token as Tokens.List;
-        const rows = value.items.map((item, index) => {
-          const content = renderTokens(item.tokens, t);
-          if (!item.task) return <li key={index}>{content}</li>;
-          const primary = item.tokens.find(
-            (part) => part.type === "paragraph" || part.type === "text",
-          );
-          return (
-            <TaskListItem
-              key={index}
-              checked={item.checked === true}
-              label={visibleText(
-                primary ? renderTokens([primary], t) : null,
-              ).trim()}
-            >
-              {content}
-            </TaskListItem>
-          );
-        });
-        const className = value.items.some((item) => item.task)
-          ? "contains-task-list"
-          : undefined;
-        return value.ordered ? (
-          <ol
-            key={key}
-            className={className}
-            dir="auto"
-            start={typeof value.start === "number" ? value.start : undefined}
-          >
-            {rows}
-          </ol>
-        ) : (
-          <ul key={key} className={className} dir="auto">
-            {rows}
-          </ul>
-        );
-      }
-      case "table": {
-        const value = token as Tokens.Table;
-        return (
-          <ScrollRegion key={key} label={t("table.label", { n: key + 1 })}>
-            <table dir="auto">
-              <thead>
-                <tr>
-                  {value.header.map((cell, index) => (
-                    <th
-                      key={index}
-                      dir="auto"
-                      style={{ textAlign: value.align[index] ?? undefined }}
-                    >
-                      {renderTokens(cell.tokens, t)}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {value.rows.map((row, index) => (
-                  <tr key={index}>
-                    {row.map((cell, column) => (
-                      <td
-                        key={column}
-                        dir="auto"
-                        style={{ textAlign: value.align[column] ?? undefined }}
-                      >
-                        {renderTokens(cell.tokens, t)}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </ScrollRegion>
-        );
-      }
-      case "text": {
-        const value = token as Tokens.Text;
-        return value.tokens ? (
-          <span key={key}>{renderTokens(value.tokens, t)}</span>
-        ) : (
-          value.text
-        );
-      }
-      case "html":
-      case "escape":
-        return token.text;
-      default:
-        return token.raw;
-    }
-  });
 }
 
 export function Markdown({ context }: { context: ComponentContext }) {
@@ -268,13 +176,18 @@ export function Markdown({ context }: { context: ComponentContext }) {
     () => createTranslator(CATALOGS, context.locale),
     [context.locale],
   );
-  const content = useMemo(
-    () => renderTokens(Lexer.lex(file.content, { gfm: true }), t),
-    [file.content, t],
-  );
+  const components = useMemo(() => markdownComponents(t), [t]);
   return (
     <Panel label={t("panel.label")}>
-      <DocumentBody>{content}</DocumentBody>
+      <DocumentBody>
+        <ReactMarkdown
+          remarkPlugins={remarkPlugins}
+          components={components}
+          urlTransform={(url) => url}
+        >
+          {file.content}
+        </ReactMarkdown>
+      </DocumentBody>
     </Panel>
   );
 }
