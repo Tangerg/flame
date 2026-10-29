@@ -19,7 +19,7 @@ import (
 
 func TestPreparedInputPreservesMaximumAttachmentOutsideRecordBudget(t *testing.T) {
 	directory := t.TempDir()
-	store, err := OpenDirectory(directory, Config{})
+	store, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +50,7 @@ func TestPreparedInputPreservesMaximumAttachmentOutsideRecordBudget(t *testing.T
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := OpenDirectory(directory, Config{})
+	reopened, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestUnavailableInputPreservesOriginalRunResumeAndSteer(t *testing.T) {
 	for _, mode := range []string{"legacy-path-only", "missing", "corrupt"} {
 		t.Run(mode, func(t *testing.T) {
 			directory := t.TempDir()
-			store, err := OpenDirectory(directory, Config{})
+			store, err := OpenDirectory(t, directory, Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -144,7 +144,7 @@ func TestUnavailableInputPreservesOriginalRunResumeAndSteer(t *testing.T) {
 			if err := store.Close(); err != nil {
 				t.Fatal(err)
 			}
-			reopened, err := OpenDirectory(directory, Config{})
+			reopened, err := OpenDirectory(t, directory, Config{})
 			if err != nil {
 				t.Fatalf("unavailable input prevented preservation of the authoring state: %v", err)
 			}
@@ -196,7 +196,7 @@ func TestInputPublicationFailureLeavesQueuedCommandEditable(t *testing.T) {
 	for _, prefix := range []string{"inputs", "sessions"} {
 		t.Run(prefix, func(t *testing.T) {
 			directory := t.TempDir()
-			store, err := OpenDirectory(directory, Config{})
+			store, err := OpenDirectory(t, directory, Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -221,7 +221,7 @@ func TestInputPublicationFailureLeavesQueuedCommandEditable(t *testing.T) {
 			if err := store.Close(); err != nil {
 				t.Fatal(err)
 			}
-			reopened, err := OpenDirectory(directory, Config{})
+			reopened, err := OpenDirectory(t, directory, Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -257,13 +257,13 @@ func preparedTestInput(t *testing.T, store *Store, message authoring.Message, bl
 
 func TestOpeningAnotherStoreDoesNotDeleteInputAwaitingPublication(t *testing.T) {
 	directory := t.TempDir()
-	store, err := OpenDirectory(directory, Config{})
+	store, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	pending := steerTestPending(t, "ses_preparing", steerTestAttachment(t.TempDir()))
 	prepared := preparedTestInput(t, store, pending.Message(), pending.Command().Input)
-	if reader, err := OpenDirectory(directory, Config{}); err == nil {
+	if reader, err := OpenDirectory(t, directory, Config{}); err == nil {
 		_ = reader.Close()
 		t.Fatal("second writer admitted while input awaits publication")
 	}
@@ -281,7 +281,7 @@ func TestOpeningAnotherStoreDoesNotDeleteInputAwaitingPublication(t *testing.T) 
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := OpenDirectory(directory, Config{})
+	reopened, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -311,7 +311,7 @@ func (p pausedInputPersistence) Close() error { return closePersistence(p.Persis
 
 func TestInputPreparationDoesNotHoldTheAuthoringLock(t *testing.T) {
 	directory := t.TempDir()
-	store, err := OpenDirectory(directory, Config{})
+	store, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}

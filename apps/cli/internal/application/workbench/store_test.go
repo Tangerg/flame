@@ -65,7 +65,7 @@ func TestStoreRejectsInvalidPersistedSessionDraft(t *testing.T) {
 func TestStorePersistsBoundedHistoryDraftsStashesAndWorkspaces(t *testing.T) {
 	directory := t.TempDir()
 	now := time.Date(2026, 8, 11, 12, 0, 0, 0, time.UTC)
-	store, err := OpenDirectory(directory, Config{
+	store, err := OpenDirectory(t, directory, Config{
 		HistoryCapacity: testCapacity(t, 2), StashCapacity: testCapacity(t, 2), WorkspaceCapacity: testCapacity(t, 2),
 		Now: func() time.Time { return now }, Random: bytes.NewReader([]byte("12345678abcdefgh")),
 	})
@@ -94,7 +94,7 @@ func TestStorePersistsBoundedHistoryDraftsStashesAndWorkspaces(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	reopened, err := OpenDirectory(directory, Config{
+	reopened, err := OpenDirectory(t, directory, Config{
 		HistoryCapacity: testCapacity(t, 2), StashCapacity: testCapacity(t, 2), WorkspaceCapacity: testCapacity(t, 2),
 	})
 	if err != nil {
@@ -122,7 +122,7 @@ func TestStorePersistsBoundedHistoryDraftsStashesAndWorkspaces(t *testing.T) {
 
 func TestStorePreservesRemoteWorkspaceIdentityAcrossRestart(t *testing.T) {
 	directory := t.TempDir()
-	store, err := OpenDirectory(directory, Config{})
+	store, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +138,7 @@ func TestStorePreservesRemoteWorkspaceIdentityAcrossRestart(t *testing.T) {
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := OpenDirectory(directory, Config{})
+	reopened, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +153,7 @@ func TestStorePreservesRemoteWorkspaceIdentityAcrossRestart(t *testing.T) {
 
 func TestStoreDoesNotMutateMemoryWhenPersistenceFails(t *testing.T) {
 	directory := t.TempDir()
-	store, err := OpenDirectory(directory, Config{})
+	store, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,7 +171,7 @@ func TestStoreDoesNotMutateMemoryWhenPersistenceFails(t *testing.T) {
 
 func TestStorePreservesCachedDraftWhenDurableDeletionFails(t *testing.T) {
 	directory := t.TempDir()
-	store, err := OpenDirectory(directory, Config{})
+	store, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,7 +202,7 @@ func TestStorePreservesCachedDraftWhenDurableDeletionFails(t *testing.T) {
 
 func TestStoreRollsBackAStashWhenDraftRetirementFails(t *testing.T) {
 	directory := t.TempDir()
-	store, err := OpenDirectory(directory, Config{
+	store, err := OpenDirectory(t, directory, Config{
 		StashCapacity: testCapacity(t, 1), Random: bytes.NewReader([]byte("12345678abcdefgh")),
 	})
 	if err != nil {
@@ -240,7 +240,7 @@ func TestStoreRollsBackAStashWhenDraftRetirementFails(t *testing.T) {
 
 func TestStoreStashesDraftWithoutRetiringSessionOutboxes(t *testing.T) {
 	directory := t.TempDir()
-	store, err := OpenDirectory(directory, Config{})
+	store, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -283,7 +283,7 @@ func TestStoreStashesDraftWithoutRetiringSessionOutboxes(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	reopened, err := OpenDirectory(directory, Config{})
+	reopened, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -305,7 +305,7 @@ func TestStoreCompletesInterruptedStashTransfersOnOpen(t *testing.T) {
 	for _, phase := range []string{"intent saved", "stash saved", "source retired", "source retired before stash survived"} {
 		t.Run(phase, func(t *testing.T) {
 			directory := t.TempDir()
-			store, err := OpenDirectory(directory, Config{StashCapacity: testCapacity(t, 2)})
+			store, err := OpenDirectory(t, directory, Config{StashCapacity: testCapacity(t, 2)})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -343,7 +343,7 @@ func TestStoreCompletesInterruptedStashTransfersOnOpen(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			reopened, err := OpenDirectory(directory, Config{StashCapacity: testCapacity(t, 2)})
+			reopened, err := OpenDirectory(t, directory, Config{StashCapacity: testCapacity(t, 2)})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -357,7 +357,7 @@ func TestStoreCompletesInterruptedStashTransfersOnOpen(t *testing.T) {
 			if err := reopened.Close(); err != nil {
 				t.Fatal(err)
 			}
-			settled, err := OpenDirectory(directory, Config{StashCapacity: testCapacity(t, 2)})
+			settled, err := OpenDirectory(t, directory, Config{StashCapacity: testCapacity(t, 2)})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -407,7 +407,7 @@ func TestStoreBlocksWritesWhenCommittedStashTransferJournalCannotRetire(t *testi
 	}
 
 	failing.enabled = false
-	reopened, err := OpenDirectory(directory, Config{})
+	reopened, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -421,7 +421,7 @@ func TestStoreBlocksWritesWhenCommittedStashTransferJournalCannotRetire(t *testi
 
 func TestStoreDoesNotReplayAStashTransferOverANewerDraft(t *testing.T) {
 	directory := t.TempDir()
-	store, err := OpenDirectory(directory, Config{})
+	store, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -446,7 +446,7 @@ func TestStoreDoesNotReplayAStashTransferOverANewerDraft(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	reopened, err := OpenDirectory(directory, Config{})
+	reopened, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -460,7 +460,7 @@ func TestStoreDoesNotReplayAStashTransferOverANewerDraft(t *testing.T) {
 
 func TestStoreDoesNotRewriteAnAlreadyEmptyDraft(t *testing.T) {
 	directory := t.TempDir()
-	store, err := OpenDirectory(directory, Config{})
+	store, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -480,7 +480,7 @@ func TestStoreDoesNotRewriteAnAlreadyEmptyDraft(t *testing.T) {
 
 func TestStoreRetiresCompleteSessionStateBehindADurableTombstone(t *testing.T) {
 	directory := t.TempDir()
-	store, err := OpenDirectory(directory, Config{})
+	store, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -548,7 +548,7 @@ func TestStoreRetiresCompleteSessionStateBehindADurableTombstone(t *testing.T) {
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := OpenDirectory(directory, Config{})
+	reopened, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -574,7 +574,7 @@ func TestStoreRetiresCompleteSessionStateBehindADurableTombstone(t *testing.T) {
 	if err := reopened.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err = OpenDirectory(directory, Config{})
+	reopened, err = OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -591,7 +591,7 @@ func TestStoreRetiresCompleteSessionStateBehindADurableTombstone(t *testing.T) {
 
 func TestStoreRecoversPreparedSessionDeletionWithStableIdentity(t *testing.T) {
 	directory := t.TempDir()
-	store, err := OpenDirectory(directory, Config{})
+	store, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -610,7 +610,7 @@ func TestStoreRecoversPreparedSessionDeletionWithStableIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	reopened, err := OpenDirectory(directory, Config{})
+	reopened, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -651,7 +651,7 @@ func TestStoreDoesNotNormalizeSessionDeletionIdentity(t *testing.T) {
 
 func TestStoreRejectsNonExactSessionIdentityInDeletionJournal(t *testing.T) {
 	directory := t.TempDir()
-	store, err := OpenDirectory(directory, Config{})
+	store, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -662,25 +662,42 @@ func TestStoreRejectsNonExactSessionIdentityInDeletionJournal(t *testing.T) {
 	if err := store.StageSessionDeletion(request, authoring.UnprotectedGuard()); err != nil {
 		t.Fatal(err)
 	}
-	journalPath := filepath.Join(directory, sessionDeletionsName)
-	content, err := os.ReadFile(journalPath)
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	valid, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
+		t.Fatalf("valid deletion journal cannot reopen: %v", err)
+	}
+	pending, ok := valid.PendingSessionDeletion(request.SessionID)
+	if !ok || pending.Request() != request {
+		t.Fatalf("valid deletion journal changed its request: %+v", pending)
+	}
+	if err := valid.Close(); err != nil {
 		t.Fatal(err)
 	}
-	content = bytes.Replace(content, []byte(`"sessionId": "session"`), []byte(`"sessionId": " session"`), 1)
-	if !bytes.Contains(content, []byte(`"sessionId": " session"`)) {
-		t.Fatal("fixture did not corrupt the durable session identity")
-	}
-	if err := os.WriteFile(journalPath, content, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := OpenDirectory(directory, Config{}); err == nil {
-		t.Fatal("OpenDirectory repaired a non-exact durable session identity")
+	for _, identity := range []string{" session", "session "} {
+		t.Run(identity, func(t *testing.T) {
+			invalid := pending
+			invalid.SessionID = identity
+			content, err := json.Marshal([]PendingSessionDeletion{invalid}, stateJSONOptions)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(directory, sessionDeletionsName), content, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			_, err = OpenDirectory(t, directory, Config{})
+			want := "load session deletion 1: session deletion: " + protocol.ValidateSessionID(identity).Error()
+			if err == nil || err.Error() != want {
+				t.Fatalf("open invalid deletion journal = %v, want %s", err, want)
+			}
+		})
 	}
 }
 
 func TestStoreRejectsOnlyTheExactPreparedSessionDeletion(t *testing.T) {
-	store, err := OpenDirectory(t.TempDir(), Config{})
+	store, err := OpenDirectory(t, t.TempDir(), Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -703,7 +720,7 @@ func TestStoreRejectsOnlyTheExactPreparedSessionDeletion(t *testing.T) {
 
 func TestStorePersistsAndAtomicallyActivatesSessionRollbackRecovery(t *testing.T) {
 	directory := t.TempDir()
-	store, err := OpenDirectory(directory, Config{})
+	store, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -728,7 +745,7 @@ func TestStorePersistsAndAtomicallyActivatesSessionRollbackRecovery(t *testing.T
 		t.Fatal(err)
 	}
 
-	reopened, err := OpenDirectory(directory, Config{})
+	reopened, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -753,7 +770,7 @@ func TestStorePersistsAndAtomicallyActivatesSessionRollbackRecovery(t *testing.T
 		t.Fatal(err)
 	}
 
-	reopened, err = OpenDirectory(directory, Config{})
+	reopened, err = OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -784,7 +801,7 @@ func TestSessionRollbackDoesNotNormalizeRunIdentity(t *testing.T) {
 }
 
 func TestStoreDoesNotDuplicateAnEditedRecoveredRollbackDraft(t *testing.T) {
-	store, err := OpenDirectory(t.TempDir(), Config{})
+	store, err := OpenDirectory(t, t.TempDir(), Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -813,7 +830,7 @@ func TestStoreDoesNotDuplicateAnEditedRecoveredRollbackDraft(t *testing.T) {
 }
 
 func TestRetiringSessionStateAlsoRetiresItsRollbackJournal(t *testing.T) {
-	store, err := OpenDirectory(t.TempDir(), Config{})
+	store, err := OpenDirectory(t, t.TempDir(), Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -861,7 +878,7 @@ func TestStoreRejectsAFileOfAnotherShape(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(directory, "history.json"), []byte(`{"version":2,"value":[]}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := OpenDirectory(directory, Config{}); err == nil {
+	if _, err := OpenDirectory(t, directory, Config{}); err == nil {
 		t.Fatal("a file of another shape was accepted")
 	}
 }
@@ -881,7 +898,7 @@ func TestStoreRejectsTrailingAndOversizedStateSnapshots(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(directory, "history.json"), test.body, 0o600); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := OpenDirectory(directory, Config{}); err == nil {
+			if _, err := OpenDirectory(t, directory, Config{}); err == nil {
 				t.Fatal("invalid workbench snapshot was accepted")
 			}
 		})
@@ -904,7 +921,7 @@ func TestStoreRejectsUnknownStateFields(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(directory, "workspaces.json"), []byte(test.body), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := OpenDirectory(directory, Config{}); err == nil {
+			if _, err := OpenDirectory(t, directory, Config{}); err == nil {
 				t.Fatal("workbench snapshot with an unknown field was accepted")
 			}
 		})
@@ -955,7 +972,7 @@ func TestStoreRejectsInvalidDurableCatalogValues(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(directory, test.file), []byte(test.body), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := OpenDirectory(directory, Config{}); err == nil || !strings.Contains(err.Error(), test.want) {
+			if _, err := OpenDirectory(t, directory, Config{}); err == nil || !strings.Contains(err.Error(), test.want) {
 				t.Fatalf("open invalid durable catalog value = %v, want %q", err, test.want)
 			}
 		})
@@ -964,7 +981,7 @@ func TestStoreRejectsInvalidDurableCatalogValues(t *testing.T) {
 
 func TestStoreDoesNotWriteStateItCannotReopen(t *testing.T) {
 	directory := t.TempDir()
-	store, err := OpenDirectory(directory, Config{})
+	store, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -978,7 +995,7 @@ func TestStoreDoesNotWriteStateItCannotReopen(t *testing.T) {
 
 func TestStorePersistsAndAcknowledgesPendingRunsByCommandIdentity(t *testing.T) {
 	directory := t.TempDir()
-	store, err := OpenDirectory(directory, Config{})
+	store, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -998,7 +1015,7 @@ func TestStorePersistsAndAcknowledgesPendingRunsByCommandIdentity(t *testing.T) 
 		t.Fatal(err)
 	}
 
-	reopened, err := OpenDirectory(directory, Config{})
+	reopened, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1022,7 +1039,7 @@ func TestStorePersistsAndAcknowledgesPendingRunsByCommandIdentity(t *testing.T) 
 
 func TestPendingRunAcknowledgementIsIdempotentAfterSessionStatePersistenceFailure(t *testing.T) {
 	directory := t.TempDir()
-	store, err := OpenDirectory(directory, Config{})
+	store, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1063,7 +1080,7 @@ func TestPendingRunAcknowledgementIsIdempotentAfterSessionStatePersistenceFailur
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := OpenDirectory(directory, Config{})
+	reopened, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1081,7 +1098,7 @@ func TestPendingRunAcknowledgementIsIdempotentAfterSessionStatePersistenceFailur
 		t.Fatal(err)
 	}
 
-	settled, err := OpenDirectory(directory, Config{})
+	settled, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1092,7 +1109,7 @@ func TestPendingRunAcknowledgementIsIdempotentAfterSessionStatePersistenceFailur
 
 func TestBoundedHistoryRetainsAnUnsettledCommandIdentity(t *testing.T) {
 	directory := t.TempDir()
-	store, err := OpenDirectory(directory, Config{HistoryCapacity: testCapacity(t, 1)})
+	store, err := OpenDirectory(t, directory, Config{HistoryCapacity: testCapacity(t, 1)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1136,7 +1153,7 @@ func TestBoundedHistoryRetainsAnUnsettledCommandIdentity(t *testing.T) {
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := OpenDirectory(directory, Config{HistoryCapacity: testCapacity(t, 1)})
+	reopened, err := OpenDirectory(t, directory, Config{HistoryCapacity: testCapacity(t, 1)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1164,13 +1181,13 @@ func TestStoreRejectsDuplicateHistoryCommandIdentity(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(directory, "history.json"), []byte(encoded), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := OpenDirectory(directory, Config{}); err == nil || !strings.Contains(err.Error(), "repeats command") {
+	if _, err := OpenDirectory(t, directory, Config{}); err == nil || !strings.Contains(err.Error(), "repeats command") {
 		t.Fatalf("open duplicate history command identity = %v", err)
 	}
 }
 
 func TestStagingTheSameCommandRejectsADifferentPayload(t *testing.T) {
-	store, err := OpenDirectory(t.TempDir(), Config{})
+	store, err := OpenDirectory(t, t.TempDir(), Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1201,7 +1218,7 @@ func TestStagingTheSameCommandRejectsADifferentPayload(t *testing.T) {
 }
 
 func TestRejectedDispatchRequeuesWithANewCommandIdentity(t *testing.T) {
-	store, err := OpenDirectory(t.TempDir(), Config{})
+	store, err := OpenDirectory(t, t.TempDir(), Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1225,7 +1242,7 @@ func TestRejectedDispatchRequeuesWithANewCommandIdentity(t *testing.T) {
 }
 
 func TestPendingRunStateMachineRejectsUndeliveredSettlement(t *testing.T) {
-	store, err := OpenDirectory(t.TempDir(), Config{})
+	store, err := OpenDirectory(t, t.TempDir(), Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1271,7 +1288,7 @@ func TestPendingRunStateMachineRejectsUndeliveredSettlement(t *testing.T) {
 }
 
 func TestCancelingPendingRunCannotReturnToQueuedDelivery(t *testing.T) {
-	store, err := OpenDirectory(t.TempDir(), Config{})
+	store, err := OpenDirectory(t, t.TempDir(), Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1298,7 +1315,7 @@ func TestCancelingPendingRunCannotReturnToQueuedDelivery(t *testing.T) {
 
 func TestCancelingDispatchPersistsBothMutationIdentities(t *testing.T) {
 	directory := t.TempDir()
-	store, err := OpenDirectory(directory, Config{})
+	store, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1317,7 +1334,7 @@ func TestCancelingDispatchPersistsBothMutationIdentities(t *testing.T) {
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := OpenDirectory(directory, Config{})
+	reopened, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1329,7 +1346,7 @@ func TestCancelingDispatchPersistsBothMutationIdentities(t *testing.T) {
 }
 
 func TestPendingRunSequenceKeepsTheOnlyDeliveryStateAtTheFIFOBoundary(t *testing.T) {
-	store, err := OpenDirectory(t.TempDir(), Config{})
+	store, err := OpenDirectory(t, t.TempDir(), Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1360,7 +1377,7 @@ func TestPendingRunSequenceKeepsTheOnlyDeliveryStateAtTheFIFOBoundary(t *testing
 }
 
 func TestPendingRunCannotBeStagedWithoutAQueuedCommandIdentity(t *testing.T) {
-	store, err := OpenDirectory(t.TempDir(), Config{})
+	store, err := OpenDirectory(t, t.TempDir(), Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1409,15 +1426,10 @@ func TestStorePersistsPendingInterruptResumeUntilExactSettlement(t *testing.T) {
 	for _, arguments := range []string{"", "{}", `{"path":"generated/fixture.go"}`} {
 		t.Run(arguments, func(t *testing.T) {
 			directory := t.TempDir()
-			store, err := OpenDirectory(directory, Config{})
+			store, err := OpenDirectory(t, directory, Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
-			t.Cleanup(func() {
-				if err := store.Close(); err != nil {
-					t.Error(err)
-				}
-			})
 			approval := conversation.Approval{
 				RunID: "run_1", ItemID: "item_approval_1", Title: "Delete generated files",
 				Tool:         &conversation.ToolCall{Kind: protocol.ToolCategoryEdit, Name: "delete", Status: conversation.ToolRunning},
@@ -1452,15 +1464,10 @@ func TestStorePersistsPendingInterruptResumeUntilExactSettlement(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			reopened, err := OpenDirectory(directory, Config{})
+			reopened, err := OpenDirectory(t, directory, Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
-			t.Cleanup(func() {
-				if err := reopened.Close(); err != nil {
-					t.Error(err)
-				}
-			})
 			restored, ok := reopened.PendingResume("ses_1")
 			if !ok || restored.Command.CommandID != authoring.CommandID("cli_33333333333333333333333333333333") ||
 				restored.Command.RunID != approval.RunID || len(restored.Interrupts) != 1 {
@@ -1487,7 +1494,7 @@ func TestStorePersistsPendingInterruptResumeUntilExactSettlement(t *testing.T) {
 }
 
 func TestStagingTheSameResumeCommandRejectsDifferentDecisions(t *testing.T) {
-	store, err := OpenDirectory(t.TempDir(), Config{})
+	store, err := OpenDirectory(t, t.TempDir(), Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1538,7 +1545,7 @@ func TestStagingTheSameResumeCommandRejectsDifferentDecisions(t *testing.T) {
 }
 
 func TestStoreRejectsPendingResumeWithoutCommandIdentity(t *testing.T) {
-	store, err := OpenDirectory(t.TempDir(), Config{})
+	store, err := OpenDirectory(t, t.TempDir(), Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1567,7 +1574,7 @@ func TestStoreRejectsPendingResumeWithoutCommandIdentity(t *testing.T) {
 
 func TestStorePersistsTheCompleteMixedInterruptReview(t *testing.T) {
 	directory := t.TempDir()
-	store, err := OpenDirectory(directory, Config{})
+	store, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1600,7 +1607,7 @@ func TestStorePersistsTheCompleteMixedInterruptReview(t *testing.T) {
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := OpenDirectory(directory, Config{})
+	reopened, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}

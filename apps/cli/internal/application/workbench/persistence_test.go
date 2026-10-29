@@ -57,12 +57,21 @@ func TestStoreClosesOwnedPersistenceOnce(t *testing.T) {
 	}
 }
 
-func OpenDirectory(directory string, config Config) (*Store, error) {
+func OpenDirectory(t testing.TB, directory string, config Config) (*Store, error) {
+	t.Helper()
 	persistence, err := statefile.Open(directory)
 	if err != nil {
 		return nil, err
 	}
-	return Open(persistence, config)
+	store, err := Open(persistence, config)
+	if err == nil {
+		t.Cleanup(func() {
+			if err := store.Close(); err != nil {
+				t.Error(err)
+			}
+		})
+	}
+	return store, err
 }
 
 type removeFailurePersistence struct {

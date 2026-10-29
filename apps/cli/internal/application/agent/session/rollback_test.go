@@ -56,7 +56,7 @@ func TestFileRollbackRetiresOnlyDefinitiveRuntimeRefusals(t *testing.T) {
 					}
 					now := time.Date(2026, 9, 26, 10, 0, 0, 0, time.UTC)
 					policy := advertisedRollbackPolicy(t, "runtime", time.Hour, func() time.Time { return now })
-					store, err := openTestWorkbench(t.TempDir())
+					store, err := openTestWorkbench(t, t.TempDir())
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -183,7 +183,7 @@ func TestRecoverConfirmsAnAlreadyAppliedRollbackWithoutReplay(t *testing.T) {
 	now := time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC)
 	policy := advertisedRollbackPolicy(t, "runtime-a", time.Hour, func() time.Time { return now })
 	pending := preview.journal(authoring.CommandID("cli_11111111111111111111111111111111"), authoring.UnprotectedGuard(), now)
-	store, err := openTestWorkbench(t.TempDir())
+	store, err := openTestWorkbench(t, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -256,7 +256,7 @@ func TestRecoverReplaysAPreparedHistoryRollbackWithItsStableIdentity(t *testing.
 	now := time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC)
 	policy := advertisedRollbackPolicy(t, "runtime-a", time.Hour, func() time.Time { return now })
 	pending := preview.journal(authoring.CommandID("cli_22222222222222222222222222222222"), authoring.UnprotectedGuard(), now)
-	store, err := openTestWorkbench(t.TempDir())
+	store, err := openTestWorkbench(t, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -309,7 +309,7 @@ func TestRecoverRefusesUnprovenFileRollbackReplay(t *testing.T) {
 			}
 			stagedAt := time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC)
 			pending := preview.journal(authoring.CommandID("cli_33333333333333333333333333333333"), protectedRollbackGuard(t, "idp_original", stagedAt.Add(time.Minute)), stagedAt)
-			store, err := openTestWorkbench(t.TempDir())
+			store, err := openTestWorkbench(t, t.TempDir())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -340,7 +340,7 @@ func TestRecoverRetiresADefinitivelyRejectedHistoryRollback(t *testing.T) {
 	now := time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC)
 	policy := advertisedRollbackPolicy(t, "runtime-a", time.Hour, func() time.Time { return now })
 	pending := preview.journal(authoring.CommandID("cli_44444444444444444444444444444444"), authoring.UnprotectedGuard(), now)
-	store, err := openTestWorkbench(t.TempDir())
+	store, err := openTestWorkbench(t, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -366,7 +366,7 @@ func TestRecoverPreservesHistoryRollbackRejectedByAnotherRuntimeStore(t *testing
 	now := time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC)
 	policy := advertisedRollbackPolicy(t, "runtime-a", time.Hour, func() time.Time { return now })
 	pending := preview.journal(authoring.CommandID("cli_55555555555555555555555555555555"), authoring.UnprotectedGuard(), now)
-	store, err := openTestWorkbench(t.TempDir())
+	store, err := openTestWorkbench(t, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}

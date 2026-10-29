@@ -1158,7 +1158,7 @@ func TestPendingRunRecoveryPreservesAnEditedSuccessor(t *testing.T) {
 				started: make(chan struct{}, 1), release: make(chan struct{}),
 			}
 			stateDirectory := t.TempDir()
-			store, err := openTestWorkbench(stateDirectory)
+			store, err := openTestWorkbench(t, stateDirectory)
 			if err != nil {
 				t.Fatal(err)
 			}

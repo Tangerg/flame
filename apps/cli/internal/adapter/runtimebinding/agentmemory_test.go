@@ -463,7 +463,7 @@ func TestMemoryCommandsResumeOriginalBindingAfterSelectionChanges(t *testing.T) 
 		t.Run(method, func(t *testing.T) {
 
 			directory := t.TempDir()
-			store, err := openTestWorkbench(directory)
+			store, err := openTestWorkbench(t, directory)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -523,7 +523,7 @@ func TestMemoryCommandsResumeOriginalBindingAfterSelectionChanges(t *testing.T) 
 			if err := store.Close(); err != nil {
 				t.Fatal(err)
 			}
-			store, err = openTestWorkbench(directory)
+			store, err = openTestWorkbench(t, directory)
 			if err != nil {
 				t.Fatal(err)
 			}

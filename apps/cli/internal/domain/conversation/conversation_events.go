@@ -16,7 +16,7 @@ func (c *Conversation) ApplyRunEvent(envelope RunEvent) (EventAcceptance, error)
 	newStreamSegment := c.segmentID != streamSegmentID
 	if newStreamSegment {
 		if _, ok := envelope.Event.(SegmentStarted); !ok {
-			return EventAcceptance{}, fmt.Errorf("conversation: event stream segment %s does not match active stream segment %s", streamSegmentID, c.segmentID)
+			return EventAcceptance{}, fmt.Errorf("%w: event stream segment %s does not match active stream segment %s", ErrInvalidTransition, streamSegmentID, c.segmentID)
 		}
 	} else if known, duplicate := c.seen[envelope.EventID]; duplicate {
 		if !known.Equal(envelope) {

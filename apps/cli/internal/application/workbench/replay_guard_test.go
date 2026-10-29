@@ -11,7 +11,7 @@ import (
 
 func TestStorePersistsRunAndResumeReplayOwnership(t *testing.T) {
 	directory := t.TempDir()
-	store, err := OpenDirectory(directory, Config{})
+	store, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func TestStorePersistsRunAndResumeReplayOwnership(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	reopened, err := OpenDirectory(directory, Config{})
+	reopened, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}

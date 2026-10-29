@@ -866,7 +866,7 @@ func TestSessionsDeleteConvergesPostCommitFailureAndRetiresWorkbenchState(t *tes
 	base := instantRuntime()
 	target := firstSession(t, base)
 	stateDirectory := t.TempDir()
-	authoring, err := openTestWorkbench(stateDirectory)
+	authoring, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -882,7 +882,7 @@ func TestSessionsDeleteConvergesPostCommitFailureAndRetiresWorkbenchState(t *tes
 		OpenRuntime: func(context.Context, settings.Runtime) (Runtime, RuntimeProfile, error) {
 			return runtime, new(commandRuntimeProfile(t)), nil
 		},
-		OpenWorkbench: func(string) (*workbench.Store, error) { return openTestWorkbench(stateDirectory) },
+		OpenWorkbench: func(string) (*workbench.Store, error) { return openTestWorkbench(t, stateDirectory) },
 	})
 	root.SetOut(&output)
 	root.SetErr(io.Discard)
@@ -896,7 +896,7 @@ func TestSessionsDeleteConvergesPostCommitFailureAndRetiresWorkbenchState(t *tes
 	if runtime.request.SessionID != target || runtime.request.CommandID == "" {
 		t.Fatalf("delete request = %+v", runtime.request)
 	}
-	reopened, err := openTestWorkbench(stateDirectory)
+	reopened, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}

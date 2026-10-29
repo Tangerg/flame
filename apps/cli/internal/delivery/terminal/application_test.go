@@ -160,7 +160,7 @@ func runUIWithState(t *testing.T, backend Runtime, workspace, sessionID, stateDi
 	t.Helper()
 	openWorkbench := memoryTestWorkbench
 	if stateDirectory != "" {
-		openWorkbench = persistentTestWorkbench(stateDirectory)
+		openWorkbench = persistentTestWorkbench(t, stateDirectory)
 	}
 	openWorkbench, currentWorkbench := observeTestWorkbench(openWorkbench)
 	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
@@ -204,7 +204,7 @@ func runUIWithReplayState(
 	t.Helper()
 	openWorkbench := memoryTestWorkbench
 	if stateDirectory != "" {
-		openWorkbench = persistentTestWorkbench(stateDirectory)
+		openWorkbench = persistentTestWorkbench(t, stateDirectory)
 	}
 	profile := steerReplayTestProfile(t, workspace)
 	host, stop, currentWorkbench := runUIFromConfig(t, Config{
@@ -1079,7 +1079,7 @@ func TestClosingDuringAnAcceptedResumeCancelsTheRunAndRetiresTheDecision(t *test
 	if _, active := snapshot.ActiveRun(); active {
 		t.Fatalf("terminal close left the resumed run active: %+v", snapshot.Runs)
 	}
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1250,7 +1250,7 @@ func TestPendingMixedInterruptResumeSurvivesRestartWithoutLosingAnswers(t *testi
 		},
 	}
 	stateDirectory := t.TempDir()
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1360,7 +1360,7 @@ func TestLaunchRequiresTheExactReceiptToSettleAnExpiredResume(t *testing.T) {
 				}
 			}
 			stateDirectory := t.TempDir()
-			store, err := openTestWorkbench(stateDirectory)
+			store, err := openTestWorkbench(t, stateDirectory)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1379,7 +1379,7 @@ func TestLaunchRequiresTheExactReceiptToSettleAnExpiredResume(t *testing.T) {
 			}
 			host, stop, workbenchForHost := runUIFromConfig(t, Config{
 				Runtime: runtime, RuntimeProfile: &profile, SessionID: "ses_demo_1",
-				Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(stateDirectory),
+				Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(t, stateDirectory),
 			})
 			if proof {
 				host.Shows(t, "complete")
@@ -1438,7 +1438,7 @@ func TestLaunchPreservesAnExpiredResumeWithoutAcceptanceProof(t *testing.T) {
 		}},
 	}
 	stateDirectory := t.TempDir()
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1457,7 +1457,7 @@ func TestLaunchPreservesAnExpiredResumeWithoutAcceptanceProof(t *testing.T) {
 	}
 	host, stop, workbenchForHost := runUIFromConfig(t, Config{
 		Runtime: runtime, RuntimeProfile: &profile, SessionID: "ses_demo_1",
-		Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(stateDirectory),
+		Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(t, stateDirectory),
 	})
 	host.Shows(t, "mutation replay guarantee is unavailable")
 	if attempts := runtime.resumeAttempts(); len(attempts) != 0 {
@@ -1492,7 +1492,7 @@ func TestActiveResumePreservesUncertaintyWhenReplayExpires(t *testing.T) {
 	profile = profileWithReplay(t, profile, profile.Discovery().Capabilities.Limits.Idempotency.Namespace, time.Second)
 	host, stop, workbenchForHost := runUIFromConfig(t, Config{
 		Runtime: runtime, RuntimeProfile: &profile, SessionID: "ses_demo_1",
-		Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(stateDirectory),
+		Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(t, stateDirectory),
 	})
 	host.Shows(t, "Ask flame")
 	host.Type("expire one resume acknowledgement")
@@ -1517,7 +1517,7 @@ func TestSwitchingSessionsRecoversTheDestinationPendingRunOutbox(t *testing.T) {
 	base.Script = stableCompletedScript
 	backend := &recordingRuntime{Runtime: base}
 	stateDirectory := t.TempDir()
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1600,7 +1600,7 @@ func TestSwitchingSessionsRecoversTheDestinationPendingResume(t *testing.T) {
 		}},
 	}
 	stateDirectory := t.TempDir()
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2163,7 +2163,7 @@ func TestClosingDuringAnInvalidAcceptedStartCancelsTheRecoveredRun(t *testing.T)
 	if _, active := snapshot.ActiveRun(); active {
 		t.Fatalf("terminal close left malformed accepted run active: %+v", snapshot.Runs)
 	}
-	reopened, err := openTestWorkbench(stateDirectory)
+	reopened, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2337,7 +2337,7 @@ func TestClosingTheTerminalPropagatesFinalDraftPersistenceFailure(t *testing.T) 
 		done <- Run(ctx, Config{
 			RuntimeProfile: featuredTerminalProfile(t),
 			Runtime:        base, Workspace: "/tmp/flame-cli-test",
-			OpenWorkbench: persistentTestWorkbench(stateDirectory), Host: host,
+			OpenWorkbench: persistentTestWorkbench(t, stateDirectory), Host: host,
 		})
 	}()
 	t.Cleanup(func() {
@@ -2855,7 +2855,7 @@ func TestSessionChangeOwnsTheComposerUntilItsSnapshotIsInstalled(t *testing.T) {
 		releaseChange: make(chan struct{}),
 	}
 	stateDirectory := t.TempDir()
-	host, stop, workbenchForHost := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), Runtime: backend, Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(stateDirectory)})
+	host, stop, workbenchForHost := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), Runtime: backend, Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(t, stateDirectory)})
 	host.Shows(t, "Ask flame")
 	originalSession := firstRuntimeSession(t, base)
 	host.Type("/new")
@@ -2945,7 +2945,7 @@ func TestSessionChangeDoesNotInstallAfterAnInFlightDraftSaveFailure(t *testing.T
 		releaseChange: make(chan struct{}),
 	}
 	stateDirectory := t.TempDir()
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3482,7 +3482,7 @@ func TestUserCreatedSessionPreservesTheSourceDraft(t *testing.T) {
 	replacementID := firstRuntimeSession(t, backend)
 	stop()
 
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3498,7 +3498,7 @@ func TestUserCreatedSessionPreservesTheSourceDraft(t *testing.T) {
 func TestSessionChangeStopsBeforeMutationWhenTheSourceDraftCannotBeSaved(t *testing.T) {
 	backend := runtimefixture.New()
 	stateDirectory := t.TempDir()
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3561,7 +3561,7 @@ func TestPromptSubmissionStopsBeforeRuntimeWhenTheOutboxCannotBeSaved(t *testing
 	base := runtimefixture.New()
 	backend := &recordingRuntime{Runtime: base}
 	stateDirectory := t.TempDir()
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3615,7 +3615,7 @@ func TestPromptSubmissionCommitsHistoryOnlyAfterRuntimeAcknowledgement(t *testin
 	base.Instant = true
 	backend := &recordingRuntime{Runtime: base}
 	stateDirectory := t.TempDir()
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3715,7 +3715,7 @@ func TestStashKeepsTheComposerWhenDraftRetirementFails(t *testing.T) {
 
 func TestApplyingStashDoesNotExposeAnUndurableDraft(t *testing.T) {
 	stateDirectory := t.TempDir()
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -263,7 +263,7 @@ func (f *steerFixture) policy(t *testing.T) mutation.ReplayPolicy {
 
 func stagedSteer(t *testing.T) *steerFixture {
 	t.Helper()
-	store, err := openTestWorkbench(t.TempDir())
+	store, err := openTestWorkbench(t, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1567,7 +1567,7 @@ func TestDeletedActiveSessionTransfersItsUnsentDraftToTheReplacement(t *testing.
 	host, stop, _ := runUIFromConfig(t, Config{
 		RuntimeProfile: featuredTerminalProfile(t),
 		Runtime:        base, Changes: source, SessionID: "ses_demo_1",
-		OpenWorkbench: persistentTestWorkbench(stateDirectory),
+		OpenWorkbench: persistentTestWorkbench(t, stateDirectory),
 	})
 	host.Shows(t, "Ask flame")
 	awaitSignal(t, source.subscription, "runtime invalidation subscription")
@@ -1587,7 +1587,7 @@ func TestDeletedActiveSessionTransfersItsUnsentDraftToTheReplacement(t *testing.
 	replacementID := firstRuntimeSession(t, base)
 	stop()
 
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}

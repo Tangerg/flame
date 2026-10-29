@@ -83,7 +83,7 @@ func TestTerminalResumesAColdDelegatedApprovalThroughTheWorkbench(t *testing.T) 
 			stateDirectory := t.TempDir()
 			var stagedCommand authoring.CommandID
 			if pendingAtStartup {
-				store, err := openTestWorkbench(stateDirectory)
+				store, err := openTestWorkbench(t, stateDirectory)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -109,7 +109,7 @@ func TestTerminalResumesAColdDelegatedApprovalThroughTheWorkbench(t *testing.T) 
 					t.Fatal(err)
 				}
 			}
-			openWorkbench, currentWorkbench := observeTestWorkbench(persistentTestWorkbench(stateDirectory))
+			openWorkbench, currentWorkbench := observeTestWorkbench(persistentTestWorkbench(t, stateDirectory))
 			backend := &persistedTreeResumeRuntime{
 				Connection: connection, workbench: currentWorkbench, sessionID: session.ID,
 				observed: make(chan workbench.PendingResume, 1),
@@ -152,7 +152,7 @@ func TestTerminalResumesAColdDelegatedApprovalThroughTheWorkbench(t *testing.T) 
 			}) {
 				t.Fatalf("resumed tree = %+v", finished.Runs)
 			}
-			store, err := openTestWorkbench(stateDirectory)
+			store, err := openTestWorkbench(t, stateDirectory)
 			if err != nil {
 				t.Fatal(err)
 			}

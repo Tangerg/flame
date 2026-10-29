@@ -32,7 +32,7 @@ func (d *deletionRuntimeStub) DeleteSession(context.Context, conversation.Delete
 }
 
 func TestRecoverDoesNotReplayADeletionIntoAnotherRuntimeStore(t *testing.T) {
-	store, err := openTestWorkbench(t.TempDir())
+	store, err := openTestWorkbench(t, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func (d *deletionRuntimeStub) GetSession(context.Context, string) (conversation.
 }
 
 func TestRecoverRetiresAnExpiredDeletionProvenByTheOwningRuntime(t *testing.T) {
-	store, err := openTestWorkbench(t.TempDir())
+	store, err := openTestWorkbench(t, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +103,7 @@ func TestRecoverRetiresAnExpiredDeletionProvenByTheOwningRuntime(t *testing.T) {
 }
 
 func TestExecuteConfirmsAnExpiredDeletionProvenByTheOwningRuntime(t *testing.T) {
-	store, err := openTestWorkbench(t.TempDir())
+	store, err := openTestWorkbench(t, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +129,7 @@ func TestExecuteConfirmsAnExpiredDeletionProvenByTheOwningRuntime(t *testing.T) 
 }
 
 func TestExecuteRejectsAnExpiredDeletionWhenTheSessionStillExists(t *testing.T) {
-	store, err := openTestWorkbench(t.TempDir())
+	store, err := openTestWorkbench(t, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -174,7 +174,7 @@ func TestSettlePreservesDeletionRejectedByAnotherRuntimeStore(t *testing.T) {
 }
 
 func TestRecoverRejectsAnUncommittedDeletionWhenReplayExpires(t *testing.T) {
-	store, err := openTestWorkbench(t.TempDir())
+	store, err := openTestWorkbench(t, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,7 +204,7 @@ func TestRecoverRejectsAnUncommittedDeletionWhenReplayExpires(t *testing.T) {
 }
 
 func TestRecoverConvergesADeletionCommittedAsReplayExpires(t *testing.T) {
-	store, err := openTestWorkbench(t.TempDir())
+	store, err := openTestWorkbench(t, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}

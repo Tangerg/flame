@@ -86,7 +86,7 @@ func TestMutationReplaysActualAttachmentBytesAfterWorkbenchRestart(t *testing.T)
 				connection := &Connection{runs: binding, loadAttachment: loadAttachmentFile, meta: requestMeta("test"),
 					profile: profileWithFeatures(t, map[string]protocol.FeatureCapability{protocol.FeatureMultimodal: {Enabled: true}}),
 				}
-				store, err := openTestWorkbench(directory)
+				store, err := openTestWorkbench(t, directory)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -196,7 +196,7 @@ func TestMutationReplaysActualAttachmentBytesAfterWorkbenchRestart(t *testing.T)
 					t.Fatal("mutation replay reopened an original source path")
 					return nil, nil
 				}
-				reopened, err := openTestWorkbench(directory)
+				reopened, err := openTestWorkbench(t, directory)
 				if err != nil {
 					t.Fatal(err)
 				}
