@@ -805,10 +805,16 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
     if (!client) throw new Error("runtime client was not initialized");
     const deadline = Date.now() + defaultTestDeadlineMilliseconds;
     while (!ready((await client.mcp.listTools(server)).data)) {
-      if (Date.now() >= deadline)
+      if (Date.now() >= deadline) {
+        const states = (await client.mcp.list()).data.map(({ id, status, handshakeTimeout }) => ({
+          id,
+          status,
+          handshakeTimeout,
+        }));
         throw new Error(
-          `MCP source did not become ready: ${JSON.stringify(server)}; ${processOutput}`,
+          `MCP source did not become ready: ${JSON.stringify(server)}; states=${JSON.stringify(states)}; runner=${runnerOutput}; ${processOutput}`,
         );
+      }
       await new Promise((resolve) => setTimeout(resolve, 25));
     }
   };
