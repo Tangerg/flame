@@ -183,6 +183,14 @@ type testClaimer struct {
 }
 
 func (t *testClaimer) AcquireSession(_ context.Context, sessionID string) (func(), bool, error) {
+	return t.acquireSession(sessionID)
+}
+
+func (t *testClaimer) AcquireRecoverySession(sessionID string) (func(), bool, error) {
+	return t.acquireSession(sessionID)
+}
+
+func (t *testClaimer) acquireSession(sessionID string) (func(), bool, error) {
 	if t.claimed == nil {
 		t.claimed = map[string]bool{}
 	}
@@ -250,6 +258,13 @@ func testDependencies(stores testStores, deps Dependencies) Dependencies {
 	}
 	if deps.Mutations == nil {
 		deps.Mutations = &observingMutations{}
+	}
+	if deps.Retirements == nil {
+		if retirements, ok := stores.(resourceRetirements); ok {
+			deps.Retirements = retirements
+		} else {
+			deps.Retirements = &emptyResourceRetirements{}
+		}
 	}
 	if deps.Goals == nil {
 		deps.Goals = goals.NewSessionMutations()
@@ -325,6 +340,9 @@ func mustNewCoordinator(deps Dependencies) *Coordinator {
 	}
 	if deps.Mutations == nil {
 		deps.Mutations = &observingMutations{}
+	}
+	if deps.Retirements == nil {
+		deps.Retirements = &emptyResourceRetirements{}
 	}
 	if deps.Goals == nil {
 		deps.Goals = goals.NewSessionMutations()
@@ -420,3 +438,13 @@ type coordinatorRunStore struct {
 func (r coordinatorRunStore) UnpublishedToolResults(context.Context, string, string) ([]chat.ToolResult, error) {
 	return r.results, nil
 }
+
+type emptyResourceRetirements struct{}
+
+func (*emptyResourceRetirements) Lookup(context.Context, string) (ResourceRetirement, bool, error) {
+	return ResourceRetirement{}, false, nil
+}
+func (*emptyResourceRetirements) ListPending(context.Context) ([]ResourceRetirement, error) {
+	return nil, nil
+}
+func (*emptyResourceRetirements) Complete(context.Context, ResourceRetirement) error { return nil }

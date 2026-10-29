@@ -10,7 +10,7 @@ import (
 
 func newTestGate(t *testing.T) *Gate {
 	t.Helper()
-	gate, err := NewGate(func(path string) (string, error) { return path, nil })
+	gate, err := NewGate(GateConfig{ResolveTree: func(path string) (string, error) { return path, nil }, RetirementPending: noResourceRetirements})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -18,8 +18,8 @@ func newTestGate(t *testing.T) *Gate {
 }
 
 func TestNewGateRequiresPhysicalIdentityResolver(t *testing.T) {
-	if gate, err := NewGate(nil); err == nil || gate != nil {
-		t.Fatalf("NewGate(nil) = %#v, %v", gate, err)
+	if gate, err := NewGate(GateConfig{}); err == nil || gate != nil {
+		t.Fatalf("NewGate(GateConfig{}) = %#v, %v", gate, err)
 	}
 }
 
@@ -225,7 +225,7 @@ func TestWaitRunStartableIsContextBounded(t *testing.T) {
 func TestFailedIdentityResolutionDoesNotLeaveAdmissionHeld(t *testing.T) {
 	cause := errors.New("filesystem failed")
 	var resolveErr error = cause
-	gate, err := NewGate(func(path string) (string, error) { return path, resolveErr })
+	gate, err := NewGate(GateConfig{ResolveTree: func(path string) (string, error) { return path, resolveErr }, RetirementPending: noResourceRetirements})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -380,3 +380,5 @@ func TestRunAdmissionCannotReplaceAnotherSessionsLiveIdentity(t *testing.T) {
 		t.Fatalf("completed admissions retained ownership: %v", sessions)
 	}
 }
+
+func noResourceRetirements(context.Context, string) (bool, error) { return false, nil }

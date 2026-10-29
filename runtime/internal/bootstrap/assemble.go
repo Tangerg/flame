@@ -93,11 +93,12 @@ func buildAssemblyCore(
 	if err != nil {
 		return nil, fmt.Errorf("runtime: Goal Run recorder: %w", err)
 	}
-	admissionGate, err := ownership.NewGate(filesystem.CanonicalPath)
+	admissionGate, err := ownership.NewGate(ownership.GateConfig{ResolveTree: filesystem.CanonicalPath, RetirementPending: cfg.stores.ResourceRetirements.Pending})
 	if err != nil {
 		return nil, fmt.Errorf("runtime: session admission: %w", err)
 	}
 	sessionStores, err := persistence.NewSessionStores(persistence.SessionStoresConfig{
+		ResourceRetirements: cfg.stores.ResourceRetirements,
 		CommandAcceptances:  cfg.stores.CommandAcceptances,
 		Sessions:            cfg.stores.Sessions,
 		Transcript:          cfg.stores.Transcript,
@@ -160,6 +161,7 @@ func buildAssemblyCore(
 		Boundaries: cfg.stores.Plan, Replacements: policy.plans,
 	}
 	sessionDependencies.Mutations = cfg.stores.WorkspaceMutations
+	sessionDependencies.Retirements = cfg.stores.ResourceRetirements
 	// Set only when present so a nil *Isolator never reaches the coordinator as a
 	// non-nil interface (which would defeat its own nil check).
 	if execution.isolation != nil {

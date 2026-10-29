@@ -16,30 +16,40 @@ import (
 // data-directory lease excludes other processes; this registry owns admission
 // for every use case inside that lifetime.
 type Gate struct {
-	mu            sync.Mutex
-	runs          map[string]reservedRun
-	pending       map[*runAdmissionLease]reservedRun
-	maintenance   map[*maintenanceReservation]struct{}
-	claims        map[string]sessionClaimKind
-	treeMutations map[string]struct{}
-	changed       chan struct{}
-	resolveTree   func(string) (string, error)
+	mu                sync.Mutex
+	runs              map[string]reservedRun
+	pending           map[*runAdmissionLease]reservedRun
+	maintenance       map[*maintenanceReservation]struct{}
+	claims            map[string]sessionClaimKind
+	treeMutations     map[string]struct{}
+	changed           chan struct{}
+	resolveTree       func(string) (string, error)
+	retirementPending func(context.Context, string) (bool, error)
 }
 
-// NewGate uses the workspace owner's physical identity for both Run admission
-// and destructive mutations, so aliases cannot create independent reservations.
-func NewGate(resolveTree func(string) (string, error)) (*Gate, error) {
-	if resolveTree == nil {
+type GateConfig struct {
+	ResolveTree       func(string) (string, error)
+	RetirementPending func(context.Context, string) (bool, error)
+}
+
+// NewGate shares physical tree identity and committed resource retirement with
+// every foreground admission. Recovery alone may consume a retirement fence.
+func NewGate(cfg GateConfig) (*Gate, error) {
+	if cfg.ResolveTree == nil {
 		return nil, errors.New("session admission: working-tree resolver is required")
 	}
+	if cfg.RetirementPending == nil {
+		return nil, errors.New("session admission: resource retirement reader is required")
+	}
 	return &Gate{
-		resolveTree:   resolveTree,
-		runs:          make(map[string]reservedRun),
-		pending:       make(map[*runAdmissionLease]reservedRun),
-		maintenance:   make(map[*maintenanceReservation]struct{}),
-		claims:        make(map[string]sessionClaimKind),
-		treeMutations: make(map[string]struct{}),
-		changed:       make(chan struct{}),
+		resolveTree:       cfg.ResolveTree,
+		retirementPending: cfg.RetirementPending,
+		runs:              make(map[string]reservedRun),
+		pending:           make(map[*runAdmissionLease]reservedRun),
+		maintenance:       make(map[*maintenanceReservation]struct{}),
+		claims:            make(map[string]sessionClaimKind),
+		treeMutations:     make(map[string]struct{}),
+		changed:           make(chan struct{}),
 	}, nil
 }
 
@@ -120,8 +130,18 @@ func (g *Gate) AcquireSession(ctx context.Context, sessionID string) (release fu
 	if err := g.lockForegroundSession(ctx, sessionID); err != nil {
 		return nil, false, err
 	}
-	defer g.mu.Unlock()
-	return g.acquireSessionLocked(sessionID, sessionMutation)
+	release, ok, err = g.acquireSessionLocked(sessionID, sessionMutation)
+	g.mu.Unlock()
+	if err != nil || !ok {
+		return nil, false, err
+	}
+	pending, err := g.retirementPending(ctx, sessionID)
+	err = errors.Join(err, cancellation.Err(ctx))
+	if err != nil || pending {
+		release()
+		return nil, false, err
+	}
+	return release, true, nil
 }
 
 // AcquireRecoverySession probes abandoned ownership without delaying other recovery sweeps.
@@ -162,7 +182,21 @@ func (g *Gate) AcquireRun(ctx context.Context, sessionID, cwd string) (RunAdmiss
 	if err := g.lockForegroundSession(ctx, sessionID); err != nil {
 		return RunAdmission{}, false, err
 	}
-	defer g.mu.Unlock()
+	admission, ok, err := g.acquireRunLocked(sessionID, cwd)
+	g.mu.Unlock()
+	if err != nil || !ok {
+		return RunAdmission{}, false, err
+	}
+	pending, err := g.retirementPending(ctx, sessionID)
+	err = errors.Join(err, cancellation.Err(ctx))
+	if err != nil || pending {
+		admission.Release()
+		return RunAdmission{}, false, err
+	}
+	return admission, true, nil
+}
+
+func (g *Gate) acquireRunLocked(sessionID, cwd string) (RunAdmission, bool, error) {
 	if g.activeSessionLocked(sessionID) {
 		return RunAdmission{}, false, nil
 	}
@@ -290,12 +324,18 @@ func (g *Gate) WaitRunStartable(ctx context.Context, sessionID, cwd string) erro
 			g.mu.Unlock()
 			return err
 		}
-		if !g.activeSessionLocked(sessionID) && (cwd == "" || !treeMutation) {
-			g.mu.Unlock()
-			return nil
-		}
+		startable := !g.activeSessionLocked(sessionID) && (cwd == "" || !treeMutation)
 		changed := g.changed
 		g.mu.Unlock()
+		if startable {
+			pending, err := g.retirementPending(ctx, sessionID)
+			if err = errors.Join(err, cancellation.Err(ctx)); err != nil {
+				return err
+			}
+			if !pending {
+				return nil
+			}
+		}
 
 		select {
 		case <-ctx.Done():

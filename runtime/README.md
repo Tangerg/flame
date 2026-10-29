@@ -1325,6 +1325,22 @@ One workspace checkpoint adapter owns snapshots, restoration and Session cleanup
 Restore projects storage refusals into application categories without replacing
 their causes; snapshot cancellation retains the inspection error chain.
 
+Session deletion and history replacement commit their resource retirement in the
+same SQLite transaction as the history mutation. An uncommitted command never
+authorizes checkpoint destruction. After commit, Runtime removes the predecessor's
+checkpoint and scratch namespaces, then clears that exact retirement. A cleanup
+failure leaves the committed history result intact and retains the durable
+responsibility; Session mutations and Run admission remain fenced until cleanup
+completes. Startup finishes those responsibilities before workspace and Run
+recovery, including when the retired Session row no longer exists.
+
+Scratch copies use a managed per-Session container so recovery can reach copies
+left by an abruptly terminated process. They remain ephemeral and are never
+written back to the source project. The new committed-retirement table requires
+a fresh Runtime data directory. Former database shapes are refused
+without conversion; the former scratch layout has no compatibility reader. Retain
+earlier data separately.
+
 Git command observation retains simultaneous output-admission, process, cleanup
 and cancellation failures. Output above 64 MiB is refused; cancellation does not
 erase that capacity failure or its owner-supplied cause. Each invocation owns and

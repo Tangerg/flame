@@ -223,7 +223,8 @@ func newDelegateProjection(t *testing.T, current session.Session, executor *Inte
 		t.Fatal(err)
 	}
 	writes, err := persistence.NewSessionStores(persistence.SessionStoresConfig{
-		CommandAcceptances: stores.CommandAcceptances, Sessions: stores.Sessions,
+		ResourceRetirements: stores.ResourceRetirements,
+		CommandAcceptances:  stores.CommandAcceptances, Sessions: stores.Sessions,
 		Transcript: stores.Transcript, Interrupts: stores.Interrupts, Runs: stores.Runs,
 		ExecutorCheckpoints: stores.ExecutorCheckpoints, History: messages, Plan: stores.Plan,
 		ApprovalRules: stores.ApprovalRules, ApprovalModes: stores.ApprovalModes,
@@ -238,7 +239,7 @@ func newDelegateProjection(t *testing.T, current session.Session, executor *Inte
 	if err != nil {
 		t.Fatal(err)
 	}
-	admissions, err := ownership.NewGate(filesystem.CanonicalPath)
+	admissions, err := ownership.NewGate(ownership.GateConfig{ResolveTree: filesystem.CanonicalPath, RetirementPending: stores.ResourceRetirements.Pending})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -258,7 +259,7 @@ func newDelegateProjection(t *testing.T, current session.Session, executor *Inte
 		Paths: workspaceadapter.Resolver{}, Models: acceptAllRunModelInputs{},
 		DefaultModelSelection: testDefaultSelection(), Admissions: admissions,
 		Plan:      sessions.PlanServices{Boundaries: stores.Plan, Replacements: plans},
-		Mutations: stores.WorkspaceMutations, Goals: goals.NewSessionMutations(), Sandbox: isolation,
+		Mutations: stores.WorkspaceMutations, Retirements: stores.ResourceRetirements, Goals: goals.NewSessionMutations(), Sandbox: isolation,
 		NewID:     func() string { return "session_" + uuid.NewString() },
 		NewRunID:  func() string { return "run_" + uuid.NewString() },
 		NewItemID: func() string { return "item_" + uuid.NewString() },

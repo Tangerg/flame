@@ -153,6 +153,7 @@ type sessionStores struct {
 	toolResults *persistence.ToolResultStore
 	childStarts *persistence.ChildRunStartReservationStore
 	goals       *persistence.GoalStore
+	retirements *persistence.ResourceRetirementStore
 }
 
 // newWriteSetFixture builds the persistence adapter over a fresh sqlite
@@ -164,6 +165,11 @@ func newWriteSetFixture(t *testing.T) (sessionStores, *persistence.RunStore, *pe
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
+	return newWriteSetStores(t, db.Bundle)
+}
+
+func newWriteSetStores(t *testing.T, db *persistence.Bundle) (sessionStores, *persistence.RunStore, *persistence.InterruptStore) {
+	t.Helper()
 	runs := db.Runs
 	ints := db.Interrupts
 	plan := db.Plan
@@ -189,10 +195,12 @@ func newWriteSetFixture(t *testing.T) (sessionStores, *persistence.RunStore, *pe
 		toolResults: db.ToolResults,
 		childStarts: db.ChildRunStarts,
 		goals:       db.Goals,
+		retirements: db.ResourceRetirements,
 	}
 	sessionStores, err := persistence.NewSessionStores(persistence.SessionStoresConfig{
-		CommandAcceptances: db.CommandAcceptances,
-		Sessions:           ss.sessions, Transcript: ss.transcript, Interrupts: ss.interrupts,
+		ResourceRetirements: db.ResourceRetirements,
+		CommandAcceptances:  db.CommandAcceptances,
+		Sessions:            ss.sessions, Transcript: ss.transcript, Interrupts: ss.interrupts,
 		Runs: ss.runs, ExecutorCheckpoints: ss.checkpoints, History: ss.history, Plan: ss.plan,
 		ApprovalRules: ss.approvals, ApprovalModes: ss.modes, ToolResults: ss.toolResults,
 		ChildRunStarts: ss.childStarts, Goals: ss.goals, GoalRuns: mustGoalRuns(t, ss.goals),
@@ -758,8 +766,14 @@ func TestApplyDeleteRemovesRunRows(t *testing.T) {
 	if err := ss.childStarts.Reserve(ctx, reusedChildStart); err != nil {
 		t.Fatalf("child-start reservation survived Session delete: %v", err)
 	}
-	// The non-terminal admission row is gone (not just terminal), so a fresh admit
-	// succeeds — proving the delete cascade dropped the runs rows.
+	// Resource cleanup still owns the deleted namespace, even though its Run
+	// rows are gone. No new execution may reuse it before that cleanup completes.
+	if err := runs.Admit(ctx, testsupport.RunDraft(run.Draft{RunID: "run_2", SessionID: "ses_A", SegmentID: "seg_open", CreatedAt: parkCreatedAt.Add(time.Minute)})); !errors.Is(err, run.ErrSessionBusy) {
+		t.Fatalf("admit before resource retirement = %v, want busy", err)
+	}
+	if err := ss.retirements.Complete(ctx, deletion.Retirement()); err != nil {
+		t.Fatal(err)
+	}
 	if err := runs.Admit(ctx, testsupport.RunDraft(run.Draft{RunID: "run_2", SessionID: "ses_A", SegmentID: "seg_open", CreatedAt: parkCreatedAt.Add(time.Minute)})); err != nil {
 		t.Fatalf("admit after delete = %v, want the slot freed", err)
 	}

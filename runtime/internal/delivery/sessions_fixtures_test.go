@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -183,6 +184,7 @@ type executionRuntime interface {
 // executor + effects (testRuntime) over its own in-memory + sqlite stores, and
 // the coordinator-provider seams for Sessions, queries, and execution control.
 type stubRuntime struct {
+	retirements        *stubResourceRetirements
 	sess               *persistence.SessionStore
 	model              string
 	history            map[string][]chat.Message    // per-session chat history (fork copies it)
@@ -672,6 +674,11 @@ func (s stubExecutionReleaser) Release(ctx context.Context, ref runs.ExecutorRef
 	return s.rt.Release(ctx, runs.ExecutorRef{SessionID: ref.SessionID, ExecutorID: ref.ExecutorID})
 }
 
+type stubResourceRetirements struct {
+	mu   sync.Mutex
+	rows map[string]sessions.ResourceRetirement
+}
+
 type stubLifecycleStores struct {
 	rt *stubRuntime
 }
@@ -896,11 +903,18 @@ func (s stubLifecycleStores) ApplyRestore(ctx context.Context, plan sessions.Res
 			return err
 		}
 	}
+	if retirement, replaced := plan.Retirement(); replaced {
+		s.recordRetirement(retirement)
+	}
 	return nil
 }
 
 func (s stubLifecycleStores) ApplyDelete(ctx context.Context, plan sessions.DeletePlan) error {
-	return s.deleteSession(ctx, plan.SessionID())
+	if err := s.deleteSession(ctx, plan.SessionID()); err != nil {
+		return err
+	}
+	s.recordRetirement(plan.Retirement())
+	return nil
 }
 
 func (s stubLifecycleStores) deleteSession(ctx context.Context, sessionID string) error {
@@ -994,6 +1008,9 @@ func (s *stubRuntime) sessionsCoordinatorWithRestorer(checkpoints sessions.Works
 	if len(shared) > 0 && shared[0] != nil {
 		admissions = shared[0]
 	}
+	if s.retirements == nil {
+		s.retirements = &stubResourceRetirements{rows: make(map[string]sessions.ResourceRetirement)}
+	}
 	stores := stubLifecycleStores{rt: s}
 	var runStore sessions.RunStore = emptySessionRunStore{}
 	if s.runs != nil {
@@ -1007,6 +1024,7 @@ func (s *stubRuntime) sessionsCoordinatorWithRestorer(checkpoints sessions.Works
 		Snapshots:             stores,
 		MaterialSnapshots:     stores,
 		Writes:                stores,
+		Retirements:           stores,
 		TransientState:        s,
 		ExecutionReleaser:     stubExecutionReleaser{rt: s},
 		Paths:                 workspaceadapter.Resolver{},
@@ -1618,3 +1636,32 @@ func (inertRuntimeStores) Concluded(context.Context, persistence.ChildRunStartRe
 }
 
 func valuePtr[T any](value T) *T { return &value }
+
+func (s stubLifecycleStores) recordRetirement(retirement sessions.ResourceRetirement) {
+	s.rt.retirements.mu.Lock()
+	defer s.rt.retirements.mu.Unlock()
+	s.rt.retirements.rows[retirement.SessionID()] = retirement
+}
+func (s stubLifecycleStores) Lookup(_ context.Context, sessionID string) (sessions.ResourceRetirement, bool, error) {
+	s.rt.retirements.mu.Lock()
+	defer s.rt.retirements.mu.Unlock()
+	retirement, found := s.rt.retirements.rows[sessionID]
+	return retirement, found, nil
+}
+func (s stubLifecycleStores) ListPending(context.Context) ([]sessions.ResourceRetirement, error) {
+	s.rt.retirements.mu.Lock()
+	defer s.rt.retirements.mu.Unlock()
+	var pending []sessions.ResourceRetirement
+	for _, retirement := range s.rt.retirements.rows {
+		pending = append(pending, retirement)
+	}
+	return pending, nil
+}
+func (s stubLifecycleStores) Complete(_ context.Context, retirement sessions.ResourceRetirement) error {
+	s.rt.retirements.mu.Lock()
+	defer s.rt.retirements.mu.Unlock()
+	if s.rt.retirements.rows[retirement.SessionID()] == retirement {
+		delete(s.rt.retirements.rows, retirement.SessionID())
+	}
+	return nil
+}

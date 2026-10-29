@@ -2,8 +2,11 @@ package workspace
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"slices"
 	"sync"
@@ -92,7 +95,7 @@ func (i *Isolator) Workspace(ctx context.Context, sessionID, projectRoot string)
 	// still resolves a race defensively (discarding the losing copy).
 	fresh, err := sandbox.New(ctx, sandbox.Config{
 		UserHome:      i.userHome,
-		BaseDir:       i.baseDir,
+		BaseDir:       i.sessionDir(sessionID),
 		ReadOnlyPaths: i.readOnlyPaths,
 	}, projectRoot)
 	if err != nil {
@@ -132,16 +135,30 @@ func (i *Isolator) lookup(sessionID string) (*ownedWorkspace, bool) {
 func (i *Isolator) Discard(sessionID string) error {
 	i.mu.Lock()
 	defer i.mu.Unlock()
-	owned := i.workspaces[sessionID]
-	if owned == nil {
-		return nil
+	if i.closed {
+		return sandbox.ErrShutdown
 	}
-	owned.retiring = true
-	if err := owned.workspace.Shutdown(); err != nil {
-		return err
+	return i.discardLocked(sessionID)
+}
+
+func (i *Isolator) discardLocked(sessionID string) error {
+	if owned := i.workspaces[sessionID]; owned != nil {
+		owned.retiring = true
+		if err := owned.workspace.Shutdown(); err != nil {
+			return err
+		}
+	}
+	// The Session namespace also reaches scratch copies left by a prior process.
+	if err := os.RemoveAll(i.sessionDir(sessionID)); err != nil {
+		return fmt.Errorf("isolation: remove Session scratch namespace: %w", err)
 	}
 	delete(i.workspaces, sessionID)
 	return nil
+}
+
+func (i *Isolator) sessionDir(sessionID string) string {
+	digest := sha256.Sum256([]byte(sessionID))
+	return filepath.Join(i.baseDir, "session-"+hex.EncodeToString(digest[:]))
 }
 
 // Close destroys every live working copy — the process-shutdown closer. It
@@ -157,13 +174,9 @@ func (i *Isolator) Close() error {
 	slices.Sort(ids)
 	var errs []error
 	for _, sessionID := range ids {
-		owned := i.workspaces[sessionID]
-		owned.retiring = true
-		if err := owned.workspace.Shutdown(); err != nil {
+		if err := i.discardLocked(sessionID); err != nil {
 			errs = append(errs, err)
-			continue
 		}
-		delete(i.workspaces, sessionID)
 	}
 	return errors.Join(errs...)
 }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestWorkingTreeAdmissionUsesTheWorkspacePhysicalIdentity(t *testing.T) {
@@ -19,7 +20,7 @@ func TestWorkingTreeAdmissionUsesTheWorkspacePhysicalIdentity(t *testing.T) {
 		if err := os.Symlink(root, alias); err != nil {
 			t.Fatal(err)
 		}
-		gate, err := ownership.NewGate(filesystem.CanonicalPath)
+		gate, err := ownership.NewGate(ownership.GateConfig{ResolveTree: filesystem.CanonicalPath, RetirementPending: testsupport.NoResourceRetirements})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -77,7 +78,7 @@ func TestWorkingTreeAdmissionUsesTheWorkspacePhysicalIdentity(t *testing.T) {
 }
 
 func TestWorkingTreeIdentityFailureRemainsAnError(t *testing.T) {
-	gate, err := ownership.NewGate(filesystem.CanonicalPath)
+	gate, err := ownership.NewGate(ownership.GateConfig{ResolveTree: filesystem.CanonicalPath, RetirementPending: testsupport.NoResourceRetirements})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +99,7 @@ func TestMissingWorkingTreeRetainsOnePhysicalAdmissionIdentity(t *testing.T) {
 	if err := os.Symlink(root, alias); err != nil {
 		t.Fatal(err)
 	}
-	gate, err := ownership.NewGate(filesystem.CanonicalPath)
+	gate, err := ownership.NewGate(ownership.GateConfig{ResolveTree: filesystem.CanonicalPath, RetirementPending: testsupport.NoResourceRetirements})
 	if err != nil {
 		t.Fatal(err)
 	}

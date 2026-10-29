@@ -129,6 +129,12 @@ func (r *RunStore) Admit(ctx context.Context, draft rundomain.Draft) error {
 // admitting the next Run have one serial order across Runtime processes.
 func (r *RunStore) requireWorkspaceAdmission(ctx context.Context, sessionID string) error {
 	connection := sqlite.Connection(ctx, r.db)
+	if pending, err := sessionResourceRetirementPending(ctx, connection, sessionID); err != nil || pending {
+		if err != nil {
+			return err
+		}
+		return rundomain.ErrSessionBusy
+	}
 	var cwd string
 	if err := connection.QueryRowContext(ctx, `SELECT workspace_path FROM sessions WHERE id = ?`, sessionID).Scan(&cwd); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

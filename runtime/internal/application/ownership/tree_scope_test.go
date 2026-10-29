@@ -22,7 +22,7 @@ func TestGateExcludesOverlappingRunAndMutationScopes(t *testing.T) {
 	for _, pair := range [][2]string{{root, child}, {child, root}, {child, alias}} {
 		for _, phase := range []string{"pending", "live", "maintenance"} {
 			t.Run(phase+"/"+pair[0]+"/"+pair[1], func(t *testing.T) {
-				gate, err := NewGate(filesystem.CanonicalPath)
+				gate, err := NewGate(GateConfig{ResolveTree: filesystem.CanonicalPath, RetirementPending: noResourceRetirements})
 				if err != nil {
 					t.Fatal(err)
 				}

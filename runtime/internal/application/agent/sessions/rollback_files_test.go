@@ -161,6 +161,10 @@ func (r *relocatingClaimer) AcquireSession(ctx context.Context, sessionID string
 	return release, ok, err
 }
 
+func (r *relocatingClaimer) AcquireRecoverySession(sessionID string) (func(), bool, error) {
+	return r.claimer.AcquireRecoverySession(sessionID)
+}
+
 func (r *relocatingClaimer) AcquireWorkingTreeMutation(cwd string) (func(), bool, error) {
 	return r.claimer.AcquireWorkingTreeMutation(cwd)
 }

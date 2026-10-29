@@ -354,6 +354,12 @@ func currentSchema() []string {
 			to_run_id      TEXT    NOT NULL REFERENCES runs(run_id) ON DELETE RESTRICT,
 			restore_history INTEGER NOT NULL
 		)`,
+		// Cleanup responsibility survives the Session and authorizes destruction
+		// only after the history transaction that inserted it has committed.
+		`CREATE TABLE IF NOT EXISTS committed_session_resource_retirements (
+			retirement_id TEXT PRIMARY KEY,
+			session_id TEXT NOT NULL UNIQUE
+		)`,
 		`CREATE TABLE IF NOT EXISTS history_items (
 			seq         INTEGER PRIMARY KEY AUTOINCREMENT,
 			session_id  TEXT    NOT NULL,

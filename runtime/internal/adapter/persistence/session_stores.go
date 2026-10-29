@@ -20,6 +20,7 @@ import (
 // application-decided mutation inside one storage transaction.
 type SessionStores struct {
 	commandAcceptances  *commandAcceptanceStore
+	resourceRetirements *ResourceRetirementStore
 	sessions            *SessionStore
 	transcript          *TranscriptStore
 	interrupts          *InterruptStore
@@ -40,6 +41,7 @@ type SessionStores struct {
 // SessionStoresConfig is the durable collaborator set for SessionStores.
 type SessionStoresConfig struct {
 	CommandAcceptances  *commandAcceptanceStore
+	ResourceRetirements *ResourceRetirementStore
 	Sessions            *SessionStore
 	Transcript          *TranscriptStore
 	Interrupts          *InterruptStore
@@ -108,6 +110,7 @@ func NewSessionStores(cfg SessionStoresConfig) (*SessionStores, error) {
 	}{
 		{name: "session store", value: cfg.Sessions},
 		{name: "command acceptance store", value: cfg.CommandAcceptances},
+		{name: "session resource retirements", value: cfg.ResourceRetirements},
 		{name: "transcript store", value: cfg.Transcript},
 		{name: "interrupt store", value: cfg.Interrupts},
 		{name: "Run store", value: cfg.Runs},
@@ -129,6 +132,7 @@ func NewSessionStores(cfg SessionStoresConfig) (*SessionStores, error) {
 	}
 	return &SessionStores{
 		commandAcceptances:  cfg.CommandAcceptances,
+		resourceRetirements: cfg.ResourceRetirements,
 		sessions:            cfg.Sessions,
 		transcript:          cfg.Transcript,
 		interrupts:          cfg.Interrupts,
@@ -338,6 +342,9 @@ func (s *SessionStores) ApplyRestore(ctx context.Context, restore sessions.Resto
 	return s.tx(ctx, func(ctx context.Context) error {
 		restoredSession := sessionReplacement.State()
 		sessionID := restoredSession.ID()
+		if err := s.requireAvailableResources(ctx, sessionID); err != nil {
+			return err
+		}
 		if err := s.saveSessionReplacement(ctx, sessionReplacement); err != nil {
 			return err
 		}
@@ -359,7 +366,13 @@ func (s *SessionStores) ApplyRestore(ctx context.Context, restore sessions.Resto
 		if err := s.restoreToolResults(ctx, snapshot.ToolResults); err != nil {
 			return err
 		}
-		return s.appendTranscriptItems(ctx, snapshot.Items)
+		if err := s.appendTranscriptItems(ctx, snapshot.Items); err != nil {
+			return err
+		}
+		if retirement, replaced := restore.Retirement(); replaced {
+			return s.resourceRetirements.record(ctx, retirement)
+		}
+		return nil
 	})
 }
 
@@ -414,8 +427,25 @@ func (s *SessionStores) restoreToolResults(ctx context.Context, blobs []transcri
 func (s *SessionStores) ApplyDelete(ctx context.Context, deletion sessions.DeletePlan) error {
 	sessionID := deletion.SessionID()
 	return s.tx(ctx, func(ctx context.Context) error {
-		return s.deleteSession(ctx, sessionID)
+		if err := s.requireAvailableResources(ctx, sessionID); err != nil {
+			return err
+		}
+		if err := s.deleteSession(ctx, sessionID); err != nil {
+			return err
+		}
+		return s.resourceRetirements.record(ctx, deletion.Retirement())
 	})
+}
+
+func (s *SessionStores) requireAvailableResources(ctx context.Context, sessionID string) error {
+	pending, err := s.resourceRetirements.Pending(ctx, sessionID)
+	if err != nil {
+		return err
+	}
+	if pending {
+		return rundomain.ErrSessionBusy
+	}
+	return nil
 }
 
 func (s *SessionStores) deleteSession(ctx context.Context, sessionID string) error {

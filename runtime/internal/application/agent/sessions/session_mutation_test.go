@@ -143,56 +143,35 @@ func TestDeleteSessionDetachesExecutorReleaseFromCallerCancellation(t *testing.T
 	}
 }
 
-// TestDeleteSessionKeepsTheSessionWhenItsOwnedStateCannotBeRetired: the Session
-// is the only name for its checkpoint history and scratch tree, so a refusal to
-// destroy either must leave the aggregate that still names them.
-func TestDeleteSessionKeepsTheSessionWhenItsOwnedStateCannotBeRetired(t *testing.T) {
-	for _, test := range []struct {
-		name       string
-		deps       func(stores *mutationStores) Dependencies
-		wantErr    error
-		operations []string
-	}{
-		{
-			name:    "checkpoints",
-			wantErr: errors.New("checkpoint cleanup failed"),
-			operations: []string{
-				"interrupt.read", "session.quiesce", "checkpoint.drop:ses_1",
-			},
-		},
-		{
-			name:    "sandbox",
-			wantErr: errors.New("sandbox discard failed"),
-			operations: []string{
-				"interrupt.read", "session.quiesce", "checkpoint.drop:ses_1", "sandbox.discard:ses_1",
-			},
-		},
-	} {
-		t.Run(test.name, func(t *testing.T) {
+func TestDeleteSessionRetainsCommittedCleanupResponsibility(t *testing.T) {
+	for _, resource := range []string{"checkpoints", "sandbox"} {
+		t.Run(resource, func(t *testing.T) {
 			stores := newMutationStores("")
+			cause := errors.New("resource cleanup failed")
 			checkpoints := &mutationCheckpoints{operations: &stores.operations}
 			sandbox := &mutationSandbox{operations: &stores.operations}
-			if test.name == "checkpoints" {
-				checkpoints.err = test.wantErr
+			if resource == "checkpoints" {
+				checkpoints.err = cause
 			} else {
-				sandbox.err = test.wantErr
+				sandbox.err = cause
 			}
 			coordinator := mustNewCoordinator(testDependencies(stores, Dependencies{
 				ExecutionReleaser: mutationExecutions{operations: &stores.operations},
-				Paths:             testWorkspaceResolver{},
-				Checkpoints:       checkpoints,
-				Sandbox:           sandbox,
+				Paths:             testWorkspaceResolver{}, Checkpoints: checkpoints, Sandbox: sandbox,
 			}))
-
-			err := coordinator.DeleteSession(t.Context(), "ses_1")
-			if !errors.Is(err, test.wantErr) {
-				t.Fatalf("DeleteSession error = %v, want %v", err, test.wantErr)
+			if err := coordinator.DeleteSession(t.Context(), "ses_1"); err != nil {
+				t.Fatalf("committed deletion reported unexecuted: %v", err)
 			}
-			if !slices.Equal(stores.operations, test.operations) {
-				t.Fatalf("operations = %v, want %v", stores.operations, test.operations)
+			want := []string{"interrupt.read", "session.quiesce", "apply.delete", "checkpoint.drop:ses_1", "sandbox.discard:ses_1", "executor.release", "session.forget"}
+			if !slices.Equal(stores.operations, want) || len(stores.deleted) != 1 || len(stores.retirements) != 1 {
+				t.Fatalf("commit/cleanup = %v, deleted=%v, pending=%v", stores.operations, stores.deleted, stores.retirements)
 			}
-			if len(stores.deleted) != 0 {
-				t.Fatalf("deleted = %v, want the Session kept beside the state it names", stores.deleted)
+			if err := coordinator.RecoverRetiredResources(t.Context()); !errors.Is(err, cause) {
+				t.Fatalf("recovery lost cleanup cause: %v", err)
+			}
+			checkpoints.err, sandbox.err = nil, nil
+			if err := coordinator.RecoverRetiredResources(t.Context()); err != nil || len(stores.retirements) != 0 {
+				t.Fatalf("retirement did not complete: %v, pending=%v", err, stores.retirements)
 			}
 		})
 	}
@@ -215,8 +194,8 @@ func TestDeleteSessionCommitsDespiteExecutorReleaseFailure(t *testing.T) {
 		t.Fatalf("DeleteSession reported a committed delete as failed: %v", err)
 	}
 	want := []string{
-		"interrupt.read", "session.quiesce", "checkpoint.drop:ses_1",
-		"apply.delete", "executor.release", "session.forget",
+		"interrupt.read", "session.quiesce", "apply.delete", "checkpoint.drop:ses_1",
+		"executor.release", "session.forget",
 	}
 	if !slices.Equal(stores.operations, want) {
 		t.Fatalf("operations = %v, want %v", stores.operations, want)
@@ -292,9 +271,7 @@ func TestDeleteSessionAddressesOnlyTheRequestedConversation(t *testing.T) {
 	}
 }
 
-// TestRestoreSessionAppliesPlan: RestoreSession forwards the decoded artifact to
-// the atomic restore write-set verbatim.
-func TestRestoreSessionAppliesPlan(t *testing.T) {
+func TestRestoreNewSessionDoesNotRetireAnotherResourceGeneration(t *testing.T) {
 	stores := newMutationStores("")
 	stores.pending = map[string][]runs.Pending{}
 	coordinator := mustNewCoordinator(testDependencies(stores, Dependencies{
@@ -316,36 +293,39 @@ func TestRestoreSessionAppliesPlan(t *testing.T) {
 	if len(stores.restored) != 1 || stores.restored[0].SessionReplacement().State().ID() != "ses_1" || len(stores.restored[0].Snapshot().Messages) != 1 {
 		t.Fatalf("restored = %+v, want one plan for ses_1 with 1 message", stores.restored)
 	}
-	want := []string{"interrupt.read", "session.quiesce", "checkpoint.drop:ses_1", "sandbox.discard:ses_1", "apply.restore", "session.context.forget"}
+	want := []string{"interrupt.read", "session.quiesce", "apply.restore", "session.context.forget"}
 	if !slices.Equal(stores.operations, want) {
 		t.Fatalf("operations = %v, want %v", stores.operations, want)
 	}
 }
 
-func TestRestoreSessionPreservesHistoryWhenResourcesCannotRetire(t *testing.T) {
+func TestRestoreSessionRetainsCommittedCleanupResponsibility(t *testing.T) {
 	for _, resource := range []string{"checkpoints", "sandbox"} {
 		t.Run(resource, func(t *testing.T) {
 			stores := newMutationStores("")
 			stores.pending = nil
+			current := testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/workspace"), Revision: 1})
+			stores.current = &current
 			cause := errors.New("history resource retirement failed")
 			checkpoints := &mutationCheckpoints{operations: &stores.operations}
 			sandbox := &mutationSandbox{operations: &stores.operations}
-			want := []string{"interrupt.read", "session.quiesce", "checkpoint.drop:ses_1"}
 			if resource == "checkpoints" {
 				checkpoints.err = cause
 			} else {
 				sandbox.err = cause
-				want = append(want, "sandbox.discard:ses_1")
 			}
 			coordinator := mustNewCoordinator(testDependencies(stores, Dependencies{
 				ExecutionReleaser: mutationExecutions{operations: &stores.operations},
 				Paths:             testWorkspaceResolver{}, Checkpoints: checkpoints, Sandbox: sandbox,
 			}))
-			_, err := coordinator.restoreSession(t.Context(), Snapshot{
-				Session: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/workspace")}),
-			}, false)
-			if !errors.Is(err, cause) || len(stores.restored) != 0 || !slices.Equal(stores.operations, want) {
-				t.Fatalf("restore = %v, committed = %d, operations = %v; want retirement refusal before replacement", err, len(stores.restored), stores.operations)
+			_, err := coordinator.restoreSession(t.Context(), Snapshot{Session: current}, false)
+			want := []string{"interrupt.read", "session.quiesce", "apply.restore", "session.context.forget", "checkpoint.drop:ses_1", "sandbox.discard:ses_1"}
+			if err != nil || len(stores.restored) != 1 || len(stores.retirements) != 1 || !slices.Equal(stores.operations, want) {
+				t.Fatalf("restore = %v, committed=%d, pending=%v, operations=%v", err, len(stores.restored), stores.retirements, stores.operations)
+			}
+			checkpoints.err, sandbox.err = nil, nil
+			if err := coordinator.RecoverRetiredResources(t.Context()); err != nil || len(stores.retirements) != 0 {
+				t.Fatalf("restored history retirement did not complete: %v", err)
 			}
 		})
 	}
@@ -437,18 +417,20 @@ func (m mutationGoalGuard) WithSessionMutation(
 // records the atomic Apply* calls + the executor release, and lists a single open
 // interrupt so DeleteSession has a parked execution to release.
 type mutationStores struct {
-	operations []string
-	fail       string
-	deleted    []string
-	restored   []RestorePlan
-	ints       *mutationInterrupts
-	pending    map[string][]runs.Pending
-	current    *session.Session
+	operations  []string
+	fail        string
+	deleted     []string
+	restored    []RestorePlan
+	ints        *mutationInterrupts
+	pending     map[string][]runs.Pending
+	current     *session.Session
+	retirements map[string]ResourceRetirement
 }
 
 func newMutationStores(fail string) *mutationStores {
 	s := &mutationStores{
-		fail: fail,
+		fail:        fail,
+		retirements: make(map[string]ResourceRetirement),
 		pending: map[string][]runs.Pending{
 			"ses_1": {testPending("run_1", time.Unix(1, 0).UTC())}},
 	}
@@ -496,6 +478,9 @@ func (m *mutationStores) ApplyRestore(_ context.Context, plan RestorePlan) error
 		return err
 	}
 	m.restored = append(m.restored, plan)
+	if retirement, replaced := plan.Retirement(); replaced {
+		m.retirements[retirement.SessionID()] = retirement
+	}
 	return nil
 }
 func (m *mutationStores) ApplyDelete(_ context.Context, plan DeletePlan) error {
@@ -503,6 +488,7 @@ func (m *mutationStores) ApplyDelete(_ context.Context, plan DeletePlan) error {
 		return err
 	}
 	m.deleted = append(m.deleted, plan.SessionID())
+	m.retirements[plan.SessionID()] = plan.Retirement()
 	return nil
 }
 func (m *mutationStores) ApplyTerminal(context.Context, TerminalPlan) error {
@@ -617,3 +603,21 @@ func (c cancelingTransientState) ForgetSessionContext(sessionID string) {
 	c.stores.ForgetSessionContext(sessionID)
 }
 func (c cancelingTransientState) ForgetWorkspace(root string) { c.stores.ForgetWorkspace(root) }
+
+func (m *mutationStores) Lookup(_ context.Context, sessionID string) (ResourceRetirement, bool, error) {
+	retirement, found := m.retirements[sessionID]
+	return retirement, found, nil
+}
+func (m *mutationStores) ListPending(context.Context) ([]ResourceRetirement, error) {
+	var pending []ResourceRetirement
+	for _, retirement := range m.retirements {
+		pending = append(pending, retirement)
+	}
+	return pending, nil
+}
+func (m *mutationStores) Complete(_ context.Context, retirement ResourceRetirement) error {
+	if m.retirements[retirement.SessionID()] == retirement {
+		delete(m.retirements, retirement.SessionID())
+	}
+	return nil
+}
