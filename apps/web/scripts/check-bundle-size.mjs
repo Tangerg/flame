@@ -86,6 +86,7 @@ const INDEX_HTML = join(DIST, "index.html");
 const BUDGETS = {
   js: 2_785_000,
   css: 146_000,
+  mathStyles: 100_000,
 };
 
 // Runaway ceilings, RAW bytes. Recorded 2026-08-04: syntax highlighting
@@ -165,14 +166,17 @@ function formatKb(bytes) {
   return `${(bytes / 1024).toFixed(1)} KB`;
 }
 
-/** Prints one budget line; returns true when it is over. */
-function report(label, used, budget) {
-  const pct = ((used / budget) * 100).toFixed(1);
-  const over = used > budget;
+/** @typedef {{label: string, used: number, budget: number, over: boolean}} BudgetResult */
+/** @type {BudgetResult[]} */
+const budgetResults = [];
+
+function checkBudget(label, used, budget) {
+  const result = { label, used, budget, over: used > budget };
+  budgetResults.push(result);
+  const pct = ((result.used / result.budget) * 100).toFixed(1);
   console.log(
-    `  ${label.padEnd(20)} ${formatKb(used).padStart(10)} / ${formatKb(budget).padStart(10)}  (${pct}%) ${over ? "FAIL" : "OK"}`,
+    `  ${result.label.padEnd(20)} ${formatKb(result.used).padStart(10)} / ${formatKb(result.budget).padStart(10)}  (${pct}%) ${result.over ? "FAIL" : "OK"}`,
   );
-  return over;
 }
 
 const html = loadIndexHtml();
@@ -183,7 +187,7 @@ if (js.length === 0) {
   process.exit(2);
 }
 
-let failed = false;
+let structuralFailure = false;
 
 console.log("[check-bundle-size] entry payload — parsed before first paint (raw):");
 for (const [extension, assets] of [
@@ -191,7 +195,7 @@ for (const [extension, assets] of [
   ["css", css],
 ]) {
   const used = assets.reduce((sum, url) => sum + rawSizeOfAsset(url), 0);
-  if (report(extension.toUpperCase(), used, BUDGETS[extension])) failed = true;
+  checkBudget(extension.toUpperCase(), used, BUDGETS[extension]);
 }
 
 const assetDirectory = join(DIST, "assets");
@@ -202,19 +206,19 @@ const mathStyles = assetNames.filter((name) => name.startsWith("katex-") && name
 console.log("[check-bundle-size] lazy styles — must stay off the startup path (raw):");
 if (mathStyles.length === 0) {
   console.error("  math stylesheet: no KaTeX CSS chunk found");
-  failed = true;
+  structuralFailure = true;
 } else {
   const eagerMathStyles = mathStyles.filter((name) => entryReferences.has(name));
   if (eagerMathStyles.length > 0) {
     console.error(
       `  math stylesheet: index.html references ${eagerMathStyles.join(", ")} — it must stay lazy.`,
     );
-    failed = true;
+    structuralFailure = true;
   }
-  report(
+  checkBudget(
     "math stylesheet",
     mathStyles.reduce((sum, name) => sum + rawSizeOf(join(assetDirectory, name)), 0),
-    100_000,
+    BUDGETS.mathStyles,
   );
 }
 
@@ -230,18 +234,18 @@ for (const { label, prefix, prefixes = [prefix], ceiling } of LAZY_FEATURES) {
     console.error(
       `  ${label}: no chunk found for ${missing.join(", ")} — did it get folded into the entry?`,
     );
-    failed = true;
+    structuralFailure = true;
   }
   const eager = chunks.filter((name) => entryReferences.has(name));
   if (eager.length > 0) {
     console.error(`  ${label}: index.html references ${eager.join(", ")} — it must stay lazy.`);
-    failed = true;
+    structuralFailure = true;
   }
   const used = chunks.reduce((sum, name) => sum + rawSizeOf(join(assetDirectory, name)), 0);
-  if (report(label, used, ceiling)) failed = true;
+  checkBudget(label, used, ceiling);
 }
 
-if (failed) {
+if (structuralFailure || budgetResults.some((result) => result.over)) {
   console.error("");
   console.error("[check-bundle-size] FAIL — a guarded payload exceeded its budget.");
   console.error("If this growth is intentional, update the budget in");
