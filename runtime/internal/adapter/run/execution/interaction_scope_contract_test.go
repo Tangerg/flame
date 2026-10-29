@@ -88,7 +88,7 @@ func TestCheckpointWireRejectsFieldAliases(t *testing.T) {
 type scopeOutputTool struct{ output chat.ToolOutput }
 
 func (scopeOutputTool) Definition() chat.ToolDefinition {
-	return chat.ToolDefinition{Name: "inspect", Description: "Inspect the workspace.", InputSchema: jsontext.Value(`{"type":"object","additionalProperties":false}`)}
+	return chat.ToolDefinition{Name: "fixture_inspect", Description: "Inspect the workspace.", InputSchema: jsontext.Value(`{"type":"object","additionalProperties":false}`)}
 }
 
 func (s scopeOutputTool) Call(context.Context, toolcontract.Invocation) (toolcontract.Result, error) {
@@ -109,7 +109,7 @@ func TestObservedToolPreservesBoundDefinition(t *testing.T) {
 	if err := want.InputSchema.Canonicalize(); err != nil {
 		t.Fatal(err)
 	}
-	manifest, err := identifyTestManifest(toolset.Manifest{Visible: []toolcontract.Tool{executable}}, testsupport.A2ATool(t, "inspect"))
+	manifest, err := identifyTestManifest(toolset.Manifest{Visible: []toolcontract.Tool{executable}}, testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "inspect"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,7 +157,7 @@ func TestInteractionManifestUsesScopeAdmission(t *testing.T) {
 					return nil, nil
 				}),
 				InteractionExecutorConfig{
-					ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "inspect")}, manifest: test.manifest},
+					ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "inspect")}, manifest: test.manifest},
 					ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 				},
 			)
@@ -195,10 +195,10 @@ func TestToolOffloadPreservesScopeOutputContract(t *testing.T) {
 					}
 					return interactionTextResponse("done"), nil
 				}
-				return interactionToolResponse(chat.ToolCall{ID: "inspect", Name: "inspect", Arguments: `{}`}, 1, 1), nil
+				return interactionToolResponse(chat.ToolCall{ID: "inspect", Name: "fixture_inspect", Arguments: `{}`}, 1, 1), nil
 			})
 			executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-				ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "inspect")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{scopeOutputTool{output: test.output}}}},
+				ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "inspect")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{scopeOutputTool{output: test.output}}}},
 				ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 				ToolResultStore:   store,
 				ToolResultOffload: ToolResultOffloadPolicyValues{Threshold: intPointer(100), ReaderName: testToolResultReaderName},

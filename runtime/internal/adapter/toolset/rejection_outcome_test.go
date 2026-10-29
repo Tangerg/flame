@@ -42,7 +42,7 @@ func TestRejectedCallsDoNotCostTheRun(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "seed.txt"), []byte("seed\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	built, err := Build(t.Context(), BuildConfig{
+	built, err := Build(BuildConfig{
 		Lifetime: t.Context(), UserHome: t.TempDir(),
 		SkillsUserDir: t.TempDir(),
 	})

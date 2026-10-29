@@ -4258,30 +4258,22 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["arguments", "name"]),
   ToolRef: allOf([
     object({
-      endpoint: allOf([text(), pattern("^[A-Za-z0-9_-]{1,64}$")]),
       name: allOf([text(), pattern("^[A-Za-z0-9_.-]{1,128}$")]),
       server: ref(() => CHECKS.MCPServerID),
       type: ref(() => CHECKS.ToolRefType),
     }, []),
     oneOf([
       fields({
-        endpoint: absent(),
         name: enumOf(["apply_patch", "ask_user", "create_goal", "delegate_task", "edit", "enter_plan_mode", "exit_plan_mode", "get_goal", "glob", "grep", "list_skills", "load_skill", "propose_skill", "read", "read_shell_output", "read_skill_resource", "read_tool_result", "report_goal_outcome", "search_tools", "set_plan", "shell", "stop_shell", "web_fetch", "web_search"]),
         server: absent(),
         type: literal("builtIn"),
       }, ["name", "type"]),
       fields({
-        endpoint: absent(),
         type: literal("mcp"),
       }, ["name", "server", "type"]),
-      fields({
-        name: absent(),
-        server: absent(),
-        type: literal("a2a"),
-      }, ["endpoint", "type"]),
     ]),
   ]),
-  ToolRefType: enumOf(["builtIn", "mcp", "a2a"]),
+  ToolRefType: enumOf(["builtIn", "mcp"]),
   ToolSpec: object({
     description: text(),
     name: text(),

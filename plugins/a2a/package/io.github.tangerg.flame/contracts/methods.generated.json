@@ -1,0 +1,34 @@
+[
+  {
+    "name": "flame.a2a/agents.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "List configured remote agents without contacting them.",
+    "input": "schema.json#/$defs/Method_flame_2ea2a_2fagents_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2ea2a_2fagents_2ev1Output"
+  },
+  {
+    "name": "flame.a2a/cancel.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Request cancellation of the remote task bound to the original requestId. Only the returned remote state confirms cancellation; local interruption or transport failure does not. An unconfirmed cancel must never be resubmitted.",
+    "input": "schema.json#/$defs/Method_flame_2ea2a_2fcancel_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2ea2a_2fcancel_2ev1Output"
+  },
+  {
+    "name": "flame.a2a/send.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Send one message up to 64 KiB to a configured remote agent. Return the remote task or message and the original requestId. A response is bounded to 2 MiB. Preserve the command identity: an unconfirmed send must never be resubmitted.",
+    "input": "schema.json#/$defs/Method_flame_2ea2a_2fsend_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2ea2a_2fsend_2ev1Output"
+  },
+  {
+    "name": "flame.a2a/status.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read the remote task bound to the original requestId, using its captured endpoint and task identity. This does not replay a send or advance local task state.",
+    "input": "schema.json#/$defs/Method_flame_2ea2a_2fstatus_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2ea2a_2fstatus_2ev1Output"
+  }
+]

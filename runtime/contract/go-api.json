@@ -1030,6 +1030,38 @@
       ]
     },
     {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/httporigin",
+      "imports": [
+        "net/url"
+      ],
+      "functions": [
+        {
+          "name": "FromURL",
+          "signature": "func(u *url.URL) (Origin, error)"
+        },
+        {
+          "name": "Parse",
+          "signature": "func(raw string) (Origin, error)"
+        },
+        {
+          "name": "Same",
+          "signature": "func(left string, right string) bool"
+        }
+      ],
+      "types": [
+        {
+          "name": "Origin",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "String",
+              "signature": "func() string"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "path": "github.com/Tangerg/flame/packages/go-sdk/httpresponse",
       "imports": [
         "net/http"
@@ -4602,11 +4634,6 @@
           "name": "ToolCategoryWeb",
           "type": "ToolCategory",
           "value": "\"web\""
-        },
-        {
-          "name": "ToolRefA2A",
-          "type": "ToolRefType",
-          "value": "\"a2a\""
         },
         {
           "name": "ToolRefBuiltIn",
@@ -11604,11 +11631,6 @@
               "name": "Name",
               "type": "string",
               "tag": "json:\"name,omitempty\""
-            },
-            {
-              "name": "Endpoint",
-              "type": "string",
-              "tag": "json:\"endpoint,omitempty\""
             },
             {
               "name": "Server",

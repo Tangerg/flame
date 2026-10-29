@@ -145,7 +145,7 @@ func TestColdToolRestorationUsesTheOriginalGraphWithoutCurrentCatalog(t *testing
 	if text, valid := output.Text(); !valid || text != "original committed result" {
 		t.Fatalf("original receipt text changed: %q, %t", text, valid)
 	}
-	built, err := toolset.Build(t.Context(), toolset.BuildConfig{Lifetime: t.Context(), UserHome: t.TempDir(), RestoreMCP: managed.Pool.RestoreTools})
+	built, err := toolset.Build(toolset.BuildConfig{Lifetime: t.Context(), UserHome: t.TempDir(), RestoreMCP: managed.Pool.RestoreTools})
 	if err != nil {
 		t.Fatal(err)
 	}

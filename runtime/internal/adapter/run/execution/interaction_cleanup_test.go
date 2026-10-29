@@ -74,7 +74,7 @@ func TestInteractionFailedDiscardRemainsOwnedUntilShutdown(t *testing.T) {
 			return nil, errors.New("unexpected model call")
 		}), InteractionExecutorConfig{
 			ExecutionTrees:  trees,
-			ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "ask")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{newQuestionCheckpointTool(t)}}},
+			ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "ask")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{newQuestionCheckpointTool(t)}}},
 			ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 		})
 		start := interactionTestStart()

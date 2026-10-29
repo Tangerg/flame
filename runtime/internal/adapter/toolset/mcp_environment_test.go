@@ -282,7 +282,7 @@ func mustMCPToolEnvironment(t *testing.T, servers []mcpserver.Server) (toolset.B
 	if err != nil {
 		t.Fatalf("Open MCP pool: %v", err)
 	}
-	built, err := toolset.Build(t.Context(), toolset.BuildConfig{Lifetime: t.Context(),
+	built, err := toolset.Build(toolset.BuildConfig{Lifetime: t.Context(),
 		UserHome: t.TempDir(),
 	})
 	if err != nil {

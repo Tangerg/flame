@@ -40,7 +40,6 @@ type Resolver struct {
 	packageSkills promptsource.PackageSkills
 	skillsUserDir string                     // user-scope skills dir; merged under each Run's project skills
 	skillUsage    builtin.SkillUsageRecorder // records skill loads for the idle-lifecycle curator; nil → off
-	a2a           []toolcontract.Tool        // working-directory-independent remote A2A agents
 	codeIntel     CodeIntelligence           // backs post-patch diagnostics (rebuilt per resolution with the Run's cwd)
 	readTracker   *readTracker               // backs the read-before-patch and stale-read guards
 	pathLocker    *keylock.Set               // serializes same-path fs calls across every concurrent Run resolution
@@ -104,7 +103,6 @@ type resolverDeps struct {
 	PackageSkills promptsource.PackageSkills
 	SkillsUserDir string
 	SkillUsage    builtin.SkillUsageRecorder
-	A2A           []toolcontract.Tool // remote A2A delegation tools
 	Shell         []toolcontract.Tool // shell tools (shell / read_shell_output / stop_shell); nil means omitted
 	AskUser       toolcontract.Tool   // ask_user HITL tool (both groups)
 	EnterPlan     toolcontract.Tool   // enter_plan_mode (root group only); nil → omitted
@@ -137,7 +135,6 @@ func newResolver(d resolverDeps) (*Resolver, error) {
 		telemetry:     telemetry,
 		skillsUserDir: d.SkillsUserDir, packageSkills: d.PackageSkills,
 		skillUsage: d.SkillUsage,
-		a2a:        slices.Clone(d.A2A),
 		shell:      slices.Clone(d.Shell),
 		staticSpecs: []staticSpec{
 			{tool: d.AskUser, audience: audienceBoth, placement: interactionTail},
@@ -421,7 +418,6 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group, retained
 	}
 	tools.deferred = append(tools.deferred, mcpTools...)
 	tools.pendingMCP = pending
-	tools.deferred = append(tools.deferred, r.a2a...)
 	tools.direct(r.shell...)
 	// Skill tools are working-directory scoped (project skills live under the
 	// Run's cwd), so they are built per resolution like filesystem tools and are

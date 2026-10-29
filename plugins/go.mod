@@ -26,6 +26,7 @@ require (
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel/log v1.47.0 // indirect
 	go.opentelemetry.io/otel/trace v1.47.0 // indirect
+	golang.org/x/mod v0.42.0 // indirect
 	golang.org/x/net v0.61.0 // indirect
 	golang.org/x/oauth2 v0.37.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
@@ -39,12 +40,13 @@ require (
 )
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.plugin-boundaries.1
+	github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.plugin-boundaries.2
 	github.com/Tangerg/flame/qimu v0.1.0-quality.20261029.3
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
 	github.com/Tangerg/scope/core v0.58.0
 	github.com/Tangerg/scope/mcp v0.58.0
 	github.com/Tangerg/scope/tools v0.58.0
+	github.com/a2aproject/a2a-go/v2 v2.7.0
 	github.com/google/uuid v1.6.0
 	github.com/invopop/jsonschema v0.14.0
 	github.com/robfig/cron/v3 v3.0.1

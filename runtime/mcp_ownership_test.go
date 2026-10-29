@@ -134,8 +134,7 @@ func isolatedMCPRuntimeConfig(t *testing.T) Config {
 	t.Setenv("FLAME_PROVIDER", "anthropic")
 	for _, name := range []string{
 		"FLAME_MODEL", "FLAME_APIKEY", "FLAME_BASEURL", "ANTHROPIC_API_KEY",
-		"FLAME_MCP_SERVERS", "FLAME_A2A_AGENTS", "FLAME_A2A_RPC_ORIGINS",
-	} {
+		"FLAME_MCP_SERVERS"} {
 		t.Setenv(name, "")
 	}
 	return Config{

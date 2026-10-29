@@ -59,20 +59,12 @@ type Server struct {
 	WebDirectory   string   // optional absolute path to the built browser application
 }
 
-type A2AAgent struct {
-	Name              string
-	CardURL           string
-	AllowedRPCOrigins []string
-}
-
 type Settings struct {
 	Provider     string
 	Model        string
 	APIKey       APIKeyInput
 	BaseURL      string
 	UtilityModel string
-
-	A2AAgents []A2AAgent
 
 	ToolResultOffload ToolResultOffloadSettings
 

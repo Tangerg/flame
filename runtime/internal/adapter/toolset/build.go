@@ -13,12 +13,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
-	scopea2a "github.com/Tangerg/scope/a2a"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 // This file is the tool-assembly entry point. It is the SOLE place that
-// constructs the local shell and A2A adapters the tools wrap and wires them into the resolver — so the engine
+// constructs local tool adapters and wires them into the resolver, so the engine
 // CORE imports none of them; it receives the assembled [Built]. Tool capability
 // construction therefore stays outside Agent
 // execution (doc/ARCHITECTURE.md).
@@ -33,7 +32,6 @@ type BuildConfig struct {
 	PackageSkills    promptsource.PackageSkills
 	SkillsUserDir    string
 	CodeIntelligence CodeIntelligence
-	A2AAgents        []A2AAgentConfig
 	Plan             builtin.PlanUseCases   // backs set_plan + exit_plan_mode; nil → both are omitted
 	PlanMode         builtin.PlanModePolicy // session-scoped Plan mode; nil → enter/exit are omitted
 	Interrupt        runs.InterruptFunc
@@ -80,11 +78,8 @@ type Built struct {
 // Build constructs every capability adapter, assembles the resolver, and
 // returns the [Built] environment. Remote MCP connections are constructed by
 // their dedicated adapter before this function and supplied as an initial tool
-// snapshot; this package owns only the local and A2A capability lifecycle.
-func Build(ctx context.Context, config BuildConfig) (_ Built, err error) {
-	if ctx == nil {
-		return Built{}, errors.New("toolset: startup context is required")
-	}
+// snapshot; this package owns only the local capability lifecycle.
+func Build(config BuildConfig) (_ Built, err error) {
 	if config.Lifetime == nil {
 		return Built{}, errors.New("toolset: lifetime is required")
 	}
@@ -108,11 +103,10 @@ func Build(ctx context.Context, config BuildConfig) (_ Built, err error) {
 	if err != nil {
 		return Built{}, fmt.Errorf("toolset: build shell tools: %w", err)
 	}
-	var a2aTools *scopea2a.ToolSet
 	cleanupOnError := true
 	defer func() {
 		if cleanupOnError {
-			err = errors.Join(err, a2aTools.Close(), shells.KillAll())
+			err = errors.Join(err, shells.KillAll())
 		}
 	}()
 
@@ -158,27 +152,9 @@ func Build(ctx context.Context, config BuildConfig) (_ Built, err error) {
 		return Built{}, fmt.Errorf("toolset: build propose_skill: %w", err)
 	}
 
-	a2aTools, err = openA2AToolSet(ctx, config.A2AAgents)
-	if err != nil {
-		return Built{}, err
-	}
-
-	a2aExecutables := a2aTools.Tools()
-	for index, executable := range a2aExecutables {
-		ref, err := tool.A2A(config.A2AAgents[index].Name)
-		if err != nil {
-			return Built{}, err
-		}
-		a2aExecutables[index], err = WithIdentity(executable, ref, config.A2AAgents[index].AuthorityFingerprint())
-		if err != nil {
-			return Built{}, err
-		}
-	}
-
 	resolver, err := newResolver(resolverDeps{
 		SkillUsage:    config.SkillUsage,
 		SkillsUserDir: config.SkillsUserDir, PackageSkills: config.PackageSkills,
-		A2A:             a2aExecutables,
 		Shell:           shellTools,
 		AskUser:         askUserTool,
 		EnterPlan:       planFamily.Enter,
@@ -202,7 +178,6 @@ func Build(ctx context.Context, config BuildConfig) (_ Built, err error) {
 		Shells:   shells,
 		Closers: []func() error{
 			shells.KillAll,
-			a2aTools.Close,
 		},
 	}, nil
 }

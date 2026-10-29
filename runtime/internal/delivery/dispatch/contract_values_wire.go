@@ -617,7 +617,7 @@ func registerHookValues(s *Shapes) {
 }
 
 func registerApprovalValues(s *Shapes) {
-	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.ToolRef](), Constraints: append(mcpRemoteToolIdentity("name"), FieldConstraint{Field: "endpoint", Kind: ConstraintPattern, Value: tool.ModelNamePattern()})})
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.ToolRef](), Constraints: mcpRemoteToolIdentity("name")})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.SetApprovalRuleRequest](), Constraints: resourceIdentity("sessionId")})
 
 	s.valueConstraint(FieldConstraintSpec{

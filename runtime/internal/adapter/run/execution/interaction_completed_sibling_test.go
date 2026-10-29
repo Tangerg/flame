@@ -35,7 +35,7 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 	toolStarted := make(chan agent.ProcessID, 1)
 	var writes atomic.Int32
 	offloads := &recordingToolResultOffloader{store: testTrees(t).stores.ToolResults}
-	ordinary, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "store", Description: "Write a known result."}, func(ctx context.Context, input struct {
+	ordinary, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "fixture_store", Description: "Write a known result."}, func(ctx context.Context, input struct {
 		Value string `json:"value"`
 	}) (string, error) {
 		if input.Value != "edited" {
@@ -65,7 +65,7 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 		case userMessagesContain(request.Messages, "waiting sibling A"):
 			select {
 			case <-releaseA:
-				return interactionToolResponse(chat.ToolCall{ID: "ask_a", Name: "ask", Arguments: `{}`}, 2, 1), nil
+				return interactionToolResponse(chat.ToolCall{ID: "ask_a", Name: "fixture_ask", Arguments: `{}`}, 2, 1), nil
 			case <-ctx.Done():
 				return nil, ctx.Err()
 			}
@@ -78,7 +78,7 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 			return interactionUsageTextResponse("sibling B completed", 2, 1), nil
 		default:
 			calls := []chat.ToolCall{
-				{ID: "ordinary_c", Name: "store", Arguments: `{"value":"original"}`},
+				{ID: "ordinary_c", Name: "fixture_store", Arguments: `{"value":"original"}`},
 				{ID: "delegate_a", Name: "delegate_task", Arguments: `{"summary":"A","instructions":"waiting sibling A"}`},
 				{ID: "delegate_b", Name: "delegate_task", Arguments: `{"summary":"B","instructions":"completed sibling B"}`},
 			}
@@ -92,7 +92,7 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 	executor, err := newProductConfiguredInteractionExecutor(t, InteractionExecutorConfig{
 		Lifetime: t.Context(), ChatResolver: staticInteractionChatResolver(model),
 		MaxConcurrentToolCalls: intPointer(4), BuildID: interactionTestBuildID,
-		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "ask"), testsupport.A2ATool(t, "store")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{question, ordinary}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "ask"), testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "store")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{question, ordinary}}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 		ToolHooks: siblingEditHook{}, ToolResultStore: offloads,
 		ToolResultOffload: ToolResultOffloadPolicyValues{Threshold: intPointer(100), ReaderName: testToolResultReaderName},
@@ -275,7 +275,7 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 type siblingEditHook struct{}
 
 func (siblingEditHook) BeforeToolUse(_ context.Context, input InteractionToolHookInput) (InteractionToolHookDecision, error) {
-	if input.ToolName != "store" {
+	if input.ToolName != "fixture_store" {
 		return allowToolHook(false, nil), nil
 	}
 	arguments, err := domaintool.ParseArguments(`{"value":"edited"}`)

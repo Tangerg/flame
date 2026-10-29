@@ -3,9 +3,7 @@ import { type MCPServerID } from "@/features/mcp/public/serverIdentity";
 type ApprovalSubject =
   { type: "all" } | { type: "exact"; value: string } | { type: "glob"; value: string };
 type ToolRef =
-  | { type: "builtIn"; name: string }
-  | { type: "mcp"; name: string; server: MCPServerID }
-  | { type: "a2a"; endpoint: string };
+  { type: "builtIn"; name: string } | { type: "mcp"; name: string; server: MCPServerID };
 
 import { createDataQuery, createParameterizedDataQuery } from "@/extensions/dataQuery";
 import { type ApprovalModeResult, type RememberScope } from "@/features/agent/domain/hitl";

@@ -431,7 +431,6 @@ publish one namespaced pattern branch without weakening first-party tags.
 | --- | --- | --- |
 | `builtIn` | `name` | — |
 | `mcp` | `server`, `name` | — |
-| `a2a` | `endpoint` | — |
 
 ### `ApprovalSubject`
 
@@ -951,7 +950,6 @@ TypeScript validator from this single registry projection.
 | `HookInfo` | `timeoutMillis` | `maximum(300000)` |
 | `SetHookTrustRequest` | `projectRoot` | `nonEmpty` |
 | `ToolRef` | `name` | `pattern("^[A-Za-z0-9_.-]{1,128}$")` |
-| `ToolRef` | `endpoint` | `pattern("^[A-Za-z0-9_-]{1,64}$")` |
 | `SetApprovalRuleRequest` | `sessionId` | `identity` |
 | `SetApprovalRuleRequest` | `sessionId` | `maxLength(256)` |
 | `ApprovalRule` | `id` | `nonEmpty` |

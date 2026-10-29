@@ -4413,12 +4413,6 @@
             "server",
             "name"
           ]
-        },
-        {
-          "tag": "a2a",
-          "required": [
-            "endpoint"
-          ]
         }
       ]
     },
@@ -8948,10 +8942,6 @@
         {
           "field": "name",
           "constraint": "pattern(\"^[A-Za-z0-9_.-]{1,128}$\")"
-        },
-        {
-          "field": "endpoint",
-          "constraint": "pattern(\"^[A-Za-z0-9_-]{1,64}$\")"
         }
       ]
     },

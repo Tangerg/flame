@@ -48,7 +48,7 @@ func TestDurableProjectStateIsAddressedByTheWorkspace(t *testing.T) {
 	var authorized ToolAuthorizationRequest
 
 	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "write", Description: "Write a file.",
+		Name: "fixture_write", Description: "Write a file.",
 	}, func(context.Context, struct{}) (string, error) { return "wrote", nil })
 	if err != nil {
 		t.Fatal(err)
@@ -58,11 +58,11 @@ func TestDurableProjectStateIsAddressedByTheWorkspace(t *testing.T) {
 			return interactionTextResponse("done"), nil
 		}
 		return interactionToolBatchResponse(
-			[]chat.ToolCall{{ID: "write_1", Name: "write", Arguments: `{}`}}, 1, 1,
+			[]chat.ToolCall{{ID: "write_1", Name: "fixture_write", Arguments: `{}`}}, 1, 1,
 		), nil
 	})
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "write")},
+		ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "write")},
 			manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}},
 		},
 		ToolInterpreter: testInteractionToolInterpreter{},

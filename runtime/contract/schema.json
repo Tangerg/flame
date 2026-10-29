@@ -12201,10 +12201,6 @@
     "ToolRef": {
       "type": "object",
       "properties": {
-        "endpoint": {
-          "type": "string",
-          "pattern": "^[A-Za-z0-9_-]{1,64}$"
-        },
         "name": {
           "type": "string",
           "pattern": "^[A-Za-z0-9_.-]{1,128}$"
@@ -12219,7 +12215,6 @@
       "oneOf": [
         {
           "properties": {
-            "endpoint": false,
             "name": {
               "enum": [
                 "apply_patch",
@@ -12260,7 +12255,6 @@
         },
         {
           "properties": {
-            "endpoint": false,
             "type": {
               "const": "mcp"
             }
@@ -12270,19 +12264,6 @@
             "server",
             "type"
           ]
-        },
-        {
-          "properties": {
-            "name": false,
-            "server": false,
-            "type": {
-              "const": "a2a"
-            }
-          },
-          "required": [
-            "endpoint",
-            "type"
-          ]
         }
       ]
     },
@@ -12290,8 +12271,7 @@
       "type": "string",
       "enum": [
         "builtIn",
-        "mcp",
-        "a2a"
+        "mcp"
       ]
     },
     "ToolSpec": {

@@ -156,7 +156,7 @@ func TestPublishedResultContractsDecodePresenterOutput(t *testing.T) {
 
 func TestPresenterKeepsUnknownToolResult(t *testing.T) {
 	original := mustToolResult(t, map[string]any{"custom": true})
-	presented, outputText := Presenter{}.Present(testsupport.A2ATool(t, "external_tool"), tool.Arguments{}, original)
+	presented, outputText := Presenter{}.Present(testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "external_tool"), tool.Arguments{}, original)
 	if !reflect.DeepEqual(presented.Any(), original.Any()) || outputText != "" {
 		t.Fatalf("unknown presentation = %#v, %q", presented.Any(), outputText)
 	}

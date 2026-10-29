@@ -88,14 +88,14 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 		requests  [][]chat.Message
 		mu        sync.Mutex
 	)
-	question := newQuestionTool(t, "ask", "Ask for one value before completing.", "question.ask",
+	question := newQuestionTool(t, "fixture_ask", "Ask for one value before completing.", "question.ask",
 		[]runs.QuestionFieldSpec{{Prompt: "Which value?"}},
 		func(resolution run.InterruptResolution) (string, error) {
 			toolCalls++
 			return resolution.Question().Answers()[0][0], nil
 		})
 	model := &observationScriptModel{responses: []*chat.Response{
-		interactionToolResponse(chat.ToolCall{ID: "ask_call", Name: "ask", Arguments: `{}`}, 2, 1),
+		interactionToolResponse(chat.ToolCall{ID: "ask_call", Name: "fixture_ask", Arguments: `{}`}, 2, 1),
 		interactionUsageTextResponse("completed", 3, 1),
 	}}
 	recordingModel := chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
@@ -116,7 +116,7 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 	compactor := &calibrationCaptureCompactor{estimatedTokens: 100}
 	executor := newObservedTestInteractionExecutor(t, recordingModel, InteractionExecutorConfig{
 		CallComposition: inputOwner,
-		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "ask")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{question}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "ask")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{question}}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 		ModelContextCompactor: compactor, ModelContextState: emptyInteractionModelContextState{},
 	})
@@ -344,7 +344,7 @@ func TestInteractionExecutorRestoresInteractiveApprovalWithoutRepeatingPolicyOrH
 	workspace := t.TempDir()
 	var toolCalls int
 	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "mutate", Description: "Perform an approved mutation.",
+		Name: "fixture_mutate", Description: "Perform an approved mutation.",
 	}, func(context.Context, struct{}) (string, error) {
 		toolCalls++
 		return "mutated", nil
@@ -353,13 +353,13 @@ func TestInteractionExecutorRestoresInteractiveApprovalWithoutRepeatingPolicyOrH
 		t.Fatal(err)
 	}
 	model := &observationScriptModel{responses: []*chat.Response{
-		interactionToolResponse(chat.ToolCall{ID: "mutate_call", Name: "mutate", Arguments: `{}`}, 1, 1),
+		interactionToolResponse(chat.ToolCall{ID: "mutate_call", Name: "fixture_mutate", Arguments: `{}`}, 1, 1),
 		interactionUsageTextResponse("approved", 1, 1),
 	}}
 	hooks := &recordingInteractionHooks{}
 	approvals := &promptingInteractionAuthorizer{}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "mutate")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "mutate")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: approvals, ToolHooks: hooks,
 	})
 	start := interactionTestStart()
@@ -418,7 +418,7 @@ func TestInteractionExecutorCancellationStopsApprovedInflightTool(t *testing.T) 
 	toolStarted := make(chan struct{})
 	toolReturned := make(chan struct{})
 	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "mutate", Description: "Perform an approved mutation until canceled.",
+		Name: "fixture_mutate", Description: "Perform an approved mutation until canceled.",
 	}, func(ctx context.Context, _ struct{}) (string, error) {
 		close(toolStarted)
 		<-ctx.Done()
@@ -429,10 +429,10 @@ func TestInteractionExecutorCancellationStopsApprovedInflightTool(t *testing.T) 
 		t.Fatal(err)
 	}
 	model := &observationScriptModel{responses: []*chat.Response{
-		interactionToolResponse(chat.ToolCall{ID: "mutate_call", Name: "mutate", Arguments: `{}`}, 1, 1),
+		interactionToolResponse(chat.ToolCall{ID: "mutate_call", Name: "fixture_mutate", Arguments: `{}`}, 1, 1),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "mutate")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "mutate")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: &promptingInteractionAuthorizer{},
 	})
 	start := interactionTestStart()
@@ -571,12 +571,12 @@ func TestInteractionExecutorCancellationStopsApprovedForegroundShell(t *testing.
 func TestInteractionExecutorPreservesDeferredAdvertisementAcrossWaitingRestore(t *testing.T) {
 	workspace := t.TempDir()
 	hidden, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "hidden_lookup", Description: "Read a deferred value.",
+		Name: "fixture_hidden_lookup", Description: "Read a deferred value.",
 	}, func(context.Context, struct{}) (string, error) { return "hidden", nil })
 	if err != nil {
 		t.Fatal(err)
 	}
-	identifiedHidden, err := toolset.WithIdentity(hidden, testsupport.A2ATool(t, "hidden_lookup"), testsupport.ToolFingerprint(testsupport.A2ATool(t, "hidden_lookup")))
+	identifiedHidden, err := toolset.WithIdentity(hidden, testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "hidden_lookup"), testsupport.ToolFingerprint(testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "hidden_lookup")))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -584,14 +584,14 @@ func TestInteractionExecutorPreservesDeferredAdvertisementAcrossWaitingRestore(t
 	if err != nil {
 		t.Fatal(err)
 	}
-	question := newQuestionTool(t, "ask", "Ask before continuing.", "question.after-search",
+	question := newQuestionTool(t, "fixture_ask", "Ask before continuing.", "question.after-search",
 		[]runs.QuestionFieldSpec{{Prompt: "Continue?"}},
 		func(resolution run.InterruptResolution) (string, error) {
 			return resolution.Question().Answers()[0][0], nil
 		})
 	model := &advertisementWaitingModel{}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.BuiltInTool(t, "search_tools"), testsupport.A2ATool(t, "ask")}, manifest: toolset.Manifest{
+		ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.BuiltInTool(t, "search_tools"), testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "ask")}, manifest: toolset.Manifest{
 			Visible: []toolcontract.Tool{search, question}, Deferred: []toolcontract.Tool{identifiedHidden},
 		}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
@@ -656,13 +656,13 @@ func (a *advertisementWaitingModel) Call(_ context.Context, request *chat.Reques
 	switch a.calls {
 	case 1:
 		return interactionToolResponse(chat.ToolCall{
-			ID: "discover", Name: "search_tools", Arguments: `{"query":"select:hidden_lookup"}`,
+			ID: "discover", Name: "search_tools", Arguments: `{"query":"select:fixture_hidden_lookup"}`,
 		}, 1, 1), nil
 	case 2:
-		return interactionToolResponse(chat.ToolCall{ID: "ask", Name: "ask", Arguments: `{}`}, 1, 1), nil
+		return interactionToolResponse(chat.ToolCall{ID: "ask", Name: "fixture_ask", Arguments: `{}`}, 1, 1), nil
 	case 3:
 		for _, definition := range request.Tools {
-			if definition.Name == "hidden_lookup" {
+			if definition.Name == "fixture_hidden_lookup" {
 				a.restoredManifestIncludedHidden = true
 			}
 		}
@@ -827,7 +827,7 @@ func TestInteractionExecutorProbesWaitingCheckpointThroughExactRestorePath(t *te
 	executor := newObservedTestInteractionExecutor(t, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 		return nil, errors.New("model must not be called while probing a waiting checkpoint")
 	}), InteractionExecutorConfig{
-		ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "ask")}, manifest: toolset.Manifest{
+		ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "ask")}, manifest: toolset.Manifest{
 			Visible: []toolcontract.Tool{newQuestionCheckpointTool(t)},
 		}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
@@ -1081,9 +1081,9 @@ func captureInteractionQuestionCheckpoint(t *testing.T, workspace string) runs.E
 	t.Helper()
 	question := newQuestionCheckpointTool(t)
 	executor := newObservedTestInteractionExecutor(t, &observationScriptModel{responses: []*chat.Response{
-		interactionToolResponse(chat.ToolCall{ID: "ask_call", Name: "ask", Arguments: `{}`}, 1, 1),
+		interactionToolResponse(chat.ToolCall{ID: "ask_call", Name: "fixture_ask", Arguments: `{}`}, 1, 1),
 	}}, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "ask")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{question}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "ask")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{question}}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 	})
 	start := interactionTestStart()
@@ -1104,7 +1104,7 @@ func captureInteractionQuestionCheckpoint(t *testing.T, workspace string) runs.E
 
 func newQuestionCheckpointTool(t *testing.T) toolcontract.Tool {
 	t.Helper()
-	return newQuestionTool(t, "ask", "Ask before completing.", "question.ask",
+	return newQuestionTool(t, "fixture_ask", "Ask before completing.", "question.ask",
 		[]runs.QuestionFieldSpec{{Prompt: "Which value?"}},
 		func(run.InterruptResolution) (string, error) { return "", nil })
 }

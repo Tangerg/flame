@@ -8911,7 +8911,6 @@
       },
       "ToolRef": {
         "properties": {
-          "endpoint": {},
           "name": {},
           "server": {
             "$ref": "#/components/schemas/MCPServerID"

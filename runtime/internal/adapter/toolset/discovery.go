@@ -88,8 +88,6 @@ func NewDiscovery(withheld []toolcontract.Tool) (*Discovery, error) {
 		source := "built-in"
 		if server, _, ok := ref.MCP(); ok {
 			source = server.String()
-		} else if endpoint, ok := ref.A2A(); ok {
-			source = "a2a:" + endpoint
 		}
 		def := executable.Definition()
 		e := discoverableTool{

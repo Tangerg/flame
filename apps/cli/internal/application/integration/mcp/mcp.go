@@ -251,8 +251,6 @@ func ToolLabel(ref protocol.ToolRef) (string, error) {
 			return "", fmt.Errorf("runtime contract violation: MCP tool %q has no server", ref.Name)
 		}
 		return "mcp/" + ServerLabel(*ref.Server) + "/" + ref.Name, nil
-	case protocol.ToolRefA2A:
-		return "a2a/" + ref.Endpoint, nil
 	default:
 		return "", fmt.Errorf("runtime contract violation: unknown tool source %q", ref.Type)
 	}

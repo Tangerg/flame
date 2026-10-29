@@ -212,7 +212,7 @@ Read [`../AGENTS.md`](../../AGENTS.md), [`../DEVELOPMENT.md`](../../DEVELOPMENT.
 Tool policies use Runtime's source references. MCP commands address a server as
 `<name>` for a user server or `<installation-id>/<name>` for an installation server; the
 CLI parses that argument once into Runtime's structured `MCPServerID` and renders server
-identities back in the same form; a tool source reads `builtIn/<name>`, `a2a/<endpoint>`
+identities back in the same form; a tool source reads `builtIn/<name>`
 or `mcp/<server>/<tool>` with the server in that form. `/mcp-tool <server> <tool>
 <enable|disable|allow|deny>` changes exposure or creates a global standing rule.
 `/rules` shows source identity, explicit subject match type, and stale authority; `/rule-delete` forgets a

@@ -454,8 +454,7 @@ func configureIntegrationRuntime(t *testing.T) {
 	t.Setenv("FLAME_PROVIDER", "anthropic")
 	t.Setenv("ANTHROPIC_API_KEY", "test-key")
 	t.Setenv("DEEPSEEK_API_KEY", "integration-env-key")
-	t.Setenv("FLAME_A2A_AGENTS", "")
-	t.Setenv("FLAME_A2A_RPC_ORIGINS", "")
+
 }
 
 func requireProviderMutationLifecycle(t *testing.T, runtime *Connection) {

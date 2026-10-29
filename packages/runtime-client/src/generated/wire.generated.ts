@@ -2151,10 +2151,9 @@ export interface ToolInvocation {
 
 export type ToolRef =
   | { type: "builtIn"; name: "apply_patch" | "ask_user" | "create_goal" | "delegate_task" | "edit" | "enter_plan_mode" | "exit_plan_mode" | "get_goal" | "glob" | "grep" | "list_skills" | "load_skill" | "propose_skill" | "read" | "read_shell_output" | "read_skill_resource" | "read_tool_result" | "report_goal_outcome" | "search_tools" | "set_plan" | "shell" | "stop_shell" | "web_fetch" | "web_search" }
-  | { type: "mcp"; name: string; server: MCPServerID }
-  | { type: "a2a"; endpoint: string };
+  | { type: "mcp"; name: string; server: MCPServerID };
 
-export type ToolRefType = "builtIn" | "mcp" | "a2a";
+export type ToolRefType = "builtIn" | "mcp";
 
 export interface ToolSpec {
   description?: string;
@@ -2404,7 +2403,7 @@ export const WIRE_ENUMS = {
   SuppressibleRunEventType: ["segment.progress", "item.delta"],
   ToolAttemptState: ["started", "completed", "incomplete"],
   ToolCategory: ["shell", "edit", "read", "search", "web", "task", "unknown"],
-  ToolRefType: ["builtIn", "mcp", "a2a"],
+  ToolRefType: ["builtIn", "mcp"],
   TrajectoryEntryType: ["run", "model", "endpoint", "item"],
   TransportKind: ["http"],
   WorkspaceAvailability: ["available", "missing"],

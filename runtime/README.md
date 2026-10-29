@@ -1701,7 +1701,7 @@ together; a partial read can establish size but never document text validity.
 
 ## Tool authority
 
-Tool identity is a closed built-in, MCP source/tool, or A2A endpoint reference.
+Tool identity is a closed built-in or MCP source/tool reference.
 Model names remain presentation labels. The closed set of built-in names is owned by the
 tool domain (`tool.BuiltInName`); the built-in behavior catalog is keyed by that type and a
 test holds it to exactly that set, so startup performs no comparison between them.
@@ -1719,7 +1719,7 @@ source authority fingerprint. Endpoint changes make existing rules stale;
 credential rotation does not. MCP exposure is configured separately through
 `mcp.tools.setExposure`; `approval.setRule` owns remembered decisions.
 A rule is keyed by scope, scope key, source reference, subject type, and subject value. A
-source reference is a closed union: built-in name, A2A endpoint, or MCP server identity
+source reference is a closed union: built-in name or MCP server identity
 plus remote tool name; each variant's data is reachable only through that variant. Remembering the
 same key replaces both its decision and source fingerprint. Equally specific
 distinct patterns still resolve to deny when they conflict.
@@ -1773,7 +1773,7 @@ not resumed, under the existing build-identity rule.
 ## Deferred tool catalog
 
 A Run's tool declarations open the provider prompt-cache prefix, so they do not depend on
-which tools are deferred. Built-in, Skill, MCP (user and installation origin) and A2A
+which tools are deferred. Built-in, Skill and MCP (user and installation origin)
 tools withheld from the initial manifest form the Run's frozen deferred set, which the
 Run's `search_tools` owns. Its declaration is static text; plugin activation, MCP
 reconnects and catalog changes reach later Runs only through that set.

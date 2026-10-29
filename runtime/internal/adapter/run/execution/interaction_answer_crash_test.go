@@ -63,7 +63,7 @@ func (s answerCrashTrees) SaveExecutionTree(ctx context.Context, update runs.Exe
 
 func answerCrashExecutor(t *testing.T, trees runs.ExecutionTreeStore, workspace string) *InteractionExecutor {
 	t.Helper()
-	question := newQuestionTool(t, "ask", "Ask for a value.", "crash.question",
+	question := newQuestionTool(t, "fixture_ask", "Ask for a value.", "crash.question",
 		[]runs.QuestionFieldSpec{{Prompt: "Which value?"}},
 		func(resolution run.InterruptResolution) (string, error) {
 			file, err := os.OpenFile(filepath.Join(workspace, "effects.txt"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
@@ -78,12 +78,12 @@ func answerCrashExecutor(t *testing.T, trees runs.ExecutionTreeStore, workspace 
 			return answer, nil
 		})
 	model := &observationScriptModel{responses: []*chat.Response{
-		interactionToolBatchResponse([]chat.ToolCall{{ID: "a", Name: "ask", Arguments: `{}`}, {ID: "b", Name: "ask", Arguments: `{}`}}, 2, 1), interactionUsageTextResponse("done", 3, 1),
+		interactionToolBatchResponse([]chat.ToolCall{{ID: "a", Name: "fixture_ask", Arguments: `{}`}, {ID: "b", Name: "fixture_ask", Arguments: `{}`}}, 2, 1), interactionUsageTextResponse("done", 3, 1),
 	}}
 	if os.Getenv("FLAME_TEST_ANSWER_CRASH") == "" {
 		model.responses = model.responses[1:]
 	}
-	return newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{ExecutionTrees: trees, MaxConcurrentToolCalls: new(2), ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "ask")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{concurrentInteractionTool{Tool: question}}}}, ToolInterpreter: immutableToolInterpreter{}, ToolAuthorizer: allowInteractionTools{}})
+	return newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{ExecutionTrees: trees, MaxConcurrentToolCalls: new(2), ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "ask")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{concurrentInteractionTool{Tool: question}}}}, ToolInterpreter: immutableToolInterpreter{}, ToolAuthorizer: allowInteractionTools{}})
 }
 
 func checkpointAnswers(t *testing.T, checkpoint runs.ExecutorCheckpoint) []runs.InterruptAnswer {

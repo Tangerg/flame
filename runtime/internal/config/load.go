@@ -70,15 +70,6 @@ func Load(configDirectories []string) (Settings, error) {
 		apiKey = EnvironmentAPIKey(environmentKey)
 	}
 
-	a2aAgents, err := parseA2AAgents(a2aAgentsEnvironment.Value())
-	if err != nil {
-		return Settings{}, fmt.Errorf("config: %s: %w", a2aAgentsEnvironment, err)
-	}
-	a2aAgents, err = addA2ARPCOrigins(a2aAgents, a2aOriginsEnvironment.Value())
-	if err != nil {
-		return Settings{}, fmt.Errorf("config: %s: %w", a2aOriginsEnvironment, err)
-	}
-
 	if source.ToolResultOffload.Threshold <= 0 {
 		return Settings{}, errors.New("config: toolResultOffload.threshold must be positive; use toolResultOffload.enabled: false to disable eviction")
 	}
@@ -89,7 +80,6 @@ func Load(configDirectories []string) (Settings, error) {
 		APIKey:       apiKey,
 		BaseURL:      source.BaseURL,
 		UtilityModel: source.UtilityModel,
-		A2AAgents:    a2aAgents,
 
 		ToolResultOffload:    source.ToolResultOffload,
 		SandboxShell:         source.Sandbox.Shell,

@@ -3,7 +3,6 @@ package toolset
 import (
 	"context"
 	"fmt"
-	"slices"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -14,15 +13,10 @@ import (
 // Connection dispatch separately checks the configuration its executable realized.
 type Authorities struct {
 	definition func(context.Context, mcpserver.ID) (mcpserver.Server, bool, error)
-	a2a        map[string]identity.Digest
 }
 
-func NewAuthorities(definition func(context.Context, mcpserver.ID) (mcpserver.Server, bool, error), agents []A2AAgentConfig) *Authorities {
-	a := &Authorities{definition: definition, a2a: make(map[string]identity.Digest)}
-	for _, agent := range agents {
-		a.a2a[agent.Name] = agent.AuthorityFingerprint()
-	}
-	return a
+func NewAuthorities(definition func(context.Context, mcpserver.ID) (mcpserver.Server, bool, error)) *Authorities {
+	return &Authorities{definition: definition}
 }
 func (a *Authorities) Fingerprint(ctx context.Context, ref tool.Ref) (identity.Digest, bool, error) {
 	if err := ref.Validate(); err != nil {
@@ -41,10 +35,6 @@ func (a *Authorities) Fingerprint(ctx context.Context, ref tool.Ref) (identity.D
 			return identity.Digest{}, found, err
 		}
 		return server.AuthorityFingerprint(), true, nil
-	case tool.A2AKind:
-		endpoint, _ := ref.A2A()
-		authority, found := a.a2a[endpoint]
-		return authority, found, nil
 	default:
 		return identity.Digest{}, false, fmt.Errorf("toolset: unsupported source")
 	}
@@ -81,10 +71,4 @@ func (a *Authorities) Fingerprints(ctx context.Context, refs []tool.Ref) (map[to
 		}
 	}
 	return result, nil
-}
-func (a A2AAgentConfig) AuthorityFingerprint() identity.Digest {
-	origins := slices.Clone(a.AllowedRPCOrigins)
-	slices.Sort(origins)
-	origins = slices.Compact(origins)
-	return identity.DigestStrings(append([]string{a.CardURL}, origins...)...)
 }

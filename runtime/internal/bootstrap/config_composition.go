@@ -2,11 +2,9 @@ package bootstrap
 
 import (
 	"path/filepath"
-	"slices"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/config"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -22,7 +20,6 @@ func composeConfig(cfg config.Settings, stores *persistence.Bundle, resolver cha
 		chatResolver:             resolver,
 		pricing:                  modeladapter.Pricing(),
 		skillsUserDir:            filepath.Join(stores.DataDirectory, "skills"),
-		a2aAgents:                toolsetA2AAgents(cfg.A2AAgents),
 		sandboxShell:             cfg.SandboxShell,
 		sandboxReadOnlyPaths:     cfg.SandboxReadOnlyPaths,
 		sandboxDir:               filepath.Join(stores.DataDirectory, "sandbox"),
@@ -34,19 +31,4 @@ func composeConfig(cfg config.Settings, stores *persistence.Bundle, resolver cha
 		toolResultThreshold:      cfg.ToolResultOffload.Threshold,
 		approvalMode:             approval.ModeBalanced,
 	}
-}
-
-func toolsetA2AAgents(in []config.A2AAgent) []toolset.A2AAgentConfig {
-	if len(in) == 0 {
-		return nil
-	}
-	out := make([]toolset.A2AAgentConfig, len(in))
-	for i, agent := range in {
-		out[i] = toolset.A2AAgentConfig{
-			Name:              agent.Name,
-			CardURL:           agent.CardURL,
-			AllowedRPCOrigins: slices.Clone(agent.AllowedRPCOrigins),
-		}
-	}
-	return out
 }

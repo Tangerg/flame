@@ -20,15 +20,6 @@ func BuiltInTool(t testing.TB, name tool.BuiltInName) tool.Ref {
 	return ref
 }
 
-func A2ATool(t testing.TB, endpoint string) tool.Ref {
-	t.Helper()
-	ref, err := tool.A2A(endpoint)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return ref
-}
-
 func ToolFingerprint(ref tool.Ref) identity.Digest {
 	if ref.Kind() == tool.BuiltInKind {
 		return identity.Digest{}

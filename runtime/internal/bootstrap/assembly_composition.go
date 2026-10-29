@@ -60,7 +60,7 @@ func buildPolicyComposition(ctx context.Context, cfg assemblyConfig, lifetime *r
 		cfg.approvalMode,
 		cfg.stores.ApprovalRules,
 		cfg.stores.ApprovalModes,
-		toolset.NewAuthorities(registry.Definition, cfg.a2aAgents),
+		toolset.NewAuthorities(registry.Definition),
 		invalidations.publish,
 	)
 	if err != nil {

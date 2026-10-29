@@ -823,17 +823,18 @@ func TestReducerSeparatesModelAndPresentedToolResults(t *testing.T) {
 }
 
 func TestReducerCarriesLaterPausedCallIdentityAcrossSequentialResumes(t *testing.T) {
+	ref := testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "approval")
 	first := newReducer(testReducerConfig())
 	firstID := startedItemID(t, mustReduce(t, first, ToolCallStarted{
-		CallID: "call-1", ToolName: "approval", Arguments: `{"path":"a"}`, SafetyClass: "write",
+		CallID: "call-1", ToolName: ref.ModelName(), Arguments: `{"path":"a"}`, SafetyClass: "write",
 	}))
 	secondID := startedItemID(t, mustReduce(t, first, ToolCallStarted{
-		CallID: "call-2", ToolName: "approval", Arguments: `{"path":"b"}`, SafetyClass: "write",
+		CallID: "call-2", ToolName: ref.ModelName(), Arguments: `{"path":"b"}`, SafetyClass: "write",
 	}))
 	firstPark := mustInterrupt(t, first, []Interrupt{{
 		Kind: run.InterruptApproval,
 		Approval: &ApprovalPrompt{
-			CallID: "call-1", Arguments: `{"path":"a"}`, SafetyClass: "write", Risk: "medium", Tool: testsupport.A2ATool(t, "approval"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.A2ATool(t, "approval")),
+			CallID: "call-1", Arguments: `{"path":"a"}`, SafetyClass: "write", Risk: "medium", Tool: ref, SourceFingerprint: testsupport.ToolFingerprint(ref),
 		},
 	}}, 0)
 	firstCommit := firstPark.parkCommit
@@ -863,7 +864,7 @@ func TestReducerCarriesLaterPausedCallIdentityAcrossSequentialResumes(t *testing
 	resumed := newReducer(config)
 	mustOpen(t, resumed)
 	resumedStart := mustReduce(t, resumed, ToolCallStarted{
-		CallID: "call-1", ToolName: "approval", Arguments: `{"path":"a"}`, SafetyClass: "write",
+		CallID: "call-1", ToolName: ref.ModelName(), Arguments: `{"path":"a"}`, SafetyClass: "write",
 	})
 	for _, reduced := range resumedStart {
 		if _, ok := reduced.Event.(ItemStarted); ok {
@@ -878,7 +879,7 @@ func TestReducerCarriesLaterPausedCallIdentityAcrossSequentialResumes(t *testing
 	secondPark := mustInterrupt(t, resumed, []Interrupt{{
 		Kind: run.InterruptApproval,
 		Approval: &ApprovalPrompt{
-			CallID: "call-2", Arguments: `{"path":"b"}`, SafetyClass: "write", Risk: "medium", Tool: testsupport.A2ATool(t, "approval"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.A2ATool(t, "approval")),
+			CallID: "call-2", Arguments: `{"path":"b"}`, SafetyClass: "write", Risk: "medium", Tool: ref, SourceFingerprint: testsupport.ToolFingerprint(ref),
 		},
 	}}, 0)
 	secondInterrupted := secondPark.events[len(secondPark.events)-1].Event.(SegmentFinished)

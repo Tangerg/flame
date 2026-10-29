@@ -125,7 +125,6 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		UserHome:      cfg.userHome,
 		SkillsUserDir: cfg.skillsUserDir, PackageSkills: deps.packageSkills,
 		CodeIntelligence: commandCalls,
-		A2AAgents:        cfg.a2aAgents,
 		Plan:             deps.plan,
 		Interrupt:        runinput.Require,
 		MCPToolDisabled:  deps.mcp.exposure.ToolDisabled,
@@ -141,7 +140,7 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 	// create_goal is injected after Runs and the Driver exist.
 	buildConfig.GoalReader = deps.goalReader
 	buildConfig.GoalReporter = deps.goalReporter
-	builtToolset, err := toolset.Build(ctx, buildConfig)
+	builtToolset, err := toolset.Build(buildConfig)
 	if err != nil {
 		return environment, fmt.Errorf("runtime: build tools: %w", err)
 	}

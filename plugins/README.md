@@ -2,7 +2,7 @@
 
 Memory, Schedules, Knowledge base, GitHub, Model router, Guardrails, Web research,
 Saved usage reports, Generated interfaces, Deliverables, Computer use, Native sandbox,
-File watch and Code intelligence are complete
+File watch, Code intelligence and Remote agents are complete
 optional backends. Memory, Schedules, Saved usage reports, Generated interfaces, Deliverables and Computer use expose
 ordinary public components; the remaining packages are backend-only.
 MCP model Tools and human Runtime commands
@@ -12,6 +12,10 @@ Code intelligence (`codeintel`) owns language-server queries and version-bound
 formatting and diagnostics. Runtime retains the only file mutation path; the
 provider computes against supplied snapshots and never commits those transformations.
 See [`codeintel/README.md`](codeintel/README.md).
+
+Remote agents (`a2a`) owns A2A discovery, remote requests and durable task
+bindings. Runtime retains Tool admission and internal delegation. See
+[`a2a/README.md`](a2a/README.md).
 
 Generated interfaces (`genui`) accepts a bounded interactive document through
 `genui_ui_present`. Its immutable presentation owner supplies the component,

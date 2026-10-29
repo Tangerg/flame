@@ -104,7 +104,7 @@ func assertBuiltInToolContract(t *testing.T, candidate toolcontract.Tool) {
 
 func TestRootResolverIncludesConfiguredConditionalTools(t *testing.T) {
 	policy := testApprovalPolicy(t)
-	built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(),
+	built, err := Build(BuildConfig{Lifetime: t.Context(),
 		UserHome:     t.TempDir(),
 		PlanMode:     policy,
 		Plan:         rolePlanStore{},
@@ -154,7 +154,7 @@ func TestRootResolverIncludesConfiguredConditionalTools(t *testing.T) {
 // only unreachable if NO configuration reaches it.
 func TestDescriptorCatalogMatchesBuiltInTools(t *testing.T) {
 	policy := testApprovalPolicy(t)
-	built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(),
+	built, err := Build(BuildConfig{Lifetime: t.Context(),
 		UserHome:       t.TempDir(),
 		SkillsUserDir:  t.TempDir(), // backs skill
 		PlanMode:       policy,

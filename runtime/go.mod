@@ -9,7 +9,6 @@ require (
 	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/Tangerg/scope/models/protocol/anthropic v0.58.0 // indirect
 	github.com/Tangerg/scope/models/protocol/openai v0.58.0 // indirect
-	github.com/a2aproject/a2a-go/v2 v2.7.0 // indirect
 	github.com/adrg/frontmatter v0.2.0 // indirect
 	github.com/anthropics/anthropic-sdk-go v1.84.0 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
@@ -75,11 +74,10 @@ require (
 )
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.plugin-boundaries.1
+	github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.plugin-boundaries.2
 	github.com/Tangerg/flame/packages/local-runtime v0.1.0-quality.20261029.1
 	github.com/Tangerg/flame/qimu v0.1.0-quality.20261029.3
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
-	github.com/Tangerg/scope/a2a v0.58.0
 	github.com/Tangerg/scope/agent v0.58.0
 	github.com/Tangerg/scope/core v0.58.0
 	github.com/Tangerg/scope/mcp v0.58.0

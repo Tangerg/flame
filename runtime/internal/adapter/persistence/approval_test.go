@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -69,7 +70,11 @@ func TestApprovalRuleStore_VisibleScopes(t *testing.T) {
 func TestApprovalRuleStoreReplacesDecisionAndAuthority(t *testing.T) {
 	ctx := t.Context()
 	store := newApprovalStore(t)
-	rule, err := approval.NewRule(approval.ScopeGlobal, "", testsupport.A2ATool(t, "remote"), testsupport.Digest("first authority"), approval.Subject{Type: approval.SubjectAll}, approval.Deny)
+	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("fixture"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: "https://remote.test/mcp"}
+	if err := newMCPServerStore(store.db).Save(ctx, server); err != nil {
+		t.Fatal(err)
+	}
+	rule, err := approval.NewRule(approval.ScopeGlobal, "", testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "remote"), testsupport.Digest("first authority"), approval.Subject{Type: approval.SubjectAll}, approval.Deny)
 	if err != nil {
 		t.Fatal(err)
 	}

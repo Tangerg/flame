@@ -26,13 +26,13 @@ func TestAcceptedAnswerDeliveryAdvancesOnlyThePausedHead(t *testing.T) {
 			question := newDelegateQuestionTool(t, "Ask for a value.")
 			model := &observationScriptModel{responses: []*chat.Response{
 				interactionToolBatchResponse([]chat.ToolCall{
-					{ID: "a", Name: "ask", Arguments: `{}`},
-					{ID: "b", Name: "ask", Arguments: `{}`},
+					{ID: "a", Name: "fixture_ask", Arguments: `{}`},
+					{ID: "b", Name: "fixture_ask", Arguments: `{}`},
 				}, 2, 1), interactionUsageTextResponse("done", 3, 1),
 			}}
 			executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
 				MaxConcurrentToolCalls: new(2),
-				ToolResolver:           staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "ask")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{concurrentInteractionTool{Tool: question}}}},
+				ToolResolver:           staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "ask")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{concurrentInteractionTool{Tool: question}}}},
 				ToolInterpreter:        immutableToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 			})
 			start := interactionTestStart()

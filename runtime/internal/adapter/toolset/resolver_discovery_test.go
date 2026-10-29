@@ -11,7 +11,7 @@ import (
 // resolveRootManifest builds one exact root visibility snapshot.
 func resolveRootManifest(t *testing.T, mcpTools []toolcontract.Tool) Manifest {
 	t.Helper()
-	built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(), UserHome: t.TempDir(), SkillProposals: allWiredSkillProposals{}})
+	built, err := Build(BuildConfig{Lifetime: t.Context(), UserHome: t.TempDir(), SkillProposals: allWiredSkillProposals{}})
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
@@ -92,7 +92,7 @@ func nameSliceSet(names []string) map[string]bool {
 }
 
 func TestResolverRetainsCapturedMCPAuthorityBeforeDiscovery(t *testing.T) {
-	built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(), UserHome: t.TempDir(), SkillProposals: allWiredSkillProposals{}})
+	built, err := Build(BuildConfig{Lifetime: t.Context(), UserHome: t.TempDir(), SkillProposals: allWiredSkillProposals{}})
 	if err != nil {
 		t.Fatal(err)
 	}

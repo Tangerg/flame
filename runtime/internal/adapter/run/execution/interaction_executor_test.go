@@ -79,14 +79,14 @@ func TestInteractionExecutorRequiresChatResolver(t *testing.T) {
 
 func TestInteractionToolManifestRequiresPolicyOwners(t *testing.T) {
 	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "echo", Description: "Return a fixed response.",
+		Name: "fixture_echo", Description: "Return a fixed response.",
 	}, func(context.Context, struct{}) (string, error) {
 		return "ok", nil
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	manifest, err := identifyTestManifest(toolset.Manifest{Visible: []toolcontract.Tool{executable}}, testsupport.A2ATool(t, "echo"))
+	manifest, err := identifyTestManifest(toolset.Manifest{Visible: []toolcontract.Tool{executable}}, testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "echo"))
 	if err != nil {
 		t.Fatal(err)
 	}

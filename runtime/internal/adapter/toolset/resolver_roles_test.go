@@ -39,7 +39,7 @@ func (roleGoalStub) Report(context.Context, goals.ReportCommand) (goals.ReportRe
 
 func TestPlanModeToolsAreRootOnly(t *testing.T) {
 	policy := testApprovalPolicy(t)
-	built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(),
+	built, err := Build(BuildConfig{Lifetime: t.Context(),
 		UserHome: t.TempDir(),
 		PlanMode: policy,
 		Plan:     rolePlanStore{},
@@ -98,7 +98,7 @@ func TestPlanModeToolsAreRootOnly(t *testing.T) {
 }
 
 func TestGoalToolsAreRootOnlyAndOutcomeRequiresGoalRunProvenance(t *testing.T) {
-	built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(),
+	built, err := Build(BuildConfig{Lifetime: t.Context(),
 		UserHome: t.TempDir(),
 		// Deliberately inactive: manifest membership must remain tied to the Run's
 		// frozen incarnation even when mutable Goal state pauses for HITL.
@@ -159,7 +159,7 @@ func TestGoalToolsAreRootOnlyAndOutcomeRequiresGoalRunProvenance(t *testing.T) {
 }
 
 func TestProposeSkillIsRootOnlyAndDeferred(t *testing.T) {
-	built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(),
+	built, err := Build(BuildConfig{Lifetime: t.Context(),
 		UserHome:       t.TempDir(),
 		SkillProposals: allWiredSkillProposals{},
 	})
@@ -196,7 +196,7 @@ func TestProposeSkillIsRootOnlyAndDeferred(t *testing.T) {
 }
 
 func TestResolverAcceptsOnlyCanonicalGroups(t *testing.T) {
-	built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(), UserHome: t.TempDir()})
+	built, err := Build(BuildConfig{Lifetime: t.Context(), UserHome: t.TempDir()})
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
