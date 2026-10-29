@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Current batch repairs first-result readiness in five remaining Settings catalogs: providers, hooks, remembered approval rules, installed Runtime packages and selections without known roles. Paused first reads retain Loading; accepted data, independent roles and drafts remain available. All 130 focused tests, typecheck, lint and remaining Web/native gates pass; light/dark/18px/200% and observer-free native tasks pass. Evidence and cleanup are recorded under **Settings catalog first-result readiness**; publication is the next step. MCP readiness is published as `17916606d`, Files as `4468c2fc6`, and source-return/long-tooltip delivery as `c126bc235`. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
+First-result readiness in five remaining Settings catalogs is published as `1bb564a53`: providers, hooks, remembered approval rules, installed Runtime packages and selections without known roles. Paused first reads retain Loading; accepted data, independent roles and drafts remain available. All 130 focused tests, typecheck, lint and remaining Web/native gates pass; light/dark/18px/200% and observer-free native tasks pass. Evidence, cleanup and delivery are recorded under **Settings catalog first-result readiness**. MCP readiness is published as `17916606d`, Files as `4468c2fc6`, and source-return/long-tooltip delivery as `c126bc235`. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -100,7 +100,8 @@ Full-width source-return destinations and complete shared Tooltip labels are
 published as `c126bc235`; see **Full-width return destinations and complete labels**.
 First-result readiness in Files is published as `4468c2fc6`; see **First file-result readiness**.
 Initial MCP server/tool readiness is published as `17916606d`; see **First MCP-result readiness**.
-The five remaining Settings catalogs now retain their own initial-read state;
+The five remaining Settings catalogs retain their own initial-read state,
+published as `1bb564a53`;
 see **Settings catalog first-result readiness** for native task and cleanup evidence.
 See **Goal save
 feedback and pending dismissal** and **Computer console
@@ -10886,8 +10887,14 @@ accepted source/asset maps, native inputs/results and cleanup proof. SHA-256:
 No full Web/Runtime/browser suite, benchmark, live business chain or other-OS
 qualification is claimed.
 
+Implementation `1bb564a530b78fba2dba0d2c4ab01b18a81eeecd` is committed with
+normal formatting, workspace-lint and message hooks, then pushed normally to
+main. Exact HEAD, origin/main and remote hashes match; divergence is **0/0** and
+the owned checkout is clean. Post-hook preservation repeats all counts above.
+This documentation-only delivery receipt does not repeat qualified checks.
+
 Verdict: **Approve** for these Settings first-result and reading/edit/return
-paths. Publication remains to complete. The whole-product UI objective is
+paths. Publication and cleanup are complete. The whole-product UI objective is
 unfinished. Next inspect task hierarchy and repeated Settings introductions at
 large zoom against actual context, retaining concrete scope/permission meaning;
 do not infer a focus defect or mechanically replace other loading flags.
