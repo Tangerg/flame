@@ -96,8 +96,8 @@ type QueryCoordinator struct {
 
 // QueryDependencies is the collaborator set [NewQueryCoordinator] wires into a QueryCoordinator.
 type QueryDependencies struct {
-	// An interrupt page must not join a consumed hand-off to newer answered Items.
-	// ReadSnapshot pins its store reads to one storage snapshot.
+	// A composed page cannot join history or hand-offs to another version's
+	// Runs or Items. ReadSnapshot pins all of its reads to one storage snapshot.
 	ReadSnapshot     func(context.Context, func(context.Context) error) error
 	Trajectory       queryTrajectoryReader
 	ModelInvocations queryModelInvocationReader
@@ -221,33 +221,41 @@ func (c *QueryCoordinator) ListItemPage(ctx context.Context, scope ItemScope, or
 	if err != nil {
 		return ItemPage{}, err
 	}
-	if requireScopeErr := c.requireScope(ctx, scope); requireScopeErr != nil {
-		return ItemPage{}, requireScopeErr
-	}
+	var result ItemPage
+	err = c.readSnapshot(ctx, func(ctx context.Context) error {
+		if requireScopeErr := c.requireScope(ctx, scope); requireScopeErr != nil {
+			return requireScopeErr
+		}
 
-	// One row past the page: having it is how "there is more" is known without a
-	// second count, and it is dropped before the page is returned.
-	sequenced, err := c.readScope(ctx, scope, order, fromSequence, size+1)
-	if err != nil {
-		return ItemPage{}, err
-	}
-	page, err := pagination.PageOf(sequenced, size, itemPageNamespace, filters,
-		func(entry transcript.SequencedItem) []string {
-			return []string{strconv.FormatInt(entry.Sequence, 10)}
-		})
-	if err != nil {
-		return ItemPage{}, err
-	}
+		// One row past the page: having it is how "there is more" is known without a
+		// second count, and it is dropped before the page is returned.
+		sequenced, err := c.readScope(ctx, scope, order, fromSequence, size+1)
+		if err != nil {
+			return err
+		}
+		page, err := pagination.PageOf(sequenced, size, itemPageNamespace, filters,
+			func(entry transcript.SequencedItem) []string {
+				return []string{strconv.FormatInt(entry.Sequence, 10)}
+			})
+		if err != nil {
+			return err
+		}
 
-	items := make([]transcript.Item, 0, len(page.Rows))
-	for _, entry := range page.Rows {
-		items = append(items, entry.Item)
-	}
-	runs, err := c.runs.RunsWithAncestors(ctx, referencedRuns(items))
+		items := make([]transcript.Item, 0, len(page.Rows))
+		for _, entry := range page.Rows {
+			items = append(items, entry.Item)
+		}
+		runs, err := c.runs.RunsWithAncestors(ctx, referencedRuns(items))
+		if err != nil {
+			return err
+		}
+		result = ItemPage{Items: items, NextCursor: page.NextCursor, Runs: runs}
+		return nil
+	})
 	if err != nil {
 		return ItemPage{}, err
 	}
-	return ItemPage{Items: items, NextCursor: page.NextCursor, Runs: runs}, nil
+	return result, nil
 }
 
 // PlanState returns a session's optional Plan projection. An existing Session
