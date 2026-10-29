@@ -185,6 +185,7 @@ export const ko = {
   "revision.openHead": "현재 버전 열기",
   "revision.details": "버전 식별자 및 원본 정보",
   "document.id": "문서 식별자",
+  "document.created": "문서 생성 시각",
   "revision.id": "버전 식별자",
   "revision.parent": "상위 버전",
   "revision.first": "최초 버전",

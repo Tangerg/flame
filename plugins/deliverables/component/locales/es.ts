@@ -187,6 +187,7 @@ export const es = {
   "revision.openHead": "Abrir revisión actual",
   "revision.details": "Identidad y datos nativos",
   "document.id": "Identificador del documento",
+  "document.created": "Documento creado el",
   "revision.id": "Identificador de revisión",
   "revision.parent": "Revisión anterior",
   "revision.first": "Revisión inicial",

@@ -192,6 +192,7 @@ export const de = {
   "revision.openHead": "Aktuelle Revision öffnen",
   "revision.details": "Revisionskennung und native Fakten",
   "document.id": "Dokumentkennung",
+  "document.created": "Dokument erstellt am",
   "revision.id": "Revisionskennung",
   "revision.parent": "Übergeordnete Revision",
   "revision.first": "Erste Revision",

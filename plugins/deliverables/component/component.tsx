@@ -53,6 +53,14 @@ import { de } from "./locales/de";
 
 const catalogs = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
 
+function formatTimestamp(value: string, format: Intl.DateTimeFormat): string {
+  const date = new Date(value);
+  // The wire also allows opaque text; interpret only the producer's canonical ISO form.
+  return Number.isFinite(date.getTime()) && date.toISOString() === value
+    ? format.format(date)
+    : value;
+}
+
 function commandLabel(method: CommandMethod, t: Translate): string {
   switch (method) {
     case METHODS.create:
@@ -269,6 +277,7 @@ function Inspector({
   document,
   inspection,
   catalog,
+  dateTime,
   onOpenCurrent,
   t,
 }: {
@@ -276,6 +285,7 @@ function Inspector({
   document: DocumentRead;
   inspection: { value?: Inspection; error?: string };
   catalog?: FormatCatalog;
+  dateTime: Intl.DateTimeFormat;
   onOpenCurrent: (origin: HTMLButtonElement) => void;
   t: Translate;
 }) {
@@ -294,7 +304,10 @@ function Inspector({
       <Facts
         values={[
           [t("author.format"), t(`format.${document.revision.format}`)],
-          [t("revision.created"), document.revision.createdAt],
+          [
+            t("revision.created"),
+            formatTimestamp(document.revision.createdAt, dateTime),
+          ],
           [
             t("revision.operation"),
             t(`operation.${document.revision.operation}`),
@@ -462,6 +475,14 @@ function Workspace({ context }: { context: ComponentContext }) {
     () => createTranslator(catalogs, context.locale),
     [context.locale],
   );
+  const dateTime = useMemo(
+    () =>
+      new Intl.DateTimeFormat(context.locale, {
+        dateStyle: "medium",
+        timeStyle: "medium",
+      }),
+    [context.locale],
+  );
   const state = useDeliverables(context);
   const historyEntry = useRef<HTMLElement>(null);
   const [search, setSearch] = useState("");
@@ -507,9 +528,17 @@ function Workspace({ context }: { context: ComponentContext }) {
     !history.some((revision) => revision.id === document.revision.id)
       ? [document.revision, ...history]
       : history;
+  const selectedDocument =
+    document?.document ??
+    state.list?.value?.entries.find(
+      (entry) => entry.id === state.selection?.id,
+    );
+  const selectedRevision = revisions.find(
+    (revision) => revision.id === state.selection?.revision,
+  );
   const revisionOptions = revisions.map((revision) => ({
     value: revision.id,
-    label: `${revision.createdAt} · ${t(`operation.${revision.operation}`)} · ${revision.id.slice(0, 12)}`,
+    label: `${formatTimestamp(revision.createdAt, dateTime)} · ${t(`operation.${revision.operation}`)} · ${revision.id.slice(0, 12)}`,
   }));
   if (
     state.selection &&
@@ -593,7 +622,7 @@ function Workspace({ context }: { context: ComponentContext }) {
             >
               <RecordSummary
                 title={entry.title}
-                description={entry.createdAt}
+                description={formatTimestamp(entry.createdAt, dateTime)}
                 status={<Badge>{entry.format.toUpperCase()}</Badge>}
               />
             </RecordButton>
@@ -681,7 +710,9 @@ function Workspace({ context }: { context: ComponentContext }) {
             <Facts
               values={[
                 [t("document.id"), state.selection.id],
+                [t("document.created"), selectedDocument?.createdAt],
                 [t("revision.id"), state.selection.revision],
+                [t("revision.created"), selectedRevision?.createdAt],
               ]}
             />
             {document && (
@@ -728,6 +759,7 @@ function Workspace({ context }: { context: ComponentContext }) {
           document={document}
           inspection={inspection}
           catalog={catalog?.formats}
+          dateTime={dateTime}
           onOpenCurrent={(origin) => {
             if (context.signal.aborted) return;
             const ownedFocus = origin.ownerDocument.activeElement === origin;

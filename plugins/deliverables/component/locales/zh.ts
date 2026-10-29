@@ -179,6 +179,7 @@ export const zh = {
   "revision.openHead": "打开当前版本",
   "revision.details": "版本身份与原生信息",
   "document.id": "文档标识",
+  "document.created": "文档创建时间",
   "revision.id": "版本标识",
   "revision.parent": "父版本",
   "revision.first": "初始版本",

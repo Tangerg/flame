@@ -91,6 +91,12 @@ revision identities available during reading and after failure. Native facts
 appear only after a successful read; settlement preserves the open disclosure
 and its focus.
 
+Browsing dates follow the host locale and local time zone. Only the backend's
+canonical ISO timestamps are interpreted; other recorded text stays unchanged.
+The identity disclosure retains exact document and revision creation times from
+accepted metadata, including milliseconds and the UTC designation. Missing
+metadata does not acquire an inferred time.
+
 Each rendered page thumbnail opens its original PNG in the shared image reader
 for local zoom and panning. The captured revision, render and page identity remain
 with the preview owner. Opening, zooming or closing the image does not mark a

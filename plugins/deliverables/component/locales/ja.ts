@@ -187,6 +187,7 @@ export const ja = {
   "revision.openHead": "現在の版を開く",
   "revision.details": "版の識別情報とネイティブ情報",
   "document.id": "文書識別子",
+  "document.created": "文書の作成日時",
   "revision.id": "版識別子",
   "revision.parent": "親の版",
   "revision.first": "最初の版",

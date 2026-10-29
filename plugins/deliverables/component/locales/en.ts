@@ -188,6 +188,7 @@ export const en = {
   "revision.openHead": "Open current revision",
   "revision.details": "Revision identity and native facts",
   "document.id": "Document identity",
+  "document.created": "Document created at",
   "revision.id": "Revision identity",
   "revision.parent": "Parent revision",
   "revision.first": "Initial revision",

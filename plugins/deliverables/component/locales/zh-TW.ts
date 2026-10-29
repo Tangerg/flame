@@ -179,6 +179,7 @@ export const zhTW = {
   "revision.openHead": "開啟目前版本",
   "revision.details": "版本身分與原生資訊",
   "document.id": "文件識別碼",
+  "document.created": "文件建立時間",
   "revision.id": "版本識別碼",
   "revision.parent": "父版本",
   "revision.first": "初始版本",

@@ -35,6 +35,10 @@ import { encodeChunk, sha256 } from "../../../../plugins/deliverables/component/
 const installationId = "12345678-1234-4234-9234-123456789abc";
 const digest = "f".repeat(64);
 const timestamp = "2026-10-29T00:00:00.000Z";
+const browsingTime = new Intl.DateTimeFormat("en", {
+  dateStyle: "medium",
+  timeStyle: "medium",
+}).format(new Date(timestamp));
 const doc1 = "1".repeat(64);
 const doc2 = "2".repeat(64);
 const rev1 = "a".repeat(64);
@@ -822,14 +826,92 @@ it("retains a history page only for its document and rejects its late response a
   expect(hook.result.current.selection).toEqual({ id: doc2, revision: rev2 });
 });
 
+it.each([
+  {
+    locale: "en",
+    choose: "Choose exact revision",
+    current: "Current native revision",
+    details: "Revision identity and native facts",
+    created: "Document created at",
+    operation: "Created",
+  },
+  {
+    locale: "zh",
+    choose: "选择确切版本",
+    current: "当前原生版本",
+    details: "版本身份与原生信息",
+    created: "文档创建时间",
+    operation: "创建",
+  },
+])("localizes browsing dates and preserves exact recorded times ($locale)", async (labels) => {
+  const fixture = await rig();
+  const revisionTime = "2026-10-29T12:34:56.789Z";
+  fixture.documents.get(doc1)!.revision.createdAt = revisionTime;
+  const format = new Intl.DateTimeFormat(labels.locale, {
+    dateStyle: "medium",
+    timeStyle: "medium",
+  });
+  fixture.ui.render(<Deliverables context={{ ...fixture.context(), locale: labels.locale }} />);
+  const row = await screen.findByRole("button", { name: /Quarterly report/ });
+  expect(within(row).getByText(format.format(new Date(timestamp)), { exact: true })).toBeTruthy();
+  fireEvent.click(row);
+  await screen.findByText(labels.current);
+  const select = screen.getByRole("combobox", { name: labels.choose });
+  const revisionLabel = `${format.format(new Date(revisionTime))} · ${labels.operation} · ${rev1.slice(0, 12)}`;
+  await waitFor(() => expect(select.textContent).toBe(revisionLabel));
+  expect(screen.getByText(format.format(new Date(revisionTime)), { exact: true })).toBeTruthy();
+  fireEvent.click(select);
+  expect(
+    (await screen.findByRole("option", { name: revisionLabel })).getAttribute("aria-selected"),
+  ).toBe("true");
+  fireEvent.keyDown(select, { key: "Escape" });
+  await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+  const details = screen.getByRole("button", { name: labels.details });
+  fireEvent.click(details);
+  const facts = within(document.getElementById(details.getAttribute("aria-controls")!)!);
+  expect(facts.getByText(labels.created, { exact: true })).toBeTruthy();
+  expect(facts.getByText(timestamp, { exact: true })).toBeTruthy();
+  expect(facts.getByText(revisionTime, { exact: true })).toBeTruthy();
+  expect(facts.getByText(doc1, { exact: true })).toBeTruthy();
+  expect(facts.getByText(rev1, { exact: true })).toBeTruthy();
+  expect(fixture.calls.filter((call) => call.method === METHODS.read).at(-1)?.input).toEqual({
+    id: doc1,
+    revision: rev1,
+  });
+  expect(fixture.calls.filter((call) => call.key !== null)).toHaveLength(0);
+});
+
+it.each([
+  "recorded time unavailable",
+  "1",
+  "2026-02-30T00:00:00.000Z",
+  "2026-10-29T08:00:00+08:00",
+])("preserves unrecognized timestamp text without inventing a date (%s)", async (recordedTime) => {
+  const fixture = await rig();
+  const retained = fixture.documents.get(doc1)!;
+  retained.document.createdAt = recordedTime;
+  retained.revision.createdAt = recordedTime;
+  fixture.ui.render(<Deliverables context={fixture.context()} />);
+  const row = await screen.findByRole("button", { name: /Quarterly report/ });
+  expect(within(row).getByText(recordedTime, { exact: true })).toBeTruthy();
+  fireEvent.click(row);
+  await screen.findByText("Current native revision");
+  const select = screen.getByRole("combobox", { name: "Choose exact revision" });
+  await waitFor(() =>
+    expect(select.textContent).toBe(`${recordedTime} · Created · ${rev1.slice(0, 12)}`),
+  );
+  expect(screen.getAllByText(recordedTime, { exact: true })).toHaveLength(2);
+  expect(fixture.calls.filter((call) => call.key !== null)).toHaveLength(0);
+});
+
 it("keeps the selected revision recognizable and selectable across history pages", async () => {
   const fixture = await rig();
   fixture.paginate("history", false);
   fixture.ui.render(<Deliverables context={fixture.context()} />);
   fireEvent.click(await screen.findByRole("button", { name: /Quarterly report/ }));
   const select = await screen.findByRole("combobox", { name: "Choose exact revision" });
-  const currentLabel = `${timestamp} · Created · ${rev1.slice(0, 12)}`;
-  const historicalLabel = `${timestamp} · Locally edited · ${"e".repeat(12)}`;
+  const currentLabel = `${browsingTime} · Created · ${rev1.slice(0, 12)}`;
+  const historicalLabel = `${browsingTime} · Locally edited · ${"e".repeat(12)}`;
   await waitFor(() => expect(select.textContent).toBe(currentLabel));
   const pager = within(await screen.findByRole("group", { name: "Revision history pages" }));
   fireEvent.click(pager.getByRole("button", { name: "Next" }));
@@ -875,7 +957,7 @@ it("keeps the selected revision recognizable and selectable across history pages
   await waitFor(() => expect(select.textContent).toBe(currentLabel));
   fireEvent.click(screen.getByRole("button", { name: /Meeting notes/ }));
   await waitFor(() =>
-    expect(select.textContent).toBe(`${timestamp} · Created · ${rev2.slice(0, 12)}`),
+    expect(select.textContent).toBe(`${browsingTime} · Created · ${rev2.slice(0, 12)}`),
   );
   fireEvent.click(select);
   expect(screen.getAllByRole("option")).toHaveLength(1);
@@ -971,6 +1053,8 @@ it.each([false, true])(
     expect(screen.getByText(doc1, { exact: true })).toBeTruthy();
     expect(screen.getByText(rev1, { exact: true })).toBeTruthy();
     expect(screen.queryByText("Initial revision", { exact: true })).toBeNull();
+    const facts = within(document.getElementById(details.getAttribute("aria-controls")!)!);
+    expect(facts.getAllByText(timestamp, { exact: true })).toHaveLength(1);
     await act(async () => held.release());
     await waitFor(() => expect(screen.queryByText("Reading…")).toBeNull());
     expect(screen.getByRole("button", { name: "Revision identity and native facts" })).toBe(
@@ -979,8 +1063,9 @@ it.each([false, true])(
     expect(details.getAttribute("aria-expanded")).toBe("true");
     expect(document.activeElement).toBe(details);
     expect(screen.getByText(rev1, { exact: true })).toBeTruthy();
+    expect(facts.getAllByText(timestamp, { exact: true })).toHaveLength(fail ? 1 : 2);
     expect(select.textContent).toBe(
-      fail ? rev1.slice(0, 12) : `${timestamp} · Created · aaaaaaaaaaaa`,
+      fail ? rev1.slice(0, 12) : `${browsingTime} · Created · aaaaaaaaaaaa`,
     );
     expect(Boolean(screen.queryByText(/fixture acknowledgement unavailable/))).toBe(fail);
     expect(fixture.calls.filter((call) => call.method === METHODS.read).at(-1)?.input).toEqual({
@@ -1010,14 +1095,14 @@ it("withdraws an unread revision option and identity when another document becom
   expect(screen.getByText(rev1, { exact: true })).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: /Meeting notes/ }));
   await waitFor(() =>
-    expect(select.textContent).toBe(`${timestamp} · Created · ${rev2.slice(0, 12)}`),
+    expect(select.textContent).toBe(`${browsingTime} · Created · ${rev2.slice(0, 12)}`),
   );
   expect(screen.getByText(doc2, { exact: true })).toBeTruthy();
   expect(screen.getByText(rev2, { exact: true })).toBeTruthy();
   expect(screen.queryByText(rev1, { exact: true })).toBeNull();
   await act(async () => held.release());
   await act(async () => history.release());
-  expect(select.textContent).toBe(`${timestamp} · Created · ${rev2.slice(0, 12)}`);
+  expect(select.textContent).toBe(`${browsingTime} · Created · ${rev2.slice(0, 12)}`);
   fireEvent.click(select);
   expect(screen.getAllByRole("option")).toHaveLength(1);
   expect(screen.queryByRole("option", { name: rev1.slice(0, 12) })).toBeNull();

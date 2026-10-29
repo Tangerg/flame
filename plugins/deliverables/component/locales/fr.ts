@@ -189,6 +189,7 @@ export const fr = {
   "revision.openHead": "Ouvrir la révision actuelle",
   "revision.details": "Identité et données natives",
   "document.id": "Identifiant du document",
+  "document.created": "Création du document",
   "revision.id": "Identifiant de révision",
   "revision.parent": "Révision parente",
   "revision.first": "Révision initiale",
