@@ -3,6 +3,9 @@ package cmd
 import (
 	"context"
 	json "encoding/json/v2"
+	"errors"
+	"fmt"
+	"io"
 	"reflect"
 	"strings"
 	"testing"
@@ -16,6 +19,83 @@ import (
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
 )
+
+func TestPluginRequestEntrancesShareLocalInputAdmission(t *testing.T) {
+	method, err := qimumcp.NewMethod[struct{}, struct{}](qimumcp.MethodConfig{
+		Name: "test.input/read.v1", Kind: portable.Query, Target: "installation", Description: "Read input.",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	callable, err := portable.NewCapability(portable.CapabilityConfig{
+		Reference: "test.input", Composition: portable.Collection, Scope: "installation",
+	}, method.Descriptor())
+	if err != nil {
+		t.Fatal(err)
+	}
+	composition, err := pluginsdk.ModelObserverContract()
+	if err != nil {
+		t.Fatal(err)
+	}
+	point, err := portable.AdmitPoint(portable.PointDescriptor{
+		Protocol: portable.Protocol, Reference: "test.input", Composition: portable.Collection,
+		Scope: "installation", Ordering: portable.CanonicalKeys,
+		Value: []byte(`{"type":"object"}`), Applicability: []byte(`{"type":"object"}`),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	const installation = "12345678-1234-1234-1234-123456789abc"
+	for _, test := range []struct {
+		command string
+		request any
+	}{
+		{"get-command", protocol.PluginCommandRequest{Namespace: "idp_" + strings.Repeat("1", 32), Key: "original"}},
+		{"resolve-composition", protocol.ResolvePluginCompositionRequest{Contract: string(composition.Identity().JSON())}},
+		{"requirements", protocol.ResolvePluginRequirementsRequest{InstallationID: installation, Digest: strings.Repeat("a", 64), Contribution: "example"}},
+		{"point", protocol.ResolvePluginPointRequest{Contract: string(point.Identity().JSON()), Target: portable.Target{Scope: "installation", Reference: installation}, Attributes: "{}", Order: []protocol.PluginPointReference{}}},
+		{"call", protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("a", 64), Contribution: "example", Contract: string(callable.Identity().JSON()), Method: method.Name(), Input: "{}", Target: portable.Target{Scope: "installation", Reference: installation}}},
+		{"install", protocol.InstallPluginRequest{Source: "/runtime/plugin"}},
+	} {
+		t.Run(test.command, func(t *testing.T) {
+			encoded, err := json.Marshal(test.request)
+			if err != nil {
+				t.Fatal(err)
+			}
+			atLimit := string(encoded) + strings.Repeat(" ", maximumPluginRequestBytes-len(encoded))
+			opened := errors.New("input admitted before runtime open")
+			for _, input := range []struct {
+				name, value string
+				wantOpen    bool
+				wantError   string
+			}{
+				{"at limit", atLimit, true, ""},
+				{"over limit", atLimit + " ", false, fmt.Sprintf("plugin input exceeds %d bytes", maximumPluginRequestBytes)},
+				{"malformed", `{"`, false, "plugin request:"},
+				{"trailing", string(encoded) + " {}", false, "plugin request:"},
+			} {
+				t.Run(input.name, func(t *testing.T) {
+					calls := 0
+					command := newPluginsCommand(runtimeProvider{open: func(context.Context) (Runtime, RuntimeProfile, error) {
+						calls++
+						return nil, nil, opened
+					}})
+					command.SetOut(io.Discard)
+					command.SetErr(io.Discard)
+					command.SetArgs([]string{test.command, "--request", input.value})
+					err := command.ExecuteContext(t.Context())
+					if input.wantOpen {
+						if calls != 1 || !errors.Is(err, opened) {
+							t.Fatalf("valid bounded request: opens=%d, error=%v", calls, err)
+						}
+					} else if calls != 0 || err == nil || !strings.HasPrefix(err.Error(), input.wantError) {
+						t.Fatalf("invalid input: opens=%d, error=%v, want %s", calls, err, input.wantError)
+					}
+				})
+			}
+		})
+	}
+}
 
 type pluginCommandFixture struct {
 	Runtime
