@@ -60,8 +60,11 @@ func TestModelOwnsValidatedIdentityAndCapabilitySnapshot(t *testing.T) {
 	if _, err := NewModel("openai", "bad model", nil); err == nil {
 		t.Fatal("NewModel accepted a non-canonical identity")
 	}
-	if _, err := NewModel("openai", "gpt-5", &Details{Reasoning: true, ReasoningLevels: []string{"low", "high"}}); err == nil {
-		t.Fatal("NewModel accepted reasoning levels without a default level")
+	if model, err := NewModel("openai", "gpt-5", &Details{Reasoning: true, ReasoningLevels: []string{"low", "high"}}); err != nil || model.Details().ReasoningDefault != "" {
+		t.Fatalf("unknown reasoning default changed: %+v %v", model.Details(), err)
+	}
+	if _, err := NewModel("openai", "gpt-5", &Details{Reasoning: true, ReasoningLevels: []string{"low", "high"}, ReasoningDefault: "unpublished"}); err == nil {
+		t.Fatal("unpublished reasoning default was accepted")
 	}
 }
 

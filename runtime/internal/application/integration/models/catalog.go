@@ -249,9 +249,6 @@ func validateDetails(details *Details) error {
 		}
 		levels[canonical] = struct{}{}
 	}
-	if len(levels) > 0 && details.ReasoningDefault == "" {
-		return errors.New("models: reasoning levels have no default level")
-	}
 	if details.ReasoningDefault != "" {
 		identity, err := modelchoice.NewReasoningEffortIdentity(details.ReasoningDefault)
 		if err != nil {

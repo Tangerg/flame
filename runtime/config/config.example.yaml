@@ -4,21 +4,21 @@
 #   cp config/config.example.yaml config/config.yaml
 #
 # config.yaml is gitignored (it holds your key). Precedence, later wins:
-#   built-in defaults  <  this file  <  env vars (FLAME_* / {PROVIDER}_API_KEY)
+#   built-in defaults  <  this file  <  env vars (FLAME_*)
 # The file must be a regular YAML file no larger than 256 KiB.
 # YAML keys are strict: an unknown or misspelled field fails startup instead of
 # silently falling back to a default.
 # YAML and environment values share one typed decode. Invalid boolean or integer
 # overrides fail startup; list overrides use comma-separated entries.
 
-# LLM provider identity. The Runtime catalog is the only supported-set owner;
+# Exact provider identity. The selected installed model adapter publishes its catalog;
 # use /providers in the interactive CLI (backed by providers.list) to inspect
 # the current set instead of copying a versioned list from this example.
 provider: anthropic
 
-# Model id. Empty selects the provider catalog default. Endpoint-owned
-# providers with no bundled catalog require an explicit model.
-model: ""
+# Exact model id. The product default is anthropic/claude-opus-5.
+# Every other provider requires an explicit model; names never infer a provider.
+model: "claude-opus-5"
 
 # Optional cheaper model for turn-boundary maintenance (compaction summaries,
 # fact extraction, title generation) on the SAME provider as `model`. Empty
@@ -29,9 +29,10 @@ utilityModel: ""
 # Optional first-run provider API key. Runtime may start with a required-key
 # provider still unconfigured so the interactive CLI can save one through
 # providers.update. A stored Runtime value wins on later starts. The selected
-# provider's native environment variable (for example ANTHROPIC_API_KEY or
-# DEEPSEEK_API_KEY) is a process-only override. providers.list reports the
-# effective credential provenance without exposing the secret.
+# FLAME_APIKEY value is a process-only fallback for this selected provider.
+# Configure other providers through providers.update. Vendor-specific environment
+# aliases are not read. providers.list reports effective credential provenance
+# without exposing the secret.
 apiKey: ""
 
 # Optional API endpoint override. Empty = the adapter's built-in default.

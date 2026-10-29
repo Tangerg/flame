@@ -54,7 +54,7 @@ func registerSessions(registry *Registry) {
 
 	registry.command(MethodMeta{
 		Name: SessionsCreate, GoName: "CreateSession",
-		Errors: []string{protocol.ErrWorkspaceUnavailable.Error()},
+		Errors: modelProviderErrors(protocol.ErrWorkspaceUnavailable.Error()),
 	}, func(service interface {
 		CreateSession(context.Context, protocol.CreateSessionRequest) (*protocol.Session, error)
 	}, ctx context.Context, request protocol.CreateSessionRequest) (*protocol.Session, error) {
@@ -66,11 +66,11 @@ func registerSessions(registry *Registry) {
 	// is off, instead of the whole method disappearing.
 	registry.command(MethodMeta{
 		Name: SessionsUpdate, GoName: "UpdateSession",
-		Errors: []string{protocol.ErrSessionNotFound.
+		Errors: modelProviderErrors(protocol.ErrSessionNotFound.
 			Error(), protocol.ErrRevisionConflict.
 			Error(), protocol.ErrWorkspaceUnavailable.
 			Error(),
-		},
+		),
 		CapabilityRules: []CapabilityRule{
 			{
 				When:     []FieldCondition{{Field: "workspace", Operator: OperatorPresent}},
@@ -101,10 +101,10 @@ func registerSessions(registry *Registry) {
 
 	registry.command(MethodMeta{
 		Name: sessionsFork, GoName: "ForkSession",
-		Errors: []string{protocol.ErrSessionNotFound.
+		Errors: modelProviderErrors(protocol.ErrSessionNotFound.
 			Error(), protocol.ErrRunNotFound.
 			Error(),
-		},
+		),
 	}, func(service interface {
 		ForkSession(context.Context, protocol.ForkSessionRequest) (*protocol.Session, error)
 	}, ctx context.Context, request protocol.ForkSessionRequest) (*protocol.Session, error) {

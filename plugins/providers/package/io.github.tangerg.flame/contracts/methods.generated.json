@@ -1,0 +1,83 @@
+[
+  {
+    "name": "flame.model-provider/call.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Execute one original provider exchange using the captured client and preserve its complete outcome.",
+    "input": "schema.json#/$defs/Method_flame_2emodel_2dprovider_2fcall_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2emodel_2dprovider_2fcall_2ev1Output"
+  },
+  {
+    "name": "flame.model-provider/close.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Retire the captured client after its accepted calls have joined.",
+    "input": "schema.json#/$defs/Method_flame_2emodel_2dprovider_2fclose_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2emodel_2dprovider_2fclose_2ev1Output"
+  },
+  {
+    "name": "flame.model-provider/count.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Count the complete request using the same captured provider instance, only when that capability was advertised.",
+    "input": "schema.json#/$defs/Method_flame_2emodel_2dprovider_2fcount_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2emodel_2dprovider_2fcount_2ev1Output"
+  },
+  {
+    "name": "flame.model-provider/embed.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Execute one original embedding exchange and preserve the complete provider response.",
+    "input": "schema.json#/$defs/Method_flame_2emodel_2dprovider_2fembed_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2emodel_2dprovider_2fembed_2ev1Output"
+  },
+  {
+    "name": "flame.model-provider/open-chat.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Capture one immutable provider client shared by chat, streaming and optional token counting.",
+    "input": "schema.json#/$defs/Method_flame_2emodel_2dprovider_2fopen_2dchat_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2emodel_2dprovider_2fopen_2dchat_2ev1Output"
+  },
+  {
+    "name": "flame.model-provider/open-embedding.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Capture an immutable embedding client and its vector-space identity.",
+    "input": "schema.json#/$defs/Method_flame_2emodel_2dprovider_2fopen_2dembedding_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2emodel_2dprovider_2fopen_2dembedding_2ev1Output"
+  },
+  {
+    "name": "flame.model-provider/profiles.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read this installed adapter's provider policies and published model facts.",
+    "input": "schema.json#/$defs/Method_flame_2emodel_2dprovider_2fprofiles_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2emodel_2dprovider_2fprofiles_2ev1Output"
+  },
+  {
+    "name": "flame.model-provider/remote-models.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read model identities from the exact configured provider endpoint.",
+    "input": "schema.json#/$defs/Method_flame_2emodel_2dprovider_2fremote_2dmodels_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2emodel_2dprovider_2fremote_2dmodels_2ev1Output"
+  },
+  {
+    "name": "flame.model-provider/reopen-chat.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Reconstruct a fresh client from the original confirmed open receipt, without reading current credentials or authorizing generation.",
+    "input": "schema.json#/$defs/Method_flame_2emodel_2dprovider_2freopen_2dchat_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2emodel_2dprovider_2freopen_2dchat_2ev1Output"
+  },
+  {
+    "name": "flame.model-provider/stream.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Stream the original provider deltas and retain the final outcome without replaying an unconfirmed exchange.",
+    "input": "schema.json#/$defs/Method_flame_2emodel_2dprovider_2fstream_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2emodel_2dprovider_2fstream_2ev1Output",
+    "stream": "schema.json#/$defs/Method_flame_2emodel_2dprovider_2fstream_2ev1Chunk"
+  }
+]

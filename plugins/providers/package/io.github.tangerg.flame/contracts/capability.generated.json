@@ -1,0 +1,3803 @@
+{
+  "protocol": "io.github.tangerg.qimu/portable/1",
+  "reference": "flame.model-provider.v1",
+  "composition": "selection",
+  "scope": "installation",
+  "methods": [
+    {
+      "name": "flame.model-provider/call.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Execute one original provider exchange using the captured client and preserve its complete outcome.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_ChatRequest": {
+            "additionalProperties": false,
+            "properties": {
+              "handle": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Handle"
+              },
+              "request": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Request"
+              }
+            },
+            "required": [
+              "handle",
+              "request"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Handle": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Citation": {
+            "additionalProperties": false,
+            "properties": {
+              "quote": {
+                "type": "string"
+              },
+              "source": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_CitationSource"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "source"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_CitationSource": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "value"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Message": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireMessage"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Options": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireOptions"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_OutputFormat": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireOutputFormat"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Part": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wirePart"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Request": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireRequest"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolCall": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolChoice": {
+            "additionalProperties": false,
+            "properties": {
+              "mode": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "parallelism": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "mode"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolContent": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireToolContent"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolDefinition": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireToolDefinition"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolOutput": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireToolOutput"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolResult": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "is_error": {
+                "type": "boolean"
+              },
+              "name": {
+                "type": "string"
+              },
+              "output": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolOutput"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "output"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireMessage": {
+            "additionalProperties": false,
+            "properties": {
+              "metadata": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+              },
+              "parts": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Part"
+                },
+                "type": "array"
+              },
+              "role": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "role",
+              "parts"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireOptions": {
+            "additionalProperties": false,
+            "properties": {
+              "extensions": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Extensions"
+              },
+              "frequency_penalty": {
+                "type": "number"
+              },
+              "max_output_tokens": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "model": {
+                "type": "string"
+              },
+              "output_format": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_OutputFormat"
+              },
+              "presence_penalty": {
+                "type": "number"
+              },
+              "reasoning_effort": {
+                "type": "string"
+              },
+              "stop": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "temperature": {
+                "type": "number"
+              },
+              "top_k": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "top_p": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireOutputFormat": {
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "schema": true,
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wirePart": {
+            "additionalProperties": false,
+            "properties": {
+              "citations": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Citation"
+                },
+                "type": "array"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "media": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_Media"
+              },
+              "metadata": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+              },
+              "reasoning_state": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "contentEncoding": "base64",
+                    "type": "string"
+                  }
+                ]
+              },
+              "text": {
+                "type": "string"
+              },
+              "tool_call": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolCall"
+              },
+              "tool_result": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolResult"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireRequest": {
+            "additionalProperties": false,
+            "properties": {
+              "messages": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Message"
+                },
+                "type": "array"
+              },
+              "options": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Options"
+              },
+              "tool_choice": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolChoice"
+              },
+              "tools": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolDefinition"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "messages"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireToolContent": {
+            "additionalProperties": false,
+            "properties": {
+              "citations": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Citation"
+                },
+                "type": "array"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "media": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_Media"
+              },
+              "metadata": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireToolDefinition": {
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "type": "string"
+              },
+              "input_schema": true,
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "input_schema"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireToolOutput": {
+            "additionalProperties": false,
+            "properties": {
+              "content": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolContent"
+                },
+                "type": "array"
+              },
+              "details": true
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Extensions": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_wireMap"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_wireMap": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            ]
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_Media": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_wireMedia"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_Source": {
+            "additionalProperties": false,
+            "properties": {
+              "bytes": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "contentEncoding": "base64",
+                    "type": "string"
+                  }
+                ]
+              },
+              "kind": {
+                "type": "string"
+              },
+              "ref": {
+                "type": "string"
+              },
+              "uri": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_wireMedia": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "metadata": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+              },
+              "mime": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "source": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_Source"
+              }
+            },
+            "required": [
+              "mime",
+              "source"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "handle": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Handle"
+          },
+          "request": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Request"
+          }
+        },
+        "required": [
+          "handle",
+          "request"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_ChatResult": {
+            "additionalProperties": false,
+            "properties": {
+              "failure": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Failure"
+              },
+              "response": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Response"
+              }
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Failure": {
+            "additionalProperties": false,
+            "properties": {
+              "execution": {
+                "type": "string"
+              },
+              "kind": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "internal",
+                      "canceled",
+                      "timeout",
+                      "invalid_credentials",
+                      "rate_limited",
+                      "provider_rejected",
+                      "provider_unavailable"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
+              "retryAfterMillis": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "kind",
+              "execution"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Citation": {
+            "additionalProperties": false,
+            "properties": {
+              "quote": {
+                "type": "string"
+              },
+              "source": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_CitationSource"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "source"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_CitationSource": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "value"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Message": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireMessage"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Output": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireOutput"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_OutputMetadata": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireOutputMetadata"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Part": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wirePart"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Response": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireResponse"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ResponseMetadata": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireResponseMetadata"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolCall": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolContent": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireToolContent"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolOutput": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireToolOutput"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolResult": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "is_error": {
+                "type": "boolean"
+              },
+              "name": {
+                "type": "string"
+              },
+              "output": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolOutput"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "output"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Usage": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireUsage"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireMessage": {
+            "additionalProperties": false,
+            "properties": {
+              "metadata": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+              },
+              "parts": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Part"
+                },
+                "type": "array"
+              },
+              "role": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "role",
+              "parts"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireOutput": {
+            "additionalProperties": false,
+            "properties": {
+              "finish_reason": {
+                "type": "string"
+              },
+              "message": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Message"
+              },
+              "metadata": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_OutputMetadata"
+              }
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireOutputMetadata": {
+            "additionalProperties": false,
+            "properties": {
+              "extra": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+              }
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wirePart": {
+            "additionalProperties": false,
+            "properties": {
+              "citations": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Citation"
+                },
+                "type": "array"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "media": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_Media"
+              },
+              "metadata": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+              },
+              "reasoning_state": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "contentEncoding": "base64",
+                    "type": "string"
+                  }
+                ]
+              },
+              "text": {
+                "type": "string"
+              },
+              "tool_call": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolCall"
+              },
+              "tool_result": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolResult"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireResponse": {
+            "additionalProperties": false,
+            "properties": {
+              "metadata": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ResponseMetadata"
+              },
+              "output": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Output"
+              }
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireResponseMetadata": {
+            "additionalProperties": false,
+            "properties": {
+              "created_at": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "extra": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+              },
+              "id": {
+                "type": "string"
+              },
+              "model": {
+                "type": "string"
+              },
+              "usage": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Usage"
+              }
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireToolContent": {
+            "additionalProperties": false,
+            "properties": {
+              "citations": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Citation"
+                },
+                "type": "array"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "media": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_Media"
+              },
+              "metadata": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireToolOutput": {
+            "additionalProperties": false,
+            "properties": {
+              "content": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolContent"
+                },
+                "type": "array"
+              },
+              "details": true
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireUsage": {
+            "additionalProperties": false,
+            "properties": {
+              "cache_read_input_tokens": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "cache_write_input_tokens": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "input_tokens": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "output_tokens": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "reasoning_tokens": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_wireMap"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_wireMap": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            ]
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_Media": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_wireMedia"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_Source": {
+            "additionalProperties": false,
+            "properties": {
+              "bytes": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "contentEncoding": "base64",
+                    "type": "string"
+                  }
+                ]
+              },
+              "kind": {
+                "type": "string"
+              },
+              "ref": {
+                "type": "string"
+              },
+              "uri": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_wireMedia": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "metadata": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+              },
+              "mime": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "source": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_Source"
+              }
+            },
+            "required": [
+              "mime",
+              "source"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "failure": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Failure"
+          },
+          "response": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Response"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.model-provider/close.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Retire the captured client after its accepted calls have joined.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Handle": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.model-provider/count.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Count the complete request using the same captured provider instance, only when that capability was advertised.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_ChatRequest": {
+            "additionalProperties": false,
+            "properties": {
+              "handle": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Handle"
+              },
+              "request": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Request"
+              }
+            },
+            "required": [
+              "handle",
+              "request"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Handle": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Citation": {
+            "additionalProperties": false,
+            "properties": {
+              "quote": {
+                "type": "string"
+              },
+              "source": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_CitationSource"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "source"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_CitationSource": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "value"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Message": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireMessage"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Options": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireOptions"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_OutputFormat": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireOutputFormat"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Part": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wirePart"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Request": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireRequest"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolCall": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolChoice": {
+            "additionalProperties": false,
+            "properties": {
+              "mode": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "parallelism": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "mode"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolContent": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireToolContent"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolDefinition": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireToolDefinition"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolOutput": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireToolOutput"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolResult": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "is_error": {
+                "type": "boolean"
+              },
+              "name": {
+                "type": "string"
+              },
+              "output": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolOutput"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "output"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireMessage": {
+            "additionalProperties": false,
+            "properties": {
+              "metadata": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+              },
+              "parts": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Part"
+                },
+                "type": "array"
+              },
+              "role": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "role",
+              "parts"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireOptions": {
+            "additionalProperties": false,
+            "properties": {
+              "extensions": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Extensions"
+              },
+              "frequency_penalty": {
+                "type": "number"
+              },
+              "max_output_tokens": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "model": {
+                "type": "string"
+              },
+              "output_format": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_OutputFormat"
+              },
+              "presence_penalty": {
+                "type": "number"
+              },
+              "reasoning_effort": {
+                "type": "string"
+              },
+              "stop": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "temperature": {
+                "type": "number"
+              },
+              "top_k": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "top_p": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireOutputFormat": {
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "schema": true,
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wirePart": {
+            "additionalProperties": false,
+            "properties": {
+              "citations": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Citation"
+                },
+                "type": "array"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "media": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_Media"
+              },
+              "metadata": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+              },
+              "reasoning_state": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "contentEncoding": "base64",
+                    "type": "string"
+                  }
+                ]
+              },
+              "text": {
+                "type": "string"
+              },
+              "tool_call": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolCall"
+              },
+              "tool_result": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolResult"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireRequest": {
+            "additionalProperties": false,
+            "properties": {
+              "messages": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Message"
+                },
+                "type": "array"
+              },
+              "options": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Options"
+              },
+              "tool_choice": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolChoice"
+              },
+              "tools": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolDefinition"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "messages"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireToolContent": {
+            "additionalProperties": false,
+            "properties": {
+              "citations": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Citation"
+                },
+                "type": "array"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "media": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_Media"
+              },
+              "metadata": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireToolDefinition": {
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "type": "string"
+              },
+              "input_schema": true,
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "input_schema"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireToolOutput": {
+            "additionalProperties": false,
+            "properties": {
+              "content": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolContent"
+                },
+                "type": "array"
+              },
+              "details": true
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Extensions": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_wireMap"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_wireMap": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            ]
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_Media": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_wireMedia"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_Source": {
+            "additionalProperties": false,
+            "properties": {
+              "bytes": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "contentEncoding": "base64",
+                    "type": "string"
+                  }
+                ]
+              },
+              "kind": {
+                "type": "string"
+              },
+              "ref": {
+                "type": "string"
+              },
+              "uri": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_wireMedia": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "metadata": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+              },
+              "mime": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "source": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_Source"
+              }
+            },
+            "required": [
+              "mime",
+              "source"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "handle": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Handle"
+          },
+          "request": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Request"
+          }
+        },
+        "required": [
+          "handle",
+          "request"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Failure": {
+            "additionalProperties": false,
+            "properties": {
+              "execution": {
+                "type": "string"
+              },
+              "kind": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "internal",
+                      "canceled",
+                      "timeout",
+                      "invalid_credentials",
+                      "rate_limited",
+                      "provider_rejected",
+                      "provider_unavailable"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
+              "retryAfterMillis": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "kind",
+              "execution"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_TokenCount": {
+            "additionalProperties": false,
+            "properties": {
+              "count": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 0,
+                "type": "integer"
+              },
+              "failure": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Failure"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "minimum": 0,
+            "type": "integer"
+          },
+          "failure": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Failure"
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.model-provider/embed.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Execute one original embedding exchange and preserve the complete provider response.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_EmbeddingRequest": {
+            "additionalProperties": false,
+            "properties": {
+              "handle": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Handle"
+              },
+              "request": true
+            },
+            "required": [
+              "handle",
+              "request"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Handle": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "handle": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Handle"
+          },
+          "request": true
+        },
+        "required": [
+          "handle",
+          "request"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_EmbeddingResult": {
+            "additionalProperties": false,
+            "properties": {
+              "failure": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Failure"
+              },
+              "response": true
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Failure": {
+            "additionalProperties": false,
+            "properties": {
+              "execution": {
+                "type": "string"
+              },
+              "kind": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "internal",
+                      "canceled",
+                      "timeout",
+                      "invalid_credentials",
+                      "rate_limited",
+                      "provider_rejected",
+                      "provider_unavailable"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
+              "retryAfterMillis": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "kind",
+              "execution"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "failure": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Failure"
+          },
+          "response": true
+        },
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.model-provider/open-chat.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Capture one immutable provider client shared by chat, streaming and optional token counting.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Connection": {
+            "additionalProperties": false,
+            "properties": {
+              "apiKey": {
+                "type": "string"
+              },
+              "baseURL": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "provider"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Open": {
+            "additionalProperties": false,
+            "properties": {
+              "connection": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Connection"
+              },
+              "model": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "connection",
+              "model"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "connection": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Connection"
+          },
+          "model": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "connection",
+          "model"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Chat": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "metadata": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Model"
+              },
+              "model": {
+                "type": "string"
+              },
+              "original": {
+                "maxLength": 256,
+                "pattern": "\\S",
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "streaming": {
+                "type": "boolean"
+              },
+              "tokenCounting": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "original",
+              "provider",
+              "model",
+              "streaming",
+              "tokenCounting"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Limits": {
+            "additionalProperties": false,
+            "properties": {
+              "context_window": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "max_input_tokens": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "max_output_tokens": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Modalities": {
+            "additionalProperties": false,
+            "properties": {
+              "input": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "output": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Model": {
+            "additionalProperties": false,
+            "properties": {
+              "deprecated": {
+                "type": "boolean"
+              },
+              "display_name": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "knowledge_cutoff": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "last_updated": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "limits": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Limits"
+              },
+              "modalities": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Modalities"
+              },
+              "pricing": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_PricingSchedule"
+              },
+              "reasoning": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Reasoning"
+              },
+              "release_date": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "structured_output": {
+                "type": "boolean"
+              },
+              "tool_call": {
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Pricing": {
+            "additionalProperties": false,
+            "properties": {
+              "cache_read_per_1m": {
+                "type": "number"
+              },
+              "cache_write_per_1m": {
+                "type": "number"
+              },
+              "input_per_1m": {
+                "type": "number"
+              },
+              "output_per_1m": {
+                "type": "number"
+              },
+              "threshold": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              }
+            },
+            "required": [
+              "input_per_1m",
+              "output_per_1m"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_PricingSchedule": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Pricing"
+            },
+            "type": "array"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Reasoning": {
+            "additionalProperties": false,
+            "properties": {
+              "default_level": {
+                "type": "string"
+              },
+              "levels": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "supported": {
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Model"
+          },
+          "model": {
+            "type": "string"
+          },
+          "original": {
+            "maxLength": 256,
+            "pattern": "\\S",
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "streaming": {
+            "type": "boolean"
+          },
+          "tokenCounting": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "original",
+          "provider",
+          "model",
+          "streaming",
+          "tokenCounting"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.model-provider/open-embedding.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Capture an immutable embedding client and its vector-space identity.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Connection": {
+            "additionalProperties": false,
+            "properties": {
+              "apiKey": {
+                "type": "string"
+              },
+              "baseURL": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "provider"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Open": {
+            "additionalProperties": false,
+            "properties": {
+              "connection": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Connection"
+              },
+              "model": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "connection",
+              "model"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "connection": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Connection"
+          },
+          "model": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "connection",
+          "model"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Embedder": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "model": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "space": {
+                "pattern": "\\S",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "provider",
+              "model",
+              "space"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "space": {
+            "pattern": "\\S",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "provider",
+          "model",
+          "space"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.model-provider/profiles.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Read this installed adapter's provider policies and published model facts.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_EmbeddingProfile": {
+            "additionalProperties": false,
+            "properties": {
+              "defaultModel": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Profile": {
+            "additionalProperties": false,
+            "properties": {
+              "authentication": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "keyRequired",
+                      "keyOptional"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
+              "defaultModel": {
+                "type": "string"
+              },
+              "embedding": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_EmbeddingProfile"
+              },
+              "endpointRequired": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
+              },
+              "modelSource": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "bundled",
+                      "endpoint"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
+              "models": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Model"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "id",
+              "authentication",
+              "endpointRequired",
+              "modelSource",
+              "models"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Limits": {
+            "additionalProperties": false,
+            "properties": {
+              "context_window": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "max_input_tokens": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "max_output_tokens": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Modalities": {
+            "additionalProperties": false,
+            "properties": {
+              "input": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "output": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Model": {
+            "additionalProperties": false,
+            "properties": {
+              "deprecated": {
+                "type": "boolean"
+              },
+              "display_name": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "knowledge_cutoff": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "last_updated": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "limits": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Limits"
+              },
+              "modalities": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Modalities"
+              },
+              "pricing": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_PricingSchedule"
+              },
+              "reasoning": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Reasoning"
+              },
+              "release_date": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "structured_output": {
+                "type": "boolean"
+              },
+              "tool_call": {
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Pricing": {
+            "additionalProperties": false,
+            "properties": {
+              "cache_read_per_1m": {
+                "type": "number"
+              },
+              "cache_write_per_1m": {
+                "type": "number"
+              },
+              "input_per_1m": {
+                "type": "number"
+              },
+              "output_per_1m": {
+                "type": "number"
+              },
+              "threshold": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              }
+            },
+            "required": [
+              "input_per_1m",
+              "output_per_1m"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_PricingSchedule": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Pricing"
+            },
+            "type": "array"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Reasoning": {
+            "additionalProperties": false,
+            "properties": {
+              "default_level": {
+                "type": "string"
+              },
+              "levels": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "supported": {
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "items": {
+          "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Profile"
+        },
+        "type": "array"
+      }
+    },
+    {
+      "name": "flame.model-provider/remote-models.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Read model identities from the exact configured provider endpoint.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Connection": {
+            "additionalProperties": false,
+            "properties": {
+              "apiKey": {
+                "type": "string"
+              },
+              "baseURL": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "provider"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "apiKey": {
+            "type": "string"
+          },
+          "baseURL": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      }
+    },
+    {
+      "name": "flame.model-provider/reopen-chat.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Reconstruct a fresh client from the original confirmed open receipt, without reading current credentials or authorizing generation.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Reopen": {
+            "additionalProperties": false,
+            "properties": {
+              "original": {
+                "maxLength": 256,
+                "pattern": "\\S",
+                "type": "string"
+              }
+            },
+            "required": [
+              "original"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "original": {
+            "maxLength": 256,
+            "pattern": "\\S",
+            "type": "string"
+          }
+        },
+        "required": [
+          "original"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Chat": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "metadata": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Model"
+              },
+              "model": {
+                "type": "string"
+              },
+              "original": {
+                "maxLength": 256,
+                "pattern": "\\S",
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "streaming": {
+                "type": "boolean"
+              },
+              "tokenCounting": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "original",
+              "provider",
+              "model",
+              "streaming",
+              "tokenCounting"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Limits": {
+            "additionalProperties": false,
+            "properties": {
+              "context_window": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "max_input_tokens": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "max_output_tokens": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Modalities": {
+            "additionalProperties": false,
+            "properties": {
+              "input": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "output": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Model": {
+            "additionalProperties": false,
+            "properties": {
+              "deprecated": {
+                "type": "boolean"
+              },
+              "display_name": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "knowledge_cutoff": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "last_updated": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "limits": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Limits"
+              },
+              "modalities": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Modalities"
+              },
+              "pricing": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_PricingSchedule"
+              },
+              "reasoning": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Reasoning"
+              },
+              "release_date": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "structured_output": {
+                "type": "boolean"
+              },
+              "tool_call": {
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Pricing": {
+            "additionalProperties": false,
+            "properties": {
+              "cache_read_per_1m": {
+                "type": "number"
+              },
+              "cache_write_per_1m": {
+                "type": "number"
+              },
+              "input_per_1m": {
+                "type": "number"
+              },
+              "output_per_1m": {
+                "type": "number"
+              },
+              "threshold": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              }
+            },
+            "required": [
+              "input_per_1m",
+              "output_per_1m"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_PricingSchedule": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Pricing"
+            },
+            "type": "array"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Reasoning": {
+            "additionalProperties": false,
+            "properties": {
+              "default_level": {
+                "type": "string"
+              },
+              "levels": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "supported": {
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_Model"
+          },
+          "model": {
+            "type": "string"
+          },
+          "original": {
+            "maxLength": 256,
+            "pattern": "\\S",
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "streaming": {
+            "type": "boolean"
+          },
+          "tokenCounting": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "original",
+          "provider",
+          "model",
+          "streaming",
+          "tokenCounting"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.model-provider/stream.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Stream the original provider deltas and retain the final outcome without replaying an unconfirmed exchange.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_ChatRequest": {
+            "additionalProperties": false,
+            "properties": {
+              "handle": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Handle"
+              },
+              "request": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Request"
+              }
+            },
+            "required": [
+              "handle",
+              "request"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Handle": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Citation": {
+            "additionalProperties": false,
+            "properties": {
+              "quote": {
+                "type": "string"
+              },
+              "source": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_CitationSource"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "source"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_CitationSource": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "value"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Message": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireMessage"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Options": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireOptions"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_OutputFormat": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireOutputFormat"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Part": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wirePart"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Request": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireRequest"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolCall": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolChoice": {
+            "additionalProperties": false,
+            "properties": {
+              "mode": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "parallelism": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "mode"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolContent": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireToolContent"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolDefinition": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireToolDefinition"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolOutput": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireToolOutput"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolResult": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "is_error": {
+                "type": "boolean"
+              },
+              "name": {
+                "type": "string"
+              },
+              "output": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolOutput"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "output"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireMessage": {
+            "additionalProperties": false,
+            "properties": {
+              "metadata": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+              },
+              "parts": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Part"
+                },
+                "type": "array"
+              },
+              "role": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "role",
+              "parts"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireOptions": {
+            "additionalProperties": false,
+            "properties": {
+              "extensions": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Extensions"
+              },
+              "frequency_penalty": {
+                "type": "number"
+              },
+              "max_output_tokens": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "model": {
+                "type": "string"
+              },
+              "output_format": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_OutputFormat"
+              },
+              "presence_penalty": {
+                "type": "number"
+              },
+              "reasoning_effort": {
+                "type": "string"
+              },
+              "stop": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "temperature": {
+                "type": "number"
+              },
+              "top_k": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "top_p": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireOutputFormat": {
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "schema": true,
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wirePart": {
+            "additionalProperties": false,
+            "properties": {
+              "citations": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Citation"
+                },
+                "type": "array"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "media": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_Media"
+              },
+              "metadata": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+              },
+              "reasoning_state": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "contentEncoding": "base64",
+                    "type": "string"
+                  }
+                ]
+              },
+              "text": {
+                "type": "string"
+              },
+              "tool_call": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolCall"
+              },
+              "tool_result": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolResult"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireRequest": {
+            "additionalProperties": false,
+            "properties": {
+              "messages": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Message"
+                },
+                "type": "array"
+              },
+              "options": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Options"
+              },
+              "tool_choice": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolChoice"
+              },
+              "tools": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolDefinition"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "messages"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireToolContent": {
+            "additionalProperties": false,
+            "properties": {
+              "citations": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Citation"
+                },
+                "type": "array"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "media": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_Media"
+              },
+              "metadata": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireToolDefinition": {
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "type": "string"
+              },
+              "input_schema": true,
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "input_schema"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireToolOutput": {
+            "additionalProperties": false,
+            "properties": {
+              "content": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolContent"
+                },
+                "type": "array"
+              },
+              "details": true
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Extensions": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_wireMap"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_wireMap": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            ]
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_Media": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_wireMedia"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_Source": {
+            "additionalProperties": false,
+            "properties": {
+              "bytes": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "contentEncoding": "base64",
+                    "type": "string"
+                  }
+                ]
+              },
+              "kind": {
+                "type": "string"
+              },
+              "ref": {
+                "type": "string"
+              },
+              "uri": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_wireMedia": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "metadata": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+              },
+              "mime": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "source": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_Source"
+              }
+            },
+            "required": [
+              "mime",
+              "source"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "handle": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Handle"
+          },
+          "request": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Request"
+          }
+        },
+        "required": [
+          "handle",
+          "request"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_ChatResult": {
+            "additionalProperties": false,
+            "properties": {
+              "failure": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Failure"
+              },
+              "response": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Response"
+              }
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Failure": {
+            "additionalProperties": false,
+            "properties": {
+              "execution": {
+                "type": "string"
+              },
+              "kind": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "internal",
+                      "canceled",
+                      "timeout",
+                      "invalid_credentials",
+                      "rate_limited",
+                      "provider_rejected",
+                      "provider_unavailable"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
+              "retryAfterMillis": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "kind",
+              "execution"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Citation": {
+            "additionalProperties": false,
+            "properties": {
+              "quote": {
+                "type": "string"
+              },
+              "source": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_CitationSource"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "source"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_CitationSource": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "value"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Message": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireMessage"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Output": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireOutput"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_OutputMetadata": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireOutputMetadata"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Part": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wirePart"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Response": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireResponse"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ResponseMetadata": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireResponseMetadata"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolCall": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolContent": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireToolContent"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolOutput": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireToolOutput"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolResult": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "is_error": {
+                "type": "boolean"
+              },
+              "name": {
+                "type": "string"
+              },
+              "output": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolOutput"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "output"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Usage": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireUsage"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireMessage": {
+            "additionalProperties": false,
+            "properties": {
+              "metadata": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+              },
+              "parts": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Part"
+                },
+                "type": "array"
+              },
+              "role": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "role",
+              "parts"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireOutput": {
+            "additionalProperties": false,
+            "properties": {
+              "finish_reason": {
+                "type": "string"
+              },
+              "message": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Message"
+              },
+              "metadata": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_OutputMetadata"
+              }
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireOutputMetadata": {
+            "additionalProperties": false,
+            "properties": {
+              "extra": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+              }
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wirePart": {
+            "additionalProperties": false,
+            "properties": {
+              "citations": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Citation"
+                },
+                "type": "array"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "media": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_Media"
+              },
+              "metadata": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+              },
+              "reasoning_state": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "contentEncoding": "base64",
+                    "type": "string"
+                  }
+                ]
+              },
+              "text": {
+                "type": "string"
+              },
+              "tool_call": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolCall"
+              },
+              "tool_result": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolResult"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireResponse": {
+            "additionalProperties": false,
+            "properties": {
+              "metadata": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ResponseMetadata"
+              },
+              "output": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Output"
+              }
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireResponseMetadata": {
+            "additionalProperties": false,
+            "properties": {
+              "created_at": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "extra": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+              },
+              "id": {
+                "type": "string"
+              },
+              "model": {
+                "type": "string"
+              },
+              "usage": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Usage"
+              }
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireToolContent": {
+            "additionalProperties": false,
+            "properties": {
+              "citations": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Citation"
+                },
+                "type": "array"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "media": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_Media"
+              },
+              "metadata": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireToolOutput": {
+            "additionalProperties": false,
+            "properties": {
+              "content": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolContent"
+                },
+                "type": "array"
+              },
+              "details": true
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireUsage": {
+            "additionalProperties": false,
+            "properties": {
+              "cache_read_input_tokens": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "cache_write_input_tokens": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "input_tokens": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "output_tokens": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "reasoning_tokens": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_wireMap"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_wireMap": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            ]
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_Media": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_wireMedia"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_Source": {
+            "additionalProperties": false,
+            "properties": {
+              "bytes": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "contentEncoding": "base64",
+                    "type": "string"
+                  }
+                ]
+              },
+              "kind": {
+                "type": "string"
+              },
+              "ref": {
+                "type": "string"
+              },
+              "uri": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_wireMedia": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "metadata": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+              },
+              "mime": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "source": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_Source"
+              }
+            },
+            "required": [
+              "mime",
+              "source"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "failure": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Failure"
+          },
+          "response": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Response"
+          }
+        },
+        "type": "object"
+      },
+      "stream": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Citation": {
+            "additionalProperties": false,
+            "properties": {
+              "quote": {
+                "type": "string"
+              },
+              "source": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_CitationSource"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "source"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_CitationSource": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "value"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_OutputMetadata": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireOutputMetadata"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_PartDelta": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wirePartDelta"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ResponseDelta": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireResponseDelta"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ResponseMetadata": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireResponseMetadata"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolCallDelta": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Usage": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireUsage"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireOutputMetadata": {
+            "additionalProperties": false,
+            "properties": {
+              "extra": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+              }
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wirePartDelta": {
+            "additionalProperties": false,
+            "properties": {
+              "citation": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Citation"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "media": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_Media"
+              },
+              "metadata": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+              },
+              "reasoning_state": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "contentEncoding": "base64",
+                    "type": "string"
+                  }
+                ]
+              },
+              "text": {
+                "type": "string"
+              },
+              "tool_call": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ToolCallDelta"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireResponseDelta": {
+            "additionalProperties": false,
+            "properties": {
+              "finish_reason": {
+                "type": "string"
+              },
+              "message_metadata": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+              },
+              "metadata": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_ResponseMetadata"
+              },
+              "output_metadata": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_OutputMetadata"
+              },
+              "parts": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_PartDelta"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireResponseMetadata": {
+            "additionalProperties": false,
+            "properties": {
+              "created_at": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "extra": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+              },
+              "id": {
+                "type": "string"
+              },
+              "model": {
+                "type": "string"
+              },
+              "usage": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_Usage"
+              }
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireUsage": {
+            "additionalProperties": false,
+            "properties": {
+              "cache_read_input_tokens": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "cache_write_input_tokens": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "input_tokens": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "output_tokens": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "reasoning_tokens": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_wireMap"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_wireMap": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            ]
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_Media": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_wireMedia"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_Source": {
+            "additionalProperties": false,
+            "properties": {
+              "bytes": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "contentEncoding": "base64",
+                    "type": "string"
+                  }
+                ]
+              },
+              "kind": {
+                "type": "string"
+              },
+              "ref": {
+                "type": "string"
+              },
+              "uri": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_wireMedia": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "metadata": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_Map"
+              },
+              "mime": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "source": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_Source"
+              }
+            },
+            "required": [
+              "mime",
+              "source"
+            ],
+            "type": "object"
+          }
+        },
+        "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireResponseDelta",
+        "$schema": "https://json-schema.org/draft/2020-12/schema"
+      }
+    }
+  ]
+}

@@ -10,7 +10,7 @@ import (
 	"syscall"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	models "github.com/Tangerg/flame/packages/go-sdk/model/catalog"
+
 	"github.com/Tangerg/flame/plugins/schedules/internal/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -31,7 +31,7 @@ func run(ctx context.Context) (err error) {
 	}
 	defer func() { err = errors.Join(err, db.Close()) }()
 	server := sdk.NewServer(&sdk.Implementation{Name: "flame.schedules", Version: "3.0.0"}, nil)
-	backend, err := registerServer(server, db, sqlite.NewScheduleStore(db), filesystem.DirectoryResolver{}, models.Selections{}, connectRunHost)
+	backend, err := registerServer(server, db, sqlite.NewScheduleStore(db), filesystem.DirectoryResolver{}, connectRunHost)
 	if err != nil {
 		return err
 	}

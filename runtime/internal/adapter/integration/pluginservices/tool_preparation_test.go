@@ -287,3 +287,5 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 		})
 	}
 }
+
+func (*preparedEmbedder) Close(context.Context) error { return nil }

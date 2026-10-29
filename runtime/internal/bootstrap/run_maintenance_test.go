@@ -76,7 +76,7 @@ func TestInstalledSkillLearningUsesAdmittedSkillDocuments(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			cfg.chatResolver = testChatResolver(client)
+			cfg.modelProviders = testChatResolver(client)
 			var learning *pluginservices.SkillLearning
 			host, err := assemble(t.Context(), cfg, newRuntimeLifetime(t.Context(), cfg.resources), func(ctx context.Context, deps toolEnvironmentDependencies) (toolEnvironment, error) {
 				environment, err := buildToolEnvironment(ctx, deps)

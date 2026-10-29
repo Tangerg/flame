@@ -74,19 +74,19 @@ func TestPreparedToolRechecksAuthorityAndReleasesBeforeRefusedDispatch(t *testin
 			t.Cleanup(finish)
 			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 			defer cancel()
-			prepare := func(ctx context.Context, source Executable, _ ToolHost) (ToolCall, func(), error) {
+			prepare := func(ctx context.Context, source Executable, _ ToolHost) (ToolCall, func() error, error) {
 				close(prepared)
 				select {
 				case <-resume:
 				case <-ctx.Done():
 				}
 				if change == "invalid prepared call" {
-					return nil, func() { releases.Add(1) }, nil
+					return nil, func() error { releases.Add(1); return nil }, nil
 				}
 				return func(invocation toolcontract.Invocation) (toolcontract.Result, error) {
 					defer settled.Add(1)
 					return source.Call(ctx, invocation)
-				}, func() { releases.Add(1) }, nil
+				}, func() error { releases.Add(1); return nil }, nil
 			}
 			pool, err := Open(ctx, ctx, []mcpserver.Server{server}, nil, registry, nil, nil, nil, nil)
 			if err != nil {

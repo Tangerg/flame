@@ -10,6 +10,7 @@ import (
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 	"github.com/Tangerg/scope/core/media"
@@ -585,6 +586,7 @@ func TestModelContextCompactionReservesExplicitOutputWindow(t *testing.T) {
 	request, err := executionadapter.NewDurableModelContextCompaction(executionadapter.ModelContextCompactionInput{
 		SessionID:    sessionID,
 		Selection:    selection,
+		Limits:       testsupport.ModelTokenLimits(selection),
 		Instructions: instructions,
 		Candidate:    history,
 		Options:      options,
@@ -735,8 +737,8 @@ func TestRequiredCompactionCannotPersistTextFromARefusal(t *testing.T) {
 		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, nil)
 	})
 	compactor := mustNewCompactor(t, store,
-		func(context.Context, modeladapter.AuxiliaryBudget) (modeladapter.SelectedChat, func(), error) {
-			return auxiliaryFixture(model), func() {}, nil
+		func(context.Context, modeladapter.AuxiliaryBudget) (modeladapter.SelectedChat, func() error, error) {
+			return auxiliaryFixture(model), func() error { return nil }, nil
 		},
 		nil, CompactionPolicyValues{MaxTokens: intPointer(threshold)},
 	)
@@ -1192,7 +1194,7 @@ func TestModelContextCompactionCountsTrailerWithoutReturningIt(t *testing.T) {
 			t.Fatal(err)
 		}
 		request, err := executionadapter.NewDurableModelContextCompaction(executionadapter.ModelContextCompactionInput{
-			SessionID: sessionID, Selection: selection,
+			SessionID: sessionID, Selection: selection, Limits: testsupport.ModelTokenLimits(selection),
 			Instructions: instructions, Candidate: history, Trailer: trailer,
 		})
 		if err != nil {

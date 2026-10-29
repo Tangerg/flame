@@ -1626,7 +1626,8 @@
       "path": "github.com/Tangerg/flame/packages/go-sdk/model/catalog",
       "imports": [
         "github.com/Tangerg/flame/packages/go-sdk/model",
-        "github.com/Tangerg/scope/core/chat"
+        "github.com/Tangerg/scope/core/chat",
+        "github.com/Tangerg/scope/models/catalog"
       ],
       "variables": [
         {
@@ -1638,18 +1639,24 @@
           "type": "error"
         }
       ],
+      "functions": [
+        {
+          "name": "NewAdmission",
+          "signature": "func(selection model.Selection, metadata *catalog.Model) (Admission, error)"
+        }
+      ],
       "types": [
         {
-          "name": "Selections",
+          "name": "Admission",
           "kind": "struct",
           "methods": [
             {
               "name": "AdmitInput",
-              "signature": "func(selection model.Selection, messages []chat.Message) error"
+              "signature": "func(messages []chat.Message) error"
             },
             {
-              "name": "AdmitSelection",
-              "signature": "func(selection model.Selection) error"
+              "name": "Selection",
+              "signature": "func() model.Selection"
             }
           ]
         }
@@ -2914,6 +2921,524 @@
           "name": "UpdateV2OutputStatus",
           "kind": "defined",
           "underlying": "string"
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider",
+      "imports": [
+        "encoding/json/jsontext",
+        "fmt",
+        "github.com/Tangerg/flame/qimu/mcp",
+        "github.com/Tangerg/flame/qimu/portable",
+        "github.com/Tangerg/scope/core/chat",
+        "github.com/Tangerg/scope/core/embedding",
+        "github.com/Tangerg/scope/models/catalog"
+      ],
+      "constants": [
+        {
+          "name": "BundledModels",
+          "type": "ModelSource",
+          "value": "\"bundled\""
+        },
+        {
+          "name": "Canceled",
+          "type": "FailureKind",
+          "value": "\"canceled\""
+        },
+        {
+          "name": "EndpointModels",
+          "type": "ModelSource",
+          "value": "\"endpoint\""
+        },
+        {
+          "name": "Internal",
+          "type": "FailureKind",
+          "value": "\"internal\""
+        },
+        {
+          "name": "InvalidCredentials",
+          "type": "FailureKind",
+          "value": "\"invalid_credentials\""
+        },
+        {
+          "name": "KeyOptional",
+          "type": "Authentication",
+          "value": "\"keyOptional\""
+        },
+        {
+          "name": "KeyRequired",
+          "type": "Authentication",
+          "value": "\"keyRequired\""
+        },
+        {
+          "name": "ProviderRejected",
+          "type": "FailureKind",
+          "value": "\"provider_rejected\""
+        },
+        {
+          "name": "ProviderUnavailable",
+          "type": "FailureKind",
+          "value": "\"provider_unavailable\""
+        },
+        {
+          "name": "RateLimited",
+          "type": "FailureKind",
+          "value": "\"rate_limited\""
+        },
+        {
+          "name": "Reference",
+          "type": "untyped string",
+          "value": "\"flame.model-provider.v1\""
+        },
+        {
+          "name": "Timeout",
+          "type": "FailureKind",
+          "value": "\"timeout\""
+        }
+      ],
+      "functions": [
+        {
+          "name": "CallMethod",
+          "signature": "func() (*mcp.Method[ChatRequest, ChatResult], error)"
+        },
+        {
+          "name": "CloseMethod",
+          "signature": "func() (*mcp.Method[Handle, struct{}], error)"
+        },
+        {
+          "name": "Contract",
+          "signature": "func() (*portable.Capability, error)"
+        },
+        {
+          "name": "CountMethod",
+          "signature": "func() (*mcp.Method[ChatRequest, TokenCount], error)"
+        },
+        {
+          "name": "EmbedMethod",
+          "signature": "func() (*mcp.Method[EmbeddingRequest, EmbeddingResult], error)"
+        },
+        {
+          "name": "OpenChatMethod",
+          "signature": "func() (*mcp.Method[Open, Chat], error)"
+        },
+        {
+          "name": "OpenEmbeddingMethod",
+          "signature": "func() (*mcp.Method[Open, Embedder], error)"
+        },
+        {
+          "name": "ProfilesMethod",
+          "signature": "func() (*mcp.Method[struct{}, []Profile], error)"
+        },
+        {
+          "name": "RemoteModelsMethod",
+          "signature": "func() (*mcp.Method[Connection, []string], error)"
+        },
+        {
+          "name": "ReopenChatMethod",
+          "signature": "func() (*mcp.Method[Reopen, Chat], error)"
+        },
+        {
+          "name": "StreamMethod",
+          "signature": "func() (*mcp.StreamingMethod[ChatRequest, chat.ResponseDelta, ChatResult], error)"
+        }
+      ],
+      "types": [
+        {
+          "name": "Authentication",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "Chat",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Handle",
+              "type": "Handle"
+            },
+            {
+              "name": "Original",
+              "type": "string",
+              "tag": "json:\"original\" jsonschema:\"pattern=\\\\S,maxLength=256\""
+            },
+            {
+              "name": "Provider",
+              "type": "string",
+              "tag": "json:\"provider\""
+            },
+            {
+              "name": "Model",
+              "type": "string",
+              "tag": "json:\"model\""
+            },
+            {
+              "name": "Streaming",
+              "type": "bool",
+              "tag": "json:\"streaming\""
+            },
+            {
+              "name": "TokenCounting",
+              "type": "bool",
+              "tag": "json:\"tokenCounting\""
+            },
+            {
+              "name": "Metadata",
+              "type": "*catalog.Model",
+              "tag": "json:\"metadata,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "ChatRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Handle",
+              "type": "Handle",
+              "tag": "json:\"handle\""
+            },
+            {
+              "name": "Request",
+              "type": "chat.Request",
+              "tag": "json:\"request\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "ChatResult",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Response",
+              "type": "*chat.Response",
+              "tag": "json:\"response,omitzero\""
+            },
+            {
+              "name": "Failure",
+              "type": "*Failure",
+              "tag": "json:\"failure,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Connection",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Provider",
+              "type": "string",
+              "tag": "json:\"provider\""
+            },
+            {
+              "name": "APIKey",
+              "type": "string",
+              "tag": "json:\"apiKey,omitempty\""
+            },
+            {
+              "name": "BaseURL",
+              "type": "string",
+              "tag": "json:\"baseURL,omitempty\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Format",
+              "signature": "func(state fmt.State, _ rune)"
+            },
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Embedder",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Handle",
+              "type": "Handle"
+            },
+            {
+              "name": "Provider",
+              "type": "string",
+              "tag": "json:\"provider\""
+            },
+            {
+              "name": "Model",
+              "type": "string",
+              "tag": "json:\"model\""
+            },
+            {
+              "name": "Space",
+              "type": "string",
+              "tag": "json:\"space\" jsonschema:\"pattern=\\\\S\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "EmbeddingProfile",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "DefaultModel",
+              "type": "string",
+              "tag": "json:\"defaultModel,omitempty\""
+            }
+          ]
+        },
+        {
+          "name": "EmbeddingRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Handle",
+              "type": "Handle",
+              "tag": "json:\"handle\""
+            },
+            {
+              "name": "Request",
+              "type": "jsontext.Value",
+              "tag": "json:\"request\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Native",
+              "signature": "func() (*embedding.Request, error)"
+            }
+          ]
+        },
+        {
+          "name": "EmbeddingResult",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Response",
+              "type": "jsontext.Value",
+              "tag": "json:\"response,omitzero\""
+            },
+            {
+              "name": "Failure",
+              "type": "*Failure",
+              "tag": "json:\"failure,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Native",
+              "signature": "func() (*embedding.Response, error)"
+            },
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Failure",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Kind",
+              "type": "FailureKind",
+              "tag": "json:\"kind\""
+            },
+            {
+              "name": "Execution",
+              "type": "chat.CallFailureKind",
+              "tag": "json:\"execution\""
+            },
+            {
+              "name": "RetryAfterMillis",
+              "type": "int64",
+              "tag": "json:\"retryAfterMillis,omitzero\" jsonschema:\"minimum=0\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "FailureKind",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "Handle",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\" jsonschema:\"pattern=^[a-f0-9]{64}$\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "ModelSource",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "Open",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Connection",
+              "type": "Connection",
+              "tag": "json:\"connection\""
+            },
+            {
+              "name": "Model",
+              "type": "string",
+              "tag": "json:\"model\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Profile",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Authentication",
+              "type": "Authentication",
+              "tag": "json:\"authentication\""
+            },
+            {
+              "name": "EndpointRequired",
+              "type": "bool",
+              "tag": "json:\"endpointRequired\""
+            },
+            {
+              "name": "ModelSource",
+              "type": "ModelSource",
+              "tag": "json:\"modelSource\""
+            },
+            {
+              "name": "DefaultModel",
+              "type": "string",
+              "tag": "json:\"defaultModel,omitempty\""
+            },
+            {
+              "name": "Embedding",
+              "type": "*EmbeddingProfile",
+              "tag": "json:\"embedding,omitzero\""
+            },
+            {
+              "name": "Models",
+              "type": "[]catalog.Model",
+              "tag": "json:\"models\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Reopen",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Original",
+              "type": "string",
+              "tag": "json:\"original\" jsonschema:\"pattern=\\\\S,maxLength=256\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "TokenCount",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Count",
+              "type": "*int64",
+              "tag": "json:\"count,omitzero\" jsonschema:\"minimum=0\""
+            },
+            {
+              "name": "Failure",
+              "type": "*Failure",
+              "tag": "json:\"failure,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
         }
       ]
     },

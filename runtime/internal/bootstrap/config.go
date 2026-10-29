@@ -5,15 +5,15 @@ package bootstrap
 
 import (
 	"fmt"
-	"os"
+
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/config"
 )
 
-// LoadConfig loads the app config and resolves provider defaults plus env-key
-// overrides used by the runtime process.
+// LoadConfig loads process settings and the explicit default selection.
 func loadConfig(configDirectories []string) (config.Settings, error) {
 	cfg, err := config.Load(configDirectories)
 	if err != nil {
@@ -23,27 +23,21 @@ func loadConfig(configDirectories []string) (config.Settings, error) {
 }
 
 func resolveProviderConfig(settings config.Settings) (config.Settings, error) {
-	profile, found := modeladapter.LookupProvider(modeladapter.Provider(settings.Provider))
-	if !found {
-		return config.Settings{}, fmt.Errorf("config: unknown provider %q (see providers.list for the supported set)", settings.Provider)
-	}
 	if settings.Model == "" {
-		defaultModel, hasDefault := profile.DefaultChatModel()
-		if !hasDefault {
+		if settings.Provider != "anthropic" {
 			return config.Settings{}, fmt.Errorf("config: provider %q requires an explicit model", settings.Provider)
 		}
-		settings.Model = defaultModel
+		settings.Model = "claude-opus-5"
 	}
-	apiKeyEnvironmentVariable := profile.CredentialEnvironment()
-	if apiKey := os.Getenv(apiKeyEnvironmentVariable); apiKey != "" {
-		settings.APIKey = config.EnvironmentAPIKey(apiKey)
+	if _, err := modelchoice.New(settings.Provider, settings.Model); err != nil {
+		return config.Settings{}, fmt.Errorf("config: model selection: %w", err)
 	}
 	return settings, nil
 }
 
 // ProviderRegistry wraps the durable provider registry with env-key fallback.
 func providerRegistry(registry models.ProviderRegistry, settings config.Settings) (models.ProviderRegistry, error) {
-	environmentKeys := modeladapter.EnvKeys()
+	environmentKeys := make(map[string]string)
 	if apiKey, present := settings.APIKey.EnvironmentValue(); present {
 		environmentKeys[settings.Provider] = apiKey
 	}

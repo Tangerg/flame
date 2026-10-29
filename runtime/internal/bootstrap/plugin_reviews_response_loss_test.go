@@ -362,7 +362,7 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 		t.Fatal(err)
 	}
 	cfg := poMCPConfig(t)
-	cfg.chatResolver = testChatResolver(client)
+	cfg.modelProviders = testChatResolver(client)
 	runtime := poMCPOpen(t, cfg)
 	installed := poMCPActivate(runtime, source)
 	server := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "reviews"}

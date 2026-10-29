@@ -1,7 +1,10 @@
 package model
 
 import (
+	"context"
 	"errors"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
+	"github.com/Tangerg/scope/core/chat"
 	"path/filepath"
 	"testing"
 
@@ -22,7 +25,8 @@ func TestChatResolverRejectsUnconfigured(t *testing.T) {
 		t.Fatal(err)
 	}
 	ps := db.Providers // empty: deepseek not configured
-	r, err := NewChatResolver(ps)
+	factory := &fixtureModelFactory{}
+	r, err := NewChatResolver(ps, factory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,4 +67,26 @@ func testDeepSeekSelection(t testing.TB, model string) modelchoice.Selection {
 		t.Fatal(err)
 	}
 	return selection
+}
+
+type fixtureModelFactory struct{ connections []modelprovider.Connection }
+
+func (f *fixtureModelFactory) OpenChat(_ context.Context, selection modelchoice.Selection, connection modelprovider.Connection) (ResolvedChat, error) {
+	f.connections = append(f.connections, connection)
+	if connection.APIKey == "" {
+		return ResolvedChat{}, &run.FailureError{Kind: run.FailureInvalidCredentials, Err: errors.New("fixture requires a credential")}
+	}
+	return NewResolvedChat(&fixtureConstructedModel{}, nil, nil)
+}
+func (f *fixtureModelFactory) RestoreChat(context.Context, modelchoice.Selection, *ProviderCapture) (ResolvedChat, error) {
+	return ResolvedChat{}, errors.New("unexpected restore")
+}
+func (f *fixtureModelFactory) OpenEmbedding(context.Context, modelchoice.Selection, modelprovider.Connection) (ResolvedEmbedding, error) {
+	return ResolvedEmbedding{}, errors.New("unexpected embedding")
+}
+
+type fixtureConstructedModel struct{ identity byte }
+
+func (*fixtureConstructedModel) Call(context.Context, *chat.Request) (*chat.Response, error) {
+	return nil, errors.New("unexpected provider call")
 }

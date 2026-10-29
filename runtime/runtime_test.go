@@ -359,7 +359,7 @@ func TestResolveConfigUsesExplicitStableDefaults(t *testing.T) {
 
 func TestRuntimeOpenCallIdempotencyStreamAndClose(t *testing.T) {
 	t.Setenv("FLAME_PROVIDER", "anthropic")
-	t.Setenv("ANTHROPIC_API_KEY", "test-key")
+	t.Setenv("FLAME_APIKEY", "test-key")
 
 	config := Config{
 		DataDirectory:        testsupport.TempDirectory(t),

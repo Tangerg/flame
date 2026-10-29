@@ -46,7 +46,7 @@ func TestStorageHealthProbeSeparatesBusyFromBroken(t *testing.T) {
 // server assembled without probes answers "ok" with nothing in it forever.
 func TestServedReadinessReportsTheStorageCheck(t *testing.T) {
 	t.Setenv("FLAME_PROVIDER", "anthropic")
-	t.Setenv("ANTHROPIC_API_KEY", "test-key")
+	t.Setenv("FLAME_APIKEY", "test-key")
 
 	executable, err := os.Executable()
 	if err != nil {

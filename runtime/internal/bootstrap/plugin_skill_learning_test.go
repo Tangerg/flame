@@ -52,7 +52,7 @@ func TestCompletedRunsUseSelectedSkillLearningAndHumanPublication(t *testing.T) 
 		t.Fatal(err)
 	}
 	cfg := poMCPConfig(t)
-	cfg.chatResolver = testChatResolver(client)
+	cfg.modelProviders = testChatResolver(client)
 	cfg.approvalMode = approval.ModeYolo
 	if err := os.WriteFile(filepath.Join(cfg.defaultWorkspacePath, "fixture.txt"), []byte("read-only fixture"), 0600); err != nil {
 		t.Fatal(err)

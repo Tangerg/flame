@@ -17,16 +17,16 @@ Protocol `2026-10-29.1` · 104 methods
 | `sessions.list` | query | unary | none | none | cursor | — | — | — |
 | `sessions.get` | query | unary | none | none | none | — | — | `session_not_found` |
 | `sessions.snapshot` | query | unary | none | none | none | `items.list`, `runs.list`, `interrupts.list`, `plan.get`, `goals.get` | `subagents` | `session_not_found`, `capability_not_negotiated` |
-| `sessions.create` | command | unary | replayResponse | none | none | — | — | `workspace_unavailable` |
-| `sessions.update` | command | unary | replayResponse | none | none | — | `relocate`, `isolation` | `session_not_found`, `revision_conflict`, `workspace_unavailable`, `capability_not_negotiated` |
+| `sessions.create` | command | unary | replayResponse | none | none | — | — | `plugin_unavailable`, `plugin_stale`, `workspace_unavailable` |
+| `sessions.update` | command | unary | replayResponse | none | none | — | `relocate`, `isolation` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `revision_conflict`, `workspace_unavailable`, `capability_not_negotiated` |
 | `sessions.delete` | command | unary | replayResponse | none | none | — | — | `session_not_found` |
-| `sessions.fork` | command | unary | replayResponse | none | none | — | — | `session_not_found`, `run_not_found` |
+| `sessions.fork` | command | unary | replayResponse | none | none | — | — | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `run_not_found` |
 | `sessions.rollback` | command | unary | replayResponse | none | none | — | `checkpoints` | `session_not_found`, `run_not_found`, `session_busy`, `checkpoint_unavailable`, `checkpoint_conflict`, `capability_not_negotiated` |
 | `sessions.export` | query | unary | none | none | none | — | `sessionExport` | `session_not_found`, `capability_not_negotiated` |
 | `sessions.import` | command | unary | replayResponse | none | none | — | `sessionExport` | `capability_not_negotiated` |
 | `modelInvocations.endpoints` | query | unary | none | none | cursor | — | — | `capability_not_negotiated` |
 | `modelInvocations.list` | query | unary | none | none | cursor | — | — | `run_not_found`, `capability_not_negotiated` |
-| `runs.start` | command | stream | ownerRun | run | none | — | — | `session_not_found`, `session_busy`, `session_has_active_run`, `prompt_source_too_large`, `unsupported_mime`, `capability_not_negotiated`, `plugin_changed` |
+| `runs.start` | command | stream | ownerRun | run | none | — | — | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `session_busy`, `session_has_active_run`, `prompt_source_too_large`, `unsupported_mime`, `capability_not_negotiated`, `plugin_changed` |
 | `runs.resume` | command | stream | ownerRun | run | none | — | — | `run_not_found`, `interrupt_not_open`, `capability_not_negotiated`, `plugin_changed` |
 | `runs.subscribe` | subscription | stream | none | run | none | — | — | `run_not_found`, `run_not_root`, `run_waiting`, `run_finished`, `stale_segment`, `replay_cursor_invalid`, `replay_unavailable`, `capability_not_negotiated` |
 | `runs.cancel` | command | unary | replayResponse | none | none | — | — | `run_not_found`, `run_finished`, `session_busy`, `capability_not_negotiated` |
@@ -96,20 +96,20 @@ Protocol `2026-10-29.1` · 104 methods
 | `approval.setMode` | command | unary | replayResponse | none | none | — | — | — |
 | `approval.listRules` | query | unary | none | none | none | — | — | — |
 | `approval.forgetRule` | command | unary | replayResponse | none | none | — | — | — |
-| `goals.start` | command | unary | replayResponse | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
+| `goals.start` | command | unary | replayResponse | none | none | — | `goals` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `capability_not_negotiated` |
 | `goals.update` | command | unary | replayResponse | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
 | `goals.clear` | command | unary | replayResponse | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
 | `goals.get` | query | unary | none | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
 | `goals.stop` | command | unary | replayResponse | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
 | `goals.resume` | command | unary | replayResponse | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
-| `providers.list` | query | unary | none | none | none | — | — | — |
-| `providers.update` | command | unary | replayResponse | none | none | — | — | — |
-| `providers.test` | query | unary | none | none | none | — | — | — |
-| `models.list` | query | unary | none | none | none | — | — | `provider_error` |
+| `providers.list` | query | unary | none | none | none | — | — | `plugin_unavailable`, `plugin_stale` |
+| `providers.update` | command | unary | replayResponse | none | none | — | — | `plugin_unavailable`, `plugin_stale` |
+| `providers.test` | query | unary | none | none | none | — | — | `plugin_unavailable`, `plugin_stale` |
+| `models.list` | query | unary | none | none | none | — | — | `plugin_unavailable`, `plugin_stale`, `provider_error` |
 | `models.getUtilityRole` | query | unary | none | none | none | — | — | — |
-| `models.setUtilityRole` | command | unary | replayResponse | none | none | — | — | — |
+| `models.setUtilityRole` | command | unary | replayResponse | none | none | — | — | `plugin_unavailable`, `plugin_stale` |
 | `models.getEmbeddingRole` | query | unary | none | none | none | — | — | — |
-| `models.setEmbeddingRole` | command | unary | replayResponse | none | none | — | — | — |
+| `models.setEmbeddingRole` | command | unary | replayResponse | none | none | — | — | `plugin_unavailable`, `plugin_stale` |
 | `tools.list` | query | unary | none | none | none | — | — | — |
 | `tools.invoke` | command | unary | replayResponse | none | none | — | — | `workspace_unavailable`, `path_outside_root` |
 | `usage.session` | query | unary | none | none | none | — | — | `session_not_found` |

@@ -3,12 +3,12 @@ package bootstrap
 import (
 	"context"
 	"fmt"
-	"github.com/Tangerg/flame/qimu"
 
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/qimu"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
-	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices"
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
@@ -31,6 +31,7 @@ import (
 // connection adapter. Bootstrap is the composition root that joins them; the
 // generic toolset does not expose application integration ports.
 type toolEnvironment struct {
+	models          modelEnvironment
 	tools           toolset.Built
 	mcp             *mcp.Pool
 	memory          *pluginservices.Memory
@@ -39,7 +40,7 @@ type toolEnvironment struct {
 	pluginCalls     *pluginservices.CommandCalls
 	callComposition *pluginservices.CallComposition
 	modelCallbacks  []qimumcp.Callback
-	utilityModel    models.AuxiliaryResolver
+	utilityModel    modeladapter.AuxiliaryResolver
 	closers         []*teardownStep
 	admission       *qimu.Admission
 }
@@ -48,10 +49,11 @@ type toolEnvironment struct {
 // process-owned tool runtime. Keeping the contract as one value lets construction
 // transfer every acquisition to runtimeLifetime even when construction fails.
 type toolEnvironmentDependencies struct {
-	framework      frameworkComposition
-	modelServices  modelEnvironment
-	workspaceScope *workspace.Scope
-	conversation   interface {
+	framework        frameworkComposition
+	defaultSelection modelchoice.Selection
+	callbacks        *qimumcp.Callbacks
+	workspaceScope   *workspace.Scope
+	conversation     interface {
 		Read(context.Context, string) ([]chat.Message, error)
 	}
 	publish        invalidation.Publish
@@ -73,13 +75,9 @@ type toolEnvironmentBuilder func(context.Context, toolEnvironmentDependencies) (
 
 func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies) (toolEnvironment, error) {
 	cfg := deps.config
-	prepareTool, err := pluginservices.NewToolPreparation(pluginservices.ToolPreparationConfig{Installations: cfg.stores.Installations, Callbacks: deps.modelServices.callbacks, Embeddings: deps.modelServices.liveEmbedder.Resolve, Invalidations: deps.publish})
-	if err != nil {
-		return toolEnvironment{}, err
-	}
 	admission := cfg.stores.Admission
 	commands, callers := deps.framework.commands, deps.framework.callers
-	mcpPool, err := mcp.Open(ctx, deps.lifetime, deps.mcp.servers, cfg.stores.MCPAuthorization(), deps.registry, deps.modelServices.callbacks, deps.publish, callers, deps.framework.installed)
+	mcpPool, err := mcp.Open(ctx, deps.lifetime, deps.mcp.servers, cfg.stores.MCPAuthorization(), deps.registry, deps.callbacks, deps.publish, callers, deps.framework.installed)
 	if err != nil {
 		return toolEnvironment{}, fmt.Errorf("runtime: open MCP connections: %w", err)
 	}
@@ -99,25 +97,47 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		return environment, err
 	}
 	environment.pluginCalls = commandCalls
-	environment.callComposition, err = pluginservices.NewCallComposition(commandCalls, deps.modelServices.callbacks, admission)
+	providerAdapters := cfg.modelProviders
+	if providerAdapters == nil {
+		installed, err := pluginservices.NewModelProviders(pluginservices.ModelProvidersConfig{
+			Lifetime: deps.lifetime, Framework: deps.framework.host, Admission: admission, Installations: cfg.stores.Installations,
+			Selections: cfg.stores.ProviderSelections, Connections: mcpPool, Callbacks: deps.callbacks,
+		})
+		if err != nil {
+			return environment, err
+		}
+		environment.closers = append(environment.closers, terminalStep(func(ctx context.Context) error { return installed.Close(context.WithoutCancel(ctx)) }))
+		providerAdapters = installed
+	}
+	modelServices, err := buildModelEnvironment(ctx, cfg, deps.defaultSelection, deps.callbacks, providerAdapters)
 	if err != nil {
 		return environment, err
 	}
-	environment.modelCallbacks, err = environment.callComposition.ModelCallbacks(deps.modelServices.chatResolver)
+	environment.models = modelServices
+	prepareTool, err := pluginservices.NewToolPreparation(pluginservices.ToolPreparationConfig{Installations: cfg.stores.Installations, Callbacks: deps.callbacks, Embeddings: modelServices.liveEmbedder.Resolve, Invalidations: deps.publish})
 	if err != nil {
 		return environment, err
 	}
-	embedding, err := pluginservices.EmbeddingRoleCallback(deps.modelServices.liveEmbedder.Resolve)
+	environment.callComposition, err = pluginservices.NewCallComposition(commandCalls, deps.callbacks, admission)
+	if err != nil {
+		return environment, err
+	}
+	environment.modelCallbacks, err = environment.callComposition.ModelCallbacks(modelServices.chatResolver)
+	if err != nil {
+		return environment, err
+	}
+	embedding, err := pluginservices.EmbeddingRoleCallback(modelServices.liveEmbedder.Resolve)
 	if err != nil {
 		return environment, err
 	}
 	environment.modelCallbacks = append(environment.modelCallbacks, embedding)
-	utility, err := modeladapter.LiveUtilityModel(deps.modelServices.chatResolver, deps.modelServices.defaultSelection, deps.modelServices.utilityRoleState, environment.callComposition)
+	utility, err := modeladapter.LiveUtilityModel(modelServices.chatResolver, modelServices.defaultSelection, modelServices.utilityRoleState, environment.callComposition)
 	if err != nil {
 		return environment, err
 	}
 	environment.utilityModel = environment.callComposition.Auxiliary(utility)
-	environment.memory, err = pluginservices.NewMemory(pluginservices.MemoryConfig{Installations: cfg.stores.Installations, Connections: mcpPool, Callbacks: deps.modelServices.callbacks, Utility: environment.utilityModel, Embeddings: deps.modelServices.liveEmbedder.Resolve, Conversation: deps.conversation, Commands: commandCalls})
+	environment.models.utilityModel = environment.utilityModel
+	environment.memory, err = pluginservices.NewMemory(pluginservices.MemoryConfig{Installations: cfg.stores.Installations, Connections: mcpPool, Callbacks: deps.callbacks, Utility: environment.utilityModel, Embeddings: modelServices.liveEmbedder.Resolve, Conversation: deps.conversation, Commands: commandCalls})
 	if err != nil {
 		return environment, err
 	}
@@ -126,7 +146,7 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		return environment, fmt.Errorf("runtime: user skill source: %w", err)
 	}
 	environment.skillLearning, err = pluginservices.NewSkillLearning(pluginservices.SkillLearningConfig{
-		Commands: commandCalls, Callbacks: deps.modelServices.callbacks, Utility: environment.utilityModel,
+		Commands: commandCalls, Callbacks: deps.callbacks, Utility: environment.utilityModel,
 		Conversation: deps.conversation, Source: skillSource, Proposals: deps.skillProposals, Archives: deps.skillArchives,
 	})
 	if err != nil {

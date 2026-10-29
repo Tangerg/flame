@@ -36,7 +36,7 @@ type authorizedTool struct {
 }
 
 func (t authorizedTool) Unwrap() toolcontract.Tool { return t.Tool }
-func (t authorizedTool) Call(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
+func (t authorizedTool) Call(ctx context.Context, invocation toolcontract.Invocation) (_ toolcontract.Result, returned error) {
 	if err := t.admit(ctx); err != nil {
 		return toolcontract.Result{}, err
 	}
@@ -65,7 +65,7 @@ func (t authorizedTool) Call(ctx context.Context, invocation toolcontract.Invoca
 	if release == nil {
 		return toolcontract.Result{}, errors.New("mcp: prepared tool call requires release")
 	}
-	defer release()
+	defer func() { returned = errors.Join(returned, release()) }()
 	if call == nil {
 		return toolcontract.Result{}, errors.New("mcp: prepared tool call is required")
 	}

@@ -446,6 +446,14 @@
       },
       "errors": [
         {
+          "code": -32045,
+          "message": "plugin_unavailable"
+        },
+        {
+          "code": -32043,
+          "message": "plugin_stale"
+        },
+        {
           "code": -32005,
           "message": "workspace_unavailable"
         }
@@ -560,6 +568,14 @@
         }
       },
       "errors": [
+        {
+          "code": -32045,
+          "message": "plugin_unavailable"
+        },
+        {
+          "code": -32043,
+          "message": "plugin_stale"
+        },
         {
           "code": -32002,
           "message": "session_not_found"
@@ -730,6 +746,14 @@
         }
       },
       "errors": [
+        {
+          "code": -32045,
+          "message": "plugin_unavailable"
+        },
+        {
+          "code": -32043,
+          "message": "plugin_stale"
+        },
         {
           "code": -32002,
           "message": "session_not_found"
@@ -1237,6 +1261,14 @@
         }
       },
       "errors": [
+        {
+          "code": -32045,
+          "message": "plugin_unavailable"
+        },
+        {
+          "code": -32043,
+          "message": "plugin_stale"
+        },
         {
           "code": -32002,
           "message": "session_not_found"
@@ -7134,6 +7166,14 @@
       },
       "errors": [
         {
+          "code": -32045,
+          "message": "plugin_unavailable"
+        },
+        {
+          "code": -32043,
+          "message": "plugin_stale"
+        },
+        {
           "code": -32002,
           "message": "session_not_found"
         },
@@ -7544,6 +7584,16 @@
           "$ref": "schema.json#/$defs/PageOfProvider"
         }
       },
+      "errors": [
+        {
+          "code": -32045,
+          "message": "plugin_unavailable"
+        },
+        {
+          "code": -32043,
+          "message": "plugin_stale"
+        }
+      ],
       "x-flame-kind": "unary",
       "x-flame-operation": "query",
       "x-flame-idempotency": "none",
@@ -7602,6 +7652,16 @@
           "$ref": "schema.json#/$defs/Provider"
         }
       },
+      "errors": [
+        {
+          "code": -32045,
+          "message": "plugin_unavailable"
+        },
+        {
+          "code": -32043,
+          "message": "plugin_stale"
+        }
+      ],
       "x-flame-kind": "unary",
       "x-flame-operation": "command",
       "x-flame-idempotency": "replayResponse",
@@ -7655,6 +7715,16 @@
           "$ref": "schema.json#/$defs/ProviderTestResult"
         }
       },
+      "errors": [
+        {
+          "code": -32045,
+          "message": "plugin_unavailable"
+        },
+        {
+          "code": -32043,
+          "message": "plugin_stale"
+        }
+      ],
       "x-flame-kind": "unary",
       "x-flame-operation": "query",
       "x-flame-idempotency": "none",
@@ -7702,6 +7772,14 @@
         }
       },
       "errors": [
+        {
+          "code": -32045,
+          "message": "plugin_unavailable"
+        },
+        {
+          "code": -32043,
+          "message": "plugin_stale"
+        },
         {
           "code": -32001,
           "message": "provider_error"
@@ -7796,6 +7874,16 @@
           "$ref": "schema.json#/$defs/UtilityRole"
         }
       },
+      "errors": [
+        {
+          "code": -32045,
+          "message": "plugin_unavailable"
+        },
+        {
+          "code": -32043,
+          "message": "plugin_stale"
+        }
+      ],
       "x-flame-kind": "unary",
       "x-flame-operation": "command",
       "x-flame-idempotency": "replayResponse",
@@ -7886,6 +7974,16 @@
           "$ref": "schema.json#/$defs/EmbeddingRole"
         }
       },
+      "errors": [
+        {
+          "code": -32045,
+          "message": "plugin_unavailable"
+        },
+        {
+          "code": -32043,
+          "message": "plugin_stale"
+        }
+      ],
       "x-flame-kind": "unary",
       "x-flame-operation": "command",
       "x-flame-idempotency": "replayResponse",

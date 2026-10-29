@@ -51,7 +51,6 @@ func TestCommittedScheduleMutationsSignalChanges(t *testing.T) {
 	var changes int
 	coordinator := mustCoordinator(t, Dependencies{
 		Store:         store,
-		Models:        allowModels{},
 		NewScheduleID: fixedIdentity("sch_created"),
 		OnChange: func() {
 			changes++
@@ -90,7 +89,7 @@ func TestScheduleMutationsPublishOnlyAfterActualCommit(t *testing.T) {
 				fail: operation, deleteFound: true,
 			}
 			var changes int
-			coordinator := mustCoordinator(t, Dependencies{Store: store, Models: allowModels{}, NewScheduleID: fixedIdentity("sch_created"), OnChange: func() {
+			coordinator := mustCoordinator(t, Dependencies{Store: store, NewScheduleID: fixedIdentity("sch_created"), OnChange: func() {
 				changes++
 			}})
 
@@ -117,7 +116,7 @@ func TestScheduleMutationsPublishOnlyAfterActualCommit(t *testing.T) {
 
 	store := &invalidationScheduleStore{runNowStore: &runNowStore{}, deleteFound: false}
 	var changes int
-	coordinator := mustCoordinator(t, Dependencies{Store: store, Models: allowModels{}, OnChange: func() {
+	coordinator := mustCoordinator(t, Dependencies{Store: store, OnChange: func() {
 		changes++
 	}})
 	if err := coordinator.Delete(t.Context(), "sch_missing"); err != nil {

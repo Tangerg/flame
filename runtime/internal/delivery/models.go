@@ -15,7 +15,7 @@ const (
 )
 
 func registerModels(registry *Registry) {
-	registry.query(MethodMeta{Name: modelsList, GoName: "ListModels", Errors: []string{protocol.ErrProviderError.Error()}},
+	registry.query(MethodMeta{Name: modelsList, GoName: "ListModels", Errors: modelProviderErrors(protocol.ErrProviderError.Error())},
 		func(service interface {
 			ListModels(context.Context, protocol.ListModelsRequest) (*protocol.Page[protocol.Model], error)
 		}, ctx context.Context, request protocol.ListModelsRequest) (*protocol.Page[protocol.Model], error) {
@@ -29,7 +29,7 @@ func registerModels(registry *Registry) {
 			return service.GetUtilityRole(ctx)
 		})
 
-	registry.command(MethodMeta{Name: modelsSetUtilityRole, GoName: "SetUtilityRole"},
+	registry.command(MethodMeta{Name: modelsSetUtilityRole, GoName: "SetUtilityRole", Errors: modelProviderErrors()},
 		func(service interface {
 			SetUtilityRole(context.Context, protocol.UtilityRole) (*protocol.UtilityRole, error)
 		}, ctx context.Context, request protocol.UtilityRole) (*protocol.UtilityRole, error) {
@@ -43,10 +43,14 @@ func registerModels(registry *Registry) {
 			return service.GetEmbeddingRole(ctx)
 		})
 
-	registry.command(MethodMeta{Name: ModelsSetEmbeddingRole, GoName: "SetEmbeddingRole"},
+	registry.command(MethodMeta{Name: ModelsSetEmbeddingRole, GoName: "SetEmbeddingRole", Errors: modelProviderErrors()},
 		func(service interface {
 			SetEmbeddingRole(context.Context, protocol.EmbeddingRole) (*protocol.EmbeddingRole, error)
 		}, ctx context.Context, request protocol.EmbeddingRole) (*protocol.EmbeddingRole, error) {
 			return service.SetEmbeddingRole(ctx, request)
 		})
+}
+
+func modelProviderErrors(other ...string) []string {
+	return append([]string{protocol.ErrPluginUnavailable.Error(), protocol.ErrPluginStale.Error()}, other...)
 }

@@ -86,7 +86,7 @@ func (m *Memory) Items(ctx context.Context, scope memorycontract.ItemsV2InputSco
 	}
 	return memoryPromptItems(values)
 }
-func (m *Memory) Search(ctx context.Context, project, text string, topK int) ([]execution.MemoryPromptItem, error) {
+func (m *Memory) Search(ctx context.Context, project, text string, topK int) (_ []execution.MemoryPromptItem, returned error) {
 	location, borrowed, err := contributionSession(ctx, m.commands.framework, m.installations, m.commands.selections, m.pool, m.contract)
 	if errors.Is(err, errInactive) {
 		return nil, nil
@@ -104,6 +104,9 @@ func (m *Memory) Search(ctx context.Context, project, text string, topK int) ([]
 	embedder, err := m.embedder(ctx)
 	if err != nil {
 		return nil, err
+	}
+	if embedder != nil {
+		defer func() { returned = errors.Join(returned, embedder.Close(context.WithoutCancel(ctx))) }()
 	}
 	grant, release, err := GrantMemoryModels(ctx, m.callbacks, session, nil, embedder)
 	if err != nil {
@@ -150,7 +153,7 @@ func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintena
 	request := memorycontract.MaintainV1Input{SessionID: input.SessionID, Project: input.WorkspaceCWD, Compacted: input.DurableContextCompacted}
 	request.Conversation.MessageCount = int64(len(messages))
 	request.Conversation.Transcript = models.RenderTranscript(messages)
-	_, err = invokeResolvedCommand[memorycontract.MaintainV1Input, memorycontract.MaintainV1Output](operation.Start(ctx, extension.Automatic, "plugins.automatic", uuid.NewString()), m.commands, memorycontract.MaintainV1Method, request, nil, func(context.Context) (plugins.ContributionBinding, error) { return binding, nil }, func(ctx context.Context, _ plugins.ContributionBinding, original *sdk.ClientSession) (sdk.ParamsBase, func(), error) {
+	_, err = invokeResolvedCommand[memorycontract.MaintainV1Input, memorycontract.MaintainV1Output](operation.Start(ctx, extension.Automatic, "plugins.automatic", uuid.NewString()), m.commands, memorycontract.MaintainV1Method, request, nil, func(context.Context) (plugins.ContributionBinding, error) { return binding, nil }, func(ctx context.Context, _ plugins.ContributionBinding, original *sdk.ClientSession) (sdk.ParamsBase, func() error, error) {
 		model, releaseModel, err := m.utility(ctx, models.AuxiliaryBudget{MaxInputBytes: memorycontract.MaxModelInputBytes, MaxOutputTokens: memorycontract.MaxModelOutputTokens})
 		if err != nil {
 			return sdk.ParamsBase{}, nil, err
@@ -160,18 +163,16 @@ func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintena
 		}
 		grant, release, err := GrantMemoryModels(ctx, m.callbacks, original, model.Model(), nil)
 		if err != nil {
-			releaseModel()
-			return sdk.ParamsBase{}, nil, err
+			return sdk.ParamsBase{}, nil, errors.Join(err, releaseModel())
 		}
 		metadata, err := qimumcp.CallbackMetadata(grant)
 		if err != nil {
 			release()
-			releaseModel()
-			return sdk.ParamsBase{}, nil, err
+			return sdk.ParamsBase{}, nil, errors.Join(err, releaseModel())
 		}
-		return metadata, func() {
+		return metadata, func() error {
 			release()
-			releaseModel()
+			return releaseModel()
 		}, nil
 	})
 	return err

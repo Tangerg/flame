@@ -59,7 +59,14 @@ Model failures use `chat.CallFailure` and `chat.ClassifyFailure` for the complet
 invocation. Nested failures cannot replace that classification, and known
 generation remains available when later publication fails. Custom JSON codecs
 describe their wire model with `JSONSchemaModel`.
-Endpoint model discovery calls the same Scope binding's `ListModels` API;
+The installed [model adapter](../plugins/providers/README.md) owns SDK clients,
+provider profiles, native streaming, counting, embeddings and endpoint discovery.
+Runtime captures its exact installation, original construction receipt and model
+facts before staging a Run. Restart reopens that receipt without consulting current
+credentials or provider selection. Request admission includes the full installed
+process frame; compaction receives those same captured limits.
+
+Endpoint model discovery in that backend calls the same Scope binding's `ListModels` API;
 Scope owns authentication, HTTP admission and pagination, while Flame supplies
 its resource budgets and product identity rules. Connection configuration contains
 no model identity; chat and embedding construction receive the selected model,
@@ -214,8 +221,9 @@ consumers are regenerated from that owner; arbitrary string maps are not accepte
 
 [`model`](../packages/go-sdk/model/README.md) owns that immutable public choice for Runtime and
 independent authors. [`model/catalog`](../packages/go-sdk/model/catalog/README.md) applies the shared
-released Scope catalog's effort and modality facts without provider I/O or model
-inference. Former private selection/catalog implementations are removed. Moving
+model owner's captured effort and modality facts without a static vendor lookup
+or model inference. An unreported reasoning default remains unknown. Schedules
+retain exact choices; Runtime performs model admission when creating their Run. Former private selection/catalog implementations are removed. Moving
 the schema owner changes generated reference identities; rebuild Schedules
 contracts, typed consumers and component bytes together.
 

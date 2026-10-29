@@ -377,7 +377,7 @@ func (f *fakeRuns) WaitSessionStartable(ctx context.Context, _ string) error {
 	}
 }
 
-func (*fakeRuns) AdmitSelection(modelchoice.Selection) error { return nil }
+func (*fakeRuns) AdmitSelection(context.Context, modelchoice.Selection) error { return nil }
 
 // eventSequence preserves the fake's hold-then-yield-terminal timing and the
 // production subscription's caller-cancellation behavior behind its iter.Seq
@@ -606,8 +606,8 @@ type terminalRaceRuns struct {
 	incarnation string
 }
 
-func (*terminalRaceRuns) WaitSessionStartable(context.Context, string) error { return nil }
-func (*terminalRaceRuns) AdmitSelection(modelchoice.Selection) error         { return nil }
+func (*terminalRaceRuns) WaitSessionStartable(context.Context, string) error          { return nil }
+func (*terminalRaceRuns) AdmitSelection(context.Context, modelchoice.Selection) error { return nil }
 
 func (t *terminalRaceRuns) Start(ctx context.Context, cmd runs.StartCommand) (runs.StartResult, error) {
 	t.session = cmd.SessionID

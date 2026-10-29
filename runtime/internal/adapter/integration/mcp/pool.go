@@ -221,6 +221,25 @@ func (p *Pool) InstallationActivation(ctx context.Context, id mcpserver.ID) (_ p
 	return p.inner.activation(session)
 }
 
+// AwaitInstallationActivation joins the source's already owned connection
+// attempt. Callers wait outside Host admission, then retain and validate this
+// exact projection under admission; waiting never starts a replacement attempt.
+func (p *Pool) AwaitInstallationActivation(ctx context.Context, id mcpserver.ID) (_ plugin.Activation, err error) {
+	defer func() { err = connectionError(id, err) }()
+	descriptor, found, err := p.registry.Definition(ctx, id)
+	if err != nil {
+		return plugin.Activation{}, errors.Join(plugin.ErrUnavailable, err)
+	}
+	if !found || !descriptor.Enabled {
+		return plugin.Activation{}, ErrUnavailable
+	}
+	session, err := p.inner.waitSession(ctx, descriptor)
+	if err != nil {
+		return plugin.Activation{}, err
+	}
+	return p.inner.activation(session)
+}
+
 func (p *Pool) BorrowBoundSession(ctx context.Context, id mcpserver.ID, authority flameidentity.Digest) (_ *BorrowedSession, err error) {
 	defer func() { err = connectionError(id, err) }()
 	descriptor, found, err := p.registry.Dispatchable(ctx, id)
@@ -278,7 +297,7 @@ func (p *Pool) OpenRPC(ctx context.Context, id mcpserver.ID, session *sdk.Client
 // toolHost grants through the session that admitted the tool, so a replaced
 // connection generation is refused rather than handed a stale backend's authority.
 func (p *Pool) toolHost(executable Executable) ToolHost {
-	return func(ctx context.Context) (sdk.ParamsBase, func(), error) {
+	return func(ctx context.Context) (sdk.ParamsBase, func() error, error) {
 		borrowed, err := executable.BorrowSession(ctx)
 		if err != nil {
 			return sdk.ParamsBase{}, nil, err
@@ -287,7 +306,7 @@ func (p *Pool) toolHost(executable Executable) ToolHost {
 		if err != nil {
 			return sdk.ParamsBase{}, nil, errors.Join(err, borrowed.Close())
 		}
-		return metadata, func() { release(); _ = borrowed.Close() }, nil
+		return metadata, func() error { release(); return borrowed.Close() }, nil
 	}
 }
 
@@ -310,11 +329,11 @@ type ToolCall func(toolcontract.Invocation) (toolcontract.Result, error)
 // ToolHost opens one installed tool call's canonical host grant through Pool.OpenRPC,
 // its single owner, so a model Tool reaches the same host capability and frozen
 // dependency authority as the backend's plugins.call entry. The caller owns release.
-type ToolHost func(context.Context) (sdk.ParamsBase, func(), error)
+type ToolHost func(context.Context) (sdk.ParamsBase, func() error, error)
 
 // ToolPreparation captures call collaborators for this exact executable. On
 // success the caller owns release, even if final authority admission refuses
 // dispatch. The prepared call owns work and any dispatch-dependent observation.
 // On failure preparation must release any resources it acquired. host opens the
 // canonical installed grant when the preparation wants it.
-type ToolPreparation func(context.Context, Executable, ToolHost) (ToolCall, func(), error)
+type ToolPreparation func(context.Context, Executable, ToolHost) (ToolCall, func() error, error)

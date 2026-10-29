@@ -1,6 +1,7 @@
 package delivery
 
 import (
+	"context"
 	"errors"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -21,5 +22,11 @@ func projectError(err error) *protocol.Failure {
 	if errors.Is(err, portable.ErrInvocationConflict) {
 		return protocol.NewFailure(errors.Join(protocol.ErrIdempotencyConflict, err), "idempotency key already binds a different command")
 	}
-	return protocol.ProjectError(err)
+	if _, found := errors.AsType[*protocol.Failure](err); found {
+		return protocol.ProjectError(err)
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return protocol.ProjectError(err)
+	}
+	return protocol.ProjectError(wirePluginError(err))
 }

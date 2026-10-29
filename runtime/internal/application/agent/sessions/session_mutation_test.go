@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -617,3 +618,22 @@ func (c cancelingTransientState) ForgetSessionContext(sessionID string) {
 	c.stores.ForgetSessionContext(sessionID)
 }
 func (c cancelingTransientState) ForgetWorkspace(root string) { c.stores.ForgetWorkspace(root) }
+
+type unavailableArchiveModels struct{ calls *int }
+
+func (m unavailableArchiveModels) AdmitSelection(context.Context, modelchoice.Selection) error {
+	*m.calls++
+	return errors.New("current model adapter is unavailable")
+}
+func TestRestorePortableHistoryDoesNotRequireCurrentModelAdapter(t *testing.T) {
+	stores := newMutationStores("")
+	stores.pending = map[string][]runs.Pending{}
+	calls := 0
+	coordinator := mustNewCoordinator(testDependencies(stores, Dependencies{Models: unavailableArchiveModels{calls: &calls}, Paths: testWorkspaceResolver{}, ExecutionReleaser: mutationExecutions{operations: &stores.operations}}))
+	at := time.Unix(1, 0).UTC()
+	selection := testsupport.MustModelSelection("retired-provider", "historical-model")
+	view, err := coordinator.RestorePortableSession(t.Context(), PortableSnapshot{Session: PortableSession{ID: "ses_1", Title: "historical", CWD: "/workspace", Selection: selection, CreatedAt: at, UpdatedAt: at}})
+	if err != nil || calls != 0 || view.Provider != selection.Provider() || view.Model != selection.Model() {
+		t.Fatalf("history acquired current model authority: view=%+v admissions=%d %v", view, calls, err)
+	}
+}

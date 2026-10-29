@@ -1,4 +1,4 @@
-package model
+package main
 
 import (
 	"context"
@@ -17,50 +17,18 @@ import (
 
 const defaultOpenAIEmbeddingModel = "text-embedding-3-small"
 
-// embeddingBuildFunc constructs an embedding adapter for one (key, model, baseURL).
-type embeddingBuildFunc func(ctx context.Context, spec clientSpec, opts embedding.Options) (embedding.Model, error)
+type embeddingBuildFunc func(context.Context, clientSpec, embedding.Options) (embedding.Model, error)
 
-type embeddingProviderProfile struct {
-	models modelPolicy
-	build  embeddingBuildFunc
-}
-
-func (p embeddingProviderProfile) validate() error {
-	if err := p.models.validate(); err != nil {
-		return err
-	}
-	if p.build == nil {
-		return errors.New("builder is nil")
-	}
-	return nil
-}
-
-// buildEmbeddingModel wires an embedding.Model for one provider+model from
-// the provider profile, threading the credential and resolved endpoint.
 func buildEmbeddingModel(ctx context.Context, spec clientSpec, modelID string) (embedding.Model, error) {
-	if err := spec.validate(); err != nil {
-		return nil, err
-	}
 	identity, err := modelchoice.NewModelIdentity(modelID)
 	if err != nil {
-		return nil, fmt.Errorf("model: embedding model: %w", err)
+		return nil, fmt.Errorf("model provider: embedding identity: %w", err)
 	}
-	provider, found := providers.lookup(spec.provider)
-	if !found || provider.embedding == nil {
-		return nil, fmt.Errorf("model: provider %q has no embeddings adapter", spec.provider)
+	profile, ok := providers.lookup(Provider(spec.connection.Provider))
+	if !ok || profile.embeddingBuilder == nil {
+		return nil, errors.New("model provider: embeddings are unavailable")
 	}
-	endpoint, err := provider.endpoint.resolve(spec.endpoint)
-	if err != nil {
-		return nil, fmt.Errorf("model: provider %q: %w", spec.provider, err)
-	}
-	spec = spec.withEndpoint(endpoint)
-	profile := provider.embedding
-	opts := embedding.Options{Model: identity.String()}
-	model, err := profile.build(ctx, spec, opts)
-	if err != nil {
-		return nil, fmt.Errorf("model: build %s embedding model: %w", spec.provider, err)
-	}
-	return model, nil
+	return profile.embeddingBuilder(ctx, spec, embedding.Options{Model: identity.String()})
 }
 
 func buildOpenAIEmbeddingModel(ctx context.Context, s clientSpec, o embedding.Options) (embedding.Model, error) {

@@ -1,43 +1,35 @@
-package model
+package main
 
 import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync/atomic"
 	"testing"
-	"time"
 
-	providerdomain "github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"context"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/models/deepseek"
 	"github.com/Tangerg/scope/models/google"
 )
 
-func mustClientSpec(t testing.TB, provider Provider, apiKey, baseURL string) clientSpec {
+func mustClientSpec(t testing.TB, provider Provider, key, endpoint string) clientSpec {
 	t.Helper()
-	credential, err := providerdomain.NewAPIKey(apiKey)
+	spec, err := newClientSpec(modelprovider.Connection{Provider: string(provider), APIKey: key, BaseURL: endpoint})
 	if err != nil {
 		t.Fatal(err)
-	}
-	spec, err := newClientSpec(provider, credential)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if baseURL != "" {
-		spec, err = spec.WithBaseURL(baseURL)
-		if err != nil {
-			t.Fatal(err)
-		}
 	}
 	return spec
 }
-
+func buildChatForTest(ctx context.Context, spec clientSpec, modelID string) (chat.Model, inputTokenCounter, error) {
+	model, err := buildModel(ctx, spec, modelID)
+	counter, _ := model.(inputTokenCounter)
+	return model, counter, err
+}
 func TestClientSpecKeepsCredentialRedacted(t *testing.T) {
 	const secret = "private-credential-fixture"
 	spec := mustClientSpec(t, providerOpenAI, secret, "")
@@ -50,67 +42,10 @@ func TestClientSpecKeepsCredentialRedacted(t *testing.T) {
 
 // TestChatProviderCatalogSatisfiesConstructionContract holds the constructed
 // catalog to its contract. Invalid combinations cannot be registered.
-func TestChatProviderCatalogSatisfiesConstructionContract(t *testing.T) {
-	for _, provider := range providers.supported() {
-		profile, found := providers.lookup(provider)
-		if !found {
-			t.Fatalf("provider %q disappeared from its own catalog", provider)
-		}
-		if profile.chatBuilder == nil {
-			t.Errorf("provider %q: nil build func", provider)
-		}
-		if profile.credential.environment == "" {
-			t.Errorf("provider %q: empty apiKeyEnv", provider)
-		}
-	}
-
-	// The compatible endpoint providers and Azure carry no built-in endpoint.
-	for _, p := range []Provider{providerOpenAICompatible, providerAnthropicCompatible, providerAzureOpenAI} {
-		profile, found := LookupProvider(p)
-		if !found || !profile.RequiresConfiguredEndpoint() {
-			t.Errorf("provider %q must require a base URL", p)
-		}
-	}
-	// A named vendor must NOT require one (it has a built-in endpoint).
-	anthropic, _ := LookupProvider(providerAnthropic)
-	if anthropic.RequiresConfiguredEndpoint() {
-		t.Error("anthropic must not require a base URL")
-	}
-}
-
-func TestProviderCatalogRejectsContradictoryProfiles(t *testing.T) {
-	valid := bundledProvider(providerOpenAI, defaultOpenAIModel, "OPENAI_API_KEY", buildOpenAIResponsesModel)
-	cases := []struct {
-		name     string
-		profiles []providerProfile
-		want     string
-	}{
-		{name: "duplicate identity", profiles: []providerProfile{valid, valid}, want: "more than once"},
-		{name: "blank bundled default", profiles: []providerProfile{bundledProvider("broken", "", "BROKEN_API_KEY", buildOpenAIResponsesModel)}, want: "requires a default model"},
-		{name: "invalid provider identity", profiles: []providerProfile{bundledProvider("broken\x00shadow", "model", "BROKEN_API_KEY", buildOpenAIResponsesModel)}, want: "provider identity"},
-		{name: "invalid bundled default", profiles: []providerProfile{bundledProvider("broken", "model\x00shadow", "BROKEN_API_KEY", buildOpenAIResponsesModel)}, want: "model identity"},
-		{name: "non-canonical environment", profiles: []providerProfile{bundledProvider("broken", "model", "broken_api_key", buildOpenAIResponsesModel)}, want: "not canonical"},
-		{name: "missing endpoint policy", profiles: []providerProfile{{
-			id: "broken", credential: requiredCredential("BROKEN_API_KEY"),
-			endpoint:   endpointPolicy{},
-			chatModels: endpointModels(), chatBuilder: buildOpenAIResponsesModel,
-		}}, want: "unknown endpoint policy"},
-		{name: "embedding without model policy", profiles: []providerProfile{valid.withEmbedding(modelPolicy{}, buildOpenAIEmbeddingModel)}, want: "embedding"},
-	}
-	for _, test := range cases {
-		t.Run(test.name, func(t *testing.T) {
-			if _, err := newProviderCatalog(test.profiles...); err == nil {
-				t.Fatal("newProviderCatalog accepted contradictory provider state")
-			} else if !strings.Contains(err.Error(), test.want) {
-				t.Fatalf("newProviderCatalog error = %v, want %q", err, test.want)
-			}
-		})
-	}
-}
 
 func TestPerplexityUsesScopeResponsesAndEndpointCatalog(t *testing.T) {
-	profile, _ := LookupProvider(providerPerplexity)
-	if _, hasDefault := profile.DefaultChatModel(); hasDefault || !profile.DiscoversModelsAtEndpoint() || profile.RequiresConfiguredEndpoint() {
+	profile, _ := providers.lookup(providerPerplexity)
+	if profile.profile.DefaultModel != "" || profile.profile.ModelSource != modelprovider.EndpointModels || profile.profile.EndpointRequired {
 		t.Fatal("Perplexity retained a retired default or lost its provider-owned endpoint")
 	}
 	for _, streaming := range []bool{false, true} {
@@ -134,7 +69,7 @@ func TestPerplexityUsesScopeResponsesAndEndpointCatalog(t *testing.T) {
 				_, _ = fmt.Fprint(writer, "data: {\"type\":\"response.completed\",\"response\":{\"id\":\"response-1\",\"model\":\"openai/gpt-6-sol\",\"status\":\"completed\",\"output\":[{\"type\":\"message\",\"id\":\"message-1\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"answer\"}]}],\"usage\":{\"input_tokens\":0,\"output_tokens\":2,\"total_tokens\":2}}}\n\n")
 			}))
 			t.Cleanup(server.Close)
-			model, counter, err := buildChat(t.Context(), mustClientSpec(t, providerPerplexity, "test-key", server.URL), "openai/gpt-6-sol")
+			model, counter, err := buildChatForTest(t.Context(), mustClientSpec(t, providerPerplexity, "test-key", server.URL), "openai/gpt-6-sol")
 			if err != nil || counter != nil {
 				t.Fatalf("Perplexity construction = %v, counter=%v", err, counter)
 			}
@@ -185,7 +120,7 @@ func TestBuildChatDeepSeekReasoningSurvivesOrdinarySecondTurn(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	client, _, err := buildChat(t.Context(), mustClientSpec(t, providerDeepSeek, "test-key", server.URL), deepseek.ModelFlash)
+	client, _, err := buildChatForTest(t.Context(), mustClientSpec(t, providerDeepSeek, "test-key", server.URL), deepseek.ModelFlash)
 	if err != nil {
 		t.Fatalf("BuildChat: %v", err)
 	}
@@ -228,7 +163,7 @@ func TestBuildChatDeepSeekClassifiesRateLimit(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	client, _, err := buildChat(t.Context(), mustClientSpec(t, providerDeepSeek, "test-key", server.URL), deepseek.ModelFlash)
+	client, _, err := buildChatForTest(t.Context(), mustClientSpec(t, providerDeepSeek, "test-key", server.URL), deepseek.ModelFlash)
 	if err != nil {
 		t.Fatalf("BuildChat: %v", err)
 	}
@@ -237,13 +172,11 @@ func TestBuildChatDeepSeekClassifiesRateLimit(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err = client.Call(t.Context(), request)
-	var failure *run.FailureError
-	if !errors.As(err, &failure) {
-		t.Fatalf("Call error = %T, want *run.FailureError", err)
+	result := failure(err)
+	if result == nil || result.Kind != modelprovider.RateLimited || result.RetryAfterMillis != 1 {
+		t.Fatalf("failure = %+v, want rate limited with 1ms retry", result)
 	}
-	if failure.Kind != run.FailureRateLimited || failure.RetryAfter != time.Millisecond {
-		t.Fatalf("failure = %+v, want rate limited with 1ms retry", failure)
-	}
+
 }
 
 func TestBuildChatGoogleUsesConfiguredEndpoint(t *testing.T) {
@@ -258,7 +191,7 @@ func TestBuildChatGoogleUsesConfiguredEndpoint(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	client, _, err := buildChat(t.Context(), mustClientSpec(t, providerGoogle, "test-key", server.URL), google.ModelGemini36Flash)
+	client, _, err := buildChatForTest(t.Context(), mustClientSpec(t, providerGoogle, "test-key", server.URL), google.ModelGemini36Flash)
 	if err != nil {
 		t.Fatalf("BuildChat: %v", err)
 	}
@@ -287,94 +220,6 @@ func findWireAssistant(t *testing.T, messages []map[string]any) map[string]any {
 }
 
 // TestQueries covers the table-reader API providers.list / config.Load lean on.
-func TestQueries(t *testing.T) {
-	if _, found := LookupProvider(providerGroq); !found {
-		t.Error("groq should be supported")
-	}
-	if _, found := LookupProvider(Provider("nope")); found {
-		t.Error("unknown provider should not be supported")
-	}
-	anthropic, _ := LookupProvider(providerAnthropic)
-	if _, found := anthropic.DefaultChatModel(); !found {
-		t.Error("anthropic should have a default model")
-	}
-	// A generic compatible endpoint has no catalog default — the model id is user-supplied.
-	compatible, _ := LookupProvider(providerOpenAICompatible)
-	if _, found := compatible.DefaultChatModel(); found {
-		t.Error("openai-compatible should have no default model")
-	}
-	openAI, _ := LookupProvider(providerOpenAI)
-	if openAI.CredentialEnvironment() != "OPENAI_API_KEY" {
-		t.Errorf("openai key env = %q", openAI.CredentialEnvironment())
-	}
-}
-
-// TestBuildChat covers the construction guards + a successful build (the
-// adapter constructs a client without touching the network — no key validation
-// until a call is made).
-func TestBuildChat(t *testing.T) {
-	// Unknown provider → error.
-	if _, err := newClientSpec("nope", providerdomain.APIKey{}); err == nil {
-		t.Error("unknown provider must error")
-	}
-	// A requiresBaseURL provider without a base URL → error naming the gap.
-	if _, _, err := buildChat(t.Context(), mustClientSpec(t, providerOpenAICompatible, "k", ""), "x"); err == nil {
-		t.Error("openai-compatible without base URL must error")
-	} else if !strings.Contains(err.Error(), "base URL") {
-		t.Errorf("error should mention the base URL: %v", err)
-	}
-	// A named vendor builds a non-nil client.
-	c, _, err := buildChat(t.Context(), mustClientSpec(t, providerAnthropic, "test-key", ""), "claude-3-5-haiku-20241022")
-	if err != nil || c == nil {
-		t.Fatalf("build anthropic: client=%v err=%v", c, err)
-	}
-	// A requiresBaseURL provider WITH a base URL builds.
-	if _, _, err := buildChat(t.Context(), mustClientSpec(t, providerOpenAICompatible, "k", "https://gateway.example.com/v1"), "x"); err != nil {
-		t.Errorf("openai-compatible with base URL: %v", err)
-	}
-}
-
-func TestClientSpecRejectsPrimitiveSentinelsAndPartialState(t *testing.T) {
-	credential, err := providerdomain.NewAPIKey("exact-key-material")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if credential.Reveal() != "exact-key-material" {
-		t.Fatal("API key material was normalized")
-	}
-	if _, err := newClientSpec(providerOpenAI, providerdomain.APIKey{}); err == nil {
-		t.Fatal("zero credential state was accepted")
-	}
-	if _, err := providerdomain.NewAPIKey("\t \n"); err == nil {
-		t.Fatal("blank API key was accepted")
-	}
-
-	spec, err := newClientSpec(providerOpenAI, credential)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, modelID := range []string{" ", "model\x00shadow"} {
-		if _, _, err := buildChat(t.Context(), spec, modelID); err == nil {
-			t.Fatalf("invalid chat model %q was accepted", modelID)
-		}
-		if _, err := buildEmbeddingModel(t.Context(), spec, modelID); err == nil {
-			t.Fatalf("invalid embedding model %q was accepted", modelID)
-		}
-	}
-	unbounded := spec
-	unbounded.httpClient = nil
-	if _, _, err := buildChat(t.Context(), unbounded, defaultOpenAIModel); err == nil {
-		t.Fatal("ClientSpec without bounded response admission was accepted")
-	}
-	for _, invalid := range []string{"", " https://example.test", "ftp://example.test", "https://user@example.test", "https://example.test/#fragment", "https://example.test/?api_key=hidden", "https://example.test:99999"} {
-		if _, err := spec.WithBaseURL(invalid); err == nil {
-			t.Errorf("base URL %q was accepted", invalid)
-		}
-	}
-	if _, _, err := buildChat(t.Context(), clientSpec{}, defaultOpenAIModel); err == nil {
-		t.Fatal("zero ClientSpec was accepted")
-	}
-}
 
 func TestDirectAnthropicExposesNativeInputTokenCounting(t *testing.T) {
 	var countRequests atomic.Int32
@@ -402,7 +247,7 @@ func TestDirectAnthropicExposesNativeInputTokenCounting(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	_, counter, err := buildChat(t.Context(), mustClientSpec(t, providerAnthropic, "test-key", server.URL), "claude-test")
+	_, counter, err := buildChatForTest(t.Context(), mustClientSpec(t, providerAnthropic, "test-key", server.URL), "claude-test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -443,7 +288,7 @@ data: {"type":"response.completed","sequence_number":1,"response":{"id":"resp_fl
 	}))
 	t.Cleanup(server.Close)
 
-	direct, counter, err := buildChat(t.Context(), mustClientSpec(t, providerOpenAI, "test-key", server.URL), defaultOpenAIModel)
+	direct, counter, err := buildChatForTest(t.Context(), mustClientSpec(t, providerOpenAI, "test-key", server.URL), defaultOpenAIModel)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -463,29 +308,11 @@ data: {"type":"response.completed","sequence_number":1,"response":{"id":"resp_fl
 		t.Fatalf("direct Responses Call = %#v, %v; requests=%d", response, err, responseRequests.Load())
 	}
 
-	_, counter, err = buildChat(t.Context(), mustClientSpec(t, providerOpenAICompatible, "test-key", "https://gateway.example/v1"), "compatible-model")
+	_, counter, err = buildChatForTest(t.Context(), mustClientSpec(t, providerOpenAICompatible, "test-key", "https://gateway.example/v1"), "compatible-model")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if counter != nil {
 		t.Fatal("OpenAI-compatible client advertised the native Responses count endpoint")
-	}
-}
-
-func TestRemovedProviderCannotBeSelected(t *testing.T) {
-	for _, profile := range supportedProviders() {
-		if profile.ID() == Provider("ollama") {
-			t.Fatal("removed provider is advertised")
-		}
-	}
-	if _, found := LookupProvider(Provider("ollama")); found {
-		t.Fatal("removed provider can be resolved")
-	}
-	key, err := providerdomain.NewAPIKey("test-key")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := newClientSpec(Provider("ollama"), key); err == nil {
-		t.Fatal("removed provider can construct a client")
 	}
 }

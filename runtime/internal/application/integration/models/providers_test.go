@@ -68,15 +68,12 @@ type testCatalog struct {
 	models   map[string][]Model
 }
 
-func (t testCatalog) Supported() []ProviderMetadata { return slices.Clone(t.metadata) }
-
-func (t testCatalog) Metadata(id string) (ProviderMetadata, bool) {
-	for _, metadata := range t.metadata {
-		if metadata.ID() == id {
-			return metadata, true
-		}
+func (t testCatalog) Profiles(context.Context) ([]ProviderProfile, error) {
+	values := make([]ProviderProfile, len(t.metadata))
+	for i, metadata := range t.metadata {
+		values[i] = ProviderProfile{Metadata: metadata, Models: slices.Clone(t.models[metadata.ID()])}
 	}
-	return ProviderMetadata{}, false
+	return values, nil
 }
 
 func providerMetadataFixture(t testing.TB, id string, endpoint ProviderEndpointPolicy, source ProviderModelSource, embedding EmbeddingCapability) ProviderMetadata {
@@ -95,19 +92,6 @@ func optionalAPIKeyProviderMetadataFixture(t testing.TB, id string, endpoint Pro
 		t.Fatal(err)
 	}
 	return metadata
-}
-
-func (t testCatalog) Models(providerID string) []Model {
-	return slices.Clone(t.models[providerID])
-}
-
-func (t testCatalog) LookupModel(providerID, modelID string) (Model, bool) {
-	for _, model := range t.models[providerID] {
-		if model.ID() == modelID {
-			return model, true
-		}
-	}
-	return Model{}, false
 }
 
 func TestListProvidersOwnsCatalogOrder(t *testing.T) {

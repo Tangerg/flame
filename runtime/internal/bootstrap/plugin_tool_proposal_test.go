@@ -131,7 +131,7 @@ func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformRepla
 			if err != nil {
 				t.Fatal(err)
 			}
-			cfg.chatResolver = testChatResolver(client)
+			cfg.modelProviders = testChatResolver(client)
 			r := poMCPOpen(t, cfg)
 			defer func() { r.close() }()
 			reviews := poMCPActivate(r, reviewExamplePackage(t))

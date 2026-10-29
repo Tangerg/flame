@@ -127,7 +127,7 @@ func testReviewReceiptHistoryEntrances(t *testing.T, updateInput, expected strin
 	client := reviewRefusalChat(t, updateInput)
 	cfg := poMCPConfig(t)
 	cfg.approvalMode = approval.ModeYolo
-	cfg.chatResolver = testChatResolver(client)
+	cfg.modelProviders = testChatResolver(client)
 	runtime := poMCPOpen(t, cfg)
 	defer runtime.close()
 	installed := poMCPActivate(runtime, source)

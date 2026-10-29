@@ -20,14 +20,16 @@ import (
 
 const defaultProviderProbeTimeout = 10 * time.Second
 
-// ProviderCatalog supplies static provider and model reference data. The
+// ProviderCatalog supplies one captured provider and model catalog. The
 // coordinator owns visible identity, public order, and the use-case policy that
 // consumes the projection. Slice results transfer ownership to the caller.
 type providerCatalog interface {
-	Supported() []ProviderMetadata
-	Metadata(id string) (ProviderMetadata, bool)
-	Models(providerID string) []Model
-	LookupModel(providerID, modelID string) (Model, bool)
+	Profiles(context.Context) ([]ProviderProfile, error)
+}
+
+type ProviderProfile struct {
+	Metadata ProviderMetadata
+	Models   []Model
 }
 
 var (

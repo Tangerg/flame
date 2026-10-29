@@ -39,7 +39,7 @@ func registerRuns(registry *Registry) {
 	// with no stream behind it.
 	registry.runStreamOwnerCommand(MethodMeta{
 		Name: RunsStart, GoName: "StartRun",
-		Errors: []string{protocol.ErrSessionNotFound.
+		Errors: modelProviderErrors(protocol.ErrSessionNotFound.
 			Error(), protocol.ErrSessionBusy.
 			Error(), protocol.ErrSessionHasActiveRun.
 			Error(), protocol.ErrPromptSourceTooLarge.
@@ -47,7 +47,7 @@ func registerRuns(registry *Registry) {
 			Error(), protocol.ErrCapabilityNotNeg.
 			Error(), protocol.ErrPluginChanged.
 			Error(),
-		},
+		),
 	}, func(service interface {
 		StartRun(context.Context, protocol.StartRunRequest) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error)
 	}, ctx context.Context, request protocol.StartRunRequest,

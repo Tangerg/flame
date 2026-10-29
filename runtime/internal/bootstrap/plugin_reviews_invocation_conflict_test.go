@@ -36,7 +36,7 @@ func TestReviewPrivateInvocationConflictMatchesModelToolAndExecutableCLI(t *test
 	const input = `{"id":"example-review","expectedRevision":1,"status":"resolved"}`
 	cfg := poMCPConfig(t)
 	cfg.approvalMode = approval.ModeYolo
-	cfg.chatResolver = testChatResolver(reviewRefusalChat(t, input))
+	cfg.modelProviders = testChatResolver(reviewRefusalChat(t, input))
 	runtime := poMCPOpen(t, cfg)
 	defer runtime.close()
 	installed := poMCPActivate(runtime, source)

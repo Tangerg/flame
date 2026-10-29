@@ -10,6 +10,7 @@ import (
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/scope/models/catalog"
 )
 
 type auxiliaryCountFunc func(context.Context, *chat.Request) (int64, error)
@@ -20,10 +21,18 @@ func (f auxiliaryCountFunc) CountInputTokens(ctx context.Context, request *chat.
 
 func capacityFixture(t *testing.T, selection modelchoice.Selection, counter InputTokenCounter) SelectedChat {
 	t.Helper()
+	entry, found := catalog.Default.Lookup(selection.Provider(), selection.Model())
+	var metadata *catalog.Model
+	if found {
+		if effort := selection.ReasoningEffort(); effort != "" {
+			entry.Reasoning = catalog.Reasoning{Supported: true, Levels: []string{effort}, DefaultLevel: effort}
+		}
+		metadata = &entry
+	}
 	resolved, err := NewResolvedChat(chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 		t.Fatal("admission executed provider")
 		return nil, nil
-	}), counter)
+	}), counter, metadata)
 	if err != nil {
 		t.Fatal(err)
 	}

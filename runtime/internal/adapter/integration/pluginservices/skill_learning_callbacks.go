@@ -143,7 +143,7 @@ func (s *SkillLearning) grant(ctx context.Context, session *sdk.ClientSession, s
 		if release == nil {
 			return nil, errors.New("skill learning: model release is required")
 		}
-		defer release()
+		defer func() { err = errors.Join(err, release()) }()
 		if lo.IsNil(captured.Model()) {
 			return nil, errors.New("skill learning: model is required")
 		}

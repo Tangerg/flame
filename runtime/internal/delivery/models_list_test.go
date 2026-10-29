@@ -18,16 +18,8 @@ type stubCatalog struct {
 	meta models.ProviderMetadata
 }
 
-func (s stubCatalog) Supported() []models.ProviderMetadata { return []models.ProviderMetadata{s.meta} }
-func (s stubCatalog) Metadata(id string) (models.ProviderMetadata, bool) {
-	if s.meta.ID() == id {
-		return s.meta, true
-	}
-	return models.ProviderMetadata{}, false
-}
-func (stubCatalog) Models(string) []models.Model { return nil }
-func (stubCatalog) LookupModel(string, string) (models.Model, bool) {
-	return models.Model{}, false
+func (s stubCatalog) Profiles(context.Context) ([]models.ProviderProfile, error) {
+	return []models.ProviderProfile{{Metadata: s.meta}}, nil
 }
 
 // stubLister records whether the probe ran and returns canned ids/err.

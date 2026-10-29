@@ -409,3 +409,5 @@ func TestModelGrantRefusesRequestsOutsideCapturedAuthority(t *testing.T) {
 		})
 	}
 }
+
+func (*boundedEmbeddings) Close(context.Context) error { return nil }

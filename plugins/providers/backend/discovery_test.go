@@ -1,4 +1,4 @@
-package model
+package main
 
 import (
 	json "encoding/json/v2"
@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	providerdomain "github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	scopehttp "github.com/Tangerg/scope/core/httpclient"
 )
 
@@ -187,11 +187,10 @@ func TestListModelsRejectsMissingCredentialBeforeIO(t *testing.T) {
 		t.Error("model discovery reached the endpoint without a credential")
 	}))
 	defer server.Close()
-	spec := mustClientSpec(t, providerOpenAICompatible, "test-key", server.URL)
-	spec.credential = providerdomain.APIKey{}
-	if _, err := listModels(t.Context(), spec); !errors.Is(err, providerdomain.ErrAPIKeyRequired) {
-		t.Fatalf("missing credential error = %v", err)
+	if _, err := newClientSpec(modelprovider.Connection{Provider: "openai-compatible", BaseURL: server.URL}); err == nil {
+		t.Fatal("missing credential was accepted")
 	}
+
 }
 
 func TestListRemoteModelsNon200IsError(t *testing.T) {

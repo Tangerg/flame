@@ -65,7 +65,7 @@ func TestLearningGrantBoundsSourceReadsAndRetainsModelAncestry(t *testing.T) {
 		source: learningSourceFunc(func(_ context.Context, name string) (*skillspec.Skill, error) {
 			return &skillspec.Skill{Name: name, Description: "current", Instructions: "read body"}, nil
 		}),
-		utility: func(context.Context, models.AuxiliaryBudget) (models.SelectedChat, func(), error) {
+		utility: func(context.Context, models.AuxiliaryBudget) (models.SelectedChat, func() error, error) {
 			return auxiliaryFixture(textModel(func(ctx context.Context, _ *chat.Request) (string, error) {
 				invocation, err := qimumcp.InvocationFromContext(ctx)
 				if err != nil || invocation.Parent != "original" || invocation.Origin != extension.Automatic || invocation.ID == "original" {
@@ -73,7 +73,7 @@ func TestLearningGrantBoundsSourceReadsAndRetainsModelAncestry(t *testing.T) {
 				}
 				calls.Add(1)
 				return "NO_SKILL", nil
-			})), func() { releases.Add(1) }, nil
+			})), func() error { releases.Add(1); return nil }, nil
 		},
 	}
 	grant, state, release := openLearningGrant(t, ctx, owner)
@@ -128,9 +128,9 @@ func TestLearningGrantBoundsSourceReadsAndRetainsModelAncestry(t *testing.T) {
 
 func TestLearningGrantRejectsForeignModelEnvelopesBeforeResolution(t *testing.T) {
 	var resolutions atomic.Int32
-	owner := &SkillLearning{utility: func(context.Context, models.AuxiliaryBudget) (models.SelectedChat, func(), error) {
+	owner := &SkillLearning{utility: func(context.Context, models.AuxiliaryBudget) (models.SelectedChat, func() error, error) {
 		resolutions.Add(1)
-		return auxiliaryFixture(textModel(func(context.Context, *chat.Request) (string, error) { return "NO_SKILL", nil })), func() {}, nil
+		return auxiliaryFixture(textModel(func(context.Context, *chat.Request) (string, error) { return "NO_SKILL", nil })), func() error { return nil }, nil
 	}}
 	grant, _, _ := openLearningGrant(t, t.Context(), owner)
 	for _, edit := range []func(*chat.Request){
@@ -162,12 +162,12 @@ func TestLearningGrantCancellationJoinsAndReleasesCapturedModel(t *testing.T) {
 	ctx, cancel := context.WithCancelCause(t.Context())
 	cause := errors.New("maintenance canceled")
 	var releases atomic.Int32
-	owner := &SkillLearning{utility: func(context.Context, models.AuxiliaryBudget) (models.SelectedChat, func(), error) {
+	owner := &SkillLearning{utility: func(context.Context, models.AuxiliaryBudget) (models.SelectedChat, func() error, error) {
 		return auxiliaryFixture(textModel(func(ctx context.Context, _ *chat.Request) (string, error) {
 			close(started)
 			<-ctx.Done()
 			return "", errors.Join(ctx.Err(), context.Cause(ctx))
-		})), func() { releases.Add(1) }, nil
+		})), func() error { releases.Add(1); return nil }, nil
 	}}
 	grant, state, release := openLearningGrant(t, ctx, owner)
 	done := make(chan error, 1)

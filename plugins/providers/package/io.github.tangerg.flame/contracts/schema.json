@@ -1,0 +1,1152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "Method_flame_2emodel_2dprovider_2fcall_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChatRequest"
+    },
+    "Method_flame_2emodel_2dprovider_2fcall_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChatResult"
+    },
+    "Method_flame_2emodel_2dprovider_2fclose_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fHandle"
+    },
+    "Method_flame_2emodel_2dprovider_2fclose_2ev1Output": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "Method_flame_2emodel_2dprovider_2fcount_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChatRequest"
+    },
+    "Method_flame_2emodel_2dprovider_2fcount_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fTokenCount"
+    },
+    "Method_flame_2emodel_2dprovider_2fembed_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fEmbeddingRequest"
+    },
+    "Method_flame_2emodel_2dprovider_2fembed_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fEmbeddingResult"
+    },
+    "Method_flame_2emodel_2dprovider_2fopen_2dchat_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fOpen"
+    },
+    "Method_flame_2emodel_2dprovider_2fopen_2dchat_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChat"
+    },
+    "Method_flame_2emodel_2dprovider_2fopen_2dembedding_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fOpen"
+    },
+    "Method_flame_2emodel_2dprovider_2fopen_2dembedding_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fEmbedder"
+    },
+    "Method_flame_2emodel_2dprovider_2fprofiles_2ev1Input": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "Method_flame_2emodel_2dprovider_2fprofiles_2ev1Output": {
+      "items": {
+        "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fProfile"
+      },
+      "type": "array"
+    },
+    "Method_flame_2emodel_2dprovider_2fremote_2dmodels_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fConnection"
+    },
+    "Method_flame_2emodel_2dprovider_2fremote_2dmodels_2ev1Output": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "Method_flame_2emodel_2dprovider_2freopen_2dchat_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fReopen"
+    },
+    "Method_flame_2emodel_2dprovider_2freopen_2dchat_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChat"
+    },
+    "Method_flame_2emodel_2dprovider_2fstream_2ev1Chunk": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fResponseDelta"
+    },
+    "Method_flame_2emodel_2dprovider_2fstream_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChatRequest"
+    },
+    "Method_flame_2emodel_2dprovider_2fstream_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChatResult"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChat": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fModel"
+        },
+        "model": {
+          "type": "string"
+        },
+        "original": {
+          "maxLength": 256,
+          "pattern": "\\S",
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "streaming": {
+          "type": "boolean"
+        },
+        "tokenCounting": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "original",
+        "provider",
+        "model",
+        "streaming",
+        "tokenCounting"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChatRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "handle": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fHandle"
+        },
+        "request": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fRequest"
+        }
+      },
+      "required": [
+        "handle",
+        "request"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChatResult": {
+      "additionalProperties": false,
+      "properties": {
+        "failure": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fFailure"
+        },
+        "response": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fResponse"
+        }
+      },
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fConnection": {
+      "additionalProperties": false,
+      "properties": {
+        "apiKey": {
+          "type": "string"
+        },
+        "baseURL": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "provider"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fEmbedder": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "space": {
+          "pattern": "\\S",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "provider",
+        "model",
+        "space"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fEmbeddingProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "defaultModel": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fEmbeddingRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "handle": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fHandle"
+        },
+        "request": true
+      },
+      "required": [
+        "handle",
+        "request"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fEmbeddingResult": {
+      "additionalProperties": false,
+      "properties": {
+        "failure": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fFailure"
+        },
+        "response": true
+      },
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fFailure": {
+      "additionalProperties": false,
+      "properties": {
+        "execution": {
+          "type": "string"
+        },
+        "kind": {
+          "allOf": [
+            {
+              "enum": [
+                "internal",
+                "canceled",
+                "timeout",
+                "invalid_credentials",
+                "rate_limited",
+                "provider_rejected",
+                "provider_unavailable"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "retryAfterMillis": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind",
+        "execution"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fHandle": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fOpen": {
+      "additionalProperties": false,
+      "properties": {
+        "connection": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fConnection"
+        },
+        "model": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "connection",
+        "model"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "authentication": {
+          "allOf": [
+            {
+              "enum": [
+                "keyRequired",
+                "keyOptional"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "defaultModel": {
+          "type": "string"
+        },
+        "embedding": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fEmbeddingProfile"
+        },
+        "endpointRequired": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "modelSource": {
+          "allOf": [
+            {
+              "enum": [
+                "bundled",
+                "endpoint"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "models": {
+          "items": {
+            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fModel"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "authentication",
+        "endpointRequired",
+        "modelSource",
+        "models"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fReopen": {
+      "additionalProperties": false,
+      "properties": {
+        "original": {
+          "maxLength": 256,
+          "pattern": "\\S",
+          "type": "string"
+        }
+      },
+      "required": [
+        "original"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fTokenCount": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 0,
+          "type": "integer"
+        },
+        "failure": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fFailure"
+        }
+      },
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fLimits": {
+      "additionalProperties": false,
+      "properties": {
+        "context_window": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "max_input_tokens": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "max_output_tokens": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fModalities": {
+      "additionalProperties": false,
+      "properties": {
+        "input": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "output": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fModel": {
+      "additionalProperties": false,
+      "properties": {
+        "deprecated": {
+          "type": "boolean"
+        },
+        "display_name": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "knowledge_cutoff": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "last_updated": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "limits": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fLimits"
+        },
+        "modalities": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fModalities"
+        },
+        "pricing": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fPricingSchedule"
+        },
+        "reasoning": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fReasoning"
+        },
+        "release_date": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "structured_output": {
+          "type": "boolean"
+        },
+        "tool_call": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fPricing": {
+      "additionalProperties": false,
+      "properties": {
+        "cache_read_per_1m": {
+          "type": "number"
+        },
+        "cache_write_per_1m": {
+          "type": "number"
+        },
+        "input_per_1m": {
+          "type": "number"
+        },
+        "output_per_1m": {
+          "type": "number"
+        },
+        "threshold": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        }
+      },
+      "required": [
+        "input_per_1m",
+        "output_per_1m"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fPricingSchedule": {
+      "items": {
+        "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fPricing"
+      },
+      "type": "array"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fReasoning": {
+      "additionalProperties": false,
+      "properties": {
+        "default_level": {
+          "type": "string"
+        },
+        "levels": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "supported": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fCitation": {
+      "additionalProperties": false,
+      "properties": {
+        "quote": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fCitationSource"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fCitationSource": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "value"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fMessage": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireMessage"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fOptions": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireOptions"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fOutput": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireOutput"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fOutputFormat": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireOutputFormat"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fOutputMetadata": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireOutputMetadata"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fPart": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwirePart"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fPartDelta": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwirePartDelta"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fRequest": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireRequest"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fResponse": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireResponse"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fResponseDelta": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireResponseDelta"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fResponseMetadata": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireResponseMetadata"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolCall": {
+      "additionalProperties": false,
+      "properties": {
+        "arguments": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolCallDelta": {
+      "additionalProperties": false,
+      "properties": {
+        "arguments": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolChoice": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "parallelism": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "mode"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolContent": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireToolContent"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolDefinition": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireToolDefinition"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolOutput": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireToolOutput"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolResult": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "is_error": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "output": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolOutput"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "output"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fUsage": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireUsage"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireMessage": {
+      "additionalProperties": false,
+      "properties": {
+        "metadata": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fMap"
+        },
+        "parts": {
+          "items": {
+            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fPart"
+          },
+          "type": "array"
+        },
+        "role": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "parts"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireOptions": {
+      "additionalProperties": false,
+      "properties": {
+        "extensions": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fExtensions"
+        },
+        "frequency_penalty": {
+          "type": "number"
+        },
+        "max_output_tokens": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "model": {
+          "type": "string"
+        },
+        "output_format": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fOutputFormat"
+        },
+        "presence_penalty": {
+          "type": "number"
+        },
+        "reasoning_effort": {
+          "type": "string"
+        },
+        "stop": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "temperature": {
+          "type": "number"
+        },
+        "top_k": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "top_p": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireOutput": {
+      "additionalProperties": false,
+      "properties": {
+        "finish_reason": {
+          "type": "string"
+        },
+        "message": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fMessage"
+        },
+        "metadata": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fOutputMetadata"
+        }
+      },
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireOutputFormat": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "schema": true,
+        "type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireOutputMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "extra": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fMap"
+        }
+      },
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwirePart": {
+      "additionalProperties": false,
+      "properties": {
+        "citations": {
+          "items": {
+            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fCitation"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "media": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_5fMedia"
+        },
+        "metadata": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fMap"
+        },
+        "reasoning_state": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "contentEncoding": "base64",
+              "type": "string"
+            }
+          ]
+        },
+        "text": {
+          "type": "string"
+        },
+        "tool_call": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolCall"
+        },
+        "tool_result": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolResult"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwirePartDelta": {
+      "additionalProperties": false,
+      "properties": {
+        "citation": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fCitation"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "media": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_5fMedia"
+        },
+        "metadata": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fMap"
+        },
+        "reasoning_state": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "contentEncoding": "base64",
+              "type": "string"
+            }
+          ]
+        },
+        "text": {
+          "type": "string"
+        },
+        "tool_call": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolCallDelta"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "messages": {
+          "items": {
+            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fMessage"
+          },
+          "type": "array"
+        },
+        "options": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fOptions"
+        },
+        "tool_choice": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolChoice"
+        },
+        "tools": {
+          "items": {
+            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolDefinition"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "messages"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "metadata": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fResponseMetadata"
+        },
+        "output": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fOutput"
+        }
+      },
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireResponseDelta": {
+      "additionalProperties": false,
+      "properties": {
+        "finish_reason": {
+          "type": "string"
+        },
+        "message_metadata": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fMap"
+        },
+        "metadata": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fResponseMetadata"
+        },
+        "output_metadata": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fOutputMetadata"
+        },
+        "parts": {
+          "items": {
+            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fPartDelta"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireResponseMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "extra": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fMap"
+        },
+        "id": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "usage": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fUsage"
+        }
+      },
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireToolContent": {
+      "additionalProperties": false,
+      "properties": {
+        "citations": {
+          "items": {
+            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fCitation"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "media": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_5fMedia"
+        },
+        "metadata": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fMap"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireToolDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "input_schema": true,
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "input_schema"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireToolOutput": {
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "items": {
+            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolContent"
+          },
+          "type": "array"
+        },
+        "details": true
+      },
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireUsage": {
+      "additionalProperties": false,
+      "properties": {
+        "cache_read_input_tokens": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "cache_write_input_tokens": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "input_tokens": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "output_tokens": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "reasoning_tokens": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fExtensions": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fMap"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fMap": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fwireMap"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fwireMap": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "additionalProperties": true,
+          "type": "object"
+        }
+      ]
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_5fMedia": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_5fwireMedia"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_5fSource": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "contentEncoding": "base64",
+              "type": "string"
+            }
+          ]
+        },
+        "kind": {
+          "type": "string"
+        },
+        "ref": {
+          "type": "string"
+        },
+        "uri": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_5fwireMedia": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fMap"
+        },
+        "mime": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_5fSource"
+        }
+      },
+      "required": [
+        "mime",
+        "source"
+      ],
+      "type": "object"
+    }
+  }
+}

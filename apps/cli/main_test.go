@@ -887,7 +887,7 @@ func TestProductionBinaryOpensAnIsolatedRuntimeAndReleasesItsLease(t *testing.T)
 	ambientHome := t.TempDir()
 	t.Setenv("FLAME_HOME", ambientHome)
 	environment := terminalTestEnvironment(t, map[string]string{
-		"FLAME_PROVIDER": "anthropic", "ANTHROPIC_API_KEY": "test-key",
+		"FLAME_PROVIDER": "anthropic", "FLAME_APIKEY": "test-key",
 	})
 	var flameHome string
 	for _, entry := range environment {

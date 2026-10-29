@@ -17,7 +17,7 @@ const (
 
 func registerGoals(registry *Registry) {
 	registry.command(MethodMeta{
-		Name: goalsStart, GoName: "StartGoal", Errors: []string{protocol.ErrSessionNotFound.Error()},
+		Name: goalsStart, GoName: "StartGoal", Errors: modelProviderErrors(protocol.ErrSessionNotFound.Error()),
 		CapabilityRules: requires(protocol.FeatureGoals),
 	}, func(service interface {
 		StartGoal(context.Context, protocol.StartGoalRequest) (*protocol.Goal, error)

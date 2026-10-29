@@ -9,9 +9,9 @@ import (
 	"time"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/scope/core/chat"
@@ -25,6 +25,7 @@ import (
 type TextEmbedder interface {
 	ID() string
 	Embed(context.Context, []string) ([][]float32, error)
+	Close(context.Context) error
 }
 
 // EmbeddingResolver builds observed embedding clients from the current
@@ -35,21 +36,26 @@ type TextEmbedder interface {
 // provider request through the shared endpoint evidence owner.
 type EmbeddingResolver struct {
 	providers credentialLookup
+	clients   embeddingFactory
 	journal   endpointJournal
 	pricing   accounting.Pricing
+}
+
+type embeddingFactory interface {
+	OpenEmbedding(context.Context, modelchoice.Selection, modelprovider.Connection) (ResolvedEmbedding, error)
 }
 
 // NewEmbeddingResolver returns a complete resolver over the provider credential
 // lookup. The endpoint journal owns physical admission and settlement; pricing
 // is optional and absent when no price table is configured.
-func NewEmbeddingResolver(providers credentialLookup, journal endpointJournal, pricing accounting.Pricing) (*EmbeddingResolver, error) {
-	if lo.IsNil(providers) {
-		return nil, errors.New("model: embedding provider credential lookup is required")
+func NewEmbeddingResolver(providers credentialLookup, clients embeddingFactory, journal endpointJournal, pricing accounting.Pricing) (*EmbeddingResolver, error) {
+	if lo.IsNil(providers) || lo.IsNil(clients) {
+		return nil, errors.New("model: embedding provider credentials and installed adapter are required")
 	}
 	if lo.IsNil(journal) {
 		return nil, errors.New("model: embedding endpoint journal is required")
 	}
-	return &EmbeddingResolver{providers: providers, journal: journal, pricing: pricing}, nil
+	return &EmbeddingResolver{providers: providers, clients: clients, journal: journal, pricing: pricing}, nil
 }
 
 // Resolve builds an embedder for the current selection and registry snapshot.
@@ -60,30 +66,19 @@ func (e *EmbeddingResolver) Resolve(ctx context.Context, selection modelchoice.S
 	if err := selection.ValidateExact(); err != nil {
 		return nil, fmt.Errorf("model: embedding selection: %w", err)
 	}
-	providerID, model := selection.Provider(), selection.Model()
-	entry, ok, err := e.providers.Get(ctx, providerID)
+	connection, err := resolveConnection(ctx, e.providers, selection)
 	if err != nil {
 		return nil, err
 	}
-	if !ok {
-		entry, err = provider.New(providerID)
-		if err != nil {
-			return nil, err
-		}
-	}
-	inputs, err := resolveProviderClientInputs(providerID, entry)
+	resolved, err := e.clients.OpenEmbedding(ctx, selection, connection)
 	if err != nil {
 		return nil, err
 	}
-	spec, err := inputs.clientSpec()
-	if err != nil {
-		return nil, err
+	pricing := resolved.pricing
+	if e.pricing != nil {
+		pricing = e.pricing
 	}
-	m, err := buildEmbeddingModel(ctx, spec, model)
-	if err != nil {
-		return nil, err
-	}
-	created := &embedder{id: inputs.embeddingSpaceID(model), model: m, selection: selection, journal: e.journal, pricing: e.pricing}
+	created := &embedder{id: resolved.space, model: resolved.model, selection: selection, journal: e.journal, pricing: pricing, close: resolved.close}
 	return created, nil
 }
 
@@ -94,8 +89,11 @@ func (e *EmbeddingResolver) ValidateEmbeddingModel(ctx context.Context, provider
 	if err != nil {
 		return err
 	}
-	_, err = e.Resolve(ctx, selection)
-	return err
+	resolved, err := e.Resolve(ctx, selection)
+	if err != nil {
+		return err
+	}
+	return resolved.Close(ctx)
 }
 
 // embedder observes one embedding provider boundary: it admits the real request
@@ -108,9 +106,17 @@ type embedder struct {
 	selection modelchoice.Selection
 	journal   endpointJournal
 	pricing   accounting.Pricing
+	close     func(context.Context) error
 }
 
 func (e *embedder) ID() string { return e.id }
+
+func (e *embedder) Close(ctx context.Context) error {
+	if e.close != nil {
+		return e.close(ctx)
+	}
+	return nil
+}
 
 func (e *embedder) Embed(ctx context.Context, texts []string) ([][]float32, error) {
 	request, err := embedding.NewRequest(texts)
@@ -125,7 +131,13 @@ func (e *embedder) Embed(ctx context.Context, texts []string) ([][]float32, erro
 	if err != nil {
 		return nil, err
 	}
-	response, cause := e.model.Call(ctx, cloneEmbeddingRequest(request))
+	calling, cause := endpointContext(ctx, invocation)
+	var response *embedding.Response
+	if cause == nil {
+		response, cause = e.model.Call(calling, cloneEmbeddingRequest(request))
+	} else {
+		cause = &chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: cause}
+	}
 	if response != nil && cause == nil {
 		cause = response.ValidateFor(request)
 	}

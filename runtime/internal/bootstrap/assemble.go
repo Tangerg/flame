@@ -8,9 +8,8 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	"github.com/Tangerg/flame/packages/go-sdk/model/catalog"
 	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
-	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/recovery"
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/segment"
@@ -50,12 +49,9 @@ func assemble(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLifetime
 	if err != nil {
 		return nil, err
 	}
-	modelServices, err := buildModelEnvironment(ctx, cfg, defaultSelection)
-	if err != nil {
-		return nil, err
-	}
-	lifetime.toolResources = append(lifetime.toolResources, terminalStep(func(context.Context) error { return modelServices.callbacks.Close() }))
-	policy, err := buildPolicyComposition(ctx, cfg, lifetime, modelServices)
+	callbacks := qimumcp.NewCallbacks()
+	lifetime.toolResources = append(lifetime.toolResources, terminalStep(func(context.Context) error { return callbacks.Close() }))
+	policy, err := buildPolicyComposition(ctx, cfg, lifetime, callbacks)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +62,8 @@ func assemble(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLifetime
 	execution, err := buildExecutionComposition(
 		ctx,
 		cfg,
-		modelServices,
+		defaultSelection,
+		callbacks,
 		lifetime,
 		buildTools,
 		policy,
@@ -118,7 +115,7 @@ func buildAssemblyCore(
 	if err != nil {
 		return nil, fmt.Errorf("runtime: session write-set stores: %w", err)
 	}
-	modelCapabilities := modeladapter.Capabilities{}
+	modelCapabilities := execution.models.capabilities
 	modelCoordinator, err := models.New(models.Config{
 		Providers:          cfg.providerRegistry,
 		Catalog:            modelCapabilities,
@@ -146,7 +143,7 @@ func buildAssemblyCore(
 		TransientState:        execution.transientSessions,
 		ExecutionReleaser:     execution.executor,
 		Paths:                 workspaceadapter.Resolver{},
-		Models:                catalog.Selections{},
+		Models:                modelCapabilities,
 		DefaultModelSelection: execution.models.defaultSelection,
 		Checkpoints:           workspaceServices.checkpoints,
 		Admissions:            admissionGate,
@@ -231,7 +228,7 @@ func buildAssemblyCore(
 		Releases:                           execution.executor,
 		RootCancellation:                   execution.executor,
 		Conversation:                       execution.conversation.messages,
-		Models:                             catalog.Selections{},
+		Models:                             modelCapabilities,
 		ModelSelector:                      execution.tools.callComposition,
 		Continuation:                       execution.executor,
 		ApprovalRules:                      policy.approvals,

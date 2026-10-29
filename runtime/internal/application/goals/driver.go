@@ -64,7 +64,7 @@ func (i *InsufficientCapabilitiesError) Is(target error) bool {
 // AutonomousRuns is the Goal driver's narrow view of the Run entry point.
 type AutonomousRuns interface {
 	WaitSessionStartable(ctx context.Context, sessionID string) error
-	AdmitSelection(selection modelchoice.Selection) error
+	AdmitSelection(ctx context.Context, selection modelchoice.Selection) error
 	Start(ctx context.Context, cmd runs.StartCommand) (runs.StartResult, error)
 	// Cancel returns after the Run has reached its complete terminal boundary.
 	Cancel(ctx context.Context, cmd runs.CancelCommand) (runs.CancelResult, error)
@@ -171,7 +171,7 @@ func (d *Driver) Start(
 		return goal.Goal{}, ErrNoSession
 	}
 	if selection.Configured() {
-		if admissionErr := d.runs.AdmitSelection(selection); admissionErr != nil {
+		if admissionErr := d.runs.AdmitSelection(ctx, selection); admissionErr != nil {
 			return goal.Goal{}, admissionErr
 		}
 	}

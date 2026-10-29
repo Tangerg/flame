@@ -4,7 +4,9 @@ The backend owns Schedule definitions, revisions, cron cursors, durable Occurren
 claims, pending manual dispatch, captured execution input and firing acceptance.
 Runtime alone owns Session, Run and Segment acceptance, execution, recovery and
 model/provider configuration. A browser timer or a saved UI draft cannot advance
-any scheduling fact.
+any scheduling fact. Schedule definitions validate the exact model identity and
+retain it as authored. Runtime admits the current installed adapter when accepting
+a Run; Schedules does not keep a competing vendor catalog.
 
 The installed stdio process holds an exclusive lease and opens only
 `PLUGIN_DATA/schedules.db`. Its local declaration binds `schedules-provider` to

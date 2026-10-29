@@ -1,4 +1,4 @@
-package model
+package main
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"time"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -25,31 +26,23 @@ type modelLister interface {
 // selection, pagination and bounded response admission. Flame owns the probe
 // budget and the identities its product accepts.
 func listModels(ctx context.Context, spec clientSpec) ([]string, error) {
-	if err := spec.validate(); err != nil {
-		return nil, err
-	}
-	profile, _ := providers.lookup(spec.provider)
-	if !profile.chatModels.discoveredAtEndpoint() {
+	profile, _ := providers.lookup(Provider(spec.connection.Provider))
+	if profile.profile.ModelSource != modelprovider.EndpointModels {
 		return nil, errors.New("model: provider uses the published model catalog")
 	}
-	endpoint, err := profile.endpoint.resolve(spec.endpoint)
-	if err != nil {
-		return nil, fmt.Errorf("model: provider %q: %w", spec.provider, err)
-	}
-	spec = spec.withEndpoint(endpoint)
 	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
 	defer cancel()
 	model, err := profile.chatBuilder(ctx, spec, chat.Options{})
 	if err != nil {
-		return nil, classifyModelError(err)
+		return nil, err
 	}
 	discovery, ok := model.(modelLister)
 	if !ok {
-		return nil, fmt.Errorf("model: provider %q has no model discovery capability", spec.provider)
+		return nil, fmt.Errorf("model: provider %q has no model discovery capability", spec.connection.Provider)
 	}
 	ids, err := discovery.ListModels(ctx, maximumRemoteModelCount, maximumModelProbeResponseBytes)
 	if err != nil {
-		return nil, classifyModelError(err)
+		return nil, err
 	}
 	for _, id := range ids {
 		if _, err := modelchoice.NewModelIdentity(id); err != nil {

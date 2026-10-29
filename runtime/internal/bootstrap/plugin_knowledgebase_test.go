@@ -1,8 +1,8 @@
 package bootstrap
 
 import (
-	"context"
 	json "encoding/json/v2"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -19,14 +19,73 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/scope/core/chat"
-	"github.com/Tangerg/scope/core/chatclient"
 )
 
 func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore(t *testing.T) {
 	var embeddings atomic.Int32
 	var embeddedUserInput atomic.Bool
+	var toolName atomic.Value
+	toolName.Store("")
+	var sawContext atomic.Bool
+	var toolOutput atomic.Value
+	toolOutput.Store("")
 	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if strings.HasSuffix(request.URL.Path, "/chat/completions") {
+			var input struct {
+				Messages []struct {
+					Role       string `json:"role"`
+					Content    string `json:"content"`
+					ToolCallID string `json:"tool_call_id"`
+				} `json:"messages"`
+				Tools []struct {
+					Function struct {
+						Name string `json:"name"`
+					} `json:"function"`
+				} `json:"tools"`
+			}
+			if err := json.UnmarshalRead(request.Body, &input); err != nil {
+				t.Error(err)
+				http.Error(w, "invalid chat", 400)
+				return
+			}
+			finish, text := "stop", "knowledge test"
+			var call map[string]any
+			if len(input.Tools) > 0 {
+				name := toolName.Load().(string)
+				for _, message := range input.Messages {
+					if message.Role == "system" && strings.Contains(message.Content, "docs/fruit.md") {
+						sawContext.Store(true)
+					}
+					if message.Role == "tool" && message.ToolCallID == "retrieve-knowledge" {
+						toolOutput.Store(message.Content)
+						text = "cited fruit guide"
+					}
+				}
+				if text != "cited fruit guide" {
+					id, selected, arguments := "discover-knowledge", "search_tools", `{"query":"select:`+name+`"}`
+					for _, definition := range input.Tools {
+						if definition.Function.Name == name {
+							id, selected, arguments = "retrieve-knowledge", name, `{"query":"apple","limit":1}`
+						}
+					}
+					call = map[string]any{"index": 0, "id": id, "type": "function", "function": map[string]string{"name": selected, "arguments": arguments}}
+					finish = "tool_calls"
+				}
+			}
+			delta := map[string]any{"role": "assistant", "content": text}
+			if call != nil {
+				delta = map[string]any{"role": "assistant", "tool_calls": []any{call}}
+			}
+			frame := map[string]any{"id": "kb-completion", "model": "knowledge-model", "choices": []any{map[string]any{"index": 0, "delta": delta, "finish_reason": finish}}, "usage": map[string]int{"prompt_tokens": 5, "completion_tokens": 2, "total_tokens": 7}}
+			w.Header().Set("Content-Type", "text/event-stream")
+			encoded, err := json.Marshal(frame)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			_, _ = fmt.Fprintf(w, "data: %s\n\ndata: [DONE]\n\n", encoded)
+			return
+		}
 		if !strings.HasSuffix(request.URL.Path, "/embeddings") {
 			http.NotFound(w, request)
 			return
@@ -55,45 +114,17 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 		}
 	}))
 	t.Cleanup(provider.Close)
-	var toolName atomic.Value
-	toolName.Store("")
-	var sawContext atomic.Bool
-	var toolOutput atomic.Value
-	toolOutput.Store("")
-	model := delegateRestartModel{chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
-		if len(request.Tools) == 0 {
-			return completedTextResponse("knowledge test"), nil
-		}
-		name := toolName.Load().(string)
-		for _, message := range request.Messages {
-			if message.Role == chat.RoleSystem && strings.Contains(message.Text(), "docs/fruit.md") {
-				sawContext.Store(true)
-			}
-			for _, part := range message.Parts {
-				if part.ToolResult != nil && part.ToolResult.Name == name {
-					toolOutput.Store(string(part.ToolResult.Output.Details))
-					return completedTextResponse("cited fruit guide"), nil
-				}
-			}
-		}
-		call := chat.ToolCall{ID: "discover-knowledge", Name: "search_tools", Arguments: `{"query":"select:` + name + `"}`}
-		for _, definition := range request.Tools {
-			if definition.Name == name {
-				call = chat.ToolCall{ID: "retrieve-knowledge", Name: name, Arguments: `{"query":"apple","limit":1}`}
-			}
-		}
-		message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
-		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)
-	})}
-	client, err := chatclient.New(model, chatclient.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
 	cfg := poMCPConfig(t)
 	cfg.approvalMode = approval.ModeYolo
-	cfg.chatResolver = testChatResolver(client)
+	cfg.modelProviders = nil
+	cfg.provider, cfg.model = "openai-compatible", "knowledge-model"
 	r := poMCPOpen(t, cfg)
 	baseURL, key := provider.URL+"/v1", "local-embedding-fixture"
+	activateModelProviders(r)
+	if _, err := r.host.application.delivery.Models.ListProviders(t.Context()); err != nil {
+		t.Fatalf("installed provider catalog: %v", err)
+	}
+	r.must(delivery.ProvidersUpdate, protocol.UpdateProviderRequest{Provider: "openai-compatible", BaseURL: &protocol.ProviderConfigChange{Type: protocol.ProviderConfigSet, Value: &baseURL}, APIKey: &protocol.ProviderConfigChange{Type: protocol.ProviderConfigSet, Value: &key}}, "configure-chat")
 	r.must(delivery.ProvidersUpdate, protocol.UpdateProviderRequest{Provider: "openai", BaseURL: &protocol.ProviderConfigChange{Type: protocol.ProviderConfigSet, Value: &baseURL}, APIKey: &protocol.ProviderConfigChange{Type: protocol.ProviderConfigSet, Value: &key}}, "configure-embedding")
 	r.must(delivery.ModelsSetEmbeddingRole, protocol.EmbeddingRole{Provider: "openai", Model: "text-embedding-3-small"}, "select-embedding")
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "knowledgebase"))

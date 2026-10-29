@@ -1,0 +1,11 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "flame.providers",
+  "version": "1.0.0",
+  "description": "Scope provider adapters for installed chat, streaming, request counting and embeddings.",
+  "extensions": {
+    "io.github.tangerg.flame": {
+      "declaration": "io.github.tangerg.flame/declaration.json"
+    }
+  }
+}

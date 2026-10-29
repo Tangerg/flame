@@ -18,12 +18,12 @@ import (
 )
 
 func constClient(c chatclient.Client) modeladapter.AuxiliaryResolver {
-	return func(context.Context, modeladapter.AuxiliaryBudget) (modeladapter.SelectedChat, func(), error) {
-		return auxiliaryFixture(&c), func() {}, nil
+	return func(context.Context, modeladapter.AuxiliaryBudget) (modeladapter.SelectedChat, func() error, error) {
+		return auxiliaryFixture(&c), func() error { return nil }, nil
 	}
 }
 
-func unexpectedClient(context.Context, modeladapter.AuxiliaryBudget) (modeladapter.SelectedChat, func(), error) {
+func unexpectedClient(context.Context, modeladapter.AuxiliaryBudget) (modeladapter.SelectedChat, func() error, error) {
 	return modeladapter.SelectedChat{}, nil, errors.New("unexpected utility model call")
 }
 

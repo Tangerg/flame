@@ -114,7 +114,7 @@ func (c *Coordinator) startRoot(ctx context.Context, cmd StartCommand) (result S
 		if err := selected.ValidateExact(); err != nil {
 			return StartResult{}, err
 		}
-		if err := c.AdmitSelection(selected); err != nil {
+		if err := c.AdmitSelection(ctx, selected); err != nil {
 			return StartResult{}, err
 		}
 		draft.ModelSelection = selected
@@ -302,7 +302,7 @@ func (c *Coordinator) resolveSessionSelection(
 ) (session.Session, *session.Session, modelchoice.Selection, error) {
 	requested := cmd.ModelSelection
 	if requested.Configured() {
-		if err := c.AdmitSelection(requested); err != nil {
+		if err := c.AdmitSelection(ctx, requested); err != nil {
 			return session.Session{}, nil, modelchoice.Selection{}, err
 		}
 	}
@@ -318,7 +318,7 @@ func (c *Coordinator) resolveSessionSelection(
 		return session.Session{}, nil, modelchoice.Selection{}, fmt.Errorf("runs: effective model selection: %w", err)
 	}
 	if effective != requested {
-		if err := c.AdmitSelection(effective); err != nil {
+		if err := c.AdmitSelection(ctx, effective); err != nil {
 			return session.Session{}, nil, modelchoice.Selection{}, err
 		}
 	}

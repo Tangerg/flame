@@ -38,7 +38,7 @@ func TestGuardrailsInstalledInputRefusesDispatchWithoutRewritingAuthoredHistory(
 		t.Fatal(err)
 	}
 	cfg := poMCPConfig(t)
-	cfg.chatResolver = testChatResolver(client)
+	cfg.modelProviders = testChatResolver(client)
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "guardrails"))
 	waitCallContributorState(t, r, installed.ID, protocol.MCPServerConnected)

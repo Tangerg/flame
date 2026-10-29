@@ -28,7 +28,7 @@ import (
 // Resolving at the boundary lets a role configuration change take effect without
 // rebuilding the owning worker. The caller releases the frozen capture after
 // all calls have joined; retained observers cannot retire before that boundary.
-type AuxiliaryResolver func(context.Context, AuxiliaryBudget) (SelectedChat, func(), error)
+type AuxiliaryResolver func(context.Context, AuxiliaryBudget) (SelectedChat, func() error, error)
 
 // AuxiliaryBudget is the caller-owned input/output envelope for a captured use
 // case. Every complete model-visible request must remain within it.
@@ -47,7 +47,7 @@ func (b AuxiliaryBudget) Validate() error {
 // SelectedChat captures the exact selection and model construction
 // together. Wrapping its model cannot detach or invent the selected identity.
 type SelectedChat struct {
-	selection modelchoice.Selection
+	admission catalog.Admission
 	resolved  ResolvedChat
 	limits    modelref.TokenLimits
 }
@@ -59,14 +59,30 @@ func NewSelectedChat(selection modelchoice.Selection, resolved ResolvedChat) (Se
 	if lo.IsNil(resolved.Model()) {
 		return SelectedChat{}, errors.New("auxiliary model: resolved model is required")
 	}
-	limits, _, err := LookupTokenLimits(selection)
+	admission, err := catalog.NewAdmission(selection, resolved.metadata)
 	if err != nil {
 		return SelectedChat{}, err
 	}
-	return SelectedChat{selection: selection, resolved: resolved, limits: limits}, nil
+	var limits modelref.TokenLimits
+	if resolved.metadata != nil {
+		limits, err = catalogTokenLimits(*resolved.metadata)
+		if err != nil {
+			return SelectedChat{}, err
+		}
+	}
+	return SelectedChat{admission: admission, resolved: resolved, limits: limits}, nil
 }
-func (m SelectedChat) Selection() modelchoice.Selection { return m.selection }
-func (m SelectedChat) Model() chat.Model                { return m.resolved.Model() }
+func (m SelectedChat) Selection() modelchoice.Selection  { return m.admission.Selection() }
+func (m SelectedChat) Model() chat.Model                 { return m.resolved.Model() }
+func (m SelectedChat) TokenLimits() modelref.TokenLimits { return m.limits }
+func (m SelectedChat) Capture() (ProviderCapture, bool)  { return m.resolved.Capture() }
+func (m SelectedChat) Close(ctx context.Context) error   { return m.resolved.Close(ctx) }
+func (m SelectedChat) RequestFits(ctx context.Context, request *chat.Request) (bool, error) {
+	if m.resolved.fits == nil {
+		return true, nil
+	}
+	return m.resolved.fits(ctx, request)
+}
 func (m SelectedChat) InputTokenCounter() (InputTokenCounter, bool) {
 	return m.resolved.InputTokenCounter()
 }
@@ -155,7 +171,7 @@ func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt)
 	if release == nil {
 		return "", errors.New("auxiliary model: captured model release is required")
 	}
-	defer release()
+	defer func() { err = errors.Join(err, release()) }()
 	if lo.IsNil(captured.Model()) {
 		return "", errors.New("auxiliary model: model is required")
 	}
@@ -186,6 +202,13 @@ func (m SelectedChat) AdmitRequest(ctx context.Context, request *chat.Request) e
 	}
 	if err := m.AdmitInput(request); err != nil {
 		return err
+	}
+	fits, err := m.RequestFits(ctx, request)
+	if err != nil {
+		return err
+	}
+	if !fits {
+		return errors.New("model: complete request exceeds the installed transport capacity")
 	}
 	reservation := modelref.OutputReservation{}
 	if request.Options.MaxOutputTokens != nil {
@@ -229,8 +252,7 @@ func (m SelectedChat) AdmitRequest(ctx context.Context, request *chat.Request) e
 // WithModel retains the frozen selected identity, capacity and counter while
 // replacing only its call projection with a caller-owned decorator.
 func (m SelectedChat) WithModel(model chat.Model) (SelectedChat, error) {
-	counter, _ := m.InputTokenCounter()
-	resolved, err := NewResolvedChat(model, counter)
+	resolved, err := m.resolved.WithModel(model)
 	if err != nil {
 		return SelectedChat{}, err
 	}
@@ -247,13 +269,13 @@ func (m SelectedChat) PrepareRequest(request *chat.Request) (*chat.Request, erro
 	if err := request.Validate(); err != nil {
 		return nil, err
 	}
-	if err := m.selection.ValidateExact(); err != nil {
+	if err := m.Selection().ValidateExact(); err != nil {
 		return nil, err
 	}
-	if request.Options.Model != "" && request.Options.Model != m.selection.Model() {
+	if request.Options.Model != "" && request.Options.Model != m.Selection().Model() {
 		return nil, errors.New("model: request cannot replace selected model")
 	}
-	effort := chat.ReasoningEffort(m.selection.ReasoningEffort())
+	effort := chat.ReasoningEffort(m.Selection().ReasoningEffort())
 	if request.Options.ReasoningEffort != "" && request.Options.ReasoningEffort != effort {
 		return nil, errors.New("model: request cannot replace selected reasoning effort")
 	}
@@ -271,13 +293,13 @@ func (m SelectedChat) AdmitInput(request *chat.Request) error {
 	if err := request.Validate(); err != nil {
 		return err
 	}
-	if err := m.selection.ValidateExact(); err != nil {
+	if err := m.Selection().ValidateExact(); err != nil {
 		return err
 	}
-	if err := (catalog.Selections{}).AdmitInput(m.selection, request.Messages); err != nil {
+	if err := m.admission.AdmitInput(request.Messages); err != nil {
 		return err
 	}
-	if request.Options.Model != "" && request.Options.Model != m.selection.Model() {
+	if request.Options.Model != "" && request.Options.Model != m.Selection().Model() {
 		return errors.New("model: request cannot replace selected model")
 	}
 	return nil

@@ -14,7 +14,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	models "github.com/Tangerg/flame/packages/go-sdk/model/catalog"
+
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	scheduledb "github.com/Tangerg/flame/plugins/schedules/internal/sqlite"
@@ -28,7 +28,7 @@ import (
 func scheduleToolSession(t *testing.T, db *sql.DB, host *observedRunHost) (*sdk.ClientSession, func() error) {
 	t.Helper()
 	server := sdk.NewServer(&sdk.Implementation{Name: "schedules-tool-test"}, nil)
-	registered, err := registerServer(server, db, scheduledb.NewScheduleStore(db), filesystem.DirectoryResolver{}, models.Selections{}, func(context.Context, qimumcp.CallbackRef) (runHost, func() error, error) {
+	registered, err := registerServer(server, db, scheduledb.NewScheduleStore(db), filesystem.DirectoryResolver{}, func(context.Context, qimumcp.CallbackRef) (runHost, func() error, error) {
 		return host, func() error { return nil }, nil
 	})
 	if err != nil {

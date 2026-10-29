@@ -6,6 +6,7 @@ import (
 	"time"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	adapterhooks "github.com/Tangerg/flame/runtime/internal/adapter/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
@@ -41,7 +42,7 @@ type policyComposition struct {
 	mcp           mcpEnvironment
 }
 
-func buildPolicyComposition(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLifetime, models modelEnvironment) (policyComposition, error) {
+func buildPolicyComposition(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLifetime, callbacks *qimumcp.Callbacks) (policyComposition, error) {
 	invalidations := newNotificationRelay[invalidation.Notice]()
 	packages, err := buildPluginPackages(cfg, lifetime)
 	if err != nil {
@@ -51,7 +52,7 @@ func buildPolicyComposition(ctx context.Context, cfg assemblyConfig, lifetime *r
 	if err != nil {
 		return policyComposition{}, fmt.Errorf("runtime: construct package skills: %w", err)
 	}
-	framework, err := buildFramework(ctx, cfg, lifetime, packages, models.callbacks)
+	framework, err := buildFramework(ctx, cfg, lifetime, packages, callbacks)
 	if err != nil {
 		return policyComposition{}, err
 	}
@@ -186,7 +187,8 @@ type executionComposition struct {
 func buildExecutionComposition(
 	ctx context.Context,
 	cfg assemblyConfig,
-	modelServices modelEnvironment,
+	defaultSelection modelchoice.Selection,
+	callbacks *qimumcp.Callbacks,
 	lifetime *runtimeLifetime,
 	buildTools toolEnvironmentBuilder,
 	policy policyComposition,
@@ -223,26 +225,27 @@ func buildExecutionComposition(
 	}
 	toolRuntime, err := buildTools(ctx, toolEnvironmentDependencies{
 		framework: policy.framework, registry: policy.registry, packageSkills: policy.packageSkills,
-		lifetime:       lifetime.context,
-		config:         cfg,
-		approvalPolicy: policy.approvals,
-		mcp:            policy.mcp,
-		modelServices:  modelServices,
-		workspaceScope: workspaceServices.scope,
-		conversation:   conversation.store,
-		publish:        policy.invalidations.publish,
-		goalReader:     policy.goalReader,
-		goalReporter:   policy.goalReporter,
-		plan:           policy.plans,
-		skillStore:     workspaceServices.skillStore,
-		skillProposals: workspaceServices.skills,
-		skillArchives:  workspaceServices.skillMaintenance,
+		lifetime:         lifetime.context,
+		config:           cfg,
+		approvalPolicy:   policy.approvals,
+		mcp:              policy.mcp,
+		defaultSelection: defaultSelection,
+		callbacks:        callbacks,
+		workspaceScope:   workspaceServices.scope,
+		conversation:     conversation.store,
+		publish:          policy.invalidations.publish,
+		goalReader:       policy.goalReader,
+		goalReporter:     policy.goalReporter,
+		plan:             policy.plans,
+		skillStore:       workspaceServices.skillStore,
+		skillProposals:   workspaceServices.skills,
+		skillArchives:    workspaceServices.skillMaintenance,
 	})
 	lifetime.toolResources = append(lifetime.toolResources, toolRuntime.closers...)
 	if err != nil {
 		return executionComposition{}, err
 	}
-	modelServices.utilityModel = toolRuntime.utilityModel
+	modelServices := toolRuntime.models
 	workingContexts, err := executionadapter.NewWorkingContextComposer(executionadapter.WorkingContextConfig{
 		UserHome:          cfg.userHome,
 		AgentMemory:       toolRuntime.memory,

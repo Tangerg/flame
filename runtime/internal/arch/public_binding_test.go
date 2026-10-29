@@ -56,7 +56,7 @@ var _ runtimeclient.PluginStreamer = (*runtimeclient.PluginCallbackCaller)(nil)
 var _ *flameruntime.Runtime
 var _ = localruntime.ReadToken
 var _ = modelchoice.NewWithReasoningEffort
-var _ = (catalog.Selections{}).AdmitSelection
+var _ = catalog.NewAdmission
 var _ protocol.RunEvent
 var _ = protocol.DecodeRequest
 var _ = pluginsdk.CallTextEmbedding

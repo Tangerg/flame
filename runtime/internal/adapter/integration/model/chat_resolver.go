@@ -6,9 +6,11 @@ import (
 	"fmt"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	corechat "github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/scope/models/catalog"
 	"github.com/samber/lo"
 )
 
@@ -24,17 +26,51 @@ type InputTokenCounter interface {
 type ResolvedChat struct {
 	model             corechat.Model
 	inputTokenCounter InputTokenCounter
+	metadata          *catalog.Model
+	capture           *ProviderCapture
+	pricing           accounting.Pricing
+	close             func(context.Context) error
+	fits              func(context.Context, *corechat.Request) (bool, error)
 }
 
 // NewResolvedChat validates and freezes one resolved chat construction.
-func NewResolvedChat(model corechat.Model, counter InputTokenCounter) (ResolvedChat, error) {
+func NewResolvedChat(model corechat.Model, counter InputTokenCounter, metadata *catalog.Model) (ResolvedChat, error) {
 	if lo.IsNil(model) {
 		return ResolvedChat{}, errors.New("model: resolved chat model is nil")
 	}
 	if counter != nil && lo.IsNil(counter) {
 		return ResolvedChat{}, errors.New("model: resolved chat input token counter is nil")
 	}
-	return ResolvedChat{model: model, inputTokenCounter: counter}, nil
+	if metadata != nil {
+		if err := metadata.Validate(); err != nil {
+			return ResolvedChat{}, err
+		}
+		copy := metadata.Clone()
+		metadata = &copy
+	}
+	return ResolvedChat{model: model, inputTokenCounter: counter, metadata: metadata}, nil
+}
+
+func (r ResolvedChat) Capture() (ProviderCapture, bool) {
+	if r.capture == nil {
+		return ProviderCapture{}, false
+	}
+	return r.capture.Clone(), true
+}
+
+func (r ResolvedChat) Close(ctx context.Context) error {
+	if r.close != nil {
+		return r.close(ctx)
+	}
+	return nil
+}
+
+func (r ResolvedChat) WithModel(model corechat.Model) (ResolvedChat, error) {
+	if lo.IsNil(model) {
+		return ResolvedChat{}, errors.New("model: replacement model is required")
+	}
+	r.model = model
+	return r, nil
 }
 
 // Model returns the exact provider instance every other projection is taken
@@ -67,14 +103,20 @@ type credentialLookup interface {
 // retain prior credential generations in a process-lifetime cache.
 type ChatResolver struct {
 	providers credentialLookup
+	clients   chatFactory
+}
+
+type chatFactory interface {
+	OpenChat(context.Context, modelchoice.Selection, modelprovider.Connection) (ResolvedChat, error)
+	RestoreChat(context.Context, modelchoice.Selection, *ProviderCapture) (ResolvedChat, error)
 }
 
 // NewChatResolver returns a complete resolver over the provider configuration lookup.
-func NewChatResolver(providers credentialLookup) (*ChatResolver, error) {
-	if lo.IsNil(providers) {
-		return nil, errors.New("model: chat provider credential lookup is required")
+func NewChatResolver(providers credentialLookup, clients chatFactory) (*ChatResolver, error) {
+	if lo.IsNil(providers) || lo.IsNil(clients) {
+		return nil, errors.New("model: chat provider credentials and installed adapter are required")
 	}
-	return &ChatResolver{providers: providers}, nil
+	return &ChatResolver{providers: providers, clients: clients}, nil
 }
 
 // ResolveChat builds one provider model from the registry configuration and
@@ -85,48 +127,51 @@ func (c *ChatResolver) ResolveChat(ctx context.Context, selection modelchoice.Se
 	if c == nil || lo.IsNil(c.providers) {
 		return ResolvedChat{}, errors.New("model: chat resolver is not configured")
 	}
-	spec, err := c.resolveClientSpec(ctx, selection)
+	connection, err := resolveConnection(ctx, c.providers, selection)
 	if err != nil {
 		return ResolvedChat{}, err
 	}
-	client, counter, err := buildChat(ctx, spec, selection.Model())
-	if err != nil {
-		return ResolvedChat{}, err
-	}
-	return NewResolvedChat(client, counter)
+	return c.clients.OpenChat(ctx, selection, connection)
 }
 
-func (c *ChatResolver) resolveClientSpec(ctx context.Context, selection modelchoice.Selection) (clientSpec, error) {
+func (c *ChatResolver) RestoreChat(ctx context.Context, selection modelchoice.Selection, capture *ProviderCapture) (ResolvedChat, error) {
 	if err := selection.ValidateExact(); err != nil {
-		return clientSpec{}, fmt.Errorf("model: chat selection: %w", err)
+		return ResolvedChat{}, err
+	}
+	return c.clients.RestoreChat(ctx, selection, capture)
+}
+
+func resolveConnection(ctx context.Context, providers credentialLookup, selection modelchoice.Selection) (modelprovider.Connection, error) {
+	if err := selection.ValidateExact(); err != nil {
+		return modelprovider.Connection{}, fmt.Errorf("model: selection: %w", err)
 	}
 	providerID := selection.Provider()
-	entry, ok, err := c.providers.Get(ctx, providerID)
+	entry, ok, err := providers.Get(ctx, providerID)
 	if err != nil {
-		return clientSpec{}, err
+		return modelprovider.Connection{}, err
 	}
 	if !ok {
 		entry, err = provider.New(providerID)
 		if err != nil {
-			return clientSpec{}, err
+			return modelprovider.Connection{}, err
 		}
 	}
 
-	inputs, err := resolveProviderClientInputs(providerID, entry)
-	if err != nil {
-		return clientSpec{}, err
+	return connectionFromProvider(providerID, entry)
+}
+
+func connectionFromProvider(providerID string, entry provider.Provider) (modelprovider.Connection, error) {
+	if entry.ID() != providerID {
+		return modelprovider.Connection{}, errors.New("model: provider registry identity mismatch")
 	}
-	spec, err := inputs.clientSpec()
-	if err != nil {
-		if errors.Is(err, errCredentialUnavailable) {
-			return clientSpec{}, &run.FailureError{
-				Kind: run.FailureInvalidCredentials,
-				Err:  fmt.Errorf("model: provider %q requires an API key", providerID),
-			}
-		}
-		return clientSpec{}, err
+	connection := modelprovider.Connection{Provider: providerID}
+	if key, present := entry.APIKey(); present {
+		connection.APIKey = key.Reveal()
 	}
-	return spec, nil
+	if endpoint, present := entry.BaseURL(); present {
+		connection.BaseURL = endpoint.String()
+	}
+	return connection, connection.Validate()
 }
 
 // ValidateChatModel implements the application model-role validation port
@@ -136,6 +181,9 @@ func (c *ChatResolver) ValidateChatModel(ctx context.Context, providerID, model 
 	if err != nil {
 		return err
 	}
-	_, err = c.ResolveChat(ctx, selection)
-	return err
+	resolved, err := c.ResolveChat(ctx, selection)
+	if err != nil {
+		return err
+	}
+	return resolved.Close(ctx)
 }

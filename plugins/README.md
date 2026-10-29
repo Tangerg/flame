@@ -123,7 +123,8 @@ See [Memory](memory/README.md) and [Schedules](schedules/README.md) for fact own
 and lifecycle contracts, [Knowledge base](knowledgebase/README.md) for document
 publication/retrieval, and [GitHub](github/README.md) for repository read/write operations and
 credential/cache boundaries. [Model router](modelrouter/README.md) owns role and
-captured-envelope routing policy while core constructs and prices the model.
+captured-envelope routing policy. The installed [model adapter](providers/README.md)
+owns actual Scope construction; Runtime retains captured facts, admission and accounting.
 [Guardrails](guardrails/README.md) owns protected phrases and refuses matching
 model-visible inputs before provider dispatch.
 [Web research](web/README.md) owns Jina/Tavily calls and captured-page browsing;

@@ -207,3 +207,22 @@ func TestCheckpointRejectsUncapturedMCPManifests(t *testing.T) {
 		})
 	}
 }
+
+func TestCheckpointRequiresExplicitModelProviderProjection(t *testing.T) {
+	checkpoint := captureInteractionQuestionCheckpoint(t, t.TempDir())
+	var document map[string]jsontext.Value
+	if err := json.Unmarshal(checkpoint.Payload, &document); err != nil {
+		t.Fatal(err)
+	}
+	if _, present := document["model_provider"]; !present {
+		t.Fatal("model provider projection was omitted")
+	}
+	delete(document, "model_provider")
+	payload, err := json.Marshal(document)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := decodeInteractionCheckpointPayload(payload); err == nil {
+		t.Fatal("missing model construction was restored as a fresh choice")
+	}
+}

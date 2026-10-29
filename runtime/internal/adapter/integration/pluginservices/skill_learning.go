@@ -103,7 +103,7 @@ func (s *SkillLearning) mine(ctx context.Context, binding plugins.ContributionBi
 		return err
 	}
 	state := &learningAdmission{modelCalls: make(map[string]jsonvalue.Value)}
-	reply, err := invokeResolvedCommand[skilllearning.Run, skilllearning.MineResult](operation.Start(ctx, extension.Automatic, "plugins.automatic", uuid.NewString()), s.commands, method.Name(), request, nil, func(context.Context) (plugins.ContributionBinding, error) { return binding, nil }, func(ctx context.Context, _ plugins.ContributionBinding, session *sdk.ClientSession) (sdk.ParamsBase, func(), error) {
+	reply, err := invokeResolvedCommand[skilllearning.Run, skilllearning.MineResult](operation.Start(ctx, extension.Automatic, "plugins.automatic", uuid.NewString()), s.commands, method.Name(), request, nil, func(context.Context) (plugins.ContributionBinding, error) { return binding, nil }, func(ctx context.Context, _ plugins.ContributionBinding, session *sdk.ClientSession) (sdk.ParamsBase, func() error, error) {
 		grant, release, err := s.grant(ctx, session, input.SessionID, state)
 		if err != nil {
 			return sdk.ParamsBase{}, nil, err
@@ -113,7 +113,7 @@ func (s *SkillLearning) mine(ctx context.Context, binding plugins.ContributionBi
 			release()
 			return sdk.ParamsBase{}, nil, err
 		}
-		return metadata, release, nil
+		return metadata, func() error { release(); return nil }, nil
 	})
 	name, callbackErr := state.outcome()
 	if err := errors.Join(err, callbackErr); err != nil {

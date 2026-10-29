@@ -38,7 +38,7 @@ func TestTrajectoryComponentReadsInstalledBytesAndCanonicalHistory(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg.chatResolver = testChatResolver(client)
+	cfg.modelProviders = testChatResolver(client)
 	r := poMCPOpen(t, cfg)
 	source := filepath.Join(firstPartyPackages, "trajectory")
 	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install").(*protocol.PluginInstallation)
@@ -293,7 +293,7 @@ func TestUsageComponentUsesCanonicalSummaryAndUninstallPreservesUsage(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg.chatResolver = testChatResolver(client)
+	cfg.modelProviders = testChatResolver(client)
 	r := poMCPOpen(t, cfg)
 	source, err := filepath.Abs(filepath.Join(firstPartyPackages, "usage"))
 	if err != nil {

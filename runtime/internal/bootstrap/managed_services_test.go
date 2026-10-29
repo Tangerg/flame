@@ -54,7 +54,7 @@ func TestScheduleModelToolCommitsToBackendAndInvalidatesHumanReads(t *testing.T)
 		t.Fatal(err)
 	}
 	cfg := poMCPConfig(t)
-	cfg.chatResolver = testChatResolver(client)
+	cfg.modelProviders = testChatResolver(client)
 	cfg.approvalMode = approval.ModeYolo
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "schedules"))

@@ -127,6 +127,8 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
+        "plugin_stale",
         "workspace_unavailable"
       ]
     },
@@ -139,6 +141,8 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
+        "plugin_stale",
         "session_not_found",
         "revision_conflict",
         "workspace_unavailable",
@@ -170,6 +174,8 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
+        "plugin_stale",
         "session_not_found",
         "run_not_found"
       ]
@@ -259,6 +265,8 @@
       "replayCursor": "run",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
+        "plugin_stale",
         "session_not_found",
         "session_busy",
         "session_has_active_run",
@@ -1420,6 +1428,8 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
+        "plugin_stale",
         "session_not_found",
         "capability_not_negotiated"
       ],
@@ -1514,7 +1524,11 @@
       "operation": "query",
       "idempotency": "none",
       "replayCursor": "none",
-      "pagination": "none"
+      "pagination": "none",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_stale"
+      ]
     },
     {
       "goName": "UpdateProvider",
@@ -1523,7 +1537,11 @@
       "operation": "command",
       "idempotency": "replayResponse",
       "replayCursor": "none",
-      "pagination": "none"
+      "pagination": "none",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_stale"
+      ]
     },
     {
       "goName": "TestProvider",
@@ -1532,7 +1550,11 @@
       "operation": "query",
       "idempotency": "none",
       "replayCursor": "none",
-      "pagination": "none"
+      "pagination": "none",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_stale"
+      ]
     },
     {
       "goName": "ListModels",
@@ -1543,6 +1565,8 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
+        "plugin_stale",
         "provider_error"
       ]
     },
@@ -1562,7 +1586,11 @@
       "operation": "command",
       "idempotency": "replayResponse",
       "replayCursor": "none",
-      "pagination": "none"
+      "pagination": "none",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_stale"
+      ]
     },
     {
       "goName": "GetEmbeddingRole",
@@ -1580,7 +1608,11 @@
       "operation": "command",
       "idempotency": "replayResponse",
       "replayCursor": "none",
-      "pagination": "none"
+      "pagination": "none",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_stale"
+      ]
     },
     {
       "goName": "ListTools",
@@ -2071,6 +2103,10 @@
         "code": -32043,
         "recoveryAction": "promptUser",
         "methods": [
+          "goals.start",
+          "models.list",
+          "models.setEmbeddingRole",
+          "models.setUtilityRole",
           "plugins.acquireComponent",
           "plugins.call",
           "plugins.closeBrowserRealm",
@@ -2093,7 +2129,14 @@
           "plugins.setEnablement",
           "plugins.stage",
           "plugins.stream",
-          "plugins.uninstall"
+          "plugins.uninstall",
+          "providers.list",
+          "providers.test",
+          "providers.update",
+          "runs.start",
+          "sessions.create",
+          "sessions.fork",
+          "sessions.update"
         ]
       },
       {
@@ -2101,6 +2144,10 @@
         "code": -32045,
         "recoveryAction": "promptUser",
         "methods": [
+          "goals.start",
+          "models.list",
+          "models.setEmbeddingRole",
+          "models.setUtilityRole",
           "plugins.acquireComponent",
           "plugins.call",
           "plugins.closeBrowserRealm",
@@ -2123,7 +2170,14 @@
           "plugins.setEnablement",
           "plugins.stage",
           "plugins.stream",
-          "plugins.uninstall"
+          "plugins.uninstall",
+          "providers.list",
+          "providers.test",
+          "providers.update",
+          "runs.start",
+          "sessions.create",
+          "sessions.fork",
+          "sessions.update"
         ]
       },
       {

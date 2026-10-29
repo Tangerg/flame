@@ -452,8 +452,7 @@ func requireWorkspaceInspection(t *testing.T, runtime *Connection, path string) 
 func configureIntegrationRuntime(t *testing.T) {
 	t.Helper()
 	t.Setenv("FLAME_PROVIDER", "anthropic")
-	t.Setenv("ANTHROPIC_API_KEY", "test-key")
-	t.Setenv("DEEPSEEK_API_KEY", "integration-env-key")
+	t.Setenv("FLAME_APIKEY", "test-key")
 
 }
 
@@ -462,7 +461,7 @@ func requireProviderMutationLifecycle(t *testing.T, runtime *Connection) {
 	setBaseURL := models.ValueChange{Kind: protocol.ProviderConfigSet, Value: "https://provider.integration.test"}
 	setAPIKey := models.ValueChange{Kind: protocol.ProviderConfigSet, Value: "integration-stored-key"}
 	configured, err := runtime.UpdateProvider(t.Context(), models.UpdateProvider{
-		Provider: "deepseek", BaseURL: &setBaseURL, APIKey: &setAPIKey,
+		Provider: "anthropic", BaseURL: &setBaseURL, APIKey: &setAPIKey,
 	})
 	if err != nil {
 		t.Fatalf("configure provider: %v", err)
@@ -475,7 +474,7 @@ func requireProviderMutationLifecycle(t *testing.T, runtime *Connection) {
 
 	clear := models.ValueChange{Kind: protocol.ProviderConfigClear}
 	fallback, err := runtime.UpdateProvider(t.Context(), models.UpdateProvider{
-		Provider: "deepseek", BaseURL: &clear, APIKey: &clear,
+		Provider: "anthropic", BaseURL: &clear, APIKey: &clear,
 	})
 	if err != nil {
 		t.Fatalf("clear provider: %v", err)

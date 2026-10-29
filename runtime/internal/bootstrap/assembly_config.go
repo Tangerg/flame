@@ -1,8 +1,12 @@
 package bootstrap
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"path/filepath"
 
 	"github.com/Tangerg/flame/qimu/process"
@@ -15,10 +19,12 @@ import (
 	"github.com/samber/lo"
 )
 
-// ChatResolver combines the execution and model-validation views of one provider boundary.
-type chatResolver interface {
-	executionadapter.InteractionChatResolver
-	models.ChatModelValidator
+type modelProviderAdapters interface {
+	Profiles(context.Context) ([]modelprovider.Profile, error)
+	RemoteModels(context.Context, modelprovider.Connection) ([]string, error)
+	OpenChat(context.Context, modelchoice.Selection, modelprovider.Connection) (modeladapter.ResolvedChat, error)
+	RestoreChat(context.Context, modelchoice.Selection, *modeladapter.ProviderCapture) (modeladapter.ResolvedChat, error)
+	OpenEmbedding(context.Context, modelchoice.Selection, modelprovider.Connection) (modeladapter.ResolvedEmbedding, error)
 }
 
 // Config supplies one complete storage graph and explicit host policy for construction.
@@ -32,10 +38,9 @@ type assemblyConfig struct {
 	// BuildID identifies the running executable at durable executor boundaries.
 	buildID string
 
-	// ChatResolver resolves every frozen Run selection against the live provider
-	// registry. Bootstrap never keeps a process-lifetime default client whose
-	// credential material can outlive a provider update.
-	chatResolver chatResolver
+	// ModelProviders optionally substitutes the complete external adapter boundary.
+	// Production resolves the selected installed provider after MCP composition.
+	modelProviders modelProviderAdapters
 
 	// Pricing computes model usage cost for Runtime projections.
 	pricing accounting.Pricing
@@ -154,8 +159,8 @@ func validateAssemblyConfig(c assemblyConfig) error {
 			return fmt.Errorf("runtime: SandboxReadOnlyPaths[%d] must be absolute when set", index)
 		}
 	}
-	if lo.IsNil(c.chatResolver) {
-		return errors.New("runtime: ChatResolver is required")
+	if c.modelProviders != nil && lo.IsNil(c.modelProviders) {
+		return errors.New("runtime: model providers are typed nil")
 	}
 	if _, err := runs.ParseBuild(c.buildID); err != nil {
 		return fmt.Errorf("runtime: BuildID: %w", err)

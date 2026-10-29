@@ -3,6 +3,7 @@ package model
 import (
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/scope/core/chat"
@@ -12,12 +13,17 @@ import (
 // Pricing returns a per-round cost calculator backed by the model
 // catalog. It prices the round's provider and served model, so every Run
 // reports CostUSD against the model that actually answered.
-func Pricing() accounting.Pricing {
+func Pricing(providerID string, models []catalog.Model) accounting.Pricing {
+	owned := slices.Clone(models)
+	for index, model := range owned {
+		owned[index] = model.Clone()
+	}
 	return func(provider, servedModel string, usage *chat.Usage) (accounting.Cost, error) {
-		if usage == nil {
+		if usage == nil || provider != providerID {
 			return accounting.Cost{}, nil
 		}
-		if info, ok := catalog.Default.Lookup(provider, servedModel); ok {
+		if index := slices.IndexFunc(owned, func(model catalog.Model) bool { return model.ID == servedModel }); index >= 0 {
+			info := owned[index]
 			catalogUsage := catalog.Usage{
 				InputTokens:  usage.InputTokens,
 				OutputTokens: usage.OutputTokens,

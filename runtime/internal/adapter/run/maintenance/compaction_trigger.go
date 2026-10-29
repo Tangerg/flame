@@ -2,8 +2,10 @@ package maintenance
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
+	"slices"
 
 	"github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/scope/core/chat"
@@ -24,6 +26,7 @@ type modelContextBudget struct {
 	options      chat.Options
 	adjustment   int
 	counter      modelContextInputTokenCounter
+	fits         func(context.Context, *chat.Request) (bool, error)
 }
 
 // modelContextInputTokenCounter measures a candidate mutable suffix. The
@@ -70,6 +73,10 @@ func newModelContextBudget(
 }
 
 func (m modelContextBudget) triggered(ctx context.Context, messages []chat.Message) (bool, int, error) {
+	if fits, err := m.requestFits(ctx, messages); err != nil || !fits {
+		tokens, estimateErr := m.estimatedTokens(messages)
+		return !fits, tokens, errors.Join(err, estimateErr)
+	}
 	footprint, err := m.triggerFootprint(ctx, messages)
 	if err != nil {
 		return false, 0, err
@@ -78,6 +85,10 @@ func (m modelContextBudget) triggered(ctx context.Context, messages []chat.Messa
 }
 
 func (m modelContextBudget) exceeded(ctx context.Context, messages []chat.Message) (bool, int, error) {
+	if fits, err := m.requestFits(ctx, messages); err != nil || !fits {
+		tokens, estimateErr := m.estimatedTokens(messages)
+		return !fits, tokens, errors.Join(err, estimateErr)
+	}
 	footprint, err := m.replacementFootprint(ctx, messages)
 	if err != nil {
 		return false, 0, err
@@ -179,4 +190,12 @@ func cloneToolDefinitions(tools []chat.ToolDefinition) []chat.ToolDefinition {
 		cloned[index] = tools[index].Clone()
 	}
 	return cloned
+}
+
+func (m modelContextBudget) requestFits(ctx context.Context, messages []chat.Message) (bool, error) {
+	if m.fits == nil {
+		return true, nil
+	}
+	effective := slices.Concat(m.instructions, messages, m.tail)
+	return m.fits(ctx, &chat.Request{Messages: effective, Tools: m.tools, Options: m.options})
 }

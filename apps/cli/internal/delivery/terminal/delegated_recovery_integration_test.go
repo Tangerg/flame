@@ -30,7 +30,7 @@ func TestTerminalResumesAColdDelegatedApprovalThroughTheWorkbench(t *testing.T) 
 			t.Cleanup(provider.Close)
 			t.Setenv("FLAME_PROVIDER", "deepseek")
 			t.Setenv("FLAME_MODEL", "deepseek-chat")
-			t.Setenv("DEEPSEEK_API_KEY", "integration-key")
+			t.Setenv("FLAME_APIKEY", "integration-key")
 			t.Setenv("FLAME_BASEURL", provider.URL)
 
 			workspace := t.TempDir()

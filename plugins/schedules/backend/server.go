@@ -28,7 +28,7 @@ type store interface {
 	CapturedRun(context.Context, string) (schedule.RunRequest, error)
 }
 
-func registerServer(server *sdk.Server, db *sql.DB, store store, paths app.CWDResolver, models app.ModelAdmitter, connect runConnector) (*qimumcp.Backend, error) {
+func registerServer(server *sdk.Server, db *sql.DB, store store, paths app.CWDResolver, connect runConnector) (*qimumcp.Backend, error) {
 	if connect == nil {
 		return nil, errors.New("schedules: Runtime Run connector is required")
 	}
@@ -41,7 +41,7 @@ func registerServer(server *sdk.Server, db *sql.DB, store store, paths app.CWDRe
 		return nil, err
 	}
 
-	coordinator, err := app.New(app.Dependencies{Store: store, Paths: paths, Models: models, NewScheduleID: func() string { return schedule.IDPrefix + uuid.NewString() }})
+	coordinator, err := app.New(app.Dependencies{Store: store, Paths: paths, NewScheduleID: func() string { return schedule.IDPrefix + uuid.NewString() }})
 	if err != nil {
 		return nil, err
 	}

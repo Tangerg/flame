@@ -15,7 +15,7 @@ func TestPricingUsesProviderAndServedModel(t *testing.T) {
 		t.Fatal("test fixture model missing from catalog")
 	}
 
-	got, err := Pricing()("anthropic", model, usage)
+	got, err := Pricing("anthropic", catalog.Default.Models("anthropic"))("anthropic", model, usage)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +29,7 @@ func TestPricingUsesProviderAndServedModel(t *testing.T) {
 }
 
 func TestPricingReportsUnknownProviderAsUnavailable(t *testing.T) {
-	got, err := Pricing()("does-not-exist", "claude-opus-5", &chat.Usage{InputTokens: 1000})
+	got, err := Pricing("anthropic", catalog.Default.Models("anthropic"))("does-not-exist", "claude-opus-5", &chat.Usage{InputTokens: 1000})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func TestPricingReportsUnknownProviderAsUnavailable(t *testing.T) {
 }
 
 func TestPricingPreservesCatalogPricedZero(t *testing.T) {
-	got, err := Pricing()("anthropic", "claude-opus-5", &chat.Usage{})
+	got, err := Pricing("anthropic", catalog.Default.Models("anthropic"))("anthropic", "claude-opus-5", &chat.Usage{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +49,7 @@ func TestPricingPreservesCatalogPricedZero(t *testing.T) {
 }
 
 func TestPricingReportsMissingUsageAsUnavailable(t *testing.T) {
-	got, err := Pricing()("anthropic", "claude-opus-5", nil)
+	got, err := Pricing("anthropic", catalog.Default.Models("anthropic"))("anthropic", "claude-opus-5", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestPricingPreservesUnknownCatalogPricing(t *testing.T) {
 		t.Fatal("test fixture must have unknown catalog pricing")
 	}
 	for _, usage := range []*chat.Usage{{}, {InputTokens: 1000, OutputTokens: 250}} {
-		cost, err := Pricing()(provider, model, usage)
+		cost, err := Pricing(provider, catalog.Default.Models(provider))(provider, model, usage)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -76,7 +76,7 @@ func TestPricingPreservesUnknownCatalogPricing(t *testing.T) {
 }
 
 func TestPricingRejectsInvalidCachePartition(t *testing.T) {
-	cost, err := Pricing()("anthropic", "claude-opus-5", &chat.Usage{InputTokens: 10, CacheReadInputTokens: new(int64(6)), CacheWriteInputTokens: new(int64(6))})
+	cost, err := Pricing("anthropic", catalog.Default.Models("anthropic"))("anthropic", "claude-opus-5", &chat.Usage{InputTokens: 10, CacheReadInputTokens: new(int64(6)), CacheWriteInputTokens: new(int64(6))})
 	if _, known := cost.USD(); err == nil || known {
 		t.Fatalf("invalid cache partition became a price: %+v, %v", cost, err)
 	}
