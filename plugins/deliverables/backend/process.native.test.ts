@@ -186,6 +186,70 @@ native.each([false, true])(
 );
 
 it.runIf(process.platform === "darwin")(
+  "refuses an incompatible inherited profile without executing an unrestricted command",
+  async () => {
+    const root = await mkdtemp(
+      join(await realpath(tmpdir()), "flame-process-inherited-"),
+    );
+    let retain = false;
+    try {
+      const directory = {
+        root,
+        input: join(root, "input"),
+        output: join(root, "output"),
+        home: join(root, "home"),
+        temporary: join(root, "tmp"),
+      };
+      for (const path of [
+        directory.input,
+        directory.output,
+        directory.home,
+        directory.temporary,
+      ])
+        await mkdir(path, { mode: 0o700 });
+      const executable = await realpath(process.execPath);
+      const plan = confinedPlan(
+        "darwin",
+        directory,
+        [dirname(executable)],
+        executable,
+        [
+          "--disable-wasm-trap-handler",
+          "-e",
+          'process.stdout.write("unrestricted execution")',
+        ],
+        {
+          memoryBytes: LIMITS.formatMemoryBytes,
+          cpuSeconds: LIMITS.formatCpuSeconds,
+          maximumFileBytes: 0,
+          writable: false,
+        },
+      );
+      const inherited = {
+        ...plan,
+        args: [
+          "-p",
+          "(version 1) (allow default) (deny network*)",
+          plan.command,
+          ...plan.args,
+        ],
+      };
+      await expect(
+        runProcess(inherited, AbortSignal.timeout(10_000)),
+      ).rejects.toMatchObject({
+        code: "process_failed",
+      });
+    } catch (cause) {
+      retain = cause instanceof UnconfirmedProcessExit;
+      throw cause;
+    } finally {
+      if (!retain) await rm(root, { recursive: true, force: true });
+    }
+  },
+  20_000,
+);
+
+it.runIf(process.platform === "darwin")(
   "terminates and joins a real process exceeding its resident-memory threshold",
   async () => {
     const root = await mkdtemp(

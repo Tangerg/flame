@@ -204,13 +204,23 @@ try {
           ["run", "build"],
         ];
     if (existsSync(join(project, "package.json")))
-      for (const command of npmCommands)
-        isolated(
-          command[0] === "test" ? callbackPolicy : policy,
-          ["npm", ...command],
-          project,
-          env,
-        );
+      for (const command of npmCommands) {
+        // macOS refuses a different nested Seatbelt profile. This suite proves
+        // its own per-invocation isolation and inherited-profile refusal.
+        if (
+          name === "deliverables" &&
+          process.platform === "darwin" &&
+          command[0] === "test"
+        )
+          run("npm", command, project, env);
+        else
+          isolated(
+            command[0] === "test" ? callbackPolicy : policy,
+            ["npm", ...command],
+            project,
+            env,
+          );
+      }
     const after = new Map(await snapshot(project));
     if (
       before.size !== after.size ||

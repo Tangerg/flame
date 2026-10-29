@@ -64,6 +64,11 @@ full native verification still requires macOS. CI runs clean workspace
 installation and checks on macOS and Linux, plus the macOS native job.
 Verification targets use `/tmp` as their temporary root so Runtime fixture
 sockets fit the platform's Unix address limit.
+Author generation, typechecking, builds and packaging deny checkout reads and
+external networking. On macOS the deliverables backend suite runs outside that
+enclosing sandbox because Seatbelt refuses a different nested profile. Its real
+process tests verify the production per-invocation file, network and fork denials,
+memory enforcement and refusal under an incompatible inherited profile.
 Each Go member runs test/vet/build with `GOWORK=off` and read-only manifests, so
 workspace substitution cannot hide missing dependencies. Package tests run
 serially; process-backed fixtures own their compiler and backend concurrency,

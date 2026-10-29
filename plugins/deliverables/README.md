@@ -87,6 +87,8 @@ uses a private profile and scratch directory, a scrubbed environment, bounded
 outputs and a deadline. Linux uses bubblewrap and macOS uses Seatbelt; unavailable
 confinement is an explicit refusal, never an unrestricted fallback. No model
 argument can name an executable, shell command, host path or remote resource.
+macOS also refuses execution under an incompatible inherited Seatbelt profile;
+the plugin does not retry outside its required confinement.
 
 Linux also requires `/usr/bin/prlimit`; the sandbox applies address-space, CPU,
 single-file and diagnostic-output limits before executing any renderer, including
