@@ -29,7 +29,7 @@
     "check:design-system": "node scripts/check-design-system-boundaries.mjs",
     "check:tokens": "node scripts/check-design-tokens.mjs",
     "check:chrome": "node scripts/check-interactive-chrome.mjs",
-    "check:locales": "node scripts/check-locales.mjs",
+    "check:locales": "node --test scripts/check-locales.test.mjs && node scripts/check-locales.mjs",
     "check:lookup-tables": "node scripts/check-lookup-tables.mjs",
     "check:bundle": "node --test scripts/check-bundle-size.test.mjs && vite build && node scripts/check-css-variables.mjs && node scripts/check-bundle-size.mjs",
     "check:plugin-resources": "node ../../plugins/scripts/build-components.mjs --check",
