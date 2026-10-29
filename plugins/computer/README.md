@@ -303,6 +303,9 @@ Unknown command evidence is never discarded to make room.
 created before spawning the external engine. On POSIX the engine owns a distinct
 process group. Normal close sends EOF, then bounded TERM/KILL if needed, joins the
 original child and checks that the group is gone before removing its marker.
+An exit-probe permission denial retains uncertainty within the original bounded
+wait. Only definitive absence permits release; a persistent denial retains its
+diagnostic and ownership marker, and other probe failures remain explicit.
 The short `.lock` file serializes marker admission and replacement.
 
 After an abrupt backend death, a replacement refuses to start while a recorded
