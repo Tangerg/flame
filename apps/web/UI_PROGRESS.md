@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Current source continues from main `8a00266d3`, which keeps fitting choice groups in their reading frame. Generated-report popovers now use the shared portal, nested dismissal and focus contract; see **Generated-report popup boundaries**. Native verification, regression checks and resource retirement are complete. Next inspect the report's unstyled native progress presentation in the themed content/Dock workspace. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
+Current source continues from main `d9f3ac78e`, which shares generated-report popup boundaries. Report progress now uses the themed shared track, a complete wrapping caption and a localized visible percentage; see **Generated-report progress reading**. Native qualification and the scoped UI gates pass, with the separate Runtime test-startup environment failure recorded below. Resource retirement is complete. Next inspect the report's timed and flipped explanations through source return before selecting another repair. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -60,11 +60,17 @@ return and continued drafting together, published as `fd7c0b0ca`. The generated-
 follow-up qualifies invalid submission, ordered correction, local acceptance,
 choice feedback and continued authoring, published as `d9c325bd6`. The fitting-unit
 follow-up qualifies composite headings, pointer selection, keyboard return and
-zoom reflow, published as `8a00266d3`. Generated-report popup qualification adds
+zoom reflow, published as `8a00266d3`. Generated-report popup qualification, published
+as `d9f3ac78e`, adds
 clipped-reader escape, nested choices, local completion, file-material return
 and continued authoring. Its publication fetch finds zero incoming main commits
-at `8a00266d3`; merging reports already up to date. No unrelated
-Runtime integration suite is repeated for this presentation repair.
+at `8a00266d3`; merging reports already up to date. The progress-reading follow-up
+qualifies themed values, arbitrary admitted maxima, native keyboard changes,
+200% reading, file-material return and continued drafting. Its publication fetch
+finds zero incoming commits at `d9f3ac78e`; merging reports already up to date.
+The full Web invocation also attempts the separate Runtime test group and records
+its existing missing offline-Node-artifact precondition below. It is not reported
+as a passing integration suite.
 See **Computer console
 editing and operation return**. Preserve the
 separate exact-Run and Skills object contract limits already recorded below.
@@ -2171,6 +2177,135 @@ composed report controls and their original-evidence return path in the actual
 content/Dock workspace; choose another repair only from a concrete failure.
 The whole-product UI goal remains active.
 
+### Generated-report progress reading
+
+At main `d9f3ac78ef364355cdac9ec1d8862b094ca78d6f`, GenUI renders a bare
+HTML `progress` next to an inline label while application activity already uses
+a token-dressed Base UI ProgressBar. In actual Wails at **1440 × 900 CSS px**,
+the report's system-green meters are **160 × 16 px**. A short label starts its
+meter at **x = 441.58 px**, while the longer wrapped label starts its meter at
+**505.31 px**. Numeric completion is available to accessibility APIs but has no
+visible text. This is one presentation-boundary inconsistency, not an admission
+or Runtime lifecycle defect.
+
+The existing application ProgressBar moves to `packages/ui/src/progress-bar.tsx`
+and is exported by `@flame/ui`. Activity and task consumers retain their compact
+captions and bar/row/seam dimensions. GenUI selects the shared visible caption:
+the complete label and tabular percentage wrap above a full-width track. Base UI
+owns the same bounded value, maximum, formatted percentage, accessible value and
+indicator geometry. GenUI passes the admitted `value`, optional `max` and host
+locale without normalizing them into a second state. Its existing default maximum
+is 100. The local expression store, operation bindings and Runtime facts retain
+their owners. There is no new dependency, theme override or persistence change.
+
+Read-only references are HeroUI's actual progress-bar implementation, its default
+and size stories, and its style variants. The official
+[Base UI Progress](https://base-ui.com/react/components/progress) supplies the
+installed 1.9 composition and value contract; the
+[Radix Progress](https://www.radix-ui.com/primitives/docs/components/progress)
+reference supplies completion semantics. These are design/API evidence, not
+native Flame verification. Applicable conventions are AGENTS.md, PROJECT_RULES.md,
+DEVELOPMENT.md and the UI/Web/GenUI/native READMEs; the host remains Wails
+**v3.0.0-beta.34**.
+
+The better-interface review covers report reading and local adjustment, related
+file material, explicit return and continued authoring:
+
+| Domain        | Evidence inspected                                                                                                      | Result                                                                                                                                                           |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Accessibility | `component.tsx:178`, shared ProgressBar, native names/raw maxima/percentages, Option-Tab, Home/End/Left and file return | Names, values and keyboard continuity pass; VoiceOver audio is not newly verified.                                                                               |
+| Layout        | Native 1440 × 900, 200% at 720 × 450, native window adjustment to 756 × 475 CSS px, long caption and scrolling          | Complete inspected progress groups remain reachable; 320 px and RTL are not newly qualified.                                                                     |
+| Writing       | Existing authored labels, EN/ZH host actions and explicit percentage                                                    | No new interface copy; the same value is understandable without inferring an exact fraction from bar length.                                                     |
+| Typography    | Native UI 14/18 px, inherited report 16/21 px, 400 weight, 1.55 caption line-height and tabular figures                 | Clear in the inspected scales; no typeface change.                                                                                                               |
+| Colors        | Actual opaque reading-plane chains, Flame Orange/light and custom-blue/dark, measured label/value pairs                 | Light text ratios are **15.80:1 / 7.88:1**; dark ratios are **16.52:1 / 7.60:1**.                                                                                |
+| UI            | Shared track, 6 px report bar, zero/partial/complete geometry, 0 s width transition with host motion off                | Clear for the inspected states. System forced colors and an OS reduced-motion preference are not newly run; their existing stylesheet boundaries remain present. |
+
+| Severity         | Domain | Location                                                                           | Before                                                                                          | After                                                                                | Why                                                                                              |
+| ---------------- | ------ | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| MEDIUM, repaired | UI     | `plugins/genui/component/component.tsx:178`; `packages/ui/src/progress-bar.tsx:83` | A platform-green, fixed-width meter follows the end of each label and omits a visible quantity. | One themed track aligns beneath a complete caption and visible localized percentage. | Shared presentation ownership keeps the scale, reading group and quantitative result consistent. |
+
+Five qualified native instances plus one unqualified initial entry attempt use
+the actual installed GenUI resource and captured-result lifecycle. The private
+accepted document derives from the current report and adds local progress-reading
+inputs with **zero operations**. A custom **3 of 4** remains **75%**; zero and
+completion remain distinct and explicitly readable.
+
+- EN/light/14 px/Flame Orange: each report track is **578 × 6 px**; the 75%
+  fill is **433.5 px**, zero is **0 px** and complete is **578 px**. The long
+  caption wraps above its track. Native Option-Tab reaches the range input;
+  Home, End and Left produce **0%, 100%, 75%** without moving its focus. The
+  macOS navigation preference is not changed. Related file material opens full
+  width, keyboard navigation reaches its body, explicit Close returns to the
+  report, and the draft continues as
+  `Continue after reviewing the coverage. Review complete.`.
+- A separate light instance reads the actual painted foreground and opaque
+  ancestor background chain for numeric contrast. Its raw-coordinate trial
+  selects fixture navigation and is not counted as progress-value activation.
+- ZH host/dark/18 px/custom blue: the authored report retains its English
+  labels. Native 200% reading at **720 × 450 CSS px / DPR 4**, scrolling and
+  native window adjustment to **756 × 475** preserve the changed **100%**,
+  the independent **3/4 → 75%**, zero and completion. In the resized reading,
+  zero and complete tracks are **692.5 × 6 px** with **0 / 692.5 px** fills.
+  The host's motion-off state yields a measured **0 s** width transition.
+  The initial CUA target does not activate material after native window zoom;
+  reacquiring the still-running app succeeds, without a product workaround.
+  Narrow material entry, keyboard body reading, explicit Close, Actual Size
+  and continued drafting retain
+  `保留覆盖率复核后的对话草稿。 已返回，继续。`.
+- The final instance removes both observers. All **617** assets match the
+  observed final build except the two HTML entries containing those observers.
+  Native 200%, Home/End, full progress reading, material entry, keyboard file
+  reading, explicit Close and Actual Size pass. Return retains the updated
+  value and the draft continues as `完成覆盖率复核后继续。 已返回。`.
+  It emits **zero** observation requests or events.
+
+The initial private entry omits the root HTML mapping and remains unqualified;
+copying the built visual entry to the private root entry corrects the harness.
+All UI input uses native CUA. Observers read focus, geometry, computed colors and
+ancestry only. No DOM/store script, live provider execution, browser suite,
+performance benchmark, Claude CLI or subagent is used. These scenes do not
+newly qualify OS IME, live command recovery, forced colors or other-platform GUIs.
+
+The six new report regressions all fail against the original implementation.
+They cover zero, custom maxima, completion, the default maximum, exact localized
+German percentage spacing and control-driven updates with later editing. The
+final focused Web run passes **3 files / 59 tests**. The UI check passes
+**11 files / 193 tests** plus its independent packed UI/icons consumer, now
+including a visible ProgressBar with a non-100 maximum. The full Web invocation
+passes **433 frontend files / 4,158 tests**. Its separate Runtime group fails
+before startup because the prepared offline
+`node-v24.22.1-darwin-arm64.tar.gz` is missing; that artifact is already absent
+in the baseline. All **49** Runtime cases are skipped by the failed setup.
+No assertion is weakened and no Runtime code or environment is changed to hide
+the failure. The fixture's failed temporary root is confirmed absent afterward.
+Web typecheck is then run independently and passes.
+
+Web lint, design-system/token/chrome checks, dead styles/tokens, authored classes,
+shorthand boundaries, production bundle/module checks and `make check-native`
+pass. The full plugin check passes **43 author checks** and **16 files / 274
+backend/contract tests**, with the existing **13 Linux-only cases** skipped on
+macOS; all 13 catalogs cover eight locales. The independent GenUI package has
+**18 files** and its component exactly matches the qualified installed resource:
+SHA-256 `7cdf696a6b077ea5c20b89ef2efb36296851aaa4bcf5e13c8f5d3b1490775d37`.
+Only that resource changes among **32**. All builds/checks run serially.
+
+All six native instances are stopped, the private bundle is unregistered and
+the loopback observer is closed. Cleanup removes **9** new checkout output/cache
+roots and **3** owned profile paths, restores **4** original files and modes,
+and passes all **18** output and **5** profile baselines. All **6,268** qualified
+non-Markdown inputs, **32** resources, three read-only reference files, three
+instruction files and the original UI/Web cache contents pass preservation.
+The private root `flame-report-progress-1zdIzy` is absent. Its verified in-memory
+gzip retains **84** UTF-8 records, **18,579,457** raw bytes and **1,932,519** gzip
+bytes; SHA-256
+`346967c46258a8e85cfc43f50afce756315ee7ed157da8673fc5af6110b59917`.
+The primary checkout and unrelated user work remain untouched.
+
+Verdict: **Approve for the inspected report-progress and file-return tasks**.
+The whole-product UI goal remains active. Next inspect the existing report's
+timed and flipped explanations through their complete reading/return flow;
+select another repair only from a concrete failure.
+
 ### Generated-report popup boundaries
 
 At main `8a00266d3b6d076b7e20844ce83830bc75129c20`, a generated report's
@@ -2281,9 +2416,9 @@ SHA-256 `bad2cd42544e296c59a9578595595544d8660f3dbe42b5a79350cd9d20a31d05`.
 The primary checkout, user data and unrelated processes remain untouched.
 
 Verdict: **Approve for the inspected popup and file-return tasks**. The whole-product
-UI goal remains active. Native light review also exposes the generated report's
-plain green HTML progress meter beside otherwise themed controls; inspect that
-existing presentation owner next before selecting another repair.
+UI goal remains active. Native light review also identifies the generated report's
+plain green HTML progress meter beside otherwise themed controls; its repair is
+recorded under **Generated-report progress reading** above.
 
 ### Command focus and visible pane boundaries
 

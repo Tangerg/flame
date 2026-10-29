@@ -15,6 +15,7 @@ export {
   RichTooltip,
 } from "./tooltip";
 export { Popover } from "./popover";
+export { ProgressBar } from "./progress-bar";
 export {
   UI_FONT_SIZE_DEFAULT_PX,
   UI_FONT_SIZE_MIN_PX,

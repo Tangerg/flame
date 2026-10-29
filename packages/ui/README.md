@@ -57,6 +57,14 @@ do not restore focus to an unavailable trigger. Positioning, initial/final focus
 and dismissal remain with Base UI. Consumers own their content measure and
 available-height scrolling, not another document-level outside-press listener.
 
+`ProgressBar` owns the themed track and its existing bar, row and seam weights.
+Compact application chrome keeps its surrounding caption; portable reading views
+use `labelVisibility="visible"` for a complete wrapping label and tabular value
+above the track. Base UI derives the indicator, accessible value and localized
+percentage from the same `value` and `max`. The default maximum remains 100.
+The host supplies the locale and the meaning of the progress; the component owns
+neither an elapsed-time estimate nor an execution state.
+
 ```tsx
 import { Button, IconButton, FontScaleProvider } from "@flame/ui";
 import { Brain } from "@flame/icons/react";

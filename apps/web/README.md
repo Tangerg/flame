@@ -330,6 +330,12 @@ transcript content. Base UI owns positioning, nested dismissal and focus return;
 retained content uses the shared visibility boundary. Catalog pickers, anchored
 Composer suggestions and their existing content sizes retain the same contract.
 
+Application task and activity progress use public `@flame/ui` ProgressBar alongside
+portable reports. Existing compact captions and seam dimensions stay with their
+consumers; the shared component owns the themed track and value geometry. Report
+captions can wrap above a visible localized percentage without moving the track
+into a text line. Runtime and task projections retain completion ownership.
+
 File previews keep their filename to two visible lines beside persistent navigation,
 range and commands. Header groups share a row when their natural widths fit and
 wrap together when space is limited. Navigation and actions align with the primary

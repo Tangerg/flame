@@ -66,6 +66,11 @@ use Base UI's existing layer boundary. The declared open field and all drafts
 remain in the OpenUI store. Closing removes popup content through the primitive's
 ordinary lifetime; hidden views retire open descendants without reopening over
 later authoring. Available-height scrolling keeps larger popup content reachable.
+Progress uses the same themed ProgressBar as application activity. Its complete
+label and localized percentage remain visible above the track, including zero,
+completion and a supplied maximum other than 100. The admitted values and local
+expressions retain their existing meaning; no simulated execution or new state
+owner is introduced.
 Native chart geometry uses labels, patterns and a data table rather than color
 alone. Markdown uses the established renderer with raw HTML disabled. KaTeX
 produces MathML with trusted commands disabled. Map tiles use OpenStreetMap with

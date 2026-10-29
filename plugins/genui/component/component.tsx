@@ -10,6 +10,7 @@ import {
   DocumentBody,
   HeadingLevel,
   Metadata,
+  ProgressBar,
   RecordBody,
   RecordGroup,
   RecordTitle,
@@ -175,14 +176,13 @@ function displayLibrary(
       />
     ),
     Progress: ({ props }) => (
-      <div>
-        <span>{props.label}</span>
-        <progress
-          aria-label={props.label}
-          value={props.value}
-          max={props.max ?? 100}
-        />
-      </div>
+      <ProgressBar
+        label={props.label}
+        value={props.value}
+        max={props.max}
+        locale={context.locale}
+        labelVisibility="visible"
+      />
     ),
     Divider: () => <hr />,
     Input: (view) => <InputView {...view} t={t} />,

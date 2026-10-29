@@ -21,7 +21,7 @@ export { OptionRow } from "@/ui/atoms/option-row";
 export { Popover } from "@flame/ui";
 export { Pressable } from "@/ui/atoms/pressable";
 export { Gauge } from "@/ui/atoms/gauge";
-export { ProgressBar } from "@/ui/atoms/progress-bar";
+export { ProgressBar } from "@flame/ui";
 export { ProviderIcon, providerDisplayName } from "@/ui/atoms/provider-icon";
 export { ScrollArea } from "@/ui/atoms/scroll-area";
 export { scrollEdges, useScrollEdges } from "@/ui/atoms/scroll-edges";

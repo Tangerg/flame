@@ -83,6 +83,65 @@ function show(value: AcceptedDocument, locale = "en") {
   return { context, ...testClient.render(<GenUIResult context={context} />) };
 }
 
+it.each([
+  { value: 0, max: 4, locale: "en", text: "0%" },
+  { value: 3, max: 4, locale: "en", text: "75%" },
+  { value: 4, max: 4, locale: "en", text: "100%" },
+  { value: 25, locale: "en", text: "25%" },
+  { value: 3, max: 4, locale: "de", text: "75\u00a0%" },
+])("renders readable progress for $value of $max in $locale", ({ value, max, locale, text }) => {
+  show(
+    document([
+      { id: "coverage", type: "Progress", props: { label: "Review coverage", value, max } },
+    ]),
+    locale,
+  );
+  const progress = screen.getByRole("progressbar", { name: "Review coverage" });
+  expect(within(progress).getByText("Review coverage")).toBeTruthy();
+  expect(within(progress).getByText(text, { normalizer: (value) => value }).hidden).toBe(false);
+  expect(progress.getAttribute("aria-valuenow")).toBe(String(value));
+  expect(progress.getAttribute("aria-valuemax")).toBe(String(max ?? 100));
+  expect(progress.getAttribute("aria-valuetext")).toBe(text);
+});
+
+it("updates readable progress through the local control without leaving its editing context", async () => {
+  show(
+    document(
+      [
+        {
+          id: "scenario",
+          type: "Slider",
+          props: { field: "covered", label: "Reviewed batches", min: 0, max: 4, step: 1 },
+        },
+        {
+          id: "coverage",
+          type: "Progress",
+          props: { label: "Review coverage", value: { state: "covered" }, max: 4 },
+        },
+        { id: "notes", type: "Input", props: { field: "note", label: "Review note" } },
+      ],
+      [
+        { id: "covered", value: 3 },
+        { id: "note", value: "Keep the original review." },
+      ],
+    ),
+  );
+  await act(async () => {});
+  const control = screen.getByRole("slider", { name: "Reviewed batches" });
+  const progress = screen.getByRole("progressbar", { name: "Review coverage" });
+  act(() => control.focus());
+  fireEvent.keyDown(control, { key: "ArrowRight" });
+  await waitFor(() => expect(within(progress).getByText("100%")).toBeTruthy());
+  expect(progress.getAttribute("aria-valuenow")).toBe("4");
+  expect(window.document.activeElement).toBe(control);
+  const note = screen.getByRole("textbox", { name: "Review note" });
+  act(() => note.focus());
+  fireEvent.change(note, { target: { value: "Continue after checking coverage." } });
+  expect(window.document.activeElement).toBe(note);
+  expect((note as HTMLInputElement).value).toBe("Continue after checking coverage.");
+  expect(progress.getAttribute("aria-valuenow")).toBe("4");
+});
+
 const report = document([
   { id: "text", type: "Text", props: { text: "Only captured evidence appears in this report." } },
   {

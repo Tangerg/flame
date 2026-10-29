@@ -7,7 +7,7 @@ import { color, leading, motion, radius, space, surface, type } from "@flame/ui/
 import { vocab } from "@flame/ui";
 import { Collapsible, useDisclosedContent } from "@/ui/atoms/collapsible";
 import { Pressable } from "@/ui/atoms/pressable";
-import { ProgressBar } from "@/ui/atoms/progress-bar";
+import { ProgressBar } from "@flame/ui";
 import { Icon, type IconName } from "@/ui/icons/index";
 import { toneInk } from "@flame/ui/tone-ink";
 import { chevron } from "@/ui/atoms/chevron";
