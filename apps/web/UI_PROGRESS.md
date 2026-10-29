@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Current batch makes Hooks and Plugins begin with their actual tasks, removing repeated introductory paragraphs while retaining specific trust effects, source identity and search by existing fields/sections. All 64 focused Settings/search/draft tests, typecheck, lint and remaining Web/native gates pass; light/dark/18px/200% and observer-free native tasks pass. Evidence and cleanup are recorded under **Settings headings and task-first reading**; publication is next. Settings catalog readiness is published as `1bb564a53`, MCP as `17916606d`, Files as `4468c2fc6`, and source-return/long-tooltip delivery as `c126bc235`. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
+Hooks and Plugins now begin with their actual tasks, published as `ca9c60977`: repeated introductory paragraphs are removed while specific trust effects, source identity and search by existing fields/sections remain. All 64 focused Settings/search/draft tests, typecheck, lint and remaining Web/native gates pass; light/dark/18px/200% and observer-free native tasks pass. Evidence, cleanup and delivery are recorded under **Settings headings and task-first reading**. Settings catalog readiness is published as `1bb564a53`, MCP as `17916606d`, Files as `4468c2fc6`, and source-return/long-tooltip delivery as `c126bc235`. Preserve the shared quiet filled controls, theme owners and parallel primary checkout. The whole-product UI goal remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -103,7 +103,8 @@ Initial MCP server/tool readiness is published as `17916606d`; see **First MCP-r
 The five remaining Settings catalogs retain their own initial-read state,
 published as `1bb564a53`;
 see **Settings catalog first-result readiness** for native task and cleanup evidence.
-Hooks and Plugins now begin with direct settings and named task sections; see
+Hooks and Plugins begin with direct settings and named task sections, published
+as `ca9c60977`; see
 **Settings headings and task-first reading** for the original/candidate native
 comparison, search/return path and cleanup.
 See **Goal save
@@ -10878,8 +10879,14 @@ cleanup proof. SHA-256:
 No full Web/Runtime/browser suite, benchmark, live business chain, RTL/320px or
 other-OS qualification is claimed.
 
+Implementation `ca9c6097791f2ea854d2b16c3381de54f0e307e8` is committed with
+normal formatting, workspace-lint and message hooks, then pushed normally to
+main. Exact HEAD, origin/main and remote hashes match; divergence is **0/0** and
+the owned checkout is clean. Post-hook preservation repeats all counts above.
+This documentation-only delivery receipt does not repeat qualified checks.
+
 Verdict: **Approve** for these Settings hierarchy/search/return paths.
-Publication remains to complete. The whole-product UI objective is unfinished.
+Publication and cleanup are complete. The whole-product UI objective is unfinished.
 Next inspect independently arriving model-choice data against actual role and
 provider readiness; establish a native counterexample before changing its
 contract. Keep content/Dock task continuity as the broader review focus.
