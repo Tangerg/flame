@@ -10632,8 +10632,16 @@ and restores all **four** original files and modes. Independent checks preserve
 **6,379** qualified non-Markdown inputs, **34** resources, **45** read-only
 references, **three** owned instruction files, **21** output-presence and **five**
 profile-absence baselines, including the retained installed npm toolchain. The
-primary parallel checkout remains untouched. Publication and final evidence
-retirement follow this decoder qualification.
+primary parallel checkout remains untouched. Implementation 634a532441b5a4f18a9c1bcb9db6486de45bba06 is independently verified on remote main.
+The interval fetch finds no incoming commits; the ordinary push leaves HEAD and
+origin/main at zero divergence with a clean owned checkout. The exact root
+/private/tmp/flame-trajectory-image-failure-ic4JYb is absent after retirement. Independent preservation checks pass again
+for all qualified inputs, resources, originals, output/profile baselines,
+instructions and read-only references. No owned app process or listener remains.
+The memory-only archive round-trips **82 UTF-8 records**,
+**10,989,765 raw bytes** and **2,324,223 gzip bytes**, SHA-256
+e6cdcd77c6689537eb95ed2072a429cc0e72e72889d8b91afd70ff66ef57146f. This final handoff changes no qualified product source;
+continue from fresh content/Dock task evidence with the continuous goal active.
 
 ## Shortcut recording and activation
 
