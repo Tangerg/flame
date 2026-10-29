@@ -21,7 +21,9 @@ func SummarizePatch(patch []byte) ([]DiffFile, error) {
 			return nil, err
 		}
 	}
-	parser.flush()
+	if _, err := parser.flush(); err != nil {
+		return nil, err
+	}
 	for i := range parser.files {
 		parser.files[i].Rows = nil
 	}
@@ -47,7 +49,11 @@ func parseUnifiedDiff(patch []byte, maxFiles, maxRows int) ([]DiffFile, bool, er
 			return parser.files, true, nil
 		}
 	}
-	if !parser.flush() {
+	flushed, err := parser.flush()
+	if err != nil {
+		return nil, false, err
+	}
+	if !flushed {
 		return parser.files, true, nil
 	}
 	return parser.files, false, nil
@@ -69,18 +75,21 @@ const (
 )
 
 type unifiedDiffParser struct {
-	maxFiles  int
-	maxRows   int
-	files     []DiffFile
-	current   *DiffFile
-	leftLine  int
-	rightLine int
-	rows      int
+	maxFiles int
+	maxRows  int
+	files    []DiffFile
+	current  *DiffFile
+	left     hunkRange
+	right    hunkRange
+	rows     int
 }
 
 func (parser *unifiedDiffParser) consume(line string) (bool, error) {
+	if parser.left.remaining > 0 || parser.right.remaining > 0 {
+		return parser.appendRow(line)
+	}
 	if strings.HasPrefix(line, diffFileHeader) {
-		return parser.startFile(strings.TrimPrefix(line, diffFileHeader)), nil
+		return parser.startFile(strings.TrimPrefix(line, diffFileHeader))
 	}
 	if parser.current == nil {
 		return false, nil
@@ -91,33 +100,37 @@ func (parser *unifiedDiffParser) consume(line string) (bool, error) {
 	if strings.HasPrefix(line, hunkHeader) {
 		return parser.appendHunk(line)
 	}
-	return parser.appendRow(line), nil
+	return false, nil
 }
 
-func (parser *unifiedDiffParser) startFile(header string) bool {
-	if !parser.flush() || len(parser.files) >= parser.maxFiles {
-		return true
+func (parser *unifiedDiffParser) startFile(header string) (bool, error) {
+	flushed, err := parser.flush()
+	if err != nil || !flushed || len(parser.files) >= parser.maxFiles {
+		return true, err
 	}
 	parser.current = &DiffFile{
 		Path:   diffHeaderPath(header),
 		Status: StatusModified,
 	}
-	parser.leftLine = 0
-	parser.rightLine = 0
-	return false
+	parser.left = hunkRange{}
+	parser.right = hunkRange{}
+	return false, nil
 }
 
-func (parser *unifiedDiffParser) flush() bool {
+func (parser *unifiedDiffParser) flush() (bool, error) {
+	if parser.left.remaining != 0 || parser.right.remaining != 0 {
+		return false, fmt.Errorf("git: incomplete diff hunk")
+	}
 	if parser.current == nil {
-		return true
+		return true, nil
 	}
 	if len(parser.files) >= parser.maxFiles || parser.rows+len(parser.current.Rows) > parser.maxRows {
-		return false
+		return false, nil
 	}
 	parser.rows += len(parser.current.Rows)
 	parser.files = append(parser.files, *parser.current)
 	parser.current = nil
-	return true
+	return true, nil
 }
 
 func (parser *unifiedDiffParser) applyMetadata(line string) bool {
@@ -161,40 +174,51 @@ func (parser *unifiedDiffParser) appendHunk(line string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	parser.leftLine = left
-	parser.rightLine = right
+	parser.left = left
+	parser.right = right
 	parser.current.Rows = append(parser.current.Rows, Row{Type: RowHunk, Text: line})
 	return false, nil
 }
 
-func (parser *unifiedDiffParser) appendRow(line string) bool {
+func (parser *unifiedDiffParser) appendRow(line string) (bool, error) {
+	if line == `\ No newline at end of file` {
+		return false, nil
+	}
 	if line == "" {
-		return false
+		return false, fmt.Errorf("git: incomplete diff hunk")
 	}
 	marker := line[0]
-	if marker != '+' && marker != '-' && marker != ' ' {
-		return false
+	left := marker == '-' || marker == ' '
+	right := marker == '+' || marker == ' '
+	if !left && !right || left && parser.left.remaining == 0 || right && parser.right.remaining == 0 {
+		return false, fmt.Errorf("git: row exceeds diff hunk range: %q", line)
 	}
 	if parser.rowBudgetExhausted() {
-		return true
+		return true, nil
 	}
-	var row Row
+	row := Row{Code: line[1:]}
 	switch marker {
 	case '+':
-		row = Row{Type: RowAdded, RightLine: parser.rightLine, Code: line[1:]}
-		parser.rightLine++
+		row.Type = RowAdded
 		parser.current.Added++
 	case '-':
-		row = Row{Type: RowDeleted, LeftLine: parser.leftLine, Code: line[1:]}
-		parser.leftLine++
+		row.Type = RowDeleted
 		parser.current.Removed++
 	case ' ':
-		row = Row{Type: RowContext, LeftLine: parser.leftLine, RightLine: parser.rightLine, Code: line[1:]}
-		parser.leftLine++
-		parser.rightLine++
+		row.Type = RowContext
+	}
+	if left {
+		row.LeftLine = parser.left.line
+		parser.left.line++
+		parser.left.remaining--
+	}
+	if right {
+		row.RightLine = parser.right.line
+		parser.right.line++
+		parser.right.remaining--
 	}
 	parser.current.Rows = append(parser.current.Rows, row)
-	return false
+	return false, nil
 }
 
 func (parser *unifiedDiffParser) rowBudgetExhausted() bool {
@@ -256,32 +280,41 @@ func binaryPatchPath(line string) string {
 	return strings.TrimSuffix(line[index+len(marker):], " differ")
 }
 
-// parseHunkHeader pulls the left/right start lines out of "@@ -L,S +R,S @@ …".
-func parseHunkHeader(h string) (left, right int, err error) {
+type hunkRange struct {
+	line      int
+	remaining int
+}
+
+func parseHunkHeader(h string) (left, right hunkRange, err error) {
 	fields := strings.Fields(h)
 	if len(fields) < 4 || fields[0] != "@@" || fields[3] != "@@" ||
 		len(fields[1]) < 2 || fields[1][0] != '-' ||
 		len(fields[2]) < 2 || fields[2][0] != '+' {
-		return 0, 0, fmt.Errorf("git: malformed hunk header %q", h)
+		return left, right, fmt.Errorf("git: malformed hunk header %q", h)
 	}
-	left, err = atoiBeforeComma(fields[1][1:])
+	left, err = parseHunkRange(fields[1][1:])
 	if err != nil {
-		return 0, 0, fmt.Errorf("git: malformed hunk header %q: %w", h, err)
+		return left, right, fmt.Errorf("git: malformed hunk header %q: %w", h, err)
 	}
-	right, err = atoiBeforeComma(fields[2][1:])
+	right, err = parseHunkRange(fields[2][1:])
 	if err != nil {
-		return 0, 0, fmt.Errorf("git: malformed hunk header %q: %w", h, err)
+		return left, right, fmt.Errorf("git: malformed hunk header %q: %w", h, err)
 	}
 	return left, right, nil
 }
 
-func atoiBeforeComma(s string) (int, error) {
-	if i := strings.IndexByte(s, ','); i >= 0 {
-		s = s[:i]
+func parseHunkRange(value string) (hunkRange, error) {
+	start, count, explicit := strings.Cut(value, ",")
+	line, err := strconv.Atoi(start)
+	if err != nil || line < 0 {
+		return hunkRange{}, fmt.Errorf("invalid line number %q", start)
 	}
-	n, err := strconv.Atoi(s)
-	if err != nil || n < 0 {
-		return 0, fmt.Errorf("invalid line number %q", s)
+	remaining := 1
+	if explicit {
+		remaining, err = strconv.Atoi(count)
+		if err != nil || remaining < 0 {
+			return hunkRange{}, fmt.Errorf("invalid line count %q", count)
+		}
 	}
-	return n, nil
+	return hunkRange{line: line, remaining: remaining}, nil
 }

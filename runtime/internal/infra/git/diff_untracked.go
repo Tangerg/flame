@@ -19,7 +19,7 @@ const maxUntrackedDiffPaths = 10_000
 
 // untrackedPaths lists untracked files (status ??), optionally under relPath.
 func untrackedPaths(ctx context.Context, dir, relPath string) ([]string, error) {
-	scopePath, err := gitPathRelativeToWorkspace(dir, relPath)
+	scopePath, err := workspacePathspec(dir, relPath)
 	if err != nil {
 		return nil, err
 	}

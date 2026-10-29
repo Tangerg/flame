@@ -1313,6 +1313,11 @@ exits remain observed data for Git's predicate and diff semantics.
 Root exit is observed independently of pipe EOF. It starts group retirement and
 a bounded output drain; the drain budget never limits a still-executing root.
 
+Workspace file selection converts resource paths into literal Git pathspecs at
+one adapter boundary, shared by file listings and raw/structured diffs. The patch
+parser consumes each hunk's declared left/right ranges before interpreting file
+metadata, so header-like source lines retain their file identity and line counts.
+
 Checkpoint predicates accept exit codes only from admitted Git command results.
 A process failure carrying the same status remains a failed observation. Object
 alternate admission preserves cancellation and I/O failures; only opening an
