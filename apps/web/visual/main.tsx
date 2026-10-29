@@ -3,7 +3,10 @@ import { disposeOnHmr } from "@/lib/hmr";
 import { createFlameClient, type FlameClient } from "@flame/runtime-client";
 import { VISUAL_CAPABILITIES } from "./agentFixtureFacts";
 import { type ServerCapabilities, type Diff } from "@flame/runtime-client/wire";
-import { createVisualRuntimeTransport } from "./createVisualRuntimeTransport";
+import {
+  createVisualRuntimeTransport,
+  VISUAL_REMOVE_SCHEDULE_EVENT,
+} from "./createVisualRuntimeTransport";
 import { definePlugin } from "@/extensions/definePlugin";
 import { createRoot } from "react-dom/client";
 import { type ReactNode } from "react";
@@ -205,15 +208,27 @@ async function installVisualRuntimeClient(
   readDiff: (signal?: AbortSignal) => Promise<Diff>,
   acceptSkillProposals = false,
 ): Promise<FlameClient> {
-  const client = createFlameClient(
-    createVisualRuntimeTransport(snapshot, capabilities, readDiff, acceptSkillProposals),
-    { capabilities: () => capabilities },
+  const transport = createVisualRuntimeTransport(
+    snapshot,
+    capabilities,
+    readDiff,
+    acceptSkillProposals,
   );
+  const client = createFlameClient(transport, { capabilities: () => capabilities });
   await loadPluginsForTest(
     definePlugin({
       name: "flame.visual.runtime-client",
       setup(ctx) {
-        ctx.cleanup(() => client.close());
+        const removeSchedule = (event: Event) => {
+          if (!(event instanceof CustomEvent) || typeof event.detail !== "string")
+            throw new Error("visual schedule removal requires a record identity");
+          transport.removeSchedule(event.detail);
+        };
+        window.addEventListener(VISUAL_REMOVE_SCHEDULE_EVENT, removeSchedule);
+        ctx.cleanup(() => {
+          window.removeEventListener(VISUAL_REMOVE_SCHEDULE_EVENT, removeSchedule);
+          return client.close();
+        });
       },
     }),
   );

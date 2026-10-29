@@ -62,19 +62,25 @@ test("layout tokens change page gutters, form padding and field groups together"
     root.style.setProperty("--layout-page-gutter", "40px");
     root.style.setProperty("--layout-card-padding", "32px");
     root.style.setProperty("--layout-field-gap", "24px");
-    root.style.setProperty("--surface-card-radius", "28px");
+    root.style.setProperty("--floating-panel-radius", "28px");
   });
-  const editor = page.getByRole("region", { name: "Schedule editor", exact: true });
-  await expect(editor).toHaveCSS("padding-inline-start", "32px");
+  const editor = page.getByRole("dialog", { name: "New schedule", exact: true });
+  await expect(editor.locator('[data-slot="dialog-body"]')).toHaveCSS(
+    "padding-inline-start",
+    "32px",
+  );
   await expect(editor).toHaveCSS("border-top-left-radius", "28px");
   const group = editor.getByRole("group", { name: "Timing and workspace", exact: true });
   await expect(group.locator(":scope > div")).toHaveCSS("row-gap", "24px");
-  const panel = page.getByRole("region", { name: "Schedules", exact: true });
+  await editor.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(editor).toHaveCount(0);
+  const panel = page
+    .getByRole("region", { name: "Schedules", exact: true, includeHidden: true })
+    .and(page.locator('[data-slot="panel"]'));
   const pageEdge = (await panel.boundingBox())!.x;
-  expect(
-    (await panel.getByRole("heading", { name: "Schedules", exact: true }).boundingBox())!.x -
-      pageEdge,
-  ).toBe(40);
+  expect((await panel.locator('[data-slot="panel-controls"]').boundingBox())!.x - pageEdge).toBe(
+    40,
+  );
 });
 
 test("segments slide continuously and reverse from their painted position", async ({ page }) => {
@@ -197,7 +203,7 @@ test("one row and gutter token reaches settings, plugins and modal chrome", asyn
     root.style.setProperty("--layout-row-padding", "18px");
     root.style.setProperty("--layout-compact-gutter", "24px");
   });
-  const modal = page.getByRole("dialog", { name: "Configure inputs", exact: true });
+  const modal = page.getByRole("dialog", { name: /^Configure inputs: / });
   await expect(modal.locator("header")).toHaveCSS("padding-inline-start", "28px");
   await expect(modal.locator('[data-slot="dialog-body"]')).toHaveCSS(
     "padding-inline-start",

@@ -10,6 +10,8 @@ import {
   type SetApprovalModeRequest,
   type SkillDetailRequest,
   type SkillProposalRef,
+  type RuntimeSubscribeRequest,
+  NOTIFICATIONS_RUNTIME_EVENT,
 } from "@flame/runtime-client/wire";
 import {
   VISUAL_MEMORY_PAGE,
@@ -29,6 +31,9 @@ import {
   VISUAL_SKILL_LIBRARY,
   VISUAL_SKILL_PROPOSALS,
 } from "./skillSnapshots";
+
+export const VISUAL_REMOVE_SCHEDULE_EVENT = "flame:visual-remove-schedule";
+
 function resultFor(
   request: TransportRequest,
   snapshot: RuntimeAgentSessionSnapshot,
@@ -88,9 +93,6 @@ function resultFor(
       if (call.method === "flame.memory/list.v2") {
         return { output: JSON.stringify(VISUAL_MEMORY_PAGE) };
       }
-      if (call.method === "flame.schedules/list.v1") {
-        return { output: JSON.stringify(VISUAL_SCHEDULES_PAGE) };
-      }
       throw new Error(`Visual plugin has no response for "${call.method}"`);
     }
     default:
@@ -103,9 +105,12 @@ export function createVisualRuntimeTransport(
   capabilities: ServerCapabilities,
   readDiff: (signal?: AbortSignal, request?: GetDiffRequest) => Promise<Diff>,
   acceptSkillProposals = false,
-): Transport {
+): Transport & { removeSchedule(id: string): void } {
   const transport = createMemoryTransport();
   const skillProposals = structuredClone(VISUAL_SKILL_PROPOSALS);
+  const schedules = structuredClone(VISUAL_SCHEDULES_PAGE);
+  const scheduleWatches = new Map<TransportRequest["id"], AbortSignal | undefined>();
+  let sequence = 0;
   const approval: ApprovalModeResult = {
     mode: "balanced",
     modes: [
@@ -116,11 +121,37 @@ export function createVisualRuntimeTransport(
   };
   return {
     recv: transport.recv,
-    close: transport.close,
+    close() {
+      scheduleWatches.clear();
+      return transport.close();
+    },
+    removeSchedule(id) {
+      const index = schedules.Rows.findIndex((row) => row.ID === id);
+      if (index < 0) throw new Error(`visual schedules has no record named "${id}"`);
+      schedules.Rows.splice(index, 1);
+      sequence += 1;
+      for (const [rpcId, signal] of scheduleWatches) {
+        if (signal?.aborted) continue;
+        transport.inject(
+          {
+            jsonrpc: "2.0",
+            method: NOTIFICATIONS_RUNTIME_EVENT,
+            params: { event: { type: "plugins.dataChanged", sequence } },
+          },
+          undefined,
+          rpcId,
+        );
+      }
+    },
     async send(request, signal, options) {
       signal?.throwIfAborted();
       let result: unknown;
-      if (request.method === "skills.proposals.list") {
+      if (
+        request.method === "plugins.call" &&
+        (request.params as CallPluginRequest).method === "flame.schedules/list.v1"
+      ) {
+        result = { output: JSON.stringify(schedules) };
+      } else if (request.method === "skills.proposals.list") {
         result = structuredClone(skillProposals);
       } else if (
         acceptSkillProposals &&
@@ -144,6 +175,14 @@ export function createVisualRuntimeTransport(
         result = await resultFor(request, snapshot, capabilities, approval, readDiff, signal);
       }
       await transport.send(request, signal, options);
+      if (
+        request.method === "runtime.subscribe" &&
+        (request.params as RuntimeSubscribeRequest).topics.includes("plugins.dataChanged") &&
+        !signal?.aborted
+      ) {
+        scheduleWatches.set(request.id, signal);
+        signal?.addEventListener("abort", () => scheduleWatches.delete(request.id), { once: true });
+      }
       transport.inject({ jsonrpc: "2.0", id: request.id, result });
     },
   };

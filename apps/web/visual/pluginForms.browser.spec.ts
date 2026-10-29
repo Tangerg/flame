@@ -8,7 +8,7 @@ for (const theme of ["light", "dark"]) {
     );
     await page.locator("html[data-visual-ready]").waitFor();
     await page.getByRole("button", { name: "Configure inputs", exact: true }).first().click();
-    const dialog = page.getByRole("dialog", { name: "Configure inputs", exact: true });
+    const dialog = page.getByRole("dialog", { name: /^Configure inputs: / });
     await expect(dialog).toBeVisible();
     await expect(dialog).toHaveCSS("opacity", "1");
     await expect(dialog).toHaveCSS("scale", "none");
@@ -41,10 +41,11 @@ for (const theme of ["light", "dark"]) {
       const submit = dialog.getByRole("button", { name: "Import", exact: true });
       await expect(field).toBeFocused();
       await expect(submit).toBeDisabled();
-      await field.fill("invalid JSON");
+      const invalid = "invalid JSON\n".repeat(100);
+      await field.fill(invalid);
       await submit.click();
       await expect(dialog.getByRole("alert")).toBeVisible();
-      await expect(field).toHaveValue("invalid JSON");
+      await expect(field).toHaveValue(invalid);
       await expect(field).toHaveAttribute("aria-invalid", "true");
       await field.scrollIntoViewIfNeeded();
       const dimensions = await dialog.evaluate((node) => {
@@ -61,7 +62,10 @@ for (const theme of ["light", "dark"]) {
           top: box.top,
           bottom: box.bottom,
           overflow: node.scrollWidth - node.clientWidth,
-          scrolls: body.scrollHeight > body.clientHeight,
+          bodyOverflow: getComputedStyle(body).overflowY,
+          editorScrolls:
+            node.querySelector("textarea")!.scrollHeight >
+            node.querySelector("textarea")!.clientHeight,
           headOutsideBody: head.bottom <= body.getBoundingClientRect().top,
           actionInFooter: action.top >= footer.top && action.bottom <= footer.bottom,
         };
@@ -73,7 +77,8 @@ for (const theme of ["light", "dark"]) {
       expect(dimensions.overflow).toBe(0);
       expect(dimensions.headOutsideBody).toBe(true);
       expect(dimensions.actionInFooter).toBe(true);
-      if (width === 320) expect(dimensions.scrolls).toBe(true);
+      expect(dimensions.bodyOverflow).toBe("auto");
+      expect(dimensions.editorScrolls).toBe(true);
       const accessibility = await new AxeBuilder({ page })
         .include('[role="dialog"]')
         .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
@@ -87,7 +92,7 @@ for (const theme of ["light", "dark"]) {
 }
 
 for (const width of [1120, 320]) {
-  test(`schedule editor groups task, timing and execution without escaping ${width}`, async ({
+  test(`schedule editor keeps task fields and timing and execution groups within its dialog ${width}`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 });
@@ -97,15 +102,14 @@ for (const width of [1120, 320]) {
     await page.locator("html[data-visual-ready]").waitFor();
     const add = page.getByRole("button", { name: "Add schedule", exact: true });
     await add.click();
-    const editor = page.getByRole("region", { name: "Schedule editor", exact: true });
+    const editor = page.getByRole("dialog", { name: "New schedule", exact: true });
     const title = editor.getByRole("textbox", { name: "Title", exact: true });
     await expect(title).toBeFocused();
-    const controls = page
-      .getByRole("region", { name: "Schedules", exact: true })
-      .locator('[data-slot="panel-controls"]');
-    const controlBox = (await controls.boundingBox())!;
-    expect((await title.boundingBox())!.y).toBeGreaterThanOrEqual(controlBox.y + controlBox.height);
-    await expect(editor.getByRole("group", { name: "Task", exact: true })).toBeVisible();
+    const heading = (await editor
+      .getByRole("heading", { name: "New schedule", exact: true })
+      .boundingBox())!;
+    expect((await title.boundingBox())!.y).toBeGreaterThanOrEqual(heading.y + heading.height);
+    await expect(editor.getByRole("textbox", { name: "Instructions", exact: true })).toBeVisible();
     await expect(
       editor.getByRole("group", { name: "Timing and workspace", exact: true }),
     ).toBeVisible();

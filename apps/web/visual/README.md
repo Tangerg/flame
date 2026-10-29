@@ -61,6 +61,16 @@ changes; passing these behavioral checks does not establish visual quality.
 Run `npm run browser:dev` for manual inspection and `npm run browser:test` for
 browser behavior checks. Run focused scenarios for the changed behavior rather
 than repeating the complete matrix for each spacing or typography adjustment.
+`npm run check --workspace @flame/web` runs the frontend and isolated Runtime
+integration checks; `browser:test` is a separate browser gate. Qualify affected
+interactions with `--browser chromium` and `--browser webkit`.
+
+Code wrapping follows CodeCaption's next-action name and the shared `data-wrap`
+preference. Schedules editors and deletion decisions are portaled, named `dialog`
+and `alertdialog` surfaces. Background controls remain outside modal interaction.
+The visual Runtime transport owns controlled Schedule removals and publishes the
+real `plugins.dataChanged` notice; draft tests use that update to retire an opener
+while its modal remains open, then check cancellation and fallback focus.
 
 The `genui-report` Agent state loads the built GenUI package ESM and declared
 Tool selector through the installed captured-result components. Its accepted
