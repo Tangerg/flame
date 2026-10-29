@@ -127,6 +127,22 @@ func requireGoalMutationLifecycle(t *testing.T, runtime *Connection, sessionID s
 		SessionID: sessionID, Objective: "verify embedded goal lifecycle",
 		Provider: "missing", Model: "missing",
 	}
+	if _, err := runtime.StartGoal(t.Context(), start); !errors.Is(err, protocol.ErrInvalidParams) {
+		t.Fatalf("StartGoal with an uninstalled provider = %v, want selection refusal", err)
+	}
+	if _, exists, err := runtime.GetGoal(t.Context(), sessionID); err != nil || exists {
+		t.Fatalf("refused selection created a Goal: exists=%t, err=%v", exists, err)
+	}
+	endpoint := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "goal provider unavailable", http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(endpoint.Close)
+	key := models.ValueChange{Kind: protocol.ProviderConfigSet, Value: "goal-test-key"}
+	baseURL := models.ValueChange{Kind: protocol.ProviderConfigSet, Value: endpoint.URL}
+	if _, err := runtime.UpdateProvider(t.Context(), models.UpdateProvider{Provider: "openai-compatible", APIKey: &key, BaseURL: &baseURL}); err != nil {
+		t.Fatal(err)
+	}
+	start.Provider, start.Model = "openai-compatible", "goal-fixture"
 	started, err := runtime.StartGoal(t.Context(), start)
 	if err != nil {
 		t.Fatalf("StartGoal: %v", err)
