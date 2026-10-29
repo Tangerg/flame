@@ -220,6 +220,7 @@ beforeEach(async () => {
     component: { installationId: "memory", digest: "a".repeat(64), componentId: "memory" },
     generation: RuntimeConnectionGeneration.forProcess("continuity-test"),
     compose: () => null,
+    saveFile: async () => "requested",
     runtime: {} as FlameClient,
     binding: undefined,
     lifetime,

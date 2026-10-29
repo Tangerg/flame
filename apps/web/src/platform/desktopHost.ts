@@ -99,22 +99,29 @@ export function createDesktopHostClient(binding: DesktopHostBinding): ClientHost
       }
       return parsed.data;
     },
-    // The native panel owns the destination, so only the suggested basename crosses IPC.
-    async saveTextFile(filename, content) {
+    // Encoding captures the selected byte range before yielding. The native panel
+    // owns the destination; neither the plugin nor IPC supplies a path.
+    async saveFile({ filename, bytes }) {
+      const captured = new Uint8Array(bytes);
+      let binary = "";
+      for (let offset = 0; offset < captured.byteLength; offset += 0x8000) {
+        binary += String.fromCharCode(...captured.subarray(offset, offset + 0x8000));
+      }
+      const contentBase64 = btoa(binary);
       const host = binding;
       let value: unknown;
       try {
-        value = await callDesktop(host, "SaveTextFile", filename, content);
+        value = await callDesktop(host, "SaveFile", filename, contentBase64);
       } catch (error) {
-        throw new RpcTransportError(`desktop host text file save failed: ${errorMessage(error)}`);
+        throw new RpcTransportError(`desktop host file save failed: ${errorMessage(error)}`);
       }
-      const parsed = DesktopMethods.SaveTextFile.result.safeParse(value);
+      const parsed = DesktopMethods.SaveFile.result.safeParse(value);
       if (!parsed.success) {
         throw new RpcTransportError(
-          `desktop host text file save returned an invalid shape: ${parsed.error.message}`,
+          `desktop host file save returned an invalid shape: ${parsed.error.message}`,
         );
       }
-      return parsed.data;
+      return parsed.data ? "saved" : "cancelled";
     },
     async revealPath(path) {
       const host = binding;

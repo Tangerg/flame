@@ -1,6 +1,7 @@
 import { type ThemeAccess } from "@/features/theme/public/theme";
 import { asyncDisposeSymbol } from "dougong";
 import { type FlameClient } from "@flame/runtime-client";
+import { type ComponentContext } from "@flame/component-sdk";
 import { type ContributionLifetime, type PluginContext } from "@/extensions/definePlugin";
 import { type RuntimeStream, followRuntimeGeneration } from "@/features/connection/public/services";
 import { registerPackageContributions } from "@/features/plugins/contributions";
@@ -11,6 +12,7 @@ export function createInstalledPlugins(
   runtimeClient: () => FlameClient,
   runtimeEndpoint: () => string,
   themeAccess: ThemeAccess,
+  saveFile: ComponentContext["saveFile"],
   wrap: (children: ReactNode) => ReactNode = (children) => children,
 ) {
   const access = createInstalledPackageState();
@@ -54,6 +56,7 @@ export function createInstalledPlugins(
                 runtime.connectionGeneration()!,
                 runtimeEndpoint(),
                 themeAccess,
+                saveFile,
               );
               current = owned;
             } catch (error) {

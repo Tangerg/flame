@@ -21,6 +21,7 @@ export function visualComponentProps(
       componentId,
     },
     binding,
+    saveFile: async () => "requested",
     compose: () => {
       throw new Error("The visual fixture has no component composition");
     },

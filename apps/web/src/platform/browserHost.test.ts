@@ -58,8 +58,12 @@ describe("browser host", () => {
     const mime = "text/markdown;charset=utf-8";
 
     await expect(
-      createBrowserHost(imageFilenameStem).saveTextFile("flame-session.md", content, mime),
-    ).resolves.toBe(true);
+      createBrowserHost(imageFilenameStem).saveFile({
+        filename: "flame-session.md",
+        bytes: new TextEncoder().encode(content),
+        mime,
+      }),
+    ).resolves.toBe("requested");
 
     expect(names).toEqual(["flame-session.md"]);
     const blob = create.mock.calls[0]![0] as Blob;
@@ -68,6 +72,57 @@ describe("browser host", () => {
     expect(document.querySelector('a[download="flame-session.md"]')).toBeNull();
     await vi.runAllTimersAsync();
     expect(revoke).toHaveBeenCalledWith("blob:flame-export");
+  });
+
+  it("captures arbitrary binary subarrays and reports dispatch separately from a saved file", async () => {
+    vi.useFakeTimers();
+    const create = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:flame-binary");
+    const revoke = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+    const names: string[] = [];
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
+      names.push(this.download);
+    });
+    const backing = new Uint8Array([1, 0x50, 0x4b, 0, 0xff, 0x80, 2]);
+    const saving = createBrowserHost(imageFilenameStem).saveFile({
+      filename: "成果包.zip",
+      mime: "application/zip",
+      bytes: backing.subarray(1, 6),
+    });
+    backing.fill(0);
+    await expect(saving).resolves.toBe("requested");
+    expect(names).toEqual(["成果包.zip"]);
+    const blob = create.mock.calls[0]![0] as Blob;
+    expect(blob.type).toBe("application/zip");
+    expect(new Uint8Array(await blob.arrayBuffer())).toEqual(
+      new Uint8Array([0x50, 0x4b, 0, 0xff, 0x80]),
+    );
+    await vi.runAllTimersAsync();
+    expect(revoke).toHaveBeenCalledExactlyOnceWith("blob:flame-binary");
+  });
+
+  it("refuses destination paths and control characters before dispatching a download", async () => {
+    const create = vi.spyOn(URL, "createObjectURL");
+    for (const filename of [
+      "",
+      ".",
+      "..",
+      "../result.pdf",
+      "dir/result.docx",
+      "dir\\result.xlsx",
+      "C:result.pdf",
+      "result\n.pdf",
+    ]) {
+      await expect(
+        createBrowserHost(imageFilenameStem).saveFile({
+          filename,
+          mime: "application/pdf",
+          bytes: new Uint8Array(),
+        }),
+      ).rejects.toThrow("basename");
+    }
+    expect(create).not.toHaveBeenCalled();
   });
 
   it("does not turn remote URLs or executable data into downloaded images", async () => {

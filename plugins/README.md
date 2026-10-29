@@ -116,6 +116,10 @@ its private archive preserves immutable source versions.
 from the public core accounting callback without creating another ledger.
 [Native sandbox](sandbox/README.md) owns bounded code execution in private scratch
 workspaces and original command outcomes through the shared native confinement.
+[Professional deliverables](deliverables/README.md) owns immutable native Office/PDF
+revisions, local edits, confined rendering and recalculation, source-bound review
+evidence and delivery exports. Its component and model tools share that owner;
+the host's public binary file-save capability owns only the final transfer.
 [File watch](filewatch/README.md) owns configured file triggers and durable original
 dispatch intents over the public Runtime workspace observation stream.
 Other packages contain only their declared content or presentation resources.

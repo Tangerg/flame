@@ -38,7 +38,7 @@ An optional provider capability remains separate from the ordinary chat contract
 
 ## Verification and toolchains
 
-Use the Go version declared in `go.work`, npm 11 or newer,
+Use the Go version declared in `go.work`, npm 11.21.1 or newer,
 and a Node release accepted by the root `engines` constraint. CI pins Node and
 npm in [the check workflow](.github/workflows/check.yml). Desktop uses the exact
 Wails v3 version selected in its module; macOS

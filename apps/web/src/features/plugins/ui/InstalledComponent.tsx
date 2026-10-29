@@ -21,6 +21,7 @@ import {
   type ComponentComposition,
   type ComponentReference,
   type PluginComponent,
+  type SaveFileRequest,
 } from "@flame/component-sdk";
 import {
   isWorkspaceResolving,
@@ -199,6 +200,10 @@ class ComponentInstance {
             openSession(sessionId);
           }
         : undefined,
+      saveFile: (request: SaveFileRequest) => {
+        signal.throwIfAborted();
+        return track(() => this.sources.saveFile(request));
+      },
       locale: this.sources.locale,
       signal,
       telemetry: captureClientTelemetry(signal),
@@ -265,6 +270,7 @@ export function RenderingComponent(props: ComponentProps & ComponentSources) {
     sessionTarget,
     component,
     compose,
+    saveFile,
   } = props;
   const instance = useMemo(
     () =>
@@ -281,6 +287,7 @@ export function RenderingComponent(props: ComponentProps & ComponentSources) {
         sessionTarget,
         component,
         compose,
+        saveFile,
         openSession,
         locale,
       }),
@@ -297,6 +304,7 @@ export function RenderingComponent(props: ComponentProps & ComponentSources) {
       sessionTarget,
       component,
       compose,
+      saveFile,
       openSession,
       locale,
     ],
@@ -323,6 +331,7 @@ type ComponentProps = {
   component: ComponentReference;
   generation: RuntimeConnectionGeneration;
   compose: (context: ComponentContext, composition: ComponentComposition) => ReactNode;
+  saveFile: ComponentContext["saveFile"];
   input?: unknown;
   contribution?: unknown;
   children?: ReactNode;
@@ -334,7 +343,7 @@ type ComponentProps = {
 
 type ComponentSources = Pick<
   ComponentProps,
-  "runtime" | "binding" | "lifetime" | "resources" | "component" | "compose"
+  "runtime" | "binding" | "lifetime" | "resources" | "component" | "compose" | "saveFile"
 > & {
   workspace?: WorkspaceContext;
   sessionId?: string;

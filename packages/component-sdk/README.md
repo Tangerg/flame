@@ -56,11 +56,28 @@ while an attempted ESM evaluation stays window-owned even when it fails.
 
 See the independently installable [composition example](../../examples/plugins/composition/README.md)
 for two-way contribution, collection, selection and actual decoration. The new
-`component` and `compose` fields are required on custom `ComponentContext` hosts;
+`component`, `compose` and `saveFile` fields are required on custom `ComponentContext` hosts;
 rebuild those hosts and this SDK together. Existing Runtime storage formats are
 unchanged. Packages using exported placement require the current Runtime/host.
 
 ## Captured contexts and operations
+
+Components save generated files through `context.saveFile({ filename, mime,
+bytes })`, where `bytes` is a `Uint8Array` and `filename` is a suggested basename.
+The host captures the exact byte range synchronously, owns the browser download
+or native save panel, and joins accepted saves through the captured component
+lifetime. A retired context refuses new saves; an accepted native panel remains
+owned until its user choice and write settle. Composed components and their Qimu
+Uses retain that same boundary.
+
+The result is `"requested"` after a browser download request, `"saved"` after a
+completed native write, or `"cancelled"` after native cancellation. A browser
+cannot confirm a disk write. These transfer observations do not change a plugin's
+document revision, validation, approval or delivery facts. The producing plugin
+owns its exact content and format policy; the host owns only the destination and
+transfer. Errors reject the original promise. A component must use this public
+collaborator instead of importing application platform modules or creating a
+parallel download implementation.
 
 Workspace-scoped components receive `context.workspace`: a frozen public
 `WorkspaceRef` plus file-focus path and revision from the Host's existing owners.

@@ -59,6 +59,7 @@ async function mountSkills() {
     locale: "en",
     signal: owner.signal,
     track: (operation) => operation(owner.signal),
+    saveFile: async () => "requested",
     compose: () => null,
   };
   const outsideEscape = vi.fn();

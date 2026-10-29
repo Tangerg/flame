@@ -68,8 +68,8 @@ interface DesktopHostMethods {
   RequestNotificationAuthorization: { args: []; result: NotificationAuthorization };
   RevealPath: { args: [path: string]; result: void };
   RevealWindow: { args: []; result: void };
+  SaveFile: { args: [suggestedFilename: string, contentBase64: string]; result: boolean };
   SaveImage: { args: [source: string]; result: boolean };
-  SaveTextFile: { args: [suggestedFilename: string, content: string]; result: boolean };
   SendNotification: { args: [notification: DesktopNotification]; result: void };
   WindowChrome: { args: []; result: WindowChrome };
 }
@@ -110,14 +110,14 @@ export const DesktopMethods = {
     args: z.tuple([]),
     result: z.void(),
   },
+  SaveFile: {
+    name: "main.DesktopHost.SaveFile",
+    args: z.tuple([z.string(), z.string()]),
+    result: z.boolean(),
+  },
   SaveImage: {
     name: "main.DesktopHost.SaveImage",
     args: z.tuple([z.string()]),
-    result: z.boolean(),
-  },
-  SaveTextFile: {
-    name: "main.DesktopHost.SaveTextFile",
-    args: z.tuple([z.string(), z.string()]),
     result: z.boolean(),
   },
   SendNotification: {

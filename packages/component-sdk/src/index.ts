@@ -108,6 +108,17 @@ export interface CapturedToolInteraction {
   submit(input: ToolInteractionInput): Promise<InteractionSubmission>;
 }
 
+export interface SaveFileRequest {
+  /** Suggested basename only; the host owns the actual destination. */
+  readonly filename: string;
+  readonly mime: string;
+  /** The host captures these exact bytes synchronously when saving is admitted. */
+  readonly bytes: Uint8Array;
+}
+
+/** Browser download dispatch is distinct from a completed native write. */
+export type FileSaveResult = "requested" | "saved" | "cancelled";
+
 export interface ComponentContext {
   readonly component: Readonly<ComponentReference>;
   readonly file?: Readonly<CapturedFile>;
@@ -120,6 +131,9 @@ export interface ComponentContext {
   readonly sessionTarget?: CapturedSession;
   readonly binding?: Readonly<PluginOperationBinding>;
   readonly openSession?: (sessionId: string) => void;
+  // Accepted saves are joined by this captured lifetime. They do not change any
+  // plugin delivery, revision or approval fact; the host only owns file transfer.
+  saveFile(request: SaveFileRequest): Promise<FileSaveResult>;
   // The host owns the active locale; a component projects it, never selects it.
   readonly locale: string;
   readonly signal: AbortSignal;

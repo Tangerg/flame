@@ -29,10 +29,10 @@ function pickTextFile(accept: string): Promise<string | null> {
 }
 
 // Saving belongs to the composed host; cancellation is an ordinary outcome, not a failure.
-export function createFileTransfer(host: Pick<ClientHost, "saveTextFile">): FileTransferPort {
+export function createFileTransfer(host: Pick<ClientHost, "saveFile">): FileTransferPort {
   return {
     async saveText(filename, content, mime) {
-      await host.saveTextFile(filename, content, mime);
+      await host.saveFile({ filename, mime, bytes: new TextEncoder().encode(content) });
     },
     pickText: pickTextFile,
   };

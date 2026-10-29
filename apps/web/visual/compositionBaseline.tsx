@@ -146,6 +146,7 @@ async function setup() {
             component={reference}
             generation={generation}
             compose={compositions.renderer(scope, [reference])}
+            saveFile={async () => "requested"}
             runtime={runtime}
             binding={undefined}
             lifetime={scope}

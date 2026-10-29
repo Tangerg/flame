@@ -409,7 +409,7 @@ describe("conversation archive generation", () => {
     vi.spyOn(unreadable, "text").mockRejectedValue(
       new DOMException("The I/O read operation failed.", "NotReadableError"),
     );
-    installFiles(createFileTransfer({ saveTextFile: vi.fn().mockResolvedValue(true) }));
+    installFiles(createFileTransfer({ saveFile: vi.fn().mockResolvedValue("saved") }));
     installGateway(completeGateway(importConversation));
 
     const failed = testClient.workspace.access.archive.importConversationJson();
@@ -442,7 +442,7 @@ describe("conversation archive generation", () => {
   it("keeps a cancelled selection quiet", async () => {
     const click = vi.spyOn(HTMLInputElement.prototype, "click").mockImplementation(() => {});
     const importConversation = vi.fn<ConversationArchiveGateway["importConversation"]>();
-    installFiles(createFileTransfer({ saveTextFile: vi.fn().mockResolvedValue(true) }));
+    installFiles(createFileTransfer({ saveFile: vi.fn().mockResolvedValue("saved") }));
     installGateway(completeGateway(importConversation));
 
     const cancelled = testClient.workspace.access.archive.importConversationJson();
@@ -464,7 +464,7 @@ describe("conversation archive generation", () => {
     const successorImport = vi
       .fn<ConversationArchiveGateway["importConversation"]>()
       .mockResolvedValue({ id: "successor-session", title: "Successor" });
-    installFiles(createFileTransfer({ saveTextFile: vi.fn().mockResolvedValue(true) }));
+    installFiles(createFileTransfer({ saveFile: vi.fn().mockResolvedValue("saved") }));
     const owner = installGateway(completeGateway(retiredImport));
 
     const retired = testClient.workspace.access.archive.importConversationJson();

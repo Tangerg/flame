@@ -1,0 +1,2275 @@
+{
+  "protocol": "io.github.tangerg.qimu/portable/1",
+  "reference": "flame.deliverables.v1",
+  "composition": "collection",
+  "scope": "installation",
+  "methods": [
+    {
+      "name": "flame.deliverables/append.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Append one canonical base64 chunk at the exact acknowledged upload offset. Reuse the original command receipt after transport loss, never invent a retry identity.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "base64": {
+            "maxLength": 262144,
+            "minLength": 4,
+            "type": "string"
+          },
+          "offset": {
+            "maximum": 33554432,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "uploadId": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "uploadId",
+          "offset",
+          "base64"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "received": {
+            "maximum": 33554432,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "sha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "size": {
+            "maximum": 33554432,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "sha256",
+          "size",
+          "received"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.deliverables/assessment.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Read one exact render or review report. List headers are projections and do not carry another mutable assessment.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "assessmentId": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "revision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "revision",
+          "assessmentId"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "assets": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "filename": {
+                  "maxLength": 240,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "id": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "mime": {
+                  "maxLength": 100,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "sha256": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "size": {
+                  "maximum": 100663296,
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "filename",
+                "mime",
+                "size",
+                "sha256"
+              ],
+              "type": "object"
+            },
+            "maxItems": 102,
+            "type": "array"
+          },
+          "createdAt": {
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "render",
+              "review"
+            ],
+            "type": "string"
+          },
+          "reportJSON": {
+            "maxLength": 1048576,
+            "type": "string"
+          },
+          "revision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "sourceSha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "revision",
+          "sourceSha256",
+          "createdAt",
+          "kind",
+          "reportJSON",
+          "assets"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.deliverables/catalog.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Read the exact supported native creation/edit schemas, format limits and configured rendering engines before creating or editing deliverables.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "enginesJSON": {
+            "maxLength": 2097152,
+            "minLength": 2,
+            "type": "string"
+          },
+          "formatsJSON": {
+            "maxLength": 2097152,
+            "minLength": 2,
+            "type": "string"
+          },
+          "limitsJSON": {
+            "maxLength": 2097152,
+            "minLength": 2,
+            "type": "string"
+          }
+        },
+        "required": [
+          "formatsJSON",
+          "enginesJSON",
+          "limitsJSON"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.deliverables/create.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Create an editable DOCX, XLSX or PPTX from the catalog's content schema. Author provenance is not independently verified evidence. Formula results require explicit recalculation.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "contentJSON": {
+            "maxLength": 2097152,
+            "minLength": 2,
+            "type": "string"
+          },
+          "format": {
+            "enum": [
+              "docx",
+              "xlsx",
+              "pptx"
+            ],
+            "type": "string"
+          },
+          "provenance": {
+            "additionalProperties": false,
+            "properties": {
+              "assumptions": {
+                "items": {
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 64,
+                "type": "array"
+              },
+              "reproduction": {
+                "maxLength": 12000,
+                "type": "string"
+              },
+              "sources": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "note": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    },
+                    "title": {
+                      "maxLength": 300,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "uri": {
+                      "maxLength": 2048,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "uri",
+                    "note"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 64,
+                "type": "array"
+              },
+              "units": {
+                "maxLength": 2000,
+                "type": "string"
+              }
+            },
+            "required": [
+              "sources",
+              "assumptions",
+              "units",
+              "reproduction"
+            ],
+            "type": "object"
+          },
+          "title": {
+            "maxLength": 180,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "format",
+          "contentJSON",
+          "provenance"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string"
+          },
+          "documentId": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "format": {
+            "enum": [
+              "docx",
+              "xlsx",
+              "pptx",
+              "pdf"
+            ],
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "native": {
+            "additionalProperties": false,
+            "properties": {
+              "filename": {
+                "maxLength": 240,
+                "minLength": 1,
+                "type": "string"
+              },
+              "id": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "mime": {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              "sha256": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "size": {
+                "maximum": 100663296,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "filename",
+              "mime",
+              "size",
+              "sha256"
+            ],
+            "type": "object"
+          },
+          "operation": {
+            "enum": [
+              "create",
+              "import",
+              "edit",
+              "recalculate"
+            ],
+            "type": "string"
+          },
+          "parent": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "provenance": {
+            "additionalProperties": false,
+            "properties": {
+              "assumptions": {
+                "items": {
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 64,
+                "type": "array"
+              },
+              "reproduction": {
+                "maxLength": 12000,
+                "type": "string"
+              },
+              "sources": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "note": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    },
+                    "title": {
+                      "maxLength": 300,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "uri": {
+                      "maxLength": 2048,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "uri",
+                    "note"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 64,
+                "type": "array"
+              },
+              "units": {
+                "maxLength": 2000,
+                "type": "string"
+              }
+            },
+            "required": [
+              "sources",
+              "assumptions",
+              "units",
+              "reproduction"
+            ],
+            "type": "object"
+          },
+          "sha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "size": {
+            "maximum": 33554432,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "documentId",
+          "createdAt",
+          "operation",
+          "format",
+          "sha256",
+          "size",
+          "provenance",
+          "native"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.deliverables/discard.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Discard the specified staging upload. This does not remove a published deliverable.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "uploadId": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "uploadId"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "boolean"
+      }
+    },
+    {
+      "name": "flame.deliverables/download.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Read bounded bytes from an exact immutable asset. Verify the complete size and SHA-256 before saving; file saving is a separate host operation.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "assetId": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "length": {
+            "maximum": 196608,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "offset": {
+            "maximum": 100663296,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "assetId",
+          "offset",
+          "length"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "asset": {
+            "additionalProperties": false,
+            "properties": {
+              "filename": {
+                "maxLength": 240,
+                "minLength": 1,
+                "type": "string"
+              },
+              "id": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "mime": {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              "sha256": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "size": {
+                "maximum": 100663296,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "filename",
+              "mime",
+              "size",
+              "sha256"
+            ],
+            "type": "object"
+          },
+          "base64": {
+            "maxLength": 262144,
+            "type": "string"
+          },
+          "done": {
+            "type": "boolean"
+          },
+          "next": {
+            "maximum": 100663296,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "offset": {
+            "maximum": 100663296,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "asset",
+          "offset",
+          "base64",
+          "next",
+          "done"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.deliverables/edit.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Apply catalog-defined local native edits to the exact current revision. Unaffected package parts are preserved; stale revisions are refused. A new revision has no inherited render or review.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "expectedRevision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "operationsJSON": {
+            "maxLength": 2097152,
+            "minLength": 2,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "expectedRevision",
+          "operationsJSON"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string"
+          },
+          "documentId": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "format": {
+            "enum": [
+              "docx",
+              "xlsx",
+              "pptx",
+              "pdf"
+            ],
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "native": {
+            "additionalProperties": false,
+            "properties": {
+              "filename": {
+                "maxLength": 240,
+                "minLength": 1,
+                "type": "string"
+              },
+              "id": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "mime": {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              "sha256": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "size": {
+                "maximum": 100663296,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "filename",
+              "mime",
+              "size",
+              "sha256"
+            ],
+            "type": "object"
+          },
+          "operation": {
+            "enum": [
+              "create",
+              "import",
+              "edit",
+              "recalculate"
+            ],
+            "type": "string"
+          },
+          "parent": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "provenance": {
+            "additionalProperties": false,
+            "properties": {
+              "assumptions": {
+                "items": {
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 64,
+                "type": "array"
+              },
+              "reproduction": {
+                "maxLength": 12000,
+                "type": "string"
+              },
+              "sources": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "note": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    },
+                    "title": {
+                      "maxLength": 300,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "uri": {
+                      "maxLength": 2048,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "uri",
+                    "note"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 64,
+                "type": "array"
+              },
+              "units": {
+                "maxLength": 2000,
+                "type": "string"
+              }
+            },
+            "required": [
+              "sources",
+              "assumptions",
+              "units",
+              "reproduction"
+            ],
+            "type": "object"
+          },
+          "sha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "size": {
+            "maximum": 33554432,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "documentId",
+          "createdAt",
+          "operation",
+          "format",
+          "sha256",
+          "size",
+          "provenance",
+          "native"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.deliverables/export.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Prepare the exact native revision, its existing rendered PDF, one XLSX sheet as CSV (sheetPart required), or a delivery ZIP with native source, current derivatives and evidence manifest. CSV refuses missing/error formula caches and protects formula-like strings. This never sends or publishes a file.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "native",
+              "pdf",
+              "bundle",
+              "csv"
+            ],
+            "type": "string"
+          },
+          "revision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "sheetPart": {
+            "maxLength": 240,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "revision",
+          "kind"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "filename": {
+            "maxLength": 240,
+            "minLength": 1,
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "mime": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "size": {
+            "maximum": 100663296,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "filename",
+          "mime",
+          "size",
+          "sha256"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.deliverables/history.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Read immutable revision history; previous previews and reviews do not apply to later revisions.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "before": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 32,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "limit",
+          "id"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "entries": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "createdAt": {
+                  "maxLength": 40,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "documentId": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "format": {
+                  "enum": [
+                    "docx",
+                    "xlsx",
+                    "pptx",
+                    "pdf"
+                  ],
+                  "type": "string"
+                },
+                "id": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "native": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "filename": {
+                      "maxLength": 240,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "id": {
+                      "pattern": "^[a-f0-9]{64}$",
+                      "type": "string"
+                    },
+                    "mime": {
+                      "maxLength": 100,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "sha256": {
+                      "pattern": "^[a-f0-9]{64}$",
+                      "type": "string"
+                    },
+                    "size": {
+                      "maximum": 100663296,
+                      "minimum": 1,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "filename",
+                    "mime",
+                    "size",
+                    "sha256"
+                  ],
+                  "type": "object"
+                },
+                "operation": {
+                  "enum": [
+                    "create",
+                    "import",
+                    "edit",
+                    "recalculate"
+                  ],
+                  "type": "string"
+                },
+                "parent": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "provenance": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "assumptions": {
+                      "items": {
+                        "maxLength": 2000,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "maxItems": 64,
+                      "type": "array"
+                    },
+                    "reproduction": {
+                      "maxLength": 12000,
+                      "type": "string"
+                    },
+                    "sources": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "note": {
+                            "maxLength": 2000,
+                            "type": "string"
+                          },
+                          "title": {
+                            "maxLength": 300,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "uri": {
+                            "maxLength": 2048,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "title",
+                          "uri",
+                          "note"
+                        ],
+                        "type": "object"
+                      },
+                      "maxItems": 64,
+                      "type": "array"
+                    },
+                    "units": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "sources",
+                    "assumptions",
+                    "units",
+                    "reproduction"
+                  ],
+                  "type": "object"
+                },
+                "sha256": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "size": {
+                  "maximum": 33554432,
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "documentId",
+                "createdAt",
+                "operation",
+                "format",
+                "sha256",
+                "size",
+                "provenance",
+                "native"
+              ],
+              "type": "object"
+            },
+            "maxItems": 32,
+            "type": "array"
+          },
+          "next": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entries"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.deliverables/import.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Import the completed, hash-verified native upload, preserving its admitted original bytes. Unsafe or unsupported packages are refused without silent feature stripping.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "format": {
+            "enum": [
+              "docx",
+              "xlsx",
+              "pptx",
+              "pdf"
+            ],
+            "type": "string"
+          },
+          "provenance": {
+            "additionalProperties": false,
+            "properties": {
+              "assumptions": {
+                "items": {
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 64,
+                "type": "array"
+              },
+              "reproduction": {
+                "maxLength": 12000,
+                "type": "string"
+              },
+              "sources": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "note": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    },
+                    "title": {
+                      "maxLength": 300,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "uri": {
+                      "maxLength": 2048,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "uri",
+                    "note"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 64,
+                "type": "array"
+              },
+              "units": {
+                "maxLength": 2000,
+                "type": "string"
+              }
+            },
+            "required": [
+              "sources",
+              "assumptions",
+              "units",
+              "reproduction"
+            ],
+            "type": "object"
+          },
+          "title": {
+            "maxLength": 180,
+            "minLength": 1,
+            "type": "string"
+          },
+          "uploadId": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "format",
+          "uploadId",
+          "provenance"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string"
+          },
+          "documentId": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "format": {
+            "enum": [
+              "docx",
+              "xlsx",
+              "pptx",
+              "pdf"
+            ],
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "native": {
+            "additionalProperties": false,
+            "properties": {
+              "filename": {
+                "maxLength": 240,
+                "minLength": 1,
+                "type": "string"
+              },
+              "id": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "mime": {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              "sha256": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "size": {
+                "maximum": 100663296,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "filename",
+              "mime",
+              "size",
+              "sha256"
+            ],
+            "type": "object"
+          },
+          "operation": {
+            "enum": [
+              "create",
+              "import",
+              "edit",
+              "recalculate"
+            ],
+            "type": "string"
+          },
+          "parent": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "provenance": {
+            "additionalProperties": false,
+            "properties": {
+              "assumptions": {
+                "items": {
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 64,
+                "type": "array"
+              },
+              "reproduction": {
+                "maxLength": 12000,
+                "type": "string"
+              },
+              "sources": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "note": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    },
+                    "title": {
+                      "maxLength": 300,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "uri": {
+                      "maxLength": 2048,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "uri",
+                    "note"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 64,
+                "type": "array"
+              },
+              "units": {
+                "maxLength": 2000,
+                "type": "string"
+              }
+            },
+            "required": [
+              "sources",
+              "assumptions",
+              "units",
+              "reproduction"
+            ],
+            "type": "object"
+          },
+          "sha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "size": {
+            "maximum": 33554432,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "documentId",
+          "createdAt",
+          "operation",
+          "format",
+          "sha256",
+          "size",
+          "provenance",
+          "native"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.deliverables/list.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "List retained deliverables newest first. Content and evidence remain owned by exact immutable native revisions.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "before": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 32,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "limit"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "entries": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "createdAt": {
+                  "maxLength": 40,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "format": {
+                  "enum": [
+                    "docx",
+                    "xlsx",
+                    "pptx",
+                    "pdf"
+                  ],
+                  "type": "string"
+                },
+                "head": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "id": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "title": {
+                  "maxLength": 180,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "title",
+                "format",
+                "head",
+                "createdAt"
+              ],
+              "type": "object"
+            },
+            "maxItems": 32,
+            "type": "array"
+          },
+          "next": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entries"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.deliverables/read.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Inspect a deliverable and exact native revision, its editable item identities and source-bound checks. Omitting revision reads the current head once.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "revision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "assessments": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "assets": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "filename": {
+                        "maxLength": 240,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "id": {
+                        "pattern": "^[a-f0-9]{64}$",
+                        "type": "string"
+                      },
+                      "mime": {
+                        "maxLength": 100,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "sha256": {
+                        "pattern": "^[a-f0-9]{64}$",
+                        "type": "string"
+                      },
+                      "size": {
+                        "maximum": 100663296,
+                        "minimum": 1,
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "filename",
+                      "mime",
+                      "size",
+                      "sha256"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 102,
+                  "type": "array"
+                },
+                "createdAt": {
+                  "maxLength": 40,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "id": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "kind": {
+                  "enum": [
+                    "render",
+                    "review"
+                  ],
+                  "type": "string"
+                },
+                "revision": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "sourceSha256": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "revision",
+                "sourceSha256",
+                "createdAt",
+                "kind",
+                "assets"
+              ],
+              "type": "object"
+            },
+            "maxItems": 64,
+            "type": "array"
+          },
+          "document": {
+            "additionalProperties": false,
+            "properties": {
+              "createdAt": {
+                "maxLength": 40,
+                "minLength": 1,
+                "type": "string"
+              },
+              "format": {
+                "enum": [
+                  "docx",
+                  "xlsx",
+                  "pptx",
+                  "pdf"
+                ],
+                "type": "string"
+              },
+              "head": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "id": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "title": {
+                "maxLength": 180,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "format",
+              "head",
+              "createdAt"
+            ],
+            "type": "object"
+          },
+          "inspectionJSON": {
+            "maxLength": 1048576,
+            "type": "string"
+          },
+          "processingJSON": {
+            "maxLength": 1048576,
+            "type": "string"
+          },
+          "revision": {
+            "additionalProperties": false,
+            "properties": {
+              "createdAt": {
+                "maxLength": 40,
+                "minLength": 1,
+                "type": "string"
+              },
+              "documentId": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "format": {
+                "enum": [
+                  "docx",
+                  "xlsx",
+                  "pptx",
+                  "pdf"
+                ],
+                "type": "string"
+              },
+              "id": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "native": {
+                "additionalProperties": false,
+                "properties": {
+                  "filename": {
+                    "maxLength": 240,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "id": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "mime": {
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "sha256": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "size": {
+                    "maximum": 100663296,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id",
+                  "filename",
+                  "mime",
+                  "size",
+                  "sha256"
+                ],
+                "type": "object"
+              },
+              "operation": {
+                "enum": [
+                  "create",
+                  "import",
+                  "edit",
+                  "recalculate"
+                ],
+                "type": "string"
+              },
+              "parent": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "provenance": {
+                "additionalProperties": false,
+                "properties": {
+                  "assumptions": {
+                    "items": {
+                      "maxLength": 2000,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "maxItems": 64,
+                    "type": "array"
+                  },
+                  "reproduction": {
+                    "maxLength": 12000,
+                    "type": "string"
+                  },
+                  "sources": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "note": {
+                          "maxLength": 2000,
+                          "type": "string"
+                        },
+                        "title": {
+                          "maxLength": 300,
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "uri": {
+                          "maxLength": 2048,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "uri",
+                        "note"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 64,
+                    "type": "array"
+                  },
+                  "units": {
+                    "maxLength": 2000,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "sources",
+                  "assumptions",
+                  "units",
+                  "reproduction"
+                ],
+                "type": "object"
+              },
+              "sha256": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "size": {
+                "maximum": 33554432,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "documentId",
+              "createdAt",
+              "operation",
+              "format",
+              "sha256",
+              "size",
+              "provenance",
+              "native"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "document",
+          "revision",
+          "inspectionJSON",
+          "assessments"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.deliverables/recalculate.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Recalculate an XLSX through confined LibreOffice into a new native revision. Conversion may change Office formatting; the exact original is retained. Inspect resulting formula errors and missing caches.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "expectedRevision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "expectedRevision"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string"
+          },
+          "documentId": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "format": {
+            "enum": [
+              "docx",
+              "xlsx",
+              "pptx",
+              "pdf"
+            ],
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "native": {
+            "additionalProperties": false,
+            "properties": {
+              "filename": {
+                "maxLength": 240,
+                "minLength": 1,
+                "type": "string"
+              },
+              "id": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "mime": {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              "sha256": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "size": {
+                "maximum": 100663296,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "filename",
+              "mime",
+              "size",
+              "sha256"
+            ],
+            "type": "object"
+          },
+          "operation": {
+            "enum": [
+              "create",
+              "import",
+              "edit",
+              "recalculate"
+            ],
+            "type": "string"
+          },
+          "parent": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "provenance": {
+            "additionalProperties": false,
+            "properties": {
+              "assumptions": {
+                "items": {
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 64,
+                "type": "array"
+              },
+              "reproduction": {
+                "maxLength": 12000,
+                "type": "string"
+              },
+              "sources": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "note": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    },
+                    "title": {
+                      "maxLength": 300,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "uri": {
+                      "maxLength": 2048,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "uri",
+                    "note"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 64,
+                "type": "array"
+              },
+              "units": {
+                "maxLength": 2000,
+                "type": "string"
+              }
+            },
+            "required": [
+              "sources",
+              "assumptions",
+              "units",
+              "reproduction"
+            ],
+            "type": "object"
+          },
+          "sha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "size": {
+            "maximum": 33554432,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "documentId",
+          "createdAt",
+          "operation",
+          "format",
+          "sha256",
+          "size",
+          "provenance",
+          "native"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.deliverables/remove.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Remove one deliverable and its native/derived bytes only if the expected current revision still matches. Original receipts remain and cannot resurrect removed content.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "expectedRevision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "expectedRevision"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "boolean"
+      }
+    },
+    {
+      "name": "flame.deliverables/render.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Render the exact native revision through configured confined LibreOffice/Poppler. Record actual engine versions, PDF/page hashes and extraction checks; successful rendering does not establish visual correctness.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "revision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "revision"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "assets": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "filename": {
+                  "maxLength": 240,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "id": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "mime": {
+                  "maxLength": 100,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "sha256": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "size": {
+                  "maximum": 100663296,
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "filename",
+                "mime",
+                "size",
+                "sha256"
+              ],
+              "type": "object"
+            },
+            "maxItems": 102,
+            "type": "array"
+          },
+          "createdAt": {
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "render",
+              "review"
+            ],
+            "type": "string"
+          },
+          "reportJSON": {
+            "maxLength": 1048576,
+            "type": "string"
+          },
+          "revision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "sourceSha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "revision",
+          "sourceSha256",
+          "createdAt",
+          "kind",
+          "reportJSON",
+          "assets"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.deliverables/review.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Record the caller's visual review of enumerated pages from an exact render. This is attributed review evidence, not an automatic quality certification or approval to publish.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "notes": {
+            "maxLength": 12000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "pages": {
+            "items": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "type": "array"
+          },
+          "renderId": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "revision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "verdict": {
+            "enum": [
+              "accepted",
+              "changes_requested"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "revision",
+          "renderId",
+          "pages",
+          "verdict",
+          "notes"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "assets": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "filename": {
+                  "maxLength": 240,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "id": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "mime": {
+                  "maxLength": 100,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "sha256": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "size": {
+                  "maximum": 100663296,
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "filename",
+                "mime",
+                "size",
+                "sha256"
+              ],
+              "type": "object"
+            },
+            "maxItems": 102,
+            "type": "array"
+          },
+          "createdAt": {
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "render",
+              "review"
+            ],
+            "type": "string"
+          },
+          "reportJSON": {
+            "maxLength": 1048576,
+            "type": "string"
+          },
+          "revision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "sourceSha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "revision",
+          "sourceSha256",
+          "createdAt",
+          "kind",
+          "reportJSON",
+          "assets"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.deliverables/upload.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Reserve a bounded native-file upload for the exact size and SHA-256. No host path or URL is read.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "sha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "size": {
+            "maximum": 33554432,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "size",
+          "sha256"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "received": {
+            "maximum": 33554432,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "sha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "size": {
+            "maximum": 33554432,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "sha256",
+          "size",
+          "received"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.deliverables/uploads.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Read admitted staging uploads and their current acknowledged offsets. Reselect only bytes matching the declared SHA-256 to resume.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "items": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            "received": {
+              "maximum": 33554432,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "sha256": {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            "size": {
+              "maximum": 33554432,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "sha256",
+            "size",
+            "received"
+          ],
+          "type": "object"
+        },
+        "maxItems": 8,
+        "type": "array"
+      }
+    }
+  ]
+}

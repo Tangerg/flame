@@ -42,6 +42,9 @@ beforeEach(() => {
       digest: "a".repeat(64),
       componentId: "test",
     },
+    saveFile() {
+      throw new Error("This fixture must not save files");
+    },
     compose() {
       throw new Error("Composition is not used by this fixture");
     },

@@ -410,6 +410,7 @@ export async function createComputerConsoleFixture(locale: string) {
     locale,
     telemetry: { read: () => ({ spans: [], logs: [], metrics: [] }), clear: () => undefined },
     track: (operation) => operation(owner.signal),
+    saveFile: async () => "requested",
     compose: () => {
       throw new Error("computer fixture has no composition");
     },

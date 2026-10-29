@@ -129,6 +129,7 @@ async function mountTrajectory() {
     locale: "en",
     signal: owner.signal,
     track: (operation) => operation(owner.signal),
+    saveFile: async () => "requested",
     compose: () => null,
   };
   releases.push(async () => {

@@ -1,0 +1,72 @@
+{
+  "protocol": "io.github.tangerg.flame/plugin/1",
+  "managedBackends": [
+    {
+      "id": "deliverables",
+      "runtime": "node",
+      "entry": "backend/start.mjs"
+    }
+  ],
+  "contributions": [
+    {
+      "id": "deliverables",
+      "server": "deliverables",
+      "export": "deliverables",
+      "contract": "io.github.tangerg.flame/contracts/capability.generated.json"
+    }
+  ],
+  "components": [
+    {
+      "id": "deliverables",
+      "title": "Professional deliverables",
+      "scope": "client",
+      "placement": "workspaceView",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "Deliverables",
+      "contribution": "deliverables",
+      "material": "document"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "office-executable",
+      "server": "deliverables",
+      "target": "env",
+      "key": "FLAME_DELIVERABLES_OFFICE",
+      "secret": false,
+      "required": false
+    },
+    {
+      "id": "pdfinfo-executable",
+      "server": "deliverables",
+      "target": "env",
+      "key": "FLAME_DELIVERABLES_PDFINFO",
+      "secret": false,
+      "required": false
+    },
+    {
+      "id": "pdftoppm-executable",
+      "server": "deliverables",
+      "target": "env",
+      "key": "FLAME_DELIVERABLES_PDFTOPPM",
+      "secret": false,
+      "required": false
+    },
+    {
+      "id": "pdftotext-executable",
+      "server": "deliverables",
+      "target": "env",
+      "key": "FLAME_DELIVERABLES_PDFTOTEXT",
+      "secret": false,
+      "required": false
+    },
+    {
+      "id": "tool-installation-roots",
+      "server": "deliverables",
+      "target": "env",
+      "key": "FLAME_DELIVERABLES_TOOL_ROOTS",
+      "secret": false,
+      "required": false
+    }
+  ]
+}

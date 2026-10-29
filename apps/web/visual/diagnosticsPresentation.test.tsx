@@ -81,6 +81,9 @@ function openDiagnostics(
     track() {
       throw Error("Diagnostics must not start Runtime I/O");
     },
+    saveFile() {
+      throw new Error("This captured read must not save files");
+    },
     compose() {
       throw Error("Diagnostics must not compose another component");
     },

@@ -420,6 +420,7 @@ function rig(server = fixture()) {
         signal: controller.signal,
         telemetry: { read: () => ({ spans: [], metrics: [], logs: [] }), clear: () => undefined },
         track: (operation) => operation(controller.signal),
+        saveFile: async () => "requested",
         compose: () => {
           throw new Error("computer console must not compose other plugins");
         },

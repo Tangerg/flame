@@ -1,0 +1,146 @@
+[
+  {
+    "name": "flame.deliverables/append.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Append one canonical base64 chunk at the exact acknowledged upload offset. Reuse the original command receipt after transport loss, never invent a retry identity.",
+    "input": "schema.json#/$defs/Method_flame_2edeliverables_2fappend_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2edeliverables_2fappend_2ev1Output"
+  },
+  {
+    "name": "flame.deliverables/assessment.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read one exact render or review report. List headers are projections and do not carry another mutable assessment.",
+    "input": "schema.json#/$defs/Method_flame_2edeliverables_2fassessment_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2edeliverables_2fassessment_2ev1Output"
+  },
+  {
+    "name": "flame.deliverables/catalog.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read the exact supported native creation/edit schemas, format limits and configured rendering engines before creating or editing deliverables.",
+    "input": "schema.json#/$defs/Method_flame_2edeliverables_2fcatalog_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2edeliverables_2fcatalog_2ev1Output"
+  },
+  {
+    "name": "flame.deliverables/create.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Create an editable DOCX, XLSX or PPTX from the catalog's content schema. Author provenance is not independently verified evidence. Formula results require explicit recalculation.",
+    "input": "schema.json#/$defs/Method_flame_2edeliverables_2fcreate_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2edeliverables_2fcreate_2ev1Output"
+  },
+  {
+    "name": "flame.deliverables/discard.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Discard the specified staging upload. This does not remove a published deliverable.",
+    "input": "schema.json#/$defs/Method_flame_2edeliverables_2fdiscard_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2edeliverables_2fdiscard_2ev1Output"
+  },
+  {
+    "name": "flame.deliverables/download.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read bounded bytes from an exact immutable asset. Verify the complete size and SHA-256 before saving; file saving is a separate host operation.",
+    "input": "schema.json#/$defs/Method_flame_2edeliverables_2fdownload_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2edeliverables_2fdownload_2ev1Output"
+  },
+  {
+    "name": "flame.deliverables/edit.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Apply catalog-defined local native edits to the exact current revision. Unaffected package parts are preserved; stale revisions are refused. A new revision has no inherited render or review.",
+    "input": "schema.json#/$defs/Method_flame_2edeliverables_2fedit_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2edeliverables_2fedit_2ev1Output"
+  },
+  {
+    "name": "flame.deliverables/export.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Prepare the exact native revision, its existing rendered PDF, one XLSX sheet as CSV (sheetPart required), or a delivery ZIP with native source, current derivatives and evidence manifest. CSV refuses missing/error formula caches and protects formula-like strings. This never sends or publishes a file.",
+    "input": "schema.json#/$defs/Method_flame_2edeliverables_2fexport_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2edeliverables_2fexport_2ev1Output"
+  },
+  {
+    "name": "flame.deliverables/history.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read immutable revision history; previous previews and reviews do not apply to later revisions.",
+    "input": "schema.json#/$defs/Method_flame_2edeliverables_2fhistory_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2edeliverables_2fhistory_2ev1Output"
+  },
+  {
+    "name": "flame.deliverables/import.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Import the completed, hash-verified native upload, preserving its admitted original bytes. Unsafe or unsupported packages are refused without silent feature stripping.",
+    "input": "schema.json#/$defs/Method_flame_2edeliverables_2fimport_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2edeliverables_2fimport_2ev1Output"
+  },
+  {
+    "name": "flame.deliverables/list.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "List retained deliverables newest first. Content and evidence remain owned by exact immutable native revisions.",
+    "input": "schema.json#/$defs/Method_flame_2edeliverables_2flist_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2edeliverables_2flist_2ev1Output"
+  },
+  {
+    "name": "flame.deliverables/read.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Inspect a deliverable and exact native revision, its editable item identities and source-bound checks. Omitting revision reads the current head once.",
+    "input": "schema.json#/$defs/Method_flame_2edeliverables_2fread_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2edeliverables_2fread_2ev1Output"
+  },
+  {
+    "name": "flame.deliverables/recalculate.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Recalculate an XLSX through confined LibreOffice into a new native revision. Conversion may change Office formatting; the exact original is retained. Inspect resulting formula errors and missing caches.",
+    "input": "schema.json#/$defs/Method_flame_2edeliverables_2frecalculate_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2edeliverables_2frecalculate_2ev1Output"
+  },
+  {
+    "name": "flame.deliverables/remove.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Remove one deliverable and its native/derived bytes only if the expected current revision still matches. Original receipts remain and cannot resurrect removed content.",
+    "input": "schema.json#/$defs/Method_flame_2edeliverables_2fremove_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2edeliverables_2fremove_2ev1Output"
+  },
+  {
+    "name": "flame.deliverables/render.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Render the exact native revision through configured confined LibreOffice/Poppler. Record actual engine versions, PDF/page hashes and extraction checks; successful rendering does not establish visual correctness.",
+    "input": "schema.json#/$defs/Method_flame_2edeliverables_2frender_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2edeliverables_2frender_2ev1Output"
+  },
+  {
+    "name": "flame.deliverables/review.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Record the caller's visual review of enumerated pages from an exact render. This is attributed review evidence, not an automatic quality certification or approval to publish.",
+    "input": "schema.json#/$defs/Method_flame_2edeliverables_2freview_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2edeliverables_2freview_2ev1Output"
+  },
+  {
+    "name": "flame.deliverables/upload.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Reserve a bounded native-file upload for the exact size and SHA-256. No host path or URL is read.",
+    "input": "schema.json#/$defs/Method_flame_2edeliverables_2fupload_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2edeliverables_2fupload_2ev1Output"
+  },
+  {
+    "name": "flame.deliverables/uploads.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read admitted staging uploads and their current acknowledged offsets. Reselect only bytes matching the declared SHA-256 to resume.",
+    "input": "schema.json#/$defs/Method_flame_2edeliverables_2fuploads_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2edeliverables_2fuploads_2ev1Output"
+  }
+]

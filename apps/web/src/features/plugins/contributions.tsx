@@ -25,6 +25,7 @@ import {
   type CapturedFile,
   type CapturedSession,
   type CapturedToolResult,
+  type ComponentContext,
 } from "@flame/component-sdk";
 import { queryClient } from "@/lib/queryClient";
 import { failureMessage } from "@/lib/diagnostics";
@@ -53,6 +54,7 @@ function createPackageReconciler(
   moduleScope: ContributionLifetime,
   endpoint: string,
   themeAccess: ThemeAccess,
+  saveFile: ComponentContext["saveFile"],
 ): (installations: PluginInstallation[]) => Promise<void> {
   const compositions = new ComponentCompositions(
     client,
@@ -131,6 +133,7 @@ function createPackageReconciler(
                   component={component}
                   generation={generation}
                   compose={compose}
+                  saveFile={saveFile}
                   resources={loaded.signal}
                   runtime={client}
                   binding={binding}
@@ -190,6 +193,7 @@ function createPackageReconciler(
                   component={component}
                   generation={generation}
                   compose={compose}
+                  saveFile={saveFile}
                   resources={loaded.signal}
                   runtime={client}
                   binding={binding}
@@ -241,6 +245,7 @@ function createPackageReconciler(
                   component={component}
                   generation={generation}
                   compose={compose}
+                  saveFile={saveFile}
                   resources={loaded.signal}
                   runtime={client}
                   binding={binding}
@@ -279,6 +284,7 @@ function createPackageReconciler(
                 component={component}
                 generation={generation}
                 compose={compose}
+                saveFile={saveFile}
                 scope={entry.scope}
                 resources={loaded.signal}
                 runtime={client}
@@ -331,6 +337,7 @@ export function registerPackageContributions(
   generation: RuntimeConnectionGeneration,
   endpoint: string,
   themeAccess: ThemeAccess,
+  saveFile: ComponentContext["saveFile"],
 ): void {
   scope.cleanup(
     packages.publishOperations({
@@ -375,6 +382,7 @@ export function registerPackageContributions(
       scope,
       endpoint,
       themeAccess,
+      saveFile,
     );
     // The generation owns the task so it can join its contribution scope on failure.
     scope.spawn(async (signal) => {

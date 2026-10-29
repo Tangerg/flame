@@ -64,6 +64,9 @@ function capturedContext(
     track(): never {
       throw new Error("local genui must not start i/o");
     },
+    saveFile(): never {
+      throw new Error("local genui must not save files");
+    },
     compose(): never {
       throw new Error("genui must not compose another component");
     },
