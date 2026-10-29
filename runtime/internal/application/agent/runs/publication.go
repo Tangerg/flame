@@ -286,6 +286,7 @@ func combineTerminalEventCommit(batch reductionBatch) (EventCommit, error) {
 
 type treeBarrierReduction struct {
 	route      *executorRoute
+	next       *reducer
 	batch      reductionBatch
 	interrupts []transcript.Interrupt
 }
@@ -315,6 +316,9 @@ func (t treePublisher) publishTreeBarrier(
 		}
 		if commitTreeBarrierErr := t.publications.commitTreeBarrier(interruptCtx, commit); commitTreeBarrierErr != nil {
 			return commitTreeBarrierErr
+		}
+		for _, projected := range projection.reductions {
+			projected.route.reducer = projected.next
 		}
 		for _, projected := range projection.reductions {
 			for _, reduced := range projected.batch.events {
@@ -414,6 +418,9 @@ func (t treePublisher) reduceInterruptedRoute(
 	directInterruptions []MemberInterruption,
 	boundaryAt time.Time,
 ) (treeBarrierReduction, []InterruptBinding, Continuation, error) {
+	// Preparing a barrier cannot consume committed starts before the whole
+	// tree transaction accepts their closures and continuation bindings.
+	next := route.reducer.clone()
 	var reduced factReduction
 	var err error
 	if len(directInterruptions) > 0 {
@@ -421,9 +428,9 @@ func (t treePublisher) reduceInterruptedRoute(
 		for index, interruption := range directInterruptions {
 			interrupts[index] = interruption.Interrupt
 		}
-		reduced, err = route.reducer.interrupt(interrupts, route.activeDuration(boundaryAt))
+		reduced, err = next.interrupt(interrupts, route.activeDuration(boundaryAt))
 	} else {
-		reduced, err = route.reducer.suspend(route.activeDuration(boundaryAt))
+		reduced, err = next.suspend(route.activeDuration(boundaryAt))
 	}
 	if err != nil {
 		return treeBarrierReduction{}, nil, Continuation{}, fmt.Errorf(
@@ -432,7 +439,7 @@ func (t treePublisher) reduceInterruptedRoute(
 			err,
 		)
 	}
-	batch, err := route.reducer.projectFact(reduced)
+	batch, err := next.projectFact(reduced)
 	if err != nil {
 		return treeBarrierReduction{}, nil, Continuation{}, fmt.Errorf(
 			"runs: project tree barrier for run %q: %w",
@@ -474,9 +481,9 @@ func (t treePublisher) reduceInterruptedRoute(
 	continuation := Continuation{
 		RunID:        route.runID,
 		MemberID:     route.member.MemberID,
-		DrainedTools: slices.Clone(route.reducer.drained),
+		DrainedTools: slices.Clone(next.drained),
 	}
-	return treeBarrierReduction{route: route, batch: batch, interrupts: projectedInterrupts}, bindings, continuation, nil
+	return treeBarrierReduction{route: route, next: next, batch: batch, interrupts: projectedInterrupts}, bindings, continuation, nil
 }
 
 func suspendedInterrupts(events []ProjectionEvent) []transcript.Interrupt {

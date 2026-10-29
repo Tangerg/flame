@@ -1153,6 +1153,11 @@ Shell output uses Scope's `tools/content.Content`: `stdout` is an object with `e
 
 ## Execution lifecycle
 
+Tree-barrier preparation reduces every active member against speculative state.
+Only the accepted atomic barrier transaction advances all live reducers, before
+publishing any of its events. Refusal or cancellation retains the previously
+committed model/tool starts so terminal settlement can close them completely.
+
 Manual and cron firings pass only their captured Run request into the scheduled Run
 entry point. That request owns instructions, model selection, title, workspace and stable
 Session/Run identities; the launcher cannot author parallel overrides. An omitted workspace
