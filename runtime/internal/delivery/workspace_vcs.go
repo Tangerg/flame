@@ -103,7 +103,7 @@ func presentDiffRows(rows []workspaceapp.DiffRow) ([]protocol.DiffRow, error) {
 			return nil, fmt.Errorf("workspace.diff.get: unsupported row type %q", row.Type)
 		}
 		entry := protocol.DiffRow{
-			Type: kind, Text: row.Text, LeftLine: row.LeftLine, RightLine: row.RightLine,
+			Type: kind, Text: row.Text, LeftLine: row.LeftLine, RightLine: row.RightLine, NoNewline: row.NoNewline,
 		}
 		if kind != protocol.DiffRowHunk {
 			entry.Code = new(row.Code)

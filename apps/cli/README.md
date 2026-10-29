@@ -17,6 +17,11 @@ packaging. An HTTP-only client does not initialize a local Runtime.
 
 Running without a subcommand opens the Oolong terminal interface. Runtime owns durable product state and execution; CLI owns process behavior, terminal interaction, rendering, and local authoring state.
 
+Workspace `/diff --raw` displays the original patch, including file headers and
+line-termination markers. `/diff --rows` renders Runtime's per-file rows with
+old/new line numbers, rename paths, binary changes and truncation feedback.
+The client does not parse raw patches into a second diff model.
+
 ## Configuration
 
 CLI preferences and Runtime configuration have separate owners.

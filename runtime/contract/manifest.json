@@ -4926,6 +4926,9 @@
             "code",
             "leftLine",
             "rightLine"
+          ],
+          "optional": [
+            "noNewline"
           ]
         },
         {
@@ -4933,6 +4936,9 @@
           "required": [
             "code",
             "rightLine"
+          ],
+          "optional": [
+            "noNewline"
           ]
         },
         {
@@ -4940,6 +4946,9 @@
           "required": [
             "code",
             "leftLine"
+          ],
+          "optional": [
+            "noNewline"
           ]
         }
       ]

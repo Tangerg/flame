@@ -522,9 +522,9 @@ Forbidden on every variant: `durable`.
 | tag | required | optional |
 | --- | --- | --- |
 | `hunk` | `text` | — |
-| `context` | `code`, `leftLine`, `rightLine` | — |
-| `added` | `code`, `rightLine` | — |
-| `deleted` | `code`, `leftLine` | — |
+| `context` | `code`, `leftLine`, `rightLine` | `noNewline` |
+| `added` | `code`, `rightLine` | `noNewline` |
+| `deleted` | `code`, `leftLine` | `noNewline` |
 
 ## Value constraints
 

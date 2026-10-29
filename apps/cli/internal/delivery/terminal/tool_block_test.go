@@ -9,7 +9,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
-	coreDiff "github.com/Tangerg/oolong/core/diff"
 	"github.com/Tangerg/oolong/core/grid"
 	"github.com/Tangerg/oolong/highlight"
 )
@@ -75,20 +74,21 @@ func TestToolPresenterPanicsBecomePresentationErrors(t *testing.T) {
 	}
 }
 
-func TestParseUnifiedDiffCarriesLineKindsAndNumbers(t *testing.T) {
-	hunks := parseUnifiedDiff("--- a/a.go\n+++ b/a.go\n@@ -10,3 +10,3 @@\n keep\n-old\n+new\n")
-	lines := requireSingleHunk(t, hunks, 10, 10, 3)
-	if lines[0].Old != 10 || lines[0].New != 10 || lines[1].Old != 11 || lines[1].New != 0 || lines[2].Old != 0 || lines[2].New != 11 {
-		t.Fatalf("numbered lines = %+v", lines)
+func TestRawToolPatchPreservesFileHeadersAndMarkers(t *testing.T) {
+	patch := "diff --git a/one.txt b/one.txt\n--- a/one.txt\n+++ b/one.txt\n@@ -1 +1 @@\n-old one\n+new one\ndiff --git a/two.txt b/two.txt\n--- a/two.txt\n+++ b/two.txt\n@@ -1 +1 @@\n-old two\n+new two\n\\ No newline at end of file"
+	presentation := presentEditTool(conversation.ToolCall{Kind: protocol.ToolCategoryEdit, Diff: patch})
+	blocks := renderToolSections(blockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}, presentation.Sections, false)
+	var copied []string
+	for _, block := range blocks {
+		projector, ok := block.(headless.TextProjector)
+		if !ok {
+			t.Fatalf("raw patch cannot be copied: %T", block)
+		}
+		copied = append(copied, copyableRowsText(projector.Rows(120)))
 	}
-}
-
-func requireSingleHunk(t *testing.T, hunks []coreDiff.Hunk, oldStart, newStart, lines int) []coreDiff.Line {
-	t.Helper()
-	if len(hunks) != 1 || hunks[0].Old != oldStart || hunks[0].New != newStart || len(hunks[0].Lines) != lines {
-		t.Fatalf("hunks = %+v", hunks)
+	if got := strings.Join(copied, "\n"); got != patch {
+		t.Fatalf("raw patch = %q, want %q", got, patch)
 	}
-	return hunks[0].Lines
 }
 
 func TestToolLabelUsesSemanticKindInsteadOfProviderName(t *testing.T) {
@@ -123,7 +123,7 @@ func TestToolKindsBuildSpecializedOolongBlocks(t *testing.T) {
 	}{
 		{name: "shell", call: conversation.ToolCall{Kind: protocol.ToolCategoryShell, Status: conversation.ToolOK, Output: "ok"}, want: "code"},
 		{name: "read", call: conversation.ToolCall{Kind: protocol.ToolCategoryRead, Status: conversation.ToolOK, Path: "main.go", Output: "package main"}, want: "numbered-code"},
-		{name: "edit", call: conversation.ToolCall{Kind: protocol.ToolCategoryEdit, Status: conversation.ToolOK, Path: "a.go", Diff: diff}, want: "diff"},
+		{name: "edit", call: conversation.ToolCall{Kind: protocol.ToolCategoryEdit, Status: conversation.ToolOK, Path: "a.go", Diff: diff}, want: "code"},
 		{name: "search", call: conversation.ToolCall{Kind: protocol.ToolCategorySearch, Status: conversation.ToolOK, Query: "needle", Output: "a.go:1"}, want: "paragraph"},
 		{name: "web", call: conversation.ToolCall{Kind: protocol.ToolCategoryWeb, Status: conversation.ToolOK, URL: "https://example.com", Output: "https://example.com/result"}, want: "linked-paragraph"},
 		{name: "task", call: conversation.ToolCall{Kind: protocol.ToolCategoryTask, Status: conversation.ToolOK, Summary: "delegate", Output: "done"}, want: "paragraph"},
@@ -332,8 +332,6 @@ func requireToolBody(t *testing.T, body headless.Block, want string) {
 		requireCodeBody(t, body, false)
 	case "numbered-code":
 		requireCodeBody(t, body, true)
-	case "diff":
-		requireBodyType[*kit.Diff](t, body, "diff")
 	case "paragraph":
 		requireBodyType[*kit.Paragraph](t, body, "paragraph")
 	case "linked-paragraph":

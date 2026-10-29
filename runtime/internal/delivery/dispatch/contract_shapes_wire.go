@@ -512,9 +512,9 @@ func registerDiffUnions(s *Shapes) {
 			// tags, so an added row must be able to drop leftLine. They are REQUIRED
 			// here anyway: a context row carries both, and a unified diff numbers
 			// lines from 1, so the zero omitempty drops never occurs.
-			{Tag: string(protocol.DiffRowContext), Required: []string{"code", "leftLine", "rightLine"}},
-			{Tag: string(protocol.DiffRowAdded), Required: []string{"code", "rightLine"}},
-			{Tag: string(protocol.DiffRowDeleted), Required: []string{"code", "leftLine"}},
+			{Tag: string(protocol.DiffRowContext), Required: []string{"code", "leftLine", "rightLine"}, Optional: []string{"noNewline"}},
+			{Tag: string(protocol.DiffRowAdded), Required: []string{"code", "rightLine"}, Optional: []string{"noNewline"}},
+			{Tag: string(protocol.DiffRowDeleted), Required: []string{"code", "leftLine"}, Optional: []string{"noNewline"}},
 		},
 	})
 }

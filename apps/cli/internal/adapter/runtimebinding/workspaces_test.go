@@ -166,7 +166,7 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 		changes: protocol.NewPage([]protocol.WorkspaceFileChange{{Path: "main.go", Status: protocol.FileStatusModified, Added: &added, Removed: &removed}}),
 		diff: &protocol.Diff{Baseline: protocol.DiffBaseline{Type: protocol.DiffBaselineEmptyTree}, Files: []protocol.FileDiff{{
 			Path: "main.go", Status: protocol.FileStatusModified, Added: &added, Removed: &removed,
-			Rows: []protocol.DiffRow{{Type: protocol.DiffRowAdded, RightLine: 1, Code: new("package main")}},
+			Rows: []protocol.DiffRow{{Type: protocol.DiffRowAdded, RightLine: 1, Code: new("package main"), NoNewline: true}},
 		}}},
 		search: &protocol.GrepResult{Matches: []protocol.GrepMatch{{Path: "main.go", LineNumber: 1, Text: "package main"}}, Total: 1},
 		filePages: map[string]*protocol.Page[protocol.FileEntry]{
@@ -202,11 +202,11 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 	diff, err := runtime.Diff(t.Context(), workspace.DiffRequest{
 		Workspace: "/workspace", Format: protocol.DiffFormatRows, RowLimit: workspace.DefaultDiffRowLimit(),
 	})
-	if err != nil || diff.Text() != "diff -- main.go (modified)\n+package main" {
+	if err != nil || len(diff.Files) != 1 || diff.Files[0].Path != "main.go" || len(diff.Files[0].Rows) != 1 || *diff.Files[0].Rows[0].Code != "package main" || !diff.Files[0].Rows[0].NoNewline {
 		t.Fatalf("Diff = (%+v, %v)", diff, err)
 	}
 	*stub.diff.Files[0].Rows[0].Code = "mutated"
-	if diff.Text() != "diff -- main.go (modified)\n+package main" {
+	if *diff.Files[0].Rows[0].Code != "package main" {
 		t.Fatal("workspace diff projection aliases runtime row storage")
 	}
 	search, err := runtime.Search(t.Context(), workspace.SearchRequest{

@@ -5840,6 +5840,11 @@
               "name": "Code",
               "type": "*string",
               "tag": "json:\"code,omitzero\""
+            },
+            {
+              "name": "NoNewline",
+              "type": "bool",
+              "tag": "json:\"noNewline,omitzero\""
             }
           ]
         },

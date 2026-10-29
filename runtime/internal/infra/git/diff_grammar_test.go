@@ -26,12 +26,32 @@ func TestDiffTreatsHeaderLikeHunkContentAsChangedLines(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			for _, row := range files[0].Rows {
+				if row.Type != RowHunk && row.NoNewline != (newline == "") {
+					t.Fatalf("line termination lost: %+v", row)
+				}
+			}
 			for _, result := range [][]DiffFile{summary, files} {
 				if len(result) != 1 || result[0].Path != "a.txt" || result[0].Added != 1 || result[0].Removed != 1 {
 					t.Fatalf("header-like content changed patch identity: %+v", result)
 				}
 			}
 		})
+	}
+}
+
+func TestDiffNewlineMarkerRequiresTerminalCode(t *testing.T) {
+	marker := "\\ No newline at end of file\n"
+	header := "diff --git a/a b/a\n--- a/a\n+++ b/a\n"
+	for _, patch := range []string{
+		marker,
+		header + "@@ -1 +1 @@\n" + marker,
+		header + "@@ -1,2 +1,2 @@\n first\n" + marker + " second\n",
+		header + "@@ -1 +1 @@\n-old\n+new\n" + marker + marker,
+	} {
+		if _, err := SummarizePatch([]byte(patch)); err == nil {
+			t.Fatalf("accepted misplaced newline marker: %q", patch)
+		}
 	}
 }
 
@@ -93,7 +113,7 @@ func TestDiffHunkRangesPreserveMultipleHunksAndWholeFileBudgets(t *testing.T) {
 	}
 	file := files[0]
 	if file.Path != "a.txt" || file.Added != 3 || file.Removed != 2 ||
-		file.Rows[6].LeftLine != 8 || file.Rows[7].RightLine != 9 || file.Rows[4].Code != "" {
+		file.Rows[6].LeftLine != 8 || file.Rows[7].RightLine != 9 || file.Rows[4].Code != "" || !file.Rows[7].NoNewline {
 		t.Fatalf("hunk ranges = %+v", file)
 	}
 	files, truncated, err = parseUnifiedDiff(patch, 1, 7)

@@ -72,6 +72,7 @@ type DiffRow struct {
 	LeftLine  int
 	RightLine int
 	Code      string
+	NoNewline bool
 }
 
 // FileDiff is one file's structured diff.

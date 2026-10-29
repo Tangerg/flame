@@ -390,6 +390,8 @@ its original indentation remain separate from the decorative marker.
 With its region focused, Ctrl/Cmd+A selects only the rendered difference rows,
 excluding the caption, column headings and surrounding application; partial
 selection and copy remain native.
+A code row marked `noNewline` retains the patch termination marker beneath its
+source in both layouts, including native selection and copy.
 Adjacent deletion/addition runs pair by position in split layout, stopping at
 context and hunk boundaries. Extra lines keep their own side; unified layout
 retains source order. Both layouts mark changed words without changing source

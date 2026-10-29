@@ -20,6 +20,7 @@ export type ComparisonRow =
       code: string;
       leftLine?: number;
       rightLine?: number;
+      noNewline?: boolean;
     };
 
 export interface DiffTableLabels {
@@ -87,6 +88,7 @@ function CodeCell({ line }: { line?: PresentedLine }) {
               ),
             )
           : line?.source.code}
+        {line?.source.noNewline ? "\n\\ No newline at end of file" : null}
       </code>
     </td>
   );

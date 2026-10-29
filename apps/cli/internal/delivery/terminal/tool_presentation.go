@@ -31,7 +31,7 @@ type toolSectionStyle uint8
 
 const (
 	toolSectionCode toolSectionStyle = iota
-	toolSectionDiff
+	toolSectionDiffRows
 	toolSectionParagraph
 )
 
@@ -43,6 +43,7 @@ type toolSection struct {
 	Style       toolSectionStyle
 	Language    string
 	Text        string
+	Rows        []protocol.DiffRow
 	LineNumbers bool
 	Links       bool
 }
@@ -172,7 +173,7 @@ func toolSections(call conversation.ToolCall, output toolSection) []toolSection 
 		})
 	}
 	if strings.TrimSpace(call.Diff) != "" {
-		sections = append(sections, toolSection{Title: "Changes", Style: toolSectionDiff, Language: "diff", Text: call.Diff})
+		sections = append(sections, toolSection{Title: "Changes", Style: toolSectionCode, Language: "diff", Text: call.Diff})
 	}
 	if strings.TrimSpace(output.Text) != "" {
 		sections = append(sections, output)

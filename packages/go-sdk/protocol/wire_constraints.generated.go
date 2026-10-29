@@ -1769,6 +1769,7 @@ func (d DiffRow) validateWire() error {
 		forbiddenWhen(wireFieldEquals(d, "type", "hunk"), "code", d),
 		forbiddenWhen(wireFieldEquals(d, "type", "hunk"), "leftLine", d),
 		forbiddenWhen(wireFieldEquals(d, "type", "hunk"), "rightLine", d),
+		forbiddenWhen(wireFieldEquals(d, "type", "hunk"), "noNewline", d),
 		requiredWhen(wireFieldEquals(d, "type", "context"), "code", d),
 		requiredWhen(wireFieldEquals(d, "type", "context"), "leftLine", d),
 		requiredWhen(wireFieldEquals(d, "type", "context"), "rightLine", d),

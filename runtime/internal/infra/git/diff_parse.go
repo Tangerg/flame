@@ -85,6 +85,18 @@ type unifiedDiffParser struct {
 }
 
 func (parser *unifiedDiffParser) consume(line string) (bool, error) {
+	if line == `\ No newline at end of file` {
+		if parser.current == nil || len(parser.current.Rows) == 0 {
+			return false, fmt.Errorf("git: newline marker without a code row")
+		}
+		row := &parser.current.Rows[len(parser.current.Rows)-1]
+		if row.Type == RowHunk || row.NoNewline ||
+			row.LeftLine > 0 && parser.left.remaining != 0 || row.RightLine > 0 && parser.right.remaining != 0 {
+			return false, fmt.Errorf("git: newline marker without a terminal code row")
+		}
+		row.NoNewline = true
+		return false, nil
+	}
 	if parser.left.remaining > 0 || parser.right.remaining > 0 {
 		return parser.appendRow(line)
 	}
@@ -181,9 +193,6 @@ func (parser *unifiedDiffParser) appendHunk(line string) (bool, error) {
 }
 
 func (parser *unifiedDiffParser) appendRow(line string) (bool, error) {
-	if line == `\ No newline at end of file` {
-		return false, nil
-	}
 	if line == "" {
 		return false, fmt.Errorf("git: incomplete diff hunk")
 	}

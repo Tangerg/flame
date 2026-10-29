@@ -50,6 +50,22 @@ afterEach(() => {
   document.getSelection()?.removeAllRanges();
 });
 
+it.each(["unified", "split"] as const)(
+  "preserves source and missing-newline markers in %s layout",
+  (layout) => {
+    const { table } = renderDiff(layout, [
+      { type: "deleted", leftLine: 7, code: "old", noNewline: true },
+      { type: "added", rightLine: 9, code: "new", noNewline: true },
+    ]);
+    expect(
+      Array.from(table.querySelectorAll("code"), (code) => code.textContent),
+    ).toEqual([
+      "old\n\\ No newline at end of file",
+      "new\n\\ No newline at end of file",
+    ]);
+  },
+);
+
 describe("DiffTable Select All", () => {
   it.each([
     { layout: "unified", modifier: { ctrlKey: true } },

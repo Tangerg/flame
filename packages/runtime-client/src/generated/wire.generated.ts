@@ -470,9 +470,9 @@ export type DiffMode = "worktree" | "base";
 
 export type DiffRow =
   | { type: "hunk"; text: string }
-  | { type: "context"; code: string; leftLine: number; rightLine: number }
-  | { type: "added"; code: string; rightLine: number }
-  | { type: "deleted"; code: string; leftLine: number };
+  | { type: "context"; code: string; leftLine: number; noNewline?: boolean; rightLine: number }
+  | { type: "added"; code: string; noNewline?: boolean; rightLine: number }
+  | { type: "deleted"; code: string; leftLine: number; noNewline?: boolean };
 
 export type DiffRowType = "hunk" | "context" | "added" | "deleted";
 

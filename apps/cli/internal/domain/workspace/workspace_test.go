@@ -7,7 +7,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-func TestStructuredDiffValidatesAndRendersEveryRow(t *testing.T) {
+func TestStructuredDiffRefusesBinaryTextRows(t *testing.T) {
 	t.Parallel()
 	diff := Diff{Baseline: protocol.DiffBaseline{Type: protocol.DiffBaselineEmptyTree}, Files: []FileDiff{{
 		Change: Change{Path: "main.go", Status: protocol.FileStatusModified},
@@ -21,10 +21,6 @@ func TestStructuredDiffValidatesAndRendersEveryRow(t *testing.T) {
 	}}}
 	if err := diff.Validate(); err != nil {
 		t.Fatal(err)
-	}
-	want := "diff -- main.go (modified)\n@@ -1,2 +1,2 @@\n package main\n-var old = true\n+var current = true\n+"
-	if got := diff.Text(); got != want {
-		t.Fatalf("Text = %q, want %q", got, want)
 	}
 
 	binary := diff

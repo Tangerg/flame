@@ -80,7 +80,13 @@ func (w *workspaceServiceStub) Diff(_ context.Context, request workspace.DiffReq
 	w.mu.Lock()
 	w.diffRequest = request
 	w.mu.Unlock()
-	return workspace.Diff{Baseline: protocol.DiffBaseline{Type: protocol.DiffBaselineMergeBase, Commit: strings.Repeat("1", 40)}, Patch: "diff --git a/main.go b/main.go\n+var current = true"}, nil
+	diff := workspace.Diff{Baseline: protocol.DiffBaseline{Type: protocol.DiffBaselineMergeBase, Commit: strings.Repeat("1", 40)}}
+	if request.Format == protocol.DiffFormatRaw {
+		diff.Patch = "diff --git a/main.go b/main.go\n+var current = true"
+	} else {
+		diff.Files = []workspace.FileDiff{{Change: workspace.Change{Path: "main.go", Status: protocol.FileStatusModified}, Rows: []protocol.DiffRow{{Type: protocol.DiffRowAdded, RightLine: 1, Code: new("var current = true")}}}}
+	}
+	return diff, nil
 }
 
 func (w *workspaceServiceStub) lastDiffRequest() workspace.DiffRequest {

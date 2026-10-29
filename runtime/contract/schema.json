@@ -1805,6 +1805,9 @@
           "type": "integer",
           "minimum": 1
         },
+        "noNewline": {
+          "type": "boolean"
+        },
         "rightLine": {
           "type": "integer",
           "minimum": 1
@@ -1821,6 +1824,7 @@
           "properties": {
             "code": false,
             "leftLine": false,
+            "noNewline": false,
             "rightLine": false,
             "type": {
               "const": "hunk"

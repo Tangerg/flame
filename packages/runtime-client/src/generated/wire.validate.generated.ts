@@ -995,6 +995,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     object({
       code: text(),
       leftLine: allOf([integer(), minimum("1")]),
+      noNewline: flag(),
       rightLine: allOf([integer(), minimum("1")]),
       text: text(),
       type: ref(() => CHECKS.DiffRowType),
@@ -1003,6 +1004,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       fields({
         code: absent(),
         leftLine: absent(),
+        noNewline: absent(),
         rightLine: absent(),
         type: literal("hunk"),
       }, ["text", "type"]),
