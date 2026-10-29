@@ -378,10 +378,6 @@ func currentSchema() []string {
 			api_key   TEXT CHECK (api_key IS NULL OR length(api_key) > 0),
 			base_url  TEXT CHECK (base_url IS NULL OR length(base_url) > 0)
 		)`,
-		// Global utility-model role: the (provider, model)
-		// the in-house maintenance services — compaction / extraction / titling —
-		// run on. Single row, pinned by CHECK(id = 1); empty model = unset (those
-		// run on the main Run model).
 		`CREATE TABLE IF NOT EXISTS utility_role (
 			id        INTEGER PRIMARY KEY CHECK (id = 1),
 			provider  TEXT NOT NULL DEFAULT '',

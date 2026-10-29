@@ -244,6 +244,10 @@ outside the one its state allows is reported as a Runtime contract violation rat
 than printed as raw text. Runtime and clients must use the same protocol revision, and obsolete Runtime
 approval databases require a fresh data directory rather than data migration.
 
+`/utility default` uses the Runtime default model for subsequent utility calls;
+`/utility <provider/model>` assigns an explicit model. An installed model selector
+may change the final route. The former `/utility inherit` command is removed.
+
 ## Runtime plugin commands
 
 `flame plugins providers` reads explicit provider choices. Use

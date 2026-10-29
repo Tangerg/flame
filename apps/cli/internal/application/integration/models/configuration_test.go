@@ -10,7 +10,7 @@ func TestRoleAndProviderChangesHaveExplicitSemantics(t *testing.T) {
 	if err := (Role{}).Validate(); err == nil {
 		t.Fatal("zero role was accepted")
 	}
-	if err := InheritedUtilityRole().Validate(); err != nil {
+	if err := RuntimeDefaultUtilityRole().Validate(); err != nil {
 		t.Fatal(err)
 	}
 	if err := DisabledEmbeddingRole().Validate(); err != nil {

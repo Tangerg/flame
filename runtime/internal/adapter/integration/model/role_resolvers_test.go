@@ -51,7 +51,7 @@ func TestResolvedChatRejectsTypedNilInputTokenCounter(t *testing.T) {
 	}
 }
 
-func TestLiveUtilityModelResolvesMainForEveryUse(t *testing.T) {
+func TestLiveUtilityModelResolvesRuntimeDefaultForEveryUse(t *testing.T) {
 	selection := testsupport.MustModelSelection("anthropic", "claude-test")
 	model := newTestChatModel(t)
 	calls := 0
@@ -86,7 +86,7 @@ func TestLiveUtilityModelResolvesMainForEveryUse(t *testing.T) {
 }
 
 func TestLiveUtilityModelReturnsConfiguredRoleFailureWithoutFallback(t *testing.T) {
-	mainSelection := testsupport.MustModelSelection("anthropic", "claude-main")
+	defaultSelection := testsupport.MustModelSelection("anthropic", "claude-default")
 	utilityRole := mustRole(t, "openai", "utility-model")
 	utilitySelection := utilityRole.Selection()
 	model := newTestChatModel(t)
@@ -98,7 +98,7 @@ func TestLiveUtilityModelReturnsConfiguredRoleFailureWithoutFallback(t *testing.
 		}
 		return mustResolvedChat(t, model, nil), nil
 	}}
-	resolve, err := LiveUtilityModel(resolver, mainSelection, staticRoleSource{role: utilityRole}, nil)
+	resolve, err := LiveUtilityModel(resolver, defaultSelection, staticRoleSource{role: utilityRole}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

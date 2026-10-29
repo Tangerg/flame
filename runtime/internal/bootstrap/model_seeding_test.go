@@ -32,13 +32,13 @@ func TestSeedUtilityRoleOnlySeedsAnAbsentDurableChoice(t *testing.T) {
 			wantProvider: "openai", wantModel: "gpt-5-mini",
 		},
 		{
-			name: "explicit inheritance wins", present: true,
+			name: "explicit Runtime default wins", present: true,
 			configured: config.Settings{
 				Provider: "deepseek", Model: "deepseek-chat", UtilityModel: "deepseek-reasoner",
 			},
 		},
 		{
-			name: "main model needs no seed", configured: config.Settings{
+			name: "Runtime default needs no seed", configured: config.Settings{
 				Provider: "deepseek", Model: "deepseek-chat", UtilityModel: "deepseek-chat",
 			},
 		},

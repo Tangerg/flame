@@ -83,8 +83,8 @@ func parseModelRole(kind models.RoleKind, argument string) (models.Role, error) 
 		return models.Role{}, err
 	}
 	switch {
-	case kind == models.UtilityRole && strings.EqualFold(argument, utilityRoleInheritedArgument):
-		return models.InheritedUtilityRole(), nil
+	case kind == models.UtilityRole && strings.EqualFold(argument, utilityRoleDefaultArgument):
+		return models.RuntimeDefaultUtilityRole(), nil
 	case kind == models.EmbeddingRole && strings.EqualFold(argument, embeddingRoleDisabledArgument):
 		return models.DisabledEmbeddingRole(), nil
 	}
@@ -100,13 +100,13 @@ func parseModelRole(kind models.RoleKind, argument string) (models.Role, error) 
 }
 
 const (
-	utilityRoleInheritedArgument  = "inherit"
+	utilityRoleDefaultArgument    = "default"
 	embeddingRoleDisabledArgument = "off"
 )
 
 func modelRoleUsage(kind models.RoleKind) error {
 	if kind == models.UtilityRole {
-		return errors.New("usage: /utility <provider/model|inherit>")
+		return errors.New("usage: /utility <provider/model|default>")
 	}
 	return errors.New("usage: /embedding <provider/model|off>")
 }

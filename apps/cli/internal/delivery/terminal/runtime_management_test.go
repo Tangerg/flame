@@ -70,7 +70,7 @@ func TestUsageAndModelRoleCommandsProjectRuntimeConfiguration(t *testing.T) {
 	host.Type("/roles")
 	host.Press(input.Enter)
 	host.Shows(t, "Auxiliary model roles")
-	host.Shows(t, "inherit the run model")
+	host.Shows(t, "Runtime default")
 	host.Press(input.Esc)
 	host.Shows(t, "Ask flame")
 	host.Type("/utility deepseek/maintenance")
@@ -84,14 +84,21 @@ func TestUsageAndModelRoleCommandsProjectRuntimeConfiguration(t *testing.T) {
 	if err != nil || !configured || provider != "deepseek" || model != "maintenance" || roles.Embedding.Configured() {
 		t.Fatalf("roles = (%+v, %v)", roles, err)
 	}
+	host.Type("/utility default")
+	host.Press(input.Enter)
+	host.Shows(t, "utility model · Runtime default")
+	roles, err = models.Roles(t.Context())
+	if err != nil || roles.Utility.Configured() {
+		t.Fatalf("default utility role = (%+v, %v)", roles.Utility, err)
+	}
 	stop()
 }
 
 func TestParseModelRoleUsesRoleSpecificUnconfiguredIntent(t *testing.T) {
 	t.Parallel()
-	utility, err := parseModelRole(models.UtilityRole, utilityRoleInheritedArgument)
+	utility, err := parseModelRole(models.UtilityRole, "default")
 	if err != nil || utility.Configured() {
-		t.Fatalf("utility inherit = (%+v, %v)", utility, err)
+		t.Fatalf("utility default = (%+v, %v)", utility, err)
 	}
 	embedding, err := parseModelRole(models.EmbeddingRole, embeddingRoleDisabledArgument)
 	if err != nil || embedding.Configured() {
@@ -100,15 +107,15 @@ func TestParseModelRoleUsesRoleSpecificUnconfiguredIntent(t *testing.T) {
 	if _, err := parseModelRole(models.UtilityRole, embeddingRoleDisabledArgument); err == nil {
 		t.Fatal("utility accepted embedding's disabled command")
 	}
-	if _, err := parseModelRole(models.EmbeddingRole, utilityRoleInheritedArgument); err == nil {
-		t.Fatal("embedding accepted utility's inherited command")
+	if _, err := parseModelRole(models.EmbeddingRole, utilityRoleDefaultArgument); err == nil {
+		t.Fatal("embedding accepted utility's default command")
 	}
 	configured, err := parseModelRole(models.UtilityRole, "deepseek/maintenance")
 	provider, model, present := configured.ProviderModel()
 	if err != nil || !present || provider != "deepseek" || model != "maintenance" {
 		t.Fatalf("configured role = (%+v, %v)", configured, err)
 	}
-	for _, argument := range []string{" deepseek/maintenance", "deepseek /maintenance", "deepseek/ maintenance"} {
+	for _, argument := range []string{"inherit", " deepseek/maintenance", "deepseek /maintenance", "deepseek/ maintenance"} {
 		if _, err := parseModelRole(models.UtilityRole, argument); err == nil {
 			t.Fatalf("configured role normalized identity input %q", argument)
 		}
@@ -229,7 +236,7 @@ func (b *blockingProviderUpdateService) UpdateProvider(
 func newModelConfigServiceStub() *modelConfigServiceStub {
 	return &modelConfigServiceStub{
 		roles: models.Roles{
-			Utility:   models.InheritedUtilityRole(),
+			Utility:   models.RuntimeDefaultUtilityRole(),
 			Embedding: models.DisabledEmbeddingRole(),
 		},
 		providers: []models.Provider{terminalTestProvider(

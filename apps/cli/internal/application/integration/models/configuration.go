@@ -28,7 +28,7 @@ func (r RoleKind) Validate() error {
 type roleMode uint8
 
 const (
-	inheritedRole roleMode = iota + 1
+	runtimeDefaultRole roleMode = iota + 1
 	disabledRole
 	configuredRole
 )
@@ -39,8 +39,8 @@ type Role struct {
 	selection flamemodel.Selection
 }
 
-func InheritedUtilityRole() Role {
-	return Role{kind: UtilityRole, mode: inheritedRole}
+func RuntimeDefaultUtilityRole() Role {
+	return Role{kind: UtilityRole, mode: runtimeDefaultRole}
 }
 
 func DisabledEmbeddingRole() Role {
@@ -64,10 +64,7 @@ func (r Role) Validate() error {
 		return err
 	}
 	switch r.mode {
-	// Inheriting the run model and being switched off are whole roles on their
-	// own: InheritedUtilityRole and DisabledEmbeddingRole are the only ways to
-	// name one, and neither takes a provider or a model to disagree with.
-	case inheritedRole, disabledRole:
+	case runtimeDefaultRole, disabledRole:
 	case configuredRole:
 		if err := r.selection.ValidateExact(); err != nil {
 			return fmt.Errorf("configured model role: %w", err)
@@ -91,8 +88,8 @@ func (r Role) Label() (string, error) {
 		return "", err
 	}
 	switch r.mode {
-	case inheritedRole:
-		return "inherit the run model", nil
+	case runtimeDefaultRole:
+		return "Runtime default", nil
 	case disabledRole:
 		return "disabled", nil
 	case configuredRole:
