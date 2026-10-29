@@ -78,7 +78,9 @@ adapter. Provider profiles own authentication, endpoint and catalog facts. Open
 captures one immutable client shared by ordinary chat, its actual optional
 streaming and complete-request counter, or embedding execution. Handles and
 original command receipts survive backend restart. Closing fences future work
-and joins accepted exchanges. Unknown receipts never authorize redispatch.
+and joins accepted exchanges. Reopening constructs a fresh handle from the
+original confirmed open receipt; it never reads current credentials or grants
+permission to repeat generation. Unknown receipts never authorize redispatch.
 Runtime retains exact selection, credentials, admission, endpoint evidence,
 accounting and recovery. Connection snapshots are private backend inputs, with
 credential-safe formatting. Chat uses complete native Scope values. Embedding

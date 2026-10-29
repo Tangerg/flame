@@ -154,10 +154,35 @@ func (h Handle) Validate() error {
 
 type Chat struct {
 	Handle
+	Original      string         `json:"original" jsonschema:"pattern=\\S,maxLength=256"`
 	Streaming     bool           `json:"streaming"`
 	TokenCounting bool           `json:"tokenCounting"`
 	Metadata      *catalog.Model `json:"metadata,omitzero"`
 }
+
+func (c Chat) Validate(model string) error {
+	if _, err := modelchoice.NewModelIdentity(model); err != nil {
+		return err
+	}
+	if err := errors.Join(c.Handle.Validate(), qimumcp.ValidateCommandID(c.Original)); err != nil {
+		return err
+	}
+	if c.Metadata != nil {
+		if err := c.Metadata.Validate(); err != nil {
+			return err
+		}
+		if c.Metadata.ID != model {
+			return errors.New("model provider: metadata belongs to another model")
+		}
+	}
+	return nil
+}
+
+type Reopen struct {
+	Original string `json:"original" jsonschema:"pattern=\\S,maxLength=256"`
+}
+
+func (r Reopen) Validate() error { return qimumcp.ValidateCommandID(r.Original) }
 
 type Embedder struct {
 	Handle
@@ -298,6 +323,10 @@ func OpenEmbeddingMethod() (*qimumcp.Method[Open, Embedder], error) {
 	return qimumcp.NewMethod[Open, Embedder](qimumcp.MethodConfig{Name: "flame.model-provider/open-embedding.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Capture an immutable embedding client and its vector-space identity."})
 }
 
+func ReopenChatMethod() (*qimumcp.Method[Reopen, Chat], error) {
+	return qimumcp.NewMethod[Reopen, Chat](qimumcp.MethodConfig{Name: "flame.model-provider/reopen-chat.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Reconstruct a fresh client from the original confirmed open receipt, without reading current credentials or authorizing generation."})
+}
+
 func CloseMethod() (*qimumcp.Method[Handle, struct{}], error) {
 	return qimumcp.NewMethod[Handle, struct{}](qimumcp.MethodConfig{Name: "flame.model-provider/close.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Retire the captured client after its accepted calls have joined."})
 }
@@ -335,6 +364,10 @@ func Contract() (*portable.Capability, error) {
 	if err != nil {
 		return nil, err
 	}
+	reopenChat, err := ReopenChatMethod()
+	if err != nil {
+		return nil, err
+	}
 	close, err := CloseMethod()
 	if err != nil {
 		return nil, err
@@ -355,5 +388,5 @@ func Contract() (*portable.Capability, error) {
 	if err != nil {
 		return nil, err
 	}
-	return portable.NewCapability(portable.CapabilityConfig{Reference: Reference, Composition: portable.Selection, Scope: extension.ScopeInstallation}, profiles.Descriptor(), remote.Descriptor(), openChat.Descriptor(), openEmbedding.Descriptor(), close.Descriptor(), call.Descriptor(), stream.Descriptor(), count.Descriptor(), embed.Descriptor())
+	return portable.NewCapability(portable.CapabilityConfig{Reference: Reference, Composition: portable.Selection, Scope: extension.ScopeInstallation}, profiles.Descriptor(), remote.Descriptor(), openChat.Descriptor(), openEmbedding.Descriptor(), reopenChat.Descriptor(), close.Descriptor(), call.Descriptor(), stream.Descriptor(), count.Descriptor(), embed.Descriptor())
 }
