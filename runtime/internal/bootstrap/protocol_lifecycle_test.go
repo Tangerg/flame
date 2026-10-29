@@ -600,35 +600,6 @@ func protocolHandler(host *Instance, cwd string) (*delivery.Handler, error) {
 	}, testsupport.IdempotencyNamespace)
 }
 
-func collectRunEvents(events iter.Seq2[protocol.RunEvent, error]) <-chan []protocol.RunEvent {
-	done := make(chan []protocol.RunEvent, 1)
-	go func() {
-		var collected []protocol.RunEvent
-		for event, err := range events {
-			if err != nil {
-				break
-			}
-			collected = append(collected, event)
-		}
-		done <- collected
-	}()
-	return done
-}
-
-func waitForRunEvents(t *testing.T, done <-chan []protocol.RunEvent, phase string) []protocol.RunEvent {
-	t.Helper()
-	select {
-	case events := <-done:
-		if len(events) == 0 {
-			t.Fatalf("%s emitted no run events", phase)
-		}
-		return events
-	case <-time.After(lifecycleWaitBudget(t)):
-		t.Fatalf("timed out waiting for %s events", phase)
-		return nil
-	}
-}
-
 func waitForSignal(t *testing.T, signal <-chan struct{}, phase string) {
 	t.Helper()
 	select {

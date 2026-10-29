@@ -125,24 +125,22 @@ func testProtocolSiblingRestart(t *testing.T, delegateCalls []chat.ToolCall, can
 		t.Fatal(err)
 	}
 	bCompleted := make(chan string, 1)
-	initialDone := make(chan []protocol.RunEvent, 1)
-	go func() {
-		var observed []protocol.RunEvent
-		for event := range events {
-			observed = append(observed, event)
-			if event.RunID != started.RunID && event.Event.Type == protocol.StreamSegmentFinished &&
+	initialDone := collectRunEvents(func(yield func(protocol.RunEvent, error) bool) {
+		for event, err := range events {
+			if err == nil && event.RunID != started.RunID && event.Event.Type == protocol.StreamSegmentFinished &&
 				event.Event.Run.Outcome != nil && event.Event.Run.Outcome.Type == protocol.OutcomeCompleted {
 				bCompleted <- event.RunID
 			}
+			if !yield(event, err) {
+				return
+			}
 		}
-		initialDone <- observed
-	}()
+	})
 	var bRunID string
 	select {
 	case bRunID = <-bCompleted:
 	case observed := <-initialDone:
-		diagnostic, _ := json.Marshal(observed[len(observed)-1].Event)
-		t.Fatalf("tree stopped before sibling B completed after %d model calls: %s", calls.Load(), diagnostic)
+		t.Fatalf("tree stopped before sibling B completed after %d model calls: events=%+v, stream error=%v", calls.Load(), observed.events, observed.err)
 	case <-time.After(lifecycleWaitBudget(t)):
 		t.Fatal("completed sibling B was held behind running sibling A")
 	}
