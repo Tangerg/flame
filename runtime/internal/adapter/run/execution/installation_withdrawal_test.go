@@ -3,12 +3,12 @@ package execution
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/qimu"
 	"slices"
 	"sync"
 	"sync/atomic"
 	"testing"
 
+	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -96,6 +96,10 @@ func withdrawalStore(t *testing.T, release plugin.Release, installation *plugin.
 }
 
 type preparedPackages struct{}
+
+func (preparedPackages) ReadLocale(context.Context, *plugin.Installation, plugin.Locale) (map[string]string, error) {
+	return nil, errors.New("unexpected locale resource read")
+}
 
 func (preparedPackages) ReadResource(context.Context, *plugin.Installation, string) ([]byte, error) {
 	return nil, errors.New("unexpected component resource read")

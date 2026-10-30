@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -42,10 +43,17 @@ func TestTrajectoryComponentReadsInstalledBytesAndCanonicalHistory(t *testing.T)
 	r := poMCPOpen(t, cfg)
 	source := filepath.Join(firstPartyPackages, "trajectory")
 	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install").(*protocol.PluginInstallation)
-	if len(installed.Selected.Components) != 2 || installed.Selected.Components[0].Scope != "session" || len(installed.Selected.Diagnostics) != 0 {
+	index := slices.IndexFunc(installed.Selected.Components, func(component protocol.PluginClientComponent) bool {
+		return component.ID == "trajectory"
+	})
+	if index < 0 || len(installed.Selected.Diagnostics) != 0 {
 		t.Fatalf("first-party admission: %+v", installed.Selected)
 	}
-	request := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: "trajectory"}, Path: installed.Selected.Components[0].Entry}
+	component := installed.Selected.Components[index]
+	if component.Scope != "session" || component.Placement != extension.ComponentPlacementWorkspaceView || component.Export != "Trajectory" {
+		t.Fatalf("trajectory component: %+v", component)
+	}
+	request := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: component.ID}, Path: component.Entry}
 	checkFailure := func(method delivery.Name, input any, want error) {
 		t.Helper()
 		result := r.endpoint.Invoke(t.Context(), method, input, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
