@@ -1,5 +1,5 @@
-github.com/Tangerg/flame/qimu v0.1.0-quality.20261030.1 h1:mPyNcqlUHV4EU8nbn256jX0gY/OQ8oeOpyWuiBtq1kI=
-github.com/Tangerg/flame/qimu v0.1.0-quality.20261030.1/go.mod h1:uGlLRUYXDfFZvsuAv+I88PHtYeIX+w2sK5CJLGXu/qA=
+github.com/Tangerg/flame/qimu v0.1.0-quality.20261030.2 h1:o3cR91WJLxNEPs+gnVOkFNMH4/8dv4cz0vVg9AOZIXs=
+github.com/Tangerg/flame/qimu v0.1.0-quality.20261030.2/go.mod h1:uGlLRUYXDfFZvsuAv+I88PHtYeIX+w2sK5CJLGXu/qA=
 github.com/Tangerg/go-sdk v1.8.1-scope.3 h1:hMC4qrvwu38L4/bLwnPiCYi9BTRFQxGb6Cs97pa/CzQ=
 github.com/Tangerg/go-sdk v1.8.1-scope.3/go.mod h1:9ZBcxdycY3/8/I1dCH3Uo5rCY3Run9Y4ZmEmiQIulUw=
 github.com/Tangerg/scope/core v0.58.0 h1:9qVRiN+9++zUiWpNoGCjLuusRGLnZiUjC58auS7p4u8=
