@@ -16,28 +16,27 @@ func main() {
 	}
 	app := application.New(desktopApplicationOptions(host))
 	window := app.Window.NewWithOptions(desktopWindowOptions())
-	host.useWindow(window)
-	host.usePathRevealer(app.Env)
-	host.usePathOpener(app.Browser)
-	host.useNotifications(wailsNotifications{
-		service: notifications.New(),
-		opened: func(target bridge.NotificationTarget) {
-			app.Event.Emit(bridge.NotificationOpenedEvent, target)
+	shell := nativeShell{
+		window: window,
+		reveal: func() {
+			window.UnMinimise()
+			window.Show()
+			window.Focus()
 		},
-	})
-	host.useRevealer(func() {
-		window.UnMinimise()
-		window.Show()
-		window.Focus()
-	})
-	host.useWorkingDirectoryPicker(wailsWorkingDirectoryPicker{
-		dialogs: app.Dialog,
-		window:  window,
-	})
-	host.useFileSaver(wailsFileSaver{
-		dialogs: app.Dialog,
-		window:  window,
-	})
+		pathRevealer: app.Env,
+		pathOpener:   app.Browser,
+		directories:  wailsWorkingDirectoryPicker{dialogs: app.Dialog, window: window},
+		files:        wailsFileSaver{dialogs: app.Dialog, window: window},
+		notifications: wailsNotifications{
+			service: notifications.New(),
+			opened: func(target bridge.NotificationTarget) {
+				app.Event.Emit(bridge.NotificationOpenedEvent, target)
+			},
+		},
+	}
+	if err := host.bind(shell); err != nil {
+		log.Fatal(err)
+	}
 	installNativeZoom(app)
 	if err := app.Run(); err != nil {
 		log.Fatal(err)

@@ -27,7 +27,7 @@ func (f *fakeNotifications) send(n bridge.DesktopNotification) error {
 func startedHost(t *testing.T, centre *fakeNotifications) *DesktopHost {
 	t.Helper()
 	host := mustDesktopHost(t, t.TempDir())
-	host.useNotifications(centre)
+	bindShell(t, host, nativeShell{notifications: centre})
 	if err := host.ServiceStartup(context.Background(), application.ServiceOptions{}); err != nil {
 		t.Fatalf("ServiceStartup() = %v", err)
 	}

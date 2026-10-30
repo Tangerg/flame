@@ -34,22 +34,31 @@ type pathOpener interface {
 	OpenFile(path string) error
 }
 
-// Every exported method becomes a Wails IPC entry point. Keep composition setters
+// nativeShell is the Wails surface the host drives. Wails needs the host as a
+// service before it creates the window and dialogs, so the shell is bound once,
+// complete, after construction and before the application runs.
+type nativeShell struct {
+	window        nativeWindow
+	reveal        func()
+	pathRevealer  pathRevealer
+	pathOpener    pathOpener
+	directories   workingDirectoryPicker
+	files         fileSaver
+	notifications systemNotifications
+}
+
+// Every exported method becomes a Wails IPC entry point. Keep composition methods
 // unexported; bridgegen derives its contract from these actual declarations.
 type DesktopHost struct {
-	localRuntimeEndpoint   string
-	localTokenPath         string
-	workingDirectoryPicker workingDirectoryPicker
-	fileSaver              fileSaver
-	window                 nativeWindow
-	reveal                 func()
-	pathRevealer           pathRevealer
-	pathOpener             pathOpener
+	localRuntimeEndpoint string
+	localTokenPath       string
+	shell                *nativeShell
 	// Started in ServiceStartup; notificationsReady flips once, before the frontend
 	// can call, and is read from IPC goroutines afterwards.
-	notifications      systemNotifications
 	notificationsReady atomic.Bool
 }
+
+var errShellUnbound = errors.New("desktop host: native shell is not bound")
 
 // The endpoint and product root describe one deployment: the published token is read
 // only from that root, so the endpoint must name the Runtime that root belongs to.
@@ -88,28 +97,16 @@ func loopbackRuntimeOrigin(raw string) (string, error) {
 	return endpoint.Origin().String(), nil
 }
 
-func (d *DesktopHost) useWindow(window nativeWindow) {
-	d.window = window
-}
-
-func (d *DesktopHost) useRevealer(reveal func()) {
-	d.reveal = reveal
-}
-
-func (d *DesktopHost) usePathRevealer(revealer pathRevealer) {
-	d.pathRevealer = revealer
-}
-
-func (d *DesktopHost) usePathOpener(opener pathOpener) {
-	d.pathOpener = opener
-}
-
-func (d *DesktopHost) useWorkingDirectoryPicker(picker workingDirectoryPicker) {
-	d.workingDirectoryPicker = picker
-}
-
-func (d *DesktopHost) useFileSaver(saver fileSaver) {
-	d.fileSaver = saver
+func (d *DesktopHost) bind(shell nativeShell) error {
+	if d.shell != nil {
+		return errors.New("desktop host: native shell is already bound")
+	}
+	if shell.window == nil || shell.reveal == nil || shell.pathRevealer == nil || shell.pathOpener == nil ||
+		shell.directories == nil || shell.files == nil || shell.notifications == nil {
+		return errors.New("desktop host: native shell is incomplete")
+	}
+	d.shell = &shell
+	return nil
 }
 
 func defaultDesktopHost() (*DesktopHost, error) {
@@ -130,10 +127,10 @@ func defaultDesktopHost() (*DesktopHost, error) {
 
 // Fullscreen transitions rebuild the native titlebar, so cached geometry would be stale.
 func (d *DesktopHost) WindowChrome() bridge.WindowChrome {
-	if d.window == nil {
+	if d.shell == nil {
 		return bridge.WindowChrome{}
 	}
-	controlsCentreY, controlsInlineEnd, measured := nativeWindowChrome(d.window.NativeWindow())
+	controlsCentreY, controlsInlineEnd, measured := nativeWindowChrome(d.shell.window.NativeWindow())
 	if !measured {
 		return bridge.WindowChrome{}
 	}
@@ -145,36 +142,36 @@ func (d *DesktopHost) WindowChrome() bridge.WindowChrome {
 }
 
 func (d *DesktopHost) RevealWindow() error {
-	if d.reveal == nil {
-		return errors.New("desktop host: window is not attached")
+	if d.shell == nil {
+		return errShellUnbound
 	}
-	d.reveal()
+	d.shell.reveal()
 	return nil
 }
 
 func (d *DesktopHost) RevealPath(path string) error {
-	if d.pathRevealer == nil {
-		return errors.New("desktop host: file manager is not attached")
+	if d.shell == nil {
+		return errShellUnbound
 	}
 	clean, err := existingAbsolutePath(path)
 	if err != nil {
 		return fmt.Errorf("desktop host: reveal path: %w", err)
 	}
-	if err := d.pathRevealer.OpenFileManager(clean, true); err != nil {
+	if err := d.shell.pathRevealer.OpenFileManager(clean, true); err != nil {
 		return fmt.Errorf("desktop host: reveal path: %w", err)
 	}
 	return nil
 }
 
 func (d *DesktopHost) OpenPath(path string) error {
-	if d.pathOpener == nil {
-		return errors.New("desktop host: default application launcher is not attached")
+	if d.shell == nil {
+		return errShellUnbound
 	}
 	clean, err := existingAbsolutePath(path)
 	if err != nil {
 		return fmt.Errorf("desktop host: open path: %w", err)
 	}
-	if err := d.pathOpener.OpenFile(clean); err != nil {
+	if err := d.shell.pathOpener.OpenFile(clean); err != nil {
 		return fmt.Errorf("desktop host: open path: %w", err)
 	}
 	return nil
@@ -193,10 +190,10 @@ func existingAbsolutePath(path string) (string, error) {
 
 // An empty selection means cancellation and must not become the process working directory.
 func (d *DesktopHost) ChooseWorkingDirectory() (string, error) {
-	if d.workingDirectoryPicker == nil {
-		return "", errors.New("desktop host: working directory picker is not configured")
+	if d.shell == nil {
+		return "", errShellUnbound
 	}
-	selected, err := d.workingDirectoryPicker.ChooseWorkingDirectory()
+	selected, err := d.shell.directories.ChooseWorkingDirectory()
 	if err != nil {
 		return "", fmt.Errorf("desktop host: choose working directory: %w", err)
 	}
@@ -224,10 +221,10 @@ func (d *DesktopHost) SaveFile(suggestedFilename, contentBase64 string) (bool, e
 	if err != nil {
 		return false, fmt.Errorf("desktop host: save file: %w", err)
 	}
-	if d.fileSaver == nil {
-		return false, errors.New("desktop host: file saver is not configured")
+	if d.shell == nil {
+		return false, errShellUnbound
 	}
-	saved, err := d.fileSaver.SaveFile(suggestedFilename, contents)
+	saved, err := d.shell.files.SaveFile(suggestedFilename, contents)
 	if err != nil {
 		return false, fmt.Errorf("desktop host: save file: %w", err)
 	}

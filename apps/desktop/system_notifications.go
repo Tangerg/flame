@@ -62,17 +62,13 @@ func (w wailsNotifications) send(notification bridge.DesktopNotification) error 
 	})
 }
 
-func (d *DesktopHost) useNotifications(centre systemNotifications) {
-	d.notifications = centre
-}
-
 // Unbundled builds lack a notification centre; that absence must not prevent
 // the rest of the Desktop from starting.
 func (d *DesktopHost) ServiceStartup(ctx context.Context, _ application.ServiceOptions) error {
-	if d.notifications == nil {
-		return nil
+	if d.shell == nil {
+		return errShellUnbound
 	}
-	if err := d.notifications.start(ctx); err != nil {
+	if err := d.shell.notifications.start(ctx); err != nil {
 		log.Printf("desktop host: system notifications unavailable: %v", err)
 		return nil
 	}
@@ -84,7 +80,7 @@ func (d *DesktopHost) NotificationAuthorization() (bridge.NotificationAuthorizat
 	if !d.notificationsReady.Load() {
 		return bridge.NotificationsUnsupported, nil
 	}
-	allowed, err := d.notifications.authorized()
+	allowed, err := d.shell.notifications.authorized()
 	if err != nil {
 		return "", fmt.Errorf("desktop host: check notification authorization: %w", err)
 	}
@@ -98,7 +94,7 @@ func (d *DesktopHost) RequestNotificationAuthorization() (bridge.NotificationAut
 	if !d.notificationsReady.Load() {
 		return bridge.NotificationsUnsupported, nil
 	}
-	allowed, err := d.notifications.requestAuthorization()
+	allowed, err := d.shell.notifications.requestAuthorization()
 	if err != nil {
 		return "", fmt.Errorf("desktop host: request notification authorization: %w", err)
 	}
@@ -115,7 +111,7 @@ func (d *DesktopHost) SendNotification(notification bridge.DesktopNotification) 
 	if err := bridge.ValidateNotification(notification); err != nil {
 		return fmt.Errorf("desktop host: notification: %w", err)
 	}
-	if err := d.notifications.send(notification); err != nil {
+	if err := d.shell.notifications.send(notification); err != nil {
 		return fmt.Errorf("desktop host: send notification: %w", err)
 	}
 	return nil

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"errors"
 	"os"
@@ -9,7 +10,9 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"unsafe"
 
+	"github.com/Tangerg/flame/apps/desktop/internal/bridge"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 )
 
@@ -325,9 +328,9 @@ func TestDesktopBootstrapRejectsRelativeProductRoot(t *testing.T) {
 func TestDesktopHostChooseWorkingDirectory(t *testing.T) {
 	directory := t.TempDir()
 	host := mustDesktopHost(t, t.TempDir())
-	host.useWorkingDirectoryPicker(workingDirectoryPickerFunc(func() (string, error) {
+	bindShell(t, host, nativeShell{directories: workingDirectoryPickerFunc(func() (string, error) {
 		return directory, nil
-	}))
+	})})
 
 	selected, err := host.ChooseWorkingDirectory()
 	if err != nil {
@@ -344,9 +347,9 @@ func TestDesktopHostChooseWorkingDirectory(t *testing.T) {
 
 func TestDesktopHostChooseWorkingDirectoryPreservesCancellation(t *testing.T) {
 	host := mustDesktopHost(t, t.TempDir())
-	host.useWorkingDirectoryPicker(workingDirectoryPickerFunc(func() (string, error) {
+	bindShell(t, host, nativeShell{directories: workingDirectoryPickerFunc(func() (string, error) {
 		return "", nil
-	}))
+	})})
 
 	selected, err := host.ChooseWorkingDirectory()
 	if err != nil {
@@ -391,9 +394,9 @@ func TestDesktopHostChooseWorkingDirectoryRejectsInvalidSelections(t *testing.T)
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			host := mustDesktopHost(t, t.TempDir())
-			host.useWorkingDirectoryPicker(workingDirectoryPickerFunc(func() (string, error) {
+			bindShell(t, host, nativeShell{directories: workingDirectoryPickerFunc(func() (string, error) {
 				return test.selection(t), test.pickErr
-			}))
+			})})
 
 			if selected, err := host.ChooseWorkingDirectory(); err == nil {
 				t.Fatalf("ChooseWorkingDirectory() = %q, nil; want error", selected)
@@ -408,10 +411,10 @@ func TestDesktopHostSaveFileHandsExactNameAndBinaryBytesToTheNativeOwner(t *test
 	destination := filepath.Join(t.TempDir(), "chosen.xlsx")
 	host := mustDesktopHost(t, t.TempDir())
 	var suggested string
-	host.useFileSaver(fileSaverFunc(func(suggestedFilename string, captured []byte) (bool, error) {
+	bindShell(t, host, nativeShell{files: fileSaverFunc(func(suggestedFilename string, captured []byte) (bool, error) {
 		suggested = suggestedFilename
 		return true, os.WriteFile(destination, captured, 0o666)
-	}))
+	})})
 
 	saved, err := host.SaveFile(filename, base64.StdEncoding.EncodeToString(contents))
 	if err != nil {
@@ -434,12 +437,12 @@ func TestDesktopHostSaveFileHandsExactNameAndBinaryBytesToTheNativeOwner(t *test
 
 func TestDesktopHostSaveFilePreservesCancellationAndEmptyFiles(t *testing.T) {
 	host := mustDesktopHost(t, t.TempDir())
-	host.useFileSaver(fileSaverFunc(func(name string, contents []byte) (bool, error) {
+	bindShell(t, host, nativeShell{files: fileSaverFunc(func(name string, contents []byte) (bool, error) {
 		if name != "empty.txt" || len(contents) != 0 {
 			t.Fatalf("unexpected name or bytes: %q, %v", name, contents)
 		}
 		return false, nil
-	}))
+	})})
 	if saved, err := host.SaveFile("empty.txt", ""); err != nil {
 		t.Fatal(err)
 	} else if saved {
@@ -471,10 +474,10 @@ func TestDesktopHostSaveFileRejectsInvalidInputsBeforeOpeningDialog(t *testing.T
 		t.Run(test.name+test.encoded, func(t *testing.T) {
 			called := false
 			host := mustDesktopHost(t, t.TempDir())
-			host.useFileSaver(fileSaverFunc(func(string, []byte) (bool, error) {
+			bindShell(t, host, nativeShell{files: fileSaverFunc(func(string, []byte) (bool, error) {
 				called = true
 				return true, nil
-			}))
+			})})
 			if saved, err := host.SaveFile(test.name, test.encoded); err == nil {
 				t.Fatalf("SaveFile() = %v, nil; want validation error", saved)
 			}
@@ -488,13 +491,13 @@ func TestDesktopHostSaveFileRejectsInvalidInputsBeforeOpeningDialog(t *testing.T
 func TestDesktopHostSaveFileAllowsDocumentFormatsWithoutRewritingNames(t *testing.T) {
 	host := mustDesktopHost(t, t.TempDir())
 	var captured string
-	host.useFileSaver(fileSaverFunc(func(name string, contents []byte) (bool, error) {
+	bindShell(t, host, nativeShell{files: fileSaverFunc(func(name string, contents []byte) (bool, error) {
 		captured = name
 		if !bytes.Equal(contents, []byte("Café 火焰 🔥\r\n\tline\x00 end\n")) {
 			t.Fatalf("UTF-8 content changed: %q", contents)
 		}
 		return true, nil
-	}))
+	})})
 	for _, filename := range []string{"report.docx", "report.pdf", "model.xlsx", "deck.pptx", "source.json", "README", "résumé.md", ".gitignore", "bundle.zip"} {
 		saved, err := host.SaveFile(filename, base64.StdEncoding.EncodeToString([]byte("Café 火焰 🔥\r\n\tline\x00 end\n")))
 		if err != nil || !saved || captured != filename {
@@ -509,9 +512,9 @@ func TestDesktopHostSaveFileRequiresAndPropagatesNativeOwner(t *testing.T) {
 	}
 	diskFull := errors.New("disk full")
 	host := mustDesktopHost(t, t.TempDir())
-	host.useFileSaver(fileSaverFunc(func(string, []byte) (bool, error) {
+	bindShell(t, host, nativeShell{files: fileSaverFunc(func(string, []byte) (bool, error) {
 		return false, diskFull
-	}))
+	})})
 	saved, err := host.SaveFile("export.json", "e30=")
 	if !errors.Is(err, diskFull) {
 		t.Fatalf("SaveFile() error = %v, want wrapped %v", err, diskFull)
@@ -532,7 +535,7 @@ func TestRevealPathOnlyHandsAnExistingAbsolutePathToTheFileManager(t *testing.T)
 	dir := t.TempDir()
 	host := mustDesktopHost(t, dir)
 	revealer := &recordingRevealer{}
-	host.usePathRevealer(revealer)
+	bindShell(t, host, nativeShell{pathRevealer: revealer})
 
 	if err := host.RevealPath("relative/file.txt"); err == nil {
 		t.Fatal("RevealPath accepted a relative path")
@@ -562,7 +565,7 @@ func TestOpenPathOnlyHandsAnExistingAbsolutePathToTheDefaultApplication(t *testi
 	dir := t.TempDir()
 	host := mustDesktopHost(t, dir)
 	opener := &recordingOpener{}
-	host.usePathOpener(opener)
+	bindShell(t, host, nativeShell{pathOpener: opener})
 	file := filepath.Join(dir, "diagram.png")
 	if err := os.WriteFile(file, []byte("png"), 0o600); err != nil {
 		t.Fatal(err)
@@ -582,5 +585,63 @@ func TestOpenPathOnlyHandsAnExistingAbsolutePathToTheDefaultApplication(t *testi
 	}
 	if opener.opened != file {
 		t.Fatalf("opened %q, want %q", opener.opened, file)
+	}
+}
+
+type inertShell struct{}
+
+func (inertShell) NativeWindow() unsafe.Pointer            { return nil }
+func (inertShell) OpenFileManager(string, bool) error      { return errors.New("inert file manager") }
+func (inertShell) OpenFile(string) error                   { return errors.New("inert launcher") }
+func (inertShell) ChooseWorkingDirectory() (string, error) { return "", nil }
+func (inertShell) SaveFile(string, []byte) (bool, error)   { return false, nil }
+func (inertShell) start(context.Context) error             { return errors.New("inert notifications") }
+func (inertShell) authorized() (bool, error)               { return false, nil }
+func (inertShell) requestAuthorization() (bool, error)     { return false, nil }
+func (inertShell) send(bridge.DesktopNotification) error   { return errors.New("inert notifications") }
+
+// bindShell completes the parts of shell a test does not exercise with inert
+// stand-ins, so binding stays all-or-nothing.
+func bindShell(t *testing.T, host *DesktopHost, shell nativeShell) {
+	t.Helper()
+	inert := inertShell{}
+	if shell.window == nil {
+		shell.window = inert
+	}
+	if shell.reveal == nil {
+		shell.reveal = func() {}
+	}
+	if shell.pathRevealer == nil {
+		shell.pathRevealer = inert
+	}
+	if shell.pathOpener == nil {
+		shell.pathOpener = inert
+	}
+	if shell.directories == nil {
+		shell.directories = inert
+	}
+	if shell.files == nil {
+		shell.files = inert
+	}
+	if shell.notifications == nil {
+		shell.notifications = inert
+	}
+	if err := host.bind(shell); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDesktopHostBindsOneCompleteShell(t *testing.T) {
+	host := mustDesktopHost(t, t.TempDir())
+	if err := host.RevealWindow(); !errors.Is(err, errShellUnbound) {
+		t.Fatalf("RevealWindow before binding = %v", err)
+	}
+	if err := host.bind(nativeShell{window: inertShell{}}); err == nil {
+		t.Fatal("bind accepted an incomplete shell")
+	}
+	bindShell(t, host, nativeShell{})
+	inert := inertShell{}
+	if err := host.bind(nativeShell{window: inert, reveal: func() {}, pathRevealer: inert, pathOpener: inert, directories: inert, files: inert, notifications: inert}); err == nil {
+		t.Fatal("bind replaced an already bound shell")
 	}
 }
