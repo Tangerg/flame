@@ -20,6 +20,13 @@ Running without a subcommand opens the Oolong terminal interface. Runtime owns d
 MCP forms preserve command and directory bytes, and encode arguments as JSON
 arrays and environment/header replacements as JSON objects. Empty and whitespace
 values remain explicit process material; Runtime owns their final admission.
+Busy operation admission keeps the original form and step. An admitted form is
+read-only until settlement. A definite refusal restores editing; an uncertain
+acknowledgement retains the original request, target, command identity and replay
+deadline. Enter retries that exact request while replay remains available. An
+unreplayable unknown outcome stays blocked. Success or explicit cancellation
+clears the form's secret fields; closing a pending form does not undo an accepted
+Runtime operation.
 
 Workspace `/diff --raw` displays the original patch, including file headers and
 line-termination markers. `/diff --rows` renders Runtime's per-file rows with

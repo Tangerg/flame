@@ -78,7 +78,7 @@ type dialogState struct {
 	approvalModePicker  *picker[protocol.ApprovalModePolicy]
 	approvalModeDialog  *presentationDialog
 	providerDialog      *kit.Dialog
-	mcpDialog           *kit.Dialog
+	mcpForm             *mcpFormFlow
 	scheduleDialog      *kit.Dialog
 	activeContextEditor *contextEditorSession
 	questionnaire       *questionnaire

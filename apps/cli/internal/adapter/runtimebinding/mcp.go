@@ -2,9 +2,11 @@ package runtimebinding
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/integration/mcp"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -36,7 +38,10 @@ func (r *Connection) Servers(ctx context.Context) ([]protocol.MCPServer, error) 
 	return values, nil
 }
 
-func (r *Connection) CreateServer(ctx context.Context, candidate mcp.Candidate) (protocol.MCPServer, error) {
+func (r *Connection) CreateServer(ctx context.Context, commandID authoring.CommandID, candidate mcp.Candidate) (protocol.MCPServer, error) {
+	if err := commandID.Validate(); err != nil {
+		return protocol.MCPServer{}, err
+	}
 	if err := candidate.Validate(); err != nil {
 		return protocol.MCPServer{}, err
 	}
@@ -44,7 +49,10 @@ func (r *Connection) CreateServer(ctx context.Context, candidate mcp.Candidate) 
 	if err != nil {
 		return protocol.MCPServer{}, err
 	}
-	options := r.commandOptions()
+	options, err := r.commandOptionsFor(commandID)
+	if err != nil {
+		return protocol.MCPServer{}, err
+	}
 	result, err := r.mcp.CreateMCPServer(ctx, request, options)
 	if err != nil {
 		return protocol.MCPServer{}, classifyError(err)
@@ -52,11 +60,17 @@ func (r *Connection) CreateServer(ctx context.Context, candidate mcp.Candidate) 
 	return mcpServerResult("create MCP server", mcp.UserServer(candidate.Name), result)
 }
 
-func (r *Connection) UpdateServer(ctx context.Context, update mcp.ServerUpdate) (protocol.MCPServer, error) {
+func (r *Connection) UpdateServer(ctx context.Context, commandID authoring.CommandID, update mcp.ServerUpdate) (protocol.MCPServer, error) {
+	if err := commandID.Validate(); err != nil {
+		return protocol.MCPServer{}, err
+	}
 	if err := update.Validate(); err != nil {
 		return protocol.MCPServer{}, err
 	}
-	options := r.commandOptions()
+	options, err := r.commandOptionsFor(commandID)
+	if err != nil {
+		return protocol.MCPServer{}, err
+	}
 	request := protocol.UpdateMCPServerRequest{
 		Server: update.Server, Enabled: update.Enabled, Description: update.Description,
 	}
@@ -80,12 +94,12 @@ func (r *Connection) UpdateServer(ctx context.Context, update mcp.ServerUpdate) 
 
 func mcpServerResult(operation string, expected protocol.MCPServerID, result *protocol.MCPServer) (protocol.MCPServer, error) {
 	if result == nil {
-		return protocol.MCPServer{}, runtimeContractViolation("%s returned nil", operation)
+		return protocol.MCPServer{}, errors.Join(authoring.ErrCommandOutcomeUnknown, runtimeContractViolation("%s returned nil", operation))
 	}
 	if result.ID != expected {
-		return protocol.MCPServer{}, runtimeContractViolation(
+		return protocol.MCPServer{}, errors.Join(authoring.ErrCommandOutcomeUnknown, runtimeContractViolation(
 			"%s returned %s for %s", operation, mcp.ServerLabel(result.ID), mcp.ServerLabel(expected),
-		)
+		))
 	}
 	return *result, nil
 }

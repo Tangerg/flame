@@ -406,6 +406,9 @@ func (a *app) Close(ctx context.Context) error {
 	a.operations.Cancel(completionOperation)
 	a.cancelPluginCommands()
 	a.operations.Close()
+	if a.dialogs.mcpForm != nil {
+		a.closeMCPForm(a.dialogs.mcpForm)
+	}
 	a.cancelScheduledDraftSave()
 	// Flush is a serialization barrier: any autosave already in the filesystem
 	// finishes first, then the last visible composer state is written last.

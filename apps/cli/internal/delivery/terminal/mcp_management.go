@@ -304,65 +304,6 @@ func (a *app) EditMCPServer(argument string) error {
 	return nil
 }
 
-func (a *app) createMCPServer(candidate mcp.Candidate) {
-	a.runMCPServerOperation("creating MCP server "+candidate.Name,
-		func(ctx context.Context) (protocol.MCPServer, error) { return a.mcp.CreateServer(ctx, candidate) })
-}
-
-func (a *app) updateMCPServer(update mcp.ServerUpdate) {
-	a.runMCPServerOperation("updating MCP server "+mcp.ServerLabel(update.Server),
-		func(ctx context.Context) (protocol.MCPServer, error) { return a.mcp.UpdateServer(ctx, update) })
-}
-
-func (a *app) runMCPServerOperation(label string, change func(context.Context) (protocol.MCPServer, error)) {
-	presentation := a.session.context
-	a.status.note(label)
-	started := a.runAdmissionMutation(mcpOperation, false, change, func(server protocol.MCPServer, err error) {
-		if err != nil {
-			a.message(label + " failed: " + err.Error())
-			return
-		}
-		document, err := mcpServersDocument([]protocol.MCPServer{server})
-		if err != nil {
-			a.message(label + " returned an invalid result: " + err.Error())
-			return
-		}
-		a.message(label + " complete")
-		if !a.session.context.current(presentation) {
-			return
-		}
-		a.setRuntimeReader(runtimeReaderMCPServers)
-		a.dialogs.workspaceReader = workspaceReaderNone
-		a.openReaderDocument(document)
-		a.status.note("MCP server · " + mcp.ServerLabel(server.ID))
-	})
-	if !started {
-		a.message("another MCP operation is running")
-	}
-}
-
-func (a *app) probeMCPServer(candidate mcp.Candidate) {
-	label := "testing MCP candidate " + candidate.Name
-	a.status.note(label)
-	started := a.runApplicationOperation(mcpOperation, false,
-		func(ctx context.Context) (protocol.MCPTestOutcome, error) { return a.mcp.TestServer(ctx, candidate) },
-		func(outcome protocol.MCPTestOutcome, err error) {
-			if err == nil {
-				var message string
-				message, err = mcpProbeMessage(candidate.Name, outcome)
-				if err == nil {
-					a.message(message)
-					return
-				}
-			}
-			a.message(label + " failed: " + err.Error())
-		},
-	)
-	if !started {
-		a.message("another MCP operation is running")
-	}
-}
-
 func (a *app) PrepareDeleteMCPServer(argument string) error {
 	if a.mcp == nil {
 		return errors.New("this runtime composition has no MCP service")

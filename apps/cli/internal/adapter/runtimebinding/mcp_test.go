@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/integration/mcp"
+	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
@@ -31,6 +33,7 @@ type mcpBindingStub struct {
 	tools                []protocol.MCPTool
 	createResult         *protocol.MCPServer
 	updateResult         *protocol.MCPServer
+	commands             []protocol.CommandOptions
 }
 
 func (m *mcpBindingStub) ListMCPServers(_ context.Context, options protocol.CallOptions) (*protocol.Page[protocol.MCPServer], error) {
@@ -158,6 +161,7 @@ func (m *mcpBindingStub) assertCommand(action string, options protocol.CommandOp
 		m.t.Fatalf("MCP command options = %+v", options)
 	}
 	m.actions = append(m.actions, action)
+	m.commands = append(m.commands, options)
 }
 
 func wireMCPServer() protocol.MCPServer {
@@ -223,7 +227,7 @@ func TestMCPAdapterProjectsEveryServerToolAndAuthorizationOperation(t *testing.T
 		Name: "new-docs", Enabled: true,
 		Connection: mcp.ConnectionInput{Transport: protocol.MCPTransportStreamableHTTP, URL: "https://new.example/tools", Authorization: &authorization},
 	}
-	if _, createServerErr := runtime.CreateServer(t.Context(), candidate); createServerErr != nil {
+	if _, createServerErr := runtime.CreateServer(t.Context(), mutation.NewCommandID(), candidate); createServerErr != nil {
 		t.Fatal(createServerErr)
 	}
 	if stub.createdAuthorization != "Bearer secret" {
@@ -232,7 +236,7 @@ func TestMCPAdapterProjectsEveryServerToolAndAuthorizationOperation(t *testing.T
 	description := "Updated docs"
 	enabled := false
 	update := mcp.ServerUpdate{Server: mcp.UserServer("docs"), Enabled: &enabled, Description: &description}
-	if _, updateServerErr := runtime.UpdateServer(t.Context(), update); updateServerErr != nil {
+	if _, updateServerErr := runtime.UpdateServer(t.Context(), mutation.NewCommandID(), update); updateServerErr != nil {
 		t.Fatal(updateServerErr)
 	}
 	if stub.updatedEnabled == nil || *stub.updatedEnabled || stub.updatedDescription == nil || *stub.updatedDescription != description {
@@ -335,7 +339,7 @@ func TestMCPAdapterRejectsMutationIdentityDrift(t *testing.T) {
 			name: "create identity",
 			stub: &mcpBindingStub{createResult: &wrongIdentity},
 			invoke: func(runtime *Connection) error {
-				_, err := runtime.CreateServer(t.Context(), candidate)
+				_, err := runtime.CreateServer(t.Context(), mutation.NewCommandID(), candidate)
 				return err
 			},
 		},
@@ -343,7 +347,7 @@ func TestMCPAdapterRejectsMutationIdentityDrift(t *testing.T) {
 			name: "update identity",
 			stub: &mcpBindingStub{updateResult: &updateIdentity},
 			invoke: func(runtime *Connection) error {
-				_, err := runtime.UpdateServer(t.Context(), update)
+				_, err := runtime.UpdateServer(t.Context(), mutation.NewCommandID(), update)
 				return err
 			},
 		},
@@ -353,7 +357,11 @@ func TestMCPAdapterRejectsMutationIdentityDrift(t *testing.T) {
 			t.Parallel()
 			test.stub.t, test.stub.now = t, time.Unix(100, 0)
 			runtime := &Connection{mcp: test.stub, meta: requestMeta("test")}
-			requireRuntimeContractViolation(t, test.invoke(runtime))
+			err := test.invoke(runtime)
+			requireRuntimeContractViolation(t, err)
+			if !mutation.OutcomeUnknown(err) {
+				t.Fatal("invalid mutation acknowledgement was reported as a definite refusal")
+			}
 		})
 	}
 }
@@ -372,7 +380,7 @@ func TestMCPAdapterRejectsWritesOutsideRuntimeWireContract(t *testing.T) {
 		{
 			name: "candidate server name",
 			invoke: func(runtime *Connection) error {
-				_, err := runtime.CreateServer(t.Context(), mcp.Candidate{Name: "Docs", Connection: validConnection})
+				_, err := runtime.CreateServer(t.Context(), mutation.NewCommandID(), mcp.Candidate{Name: "Docs", Connection: validConnection})
 				return err
 			},
 			field: "name",
@@ -381,7 +389,7 @@ func TestMCPAdapterRejectsWritesOutsideRuntimeWireContract(t *testing.T) {
 			name: "update server name",
 			invoke: func(runtime *Connection) error {
 				description := "updated"
-				_, err := runtime.UpdateServer(t.Context(), mcp.ServerUpdate{Server: mcp.UserServer("Docs"), Description: &description})
+				_, err := runtime.UpdateServer(t.Context(), mutation.NewCommandID(), mcp.ServerUpdate{Server: mcp.UserServer("Docs"), Description: &description})
 				return err
 			},
 			field: "server",
@@ -477,4 +485,39 @@ func serverFilterLabel(server *protocol.MCPServerID) string {
 		return ""
 	}
 	return mcp.ServerLabel(*server)
+}
+
+func TestMCPAdapterUsesTheFormCommandIdentity(t *testing.T) {
+	stub := &mcpBindingStub{t: t}
+	runtime := &Connection{mcp: stub, meta: requestMeta("test")}
+	candidate := mcp.Candidate{Name: "docs", Enabled: true, Connection: mcp.ConnectionInput{Transport: protocol.MCPTransportStreamableHTTP, URL: "https://mcp.example/tools"}}
+	for _, commandID := range []authoring.CommandID{"", "invalid"} {
+		if _, err := runtime.CreateServer(t.Context(), commandID, candidate); err == nil {
+			t.Fatal("create accepted a missing or invalid command identity")
+		}
+		if _, err := runtime.UpdateServer(t.Context(), commandID, mcp.ServerUpdate{Server: mcp.UserServer("docs"), Description: new("edited")}); err == nil {
+			t.Fatal("update accepted a missing or invalid command identity")
+		}
+	}
+	if len(stub.commands) != 0 {
+		t.Fatal("invalid identity reached the binding")
+	}
+	createID, updateID := mutation.NewCommandID(), mutation.NewCommandID()
+	for range 2 {
+		if _, err := runtime.CreateServer(t.Context(), createID, candidate); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := runtime.UpdateServer(t.Context(), updateID, mcp.ServerUpdate{Server: mcp.UserServer("docs"), Description: new("edited")}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for index, options := range stub.commands {
+		expected := createID
+		if index%2 != 0 {
+			expected = updateID
+		}
+		if options.IdempotencyKey != string(expected) {
+			t.Fatal("adapter allocated a replacement command identity")
+		}
+	}
 }
