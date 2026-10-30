@@ -286,16 +286,9 @@ func serverCandidate(input ServerInput, current *mcpserver.Server) (mcpserver.Se
 	srv := mcpserver.Server{
 		Source:           mcpserver.UserSource(),
 		Name:             input.Name,
-		Transport:        connection.Transport,
 		Enabled:          input.Enabled,
 		Description:      input.Description,
-		URL:              connection.URL,
-		Authorization:    connection.Authorization,
-		Headers:          connection.Headers,
-		Command:          connection.Command,
-		Args:             connection.Args,
-		Env:              connection.Env,
-		Dir:              connection.Dir,
+		Connection:       connection,
 		HandshakeTimeout: input.HandshakeTimeout,
 	}
 	if err := srv.Validate(); err != nil {
@@ -317,14 +310,7 @@ func applyServerPatch(current mcpserver.Server, patch ServerPatch) (mcpserver.Se
 		if err != nil {
 			return mcpserver.Server{}, err
 		}
-		updated.Transport = connection.Transport
-		updated.URL = connection.URL
-		updated.Authorization = connection.Authorization
-		updated.Headers = connection.Headers
-		updated.Command = connection.Command
-		updated.Args = connection.Args
-		updated.Env = connection.Env
-		updated.Dir = connection.Dir
+		updated.Connection = connection
 	}
 	if patch.HandshakeTimeout != nil {
 		updated.HandshakeTimeout = *patch.HandshakeTimeout
@@ -335,166 +321,55 @@ func applyServerPatch(current mcpserver.Server, patch ServerPatch) (mcpserver.Se
 	return updated, nil
 }
 
-func resolveConnection(input ConnectionInput, current *mcpserver.Server) (mcpserver.Server, error) {
-	connection := mcpserver.Server{
-		Transport: input.Transport,
-		URL:       input.URL,
-		Command:   input.Command,
-		Args:      slices.Clone(input.Args),
-		Dir:       input.Dir,
-	}
+func resolveConnection(input ConnectionInput, current *mcpserver.Server) (mcpserver.Connection, error) {
 	switch input.Transport {
 	case mcpserver.TransportStreamableHTTP:
-		return resolveHTTPConnection(input, current, connection)
+		return resolveHTTPConnection(input, current)
 	case mcpserver.TransportStdio:
-		return resolveStdioConnection(input, current, connection)
+		return resolveStdioConnection(input, current)
 	default:
-		return mcpserver.Server{}, fmt.Errorf("%w: unknown transport %q", ErrInvalidServerConfiguration, input.Transport)
+		return nil, fmt.Errorf("%w: unknown transport %q", ErrInvalidServerConfiguration, input.Transport)
 	}
 }
 
-func resolveHTTPConnection(
-	input ConnectionInput,
-	current *mcpserver.Server,
-	connection mcpserver.Server,
-) (mcpserver.Server, error) {
+// A secret may be inherited only by the same target: a different HTTP origin
+// or process must state its credentials again rather than receive the old ones.
+func resolveHTTPConnection(input ConnectionInput, current *mcpserver.Server) (mcpserver.Connection, error) {
 	if input.Environment != nil {
-		return mcpserver.Server{}, fmt.Errorf(
-			"%w: environment applies to stdio transport only",
-			ErrInvalidServerConfiguration,
-		)
+		return nil, fmt.Errorf("%w: environment applies to stdio transport only", ErrInvalidServerConfiguration)
 	}
-	sameOrigin := current != nil &&
-		current.Transport == mcpserver.TransportStreamableHTTP &&
-		httporigin.Same(current.URL, input.URL)
-	authorization, err := resolveAuthorization(input.Authorization, current, sameOrigin)
+	var previous mcpserver.HTTPConnection
+	wasHTTP := false
+	if current != nil {
+		previous, wasHTTP = current.Connection.(mcpserver.HTTPConnection)
+	}
+	sameOrigin := wasHTTP && httporigin.Same(previous.URL, input.URL)
+	authorization, err := resolveSecret("authorization", "HTTP origin", input.Authorization, previous.Authorization, current != nil, sameOrigin, func(value string) bool { return value == "" })
 	if err != nil {
-		return mcpserver.Server{}, err
+		return nil, err
 	}
-	headers, err := resolveHeaders(input.Headers, current, sameOrigin)
+	headers, err := resolveSecret("headers", "HTTP origin", input.Headers, previous.Headers, current != nil, sameOrigin, emptyValues)
 	if err != nil {
-		return mcpserver.Server{}, err
+		return nil, err
 	}
-	connection.Authorization = authorization
-	connection.Headers = headers
-	return connection, nil
+	return mcpserver.HTTPConnection{URL: input.URL, Authorization: authorization, Headers: maps.Clone(headers)}, nil
 }
 
-func resolveAuthorization(
-	change *AuthorizationChange,
-	current *mcpserver.Server,
-	mayInherit bool,
-) (string, error) {
-	switch {
-	case change == nil && mayInherit:
-		return current.Authorization, nil
-	case change == nil && current != nil && current.Authorization != "":
-		return "", fmt.Errorf(
-			"%w: changing the HTTP origin requires authorization to be explicitly set or cleared",
-			ErrInvalidServerConfiguration,
-		)
-	case change == nil:
-		return "", nil
-	case change.Kind == SecretSet && change.Value == "":
-		return "", fmt.Errorf("%w: authorization set value is empty", ErrInvalidServerConfiguration)
-	case change.Kind == SecretSet:
-		return change.Value, nil
-	case change.Kind == SecretClear && current == nil:
-		return "", fmt.Errorf(
-			"%w: authorization clear requires an existing server",
-			ErrInvalidServerConfiguration,
-		)
-	case change.Kind == SecretClear:
-		return "", nil
-	default:
-		return "", fmt.Errorf("%w: unknown authorization change", ErrInvalidServerConfiguration)
-	}
-}
-
-func resolveHeaders(
-	change *HeadersChange,
-	current *mcpserver.Server,
-	mayInherit bool,
-) (map[string]string, error) {
-	switch {
-	case change == nil && mayInherit:
-		return maps.Clone(current.Headers), nil
-	case change == nil && current != nil && len(current.Headers) > 0:
-		return nil, fmt.Errorf(
-			"%w: changing the HTTP origin requires headers to be explicitly set or cleared",
-			ErrInvalidServerConfiguration,
-		)
-	case change == nil:
-		return nil, nil
-	case change.Kind == SecretSet && len(change.Value) == 0:
-		return nil, fmt.Errorf("%w: headers set value is empty", ErrInvalidServerConfiguration)
-	case change.Kind == SecretSet:
-		return maps.Clone(change.Value), nil
-	case change.Kind == SecretClear && current == nil:
-		return nil, fmt.Errorf(
-			"%w: headers clear requires an existing server",
-			ErrInvalidServerConfiguration,
-		)
-	case change.Kind == SecretClear:
-		return nil, nil
-	default:
-		return nil, fmt.Errorf("%w: unknown headers change", ErrInvalidServerConfiguration)
-	}
-}
-
-func resolveStdioConnection(
-	input ConnectionInput,
-	current *mcpserver.Server,
-	connection mcpserver.Server,
-) (mcpserver.Server, error) {
+func resolveStdioConnection(input ConnectionInput, current *mcpserver.Server) (mcpserver.Connection, error) {
 	if input.Authorization != nil || input.Headers != nil {
-		return mcpserver.Server{}, fmt.Errorf(
-			"%w: authorization and headers apply to HTTP transport only",
-			ErrInvalidServerConfiguration,
-		)
+		return nil, fmt.Errorf("%w: authorization and headers apply to HTTP transport only", ErrInvalidServerConfiguration)
 	}
-	sameTarget := current != nil &&
-		current.Transport == mcpserver.TransportStdio &&
-		current.Command == input.Command &&
-		slices.Equal(current.Args, input.Args) &&
-		current.Dir == input.Dir
-	environment, err := resolveEnvironment(input.Environment, current, sameTarget)
+	var previous mcpserver.StdioConnection
+	wasStdio := false
+	if current != nil {
+		previous, wasStdio = current.Connection.(mcpserver.StdioConnection)
+	}
+	sameTarget := wasStdio && previous.Command == input.Command && slices.Equal(previous.Args, input.Args) && previous.Dir == input.Dir
+	environment, err := resolveSecret("environment variables", "stdio process target", input.Environment, previous.Env, current != nil, sameTarget, emptyValues)
 	if err != nil {
-		return mcpserver.Server{}, err
+		return nil, err
 	}
-	connection.Env = environment
-	return connection, nil
-}
-
-func resolveEnvironment(
-	change *EnvironmentChange,
-	current *mcpserver.Server,
-	mayInherit bool,
-) (map[string]string, error) {
-	switch {
-	case change == nil && mayInherit:
-		return maps.Clone(current.Env), nil
-	case change == nil && current != nil && len(current.Env) > 0:
-		return nil, fmt.Errorf(
-			"%w: changing the stdio process target requires environment variables to be explicitly set or cleared",
-			ErrInvalidServerConfiguration,
-		)
-	case change == nil:
-		return nil, nil
-	case change.Kind == SecretSet && len(change.Value) == 0:
-		return nil, fmt.Errorf("%w: environment set value is empty", ErrInvalidServerConfiguration)
-	case change.Kind == SecretSet:
-		return maps.Clone(change.Value), nil
-	case change.Kind == SecretClear && current == nil:
-		return nil, fmt.Errorf(
-			"%w: environment clear requires an existing server",
-			ErrInvalidServerConfiguration,
-		)
-	case change.Kind == SecretClear:
-		return nil, nil
-	default:
-		return nil, fmt.Errorf("%w: unknown environment change", ErrInvalidServerConfiguration)
-	}
+	return mcpserver.StdioConnection{Command: input.Command, Args: slices.Clone(input.Args), Env: maps.Clone(environment), Dir: input.Dir}, nil
 }
 
 type ToolView struct {
@@ -530,4 +405,28 @@ func (c *Coordinator) Tools(_ context.Context, server *mcpserver.ID) ([]ToolView
 		views = append(views, ToolView{AdvertisedTool: advertised, ModelName: ref.ModelName(), Conflicts: conflicts[ref]})
 	}
 	return views, nil
+}
+
+func emptyValues(values map[string]string) bool { return len(values) == 0 }
+
+func resolveSecret[T any](name, target string, change *SecretChange[T], previous T, exists, mayInherit bool, empty func(T) bool) (T, error) {
+	var zero T
+	switch {
+	case change == nil && mayInherit:
+		return previous, nil
+	case change == nil && exists && !empty(previous):
+		return zero, fmt.Errorf("%w: changing the %s requires %s to be explicitly set or cleared", ErrInvalidServerConfiguration, target, name)
+	case change == nil:
+		return zero, nil
+	case change.Kind == SecretSet && empty(change.Value):
+		return zero, fmt.Errorf("%w: %s set value is empty", ErrInvalidServerConfiguration, name)
+	case change.Kind == SecretSet:
+		return change.Value, nil
+	case change.Kind == SecretClear && !exists:
+		return zero, fmt.Errorf("%w: %s clear requires an existing server", ErrInvalidServerConfiguration, name)
+	case change.Kind == SecretClear:
+		return zero, nil
+	default:
+		return zero, fmt.Errorf("%w: unknown %s change", ErrInvalidServerConfiguration, name)
+	}
 }

@@ -178,9 +178,10 @@ func TestProbeRetainsConfiguredHandshakeTimeout(t *testing.T) {
 		t.Fatal(err)
 	}
 	config := ServerConfig{Server: mcpserver.Server{
-		Source: mcpserver.UserSource(), Name: testsupport.ServerName("probe"),
-		Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL,
+		Source:           mcpserver.UserSource(),
+		Name:             testsupport.ServerName("probe"),
 		HandshakeTimeout: timeout,
+		Connection:       mcpserver.HTTPConnection{URL: transport.URL},
 	}}
 	if err := (*connections)(nil).probe(t.Context(), config); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("probe = %v, want configured handshake timeout", err)

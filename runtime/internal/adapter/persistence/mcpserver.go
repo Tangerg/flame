@@ -74,15 +74,23 @@ func (m *MCPServerStore) Save(ctx context.Context, srv mcpserver.Server) error {
 	if err := srv.Validate(); err != nil {
 		return fmt.Errorf("sqlite: validate mcp server: %w", err)
 	}
-	headers, err := encodeStringMap(srv.Headers)
+	var http mcpserver.HTTPConnection
+	var process mcpserver.StdioConnection
+	switch connection := srv.Connection.(type) {
+	case mcpserver.HTTPConnection:
+		http = connection
+	case mcpserver.StdioConnection:
+		process = connection
+	}
+	headers, err := encodeStringMap(http.Headers)
 	if err != nil {
 		return fmt.Errorf("sqlite: encode mcp headers: %w", err)
 	}
-	args, err := encodeStrings(srv.Args)
+	args, err := encodeStrings(process.Args)
 	if err != nil {
 		return fmt.Errorf("sqlite: encode mcp args: %w", err)
 	}
-	env, err := encodeStringMap(srv.Env)
+	env, err := encodeStringMap(process.Env)
 	if err != nil {
 		return fmt.Errorf("sqlite: encode mcp env: %w", err)
 	}
@@ -112,9 +120,9 @@ func (m *MCPServerStore) Save(ctx context.Context, srv mcpserver.Server) error {
 			    authorization = excluded.authorization, headers = excluded.headers,
 			    command = excluded.command, args = excluded.args, env = excluded.env,
 			    dir = excluded.dir, timeout = excluded.timeout`,
-			string(mcpserver.OriginUser), srv.Name.String(), string(srv.Transport), srv.Enabled, srv.Description, srv.URL, srv.Authorization,
-			headers, srv.Command, args,
-			env, srv.Dir, timeoutNS,
+			string(mcpserver.OriginUser), srv.Name.String(), string(srv.Transport()), srv.Enabled, srv.Description, http.URL, http.Authorization,
+			headers, process.Command, args,
+			env, process.Dir, timeoutNS,
 		); err != nil {
 			return fmt.Errorf("sqlite: save mcp server: %w", err)
 		}
@@ -138,10 +146,12 @@ func scanMCPServer(scan func(...any) error) (mcpserver.Server, error) {
 	var (
 		srv                                 mcpserver.Server
 		name, transport, headers, args, env string
+		http                                mcpserver.HTTPConnection
+		process                             mcpserver.StdioConnection
 		timeoutNS                           sql.NullInt64
 	)
-	if err := scan(&name, &transport, &srv.Enabled, &srv.Description, &srv.URL,
-		&srv.Authorization, &headers, &srv.Command, &args, &env, &srv.Dir, &timeoutNS,
+	if err := scan(&name, &transport, &srv.Enabled, &srv.Description, &http.URL,
+		&http.Authorization, &headers, &process.Command, &args, &env, &process.Dir, &timeoutNS,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return mcpserver.Server{}, err
@@ -154,15 +164,28 @@ func scanMCPServer(scan func(...any) error) (mcpserver.Server, error) {
 	}
 	srv.Source = mcpserver.UserSource()
 	srv.Name = parsedName
-	srv.Transport = mcpserver.Transport(transport)
-	if srv.Headers, err = decodeStringMap(headers); err != nil {
+	if http.Headers, err = decodeStringMap(headers); err != nil {
 		return mcpserver.Server{}, mcpJSONFieldError(srv.Name, "headers", err)
 	}
-	if srv.Args, err = decodeStrings(args); err != nil {
+	if process.Args, err = decodeStrings(args); err != nil {
 		return mcpserver.Server{}, mcpJSONFieldError(srv.Name, "args", err)
 	}
-	if srv.Env, err = decodeStringMap(env); err != nil {
+	if process.Env, err = decodeStringMap(env); err != nil {
 		return mcpserver.Server{}, mcpJSONFieldError(srv.Name, "env", err)
+	}
+	switch mcpserver.Transport(transport) {
+	case mcpserver.TransportStreamableHTTP:
+		if process.Command != "" || process.Dir != "" || process.Args != nil || process.Env != nil {
+			return mcpserver.Server{}, fmt.Errorf("sqlite: mcp server %q stores process fields for HTTP", srv.Name)
+		}
+		srv.Connection = http
+	case mcpserver.TransportStdio:
+		if http.URL != "" || http.Authorization != "" || http.Headers != nil {
+			return mcpserver.Server{}, fmt.Errorf("sqlite: mcp server %q stores HTTP fields for stdio", srv.Name)
+		}
+		srv.Connection = process
+	default:
+		return mcpserver.Server{}, fmt.Errorf("sqlite: mcp server %q has unknown transport %q", srv.Name, transport)
 	}
 	if timeoutNS.Valid {
 		srv.HandshakeTimeout, err = mcpserver.NewHandshakeTimeout(time.Duration(timeoutNS.Int64))

@@ -71,7 +71,7 @@ func TestApprovalRuleStore_VisibleScopes(t *testing.T) {
 func TestApprovalRuleStoreReplacesDecisionAndAuthority(t *testing.T) {
 	ctx := t.Context()
 	store := newApprovalStore(t)
-	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("fixture"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: "https://remote.test/mcp"}
+	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("fixture"), Enabled: true, Connection: mcpserver.HTTPConnection{URL: "https://remote.test/mcp"}}
 	if err := newMCPServerStore(store.db).Save(ctx, server); err != nil {
 		t.Fatal(err)
 	}

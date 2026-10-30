@@ -37,7 +37,7 @@ func (r *Releases) Connection(ctx context.Context, installation *plugin.Installa
 			found = false
 		}
 	}()
-	if server.Transport != mcpserver.TransportStdio {
+	if server.Transport() != mcpserver.TransportStdio {
 		return mcpapp.Launch{Server: server}, true, nil
 	}
 	directory, err := lease.Directory()
@@ -62,7 +62,7 @@ func (r *Releases) Connection(ctx context.Context, installation *plugin.Installa
 		return mcpapp.Launch{}, false, fmt.Errorf("%w: server %q backend: %w", plugin.ErrUnavailable, name, err)
 	}
 	var expected integrity.Digest
-	if declared.Managed != nil {
+	if _, managed := declared.Startup.(plugin.ManagedBackend); managed {
 		node, nodeErr := hostNode()
 		if nodeErr != nil {
 			return mcpapp.Launch{}, false, nodeErr
@@ -78,7 +78,7 @@ func (r *Releases) Connection(ctx context.Context, installation *plugin.Installa
 		}
 		for _, artifact := range lease.Release().Manifest.Artifacts {
 			if artifact.Path == command && artifact.Executable {
-				expected, err = integrity.ParseDigest(artifact.Digest.String())
+				expected = artifact.Digest
 				break
 			}
 		}
@@ -90,7 +90,11 @@ func (r *Releases) Connection(ctx context.Context, installation *plugin.Installa
 		return mcpapp.Launch{}, false, err
 	}
 	transferred = true
-	return mcpapp.Launch{Server: server, Stdio: &mcpapp.Stdio{Command: executable.Command, ExpectedExecutable: expected, Args: executable.Args, Env: executable.Env, Dir: executable.Dir}, Retire: lease}, true, nil
+	process, ok := executable.Connection.(mcpserver.StdioConnection)
+	if !ok {
+		return mcpapp.Launch{}, false, fmt.Errorf("%w: server %q realized no process", plugin.ErrInvalid, name)
+	}
+	return mcpapp.Launch{Server: server, Stdio: &mcpapp.Stdio{Command: process.Command, ExpectedExecutable: expected, Args: process.Args, Env: process.Env, Dir: process.Dir}, Retire: lease}, true, nil
 }
 
 func selectedVariant(manifest distribution.Manifest, server mcpserver.ServerName) (distribution.Variant, error) {

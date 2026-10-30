@@ -25,7 +25,7 @@ import (
 
 func TestManagedCatalogProtectsCallsWithoutRetainingAnIdleUse(t *testing.T) {
 	name := testsupport.ServerName("owned")
-	release := testsupport.Release(t, "owned", plugin.Declaration{Name: "example.owned", Servers: []plugin.Server{{Name: name, Transport: mcpserver.TransportStdio, Command: "backend"}}})
+	release := testsupport.Release(t, "owned", plugin.Declaration{Name: "example.owned", Servers: []plugin.Server{{Name: name, Startup: plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "backend"}}}}})
 	installation, err := plugin.New(testsupport.InstallationID(t), "original source", release)
 	if err != nil {
 		t.Fatal(err)
@@ -66,7 +66,7 @@ func TestManagedCatalogProtectsCallsWithoutRetainingAnIdleUse(t *testing.T) {
 	callbacks := qimumcp.NewCallbacks()
 	t.Cleanup(func() { _ = callbacks.Close() })
 	store := &toolInstallationStore{snapshot: plugin.Snapshot{Installation: installation, Selected: release}}
-	managed := newManagedFixture(t, store, mcpserver.Server{Source: source, Name: name, Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: endpoint.URL}, callbacks, nil)
+	managed := newManagedFixture(t, store, mcpserver.Server{Source: source, Name: name, Enabled: true, Connection: mcpserver.HTTPConnection{URL: endpoint.URL}}, callbacks, nil)
 	var tools []toolcontract.Tool
 	managed.Pool.SetToolSink(func(current []toolcontract.Tool, _ []mcpserver.ID) { tools = current }, managed.prepare)
 	if len(tools) != 1 {
@@ -111,7 +111,7 @@ func TestManagedCatalogProtectsCallsWithoutRetainingAnIdleUse(t *testing.T) {
 
 func TestManagedReconnectWaitsForOriginalUseBeforeStartingReplacement(t *testing.T) {
 	name := testsupport.ServerName("reconnect")
-	release := testsupport.Release(t, "reconnect", plugin.Declaration{Name: "example.reconnect", Servers: []plugin.Server{{Name: name, Transport: mcpserver.TransportStdio, Command: "backend"}}})
+	release := testsupport.Release(t, "reconnect", plugin.Declaration{Name: "example.reconnect", Servers: []plugin.Server{{Name: name, Startup: plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "backend"}}}}})
 	installation, err := plugin.New(testsupport.InstallationID(t), "original source", release)
 	if err != nil {
 		t.Fatal(err)
@@ -136,7 +136,7 @@ func TestManagedReconnectWaitsForOriginalUseBeforeStartingReplacement(t *testing
 	callbacks := qimumcp.NewCallbacks()
 	t.Cleanup(func() { _ = callbacks.Close() })
 	store := &toolInstallationStore{snapshot: plugin.Snapshot{Installation: installation, Selected: release}}
-	server := mcpserver.Server{Source: source, Name: name, Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: endpoint.URL}
+	server := mcpserver.Server{Source: source, Name: name, Enabled: true, Connection: mcpserver.HTTPConnection{URL: endpoint.URL}}
 	managed := newManagedFixture(t, store, server, callbacks, nil)
 	borrowed, err := managed.Pool.BorrowSession(t.Context(), server.ID())
 	if err != nil {

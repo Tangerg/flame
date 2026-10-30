@@ -60,7 +60,7 @@ func TestMemoryMaintenanceCapturesBusinessInputAndRecoversBackendReceipts(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	release, err := plugin.NewRelease(testsupport.Digest("1"), plugin.Declaration{Name: "example.memory", Servers: []plugin.Server{{Name: name, Transport: mcpserver.TransportStdio, Command: "./flame-memory"}}, Contributions: []plugin.Contribution{{ID: "memory-provider", Server: name, Export: "memory", Contract: contract.Identity()}}})
+	release, err := plugin.NewRelease(testsupport.Digest("1"), plugin.Declaration{Name: "example.memory", Servers: []plugin.Server{{Name: name, Startup: plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "./flame-memory"}}}}, Contributions: []plugin.Contribution{{ID: "memory-provider", Server: name, Export: "memory", Contract: contract.Identity()}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +76,7 @@ func TestMemoryMaintenanceCapturesBusinessInputAndRecoversBackendReceipts(t *tes
 		t.Fatal(err)
 	}
 	store := &toolInstallationStore{snapshot: plugin.Snapshot{Installation: installation, Selected: release}}
-	server := mcpserver.Server{Source: source, Name: name, Enabled: true, Transport: mcpserver.TransportStdio, Command: executable, Env: environment}
+	server := mcpserver.Server{Source: source, Name: name, Enabled: true, Connection: mcpserver.StdioConnection{Command: executable, Env: environment}}
 	callbacks := qimumcp.NewCallbacks()
 	t.Cleanup(func() { _ = callbacks.Close() })
 	managed := newManagedFixture(t, store, server, callbacks, nil)

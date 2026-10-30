@@ -22,7 +22,7 @@ func TestStdioLaunchResourceRetiresAfterTheProcessGroup(t *testing.T) {
 		t.Fatal(err)
 	}
 	pidFile := filepath.Join(t.TempDir(), "descendant.pid")
-	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStdio, Command: "logical-command"}}
+	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"), Connection: mcpserver.StdioConnection{Command: "logical-command"}}}
 	var retired atomic.Int32
 	var pid int
 	input, err := newLaunch(config, &stdioLaunch{

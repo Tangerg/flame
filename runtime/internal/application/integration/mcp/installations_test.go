@@ -21,7 +21,7 @@ func installationServer(t *testing.T, name string) mcpserver.Server {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return mcpserver.Server{Source: source, Name: testsupport.ServerName(name), Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-" + name}
+	return mcpserver.Server{Source: source, Name: testsupport.ServerName(name), Enabled: true, Connection: mcpserver.StdioConnection{Command: "mcp-" + name}}
 }
 
 // blockingConfigure holds a connection attempt that read its configuration

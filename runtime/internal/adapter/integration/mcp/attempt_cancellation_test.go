@@ -111,8 +111,9 @@ func TestAttemptRejectsCanceledConfigurationBeforeExternalIO(t *testing.T) {
 			ctx, cancel := context.WithCancelCause(t.Context())
 			defer cancel(nil)
 			config := ServerConfig{Server: mcpserver.Server{
-				Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"),
-				Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.invalid/mcp",
+				Source:     mcpserver.UserSource(),
+				Name:       testsupport.ServerName("server"),
+				Connection: mcpserver.HTTPConnection{URL: "https://example.invalid/mcp"},
 			}}
 			var retired int
 			input, err := newLaunch(config, nil, func() error { retired++; return nil }, admission{})
@@ -200,8 +201,9 @@ func TestPublishedAttemptRetainsSuccessAfterCallerCancellation(t *testing.T) {
 	transport := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(func(*http.Request) *sdkmcp.Server { return remote }, nil))
 	t.Cleanup(transport.Close)
 	config := ServerConfig{Server: mcpserver.Server{
-		Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"),
-		Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL,
+		Source:     mcpserver.UserSource(),
+		Name:       testsupport.ServerName("server"),
+		Connection: mcpserver.HTTPConnection{URL: transport.URL},
 	}}
 	c := newTestConnections(t)
 	t.Cleanup(func() {

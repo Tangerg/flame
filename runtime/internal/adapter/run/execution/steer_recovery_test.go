@@ -60,7 +60,7 @@ func TestUnadmittedSteerSurvivesUncertainExecutionRecovery(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		configuration := mcp.ServerConfig{Server: mcpserver.Server{Source: source, Name: testsupport.ServerName("schedules"), Transport: mcpserver.TransportStdio, Command: "schedule-test", Enabled: true}}
+		configuration := mcp.ServerConfig{Server: mcpserver.Server{Source: source, Name: testsupport.ServerName("schedules"), Enabled: true, Connection: mcpserver.StdioConnection{Command: "schedule-test"}}}
 		var toolCalls, modelCalls atomic.Int32
 		inner, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "schedules_append_record", Description: "Append one record."}, func(context.Context, struct{}) (string, error) {
 			toolCalls.Add(1)

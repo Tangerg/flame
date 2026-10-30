@@ -3,9 +3,7 @@ package persistence
 import (
 	"context"
 	"errors"
-	"maps"
 	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -23,16 +21,20 @@ func TestMCPServerStoreCannotPersistOrRestoreInvalidHTTPEndpoints(t *testing.T) 
 			}
 			t.Cleanup(func() { _ = db.Close() })
 			store := newMCPServerStore(db)
-			valid := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.test/mcp"}
+			valid := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Connection: mcpserver.HTTPConnection{URL: "https://example.test/mcp"}}
 			if err := store.Save(t.Context(), valid); err != nil {
 				t.Fatal(err)
 			}
 			invalid := valid.Clone()
-			invalid.URL = endpoint
+			{
+				updated := invalid.Connection.(mcpserver.HTTPConnection)
+				updated.URL = endpoint
+				invalid.Connection = updated
+			}
 			if err := store.Save(t.Context(), invalid); err == nil {
 				t.Fatal("invalid endpoint persisted")
 			}
-			if stored, found, err := store.Get(t.Context(), valid.Name); err != nil || !found || stored.URL != valid.URL {
+			if stored, found, err := store.Get(t.Context(), valid.Name); err != nil || !found || stored.Connection.(mcpserver.HTTPConnection).URL != valid.Connection.(mcpserver.HTTPConnection).URL {
 				t.Fatalf("rejected write changed the existing server: found=%t, err=%v", found, err)
 			}
 			if _, err := db.ExecContext(t.Context(), `UPDATE mcp_servers SET url=?`, endpoint); err != nil {
@@ -56,13 +58,13 @@ func TestMCPServerStoreRetainsProcessEnvironmentPresence(t *testing.T) {
 	t.Cleanup(func() { _ = db.Close() })
 	store := newMCPServerStore(db)
 	for _, environment := range []map[string]string{nil, {}, {"TOKEN": "value"}} {
-		server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("local"), Transport: mcpserver.TransportStdio, Command: "server", Env: environment}
+		server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("local"), Connection: mcpserver.StdioConnection{Command: "server", Env: environment}}
 		if err := store.Save(t.Context(), server); err != nil {
 			t.Fatal(err)
 		}
 		stored, found, err := store.Get(t.Context(), server.Name)
 		if err != nil || !found || !server.SameConnection(stored) {
-			t.Errorf("stored environment changed process inheritance: absent=%t, restoredAbsent=%t, found=%t, err=%v", environment == nil, stored.Env == nil, found, err)
+			t.Errorf("stored environment changed process inheritance: absent=%t, restoredAbsent=%t, found=%t, err=%v", environment == nil, stored.Connection.(mcpserver.StdioConnection).Env == nil, found, err)
 		}
 		listed, err := store.List(t.Context())
 		if err != nil || len(listed) != 1 || !server.SameConnection(listed[0]) {
@@ -86,23 +88,16 @@ func TestMCPServerStoreRoundTrip(t *testing.T) {
 		{
 			Source:           mcpserver.UserSource(),
 			Name:             testsupport.ServerName("files"),
-			Transport:        mcpserver.TransportStdio,
 			Enabled:          true,
 			Description:      "local files",
-			Command:          "mcp-files",
-			Args:             []string{"--root", "/repo"},
-			Env:              map[string]string{"TOKEN": "secret"},
-			Dir:              "/repo",
 			HandshakeTimeout: boundedTimeout,
+			Connection:       mcpserver.StdioConnection{Command: "mcp-files", Args: []string{"--root", "/repo"}, Env: map[string]string{"TOKEN": "secret"}, Dir: "/repo"},
 		},
 		{
-			Source:        mcpserver.UserSource(),
-			Name:          testsupport.ServerName("remote"),
-			Transport:     mcpserver.TransportStreamableHTTP,
-			Enabled:       true,
-			URL:           "https://mcp.example.test",
-			Authorization: "Bearer secret",
-			Headers:       map[string]string{"X-Trace": "enabled"},
+			Source:     mcpserver.UserSource(),
+			Name:       testsupport.ServerName("remote"),
+			Enabled:    true,
+			Connection: mcpserver.HTTPConnection{URL: "https://mcp.example.test", Authorization: "Bearer secret", Headers: map[string]string{"X-Trace": "enabled"}},
 		},
 	}
 	for _, want := range servers {
@@ -216,7 +211,7 @@ func TestMCPServerExposureSchemaEnforcesCardinality(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	server := testsupport.ServerName("files")
-	if err := newMCPServerStore(db).Save(t.Context(), mcpserver.Server{Source: mcpserver.UserSource(), Name: server, Transport: mcpserver.TransportStdio, Command: "mcp-server"}); err != nil {
+	if err := newMCPServerStore(db).Save(t.Context(), mcpserver.Server{Source: mcpserver.UserSource(), Name: server, Connection: mcpserver.StdioConnection{Command: "mcp-server"}}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := db.ExecContext(
@@ -243,10 +238,8 @@ func TestMCPServerExposureSchemaEnforcesCardinality(t *testing.T) {
 }
 
 func equalMCPServer(a, b mcpserver.Server) bool {
-	return a.ID() == b.ID() && a.Transport == b.Transport && a.Enabled == b.Enabled &&
-		a.Description == b.Description && a.URL == b.URL && a.Authorization == b.Authorization &&
-		maps.Equal(a.Headers, b.Headers) && a.Command == b.Command && slices.Equal(a.Args, b.Args) &&
-		(a.Env == nil) == (b.Env == nil) && maps.Equal(a.Env, b.Env) && a.Dir == b.Dir && a.HandshakeTimeout == b.HandshakeTimeout
+	return a.ID() == b.ID() && a.Enabled == b.Enabled && a.Description == b.Description &&
+		a.HandshakeTimeout == b.HandshakeTimeout && a.SameConnection(b)
 }
 
 func TestMCPServerStoreRejectsMalformedJSONFields(t *testing.T) {
@@ -257,11 +250,10 @@ func TestMCPServerStoreRejectsMalformedJSONFields(t *testing.T) {
 	t.Cleanup(func() { _ = db.Close() })
 	store := newMCPServerStore(db)
 	server := mcpserver.Server{
-		Source:    mcpserver.UserSource(),
-		Name:      testsupport.ServerName("files"),
-		Transport: mcpserver.TransportStdio,
-		Enabled:   true,
-		Command:   "mcp-files",
+		Source:     mcpserver.UserSource(),
+		Name:       testsupport.ServerName("files"),
+		Enabled:    true,
+		Connection: mcpserver.StdioConnection{Command: "mcp-files"},
 	}
 
 	tests := []struct {
@@ -302,10 +294,9 @@ func TestMCPServerStorePreservesConfigurationWhenEncodingFails(t *testing.T) {
 	t.Cleanup(func() { _ = db.Close() })
 	store := newMCPServerStore(db)
 	original := mcpserver.Server{
-		Source: mcpserver.UserSource(),
-		Name:   testsupport.ServerName("files"), Transport: mcpserver.TransportStdio,
-		Command: "mcp-files", Args: []string{"--root", "/repo"},
-		Env: map[string]string{"MODE": "local"},
+		Source:     mcpserver.UserSource(),
+		Name:       testsupport.ServerName("files"),
+		Connection: mcpserver.StdioConnection{Command: "mcp-files", Args: []string{"--root", "/repo"}, Env: map[string]string{"MODE": "local"}},
 	}
 	if err := store.Save(t.Context(), original); err != nil {
 		t.Fatal(err)
@@ -314,9 +305,17 @@ func TestMCPServerStorePreservesConfigurationWhenEncodingFails(t *testing.T) {
 		t.Run(field, func(t *testing.T) {
 			invalid := original.Clone()
 			if field == "args" {
-				invalid.Args = []string{"\xff"}
+				{
+					updated := invalid.Connection.(mcpserver.StdioConnection)
+					updated.Args = []string{"\xff"}
+					invalid.Connection = updated
+				}
 			} else {
-				invalid.Env = map[string]string{"MODE": "\xff"}
+				{
+					updated := invalid.Connection.(mcpserver.StdioConnection)
+					updated.Env = map[string]string{"MODE": "\xff"}
+					invalid.Connection = updated
+				}
 			}
 			if err := store.Save(t.Context(), invalid); err == nil {
 				t.Errorf("invalid UTF-8 in %s was silently saved as empty configuration", field)
@@ -339,13 +338,21 @@ func TestMCPServerStoreReadsOneConfigurationDuringConcurrentSave(t *testing.T) {
 			t.Cleanup(func() { _ = db.Close() })
 			store := newMCPServerStore(db)
 			initial := mcpserver.Server{
-				Source: mcpserver.UserSource(),
-				Name:   testsupport.ServerName("files"), Transport: mcpserver.TransportStdio,
-				Command: "first", Args: []string{"first"},
+				Source:     mcpserver.UserSource(),
+				Name:       testsupport.ServerName("files"),
+				Connection: mcpserver.StdioConnection{Command: "first", Args: []string{"first"}},
 			}
 			replacement := initial.Clone()
-			replacement.Command = "second"
-			replacement.Args = []string{"second"}
+			{
+				updated := replacement.Connection.(mcpserver.StdioConnection)
+				updated.Command = "second"
+				replacement.Connection = updated
+			}
+			{
+				updated := replacement.Connection.(mcpserver.StdioConnection)
+				updated.Args = []string{"second"}
+				replacement.Connection = updated
+			}
 			if err := store.Save(t.Context(), initial); err != nil {
 				t.Fatal(err)
 			}

@@ -121,7 +121,7 @@ func (preparedPackages) Realize(context.Context, *plugin.Installation, plugin.Re
 // change is still realizing its backends, cannot freeze the removed release's
 // tools, so the removal never leaves a session depending on it.
 func TestRunAssembledAfterUninstallCommitCannotDependOnTheRemovedRelease(t *testing.T) {
-	release := testsupport.Release(t, "1", plugin.Declaration{Name: "package", Servers: []plugin.Server{{Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.test/mcp"}}})
+	release := testsupport.Release(t, "1", plugin.Declaration{Name: "package", Servers: []plugin.Server{{Name: testsupport.ServerName("server"), Startup: plugin.DeclaredConnection{Connection: mcpserver.HTTPConnection{URL: "https://example.test/mcp"}}}}})
 	installation, err := plugin.New(dependedInstallation, "/package", release)
 	if err != nil {
 		t.Fatal(err)
@@ -175,7 +175,7 @@ func TestRunAssembledAfterUninstallCommitCannotDependOnTheRemovedRelease(t *test
 }
 
 func TestWithdrawalRefusesAnUnpublishedRunWithTheFormerAuthority(t *testing.T) {
-	release := testsupport.Release(t, "1", plugin.Declaration{Name: "package", Servers: []plugin.Server{{Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.test/mcp"}}})
+	release := testsupport.Release(t, "1", plugin.Declaration{Name: "package", Servers: []plugin.Server{{Name: testsupport.ServerName("server"), Startup: plugin.DeclaredConnection{Connection: mcpserver.HTTPConnection{URL: "https://example.test/mcp"}}}}})
 	installation, err := plugin.New(dependedInstallation, "/package", release)
 	if err != nil {
 		t.Fatal(err)

@@ -17,24 +17,11 @@ const (
 	SecretClear SecretChangeKind = "clear"
 )
 
-// AuthorizationChange is a write-only bearer-token mutation.
-type AuthorizationChange struct {
+// SecretChange is a write-only mutation of one credential-bearing value: the
+// bearer token, or a full replacement of HTTP headers or a process environment.
+type SecretChange[T any] struct {
 	Kind  SecretChangeKind
-	Value string
-}
-
-// HeadersChange is a write-only full replacement for HTTP headers.
-// Authorization remains the dedicated [AuthorizationChange] field.
-type HeadersChange struct {
-	Kind  SecretChangeKind
-	Value map[string]string
-}
-
-// EnvironmentChange is a write-only full replacement for a stdio process's
-// environment.
-type EnvironmentChange struct {
-	Kind  SecretChangeKind
-	Value map[string]string
+	Value T
 }
 
 // ConnectionInput is a complete connection replacement. Transport-specific
@@ -42,11 +29,11 @@ type EnvironmentChange struct {
 type ConnectionInput struct {
 	Transport     mcpserver.Transport
 	URL           string
-	Authorization *AuthorizationChange
-	Headers       *HeadersChange
+	Authorization *SecretChange[string]
+	Headers       *SecretChange[map[string]string]
 	Command       string
 	Args          []string
-	Environment   *EnvironmentChange
+	Environment   *SecretChange[map[string]string]
 	Dir           string
 }
 
@@ -137,16 +124,19 @@ const (
 )
 
 func connectionView(server mcpserver.Server) Connection {
-	return Connection{
-		Transport:           server.Transport,
-		URL:                 server.URL,
-		AuthorizationMasked: secrets.Mask(server.Authorization),
-		HeadersMasked:       maskedValues(server.Headers),
-		Command:             server.Command,
-		Args:                slices.Clone(server.Args),
-		EnvironmentMasked:   maskedValues(server.Env),
-		Dir:                 server.Dir,
+	view := Connection{Transport: server.Transport()}
+	switch connection := server.Connection.(type) {
+	case mcpserver.HTTPConnection:
+		view.URL = connection.URL
+		view.AuthorizationMasked = secrets.Mask(connection.Authorization)
+		view.HeadersMasked = maskedValues(connection.Headers)
+	case mcpserver.StdioConnection:
+		view.Command = connection.Command
+		view.Args = slices.Clone(connection.Args)
+		view.EnvironmentMasked = maskedValues(connection.Env)
+		view.Dir = connection.Dir
 	}
+	return view
 }
 
 func maskedValues(values map[string]string) map[string]string {

@@ -56,7 +56,8 @@ func newBindingFixture(t *testing.T) bindingFixture {
 		}
 	})
 	release := testsupport.Release(t, "retained", plugin.Declaration{Name: "retained", Servers: []plugin.Server{{
-		Name: testsupport.ServerName("backend"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.test/mcp",
+		Name:    testsupport.ServerName("backend"),
+		Startup: plugin.DeclaredConnection{Connection: mcpserver.HTTPConnection{URL: "https://example.test/mcp"}},
 	}}})
 	if err := store.PluginReleases.Admit(t.Context(), release); err != nil {
 		t.Fatal(err)

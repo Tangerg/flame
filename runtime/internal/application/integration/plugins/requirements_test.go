@@ -55,7 +55,7 @@ func requirementContract(t *testing.T, reference string, composition portable.Co
 func requirementSnapshot(t *testing.T, id identity.InstallationID, name string, contract *portable.Capability, requires ...plugin.Requirement) plugin.Snapshot {
 	t.Helper()
 	server := testsupport.ServerName("backend")
-	release, err := plugin.NewRelease(testsupport.Digest(name+contract.Identity().String()+fmt.Sprint(requires)), plugin.Declaration{Name: name, Servers: []plugin.Server{{Name: server, Transport: mcpserver.TransportStdio, Command: "backend"}}, Contributions: []plugin.Contribution{{ID: "operations", Server: server, Export: "operations", Contract: contract.Identity(), Requires: requires}}})
+	release, err := plugin.NewRelease(testsupport.Digest(name+contract.Identity().String()+fmt.Sprint(requires)), plugin.Declaration{Name: name, Servers: []plugin.Server{{Name: server, Startup: plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "backend"}}}}, Contributions: []plugin.Contribution{{ID: "operations", Server: server, Export: "operations", Contract: contract.Identity(), Requires: requires}}})
 	if err != nil {
 		t.Fatal(err)
 	}

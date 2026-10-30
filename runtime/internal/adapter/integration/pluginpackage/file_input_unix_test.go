@@ -32,7 +32,7 @@ func TestPackagedCommandRefusesFIFOWithoutBlocking(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	server := plugin.Server{Name: testsupport.ServerName("backend"), Transport: mcpserver.TransportStdio, Command: "./backend"}
+	server := plugin.Server{Name: testsupport.ServerName("backend"), Startup: plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "./backend"}}}
 	err = fifoFailure(t, pipe, func() error { return inspectServerFiles(root, server) })
 	if !errors.Is(err, plugin.ErrInvalid) || !errors.Is(err, filesystem.ErrNotRegular) {
 		t.Fatalf("special packaged command lost its admission failure: %v", err)

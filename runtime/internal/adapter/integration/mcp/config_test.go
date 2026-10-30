@@ -76,30 +76,23 @@ func TestServerConfigValidate(t *testing.T) {
 		cfg  ServerConfig
 		ok   bool
 	}{
-		{"http ok", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e/"}}, true},
-		{"http relative endpoint", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "/mcp"}}, false},
-		{"http non-http endpoint", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "file:///tmp/mcp"}}, false},
-		{"stdio ok", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStdio, Command: "npx"}}, true},
-		{"missing source", ServerConfig{Server: mcpserver.Server{Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStdio, Command: "server"}}, false},
-		{"missing name", ServerConfig{Server: mcpserver.Server{Transport: mcpserver.TransportStreamableHTTP, URL: "https://e/"}}, false},
-		{"zero transport", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), URL: "https://e/"}}, false},
-		{"http without endpoint", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP}}, false},
-		{"http with command", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e/", Command: "npx"}}, false},
-		{"http with args", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e/", Args: []string{"--stdio"}}}, false},
-		{"http with environment", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e/", Env: map[string]string{"TOKEN": "value"}}}, false},
-		{"http with directory", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e/", Dir: "/tmp"}}, false},
-		{"http invalid header", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e/", Headers: map[string]string{"X-Key": "bad\r\nvalue"}}}, false},
-		{"http invalid authorization", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e/", Authorization: "bad\r\nvalue"}}, false},
-		{"stdio loader injection", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStdio, Command: "server", Env: map[string]string{"LD_PRELOAD": "/tmp/inject.so"}}}, false},
-		{"stdio NUL argument", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStdio, Command: "server", Args: []string{"bad\x00value"}}}, false},
-		{"stdio without command", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStdio}}, false},
-		{"stdio with endpoint", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStdio, Command: "npx", URL: "https://e/"}}, false},
-		{"http auth fields ok", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e", Authorization: "Bearer t", Headers: map[string]string{"X-API-Key": "k"}}}, true},
-		{"http authorization header duplicate", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e", Headers: map[string]string{"authorization": "Bearer t"}}}, false},
-		{"http oauth with static authorization", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e", Authorization: "Bearer t"}, OAuthHandler: oauthHandlerStub{}}, false},
-		{"http oauth with authorization header", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e", Headers: map[string]string{"authorization": "Bearer t"}}, OAuthHandler: oauthHandlerStub{}}, false},
-		{"stdio with auth", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStdio, Command: "echo", Authorization: "Bearer t"}}, false},
-		{"stdio with headers", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStdio, Command: "echo", Headers: map[string]string{"X-API-Key": "k"}}}, false},
+		{"http ok", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Connection: mcpserver.HTTPConnection{URL: "https://e/"}}}, true},
+		{"http relative endpoint", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Connection: mcpserver.HTTPConnection{URL: "/mcp"}}}, false},
+		{"http non-http endpoint", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Connection: mcpserver.HTTPConnection{URL: "file:///tmp/mcp"}}}, false},
+		{"stdio ok", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Connection: mcpserver.StdioConnection{Command: "npx"}}}, true},
+		{"missing source", ServerConfig{Server: mcpserver.Server{Name: testsupport.ServerName("x"), Connection: mcpserver.StdioConnection{Command: "server"}}}, false},
+		{"missing name", ServerConfig{Server: mcpserver.Server{Connection: mcpserver.HTTPConnection{URL: "https://e/"}}}, false},
+		{"no connection", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x")}}, false},
+		{"http without endpoint", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Connection: mcpserver.HTTPConnection{}}}, false},
+		{"http invalid header", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Connection: mcpserver.HTTPConnection{URL: "https://e/", Headers: map[string]string{"X-Key": "bad\r\nvalue"}}}}, false},
+		{"http invalid authorization", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Connection: mcpserver.HTTPConnection{URL: "https://e/", Authorization: "bad\r\nvalue"}}}, false},
+		{"stdio loader injection", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Connection: mcpserver.StdioConnection{Command: "server", Env: map[string]string{"LD_PRELOAD": "/tmp/inject.so"}}}}, false},
+		{"stdio NUL argument", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Connection: mcpserver.StdioConnection{Command: "server", Args: []string{"bad\x00value"}}}}, false},
+		{"stdio without command", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Connection: mcpserver.StdioConnection{}}}, false},
+		{"http auth fields ok", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Connection: mcpserver.HTTPConnection{URL: "https://e", Authorization: "Bearer t", Headers: map[string]string{"X-API-Key": "k"}}}}, true},
+		{"http authorization header duplicate", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Connection: mcpserver.HTTPConnection{URL: "https://e", Headers: map[string]string{"authorization": "Bearer t"}}}}, false},
+		{"http oauth with static authorization", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Connection: mcpserver.HTTPConnection{URL: "https://e", Authorization: "Bearer t"}}, OAuthHandler: oauthHandlerStub{}}, false},
+		{"http oauth with authorization header", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Connection: mcpserver.HTTPConnection{URL: "https://e", Headers: map[string]string{"authorization": "Bearer t"}}}, OAuthHandler: oauthHandlerStub{}}, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -123,16 +116,24 @@ func mustHandshakeTimeout(t *testing.T, value time.Duration) mcpserver.Handshake
 }
 
 func TestSameConnectionIncludesCredentialsAndExcludesHandshakePolicy(t *testing.T) {
-	stdio := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("local"), Transport: mcpserver.TransportStdio, Command: "server", Env: map[string]string{"TOKEN": "first"}}}
+	stdio := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("local"), Connection: mcpserver.StdioConnection{Command: "server", Env: map[string]string{"TOKEN": "first"}}}}
 	rotated := stdio.Clone()
-	rotated.Env["TOKEN"] = "second"
+	rotated.Connection.(mcpserver.StdioConnection).Env["TOKEN"] = "second"
 	if stdio.Server.SameConnection(rotated.Server) {
 		t.Fatal("rotated process credentials retained the old connection binding")
 	}
 	inherited := stdio.Clone()
-	inherited.Env = nil
+	{
+		updated := inherited.Connection.(mcpserver.StdioConnection)
+		updated.Env = nil
+		inherited.Connection = updated
+	}
 	empty := inherited.Clone()
-	empty.Env = map[string]string{}
+	{
+		updated := empty.Connection.(mcpserver.StdioConnection)
+		updated.Env = map[string]string{}
+		empty.Connection = updated
+	}
 	if inherited.Server.SameConnection(empty.Server) {
 		t.Fatal("inherited and explicitly empty process environments share a binding")
 	}
@@ -141,7 +142,7 @@ func TestSameConnectionIncludesCredentialsAndExcludesHandshakePolicy(t *testing.
 	if !stdio.Server.SameConnection(changedLimit.Server) {
 		t.Fatal("future handshake policy invalidated a connected executable")
 	}
-	http := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://mcp.example/tools"}}
+	http := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Connection: mcpserver.HTTPConnection{URL: "https://mcp.example/tools"}}}
 	refreshed := http.Clone()
 	refreshed.OAuthHandler = oauthHandlerStub{}
 	if !http.Server.SameConnection(refreshed.Server) {
@@ -177,13 +178,13 @@ func TestProcessEnvironmentPreservesEmptyValuesInChild(t *testing.T) {
 }
 
 func TestDialValidatesBeforeDialing(t *testing.T) {
-	_, _, err := dial(context.Background(), t.Context(), nil, &launch{config: ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP}}})
+	_, _, err := dial(context.Background(), t.Context(), nil, &launch{config: ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Connection: mcpserver.HTTPConnection{}}}})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "URL is required")
 }
 
 func TestDialNilClient(t *testing.T) {
-	_, _, err := dial(context.Background(), t.Context(), nil, &launch{config: ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e/"}}})
+	_, _, err := dial(context.Background(), t.Context(), nil, &launch{config: ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Connection: mcpserver.HTTPConnection{URL: "https://e/"}}}})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "client must not be nil")
 }
@@ -197,8 +198,9 @@ func TestDialConnectionFailureSettlesAbsentLifetimeCleanup(t *testing.T) {
 	client := sdkmcp.NewClient(&sdkmcp.Implementation{Name: "failure-test", Version: "v1"}, nil)
 	_, cleanup, err := dial(t.Context(), t.Context(), client, &launch{config: ServerConfig{
 		Server: mcpserver.Server{
-			Source: mcpserver.UserSource(),
-			Name:   testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: server.URL,
+			Source:     mcpserver.UserSource(),
+			Name:       testsupport.ServerName("x"),
+			Connection: mcpserver.HTTPConnection{URL: server.URL},
 		},
 	}})
 	require.Error(t, err)
@@ -341,23 +343,19 @@ func TestHeaderRoundTripperRejectsUnboundTarget(t *testing.T) {
 func TestServerConfigFormattingRedactsCredentials(t *testing.T) {
 	config := ServerConfig{
 		Server: mcpserver.Server{
-			Source:        mcpserver.UserSource(),
-			Name:          testsupport.ServerName("private"),
-			Transport:     mcpserver.TransportStreamableHTTP,
-			URL:           "https://url-user:url-secret@example.com/mcp",
-			Authorization: "Bearer authorization-secret",
-			Headers:       map[string]string{"X-Key": "header-secret"},
-			Env:           map[string]string{"TOKEN": "environment-secret"},
+			Source:     mcpserver.UserSource(),
+			Name:       testsupport.ServerName("private"),
+			Connection: mcpserver.HTTPConnection{URL: "https://url-user:url-secret@example.com/mcp", Authorization: "Bearer authorization-secret", Headers: map[string]string{"X-Key": "header-secret"}},
 		},
 	}
 
 	formatted := fmt.Sprintf("%+v", config)
-	for _, secret := range []string{"url-user", "url-secret", "authorization-secret", "header-secret", "environment-secret"} {
+	for _, secret := range []string{"url-user", "url-secret", "authorization-secret", "header-secret"} {
 		if strings.Contains(formatted, secret) {
 			t.Fatalf("formatted config exposed %q: %s", secret, formatted)
 		}
 	}
-	if got := strings.Count(formatted, "[REDACTED]"); got != 4 {
-		t.Fatalf("formatted config redactions = %d, want 4: %s", got, formatted)
+	if got := strings.Count(formatted, "[REDACTED]"); got != 3 {
+		t.Fatalf("formatted config redactions = %d, want 3: %s", got, formatted)
 	}
 }

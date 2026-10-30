@@ -61,7 +61,7 @@ func (c *Coordinator) CreateAuthorizationAttempt(ctx context.Context, server mcp
 	if err != nil {
 		return AuthorizationAttempt{}, err
 	}
-	if target.Transport != mcpserver.TransportStreamableHTTP {
+	if target.Transport() != mcpserver.TransportStreamableHTTP {
 		return AuthorizationAttempt{}, ErrAuthorizationUnsupported
 	}
 	attempt := c.authorizationAttempts.create(server)

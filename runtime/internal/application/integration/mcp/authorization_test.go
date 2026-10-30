@@ -304,7 +304,7 @@ func TestAuthorizationAttemptRejectsNonHTTPServerBeforeDispatch(t *testing.T) {
 	registry := &testRegistry{servers: map[mcpserver.ID]mcpserver.Server{
 		name: {
 			Source: mcpserver.UserSource(), Name: name.Name(), Enabled: true,
-			Transport: mcpserver.TransportStdio, Command: "mcp-filesystem",
+			Connection: mcpserver.StdioConnection{Command: "mcp-filesystem"},
 		},
 	}}
 	c := testCoordinator(t, Config{

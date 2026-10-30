@@ -48,49 +48,61 @@ func TestReusableOAuthIsBoundToCredentialConfiguration(t *testing.T) {
 	handler := oauthHandlerStub{}
 	current := ServerConfig{
 		Server: mcpserver.Server{
-			Source: mcpserver.UserSource(),
-			Name:   testsupport.ServerName("server"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://EXAMPLE.com/mcp",
+			Source:     mcpserver.UserSource(),
+			Name:       testsupport.ServerName("server"),
+			Connection: mcpserver.HTTPConnection{URL: "https://EXAMPLE.com/mcp"},
 		},
 	}
 	if got := reusableOAuth(current, ServerConfig{
 		Server: mcpserver.Server{
-			Source: mcpserver.UserSource(),
-			Name:   testsupport.ServerName("server"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://EXAMPLE.com/mcp",
+			Source:     mcpserver.UserSource(),
+			Name:       testsupport.ServerName("server"),
+			Connection: mcpserver.HTTPConnection{URL: "https://EXAMPLE.com/mcp"},
 		},
 	}, handler); got == nil {
 		t.Fatal("unchanged credential configuration did not preserve OAuth handler")
 	}
 	changedPath := current.Clone()
-	changedPath.URL = "https://EXAMPLE.com/other"
+	{
+		updated := changedPath.Connection.(mcpserver.HTTPConnection)
+		updated.URL = "https://EXAMPLE.com/other"
+		changedPath.Connection = updated
+	}
 	if got := reusableOAuth(current, changedPath, handler); got != nil {
 		t.Fatal("changed endpoint preserved an invalidated OAuth handler")
 	}
 	changedHeaders := current.Clone()
-	changedHeaders.Headers = map[string]string{"X-API-Key": "changed"}
+	{
+		updated := changedHeaders.Connection.(mcpserver.HTTPConnection)
+		updated.Headers = map[string]string{"X-API-Key": "changed"}
+		changedHeaders.Connection = updated
+	}
 	if got := reusableOAuth(current, changedHeaders, handler); got != nil {
 		t.Fatal("changed authentication headers preserved an invalidated OAuth handler")
 	}
 	if got := reusableOAuth(current, ServerConfig{
 		Server: mcpserver.Server{
-			Source: mcpserver.UserSource(),
-			Name:   testsupport.ServerName("server"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://other.example/mcp",
+			Source:     mcpserver.UserSource(),
+			Name:       testsupport.ServerName("server"),
+			Connection: mcpserver.HTTPConnection{URL: "https://other.example/mcp"},
 		},
 	}, handler); got != nil {
 		t.Fatal("cross-origin endpoint preserved OAuth handler")
 	}
 	if got := reusableOAuth(current, ServerConfig{
 		Server: mcpserver.Server{
-			Source: mcpserver.UserSource(),
-			Name:   testsupport.ServerName("server"), Transport: mcpserver.TransportStdio, Command: "server",
+			Source:     mcpserver.UserSource(),
+			Name:       testsupport.ServerName("server"),
+			Connection: mcpserver.StdioConnection{Command: "server"},
 		},
 	}, handler); got != nil {
 		t.Fatal("transport change preserved OAuth handler")
 	}
 	if got := reusableOAuth(current, ServerConfig{
 		Server: mcpserver.Server{
-			Source: mcpserver.UserSource(),
-			Name:   testsupport.ServerName("server"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.com/other",
-			Authorization: "Bearer static",
+			Source:     mcpserver.UserSource(),
+			Name:       testsupport.ServerName("server"),
+			Connection: mcpserver.HTTPConnection{URL: "https://example.com/other", Authorization: "Bearer static"},
 		},
 	}, handler); got != nil {
 		t.Fatal("static authorization preserved OAuth handler")
@@ -111,7 +123,7 @@ func TestConnectionsRejectMutationsAfterShutdown(t *testing.T) {
 		t.Fatalf("Shutdown: %v", err)
 	}
 
-	cfg := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("closed"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.invalid"}}
+	cfg := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("closed"), Connection: mcpserver.HTTPConnection{URL: "https://example.invalid"}}}
 	for name, call := range map[string]func() error{
 		"configure": func() error { return connectLaunch(c, context.Background(), mustLaunch(t, cfg)) },
 		"authorize": func() error { return authorizeLaunch(c, context.Background(), mustLaunch(t, cfg)) },
@@ -304,17 +316,14 @@ func TestConnectionAttemptsSupersedePerServer(t *testing.T) {
 func TestCloneServerConfigOwnsMutableFields(t *testing.T) {
 	original := ServerConfig{
 		Server: mcpserver.Server{
-			Args:    []string{"one"},
-			Env:     map[string]string{"A": "1"},
-			Headers: map[string]string{"X-Test": "before"},
+			Connection: mcpserver.StdioConnection{Args: []string{"one"}, Env: map[string]string{"A": "1"}},
 		},
 	}
 	cloned := original.Clone()
-	original.Args[0] = "two"
-	original.Env["A"] = "2"
-	original.Headers["X-Test"] = "after"
+	original.Connection.(mcpserver.StdioConnection).Args[0] = "two"
+	original.Connection.(mcpserver.StdioConnection).Env["A"] = "2"
 
-	if cloned.Args[0] != "one" || cloned.Env["A"] != "1" || cloned.Headers["X-Test"] != "before" {
+	if cloned.Connection.(mcpserver.StdioConnection).Args[0] != "one" || cloned.Connection.(mcpserver.StdioConnection).Env["A"] != "1" {
 		t.Fatalf("clone retained caller-owned storage: %+v", cloned)
 	}
 }
@@ -391,7 +400,7 @@ func TestReconnectPublishesRemovalBeforeVerifiedReplacement(t *testing.T) {
 	))
 	t.Cleanup(httpServer.Close)
 
-	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP, URL: httpServer.URL}}
+	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Connection: mcpserver.HTTPConnection{URL: httpServer.URL}}}
 	c, initial, err := testOpen(t.Context(), t.Context(), []ServerConfig{config}, nil)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -432,8 +441,9 @@ func TestConfigureOAuthRestoreFailureWithdrawsPreviousConnection(t *testing.T) {
 	session := new(sdkmcp.ClientSession)
 	config := ServerConfig{
 		Server: mcpserver.Server{
-			Source: mcpserver.UserSource(),
-			Name:   testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.invalid/mcp",
+			Source:     mcpserver.UserSource(),
+			Name:       testsupport.ServerName("remote"),
+			Connection: mcpserver.HTTPConnection{URL: "https://example.invalid/mcp"},
 		},
 	}
 	c := &connections{
@@ -454,7 +464,11 @@ func TestConfigureOAuthRestoreFailureWithdrawsPreviousConnection(t *testing.T) {
 	c.setToolSink(func(catalog []Executable, _, _ []mcpserver.ID) {
 		publications = append(publications, toolNames(catalog))
 	})
-	config.URL = "https://example.invalid/replacement"
+	{
+		updated := config.Connection.(mcpserver.HTTPConnection)
+		updated.URL = "https://example.invalid/replacement"
+		config.Connection = updated
+	}
 	if err := connectLaunch(c, t.Context(), mustLaunch(t, config)); !errors.Is(err, loadErr) || !errors.Is(err, closeErr) {
 		t.Errorf("Configure = %v, want credential and retirement errors", err)
 	}
@@ -495,8 +509,9 @@ func TestShutdownCancelsAndJoinsOAuthRestore(t *testing.T) {
 	go func() {
 		configureDone <- connectLaunch(c, configureCtx, mustLaunch(t, ServerConfig{
 			Server: mcpserver.Server{
-				Source: mcpserver.UserSource(),
-				Name:   testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.invalid/mcp",
+				Source:     mcpserver.UserSource(),
+				Name:       testsupport.ServerName("remote"),
+				Connection: mcpserver.HTTPConnection{URL: "https://example.invalid/mcp"},
 			},
 		}))
 	}()
@@ -554,11 +569,15 @@ func TestSupersededOAuthRestoreCannotReplaceCurrentConnection(t *testing.T) {
 			t.Errorf("Shutdown: %v", err)
 		}
 	})
-	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP, URL: httpServer.URL}}
+	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Connection: mcpserver.HTTPConnection{URL: httpServer.URL}}}
 	previousDone := make(chan error, 1)
 	go func() { previousDone <- connectLaunch(c, t.Context(), mustLaunch(t, config)) }()
 	<-started
-	config.Authorization = "Bearer replacement"
+	{
+		updated := config.Connection.(mcpserver.HTTPConnection)
+		updated.Authorization = "Bearer replacement"
+		config.Connection = updated
+	}
 	if err := connectLaunch(c, t.Context(), mustLaunch(t, config)); err != nil {
 		t.Fatalf("replacement Configure: %v", err)
 	}
@@ -615,8 +634,9 @@ func TestDetachCancelsAuthorizationDuringSessionRetirement(t *testing.T) {
 	session := new(sdkmcp.ClientSession)
 	config := ServerConfig{
 		Server: mcpserver.Server{
-			Source: mcpserver.UserSource(),
-			Name:   testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.invalid/mcp",
+			Source:     mcpserver.UserSource(),
+			Name:       testsupport.ServerName("remote"),
+			Connection: mcpserver.HTTPConnection{URL: "https://example.invalid/mcp"},
 		},
 	}
 	c := &connections{
@@ -676,8 +696,9 @@ func TestConfiguredSessionOutlivesRequestScope(t *testing.T) {
 	requestCtx, cancelRequest := context.WithCancel(t.Context())
 	if configureErr := connectLaunch(connections, requestCtx, mustLaunch(t, ServerConfig{
 		Server: mcpserver.Server{
-			Source: mcpserver.UserSource(),
-			Name:   testsupport.ServerName("dynamic"), Transport: mcpserver.TransportStreamableHTTP, URL: httpServer.URL,
+			Source:     mcpserver.UserSource(),
+			Name:       testsupport.ServerName("dynamic"),
+			Connection: mcpserver.HTTPConnection{URL: httpServer.URL},
 		},
 	})); configureErr != nil {
 		t.Fatalf("Configure: %v", configureErr)
@@ -698,7 +719,7 @@ func TestSessionLedgerOwnsReplacementUntilClose(t *testing.T) {
 	))
 	t.Cleanup(httpServer.Close)
 
-	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("ledger"), Transport: mcpserver.TransportStreamableHTTP, URL: httpServer.URL}}
+	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("ledger"), Connection: mcpserver.HTTPConnection{URL: httpServer.URL}}}
 	c, _, err := testOpen(t.Context(), t.Context(), []ServerConfig{config}, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -739,8 +760,8 @@ func TestOpenAdmitsCrossServerPublicToolNameCollision(t *testing.T) {
 	t.Cleanup(httpServer.Close)
 
 	c, initial, err := testOpen(t.Context(), t.Context(), []ServerConfig{
-		{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("a.b"), Transport: mcpserver.TransportStreamableHTTP, URL: httpServer.URL}},
-		{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("a_b"), Transport: mcpserver.TransportStreamableHTTP, URL: httpServer.URL}},
+		{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("a.b"), Connection: mcpserver.HTTPConnection{URL: httpServer.URL}}},
+		{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("a_b"), Connection: mcpserver.HTTPConnection{URL: httpServer.URL}}},
 	}, nil)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -776,8 +797,8 @@ func TestOpenReportsStartupFailureAndKeepsHealthyServers(t *testing.T) {
 			t.Cleanup(httpServer.Close)
 			missingCommand := filepath.Join(t.TempDir(), "missing-mcp-server")
 			configs := []ServerConfig{
-				{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("missing"), Transport: mcpserver.TransportStdio, Command: missingCommand}},
-				{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("healthy"), Transport: mcpserver.TransportStreamableHTTP, URL: httpServer.URL}},
+				{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("missing"), Connection: mcpserver.StdioConnection{Command: missingCommand}}},
+				{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("healthy"), Connection: mcpserver.HTTPConnection{URL: httpServer.URL}}},
 			}
 			connections, err := openConnections(t.Context(), t.Context(), configs, nil, func(_ context.Context, name mcpserver.ID) (*launchPermit, error) {
 				if name == configs[0].ID() && failure == "admission" {
@@ -841,8 +862,9 @@ func TestConfigureAdmitsCrossServerPublicToolNameCollision(t *testing.T) {
 
 	c, initial, err := testOpen(t.Context(), t.Context(), []ServerConfig{{
 		Server: mcpserver.Server{
-			Source: mcpserver.UserSource(),
-			Name:   testsupport.ServerName("a_b"), Transport: mcpserver.TransportStreamableHTTP, URL: firstHTTP.URL,
+			Source:     mcpserver.UserSource(),
+			Name:       testsupport.ServerName("a_b"),
+			Connection: mcpserver.HTTPConnection{URL: firstHTTP.URL},
 		},
 	}}, nil)
 	if err != nil {
@@ -865,7 +887,7 @@ func TestConfigureAdmitsCrossServerPublicToolNameCollision(t *testing.T) {
 	))
 	t.Cleanup(secondHTTP.Close)
 
-	err = connectLaunch(c, t.Context(), mustLaunch(t, ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("a"), Transport: mcpserver.TransportStreamableHTTP, URL: secondHTTP.URL}}))
+	err = connectLaunch(c, t.Context(), mustLaunch(t, ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("a"), Connection: mcpserver.HTTPConnection{URL: secondHTTP.URL}}}))
 	if err != nil {
 		t.Fatalf("Configure collision error = %v", err)
 	}
@@ -894,8 +916,8 @@ func TestReconnectAdmitsNewCrossServerPublicToolNameCollision(t *testing.T) {
 	t.Cleanup(secondHTTP.Close)
 
 	c, initial, err := testOpen(t.Context(), t.Context(), []ServerConfig{
-		{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("a_b"), Transport: mcpserver.TransportStreamableHTTP, URL: firstHTTP.URL}},
-		{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("a"), Transport: mcpserver.TransportStreamableHTTP, URL: secondHTTP.URL}},
+		{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("a_b"), Connection: mcpserver.HTTPConnection{URL: firstHTTP.URL}}},
+		{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("a"), Connection: mcpserver.HTTPConnection{URL: secondHTTP.URL}}},
 	}, nil)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -913,7 +935,7 @@ func TestReconnectAdmitsNewCrossServerPublicToolNameCollision(t *testing.T) {
 	awaitCatalog(t, publications, func(tools []Executable) bool { return len(tools) == 2 })
 	addRemoteTool(t, secondRemote, "b_c")
 	awaitCatalog(t, publications, func(tools []Executable) bool { return len(tools) == 3 })
-	err = connectLaunch(c, t.Context(), mustLaunch(t, ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("a"), Transport: mcpserver.TransportStreamableHTTP, URL: secondHTTP.URL}}))
+	err = connectLaunch(c, t.Context(), mustLaunch(t, ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("a"), Connection: mcpserver.HTTPConnection{URL: secondHTTP.URL}}}))
 	if err != nil {
 		t.Fatalf("Reconnect collision error = %v", err)
 	}
@@ -970,7 +992,7 @@ func TestCanceledConnectionCommandsPreserveTheCurrentSession(t *testing.T) {
 	))
 	t.Cleanup(httpServer.Close)
 
-	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("detach"), Transport: mcpserver.TransportStreamableHTTP, URL: httpServer.URL}}
+	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("detach"), Connection: mcpserver.HTTPConnection{URL: httpServer.URL}}}
 	c, initial, err := testOpen(t.Context(), t.Context(), []ServerConfig{config}, nil)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -1045,7 +1067,7 @@ func TestToolPublicationHappensInsideTheSettlingCriticalSection(t *testing.T) {
 	addRemoteTool(t, remote, "read")
 	httpServer := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(func(*http.Request) *sdkmcp.Server { return remote }, nil))
 	t.Cleanup(httpServer.Close)
-	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP, URL: httpServer.URL}}
+	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Connection: mcpserver.HTTPConnection{URL: httpServer.URL}}}
 	c, _, err := testOpen(t.Context(), t.Context(), nil, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -1086,7 +1108,7 @@ func TestToolPublicationHappensInsideTheSettlingCriticalSection(t *testing.T) {
 // superseded operation. Its owner canceled it before detaching, so it must
 // not re-add the server as a failed or connecting ghost.
 func TestSupersededConfigureNeverResurrectsADetachedServer(t *testing.T) {
-	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.invalid/mcp"}}
+	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Connection: mcpserver.HTTPConnection{URL: "https://example.invalid/mcp"}}}
 	c := newTestConnections(t)
 	c.servers = []*server{{id: config.ID(), config: config, state: mcpserver.ConnectionFailed, failure: mcpserver.FailureConnection}}
 	published := false
@@ -1110,7 +1132,7 @@ func TestExecutableIsCurrentOnlyWhileItsSessionServesTheSource(t *testing.T) {
 	addRemoteTool(t, remote, "read")
 	httpServer := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(func(*http.Request) *sdkmcp.Server { return remote }, nil))
 	t.Cleanup(httpServer.Close)
-	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP, URL: httpServer.URL}}
+	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Connection: mcpserver.HTTPConnection{URL: httpServer.URL}}}
 	c, initial, err := testOpen(t.Context(), t.Context(), []ServerConfig{config}, nil)
 	if err != nil {
 		t.Fatal(err)

@@ -120,55 +120,38 @@ func mcpConnectionInputFromWire(in protocol.MCPConnectionInput) (mcpapp.Connecti
 	if !ok {
 		return mcpapp.ConnectionInput{}, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown MCP transport %q", in.Type))
 	}
-	var authorization *mcpapp.AuthorizationChange
+	var input mcpapp.ConnectionInput
+	var err error
 	if in.Authorization != nil {
-		change := mcpapp.AuthorizationChange{Value: in.Authorization.Value}
-		switch in.Authorization.Type {
-		case protocol.MCPSecretSet:
-			change.Kind = mcpapp.SecretSet
-		case protocol.MCPSecretClear:
-			change.Kind = mcpapp.SecretClear
-		default:
-			return mcpapp.ConnectionInput{}, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown MCP authorization change %q", in.Authorization.Type))
+		if input.Authorization, err = secretChangeFromWire("authorization", in.Authorization.Type, in.Authorization.Value); err != nil {
+			return mcpapp.ConnectionInput{}, err
 		}
-		authorization = &change
 	}
-	var headers *mcpapp.HeadersChange
 	if in.Headers != nil {
-		change := mcpapp.HeadersChange{Value: in.Headers.Value}
-		switch in.Headers.Type {
-		case protocol.MCPSecretSet:
-			change.Kind = mcpapp.SecretSet
-		case protocol.MCPSecretClear:
-			change.Kind = mcpapp.SecretClear
-		default:
-			return mcpapp.ConnectionInput{}, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown MCP headers change %q", in.Headers.Type))
+		if input.Headers, err = secretChangeFromWire("headers", in.Headers.Type, in.Headers.Value); err != nil {
+			return mcpapp.ConnectionInput{}, err
 		}
-		headers = &change
 	}
-	var environment *mcpapp.EnvironmentChange
 	if in.Env != nil {
-		change := mcpapp.EnvironmentChange{Value: in.Env.Value}
-		switch in.Env.Type {
-		case protocol.MCPSecretSet:
-			change.Kind = mcpapp.SecretSet
-		case protocol.MCPSecretClear:
-			change.Kind = mcpapp.SecretClear
-		default:
-			return mcpapp.ConnectionInput{}, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown MCP environment change %q", in.Env.Type))
+		if input.Environment, err = secretChangeFromWire("environment", in.Env.Type, in.Env.Value); err != nil {
+			return mcpapp.ConnectionInput{}, err
 		}
-		environment = &change
 	}
-	return mcpapp.ConnectionInput{
-		Transport:     transport,
-		URL:           in.URL,
-		Authorization: authorization,
-		Headers:       headers,
-		Command:       in.Command,
-		Args:          in.Args,
-		Environment:   environment,
-		Dir:           in.Dir,
-	}, nil
+	input.Transport, input.URL, input.Command, input.Args, input.Dir = transport, in.URL, in.Command, in.Args, in.Dir
+	return input, nil
+}
+
+func secretChangeFromWire[T any](name string, kind protocol.MCPSecretChangeType, value T) (*mcpapp.SecretChange[T], error) {
+	change := mcpapp.SecretChange[T]{Value: value}
+	switch kind {
+	case protocol.MCPSecretSet:
+		change.Kind = mcpapp.SecretSet
+	case protocol.MCPSecretClear:
+		change.Kind = mcpapp.SecretClear
+	default:
+		return nil, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown MCP %s change %q", name, kind))
+	}
+	return &change, nil
 }
 
 func mcpTransportFromWire(transport protocol.MCPTransport) (mcpserver.Transport, bool) {

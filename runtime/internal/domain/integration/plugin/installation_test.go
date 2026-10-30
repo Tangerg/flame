@@ -12,7 +12,7 @@ import (
 )
 
 func TestInstallationOwnsAtomicConfigurationAndReleaseTrust(t *testing.T) {
-	release := testRelease(t, "1", Declaration{Name: "review", Servers: []Server{{Name: serverName("reviews"), Transport: stdio, Command: "review"}}, Inputs: []Input{{ID: "key", Server: serverName("reviews"), Target: Environment, Key: "API_KEY", Secret: true, Required: true}}})
+	release := testRelease(t, "1", Declaration{Name: "review", Servers: []Server{{Name: serverName("reviews"), Startup: DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "review"}}}}, Inputs: []Input{{ID: "key", Server: serverName("reviews"), Target: Environment, Key: "API_KEY", Secret: true, Required: true}}})
 	installed, err := New(testInstallationID(t), "/package", release)
 	if err != nil {
 		t.Fatal(err)
@@ -83,7 +83,7 @@ func TestInstallationOwnsDesiredEnablement(t *testing.T) {
 
 func TestExecutionChangesFollowSelectedCapabilities(t *testing.T) {
 	release := testRelease(t, "1", Declaration{
-		Name: "package", Servers: []Server{{Name: serverName("backend"), Transport: stdio, Command: "backend"}},
+		Name: "package", Servers: []Server{{Name: serverName("backend"), Startup: DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "backend"}}}},
 		Inputs: []Input{{ID: "option", Server: serverName("backend"), Target: Environment, Key: "OPTION"}},
 		Skills: []Skill{{Name: "audit", Description: "Audit changes"}},
 	})
@@ -140,7 +140,7 @@ func TestExecutionChangesFollowSelectedCapabilities(t *testing.T) {
 }
 
 func TestTransitionsRefuseAReleaseTheyDoNotName(t *testing.T) {
-	declaration := Declaration{Name: "review", Servers: []Server{{Name: serverName("reviews"), Transport: stdio, Command: "review"}}, Inputs: []Input{{ID: "mode", Server: serverName("reviews"), Target: Environment, Key: "MODE"}}}
+	declaration := Declaration{Name: "review", Servers: []Server{{Name: serverName("reviews"), Startup: DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "review"}}}}, Inputs: []Input{{ID: "mode", Server: serverName("reviews"), Target: Environment, Key: "MODE"}}}
 	release := testRelease(t, "1", declaration)
 	other := testRelease(t, "2", declaration)
 	installation, err := New(testInstallationID(t), "/package", release)
@@ -172,7 +172,7 @@ func TestTransitionsRefuseAReleaseTheyDoNotName(t *testing.T) {
 }
 
 func TestSelectedReleaseCannotAlsoBecomeStaged(t *testing.T) {
-	release := testRelease(t, "1", Declaration{Name: "review", Servers: []Server{{Name: serverName("review"), Transport: stdio, Command: "fixture"}}})
+	release := testRelease(t, "1", Declaration{Name: "review", Servers: []Server{{Name: serverName("review"), Startup: DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "fixture"}}}}})
 	installation, err := New(testInstallationID(t), "/package", release)
 	if err != nil {
 		t.Fatal(err)
@@ -233,7 +233,7 @@ func TestRestorationRequiresTheReleasesItsRecordNames(t *testing.T) {
 }
 
 func TestSelectPreservesDesiredEnablementAndBindsNewCode(t *testing.T) {
-	declaration := Declaration{Name: "review", Servers: []Server{{Name: serverName("a"), Transport: stdio, Command: "./server"}}}
+	declaration := Declaration{Name: "review", Servers: []Server{{Name: serverName("a"), Startup: DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "./server"}}}}}
 	release := testRelease(t, "1", declaration)
 	candidate := testRelease(t, "2", declaration)
 	for _, enabled := range []bool{false, true} {
@@ -260,7 +260,7 @@ func TestSelectPreservesDesiredEnablementAndBindsNewCode(t *testing.T) {
 func TestSelectRefusesMissingRequiredRecipientWithoutChangingInstallation(t *testing.T) {
 	declaration := Declaration{
 		Name:    "review",
-		Servers: []Server{{Name: serverName("backend"), Transport: stdio, Command: "./server"}},
+		Servers: []Server{{Name: serverName("backend"), Startup: DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "./server"}}}},
 		Inputs:  []Input{{ID: "credential", Server: serverName("backend"), Target: Environment, Key: "KEY", Secret: true, Required: true}},
 	}
 	release := testRelease(t, "1", declaration)
@@ -301,8 +301,8 @@ func TestSelectRetainsConfigurationWhoseMeaningIsUnchanged(t *testing.T) {
 	declaration := Declaration{
 		Name: "review",
 		Servers: []Server{
-			{Name: serverName("a"), Transport: stdio, Command: "./server"},
-			{Name: serverName("b"), Transport: http, URL: "https://b.example/mcp"},
+			{Name: serverName("a"), Startup: DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "./server"}}},
+			{Name: serverName("b"), Startup: DeclaredConnection{Connection: mcpserver.HTTPConnection{URL: "https://b.example/mcp"}}},
 		},
 		Inputs: []Input{
 			{ID: "mode", Server: serverName("a"), Target: Environment, Key: "MODE"},
@@ -346,8 +346,8 @@ func TestCredentialsFollowTheirRecipientAcrossReleases(t *testing.T) {
 	base := Declaration{
 		Name: "review",
 		Servers: []Server{
-			{Name: serverName("local"), Transport: stdio, Command: "./server"},
-			{Name: serverName("remote"), Transport: http, URL: "https://a.example/mcp", Headers: map[string]string{"X-Client": "flame"}},
+			{Name: serverName("local"), Startup: DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "./server"}}},
+			{Name: serverName("remote"), Startup: DeclaredConnection{Connection: mcpserver.HTTPConnection{URL: "https://a.example/mcp", Headers: map[string]string{"X-Client": "flame"}}}},
 		},
 		Inputs: []Input{
 			{ID: "api-key", Server: serverName("local"), Target: Environment, Key: "API_KEY", Secret: true},
@@ -363,10 +363,14 @@ func TestCredentialsFollowTheirRecipientAcrossReleases(t *testing.T) {
 	}{
 		{"unchanged endpoint", func(*Declaration) {}, map[string]string{"mode": "strict", "token": "Bearer secret"}},
 		{"changed URL", func(d *Declaration) {
-			d.Servers[1].URL = "https://elsewhere.example/mcp"
+			http := d.Servers[1].Startup.(DeclaredConnection).Connection.(mcpserver.HTTPConnection)
+			http.URL = "https://elsewhere.example/mcp"
+			d.Servers[1].Startup = DeclaredConnection{Connection: http}
 		}, map[string]string{"mode": "strict"}},
 		{"changed static header", func(d *Declaration) {
-			d.Servers[1].Headers = map[string]string{"X-Client": "other"}
+			http := d.Servers[1].Startup.(DeclaredConnection).Connection.(mcpserver.HTTPConnection)
+			http.Headers = map[string]string{"X-Client": "other"}
+			d.Servers[1].Startup = DeclaredConnection{Connection: http}
 		}, map[string]string{"mode": "strict"}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -403,7 +407,7 @@ func oauth(source mcpserver.Source) mcpserver.OAuthTarget {
 }
 
 func TestServerAuthorityIsTheSelectedCodeOfOneServer(t *testing.T) {
-	declaration := Declaration{Name: "review", Servers: []Server{{Name: serverName("a"), Transport: stdio, Command: "server"}, {Name: serverName("b"), Transport: stdio, Command: "server"}}, Inputs: []Input{{ID: "secret", Server: serverName("a"), Target: Environment, Key: "API_KEY", Secret: true}}}
+	declaration := Declaration{Name: "review", Servers: []Server{{Name: serverName("a"), Startup: DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "server"}}}, {Name: serverName("b"), Startup: DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "server"}}}}, Inputs: []Input{{ID: "secret", Server: serverName("a"), Target: Environment, Key: "API_KEY", Secret: true}}}
 	release := testRelease(t, "1", declaration)
 	i, err := New(testInstallationID(t), "/package", release)
 	if err != nil {
@@ -432,7 +436,7 @@ func TestServerAuthorityIsTheSelectedCodeOfOneServer(t *testing.T) {
 }
 
 func TestHTTPInputConfigurationRejectsInvalidCredentialsAtomically(t *testing.T) {
-	release := testRelease(t, "1", Declaration{Name: "package", Servers: []Server{{Name: serverName("server"), Transport: http, URL: "https://example.test/mcp"}}, Inputs: []Input{{ID: "credential", Server: serverName("server"), Target: Authorization, Secret: true}}})
+	release := testRelease(t, "1", Declaration{Name: "package", Servers: []Server{{Name: serverName("server"), Startup: DeclaredConnection{Connection: mcpserver.HTTPConnection{URL: "https://example.test/mcp"}}}}, Inputs: []Input{{ID: "credential", Server: serverName("server"), Target: Authorization, Secret: true}}})
 	i, err := New(testInstallationID(t), "/package", release)
 	if err != nil {
 		t.Fatal(err)
@@ -451,7 +455,7 @@ func TestHTTPInputConfigurationRejectsInvalidCredentialsAtomically(t *testing.T)
 func TestConfigurationIsADelta(t *testing.T) {
 	release := testRelease(t, "1", Declaration{
 		Name:    "package",
-		Servers: []Server{{Name: serverName("a"), Transport: stdio, Command: "server"}, {Name: serverName("b"), Transport: stdio, Command: "server"}},
+		Servers: []Server{{Name: serverName("a"), Startup: DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "server"}}}, {Name: serverName("b"), Startup: DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "server"}}}},
 		Inputs:  []Input{{ID: "one", Server: serverName("a"), Target: Environment, Key: "ONE"}, {ID: "two", Server: serverName("a"), Target: Environment, Key: "TWO"}},
 		Skills:  []Skill{{Name: "review", Description: "Review"}},
 	})
@@ -475,7 +479,7 @@ func TestConfigurationIsADelta(t *testing.T) {
 }
 
 func TestDisabledBackendDoesNotRequireItsInputs(t *testing.T) {
-	release := testRelease(t, "1", Declaration{Name: "package", Servers: []Server{{Name: serverName("a"), Transport: stdio, Command: "server"}, {Name: serverName("b"), Transport: stdio, Command: "server"}}, Inputs: []Input{{ID: "secret", Server: serverName("b"), Target: Environment, Key: "API_KEY", Secret: true, Required: true}}})
+	release := testRelease(t, "1", Declaration{Name: "package", Servers: []Server{{Name: serverName("a"), Startup: DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "server"}}}, {Name: serverName("b"), Startup: DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "server"}}}}, Inputs: []Input{{ID: "secret", Server: serverName("b"), Target: Environment, Key: "API_KEY", Secret: true, Required: true}}})
 	i, err := New(testInstallationID(t), "/package", release)
 	if err != nil {
 		t.Fatal(err)
@@ -496,7 +500,7 @@ func TestDisabledBackendDoesNotRequireItsInputs(t *testing.T) {
 }
 
 func TestOptionalInputPresenceAdvancesSourceConfiguration(t *testing.T) {
-	release := testRelease(t, "1", Declaration{Name: "package", Servers: []Server{{Name: serverName("server"), Transport: stdio, Command: "server"}}, Inputs: []Input{{ID: "option", Server: serverName("server"), Target: Environment, Key: "OPTION"}}})
+	release := testRelease(t, "1", Declaration{Name: "package", Servers: []Server{{Name: serverName("server"), Startup: DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "server"}}}}, Inputs: []Input{{ID: "option", Server: serverName("server"), Target: Environment, Key: "OPTION"}}})
 	installation, err := New(testInstallationID(t), "/package", release)
 	if err != nil {
 		t.Fatal(err)
@@ -606,8 +610,8 @@ func TestEnabledSkillsAreDeclaredUndisabledAndActive(t *testing.T) {
 }
 
 func TestServerInputsBindConfiguredValuesOfOneServer(t *testing.T) {
-	endpoint := Server{Name: serverName("api"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.com/mcp"}
-	process := Server{Name: serverName("local"), Transport: stdio, Command: "review"}
+	endpoint := Server{Name: serverName("api"), Startup: DeclaredConnection{Connection: mcpserver.HTTPConnection{URL: "https://example.com/mcp"}}}
+	process := Server{Name: serverName("local"), Startup: DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "review"}}}
 	release := testRelease(t, "1", Declaration{Name: "review", Servers: []Server{endpoint, process}, Inputs: []Input{
 		{ID: "token", Server: endpoint.Name, Target: Authorization, Secret: true},
 		{ID: "tenant", Server: endpoint.Name, Target: Header, Key: "X-Tenant", Secret: true},

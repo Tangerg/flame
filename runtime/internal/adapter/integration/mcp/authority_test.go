@@ -25,7 +25,7 @@ func TestBorrowBoundSessionCannotBorrowChangedOrWithdrawnAuthority(t *testing.T)
 	remote := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "original-owner"}, nil)
 	transport := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(func(*http.Request) *sdkmcp.Server { return remote }, nil))
 	defer transport.Close()
-	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("schedules"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}
+	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("schedules"), Enabled: true, Connection: mcpserver.HTTPConnection{URL: transport.URL}}
 	registry := &mutableSourceRegistry{server: server.Clone()}
 	pool, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry, nil, nil, nil, nil)
 	if err != nil {
@@ -42,7 +42,11 @@ func TestBorrowBoundSessionCannotBorrowChangedOrWithdrawnAuthority(t *testing.T)
 		apply func(*mcpserver.Server)
 	}{
 		{"disabled", func(s *mcpserver.Server) { s.Enabled = false }},
-		{"other endpoint", func(s *mcpserver.Server) { s.URL += "/replacement" }},
+		{"other endpoint", func(s *mcpserver.Server) {
+			http := s.Connection.(mcpserver.HTTPConnection)
+			http.URL += "/replacement"
+			s.Connection = http
+		}},
 		{"other source", func(s *mcpserver.Server) { s.Name = testsupport.ServerName("replacement") }},
 	} {
 		t.Run(change.name, func(t *testing.T) {
@@ -65,7 +69,7 @@ func TestPreparedToolObservesUncertainReplyOnlyAfterAdmittedDispatch(t *testing.
 	})
 	transport := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(func(*http.Request) *sdkmcp.Server { return remote }, nil))
 	t.Cleanup(transport.Close)
-	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("schedules"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}
+	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("schedules"), Enabled: true, Connection: mcpserver.HTTPConnection{URL: transport.URL}}
 	registry := &mutableSourceRegistry{server: server.Clone()}
 	var settlements atomic.Int32
 	prepare := func(ctx context.Context, source Executable, _ ToolHost) (ToolCall, func() error, error) {
@@ -136,9 +140,9 @@ func TestRetainedToolRejectsChangedCredentialsBeforeReconciliation(t *testing.T)
 				handler.ServeHTTP(response, request)
 			}))
 			t.Cleanup(transport.Close)
-			server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL, Authorization: "Bearer first"}
+			server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Enabled: true, Connection: mcpserver.HTTPConnection{URL: transport.URL, Authorization: "Bearer first"}}
 			if credential == "header" {
-				server.Headers = map[string]string{"X-API-Key": "first"}
+				server.Connection = mcpserver.HTTPConnection{URL: transport.URL, Authorization: "Bearer first", Headers: map[string]string{"X-API-Key": "first"}}
 			}
 			registry := &mutableSourceRegistry{server: server.Clone()}
 			pool, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry, nil, nil, nil, nil)
@@ -171,11 +175,13 @@ func TestRetainedToolRejectsChangedCredentialsBeforeReconciliation(t *testing.T)
 			if err := invoke(retained); err != nil {
 				t.Fatal(err)
 			}
+			rotated := server.Connection.(mcpserver.HTTPConnection)
 			if credential == "authorization" {
-				server.Authorization = "Bearer second"
+				rotated.Authorization = "Bearer second"
 			} else {
-				server.Headers["X-API-Key"] = "second"
+				rotated.Headers["X-API-Key"] = "second"
 			}
+			server.Connection = rotated
 			if server.AuthorityFingerprint() != registry.server.AuthorityFingerprint() {
 				t.Fatal("credential rotation changed permission authority")
 			}
@@ -210,9 +216,9 @@ func TestRetainedToolRejectsChangedCredentialsBeforeReconciliation(t *testing.T)
 			if calls.Load() != 2 {
 				t.Fatalf("remote calls = %d, want 2", calls.Load())
 			}
-			want := server.Authorization
+			want := server.Connection.(mcpserver.HTTPConnection).Authorization
 			if credential == "header" {
-				want = server.Headers["X-API-Key"]
+				want = server.Connection.(mcpserver.HTTPConnection).Headers["X-API-Key"]
 			}
 			if observedCredential.Load() != want {
 				t.Fatal("current executable did not use current credentials")
@@ -262,7 +268,7 @@ func TestFrozenExecutableAfterReconnectIsRejected(t *testing.T) {
 	})
 	transport := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(func(*http.Request) *sdkmcp.Server { return remote }, nil))
 	t.Cleanup(transport.Close)
-	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}
+	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Enabled: true, Connection: mcpserver.HTTPConnection{URL: transport.URL}}
 	registry := &mutableSourceRegistry{server: server.Clone()}
 	pool, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry, nil, nil, nil, nil)
 	if err != nil {
@@ -328,14 +334,18 @@ func TestReconnectUsesCurrentOwnerConfiguration(t *testing.T) {
 	}
 	var oldCalls, currentCalls atomic.Int32
 	oldRemote, currentRemote := openRemote(&oldCalls), openRemote(&currentCalls)
-	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: oldRemote.URL}
+	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Enabled: true, Connection: mcpserver.HTTPConnection{URL: oldRemote.URL}}
 	registry := &mutableSourceRegistry{server: server.Clone()}
 	pool, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = pool.Shutdown(context.WithoutCancel(t.Context())) })
-	server.URL = currentRemote.URL
+	{
+		updated := server.Connection.(mcpserver.HTTPConnection)
+		updated.URL = currentRemote.URL
+		server.Connection = updated
+	}
 	registry.set(server)
 	var replacement []toolcontract.Tool
 	awaitPoolStartup(t, pool)
@@ -377,7 +387,7 @@ func TestAuthorizationUsesCurrentOwnerCredentials(t *testing.T) {
 	remote := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "oauth-owner"}, nil)
 	transport := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(func(*http.Request) *sdkmcp.Server { return remote }, nil))
 	t.Cleanup(transport.Close)
-	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}
+	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Enabled: true, Connection: mcpserver.HTTPConnection{URL: transport.URL}}
 	registry := &mutableSourceRegistry{server: server.Clone()}
 	pool, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry, nil, nil, nil, nil)
 	if err != nil {
@@ -388,7 +398,11 @@ func TestAuthorizationUsesCurrentOwnerCredentials(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	server.Authorization = "Bearer local-test"
+	{
+		updated := server.Connection.(mcpserver.HTTPConnection)
+		updated.Authorization = "Bearer local-test"
+		server.Connection = updated
+	}
 	registry.set(server)
 	if err := authorizePool(pool, t.Context(), server.ID()); err == nil || !strings.Contains(err.Error(), "static authorization") {
 		t.Fatalf("authorization ignored the owner's static credentials: %v", err)

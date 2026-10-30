@@ -9,6 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
@@ -46,8 +47,12 @@ func (s *ReleaseStore) Get(ctx context.Context, digest integrity.Digest) (plugin
 	if projection, ok := s.projections[digest]; ok && projection.declaration == body {
 		return projection.release, nil
 	}
-	var declaration plugin.Declaration
-	if err := decodeStoredJSON([]byte(body), &declaration); err != nil {
+	var stored storedDeclaration
+	if err := decodeStoredJSON([]byte(body), &stored); err != nil {
+		return plugin.Release{}, fmt.Errorf("sqlite: decode release %s: %w", digest, err)
+	}
+	declaration, err := stored.declaration()
+	if err != nil {
 		return plugin.Release{}, fmt.Errorf("sqlite: decode release %s: %w", digest, err)
 	}
 	release, err := plugin.NewRelease(digest, declaration)
@@ -63,7 +68,7 @@ func (s *ReleaseStore) Get(ctx context.Context, digest integrity.Digest) (plugin
 // changes, so installation sources follow it relationally.
 func (s *ReleaseStore) Admit(ctx context.Context, release plugin.Release) error {
 	declaration := release.Declaration()
-	body, err := encodeStoredJSON(declaration)
+	body, err := encodeStoredJSON(storeDeclaration(declaration))
 	if err != nil {
 		return err
 	}
@@ -121,4 +126,64 @@ func (s *ReleaseStore) Remove(ctx context.Context, digest integrity.Digest) erro
 	delete(s.projections, digest)
 	s.mu.Unlock()
 	return nil
+}
+
+// storedDeclaration is the release record. Its servers are stored flat; the
+// shadowing field replaces the domain's startup variants in the encoding.
+type storedDeclaration struct {
+	plugin.Declaration
+	Servers []storedServer
+}
+
+type storedServer struct {
+	Name      mcpserver.ServerName
+	Managed   *plugin.ManagedBackend `json:",omitzero"`
+	Transport mcpserver.Transport
+	Command   string
+	Args      []string
+	Env       map[string]string
+	Dir       string
+	URL       string
+	Headers   map[string]string
+}
+
+func storeDeclaration(declaration plugin.Declaration) storedDeclaration {
+	stored := storedDeclaration{Declaration: declaration, Servers: make([]storedServer, len(declaration.Servers))}
+	stored.Declaration.Servers = nil
+	for index, server := range declaration.Servers {
+		record := storedServer{Name: server.Name, Transport: server.Transport()}
+		switch startup := server.Startup.(type) {
+		case plugin.ManagedBackend:
+			record.Managed = &startup
+		case plugin.DeclaredConnection:
+			switch connection := startup.Connection.(type) {
+			case mcpserver.StdioConnection:
+				record.Command, record.Args, record.Env, record.Dir = connection.Command, connection.Args, connection.Env, connection.Dir
+			case mcpserver.HTTPConnection:
+				record.URL, record.Headers = connection.URL, connection.Headers
+			}
+		}
+		stored.Servers[index] = record
+	}
+	return stored
+}
+
+func (s storedDeclaration) declaration() (plugin.Declaration, error) {
+	declaration := s.Declaration
+	declaration.Servers = make([]plugin.Server, len(s.Servers))
+	for index, record := range s.Servers {
+		server := plugin.Server{Name: record.Name}
+		switch {
+		case record.Managed != nil:
+			server.Startup = *record.Managed
+		case record.Transport == mcpserver.TransportStdio:
+			server.Startup = plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: record.Command, Args: record.Args, Env: record.Env, Dir: record.Dir}}
+		case record.Transport == mcpserver.TransportStreamableHTTP:
+			server.Startup = plugin.DeclaredConnection{Connection: mcpserver.HTTPConnection{URL: record.URL, Headers: record.Headers}}
+		default:
+			return plugin.Declaration{}, fmt.Errorf("server %q has unknown transport %q", record.Name, record.Transport)
+		}
+		declaration.Servers[index] = server
+	}
+	return declaration, nil
 }

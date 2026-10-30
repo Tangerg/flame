@@ -38,7 +38,7 @@ func (r *Releases) Prepare(ctx context.Context, installation *plugin.Installatio
 		if err := cancellation.Err(ctx); err != nil {
 			return errors.Join(failures, err)
 		}
-		if !installation.ServerEnabled(server.Name) || server.Transport != mcpserver.TransportStdio {
+		if !installation.ServerEnabled(server.Name) || server.Transport() != mcpserver.TransportStdio {
 			continue
 		}
 		if err := r.prepareBackend(installation.ID(), server); err != nil {
@@ -204,7 +204,13 @@ func declaredServer(installation *plugin.Installation, release plugin.Release, d
 	if err != nil {
 		return mcpserver.Server{}, err
 	}
-	return mcpserver.Server{Source: source, Name: declared.Name, Transport: declared.Transport, Enabled: installation.ServerEnabled(declared.Name), Description: declaration.Description}, nil
+	// An empty connection of the declared transport names how the server is
+	// reached while failing validation until configuration completes it.
+	var connection mcpserver.Connection = mcpserver.StdioConnection{}
+	if declared.Transport() == mcpserver.TransportStreamableHTTP {
+		connection = mcpserver.HTTPConnection{}
+	}
+	return mcpserver.Server{Source: source, Name: declared.Name, Connection: connection, Enabled: installation.ServerEnabled(declared.Name), Description: declaration.Description}, nil
 }
 
 func (r *Releases) dataRoot(id identity.InstallationID) string {
@@ -235,57 +241,41 @@ func descriptorServer(installation *plugin.Installation, release plugin.Release,
 	if err != nil {
 		return mcpserver.Server{}, err
 	}
-	switch declared.Transport {
-	case mcpserver.TransportStdio:
-		server.Env = map[string]string{plugin.RootVariable: dir, plugin.DataVariable: data}
-		if declared.Managed != nil {
-			node, err := hostNode()
-			if err != nil {
-				return mcpserver.Server{}, err
-			}
-			server.Command = node.Command()
-			server.Args = node.Arguments(filepath.Join(dir, filepath.FromSlash(declared.Managed.Entry)))
-			server.ExecutionEnvironment = node.Identity()
-		} else {
-			server.Command = declared.Command
-			if packaged, found := declared.PackagedCommand(); found {
-				server.Command = filepath.Join(dir, filepath.FromSlash(packaged))
-			}
-			for _, arg := range declared.Args {
-				server.Args = append(server.Args, plugin.ExpandPlaceholders(arg, dir, data))
-			}
-		}
-		for key, value := range declared.Env {
-			server.Env[key] = plugin.ExpandPlaceholders(value, dir, data)
-		}
-		workingDirectory, err := declared.WorkingDirectory()
+	switch startup := declared.Startup.(type) {
+	case plugin.ManagedBackend:
+		node, err := hostNode()
 		if err != nil {
 			return mcpserver.Server{}, err
 		}
-		boundary, relative := locate(workingDirectory, dir, data)
-		server.Dir = filepath.Join(boundary, relative)
-	case mcpserver.TransportStreamableHTTP:
-		server.URL = declared.URL
-		server.Headers = maps.Clone(declared.Headers)
-	}
-	if len(inputs.Headers) > 0 && server.Headers == nil {
-		server.Headers = map[string]string{}
-	}
-	maps.Copy(server.Headers, inputs.Headers)
-	maps.Copy(server.Env, inputs.Env)
-	if inputs.Authorization != "" {
-		server.Authorization = inputs.Authorization
-	}
-	if server.Transport == mcpserver.TransportStdio {
-		inheritPath := true
-		for key := range server.Env {
-			if strings.EqualFold(key, "PATH") {
-				inheritPath = false
-				break
-			}
+		process := mcpserver.StdioConnection{
+			Command: node.Command(), Args: node.Arguments(filepath.Join(dir, filepath.FromSlash(startup.Entry))),
+			ExecutionEnvironment: node.Identity(),
 		}
-		if inheritPath {
-			server.Env["PATH"] = os.Getenv("PATH")
+		server.Connection, err = realizeProcess(process, nil, declared, inputs, dir, data)
+		if err != nil {
+			return mcpserver.Server{}, err
+		}
+	case plugin.DeclaredConnection:
+		switch connection := startup.Connection.(type) {
+		case mcpserver.StdioConnection:
+			process := mcpserver.StdioConnection{Command: connection.Command}
+			if packaged, found := declared.PackagedCommand(); found {
+				process.Command = filepath.Join(dir, filepath.FromSlash(packaged))
+			}
+			for _, arg := range connection.Args {
+				process.Args = append(process.Args, plugin.ExpandPlaceholders(arg, dir, data))
+			}
+			server.Connection, err = realizeProcess(process, connection.Env, declared, inputs, dir, data)
+			if err != nil {
+				return mcpserver.Server{}, err
+			}
+		case mcpserver.HTTPConnection:
+			headers := maps.Clone(connection.Headers)
+			if len(inputs.Headers) > 0 && headers == nil {
+				headers = map[string]string{}
+			}
+			maps.Copy(headers, inputs.Headers)
+			server.Connection = mcpserver.HTTPConnection{URL: connection.URL, Authorization: inputs.Authorization, Headers: headers}
 		}
 	}
 	if err := server.Validate(); err != nil {
@@ -294,18 +284,40 @@ func descriptorServer(installation *plugin.Installation, release plugin.Release,
 	return server, nil
 }
 
+// realizeProcess completes a stdio connection with the Runtime-bound root and
+// data variables, the package's static environment, then the configured inputs, an inherited PATH unless one was
+// supplied, and its confined working directory.
+func realizeProcess(process mcpserver.StdioConnection, static map[string]string, declared plugin.Server, inputs plugin.ServerInputs, dir, data string) (mcpserver.Connection, error) {
+	process.Env = map[string]string{plugin.RootVariable: dir, plugin.DataVariable: data}
+	for key, value := range static {
+		process.Env[key] = plugin.ExpandPlaceholders(value, dir, data)
+	}
+	maps.Copy(process.Env, inputs.Env)
+	if !slices.ContainsFunc(slices.Collect(maps.Keys(process.Env)), func(key string) bool { return strings.EqualFold(key, "PATH") }) {
+		process.Env["PATH"] = os.Getenv("PATH")
+	}
+	workingDirectory, err := declared.WorkingDirectory()
+	if err != nil {
+		return nil, err
+	}
+	boundary, relative := locate(workingDirectory, dir, data)
+	process.Dir = filepath.Join(boundary, relative)
+	return process, nil
+}
+
 // realizeBackend checks that an enabled stdio descriptor's working directory
 // exists inside its boundary now; other descriptors need no backend.
 func realizeBackend(ctx context.Context, server mcpserver.Server, declared plugin.Server, dir, data string) error {
-	if !server.Enabled || server.Transport != mcpserver.TransportStdio {
+	process, ok := server.Connection.(mcpserver.StdioConnection)
+	if !server.Enabled || !ok {
 		return nil
 	}
-	if declared.Managed != nil {
+	if _, managed := declared.Startup.(plugin.ManagedBackend); managed {
 		node, err := hostNode()
 		if err != nil {
 			return err
 		}
-		if server.Command != node.Command() {
+		if process.Command != node.Command() {
 			return errors.New("pluginpackage: managed executable differs from distribution")
 		}
 		if err := node.Verify(ctx); err != nil {

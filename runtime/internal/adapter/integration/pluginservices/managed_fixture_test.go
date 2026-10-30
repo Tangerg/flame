@@ -2,6 +2,7 @@ package pluginservices
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -67,11 +68,15 @@ func (p managedPackages) Connection(ctx context.Context, installation *plugin.In
 	if err != nil || !found {
 		return mcpapp.Launch{}, found, err
 	}
-	lease, err := os.Open(server.Command)
+	process, ok := server.Connection.(mcpserver.StdioConnection)
+	if !ok {
+		return mcpapp.Launch{}, false, errors.New("fixture: managed server realized no process")
+	}
+	lease, err := os.Open(process.Command)
 	if err != nil {
 		return mcpapp.Launch{}, false, err
 	}
-	return mcpapp.Launch{Server: server, Stdio: &mcpapp.Stdio{Command: server.Command, Args: server.Args, Env: server.Env, Dir: server.Dir, ExpectedExecutable: p.digest}, Retire: lease}, true, nil
+	return mcpapp.Launch{Server: server, Stdio: &mcpapp.Stdio{Command: process.Command, Args: process.Args, Env: process.Env, Dir: process.Dir, ExpectedExecutable: p.digest}, Retire: lease}, true, nil
 }
 
 type managedFixture struct {
@@ -94,26 +99,21 @@ func newManagedFixture(t *testing.T, store *toolInstallationStore, server mcpser
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.RemoveAll(directory) })
-	if server.Transport == mcpserver.TransportStreamableHTTP {
-		endpoint := server.URL
-		server.Command, err = os.Executable()
+	if http, ok := server.Connection.(mcpserver.HTTPConnection); ok {
+		executable, err := os.Executable()
 		if err != nil {
 			t.Fatal(err)
 		}
-		server.Transport = mcpserver.TransportStdio
-		server.URL = ""
-		server.Args = []string{"-test.run=^TestManagedTransportHelper$"}
-		server.Env = map[string]string{"FLAME_TEST_MCP_PROXY": endpoint}
-		server.Dir = directory
+		server.Connection = mcpserver.StdioConnection{
+			Command: executable, Args: []string{"-test.run=^TestManagedTransportHelper$"},
+			Env: map[string]string{"FLAME_TEST_MCP_PROXY": http.URL}, Dir: directory,
+		}
 	}
-	data, err := os.ReadFile(server.Command)
+	data, err := os.ReadFile(server.Connection.(mcpserver.StdioConnection).Command)
 	if err != nil {
 		t.Fatal(err)
 	}
-	digest, err := integrity.ParseDigest(integrity.Hash(data).String())
-	if err != nil {
-		t.Fatal(err)
-	}
+	digest := integrity.Hash(data)
 	runnerOwner, err := runner.Open(runner.Config{Directory: filepath.Join(directory, "runner")})
 	if err != nil {
 		t.Fatal(err)

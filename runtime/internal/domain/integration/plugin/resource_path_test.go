@@ -3,6 +3,8 @@ package plugin
 import (
 	"errors"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
 func TestPortableDeviceAliasesCannotBecomeResourcesOrDataDirectories(t *testing.T) {
@@ -11,7 +13,7 @@ func TestPortableDeviceAliasesCannotBecomeResourcesOrDataDirectories(t *testing.
 			if ValidResourcePath("nested/" + name) {
 				t.Error("portable resource path admitted a device alias")
 			}
-			server := Server{Name: serverName("local"), Transport: stdio, Command: "fixture", Dir: "${PLUGIN_DATA}/nested/" + name}
+			server := Server{Name: serverName("local"), Startup: DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "fixture", Dir: "${PLUGIN_DATA}/nested/" + name}}}
 			if _, err := NewRelease(testDigest("1"), Declaration{Name: "local", Servers: []Server{server}}); !errors.Is(err, ErrInvalid) {
 				t.Fatalf("device working directory error = %v", err)
 			}

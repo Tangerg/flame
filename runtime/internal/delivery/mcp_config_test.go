@@ -33,9 +33,11 @@ func TestUpdateMCPServerPreservesStoredHTTPSecretsAtSameOrigin(t *testing.T) {
 	name := testsupport.UserMCPServer("linear")
 	registry := &mcpRegistryFake{servers: map[mcpserver.ID]mcpserver.Server{
 		name: {
-			Source: mcpserver.UserSource(), Name: name.Name(), Enabled: true, Transport: mcpserver.TransportStreamableHTTP,
-			URL: "https://mcp.linear.app/mcp", Authorization: "Bearer stored-token",
-			Headers: map[string]string{"X-API-Key": "stored-key"},
+			Source: mcpserver.UserSource(), Name: name.Name(), Enabled: true,
+			Connection: mcpserver.HTTPConnection{
+				URL: "https://mcp.linear.app/mcp", Authorization: "Bearer stored-token",
+				Headers: map[string]string{"X-API-Key": "stored-key"},
+			},
 		},
 	}}
 	s := handlerWithMCP(t, mcpapp.Config{Registry: registry})
@@ -52,14 +54,14 @@ func TestUpdateMCPServerPreservesStoredHTTPSecretsAtSameOrigin(t *testing.T) {
 	if len(registry.saved) != 1 {
 		t.Fatalf("saved %d server(s), want 1", len(registry.saved))
 	}
-	if registry.saved[0].Authorization != "Bearer stored-token" {
-		t.Fatalf("Authorization = %q, want stored token", registry.saved[0].Authorization)
+	if saved := registry.saved[0].Connection.(mcpserver.HTTPConnection); saved.Authorization != "Bearer stored-token" {
+		t.Fatalf("Authorization = %q, want stored token", saved.Authorization)
 	}
 	if got.Connection.AuthorizationMasked == "" || got.Connection.AuthorizationMasked == "Bearer stored-token" {
 		t.Fatalf("AuthorizationMasked = %q, want masked stored token", got.Connection.AuthorizationMasked)
 	}
-	if registry.saved[0].Headers["X-API-Key"] != "stored-key" {
-		t.Fatalf("Headers = %#v, want stored header", registry.saved[0].Headers)
+	if saved := registry.saved[0].Connection.(mcpserver.HTTPConnection); saved.Headers["X-API-Key"] != "stored-key" {
+		t.Fatalf("Headers = %#v, want stored header", saved.Headers)
 	}
 	if got.Connection.HeadersMasked["X-API-Key"] == "" || got.Connection.HeadersMasked["X-API-Key"] == "stored-key" {
 		t.Fatalf("HeadersMasked = %#v, want masked stored header", got.Connection.HeadersMasked)
@@ -70,8 +72,10 @@ func TestUpdateMCPServerRequiresExplicitAuthorizationDispositionAcrossOrigins(t 
 	name := testsupport.UserMCPServer("linear")
 	registry := &mcpRegistryFake{servers: map[mcpserver.ID]mcpserver.Server{
 		name: {
-			Source: mcpserver.UserSource(), Name: name.Name(), Enabled: true, Transport: mcpserver.TransportStreamableHTTP,
-			URL: "https://mcp.linear.app/mcp", Authorization: "Bearer stored-token",
+			Source:     mcpserver.UserSource(),
+			Name:       name.Name(),
+			Enabled:    true,
+			Connection: mcpserver.HTTPConnection{URL: "https://mcp.linear.app/mcp", Authorization: "Bearer stored-token"},
 		},
 	}}
 	s := handlerWithMCP(t, mcpapp.Config{Registry: registry})
@@ -96,9 +100,9 @@ func TestUpdateMCPServerRequiresExplicitAuthorizationDispositionAcrossOrigins(t 
 	if err != nil {
 		t.Fatalf("explicit clear: %v", err)
 	}
-	if registry.saved[0].Authorization != "" || got.Connection.AuthorizationMasked != "" {
+	if registry.saved[0].Connection.(mcpserver.HTTPConnection).Authorization != "" || got.Connection.AuthorizationMasked != "" {
 		t.Fatalf("authorization survived explicit clear: stored=%q wire=%q",
-			registry.saved[0].Authorization, got.Connection.AuthorizationMasked)
+			registry.saved[0].Connection.(mcpserver.HTTPConnection).Authorization, got.Connection.AuthorizationMasked)
 	}
 }
 
@@ -106,8 +110,10 @@ func TestUpdateMCPServerRequiresExplicitHeadersDispositionAcrossOrigins(t *testi
 	name := testsupport.UserMCPServer("cloud")
 	registry := &mcpRegistryFake{servers: map[mcpserver.ID]mcpserver.Server{
 		name: {
-			Source: mcpserver.UserSource(), Name: name.Name(), Enabled: true, Transport: mcpserver.TransportStreamableHTTP,
-			URL: "https://old.example/mcp", Headers: map[string]string{"X-API-Key": "stored-key"},
+			Source:     mcpserver.UserSource(),
+			Name:       name.Name(),
+			Enabled:    true,
+			Connection: mcpserver.HTTPConnection{URL: "https://old.example/mcp", Headers: map[string]string{"X-API-Key": "stored-key"}},
 		},
 	}}
 	s := handlerWithMCP(t, mcpapp.Config{Registry: registry})
@@ -129,9 +135,9 @@ func TestUpdateMCPServerRequiresExplicitHeadersDispositionAcrossOrigins(t *testi
 	if err != nil {
 		t.Fatalf("explicit headers clear: %v", err)
 	}
-	if len(registry.saved[0].Headers) != 0 || len(got.Connection.HeadersMasked) != 0 {
+	if len(registry.saved[0].Connection.(mcpserver.HTTPConnection).Headers) != 0 || len(got.Connection.HeadersMasked) != 0 {
 		t.Fatalf("headers survived explicit clear: stored=%#v wire=%#v",
-			registry.saved[0].Headers, got.Connection.HeadersMasked)
+			registry.saved[0].Connection.(mcpserver.HTTPConnection).Headers, got.Connection.HeadersMasked)
 	}
 }
 
@@ -139,9 +145,10 @@ func TestUpdateMCPServerProtectsStoredEnvironmentAcrossProcessTargets(t *testing
 	name := testsupport.UserMCPServer("fs")
 	registry := &mcpRegistryFake{servers: map[mcpserver.ID]mcpserver.Server{
 		name: {
-			Source: mcpserver.UserSource(), Name: name.Name(), Enabled: true, Transport: mcpserver.TransportStdio,
-			Command: "node", Args: []string{"server.js"}, Dir: "/repo",
-			Env: map[string]string{"API_KEY": "stored-key"},
+			Source:     mcpserver.UserSource(),
+			Name:       name.Name(),
+			Enabled:    true,
+			Connection: mcpserver.StdioConnection{Command: "node", Args: []string{"server.js"}, Dir: "/repo", Env: map[string]string{"API_KEY": "stored-key"}},
 		},
 	}}
 	s := handlerWithMCP(t, mcpapp.Config{Registry: registry})
@@ -154,8 +161,8 @@ func TestUpdateMCPServerProtectsStoredEnvironmentAcrossProcessTargets(t *testing
 	if err != nil {
 		t.Fatalf("same target update: %v", err)
 	}
-	if registry.saved[0].Env["API_KEY"] != "stored-key" {
-		t.Fatalf("Env = %#v, want stored environment", registry.saved[0].Env)
+	if registry.saved[0].Connection.(mcpserver.StdioConnection).Env["API_KEY"] != "stored-key" {
+		t.Fatalf("Env = %#v, want stored environment", registry.saved[0].Connection.(mcpserver.StdioConnection).Env)
 	}
 	if got.Connection.EnvMasked["API_KEY"] == "" || got.Connection.EnvMasked["API_KEY"] == "stored-key" {
 		t.Fatalf("EnvMasked = %#v, want masked environment", got.Connection.EnvMasked)
@@ -176,9 +183,9 @@ func TestUpdateMCPServerProtectsStoredEnvironmentAcrossProcessTargets(t *testing
 	if err != nil {
 		t.Fatalf("explicit environment clear: %v", err)
 	}
-	if len(registry.saved[len(registry.saved)-1].Env) != 0 || len(got.Connection.EnvMasked) != 0 {
-		t.Fatalf("environment survived explicit clear: stored=%#v wire=%#v",
-			registry.saved[len(registry.saved)-1].Env, got.Connection.EnvMasked)
+	stored := registry.saved[len(registry.saved)-1].Connection.(mcpserver.StdioConnection)
+	if len(stored.Env) != 0 || len(got.Connection.EnvMasked) != 0 {
+		t.Fatalf("environment survived explicit clear: stored=%#v wire=%#v", stored.Env, got.Connection.EnvMasked)
 	}
 }
 

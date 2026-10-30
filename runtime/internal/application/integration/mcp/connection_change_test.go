@@ -43,7 +43,7 @@ func TestServerUpdateUsesTheDomainConnectionIdentity(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			name := testsupport.UserMCPServer("files")
-			current := mcpserver.Server{Source: mcpserver.UserSource(), Name: name.Name(), Enabled: test.initiallyEnabled, Transport: mcpserver.TransportStreamableHTTP, URL: "https://mcp.example/current"}
+			current := mcpserver.Server{Source: mcpserver.UserSource(), Name: name.Name(), Enabled: test.initiallyEnabled, Connection: mcpserver.HTTPConnection{URL: "https://mcp.example/current"}}
 			registry := &testRegistry{servers: map[mcpserver.ID]mcpserver.Server{name: current}}
 			ports := &countedConnections{fakePorts: &fakePorts{statuses: []mcpserver.ConnectionStatus{{Server: name, State: mcpserver.ConnectionConnected, ToolCount: 3}}}}
 			coordinator := testCoordinator(t, Config{Registry: registry, Connections: ports, ToolCatalog: ports})

@@ -27,7 +27,7 @@ func TestRemovedMCPSourceCannotRetainApproval(t *testing.T) {
 	db := openStore(t)
 	servers := newMCPServerStore(db)
 	rules := newApprovalRuleStore(db)
-	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("github"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: "https://old.example/mcp"}
+	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("github"), Enabled: true, Connection: mcpserver.HTTPConnection{URL: "https://old.example/mcp"}}
 	if err := servers.Save(t.Context(), server); err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +42,9 @@ func TestRemovedMCPSourceCannotRetainApproval(t *testing.T) {
 	if err := servers.Remove(t.Context(), server.Name); err != nil {
 		t.Fatal(err)
 	}
-	server.URL = "https://new.example/mcp"
+	moved := server.Connection.(mcpserver.HTTPConnection)
+	moved.URL = "https://new.example/mcp"
+	server.Connection = moved
 	if err := servers.Save(t.Context(), server); err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +64,7 @@ func TestUserServerRemovalCascadesEveryRelation(t *testing.T) {
 	servers := newMCPServerStore(db)
 	rules := newApprovalRuleStore(db)
 	authorization := newMCPAuthorizationStore(db)
-	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: "https://files.example/mcp"}
+	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Enabled: true, Connection: mcpserver.HTTPConnection{URL: "https://files.example/mcp"}}
 	if err := servers.Save(t.Context(), server); err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +79,11 @@ func TestUserServerRemovalCascadesEveryRelation(t *testing.T) {
 	if err := servers.SetToolExposure(t.Context(), ref, true); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := authorization.BeginOAuthSession(t.Context(), server.OAuthTarget()); err != nil {
+	target, ok := server.OAuthTarget()
+	if !ok {
+		t.Fatal("HTTP server has no OAuth target")
+	}
+	if _, err := authorization.BeginOAuthSession(t.Context(), target); err != nil {
 		t.Fatal(err)
 	}
 	requireRows(t, db, map[string]int{"mcp_sources": 1, "mcp_servers": 1, "approval_rules": 1, "mcp_tool_exposure": 1, "mcp_oauth_sessions": 1})
@@ -102,7 +108,7 @@ func TestEqualNamesAcrossOriginsKeepSeparateRelations(t *testing.T) {
 	rules := newApprovalRuleStore(db)
 	catalog := newReleaseStore(db)
 	installations := newInstallationStore(catalog)
-	release := testsupport.Release(t, "release", plugin.Declaration{Name: "package", Servers: []plugin.Server{{Name: testsupport.ServerName("files"), Transport: mcpserver.TransportStdio, Command: "files"}}})
+	release := testsupport.Release(t, "release", plugin.Declaration{Name: "package", Servers: []plugin.Server{{Name: testsupport.ServerName("files"), Startup: plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "files"}}}}})
 	if err := catalog.Admit(t.Context(), release); err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +123,7 @@ func TestEqualNamesAcrossOriginsKeepSeparateRelations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	user := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Enabled: true, Transport: mcpserver.TransportStdio, Command: "files"}
+	user := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Enabled: true, Connection: mcpserver.StdioConnection{Command: "files"}}
 	if err := servers.Save(t.Context(), user); err != nil {
 		t.Fatal(err)
 	}

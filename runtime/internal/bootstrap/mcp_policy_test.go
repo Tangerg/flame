@@ -28,8 +28,8 @@ func (m *mcpServerListStub) Definitions(context.Context) ([]mcpserver.Server, er
 
 func TestBuildMCPEnvironmentUsesOneRegistrySnapshot(t *testing.T) {
 	registry := &mcpServerListStub{servers: []mcpserver.Server{
-		{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files"},
-		{Source: mcpserver.UserSource(), Name: testsupport.ServerName("off"), Enabled: false, Transport: mcpserver.TransportStdio, Command: "mcp-off"},
+		{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Enabled: true, Connection: mcpserver.StdioConnection{Command: "mcp-files"}},
+		{Source: mcpserver.UserSource(), Name: testsupport.ServerName("off"), Enabled: false, Connection: mcpserver.StdioConnection{Command: "mcp-off"}},
 	}, disabled: []tool.Ref{testMCPRef("files", "write")}}
 
 	env, err := buildMCPEnvironment(context.Background(), registry, registry)

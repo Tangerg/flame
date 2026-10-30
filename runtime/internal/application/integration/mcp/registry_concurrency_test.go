@@ -95,7 +95,7 @@ func TestRegistryMutationIsLinearizedThroughLiveApply(t *testing.T) {
 	live := &liveSet{servers: map[mcpserver.ID]bool{}}
 	policy := NewExposureState(nil, nil)
 	c := testCoordinator(t, Config{Registry: registry, Connections: live, Exposure: policy})
-	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files"}
+	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Enabled: true, Connection: mcpserver.StdioConnection{Command: "mcp-files"}}
 
 	configured := make(chan error, 1)
 	go func() {
@@ -137,7 +137,7 @@ func TestPostCommitReconciliationOutlivesRequestCancellation(t *testing.T) {
 	live := &liveSet{servers: map[mcpserver.ID]bool{}, configured: make(chan string, 1)}
 	policy := NewExposureState(nil, nil)
 	c := testCoordinator(t, Config{Registry: registry, Connections: live, Exposure: policy})
-	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files"}
+	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Enabled: true, Connection: mcpserver.StdioConnection{Command: "mcp-files"}}
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() {
@@ -164,32 +164,28 @@ func TestPostCommitReconciliationOutlivesRequestCancellation(t *testing.T) {
 }
 
 func input(server mcpserver.Server) ServerInput {
-	var authorization *AuthorizationChange
-	if server.Authorization != "" {
-		authorization = &AuthorizationChange{Kind: SecretSet, Value: server.Authorization}
+	connection := ConnectionInput{Transport: server.Transport()}
+	switch c := server.Connection.(type) {
+	case mcpserver.HTTPConnection:
+		connection.URL = c.URL
+		if c.Authorization != "" {
+			connection.Authorization = &SecretChange[string]{Kind: SecretSet, Value: c.Authorization}
+		}
+		if len(c.Headers) > 0 {
+			connection.Headers = &SecretChange[map[string]string]{Kind: SecretSet, Value: c.Headers}
+		}
+	case mcpserver.StdioConnection:
+		connection.Command, connection.Args, connection.Dir = c.Command, c.Args, c.Dir
+		if len(c.Env) > 0 {
+			connection.Environment = &SecretChange[map[string]string]{Kind: SecretSet, Value: c.Env}
+		}
 	}
-	var headers *HeadersChange
-	if len(server.Headers) > 0 {
-		headers = &HeadersChange{Kind: SecretSet, Value: server.Headers}
-	}
-	var environment *EnvironmentChange
-	if len(server.Env) > 0 {
-		environment = &EnvironmentChange{Kind: SecretSet, Value: server.Env}
-	}
-	return ServerInput{
-		Name: server.Name, Enabled: server.Enabled, Description: server.Description,
-		Connection: ConnectionInput{
-			Transport: server.Transport, URL: server.URL,
-			Authorization: authorization, Headers: headers,
-			Command: server.Command, Args: server.Args, Environment: environment, Dir: server.Dir,
-		},
-		HandshakeTimeout: server.HandshakeTimeout,
-	}
+	return ServerInput{Name: server.Name, Enabled: server.Enabled, Description: server.Description, Connection: connection}
 }
 
 func TestRemoveDoesNotWaitForInteractiveConnection(t *testing.T) {
 	name := testsupport.UserMCPServer("files")
-	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: name.Name(), Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files"}
+	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: name.Name(), Enabled: true, Connection: mcpserver.StdioConnection{Command: "mcp-files"}}
 	registry := &testRegistry{servers: map[mcpserver.ID]mcpserver.Server{name: server}}
 	live := &blockingProjection{
 		liveSet:          liveSet{servers: map[mcpserver.ID]bool{name: true}},
@@ -238,7 +234,7 @@ func TestRemoveDoesNotWaitForInteractiveConnection(t *testing.T) {
 
 func TestQueuedReconnectCannotReviveRemovedServer(t *testing.T) {
 	name := testsupport.UserMCPServer("files")
-	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: name.Name(), Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files"}
+	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: name.Name(), Enabled: true, Connection: mcpserver.StdioConnection{Command: "mcp-files"}}
 	registry := &testRegistry{
 		servers:         map[mcpserver.ID]mcpserver.Server{name: server},
 		removeCommitted: make(chan struct{}),

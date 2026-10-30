@@ -73,9 +73,10 @@ func TestInstallationReconciliationRefusesUserServers(t *testing.T) {
 func TestServersDoNotExposeStoredMutableValues(t *testing.T) {
 	name := testsupport.UserMCPServer("files")
 	server := mcpserver.Server{
-		Source: mcpserver.UserSource(),
-		Name:   name.Name(), Enabled: true, Transport: mcpserver.TransportStdio,
-		Command: "mcp-files", Args: []string{"--root", "/repo"},
+		Source:     mcpserver.UserSource(),
+		Name:       name.Name(),
+		Enabled:    true,
+		Connection: mcpserver.StdioConnection{Command: "mcp-files", Args: []string{"--root", "/repo"}},
 	}
 	registry := &testRegistry{servers: map[mcpserver.ID]mcpserver.Server{name: server}}
 	ports := &fakePorts{}
@@ -86,7 +87,7 @@ func TestServersDoNotExposeStoredMutableValues(t *testing.T) {
 		t.Fatalf("Servers = (%+v, %v), want one server", servers, err)
 	}
 	servers[0].Connection.Args[0] = "changed"
-	if server.Args[0] != "--root" {
+	if server.Connection.(mcpserver.StdioConnection).Args[0] != "--root" {
 		t.Fatal("returned server changed stored arguments")
 	}
 }
@@ -229,7 +230,7 @@ func TestConnectionValidationUsesDurableRegistry(t *testing.T) {
 	name := testsupport.UserMCPServer("fs")
 	ports := &fakePorts{reconnectDone: make(chan string, 1)}
 	registry := &testRegistry{servers: map[mcpserver.ID]mcpserver.Server{
-		name: {Source: mcpserver.UserSource(), Name: name.Name(), Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-fs"},
+		name: {Source: mcpserver.UserSource(), Name: name.Name(), Enabled: true, Connection: mcpserver.StdioConnection{Command: "mcp-fs"}},
 	}}
 	c := testCoordinator(t, Config{
 		Registry:    registry,
@@ -257,7 +258,7 @@ func TestConnectionRejectsDurablyDisabledServer(t *testing.T) {
 		statuses: []mcpserver.ConnectionStatus{{Server: name, State: mcpserver.ConnectionConnected}},
 	}
 	registry := &testRegistry{servers: map[mcpserver.ID]mcpserver.Server{
-		name: {Source: mcpserver.UserSource(), Name: name.Name(), Enabled: false, Transport: mcpserver.TransportStdio, Command: "mcp-fs"},
+		name: {Source: mcpserver.UserSource(), Name: name.Name(), Enabled: false, Connection: mcpserver.StdioConnection{Command: "mcp-fs"}},
 	}}
 	c := testCoordinator(t, Config{
 		Registry:    registry,
@@ -281,7 +282,7 @@ func TestStatusCallbackMayReenterMutationWithoutDeadlock(t *testing.T) {
 		statuses: []mcpserver.ConnectionStatus{{Server: name, State: mcpserver.ConnectionConnected}},
 	}
 	registry := &testRegistry{servers: map[mcpserver.ID]mcpserver.Server{
-		name: {Source: mcpserver.UserSource(), Name: name.Name(), Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-fs"},
+		name: {Source: mcpserver.UserSource(), Name: name.Name(), Enabled: true, Connection: mcpserver.StdioConnection{Command: "mcp-fs"}},
 	}}
 	statuses := make(chan ServerStatus, 2)
 	mutationResult := make(chan error, 1)
@@ -414,7 +415,7 @@ func TestTestServerUsesLiveRegistryPort(t *testing.T) {
 		Name: testsupport.ServerName("fs"), Connection: ConnectionInput{
 			Transport: mcpserver.TransportStdio, Command: "mcp-fs",
 			Args:        []string{"--root", "/repo"},
-			Environment: &EnvironmentChange{Kind: SecretSet, Value: map[string]string{"A": "1"}},
+			Environment: &SecretChange[map[string]string]{Kind: SecretSet, Value: map[string]string{"A": "1"}},
 		},
 	})
 	if err != nil {
@@ -423,7 +424,7 @@ func TestTestServerUsesLiveRegistryPort(t *testing.T) {
 	if result != TestSucceeded {
 		t.Fatalf("TestServer result = %+v, want success", result)
 	}
-	if ports.probe.Name.String() != "fs" || ports.probe.Command != "mcp-fs" || ports.probe.Env["A"] != "1" {
+	if ports.probe.Name.String() != "fs" || ports.probe.Connection.(mcpserver.StdioConnection).Command != "mcp-fs" || ports.probe.Connection.(mcpserver.StdioConnection).Env["A"] != "1" {
 		t.Fatalf("probe config = %+v", ports.probe)
 	}
 }
@@ -445,7 +446,7 @@ func TestServerCommandsOwnInputsAfterReturning(t *testing.T) {
 		if err != nil || !found {
 			t.Fatalf("stored server = (%+v, %t, %v)", stored, found, err)
 		}
-		if stored.Args[0] != "original" || stored.Env["TOKEN"] != "original" {
+		if stored.Connection.(mcpserver.StdioConnection).Args[0] != "original" || stored.Connection.(mcpserver.StdioConnection).Env["TOKEN"] != "original" {
 			t.Fatalf("created server changed after the caller reused its input: %+v", stored)
 		}
 	})
@@ -453,8 +454,9 @@ func TestServerCommandsOwnInputsAfterReturning(t *testing.T) {
 	t.Run("update", func(t *testing.T) {
 		name := testsupport.UserMCPServer("update")
 		current := mcpserver.Server{
-			Source: mcpserver.UserSource(),
-			Name:   name.Name(), Transport: mcpserver.TransportStdio, Command: "mcp-files",
+			Source:     mcpserver.UserSource(),
+			Name:       name.Name(),
+			Connection: mcpserver.StdioConnection{Command: "mcp-files"},
 		}
 		description := "original description"
 		connection := stdioServerInput(name, "original").Connection
@@ -473,8 +475,8 @@ func TestServerCommandsOwnInputsAfterReturning(t *testing.T) {
 		if err != nil || !found {
 			t.Fatalf("stored server = (%+v, %t, %v)", stored, found, err)
 		}
-		if stored.Description != "original description" || stored.Args[0] != "original" ||
-			stored.Env["TOKEN"] != "original" {
+		if stored.Description != "original description" || stored.Connection.(mcpserver.StdioConnection).Args[0] != "original" ||
+			stored.Connection.(mcpserver.StdioConnection).Env["TOKEN"] != "original" {
 			t.Fatalf("updated server changed after the caller reused its input: %+v", stored)
 		}
 	})
@@ -493,7 +495,7 @@ func TestServerCommandsOwnInputsAfterReturning(t *testing.T) {
 		}
 		serverInput.Connection.Args[0] = "caller-changed"
 		serverInput.Connection.Environment.Value["TOKEN"] = "caller-changed"
-		if ports.probe.Args[0] != "original" || ports.probe.Env["TOKEN"] != "original" {
+		if ports.probe.Connection.(mcpserver.StdioConnection).Args[0] != "original" || ports.probe.Connection.(mcpserver.StdioConnection).Env["TOKEN"] != "original" {
 			t.Fatalf("tested server changed after the caller reused its input: %+v", ports.probe)
 		}
 	})
@@ -505,7 +507,7 @@ func stdioServerInput(name mcpserver.ID, mutableValue string) ServerInput {
 		Connection: ConnectionInput{
 			Transport: mcpserver.TransportStdio, Command: "mcp-files",
 			Args: []string{mutableValue},
-			Environment: &EnvironmentChange{
+			Environment: &SecretChange[map[string]string]{
 				Kind: SecretSet, Value: map[string]string{"TOKEN": mutableValue},
 			},
 		},
@@ -524,7 +526,7 @@ func TestCreateServerSeparatesDurableAndLiveConnectionOwnership(t *testing.T) {
 		Connection: ConnectionInput{
 			Transport: mcpserver.TransportStdio, Command: "mcp-files",
 			Args: []string{"--root", "/repo"},
-			Environment: &EnvironmentChange{
+			Environment: &SecretChange[map[string]string]{
 				Kind: SecretSet, Value: map[string]string{"TOKEN": "original"},
 			},
 		},
@@ -544,7 +546,7 @@ func TestCreateServerSeparatesDurableAndLiveConnectionOwnership(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("stored server = (%+v, %t, %v)", stored, found, err)
 	}
-	if stored.Args[0] != "--root" || stored.Env["TOKEN"] != "original" {
+	if stored.Connection.(mcpserver.StdioConnection).Args[0] != "--root" || stored.Connection.(mcpserver.StdioConnection).Env["TOKEN"] != "original" {
 		t.Fatalf("caller changed durable server: %+v", stored)
 	}
 	if ports.configureName != stored.ID() {
@@ -737,9 +739,10 @@ func configWithPorts(ports interface {
 	registry := &testRegistry{servers: make(map[mcpserver.ID]mcpserver.Server)}
 	for _, status := range ports.Statuses() {
 		registry.servers[status.Server] = mcpserver.Server{
-			Source: mcpserver.UserSource(),
-			Name:   status.Server.Name(), Enabled: true,
-			Transport: mcpserver.TransportStreamableHTTP, URL: "https://mcp.example/" + status.Server.Name().String(),
+			Source:     mcpserver.UserSource(),
+			Name:       status.Server.Name(),
+			Enabled:    true,
+			Connection: mcpserver.HTTPConnection{URL: "https://mcp.example/" + status.Server.Name().String()},
 		}
 	}
 	return Config{

@@ -82,7 +82,7 @@ func TestStartupShutdownRetainsSessionRetirementDiagnostics(t *testing.T) {
 	addRemoteTool(t, remote, "read")
 	transport := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(func(*http.Request) *sdkmcp.Server { return remote }, nil))
 	defer transport.Close()
-	cfg := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("healthy"), Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}}
+	cfg := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("healthy"), Connection: mcpserver.HTTPConnection{URL: transport.URL}}}
 	failure := errors.New("launch resource retirement failed")
 	var retired atomic.Int32
 	c, err := openConnections(t.Context(), t.Context(), []ServerConfig{cfg}, nil, func(context.Context, mcpserver.ID) (*launchPermit, error) {
@@ -114,11 +114,12 @@ func TestStartupToleratesIndependentHandshakeTimeout(t *testing.T) {
 	}))
 	t.Cleanup(httpServer.Close)
 	timedOut := ServerConfig{Server: mcpserver.Server{
-		Source: mcpserver.UserSource(), Name: testsupport.ServerName("timed-out"),
-		Transport: mcpserver.TransportStreamableHTTP, URL: httpServer.URL + "/blocked",
+		Source:           mcpserver.UserSource(),
+		Name:             testsupport.ServerName("timed-out"),
 		HandshakeTimeout: mustHandshakeTimeout(t, time.Second),
+		Connection:       mcpserver.HTTPConnection{URL: httpServer.URL + "/blocked"},
 	}}
-	healthy := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("healthy"), Transport: mcpserver.TransportStreamableHTTP, URL: httpServer.URL}}
+	healthy := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("healthy"), Connection: mcpserver.HTTPConnection{URL: httpServer.URL}}}
 	connections, err := openConnections(t.Context(), t.Context(), []ServerConfig{timedOut, healthy}, nil, func(_ context.Context, name mcpserver.ID) (*launchPermit, error) {
 		if name == timedOut.ID() {
 			return newLaunch(timedOut, nil, nil, admission{})
@@ -154,7 +155,7 @@ func startupLifetime(t *testing.T, owner string) (context.Context, context.Conte
 }
 
 func startupDescriptor(name string) ServerConfig {
-	return ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName(name), Transport: mcpserver.TransportStdio, Command: "must-not-start"}}
+	return ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName(name), Connection: mcpserver.StdioConnection{Command: "must-not-start"}}}
 }
 
 // No resolver can observe a partial initial ledger, even when it returns before

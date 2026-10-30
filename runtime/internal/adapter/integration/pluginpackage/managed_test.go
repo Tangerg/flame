@@ -9,6 +9,7 @@ import (
 
 	sdkplugin "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -80,7 +81,7 @@ func TestManagedBackendLeasesCompleteGraphAndIgnoresAmbientNode(t *testing.T) {
 	if err != nil || string(output) != "original" {
 		t.Fatalf("leased managed graph: %s, %v", output, err)
 	}
-	if connection.Server.ExecutionEnvironment == "" {
+	if process, ok := connection.Server.Connection.(mcpserver.StdioConnection); !ok || process.ExecutionEnvironment == "" {
 		t.Fatal("activation lost its execution environment identity")
 	}
 }

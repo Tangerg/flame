@@ -86,7 +86,7 @@ func TestScheduleInvestigationRespectsCancellationTimeoutAndLaterUnknown(t *test
 				if err != nil {
 					t.Fatal(err)
 				}
-				configuration := mcp.ServerConfig{Server: mcpserver.Server{Source: source, Name: testsupport.ServerName("schedules"), Transport: mcpserver.TransportStdio, Command: "schedule-test", Enabled: true}}
+				configuration := mcp.ServerConfig{Server: mcpserver.Server{Source: source, Name: testsupport.ServerName("schedules"), Enabled: true, Connection: mcpserver.StdioConnection{Command: "schedule-test"}}}
 				remote := "create_schedule"
 				if mode == "non-schedule tool" {
 					remote = "append_record"

@@ -55,16 +55,16 @@ func newLaunch(config ServerConfig, stdio *stdioLaunch, retire func() error, adm
 		return nil, err
 	}
 	if stdio != nil {
-		if config.Transport != mcpserver.TransportStdio || retire == nil {
+		if config.Transport() != mcpserver.TransportStdio || retire == nil {
 			return nil, errors.New("mcp: leased stdio requires a command, resource and stdio transport")
 		}
-		descriptor := mcpserver.Server{Source: config.Source, Name: config.Name, Transport: mcpserver.TransportStdio, Command: stdio.Command, Args: stdio.Args, Env: stdio.Env, Dir: stdio.Dir}
+		descriptor := mcpserver.Server{Source: config.Source, Name: config.Name, Connection: mcpserver.StdioConnection{Command: stdio.Command, Args: stdio.Args, Env: stdio.Env, Dir: stdio.Dir}}
 		if err := descriptor.ValidateConnection(); err != nil {
 			return nil, fmt.Errorf("mcp: relocated stdio: %w", err)
 		}
 		stdio = &stdioLaunch{Command: stdio.Command, Args: slices.Clone(stdio.Args), Env: maps.Clone(stdio.Env), Dir: stdio.Dir}
 	}
-	if _, _, installed := config.Source.Release(); installed && config.Transport == mcpserver.TransportStdio && stdio == nil {
+	if _, _, installed := config.Source.Release(); installed && config.Transport() == mcpserver.TransportStdio && stdio == nil {
 		return nil, errors.New("mcp: installation stdio requires leased execution content")
 	}
 	return &launchPermit{claim: &launchClaim{pending: &launch{config: config.Clone(), stdio: stdio, retire: retire, admission: admission}}}, nil

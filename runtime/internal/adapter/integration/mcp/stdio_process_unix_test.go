@@ -47,15 +47,13 @@ func TestStdioSessionCleanupKillsDescendants(t *testing.T) {
 	timeout := 2 * time.Second
 	session, cleanup, err := dial(t.Context(), t.Context(), client, &launch{config: ServerConfig{
 		Server: mcpserver.Server{
-			Source:    mcpserver.UserSource(),
-			Name:      testsupport.ServerName("process-owner-test"),
-			Transport: mcpserver.TransportStdio,
-			Command:   os.Args[0],
-			Env: stdioProcessEnvironment(map[string]string{
+			Source:           mcpserver.UserSource(),
+			Name:             testsupport.ServerName("process-owner-test"),
+			HandshakeTimeout: mustHandshakeTimeout(t, timeout),
+			Connection: mcpserver.StdioConnection{Command: os.Args[0], Env: stdioProcessEnvironment(map[string]string{
 				stdioProcessRoleEnv: "server",
 				stdioDescendantPID:  pidFile,
-			}),
-			HandshakeTimeout: mustHandshakeTimeout(t, timeout),
+			})},
 		},
 	}})
 	if err != nil {
@@ -168,10 +166,8 @@ func TestStdioSessionThatExitsNonzeroRetiresCleanly(t *testing.T) {
 		Server: mcpserver.Server{
 			Source:           mcpserver.UserSource(),
 			Name:             testsupport.ServerName("exit-status-test"),
-			Transport:        mcpserver.TransportStdio,
-			Command:          os.Args[0],
-			Env:              stdioProcessEnvironment(map[string]string{stdioProcessRoleEnv: "nonzero-exit"}),
 			HandshakeTimeout: mustHandshakeTimeout(t, timeout),
+			Connection:       mcpserver.StdioConnection{Command: os.Args[0], Env: stdioProcessEnvironment(map[string]string{stdioProcessRoleEnv: "nonzero-exit"})},
 		},
 	}})
 	if err != nil {
@@ -186,10 +182,8 @@ func TestStdioSessionThatExitsNonzeroRetiresCleanly(t *testing.T) {
 		Server: mcpserver.Server{
 			Source:           mcpserver.UserSource(),
 			Name:             testsupport.ServerName("exit-status-test"),
-			Transport:        mcpserver.TransportStdio,
-			Command:          os.Args[0],
-			Env:              stdioProcessEnvironment(map[string]string{stdioProcessRoleEnv: "nonzero-exit"}),
 			HandshakeTimeout: mustHandshakeTimeout(t, timeout),
+			Connection:       mcpserver.StdioConnection{Command: os.Args[0], Env: stdioProcessEnvironment(map[string]string{stdioProcessRoleEnv: "nonzero-exit"})},
 		},
 	}})
 	if err != nil {

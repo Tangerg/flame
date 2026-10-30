@@ -20,7 +20,7 @@ func TestInstallationTransitionsPreserveStandingRulesUntilSourceRemoval(t *testi
 	t.Cleanup(func() { _ = db.Close() })
 	catalog := newReleaseStore(db)
 	store, rules := newInstallationStore(catalog), newApprovalRuleStore(db)
-	release := testsupport.Release(t, "1", plugin.Declaration{Name: "package", Servers: []plugin.Server{{Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStdio, Command: "server"}}})
+	release := testsupport.Release(t, "1", plugin.Declaration{Name: "package", Servers: []plugin.Server{{Name: testsupport.ServerName("server"), Startup: plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "server"}}}}})
 	if err := catalog.Admit(t.Context(), release); err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func TestInstallationCredentialsFollowTheirRecipient(t *testing.T) {
 	store, authorization := newInstallationStore(catalog), newMCPAuthorizationStore(db)
 	server := testsupport.ServerName("server")
 	declare := func(seed, url string) plugin.Release {
-		release := testsupport.Release(t, seed, plugin.Declaration{Name: "package", Version: seed, Servers: []plugin.Server{{Name: server, Transport: mcpserver.TransportStreamableHTTP, URL: url}}, Inputs: []plugin.Input{{ID: "tenant", Server: server, Target: plugin.Header, Key: "X-Tenant", Secret: true}}})
+		release := testsupport.Release(t, seed, plugin.Declaration{Name: "package", Version: seed, Servers: []plugin.Server{{Name: server, Startup: plugin.DeclaredConnection{Connection: mcpserver.HTTPConnection{URL: url}}}}, Inputs: []plugin.Input{{ID: "tenant", Server: server, Target: plugin.Header, Key: "X-Tenant", Secret: true}}})
 		if err := catalog.Admit(t.Context(), release); err != nil {
 			t.Fatal(err)
 		}
@@ -112,7 +112,7 @@ func TestInstallationCredentialsFollowTheirRecipient(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		return mcpserver.OAuthTarget{Source: source, Name: server, URL: selected.Declaration().Servers[0].URL}
+		return mcpserver.OAuthTarget{Source: source, Name: server, URL: selected.Declaration().Servers[0].Startup.(plugin.DeclaredConnection).Connection.(mcpserver.HTTPConnection).URL}
 	}
 	initial := target(release)
 	binding, err := authorization.BeginOAuthSession(t.Context(), initial)
@@ -170,7 +170,7 @@ func TestInstallationStateRoundTripsRelationally(t *testing.T) {
 	store := newInstallationStore(catalog)
 	declaration := plugin.Declaration{
 		Name:    "package",
-		Servers: []plugin.Server{{Name: testsupport.ServerName("a"), Transport: mcpserver.TransportStdio, Command: "server"}, {Name: testsupport.ServerName("b"), Transport: mcpserver.TransportStdio, Command: "server"}},
+		Servers: []plugin.Server{{Name: testsupport.ServerName("a"), Startup: plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "server"}}}, {Name: testsupport.ServerName("b"), Startup: plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "server"}}}},
 		Inputs:  []plugin.Input{{ID: "key", Server: testsupport.ServerName("a"), Target: plugin.Environment, Key: "API_KEY", Secret: true}},
 		Skills:  []plugin.Skill{{Name: "review", Description: "Review changes"}},
 	}
@@ -229,8 +229,8 @@ func TestInstallationReadsRejectStateOutsideItsAdmittedReleases(t *testing.T) {
 	backend, remote := testsupport.ServerName("backend"), testsupport.ServerName("remote")
 	release := testsupport.Release(t, "1", plugin.Declaration{
 		Name: "package", Servers: []plugin.Server{
-			{Name: backend, Transport: mcpserver.TransportStdio, Command: "backend"},
-			{Name: remote, Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.test/mcp"},
+			{Name: backend, Startup: plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "backend"}}},
+			{Name: remote, Startup: plugin.DeclaredConnection{Connection: mcpserver.HTTPConnection{URL: "https://example.test/mcp"}}},
 		},
 		Inputs: []plugin.Input{
 			{ID: "key", Server: backend, Target: plugin.Environment, Key: "KEY", Required: true},
@@ -301,7 +301,7 @@ func TestInstallationNeverStoresAReleaseCopy(t *testing.T) {
 	t.Cleanup(func() { _ = db.Close() })
 	catalog := newReleaseStore(db)
 	store := newInstallationStore(catalog)
-	release := testsupport.Release(t, "1", plugin.Declaration{Name: "package", Servers: []plugin.Server{{Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStdio, Command: "original"}}})
+	release := testsupport.Release(t, "1", plugin.Declaration{Name: "package", Servers: []plugin.Server{{Name: testsupport.ServerName("server"), Startup: plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "original"}}}}})
 	if err := catalog.Admit(t.Context(), release); err != nil {
 		t.Fatal(err)
 	}
@@ -313,12 +313,12 @@ func TestInstallationNeverStoresAReleaseCopy(t *testing.T) {
 	if err := store.projectRecord(t.Context(), i.Snapshot()); err != nil {
 		t.Fatal(err)
 	}
-	replacement := testsupport.Release(t, "1", plugin.Declaration{Name: "package", Servers: []plugin.Server{{Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStdio, Command: "replacement"}}})
+	replacement := testsupport.Release(t, "1", plugin.Declaration{Name: "package", Servers: []plugin.Server{{Name: testsupport.ServerName("server"), Startup: plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "replacement"}}}}})
 	if err := catalog.Admit(t.Context(), replacement); err != nil {
 		t.Fatal(err)
 	}
 	admitted, err := catalog.Get(t.Context(), release.Digest())
-	if err != nil || admitted.Declaration().Servers[0].Command != "original" {
+	if err != nil || admitted.Declaration().Servers[0].Startup.(plugin.DeclaredConnection).Connection.(mcpserver.StdioConnection).Command != "original" {
 		t.Fatalf("catalog advanced an admitted declaration: %+v, %v", admitted, err)
 	}
 	if _, err := db.ExecContext(t.Context(), `UPDATE plugin_releases SET declaration='{}' WHERE digest=?`, release.Digest().String()); err == nil {

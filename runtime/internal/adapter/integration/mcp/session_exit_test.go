@@ -164,7 +164,7 @@ func TestSessionEndedDuringVerificationRetainsTerminalEvidence(t *testing.T) {
 	})
 	transport := httptest.NewServer(sdk.NewStreamableHTTPHandler(func(*http.Request) *sdk.Server { return remote }, nil))
 	t.Cleanup(transport.Close)
-	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}}
+	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Connection: mcpserver.HTTPConnection{URL: transport.URL}}}
 	permit, err := newLaunch(config, nil, nil, admission{Run: func(ctx context.Context, session *sdk.ClientSession) error {
 		if _, err := session.ListTools(ctx, nil); err != nil {
 			return err

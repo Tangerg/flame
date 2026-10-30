@@ -129,7 +129,7 @@ func TestSourceBindsReleaseOnlyToInstallations(t *testing.T) {
 	if !found || gotRelease != release || gotAuthority != authority {
 		t.Fatalf("installation source release = %v, %v, %v", gotRelease, gotAuthority, found)
 	}
-	server := Server{Source: source, Name: testMCPServerName("files"), Transport: TransportStdio, Command: "files"}
+	server := Server{Source: source, Name: testMCPServerName("files"), Connection: StdioConnection{Command: "files"}}
 	if err := server.Validate(); err != nil {
 		t.Fatal(err)
 	}

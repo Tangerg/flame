@@ -168,7 +168,7 @@ func (c installationConnections) ReconcileInstallation(ctx context.Context, name
 
 func installationFixture(t *testing.T) (*installationMemory, *installationDependencies, identity.InstallationID, releaseMemory) {
 	t.Helper()
-	release := testsupport.Release(t, "1", plugin.Declaration{Name: "package", Servers: []plugin.Server{{Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.test/mcp"}}})
+	release := testsupport.Release(t, "1", plugin.Declaration{Name: "package", Servers: []plugin.Server{{Name: testsupport.ServerName("server"), Startup: plugin.DeclaredConnection{Connection: mcpserver.HTTPConnection{URL: "https://example.test/mcp"}}}}})
 	i, err := plugin.New(testsupport.InstallationID(t), "/package", release)
 	if err != nil {
 		t.Fatal(err)

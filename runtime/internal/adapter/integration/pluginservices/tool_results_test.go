@@ -15,7 +15,7 @@ func TestOriginalScheduleSourceAvailabilityPreservesRecoveryFailures(t *testing.
 	for _, state := range []string{"disabled", "disconnected", "storage failure", "canceled"} {
 		t.Run(state, func(t *testing.T) {
 			name := testsupport.ServerName("schedules")
-			release, err := plugin.NewRelease(testsupport.Digest("original release"), plugin.Declaration{Name: "example.schedules", Servers: []plugin.Server{{Name: name, Transport: mcpserver.TransportStdio, Command: "echo"}}})
+			release, err := plugin.NewRelease(testsupport.Digest("original release"), plugin.Declaration{Name: "example.schedules", Servers: []plugin.Server{{Name: name, Startup: plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "echo"}}}}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -33,7 +33,7 @@ func TestOriginalScheduleSourceAvailabilityPreservesRecoveryFailures(t *testing.
 			if err != nil {
 				t.Fatal(err)
 			}
-			server := mcpserver.Server{Source: source, Name: name, Enabled: true, Transport: mcpserver.TransportStdio, Command: "echo"}
+			server := mcpserver.Server{Source: source, Name: name, Enabled: true, Connection: mcpserver.StdioConnection{Command: "echo"}}
 			poolSource := toolSourceRegistry{server: server}
 			pool, err := mcp.Open(t.Context(), t.Context(), nil, nil, poolSource, nil, nil, nil, nil)
 			if err != nil {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
 func TestContributionsHaveIndependentIDsAndCanShareOneBackend(t *testing.T) {
@@ -15,7 +16,7 @@ func TestContributionsHaveIndependentIDsAndCanShareOneBackend(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	declaration := Declaration{Name: "contributions", Servers: []Server{{Name: serverName("backend"), Transport: stdio, Command: "backend"}}, Contributions: []Contribution{{ID: "first-provider", Server: serverName("backend"), Export: "first", Contract: contract.Identity()}, {ID: "second-provider", Server: serverName("backend"), Export: "second", Contract: contract.Identity()}}}
+	declaration := Declaration{Name: "contributions", Servers: []Server{{Name: serverName("backend"), Startup: DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "backend"}}}}, Contributions: []Contribution{{ID: "first-provider", Server: serverName("backend"), Export: "first", Contract: contract.Identity()}, {ID: "second-provider", Server: serverName("backend"), Export: "second", Contract: contract.Identity()}}}
 	release, err := NewRelease(testDigest("contributions"), declaration)
 	if err != nil {
 		t.Fatal(err)

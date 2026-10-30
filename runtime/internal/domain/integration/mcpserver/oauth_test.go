@@ -12,12 +12,13 @@ func TestOAuthTargetFingerprintAcceptsAdmittedHeaderBytes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: name, Transport: mcpserver.TransportStreamableHTTP, Enabled: true, URL: "https://mcp.example.test/tools", Headers: map[string]string{"X-Opaque": string([]byte{0xff})}}
+	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: name, Enabled: true, Connection: mcpserver.HTTPConnection{URL: "https://mcp.example.test/tools", Headers: map[string]string{"X-Opaque": string([]byte{0xff})}}}
 	if err := server.Validate(); err != nil {
 		t.Fatal(err)
 	}
-	target := mcpserver.OAuthTarget{Source: mcpserver.UserSource(), Name: name, URL: server.URL, Headers: server.Headers}
-	if target.Fingerprint() != server.OAuthTarget().Fingerprint() {
+	connection := server.Connection.(mcpserver.HTTPConnection)
+	target := mcpserver.OAuthTarget{Source: mcpserver.UserSource(), Name: name, URL: connection.URL, Headers: connection.Headers}
+	if projected, ok := server.OAuthTarget(); !ok || target.Fingerprint() != projected.Fingerprint() {
 		t.Fatal("admitted server did not project its OAuth target")
 	}
 	fingerprint := target.Fingerprint()

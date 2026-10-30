@@ -51,8 +51,8 @@ func TestSecretInputProjectionCarriesStateNeverText(t *testing.T) {
 	release := testsupport.Release(t, "1", plugin.Declaration{
 		Name: "package",
 		Servers: []plugin.Server{
-			{Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.test/mcp"},
-			{Name: testsupport.ServerName("process"), Transport: mcpserver.TransportStdio, Command: "fixture"},
+			{Name: testsupport.ServerName("server"), Startup: plugin.DeclaredConnection{Connection: mcpserver.HTTPConnection{URL: "https://example.test/mcp"}}},
+			{Name: testsupport.ServerName("process"), Startup: plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "fixture"}}},
 		},
 		Inputs: []plugin.Input{
 			{ID: "secret", Server: testsupport.ServerName("server"), Target: plugin.Authorization, Secret: true},

@@ -17,9 +17,9 @@ import (
 )
 
 func TestAuthorityReadSharesOneSourceObservationAndRefreshesNextRequest(t *testing.T) {
-	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: "https://first.example/mcp"}
+	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Enabled: true, Connection: mcpserver.HTTPConnection{URL: "https://first.example/mcp"}}
 	changed := server.Clone()
-	changed.URL = "https://second.example/mcp"
+	changed.Connection = mcpserver.HTTPConnection{URL: "https://second.example/mcp"}
 	registry := &authorityReadSequence{states: []mcpserver.Server{server, changed}}
 	authorities := NewAuthorities(registry.Get)
 	first := testMCPRef(server.Name, testsupport.RemoteToolName("first"))
@@ -52,20 +52,21 @@ func (r *authorityReadSequence) Get(context.Context, mcpserver.ID) (mcpserver.Se
 }
 
 func TestAuthorityFingerprintsTrackEndpointsAndExcludeCredentials(t *testing.T) {
-	server := mcpserver.Server{Transport: mcpserver.TransportStdio, Command: "server", Args: []string{"--stdio"}, Dir: "/workspace"}
-	original := server.AuthorityFingerprint()
-	server.Env = map[string]string{"TOKEN": "rotated"}
-	if server.AuthorityFingerprint() != original {
+	process := mcpserver.StdioConnection{Command: "server", Args: []string{"--stdio"}, Dir: "/workspace"}
+	original := mcpserver.Server{Connection: process}.AuthorityFingerprint()
+	rotated := process
+	rotated.Env = map[string]string{"TOKEN": "rotated"}
+	if (mcpserver.Server{Connection: rotated}).AuthorityFingerprint() != original {
 		t.Fatal("credential rotation changed stdio authority")
 	}
-	for _, mutate := range []func(*mcpserver.Server){
-		func(s *mcpserver.Server) { s.Command = "other" },
-		func(s *mcpserver.Server) { s.Args = []string{"--other"} },
-		func(s *mcpserver.Server) { s.Dir = "/other" },
+	for _, mutate := range []func(*mcpserver.StdioConnection){
+		func(s *mcpserver.StdioConnection) { s.Command = "other" },
+		func(s *mcpserver.StdioConnection) { s.Args = []string{"--other"} },
+		func(s *mcpserver.StdioConnection) { s.Dir = "/other" },
 	} {
-		changed := server
+		changed := process
 		mutate(&changed)
-		if changed.AuthorityFingerprint() == original {
+		if (mcpserver.Server{Connection: changed}).AuthorityFingerprint() == original {
 			t.Fatal("changed stdio endpoint retained authority")
 		}
 	}
@@ -78,7 +79,7 @@ func TestStandingRulesFollowCurrentSourceAuthority(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	registry := db.MCPServers
-	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: "https://one.example/mcp", Authorization: "Bearer first"}
+	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Enabled: true, Connection: mcpserver.HTTPConnection{URL: "https://one.example/mcp", Authorization: "Bearer first"}}
 	if err := registry.Save(t.Context(), server); err != nil {
 		t.Fatal(err)
 	}
@@ -104,13 +105,17 @@ func TestStandingRulesFollowCurrentSourceAuthority(t *testing.T) {
 		}
 	}
 	check(original, true, false)
-	server.Authorization = "Bearer rotated"
-	server.Headers = map[string]string{"X-API-Key": "rotated"}
+	rotated := server.Connection.(mcpserver.HTTPConnection)
+	rotated.Authorization = "Bearer rotated"
+	rotated.Headers = map[string]string{"X-API-Key": "rotated"}
+	server.Connection = rotated
 	if err := registry.Save(t.Context(), server); err != nil {
 		t.Fatal(err)
 	}
 	check(server.AuthorityFingerprint(), true, false)
-	server.URL = "https://two.example/mcp"
+	moved := rotated
+	moved.URL = "https://two.example/mcp"
+	server.Connection = moved
 	if err := registry.Save(t.Context(), server); err != nil {
 		t.Fatal(err)
 	}

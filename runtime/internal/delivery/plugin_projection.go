@@ -35,20 +35,21 @@ func presentPluginSkill(v plugin.Skill) protocol.PluginSkill {
 }
 func presentPluginServerDeclaration(v plugin.Server) (protocol.PluginServerDeclaration, error) {
 	result := protocol.PluginServerDeclaration{Name: v.Name.String()}
-	if v.Managed != nil {
+	switch startup := v.Startup.(type) {
+	case plugin.ManagedBackend:
 		result.Type = protocol.PluginServerNode
-		result.Entry = v.Managed.Entry
-		return result, nil
-	}
-	switch v.Transport {
-	case mcpserver.TransportStdio:
-		result.Type = protocol.PluginServerStdio
-		result.Command, result.Args, result.Env, result.Dir = v.Command, slices.Clone(v.Args), maps.Clone(v.Env), v.Dir
-	case mcpserver.TransportStreamableHTTP:
-		result.Type = protocol.PluginServerHTTP
-		result.URL, result.Headers = v.URL, maps.Clone(v.Headers)
+		result.Entry = startup.Entry
+	case plugin.DeclaredConnection:
+		switch connection := startup.Connection.(type) {
+		case mcpserver.StdioConnection:
+			result.Type = protocol.PluginServerStdio
+			result.Command, result.Args, result.Env, result.Dir = connection.Command, slices.Clone(connection.Args), maps.Clone(connection.Env), connection.Dir
+		case mcpserver.HTTPConnection:
+			result.Type = protocol.PluginServerHTTP
+			result.URL, result.Headers = connection.URL, maps.Clone(connection.Headers)
+		}
 	default:
-		return protocol.PluginServerDeclaration{}, fmt.Errorf("plugin: project server transport %q", v.Transport)
+		return protocol.PluginServerDeclaration{}, fmt.Errorf("plugin: project server %q startup", v.Name)
 	}
 	return result, nil
 }

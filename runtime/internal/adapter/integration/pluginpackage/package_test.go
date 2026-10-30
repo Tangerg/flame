@@ -416,7 +416,7 @@ func TestBackendDirectoryValidationPreservesFilesystemFailure(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	server := plugin.Server{Name: testsupport.ServerName("backend"), Transport: mcpserver.TransportStdio, Command: "fixture", Dir: "./missing"}
+	server := plugin.Server{Name: testsupport.ServerName("backend"), Startup: plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "fixture", Dir: "./missing"}}}
 	err = inspectServerFiles(root, server)
 	if !errors.Is(err, plugin.ErrInvalid) || !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("missing backend directory lost its category or filesystem cause: %v", err)

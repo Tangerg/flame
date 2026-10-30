@@ -182,9 +182,9 @@ func TestReleaseReadsDoNotShareMutableDeclarations(t *testing.T) {
 	release := testsupport.Release(t, "release", plugin.Declaration{
 		Name: "package",
 		Servers: []plugin.Server{
-			{Name: backend, Transport: mcpserver.TransportStdio, Command: "backend", Args: []string{"serve"}, Env: map[string]string{"MODE": "read"}},
-			{Name: testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.test/mcp", Headers: map[string]string{"X-Mode": "read"}},
-			{Name: testsupport.ServerName("managed"), Transport: mcpserver.TransportStdio, Managed: &plugin.ManagedBackend{Runtime: "node", Entry: "backend/main.mjs"}},
+			{Name: backend, Startup: plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "backend", Args: []string{"serve"}, Env: map[string]string{"MODE": "read"}}}},
+			{Name: testsupport.ServerName("remote"), Startup: plugin.DeclaredConnection{Connection: mcpserver.HTTPConnection{URL: "https://example.test/mcp", Headers: map[string]string{"X-Mode": "read"}}}},
+			{Name: testsupport.ServerName("managed"), Startup: plugin.ManagedBackend{Runtime: "node", Entry: "backend/main.mjs"}},
 		},
 		Contributions: []plugin.Contribution{{ID: "reader", Server: backend, Export: "read", Contract: contract.Identity(), Requires: []plugin.Requirement{{ID: "collaborator", Contract: contract.Identity(), Optional: true}}}},
 		Components: []plugin.ClientComponent{{
@@ -204,10 +204,14 @@ func TestReleaseReadsDoNotShareMutableDeclarations(t *testing.T) {
 	}
 	declaration := stored.Declaration()
 	declaration.Name = "changed"
-	declaration.Servers[0].Args[0] = "changed"
-	declaration.Servers[0].Env["MODE"] = "changed"
-	declaration.Servers[1].Headers["X-Mode"] = "changed"
-	declaration.Servers[2].Managed.Entry = "changed.mjs"
+	declaration.Servers[0].Startup.(plugin.DeclaredConnection).Connection.(mcpserver.StdioConnection).Args[0] = "changed"
+	declaration.Servers[0].Startup.(plugin.DeclaredConnection).Connection.(mcpserver.StdioConnection).Env["MODE"] = "changed"
+	declaration.Servers[1].Startup.(plugin.DeclaredConnection).Connection.(mcpserver.HTTPConnection).Headers["X-Mode"] = "changed"
+	{
+		updated := declaration.Servers[2].Startup.(plugin.ManagedBackend)
+		updated.Entry = "changed.mjs"
+		declaration.Servers[2].Startup = updated
+	}
 	declaration.Contributions[0].Requires[0].ID = "changed"
 	declaration.Components[0].Selector.Name = "changed"
 	declaration.Components[1].Selector.Shape = "changed"
@@ -240,7 +244,8 @@ func TestReleaseReadsConcurrentlyPreserveAdmission(t *testing.T) {
 	release := testsupport.Release(t, "release", plugin.Declaration{
 		Name: "package",
 		Servers: []plugin.Server{{
-			Name: testsupport.ServerName("backend"), Transport: mcpserver.TransportStdio, Command: "backend", Args: []string{"serve"},
+			Name:    testsupport.ServerName("backend"),
+			Startup: plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "backend", Args: []string{"serve"}}},
 		}},
 	})
 	if err := catalog.Admit(t.Context(), release); err != nil {
@@ -259,7 +264,7 @@ func TestReleaseReadsConcurrentlyPreserveAdmission(t *testing.T) {
 			if !reflect.DeepEqual(declaration, release.Declaration()) {
 				t.Error("concurrent read changed the admitted declaration")
 			}
-			declaration.Servers[0].Args[0] = "changed"
+			declaration.Servers[0].Startup.(plugin.DeclaredConnection).Connection.(mcpserver.StdioConnection).Args[0] = "changed"
 		})
 	}
 	group.Wait()

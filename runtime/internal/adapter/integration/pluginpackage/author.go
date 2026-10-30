@@ -137,7 +137,7 @@ func authorManifest(ctx context.Context, root *os.Root, declaration plugin.Decla
 				return manifest, plugin.ErrInvalid
 			}
 			server := declaration.Servers[index]
-			if server.Managed != nil {
+			if managed, ok := server.Startup.(plugin.ManagedBackend); ok {
 				targets, err := localruntime.NodeTargets()
 				if err != nil {
 					return manifest, err
@@ -147,7 +147,7 @@ func authorManifest(ctx context.Context, root *os.Root, declaration plugin.Decla
 					if err != nil {
 						return manifest, fmt.Errorf("node %s/%s executable: %w", selected.OS, selected.Arch, err)
 					}
-					unit.Variants = append(unit.Variants, distribution.Variant{OS: selected.OS, Arch: selected.Arch, Path: server.Managed.Entry, Runtime: &distribution.RuntimeReference{Name: "node", Version: selected.Version, Digest: executable}})
+					unit.Variants = append(unit.Variants, distribution.Variant{OS: selected.OS, Arch: selected.Arch, Path: managed.Entry, Runtime: &distribution.RuntimeReference{Name: "node", Version: selected.Version, Digest: executable}})
 				}
 			} else {
 				path, found := server.PackagedCommand()

@@ -20,7 +20,7 @@ func TestBackgroundNoticesRequireTheirOwnEnabledContribution(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	release, err := plugin.NewRelease(testsupport.Digest("1"), plugin.Declaration{Name: "example.background", Servers: []plugin.Server{{Name: name, Transport: mcpserver.TransportStdio, Command: "backend"}}, Contributions: []plugin.Contribution{{ID: "owner", Server: name, Export: "records", Contract: contract.Identity()}}})
+	release, err := plugin.NewRelease(testsupport.Digest("1"), plugin.Declaration{Name: "example.background", Servers: []plugin.Server{{Name: name, Startup: plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "backend"}}}}, Contributions: []plugin.Contribution{{ID: "owner", Server: name, Export: "records", Contract: contract.Identity()}}})
 	if err != nil {
 		t.Fatal(err)
 	}

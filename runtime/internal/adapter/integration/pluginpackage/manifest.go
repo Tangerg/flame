@@ -180,7 +180,7 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 			if slices.Contains(nativeServers, value.ID.String()) {
 				return fmt.Errorf("%w: server %s has native and managed startup declarations", plugin.ErrInvalid, value.ID)
 			}
-			server := plugin.Server{Name: value.ID, Transport: mcpserver.TransportStdio, Managed: &plugin.ManagedBackend{Runtime: value.Runtime, Entry: value.Entry}}
+			server := plugin.Server{Name: value.ID, Startup: plugin.ManagedBackend{Runtime: value.Runtime, Entry: value.Entry}}
 			if err := inspectServerFiles(root, server); err != nil {
 				return fmt.Errorf("%w: managed backend %s: %w", plugin.ErrInvalid, value.ID, err)
 			}
@@ -399,7 +399,7 @@ func parseMCP(ctx context.Context, root *os.Root, release *plugin.Builder) ([]st
 	}
 	for _, name := range names {
 		server, err := portableServer(name, envelope.Servers[name])
-		if err == nil && server.Transport != mcpserver.TransportStdio {
+		if err == nil && server.Transport() != mcpserver.TransportStdio {
 			return nil, fmt.Errorf("%w: installed server %q requires a packaged process; configure remote MCP through the host registry", plugin.ErrInvalid, name)
 		}
 		if err == nil {
@@ -447,14 +447,14 @@ func portableServer(name string, raw jsontext.Value) (plugin.Server, error) {
 	if err != nil {
 		return plugin.Server{}, fmt.Errorf("%w: server name: %w", plugin.ErrInvalid, err)
 	}
-	server := plugin.Server{Name: local, Transport: wire.Type}
+	server := plugin.Server{Name: local}
 	var allowed []string
 	switch wire.Type {
 	case mcpserver.TransportStdio:
-		server.Command, server.Args, server.Env, server.Dir = wire.Command, wire.Args, wire.Env, wire.CWD
+		server.Startup = plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: wire.Command, Args: wire.Args, Env: wire.Env, Dir: wire.CWD}}
 		allowed = []string{"type", "command", "args", "env", "cwd"}
 	case mcpserver.TransportStreamableHTTP:
-		server.URL, server.Headers = wire.URL, wire.Headers
+		server.Startup = plugin.DeclaredConnection{Connection: mcpserver.HTTPConnection{URL: wire.URL, Headers: wire.Headers}}
 		allowed = []string{"type", "url", "headers"}
 	default:
 		return plugin.Server{}, fmt.Errorf("%w: package server transport %q", plugin.ErrInvalid, wire.Type)
@@ -471,8 +471,8 @@ func portableServer(name string, raw jsontext.Value) (plugin.Server, error) {
 // directory to exist in the exact bytes being admitted.
 func inspectServerFiles(root *os.Root, s plugin.Server) error {
 	packaged, found := s.PackagedCommand()
-	if s.Managed != nil {
-		packaged, found = s.Managed.Entry, true
+	if managed, ok := s.Startup.(plugin.ManagedBackend); ok {
+		packaged, found = managed.Entry, true
 		if !plugin.ValidResourcePath(packaged) {
 			return plugin.ErrInvalid
 		}

@@ -80,7 +80,7 @@ func TestConnectionOwnerCancellationAbortsPreparationIO(t *testing.T) {
 					return readFailure
 				}
 				c := &connections{lifetime: lifetime}
-				config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.invalid/mcp"}}
+				config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"), Connection: mcpserver.HTTPConnection{URL: "https://example.invalid/mcp"}}}
 				resolve := func(ctx context.Context, _ mcpserver.ID) (*launchPermit, error) { return nil, read(ctx) }
 				if phase == "credential restore" {
 					c.oauthSessions = &oauthLoadStore{load: func(ctx context.Context, _ mcpserver.OAuthTarget) ([]byte, string, bool, error) {
@@ -130,7 +130,7 @@ func TestConnectionOwnerRejectsExpiredPreparationBeforeCredentialIO(t *testing.T
 		reads.Add(1)
 		return nil, "", false, errors.New("unexpected credential read")
 	}}}
-	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.invalid/mcp"}}
+	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"), Connection: mcpserver.HTTPConnection{URL: "https://example.invalid/mcp"}}}
 	attempt, err := c.beginConnect(t.Context(), config.ID(), func(context.Context, mcpserver.ID) (*launchPermit, error) {
 		stop(cause)
 		return newLaunch(config, nil, func() error { retired.Add(1); return nil }, admission{})

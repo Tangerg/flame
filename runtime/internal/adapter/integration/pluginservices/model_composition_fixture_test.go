@@ -21,7 +21,7 @@ func installedCallCompositionFixture(t *testing.T, contract *portable.Capability
 	for i, id := range members {
 		contributions[i] = plugin.Contribution{ID: plugin.ContributionID(id), Server: name, Export: "observer", Contract: contract.Identity()}
 	}
-	release, err := plugin.NewRelease(testsupport.Digest("1"), plugin.Declaration{Name: "example.model-composition", Servers: []plugin.Server{{Name: name, Transport: mcpserver.TransportStdio, Command: "observer"}}, Contributions: contributions})
+	release, err := plugin.NewRelease(testsupport.Digest("1"), plugin.Declaration{Name: "example.model-composition", Servers: []plugin.Server{{Name: name, Startup: plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "observer"}}}}, Contributions: contributions})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func installedCallCompositionFixture(t *testing.T, contract *portable.Capability
 	}
 	endpoint := httptest.NewServer(sdk.NewStreamableHTTPHandler(func(*http.Request) *sdk.Server { return remote }, nil))
 	t.Cleanup(endpoint.Close)
-	server := mcpserver.Server{Source: source, Name: name, Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: endpoint.URL}
+	server := mcpserver.Server{Source: source, Name: name, Enabled: true, Connection: mcpserver.HTTPConnection{URL: endpoint.URL}}
 	callbacks := qimumcp.NewCallbacks()
 	t.Cleanup(func() { _ = callbacks.Close() })
 	if len(handlers) > 0 {

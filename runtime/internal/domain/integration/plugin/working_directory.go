@@ -72,11 +72,13 @@ func parseWorkingDirectory(dir string) (WorkingDirectory, error) {
 // WorkingDirectory reads where this stdio server runs. An admitted server
 // always has a valid spelling; the error guards a hand-built declaration.
 func (s Server) WorkingDirectory() (WorkingDirectory, error) {
-	return parseWorkingDirectory(s.Dir)
+	stdio, _ := s.stdio()
+	return parseWorkingDirectory(stdio.Dir)
 }
 
 // PackagedCommand names the release file a stdio server executes, or reports
 // that its command is a bare name resolved from PATH.
 func (s Server) PackagedCommand() (string, bool) {
-	return strings.CutPrefix(s.Command, "./")
+	stdio, _ := s.stdio()
+	return strings.CutPrefix(stdio.Command, "./")
 }

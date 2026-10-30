@@ -11,8 +11,7 @@ func TestServerValidateRejectsForgedBoundedHandshakeTimeout(t *testing.T) {
 	srv := Server{
 		Source:           UserSource(),
 		Name:             testMCPServerName("linear"),
-		Transport:        TransportStreamableHTTP,
-		URL:              "https://mcp.linear.app/mcp",
+		Connection:       HTTPConnection{URL: "https://mcp.linear.app/mcp"},
 		HandshakeTimeout: HandshakeTimeout{mode: handshakeTimeoutBounded, duration: -time.Second},
 	}
 
@@ -29,36 +28,10 @@ func TestNewHandshakeTimeoutRequiresPositiveDuration(t *testing.T) {
 	}
 }
 
-func TestServerValidateRejectsCrossTransportState(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name   string
-		mutate func(*Server)
-	}{
-		{name: "command", mutate: func(server *Server) { server.Command = "node" }},
-		{name: "args", mutate: func(server *Server) { server.Args = []string{"server.js"} }},
-		{name: "environment", mutate: func(server *Server) { server.Env = map[string]string{"TOKEN": "secret"} }},
-		{name: "working directory", mutate: func(server *Server) { server.Dir = "/repo" }},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			server := Server{
-				Source: UserSource(), Name: testMCPServerName("cloud"), Transport: TransportStreamableHTTP, URL: "https://example.com/mcp",
-			}
-			test.mutate(&server)
-			if err := server.Validate(); err == nil {
-				t.Fatal("Validate err = nil, want cross-transport state rejected")
-			}
-		})
-	}
-}
-
 func TestServerValidateRejectsInvalidHTTPEndpoints(t *testing.T) {
 	for _, endpoint := range []string{"/mcp", "file:///tmp/mcp", "https://", "https://user:secret@example.test/mcp"} {
 		t.Run(endpoint, func(t *testing.T) {
-			server := Server{Source: UserSource(), Name: testMCPServerName("remote"), Transport: TransportStreamableHTTP, URL: endpoint}
+			server := Server{Source: UserSource(), Name: testMCPServerName("remote"), Connection: HTTPConnection{URL: endpoint}}
 			if err := server.Validate(); err == nil {
 				t.Fatal("invalid HTTP endpoint admitted as a server")
 			}
@@ -67,40 +40,50 @@ func TestServerValidateRejectsInvalidHTTPEndpoints(t *testing.T) {
 }
 
 func TestServerFormattingRedactsCredentials(t *testing.T) {
-	server := Server{
-		Source:        UserSource(),
-		Name:          testMCPServerName("private"),
-		Transport:     TransportStreamableHTTP,
-		URL:           "https://url-user:url-secret@example.com/mcp",
-		Authorization: "Bearer authorization-secret",
-		Headers:       map[string]string{"X-Key": "header-secret"},
-		Env:           map[string]string{"TOKEN": "environment-secret"},
-	}
-
-	formatted := fmt.Sprintf("%+v", server)
-	for _, secret := range []string{"url-user", "url-secret", "authorization-secret", "header-secret", "environment-secret"} {
-		if strings.Contains(formatted, secret) {
-			t.Fatalf("formatted server exposed %q: %s", secret, formatted)
+	for _, test := range []struct {
+		connection Connection
+		secrets    []string
+		redactions int
+	}{
+		{
+			connection: HTTPConnection{
+				URL:           "https://url-user:url-secret@example.com/mcp",
+				Authorization: "Bearer authorization-secret",
+				Headers:       map[string]string{"X-Key": "header-secret"},
+			},
+			secrets:    []string{"url-user", "url-secret", "authorization-secret", "header-secret"},
+			redactions: 3,
+		},
+		{
+			connection: StdioConnection{Command: "server", Env: map[string]string{"TOKEN": "environment-secret"}},
+			secrets:    []string{"environment-secret"},
+			redactions: 1,
+		},
+	} {
+		formatted := fmt.Sprintf("%+v", Server{Source: UserSource(), Name: testMCPServerName("private"), Connection: test.connection})
+		for _, secret := range test.secrets {
+			if strings.Contains(formatted, secret) {
+				t.Fatalf("formatted server exposed %q: %s", secret, formatted)
+			}
 		}
-	}
-	if got := strings.Count(formatted, "[REDACTED]"); got != 4 {
-		t.Fatalf("formatted server redactions = %d, want 4: %s", got, formatted)
+		if got := strings.Count(formatted, "[REDACTED]"); got != test.redactions {
+			t.Fatalf("formatted server redactions = %d, want %d: %s", got, test.redactions, formatted)
+		}
 	}
 }
 
 func TestServerCloneOwnsMutableConnectionFields(t *testing.T) {
-	original := Server{
-		Headers: map[string]string{"X-Key": "header"},
-		Args:    []string{"--root", "/repo"},
-		Env:     map[string]string{"TOKEN": "environment"},
-	}
+	http := Server{Connection: HTTPConnection{Headers: map[string]string{"X-Key": "header"}}}
+	process := Server{Connection: StdioConnection{Args: []string{"--root", "/repo"}, Env: map[string]string{"TOKEN": "environment"}}}
 
-	clone := original.Clone()
-	clone.Headers["X-Key"] = "changed"
-	clone.Args[0] = "changed"
-	clone.Env["TOKEN"] = "changed"
+	httpClone := http.Clone().Connection.(HTTPConnection)
+	httpClone.Headers["X-Key"] = "changed"
+	processClone := process.Clone().Connection.(StdioConnection)
+	processClone.Args[0] = "changed"
+	processClone.Env["TOKEN"] = "changed"
 
-	if original.Headers["X-Key"] != "header" || original.Args[0] != "--root" || original.Env["TOKEN"] != "environment" {
-		t.Fatalf("Clone mutated original server: %+v", original)
+	original := process.Connection.(StdioConnection)
+	if http.Connection.(HTTPConnection).Headers["X-Key"] != "header" || original.Args[0] != "--root" || original.Env["TOKEN"] != "environment" {
+		t.Fatal("Clone mutated the original connection")
 	}
 }

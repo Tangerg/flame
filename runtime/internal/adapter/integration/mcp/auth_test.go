@@ -98,10 +98,9 @@ func TestHTTPDialClassifiesTheRefusedRequestNotTheLastResponse(t *testing.T) {
 			client := sdkmcp.NewClient(&sdkmcp.Implementation{Name: "test", Version: "v0"}, nil)
 			_, _, err := dial(t.Context(), t.Context(), client, &launch{config: ServerConfig{
 				Server: mcpserver.Server{
-					Source:    mcpserver.UserSource(),
-					Name:      testsupport.ServerName("refusing"),
-					Transport: mcpserver.TransportStreamableHTTP,
-					URL:       server.URL,
+					Source:     mcpserver.UserSource(),
+					Name:       testsupport.ServerName("refusing"),
+					Connection: mcpserver.HTTPConnection{URL: server.URL},
 				}, OAuthHandler: tc.oauth,
 			}})
 			if err == nil {

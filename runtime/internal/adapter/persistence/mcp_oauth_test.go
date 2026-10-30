@@ -19,11 +19,15 @@ func TestMCPServerStoreFencesOAuthCallbacksByGrant(t *testing.T) {
 	store := newMCPServerStore(db)
 	authorization := newMCPAuthorizationStore(db)
 	server := mcpserver.Server{
-		Source: mcpserver.UserSource(),
-		Name:   testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP,
-		Enabled: true, URL: "https://mcp.example.test/tools",
+		Source:     mcpserver.UserSource(),
+		Name:       testsupport.ServerName("remote"),
+		Enabled:    true,
+		Connection: mcpserver.HTTPConnection{URL: "https://mcp.example.test/tools"},
 	}
-	target := server.OAuthTarget()
+	target, ok := server.OAuthTarget()
+	if !ok {
+		t.Fatal("HTTP server has no OAuth target")
+	}
 	if err := store.Save(t.Context(), server); err != nil {
 		t.Fatal(err)
 	}
@@ -80,9 +84,27 @@ func TestMCPCredentialsStopMatchingAChangedTarget(t *testing.T) {
 		name  string
 		apply func(*mcpserver.Server)
 	}{
-		{name: "origin", apply: func(server *mcpserver.Server) { server.URL = "https://other.example.test/tools" }},
-		{name: "path", apply: func(server *mcpserver.Server) { server.URL += "/new" }},
-		{name: "headers", apply: func(server *mcpserver.Server) { server.Headers = map[string]string{"X-Tenant": "replacement"} }},
+		{name: "origin", apply: func(server *mcpserver.Server) {
+			{
+				updated := server.Connection.(mcpserver.HTTPConnection)
+				updated.URL = "https://other.example.test/tools"
+				server.Connection = updated
+			}
+		}},
+		{name: "path", apply: func(server *mcpserver.Server) {
+			{
+				updated := server.Connection.(mcpserver.HTTPConnection)
+				updated.URL += "/new"
+				server.Connection = updated
+			}
+		}},
+		{name: "headers", apply: func(server *mcpserver.Server) {
+			{
+				updated := server.Connection.(mcpserver.HTTPConnection)
+				updated.Headers = map[string]string{"X-Tenant": "replacement"}
+				server.Connection = updated
+			}
+		}},
 	}
 	for _, change := range changes {
 		t.Run(change.name, func(t *testing.T) {
@@ -98,14 +120,15 @@ func TestMCPCredentialsStopMatchingAChangedTarget(t *testing.T) {
 			store := newMCPServerStore(db)
 			authorization := newMCPAuthorizationStore(db)
 			initial := mcpserver.Server{
-				Source: mcpserver.UserSource(),
-				Name:   testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP,
-				Enabled: true, URL: "https://mcp.example.test/tools",
+				Source:     mcpserver.UserSource(),
+				Name:       testsupport.ServerName("remote"),
+				Enabled:    true,
+				Connection: mcpserver.HTTPConnection{URL: "https://mcp.example.test/tools"},
 			}
 			if err := store.Save(t.Context(), initial); err != nil {
 				t.Fatal(err)
 			}
-			binding, err := authorization.BeginOAuthSession(t.Context(), initial.OAuthTarget())
+			binding, err := authorization.BeginOAuthSession(t.Context(), mustOAuthTarget(t, initial))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -117,10 +140,10 @@ func TestMCPCredentialsStopMatchingAChangedTarget(t *testing.T) {
 			if err := store.Save(t.Context(), changed); err != nil {
 				t.Fatal(err)
 			}
-			if _, _, found, err := authorization.LoadOAuthSession(t.Context(), changed.OAuthTarget()); err != nil || found {
+			if _, _, found, err := authorization.LoadOAuthSession(t.Context(), mustOAuthTarget(t, changed)); err != nil || found {
 				t.Fatalf("changed target loaded the earlier credential: found=%v err=%v", found, err)
 			}
-			replacement, err := authorization.BeginOAuthSession(t.Context(), changed.OAuthTarget())
+			replacement, err := authorization.BeginOAuthSession(t.Context(), mustOAuthTarget(t, changed))
 			if err != nil || replacement == binding {
 				t.Fatalf("changed target grant = %q, err %v", replacement, err)
 			}
@@ -131,7 +154,7 @@ func TestMCPCredentialsStopMatchingAChangedTarget(t *testing.T) {
 				t.Fatal(err)
 			}
 			requireRows(t, db, map[string]int{"mcp_oauth_sessions": 0})
-			if _, err := authorization.BeginOAuthSession(t.Context(), changed.OAuthTarget()); !errors.Is(err, mcpserver.ErrOAuthSessionSuperseded) {
+			if _, err := authorization.BeginOAuthSession(t.Context(), mustOAuthTarget(t, changed)); !errors.Is(err, mcpserver.ErrOAuthSessionSuperseded) {
 				t.Fatalf("deleted server obtained grant: %v", err)
 			}
 		})
@@ -155,4 +178,13 @@ func TestMCPAuthorizationRefusesUnboundLegacyCredentials(t *testing.T) {
 		_ = reopened.Close()
 		t.Fatal("opened credentials without an authority binding")
 	}
+}
+
+func mustOAuthTarget(t *testing.T, server mcpserver.Server) mcpserver.OAuthTarget {
+	t.Helper()
+	target, ok := server.OAuthTarget()
+	if !ok {
+		t.Fatal("HTTP server has no OAuth target")
+	}
+	return target
 }

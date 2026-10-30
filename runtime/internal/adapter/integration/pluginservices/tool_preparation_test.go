@@ -101,7 +101,7 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 		role := contract.Descriptor().Reference
 		t.Run(role+"/"+scenario.name, func(t *testing.T) {
 			name := testsupport.ServerName("owner")
-			release, err := plugin.NewRelease(testsupport.Digest("1"), plugin.Declaration{Name: "example.tools", Servers: []plugin.Server{{Name: name, Transport: mcpserver.TransportStdio, Command: "echo"}}, Contributions: []plugin.Contribution{{ID: "tool-provider", Server: name, Export: "owner", Contract: contract.Identity()}}})
+			release, err := plugin.NewRelease(testsupport.Digest("1"), plugin.Declaration{Name: "example.tools", Servers: []plugin.Server{{Name: name, Startup: plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "echo"}}}}, Contributions: []plugin.Contribution{{ID: "tool-provider", Server: name, Export: "owner", Contract: contract.Identity()}}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -206,7 +206,7 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 			})
 			transport := httptest.NewServer(sdk.NewStreamableHTTPHandler(func(*http.Request) *sdk.Server { return remote }, nil))
 			t.Cleanup(transport.Close)
-			server := mcpserver.Server{Source: source, Name: name, Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}
+			server := mcpserver.Server{Source: source, Name: name, Enabled: true, Connection: mcpserver.HTTPConnection{URL: transport.URL}}
 			var embeddingFailure error
 			resolve := func(context.Context) (models.TextEmbedder, error) {
 				if embeddingFailure != nil {

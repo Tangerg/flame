@@ -43,6 +43,12 @@ func (o OAuthTarget) Fingerprint() integrity.Digest {
 }
 
 // OAuthTarget is the credential target this record would request a grant for.
-func (s Server) OAuthTarget() OAuthTarget {
-	return OAuthTarget{Source: s.Source, Name: s.Name, URL: s.URL, Headers: maps.Clone(s.Headers)}
+// Only an HTTP connection without a static Authorization has one: the two
+// credentials are mutually exclusive.
+func (s Server) OAuthTarget() (OAuthTarget, bool) {
+	connection, ok := s.Connection.(HTTPConnection)
+	if !ok || connection.Authorization != "" {
+		return OAuthTarget{}, false
+	}
+	return OAuthTarget{Source: s.Source, Name: s.Name, URL: connection.URL, Headers: maps.Clone(connection.Headers)}, true
 }

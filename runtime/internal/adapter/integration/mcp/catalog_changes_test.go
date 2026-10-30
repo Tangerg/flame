@@ -22,7 +22,7 @@ func catalogRemote(t *testing.T, name, toolName string) (*sdk.Server, ServerConf
 	remote.AddTool(&sdk.Tool{Name: toolName, InputSchema: jsontext.Value(`{"type":"object"}`)}, catalogResult)
 	transport := httptest.NewServer(sdk.NewStreamableHTTPHandler(func(*http.Request) *sdk.Server { return remote }, nil))
 	t.Cleanup(transport.Close)
-	return remote, ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName(name), Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}}
+	return remote, ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName(name), Connection: mcpserver.HTTPConnection{URL: transport.URL}}}
 }
 func catalogResult(context.Context, *sdk.CallToolRequest) (*sdk.CallToolResult, error) {
 	return &sdk.CallToolResult{}, nil

@@ -6,10 +6,6 @@ package mcpserver
 
 import (
 	"fmt"
-	"maps"
-	"slices"
-
-	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 )
 
 // Transport names an MCP server connection mode using the standard
@@ -31,9 +27,6 @@ type Server struct {
 	// Name is unique within Source's origin. Required.
 	Name ServerName
 
-	// Transport is [TransportStdio] or [TransportStreamableHTTP]. Required.
-	Transport Transport
-
 	// Enabled gates whether the server is dialed. A disabled server stays in
 	// the registry but contributes no tools.
 	Enabled bool
@@ -41,38 +34,8 @@ type Server struct {
 	// Description is an optional human note.
 	Description string
 
-	// URL is the Streamable HTTP endpoint. Used when Transport == [TransportStreamableHTTP].
-	URL string
-
-	// Authorization, when set, is sent as the HTTP `Authorization` header
-	// (typically "Bearer <token>") — HTTP transport only. It is sensitive and
-	// must never be logged or exposed without masking. [Server.Headers] cannot
-	// carry a second Authorization representation.
-	Authorization string
-
-	// Headers carries extra static HTTP request headers (e.g. "X-API-Key") sent
-	// on every request — HTTP transport only. Values are sensitive and must
-	// never be logged or exposed without masking because arbitrary headers may carry
-	// credentials.
-	Headers map[string]string
-
-	// Command is the executable to spawn. Used when Transport == [TransportStdio].
-	Command string
-
-	// ExecutionEnvironment captures a distribution-selected interpreter and
-	// launch policy independently of plugin bytes and business command identity.
-	ExecutionEnvironment string
-
-	// Args are the command arguments (stdio).
-	Args []string
-
-	// Env replaces the subprocess environment (stdio) as a KEY→value map. nil
-	// inherits the parent; an empty map supplies no environment. Values are
-	// sensitive and must never be logged or exposed without masking.
-	Env map[string]string
-
-	// Dir sets the subprocess working directory; empty inherits the parent's (stdio).
-	Dir string
+	// Connection is how the server is reached. Required.
+	Connection Connection
 
 	// HandshakeTimeout bounds connection establishment for both transports. The
 	// value object distinguishes an unbounded handshake from a bounded duration.
@@ -84,10 +47,18 @@ func (s Server) ID() ID { return s.Source.ID(s.Name) }
 // Clone returns an owned server snapshot across persistence and live-connection
 // boundaries.
 func (s Server) Clone() Server {
-	s.Headers = maps.Clone(s.Headers)
-	s.Args = slices.Clone(s.Args)
-	s.Env = maps.Clone(s.Env)
+	if s.Connection != nil {
+		s.Connection = s.Connection.clone()
+	}
 	return s
+}
+
+// Transport is the variant of the server's connection.
+func (s Server) Transport() Transport {
+	if s.Connection == nil {
+		return ""
+	}
+	return s.Connection.Transport()
 }
 
 // Format keeps credential-bearing fields behind a redaction boundary for every
@@ -98,22 +69,15 @@ func (s Server) Format(state fmt.State, _ rune) {
 	if duration, bounded := s.HandshakeTimeout.Duration(); bounded {
 		timeout = duration.String()
 	}
-	_, _ = fmt.Fprintf(
-		state,
-		"Server{ID:%q, Transport:%q, Enabled:%t, Description:%q, URL:%s, Authorization:%s, Headers:%s, Command:%q, Args:%q, Env:%s, Dir:%q, HandshakeTimeout:%s}",
-		s.ID(),
-		s.Transport,
-		s.Enabled,
-		s.Description,
-		SecretPresence(s.URL != ""),
-		SecretPresence(s.Authorization != ""),
-		SecretPresence(len(s.Headers) > 0),
-		s.Command,
-		s.Args,
-		SecretPresence(len(s.Env) > 0),
-		s.Dir,
-		timeout,
-	)
+	var connection string
+	switch c := s.Connection.(type) {
+	case StdioConnection:
+		connection = fmt.Sprintf("Command:%q, Args:%q, Env:%s, Dir:%q", c.Command, c.Args, SecretPresence(len(c.Env) > 0), c.Dir)
+	case HTTPConnection:
+		connection = fmt.Sprintf("URL:%s, Authorization:%s, Headers:%s", SecretPresence(c.URL != ""), SecretPresence(c.Authorization != ""), SecretPresence(len(c.Headers) > 0))
+	}
+	_, _ = fmt.Fprintf(state, "Server{ID:%q, Transport:%q, Enabled:%t, Description:%q, %s, HandshakeTimeout:%s}",
+		s.ID(), s.Transport(), s.Enabled, s.Description, connection, timeout)
 }
 
 // SecretPresence spells how a credential-bearing field appears in diagnostics.
@@ -126,9 +90,7 @@ func SecretPresence(present bool) string {
 	return "<absent>"
 }
 
-// Validate reports whether the server is well-formed for its transport: the
-// chosen transport's required field is set and the other transport's fields
-// are blank before connection-specific state is attached.
+// Validate reports whether the server is well-formed for its transport.
 func (s Server) Validate() error {
 	if err := s.Source.Validate(); err != nil {
 		return err
@@ -145,50 +107,11 @@ func (s Server) ValidateConnection() error {
 	if err := s.HandshakeTimeout.Validate(); err != nil {
 		return fmt.Errorf("mcpserver %q: %w", s.ID(), err)
 	}
-	switch s.Transport {
-	case TransportStreamableHTTP:
-		if s.ExecutionEnvironment != "" {
-			return fmt.Errorf("mcpserver %q: execution environment applies to stdio only", s.ID())
-		}
-		if s.URL == "" {
-			return fmt.Errorf("mcpserver %q: URL is required for streamableHttp transport", s.ID())
-		}
-		if _, err := httporigin.Parse(s.URL); err != nil {
-			return fmt.Errorf("mcpserver %q: invalid HTTP endpoint: %w", s.ID(), err)
-		}
-		if s.Command != "" {
-			return fmt.Errorf("mcpserver %q: Command must be empty for streamableHttp transport", s.ID())
-		}
-		if len(s.Args) > 0 {
-			return fmt.Errorf("mcpserver %q: Args apply to stdio transport only", s.ID())
-		}
-		if len(s.Env) > 0 {
-			return fmt.Errorf("mcpserver %q: Env applies to stdio transport only", s.ID())
-		}
-		if s.Dir != "" {
-			return fmt.Errorf("mcpserver %q: Dir applies to stdio transport only", s.ID())
-		}
-		if err := ValidateHTTPHeaders(s.Authorization, s.Headers); err != nil {
-			return fmt.Errorf("mcpserver %q: %w", s.ID(), err)
-		}
-	case TransportStdio:
-		if s.Command == "" {
-			return fmt.Errorf("mcpserver %q: Command is required for stdio transport", s.ID())
-		}
-		if s.URL != "" {
-			return fmt.Errorf("mcpserver %q: URL must be empty for stdio transport", s.ID())
-		}
-		if s.Authorization != "" {
-			return fmt.Errorf("mcpserver %q: Authorization applies to http transport only", s.ID())
-		}
-		if len(s.Headers) > 0 {
-			return fmt.Errorf("mcpserver %q: Headers apply to http transport only", s.ID())
-		}
-		if err := validateProcessConfiguration(s.Command, s.Args, s.Env, s.Dir); err != nil {
-			return fmt.Errorf("mcpserver %q: %w", s.ID(), err)
-		}
-	default:
-		return fmt.Errorf("mcpserver %q: unknown transport %q (want %q or %q)", s.ID(), s.Transport, TransportStdio, TransportStreamableHTTP)
+	if s.Connection == nil {
+		return fmt.Errorf("mcpserver %q: a connection is required", s.ID())
+	}
+	if err := s.Connection.validate(); err != nil {
+		return fmt.Errorf("mcpserver %q: %w", s.ID(), err)
 	}
 	return nil
 }

@@ -1,10 +1,6 @@
 package mcpserver
 
 import (
-	"maps"
-	"slices"
-	"strconv"
-
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/qimu/integrity"
 )
@@ -18,29 +14,13 @@ func (s Server) AuthorityFingerprint() integrity.Digest {
 	if _, release, found := s.Source.Release(); found {
 		authority = release.String()
 	}
-	fields := []string{string(s.Transport), authority}
-	if s.Transport == TransportStreamableHTTP {
-		return identity.DigestStrings(append(fields, s.URL)...)
-	}
-	fields = append(fields, s.Command, s.Dir, s.ExecutionEnvironment, strconv.Itoa(len(s.Args)))
-	return identity.DigestStrings(append(fields, s.Args...)...)
+	fields := []string{string(s.Transport()), authority}
+	return identity.DigestStrings(append(fields, s.Connection.authorityFields()...)...)
 }
 
 // SameConnection compares the descriptor realized by an executable. Enablement
 // is checked separately at dispatch; notes and future handshake limits cannot
-// change an existing connection. An absent process environment inherits the
-// parent, whereas an explicitly empty environment does not.
+// change an existing connection.
 func (s Server) SameConnection(other Server) bool {
-	if s.Source != other.Source || s.Name != other.Name || s.Transport != other.Transport {
-		return false
-	}
-	switch s.Transport {
-	case TransportStreamableHTTP:
-		return s.URL == other.URL && s.Authorization == other.Authorization && maps.Equal(s.Headers, other.Headers)
-	case TransportStdio:
-		return s.Command == other.Command && s.ExecutionEnvironment == other.ExecutionEnvironment && s.Dir == other.Dir && slices.Equal(s.Args, other.Args) &&
-			(s.Env == nil) == (other.Env == nil) && maps.Equal(s.Env, other.Env)
-	default:
-		return false
-	}
+	return s.Source == other.Source && s.Name == other.Name && s.Connection != nil && s.Connection.sameAs(other.Connection)
 }

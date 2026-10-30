@@ -69,7 +69,7 @@ func TestRegistryRefusesMissingRequiredBindingBeforeAcquiringLaunchResources(t *
 }
 
 func TestRegistryReadFailuresCannotWithdrawInstallationSources(t *testing.T) {
-	release := testsupport.Release(t, "1", plugin.Declaration{Name: "package", Servers: []plugin.Server{{Name: testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.test/mcp"}}})
+	release := testsupport.Release(t, "1", plugin.Declaration{Name: "package", Servers: []plugin.Server{{Name: testsupport.ServerName("remote"), Startup: plugin.DeclaredConnection{Connection: mcpserver.HTTPConnection{URL: "https://example.test/mcp"}}}}})
 	installation, err := plugin.New(testsupport.InstallationID(t), "/package", release)
 	if err != nil {
 		t.Fatal(err)
@@ -113,7 +113,7 @@ type singleServerPackages struct{ reads []serverRead }
 
 func TestRegistryDefinitionsDoNotRealizePackageResources(t *testing.T) {
 	release := testsupport.Release(t, "1", plugin.Declaration{Name: "package", Servers: []plugin.Server{
-		{Name: testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.test/mcp"},
+		{Name: testsupport.ServerName("remote"), Startup: plugin.DeclaredConnection{Connection: mcpserver.HTTPConnection{URL: "https://example.test/mcp"}}},
 	}})
 	installation, err := plugin.New(testsupport.InstallationID(t), "/package", release)
 	if err != nil {
@@ -155,7 +155,7 @@ func (p *singleServerPackages) Server(_ context.Context, installation *plugin.In
 		if err != nil {
 			return mcpserver.Server{}, false, err
 		}
-		return mcpserver.Server{Source: source, Name: name, Transport: declared.Transport, URL: declared.URL, Enabled: installation.ServerEnabled(declared.Name)}, true, nil
+		return mcpserver.Server{Source: source, Name: name, Enabled: installation.ServerEnabled(declared.Name), Connection: declared.Startup.(plugin.DeclaredConnection).Connection}, true, nil
 	}
 	return mcpserver.Server{}, false, nil
 }
@@ -167,9 +167,9 @@ func (p *singleServerPackages) Connection(ctx context.Context, installation *plu
 
 func TestRegistryResolvesOneServerPerOrigin(t *testing.T) {
 	release := testsupport.Release(t, "1", plugin.Declaration{Name: "package", Servers: []plugin.Server{
-		{Name: testsupport.ServerName("target"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.test/target"},
-		{Name: testsupport.ServerName("sibling"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.test/sibling"},
-		{Name: testsupport.ServerName("off"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.test/off"},
+		{Name: testsupport.ServerName("target"), Startup: plugin.DeclaredConnection{Connection: mcpserver.HTTPConnection{URL: "https://example.test/target"}}},
+		{Name: testsupport.ServerName("sibling"), Startup: plugin.DeclaredConnection{Connection: mcpserver.HTTPConnection{URL: "https://example.test/sibling"}}},
+		{Name: testsupport.ServerName("off"), Startup: plugin.DeclaredConnection{Connection: mcpserver.HTTPConnection{URL: "https://example.test/off"}}},
 	}})
 	installation, err := plugin.New(testsupport.InstallationID(t), "/package", release)
 	if err != nil {
@@ -198,8 +198,8 @@ func TestRegistryResolvesOneServerPerOrigin(t *testing.T) {
 		t.Fatal(err)
 	}
 	users := userMemory{
-		userName: {Source: mcpserver.UserSource(), Name: userName, Transport: mcpserver.TransportStdio, Command: "local", Enabled: true},
-		userOff:  {Source: mcpserver.UserSource(), Name: userOff, Transport: mcpserver.TransportStdio, Command: "paused"},
+		userName: {Source: mcpserver.UserSource(), Name: userName, Connection: mcpserver.StdioConnection{Command: "local"}, Enabled: true},
+		userOff:  {Source: mcpserver.UserSource(), Name: userOff, Connection: mcpserver.StdioConnection{Command: "paused"}},
 	}
 	packages := &singleServerPackages{}
 	registry, err := NewRegistry(testFramework(t, installations), users, installations, packages, requirementSelections{}, &requirementCompositions{})

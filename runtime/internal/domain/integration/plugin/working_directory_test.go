@@ -3,6 +3,8 @@ package plugin
 import (
 	"errors"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
 func TestWorkingDirectorySpellingsHaveOneReading(t *testing.T) {
@@ -14,13 +16,13 @@ func TestWorkingDirectorySpellingsHaveOneReading(t *testing.T) {
 		"${PLUGIN_DATA}":      {base: DataBase},
 		"${PLUGIN_DATA}/a/b":  {base: DataBase, path: "a/b"},
 	} {
-		got, err := Server{Dir: dir}.WorkingDirectory()
+		got, err := Server{Startup: DeclaredConnection{Connection: mcpserver.StdioConnection{Dir: dir}}}.WorkingDirectory()
 		if err != nil || got != want {
 			t.Errorf("working directory %q = %+v, %v; want %+v", dir, got, err, want)
 		}
 	}
 	for _, dir := range []string{"/abs", "work", "./", "./../escape", "${PLUGIN_DATA}/../x", "${PLUGIN_ROOT}x", "${HOME}/x"} {
-		if _, err := (Server{Dir: dir}).WorkingDirectory(); !errors.Is(err, ErrInvalid) {
+		if _, err := (Server{Startup: DeclaredConnection{Connection: mcpserver.StdioConnection{Dir: dir}}}).WorkingDirectory(); !errors.Is(err, ErrInvalid) {
 			t.Errorf("working directory %q = %v, want invalid", dir, err)
 		}
 	}

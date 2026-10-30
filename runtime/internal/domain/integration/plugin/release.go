@@ -36,20 +36,55 @@ const (
 // vocabulary. Command and Dir keep the package-relative spelling; the package
 // adapter resolves them against the release directory at realization.
 type Server struct {
-	Managed   *ManagedBackend
-	Name      mcpserver.ServerName
-	Transport mcpserver.Transport
-	Command   string
-	Args      []string
-	Env       map[string]string
-	Dir       string
-	URL       string
-	Headers   map[string]string
+	Name    mcpserver.ServerName
+	Startup ServerStartup
 }
 
+// ServerStartup is how a package starts or reaches one server: a backend the
+// Runtime launches with its pinned interpreter, or a connection the package
+// declares itself.
+type ServerStartup interface {
+	Transport() mcpserver.Transport
+	clone() ServerStartup
+}
+
+// ManagedBackend is a Node ESM entry the Runtime starts over stdio.
 type ManagedBackend struct {
 	Runtime ManagedRuntime
 	Entry   string
+}
+
+// DeclaredConnection is an MCP connection written in the package itself.
+type DeclaredConnection struct{ mcpserver.Connection }
+
+func (ManagedBackend) Transport() mcpserver.Transport { return mcpserver.TransportStdio }
+
+func (m ManagedBackend) clone() ServerStartup { return m }
+
+func (d DeclaredConnection) clone() ServerStartup {
+	return DeclaredConnection{Connection: mcpserver.Server{Connection: d.Connection}.Clone().Connection}
+}
+
+func (s Server) Transport() mcpserver.Transport { return s.Startup.Transport() }
+
+// stdio reports the package-written process connection, when there is one.
+func (s Server) stdio() (mcpserver.StdioConnection, bool) {
+	declared, ok := s.Startup.(DeclaredConnection)
+	if !ok {
+		return mcpserver.StdioConnection{}, false
+	}
+	connection, ok := declared.Connection.(mcpserver.StdioConnection)
+	return connection, ok
+}
+
+// http reports the package-written HTTP connection, when there is one.
+func (s Server) http() (mcpserver.HTTPConnection, bool) {
+	declared, ok := s.Startup.(DeclaredConnection)
+	if !ok {
+		return mcpserver.HTTPConnection{}, false
+	}
+	connection, ok := declared.Connection.(mcpserver.HTTPConnection)
+	return connection, ok
 }
 
 type ManagedRuntime string
@@ -147,13 +182,9 @@ func (d Declaration) clone() Declaration {
 }
 
 func (s Server) clone() Server {
-	if s.Managed != nil {
-		managed := *s.Managed
-		s.Managed = &managed
+	if s.Startup != nil {
+		s.Startup = s.Startup.clone()
 	}
-	s.Args = slices.Clone(s.Args)
-	s.Env = maps.Clone(s.Env)
-	s.Headers = maps.Clone(s.Headers)
 	return s
 }
 
@@ -255,19 +286,18 @@ func (r Release) recipient(name mcpserver.ServerName) (integrity.Digest, bool) {
 	if !found {
 		return integrity.Digest{}, false
 	}
-	fields := []string{string(server.Transport)}
-	if server.Managed != nil {
-		fields = append(fields, string(server.Managed.Runtime), server.Managed.Entry)
+	fields := []string{string(server.Transport())}
+	if managed, ok := server.Startup.(ManagedBackend); ok {
+		fields = append(fields, string(managed.Runtime), managed.Entry)
 	}
-	switch server.Transport {
-	case mcpserver.TransportStreamableHTTP:
-		fields = append(fields, server.URL)
-		for _, key := range slices.Sorted(maps.Keys(server.Headers)) {
-			fields = append(fields, key, server.Headers[key])
+	if http, ok := server.http(); ok {
+		fields = append(fields, http.URL)
+		for _, key := range slices.Sorted(maps.Keys(http.Headers)) {
+			fields = append(fields, key, http.Headers[key])
 		}
-	default:
-		fields = append(fields, r.digest.String(), name.String())
+		return identity.DigestStrings(fields...), true
 	}
+	fields = append(fields, r.digest.String(), name.String())
 	return identity.DigestStrings(fields...), true
 }
 
@@ -403,23 +433,25 @@ func (i Input) binding(server Server) (string, error) {
 	key := i.Key
 	switch i.Target {
 	case Environment:
-		if server.Transport != mcpserver.TransportStdio {
+		if server.Transport() != mcpserver.TransportStdio {
 			return "", refuse(DiagnosticInvalidDependencies, "input %q binds an environment variable of a non-stdio server", i.ID)
 		}
-		if server.Managed != nil && slices.Contains([]string{"NODE_OPTIONS", "NODE_PATH", "NODE_REPL_EXTERNAL_MODULE"}, strings.ToUpper(key)) {
+		_, managed := server.Startup.(ManagedBackend)
+		if managed && slices.Contains([]string{"NODE_OPTIONS", "NODE_PATH", "NODE_REPL_EXTERNAL_MODULE"}, strings.ToUpper(key)) {
 			return "", refuse(DiagnosticInvalidDependencies, "input %q replaces managed node launch policy", i.ID)
 		}
 		if err := validatePackageEnvironment(map[string]string{key: ""}); err != nil {
 			return "", &Refusal{Code: DiagnosticInvalidDeclaration, cause: fmt.Errorf("input %q: %w", i.ID, err)}
 		}
 		key = strings.ToUpper(key)
-		for static := range server.Env {
+		stdio, _ := server.stdio()
+		for static := range stdio.Env {
 			if strings.EqualFold(static, key) {
 				return "", refuse(DiagnosticInvalidDependencies, "input %q duplicates static environment configuration", i.ID)
 			}
 		}
 	case Header:
-		if server.Transport != mcpserver.TransportStreamableHTTP {
+		if server.Transport() != mcpserver.TransportStreamableHTTP {
 			return "", refuse(DiagnosticInvalidDependencies, "input %q binds a header of a non-HTTP server", i.ID)
 		}
 		if err := mcpserver.ValidateHTTPHeaders("", map[string]string{key: ""}); err != nil {
@@ -429,13 +461,14 @@ func (i Input) binding(server Server) (string, error) {
 			return "", refuse(DiagnosticInvalidDeclaration, "input %q header must be a secret", i.ID)
 		}
 		key = strings.ToLower(key)
-		for static := range server.Headers {
+		http, _ := server.http()
+		for static := range http.Headers {
 			if strings.EqualFold(static, key) {
 				return "", refuse(DiagnosticInvalidDependencies, "input %q duplicates static header configuration", i.ID)
 			}
 		}
 	case Authorization:
-		if server.Transport != mcpserver.TransportStreamableHTTP {
+		if server.Transport() != mcpserver.TransportStreamableHTTP {
 			return "", refuse(DiagnosticInvalidDependencies, "input %q binds authorization of a non-HTTP server", i.ID)
 		}
 		if key != "" || !i.Secret {
@@ -453,29 +486,31 @@ func (s Server) validate() error {
 	if err := s.Name.Validate(); err != nil {
 		return fmt.Errorf("%w: local server identity: %w", ErrInvalid, err)
 	}
-	if s.Managed != nil {
-		if s.Transport != mcpserver.TransportStdio || s.Command != "" || len(s.Args) != 0 || len(s.Env) != 0 || s.Dir != "" || s.URL != "" || len(s.Headers) != 0 || s.Managed.Runtime != node || !ValidResourcePath(s.Managed.Entry) || !strings.HasSuffix(s.Managed.Entry, ".mjs") {
-			return fmt.Errorf("%w: managed backend requires one node ESM entry without another startup", ErrInvalid)
+	switch startup := s.Startup.(type) {
+	case ManagedBackend:
+		if startup.Runtime != node || !ValidResourcePath(startup.Entry) || !strings.HasSuffix(startup.Entry, ".mjs") {
+			return fmt.Errorf("%w: managed backend requires one node ESM entry", ErrInvalid)
 		}
 		return nil
-	}
-	connection := mcpserver.Server{Name: s.Name, Transport: s.Transport, Command: s.Command, Args: s.Args, Env: s.Env, Dir: s.Dir, URL: s.URL, Headers: s.Headers}
-	if err := connection.ValidateConnection(); err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalid, err)
-	}
-	switch s.Transport {
-	case mcpserver.TransportStdio:
-		if err := validatePackageEnvironment(s.Env); err != nil {
-			return err
+	case DeclaredConnection:
+		if err := (mcpserver.Server{Name: s.Name, Connection: startup.Connection}).ValidateConnection(); err != nil {
+			return fmt.Errorf("%w: %w", ErrInvalid, err)
 		}
-		if err := validatePackageCommand(s); err != nil {
+		switch connection := startup.Connection.(type) {
+		case mcpserver.StdioConnection:
+			if err := validatePackageEnvironment(connection.Env); err != nil {
+				return err
+			}
+			if err := validatePackageCommand(connection.Command); err != nil {
+				return err
+			}
+			_, err := parseWorkingDirectory(connection.Dir)
 			return err
+		case mcpserver.HTTPConnection:
+			return validatePackageEndpoint(connection.URL)
 		}
-		_, err := parseWorkingDirectory(s.Dir)
-		return err
-	default:
-		return validatePackageEndpoint(s.URL)
 	}
+	return fmt.Errorf("%w: server %q has no startup", ErrInvalid, s.Name)
 }
 
 // validatePackageEnvironment reserves the variables only the Runtime binds and
@@ -500,14 +535,14 @@ func validatePackageEnvironment(environment map[string]string) error {
 
 // validatePackageCommand admits a file inside the package or a bare command
 // name resolved from PATH; a package cannot name a host path.
-func validatePackageCommand(s Server) error {
-	if packaged, found := s.PackagedCommand(); found {
+func validatePackageCommand(command string) error {
+	if packaged, found := strings.CutPrefix(command, "./"); found {
 		if !ValidResourcePath(packaged) {
 			return fmt.Errorf("%w: package command path", ErrInvalid)
 		}
 		return nil
 	}
-	if strings.ContainsAny(s.Command, "/\\ \t\r\n$") {
+	if strings.ContainsAny(command, "/\\ \t\r\n$") {
 		return fmt.Errorf("%w: bare command name", ErrInvalid)
 	}
 	return nil

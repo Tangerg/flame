@@ -21,11 +21,15 @@ func TestRejectedLaunchRetiresItsResourceExactlyOnce(t *testing.T) {
 		t.Run(refusal, func(t *testing.T) {
 			var retired atomic.Int32
 			retirementErr := errors.New("retirement failed")
-			config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStdio, Command: "must-not-start"}}
+			config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"), Connection: mcpserver.StdioConnection{Command: "must-not-start"}}}
 			c := newTestConnections(t)
 			ctx := t.Context()
 			if refusal == "invalid configuration" {
-				config.Command = ""
+				{
+					updated := config.Connection.(mcpserver.StdioConnection)
+					updated.Command = ""
+					config.Connection = updated
+				}
 			}
 			if strings.HasPrefix(refusal, "canceled") {
 				canceled, cancel := context.WithCancel(ctx)
@@ -68,7 +72,7 @@ func TestSessionLedgerOwnsLaunchResourceThroughDetachAndShutdown(t *testing.T) {
 	transport := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(func(*http.Request) *sdkmcp.Server { return remote }, nil))
 	t.Cleanup(transport.Close)
 	var retired atomic.Int32
-	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}}
+	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"), Connection: mcpserver.HTTPConnection{URL: transport.URL}}}
 	input, err := newLaunch(config, nil, func() error { retired.Add(1); return nil }, admission{})
 	if err != nil {
 		t.Fatal(err)
@@ -103,7 +107,7 @@ func TestLaunchAdmissionFailureWithdrawsSessionAndRetiresResource(t *testing.T) 
 			t.Cleanup(transport.Close)
 			var retired atomic.Int32
 			refusal := errors.New("declaration mismatch")
-			config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}}
+			config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"), Connection: mcpserver.HTTPConnection{URL: transport.URL}}}
 			input, err := newLaunch(config, nil, func() error { retired.Add(1); return nil }, admission{Run: func(context.Context, *sdkmcp.ClientSession) error {
 				if panics {
 					panic("admission failed")
@@ -131,7 +135,7 @@ func TestLaunchAdmissionFailureWithdrawsSessionAndRetiresResource(t *testing.T) 
 }
 
 func TestStartupAdmissionFailureRetiresTheUnlaunchedResource(t *testing.T) {
-	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStdio, Command: "must-not-start"}}
+	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"), Connection: mcpserver.StdioConnection{Command: "must-not-start"}}}
 	var retired atomic.Int32
 	c, err := openConnections(t.Context(), t.Context(), []ServerConfig{config}, nil, func(context.Context, mcpserver.ID) (*launchPermit, error) {
 		other := config.Clone()
@@ -159,7 +163,7 @@ func TestRetirementPanicStillReleasesTheLaunchResource(t *testing.T) {
 }
 
 func TestRelocatedStdioCannotBypassConnectionInvariants(t *testing.T) {
-	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStdio, Command: "server"}}
+	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"), Connection: mcpserver.StdioConnection{Command: "server"}}}
 	for _, invalid := range []stdioLaunch{
 		{Command: "bad\x00command"},
 		{Command: "server", Args: []string{"bad\x00argument"}},
@@ -179,7 +183,7 @@ func TestRelocatedStdioCannotBypassConnectionInvariants(t *testing.T) {
 
 func TestLaunchFormattingRedactsExecutionCredentials(t *testing.T) {
 	secret := "private-execution-credential"
-	input, err := newLaunch(ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStdio, Command: "server", Env: map[string]string{"TOKEN": secret}}}, &stdioLaunch{Command: "server", Env: map[string]string{"TOKEN": secret}}, func() error { return nil }, admission{})
+	input, err := newLaunch(ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"), Connection: mcpserver.StdioConnection{Command: "server", Env: map[string]string{"TOKEN": secret}}}}, &stdioLaunch{Command: "server", Env: map[string]string{"TOKEN": secret}}, func() error { return nil }, admission{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,7 +197,7 @@ func TestLaunchFormattingRedactsExecutionCredentials(t *testing.T) {
 
 func TestCopyingALaunchDoesNotDuplicateItsClaim(t *testing.T) {
 	retired := 0
-	input, err := newLaunch(ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStdio, Command: "must-not-start"}}, nil, func() error { retired++; return nil }, admission{})
+	input, err := newLaunch(ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"), Connection: mcpserver.StdioConnection{Command: "must-not-start"}}}, nil, func() error { retired++; return nil }, admission{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -219,7 +223,7 @@ func TestRetainedInstallationDescriptorCannotLaunchWithoutExecutionContent(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	config := ServerConfig{Server: mcpserver.Server{Source: source, Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStdio, Command: "must-not-start"}}
+	config := ServerConfig{Server: mcpserver.Server{Source: source, Name: testsupport.ServerName("server"), Connection: mcpserver.StdioConnection{Command: "must-not-start"}}}
 	retired := 0
 	if input, err := newLaunch(config, nil, func() error { retired++; return nil }, admission{}); err == nil || input != nil || retired != 1 {
 		t.Fatalf("retained installation descriptor acquired an unverified launch: %v, retired=%d", err, retired)

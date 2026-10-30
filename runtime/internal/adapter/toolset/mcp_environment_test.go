@@ -117,7 +117,7 @@ func TestToolEnvironmentDialsMCPServer(t *testing.T) {
 	t.Cleanup(httpServer.Close)
 
 	// 2. Construct the tool environment pointing at the HTTP MCP endpoint.
-	built, _ := mustMCPToolEnvironment(t, []mcpserver.Server{{Source: mcpserver.UserSource(), Name: testsupport.ServerName("test"), Transport: mcpserver.TransportStreamableHTTP, URL: httpServer.URL}})
+	built, _ := mustMCPToolEnvironment(t, []mcpserver.Server{{Source: mcpserver.UserSource(), Name: testsupport.ServerName("test"), Connection: mcpserver.HTTPConnection{URL: httpServer.URL}}})
 
 	// 3. The remote tool must appear in the merged list under its
 	// model-facing MCP port name.
@@ -145,8 +145,8 @@ func TestToolEnvironmentDialsMCPServer(t *testing.T) {
 // silently overwriting.
 func TestToolEnvironmentRejectsDuplicateMCPNames(t *testing.T) {
 	_, err := mcp.Open(context.Background(), t.Context(), []mcpserver.Server{
-		{Source: mcpserver.UserSource(), Name: testsupport.ServerName("dup"), Transport: mcpserver.TransportStreamableHTTP, URL: "http://example.invalid/"},
-		{Source: mcpserver.UserSource(), Name: testsupport.ServerName("dup"), Transport: mcpserver.TransportStreamableHTTP, URL: "http://other.invalid/"},
+		{Source: mcpserver.UserSource(), Name: testsupport.ServerName("dup"), Connection: mcpserver.HTTPConnection{URL: "http://example.invalid/"}},
+		{Source: mcpserver.UserSource(), Name: testsupport.ServerName("dup"), Connection: mcpserver.HTTPConnection{URL: "http://other.invalid/"}},
 	}, nil, testSourceRegistry(nil), nil, nil, nil, nil)
 	if err == nil {
 		t.Fatal("expected duplicate-name error, got nil")
@@ -158,7 +158,7 @@ func TestToolEnvironmentRejectsDuplicateMCPNames(t *testing.T) {
 // problem on the first tool call.
 func TestToolEnvironmentRejectsBadMCPEndpoint(t *testing.T) {
 	_, err := mcp.Open(context.Background(), t.Context(), []mcpserver.Server{
-		{Source: mcpserver.UserSource(), Name: testsupport.ServerName("bad"), Transport: mcpserver.TransportStreamableHTTP}, // empty URL fails validation
+		{Source: mcpserver.UserSource(), Name: testsupport.ServerName("bad"), Connection: mcpserver.HTTPConnection{}}, // empty URL fails validation
 	}, nil, testSourceRegistry(nil), nil, nil, nil, nil)
 	if err == nil {
 		t.Fatal("expected validation error, got nil")
@@ -184,12 +184,10 @@ func TestToolEnvironmentDialsStdioMCP(t *testing.T) {
 	}
 
 	built, _ := mustMCPToolEnvironment(t, []mcpserver.Server{{
-		Source:    mcpserver.UserSource(),
-		Name:      testsupport.ServerName("stdio"),
-		Transport: mcpserver.TransportStdio,
-		Command:   self,
-		Args:      []string{"-test.run=^$"}, // no test selector — TestMain re-routes
-		Env:       map[string]string{runAsMCPServerEnv: "1"},
+		Source: mcpserver.UserSource(),
+		Name:   testsupport.ServerName("stdio"),
+		// No test selector: TestMain re-routes the process into the server.
+		Connection: mcpserver.StdioConnection{Command: self, Args: []string{"-test.run=^$"}, Env: map[string]string{runAsMCPServerEnv: "1"}},
 	}})
 	want := "stdio_ping"
 	found := false
@@ -213,9 +211,9 @@ func TestToolEnvironmentDialsStdioMCP(t *testing.T) {
 // HTTP empty-endpoint guard for the stdio path.
 func TestToolEnvironmentRejectsEmptyStdioCommand(t *testing.T) {
 	_, err := mcp.Open(context.Background(), t.Context(), []mcpserver.Server{{
-		Source:    mcpserver.UserSource(),
-		Name:      testsupport.ServerName("bad"),
-		Transport: mcpserver.TransportStdio,
+		Source:     mcpserver.UserSource(),
+		Name:       testsupport.ServerName("bad"),
+		Connection: mcpserver.StdioConnection{},
 	}}, nil, testSourceRegistry(nil), nil, nil, nil, nil)
 	if err == nil {
 		t.Fatal("expected validation error, got nil")
@@ -236,7 +234,7 @@ func fileExists(p string) bool {
 // the sibling Rejects* tests assert.)
 func TestToolEnvironmentToleratesUnreachableMCP(t *testing.T) {
 	built, pool := mustMCPToolEnvironment(t, []mcpserver.Server{
-		{Source: mcpserver.UserSource(), Name: testsupport.ServerName("down"), Transport: mcpserver.TransportStreamableHTTP, URL: "http://127.0.0.1:1/mcp"},
+		{Source: mcpserver.UserSource(), Name: testsupport.ServerName("down"), Connection: mcpserver.HTTPConnection{URL: "http://127.0.0.1:1/mcp"}},
 	})
 	statuses := pool.Statuses()
 	if len(statuses) != 1 || statuses[0].Server != testsupport.UserMCPServer("down") || statuses[0].State != mcpserver.ConnectionFailed {
@@ -258,7 +256,7 @@ func TestToolEnvironmentToleratesUnreachableMCP(t *testing.T) {
 // code path as boot, which the stdio integration test already exercises.)
 func TestToolEnvironmentReconnectsMCP(t *testing.T) {
 	built, pool := mustMCPToolEnvironment(t, []mcpserver.Server{
-		{Source: mcpserver.UserSource(), Name: testsupport.ServerName("down"), Transport: mcpserver.TransportStreamableHTTP, URL: "http://127.0.0.1:1/mcp"},
+		{Source: mcpserver.UserSource(), Name: testsupport.ServerName("down"), Connection: mcpserver.HTTPConnection{URL: "http://127.0.0.1:1/mcp"}},
 	})
 	if err := connectPool(pool, context.Background(), testsupport.UserMCPServer("down")); err == nil {
 		t.Fatal("reconnect of an unreachable server must return the dial error")
@@ -339,8 +337,8 @@ func TestMCPNameCollisionsAfterDialAndReconnect(t *testing.T) {
 	second, secondURL := serve("second", "b_c", "healthy")
 	for _, reversed := range []bool{false, true} {
 		servers := []mcpserver.Server{
-			{Source: mcpserver.UserSource(), Name: testsupport.ServerName("a_b"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: firstURL},
-			{Source: mcpserver.UserSource(), Name: testsupport.ServerName("a"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: secondURL},
+			{Source: mcpserver.UserSource(), Name: testsupport.ServerName("a_b"), Enabled: true, Connection: mcpserver.HTTPConnection{URL: firstURL}},
+			{Source: mcpserver.UserSource(), Name: testsupport.ServerName("a"), Enabled: true, Connection: mcpserver.HTTPConnection{URL: secondURL}},
 		}
 		if reversed {
 			servers[0], servers[1] = servers[1], servers[0]

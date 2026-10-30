@@ -28,7 +28,7 @@ import (
 
 func TestColdToolRestorationUsesTheOriginalGraphWithoutCurrentCatalog(t *testing.T) {
 	name := testsupport.ServerName("records")
-	release := testsupport.Release(t, "tool-only", plugin.Declaration{Name: "example.tool-only", Servers: []plugin.Server{{Name: name, Transport: mcpserver.TransportStdio, Command: "backend"}}})
+	release := testsupport.Release(t, "tool-only", plugin.Declaration{Name: "example.tool-only", Servers: []plugin.Server{{Name: name, Startup: plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "backend"}}}}})
 	installation, err := plugin.New(testsupport.InstallationID(t), "original source", release)
 	if err != nil {
 		t.Fatal(err)
@@ -89,7 +89,7 @@ func TestColdToolRestorationUsesTheOriginalGraphWithoutCurrentCatalog(t *testing
 	callbacks := qimumcp.NewCallbacks()
 	t.Cleanup(func() { _ = callbacks.Close() })
 	store := &toolInstallationStore{snapshot: plugin.Snapshot{Installation: installation, Selected: release}}
-	managed := newManagedFixture(t, store, mcpserver.Server{Source: source, Name: name, Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: endpoint.URL}, callbacks, nil)
+	managed := newManagedFixture(t, store, mcpserver.Server{Source: source, Name: name, Enabled: true, Connection: mcpserver.HTTPConnection{URL: endpoint.URL}}, callbacks, nil)
 	var current []toolcontract.Tool
 	managed.Pool.SetToolSink(func(tools []toolcontract.Tool, _ []mcpserver.ID) { current = tools }, managed.prepare)
 	if len(current) != 1 {

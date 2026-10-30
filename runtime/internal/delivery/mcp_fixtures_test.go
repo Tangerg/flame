@@ -85,9 +85,10 @@ func fakeMCPPortsConfig(ports *fakeMCPPorts) mcpapp.Config {
 	servers := make(map[mcpserver.ID]mcpserver.Server, len(ports.statuses))
 	for _, status := range ports.statuses {
 		servers[status.Server] = mcpserver.Server{
-			Source: mcpserver.UserSource(),
-			Name:   status.Server.Name(), Enabled: true,
-			Transport: mcpserver.TransportStdio, Command: "mcp-" + status.Server.Name().String(),
+			Source:     mcpserver.UserSource(),
+			Name:       status.Server.Name(),
+			Enabled:    true,
+			Connection: mcpserver.StdioConnection{Command: "mcp-" + status.Server.Name().String()},
 		}
 	}
 	registry := &mcpRegistryFake{servers: servers}

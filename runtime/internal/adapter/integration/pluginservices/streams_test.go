@@ -132,7 +132,7 @@ func newStreamFixture(t *testing.T, mode string) *streamFixture {
 		t.Fatal(err)
 	}
 	name := testsupport.ServerName("records")
-	release, err := plugin.NewRelease(testsupport.Digest("1"), plugin.Declaration{Name: "example.records", Servers: []plugin.Server{{Name: name, Transport: mcpserver.TransportStdio, Command: "backend"}}, Contributions: []plugin.Contribution{{ID: "records", Server: name, Export: "records", Contract: contract.Identity()}}})
+	release, err := plugin.NewRelease(testsupport.Digest("1"), plugin.Declaration{Name: "example.records", Servers: []plugin.Server{{Name: name, Startup: plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "backend"}}}}, Contributions: []plugin.Contribution{{ID: "records", Server: name, Export: "records", Contract: contract.Identity()}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,7 +220,7 @@ func newStreamFixture(t *testing.T, mode string) *streamFixture {
 	}
 	endpoint := httptest.NewServer(sdk.NewStreamableHTTPHandler(func(*http.Request) *sdk.Server { return remote }, nil))
 	t.Cleanup(endpoint.Close)
-	server := mcpserver.Server{Source: source, Name: name, Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: endpoint.URL}
+	server := mcpserver.Server{Source: source, Name: name, Enabled: true, Connection: mcpserver.HTTPConnection{URL: endpoint.URL}}
 	callbacks := qimumcp.NewCallbacks()
 	t.Cleanup(func() { _ = callbacks.Close() })
 	if err := callbacks.PublishRPC(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

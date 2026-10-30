@@ -44,10 +44,11 @@ func (s ServerConfig) Validate() error {
 		return err
 	}
 	if s.OAuthHandler != nil {
-		if s.Transport != mcpserver.TransportStreamableHTTP {
+		http, ok := s.Connection.(mcpserver.HTTPConnection)
+		if !ok {
 			return fmt.Errorf("mcp server %q: OAuth applies to HTTP transport only", s.ID())
 		}
-		if s.Authorization != "" {
+		if http.Authorization != "" {
 			return fmt.Errorf("mcp server %q: OAuth and static Authorization are mutually exclusive", s.ID())
 		}
 	}
@@ -97,22 +98,22 @@ func dial(
 	}
 	var command *exec.Cmd
 	connect := func(sessionCtx context.Context) (*sdkmcp.ClientSession, error) {
-		switch cfg.Transport {
-		case mcpserver.TransportStreamableHTTP:
-			httpClient, err := endpointHTTPClient(cfg.URL, cfg.Authorization, cfg.Headers)
+		switch connection := cfg.Connection.(type) {
+		case mcpserver.HTTPConnection:
+			httpClient, err := endpointHTTPClient(connection.URL, connection.Authorization, connection.Headers)
 			if err != nil {
 				return nil, fmt.Errorf("mcp server %q: build HTTP client: %w", cfg.ID(), err)
 			}
 			transport := &sdkmcp.StreamableClientTransport{
-				Endpoint:     cfg.URL,
+				Endpoint:     connection.URL,
 				HTTPClient:   httpClient,
 				OAuthHandler: authorizationChallenge{oauth: cfg.OAuthHandler},
 			}
 			return client.Connect(sessionCtx, transport, nil)
-		case mcpserver.TransportStdio:
+		case mcpserver.StdioConnection:
 			stdio := input.stdio
 			if stdio == nil {
-				stdio = &stdioLaunch{Command: cfg.Command, Args: cfg.Args, Env: cfg.Env, Dir: cfg.Dir}
+				stdio = &stdioLaunch{Command: connection.Command, Args: connection.Args, Env: connection.Env, Dir: connection.Dir}
 			}
 			cmd := exec.CommandContext(sessionCtx, stdio.Command, stdio.Args...)
 			cmd.Env = processEnvironment(stdio.Env)
@@ -122,7 +123,7 @@ func dial(
 			command = cmd
 			return client.Connect(sessionCtx, &sdkmcp.CommandTransport{Command: cmd}, nil)
 		default:
-			return nil, fmt.Errorf("mcp: unknown transport %q", cfg.Transport)
+			return nil, fmt.Errorf("mcp: unknown transport %q", cfg.Transport())
 		}
 	}
 	var timeout *time.Duration

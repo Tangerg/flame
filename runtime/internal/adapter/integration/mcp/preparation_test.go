@@ -66,7 +66,7 @@ func TestPreparedToolRechecksAuthorityAndReleasesBeforeRefusedDispatch(t *testin
 			})
 			transport := httptest.NewServer(sdk.NewStreamableHTTPHandler(func(*http.Request) *sdk.Server { return remote }, nil))
 			t.Cleanup(transport.Close)
-			server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("owner"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}
+			server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("owner"), Enabled: true, Connection: mcpserver.HTTPConnection{URL: transport.URL}}
 			registry := &preparationSourceRegistry{mutableSourceRegistry: &mutableSourceRegistry{server: server.Clone()}}
 			prepared := make(chan struct{})
 			resume := make(chan struct{})
@@ -127,7 +127,11 @@ func TestPreparedToolRechecksAuthorityAndReleasesBeforeRefusedDispatch(t *testin
 				server.Enabled = false
 				registry.set(server)
 			case "configuration":
-				server.Headers = map[string]string{"x-source": "replacement"}
+				{
+					updated := server.Connection.(mcpserver.HTTPConnection)
+					updated.Headers = map[string]string{"x-source": "replacement"}
+					server.Connection = updated
+				}
 				registry.set(server)
 			case "detached":
 				if err := pool.Detach(server.ID()); err != nil {
