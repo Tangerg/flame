@@ -174,7 +174,7 @@ func (e *embedder) start(ctx context.Context, request *embedding.Request) (model
 	if err != nil {
 		return modelref.EndpointInvocation{}, err
 	}
-	invocation := modelref.EndpointInvocation{ID: "endpoint_" + uuid.NewString(), Kind: modelref.EndpointEmbedding, Caller: caller, Provider: e.selection.Provider(), Model: e.selection.Model(), SessionID: executionctx.SessionID(ctx), Embedding: cloneEmbeddingRequest(request), StartedAt: time.Now().UTC()}
+	invocation := modelref.EndpointInvocation{ID: "endpoint_" + uuid.NewString(), Caller: caller, Provider: e.selection.Provider(), Model: e.selection.Model(), SessionID: executionctx.SessionID(ctx), Request: modelref.EmbeddingEndpointRequest{Embedding: cloneEmbeddingRequest(request)}, StartedAt: time.Now().UTC()}
 	if err := invocation.Validate(); err != nil {
 		return modelref.EndpointInvocation{}, err
 	}
@@ -204,7 +204,11 @@ func (e *embedder) finish(ctx context.Context, invocation modelref.EndpointInvoc
 	if err := errors.Join(cause, pricingErr); err != nil {
 		failure = err.Error()
 	}
-	return errors.Join(pricingErr, e.journal.SettleEndpointInvocation(context.WithoutCancel(ctx), invocation, modelref.EndpointOutcome{CostUSD: cost.OptionalUSD(), EmbeddingResponse: response, FinishedAt: time.Now().UTC(), Failure: failure}))
+	outcome := modelref.EndpointOutcome{CostUSD: cost.OptionalUSD(), FinishedAt: time.Now().UTC(), Failure: failure}
+	if response != nil {
+		outcome.Response = modelref.EmbeddingEndpointResponse{Embedding: response}
+	}
+	return errors.Join(pricingErr, e.journal.SettleEndpointInvocation(context.WithoutCancel(ctx), invocation, outcome))
 }
 
 func cloneEmbeddingRequest(r *embedding.Request) *embedding.Request {

@@ -17,7 +17,7 @@ func endpointRecord(t *testing.T) EndpointRecord {
 	if err != nil {
 		t.Fatal(err)
 	}
-	invocation := EndpointInvocation{ID: "physical-request", Kind: EndpointChat, Caller: portable.Invocation{ID: "logical-call", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "logical-call"}}, Provider: "provider", Model: "selected", Request: request, StartedAt: time.Unix(100, 0).UTC()}
+	invocation := EndpointInvocation{ID: "physical-request", Caller: portable.Invocation{ID: "logical-call", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "logical-call"}}, Provider: "provider", Model: "selected", Request: ChatEndpointRequest{Chat: request}, StartedAt: time.Unix(100, 0).UTC()}
 	input, err := jsonvalue.Encode(invocation)
 	if err != nil {
 		t.Fatal(err)
@@ -91,8 +91,9 @@ func TestEndpointOutcomeAndRestorationShareAdmission(t *testing.T) {
 			outcome := EndpointOutcome{FinishedAt: record.Invocation.StartedAt.Add(time.Second), Failure: failure}
 			if known {
 				message := chat.NewAssistantMessage(chat.NewTextPart("known"))
-				outcome.Response = &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}}
-				encoded, err := jsonvalue.Encode(outcome.Response)
+				response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}}
+				outcome.Response = ChatEndpointResponse{Chat: response}
+				encoded, err := jsonvalue.Encode(response)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -131,10 +132,10 @@ func TestEndpointObservationProtectsItsAdmittedRecord(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	*record.Invocation.Request = *other
+	*record.Invocation.Request.(ChatEndpointRequest).Chat = *other
 	projection := observation.Snapshot()
 	*projection.CostUSD, projection.Usage.InputTokens = 88, 88
-	*projection.Invocation.Request = *other
+	*projection.Invocation.Request.(ChatEndpointRequest).Chat = *other
 	response := observation.Response()
 	response.Metadata.Model, response.Metadata.Usage.InputTokens = "different", 88
 	if !reflect.DeepEqual(before, observation.Snapshot()) || observation.Response().Metadata.Usage.InputTokens != 7 || observation.ServedModel() != "served" {
@@ -182,7 +183,7 @@ func TestEndpointObservationConcurrentProjectionsRemainIsolated(t *testing.T) {
 			t.Parallel()
 			projection := observation.Snapshot()
 			*projection.CostUSD, projection.Usage.InputTokens = 99, 99
-			projection.Invocation.Request.Messages = nil
+			projection.Invocation.Request.(ChatEndpointRequest).Chat.Messages = nil
 			response := observation.Response()
 			response.Metadata.Model, response.Metadata.Usage.InputTokens = "different", 99
 			if !reflect.DeepEqual(before, observation.Snapshot()) || observation.Response().Metadata.Usage.InputTokens != 7 || observation.ServedModel() != "served" {

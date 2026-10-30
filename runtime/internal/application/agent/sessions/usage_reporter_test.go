@@ -94,7 +94,7 @@ func usageRecord(t *testing.T, id, provider, model string, state modelref.Invoca
 		t.Fatal(err)
 	}
 	caller := "call_" + id
-	invocation := modelref.EndpointInvocation{ID: id, Kind: modelref.EndpointChat, Provider: provider, Model: model, StartedAt: at, Caller: portable.Invocation{ID: caller, Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: caller}}, Request: request}
+	invocation := modelref.EndpointInvocation{ID: id, Provider: provider, Model: model, StartedAt: at, Caller: portable.Invocation{ID: caller, Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: caller}}, Request: modelref.ChatEndpointRequest{Chat: request}}
 	input, err := jsonvalue.Encode(invocation)
 	if err != nil {
 		t.Fatal(err)

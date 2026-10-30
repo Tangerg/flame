@@ -88,7 +88,7 @@ func TestEndpointEvidenceSurvivesOuterObserverFailureAndHostRestart(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	storedRequest, err := jsonvalue.Encode(row.Snapshot().Invocation.Request)
+	storedRequest, err := jsonvalue.Encode(row.Snapshot().Invocation.Request.(modelref.ChatEndpointRequest).Chat)
 	if err != nil {
 		t.Fatal(err)
 	}

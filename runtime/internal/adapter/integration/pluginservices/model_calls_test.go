@@ -23,6 +23,7 @@ import (
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -287,7 +288,7 @@ func TestSelectedModelStreamIsLazyPreservesEvidenceAndJoinsOnRelease(t *testing.
 				t.Fatalf("canonical final outcome: %+v", result)
 			}
 			row, found, err := db.ModelInvocations.EndpointForCaller(t.Context(), "independent-stream")
-			if err != nil || !found || row.Snapshot().Invocation.Caller.Parent != "original-plugin-operation" || row.Snapshot().Invocation.Caller.Origin != extension.Model || row.Snapshot().Invocation.Request.Messages[0].Text() != "original input" {
+			if err != nil || !found || row.Snapshot().Invocation.Caller.Parent != "original-plugin-operation" || row.Snapshot().Invocation.Caller.Origin != extension.Model || row.Snapshot().Invocation.Request.(modelref.ChatEndpointRequest).Chat.Messages[0].Text() != "original input" {
 				t.Fatalf("stream original evidence: %+v %v", row, err)
 			}
 		})

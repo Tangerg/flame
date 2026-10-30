@@ -109,7 +109,7 @@ func TestTrajectoryEndpointPreservesOriginalJSONAndSessionOnlyIdentity(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	invocation := modelref.EndpointInvocation{ID: "endpoint_original", Kind: modelref.EndpointChat, Caller: portable.Invocation{ID: "logical_original", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "logical_original"}}, Provider: "anthropic", Model: "captured-model", StartedAt: time.Unix(100, 0).UTC(), Request: requestValue}
+	invocation := modelref.EndpointInvocation{ID: "endpoint_original", Caller: portable.Invocation{ID: "logical_original", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "logical_original"}}, Provider: "anthropic", Model: "captured-model", StartedAt: time.Unix(100, 0).UTC(), Request: modelref.ChatEndpointRequest{Chat: requestValue}}
 	input, err := jsonvalue.Encode(invocation)
 	if err != nil {
 		t.Fatal(err)

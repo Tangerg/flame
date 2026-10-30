@@ -37,20 +37,96 @@ func (k EndpointKind) Validate() error {
 	}
 }
 
+// EndpointRequest is the closed set of provider requests an endpoint admits.
+// The variant is the endpoint's kind, so a kind cannot disagree with its payload.
+type EndpointRequest interface {
+	Kind() EndpointKind
+	validate() error
+	clone() EndpointRequest
+}
+
+type ChatEndpointRequest struct{ Chat *chat.Request }
+
+type EmbeddingEndpointRequest struct{ Embedding *embedding.Request }
+
+func (ChatEndpointRequest) Kind() EndpointKind      { return EndpointChat }
+func (EmbeddingEndpointRequest) Kind() EndpointKind { return EndpointEmbedding }
+
+func (r ChatEndpointRequest) validate() error {
+	if r.Chat == nil {
+		return errors.New("models: chat endpoint requires a chat request")
+	}
+	return r.Chat.Validate()
+}
+
+func (r EmbeddingEndpointRequest) validate() error {
+	if r.Embedding == nil {
+		return errors.New("models: embedding endpoint requires an embedding request")
+	}
+	return r.Embedding.Validate()
+}
+
+func (r ChatEndpointRequest) clone() EndpointRequest {
+	return ChatEndpointRequest{Chat: r.Chat.Clone()}
+}
+
+func (r EmbeddingEndpointRequest) clone() EndpointRequest {
+	return EmbeddingEndpointRequest{Embedding: cloneEmbeddingRequest(r.Embedding)}
+}
+
+// EndpointResponse is the closed set of provider responses an endpoint can
+// settle with; it must be the variant of its invocation's request.
+type EndpointResponse interface {
+	Kind() EndpointKind
+	validate() error
+	reportedUsage() *chat.Usage
+}
+
+type ChatEndpointResponse struct{ Chat *chat.Response }
+
+type EmbeddingEndpointResponse struct{ Embedding *embedding.Response }
+
+func (ChatEndpointResponse) Kind() EndpointKind      { return EndpointChat }
+func (EmbeddingEndpointResponse) Kind() EndpointKind { return EndpointEmbedding }
+
+func (r ChatEndpointResponse) validate() error {
+	if r.Chat == nil {
+		return errors.New("models: null endpoint response")
+	}
+	return r.Chat.Validate()
+}
+
+func (r EmbeddingEndpointResponse) validate() error {
+	if r.Embedding == nil {
+		return errors.New("models: null endpoint response")
+	}
+	return r.Embedding.Validate()
+}
+
+func (r ChatEndpointResponse) reportedUsage() *chat.Usage {
+	if r.Chat == nil || r.Chat.Metadata == nil {
+		return nil
+	}
+	return cloneEndpointUsage(r.Chat.Metadata.Usage)
+}
+
+func (r EmbeddingEndpointResponse) reportedUsage() *chat.Usage {
+	return embeddingReportedUsage(r.Embedding)
+}
+
 // EndpointInvocation is admission of one real provider request, distinct from
 // its logical calling operation. Its immutable input is persisted before I/O.
-// Kind selects which request payload is present; the other is nil.
 type EndpointInvocation struct {
 	ID        string
-	Kind      EndpointKind
 	Caller    portable.Invocation
 	Provider  string
 	Model     string
 	SessionID string
-	Request   *chat.Request
-	Embedding *embedding.Request
+	Request   EndpointRequest
 	StartedAt time.Time
 }
+
+func (i EndpointInvocation) Kind() EndpointKind { return i.Request.Kind() }
 
 const maxInvocationIdentityBytes = 256
 
@@ -77,20 +153,10 @@ func (i EndpointInvocation) Validate() error {
 			return err
 		}
 	}
-	switch i.Kind {
-	case EndpointChat:
-		if i.Request == nil || i.Embedding != nil {
-			return errors.New("models: chat endpoint requires exactly a chat request")
-		}
-		return i.Request.Validate()
-	case EndpointEmbedding:
-		if i.Embedding == nil || i.Request != nil {
-			return errors.New("models: embedding endpoint requires exactly an embedding request")
-		}
-		return i.Embedding.Validate()
-	default:
-		return errors.New("models: endpoint invocation has an unknown kind")
+	if i.Request == nil {
+		return errors.New("models: endpoint invocation requires a request")
 	}
+	return i.Request.validate()
 }
 
 // InvocationState is the durable observation of one model invocation, whether
@@ -146,38 +212,24 @@ func (s InvocationState) HasResponse() bool { rule, _ := s.rule(); return rule.R
 // EndpointOutcome is the provider observation submitted for settlement. Admission
 // derives its state; a caller cannot label missing evidence as a known failure.
 type EndpointOutcome struct {
-	CostUSD           *float64
-	Response          *chat.Response
-	EmbeddingResponse *embedding.Response
-	FinishedAt        time.Time
-	Failure           string
+	CostUSD *float64
+	// Response is nil when the provider's answer was never known.
+	Response   EndpointResponse
+	FinishedAt time.Time
+	Failure    string
 }
 
 func (o EndpointOutcome) State(invocation EndpointInvocation) (InvocationState, error) {
 	if err := invocation.Validate(); err != nil {
 		return "", err
 	}
-	var known bool
-	switch invocation.Kind {
-	case EndpointChat:
-		if o.EmbeddingResponse != nil {
-			return "", errors.New("models: chat endpoint cannot settle an embedding response")
+	known := o.Response != nil
+	if known {
+		if o.Response.Kind() != invocation.Kind() {
+			return "", errors.New("models: endpoint response belongs to another request kind")
 		}
-		known = o.Response != nil
-		if known {
-			if err := o.Response.Validate(); err != nil {
-				return "", err
-			}
-		}
-	case EndpointEmbedding:
-		if o.Response != nil {
-			return "", errors.New("models: embedding endpoint cannot settle a chat response")
-		}
-		known = o.EmbeddingResponse != nil
-		if known {
-			if err := o.EmbeddingResponse.Validate(); err != nil {
-				return "", err
-			}
+		if err := o.Response.validate(); err != nil {
+			return "", err
 		}
 	}
 	state := InvocationUnknown
@@ -197,10 +249,10 @@ func (o EndpointOutcome) State(invocation EndpointInvocation) (InvocationState, 
 }
 
 func (o EndpointOutcome) ReportedUsage() *chat.Usage {
-	if o.Response != nil && o.Response.Metadata != nil {
-		return cloneEndpointUsage(o.Response.Metadata.Usage)
+	if o.Response == nil {
+		return nil
 	}
-	return embeddingReportedUsage(o.EmbeddingResponse)
+	return o.Response.reportedUsage()
 }
 
 func embeddingReportedUsage(response *embedding.Response) *chat.Usage {
@@ -275,7 +327,7 @@ func RestoreEndpointObservation(record EndpointRecord) (EndpointObservation, err
 	observation := EndpointObservation{record: cloneEndpointRecord(record), servedModel: record.Invocation.Model}
 	var reported *chat.Usage
 	if known {
-		switch record.Invocation.Kind {
+		switch record.Invocation.Kind() {
 		case EndpointChat:
 			var response *chat.Response
 			if err := json.Unmarshal(record.ResponseJSON.JSON(), &response, json.RejectUnknownMembers(true)); err != nil {
@@ -380,10 +432,7 @@ func cloneEndpointUsage(usage *chat.Usage) *chat.Usage {
 
 func cloneEndpointRecord(record EndpointRecord) EndpointRecord {
 	if record.Invocation.Request != nil {
-		record.Invocation.Request = record.Invocation.Request.Clone()
-	}
-	if record.Invocation.Embedding != nil {
-		record.Invocation.Embedding = cloneEmbeddingRequest(record.Invocation.Embedding)
+		record.Invocation.Request = record.Invocation.Request.clone()
 	}
 	if record.CostUSD != nil {
 		record.CostUSD = new(*record.CostUSD)

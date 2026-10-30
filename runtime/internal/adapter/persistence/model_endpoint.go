@@ -35,8 +35,32 @@ type storedEndpointInvocation struct {
 	StartedAt time.Time             `json:"startedAt"`
 }
 
+func storeEndpointInvocation(value modelref.EndpointInvocation) storedEndpointInvocation {
+	stored := storedEndpointInvocation{ID: value.ID, Kind: value.Kind(), Caller: value.Caller, Provider: value.Provider, Model: value.Model, SessionID: value.SessionID, StartedAt: value.StartedAt}
+	switch request := value.Request.(type) {
+	case modelref.ChatEndpointRequest:
+		stored.Request = request.Chat
+	case modelref.EmbeddingEndpointRequest:
+		stored.Embedding = request.Embedding
+	}
+	return stored
+}
+
+func (s storedEndpointInvocation) invocation() (modelref.EndpointInvocation, error) {
+	value := modelref.EndpointInvocation{ID: s.ID, Caller: s.Caller, Provider: s.Provider, Model: s.Model, SessionID: s.SessionID, StartedAt: s.StartedAt}
+	switch {
+	case s.Kind == modelref.EndpointChat && s.Embedding == nil:
+		value.Request = modelref.ChatEndpointRequest{Chat: s.Request}
+	case s.Kind == modelref.EndpointEmbedding && s.Request == nil:
+		value.Request = modelref.EmbeddingEndpointRequest{Embedding: s.Embedding}
+	default:
+		return modelref.EndpointInvocation{}, errors.New("sqlite: stored endpoint request does not match its kind")
+	}
+	return value, nil
+}
+
 func encodeEndpointInvocation(value modelref.EndpointInvocation) ([]byte, error) {
-	data, err := encodeStoredJSON(storedEndpointInvocation{ID: value.ID, Kind: value.Kind, Caller: value.Caller, Provider: value.Provider, Model: value.Model, SessionID: value.SessionID, Request: value.Request, Embedding: value.Embedding, StartedAt: value.StartedAt})
+	data, err := encodeStoredJSON(storeEndpointInvocation(value))
 	if err != nil {
 		return nil, err
 	}
@@ -47,18 +71,15 @@ func encodeEndpointInvocation(value modelref.EndpointInvocation) ([]byte, error)
 	return []byte(input.String()), nil
 }
 
-func encodeEndpointOutcome(invocation modelref.EndpointInvocation, outcome modelref.EndpointOutcome) (*string, error) {
+func encodeEndpointOutcome(outcome modelref.EndpointOutcome) (*string, error) {
 	var response any
-	if invocation.Kind == modelref.EndpointChat {
-		if outcome.Response == nil {
-			return nil, nil
-		}
-		response = outcome.Response
-	} else {
-		if outcome.EmbeddingResponse == nil {
-			return nil, nil
-		}
-		response = outcome.EmbeddingResponse
+	switch known := outcome.Response.(type) {
+	case nil:
+		return nil, nil
+	case modelref.ChatEndpointResponse:
+		response = known.Chat
+	case modelref.EmbeddingEndpointResponse:
+		response = known.Embedding
 	}
 	data, err := encodeStoredJSON(response)
 	if err != nil {
@@ -113,7 +134,7 @@ func (m *ModelInvocationStore) StartEndpointInvocation(ctx context.Context, invo
  AND (? IS NULL OR scope.session_id=?)
  AND NOT EXISTS(SELECT 1 FROM model_invocations WHERE endpoint_json IS NULL AND call_id=? AND call_id!=?)
  AND NOT EXISTS(SELECT 1 FROM tool_invocations WHERE call_id=?)`
-	parameters := []any{invocation.ID, modelref.InvocationStarted, invocation.StartedAt.UTC().UnixNano(), string(encoded), string(invocation.Kind)}
+	parameters := []any{invocation.ID, modelref.InvocationStarted, invocation.StartedAt.UTC().UnixNano(), string(encoded), string(invocation.Kind())}
 	parameters = append(parameters, args...)
 	parameters = append(parameters, session, session, invocation.Caller.ID, ownerCallID, invocation.Caller.ID)
 	result, err := sqlite.Connection(ctx, m.db).ExecContext(ctx, query, parameters...)
@@ -135,7 +156,7 @@ func (m *ModelInvocationStore) SettleEndpointInvocation(ctx context.Context, inv
 	if err != nil {
 		return err
 	}
-	response, err := encodeEndpointOutcome(invocation, outcome)
+	response, err := encodeEndpointOutcome(outcome)
 	if err != nil {
 		return err
 	}
@@ -214,7 +235,10 @@ func scanEndpointObservation(row scanRow, parent string) (modelref.EndpointObser
 	if modelref.EndpointKind(kind) != admission.Kind {
 		return modelref.EndpointObservation{}, errors.New("sqlite: endpoint kind differs from its admission")
 	}
-	value.Invocation = modelref.EndpointInvocation{ID: admission.ID, Kind: admission.Kind, Caller: admission.Caller, Provider: admission.Provider, Model: admission.Model, SessionID: admission.SessionID, Request: admission.Request, Embedding: admission.Embedding, StartedAt: admission.StartedAt}
+	value.Invocation, err = admission.invocation()
+	if err != nil {
+		return modelref.EndpointObservation{}, err
+	}
 	var fields map[string]jsontext.Value
 	if err := decodeStoredJSON([]byte(encoded), &fields); err != nil {
 		return modelref.EndpointObservation{}, err

@@ -58,13 +58,13 @@ func TestProtocolSessionUsageKeepsCompleteProviderModelIdentities(t *testing.T) 
 		}
 		request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("captured")))
 		id := fmt.Sprintf("usage_model_%d", index)
-		invocation := modelref.EndpointInvocation{ID: "endpoint_" + id, Kind: modelref.EndpointChat, Caller: portable.Invocation{ID: id, Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeCall, Reference: id}}, Provider: provider, Model: model, SessionID: sessionID, StartedAt: now, Request: request}
+		invocation := modelref.EndpointInvocation{ID: "endpoint_" + id, Caller: portable.Invocation{ID: id, Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeCall, Reference: id}}, Provider: provider, Model: model, SessionID: sessionID, StartedAt: now, Request: modelref.ChatEndpointRequest{Chat: request}}
 		if err := stores.ModelInvocations.StartEndpointInvocation(t.Context(), invocation, ""); err != nil {
 			t.Fatal(err)
 		}
 		message := chat.NewAssistantMessage(chat.NewTextPart("known"))
 		response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: model, Usage: &chat.Usage{InputTokens: 10}}}
-		if err := stores.ModelInvocations.SettleEndpointInvocation(t.Context(), invocation, modelref.EndpointOutcome{Response: response, FinishedAt: now}); err != nil {
+		if err := stores.ModelInvocations.SettleEndpointInvocation(t.Context(), invocation, modelref.EndpointOutcome{Response: modelref.ChatEndpointResponse{Chat: response}, FinishedAt: now}); err != nil {
 			t.Fatal(err)
 		}
 	}

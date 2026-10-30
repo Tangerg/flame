@@ -112,7 +112,7 @@ func TestRecoveryAccruesOnlyUncommittedDispatchedEndpointsAcrossRestart(t *testi
 				t.Fatal(err)
 			}
 			request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("captured request")))
-			invocation := modelref.EndpointInvocation{ID: "endpoint_pending", Kind: modelref.EndpointChat, Caller: portable.Invocation{ID: "logical_pending", Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeCall, Reference: "logical_pending"}}, Provider: selection.Provider(), Model: selection.Model(), SessionID: draft.SessionID, Request: request, StartedAt: at.Add(time.Second)}
+			invocation := modelref.EndpointInvocation{ID: "endpoint_pending", Caller: portable.Invocation{ID: "logical_pending", Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeCall, Reference: "logical_pending"}}, Provider: selection.Provider(), Model: selection.Model(), SessionID: draft.SessionID, Request: modelref.ChatEndpointRequest{Chat: request}, StartedAt: at.Add(time.Second)}
 			if test.independent {
 				invocation.Provider = "openai"
 				invocation.Model = "independent-model"
@@ -128,7 +128,7 @@ func TestRecoveryAccruesOnlyUncommittedDispatchedEndpointsAcrossRestart(t *testi
 				if test.reported {
 					response.Metadata = &chat.ResponseMetadata{Model: invocation.Model, Usage: &chat.Usage{InputTokens: test.input, OutputTokens: 0, CacheReadInputTokens: new(int64(0))}}
 				}
-				if err := journal.SettleEndpointInvocation(t.Context(), invocation, modelref.EndpointOutcome{Response: response, CostUSD: test.price, FinishedAt: at.Add(2 * time.Second)}); err != nil {
+				if err := journal.SettleEndpointInvocation(t.Context(), invocation, modelref.EndpointOutcome{Response: modelref.ChatEndpointResponse{Chat: response}, CostUSD: test.price, FinishedAt: at.Add(2 * time.Second)}); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -277,13 +277,13 @@ func TestRecoveryAccruesIndependentKnownSourcesOnceWithoutChangingContext(t *tes
 		{"independent_two", 7, new(0.25), "", true},
 		{"independent_unknown", 0, nil, "unconfirmed", false},
 	} {
-		inv := modelref.EndpointInvocation{ID: "endpoint_" + test.id, Kind: modelref.EndpointChat, Caller: portable.Invocation{ID: test.id, Origin: extension.Model, Parent: "original_operation", Target: portable.Target{Scope: extension.ScopeCall, Reference: test.id}}, Provider: "anthropic", Model: "captured-model", SessionID: draft.SessionID, Request: request, StartedAt: at.Add(time.Second)}
+		inv := modelref.EndpointInvocation{ID: "endpoint_" + test.id, Caller: portable.Invocation{ID: test.id, Origin: extension.Model, Parent: "original_operation", Target: portable.Target{Scope: extension.ScopeCall, Reference: test.id}}, Provider: "anthropic", Model: "captured-model", SessionID: draft.SessionID, Request: modelref.ChatEndpointRequest{Chat: request}, StartedAt: at.Add(time.Second)}
 		if err := journal.StartEndpointInvocation(t.Context(), inv, "original_model"); err != nil {
 			t.Fatal(err)
 		}
 		outcome := modelref.EndpointOutcome{FinishedAt: at.Add(2 * time.Second), Failure: test.failure, CostUSD: test.price}
 		if test.known {
-			outcome.Response = &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: "served-" + test.id, Usage: &chat.Usage{InputTokens: test.input, OutputTokens: 2}}}
+			outcome.Response = modelref.ChatEndpointResponse{Chat: &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: "served-" + test.id, Usage: &chat.Usage{InputTokens: test.input, OutputTokens: 2}}}}
 		}
 		if err := journal.SettleEndpointInvocation(t.Context(), inv, outcome); err != nil {
 			t.Fatal(err)

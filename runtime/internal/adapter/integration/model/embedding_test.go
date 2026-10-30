@@ -59,7 +59,7 @@ func TestObservedEmbedderJournalsEndpointEvidenceThroughSharedOwner(t *testing.T
 		t.Fatalf("embedding endpoint evidence: %+v %v", rows, err)
 	}
 	row := rows[0]
-	if row.Snapshot().Invocation.Kind != modelref.EndpointEmbedding || row.State() != modelref.InvocationCompleted || row.ServedModel() != "served-embed" {
+	if row.Snapshot().Invocation.Kind() != modelref.EndpointEmbedding || row.State() != modelref.InvocationCompleted || row.ServedModel() != "served-embed" {
 		t.Fatalf("embedding endpoint projection changed: %+v", row)
 	}
 	if row.Snapshot().Usage == nil || row.Snapshot().Usage.InputTokens != 13 || row.Snapshot().Usage.OutputTokens != 0 {

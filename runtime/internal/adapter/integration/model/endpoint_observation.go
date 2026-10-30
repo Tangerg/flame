@@ -102,7 +102,7 @@ func (m *observedEndpoint) start(ctx context.Context, request *chat.Request) (mo
 	if err != nil {
 		return modelref.EndpointInvocation{}, err
 	}
-	invocation := modelref.EndpointInvocation{ID: "endpoint_" + uuid.NewString(), Kind: modelref.EndpointChat, Caller: caller, Provider: m.selection.Provider(), Model: m.selection.Model(), SessionID: executionctx.SessionID(ctx), Request: request.Clone(), StartedAt: time.Now().UTC()}
+	invocation := modelref.EndpointInvocation{ID: "endpoint_" + uuid.NewString(), Caller: caller, Provider: m.selection.Provider(), Model: m.selection.Model(), SessionID: executionctx.SessionID(ctx), Request: modelref.ChatEndpointRequest{Chat: request.Clone()}, StartedAt: time.Now().UTC()}
 	if err := invocation.Validate(); err != nil {
 		return modelref.EndpointInvocation{}, err
 	}
@@ -126,7 +126,11 @@ func (m *observedEndpoint) finish(ctx context.Context, invocation modelref.Endpo
 	if err := errors.Join(cause, pricingErr); err != nil {
 		failure = err.Error()
 	}
-	return errors.Join(pricingErr, m.journal.SettleEndpointInvocation(context.WithoutCancel(ctx), invocation, modelref.EndpointOutcome{CostUSD: cost.OptionalUSD(), Response: response.Clone(), FinishedAt: time.Now().UTC(), Failure: failure}))
+	outcome := modelref.EndpointOutcome{CostUSD: cost.OptionalUSD(), FinishedAt: time.Now().UTC(), Failure: failure}
+	if response != nil {
+		outcome.Response = modelref.ChatEndpointResponse{Chat: response.Clone()}
+	}
+	return errors.Join(pricingErr, m.journal.SettleEndpointInvocation(context.WithoutCancel(ctx), invocation, outcome))
 }
 
 func (m *observedEndpoint) Call(ctx context.Context, request *chat.Request) (*chat.Response, error) {
@@ -137,7 +141,7 @@ func (m *observedEndpoint) Call(ctx context.Context, request *chat.Request) (*ch
 	calling, err := endpointContext(ctx, invocation)
 	var response *chat.Response
 	if err == nil {
-		response, err = m.inner.Call(calling, invocation.Request.Clone())
+		response, err = m.inner.Call(calling, request.Clone())
 	} else {
 		err = &chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err}
 	}
@@ -186,7 +190,7 @@ func (m *streamedEndpoint) Stream(ctx context.Context, request *chat.Request) it
 			settled = true
 			return
 		}
-		sequence := m.stream.Stream(calling, invocation.Request.Clone())
+		sequence := m.stream.Stream(calling, frozen.Clone())
 		if sequence == nil {
 			err = errors.New("model: endpoint returned no stream")
 		} else {
