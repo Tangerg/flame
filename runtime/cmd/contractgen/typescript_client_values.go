@@ -23,8 +23,6 @@ func newClientValues(set *schemaSet) (string, error) {
 		reflect.TypeFor[protocol.FileEntryType](),
 		reflect.TypeFor[protocol.InterruptType](),
 		reflect.TypeFor[protocol.ItemStatus](),
-		reflect.TypeFor[protocol.MCPServerStateType](),
-		reflect.TypeFor[protocol.MCPTransport](),
 		reflect.TypeFor[protocol.MessagePhase](),
 		reflect.TypeFor[protocol.RememberScopeKind](),
 		reflect.TypeFor[extension.RendererSelectorKind](),

@@ -10,12 +10,14 @@ func TestSettingsIntentAdmissionDoesNotEvaluateTheComponent(t *testing.T) {
 	for _, test := range []struct {
 		name, placement, intent string
 		admitted                bool
+		want                    extension.SettingsIntent
 	}{
-		{"model settings", "settingsPane", `,"settingsIntent":"modelProviders"`, true},
-		{"empty", "settingsPane", `,"settingsIntent":""`, false},
-		{"null", "settingsPane", `,"settingsIntent":null`, false},
-		{"unknown", "settingsPane", `,"settingsIntent":"unknown"`, false},
-		{"wrong placement", "workspaceView", `,"settingsIntent":"modelProviders"`, false},
+		{"mcp settings", "settingsPane", `,"settingsIntent":"mcpServers"`, true, extension.SettingsIntentMCPServers},
+		{"model settings", "settingsPane", `,"settingsIntent":"modelProviders"`, true, extension.SettingsIntentModelProviders},
+		{"empty", "settingsPane", `,"settingsIntent":""`, false, ""},
+		{"null", "settingsPane", `,"settingsIntent":null`, false, ""},
+		{"unknown", "settingsPane", `,"settingsIntent":"unknown"`, false, ""},
+		{"wrong placement", "workspaceView", `,"settingsIntent":"modelProviders"`, false, ""},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			files := map[string]string{
@@ -29,7 +31,7 @@ func TestSettingsIntentAdmissionDoesNotEvaluateTheComponent(t *testing.T) {
 			}
 			declaration := release.Declaration()
 			if test.admitted {
-				if len(declaration.Components) != 1 || declaration.Components[0].SettingsIntent != extension.SettingsIntentModelProviders || len(declaration.Diagnostics) != 0 {
+				if len(declaration.Components) != 1 || declaration.Components[0].SettingsIntent != test.want || len(declaration.Diagnostics) != 0 {
 					t.Fatalf("settings intent: %+v", declaration)
 				}
 			} else if len(declaration.Components) != 0 || len(declaration.Diagnostics) != 1 {

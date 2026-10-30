@@ -11150,7 +11150,8 @@
     "SettingsIntent": {
       "type": "string",
       "enum": [
-        "modelProviders"
+        "modelProviders",
+        "mcpServers"
       ]
     },
     "Skill": {

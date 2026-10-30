@@ -95,6 +95,7 @@ func TestSettingsIntentRequiresADeclaredSettingsPane(t *testing.T) {
 		intent    extension.SettingsIntent
 		valid     bool
 	}{
+		{name: "mcp settings", placement: "settingsPane", intent: extension.SettingsIntentMCPServers, valid: true},
 		{name: "model settings", placement: "settingsPane", intent: extension.SettingsIntentModelProviders, valid: true},
 		{name: "ordinary settings", placement: "settingsPane", valid: true},
 		{name: "unknown intent", placement: "settingsPane", intent: "invented"},
