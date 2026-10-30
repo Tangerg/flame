@@ -120,7 +120,7 @@ func TestInterruptStore_ConsumeIsAtomic(t *testing.T) {
 		ExecutorID: "turn_1",
 		Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 			ItemID: "item_approval", ItemOccurredAt: time.Unix(2, 0).UTC(), RunID: "run_1", Prompt: transcript.Approval{
-				Tool: transcript.ToolInvocation{Name: "shell", Arguments: arguments},
+				Tool: transcript.ToolInvocation{Name: "shell", Input: transcript.AdmittedInput(arguments)},
 				Risk: tool.RiskHigh, Reason: "executes tests", Rememberable: true,
 			},
 		}}),

@@ -329,8 +329,9 @@ func decodeQuestionPayload(payload questionPayload) (transcript.Question, error)
 }
 
 func encodeToolInvocationPayload(invocation transcript.ToolInvocation) toolInvocationPayload {
+	rejected, _ := invocation.Input.Rejected()
 	payload := toolInvocationPayload{
-		Name: invocation.Name, ArgumentsText: invocation.ArgumentsText, Arguments: jsontext.Value(invocation.Arguments.Canonical()),
+		Name: invocation.Name, ArgumentsText: rejected, Arguments: jsontext.Value(invocation.Input.Arguments().Canonical()),
 	}
 	if invocation.Result != nil {
 		payload.Result = jsontext.Value(invocation.Result.Canonical())
@@ -343,7 +344,13 @@ func decodeToolInvocationPayload(payload toolInvocationPayload) (transcript.Tool
 	if err != nil {
 		return transcript.ToolInvocation{}, fmt.Errorf("tool arguments: %w", err)
 	}
-	invocation := transcript.ToolInvocation{Name: payload.Name, Arguments: arguments, ArgumentsText: payload.ArgumentsText}
+	invocation := transcript.ToolInvocation{Name: payload.Name, Input: transcript.AdmittedInput(arguments)}
+	if payload.ArgumentsText != "" {
+		if !arguments.Equal(tool.Arguments{}) {
+			return transcript.ToolInvocation{}, errors.New("tool arguments must be empty beside rejected arguments text")
+		}
+		invocation.Input = transcript.RejectedInput(payload.ArgumentsText)
+	}
 	if len(payload.Result) > 0 {
 		result, err := tool.ParseResult(payload.Result)
 		if err != nil {

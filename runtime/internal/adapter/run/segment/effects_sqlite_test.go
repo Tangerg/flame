@@ -553,7 +553,7 @@ func TestCommitEventAtomicallyRecordsCanonicalToolBatch(t *testing.T) {
 		running := testsupport.MustRestoreItem(testsupport.ItemInput{
 			SessionID: "ses_tools", RunID: "run_tools", ID: start.ItemID,
 			OccurredAt: startedAt, Status: transcript.ItemRunning, Kind: transcript.ToolCall,
-			Tool:        &transcript.ToolInvocation{Name: name, Arguments: tool.Arguments{}},
+			Tool:        &transcript.ToolInvocation{Name: name, Input: transcript.AdmittedInput(tool.Arguments{})},
 			SafetyClass: tool.SafetyClassSafe,
 		})
 		if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
@@ -575,7 +575,7 @@ func TestCommitEventAtomicallyRecordsCanonicalToolBatch(t *testing.T) {
 			t.Fatal(err)
 		}
 		items = append(items, runs.SettlementWrite(testsupport.MustItemReplacement(runningItems[index].CompleteToolCall(
-			transcript.ToolInvocation{Name: name, Arguments: tool.Arguments{}, Result: &result}, startedAt, finishedAt,
+			transcript.ToolInvocation{Name: name, Input: transcript.AdmittedInput(tool.Arguments{}), Result: &result}, startedAt, finishedAt,
 		))))
 		terminals = append(terminals, runs.ToolInvocationCommit{
 			CallID: start.CallID, ItemID: start.ItemID, SegmentID: start.SegmentID,
@@ -1654,7 +1654,7 @@ func newWaitingCancellationSQLiteFixtureAt(
 		Status:     transcript.ItemRunning,
 		Kind:       transcript.ToolCall,
 		OccurredAt: createdAt,
-		Tool:       &transcript.ToolInvocation{Name: "delegate_task", Arguments: tool.Arguments{}},
+		Tool:       &transcript.ToolInvocation{Name: "delegate_task", Input: transcript.AdmittedInput(tool.Arguments{})},
 	})
 	if appendItemErr := transcriptStore.AppendItem(ctx, parentItem); appendItemErr != nil {
 		t.Fatalf("seed spawning Item: %v", appendItemErr)

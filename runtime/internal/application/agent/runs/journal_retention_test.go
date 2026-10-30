@@ -31,7 +31,7 @@ func TestRetentionChargeCoversAdmittedSnapshotStrings(t *testing.T) {
 			}}, Answers: [][]string{{"custom"}},
 		}}),
 		testsupport.MustRestoreItem(testsupport.ItemInput{Kind: transcript.ToolCall, Status: transcript.ItemIncomplete,
-			Tool:    &transcript.ToolInvocation{Name: "shell", ArgumentsText: "rejected"},
+			Tool:    &transcript.ToolInvocation{Name: "shell", Input: transcript.RejectedInput("rejected")},
 			Failure: &tool.Failure{Kind: tool.FailureExecution, Detail: "detail", DocURL: "https://example.com/error"},
 		}),
 	}
@@ -95,7 +95,7 @@ func TestJournalBoundsAcceptedAnswersAndApprovalMaterial(t *testing.T) {
 		}},
 		{"rejected argument source", func(value string) ProjectionEvent {
 			snapshot, call := base, baseCall
-			call.Invocation = transcript.ToolInvocation{Name: "shell", ArgumentsText: value}
+			call.Invocation = transcript.ToolInvocation{Name: "shell", Input: transcript.RejectedInput(value)}
 			snapshot.Body = call
 			item, err := transcript.RestoreItem(snapshot)
 			if err != nil {

@@ -988,8 +988,8 @@ func runACancellationPlan(
 		Kind:       transcript.ToolCall,
 		OccurredAt: createdAt,
 		Tool: &transcript.ToolInvocation{
-			Name:      "delegate_task",
-			Arguments: tool.Arguments{},
+			Name:  "delegate_task",
+			Input: transcript.AdmittedInput(tool.Arguments{}),
 		},
 	})
 	plan.hasSpawningItem = true

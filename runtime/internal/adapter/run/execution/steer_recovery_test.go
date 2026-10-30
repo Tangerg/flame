@@ -180,7 +180,7 @@ func TestUnadmittedSteerSurvivesUncertainExecutionRecovery(t *testing.T) {
 		}
 		item, err := transcript.NewToolCall(transcript.ItemIdentity{
 			SessionID: start.SessionID, RunID: original.Acceptance.RunID, ItemID: "item_original_tool", OccurredAt: at,
-		}, transcript.ToolInvocation{Name: call.Start.ToolName, Arguments: arguments}, call.Start.SafetyClass)
+		}, transcript.ToolInvocation{Name: call.Start.ToolName, Input: transcript.AdmittedInput(arguments)}, call.Start.SafetyClass)
 		if err != nil {
 			t.Fatal(err)
 		}

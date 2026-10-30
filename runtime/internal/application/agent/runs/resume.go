@@ -258,9 +258,8 @@ func effectiveApprovalArguments(item transcript.Item, resolution approval.Resolu
 	if !ok {
 		return tool.Arguments{}, errors.New("approval item carries no tool invocation")
 	}
-	invocation := call.Invocation
-	if invocation.ArgumentsText != "" {
-		return tool.ParseArguments(invocation.ArgumentsText)
+	if rejected, ok := call.Invocation.Input.Rejected(); ok {
+		return tool.ParseArguments(rejected)
 	}
-	return invocation.Arguments, nil
+	return call.Invocation.Input.Arguments(), nil
 }

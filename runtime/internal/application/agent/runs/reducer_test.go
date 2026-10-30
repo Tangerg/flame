@@ -890,7 +890,7 @@ func TestReducerCarriesLaterPausedCallIdentityAcrossSequentialResumes(t *testing
 func TestReducerResumeKeepsEditedApprovalIdentityBesideSameNameDrainedTool(t *testing.T) {
 	approvalAt := time.Unix(1, 0).UTC()
 	reviewed := transcript.ToolInvocation{
-		Name: "shell", Arguments: testToolArguments(t, map[string]any{"command": "rm old"}),
+		Name: "shell", Input: transcript.AdmittedInput(testToolArguments(t, map[string]any{"command": "rm old"})),
 	}
 	config := testReducerConfig()
 	config.Opened = reopened(config.Opened, func(s *run.Snapshot) { s.ActiveSegmentID = "seg_resumed" })
@@ -930,7 +930,7 @@ func TestReducerResumeKeepsEditedApprovalIdentityBesideSameNameDrainedTool(t *te
 		t.Fatalf("edited resumed approval completion = %+v, want original approved Item", completed.Snapshot())
 	}
 	invocation, present := testsupport.ToolInvocationOf(completed)
-	if !present || invocation.Arguments.Canonical() != `{"command":"rm edited"}` {
+	if !present || invocation.Input.Arguments().Canonical() != `{"command":"rm edited"}` {
 		t.Fatalf("edited resumed approval invocation = %+v/%t, want executed edited arguments", invocation, present)
 	}
 }
@@ -1046,9 +1046,9 @@ func TestReducerResumeReusesInterruptedItems(t *testing.T) {
 	questionAt := time.Unix(2, 0).UTC()
 	reviewed := transcript.ToolInvocation{
 		Name: "shell",
-		Arguments: testToolArguments(t, map[string]any{
+		Input: transcript.AdmittedInput(testToolArguments(t, map[string]any{
 			"command": "go test", "description": "Run tests",
-		}),
+		})),
 	}
 	config := testReducerConfig()
 	interrupts := []transcript.Interrupt{
@@ -1352,7 +1352,7 @@ func TestReducerResumesOnlyTheSameToolCall(t *testing.T) {
 					}},
 				}}})
 			setTestContinuationTool(t, config.Continuation, "item_original", transcript.ToolInvocation{
-				Name: "lookup", Arguments: mustToolArguments(`{"value":1}`),
+				Name: "lookup", Input: transcript.AdmittedInput(mustToolArguments(`{"value":1}`)),
 			})
 			reducer := newReducer(config)
 			started := mustReduce(t, reducer, ToolCallStarted{
@@ -1909,7 +1909,7 @@ func TestReducerResumeContinuesTheCommittedToolItem(t *testing.T) {
 				SessionID: config.Opened.SessionID(), RunID: config.Opened.ID(),
 				ItemID: "item_approval", OccurredAt: config.Opened.CreatedAt(),
 			}
-			original := transcript.ToolInvocation{Name: "shell", Arguments: mustToolArguments(`{"command":"original"}`)}
+			original := transcript.ToolInvocation{Name: "shell", Input: transcript.AdmittedInput(mustToolArguments(`{"command":"original"}`))}
 			item, err := transcript.NewToolCall(identity, original, tool.SafetyClassExec)
 			if err != nil {
 				t.Fatal(err)
@@ -1939,12 +1939,12 @@ func TestReducerResumeContinuesTheCommittedToolItem(t *testing.T) {
 				t.Fatalf("resume rewrote committed Tool facts: %+v", settled.Snapshot())
 			}
 			invocation, _ := testsupport.ToolInvocationOf(settled)
-			expected := original.Arguments
+			expected := original.Input.Arguments()
 			if test.started {
 				expected = mustToolArguments(`{"command":"edited"}`)
 			}
-			if !invocation.Arguments.Equal(expected) {
-				t.Fatalf("settled input = %s, want %s", invocation.Arguments.Canonical(), expected.Canonical())
+			if !invocation.Input.Arguments().Equal(expected) {
+				t.Fatalf("settled input = %s, want %s", invocation.Input.Arguments().Canonical(), expected.Canonical())
 			}
 			if settlement := completedSettlement(t, events); !settlement.Expected().Equal(approved) {
 				t.Fatalf("settlement bypassed the canonical Item: %+v", settlement.Expected().Snapshot())

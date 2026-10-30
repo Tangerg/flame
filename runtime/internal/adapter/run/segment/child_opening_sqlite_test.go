@@ -56,8 +56,8 @@ func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
 		Kind:       transcript.ToolCall,
 		OccurredAt: time.Unix(2, 0),
 		Tool: &transcript.ToolInvocation{
-			Name:      "delegate_task",
-			Arguments: arguments,
+			Name:  "delegate_task",
+			Input: transcript.AdmittedInput(arguments),
 		},
 	})
 	child := run.Draft{
@@ -110,7 +110,7 @@ func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
 	rolledBackItem := testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID: "session_1", RunID: "run_root", ID: "item_rollback",
 		Status: transcript.ItemRunning, Kind: transcript.ToolCall, OccurredAt: time.Unix(4, 0),
-		Tool: &transcript.ToolInvocation{Name: "delegate_task", Arguments: arguments},
+		Tool: &transcript.ToolInvocation{Name: "delegate_task", Input: transcript.AdmittedInput(arguments)},
 	})
 	rolledBackChild := child
 	rolledBackChild.RunID = "run_rollback"
@@ -164,7 +164,7 @@ func TestStartedChildOpeningReconcilesOnlyItsExactWriteSet(t *testing.T) {
 	spawningItem := testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID: root.SessionID, RunID: root.RunID, ID: "item_delegate",
 		Status: transcript.ItemRunning, Kind: transcript.ToolCall, OccurredAt: time.Unix(2, 0).UTC(),
-		Tool: &transcript.ToolInvocation{Name: "delegate_task", Arguments: arguments},
+		Tool: &transcript.ToolInvocation{Name: "delegate_task", Input: transcript.AdmittedInput(arguments)},
 	})
 	startedAt := time.Unix(3, 0).UTC()
 	child := run.Draft{

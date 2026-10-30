@@ -19,7 +19,7 @@ func TestToolItemStartCannotDivergeFromItsDurableFact(t *testing.T) {
 	item, err := transcript.NewToolCall(transcript.ItemIdentity{
 		SessionID: "session-1", RunID: "run-1", ItemID: "item-1",
 		OccurredAt: time.Unix(1, 0).UTC(),
-	}, transcript.ToolInvocation{Name: "read_file", Arguments: arguments}, tool.SafetyClassSafe)
+	}, transcript.ToolInvocation{Name: "read_file", Input: transcript.AdmittedInput(arguments)}, tool.SafetyClassSafe)
 	if err != nil {
 		t.Fatalf("NewToolCall: %v", err)
 	}

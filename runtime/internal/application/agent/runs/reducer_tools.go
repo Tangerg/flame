@@ -7,9 +7,9 @@ import (
 
 func newToolInvocation(name string, arguments tool.Arguments, result *tool.Result) *transcript.ToolInvocation {
 	return &transcript.ToolInvocation{
-		Name:      name,
-		Arguments: arguments,
-		Result:    result,
+		Name:   name,
+		Input:  transcript.AdmittedInput(arguments),
+		Result: result,
 	}
 }
 

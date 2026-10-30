@@ -150,7 +150,8 @@ func retainedToolInvocationBytes(invocation *transcript.ToolInvocation) int {
 	if invocation == nil {
 		return 0
 	}
-	bytes := len(invocation.Name) + len(invocation.Arguments.Canonical()) + len(invocation.ArgumentsText)
+	rejected, _ := invocation.Input.Rejected()
+	bytes := len(invocation.Name) + len(invocation.Input.Arguments().Canonical()) + len(rejected)
 	if invocation.Result != nil {
 		bytes += len(invocation.Result.Canonical())
 	}

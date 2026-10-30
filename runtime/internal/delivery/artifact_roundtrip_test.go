@@ -517,7 +517,7 @@ func seedEveryItemKind(t *testing.T, rt *stubRuntime, sessionID string) {
 		FinishedAt:  time.UnixMilli(7250).UTC(),
 		SafetyClass: tool.SafetyClassExec,
 		Approval:    &approval.Resolution{Decision: approval.Allow},
-		Tool:        &transcript.ToolInvocation{Name: "shell", Arguments: arguments, Result: &result},
+		Tool:        &transcript.ToolInvocation{Name: "shell", Input: transcript.AdmittedInput(arguments), Result: &result},
 	}), testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_failed", RunID: "run_failed", Kind: transcript.ToolCall,
 		Status: transcript.ItemIncomplete, OccurredAt: time.Unix(8, 0).UTC(),
@@ -526,7 +526,7 @@ func seedEveryItemKind(t *testing.T, rt *stubRuntime, sessionID string) {
 			Kind:   tool.FailureExecution,
 			Detail: "exit 1", DocURL: "https://example.invalid/tools",
 		},
-		Tool: &transcript.ToolInvocation{Name: "shell", ArgumentsText: `{"command":`},
+		Tool: &transcript.ToolInvocation{Name: "shell", Input: transcript.RejectedInput(`{"command":`)},
 	}), testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_compaction", RunID: "run_failed", Kind: transcript.Compaction,
 		Status: transcript.ItemCompleted, OccurredAt: time.Unix(9, 0).UTC(),

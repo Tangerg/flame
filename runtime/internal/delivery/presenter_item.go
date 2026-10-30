@@ -160,10 +160,11 @@ func presentTool(invocation transcript.ToolInvocation) protocol.ToolInvocation {
 	if invocation.Result != nil {
 		result = invocation.Result.Any()
 	}
+	rejected, _ := invocation.Input.Rejected()
 	return protocol.ToolInvocation{
 		Name: invocation.Name, Category: builtincontract.Name(invocation.Name).Category(),
 		ResultShape:   builtincontract.Name(invocation.Name).ResultShape(),
-		ArgumentsText: invocation.ArgumentsText, Arguments: invocation.Arguments.Map(), Result: result,
+		ArgumentsText: rejected, Arguments: invocation.Input.Arguments().Map(), Result: result,
 	}
 }
 

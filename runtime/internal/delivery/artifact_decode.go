@@ -501,7 +501,14 @@ func portableToolFromArtifact(path string, artifact protocol.ToolInvocation) (tr
 		}
 		result = &value
 	}
-	return transcript.ToolInvocation{Name: artifact.Name, ArgumentsText: artifact.ArgumentsText, Arguments: arguments, Result: result}, nil
+	input := transcript.AdmittedInput(arguments)
+	if artifact.ArgumentsText != "" {
+		if !arguments.Equal(tool.Arguments{}) {
+			return transcript.ToolInvocation{}, invalidArtifact(path+".arguments", "must be empty beside rejected argumentsText")
+		}
+		input = transcript.RejectedInput(artifact.ArgumentsText)
+	}
+	return transcript.ToolInvocation{Name: artifact.Name, Input: input, Result: result}, nil
 }
 
 func portableRunFailureFromArtifact(path string, artifact *protocol.ArtifactProblem) (*run.Failure, error) {

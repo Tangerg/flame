@@ -131,7 +131,7 @@ func fixtureItems(pending Pending) map[string]transcript.Item {
 			items[drained.ItemID] = testsupport.MustRestoreItem(testsupport.ItemInput{
 				ID: drained.ItemID, SessionID: fixtureSessionID, RunID: continuation.RunID,
 				Kind: transcript.ToolCall, Status: transcript.ItemRunning, OccurredAt: occurredAt,
-				Tool: &transcript.ToolInvocation{Name: "delegate_task", Arguments: mustToolArguments(`{}`)},
+				Tool: &transcript.ToolInvocation{Name: "delegate_task", Input: transcript.AdmittedInput(mustToolArguments(`{}`))},
 			})
 		}
 	}

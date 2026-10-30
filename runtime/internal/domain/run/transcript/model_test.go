@@ -348,11 +348,11 @@ func TestToolInvocationEqualityUsesCanonicalValues(t *testing.T) {
 		t.Fatal(err)
 	}
 	left := transcript.ToolInvocation{
-		Name: "shell", Arguments: leftArguments, Result: &leftResult,
+		Name: "shell", Input: transcript.AdmittedInput(leftArguments), Result: &leftResult,
 		Offload: &transcript.ToolResultRef{ID: "BLOB234"},
 	}
 	right := transcript.ToolInvocation{
-		Name: "shell", Arguments: rightArguments, Result: &rightResult,
+		Name: "shell", Input: transcript.AdmittedInput(rightArguments), Result: &rightResult,
 		Offload: &transcript.ToolResultRef{ID: "BLOB234"},
 	}
 	if !left.Equal(right) {

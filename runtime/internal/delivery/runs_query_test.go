@@ -387,7 +387,7 @@ func TestListInterruptsProjectsToWire(t *testing.T) {
 			Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 				ItemID: "item_1", ItemOccurredAt: created.Add(-time.Second),
 				RunID: "run_child", Prompt: transcript.Approval{
-					Tool: transcript.ToolInvocation{Name: "shell", Arguments: arguments},
+					Tool: transcript.ToolInvocation{Name: "shell", Input: transcript.AdmittedInput(arguments)},
 					Risk: tool.RiskHigh, Reason: "Runs commands in the workspace.", Rememberable: true,
 				},
 			}}),
@@ -410,7 +410,7 @@ func TestListInterruptsProjectsToWire(t *testing.T) {
 	approvalItem := testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_1", SessionID: "ses_1", RunID: "run_child",
 		Kind: transcript.ToolCall, Status: transcript.ItemRunning, OccurredAt: created.Add(-time.Second),
-		Tool: &transcript.ToolInvocation{Name: "shell", Arguments: arguments},
+		Tool: &transcript.ToolInvocation{Name: "shell", Input: transcript.AdmittedInput(arguments)},
 	})
 	s := &Handler{queries: mustQueryCoordinator(sessions.QueryDependencies{
 		Interrupts: reader, Runs: rootRunReader{root}, Transcript: oneItemReader{item: approvalItem},

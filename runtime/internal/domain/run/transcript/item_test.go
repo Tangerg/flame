@@ -276,7 +276,7 @@ func TestToolCallSettlementIsTerminalAndPreservesIdentity(t *testing.T) {
 	}
 	running, err := transcript.NewToolCall(
 		itemIdentity(),
-		transcript.ToolInvocation{Name: "read_file", Arguments: arguments},
+		transcript.ToolInvocation{Name: "read_file", Input: transcript.AdmittedInput(arguments)},
 		tool.SafetyClassSafe,
 	)
 	if err != nil {
@@ -292,7 +292,7 @@ func TestToolCallSettlementIsTerminalAndPreservesIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	settlement := transcript.ToolInvocation{Name: "read_file", Arguments: arguments, Result: &result}
+	settlement := transcript.ToolInvocation{Name: "read_file", Input: transcript.AdmittedInput(arguments), Result: &result}
 	completion, err := running.CompleteToolCall(settlement, executionStartedAt, finishedAt)
 	if err != nil {
 		t.Fatalf("CompleteToolCall: %v", err)
@@ -312,7 +312,7 @@ func TestToolCallSettlementIsTerminalAndPreservesIdentity(t *testing.T) {
 	}
 
 	if _, err := running.CompleteToolCall(
-		transcript.ToolInvocation{Name: "other_tool", Arguments: arguments, Result: &result},
+		transcript.ToolInvocation{Name: "other_tool", Input: transcript.AdmittedInput(arguments), Result: &result},
 		executionStartedAt,
 		finishedAt,
 	); err == nil {

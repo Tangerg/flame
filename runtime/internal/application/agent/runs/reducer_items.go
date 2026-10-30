@@ -398,7 +398,11 @@ func (r *reducer) toolStart(e ToolCallStarted) ([]ProjectionEvent, error) {
 	out = append(out, SegmentProgressed{Progress: Progress{
 		Step: &step, Activity: e.Activity,
 	}})
-	invocation := transcript.ToolInvocation{Name: e.ToolName, Arguments: arguments, ArgumentsText: e.ArgumentsText}
+	input := transcript.AdmittedInput(arguments)
+	if e.ArgumentsText != "" {
+		input = transcript.RejectedInput(e.ArgumentsText)
+	}
+	invocation := transcript.ToolInvocation{Name: e.ToolName, Input: input}
 	item, reused, err := r.reuseOrCreateToolItem(e.CallID, invocation, e.SafetyClass)
 	if err != nil {
 		return nil, err
@@ -521,7 +525,7 @@ func (r *reducer) completeTool(ref *openTool, e ToolCallFinished) ([]ProjectionE
 		if err != nil {
 			return nil, fmt.Errorf("tool %q effective arguments: %w", invocation.Name, err)
 		}
-		invocation.Arguments = parsed
+		invocation.Input = transcript.AdmittedInput(parsed)
 	}
 	invocation.Result = e.Result
 	invocation.Offload = e.Offload

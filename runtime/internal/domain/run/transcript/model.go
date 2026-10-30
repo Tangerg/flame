@@ -171,18 +171,39 @@ type QuestionOption struct {
 }
 
 type ToolInvocation struct {
-	// ArgumentsText retains unexecuted input verbatim. When present, Arguments is empty.
-	ArgumentsText string
-	Name          string
-	Arguments     tool.Arguments
-	Result        *tool.Result
-	Offload       *ToolResultRef
+	Name    string
+	Input   ToolInput
+	Result  *tool.Result
+	Offload *ToolResultRef
+}
+
+// ToolInput is what a ToolCall was asked with: admitted arguments, or the
+// verbatim text of input rejected before it could become arguments.
+type ToolInput struct {
+	arguments tool.Arguments
+	rejected  string
+}
+
+func AdmittedInput(arguments tool.Arguments) ToolInput { return ToolInput{arguments: arguments} }
+
+// RejectedInput keeps unexecuted input verbatim. Empty text carries nothing to
+// keep, so it is the empty admitted input.
+func RejectedInput(text string) ToolInput { return ToolInput{rejected: text} }
+
+// Arguments returns the admitted arguments; rejected input has none.
+func (i ToolInput) Arguments() tool.Arguments { return i.arguments }
+
+// Rejected returns the verbatim text of rejected input.
+func (i ToolInput) Rejected() (string, bool) { return i.rejected, i.rejected != "" }
+
+func (i ToolInput) Equal(other ToolInput) bool {
+	return i.rejected == other.rejected && i.arguments.Equal(other.arguments)
 }
 
 // Equal compares the semantic Tool invocation value without exposing the
 // canonical storage representation of arguments or results to callers.
 func (t ToolInvocation) Equal(other ToolInvocation) bool {
-	if t.Name != other.Name || t.ArgumentsText != other.ArgumentsText || !t.Arguments.Equal(other.Arguments) {
+	if t.Name != other.Name || !t.Input.Equal(other.Input) {
 		return false
 	}
 	if (t.Result == nil) != (other.Result == nil) {

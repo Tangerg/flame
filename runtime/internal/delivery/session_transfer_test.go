@@ -61,9 +61,9 @@ func TestSessionExportImport_RoundTrip(t *testing.T) {
 		Status:     transcript.ItemCompleted,
 		Kind:       transcript.ToolCall,
 		Tool: &transcript.ToolInvocation{
-			Name:      "shell",
-			Arguments: arguments,
-			Result:    &result,
+			Name:   "shell",
+			Input:  transcript.AdmittedInput(arguments),
+			Result: &result,
 		},
 	})); appendItemErr != nil {
 		t.Fatalf("seed tool item: %v", appendItemErr)

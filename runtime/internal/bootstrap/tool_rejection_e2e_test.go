@@ -135,8 +135,9 @@ func TestRuntimeRejectedToolSurvivesFollowingCallsAndHistoryReads(t *testing.T) 
 					if err != nil {
 						t.Fatal(err)
 					}
-					found = invocation.ArgumentsText == "" && invocation.Arguments.Equal(arguments)
-				} else if invocation.ArgumentsText == test.arguments {
+					_, rejected := invocation.Input.Rejected()
+					found = !rejected && invocation.Input.Arguments().Equal(arguments)
+				} else if rejected, _ := invocation.Input.Rejected(); rejected == test.arguments {
 					found = true
 				}
 			}

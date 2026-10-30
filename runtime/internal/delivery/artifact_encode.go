@@ -180,7 +180,8 @@ func artifactItemFromTranscript(item transcript.Item) (protocol.ArtifactItem, er
 			out.ApprovalDecision = presentItemApprovalDecision(payload.Approval.Decision)
 		}
 		invocation := payload.Invocation
-		tool := protocol.ToolInvocation{Name: invocation.Name, ArgumentsText: invocation.ArgumentsText, Arguments: invocation.Arguments.Map()}
+		rejected, _ := invocation.Input.Rejected()
+		tool := protocol.ToolInvocation{Name: invocation.Name, ArgumentsText: rejected, Arguments: invocation.Input.Arguments().Map()}
 		if invocation.Result != nil {
 			tool.Result = invocation.Result.Any()
 		}
