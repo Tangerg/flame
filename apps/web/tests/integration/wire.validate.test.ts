@@ -122,7 +122,7 @@ describe("the generated wire checks", () => {
       { path: "RunProgress", detail: "matches no permitted alternative" },
       { path: "RunProgress.step", detail: "is required" },
     ]);
-    expect(validateWire("RunProgress", { activity: "Calling model" })).toEqual([]);
+    expect(validateWire("RunProgress", { activity: { type: "callingModel" } })).toEqual([]);
     expect(
       validateWire("RunProgress", {
         step: 0,
@@ -337,7 +337,7 @@ describe("the generated wire checks", () => {
         segmentId: "seg_01",
         eventId: "opaque",
         timestamp: "2026-08-29T00:00:00Z",
-        event: { type: "segment.progress", progress: { activity: "Working" } },
+        event: { type: "segment.progress", progress: { activity: { type: "callingModel" } } },
       }),
     ).toContainEqual({ path: "RunEvent.eventId", detail: "expected to match ^evt_" });
     expect(

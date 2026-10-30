@@ -9,7 +9,7 @@
       "step": 2,
       "usage": { "inputTokens": 800, "outputTokens": 120 },
       "contextTokens": 950,
-      "activity": "calling tool: shell"
+      "activity": { "type": "toolCall", "itemId": "item_03", "tool": "shell" }
     }
   }
 }

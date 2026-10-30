@@ -18,6 +18,8 @@ import type * as Wire from "./wire.generated";
 export type WireTypeName =
   | "AcquirePluginComponentRequest"
   | "ActiveRunRef"
+  | "Activity"
+  | "ActivityType"
   | "AgentDoc"
   | "AgentDocScope"
   | "AppliedChange"
@@ -426,6 +428,34 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     status: ref(() => CHECKS.RunStatus),
   }, ["runId", "status"]),
+  Activity: allOf([
+    object({
+      itemId: text(),
+      tool: text(),
+      type: ref(() => CHECKS.ActivityType),
+    }, []),
+    oneOf([
+      fields({
+        itemId: absent(),
+        tool: absent(),
+        type: literal("callingModel"),
+      }, ["type"]),
+      fields({
+        itemId: absent(),
+        tool: absent(),
+        type: literal("modelCallFailed"),
+      }, ["type"]),
+      fields({
+        itemId: absent(),
+        tool: absent(),
+        type: literal("applyingUserInput"),
+      }, ["type"]),
+      fields({
+        type: literal("toolCall"),
+      }, ["itemId", "tool", "type"]),
+    ]),
+  ]),
+  ActivityType: enumOf(["callingModel", "modelCallFailed", "applyingUserInput", "toolCall"]),
   AgentDoc: object({
     path: allOf([text(), pattern("\\S")]),
     scope: ref(() => CHECKS.AgentDocScope),
@@ -3488,7 +3518,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   RunOutcomeType: enumOf(["completed", "timedOut", "failed", "canceled", "lost"]),
   RunProgress: allOf([
     object({
-      activity: text(),
+      activity: ref(() => CHECKS.Activity),
       contextTokens: allOf([integer(), minimum("0")]),
       step: allOf([integer(), minimum("0")]),
       usage: ref(() => CHECKS.Usage),

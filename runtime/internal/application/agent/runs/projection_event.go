@@ -215,14 +215,35 @@ type Progress struct {
 	Step          *int
 	Usage         *accounting.Usage
 	ContextTokens *int64
-	Activity      string
+	Activity      Activity
 }
+
+// Activity is the closed set of things a running segment reports doing.
+// Clients word it; the Runtime owns only which one is happening.
+type Activity interface{ activity() }
+
+type CallingModelActivity struct{}
+
+type FailedModelCallActivity struct{}
+
+type ApplyingUserInputActivity struct{}
+
+// ToolCallActivity names the running ToolCall Item and its tool.
+type ToolCallActivity struct {
+	ItemID string
+	Tool   string
+}
+
+func (CallingModelActivity) activity()      {}
+func (FailedModelCallActivity) activity()   {}
+func (ApplyingUserInputActivity) activity() {}
+func (ToolCallActivity) activity()          {}
 
 // validate proves a segment.progress event carries at least one real preview
 // fact. Its fields are independent because one executor report may advance
 // several at once; the value is not a bag of arbitrary metadata.
 func (p Progress) validate() error {
-	if p.Step == nil && p.Usage == nil && p.ContextTokens == nil && p.Activity == "" {
+	if p.Step == nil && p.Usage == nil && p.ContextTokens == nil && p.Activity == nil {
 		return errors.New("runs: progress carries no facts")
 	}
 	if p.Step != nil && *p.Step < 0 {
@@ -236,8 +257,8 @@ func (p Progress) validate() error {
 	if p.ContextTokens != nil && *p.ContextTokens < 0 {
 		return errors.New("runs: progress context tokens must not be negative")
 	}
-	if p.Activity != strings.TrimSpace(p.Activity) {
-		return errors.New("runs: progress activity must not have surrounding whitespace")
+	if activity, ok := p.Activity.(ToolCallActivity); ok && (activity.ItemID == "" || activity.Tool == "") {
+		return errors.New("runs: tool activity names no ToolCall")
 	}
 	return nil
 }

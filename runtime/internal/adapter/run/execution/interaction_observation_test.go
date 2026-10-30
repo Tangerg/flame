@@ -88,7 +88,7 @@ func TestInteractionExecutorProjectsAuthoritativeModelToolLifecycleAndAccounting
 		modelResultText, modelResultTextual = finishes[0].ModelResult.Output.Text()
 	}
 	if len(starts) != 1 || len(finishes) != 1 || starts[0].SourceCallID != providerCallID ||
-		starts[0].Activity != "Echoing value" || starts[0].SafetyClass != domaintool.SafetyClassSafe ||
+		starts[0].SafetyClass != domaintool.SafetyClassSafe ||
 		finishes[0].Result == nil || finishes[0].ModelResult == nil ||
 		finishes[0].ModelResult.ID != providerCallID || finishes[0].ModelResult.Name != "fixture_echo" ||
 		!modelResultTextual || modelResultText != "hello" || finishes[0].Failure != nil {
@@ -1506,10 +1506,6 @@ func (f *failingOutcomeInteractionInterpreter) boundedProjections() []bool {
 }
 
 type testInteractionToolPresenter struct{}
-
-func (testInteractionToolPresenter) Activity(domaintool.Ref, domaintool.Arguments) string {
-	return "Echoing value"
-}
 
 func (testInteractionToolPresenter) Present(_ domaintool.Ref, _ domaintool.Arguments, result domaintool.Result) (domaintool.Result, string) {
 	return result, "presented"

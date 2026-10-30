@@ -383,7 +383,7 @@ func TestRunStatusRetainsRuntimeContextFootprintAfterSettlement(t *testing.T) {
 	contextTokens := int64(12_345)
 	backend.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
-			{Delay: 10 * time.Millisecond, Event: conversation.RunProgress{Activity: "thinking", ContextTokens: &contextTokens}},
+			{Delay: 10 * time.Millisecond, Event: conversation.RunProgress{Activity: &protocol.Activity{Type: protocol.ActivityCallingModel}, ContextTokens: &contextTokens}},
 			{Delay: 10 * time.Millisecond, Event: conversation.BlockCompleted{Block: conversation.Block{
 				ID: "answer", Kind: conversation.BlockAssistant, Text: "context-aware answer",
 			}}},

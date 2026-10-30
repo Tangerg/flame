@@ -96,9 +96,16 @@ export interface AgentRunMetrics {
   usage?: RunUsage;
 }
 
+/** What a running segment is doing; the client words it. */
+export type AgentRunActivity =
+  | { type: "callingModel" }
+  | { type: "modelCallFailed" }
+  | { type: "applyingUserInput" }
+  | { type: "toolCall"; itemId: string; tool: string };
+
 export interface AgentRunProgress {
   step?: number;
-  activity?: string;
+  activity?: AgentRunActivity;
   usage?: RunUsage;
   contextTokens?: number;
 }

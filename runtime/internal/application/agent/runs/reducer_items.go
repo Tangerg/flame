@@ -14,7 +14,6 @@ import (
 	"github.com/Tangerg/scope/core/media"
 )
 
-const applyingUserInputActivity = "Applying user input"
 
 // openText owns the identity and accumulated content of one live streaming
 // item. Reducer clones are speculative, so cloning must also detach the
@@ -349,9 +348,6 @@ func (r *reducer) toolStart(e ToolCallStarted) ([]ProjectionEvent, error) {
 	if strings.TrimSpace(e.ToolName) == "" || e.ToolName != strings.TrimSpace(e.ToolName) {
 		return nil, errors.New("tool name is required")
 	}
-	if e.Activity != strings.TrimSpace(e.Activity) {
-		return nil, errors.New("tool activity has surrounding whitespace")
-	}
 	if e.ModelCallSequence == 0 && e.ToolCallIndex != 0 {
 		return nil, errors.New("tool call index requires a model call sequence")
 	}
@@ -394,10 +390,6 @@ func (r *reducer) toolStart(e ToolCallStarted) ([]ProjectionEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-	step := metrics.Steps()
-	out = append(out, SegmentProgressed{Progress: Progress{
-		Step: &step, Activity: e.Activity,
-	}})
 	input := transcript.AdmittedInput(arguments)
 	if e.ArgumentsText != "" {
 		input = transcript.RejectedInput(e.ArgumentsText)
@@ -407,6 +399,10 @@ func (r *reducer) toolStart(e ToolCallStarted) ([]ProjectionEvent, error) {
 	if err != nil {
 		return nil, err
 	}
+	step := metrics.Steps()
+	out = append(out, SegmentProgressed{Progress: Progress{
+		Step: &step, Activity: ToolCallActivity{ItemID: item.ID(), Tool: e.ToolName},
+	}})
 	ref := &openTool{
 		callID: e.CallID, sourceCallID: e.SourceCallID,
 		modelCallSequence: e.ModelCallSequence, toolCallIndex: e.ToolCallIndex,
@@ -647,7 +643,7 @@ func (r *reducer) steerMessagesApplied(e SteerMessagesApplied) ([]ProjectionEven
 		out = append(out, ItemCompleted{Item: item})
 	}
 	if len(out) == 0 {
-		out = append(out, SegmentProgressed{Progress: Progress{Activity: applyingUserInputActivity}})
+		out = append(out, SegmentProgressed{Progress: Progress{Activity: ApplyingUserInputActivity{}}})
 	}
 	return out, nil
 }

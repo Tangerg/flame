@@ -63,8 +63,9 @@ func (r runEventProjection) segmentProgress() (projectedRunEvent, error) {
 	if value == nil {
 		return projectedRunEvent{}, fmt.Errorf("event %s: segment.progress has no progress", r.source.EventID)
 	}
-	progress := conversation.RunProgress{
-		Activity: value.Activity,
+	progress := conversation.RunProgress{}
+	if value.Activity != nil {
+		progress.Activity = new(*value.Activity)
 	}
 	if value.Step != nil {
 		progress.Step = new(*value.Step)

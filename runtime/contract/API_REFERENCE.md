@@ -534,6 +534,15 @@ Forbidden on every variant: `durable`.
 | `added` | `code`, `rightLine` | `noNewline` |
 | `deleted` | `code`, `leftLine` | `noNewline` |
 
+### `Activity`
+
+| tag | required | optional |
+| --- | --- | --- |
+| `callingModel` | — | — |
+| `modelCallFailed` | — | — |
+| `applyingUserInput` | — | — |
+| `toolCall` | `itemId`, `tool` | — |
+
 ## Value constraints
 
 These rules are generated into the Go boundary validator, JSON Schema and

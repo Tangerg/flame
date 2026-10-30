@@ -4711,6 +4711,26 @@
       ],
       "constants": [
         {
+          "name": "ActivityApplyingUserInput",
+          "type": "ActivityType",
+          "value": "\"applyingUserInput\""
+        },
+        {
+          "name": "ActivityCallingModel",
+          "type": "ActivityType",
+          "value": "\"callingModel\""
+        },
+        {
+          "name": "ActivityModelCallFailed",
+          "type": "ActivityType",
+          "value": "\"modelCallFailed\""
+        },
+        {
+          "name": "ActivityToolCall",
+          "type": "ActivityType",
+          "value": "\"toolCall\""
+        },
+        {
           "name": "AgentDocScopeCWD",
           "type": "AgentDocScope",
           "value": "\"cwd\""
@@ -6737,6 +6757,32 @@
               "tag": "json:\"status\""
             }
           ]
+        },
+        {
+          "name": "Activity",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Type",
+              "type": "ActivityType",
+              "tag": "json:\"type\""
+            },
+            {
+              "name": "ItemID",
+              "type": "string",
+              "tag": "json:\"itemId,omitempty\""
+            },
+            {
+              "name": "Tool",
+              "type": "string",
+              "tag": "json:\"tool,omitempty\""
+            }
+          ]
+        },
+        {
+          "name": "ActivityType",
+          "kind": "defined",
+          "underlying": "string"
         },
         {
           "name": "AgentDoc",
@@ -11929,8 +11975,8 @@
             },
             {
               "name": "Activity",
-              "type": "string",
-              "tag": "json:\"activity,omitempty\""
+              "type": "*Activity",
+              "tag": "json:\"activity,omitzero\""
             }
           ]
         },

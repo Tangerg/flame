@@ -310,8 +310,8 @@ func (a *app) applyPresentationEvent(envelope conversation.RunEvent) {
 			a.header.SetUsage(a.execution.conversation.Usage())
 			a.observeCurrentRunStatus()
 			a.status.progress(event)
-		} else if strings.TrimSpace(event.Activity) != "" {
-			a.status.active("subagent · " + event.Activity)
+		} else if event.Activity != nil {
+			a.status.active("subagent · " + activityLabel(event.Activity))
 		}
 	case conversation.SegmentFinished:
 		switch {

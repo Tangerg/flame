@@ -185,9 +185,9 @@ func (a *app) restoreActivity(snapshot conversation.SessionSnapshot) {
 	}
 }
 
-func (a *app) showRecoveredRunStatus(activity string, run conversation.Run) {
+func (a *app) showRecoveredRunStatus(label string, run conversation.Run) {
 	a.status.observeRun(run)
-	a.status.progress(conversation.RunProgress{Activity: activity})
+	a.status.active(label)
 }
 
 func (a *app) observeCurrentRunStatus() {

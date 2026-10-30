@@ -697,10 +697,6 @@ func interactionTextResponse(text string) *chat.Response {
 // place that can tell the difference.
 type typedNilToolPresenter struct{}
 
-func (*typedNilToolPresenter) Activity(tool.Ref, tool.Arguments) string {
-	panic("execution: a typed-nil presenter was asked for an activity")
-}
-
 func (*typedNilToolPresenter) Present(tool.Ref, tool.Arguments, tool.Result) (tool.Result, string) {
 	panic("execution: a typed-nil presenter was asked to present")
 }

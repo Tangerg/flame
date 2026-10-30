@@ -11,7 +11,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
-type activityProjection func(tool.Arguments) string
 type resultProjection func(tool.Arguments, tool.Result) (tool.Result, string)
 
 type outcomeProjection uint8
@@ -28,35 +27,33 @@ type resultProjectionContract struct {
 // their executables; retaining an old reference cannot make it dispatchable.
 type builtInDescriptor struct {
 	safety        tool.SafetyClass
-	activityText  string
-	activity      activityProjection
 	orchestration bool
 	outcome       outcomeProjection
 }
 
 var builtInDescriptors = map[builtincontract.Name]builtInDescriptor{
-	builtincontract.Read:              builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Reading file"},
-	builtincontract.Glob:              builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Finding files"},
-	builtincontract.Grep:              builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Searching"},
-	builtincontract.ReadShellOutput:   builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Reading command output"},
-	builtincontract.ListSkills:        builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Listing Skills"},
-	builtincontract.LoadSkill:         builtInDescriptor{safety: tool.SafetyClassSafe, activity: loadSkillActivity},
-	builtincontract.ReadSkillResource: builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Reading a Skill resource"},
-	builtincontract.SearchTools:       builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Loading additional tools"},
-	builtincontract.AskUser:           builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Waiting for your answer"},
-	builtincontract.EnterPlanMode:     builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Entering Plan mode"},
-	builtincontract.ExitPlanMode:      builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Requesting Plan approval"},
-	builtincontract.SetPlan:           builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Updating the Plan", outcome: planOutcomeProjection},
-	builtincontract.ReadToolResult:    builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Reading omitted tool output"},
-	builtincontract.DelegateTask:      builtInDescriptor{safety: tool.SafetyClassSafe, activity: delegationActivity, orchestration: true},
-	builtincontract.CreateGoal:        builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Starting an autonomous Goal"},
-	builtincontract.GetGoal:           builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Inspecting the autonomous Goal"},
-	builtincontract.ReportGoalOutcome: builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Reporting a Goal outcome"},
-	builtincontract.ProposeSkill:      builtInDescriptor{safety: tool.SafetyClassSafe, activity: proposeSkillActivity},
-	builtincontract.Edit:              builtInDescriptor{safety: tool.SafetyClassWrite, activityText: "Editing file"},
-	builtincontract.ApplyPatch:        builtInDescriptor{safety: tool.SafetyClassWrite, activityText: "Applying a patch"},
-	builtincontract.Shell:             builtInDescriptor{safety: tool.SafetyClassExec, activity: shellActivity},
-	builtincontract.StopShell:         builtInDescriptor{safety: tool.SafetyClassExec, activityText: "Stopping command"},
+	builtincontract.Read:              builtInDescriptor{safety: tool.SafetyClassSafe},
+	builtincontract.Glob:              builtInDescriptor{safety: tool.SafetyClassSafe},
+	builtincontract.Grep:              builtInDescriptor{safety: tool.SafetyClassSafe},
+	builtincontract.ReadShellOutput:   builtInDescriptor{safety: tool.SafetyClassSafe},
+	builtincontract.ListSkills:        builtInDescriptor{safety: tool.SafetyClassSafe},
+	builtincontract.LoadSkill:         builtInDescriptor{safety: tool.SafetyClassSafe},
+	builtincontract.ReadSkillResource: builtInDescriptor{safety: tool.SafetyClassSafe},
+	builtincontract.SearchTools:       builtInDescriptor{safety: tool.SafetyClassSafe},
+	builtincontract.AskUser:           builtInDescriptor{safety: tool.SafetyClassSafe},
+	builtincontract.EnterPlanMode:     builtInDescriptor{safety: tool.SafetyClassSafe},
+	builtincontract.ExitPlanMode:      builtInDescriptor{safety: tool.SafetyClassSafe},
+	builtincontract.SetPlan:           builtInDescriptor{safety: tool.SafetyClassSafe, outcome: planOutcomeProjection},
+	builtincontract.ReadToolResult:    builtInDescriptor{safety: tool.SafetyClassSafe},
+	builtincontract.DelegateTask:      builtInDescriptor{safety: tool.SafetyClassSafe, orchestration: true},
+	builtincontract.CreateGoal:        builtInDescriptor{safety: tool.SafetyClassSafe},
+	builtincontract.GetGoal:           builtInDescriptor{safety: tool.SafetyClassSafe},
+	builtincontract.ReportGoalOutcome: builtInDescriptor{safety: tool.SafetyClassSafe},
+	builtincontract.ProposeSkill:      builtInDescriptor{safety: tool.SafetyClassSafe},
+	builtincontract.Edit:              builtInDescriptor{safety: tool.SafetyClassWrite},
+	builtincontract.ApplyPatch:        builtInDescriptor{safety: tool.SafetyClassWrite},
+	builtincontract.Shell:             builtInDescriptor{safety: tool.SafetyClassExec},
+	builtincontract.StopShell:         builtInDescriptor{safety: tool.SafetyClassExec},
 }
 
 // resultContractFor binds the projection implementing a built-in's declared

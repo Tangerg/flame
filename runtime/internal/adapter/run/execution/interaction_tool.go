@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log/slog"
 	"slices"
-	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
@@ -101,8 +100,7 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 	start := runs.ToolCallStarted{
 		CallID: callID, ModelCallSequence: reference.ModelCallSequence(),
 		ToolCallIndex: reference.ToolCallIndex(), SourceCallID: call.ID, ToolName: call.Name,
-		Arguments: rawArguments, Activity: o.activity(call.Name, arguments),
-		SafetyClass: o.interpreter.SafetyClass(o.ref),
+		Arguments: rawArguments, SafetyClass: o.interpreter.SafetyClass(o.ref),
 	}
 	var prepared runs.ExecutionFact = start
 	if o.receiptEvidence != nil && !denied && prepareErr == nil {
@@ -534,15 +532,6 @@ func (o *observedInteractionTool) resolveToolApproval(
 	}
 	reason, denied := decision.Denied()
 	return arguments, denied, reason, nil
-}
-
-func (o *observedInteractionTool) activity(name string, arguments tool.Arguments) string {
-	if o.presenter != nil {
-		if activity := o.presenter.Activity(o.ref, arguments); activity != "" && activity == strings.TrimSpace(activity) {
-			return activity
-		}
-	}
-	return "Calling " + name
 }
 
 func (o *observedInteractionTool) offload(

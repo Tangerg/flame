@@ -536,6 +536,17 @@ func registerObjectConstraints(s *Shapes) {
 		})
 	}
 
+	s.union(UnionSpec{
+		GoType:        typeOf[protocol.Activity](),
+		Discriminator: "type",
+		Variants: []VariantSpec{
+			{Tag: string(protocol.ActivityCallingModel)},
+			{Tag: string(protocol.ActivityModelCallFailed)},
+			{Tag: string(protocol.ActivityApplyingUserInput)},
+			{Tag: string(protocol.ActivityToolCall), Required: []string{"itemId", "tool"}},
+		},
+	})
+
 	// A progress frame is a preview of one or more independently advancing facts,
 	// never a heartbeat with an empty object. Stating the alternatives as one set
 	// preserves that several of them may legitimately arrive together.

@@ -31,7 +31,7 @@ func TestEphemeralEventNeverCarriesAnSSEReplayID(t *testing.T) {
 		Timestamp: time.Unix(1, 0).UTC(),
 		Event: protocol.StreamEvent{
 			Type:     protocol.StreamSegmentProgress,
-			Progress: &protocol.RunProgress{Activity: "Calling model"},
+			Progress: &protocol.RunProgress{Activity: &protocol.Activity{Type: protocol.ActivityCallingModel}},
 		},
 	})
 	if !ok {

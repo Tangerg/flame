@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { type AgentRunView } from "@/features/agent/public/sessionView";
+import { t } from "@/lib/i18n/index";
 import {
   agentRunDetail,
   agentRunPresentationState,
@@ -19,7 +20,7 @@ function run(overrides: Partial<AgentRunView> = {}): AgentRunView {
       activeDurationMillis: 100,
       usage: { inputTokens: 10, outputTokens: 2, cacheReadTokens: 0 },
     },
-    progress: { step: 4, activity: "Inspecting tests" },
+    progress: { step: 4, activity: { type: "toolCall", itemId: "item_1", tool: "grep" } },
     contextTokens: null,
     createdAt: "2026-01-01T00:00:00.000Z",
     finishedAt: null,
@@ -33,7 +34,7 @@ describe("Run presentation facts", () => {
     expect(agentRunPresentationState(run({ status: "waiting", activeSegmentId: null }))).toBe(
       "waiting",
     );
-    expect(agentRunDetail(run())).toBe("Inspecting tests");
+    expect(agentRunDetail(t, run())).toBe("Searching");
   });
 
   it.each([
@@ -52,7 +53,7 @@ describe("Run presentation facts", () => {
       finishedAt: "2026-01-01T00:00:01.000Z",
     });
     expect(agentRunPresentationState(finished)).toBe(expected);
-    expect(agentRunDetail(finished)).toBe(
+    expect(agentRunDetail(t, finished)).toBe(
       outcome.type === "completed"
         ? null
         : outcome.type === "failed" || outcome.type === "timedOut" || outcome.type === "lost"

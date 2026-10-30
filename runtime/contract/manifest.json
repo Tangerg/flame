@@ -5055,6 +5055,28 @@
           ]
         }
       ]
+    },
+    {
+      "type": "Activity",
+      "discriminator": "type",
+      "variants": [
+        {
+          "tag": "callingModel"
+        },
+        {
+          "tag": "modelCallFailed"
+        },
+        {
+          "tag": "applyingUserInput"
+        },
+        {
+          "tag": "toolCall",
+          "required": [
+            "itemId",
+            "tool"
+          ]
+        }
+      ]
     }
   ],
   "objectConstraints": [

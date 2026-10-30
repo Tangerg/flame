@@ -101,8 +101,30 @@ type RunProgress struct {
 	// the cumulative-over-rounds Usage.inputTokens (which only grows). Pair it
 	// with the served model's contextWindow (models.list) for an occupancy gauge;
 	// it drops after a compaction. Ephemeral, like the rest of RunProgress.
-	ContextTokens *int64 `json:"contextTokens,omitzero"`
-	Activity      string `json:"activity,omitempty"` // human-readable current action
+	ContextTokens *int64    `json:"contextTokens,omitzero"`
+	Activity      *Activity `json:"activity,omitzero"`
+}
+
+// ActivityType names what a running segment is doing now. Clients word it in
+// their own language; the Runtime sends no display text.
+//
+//flame:enum
+type ActivityType string
+
+const (
+	ActivityCallingModel      ActivityType = "callingModel"
+	ActivityModelCallFailed   ActivityType = "modelCallFailed"
+	ActivityApplyingUserInput ActivityType = "applyingUserInput"
+	ActivityToolCall          ActivityType = "toolCall"
+)
+
+// Activity is the current action of a running segment. A toolCall activity
+// names the running ToolCall Item and its tool, so a client can word it
+// without having folded that Item.
+type Activity struct {
+	Type   ActivityType `json:"type"`
+	ItemID string       `json:"itemId,omitempty"`
+	Tool   string       `json:"tool,omitempty"`
 }
 
 // Plan is the Session's persisted latest Plan. A root Run publishes it through

@@ -147,7 +147,22 @@ func presentProgress(progress runs.Progress) protocol.RunProgress {
 	return protocol.RunProgress{
 		Step:  progress.Step,
 		Usage: presentUsage(progress.Usage), ContextTokens: progress.ContextTokens,
-		Activity: progress.Activity,
+		Activity: presentActivity(progress.Activity),
+	}
+}
+
+func presentActivity(activity runs.Activity) *protocol.Activity {
+	switch activity := activity.(type) {
+	case runs.CallingModelActivity:
+		return &protocol.Activity{Type: protocol.ActivityCallingModel}
+	case runs.FailedModelCallActivity:
+		return &protocol.Activity{Type: protocol.ActivityModelCallFailed}
+	case runs.ApplyingUserInputActivity:
+		return &protocol.Activity{Type: protocol.ActivityApplyingUserInput}
+	case runs.ToolCallActivity:
+		return &protocol.Activity{Type: protocol.ActivityToolCall, ItemID: activity.ItemID, Tool: activity.Tool}
+	default:
+		return nil
 	}
 }
 

@@ -61,7 +61,7 @@ function started(eventId: string, run: RunRef): RunEvent {
 function progress(eventId: string, runId: string, segmentId: string, step: number): RunEvent {
   return envelope(eventId, runId, segmentId, {
     type: "segment.progress",
-    progress: { step, activity: `${runId} work` },
+    progress: { step, activity: { type: "toolCall", itemId: `item_${runId}`, tool: "grep" } },
   });
 }
 
@@ -194,25 +194,25 @@ describe("reducer — source-owned Run tree", () => {
       root: {
         parentRunId: null,
         rootRunId: "root",
-        progress: { step: 1, activity: "root work" },
+        progress: { step: 1, activity: { type: "toolCall", itemId: "item_root", tool: "grep" } },
         contextTokens: null,
       },
       child_a: {
         parentRunId: "root",
         rootRunId: "root",
-        progress: { step: 2, activity: "child_a work" },
+        progress: { step: 2, activity: { type: "toolCall", itemId: "item_child_a", tool: "grep" } },
         contextTokens: null,
       },
       child_b: {
         parentRunId: "root",
         rootRunId: "root",
-        progress: { step: 3, activity: "child_b work" },
+        progress: { step: 3, activity: { type: "toolCall", itemId: "item_child_b", tool: "grep" } },
         contextTokens: null,
       },
       nested: {
         parentRunId: "child_a",
         rootRunId: "root",
-        progress: { step: 4, activity: "nested work" },
+        progress: { step: 4, activity: { type: "toolCall", itemId: "item_nested", tool: "grep" } },
         contextTokens: null,
       },
     });

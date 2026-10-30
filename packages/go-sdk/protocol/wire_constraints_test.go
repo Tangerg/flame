@@ -137,7 +137,7 @@ func TestRunEventRequiresTimestamp(t *testing.T) {
 		RunID: "run_1", SegmentID: "seg_1", EventID: "evt_1",
 		Event: StreamEvent{
 			Type:     StreamSegmentProgress,
-			Progress: &RunProgress{Activity: "Calling model"},
+			Progress: &RunProgress{Activity: &Activity{Type: ActivityCallingModel}},
 		},
 	}
 	assertConstraintField(t, event.validateWire(), "RunEvent", "timestamp")
@@ -255,7 +255,7 @@ func TestRunProgressCarriesAtLeastOneValidFact(t *testing.T) {
 		{Step: &zeroStep},
 		{Usage: &Usage{}},
 		{ContextTokens: &zeroContext},
-		{Activity: "Calling model"},
+		{Activity: &Activity{Type: ActivityCallingModel}},
 	} {
 		if err := progress.validateWire(); err != nil {
 			t.Errorf("ValidateWire rejected valid progress %+v: %v", progress, err)

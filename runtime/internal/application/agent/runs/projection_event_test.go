@@ -94,7 +94,7 @@ func TestProgressRejectsImpossiblePreviews(t *testing.T) {
 			Total: accounting.Totals{CostUSD: &invalidCost},
 		}}},
 		{name: "negative context", progress: Progress{ContextTokens: &negativeContext}},
-		{name: "noncanonical activity", progress: Progress{Activity: " calling model "}},
+		{name: "anonymous tool activity", progress: Progress{Activity: ToolCallActivity{}}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
@@ -105,7 +105,7 @@ func TestProgressRejectsImpossiblePreviews(t *testing.T) {
 	}
 
 	zeroStep, zeroContext := 0, int64(0)
-	valid := Progress{Step: &zeroStep, ContextTokens: &zeroContext, Activity: "Calling model"}
+	valid := Progress{Step: &zeroStep, ContextTokens: &zeroContext, Activity: CallingModelActivity{}}
 	if err := valid.validate(); err != nil {
 		t.Fatalf("validate canonical progress: %v", err)
 	}

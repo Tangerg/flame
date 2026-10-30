@@ -55,6 +55,79 @@
         "status"
       ]
     },
+    "Activity": {
+      "type": "object",
+      "properties": {
+        "itemId": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/ActivityType"
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "itemId": false,
+            "tool": false,
+            "type": {
+              "const": "callingModel"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "properties": {
+            "itemId": false,
+            "tool": false,
+            "type": {
+              "const": "modelCallFailed"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "properties": {
+            "itemId": false,
+            "tool": false,
+            "type": {
+              "const": "applyingUserInput"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "toolCall"
+            }
+          },
+          "required": [
+            "itemId",
+            "tool",
+            "type"
+          ]
+        }
+      ]
+    },
+    "ActivityType": {
+      "type": "string",
+      "enum": [
+        "callingModel",
+        "modelCallFailed",
+        "applyingUserInput",
+        "toolCall"
+      ]
+    },
     "AgentDoc": {
       "type": "object",
       "properties": {
@@ -9607,7 +9680,7 @@
       "type": "object",
       "properties": {
         "activity": {
-          "type": "string"
+          "$ref": "#/$defs/Activity"
         },
         "contextTokens": {
           "type": "integer",

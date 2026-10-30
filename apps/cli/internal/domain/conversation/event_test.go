@@ -121,7 +121,7 @@ func TestEphemeralEventsCloneOwnedValues(t *testing.T) {
 	step, contextTokens, cost := 2, int64(4_096), 0.5
 	progress := RunProgress{
 		Step: &step, ContextTokens: &contextTokens,
-		Usage: &Usage{InputTokens: 10, CostUSD: &cost}, Activity: "calling tools",
+		Usage: &Usage{InputTokens: 10, CostUSD: &cost}, Activity: &protocol.Activity{Type: protocol.ActivityToolCall, ItemID: "item_1", Tool: "shell"},
 	}
 	clone := CloneEvent(progress).(RunProgress)
 	*clone.Step, *clone.ContextTokens, clone.Usage.InputTokens, *clone.Usage.CostUSD = 9, 1, 99, 9

@@ -171,7 +171,6 @@ type ToolCallStarted struct {
 	SourceCallID string
 	ToolName     string
 	Arguments    string
-	Activity     string
 	SafetyClass  tool.SafetyClass
 }
 

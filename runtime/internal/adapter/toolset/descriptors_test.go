@@ -213,12 +213,6 @@ func TestDescriptorCatalogMatchesBuiltInTools(t *testing.T) {
 		if !descriptor.safety.Valid() {
 			t.Errorf("built-in identity %q has invalid safety class %q", name, descriptor.safety)
 		}
-		if (descriptor.activityText == "") == (descriptor.activity == nil) {
-			t.Errorf("built-in identity %q must define exactly one static or argument-aware activity", name)
-		}
-		if descriptor.activityText != "" && !isConciseActivityText(descriptor.activityText, 120) {
-			t.Errorf("built-in identity %q has invalid static activity %q", name, descriptor.activityText)
-		}
 		if result, ok := resultContractFor(builtincontract.Name(name)); ok != (builtincontract.Name(name).ResultShape() != "") || ok && (result.project == nil || result.resultType == nil) {
 			t.Errorf("built-in identity %q must pair its declared result shape with a projection and published type", name)
 		}

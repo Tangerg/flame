@@ -243,6 +243,14 @@ export interface ActiveRunRef {
   status: RunStatus;
 }
 
+export type Activity =
+  | { type: "callingModel" }
+  | { type: "modelCallFailed" }
+  | { type: "applyingUserInput" }
+  | { type: "toolCall"; itemId: string; tool: string };
+
+export type ActivityType = "callingModel" | "modelCallFailed" | "applyingUserInput" | "toolCall";
+
 export interface AgentDoc {
   path: string;
   scope: AgentDocScope;
@@ -1736,7 +1744,7 @@ export type RunOutcome =
 export type RunOutcomeType = "completed" | "timedOut" | "failed" | "canceled" | "lost";
 
 export interface RunProgress {
-  activity?: string;
+  activity?: Activity;
   contextTokens?: number;
   step?: number;
   usage?: Usage;
@@ -2326,6 +2334,7 @@ export interface WorkspaceSummary {
 
 // The closed value sets, as data: a union type does not exist at runtime.
 export const WIRE_ENUMS = {
+  ActivityType: ["callingModel", "modelCallFailed", "applyingUserInput", "toolCall"],
   AgentDocScope: ["cwd", "projectRoot", "home"],
   ApprovalDecision: ["approve", "deny"],
   ApprovalGate: ["pass", "prompt", "deny"],

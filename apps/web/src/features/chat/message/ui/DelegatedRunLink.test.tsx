@@ -44,7 +44,7 @@ function run(overrides: Partial<AgentRunView> = {}): AgentRunView {
       activeDurationMillis: 10,
       usage: { inputTokens: 3, outputTokens: 1, cacheReadTokens: 0 },
     },
-    progress: { step: 3, activity: "Reviewing tests" },
+    progress: { step: 3, activity: { type: "toolCall", itemId: "item_1", tool: "grep" } },
     contextTokens: null,
     createdAt: "2026-01-01T00:00:00.000Z",
     finishedAt: null,
@@ -157,7 +157,7 @@ describe("DelegatedRunLink", () => {
     expect(
       screen.queryByRole("button", {
         name: "Cancel this run",
-        description: /old scope|Reviewing tests/,
+        description: /old scope|Searching/,
       }),
     ).toBeNull();
   });

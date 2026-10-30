@@ -229,7 +229,7 @@ func TestConversationFoldsRunProgressWithoutMakingPreviewsDurable(t *testing.T) 
 	step := 3
 	contextTokens := int64(16_384)
 	apply(t, projection, RunEvent{EventID: "progress", RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: RunProgress{
-		Step: &step, Usage: &progressUsage, ContextTokens: &contextTokens, Activity: "thinking",
+		Step: &step, Usage: &progressUsage, ContextTokens: &contextTokens, Activity: &protocol.Activity{Type: protocol.ActivityCallingModel},
 	}})
 	got := projection.Usage()
 	if got.InputTokens != 14 || got.OutputTokens != 2 || got.CostUSD != nil ||

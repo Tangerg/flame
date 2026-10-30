@@ -312,7 +312,7 @@ func (r *reducer) startModelCall(started ModelCallStarted) (factReduction, error
 		r.modelBoundaryClosed = false
 	}
 	return factReduction{
-		events: []ProjectionEvent{SegmentProgressed{Progress: Progress{Activity: "Calling model"}}},
+		events: []ProjectionEvent{SegmentProgressed{Progress: Progress{Activity: CallingModelActivity{}}}},
 		modelInvocations: []ModelInvocationCommit{{
 			CallID: started.CallID, SegmentID: r.cfg.Opened.ActiveSegmentID(),
 			State: modelref.InvocationStarted, Purpose: started.Purpose, StartedAt: startedAt,
@@ -447,7 +447,7 @@ func (r *reducer) failModelCall(failed ModelCallFailed) (factReduction, error) {
 	}
 	return factReduction{
 		progress: progressed,
-		events:   append(events, SegmentProgressed{Progress: Progress{Activity: "Model call failed"}}),
+		events:   append(events, SegmentProgressed{Progress: Progress{Activity: FailedModelCallActivity{}}}),
 		modelInvocations: []ModelInvocationCommit{{
 			CallID: failed.CallID, SegmentID: r.cfg.Opened.ActiveSegmentID(),
 			State: modelref.InvocationFailed, Purpose: call.purpose, StartedAt: startedAt, FinishedAt: finishedAt,

@@ -64,7 +64,7 @@ const child: AgentRunView = {
   status: "running",
   activeSegmentId: "segment",
   outcome: null,
-  progress: { step: 1, activity: "Inspecting axios" },
+  progress: { step: 1, activity: { type: "toolCall", itemId: "item_1", tool: "grep" } },
   contextTokens: null,
   metrics: {
     steps: 1,

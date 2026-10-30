@@ -299,7 +299,7 @@ func TestProjectEventPreservesEphemeralFramesAndClassifiesStreams(t *testing.T) 
 	progressEvent, include, err := project("progress", protocol.StreamEvent{
 		Type: protocol.StreamSegmentProgress,
 		Progress: &protocol.RunProgress{
-			Step: &step, ContextTokens: &contextTokens, Activity: "thinking",
+			Step: &step, ContextTokens: &contextTokens, Activity: &protocol.Activity{Type: protocol.ActivityCallingModel},
 			Usage: &protocol.Usage{ModelUsage: protocol.ModelUsage{InputTokens: 12, CostUSD: &cost}},
 		},
 	})
@@ -309,7 +309,7 @@ func TestProjectEventPreservesEphemeralFramesAndClassifiesStreams(t *testing.T) 
 	progress, ok := progressEvent.Event.(conversation.RunProgress)
 	if !ok || progress.Step == nil || *progress.Step != step || progress.ContextTokens == nil ||
 		*progress.ContextTokens != contextTokens || progress.Usage == nil || progress.Usage.InputTokens != 12 ||
-		progress.Usage.CostUSD == nil || *progress.Usage.CostUSD != cost || progress.Activity != "thinking" {
+		progress.Usage.CostUSD == nil || *progress.Usage.CostUSD != cost || progress.Activity == nil || progress.Activity.Type != protocol.ActivityCallingModel {
 		t.Fatalf("projected progress = %#v", progressEvent.Event)
 	}
 

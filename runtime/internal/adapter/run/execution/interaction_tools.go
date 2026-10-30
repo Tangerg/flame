@@ -35,11 +35,10 @@ type interactionToolInterpreter interface {
 	ProjectOutcome(ctx context.Context, sessionID string, ref tool.Ref, succeeded bool) (runs.ExecutionFact, error)
 }
 
-// InteractionToolPresenter owns client-facing activity and result projection.
+// InteractionToolPresenter owns client-facing result projection.
 // Its implementation remains in Toolset; Agent Framework sees only ordinary Tools. An
 // implementation must be safe for concurrent calls from one Tool batch.
 type interactionToolPresenter interface {
-	Activity(ref tool.Ref, arguments tool.Arguments) string
 	Present(ref tool.Ref, arguments tool.Arguments, result tool.Result) (tool.Result, string)
 }
 

@@ -45,8 +45,7 @@ func (m *managedDelegateCall) toolStart() runs.ToolCallStarted {
 	return runs.ToolCallStarted{
 		CallID: m.callID.String(), ModelCallSequence: m.modelCallSequence,
 		ToolCallIndex: m.toolCallIndex, SourceCallID: m.call.ID,
-		ToolName: m.call.Name, Arguments: m.arguments.Canonical(),
-		Activity: "Delegating " + m.input.Summary, SafetyClass: tool.SafetyClassExec,
+		ToolName: m.call.Name, Arguments: m.arguments.Canonical(), SafetyClass: tool.SafetyClassExec,
 	}
 }
 

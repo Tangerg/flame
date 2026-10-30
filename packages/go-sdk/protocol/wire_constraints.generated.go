@@ -1802,6 +1802,20 @@ func (d DiffRow) validateWire() error {
 	)
 }
 
+func (a Activity) validateWire() error {
+	return collectWireViolations("Activity",
+		closedEnum("type", string(a.Type), []string{"callingModel", "modelCallFailed", "applyingUserInput", "toolCall"}, false),
+		forbiddenWhen(wireFieldEquals(a, "type", "callingModel"), "itemId", a),
+		forbiddenWhen(wireFieldEquals(a, "type", "callingModel"), "tool", a),
+		forbiddenWhen(wireFieldEquals(a, "type", "modelCallFailed"), "itemId", a),
+		forbiddenWhen(wireFieldEquals(a, "type", "modelCallFailed"), "tool", a),
+		forbiddenWhen(wireFieldEquals(a, "type", "applyingUserInput"), "itemId", a),
+		forbiddenWhen(wireFieldEquals(a, "type", "applyingUserInput"), "tool", a),
+		requiredWhen(wireFieldEquals(a, "type", "toolCall"), "itemId", a),
+		requiredWhen(wireFieldEquals(a, "type", "toolCall"), "tool", a),
+	)
+}
+
 func (m ModelEndpointInvocation) validateWire() error {
 	return collectWireViolations("ModelEndpointInvocation",
 		identity("sessionId", m.SessionID),

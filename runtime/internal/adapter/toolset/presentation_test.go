@@ -13,40 +13,6 @@ import (
 	"github.com/Tangerg/scope/tools/content"
 )
 
-func TestPresenterActivity(t *testing.T) {
-	presenter := Presenter{}
-	tests := []struct {
-		name      string
-		ref       tool.Ref
-		arguments string
-		want      string
-	}{
-		{name: "shell description", ref: testsupport.BuiltInTool(t, builtincontract.Shell), arguments: `{"command":"go test ./...","description":"Run server tests"}`, want: "Run server tests"},
-		{name: "shell invalid description", ref: testsupport.BuiltInTool(t, builtincontract.Shell), arguments: `{"description":" Run server tests"}`, want: "Running command"},
-		{name: "delegation summary", ref: testsupport.BuiltInTool(t, builtincontract.DelegateTask), arguments: `{"summary":"Review tool contracts"}`, want: "Delegating: Review tool contracts"},
-		{name: "long delegation summary", ref: testsupport.BuiltInTool(t, builtincontract.DelegateTask), arguments: `{"summary":"` + strings.Repeat("a", 81) + `"}`, want: "Delegating to a sub-agent"},
-		{name: "enter Plan mode", ref: testsupport.BuiltInTool(t, builtincontract.EnterPlanMode), arguments: `{}`, want: "Entering Plan mode"},
-		{name: "set Plan", ref: testsupport.BuiltInTool(t, builtincontract.SetPlan), arguments: `{}`, want: "Updating the Plan"},
-		{name: "exit Plan mode", ref: testsupport.BuiltInTool(t, builtincontract.ExitPlanMode), arguments: `{}`, want: "Requesting Plan approval"},
-		{name: "create Goal", ref: testsupport.BuiltInTool(t, builtincontract.CreateGoal), arguments: `{"objective":"finish the work"}`, want: "Starting an autonomous Goal"},
-		{name: "load Skill", ref: testsupport.BuiltInTool(t, builtincontract.LoadSkill), arguments: `{"name":"go-review"}`, want: "Loading Skill: go-review"},
-		{name: "propose named Skill", ref: testsupport.BuiltInTool(t, builtincontract.ProposeSkill), arguments: `{"name":"review-go-api"}`, want: "Proposing Skill: review-go-api"},
-		{name: "propose unnamed Skill", ref: testsupport.BuiltInTool(t, builtincontract.ProposeSkill), arguments: `{}`, want: "Proposing a Skill"},
-		{name: "unknown tool", ref: tool.Ref{}, arguments: `{}`, want: ""},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			arguments, err := tool.ParseArguments(test.arguments)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if got := presenter.Activity(test.ref, arguments); got != test.want {
-				t.Fatalf("activity = %q, want %q", got, test.want)
-			}
-		})
-	}
-}
-
 func TestPresenterCommandResult(t *testing.T) {
 	presented, outputText := Presenter{}.Present(testsupport.BuiltInTool(t, builtincontract.Shell), tool.Arguments{},
 		mustToolResult(t, map[string]any{"stdout": content.New([]byte("out\nerr")), "exit_code": 0}),

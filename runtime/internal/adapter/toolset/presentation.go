@@ -5,8 +5,6 @@ import (
 	json "encoding/json/v2"
 	"reflect"
 	"strconv"
-	"strings"
-	"unicode/utf8"
 
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -43,62 +41,6 @@ func PresentationContracts() []PresentationContract {
 		contracts = append(contracts, contract)
 	}
 	return contracts
-}
-
-// Activity returns concise progress text for a known concrete tool.
-func (Presenter) Activity(ref tool.Ref, arguments tool.Arguments) string {
-	descriptor, ok := descriptorFor(ref)
-	if !ok {
-		return ""
-	}
-	if descriptor.activity != nil {
-		return descriptor.activity(arguments)
-	}
-	return descriptor.activityText
-}
-
-func shellActivity(arguments tool.Arguments) string {
-	if args, ok := decodeArguments[builtincontract.ShellArguments](arguments, "description"); ok &&
-		isConciseActivityText(args.Description, 120) {
-		return args.Description
-	}
-	return "Running command"
-}
-
-func delegationActivity(arguments tool.Arguments) string {
-	if args, ok := decodeArguments[delegationActivityArguments](arguments, "summary"); ok &&
-		isConciseActivityText(args.Summary, 80) {
-		return "Delegating: " + args.Summary
-	}
-	return "Delegating to a sub-agent"
-}
-
-func loadSkillActivity(arguments tool.Arguments) string {
-	if args, ok := decodeArguments[skillActivityArguments](arguments, "name"); ok &&
-		isConciseActivityText(args.Name, 80) {
-		return "Loading Skill: " + args.Name
-	}
-	return "Loading a Skill"
-}
-
-func proposeSkillActivity(arguments tool.Arguments) string {
-	if args, ok := decodeArguments[skillActivityArguments](arguments, "name"); ok &&
-		isConciseActivityText(args.Name, 64) {
-		return "Proposing Skill: " + args.Name
-	}
-	return "Proposing a Skill"
-}
-
-type delegationActivityArguments struct {
-	Summary string `json:"summary"`
-}
-
-type skillActivityArguments struct {
-	Name string `json:"name"`
-}
-
-func isConciseActivityText(value string, maxRunes int) bool {
-	return value != "" && value == strings.TrimSpace(value) && utf8.RuneCountInString(value) <= maxRunes
 }
 
 // Present projects a known tool's canonical arguments and result into the

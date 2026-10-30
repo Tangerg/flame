@@ -88,7 +88,7 @@ type RunProgress struct {
 	Step          *int
 	Usage         *Usage
 	ContextTokens *int64
-	Activity      string
+	Activity      *protocol.Activity
 }
 
 // CustomEvent preserves an extension event without coupling the CLI domain to
@@ -161,7 +161,7 @@ func (item ToolArgumentsDelta) equal(event Event) bool {
 func (item RunProgress) equal(event Event) bool {
 	other, ok := event.(RunProgress)
 	return ok && equalOptional(item.Step, other.Step) && equalOptionalUsage(item.Usage, other.Usage) &&
-		equalOptional(item.ContextTokens, other.ContextTokens) && item.Activity == other.Activity
+		equalOptional(item.ContextTokens, other.ContextTokens) && equalOptional(item.Activity, other.Activity)
 }
 
 func (item CustomEvent) equal(event Event) bool {
@@ -217,6 +217,9 @@ func CloneEvent(event Event) Event {
 		}
 		if item.ContextTokens != nil {
 			item.ContextTokens = new(*item.ContextTokens)
+		}
+		if item.Activity != nil {
+			item.Activity = new(*item.Activity)
 		}
 		return item
 	case CustomEvent:

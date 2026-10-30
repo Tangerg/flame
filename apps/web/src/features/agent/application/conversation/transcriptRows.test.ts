@@ -182,7 +182,7 @@ describe("transcript rows", () => {
         runs: [
           {
             ...running,
-            progress: { activity: "still streaming" },
+            progress: { activity: { type: "callingModel" } },
             contextTokens: null,
           },
         ],

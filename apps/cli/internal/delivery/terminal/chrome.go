@@ -479,15 +479,31 @@ func (s *statusView) progress(progress conversation.RunProgress) {
 	if progress.ContextTokens != nil {
 		s.contextTokens = *progress.ContextTokens
 	}
-	label := strings.TrimSpace(progress.Activity)
-	if label == "" {
-		label = "working"
-	}
-	parts := []string{label}
+	parts := []string{activityLabel(progress.Activity)}
 	if progress.Step != nil {
 		parts = append(parts, "step "+strconv.Itoa(*progress.Step))
 	}
 	s.active(strings.Join(parts, " · "))
+}
+
+// activityLabel words what a running segment reports doing; the Runtime sends
+// only which activity it is.
+func activityLabel(activity *protocol.Activity) string {
+	if activity == nil {
+		return "working"
+	}
+	switch activity.Type {
+	case protocol.ActivityCallingModel:
+		return "calling model"
+	case protocol.ActivityModelCallFailed:
+		return "model call failed"
+	case protocol.ActivityApplyingUserInput:
+		return "applying your input"
+	case protocol.ActivityToolCall:
+		return toolLabel(conversation.ToolCall{Name: activity.Tool})
+	default:
+		return "working"
+	}
 }
 
 func (s *statusView) note(label string) {

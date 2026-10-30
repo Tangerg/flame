@@ -216,7 +216,7 @@ func TestNDJSONPreservesProgressToolArgumentsAndCustomPayloads(t *testing.T) {
 	}
 	step, contextTokens := 4, int64(16_384)
 	events := []conversation.RunEvent{
-		testEvent("progress", conversation.RunProgress{Step: &step, ContextTokens: &contextTokens, Activity: "thinking", Usage: &conversation.Usage{InputTokens: 22}}),
+		testEvent("progress", conversation.RunProgress{Step: &step, ContextTokens: &contextTokens, Activity: &protocol.Activity{Type: protocol.ActivityCallingModel}, Usage: &conversation.Usage{InputTokens: 22}}),
 		testEvent("arguments", conversation.ToolArgumentsDelta{BlockID: "tool_1", Text: `{"path":"/tmp`}),
 		testEvent("custom", conversation.CustomEvent{Name: "vendor.trace", PayloadJSON: []byte(`{"span":"abc","sampled":true}`)}),
 	}

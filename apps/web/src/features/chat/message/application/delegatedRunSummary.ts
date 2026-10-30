@@ -66,7 +66,7 @@ export function delegatedRunSummary(
     statusLabel: t(statusView.labelKey),
     dotTone: statusView.dotTone,
     ink: statusView.ink,
-    detail: agentRunDetail(run),
+    detail: agentRunDetail(t, run),
     cancelable: !agentRunIsFinished(run),
   };
 }

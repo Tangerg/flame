@@ -87,8 +87,8 @@ func TestGoalUsageLabelDoesNotPresentPartialCostAsTotal(t *testing.T) {
 func TestStatusProgressIncludesRuntimeActivityStepAndContext(t *testing.T) {
 	status := newStatusView(kit.Dark(), kit.Unicode())
 	step, contextTokens := 7, int64(12_345)
-	status.progress(conversation.RunProgress{Step: &step, ContextTokens: &contextTokens, Activity: "calling tools"})
-	if status.phase != statusActive || status.doing != "calling tools · step 7" || status.contextTokens != contextTokens {
+	status.progress(conversation.RunProgress{Step: &step, ContextTokens: &contextTokens, Activity: &protocol.Activity{Type: protocol.ActivityCallingModel}})
+	if status.phase != statusActive || status.doing != "calling model · step 7" || status.contextTokens != contextTokens {
 		t.Fatalf("progress status = phase %d, doing %q", status.phase, status.doing)
 	}
 	status.active("using shell")
