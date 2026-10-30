@@ -130,7 +130,10 @@ argument can name an executable, shell command, host path or remote resource.
 macOS also refuses execution under an incompatible inherited Seatbelt profile;
 the plugin does not retry outside its required confinement.
 
-Linux also requires `/usr/bin/prlimit`; the sandbox applies address-space, CPU,
+Linux also requires `/usr/bin/prlimit` and a read-only procfs mount inside its
+private PID namespace. Dynamic loaders use `/proc/self/exe` to resolve libraries
+relative to their executable; an empty procfs cannot satisfy that dependency.
+A host that prohibits the private mount is refused. The sandbox applies address-space, CPU,
 single-file and diagnostic-output limits before executing any renderer, including
 version probes. macOS applies CPU, single-file and open-file limits before execution
 and samples resident memory every 25 ms, terminating the process on excess or
@@ -222,7 +225,8 @@ For explicit host qualification, configure those environment projections and run
 `FLAME_DELIVERABLES_NATIVE_TESTS=1` with the backend test runner. The native tests
 exercise the production confinement, actual DOCX/XLSX/PPTX rendering and observed
 workbook formula results. Ordinary tests remain independent of host renderer
-installation. macOS execution and the native save panel require qualification on
+installation. The workspace CI jobs install LibreOffice and Poppler and enable
+this qualification on Linux and macOS. The native save panel requires qualification on
 macOS; a Linux pass cannot establish those properties.
 
 The public component SDK now requires binary `saveFile`; `saveTextFile` has been

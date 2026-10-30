@@ -27,9 +27,24 @@ jobs:
       - if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install --yes bubblewrap util-linux
+          sudo apt-get install --yes bubblewrap util-linux libreoffice poppler-utils
+          echo "FLAME_DELIVERABLES_OFFICE=/usr/lib/libreoffice/program/soffice.bin" >> "$GITHUB_ENV"
+          echo "FLAME_DELIVERABLES_PDFINFO=/usr/bin/pdfinfo" >> "$GITHUB_ENV"
+          echo "FLAME_DELIVERABLES_PDFTOPPM=/usr/bin/pdftoppm" >> "$GITHUB_ENV"
+          echo "FLAME_DELIVERABLES_PDFTOTEXT=/usr/bin/pdftotext" >> "$GITHUB_ENV"
+      - if: runner.os == 'macOS'
+        run: |
+          brew install poppler
+          brew install --cask libreoffice
+          echo "FLAME_DELIVERABLES_OFFICE=/Applications/LibreOffice.app/Contents/MacOS/soffice" >> "$GITHUB_ENV"
+          echo "FLAME_DELIVERABLES_PDFINFO=$(brew --prefix poppler)/bin/pdfinfo" >> "$GITHUB_ENV"
+          echo "FLAME_DELIVERABLES_PDFTOPPM=$(brew --prefix poppler)/bin/pdftoppm" >> "$GITHUB_ENV"
+          echo "FLAME_DELIVERABLES_PDFTOTEXT=$(brew --prefix poppler)/bin/pdftotext" >> "$GITHUB_ENV"
+          echo "FLAME_DELIVERABLES_TOOL_ROOTS=[\"/Applications/LibreOffice.app\",\"$(brew --cellar)\"]" >> "$GITHUB_ENV"
       - run: make setup
       - run: make check
+        env:
+          FLAME_DELIVERABLES_NATIVE_TESTS: "1"
       - if: runner.os == 'macOS'
         run: make check-author
   native:

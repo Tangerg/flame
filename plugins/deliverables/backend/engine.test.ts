@@ -562,6 +562,12 @@ describe("confined process boundary", () => {
     expect(plan.args.slice(-3)).toEqual([command, ...args]);
     expect(plan.args).toContain("--fsize=1234");
     expect(plan.args).toContain("--unshare-all");
+    expect(
+      plan.args.slice(
+        plan.args.indexOf("--proc"),
+        plan.args.indexOf("--proc") + 4,
+      ),
+    ).toEqual(["--proc", "/proc", "--remount-ro", "/proc"]);
     expect(plan.args).not.toContain("--share-net");
     expect(plan.args).not.toContain(process.env.HOME);
     const mac = confinedPlan("darwin", directory(), [tools], command, args, {

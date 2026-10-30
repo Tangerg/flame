@@ -6,6 +6,33 @@ import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import { moduleArtifacts, root } from "./workspace.mjs";
 
+test("the setup coordinator loads without installed npm dependencies", async () => {
+  const repository = await mkdtemp(join(tmpdir(), "flame-clean-setup-"));
+  try {
+    await cp(join(root, "tooling"), join(repository, "tooling"), {
+      recursive: true,
+    });
+    await mkdir(join(repository, "packages/local-runtime"), {
+      recursive: true,
+    });
+    await cp(
+      join(root, "packages/local-runtime/node-release.json"),
+      join(repository, "packages/local-runtime/node-release.json"),
+    );
+    execFileSync(
+      process.execPath,
+      [
+        "--input-type=module",
+        "--eval",
+        'await import("./tooling/workspace.mjs")',
+      ],
+      { cwd: repository, stdio: "pipe", env: process.env },
+    );
+  } finally {
+    await rm(repository, { recursive: true, force: true });
+  }
+});
+
 test("module artifacts use pinned dependency graphs and frozen tool source", async () => {
   const repository = await mkdtemp(join(tmpdir(), "flame-candidate-closure-"));
   const git = (...args) =>

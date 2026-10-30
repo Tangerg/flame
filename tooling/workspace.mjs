@@ -15,7 +15,6 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { stageNode } from "./node-companion.mjs";
-import { generatePresentation } from "./presentation.mjs";
 
 export const root = fileURLToPath(new URL("../", import.meta.url));
 export function run(
@@ -104,6 +103,7 @@ async function stampDeclarations(repository) {
 }
 
 export async function generate(repository = root) {
+  const { generatePresentation } = await import("./presentation.mjs");
   run("node", ["plugins/scripts/generate-runtime-profile.mjs"], repository);
   await buildShared(repository);
   await generatePresentation(repository);

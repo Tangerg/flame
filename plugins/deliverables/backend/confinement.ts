@@ -18,6 +18,7 @@ export interface ProcessPlan {
 }
 
 export const DARWIN_SHELL = "/bin/bash";
+const LINUX_PROCFS = "/proc";
 
 export interface ProcessBounds {
   memoryBytes: number;
@@ -76,10 +77,12 @@ export function confinedPlan(
       "--new-session",
       "--cap-drop",
       "ALL",
-      // Confined tools have no reason to inspect process metadata. An empty proc
-      // directory also avoids requiring a procfs mount in nested sandboxes.
-      "--dir",
-      "/proc",
+      // Dynamic loaders resolve $ORIGIN through /proc/self/exe. This read-only
+      // procfs exposes only the processes in the unshared PID namespace.
+      "--proc",
+      LINUX_PROCFS,
+      "--remount-ro",
+      LINUX_PROCFS,
       "--dev",
       "/dev",
       "--tmpfs",

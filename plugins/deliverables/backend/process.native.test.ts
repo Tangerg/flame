@@ -3,6 +3,7 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  readlink,
   realpath,
   rm,
   writeFile,
@@ -22,7 +23,7 @@ const native = it.runIf(
       process.arch === "x64"),
 );
 
-const probe = `import { readFile, writeFile } from "node:fs/promises";
+const probe = `import { readFile, readlink, writeFile } from "node:fs/promises";
 import { createConnection } from "node:net";
 import { spawnSync } from "node:child_process";
 const chunks = [];
@@ -37,6 +38,13 @@ const result = {
   privateRead: await attempt(() => readFile(request.privateFile)),
   write: await attempt(() => writeFile(request.target, "modified")),
 };
+if (process.platform === "linux" && !request.nodePermissions) {
+  result.executable = await readlink("/proc/self/exe");
+  result.pid = await readlink("/proc/self");
+  result.processPID = process.pid;
+  result.pidNamespace = await readlink("/proc/self/ns/pid");
+  result.procWrite = await attempt(() => writeFile("/proc/self/oom_score_adj", "0"));
+}
 result.network = await new Promise((resolve) => {
   const socket = createConnection({ host: "127.0.0.1", port: request.port });
   socket.setTimeout(2000);
@@ -146,6 +154,14 @@ native.each([false, true])(
       });
       const observed = JSON.parse(result.stdout) as Record<string, unknown>;
       expect(observed.publicRead).toBe("readable");
+      if (process.platform === "linux" && !nodePermissions) {
+        expect(observed.executable).toBe(await realpath(process.execPath));
+        expect(observed.pid).toBe(String(observed.processPID));
+        expect(observed.pidNamespace).not.toBe(
+          await readlink("/proc/self/ns/pid"),
+        );
+        expect(observed.procWrite).toBe("EROFS");
+      }
       expect(observed.privateRead).toBe(
         nodePermissions
           ? "ERR_ACCESS_DENIED"
