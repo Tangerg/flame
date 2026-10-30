@@ -41,6 +41,7 @@ jobs:
           brew update
           brew install poppler
           brew install --cask libreoffice
+          /Applications/LibreOffice.app/Contents/MacOS/soffice --headless --version
           echo "FLAME_DELIVERABLES_OFFICE=/Applications/LibreOffice.app/Contents/MacOS/soffice" >> "$GITHUB_ENV"
           echo "FLAME_DELIVERABLES_PDFINFO=$(brew --prefix poppler)/bin/pdfinfo" >> "$GITHUB_ENV"
           echo "FLAME_DELIVERABLES_PDFTOPPM=$(brew --prefix poppler)/bin/pdftoppm" >> "$GITHUB_ENV"
