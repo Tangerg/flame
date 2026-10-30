@@ -269,9 +269,7 @@ func scanChildFileDirectory(
 			}
 			if present {
 				snapshot.files[logical] = observed
-				if observed.watch {
-					watchedPaths = append(watchedPaths, observed.physical)
-				}
+				watchedPaths = append(watchedPaths, observed.dependencies...)
 				if observed.physical != "" {
 					directory, err := nearestExistingDirectory(filepath.Dir(observed.physical))
 					if err != nil {
@@ -423,7 +421,7 @@ func fingerprintResolvedChildFile(
 		encoder.field(fingerprintFieldPhysicalPath, resolved)
 		encoder.fileInfo(fingerprintFieldChildInfo, info)
 		encoder.state(fingerprintStateTooLarge)
-		return observedPath{fingerprint: encoder.sum(), physical: resolved, watch: true}, nil
+		return observedPath{fingerprint: encoder.sum(), physical: resolved, dependencies: []string{resolved}}, nil
 	}
 	var file *os.File
 	var opened os.FileInfo
@@ -444,7 +442,7 @@ func fingerprintResolvedChildFile(
 	if copyErr != nil || versionErr != nil || closeErr != nil {
 		return observedPath{}, fmt.Errorf("observe child files: read %q: %w", logical, errors.Join(copyErr, versionErr, closeErr))
 	}
-	return observedPath{fingerprint: encoder.sum(), physical: resolved, watch: true}, nil
+	return observedPath{fingerprint: encoder.sum(), physical: resolved, dependencies: []string{resolved}}, nil
 }
 
 func (t *childFileWatch) Close() error {
@@ -489,7 +487,7 @@ func childFileSnapshotsEqual(left, right childFileSnapshot) bool {
 	}
 	for logical, leftEntry := range left.files {
 		rightEntry, ok := right.files[logical]
-		if !ok || leftEntry != rightEntry {
+		if !ok || leftEntry.fingerprint != rightEntry.fingerprint {
 			return false
 		}
 	}

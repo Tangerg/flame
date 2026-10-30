@@ -1313,6 +1313,10 @@ line cannot fit.
 Discovery publishes the subscription's total path budget, per-directory entry budget, and file hashing budget. Content up to that byte budget is hashed; larger files remain observable through size and modification metadata. Exceeding directory or registration bounds fails explicitly. Background content-observation failures, including those of the Hooks and Skills observations behind `hooks.changed` and `skills.changed`, end the subscription, and Git sampling failures retry with bounded backoff before ending it. Clients reopen the stream and revalidate their reads; this is an invalidation channel, not a durable filesystem log or atomic snapshot. Notifications retain workspace, watch, and path scope; overflow can widen them.
 
 Directory registrations follow the filesystem backend's current watch set.
+The admitted directory sample also supplies its direct entry dependencies, so
+in-place entry metadata updates remain observable after creation, replacement
+and recreation. Sampling does not enter child directories or read their files;
+symlink metadata belongs to the link entry rather than its target.
 Automatic retirement and explicit removal may overlap; an already absent
 registration completes removal. Other registration failures remain explicit
 observation failures. Accepted application writes advance only their exact

@@ -216,11 +216,10 @@ func (w *watch) reconcile(initial bool, accepted acceptance) error {
 		if changed && !slices.Contains(changedKeys, candidate.key) {
 			changedKeys = append(changedKeys, candidate.key)
 		}
-		physical := observed.physical
-		if observed.watch {
-			paths[physical] = struct{}{}
+		for _, path := range observed.dependencies {
+			paths[path] = struct{}{}
 		}
-		if err := collectParentDirectories(paths, candidate.path, physical, candidate.physicalBoundary); err != nil {
+		if err := collectParentDirectories(paths, candidate.path, observed.physical, candidate.physicalBoundary); err != nil {
 			w.stateMu.Unlock()
 			return err
 		}
@@ -345,11 +344,13 @@ func fingerprintPhysicalTarget(
 	if err != nil {
 		return observedPath{}, fmt.Errorf("observe files: inspect target %q: %w", physical, err)
 	}
+	var dependencies []string
 	if physicalInfo.Mode().IsRegular() {
+		dependencies = []string{physical}
 		if physicalInfo.Size() > candidate.maxBytes {
 			encoder.fileInfo(fingerprintFieldPhysicalInfo, physicalInfo)
 			encoder.state(fingerprintStateTooLarge)
-			return observedPath{fingerprint: encoder.sum(), physical: physical, watch: physicalInfo.Mode().IsRegular() || (physicalInfo.IsDir() && candidate.maxEntries > 0)}, nil
+			return observedPath{fingerprint: encoder.sum(), physical: physical, dependencies: dependencies}, nil
 		}
 		var file *os.File
 		var opened os.FileInfo
@@ -372,15 +373,16 @@ func fingerprintPhysicalTarget(
 	} else {
 		encoder.fileInfo(fingerprintFieldPhysicalInfo, physicalInfo)
 		if physicalInfo.IsDir() && candidate.maxEntries > 0 {
-			if err := fingerprintDirectory(encoder, root, name, candidate.maxEntries); err != nil {
+			dependencies, err = fingerprintDirectory(encoder, root, name, physical, candidate.maxEntries)
+			if err != nil {
 				return observedPath{}, err
 			}
 		}
 	}
-	return observedPath{fingerprint: encoder.sum(), physical: physical, watch: physicalInfo.Mode().IsRegular() || (physicalInfo.IsDir() && candidate.maxEntries > 0)}, nil
+	return observedPath{fingerprint: encoder.sum(), physical: physical, dependencies: dependencies}, nil
 }
 
-func fingerprintDirectory(encoder *fingerprintEncoder, root *os.Root, name string, limit int) (err error) {
+func fingerprintDirectory(encoder *fingerprintEncoder, root *os.Root, name, physical string, limit int) (dependencies []string, err error) {
 	var directory *os.File
 	if root != nil {
 		directory, err = root.Open(name)
@@ -388,16 +390,17 @@ func fingerprintDirectory(encoder *fingerprintEncoder, root *os.Root, name strin
 		directory, err = os.Open(name)
 	}
 	if err != nil {
-		return fmt.Errorf("observe files: open directory: %w", err)
+		return nil, fmt.Errorf("observe files: open directory: %w", err)
 	}
 	defer func() { err = errors.Join(err, directory.Close()) }()
 	entries, err := directory.ReadDir(limit + 1)
 	if err != nil && !errors.Is(err, io.EOF) {
-		return fmt.Errorf("observe files: read directory: %w", err)
+		return nil, fmt.Errorf("observe files: read directory: %w", err)
 	}
 	if len(entries) > limit {
-		return fmt.Errorf("observe files: directory exceeds %d immediate entries", limit)
+		return nil, fmt.Errorf("observe files: directory exceeds %d immediate entries", limit)
 	}
+	dependencies = []string{physical}
 	slices.SortFunc(entries, func(a, b os.DirEntry) int { return strings.Compare(a.Name(), b.Name()) })
 	for _, entry := range entries {
 		var info os.FileInfo
@@ -408,12 +411,13 @@ func fingerprintDirectory(encoder *fingerprintEncoder, root *os.Root, name strin
 			info, err = os.Lstat(filepath.Join(name, entry.Name()))
 		}
 		if err != nil {
-			return fmt.Errorf("observe files: inspect directory entry: %w", err)
+			return nil, fmt.Errorf("observe files: inspect directory entry: %w", err)
 		}
 		encoder.field(fingerprintFieldLogicalPath, entry.Name())
 		encoder.fileInfo(fingerprintFieldChildInfo, info)
+		dependencies = append(dependencies, metadataWatchPath(filepath.Join(physical, entry.Name()), info.Mode()))
 	}
-	return nil
+	return dependencies, nil
 }
 
 func (w *watch) Close() error {

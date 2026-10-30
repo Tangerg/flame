@@ -84,6 +84,9 @@ func (d *pathHints) Add(path string) error {
 	return nil
 }
 
+// Vnode hints need the entry's inode; Add binds symlinks without following them.
+func metadataWatchPath(path string, _ os.FileMode) string { return path }
+
 func (d *pathHints) Remove(path string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
