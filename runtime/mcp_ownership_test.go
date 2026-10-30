@@ -132,8 +132,9 @@ func TestRuntimeRestartPreservesMCPResourceChanges(t *testing.T) {
 func isolatedMCPRuntimeConfig(t *testing.T) Config {
 	t.Helper()
 	t.Setenv("FLAME_PROVIDER", "anthropic")
+	t.Setenv("FLAME_MODEL", "claude-opus-5")
 	for _, name := range []string{
-		"FLAME_MODEL", "FLAME_APIKEY", "FLAME_BASEURL", "ANTHROPIC_API_KEY",
+		"FLAME_APIKEY", "FLAME_BASEURL", "ANTHROPIC_API_KEY",
 		"FLAME_MCP_SERVERS"} {
 		t.Setenv(name, "")
 	}

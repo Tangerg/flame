@@ -23,12 +23,6 @@ func loadConfig(configDirectories []string) (config.Settings, error) {
 }
 
 func resolveProviderConfig(settings config.Settings) (config.Settings, error) {
-	if settings.Model == "" {
-		if settings.Provider != "anthropic" {
-			return config.Settings{}, fmt.Errorf("config: provider %q requires an explicit model", settings.Provider)
-		}
-		settings.Model = "claude-opus-5"
-	}
 	if _, err := modelchoice.New(settings.Provider, settings.Model); err != nil {
 		return config.Settings{}, fmt.Errorf("config: model selection: %w", err)
 	}

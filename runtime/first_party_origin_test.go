@@ -12,6 +12,7 @@ import (
 
 func TestBundledUsageKeepsItsContractAtAnIndependentInstallationSource(t *testing.T) {
 	t.Setenv("FLAME_PROVIDER", "anthropic")
+	t.Setenv("FLAME_MODEL", "claude-opus-5")
 
 	cfg := Config{
 		DataDirectory: testsupport.TempDirectory(t), UserHomePath: testsupport.TempDirectory(t),

@@ -47,6 +47,7 @@ func TestInstanceConfigRequiresExactAbsoluteHostPaths(t *testing.T) {
 
 func TestOpenInstanceOwnsOneEndpointAndCanonicalDirectory(t *testing.T) {
 	t.Setenv("FLAME_PROVIDER", "anthropic")
+	t.Setenv("FLAME_MODEL", "claude-opus-5")
 	t.Setenv("FLAME_APIKEY", "test-key")
 
 	cfg := InstanceConfig{

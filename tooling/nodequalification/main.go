@@ -69,7 +69,7 @@ func qualify(ctx context.Context, directory string) (err error) {
 	if err := listener.Close(); err != nil {
 		return err
 	}
-	env := []string{"PATH=", "FLAME_HOME=" + filepath.Join(state, "home"), "FLAME_PROVIDER=anthropic", "FLAME_APIKEY=qualification-key", "FLAME_SERVER_LISTEN=" + address, "FLAME_SERVER_NOLOCALTOKEN=true"}
+	env := []string{"PATH=", "FLAME_HOME=" + filepath.Join(state, "home"), "FLAME_PROVIDER=anthropic", "FLAME_MODEL=claude-opus-5", "FLAME_APIKEY=qualification-key", "FLAME_SERVER_LISTEN=" + address, "FLAME_SERVER_NOLOCALTOKEN=true"}
 	if value, found := os.LookupEnv("HOME"); found {
 		env = append(env, "HOME="+value)
 	}

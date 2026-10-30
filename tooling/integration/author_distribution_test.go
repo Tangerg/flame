@@ -27,6 +27,7 @@ func TestStandalonePluginArchiveRetainsItsContractAndPrivateCommandOwner(t *test
 
 func verifyStandalonePlugin(t *testing.T, name string) {
 	t.Setenv("FLAME_PROVIDER", "anthropic")
+	t.Setenv("FLAME_MODEL", "claude-opus-5")
 	t.Setenv("FLAME_A2A_AGENTS", "")
 	t.Setenv("FLAME_A2A_RPC_ORIGINS", "")
 	root := t.TempDir()

@@ -17,6 +17,7 @@ func TestDirectToolBindingPreservesScopeInputRejection(t *testing.T) {
 		t.Setenv(name, "")
 	}
 	t.Setenv("FLAME_PROVIDER", "anthropic")
+	t.Setenv("FLAME_MODEL", "claude-opus-5")
 	root := testsupport.TempDirectory(t)
 	path := filepath.Join(root, "note.txt")
 	if err := os.WriteFile(path, []byte("flame\n"), 0o600); err != nil {

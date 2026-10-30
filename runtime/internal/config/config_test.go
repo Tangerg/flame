@@ -84,7 +84,7 @@ func TestLoadRejectsUnboundedOrNonRegularConfigFile(t *testing.T) {
 	t.Run("oversized", func(t *testing.T) {
 		directory := t.TempDir()
 		path := filepath.Join(directory, "config.yaml")
-		content := "provider: anthropic\n"
+		content := "provider: anthropic\nmodel: claude-opus-5\n"
 		content += strings.Repeat(" ", int(maximumRuntimeConfigBytes)-len(content))
 		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 			t.Fatal(err)
@@ -124,7 +124,7 @@ func TestLoadRejectsUnboundedOrNonRegularConfigFile(t *testing.T) {
 func TestLoadToolResultOffloadUsesExplicitEnablement(t *testing.T) {
 	directory := t.TempDir()
 	path := filepath.Join(directory, "config.yaml")
-	if err := os.WriteFile(path, []byte("provider: anthropic\ntoolResultOffload:\n  enabled: false\n  threshold: 1234\n"), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte("provider: anthropic\nmodel: claude-opus-5\ntoolResultOffload:\n  enabled: false\n  threshold: 1234\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("FLAME_PROVIDER", "")
@@ -138,7 +138,7 @@ func TestLoadToolResultOffloadUsesExplicitEnablement(t *testing.T) {
 		t.Fatalf("Tool-result offload = %+v", settings.ToolResultOffload)
 	}
 
-	if err := os.WriteFile(path, []byte("provider: anthropic\ntoolResultOffload:\n  enabled: false\n  threshold: 0\n"), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte("provider: anthropic\nmodel: claude-opus-5\ntoolResultOffload:\n  enabled: false\n  threshold: 0\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := Load([]string{directory}); err == nil {
@@ -150,7 +150,7 @@ func TestLoadRejectsUnknownConfigurationFields(t *testing.T) {
 	directory := t.TempDir()
 	if err := os.WriteFile(
 		filepath.Join(directory, "config.yaml"),
-		[]byte("provider: anthropic\nsandbox:\n  shel: true\n"),
+		[]byte("provider: anthropic\nmodel: claude-opus-5\nsandbox:\n  shel: true\n"),
 		0o600,
 	); err != nil {
 		t.Fatal(err)
@@ -165,7 +165,7 @@ func TestLoadRejectsUnknownConfigurationFields(t *testing.T) {
 
 func TestWebDirectoryUsesTheServerConfigurationSource(t *testing.T) {
 	directory := t.TempDir()
-	if err := os.WriteFile(filepath.Join(directory, "config.yaml"), []byte("provider: anthropic\nserver:\n  webDirectory: /configured/web\n"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(directory, "config.yaml"), []byte("provider: anthropic\nmodel: claude-opus-5\nserver:\n  webDirectory: /configured/web\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("FLAME_SERVER_WEBDIRECTORY", "")
@@ -188,6 +188,7 @@ func TestWebDirectoryUsesTheServerConfigurationSource(t *testing.T) {
 
 func TestLoadRejectsInvalidEnvironmentOnlySandboxSetting(t *testing.T) {
 	t.Setenv("FLAME_PROVIDER", "anthropic")
+	t.Setenv("FLAME_MODEL", "claude-opus-5")
 	t.Setenv("FLAME_SANDBOX_SHELL", "tru")
 	if _, err := Load([]string{t.TempDir()}); err == nil {
 		t.Fatal("invalid sandbox setting silently disabled shell isolation")
@@ -196,6 +197,7 @@ func TestLoadRejectsInvalidEnvironmentOnlySandboxSetting(t *testing.T) {
 
 func TestLoadUsesDecodedEnvironmentLists(t *testing.T) {
 	t.Setenv("FLAME_PROVIDER", "anthropic")
+	t.Setenv("FLAME_MODEL", "claude-opus-5")
 	t.Setenv("FLAME_SANDBOX_SHELL", "true")
 	t.Setenv("FLAME_SERVER_CORSORIGINS", "https://first.example,https://second.example")
 	t.Setenv("FLAME_SANDBOX_READONLYPATHS", "/toolchains/first,/toolchains/second")
@@ -211,5 +213,17 @@ func TestLoadUsesDecodedEnvironmentLists(t *testing.T) {
 	}
 	if !slices.Equal(settings.SandboxReadOnlyPaths, []string{"/toolchains/first", "/toolchains/second"}) {
 		t.Fatalf("sandbox read-only paths = %q", settings.SandboxReadOnlyPaths)
+	}
+}
+
+func TestLoadRequiresAnExplicitModel(t *testing.T) {
+	directory := t.TempDir()
+	if err := os.WriteFile(filepath.Join(directory, "config.yaml"), []byte("provider: anthropic\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("FLAME_PROVIDER", "")
+	t.Setenv("FLAME_MODEL", "")
+	if _, err := Load([]string{directory}); err == nil || !strings.Contains(err.Error(), "model is required") {
+		t.Fatalf("Load without model error = %v", err)
 	}
 }

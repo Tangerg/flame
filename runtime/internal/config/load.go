@@ -62,6 +62,9 @@ func Load(configDirectories []string) (Settings, error) {
 	if source.Provider == "" {
 		return Settings{}, errors.New("config: provider is required — set `provider:` in config/config.yaml or FLAME_PROVIDER (see providers.list for the supported set)")
 	}
+	if source.Model == "" {
+		return Settings{}, errors.New("config: model is required — set `model:` in config/config.yaml or FLAME_MODEL; names never infer a model")
+	}
 
 	// Viper applies FLAME_APIKEY over yaml `apiKey`; recover that source here so
 	// later composition cannot mistake a process-scoped secret for durable input.

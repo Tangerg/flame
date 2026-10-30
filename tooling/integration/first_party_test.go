@@ -16,6 +16,7 @@ import (
 
 func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 	t.Setenv("FLAME_PROVIDER", "anthropic")
+	t.Setenv("FLAME_MODEL", "claude-opus-5")
 	t.Setenv("FLAME_A2A_AGENTS", "")
 	t.Setenv("FLAME_A2A_RPC_ORIGINS", "")
 	cfg := flameruntime.Config{DataDirectory: tempRuntimeDirectory(t), UserHomePath: tempRuntimeDirectory(t), ConfigDirectories: []string{tempRuntimeDirectory(t)}}

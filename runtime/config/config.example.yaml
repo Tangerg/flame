@@ -16,8 +16,8 @@
 # the current set instead of copying a versioned list from this example.
 provider: anthropic
 
-# Exact model id. The product default is anthropic/claude-opus-5.
-# Every other provider requires an explicit model; names never infer a provider.
+# Exact model id. Required for every provider; names never infer a model or a
+# provider.
 model: "claude-opus-5"
 
 # Optional cheaper model for turn-boundary maintenance (compaction summaries,

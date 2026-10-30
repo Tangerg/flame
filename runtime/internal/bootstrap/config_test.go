@@ -156,7 +156,7 @@ func TestGenericEnvironmentKeyNeverCrossesTheDurableProviderBoundary(t *testing.
 	directory := t.TempDir()
 	if err := os.WriteFile(
 		filepath.Join(directory, "config.yaml"),
-		[]byte("provider: anthropic\napiKey: sk-file\n"),
+		[]byte("provider: anthropic\nmodel: claude-opus-5\napiKey: sk-file\n"),
 		0o600,
 	); err != nil {
 		t.Fatal(err)

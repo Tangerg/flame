@@ -467,6 +467,7 @@ func remoteRuntime(t *testing.T) (*Runtime, *httptest.Server, *protocol.Discover
 		t.Setenv(name, "")
 	}
 	t.Setenv("FLAME_PROVIDER", "anthropic")
+	t.Setenv("FLAME_MODEL", "claude-opus-5")
 	rt, err := Open(t.Context(), Config{DataDirectory: testsupport.TempDirectory(t), UserHomePath: testsupport.TempDirectory(t), DefaultWorkspacePath: testsupport.TempDirectory(t), ConfigDirectories: []string{testsupport.TempDirectory(t)}})
 	if err != nil {
 		t.Fatal(err)

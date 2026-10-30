@@ -23,6 +23,7 @@ func TestFreshRuntimeSubscriptionObservesFirstSkill(t *testing.T) {
 		t.Setenv(name, "")
 	}
 	t.Setenv("FLAME_PROVIDER", "anthropic")
+	t.Setenv("FLAME_MODEL", "claude-opus-5")
 	data := testsupport.TempDirectory(t)
 	rt, err := Open(t.Context(), Config{
 		DataDirectory: data, UserHomePath: testsupport.TempDirectory(t), DefaultWorkspacePath: testsupport.TempDirectory(t),
@@ -69,6 +70,7 @@ func TestRuntimePreservesCallerCancellation(t *testing.T) {
 		t.Setenv(name, "")
 	}
 	t.Setenv("FLAME_PROVIDER", "anthropic")
+	t.Setenv("FLAME_MODEL", "claude-opus-5")
 	runtime, err := Open(t.Context(), Config{
 		DataDirectory: testsupport.TempDirectory(t), DefaultWorkspacePath: testsupport.TempDirectory(t),
 		UserHomePath: testsupport.TempDirectory(t), ConfigDirectories: []string{testsupport.TempDirectory(t)},
@@ -113,6 +115,7 @@ func TestRuntimeModelDiscoveryDistinguishesMissingConfigurationFromEmptyEndpoint
 		t.Setenv(name, "")
 	}
 	t.Setenv("FLAME_PROVIDER", "anthropic")
+	t.Setenv("FLAME_MODEL", "claude-opus-5")
 	runtime, err := Open(t.Context(), Config{
 		DataDirectory: testsupport.TempDirectory(t), DefaultWorkspacePath: testsupport.TempDirectory(t),
 		UserHomePath: testsupport.TempDirectory(t), ConfigDirectories: []string{testsupport.TempDirectory(t)},
@@ -191,7 +194,7 @@ func TestRuntimeRestartDoesNotUndoAStoredProviderClear(t *testing.T) {
 	configDirectory := testsupport.TempDirectory(t)
 	if err := os.WriteFile(
 		filepath.Join(configDirectory, "config.yaml"),
-		[]byte("provider: anthropic\napiKey: sk-file\nbaseURL: https://config.example.test\n"),
+		[]byte("provider: anthropic\nmodel: claude-opus-5\napiKey: sk-file\nbaseURL: https://config.example.test\n"),
 		0o600,
 	); err != nil {
 		t.Fatal(err)
@@ -252,7 +255,7 @@ func TestRuntimeCanConfigureRequiredKeyProviderAfterStartup(t *testing.T) {
 	configDirectory := testsupport.TempDirectory(t)
 	if err := os.WriteFile(
 		filepath.Join(configDirectory, "config.yaml"),
-		[]byte("provider: anthropic\n"),
+		[]byte("provider: anthropic\nmodel: claude-opus-5\n"),
 		0o600,
 	); err != nil {
 		t.Fatal(err)
@@ -359,6 +362,7 @@ func TestResolveConfigUsesExplicitStableDefaults(t *testing.T) {
 
 func TestRuntimeOpenCallIdempotencyStreamAndClose(t *testing.T) {
 	t.Setenv("FLAME_PROVIDER", "anthropic")
+	t.Setenv("FLAME_MODEL", "claude-opus-5")
 	t.Setenv("FLAME_APIKEY", "test-key")
 
 	config := Config{

@@ -51,5 +51,5 @@ Runtime process configuration uses `FLAME_APIKEY` for the configured default
 provider and the canonical provider registry for other credentials. Stored values
 win over this process fallback. Former vendor-specific environment aliases are
 removed; configure their values through `providers.update` or the default
-provider's process setting. An explicit model is required for providers other
-than the product default `anthropic/claude-opus-5`.
+provider's process setting. Runtime process configuration names both its
+provider and model explicitly.
