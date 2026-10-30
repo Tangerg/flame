@@ -116,7 +116,7 @@ func validateOpenInvocationOwners(
 	for index, invocation := range models {
 		if invocation.Purpose == rundomain.ModelConversation && invocation.Endpoint != nil {
 			for _, tree := range trees {
-				if active, ok := tree.runsByID[invocation.RunID]; ok && (invocation.Endpoint.Invocation.Provider != active.ModelSelection().Provider() || invocation.Endpoint.Invocation.Model != active.ModelSelection().Model()) {
+				if active, ok := tree.runsByID[invocation.RunID]; ok && (invocation.Endpoint.Snapshot().Invocation.Provider != active.ModelSelection().Provider() || invocation.Endpoint.Snapshot().Invocation.Model != active.ModelSelection().Model()) {
 					return errors.New("runs: recovery endpoint differs from captured model selection")
 				}
 			}
@@ -180,8 +180,9 @@ func validateOpenInvocationOwner(
 }
 
 func maxRecoveryEndpointTime(source *modelref.EndpointObservation) time.Time {
-	if source.FinishedAt.IsZero() {
-		return source.Invocation.StartedAt
+	record := source.Snapshot()
+	if source.Open() {
+		return record.Invocation.StartedAt
 	}
-	return source.FinishedAt
+	return record.FinishedAt
 }

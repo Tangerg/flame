@@ -145,7 +145,7 @@ func (s *trajectoryStore) hydrate(ctx context.Context, sessionID string, positio
 		if err != nil {
 			return trajectoryRecord{}, err
 		}
-		entry.Endpoint, entry.RunID = &value, value.RunID
+		entry.Endpoint, entry.RunID = &value, value.Snapshot().RunID
 	case "item":
 		value, found, err := s.transcript.Item(ctx, position.ID)
 		if err != nil {

@@ -1897,6 +1897,14 @@ deferred tools has neither `search_tools` nor the catalog message.
 
 ## Physical model evidence and accounting
 
+`modelref` admits each physical endpoint observation as an immutable value. Its
+state, response, failure, completion time and reported accounting must agree at
+one admission boundary. Storage decodes that record; recovery consumes its facts
+and checks Run ownership and recovery bounds. The logical invocation journal
+retains its own identity and state vocabulary. Both vocabularies project into the
+host schema independently. This schema revision requires a fresh data directory
+under the pre-release data policy; existing evidence is not relabeled or converted.
+
 The existing model invocation journal records each physical admission before
 provider I/O with original caller, origin, parent, exact provider/model/request,
 and captured Session/Run/Segment association where present. Logical conversation

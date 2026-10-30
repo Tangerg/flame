@@ -312,16 +312,20 @@ func TestRecoveryAccruesIndependentKnownSourcesOnceWithoutChangingContext(t *tes
 		t.Fatalf("independent source selection: %+v %v", sources, err)
 	}
 
-	if err := journal.ValidateIndependentEndpoint(t.Context(), sources[0].Clone()); err != nil {
+	if err := journal.ValidateIndependentEndpoint(t.Context(), sources[0]); err != nil {
 		t.Fatal(err)
 	}
-	changed := sources[0].Clone()
-	changed.Response.Metadata.Usage.InputTokens++
-	if err := journal.ValidateIndependentEndpoint(t.Context(), changed); err == nil {
+	changedRecord := sources[0].Snapshot()
+	changedRecord.Usage.InputTokens++
+	if _, err := modelref.RestoreEndpointObservation(changedRecord); err == nil {
 		t.Fatal("changed typed usage bypassed original JSON evidence")
 	}
-	changed = sources[0].Clone()
-	changed.CostUSD = new(99.0)
+	changedRecord = sources[0].Snapshot()
+	changedRecord.CostUSD = new(99.0)
+	changed, err := modelref.RestoreEndpointObservation(changedRecord)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := journal.ValidateIndependentEndpoint(t.Context(), changed); err == nil {
 		t.Fatal("changed price bypassed original evidence")
 	}
@@ -374,7 +378,7 @@ func TestRecoveryAccruesIndependentKnownSourcesOnceWithoutChangingContext(t *tes
 		t.Fatal("restart changed original consumption")
 	}
 	row, found, err := db.ModelInvocations.EndpointForCaller(t.Context(), "independent_unknown")
-	if err != nil || !found || row.Response != nil || row.CostUSD != nil {
+	if err != nil || !found || row.Response() != nil || row.Snapshot().CostUSD != nil {
 		t.Fatalf("unknown invented a price/report: %+v %v", row, err)
 	}
 }

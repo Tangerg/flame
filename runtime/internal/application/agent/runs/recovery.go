@@ -441,26 +441,27 @@ func newRecoveryPlanner(
 	for _, invocation := range modelInvocations {
 		planner.observeTime(invocation.StartedAt)
 		if invocation.Endpoint != nil {
-			planner.observeTime(invocation.Endpoint.FinishedAt)
-			planner.observeTime(invocation.Endpoint.Invocation.StartedAt)
+			record := invocation.Endpoint.Snapshot()
+			planner.observeTime(record.FinishedAt)
+			planner.observeTime(record.Invocation.StartedAt)
 		}
 	}
 	for _, invocation := range toolInvocations {
 		planner.observeTime(invocation.StartedAt)
 	}
 	for _, source := range independent {
-		if claims.includes(source.SessionID) {
-			planner.observeTime(source.FinishedAt)
+		if claims.includes(source.Snapshot().SessionID) {
+			planner.observeTime(source.Snapshot().FinishedAt)
 		}
 	}
 	// Every active tree's Transcript is required by planTree anyway. Preload it
 	// before constructing any terminal facts so a later Item in one tree cannot
 	// advance the shared recovery timestamp after another tree was planned.
 	for _, source := range independent {
-		if !claims.includes(source.SessionID) {
+		if !claims.includes(source.Snapshot().SessionID) {
 			continue
 		}
-		planner.independent = append(planner.independent, source.Clone())
+		planner.independent = append(planner.independent, source)
 	}
 	for _, tree := range trees {
 		items, err := planner.transcript(tree)
@@ -602,8 +603,8 @@ func (r *recoveryPlanner) planTree(rootRunID string) error {
 	r.commit.LostRuns = append(r.commit.LostRuns, lostRuns...)
 	for _, lost := range lostRuns {
 		for _, source := range r.independent {
-			if source.RunID == lost.State().ID() {
-				r.commit.IndependentEndpoints = append(r.commit.IndependentEndpoints, source.Clone())
+			if source.Snapshot().RunID == lost.State().ID() {
+				r.commit.IndependentEndpoints = append(r.commit.IndependentEndpoints, source)
 			}
 		}
 	}
@@ -719,9 +720,10 @@ func recoverLostTree(
 					continue
 				}
 				source := invocation.Endpoint
-				served := source.ServedModel
-				reported := source.Usage
-				metrics, err := active.Metrics().AccrueModelCall(served, reported, source.CostUSD)
+				record := source.Snapshot()
+				served := source.ServedModel()
+				reported := record.Usage
+				metrics, err := active.Metrics().AccrueModelCall(served, reported, record.CostUSD)
 				if err != nil {
 					return rundomain.Run{}, err
 				}
@@ -735,12 +737,13 @@ func recoverLostTree(
 				}
 			}
 			for _, source := range independent {
-				if source.RunID != active.ID() {
+				record := source.Snapshot()
+				if record.RunID != active.ID() {
 					continue
 				}
-				served := source.ServedModel
-				usage := source.Usage
-				metrics, err := active.Metrics().AccrueModelCall(served, usage, source.CostUSD)
+				served := source.ServedModel()
+				usage := record.Usage
+				metrics, err := active.Metrics().AccrueModelCall(served, usage, record.CostUSD)
 				if err != nil {
 					return rundomain.Run{}, err
 				}

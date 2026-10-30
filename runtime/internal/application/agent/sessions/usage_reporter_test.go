@@ -17,14 +17,18 @@ import (
 )
 
 type usageSourceStub struct {
-	values  []modelref.EndpointObservation
+	values  []modelref.EndpointRecord
 	failure error
 }
 
 func (s usageSourceStub) VisitEndpointInvocations(_ context.Context, sessionID string, since time.Time, yield func(modelref.EndpointObservation) error) error {
 	for _, value := range s.values {
 		if (sessionID == "" || value.SessionID == sessionID) && (since.IsZero() || !value.Invocation.StartedAt.Before(since)) {
-			if err := yield(value); err != nil {
+			observation, err := modelref.RestoreEndpointObservation(value)
+			if err != nil {
+				return err
+			}
+			if err := yield(observation); err != nil {
 				return err
 			}
 		}
@@ -82,32 +86,67 @@ func TestSummaryPublishesItsSingleCoreClockObservationAndExactRange(t *testing.T
 }
 
 func usd(value float64) *float64 { return &value }
-func usageRecord(id, provider, model, state string, at time.Time, reported *chat.Usage, cost *float64) modelref.EndpointObservation {
-	value := modelref.EndpointObservation{Invocation: modelref.EndpointInvocation{ID: id, Kind: modelref.EndpointChat, Provider: provider, Model: model, StartedAt: at, Caller: portable.Invocation{Origin: extension.Automatic}}, ServedModel: model, State: state, CostUSD: cost, Usage: reported}
-	if state == "completed" || state == "failed" {
-		message := chat.NewAssistantMessage(chat.NewTextPart("known"))
-		value.Response = &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: model, Usage: reported}}
-		responseJSON, err := jsonvalue.Parse([]byte(`{"known":true}`))
-		if err != nil {
-			panic(err)
-		}
-		value.ResponseJSON = responseJSON
+func usageRecord(t *testing.T, id, provider, model string, state modelref.EndpointState, at time.Time, reported *chat.Usage, cost *float64) modelref.EndpointRecord {
+	t.Helper()
+	request, err := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("input")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	caller := "call_" + id
+	invocation := modelref.EndpointInvocation{ID: id, Kind: modelref.EndpointChat, Provider: provider, Model: model, StartedAt: at, Caller: portable.Invocation{ID: caller, Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: caller}}, Request: request}
+	input, err := jsonvalue.Encode(invocation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	requestJSON, err := jsonvalue.Encode(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	value := modelref.EndpointRecord{Invocation: invocation, InvocationJSON: input, RequestJSON: requestJSON, State: state, CostUSD: cost, Usage: reported}
+	if state != modelref.EndpointStarted {
+		value.FinishedAt = at.Add(time.Second)
+	}
+	if state == modelref.EndpointFailed || state == modelref.EndpointUnknown {
+		value.Failure = "observed failure"
+	}
+	if state.HasResponse() {
+		value.ResponseJSON = usageResponse(t, model, reported)
 	}
 	return value
 }
+
+func usageResponse(t *testing.T, model string, reported *chat.Usage) jsonvalue.Value {
+	t.Helper()
+	message := chat.NewAssistantMessage(chat.NewTextPart("known"))
+	value, err := jsonvalue.Encode(&chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: model, Usage: reported}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return value
+}
+
+func usageObservation(t *testing.T, record modelref.EndpointRecord) modelref.EndpointObservation {
+	t.Helper()
+	value, err := modelref.RestoreEndpointObservation(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return value
+}
+
 func TestPhysicalUsageIncludesAuxiliaryUnattachedAndUnknownWithoutDoubleCounting(t *testing.T) {
 	at := time.Date(2026, 8, 29, 12, 0, 0, 0, time.UTC)
-	primary := usageRecord("primary", "provider-a", "selected", "completed", at, &chat.Usage{InputTokens: 100, OutputTokens: 40, CacheReadInputTokens: new(int64(3)), ReasoningTokens: new(int64(2))}, usd(1.5))
+	primary := usageRecord(t, "primary", "provider-a", "selected", modelref.EndpointCompleted, at, &chat.Usage{InputTokens: 100, OutputTokens: 40, CacheReadInputTokens: new(int64(3)), ReasoningTokens: new(int64(2))}, usd(1.5))
 	primary.SessionID = "ses_one"
 	primary.RunID = "run_one"
-	primary.ServedModel = "served"
-	primary.Response.Metadata.Model = "served"
-	auxiliary := usageRecord("title", "provider-b", "served", "failed", at.Add(time.Second), &chat.Usage{InputTokens: 10, OutputTokens: 2}, usd(0))
+	primary.SegmentID = "seg_one"
+	primary.ResponseJSON = usageResponse(t, "served", primary.Usage)
+	auxiliary := usageRecord(t, "title", "provider-b", "served", modelref.EndpointFailed, at.Add(time.Second), &chat.Usage{InputTokens: 10, OutputTokens: 2}, usd(0))
 	auxiliary.SessionID = "ses_one"
-	unknown := usageRecord("global", "provider-a", "served", "unknown", at.Add(2*time.Second), nil, nil)
-	unreported := usageRecord("unreported", "provider-a", "served", "completed", at.Add(3*time.Second), nil, nil)
-	started := usageRecord("started", "provider-b", "served", "started", at.Add(4*time.Second), nil, nil)
-	reporter, err := NewUsageReporter(UsageDependencies{Source: usageSourceStub{values: []modelref.EndpointObservation{primary, auxiliary, unknown, unreported, started}}})
+	unknown := usageRecord(t, "global", "provider-a", "served", modelref.EndpointUnknown, at.Add(2*time.Second), nil, nil)
+	unreported := usageRecord(t, "unreported", "provider-a", "served", modelref.EndpointCompleted, at.Add(3*time.Second), nil, nil)
+	started := usageRecord(t, "started", "provider-b", "served", modelref.EndpointStarted, at.Add(4*time.Second), nil, nil)
+	reporter, err := NewUsageReporter(UsageDependencies{Source: usageSourceStub{values: []modelref.EndpointRecord{primary, auxiliary, unknown, unreported, started}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,9 +182,9 @@ func TestPhysicalUsageIncludesAuxiliaryUnattachedAndUnknownWithoutDoubleCounting
 }
 func TestPhysicalUsageFiltersAtAdmissionAndRejectsPartialRead(t *testing.T) {
 	now := time.Date(2026, 8, 29, 12, 0, 0, 0, time.UTC)
-	current := usageRecord("current", "provider", "model", "completed", now, &chat.Usage{}, usd(0))
-	old := usageRecord("old", "provider", "model", "completed", now.AddDate(0, 0, -8), &chat.Usage{InputTokens: 1}, usd(2))
-	reader, err := NewUsageReporter(UsageDependencies{Source: usageSourceStub{values: []modelref.EndpointObservation{old, current}}, Now: func() time.Time { return now }})
+	current := usageRecord(t, "current", "provider", "model", modelref.EndpointCompleted, now, &chat.Usage{}, usd(0))
+	old := usageRecord(t, "old", "provider", "model", modelref.EndpointCompleted, now.AddDate(0, 0, -8), &chat.Usage{InputTokens: 1}, usd(2))
+	reader, err := NewUsageReporter(UsageDependencies{Source: usageSourceStub{values: []modelref.EndpointRecord{old, current}}, Now: func() time.Time { return now }})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +193,7 @@ func TestPhysicalUsageFiltersAtAdmissionAndRejectsPartialRead(t *testing.T) {
 	if err != nil || report.Coverage.Calls != 1 || report.Coverage.ReportedCalls != 1 || report.Total.CostUSD == nil || *report.Total.CostUSD != 0 {
 		t.Fatalf("window or reported zero lost: %+v %v", report, err)
 	}
-	reader, err = NewUsageReporter(UsageDependencies{Source: usageSourceStub{values: []modelref.EndpointObservation{current}, failure: errors.New("later source is corrupt")}})
+	reader, err = NewUsageReporter(UsageDependencies{Source: usageSourceStub{values: []modelref.EndpointRecord{current}, failure: errors.New("later source is corrupt")}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -164,23 +203,23 @@ func TestPhysicalUsageFiltersAtAdmissionAndRejectsPartialRead(t *testing.T) {
 }
 func TestAccumulatorRejectsOverflowWithoutMutation(t *testing.T) {
 	value := usageAccumulator{}
-	first := usageRecord("first", "provider", "model", "completed", time.Now().UTC(), &chat.Usage{InputTokens: math.MaxInt64}, usd(1))
-	if err := value.addCall(first); err != nil {
+	first := usageRecord(t, "first", "provider", "model", modelref.EndpointCompleted, time.Now().UTC(), &chat.Usage{InputTokens: math.MaxInt64}, usd(1))
+	if err := value.addCall(usageObservation(t, first)); err != nil {
 		t.Fatal(err)
 	}
 	before := value
-	if err := value.addCall(usageRecord("next", "provider", "model", "completed", time.Now().UTC(), &chat.Usage{InputTokens: 1}, usd(1))); err == nil || !reflect.DeepEqual(before, value) {
+	if err := value.addCall(usageObservation(t, usageRecord(t, "next", "provider", "model", modelref.EndpointCompleted, time.Now().UTC(), &chat.Usage{InputTokens: 1}, usd(1)))); err == nil || !reflect.DeepEqual(before, value) {
 		t.Fatal("overflow mutated aggregate")
 	}
 }
 func TestBucketsBySpendRankCostThenUsageThenIdentity(t *testing.T) {
 	values := map[string]*usageAccumulator{}
 	for index, name := range []string{"z", "a", "highest"} {
-		value := usageRecord(fmt.Sprint(index), "provider", name, "completed", time.Now().UTC(), &chat.Usage{InputTokens: 1}, usd(1))
+		value := usageRecord(t, fmt.Sprint(index), "provider", name, modelref.EndpointCompleted, time.Now().UTC(), &chat.Usage{InputTokens: 1}, usd(1))
 		if name == "highest" {
 			value.CostUSD = usd(2)
 		}
-		if err := accumulatorFor(values, name).addCall(value); err != nil {
+		if err := accumulatorFor(values, name).addCall(usageObservation(t, value)); err != nil {
 			t.Fatal(err)
 		}
 	}

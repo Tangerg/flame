@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json/jsontext"
 	"errors"
-	"fmt"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
@@ -14,7 +13,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
@@ -48,106 +46,28 @@ func encodeEndpointInvocation(value modelref.EndpointInvocation) ([]byte, error)
 	return []byte(input.String()), nil
 }
 
-// embeddingReportedUsage projects embedding usage onto the shared accounting
-// usage so one reporting owner totals both kinds. Embeddings consume input
-// tokens only; a nil provider usage stays unknown rather than a reported zero.
-func embeddingReportedUsage(response *embedding.Response) *chat.Usage {
-	if response == nil || response.Metadata == nil || response.Metadata.Usage == nil {
-		return nil
-	}
-	return &chat.Usage{InputTokens: response.Metadata.Usage.InputTokens}
-}
-
-// endpointOutcomeResponse encodes the known response for its kind and returns the
-// normalized reported usage. It refuses a response that does not match the
-// admitted kind and never fabricates a chat response for an embedding call.
-func endpointOutcomeResponse(invocation modelref.EndpointInvocation, outcome modelref.EndpointOutcome) (encoded *string, usage *chat.Usage, hasResponse bool, err error) {
-	encode := func(value any) (*string, error) {
-		data, err := encodeStoredJSON(value)
-		if err != nil {
-			return nil, err
-		}
-		input, err := jsonvalue.Parse(data)
-		if err != nil {
-			return nil, err
-		}
-		text := input.String()
-		return &text, nil
-	}
-	switch invocation.Kind {
-	case modelref.EndpointChat:
-		if outcome.EmbeddingResponse != nil {
-			return nil, nil, false, errors.New("sqlite: chat endpoint cannot settle an embedding response")
-		}
+func encodeEndpointOutcome(invocation modelref.EndpointInvocation, outcome modelref.EndpointOutcome) (*string, error) {
+	var response any
+	if invocation.Kind == modelref.EndpointChat {
 		if outcome.Response == nil {
-			return nil, nil, false, nil
+			return nil, nil
 		}
-		if err := outcome.Response.Validate(); err != nil {
-			return nil, nil, false, err
-		}
-		text, err := encode(outcome.Response)
-		if err != nil {
-			return nil, nil, false, err
-		}
-		if outcome.Response.Metadata != nil {
-			usage = outcome.Response.Metadata.Usage
-		}
-		return text, usage, true, nil
-	case modelref.EndpointEmbedding:
-		if outcome.Response != nil {
-			return nil, nil, false, errors.New("sqlite: embedding endpoint cannot settle a chat response")
-		}
+		response = outcome.Response
+	} else {
 		if outcome.EmbeddingResponse == nil {
-			return nil, nil, false, nil
+			return nil, nil
 		}
-		if err := outcome.EmbeddingResponse.Validate(); err != nil {
-			return nil, nil, false, err
-		}
-		text, err := encode(outcome.EmbeddingResponse)
-		if err != nil {
-			return nil, nil, false, err
-		}
-		return text, embeddingReportedUsage(outcome.EmbeddingResponse), true, nil
-	default:
-		return nil, nil, false, errors.New("sqlite: endpoint settlement has an unknown kind")
+		response = outcome.EmbeddingResponse
 	}
-}
-
-// decodeEndpointResponse parses one stored known response for its kind. It sets
-// the chat projection the primary-conversation recovery reads and returns the
-// normalized reported usage and served model both kinds expose.
-func decodeEndpointResponse(kind modelref.EndpointKind, response *string, chatResponse **chat.Response) (*chat.Usage, string, error) {
-	if response == nil {
-		return nil, "", nil
+	data, err := encodeStoredJSON(response)
+	if err != nil {
+		return nil, err
 	}
-	switch kind {
-	case modelref.EndpointChat:
-		if err := decodeStoredJSON([]byte(*response), chatResponse); err != nil {
-			return nil, "", err
-		}
-		if *chatResponse == nil || (*chatResponse).Validate() != nil {
-			return nil, "", errors.New("sqlite: endpoint response evidence is invalid")
-		}
-		if (*chatResponse).Metadata == nil {
-			return nil, "", nil
-		}
-		return (*chatResponse).Metadata.Usage, (*chatResponse).Metadata.Model, nil
-	case modelref.EndpointEmbedding:
-		var embResponse *embedding.Response
-		if err := decodeStoredJSON([]byte(*response), &embResponse); err != nil {
-			return nil, "", err
-		}
-		if embResponse == nil || embResponse.Validate() != nil {
-			return nil, "", errors.New("sqlite: endpoint response evidence is invalid")
-		}
-		served := ""
-		if embResponse.Metadata != nil {
-			served = embResponse.Metadata.Model
-		}
-		return embeddingReportedUsage(embResponse), served, nil
-	default:
-		return nil, "", errors.New("sqlite: endpoint response has an unknown kind")
+	value, err := jsonvalue.Parse(data)
+	if err != nil {
+		return nil, err
 	}
+	return new(value.String()), nil
 }
 
 // Caller IDs and wire parents describe ancestry, not execution authority. The
@@ -184,7 +104,7 @@ func (m *ModelInvocationStore) StartEndpointInvocation(ctx context.Context, invo
 			WHERE call_id=? AND state=?
 		) owner JOIN runs ON runs.run_id=owner.run_id AND runs.session_id=owner.session_id
 		WHERE runs.state=? AND runs.active_segment_id=owner.segment_id AND owner.started_at<=?`
-		args = []any{ownerCallID, modelInvocationStarted.databaseValue(), ownerCallID, toolInvocationStarted.databaseValue(), runStateRunning.databaseValue(), invocation.StartedAt.UTC().UnixNano()}
+		args = []any{ownerCallID, runs.ModelInvocationStarted.String(), ownerCallID, toolInvocationStarted.databaseValue(), runStateRunning.databaseValue(), invocation.StartedAt.UTC().UnixNano()}
 	}
 	query := `INSERT INTO model_invocations(call_id,session_id,run_id,segment_id,state,started_at,endpoint_json,endpoint_kind)
  SELECT ?,scope.session_id,scope.run_id,scope.segment_id,?,?,?,? FROM (` + scope + `) scope
@@ -192,7 +112,7 @@ func (m *ModelInvocationStore) StartEndpointInvocation(ctx context.Context, invo
  AND (? IS NULL OR scope.session_id=?)
  AND NOT EXISTS(SELECT 1 FROM model_invocations WHERE endpoint_json IS NULL AND call_id=? AND call_id!=?)
  AND NOT EXISTS(SELECT 1 FROM tool_invocations WHERE call_id=?)`
-	parameters := []any{invocation.ID, modelInvocationStarted.databaseValue(), invocation.StartedAt.UTC().UnixNano(), string(encoded), string(invocation.Kind)}
+	parameters := []any{invocation.ID, modelref.EndpointStarted, invocation.StartedAt.UTC().UnixNano(), string(encoded), string(invocation.Kind)}
 	parameters = append(parameters, args...)
 	parameters = append(parameters, session, session, invocation.Caller.ID, ownerCallID, invocation.Caller.ID)
 	result, err := sqlite.Connection(ctx, m.db).ExecContext(ctx, query, parameters...)
@@ -210,35 +130,15 @@ func (m *ModelInvocationStore) StartEndpointInvocation(ctx context.Context, invo
 }
 
 func (m *ModelInvocationStore) SettleEndpointInvocation(ctx context.Context, invocation modelref.EndpointInvocation, outcome modelref.EndpointOutcome) error {
-	if err := invocation.Validate(); err != nil {
-		return err
-	}
-	if _, err := accounting.CostFromOptional(outcome.CostUSD); err != nil {
-		return err
-	}
-	response, usage, hasResponse, err := endpointOutcomeResponse(invocation, outcome)
+	state, err := outcome.State(invocation)
 	if err != nil {
 		return err
 	}
-	if outcome.CostUSD != nil && usage == nil {
-		return errors.New("sqlite: endpoint price requires known reported usage")
-	}
-	if !hasResponse && outcome.Failure == "" {
-		return errors.New("sqlite: missing endpoint response requires uncertainty evidence")
-	}
-	if outcome.FinishedAt.IsZero() || outcome.FinishedAt.Before(invocation.StartedAt) {
-		return errors.New("sqlite: endpoint completion time is invalid")
-	}
-	if err := instant.Validate(outcome.FinishedAt); err != nil {
+	response, err := encodeEndpointOutcome(invocation, outcome)
+	if err != nil {
 		return err
 	}
-	state := modelInvocationUnknown.databaseValue()
-	if hasResponse {
-		state = modelInvocationCompleted.databaseValue()
-		if outcome.Failure != "" {
-			state = modelInvocationFailed.databaseValue()
-		}
-	}
+	usage := outcome.ReportedUsage()
 	encodedUsage, err := encodeModelInvocationUsage(usage)
 	if err != nil {
 		return err
@@ -249,7 +149,7 @@ func (m *ModelInvocationStore) SettleEndpointInvocation(ctx context.Context, inv
 	}
 	result, err := sqlite.Connection(ctx, m.db).ExecContext(ctx, `UPDATE model_invocations SET state=?,finished_at=?,known_response=?,usage=?,endpoint_failure=?,endpoint_cost_usd=?
 		WHERE call_id=? AND state=? AND started_at=? AND endpoint_json=?`, state, outcome.FinishedAt.UTC().UnixNano(), response, encodedUsage, outcome.Failure, outcome.CostUSD,
-		invocation.ID, modelInvocationStarted.databaseValue(), invocation.StartedAt.UTC().UnixNano(), string(encoded))
+		invocation.ID, modelref.EndpointStarted, invocation.StartedAt.UTC().UnixNano(), string(encoded))
 	if err != nil {
 		return err
 	}
@@ -291,7 +191,7 @@ func (m *ModelInvocationStore) PageEndpointInvocations(ctx context.Context, pare
 
 func scanEndpointObservation(row scanRow, parent string) (modelref.EndpointObservation, error) {
 	var err error
-	var value modelref.EndpointObservation
+	var value modelref.EndpointRecord
 	var encoded string
 	var id string
 	var startedAt int64
@@ -326,102 +226,32 @@ func scanEndpointObservation(row scanRow, parent string) (modelref.EndpointObser
 	if err != nil {
 		return modelref.EndpointObservation{}, err
 	}
-	if err := value.Invocation.Validate(); err != nil {
-		return modelref.EndpointObservation{}, err
-	}
 	if value.Invocation.ID != id || value.Invocation.StartedAt.UTC().UnixNano() != startedAt || (parent != "" && value.Invocation.Caller.ID != parent && value.Invocation.Caller.Parent != parent) {
 		return modelref.EndpointObservation{}, errors.New("sqlite: endpoint observation identity differs from its row")
 	}
-	if value.Invocation.SessionID != "" && value.Invocation.SessionID != value.SessionID {
-		return modelref.EndpointObservation{}, errors.New("sqlite: endpoint Session differs from its admission")
-	}
-	if value.SessionID != "" {
-		if err := identity.ValidateSession(value.SessionID); err != nil {
-			return modelref.EndpointObservation{}, err
-		}
-	}
-	if (value.RunID == "") != (value.SegmentID == "") {
-		return modelref.EndpointObservation{}, errors.New("sqlite: endpoint execution association is incomplete")
-	}
-	if value.RunID != "" {
-		if value.SessionID == "" {
-			return modelref.EndpointObservation{}, errors.New("sqlite: endpoint Run has no Session")
-		}
-		if err := identity.ValidateRun(value.RunID); err != nil {
-			return modelref.EndpointObservation{}, err
-		}
-		if err := identity.ValidateSegment(value.SegmentID); err != nil {
-			return modelref.EndpointObservation{}, err
-		}
-	}
-	value.ServedModel = value.Invocation.Model
 	if response != nil {
 		value.ResponseJSON, err = jsonvalue.Parse([]byte(*response))
 		if err != nil {
 			return modelref.EndpointObservation{}, err
 		}
-		if value.State != modelInvocationCompleted.databaseValue() && value.State != modelInvocationFailed.databaseValue() {
-			return modelref.EndpointObservation{}, fmt.Errorf("sqlite: endpoint response evidence is invalid")
-		}
 	}
-	reported, served, err := decodeEndpointResponse(value.Invocation.Kind, response, &value.Response)
-	if err != nil {
-		return modelref.EndpointObservation{}, err
-	}
-	if served != "" {
-		value.ServedModel = served
-	}
-	var usage *chat.Usage
 	if encodedUsage != nil {
-		usage, err = decodeModelInvocationUsage(*encodedUsage)
+		value.Usage, err = decodeModelInvocationUsage(*encodedUsage)
 		if err != nil {
 			return modelref.EndpointObservation{}, err
 		}
 	}
-	value.Usage = usage
-	if !reflect.DeepEqual(usage, reported) {
-		return modelref.EndpointObservation{}, errors.New("sqlite: endpoint usage differs from known response")
-	}
-	if _, err := accounting.CostFromOptional(value.CostUSD); err != nil {
-		return modelref.EndpointObservation{}, err
-	}
-	if value.CostUSD != nil && reported == nil {
-		return modelref.EndpointObservation{}, errors.New("sqlite: endpoint price has no reported usage")
-	}
 	if finishedAt != nil {
 		value.FinishedAt = time.Unix(0, *finishedAt).UTC()
-		if value.FinishedAt.Before(value.Invocation.StartedAt) {
-			return modelref.EndpointObservation{}, errors.New("sqlite: endpoint settlement precedes admission")
-		}
 	}
-	switch value.State {
-	case modelInvocationStarted.databaseValue():
-		if finishedAt != nil || response != nil || value.Failure != "" {
-			return modelref.EndpointObservation{}, errors.New("sqlite: started endpoint carries completion")
-		}
-	case modelInvocationCompleted.databaseValue():
-		if response == nil || finishedAt == nil || value.Failure != "" {
-			return modelref.EndpointObservation{}, errors.New("sqlite: completed endpoint is missing its outcome")
-		}
-	case modelInvocationFailed.databaseValue():
-		if response == nil || finishedAt == nil || value.Failure == "" {
-			return modelref.EndpointObservation{}, errors.New("sqlite: failed endpoint is missing known evidence")
-		}
-	case modelInvocationUnknown.databaseValue():
-		if response != nil || finishedAt == nil || value.Failure == "" {
-			return modelref.EndpointObservation{}, errors.New("sqlite: unknown endpoint asserts completion")
-		}
-	default:
-		return modelref.EndpointObservation{}, errors.New("sqlite: unknown endpoint state")
-	}
-	return value, nil
+	return modelref.RestoreEndpointObservation(value)
 }
 
 func (m *ModelInvocationStore) ReconcileEndpointInvocations(ctx context.Context, settledAt time.Time) error {
 	if err := instant.Validate(settledAt); err != nil {
 		return err
 	}
-	_, err := sqlite.Connection(ctx, m.db).ExecContext(ctx, `UPDATE model_invocations SET state=?,finished_at=MAX(started_at,?),endpoint_failure='process stopped before endpoint completion was recorded' WHERE endpoint_json IS NOT NULL AND state=?`, modelInvocationUnknown.databaseValue(), settledAt.UTC().UnixNano(), modelInvocationStarted.databaseValue())
+	_, err := sqlite.Connection(ctx, m.db).ExecContext(ctx, `UPDATE model_invocations SET state=?,finished_at=MAX(started_at,?),endpoint_failure='process stopped before endpoint completion was recorded' WHERE endpoint_json IS NOT NULL AND state=?`, modelref.EndpointUnknown, settledAt.UTC().UnixNano(), modelref.EndpointStarted)
 	return err
 }
 
@@ -476,7 +306,8 @@ func (m *ModelInvocationStore) RecoverModelInvocation(ctx context.Context, sessi
 		return errors.New("sqlite: recovered model purpose changed")
 	}
 	if source != nil {
-		if source.RunID != runID || source.SessionID != sessionID || source.SegmentID != segmentID || source.Invocation.Caller.ID != callID || source.Invocation.StartedAt.Before(startedAt) || source.FinishedAt.After(finishedAt) {
+		record := source.Snapshot()
+		if record.RunID != runID || record.SessionID != sessionID || record.SegmentID != segmentID || record.Invocation.Caller.ID != callID || record.Invocation.StartedAt.Before(startedAt) || record.FinishedAt.After(finishedAt) {
 			return errors.New("sqlite: recovered endpoint differs from original call")
 		}
 		if err := m.validateEndpointProjection(ctx, *source); err != nil {
@@ -492,13 +323,14 @@ func (m *ModelInvocationStore) RecoverModelInvocation(ctx context.Context, sessi
 	if err := instant.Validate(startedAt, finishedAt); err != nil {
 		return err
 	}
-	if err := source.ResponseJSON.Validate(); err != nil {
+	record := source.Snapshot()
+	if err := record.ResponseJSON.Validate(); err != nil {
 		return err
 	}
-	if err := source.InvocationJSON.Validate(); err != nil {
+	if err := record.InvocationJSON.Validate(); err != nil {
 		return err
 	}
-	usage, err := encodeModelInvocationUsage(source.Usage)
+	usage, err := encodeModelInvocationUsage(record.Usage)
 	if err != nil {
 		return err
 	}
@@ -507,8 +339,8 @@ func (m *ModelInvocationStore) RecoverModelInvocation(ctx context.Context, sessi
 	 AND state=? AND finished_at=? AND known_response=? AND endpoint_cost_usd IS ? AND endpoint_failure=? AND usage IS ?)
 	 UPDATE model_invocations SET state=?,finished_at=?,usage=(SELECT usage FROM evidence),known_response=(SELECT known_response FROM evidence)
 	 WHERE call_id=? AND session_id=? AND run_id=? AND segment_id=? AND state=? AND started_at=? AND endpoint_json IS NULL AND EXISTS(SELECT 1 FROM evidence)`,
-		source.Invocation.ID, source.InvocationJSON.String(), sessionID, runID, segmentID, source.State, source.FinishedAt.UTC().UnixNano(), source.ResponseJSON.String(), source.CostUSD, source.Failure, usage,
-		modelInvocationFailed.databaseValue(), finishedAt.UTC().UnixNano(), callID, sessionID, runID, segmentID, modelInvocationStarted.databaseValue(), startedAt.UTC().UnixNano())
+		record.Invocation.ID, record.InvocationJSON.String(), sessionID, runID, segmentID, record.State, record.FinishedAt.UTC().UnixNano(), record.ResponseJSON.String(), record.CostUSD, record.Failure, usage,
+		runs.ModelInvocationFailed.String(), finishedAt.UTC().UnixNano(), callID, sessionID, runID, segmentID, runs.ModelInvocationStarted.String(), startedAt.UTC().UnixNano())
 	if err != nil {
 		return err
 	}
@@ -621,19 +453,13 @@ func (m *ModelInvocationStore) ListIndependentEndpoints(ctx context.Context) ([]
 // ValidateIndependentEndpoint fences the recovery projection to the immutable
 // physical source in the same transaction as its Run/Goal replacement.
 func (m *ModelInvocationStore) validateEndpointProjection(ctx context.Context, expected modelref.EndpointObservation) error {
-	source, found, err := m.EndpointForCaller(ctx, expected.Invocation.Caller.ID)
+	record := expected.Snapshot()
+	source, found, err := m.EndpointForCaller(ctx, record.Invocation.Caller.ID)
 	if err != nil {
 		return err
 	}
-	if !found || source.InvocationJSON != expected.InvocationJSON || source.RequestJSON != expected.RequestJSON || source.ResponseJSON != expected.ResponseJSON || source.SessionID != expected.SessionID || source.RunID != expected.RunID || source.SegmentID != expected.SegmentID || source.State != expected.State || source.FinishedAt != expected.FinishedAt || source.Failure != expected.Failure || !reflect.DeepEqual(source.CostUSD, expected.CostUSD) || source.RunID == "" || source.HasResponse() != expected.HasResponse() {
+	if !found || record.RunID == "" || !reflect.DeepEqual(source.Snapshot(), record) {
 		return errors.New("sqlite: independent endpoint recovery source changed")
-	}
-
-	if source.Invocation.ID != expected.Invocation.ID || source.Invocation.Kind != expected.Invocation.Kind || source.Invocation.Caller != expected.Invocation.Caller || source.Invocation.Provider != expected.Invocation.Provider || source.Invocation.Model != expected.Invocation.Model || source.Invocation.SessionID != expected.Invocation.SessionID || !source.Invocation.StartedAt.Equal(expected.Invocation.StartedAt) {
-		return errors.New("sqlite: independent endpoint admission projection changed")
-	}
-	if source.ServedModel != expected.ServedModel || !reflect.DeepEqual(source.Usage, expected.Usage) || !reflect.DeepEqual(source.Response, expected.Response) {
-		return errors.New("sqlite: independent endpoint consumption projection changed")
 	}
 	return nil
 }
@@ -644,7 +470,7 @@ func (m *ModelInvocationStore) ValidateIndependentEndpoint(ctx context.Context, 
 	}
 
 	var logical int
-	if err := sqlite.Connection(ctx, m.db).QueryRowContext(ctx, `SELECT count(*) FROM model_invocations WHERE call_id=? AND endpoint_json IS NULL`, expected.Invocation.Caller.ID).Scan(&logical); err != nil {
+	if err := sqlite.Connection(ctx, m.db).QueryRowContext(ctx, `SELECT count(*) FROM model_invocations WHERE call_id=? AND endpoint_json IS NULL`, expected.Snapshot().Invocation.Caller.ID).Scan(&logical); err != nil {
 		return err
 	}
 	if logical != 0 {
