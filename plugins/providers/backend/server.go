@@ -83,7 +83,7 @@ func newServer(store *store) (*sdk.Server, error) {
 			return values, nil
 		}),
 		openChat.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[modelprovider.Open]) (modelprovider.Chat, error) {
-			return openClient(ctx, store, openChat.Name(), "chat", command, func(handle modelprovider.Handle, client *client, input modelprovider.Open) modelprovider.Chat {
+			return openClient(ctx, store, openChat.Name(), chatClient, command, func(handle modelprovider.Handle, client *client, input modelprovider.Open) modelprovider.Chat {
 				return chatProjection(handle, client, input, command.ID)
 			})
 		}),
@@ -91,7 +91,7 @@ func newServer(store *store) (*sdk.Server, error) {
 			return store.reopenChat(ctx, reopen.Name(), openChat.Name(), command)
 		}),
 		openEmbedding.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[modelprovider.Open]) (modelprovider.Embedder, error) {
-			return openClient(ctx, store, openEmbedding.Name(), "embedding", command, func(handle modelprovider.Handle, _ *client, input modelprovider.Open) modelprovider.Embedder {
+			return openClient(ctx, store, openEmbedding.Name(), embeddingClient, command, func(handle modelprovider.Handle, _ *client, input modelprovider.Open) modelprovider.Embedder {
 				return modelprovider.Embedder{Handle: handle, Provider: input.Connection.Provider, Model: input.Model, Space: embeddingSpaceID(input.Connection.Provider, input.Model, input.Connection.BaseURL)}
 			})
 		}),

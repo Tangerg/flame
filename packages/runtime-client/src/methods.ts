@@ -141,7 +141,7 @@ import {
   type PluginCommandBinding,
 } from "./mutationJournal";
 import type { PendingRunCommand } from "./mutationJournal";
-import { RpcProtocolError } from "./errors";
+import { RpcCancellationError, RpcProtocolError } from "./errors";
 
 export type { MethodsOptions } from "./wireCallPath";
 
@@ -559,6 +559,9 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
         return receipt;
       })
       .catch((cause: unknown) => {
+        // A canceled lookup is still a cancellation: the journal's own dispatch
+        // record, not this read, decides whether the reservation may be released.
+        if (cause instanceof RpcCancellationError) throw cause;
         throw new MutationLookupError(cause);
       });
 

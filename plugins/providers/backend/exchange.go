@@ -60,7 +60,7 @@ func execute[P, R any](ctx context.Context, s *store, method string, command qim
 }
 
 func (s *store) call(ctx context.Context, request modelprovider.ChatRequest) (modelprovider.ChatResult, func(), error) {
-	entry, leave, err := s.acquire(ctx, request.Handle, "chat")
+	entry, leave, err := s.acquire(ctx, request.Handle, chatClient)
 	if err != nil {
 		return modelprovider.ChatResult{Failure: notExecuted(err)}, nil, nil
 	}
@@ -75,7 +75,7 @@ func (s *store) call(ctx context.Context, request modelprovider.ChatRequest) (mo
 }
 
 func (s *store) count(ctx context.Context, request modelprovider.ChatRequest) (modelprovider.TokenCount, func(), error) {
-	entry, leave, err := s.acquire(ctx, request.Handle, "chat")
+	entry, leave, err := s.acquire(ctx, request.Handle, chatClient)
 	if err != nil {
 		return modelprovider.TokenCount{Failure: notExecuted(err)}, nil, nil
 	}
@@ -97,7 +97,7 @@ func (s *store) embed(ctx context.Context, request modelprovider.EmbeddingReques
 	if err != nil {
 		return modelprovider.EmbeddingResult{Failure: notExecuted(err)}, nil, nil
 	}
-	entry, leave, err := s.acquire(ctx, request.Handle, "embedding")
+	entry, leave, err := s.acquire(ctx, request.Handle, embeddingClient)
 	if err != nil {
 		return modelprovider.EmbeddingResult{Failure: notExecuted(err)}, nil, nil
 	}
@@ -125,7 +125,7 @@ func (s *store) stream(ctx context.Context, method string, command qimumcp.Comma
 			return continuing
 		}
 		result, err := execute(ctx, s, method, command, modelprovider.ChatRequest.Validate, func(ctx context.Context, request modelprovider.ChatRequest) (modelprovider.ChatResult, func(), error) {
-			entry, leave, err := s.acquire(ctx, request.Handle, "chat")
+			entry, leave, err := s.acquire(ctx, request.Handle, chatClient)
 			if err != nil {
 				return modelprovider.ChatResult{Failure: notExecuted(err)}, nil, nil
 			}

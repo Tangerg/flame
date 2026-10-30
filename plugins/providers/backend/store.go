@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	json "encoding/json/v2"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
@@ -23,6 +24,14 @@ import (
 type inputTokenCounter interface {
 	CountInputTokens(context.Context, *chat.Request) (int64, error)
 }
+
+// clientKind is the operation family a captured handle serves.
+type clientKind string
+
+const (
+	chatClient      clientKind = "chat"
+	embeddingClient clientKind = "embedding"
+)
 
 type client struct {
 	modelID string
@@ -43,7 +52,7 @@ type store struct {
 func openStore(ctx context.Context, path string) (*store, error) {
 	db, err := sqlite.OpenSchema(ctx, path, []string{
 		pluginstorage.CommandsSchema,
-		`CREATE TABLE IF NOT EXISTS clients (id TEXT PRIMARY KEY, kind TEXT NOT NULL CHECK(kind IN ('chat','embedding')), snapshot TEXT CHECK(snapshot IS NULL OR json_valid(snapshot)))`,
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS clients (id TEXT PRIMARY KEY, kind TEXT NOT NULL CHECK(kind IN ('%s','%s')), snapshot TEXT CHECK(snapshot IS NULL OR json_valid(snapshot)))`, chatClient, embeddingClient),
 	})
 	if err != nil {
 		return nil, err
@@ -51,7 +60,7 @@ func openStore(ctx context.Context, path string) (*store, error) {
 	return &store{db: db, clients: make(map[string]*client)}, nil
 }
 
-func constructClient(ctx context.Context, kind string, input modelprovider.Open) (*client, error) {
+func constructClient(ctx context.Context, kind clientKind, input modelprovider.Open) (*client, error) {
 	if err := input.Validate(); err != nil {
 		return nil, err
 	}
@@ -60,7 +69,7 @@ func constructClient(ctx context.Context, kind string, input modelprovider.Open)
 		return nil, err
 	}
 	result := &client{modelID: input.Model}
-	if kind == "embedding" {
+	if kind == embeddingClient {
 		result.embed, err = buildEmbeddingModel(ctx, spec, input.Model)
 		return result, err
 	}
@@ -82,31 +91,25 @@ func constructClient(ctx context.Context, kind string, input modelprovider.Open)
 
 // The receipt and immutable connection snapshot commit together. A restart can
 // reconstruct this handle without consulting current credentials or defaults.
-func openClient[R any](ctx context.Context, s *store, method, kind string, command qimumcp.Command[modelprovider.Open], project func(modelprovider.Handle, *client, modelprovider.Open) R) (R, error) {
+// The durable snapshot alone decides whether a handle is usable: commands never
+// publish into the in-memory cache, so a close cannot be overtaken by a late
+// publication of the client it retired.
+func openClient[R any](ctx context.Context, s *store, method string, kind clientKind, command qimumcp.Command[modelprovider.Open], project func(modelprovider.Handle, *client, modelprovider.Open) R) (R, error) {
 	var zero R
 	input, err := command.RequestInput()
 	if err != nil {
 		return zero, err
 	}
-	var created *client
-	var handle modelprovider.Handle
-	value, err := pluginstorage.Command(ctx, s.db, method, command.ID, input, nil, func(ctx context.Context, input modelprovider.Open) (R, error) {
-		var err error
-		handle, created, err = s.insertClient(ctx, kind, input)
+	return pluginstorage.Command(ctx, s.db, method, command.ID, input, nil, func(ctx context.Context, input modelprovider.Open) (R, error) {
+		handle, created, err := s.insertClient(ctx, kind, input)
 		if err != nil {
 			return zero, err
 		}
 		return project(handle, created, input), nil
 	})
-	if err == nil && created != nil {
-		s.mu.Lock()
-		s.clients[handle.ID] = created
-		s.mu.Unlock()
-	}
-	return value, err
 }
 
-func (s *store) insertClient(ctx context.Context, kind string, input modelprovider.Open) (modelprovider.Handle, *client, error) {
+func (s *store) insertClient(ctx context.Context, kind clientKind, input modelprovider.Open) (modelprovider.Handle, *client, error) {
 	created, err := constructClient(ctx, kind, input)
 	if err != nil {
 		return modelprovider.Handle{}, nil, &portable.Refusal{Code: "model_unavailable", Message: "model provider: client construction was refused"}
@@ -120,7 +123,7 @@ func (s *store) insertClient(ctx context.Context, kind string, input modelprovid
 	if err != nil {
 		return modelprovider.Handle{}, nil, err
 	}
-	if _, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO clients(id,kind,snapshot) VALUES(?,?,?)`, handle.ID, kind, string(encoded)); err != nil {
+	if _, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO clients(id,kind,snapshot) VALUES(?,?,?)`, handle.ID, string(kind), string(encoded)); err != nil {
 		return modelprovider.Handle{}, nil, err
 	}
 	return handle, created, nil
@@ -131,8 +134,7 @@ func (s *store) reopenChat(ctx context.Context, method, originalMethod string, c
 	if err != nil {
 		return modelprovider.Chat{}, err
 	}
-	var created *client
-	value, err := pluginstorage.Command(ctx, s.db, method, command.ID, input, nil, func(ctx context.Context, input modelprovider.Reopen) (modelprovider.Chat, error) {
+	return pluginstorage.Command(ctx, s.db, method, command.ID, input, nil, func(ctx context.Context, input modelprovider.Reopen) (modelprovider.Chat, error) {
 		if err := input.Validate(); err != nil {
 			return modelprovider.Chat{}, err
 		}
@@ -155,8 +157,7 @@ func (s *store) reopenChat(ctx context.Context, method, originalMethod string, c
 		if err := original.Validate(); err != nil || original.Model != specification.Model || original.Provider != specification.Connection.Provider {
 			return modelprovider.Chat{}, errors.Join(err, errors.New("model provider: original construction identity changed"))
 		}
-		var handle modelprovider.Handle
-		handle, created, err = s.insertClient(ctx, "chat", specification)
+		handle, created, err := s.insertClient(ctx, chatClient, specification)
 		if err != nil {
 			return modelprovider.Chat{}, err
 		}
@@ -176,15 +177,12 @@ func (s *store) reopenChat(ctx context.Context, method, originalMethod string, c
 		}
 		return restored, nil
 	})
-	if err == nil && created != nil {
-		s.mu.Lock()
-		s.clients[value.ID] = created
-		s.mu.Unlock()
-	}
-	return value, err
 }
 
-func (s *store) acquire(ctx context.Context, handle modelprovider.Handle, kind string) (*client, func(), error) {
+// acquire is the only path into the cache. It reads the durable snapshot under
+// the same lock closeClient takes to write the tombstone, so a cache entry can
+// only exist for a handle that was open when it was read.
+func (s *store) acquire(ctx context.Context, handle modelprovider.Handle, kind clientKind) (*client, func(), error) {
 	if err := handle.Validate(); err != nil {
 		return nil, nil, err
 	}
@@ -197,7 +195,7 @@ func (s *store) acquire(ctx context.Context, handle modelprovider.Handle, kind s
 		if err := s.db.QueryRowContext(ctx, `SELECT kind,snapshot FROM clients WHERE id=?`, handle.ID).Scan(&storedKind, &snapshot); err != nil {
 			return nil, nil, err
 		}
-		if !snapshot.Valid || storedKind != kind {
+		if !snapshot.Valid || clientKind(storedKind) != kind {
 			return nil, nil, errors.New("model provider: captured client is unavailable")
 		}
 		var input modelprovider.Open
@@ -211,7 +209,7 @@ func (s *store) acquire(ctx context.Context, handle modelprovider.Handle, kind s
 		}
 		s.clients[handle.ID] = entry
 	}
-	if entry.closed || (kind == "chat" && entry.chat == nil) || (kind == "embedding" && entry.embed == nil) {
+	if entry.closed || (kind == chatClient && entry.chat == nil) || (kind == embeddingClient && entry.embed == nil) {
 		return nil, nil, errors.New("model provider: captured client is unavailable")
 	}
 	entry.active.Add(1)

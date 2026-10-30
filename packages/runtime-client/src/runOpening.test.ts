@@ -4,7 +4,7 @@ import type { RpcCallOptions, RpcClient } from "./client";
 import { createMutationJournal, MutationJournalOwnershipError } from "./mutationJournal";
 import { MutationJournalError } from "./durableMutationJournal";
 import { MutationLookupError } from "./mutation";
-import { RpcError, RpcTransportError } from "./errors";
+import { RpcCancellationError, RpcError, RpcTransportError } from "./errors";
 import { asRunId, asSessionId } from "./ids";
 import type { RunAcceptance, RunRef } from "@flame/runtime-client/wire";
 import run from "@flame/runtime-client/testing/samples/runref.full.json";
@@ -242,4 +242,41 @@ describe("run command acceptance", () => {
     expect(f.entries.size).toBe(0);
     expect(f.subscribe).not.toHaveBeenCalled();
   });
+});
+
+describe("canceled acceptance lookups", () => {
+  it.each(["start", "resume"] as const)(
+    "release an undispatched %s reservation so repeated cancellation cannot exhaust the journal",
+    async (operation) => {
+      const f = fixture();
+      let looked = Promise.withResolvers<void>();
+      f.call.mockImplementation((_method, _params, options) => {
+        looked.resolve();
+        return new Promise<never>((_, reject) =>
+          options?.signal?.addEventListener("abort", () => reject(new RpcCancellationError()), {
+            once: true,
+          }),
+        );
+      });
+      for (let attempt = 0; attempt < 257; attempt += 1) {
+        looked = Promise.withResolvers<void>();
+        const controller = new AbortController();
+        const pending =
+          operation === "start"
+            ? f.methods.runs.start(
+                {
+                  ...structuredClone(start),
+                  input: [{ type: "text", text: `attempt ${attempt}` }],
+                },
+                controller.signal,
+              )
+            : f.methods.runs.resume(structuredClone(resume), controller.signal);
+        await looked.promise;
+        controller.abort();
+        await expect(pending).rejects.toBeInstanceOf(RpcCancellationError);
+      }
+      expect(f.call.mock.calls.every(([method]) => method === "runs.getAcceptance")).toBe(true);
+      expect(f.entries.size).toBe(0);
+    },
+  );
 });

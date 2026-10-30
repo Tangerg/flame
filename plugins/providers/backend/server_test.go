@@ -438,3 +438,23 @@ func TestCloseJoinsAnAcceptedExchangeAndFencesNewDispatch(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestRetriedOpenAfterCloseCannotRevivePublishedHandle(t *testing.T) {
+	var calls atomic.Int32
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { calls.Add(1); writeChatReply(w) }))
+	defer upstream.Close()
+	_, session, _ := connectProvider(t, filepath.Join(t.TempDir(), "providers.db"))
+	opened := openChat(t, session, "openai-compatible", upstream.URL)
+	closeMethod, _ := modelprovider.CloseMethod()
+	if _, err := providerMethod(t, session, closeMethod).CallCommand(providerContext(t), "close", opened.Handle); err != nil {
+		t.Fatal(err)
+	}
+	if retried := openChat(t, session, "openai-compatible", upstream.URL); retried.Handle != opened.Handle {
+		t.Fatalf("retried open = %v, want the original receipt %v", retried.Handle, opened.Handle)
+	}
+	call, _ := modelprovider.CallMethod()
+	result, err := providerMethod(t, session, call).CallCommand(providerContext(t), "after-retry", providerRequest(opened.Handle))
+	if err != nil || result.Failure == nil || result.Failure.Execution != chat.CallFailureNotExecuted || calls.Load() != 0 {
+		t.Fatalf("closed handle dispatched after a retried open: %+v %v", result, err)
+	}
+}
