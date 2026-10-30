@@ -363,7 +363,7 @@ func validateEndpointPrice(cost *float64, usage *chat.Usage) error {
 }
 
 func (o EndpointObservation) Validate() error          { return o.record.State.Validate() }
-func (o EndpointObservation) State() InvocationState     { return o.record.State }
+func (o EndpointObservation) State() InvocationState   { return o.record.State }
 func (o EndpointObservation) HasResponse() bool        { return o.record.State.HasResponse() }
 func (o EndpointObservation) Open() bool               { return o.record.State == InvocationStarted }
 func (o EndpointObservation) Snapshot() EndpointRecord { return cloneEndpointRecord(o.record) }
