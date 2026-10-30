@@ -2,12 +2,13 @@ package persistence
 
 import (
 	"context"
-	"math"
+	"errors"
 	"path/filepath"
 	"slices"
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -530,12 +531,12 @@ func TestGoalStoreExecutesDomainDecidedRevision(t *testing.T) {
 	}
 
 	exhaustedSnapshot := updated.Snapshot()
-	exhaustedSnapshot.Revision = math.MaxInt64
+	exhaustedSnapshot.Revision = exactint.Maximum
 	exhausted, restoreErr := goal.Restore(exhaustedSnapshot)
 	if restoreErr != nil {
 		t.Fatal(restoreErr)
 	}
-	if _, err := goal.NewReplacement(exhausted.Version(), exhausted); err == nil {
-		t.Fatal("NewReplacement accepted an exhausted Goal revision")
+	if _, err := exhausted.Resume(time.Unix(3, 0)); !errors.Is(err, exactint.ErrExhausted) {
+		t.Fatalf("advance past the exact revision range = %v, want exhaustion", err)
 	}
 }

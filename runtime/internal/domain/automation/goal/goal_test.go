@@ -35,7 +35,7 @@ func TestNewBuildsCommittedActiveGoal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
-	if value.Status() != StatusActive || value.Revision() != firstRevision {
+	if value.Status() != StatusActive || value.Revision() != 1 {
 		t.Fatalf("new Goal = status %q revision %d", value.Status(), value.Revision())
 	}
 	if !value.CreatedAt().Equal(now) || value.CreatedAt().Location() != time.UTC {
@@ -393,7 +393,7 @@ func TestReviseObjectiveStartsFreshVersionAndPreservesFacts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if revised.Objective() != "second" || revised.IncarnationID() != "inc_2" || revised.Revision() != firstRevision {
+	if revised.Objective() != "second" || revised.IncarnationID() != "inc_2" || revised.Revision() != 1 {
 		t.Fatalf("revised identity = %s/%s@%d", revised.Objective(), revised.IncarnationID(), revised.Revision())
 	}
 	if revised.Status() != StatusPaused || revised.Reason() != paused.Reason() ||
@@ -427,7 +427,7 @@ func TestReviseObjectiveStartsFreshVersionAndPreservesFacts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if activeRevision.Status() != StatusActive || activeRevision.Revision() != firstRevision {
+	if activeRevision.Status() != StatusActive || activeRevision.Revision() != 1 {
 		t.Fatalf("revised+resumed = %+v", activeRevision.Snapshot())
 	}
 }

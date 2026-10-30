@@ -6,10 +6,10 @@ package goal
 import (
 	"errors"
 	"fmt"
-	"math"
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
@@ -28,7 +28,6 @@ const (
 	StatusPaused   Status = "paused"
 	StatusBlocked  Status = "blocked"
 	StatusComplete Status = "complete"
-	firstRevision  int64  = 1
 )
 
 func (s Status) Valid() bool {
@@ -54,7 +53,7 @@ type Snapshot struct {
 	Capabilities      run.Capabilities
 	Used              Usage
 	IncarnationID     string
-	Revision          int64
+	Revision          uint64
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 }
@@ -70,7 +69,7 @@ type Goal struct {
 	capabilities  run.Capabilities
 	used          Usage
 	incarnationID goalref.IncarnationID
-	revision      int64
+	revision      exactint.Counter
 	createdAt     time.Time
 	updatedAt     time.Time
 }
@@ -87,7 +86,7 @@ type Current struct {
 type Version struct {
 	sessionID     string
 	incarnationID goalref.IncarnationID
-	revision      int64
+	revision      exactint.Counter
 	committed     bool
 }
 
@@ -152,7 +151,7 @@ func New(
 		ModelSelection: selection,
 		Capabilities:   capabilities.Normalized(),
 		IncarnationID:  incarnationID,
-		Revision:       firstRevision,
+		Revision:       exactint.First().Value(),
 		CreatedAt:      now.UTC(),
 		UpdatedAt:      now.UTC(),
 	})
@@ -163,6 +162,10 @@ func Restore(snapshot Snapshot) (Goal, error) {
 	incarnationID, err := goalref.ParseIncarnation(snapshot.IncarnationID)
 	if err != nil {
 		return Goal{}, fmt.Errorf("%w: %w", ErrInvalid, err)
+	}
+	revision, err := exactint.Restore(snapshot.Revision)
+	if err != nil {
+		return Goal{}, fmt.Errorf("%w: revision: %w", ErrInvalid, err)
 	}
 	reason := Reason{}
 	if snapshot.ReasonCode != ReasonNone || snapshot.ReasonRunOutcome != "" || snapshot.ReasonExplanation != "" {
@@ -181,7 +184,7 @@ func Restore(snapshot Snapshot) (Goal, error) {
 		capabilities:  snapshot.Capabilities.Clone(),
 		used:          snapshot.Used,
 		incarnationID: incarnationID,
-		revision:      snapshot.Revision,
+		revision:      revision,
 		createdAt:     snapshot.CreatedAt.UTC(),
 		updatedAt:     snapshot.UpdatedAt.UTC(),
 	}
@@ -204,7 +207,7 @@ func (g Goal) validate() error {
 	if err := g.incarnationID.Validate(); err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
-	if g.revision <= 0 {
+	if g.revision.IsZero() {
 		return fmt.Errorf("%w: revision must be positive", ErrInvalid)
 	}
 	if !g.status.Valid() {
@@ -250,7 +253,7 @@ func (g Goal) Snapshot() Snapshot {
 		ReasonCode: g.reason.code, ReasonRunOutcome: g.reason.runOutcome, ReasonExplanation: g.reason.explanation,
 		ModelSelection: g.selection, Capabilities: g.capabilities.Clone(),
 		Used: g.used, IncarnationID: g.incarnationID.String(),
-		Revision: g.revision, CreatedAt: g.createdAt, UpdatedAt: g.updatedAt,
+		Revision: g.revision.Value(), CreatedAt: g.createdAt, UpdatedAt: g.updatedAt,
 	}
 }
 
@@ -271,7 +274,7 @@ func (g Goal) ModelSelection() modelchoice.Selection { return g.selection }
 func (g Goal) Capabilities() run.Capabilities        { return g.capabilities.Clone() }
 func (g Goal) Used() Usage                           { return g.used }
 func (g Goal) IncarnationID() string                 { return g.incarnationID.String() }
-func (g Goal) Revision() int64                       { return g.revision }
+func (g Goal) Revision() uint64                      { return g.revision.Value() }
 func (g Goal) CreatedAt() time.Time                  { return g.createdAt }
 func (g Goal) UpdatedAt() time.Time                  { return g.updatedAt }
 
@@ -282,14 +285,14 @@ func (g Goal) Version() Version {
 func (v Version) IsUnwritten() bool             { return !v.committed }
 func (v Version) SessionID() string             { return v.sessionID }
 func (v Version) IncarnationID() (string, bool) { return v.incarnationID.String(), v.committed }
-func (v Version) Revision() (int64, bool)       { return v.revision, v.committed }
+func (v Version) Revision() (uint64, bool)      { return v.revision.Value(), v.committed }
 
 func (v Version) Validate() error {
 	if err := validateSessionIdentity(v.sessionID); err != nil {
 		return err
 	}
 	if !v.committed {
-		if v.incarnationID.String() != "" || v.revision != 0 {
+		if v.incarnationID.String() != "" || !v.revision.IsZero() {
 			return fmt.Errorf("%w: unwritten Version carries committed identity", ErrInvalid)
 		}
 		return nil
@@ -297,7 +300,7 @@ func (v Version) Validate() error {
 	if err := v.incarnationID.Validate(); err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
-	if v.revision <= 0 {
+	if v.revision.IsZero() {
 		return fmt.Errorf("%w: committed Version revision must be positive", ErrInvalid)
 	}
 	return nil
@@ -316,16 +319,13 @@ func (v Version) AdvancesTo(next Goal) error {
 		return fmt.Errorf("%w: replacement belongs to another Session", ErrInvalid)
 	}
 	if !v.committed || next.incarnationID != v.incarnationID {
-		if next.revision != firstRevision {
-			return fmt.Errorf("%w: fresh incarnation must start at revision %d", ErrInvalid, firstRevision)
+		if next.revision != exactint.First() {
+			return fmt.Errorf("%w: fresh incarnation must start at revision %d", ErrInvalid, exactint.First().Value())
 		}
 		return nil
 	}
-	if v.revision == math.MaxInt64 {
-		return fmt.Errorf("%w: revision exhausted", ErrInvalid)
-	}
-	if next.revision != v.revision+1 {
-		return fmt.Errorf("%w: replacement revision %d does not follow %s", ErrInvalid, next.revision, v)
+	if err := exactint.Follows(v.revision.Value(), next.revision.Value()); err != nil {
+		return fmt.Errorf("%w: replacement revision %d does not follow %s: %w", ErrInvalid, next.revision.Value(), v, err)
 	}
 	return nil
 }
@@ -334,7 +334,7 @@ func (v Version) String() string {
 	if !v.committed {
 		return fmt.Sprintf("%s/unwritten", v.sessionID)
 	}
-	return fmt.Sprintf("%s/%s@%d", v.sessionID, v.incarnationID.String(), v.revision)
+	return fmt.Sprintf("%s/%s@%d", v.sessionID, v.incarnationID.String(), v.revision.Value())
 }
 
 func (g Goal) Complete(now time.Time) (Goal, error) {
@@ -444,7 +444,7 @@ func (g Goal) reviseObjective(objective, incarnationID string, resume bool, now 
 	}
 	next := g.Clone()
 	next.objective, next.incarnationID = objective, parsedIncarnationID
-	next.revision, next.updatedAt = firstRevision, updatedAt
+	next.revision, next.updatedAt = exactint.First(), updatedAt
 	// Usage is folded from the incarnation's Runs, and a fresh incarnation has
 	// none yet; carrying the old total would answer differently than any read.
 	next.used = Usage{}
@@ -455,15 +455,16 @@ func (g Goal) reviseObjective(objective, incarnationID string, resume bool, now 
 }
 
 func (g Goal) next(now time.Time) (Goal, error) {
-	if g.revision == math.MaxInt64 {
-		return Goal{}, fmt.Errorf("%w: revision exhausted", ErrInvalid)
+	revision, err := g.revision.Next()
+	if err != nil {
+		return Goal{}, fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
 	updatedAt, err := g.transitionTime(now)
 	if err != nil {
 		return Goal{}, err
 	}
 	next := g.Clone()
-	next.revision++
+	next.revision = revision
 	next.updatedAt = updatedAt
 	return next, nil
 }

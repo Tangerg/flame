@@ -193,7 +193,7 @@ func (g *GoalStore) List(ctx context.Context) ([]goal.Goal, error) {
 func scanGoal(row scanRow) (goal.Snapshot, error) {
 	var (
 		sessionID, objective, incarnationID string
-		revision                            int64
+		revision                            uint64
 		status                              string
 		reasonCode                          string
 		reasonDetail                        string
