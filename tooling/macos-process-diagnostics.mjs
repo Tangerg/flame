@@ -28,7 +28,9 @@ for (;;) {
     const seconds = elapsed
       .split(":")
       .reduce((total, part) => total * 60 + Number(part), 0);
-    if (sampled.has(pid) || Number(rss) > 1024 || seconds < 2) continue;
+    const officeStall = /\/dsoffice(?:\s|$)/.test(line) && seconds >= 10;
+    if (sampled.has(pid) || seconds < 2 || (Number(rss) > 1024 && !officeStall))
+      continue;
     sampled.add(pid);
     await writeFile(join(output, `${pid}-process.txt`), line);
     try {
