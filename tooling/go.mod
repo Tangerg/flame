@@ -64,10 +64,10 @@ require (
 )
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.toolchain.1
+	github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.audit-merge.1
 	github.com/Tangerg/flame/packages/local-runtime v0.1.0-quality.20261029.1
-	github.com/Tangerg/flame/qimu v0.1.0-quality.20261030.toolchain.1
-	github.com/Tangerg/flame/runtime v0.1.0-quality.20261030.toolchain.1
+	github.com/Tangerg/flame/qimu v0.1.0-quality.20261030.audit-merge.1
+	github.com/Tangerg/flame/runtime v0.1.0-quality.20261030.audit-merge.1
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
 	golang.org/x/mod v0.42.0
 	golang.org/x/tools v0.52.0

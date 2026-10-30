@@ -65,12 +65,11 @@ require (
 	modernc.org/libc v1.79.0 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
-	modernc.org/sqlite v1.61.0 // indirect
 )
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.toolchain.1
-	github.com/Tangerg/flame/qimu v0.1.0-quality.20261030.toolchain.1
+	github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.audit-merge.1
+	github.com/Tangerg/flame/qimu v0.1.0-quality.20261030.audit-merge.1
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
 	github.com/Tangerg/scope/core v0.58.0
 	github.com/Tangerg/scope/mcp v0.58.0
@@ -104,4 +103,5 @@ require (
 	github.com/sourcegraph/jsonrpc2 v0.2.3
 	go.opentelemetry.io/otel v1.47.0
 	go.opentelemetry.io/otel/metric v1.47.0
+	modernc.org/sqlite v1.61.0
 )
