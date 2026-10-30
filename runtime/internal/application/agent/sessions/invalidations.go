@@ -31,7 +31,7 @@ func (c *Coordinator) publishRunsMoved(sessionID string, copied []run.Run) {
 
 // publishPlanMoved reports the Plan a fork seeded or a rollback republished.
 func (c *Coordinator) publishPlanMoved(sessionIDs ...string) {
-	c.invalidations.Notify(invalidation.InSessions(invalidation.PlanState, sessionIDs...))
+	c.invalidations.Notify(invalidation.InSessions(invalidation.Plan, sessionIDs...))
 }
 
 // publishAggregateMoved reports a write-set that replaced or removed everything a
@@ -49,6 +49,6 @@ func (c *Coordinator) publishAggregateMoved(sessionIDs []string, runIDs []string
 		invalidation.Notice{Resource: invalidation.Runs, SessionIDs: sessionIDs, RunIDs: runIDs},
 		invalidation.InSessions(invalidation.Interrupts, sessionIDs...),
 		invalidation.InSessions(invalidation.Goals, sessionIDs...),
-		invalidation.InSessions(invalidation.PlanState, sessionIDs...),
+		invalidation.InSessions(invalidation.Plan, sessionIDs...),
 	)
 }

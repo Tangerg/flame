@@ -35,8 +35,8 @@ const (
 	Interrupts Resource = "interrupts"
 	// Goals — a session's autonomous goal changed.
 	Goals Resource = "goals"
-	// PlanState — the session-scoped Plan projection was committed.
-	PlanState  Resource = "plan"
+	// Plan — the session-scoped Plan projection was committed.
+	Plan       Resource = "plan"
 	PluginData Resource = "pluginData"
 	// Hooks — a project's lifecycle-hook trust decision changed.
 	Hooks Resource = "hooks"
@@ -53,7 +53,7 @@ const (
 // Valid reports whether r belongs to the invalidation vocabulary.
 func (r Resource) Valid() bool {
 	return r == Plugins || r == Resync || r == Sessions || r == Runs || r == Interrupts ||
-		r == Goals || r == PlanState || r == PluginData ||
+		r == Goals || r == Plan || r == PluginData ||
 		r == Hooks || r == Skills || r == MCP || r == Models ||
 		r == Approvals
 }

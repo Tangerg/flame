@@ -46,7 +46,7 @@ func runtimeEventFor(notice invalidation.Notice) (protocol.RuntimeEvent, bool) {
 		return protocol.RuntimeEvent{
 			Type: protocol.RuntimeGoalsChanged, SessionIDs: notice.SessionIDs,
 		}, true
-	case invalidation.PlanState:
+	case invalidation.Plan:
 		return protocol.RuntimeEvent{
 			Type: protocol.RuntimePlanChanged, SessionIDs: notice.SessionIDs,
 		}, true

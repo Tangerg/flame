@@ -64,7 +64,7 @@ func (c *PlanCoordinator) Replace(ctx context.Context, sessionID string, steps [
 	if err := c.store.Save(ctx, sessionID, replacement); err != nil {
 		return plan.State{}, err
 	}
-	c.invalidations.Notify(invalidation.InSession(invalidation.PlanState, sessionID))
+	c.invalidations.Notify(invalidation.InSession(invalidation.Plan, sessionID))
 	return replacement.State(), nil
 }
 

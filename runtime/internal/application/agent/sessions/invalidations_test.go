@@ -40,7 +40,7 @@ func TestDeleteSessionPublishesEveryProjectionItRemoved(t *testing.T) {
 		t.Fatalf("DeleteSession: %v", err)
 	}
 
-	want := []invalidation.Resource{invalidation.Sessions, invalidation.Runs, invalidation.Interrupts, invalidation.Goals, invalidation.PlanState}
+	want := []invalidation.Resource{invalidation.Sessions, invalidation.Runs, invalidation.Interrupts, invalidation.Goals, invalidation.Plan}
 	if !slices.Equal(invalidations.resources(), want) {
 		t.Fatalf("published = %v, want every projection the cascade removed (%v)", invalidations.resources(), want)
 	}

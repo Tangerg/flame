@@ -64,7 +64,7 @@ func TestCommittedPlanChangeReachesOtherWindows(t *testing.T) {
 	if !committed || expectedRevision != 3 || store.saved == nil || store.saved.Revision() != 4 || got.Revision() != 4 || !got.UpdatedAt().Equal(now) {
 		t.Fatalf("saved = %+v expected=%s got=%+v", store.saved, store.expectedVersion, got.Snapshot())
 	}
-	if len(notices) != 1 || notices[0].Resource != invalidation.PlanState || len(notices[0].SessionIDs) != 1 || notices[0].SessionIDs[0] != "ses_1" {
+	if len(notices) != 1 || notices[0].Resource != invalidation.Plan || len(notices[0].SessionIDs) != 1 || notices[0].SessionIDs[0] != "ses_1" {
 		t.Fatalf("notices = %+v, want the committed Plan state", notices)
 	}
 }

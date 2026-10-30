@@ -18,7 +18,7 @@ func TestEveryInvalidationResourceIsPublishable(t *testing.T) {
 		invalidation.Runs,
 		invalidation.Interrupts,
 		invalidation.Goals,
-		invalidation.PlanState,
+		invalidation.Plan,
 		invalidation.PluginData,
 		invalidation.Hooks,
 		invalidation.Skills,
@@ -36,7 +36,7 @@ func TestEveryInvalidationResourceIsPublishable(t *testing.T) {
 		}
 		sessionScoped := resource == invalidation.Sessions || resource == invalidation.Runs ||
 			resource == invalidation.Interrupts || resource == invalidation.Goals ||
-			resource == invalidation.PlanState
+			resource == invalidation.Plan
 		if sessionScoped && !slices.Equal(ev.SessionIDs, []string{"ses_1"}) {
 			t.Fatalf("resource %q dropped the session scope: %+v", resource, ev.SessionIDs)
 		}
@@ -52,7 +52,7 @@ func TestEveryInvalidationResourceIsPublishable(t *testing.T) {
 // session, and this is where that scope survives being published.
 func TestPlanChangeKeepsSessionScope(t *testing.T) {
 	ev, ok := runtimeEventFor(invalidation.Notice{
-		Resource: invalidation.PlanState, SessionIDs: []string{"ses_1"}, RunIDs: []string{"run_1"},
+		Resource: invalidation.Plan, SessionIDs: []string{"ses_1"}, RunIDs: []string{"run_1"},
 	})
 	if !ok {
 		t.Fatal("Plan has no runtime event")
