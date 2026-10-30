@@ -53,7 +53,10 @@ func (i *InteractionExecutor) PrepareUncertainExecution(ctx context.Context, act
 		if metadata.MemberID != rootID.String() {
 			return zero, false, nil
 		}
-		id, _ := agent.ParseEffectID(metadata.Receipt.EffectID)
+		id, err := agent.ParseEffectID(metadata.Receipt.EffectID)
+		if err != nil {
+			return zero, false, fmt.Errorf("execution: retained tool receipt: %w", err)
+		}
 		proofs[id] = metadata
 	}
 	if len(proofs) == 0 {
@@ -158,8 +161,14 @@ func (i *InteractionExecutor) PrepareUncertainExecution(ctx context.Context, act
 	}
 	for _, metadata := range proofs {
 		proof := metadata.Receipt
-		processID, _ := agent.ParseProcessID(proof.ProcessID)
-		effectID, _ := agent.ParseEffectID(proof.EffectID)
+		processID, err := agent.ParseProcessID(proof.ProcessID)
+		if err != nil {
+			return zero, false, fmt.Errorf("execution: retained tool receipt: %w", err)
+		}
+		effectID, err := agent.ParseEffectID(proof.EffectID)
+		if err != nil {
+			return zero, false, fmt.Errorf("execution: retained tool receipt: %w", err)
+		}
 		if request, found := checkpoint.tree.EffectRequest(processID, effectID); found {
 			invocation, err := interaction.ToolInvocationFromRequest(request)
 			if err != nil {
