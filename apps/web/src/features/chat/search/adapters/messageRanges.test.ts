@@ -1,5 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { findMessageMatches } from "@/features/chat/search/adapters/messageRanges";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  findMessageMatches,
+  observeMessageChanges,
+} from "@/features/chat/search/adapters/messageRanges";
 let inlineDefaults: HTMLStyleElement;
 beforeEach(() => {
   // Happy DOM omits these user-agent inline defaults from computed styles.
@@ -23,6 +26,40 @@ function textOf(selector: string): Text {
 }
 
 describe("findMessageMatches", () => {
+  it("invalidates matches when visibility changes above a message root", async () => {
+    document.body.innerHTML = `<section id="fold"><article class="msg-content">needle</article></section>`;
+    const fold = document.querySelector<HTMLElement>("#fold")!;
+    const changed = vi.fn();
+    const stop = observeMessageChanges(document.body, changed);
+    try {
+      expect(rangesFor("needle")).toHaveLength(1);
+      fold.setAttribute("inert", "");
+      await vi.waitFor(() => expect(changed).toHaveBeenCalledTimes(1));
+      expect(rangesFor("needle")).toHaveLength(0);
+      fold.removeAttribute("inert");
+      await vi.waitFor(() => expect(changed).toHaveBeenCalledTimes(2));
+      expect(rangesFor("needle")).toHaveLength(1);
+    } finally {
+      stop();
+    }
+  });
+
+  it("excludes hidden message roots and retained hidden subtrees", () => {
+    document.body.innerHTML = `
+      <section inert><article class="msg-content">needle</article></section>
+      <section hidden><article class="msg-content">needle</article></section>
+      <section style="display: none"><article class="msg-content">needle</article></section>
+      <article class="msg-content">
+        visible needle
+        <span inert>needle</span>
+        <span hidden>needle</span>
+        <span style="display: none">needle</span>
+        <span style="visibility: hidden">needle</span>
+      </article>
+    `;
+    expect(rangesFor("needle").map((range) => range.toString())).toEqual(["needle"]);
+  });
+
   it("keeps each occurrence tied to its rendered message", () => {
     document.body.innerHTML = `
       <article id="first" class="msg-content">alpha alpha</article>

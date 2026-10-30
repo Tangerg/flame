@@ -19,7 +19,8 @@ func TestStorePublishesWithoutClobberingAndLoadsPortableJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	store := Store{}
-	first, err := store.Publish(workspace, "Portable session", "archive.json", document)
+	firstPublication := store.Publish(workspace, "Portable session", "archive.json", document)
+	first, err := firstPublication.Path, firstPublication.Err
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +41,8 @@ func TestStorePublishesWithoutClobberingAndLoadsPortableJSON(t *testing.T) {
 	if writeFileErr := os.WriteFile(first, []byte("different"), 0o600); writeFileErr != nil {
 		t.Fatal(writeFileErr)
 	}
-	second, err := store.Publish(workspace, "Portable session", "archive.json", document)
+	secondPublication := store.Publish(workspace, "Portable session", "archive.json", document)
+	second, err := secondPublication.Path, secondPublication.Err
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +63,7 @@ func TestStoreRejectsPathsAsExportNames(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := (Store{}).Publish(t.TempDir(), "Session", "../escape.md", document); err == nil {
+	if result := (Store{}).Publish(t.TempDir(), "Session", "../escape.md", document); result.Err == nil {
 		t.Fatal("path-shaped export name was accepted")
 	}
 }
@@ -94,7 +96,8 @@ func TestStorePreservesPortableExtensionAndConflictSpaceForLongNames(t *testing.
 	}
 	store := Store{}
 	longStem := strings.Repeat("界", portableFilenameByteLimit)
-	automatic, err := store.Publish(t.TempDir(), longStem, "", document)
+	automaticPublication := store.Publish(t.TempDir(), longStem, "", document)
+	automatic, err := automaticPublication.Path, automaticPublication.Err
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,12 +106,8 @@ func TestStorePreservesPortableExtensionAndConflictSpaceForLongNames(t *testing.
 		len(automaticName)+maximumConflictSuffixBytes > portableFilenameByteLimit {
 		t.Fatalf("automatic portable name = %q (%d bytes)", automaticName, len(automaticName))
 	}
-	first, err := store.Publish(
-		workspace,
-		"ignored",
-		longStem+".json",
-		document,
-	)
+	firstPublication := store.Publish(workspace, "ignored", longStem+".json", document)
+	first, err := firstPublication.Path, firstPublication.Err
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,12 +119,8 @@ func TestStorePreservesPortableExtensionAndConflictSpaceForLongNames(t *testing.
 	if err := os.WriteFile(first, []byte("different"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	second, err := store.Publish(
-		workspace,
-		"ignored",
-		longStem+".json",
-		document,
-	)
+	secondPublication := store.Publish(workspace, "ignored", longStem+".json", document)
+	second, err := secondPublication.Path, secondPublication.Err
 	if err != nil {
 		t.Fatal(err)
 	}

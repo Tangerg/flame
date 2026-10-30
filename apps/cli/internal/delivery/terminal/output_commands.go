@@ -5,7 +5,9 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/sessionartifact"
 	"github.com/Tangerg/flame/apps/cli/internal/application/agent/session"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem/commit"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -59,26 +61,39 @@ func (a *app) exportSession(argument string) error {
 	workspace := authoringDirectory(a.localDirectory, a.session.current.Workspace.Path)
 	title := a.session.current.Title
 	started := a.runApplicationOperation(sessionOutputOperation, false,
-		func(ctx context.Context) (sessionOutputResult, error) {
+		func(ctx context.Context) (sessionartifact.Publication, error) {
 			document, err := a.transfers.ExportSession(ctx, session.ExportRequest{SessionID: sessionID, Format: format})
 			if err != nil {
-				return sessionOutputResult{}, err
+				return sessionartifact.Publication{}, err
 			}
-			path, err := a.artifacts.Publish(workspace, title, filename, document)
-			return sessionOutputResult{sessionID: sessionID, value: path}, err
+			return a.artifacts.Publish(workspace, title, filename, document), nil
 		},
-		func(result sessionOutputResult, err error) {
+		func(result sessionartifact.Publication, err error) {
 			if err != nil {
 				a.message("export session failed: " + err.Error())
 				return
 			}
-			a.message("exported session · " + result.value)
+			a.message(sessionPublicationMessage(result))
 		},
 	)
 	if !started {
 		return errors.New("another session output operation is already running")
 	}
 	return nil
+}
+
+func sessionPublicationMessage(result sessionartifact.Publication) string {
+	if !result.Committed() {
+		return "export session failed: " + result.Err.Error()
+	}
+	message := "exported session · " + result.Path
+	if result.State == commit.Visible {
+		return message + " · durability unconfirmed: " + result.Err.Error()
+	}
+	if result.Err != nil {
+		return message + " · cleanup failed: " + result.Err.Error()
+	}
+	return message
 }
 
 func parseExportArgument(argument string) (protocol.ExportFormat, string, error) {

@@ -90,10 +90,11 @@ func validateSourceToolMaterial(server mcpserver.ID, tools []Executable) error {
 // credentials.
 type Executable struct {
 	toolcontract.Tool
-	config  ServerConfig
-	owner   *connections
-	session *sdkmcp.ClientSession
-	held    *BorrowedSession
+	config         ServerConfig
+	owner          *connections
+	session        *sdkmcp.ClientSession
+	held           *BorrowedSession
+	catalogVersion uint64
 }
 
 func (t Executable) Call(ctx context.Context, invocation toolcontract.Invocation) (_ toolcontract.Result, err error) {
@@ -105,15 +106,14 @@ func (t Executable) Call(ctx context.Context, invocation toolcontract.Invocation
 	return t.Tool.Call(borrowed.Context(), invocation)
 }
 
-// Current reports whether the session that admitted this executable is still
-// its source's live connection. A frozen Run manifest outlives reconnects and
-// refusals; once its session is replaced or withdrawn, dispatching through it
-// would reach a closed transport instead of the current source.
+// Current reports whether this executable's admitted catalog revision still
+// belongs to its source's live session. A frozen Run manifest outlives catalog
+// changes, reconnects and refusals; it cannot silently adopt a newer contract.
 func (t Executable) Current() bool {
 	if t.held != nil {
 		return t.held.ctx.Err() == nil
 	}
-	return t.owner != nil && t.owner.current(t.config.ID(), t.session)
+	return t.owner != nil && t.owner.current(t.config.ID(), t.session, t.catalogVersion)
 }
 
 func (t Executable) Unwrap() toolcontract.Tool          { return t.Tool }

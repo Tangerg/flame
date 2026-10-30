@@ -117,11 +117,8 @@ func newPluginsCommand(provider runtimeProvider) *cobra.Command {
 func newPluginGetCommand(provider runtimeProvider) *cobra.Command {
 	var input string
 	command := &cobra.Command{Use: "get-command", Short: "Read an original admitted plugin request by its retained namespace and key", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
-		if len(input) > 1<<20 {
-			return errors.New("plugin input exceeds 1 MiB")
-		}
-		var request protocol.PluginCommandRequest
-		if err := protocol.DecodeRequest([]byte(input), &request); err != nil {
+		request, err := decodePluginRequest[protocol.PluginCommandRequest](input)
+		if err != nil {
 			return err
 		}
 		runtime, err := requirePluginRuntime(cmd, provider)
@@ -141,11 +138,8 @@ func newPluginGetCommand(provider runtimeProvider) *cobra.Command {
 func newPluginResolveCompositionCommand(provider runtimeProvider) *cobra.Command {
 	var input string
 	command := &cobra.Command{Use: "resolve-composition", Short: "Resolve current bindings in the explicit composition order", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
-		if len(input) > 1<<20 {
-			return errors.New("plugin input exceeds 1 MiB")
-		}
-		var request protocol.ResolvePluginCompositionRequest
-		if err := protocol.DecodeRequest([]byte(input), &request); err != nil {
+		request, err := decodePluginRequest[protocol.ResolvePluginCompositionRequest](input)
+		if err != nil {
 			return err
 		}
 		runtime, err := requirePluginRuntime(cmd, provider)
@@ -168,11 +162,8 @@ func newPluginResolveCompositionCommand(provider runtimeProvider) *cobra.Command
 func newPluginRequirementsCommand(provider runtimeProvider) *cobra.Command {
 	var input string
 	command := &cobra.Command{Use: "requirements", Short: "Resolve one contribution's declared collaborators", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
-		if len(input) > 1<<20 {
-			return errors.New("plugin input exceeds 1 MiB")
-		}
-		var request protocol.ResolvePluginRequirementsRequest
-		if err := protocol.DecodeRequest([]byte(input), &request); err != nil {
+		request, err := decodePluginRequest[protocol.ResolvePluginRequirementsRequest](input)
+		if err != nil {
 			return err
 		}
 		runtime, err := requirePluginRuntime(cmd, provider)
@@ -195,11 +186,8 @@ func newPluginRequirementsCommand(provider runtimeProvider) *cobra.Command {
 func newPluginPointCommand(provider runtimeProvider) *cobra.Command {
 	var input string
 	command := &cobra.Command{Use: "point", Short: "Resolve values of a consumer-defined point", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
-		if len(input) > 1<<20 {
-			return errors.New("plugin input exceeds 1 MiB")
-		}
-		var request protocol.ResolvePluginPointRequest
-		if err := protocol.DecodeRequest([]byte(input), &request); err != nil {
+		request, err := decodePluginRequest[protocol.ResolvePluginPointRequest](input)
+		if err != nil {
 			return err
 		}
 		runtime, err := requirePluginRuntime(cmd, provider)
@@ -222,12 +210,9 @@ func newPluginPointCommand(provider runtimeProvider) *cobra.Command {
 func newPluginCallCommand(provider runtimeProvider) *cobra.Command {
 	var input, key string
 	command := &cobra.Command{Use: "call", Short: "Invoke an installed contribution through its required contract", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
-		if len(input) > 1<<20 {
-			return errors.New("plugin input exceeds 1 MiB")
-		}
-		var request protocol.CallPluginRequest
-		if err := protocol.DecodeRequest([]byte(input), &request); err != nil {
-			return fmt.Errorf("plugin request: %w", err)
+		request, err := decodePluginRequest[protocol.CallPluginRequest](input)
+		if err != nil {
+			return err
 		}
 		contract, err := portable.ParseCapability([]byte(request.Contract))
 		if err != nil {
@@ -282,12 +267,9 @@ func pluginMutationCommand[Input, Output any](provider runtimeProvider, name, de
 func pluginCommand[Input any](provider runtimeProvider, name, description string, run func(pluginRuntime, *cobra.Command, Input, authoring.CommandID) error) *cobra.Command {
 	var input, key string
 	command := &cobra.Command{Use: name, Short: description, Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
-		if len(input) > 1<<20 {
-			return errors.New("plugin input exceeds 1 MiB")
-		}
-		var request Input
-		if err := protocol.DecodeRequest([]byte(input), &request); err != nil {
-			return fmt.Errorf("plugin request: %w", err)
+		request, err := decodePluginRequest[Input](input)
+		if err != nil {
+			return err
 		}
 		commandID := authoring.CommandID(key)
 		if commandID == "" {
@@ -308,4 +290,19 @@ func pluginCommand[Input any](provider runtimeProvider, name, description string
 	command.Flags().StringVar(&input, "request", "{}", "Exact Runtime request as JSON; source paths belong to the Runtime")
 	command.Flags().StringVar(&key, "command-id", "", "Retain this exact identity and request for replay after an unknown acknowledgement")
 	return command
+}
+
+// maximumPluginRequestBytes bounds CLI-authored JSON before opening Runtime.
+// Publisher input and Runtime envelope limits remain owned by their contracts.
+const maximumPluginRequestBytes = 1 << 20
+
+func decodePluginRequest[T any](input string) (T, error) {
+	var request T
+	if len(input) > maximumPluginRequestBytes {
+		return request, fmt.Errorf("plugin input exceeds %d bytes", maximumPluginRequestBytes)
+	}
+	if err := protocol.DecodeRequest([]byte(input), &request); err != nil {
+		return request, fmt.Errorf("plugin request: %w", err)
+	}
+	return request, nil
 }

@@ -12,6 +12,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   EMPTY_AGENT_SESSION_VIEW,
   type AgentProblem,
+  type AgentRunView,
   type Message,
 } from "@/features/agent/public/sessionView";
 
@@ -39,6 +40,71 @@ afterEach(() => {
 });
 
 describe("agent view selectors react to session switch", () => {
+  it("derives the target's preceding root from its active Session projection", () => {
+    const first: AgentRunView = {
+      id: "first",
+      sessionId: "b",
+      parentRunId: null,
+      rootRunId: "first",
+      spawnedByItemId: null,
+      status: "finished",
+      activeSegmentId: null,
+      outcome: { type: "completed" },
+      metrics: {
+        steps: 0,
+        activeDurationMillis: 0,
+        usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 },
+      },
+      progress: null,
+      contextTokens: null,
+      createdAt: "2026-01-01T00:00:00Z",
+      finishedAt: "2026-01-01T00:00:01Z",
+    };
+    const second = {
+      ...first,
+      id: "second",
+      rootRunId: "second",
+      createdAt: "2026-01-02T00:00:00Z",
+      finishedAt: "2026-01-02T00:00:01Z",
+    };
+    const child = { ...second, id: "child", parentRunId: second.id, spawnedByItemId: "spawn" };
+    testClient.agent.projection.store.setState({
+      sessions: {
+        a: seed(null, {}),
+        b: {
+          ...seed(null, {}),
+          view: { ...EMPTY_AGENT_SESSION_VIEW, runsById: { first, second, child } },
+        },
+      },
+    });
+    testClient.navigation.go({ session: "a" });
+    const { result, rerender } = testClient.renderHook(
+      ({ runId }: { runId: string | null }) => testClient.selectors.useHasPrecedingRootRun(runId),
+      { initialProps: { runId: second.id as string | null } },
+    );
+    expect(result.current).toBe(false);
+    act(() => testClient.navigation.go({ session: "b" }));
+    expect(result.current).toBe(true);
+    for (const runId of [first.id, child.id, "missing", null]) {
+      rerender({ runId });
+      expect(result.current).toBe(false);
+    }
+    rerender({ runId: second.id });
+    expect(result.current).toBe(true);
+    act(() =>
+      testClient.agent.projection.store.setState((state) => ({
+        sessions: {
+          ...state.sessions,
+          b: {
+            ...state.sessions.b!,
+            view: { ...state.sessions.b!.view, runsById: { second, child } },
+          },
+        },
+      })),
+    );
+    expect(result.current).toBe(false);
+  });
+
   it("testClient.selectors.useAgentProblem follows activeSessionId", () => {
     testClient.agent.projection.store.setState({
       sessions: { a: seed({ message: "A" }, {}), b: seed({ message: "B" }, {}) },

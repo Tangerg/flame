@@ -23,6 +23,12 @@ canonical manifest and artifact inventory, excluding the digest field itself.
 Canonical JSON preserves numeric lexemes and declaration order; artifact inventory
 order is normalized. A package version is a human-facing label, not byte identity.
 
+Exact dependency releases belong to the canonical manifest. `Manifest.Lock()` and
+`Build` derive their lock from that declaration; changing a dependency changes the
+release identity. Lock-only dependency additions are refused. Authors move those
+declarations into the manifest and rebuild the release; the package command no
+longer accepts a separate dependency file.
+
 The manifest contains independent Units with typed process variants, browser module
 entries and fixed imports, static resources, contract references and contributions.
 One release may contain all three. Pure resources need no methods or process. A
@@ -40,6 +46,9 @@ fetcher may supply a private local file; this package does not select network so
 `Open` requires an application Trust function. A matching digest proves consistency,
 not publisher trust. Applications check publisher, source, signatures if required,
 and requested capabilities before publication. Rejection removes staging.
+When a digest is already cached, installation also validates and trusts that final
+cached snapshot and returns it. Its receipt and a subsequent Acquire or Inspect
+therefore describe the same immutable release.
 
 Only regular files are accepted. Symbolic links, special files, traversal, absolute
 paths, platform-reserved names, duplicate destinations and case aliases are refused.

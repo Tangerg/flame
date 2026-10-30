@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
@@ -273,7 +274,7 @@ func TestInteractionExecutorRestoresRuntimeAskUserTool(t *testing.T) {
 	arguments := `{"questions":[{"question":"Which value?"}]}`
 	model := &observationScriptModel{responses: []*chat.Response{
 		interactionToolResponse(chat.ToolCall{
-			ID: "ask_user_call", Name: string(domaintool.AskUser), Arguments: arguments,
+			ID: "ask_user_call", Name: string(builtincontract.AskUser), Arguments: arguments,
 		}, 1, 1),
 		interactionUsageTextResponse("continued after the answer", 1, 1),
 	}}
@@ -294,7 +295,7 @@ func TestInteractionExecutorRestoresRuntimeAskUserTool(t *testing.T) {
 	starts := payloadsOf[runs.ToolCallStarted](beforeAnswer)
 	interruptions := barrier.Interruptions()
 	if len(interruptions) != 1 || interruptions[0].Interrupt.Question == nil ||
-		interruptions[0].Interrupt.Question.ToolName != string(domaintool.AskUser) ||
+		interruptions[0].Interrupt.Question.ToolName != string(builtincontract.AskUser) ||
 		len(starts) != 1 {
 		t.Fatalf("ask_user interruption = %#v", interruptions)
 	}
@@ -506,7 +507,7 @@ func TestInteractionExecutorCancellationStopsApprovedForegroundShell(t *testing.
 	}
 	model := &observationScriptModel{responses: []*chat.Response{
 		interactionToolResponse(chat.ToolCall{
-			ID: "shell_call", Name: string(domaintool.Shell),
+			ID: "shell_call", Name: string(builtincontract.Shell),
 			Arguments: `{"command":"sleep 30","description":"Wait until canceled"}`,
 		}, 1, 1),
 	}}
@@ -929,75 +930,102 @@ func TestInteractionExecutorTerminatesWithoutReplayingUnknownEffect(t *testing.T
 }
 
 func TestInteractionExecutorAppliesSteerAtNextModelBoundary(t *testing.T) {
-	model := &runtimeSteerModel{started: make(chan struct{}), release: make(chan struct{})}
-	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{})
-	ref, err := executor.StageRoot(t.Context(), interactionTestStart())
-	if err != nil {
-		t.Fatal(err)
-	}
-	sequence, err := observeTestInteraction(t, executor, context.Background(), ref)
-	if err != nil {
-		t.Fatal(err)
-	}
-	events := collectInteractionEvents(sequence)
-	if err := executor.BeginRoot(t.Context(), ref); err != nil {
-		t.Fatal(err)
-	}
-	<-model.started
-	firstID, err := executor.SubmitSteer(t.Context(), ref, runs.PreparedSteer{ItemID: "item_steer_first", Input: []transcript.ContentBlock{{
-		Kind: transcript.TextContent, Text: "add evidence",
-	}}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	duplicateID, err := executor.SubmitSteer(t.Context(), ref, runs.PreparedSteer{ItemID: firstID, Input: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "add evidence"}}})
-	if err != nil || duplicateID != firstID {
-		t.Fatalf("exact steer replay=%q %v", duplicateID, err)
-	}
-	if _, err := executor.SubmitSteer(t.Context(), ref, runs.PreparedSteer{ItemID: firstID, Input: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "changed original"}}}); !errors.Is(err, runs.ErrCommandKeyConflict) {
-		t.Fatalf("changed steer replaced its admitted original: %v", err)
-	}
-	secondID, err := executor.SubmitSteer(t.Context(), ref, runs.PreparedSteer{ItemID: "item_steer_second", Input: []transcript.ContentBlock{{
-		Kind: transcript.TextContent, Text: "add evidence",
-	}}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	close(model.release)
-	observed := <-events
-	if err := executor.Release(t.Context(), ref); err != nil {
-		t.Fatal(err)
-	}
-	steers := payloadsOf[runs.SteerMessagesApplied](observed)
-	if len(steers) != 1 || len(steers[0].Messages) != 2 ||
-		len(steers[0].Messages[0].Content) != 1 || steers[0].Messages[0].Content[0].Text != "add evidence" ||
-		len(steers[0].Messages[1].Content) != 1 || steers[0].Messages[1].Content[0].Text != "add evidence" {
-		t.Fatalf("steer projections = %#v", steers)
-	}
-	if firstID == secondID || steers[0].Messages[0].ItemID != firstID || steers[0].Messages[1].ItemID != secondID {
-		t.Fatalf("admitted identities %q/%q differ from applied facts: %#v", firstID, secondID, steers)
-	}
-	steerIndex, secondModelIndex := -1, -1
-	modelStarts := 0
-	for index, event := range observed {
-		switch event.Payload.(type) {
-		case runs.SteerMessagesApplied:
-			steerIndex = index
-		case runs.ModelCallStarted:
-			modelStarts++
-			if modelStarts == 2 {
-				secondModelIndex = index
+	for _, test := range []struct {
+		name     string
+		messages [2]string
+	}{
+		{"same text with distinct identities", [2]string{"add evidence", "add evidence"}},
+		{"ordered distinct text", [2]string{"add evidence", "then shorten it"}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			model := &runtimeSteerModel{started: make(chan struct{}), release: make(chan struct{}), expectedSteers: test.messages}
+			executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{})
+			release := sync.OnceFunc(func() { close(model.release) })
+			// Release the fake before executor cleanup joins its in-flight call.
+			t.Cleanup(release)
+			ref, err := executor.StageRoot(t.Context(), interactionTestStart())
+			if err != nil {
+				t.Fatal(err)
 			}
-		}
-	}
-	if steerIndex < 0 || secondModelIndex < 0 || steerIndex >= secondModelIndex {
-		t.Fatalf("event order steer=%d second model=%d: %#v", steerIndex, secondModelIndex, observed)
+			sequence, err := observeTestInteraction(t, executor, context.Background(), ref)
+			if err != nil {
+				t.Fatal(err)
+			}
+			events := collectInteractionEvents(sequence)
+			if err := executor.BeginRoot(t.Context(), ref); err != nil {
+				t.Fatal(err)
+			}
+			<-model.started
+			firstID, err := executor.SubmitSteer(t.Context(), ref, runs.PreparedSteer{ItemID: "item_steer_first", Input: []transcript.ContentBlock{{
+				Kind: transcript.TextContent, Text: test.messages[0],
+			}}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			duplicateID, err := executor.SubmitSteer(t.Context(), ref, runs.PreparedSteer{ItemID: firstID, Input: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: test.messages[0]}}})
+			if err != nil || duplicateID != firstID {
+				t.Fatalf("exact steer replay=%q %v", duplicateID, err)
+			}
+			if _, err := executor.SubmitSteer(t.Context(), ref, runs.PreparedSteer{ItemID: firstID, Input: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "changed original"}}}); !errors.Is(err, runs.ErrCommandKeyConflict) {
+				t.Fatalf("changed steer replaced its admitted original: %v", err)
+			}
+			secondID, err := executor.SubmitSteer(t.Context(), ref, runs.PreparedSteer{ItemID: "item_steer_second", Input: []transcript.ContentBlock{{
+				Kind: transcript.TextContent, Text: test.messages[1],
+			}}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			release()
+			observed := <-events
+			if err := executor.Release(t.Context(), ref); err != nil {
+				t.Fatal(err)
+			}
+			steers := payloadsOf[runs.SteerMessagesApplied](observed)
+			if len(steers) != 1 || len(steers[0].Messages) != 2 ||
+				len(steers[0].Messages[0].Content) != 1 || steers[0].Messages[0].Content[0].Text != test.messages[0] ||
+				len(steers[0].Messages[1].Content) != 1 || steers[0].Messages[1].Content[0].Text != test.messages[1] {
+				t.Fatalf("steer projections = %#v", steers)
+			}
+			if firstID == secondID || steers[0].Messages[0].ItemID != firstID || steers[0].Messages[1].ItemID != secondID {
+				t.Fatalf("admitted identities %q/%q differ from applied facts: %#v", firstID, secondID, steers)
+			}
+			steerIndex, secondModelIndex := -1, -1
+			modelStarts := 0
+			for index, event := range observed {
+				switch event.Payload.(type) {
+				case runs.SteerMessagesApplied:
+					steerIndex = index
+				case runs.ModelCallStarted:
+					modelStarts++
+					if modelStarts == 2 {
+						secondModelIndex = index
+					}
+				}
+			}
+			if steerIndex < 0 || secondModelIndex < 0 || steerIndex >= secondModelIndex {
+				t.Fatalf("event order steer=%d second model=%d: %#v", steerIndex, secondModelIndex, observed)
+			}
+			model.mu.Lock()
+			calls, received := model.calls, model.receivedSteers
+			model.mu.Unlock()
+			if calls != 2 || received != test.messages {
+				t.Fatalf("next model received %q in %d calls, want %q in two calls", received, calls, test.messages)
+			}
+			if failed := payloadsOf[runs.ModelCallFailed](observed); len(failed) != 0 {
+				t.Fatalf("successful steer produced model failures: %#v", failed)
+			}
+			if ended := payloadsOf[runs.SegmentEnded](observed); len(ended) != 1 || ended[0].Reason != run.OutcomeCompleted {
+				t.Fatalf("steer terminal = %#v, want one completed outcome", ended)
+			}
+		})
 	}
 }
 
 func TestInteractionExecutorDoesNotCallNextModelWhenAppliedSteerCommitFails(t *testing.T) {
 	model := &runtimeSteerModel{started: make(chan struct{}), release: make(chan struct{})}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{})
+	release := sync.OnceFunc(func() { close(model.release) })
+	t.Cleanup(release)
 	ref, err := executor.StageRoot(t.Context(), interactionTestStart())
 	if err != nil {
 		t.Fatal(err)
@@ -1032,7 +1060,7 @@ func TestInteractionExecutorDoesNotCallNextModelWhenAppliedSteerCommitFails(t *t
 	}}}); err != nil {
 		t.Fatal(err)
 	}
-	close(model.release)
+	release()
 	events := <-eventsReady
 	if err := executor.Release(t.Context(), ref); err != nil {
 		t.Fatal(err)
@@ -1050,10 +1078,12 @@ func TestInteractionExecutorDoesNotCallNextModelWhenAppliedSteerCommitFails(t *t
 }
 
 type runtimeSteerModel struct {
-	mu      sync.Mutex
-	calls   int
-	started chan struct{}
-	release chan struct{}
+	expectedSteers [2]string
+	receivedSteers [2]string
+	mu             sync.Mutex
+	calls          int
+	started        chan struct{}
+	release        chan struct{}
 }
 
 func (r *runtimeSteerModel) Call(_ context.Context, request *chat.Request) (*chat.Response, error) {
@@ -1062,16 +1092,21 @@ func (r *runtimeSteerModel) Call(_ context.Context, request *chat.Request) (*cha
 	call := r.calls
 	r.mu.Unlock()
 	if call == 1 {
+		close(r.started)
 		if len(request.Messages) != 1 {
 			return nil, errors.New("steer reached the in-flight model request")
 		}
-		close(r.started)
 		<-r.release
 		return interactionUsageTextResponse("draft", 1, 1), nil
 	}
+	if len(request.Messages) == 4 {
+		r.mu.Lock()
+		r.receivedSteers = [2]string{request.Messages[2].Text(), request.Messages[3].Text()}
+		r.mu.Unlock()
+	}
 	if len(request.Messages) != 4 || request.Messages[1].Text() != "draft" ||
-		request.Messages[2].Role != chat.RoleUser || request.Messages[2].Text() != "add evidence" ||
-		request.Messages[3].Role != chat.RoleUser || request.Messages[3].Text() != "then shorten it" {
+		request.Messages[2].Role != chat.RoleUser || request.Messages[2].Text() != r.expectedSteers[0] ||
+		request.Messages[3].Role != chat.RoleUser || request.Messages[3].Text() != r.expectedSteers[1] {
 		return nil, errors.New("steer was not visible at the next model boundary")
 	}
 	return interactionUsageTextResponse("revised", 1, 1), nil

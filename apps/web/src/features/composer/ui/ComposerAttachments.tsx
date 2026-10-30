@@ -2,7 +2,11 @@ import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import { type RefObject, useRef, useState } from "react";
 import { cn } from "@/lib/classNames";
-import { type ComposerImage, type PastedText } from "@/features/composer/public/attachments";
+import {
+  type ComposerImage,
+  type ComposerImageAttachment,
+  type PastedText,
+} from "@/features/composer/public/attachments";
 import { AnimatePresence, motion } from "motion/react";
 import { chipPresence } from "@/lib/motion";
 import { basename } from "@/lib/path";
@@ -18,7 +22,7 @@ import { useT } from "@/lib/i18n/index";
 import { draftMentions, removeMention } from "@/features/composer/application/draftContext";
 import { composerStyles } from "@/features/composer/ui/composerStyles";
 interface Props {
-  images: readonly ComposerImage[];
+  images: readonly ComposerImageAttachment[];
   pastes: readonly PastedText[];
   value: string;
   knownPaths: ReadonlySet<string>;
@@ -42,40 +46,72 @@ export function ComposerAttachments({
   onRestorePaste,
   composerInput,
 }: Props) {
+  const t = useT();
   const mentions = draftMentions(value, knownPaths);
-  if (mentions.length === 0 && images.length === 0 && pastes.length === 0) return null;
+  const removeImage = (id: string) => {
+    onRemoveImage(id);
+    composerInput.current?.focus();
+  };
+  const imageStatus = (image: ComposerImageAttachment) =>
+    t(
+      image.status === "pending"
+        ? "composer.image.reading"
+        : image.status === "failed"
+          ? "composer.image.failed"
+          : "composer.image.ready",
+      { name: image.name || t("composer.image.preview") },
+    );
   return (
-    <div data-slot="composer-attachments" {...stylex.props(composerStyles.tray)}>
-      <AnimatePresence initial={false}>
-        {images.map((image) => (
-          <motion.div key={image.id} {...chipPresence}>
-            <ImageThumb image={image} onRemove={() => onRemoveImage(image.id)} />
-          </motion.div>
-        ))}
-        {mentions.map((mention) => (
-          <motion.div key={`${mention.start}:${mention.path}`} {...chipPresence}>
-            <Chip
-              icon={fileIconName(mention.path)}
-              title={mention.path}
-              onClose={() => onChange(removeMention(value, mention))}
-            >
-              {basename(mention.path)}
-            </Chip>
-          </motion.div>
-        ))}
-        {pastes.map((paste) => (
-          <motion.div key={paste.id} {...chipPresence}>
-            <PasteChip
-              paste={paste}
-              composerInput={composerInput}
-              onRemove={() => onRemovePaste(paste.id)}
-              onEdit={(text) => onEditPaste(paste.id, text)}
-              onRestore={(text) => onRestorePaste(paste.id, text)}
-            />
-          </motion.div>
-        ))}
-      </AnimatePresence>
-    </div>
+    <>
+      <span role="status" className="sr-only">
+        {images.map(imageStatus).join(". ")}
+      </span>
+      {(mentions.length > 0 || images.length > 0 || pastes.length > 0) && (
+        <div data-slot="composer-attachments" {...stylex.props(composerStyles.tray)}>
+          <AnimatePresence initial={false}>
+            {images.map((image) => (
+              <motion.div key={image.id} {...chipPresence}>
+                {image.status === "ready" ? (
+                  <ImageThumb image={image} onRemove={() => removeImage(image.id)} />
+                ) : (
+                  <Chip
+                    icon="file-text"
+                    kind="attached"
+                    title={image.name}
+                    onClose={() => removeImage(image.id)}
+                    closeLabel={t("composer.removeImage")}
+                  >
+                    {imageStatus(image)}
+                  </Chip>
+                )}
+              </motion.div>
+            ))}
+            {mentions.map((mention) => (
+              <motion.div key={`${mention.start}:${mention.path}`} {...chipPresence}>
+                <Chip
+                  icon={fileIconName(mention.path)}
+                  title={mention.path}
+                  onClose={() => onChange(removeMention(value, mention))}
+                >
+                  {basename(mention.path)}
+                </Chip>
+              </motion.div>
+            ))}
+            {pastes.map((paste) => (
+              <motion.div key={paste.id} {...chipPresence}>
+                <PasteChip
+                  paste={paste}
+                  composerInput={composerInput}
+                  onRemove={() => onRemovePaste(paste.id)}
+                  onEdit={(text) => onEditPaste(paste.id, text)}
+                  onRestore={(text) => onRestorePaste(paste.id, text)}
+                />
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
+    </>
   );
 }
 

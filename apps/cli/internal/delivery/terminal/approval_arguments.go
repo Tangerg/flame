@@ -12,7 +12,7 @@ func (a *app) openApprovalArgumentEditor() {
 	}
 	a.dialogs.approvalEditor = a.openContextEditor(contextEditorRequest{
 		Title:       "Edit tool arguments",
-		Description: "The replacement applies once and is validated as one non-empty JSON object.",
+		Description: "The replacement applies once. Use {} to clear the arguments.",
 		Content:     a.dialogs.approvalArguments,
 		Placeholder: "{\n  \"argument\": \"replacement\"\n}",
 		Save: func(value string, complete func(error) bool) error {

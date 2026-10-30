@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
@@ -73,7 +74,7 @@ func TestInterruptPageReadsTheHandoffAndItemsFromOneSnapshot(t *testing.T) {
 	if err := runStore.Suspend(t.Context(), root, draft.SegmentID, runs.CommitID{}); err != nil {
 		t.Fatal(err)
 	}
-	item := testsupport.MustRestoreItem(testsupport.ItemInput{ID: "item_snapshot", SessionID: sess.ID(), RunID: root.ID(), Kind: transcript.QuestionItem, OccurredAt: created, Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}}})
+	item := testsupport.MustRestoreItem(testsupport.ItemInput{ID: "item_snapshot", SessionID: sess.ID(), RunID: root.ID(), Kind: transcript.QuestionItem, OccurredAt: created, Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}}})
 	if err := newTranscriptStore(writer).AppendItem(t.Context(), item); err != nil {
 		t.Fatal(err)
 	}

@@ -26,7 +26,7 @@ func TestDiagnosticsRequireTheExactPublishedVersion(t *testing.T) {
 			if err != nil || len(result) != 1 {
 				t.Fatalf("exact diagnostics: %+v %v", result, err)
 			}
-		} else if !errors.Is(err, errDiagnosticsUnavailable) || result != nil {
+		} else if !errors.As(err, new(*DiagnosticsPendingError)) || result != nil {
 			t.Fatalf("version %d accepted for version 2: %+v %v", published, result, err)
 		}
 	}

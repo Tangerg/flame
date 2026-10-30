@@ -38,8 +38,9 @@ func BenchmarkSessionMaterialSnapshot(b *testing.B) {
 			sessions := newSessionStore(db)
 			items := newTranscriptStore(db)
 			stores, err := NewSessionStores(SessionStoresConfig{
-				CommandAcceptances: newCommandAcceptanceStore(db),
-				Sessions:           sessions, Transcript: items, Runs: runs, History: history,
+				ResourceRetirements: newResourceRetirementStore(db),
+				CommandAcceptances:  newCommandAcceptanceStore(db),
+				Sessions:            sessions, Transcript: items, Runs: runs, History: history,
 				Interrupts:          newInterruptStore(db),
 				ExecutorCheckpoints: newExecutorCheckpointStore(db),
 				Plan:                newPlanStore(db), ApprovalRules: newApprovalRuleStore(db),

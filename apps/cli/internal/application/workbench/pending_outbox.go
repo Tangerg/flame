@@ -54,13 +54,7 @@ func (s *Store) StagePendingResume(sessionID string, pending PendingResume, inpu
 		}
 		return errors.New("another resume command is already pending")
 	}
-	next := clonePendingResumes(s.pendingResumes)
-	next[sessionID] = pending
-	if err := s.saveSessionStateWithResume(sessionID, s.drafts[sessionID], s.pendingRuns[sessionID], &pending); err != nil {
-		return err
-	}
-	s.pendingResumes = next
-	return nil
+	return s.saveSessionStateWithResume(sessionID, s.drafts[sessionID], s.pendingRuns[sessionID], &pending)
 }
 
 // AcknowledgePendingResume retires exactly the command whose runtime response
@@ -96,11 +90,7 @@ func (s *Store) retirePendingResume(sessionID string, commandID authoring.Comman
 	if _, err := s.claimPendingResumeLocked(sessionID, commandID); err != nil {
 		return err
 	}
-	if err := s.saveSessionStateWithResume(sessionID, s.drafts[sessionID], s.pendingRuns[sessionID], nil); err != nil {
-		return err
-	}
-	delete(s.pendingResumes, sessionID)
-	return nil
+	return s.saveSessionStateWithResume(sessionID, s.drafts[sessionID], s.pendingRuns[sessionID], nil)
 }
 
 // StagePendingRun atomically moves one draft into the durable runtime outbox.
@@ -124,17 +114,11 @@ func (s *Store) StagePendingRun(pending PendingRun) error {
 			return nil
 		}
 	}
-	next := clonePendingRuns(s.pendingRuns)
-	next[pending.Command.SessionID] = append(next[pending.Command.SessionID], pending)
-	if err := validatePendingRunSequence(pending.Command.SessionID, next[pending.Command.SessionID]); err != nil {
+	next := append(clonePendingRunSlice(s.pendingRuns[pending.Command.SessionID]), pending)
+	if err := validatePendingRunSequence(pending.Command.SessionID, next); err != nil {
 		return err
 	}
-	if err := s.saveSessionState(pending.Command.SessionID, authoring.Message{}, next[pending.Command.SessionID]); err != nil {
-		return err
-	}
-	delete(s.drafts, pending.Command.SessionID)
-	s.pendingRuns = next
-	return nil
+	return s.saveSessionState(pending.Command.SessionID, authoring.Message{}, next)
 }
 
 // SavePendingRuns atomically replaces one session's ordered runtime outbox.
@@ -168,15 +152,7 @@ func (s *Store) SavePendingRuns(sessionID string, commands []PendingRun) error {
 			return errors.New("queue edit cannot dispatch a command")
 		}
 	}
-	if err := s.saveSessionState(sessionID, s.drafts[sessionID], commands); err != nil {
-		return err
-	}
-	if len(commands) == 0 {
-		delete(s.pendingRuns, sessionID)
-	} else {
-		s.pendingRuns[sessionID] = commands
-	}
-	return nil
+	return s.saveSessionState(sessionID, s.drafts[sessionID], commands)
 }
 
 func (s *Store) MarkPendingRunDispatching(
@@ -206,23 +182,19 @@ func (s *Store) MarkPendingRunDispatching(
 	if err != nil {
 		return err
 	}
-	next := clonePendingRuns(s.pendingRuns)
-	next[sessionID][index].Command.Input = blocks
-	next[sessionID][index].InputDigest = digest
-	if err := next[sessionID][index].beginDispatch(replayGuard); err != nil {
+	next := clonePendingRunSlice(s.pendingRuns[sessionID])
+	next[index].Command.Input = blocks
+	next[index].InputDigest = digest
+	if err := next[index].beginDispatch(replayGuard); err != nil {
 		return err
 	}
-	if next[sessionID][index].State == s.pendingRuns[sessionID][index].State {
+	if next[index].State == s.pendingRuns[sessionID][index].State {
 		return nil
 	}
-	if err := validatePendingRunSequence(sessionID, next[sessionID]); err != nil {
+	if err := validatePendingRunSequence(sessionID, next); err != nil {
 		return err
 	}
-	if err := s.saveSessionState(sessionID, s.drafts[sessionID], next[sessionID]); err != nil {
-		return err
-	}
-	s.pendingRuns = next
-	return nil
+	return s.saveSessionState(sessionID, s.drafts[sessionID], next)
 }
 
 // MarkPendingRunCanceling durably records that a command with an uncertain
@@ -247,18 +219,18 @@ func (s *Store) MarkPendingRunCanceling(
 	if s.pendingRuns[sessionID][index].State == PendingRunCanceling {
 		return s.pendingRuns[sessionID][index].CancelCommandID, nil
 	}
-	next := clonePendingRuns(s.pendingRuns)
-	cancelCommandID, err := next[sessionID][index].beginCancellation(replayGuard)
+	next := clonePendingRunSlice(s.pendingRuns[sessionID])
+	cancelCommandID, err := next[index].beginCancellation(replayGuard)
 	if err != nil {
 		return "", err
 	}
-	if err := validatePendingRunSequence(sessionID, next[sessionID]); err != nil {
+	if err := validatePendingRunSequence(sessionID, next); err != nil {
 		return "", err
 	}
-	if err := s.saveSessionState(sessionID, s.drafts[sessionID], next[sessionID]); err != nil {
+	if err := s.saveSessionState(sessionID, s.drafts[sessionID], next); err != nil {
 		return "", err
 	}
-	s.pendingRuns = next
+
 	return cancelCommandID, nil
 }
 
@@ -278,18 +250,21 @@ func (s *Store) RequeuePendingRun(sessionID string, commandID authoring.CommandI
 	if index < 0 {
 		return "", errors.New("pending run is absent")
 	}
-	next := clonePendingRuns(s.pendingRuns)
-	replacement, err := next[sessionID][index].requeue()
+	next := clonePendingRunSlice(s.pendingRuns[sessionID])
+	replacement, err := next[index].requeue()
 	if err != nil {
 		return "", err
 	}
-	if err := validatePendingRunSequence(sessionID, next[sessionID]); err != nil {
+	if err := validatePendingRunSequence(sessionID, next); err != nil {
 		return "", err
 	}
-	if err := s.saveSessionState(sessionID, s.drafts[sessionID], next[sessionID]); err != nil {
+	if err := s.saveSessionState(sessionID, s.drafts[sessionID], next); err != nil {
+		if writeCommitted(err) {
+			return replacement, err
+		}
 		return "", err
 	}
-	s.pendingRuns = next
+
 	return replacement, nil
 }
 
@@ -315,18 +290,10 @@ func (s *Store) AcknowledgePendingRun(sessionID string, commandID authoring.Comm
 	if err := s.recordPromptHistoryLocked(commandID, commands[index].Command.Message.Clone()); err != nil {
 		return err
 	}
-	next := clonePendingRuns(s.pendingRuns)
-	next[sessionID] = slices.Delete(next[sessionID], index, index+1)
-	if len(next[sessionID]) == 0 {
-		delete(next, sessionID)
-	}
-	if err := validatePendingRunSequence(sessionID, next[sessionID]); err != nil {
+	next := clonePendingRunSlice(s.pendingRuns[sessionID])
+	next = slices.Delete(next, index, index+1)
+	if err := validatePendingRunSequence(sessionID, next); err != nil {
 		return err
 	}
-	if err := s.saveSessionState(sessionID, s.drafts[sessionID], next[sessionID]); err != nil {
-		return err
-	}
-	s.pendingRuns = next
-	s.history = s.trimHistory(s.history)
-	return nil
+	return s.saveSessionState(sessionID, s.drafts[sessionID], next)
 }

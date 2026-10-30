@@ -13,6 +13,7 @@ import (
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -499,15 +500,15 @@ func seedEveryItemKind(t *testing.T, rt *stubRuntime, sessionID string) {
 		ID: "item_question", RunID: "run_done", Kind: transcript.QuestionItem,
 		Status: transcript.ItemCompleted, OccurredAt: time.Unix(6, 0).UTC(),
 		Question: &transcript.Question{
-			Answers: [][]string{{"left", "custom route"}},
+			Answers: [][]string{{"left", "custom, route"}, {}},
 			Fields: []transcript.QuestionField{{
 				Prompt: "Which route?", Header: "Pick one",
-				Kind: transcript.QuestionChoice, Multiple: true, AllowCustom: true,
+				Kind: questioncontract.Choice, Multiple: true, AllowCustom: true,
 				Options: []transcript.QuestionOption{
 					{Label: "left", Description: "the short way", Preview: "◀"},
 					{Label: "right", Description: "the scenic way", Preview: "▶"},
 				},
-			}},
+			}, {Prompt: "Optional context", Kind: questioncontract.Text}},
 		},
 	}), testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_tool", RunID: "run_done", Kind: transcript.ToolCall,

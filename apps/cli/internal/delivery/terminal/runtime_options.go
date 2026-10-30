@@ -33,7 +33,7 @@ func (a *app) buildRuntimePickers(theme kit.Theme, glyphs kit.Glyphs) {
 			if !a.dialogs.modelDialog.Open() {
 				return
 			}
-			a.dialogs.modelDialog.Dismiss()
+			a.dismissModelPicker()
 			a.selectSessionModel(model)
 		},
 	)
@@ -41,7 +41,7 @@ func (a *app) buildRuntimePickers(theme kit.Theme, glyphs kit.Glyphs) {
 		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Models", Body: a.dialogs.modelPicker,
 		Where: layout.Placement{Width: 76, Height: 14},
 	})
-	a.dialogs.modelPicker.cancel = a.dialogs.modelDialog.Dismiss
+	a.dialogs.modelPicker.cancel = a.dismissModelPicker
 
 	a.dialogs.approvalModePicker = newPicker(theme, glyphs, "search approval modes",
 		func(policy protocol.ApprovalModePolicy) string { return approvalModeTitle(policy.Mode) },
@@ -92,22 +92,33 @@ func (a *app) ChooseModel() {
 		return
 	}
 	a.message("loading models")
-	a.loadModelPicker(true)
+	a.dialogs.modelPicker.Reset()
+	a.dialogs.modelPicker.SetItems(nil)
+	a.dialogs.modelDialog.Show()
+	a.refreshModelPicker()
 }
 
-func (a *app) loadModelPicker(reset bool) {
+func (a *app) dismissModelPicker() {
+	a.operations.Cancel(pickerCatalogOperation)
+	a.dialogs.modelDialog.Dismiss()
+}
+
+func (a *app) refreshModelPicker() {
+	presentation := a.dialogs.modelDialog.Identity()
+	if presentation == nil {
+		return
+	}
 	a.runOperation(pickerCatalogOperation, true,
 		func(ctx context.Context) ([]protocol.Model, error) { return a.runtime.ListModels(ctx) },
 		func(models []protocol.Model, err error) {
+			if !presentation.current(a.dialogs.modelDialog.Identity()) {
+				return
+			}
 			if err != nil && len(models) == 0 {
 				a.message("could not load models: " + err.Error())
 				return
 			}
-			if reset {
-				a.dialogs.modelPicker.Reset()
-			}
 			a.dialogs.modelPicker.SetItems(models)
-			a.dialogs.modelDialog.Show()
 			a.status.note("choose a provider-qualified model")
 			if err != nil {
 				a.message("model catalog incomplete: " + err.Error())

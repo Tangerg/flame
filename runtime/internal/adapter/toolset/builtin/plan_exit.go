@@ -5,13 +5,14 @@ import (
 	"errors"
 	"fmt"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/planpresentation"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -40,7 +41,7 @@ func newExit(modes planExitPolicy, plan planStateReader, interrupt runs.Interrup
 	}
 	e := &exiter{modes: modes, plan: plan}
 	return newInterruptTool[exitArgs](
-		toolcontract.FuncConfig{Name: string(tool.ExitPlanMode), Description: exitDescription},
+		toolcontract.FuncConfig{Name: string(builtincontract.ExitPlanMode), Description: exitDescription},
 		interrupt,
 		e.request,
 		e.render,
@@ -75,7 +76,7 @@ func (e *exiter) request(ctx context.Context, _ exitArgs) (runs.Interrupt, strin
 	pending := runs.Interrupt{
 		Kind: run.InterruptQuestion,
 		Question: &runs.QuestionPrompt{
-			ToolName:  string(tool.ExitPlanMode),
+			ToolName:  string(builtincontract.ExitPlanMode),
 			Arguments: arguments,
 			Fields: []runs.QuestionFieldSpec{{
 				Prompt: planpresentation.Render(steps),
@@ -90,7 +91,7 @@ func (e *exiter) request(ctx context.Context, _ exitArgs) (runs.Interrupt, strin
 	if validateErr := pending.Validate(); validateErr != nil {
 		return runs.Interrupt{}, "", fmt.Errorf("exit_plan_mode: %w", validateErr)
 	}
-	return pending, run.InterruptKey(string(run.InterruptQuestion), string(tool.ExitPlanMode), arguments), nil
+	return pending, run.InterruptKey(string(run.InterruptQuestion), string(builtincontract.ExitPlanMode), arguments), nil
 }
 
 func (e *exiter) render(ctx context.Context, _ exitArgs, resolution run.InterruptResolution) (string, error) {

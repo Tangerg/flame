@@ -15,6 +15,7 @@ type RestorePlan struct {
 	sessionReplacement session.Replacement
 	snapshot           Snapshot
 	planReplacement    *plan.Replacement
+	retirement         *ResourceRetirement
 }
 
 // NewRestorePlan binds an already-decided Session replacement to one normalized
@@ -42,11 +43,27 @@ func NewRestorePlan(
 	owned.Session = restoredSession
 	// The replacement is the sole stored representation of restored Plan steps.
 	owned.Plan = nil
+	var retirement *ResourceRetirement
+	if sessionReplacement.ExpectedRevision() != 0 {
+		value, err := newResourceRetirement(restoredSession.ID())
+		if err != nil {
+			return RestorePlan{}, err
+		}
+		retirement = &value
+	}
 	return RestorePlan{
 		sessionReplacement: sessionReplacement,
 		snapshot:           owned,
 		planReplacement:    replacement,
+		retirement:         retirement,
 	}, nil
+}
+
+func (r RestorePlan) Retirement() (ResourceRetirement, bool) {
+	if r.retirement == nil {
+		return ResourceRetirement{}, false
+	}
+	return *r.retirement, true
 }
 
 func ownRestorePlanReplacement(steps []plan.Step, replacement *plan.Replacement) (*plan.Replacement, error) {

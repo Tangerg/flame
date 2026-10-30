@@ -5,6 +5,7 @@ export {
   RpcError,
   RpcProtocolError,
   RpcTransportError,
+  RpcCancellationError,
 } from "./errors";
 export { asItemId, asRunId, asSegmentId, asSessionId } from "./ids";
 export type { ItemId, RunId, SegmentId, SessionId } from "./ids";

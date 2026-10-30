@@ -58,6 +58,51 @@ function renderCapturedMarkdown(content: string) {
   return testClient.render(<Markdown context={context} />);
 }
 
+it("decodes captured Markdown entities once across semantic text positions", () => {
+  const { container } = renderCapturedMarkdown(
+    [
+      "# Tom &amp; Jerry &copy; &#x1F600;",
+      "&amp;copy; &#38;copy; &copy &unknown; \\&copy;",
+      '[**&copy;**](https://example.test/?a=1&amp;b=2 "&copy; &amp;copy;")',
+      '![&copy; &#38;copy;](image&amp;name.png "&#169;")',
+      "| &copy; |\n| --- |\n| &#169; &amp;copy; |",
+      "<https://example.test/?a=1&amp;b=2>",
+      "> [!NOTE] &#38;copy; &copy;",
+    ].join("\n\n"),
+  );
+  expect(screen.getByRole("heading", { name: "Tom & Jerry © 😀" })).toBeTruthy();
+  expect(screen.getByText("&copy; &copy; &copy &unknown; &copy;")).toBeTruthy();
+  const link = screen.getByTitle("© &copy;");
+  expect(link.querySelector("strong")?.textContent).toBe("©");
+  expect(link.textContent).toBe("© (https://example.test/?a=1&b=2)");
+  expect(screen.getByRole("columnheader").textContent).toBe("©");
+  expect(screen.getByRole("cell").textContent).toBe("© &copy;");
+  expect(screen.getByRole("img", { name: "© &copy;" })).toBeTruthy();
+  expect(screen.getByText("&copy; ©")).toBeTruthy();
+  expect(container.textContent).toContain("image&name.png");
+  expect(container.textContent).toContain("https://example.test/?a=1&amp;b=2");
+});
+
+it("keeps code entities and authored HTML literal without executable elements", () => {
+  const { container } = renderCapturedMarkdown(
+    [
+      "`&copy; &#169; &amp;copy;`",
+      "```text\n&copy; &#169; &amp;copy;\n```",
+      '<script title="&copy;">&amp;</script>',
+      '<img src="x" onerror="alert(1)">',
+      "&lt;img src=x onerror=alert(1)&gt;",
+    ].join("\n\n"),
+  );
+  expect(Array.from(container.querySelectorAll("code"), (node) => node.textContent)).toEqual([
+    "&copy; &#169; &amp;copy;",
+    "&copy; &#169; &amp;copy;",
+  ]);
+  expect(container.textContent).toContain('<script title="&copy;">&amp;</script>');
+  expect(container.textContent).toContain('<img src="x" onerror="alert(1)">');
+  expect(container.textContent).toContain("<img src=x onerror=alert(1)>");
+  expect(container.querySelector("script, img, [onerror]")).toBeNull();
+});
+
 it("keeps captured links complete, non-repeating and inert", () => {
   const url = "https://example.test/review";
   const annotation = "Accepted evidence and follow-up";

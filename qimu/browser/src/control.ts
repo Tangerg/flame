@@ -24,6 +24,7 @@ export interface HostControl {
   validateUse(grant: UseGrant): Promise<void>;
   validateRoute(grant: RouteGrant): Promise<void>;
   snapshot(points: readonly string[]): Promise<Snapshot>;
+  closeSnapshot(snapshotId: string): Promise<void>;
   publish(request: PublicationRequest): Promise<PublicationResult>;
   publication(operationId: string): Promise<PublicationResult>;
   withdraw(request: Withdrawal): Promise<PublicationResult>;

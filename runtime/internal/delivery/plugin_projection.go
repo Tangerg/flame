@@ -70,7 +70,7 @@ func presentPluginRelease(release plugin.Release) (protocol.PluginRelease, error
 	for _, value := range v.Components {
 		var selector *protocol.PluginRendererSelector
 		if value.Selector != nil {
-			selector = &protocol.PluginRendererSelector{Type: value.Selector.Kind, Name: value.Selector.Name}
+			selector = &protocol.PluginRendererSelector{Type: value.Selector.Kind, Name: value.Selector.Name, Shape: value.Selector.Shape}
 		}
 		result.Components = append(result.Components, protocol.PluginClientComponent{Selector: selector, ID: value.ID.String(), Title: value.Title, Scope: value.Scope, Placement: value.Placement, Entry: value.Entry, Export: value.Export, Contribution: value.Contribution.String(), Material: value.Material, SettingsIntent: value.SettingsIntent})
 	}

@@ -26,7 +26,7 @@ describe("messageContextMenuModel", () => {
     const model = messageContextMenuModel({
       msg: message({ role: "assistant" }),
       copy: copy({ plain: "hi", canCopy: true }),
-      canRestoreFiles: false,
+      canRestoreFilesBeforeRun: false,
       conversation: [],
     });
 
@@ -41,7 +41,7 @@ describe("messageContextMenuModel", () => {
         blocks: [{ kind: "image", mime: "image/png", data: "abc" }],
       }),
       copy: copy(),
-      canRestoreFiles: false,
+      canRestoreFilesBeforeRun: false,
       conversation: [],
     });
 
@@ -52,7 +52,7 @@ describe("messageContextMenuModel", () => {
 
   it.each([false, true])(
     "enables historical root actions with file restore capability %s",
-    (canRestoreFiles) => {
+    (canRestoreFilesBeforeRun) => {
       const prompt = message({
         role: "user",
         runId: "run_1",
@@ -61,17 +61,17 @@ describe("messageContextMenuModel", () => {
       const model = messageContextMenuModel({
         msg: prompt,
         copy: copy({ plain: "fix this", canCopy: true }),
-        canRestoreFiles,
+        canRestoreFilesBeforeRun,
         conversation: [prompt, message({ id: "later-user", role: "user", runId: "run_2" })],
       });
 
       expect(model.user).toMatchObject({
         visible: true,
         editRerun: true,
-        editRerunRestore: canRestoreFiles,
+        editRerunRestore: canRestoreFilesBeforeRun,
         restore: true,
-        restoreFiles: canRestoreFiles,
-        restoreBoth: canRestoreFiles,
+        restoreFiles: canRestoreFilesBeforeRun,
+        restoreBoth: canRestoreFilesBeforeRun,
         fork: true,
       });
     },
@@ -85,7 +85,7 @@ describe("messageContextMenuModel", () => {
         blocks: [{ kind: "text", status: "complete", text: "child prompt" }],
       }),
       copy: copy({ plain: "child prompt", canCopy: true }),
-      canRestoreFiles: true,
+      canRestoreFilesBeforeRun: true,
       conversation: [message({ id: "root-user", runId: "root" })],
     });
 
@@ -106,10 +106,10 @@ describe("messageContextMenuModel", () => {
   it("enables assistant regenerate actions by restore capability", () => {
     expect(
       messageContextMenuModel({
-        msg: message({ role: "assistant" }),
+        msg: message({ role: "assistant", runId: "root" }),
         copy: copy(),
-        canRestoreFiles: true,
-        conversation: [message({ role: "assistant" })],
+        canRestoreFilesBeforeRun: true,
+        conversation: [message({ role: "assistant", runId: "root" })],
       }).assistant,
     ).toEqual({ visible: true, regenerate: true, regenerateRestore: true });
   });
@@ -118,7 +118,7 @@ describe("messageContextMenuModel", () => {
     const model = messageContextMenuModel({
       msg: message({ id: "child-answer", role: "assistant", runId: "child" }),
       copy: copy({ plain: "Child answer", canCopy: true }),
-      canRestoreFiles: true,
+      canRestoreFilesBeforeRun: true,
       conversation: [message({ id: "root-answer", role: "assistant", runId: "root" })],
     });
     expect(model.copyMarkdown).toBe(true);

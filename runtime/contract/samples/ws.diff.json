@@ -28,7 +28,8 @@
         {
           "type": "added",
           "rightLine": 11,
-          "code": "    x := 2"
+          "code": "    x := 2",
+          "noNewline": true
         }
       ]
     }

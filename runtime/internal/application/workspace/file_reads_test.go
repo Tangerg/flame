@@ -80,6 +80,12 @@ func TestFilesReadNormalizesBudgetBeforeCallingPort(t *testing.T) {
 	if got.Content != "text" || port.input.MaxBytes != DefaultFileReadBytes {
 		t.Fatalf("Read = %+v, port budget = %d", got, port.input.MaxBytes)
 	}
+	if _, err := files.Read(t.Context(), "", FileReadInput{Path: "file.txt", FromEnd: true}); err != nil {
+		t.Fatal(err)
+	}
+	if !port.input.FromEnd {
+		t.Fatal("end-anchored read lost its retention direction at the port")
+	}
 }
 
 func TestFilesGrepOwnsQueryLimitAndPortResultEnvelope(t *testing.T) {

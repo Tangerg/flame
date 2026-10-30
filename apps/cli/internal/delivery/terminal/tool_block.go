@@ -11,7 +11,6 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
-	coreDiff "github.com/Tangerg/oolong/core/diff"
 	"github.com/Tangerg/oolong/core/grid"
 	"github.com/Tangerg/oolong/core/layout"
 	"github.com/Tangerg/oolong/core/text"
@@ -246,6 +245,10 @@ func (t *toolBlock) readerDocument() readerDocument {
 func renderToolSections(p blockPresentation, sections []toolSection, truncate bool) []headless.Block {
 	blocks := make([]headless.Block, 0, len(sections))
 	for _, section := range sections {
+		if section.Style == toolSectionDiffRows {
+			blocks = append(blocks, renderDiffRows(p.Theme, section.Rows))
+			continue
+		}
 		value := section.Text
 		if truncate {
 			value = truncateToolDetail(value)
@@ -254,15 +257,6 @@ func renderToolSections(p blockPresentation, sections []toolSection, truncate bo
 			continue
 		}
 		switch section.Style {
-		case toolSectionDiff:
-			if hunks := parseUnifiedDiff(value); len(hunks) > 0 {
-				change := kit.NewDiff(kit.DiffConfig{
-					Theme: p.Theme, Glyphs: p.Glyphs, Hunks: hunks, Numbers: true,
-				})
-				blocks = append(blocks, change)
-			} else {
-				blocks = append(blocks, kit.NewCode(p.Syntax.Lines("diff", value)))
-			}
 		case toolSectionParagraph:
 			paragraph := kit.NewParagraph(value, p.Theme.Text)
 			paragraph.SetLinks(kit.LinkConfig{Enabled: section.Links})
@@ -323,57 +317,4 @@ func languageForPath(path string) string {
 	default:
 		return "text"
 	}
-}
-
-func parseUnifiedDiff(patch string) []coreDiff.Hunk {
-	var hunks []coreDiff.Hunk
-	var current *coreDiff.Hunk
-	oldLine, newLine := 0, 0
-	for line := range strings.SplitSeq(strings.TrimRight(patch, "\n"), "\n") {
-		if strings.HasPrefix(line, "@@ ") {
-			oldStart, newStart, ok := parseHunkHeader(line)
-			if !ok {
-				current = nil
-				continue
-			}
-			hunks = append(hunks, coreDiff.Hunk{Old: oldStart, New: newStart})
-			current = &hunks[len(hunks)-1]
-			oldLine, newLine = oldStart, newStart
-			continue
-		}
-		if current == nil || line == "" {
-			continue
-		}
-		body := line[1:]
-		switch line[0] {
-		case ' ':
-			current.Lines = append(current.Lines, coreDiff.Line{Kind: coreDiff.Context, Text: body, Old: oldLine, New: newLine})
-			oldLine, newLine = oldLine+1, newLine+1
-		case '-':
-			current.Lines = append(current.Lines, coreDiff.Line{Kind: coreDiff.Removed, Text: body, Old: oldLine})
-			oldLine++
-		case '+':
-			current.Lines = append(current.Lines, coreDiff.Line{Kind: coreDiff.Added, Text: body, New: newLine})
-			newLine++
-		}
-	}
-	return hunks
-}
-
-func parseHunkHeader(line string) (oldStart, newStart int, ok bool) {
-	fields := strings.Fields(line)
-	if len(fields) < 3 || !strings.HasPrefix(fields[1], "-") || !strings.HasPrefix(fields[2], "+") {
-		return 0, 0, false
-	}
-	parseStart := func(value string) (int, bool) {
-		value = strings.TrimLeft(value, "+-")
-		if before, _, found := strings.Cut(value, ","); found {
-			value = before
-		}
-		start, err := strconv.Atoi(value)
-		return start, err == nil && start >= 0
-	}
-	oldStart, oldOK := parseStart(fields[1])
-	newStart, newOK := parseStart(fields[2])
-	return oldStart, newStart, oldOK && newOK
 }

@@ -208,7 +208,7 @@ func (s *Server) Fence(_ context.Context, epoch uint64) error {
 	return nil
 }
 
-func (s *Server) Launch(ctx context.Context, request LaunchRequest) (Observation, error) {
+func (s *Server) Launch(ctx context.Context, request LaunchRequest) (_ Observation, err error) {
 	if err := validateLaunch(request); err != nil {
 		return Observation{}, err
 	}
@@ -246,6 +246,12 @@ func (s *Server) Launch(ctx context.Context, request LaunchRequest) (Observation
 	if err != nil {
 		return s.failedStart(request.AttemptID, "executable verification failed", err)
 	}
+	started := false
+	defer func() {
+		if !started {
+			err = errors.Join(err, releaseExecutable(path))
+		}
+	}()
 	command := exec.Command(path, request.Args...)
 	command.Env = slices.Clone(request.Env)
 	command.Dir = request.Directory
@@ -268,6 +274,7 @@ func (s *Server) Launch(ctx context.Context, request LaunchRequest) (Observation
 		_ = stdoutWriter.Close()
 		return s.failedStart(request.AttemptID, "process creation failed", err)
 	}
+	started = true
 	_ = stdoutWriter.Close()
 	live := &process{command: command, stdin: stdin, stdout: stdout, environment: slices.Clone(request.Env), done: make(chan struct{})}
 	s.processes[request.AttemptID] = live
@@ -340,6 +347,10 @@ func (s *Server) CloseAttempt(ctx context.Context, id string) (Observation, erro
 func (s *Server) wait(id string, live *process, path string) {
 	err := live.command.Wait()
 	_ = live.stdin.Close()
+	cleanupDiagnostic := ""
+	if cleanupErr := releaseExecutable(path); cleanupErr != nil {
+		cleanupDiagnostic = "; " + cleanupErr.Error()
+	}
 	s.mu.Lock()
 	item := s.journal.Attempts[id]
 	code := -1
@@ -358,12 +369,13 @@ func (s *Server) wait(id string, live *process, path string) {
 			item.Observation.Reason = "child wait failed without an exit observation"
 		}
 	}
+	item.Observation.Reason += cleanupDiagnostic
 	s.journal.Attempts[id] = item
 	if persistErr := s.persist(); persistErr != nil {
 		s.fenced = true
 		item.Observation.State = Unknown
 		item.Observation.ProofID = ""
-		item.Observation.Reason = "exit evidence could not be persisted"
+		item.Observation.Reason = "exit evidence could not be persisted" + cleanupDiagnostic
 		s.journal.Attempts[id] = item
 	}
 	attached := live.attached
@@ -373,7 +385,13 @@ func (s *Server) wait(id string, live *process, path string) {
 	if !attached {
 		_ = live.stdout.Close()
 	}
-	_ = os.Remove(path)
+}
+
+func releaseExecutable(path string) error {
+	if err := os.Remove(path); err != nil {
+		return fmt.Errorf("runner: executable snapshot cleanup failed: %w", err)
+	}
+	return nil
 }
 
 func (s *Server) failedStart(id, reason string, cause error) (Observation, error) {
@@ -389,7 +407,7 @@ func (s *Server) failedStart(id, reason string, cause error) (Observation, error
 	return item.Observation, cause
 }
 
-func (s *Server) snapshotExecutable(request LaunchRequest) (string, error) {
+func (s *Server) snapshotExecutable(request LaunchRequest) (_ string, err error) {
 	input, err := os.Open(request.Command)
 	if err != nil {
 		return "", err
@@ -407,11 +425,10 @@ func (s *Server) snapshotExecutable(request LaunchRequest) (string, error) {
 		return "", err
 	}
 	name := file.Name()
-	keep := false
 	defer func() {
-		_ = file.Close()
-		if !keep {
-			_ = os.Remove(name)
+		err = errors.Join(err, file.Close())
+		if err != nil {
+			err = errors.Join(err, releaseExecutable(name))
 		}
 	}()
 	hash := sha256.New()
@@ -428,10 +445,6 @@ func (s *Server) snapshotExecutable(request LaunchRequest) (string, error) {
 	if err := file.Sync(); err != nil {
 		return "", err
 	}
-	if err := file.Close(); err != nil {
-		return "", err
-	}
-	keep = true
 	return name, nil
 }
 

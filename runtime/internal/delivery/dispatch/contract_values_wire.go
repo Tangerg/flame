@@ -7,6 +7,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
@@ -355,7 +356,7 @@ func registerRunValues(s *Shapes) {
 		GoType: typeOf[protocol.Question](),
 		Constraints: []FieldConstraint{
 			{Field: "fields", Kind: ConstraintNonEmptyItems},
-			{Field: "fields", Kind: ConstraintMaxItems, Limit: transcript.MaximumQuestionFields},
+			{Field: "fields", Kind: ConstraintMaxItems, Limit: questioncontract.MaximumFields},
 		},
 	})
 	s.valueConstraint(FieldConstraintSpec{
@@ -363,8 +364,8 @@ func registerRunValues(s *Shapes) {
 		Constraints: []FieldConstraint{
 			{Field: "prompt", Kind: ConstraintPattern, Value: `\S`},
 			{Field: "header", Kind: ConstraintMaxLength, Limit: transcript.MaximumQuestionHeaderCharacters},
-			{Field: "options", Kind: ConstraintMinItems, Limit: 2},
-			{Field: "options", Kind: ConstraintMaxItems, Limit: transcript.MaximumQuestionOptions},
+			{Field: "options", Kind: ConstraintMinItems, Limit: questioncontract.MinimumOptions},
+			{Field: "options", Kind: ConstraintMaxItems, Limit: questioncontract.MaximumOptions},
 		},
 	})
 	s.valueConstraint(FieldConstraintSpec{

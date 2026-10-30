@@ -3,6 +3,7 @@ import {
   RpcError,
   RpcProtocolError,
   RpcTransportError,
+  RpcCancellationError,
   RpcConnectionError,
 } from "./errors";
 import { checkRequest, requestRequiresIdempotency } from "./request";
@@ -69,6 +70,8 @@ export interface RpcCallOptions {
   lastEventId?: string;
   requestMeta?: RequestMeta | null;
   onRequestRpcId?: (id: RpcId) => void;
+  // Durable command admission must finish before transport can observe the request.
+  beforeDispatch?: () => void;
 }
 
 export interface RpcClient {
@@ -393,7 +396,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
         pending.delete(id);
         request.reject(error);
       };
-      const onAbort = () => rejectPending(new RpcTransportError("aborted"));
+      const onAbort = () => rejectPending(new RpcCancellationError());
       const detach = () => signal?.removeEventListener("abort", onAbort);
       pending.set(id, {
         method,
@@ -417,6 +420,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
       }
 
       try {
+        callOptions.beforeDispatch?.();
         void transport
           .send(req, signal, {
             idempotencyKey: callOptions.idempotencyKey,

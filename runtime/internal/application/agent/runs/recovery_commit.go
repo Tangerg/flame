@@ -9,7 +9,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
@@ -29,7 +28,7 @@ func cloneRecoveryCommitInput(state RecoveryCommitInput) RecoveryCommitInput {
 	state.ItemReplacements = slices.Clone(state.ItemReplacements)
 	state.ConversationTransitions = cloneRecoveryConversationTransitions(state.ConversationTransitions)
 	state.ModelInvocations = cloneRecoveryModels(state.ModelInvocations)
-	state.IndependentEndpoints = cloneIndependentEndpoints(state.IndependentEndpoints)
+	state.IndependentEndpoints = slices.Clone(state.IndependentEndpoints)
 	state.ToolInvocations = slices.Clone(state.ToolInvocations)
 	state.DeleteInterrupts = slices.Clone(state.DeleteInterrupts)
 	state.PreservedSessionIDs = slices.Clone(state.PreservedSessionIDs)
@@ -68,15 +67,8 @@ func (r RecoveryCommit) ModelInvocations() []ModelInvocationRecovery {
 	return cloneRecoveryModels(r.state.ModelInvocations)
 }
 
-func cloneIndependentEndpoints(values []modelref.EndpointObservation) []modelref.EndpointObservation {
-	result := make([]modelref.EndpointObservation, len(values))
-	for i, value := range values {
-		result[i] = value.Clone()
-	}
-	return result
-}
 func (r RecoveryCommit) IndependentEndpoints() []modelref.EndpointObservation {
-	return cloneIndependentEndpoints(r.state.IndependentEndpoints)
+	return slices.Clone(r.state.IndependentEndpoints)
 }
 
 // ToolInvocations returns Tool attempts closed as incomplete.
@@ -185,24 +177,14 @@ func (r RecoveryCommit) Validate() error {
 		return err
 	}
 	seenSources := make(map[string]struct{}, len(state.IndependentEndpoints))
-	for _, source := range state.IndependentEndpoints {
+	for _, observation := range state.IndependentEndpoints {
+		if err := observation.Validate(); err != nil {
+			return err
+		}
+		source := observation.Snapshot()
 		owner, found := lostByID[source.RunID]
 		if !found || owner.State().SessionID() != source.SessionID || source.SegmentID == "" || source.FinishedAt.After(owner.State().UpdatedAt()) {
 			return errors.New("runs: independent source has no lost Run owner")
-		}
-		if err := source.Invocation.Validate(); err != nil {
-			return err
-		}
-		if source.HasResponse() {
-			if err := source.ResponseJSON.Validate(); err != nil {
-				return err
-			}
-		} else if source.CostUSD != nil {
-			return errors.New("runs: unobserved independent source has a price")
-		}
-
-		if _, err := accounting.CostFromOptional(source.CostUSD); err != nil {
-			return err
 		}
 		if _, duplicate := seenSources[source.Invocation.ID]; duplicate {
 			return errors.New("runs: independent recovery source repeats")
@@ -589,7 +571,7 @@ func cloneRecoveryModels(values []ModelInvocationRecovery) []ModelInvocationReco
 	cloned := slices.Clone(values)
 	for index, value := range cloned {
 		if value.Endpoint != nil {
-			source := value.Endpoint.Clone()
+			source := *value.Endpoint
 			cloned[index].Endpoint = &source
 		}
 	}
@@ -600,29 +582,12 @@ func validateRecoveryEndpoint(source *modelref.EndpointObservation, sessionID, r
 	if source == nil {
 		return nil
 	}
-	if err := source.Invocation.Validate(); err != nil {
+	if err := source.Validate(); err != nil {
 		return err
 	}
-	if !source.HasResponse() {
-		if source.Usage != nil || source.CostUSD != nil || (source.State != "started" && source.State != "failed" && source.State != "unknown") {
-			return errors.New("runs: recovery endpoint has no admitted outcome")
-		}
-	} else {
-		if source.State != "completed" && source.State != "failed" {
-			return errors.New("runs: recovery endpoint has no known outcome")
-		}
-		if err := source.ResponseJSON.Validate(); err != nil {
-			return err
-		}
-	}
-	if source.SessionID != sessionID || source.RunID != runID || source.Invocation.Caller.ID != callID || source.Invocation.StartedAt.Before(startedAt) || (!source.FinishedAt.IsZero() && (source.FinishedAt.Before(source.Invocation.StartedAt) || source.FinishedAt.After(finishedAt))) || (source.FinishedAt.IsZero() && source.State != "started") {
+	record := source.Snapshot()
+	if record.SessionID != sessionID || record.RunID != runID || record.Invocation.Caller.ID != callID || record.Invocation.StartedAt.Before(startedAt) || (!source.Open() && record.FinishedAt.After(finishedAt)) {
 		return errors.New("runs: recovery endpoint differs from its original call")
-	}
-	if _, err := accounting.CostFromOptional(source.CostUSD); err != nil {
-		return err
-	}
-	if source.CostUSD != nil && source.Usage == nil {
-		return errors.New("runs: recovery endpoint price has no reported usage")
 	}
 	return nil
 }

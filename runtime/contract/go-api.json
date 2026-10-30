@@ -1,6 +1,292 @@
 {
   "packages": [
     {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/builtin",
+      "constants": [
+        {
+          "name": "Added",
+          "type": "ChangeStatus",
+          "value": "\"added\""
+        },
+        {
+          "name": "ApplyPatch",
+          "type": "Name",
+          "value": "\"apply_patch\""
+        },
+        {
+          "name": "AskUser",
+          "type": "Name",
+          "value": "\"ask_user\""
+        },
+        {
+          "name": "CreateGoal",
+          "type": "Name",
+          "value": "\"create_goal\""
+        },
+        {
+          "name": "DelegateTask",
+          "type": "Name",
+          "value": "\"delegate_task\""
+        },
+        {
+          "name": "Deleted",
+          "type": "ChangeStatus",
+          "value": "\"deleted\""
+        },
+        {
+          "name": "Edit",
+          "type": "Name",
+          "value": "\"edit\""
+        },
+        {
+          "name": "EnterPlanMode",
+          "type": "Name",
+          "value": "\"enter_plan_mode\""
+        },
+        {
+          "name": "ExitPlanMode",
+          "type": "Name",
+          "value": "\"exit_plan_mode\""
+        },
+        {
+          "name": "GetGoal",
+          "type": "Name",
+          "value": "\"get_goal\""
+        },
+        {
+          "name": "Glob",
+          "type": "Name",
+          "value": "\"glob\""
+        },
+        {
+          "name": "Grep",
+          "type": "Name",
+          "value": "\"grep\""
+        },
+        {
+          "name": "ListSkills",
+          "type": "Name",
+          "value": "\"list_skills\""
+        },
+        {
+          "name": "LoadSkill",
+          "type": "Name",
+          "value": "\"load_skill\""
+        },
+        {
+          "name": "Modified",
+          "type": "ChangeStatus",
+          "value": "\"modified\""
+        },
+        {
+          "name": "Moved",
+          "type": "ChangeStatus",
+          "value": "\"moved\""
+        },
+        {
+          "name": "ProposeSkill",
+          "type": "Name",
+          "value": "\"propose_skill\""
+        },
+        {
+          "name": "Read",
+          "type": "Name",
+          "value": "\"read\""
+        },
+        {
+          "name": "ReadShellOutput",
+          "type": "Name",
+          "value": "\"read_shell_output\""
+        },
+        {
+          "name": "ReadSkillResource",
+          "type": "Name",
+          "value": "\"read_skill_resource\""
+        },
+        {
+          "name": "ReadToolResult",
+          "type": "Name",
+          "value": "\"read_tool_result\""
+        },
+        {
+          "name": "ReportGoalOutcome",
+          "type": "Name",
+          "value": "\"report_goal_outcome\""
+        },
+        {
+          "name": "SearchTools",
+          "type": "Name",
+          "value": "\"search_tools\""
+        },
+        {
+          "name": "SetPlan",
+          "type": "Name",
+          "value": "\"set_plan\""
+        },
+        {
+          "name": "Shell",
+          "type": "Name",
+          "value": "\"shell\""
+        },
+        {
+          "name": "StopShell",
+          "type": "Name",
+          "value": "\"stop_shell\""
+        }
+      ],
+      "functions": [
+        {
+          "name": "Names",
+          "signature": "func() []Name"
+        }
+      ],
+      "types": [
+        {
+          "name": "AppliedChange",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Path",
+              "type": "string",
+              "tag": "json:\"path\""
+            },
+            {
+              "name": "Status",
+              "type": "ChangeStatus",
+              "tag": "json:\"status\""
+            },
+            {
+              "name": "From",
+              "type": "string",
+              "tag": "json:\"from,omitempty\""
+            },
+            {
+              "name": "Added",
+              "type": "int",
+              "tag": "json:\"added\""
+            },
+            {
+              "name": "Removed",
+              "type": "int",
+              "tag": "json:\"removed\""
+            }
+          ]
+        },
+        {
+          "name": "ChangeStatus",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "Values",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "CommandResult",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Output",
+              "type": "string",
+              "tag": "json:\"output\""
+            },
+            {
+              "name": "ExitCode",
+              "type": "*int",
+              "tag": "json:\"exitCode,omitzero\""
+            }
+          ]
+        },
+        {
+          "name": "Name",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "Valid",
+              "signature": "func() bool"
+            }
+          ]
+        },
+        {
+          "name": "PatchResult",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Changes",
+              "type": "[]AppliedChange",
+              "tag": "json:\"changes\""
+            }
+          ]
+        },
+        {
+          "name": "SearchHit",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Path",
+              "type": "string",
+              "tag": "json:\"path\""
+            },
+            {
+              "name": "Snippet",
+              "type": "string",
+              "tag": "json:\"snippet,omitempty\""
+            },
+            {
+              "name": "LineNumber",
+              "type": "int",
+              "tag": "json:\"lineNumber,omitzero\""
+            }
+          ]
+        },
+        {
+          "name": "SearchResult",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Hits",
+              "type": "[]SearchHit",
+              "tag": "json:\"hits\""
+            }
+          ]
+        },
+        {
+          "name": "ShellArguments",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Command",
+              "type": "string",
+              "tag": "json:\"command\" jsonschema:\"minLength=1\" jsonschema_description:\"Shell command line, run by /bin/sh -c. Each call starts a fresh shell; directory changes, variables, and shell options do not persist.\""
+            },
+            {
+              "name": "Description",
+              "type": "string",
+              "tag": "json:\"description\" jsonschema:\"minLength=1,maxLength=120\" jsonschema_description:\"Concise action phrase shown while the command runs, such as Run backend tests. Describe the command's purpose; do not copy the command or predict its result.\""
+            },
+            {
+              "name": "TimeoutMillis",
+              "type": "*int",
+              "tag": "json:\"timeout_millis,omitzero\" jsonschema:\"minimum=1\" jsonschema_description:\"Hard execution timeout in milliseconds. Omit for no hard timeout.\""
+            },
+            {
+              "name": "RunInBackground",
+              "type": "bool",
+              "tag": "json:\"run_in_background,omitzero\" jsonschema_description:\"Return immediately with a shell_id while the command keeps running. Use for servers and watchers.\""
+            },
+            {
+              "name": "AutoBackgroundAfterSeconds",
+              "type": "*int",
+              "tag": "json:\"auto_background_after_seconds,omitzero\" jsonschema:\"minimum=1\" jsonschema_description:\"Move a foreground command to the background after this many seconds. Defaults to 60.\""
+            }
+          ]
+        }
+      ]
+    },
+    {
       "path": "github.com/Tangerg/flame/packages/go-sdk/capture",
       "functions": [
         {
@@ -842,6 +1128,26 @@
           "value": "\"toolName\""
         },
         {
+          "name": "ResultShapeCommand",
+          "type": "ResultShape",
+          "value": "\"command\""
+        },
+        {
+          "name": "ResultShapePatch",
+          "type": "ResultShape",
+          "value": "\"patch\""
+        },
+        {
+          "name": "ResultShapeSearch",
+          "type": "ResultShape",
+          "value": "\"search\""
+        },
+        {
+          "name": "ResultShapeWebSearch",
+          "type": "ResultShape",
+          "value": "\"webSearch\""
+        },
+        {
           "name": "ScopeCall",
           "type": "untyped string",
           "value": "\"call\""
@@ -900,6 +1206,21 @@
           "kind": "defined",
           "underlying": "string",
           "methods": [
+            {
+              "name": "Values",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "ResultShape",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "Valid",
+              "signature": "func() bool"
+            },
             {
               "name": "Values",
               "signature": "func() []string"
@@ -1001,6 +1322,10 @@
           "signature": "func(path string, expected os.FileInfo, maximumBytes int64) (*os.File, os.FileInfo, error)"
         },
         {
+          "name": "PathsOverlap",
+          "signature": "func(first string, second string) (bool, error)"
+        },
+        {
           "name": "ResolvePath",
           "signature": "func(root string, path string) (string, error)"
         },
@@ -1065,6 +1390,53 @@
               "signature": "func() error"
             }
           ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/filesystem/commit",
+      "constants": [
+        {
+          "name": "Durable",
+          "type": "State",
+          "value": "2"
+        },
+        {
+          "name": "Uncommitted",
+          "type": "State",
+          "value": "0"
+        },
+        {
+          "name": "Visible",
+          "type": "State",
+          "value": "1"
+        }
+      ],
+      "types": [
+        {
+          "name": "Result",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "State",
+              "type": "State"
+            },
+            {
+              "name": "Err",
+              "type": "error"
+            }
+          ],
+          "methods": [
+            {
+              "name": "Committed",
+              "signature": "func() bool"
+            }
+          ]
+        },
+        {
+          "name": "State",
+          "kind": "defined",
+          "underlying": "uint8"
         }
       ]
     },
@@ -7219,6 +7591,11 @@
               "name": "Code",
               "type": "*string",
               "tag": "json:\"code,omitzero\""
+            },
+            {
+              "name": "NoNewline",
+              "type": "bool",
+              "tag": "json:\"noNewline,omitzero\""
             }
           ]
         },
@@ -10533,7 +10910,12 @@
             {
               "name": "Name",
               "type": "string",
-              "tag": "json:\"name\""
+              "tag": "json:\"name,omitempty\""
+            },
+            {
+              "name": "Shape",
+              "type": "extension.ResultShape",
+              "tag": "json:\"shape,omitempty\""
             }
           ]
         },
@@ -11005,7 +11387,13 @@
         {
           "name": "QuestionFieldType",
           "kind": "defined",
-          "underlying": "string"
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "Values",
+              "signature": "func() []string"
+            }
+          ]
         },
         {
           "name": "QuestionOption",
@@ -11056,6 +11444,11 @@
               "name": "MaxBytes",
               "type": "*int",
               "tag": "json:\"maxBytes,omitzero\""
+            },
+            {
+              "name": "FromEnd",
+              "type": "bool",
+              "tag": "json:\"fromEnd,omitzero\""
             }
           ]
         },
@@ -13434,6 +13827,123 @@
               "name": "LastActiveAt",
               "type": "*time.Time",
               "tag": "json:\"lastActiveAt,omitzero\""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/question",
+      "constants": [
+        {
+          "name": "Choice",
+          "type": "Kind",
+          "value": "\"choice\""
+        },
+        {
+          "name": "MaximumFields",
+          "type": "untyped int",
+          "value": "4"
+        },
+        {
+          "name": "MaximumOptions",
+          "type": "untyped int",
+          "value": "4"
+        },
+        {
+          "name": "MinimumOptions",
+          "type": "untyped int",
+          "value": "2"
+        },
+        {
+          "name": "Text",
+          "type": "Kind",
+          "value": "\"text\""
+        }
+      ],
+      "functions": [
+        {
+          "name": "New",
+          "signature": "func(fields []Field) (Contract, error)"
+        },
+        {
+          "name": "ValidateFieldCount",
+          "signature": "func(count int) error"
+        }
+      ],
+      "types": [
+        {
+          "name": "Contract",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func(answers [][]string) error"
+            },
+            {
+              "name": "ValidateField",
+              "signature": "func(index int, values []string) error"
+            }
+          ]
+        },
+        {
+          "name": "Field",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Kind",
+              "type": "Kind"
+            },
+            {
+              "name": "Options",
+              "type": "[]string"
+            },
+            {
+              "name": "Multiple",
+              "type": "bool"
+            },
+            {
+              "name": "AllowCustom",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "FieldError",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Index",
+              "type": "int"
+            },
+            {
+              "name": "Cause",
+              "type": "error"
+            }
+          ],
+          "methods": [
+            {
+              "name": "Error",
+              "signature": "func() string"
+            },
+            {
+              "name": "Unwrap",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Kind",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "Valid",
+              "signature": "func() bool"
+            },
+            {
+              "name": "Values",
+              "signature": "func() []string"
             }
           ]
         }

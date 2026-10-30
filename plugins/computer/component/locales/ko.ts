@@ -23,7 +23,7 @@ export const ko = {
   "open.help":
     "승인 기간 동안 모델 도구가 Flame의 컴퓨터 제어 엔진을 통해 Runtime 호스트를 제어할 수 있습니다. 별도 기기나 격리된 대상을 사용하여 제어 대상 데스크톱, 계정, 브라우저 외부에서 운영 콘솔을 여세요. 이 화면을 닫아도 승인은 종료되지 않습니다.",
   "open.lease": "승인 시간(초)",
-  "open.invalid": "60~{{maximum}} 사이의 정수 초를 입력하세요.",
+  "open.invalid": "{{minimum}}~{{maximum}} 사이의 정수 초를 입력하세요.",
   "open.action": "승인하고 제어 시작",
   "close.action": "제어 승인 종료",
   "close.help":

@@ -5,18 +5,37 @@ import {
   MessageAlert,
   ShieldAlert,
 } from "@flame/icons/react";
-import type { ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 import { Icon, type IconGlyph } from "./font-scale";
 
 const CALLOUT = {
-  note: { title: "Note", glyph: CircleInfo },
-  tip: { title: "Tip", glyph: Lightbulb },
-  important: { title: "Important", glyph: MessageAlert },
-  warning: { title: "Warning", glyph: Alert },
-  caution: { title: "Caution", glyph: ShieldAlert },
-} as const satisfies Record<string, { title: string; glyph: IconGlyph }>;
+  note: CircleInfo,
+  tip: Lightbulb,
+  important: MessageAlert,
+  warning: Alert,
+  caution: ShieldAlert,
+} as const satisfies Record<string, IconGlyph>;
 
 export type CalloutKind = keyof typeof CALLOUT;
+
+export type CalloutLabels = Readonly<Record<CalloutKind, string>>;
+
+const CalloutLabelsContext = createContext<CalloutLabels | null>(null);
+
+export function CalloutLabelsProvider({
+  labels,
+  children,
+}: {
+  labels: CalloutLabels;
+  children: ReactNode;
+}) {
+  for (const kind of Object.keys(CALLOUT) as CalloutKind[]) {
+    if (typeof labels[kind] !== "string" || !labels[kind].trim()) {
+      throw new Error(`callout label is missing for ${kind}`);
+    }
+  }
+  return <CalloutLabelsContext value={labels}>{children}</CalloutLabelsContext>;
+}
 
 const MARKER = /^\[!([a-z]+)\](?:[ \t]+|\r?\n|$)(?:\r?\n)?/i;
 
@@ -40,12 +59,14 @@ export function Callout({
   kind: CalloutKind;
   children: ReactNode;
 }) {
-  const { title, glyph } = CALLOUT[kind];
+  const labels = useContext(CalloutLabelsContext);
+  if (!labels) throw new Error("callout labels provider is missing");
+  const glyph = CALLOUT[kind];
   return (
     <div data-slot="callout" data-callout={kind} role="note" dir="auto">
       <p data-slot="callout-title" dir="auto">
         <Icon glyph={glyph} size="sm" aria-hidden />
-        {title}
+        {labels[kind]}
       </p>
       {children}
     </div>

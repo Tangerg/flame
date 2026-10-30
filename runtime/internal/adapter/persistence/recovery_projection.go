@@ -8,9 +8,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
-// ListNonTerminalRuns projects complete durable Run aggregates for application
-// recovery. Storage exposes facts only; it does not decide which Run tree may
-// survive a restart.
+// ListNonTerminalRuns returns the complete unique set of constructed open Runs.
+// The primary key and active-root index own identity and Session uniqueness;
+// Domain restoration owns individual records, while recovery owns tree survival.
 func (r *RunStore) ListNonTerminalRuns(ctx context.Context) ([]run.Run, error) {
 	rows, err := sqlite.Connection(ctx, r.db).QueryContext(ctx,
 		`SELECT `+runColumns+`

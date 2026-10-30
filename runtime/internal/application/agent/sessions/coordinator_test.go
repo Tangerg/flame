@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
@@ -98,7 +99,7 @@ func TestClaimSessionMutationAllowsOpenInterrupt(t *testing.T) {
 func TestApplyRunCancelProjectsTerminalTranscript(t *testing.T) {
 	finishedAt := time.Date(2026, 7, 13, 2, 3, 4, 0, time.UTC)
 	createdAt := finishedAt.Add(-time.Minute)
-	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}}
+	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}}
 	selection := testsupport.DefaultModelSelection()
 	var applied TerminalPlan
 	stores := coordinatorStores{
@@ -168,7 +169,7 @@ func TestApplyRunCancelProjectsTerminalTranscript(t *testing.T) {
 func TestApplyRunCancelSettlesQuestionToolAndClosesModelContext(t *testing.T) {
 	finishedAt := time.Date(2026, 8, 11, 2, 3, 4, 0, time.UTC)
 	createdAt := finishedAt.Add(-time.Minute)
-	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Favorite color?", Kind: transcript.QuestionText}}}
+	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Favorite color?", Kind: questioncontract.Text}}}
 	selection := testsupport.DefaultModelSelection()
 	known := chat.ToolResult{ID: "provider_written", Name: "write", Output: chat.NewTextToolOutput("acknowledged before the question parked")}
 	var applied TerminalPlan
@@ -341,7 +342,7 @@ func TestApplyRunLostProjectsTerminalTranscript(t *testing.T) {
 func TestApplyRunLostTerminalizesWholeParkedTreeInPostorder(t *testing.T) {
 	createdAt := time.Date(2026, 7, 17, 2, 0, 0, 0, time.UTC)
 	finishedAt := createdAt.Add(time.Minute)
-	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue child?", Kind: transcript.QuestionText}}}
+	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue child?", Kind: questioncontract.Text}}}
 	childLineage := run.Lineage{
 		SpawnedByItemID: "item_spawn", ParentRunID: "run_root", RootRunID: "run_root",
 	}

@@ -17,12 +17,10 @@ func TestTrustStore_RoundTrip(t *testing.T) {
 
 	const root = "/home/me/project"
 
-	// Default: untrusted.
 	if ok, _ := s.IsTrusted(ctx, root); ok {
 		t.Fatal("a never-trusted project should not be trusted")
 	}
 
-	// Trust → trusted; idempotent.
 	if err := s.Trust(ctx, root); err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +31,6 @@ func TestTrustStore_RoundTrip(t *testing.T) {
 		t.Fatal("project should be trusted after Trust")
 	}
 
-	// Untrust → gone.
 	if err := s.Untrust(ctx, root); err != nil {
 		t.Fatal(err)
 	}

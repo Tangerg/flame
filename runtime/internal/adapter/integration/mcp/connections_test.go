@@ -142,7 +142,7 @@ func TestOpenRequiresStartupAndProcessLifetimes(t *testing.T) {
 	if connections, _, err := testOpen(t.Context(), nil, nil, nil); err == nil || connections != nil {
 		t.Fatalf("Open without process lifetime = (%v, %v), want nil connections and non-nil error", connections, err)
 	}
-	if connections, err := openConnections(t.Context(), t.Context(), nil, nil, nil, nil, newClient()); err == nil || connections != nil {
+	if connections, err := openConnections(t.Context(), t.Context(), nil, nil, nil, nil); err == nil || connections != nil {
 		t.Fatalf("Open without configuration source = (%v, %v), want nil connections and non-nil error", connections, err)
 	}
 }
@@ -405,22 +405,17 @@ func TestReconnectPublishesRemovalBeforeVerifiedReplacement(t *testing.T) {
 		t.Fatalf("initial tools = %v, want [remote_first]", toolNames(initial))
 	}
 
-	publications := make(chan []string, 2)
-	c.setToolSink(func(catalog []Executable, _, _ []mcpserver.ID) { publications <- toolNames(catalog) })
-	if got := <-publications; !slices.Equal(got, toolNames(initial)) {
-		t.Fatalf("initial publication = %v, want %v", got, toolNames(initial))
-	}
+	publications := catalogPublications(t, c)
+	awaitCatalog(t, publications, func(tools []Executable) bool { return len(tools) == 1 })
 	addRemoteTool(t, remote, "second")
-	if listed := liveToolNames(c, config.ID()); !slices.Equal(listed, []string{"remote_first"}) {
-		t.Fatalf("catalog before reconnect = %v; want the admitted first tool", listed)
-	}
+	awaitCatalog(t, publications, func(tools []Executable) bool { return len(tools) == 2 })
 	if err := connectLaunch(c, t.Context(), mustLaunch(t, config)); err != nil {
 		t.Fatalf("Reconnect: %v", err)
 	}
 	if connecting := <-publications; len(connecting) != 0 {
 		t.Fatalf("connecting publication = %v, want empty", connecting)
 	}
-	settled := <-publications
+	settled := toolNames(<-publications)
 	slices.Sort(settled)
 	if want := []string{"remote_first", "remote_second"}; !slices.Equal(settled, want) {
 		t.Fatalf("settled publication = %v, want %v", settled, want)
@@ -442,7 +437,7 @@ func TestConfigureOAuthRestoreFailureWithdrawsPreviousConnection(t *testing.T) {
 		},
 	}
 	c := &connections{
-		lifetime: t.Context(), client: newClient(),
+		lifetime: t.Context(), client: newClient(nil),
 		oauthSessions: &oauthLoadStore{load: func(context.Context, mcpserver.OAuthTarget) ([]byte, string, bool, error) {
 			return nil, "", false, loadErr
 		}},
@@ -485,7 +480,7 @@ func TestShutdownCancelsAndJoinsOAuthRestore(t *testing.T) {
 	finishLoad := func() { releaseOnce.Do(func() { close(release) }) }
 	t.Cleanup(finishLoad)
 	c := &connections{
-		lifetime: t.Context(), client: newClient(),
+		lifetime: t.Context(), client: newClient(nil),
 		oauthSessions: &oauthLoadStore{load: func(ctx context.Context, _ mcpserver.OAuthTarget) ([]byte, string, bool, error) {
 			close(started)
 			<-ctx.Done()
@@ -587,7 +582,7 @@ func TestCanceledSessionCloseRetainsFailureForShutdown(t *testing.T) {
 	t.Cleanup(finishClose)
 	session := new(sdkmcp.ClientSession)
 	c := &connections{
-		lifetime: t.Context(), client: newClient(),
+		lifetime: t.Context(), client: newClient(nil),
 		sessions: map[*sdkmcp.ClientSession]*ownedSession{session: {closeFn: func() error {
 			<-release
 			return closeErr
@@ -625,7 +620,7 @@ func TestDetachCancelsAuthorizationDuringSessionRetirement(t *testing.T) {
 		},
 	}
 	c := &connections{
-		lifetime: t.Context(), client: newClient(),
+		lifetime: t.Context(), client: newClient(nil),
 		servers: []*server{{id: config.ID(), config: config, session: session, state: mcpserver.ConnectionConnected}},
 		sessions: map[*sdkmcp.ClientSession]*ownedSession{session: {closeFn: func() error {
 			close(started)
@@ -794,7 +789,7 @@ func TestOpenReportsStartupFailureAndKeepsHealthyServers(t *testing.T) {
 					}
 				}
 				return nil, errUnknownTestServer
-			}, nil, newClient())
+			}, nil)
 			if err != nil {
 				t.Fatalf("Open: %v", err)
 			}
@@ -914,18 +909,16 @@ func TestReconnectAdmitsNewCrossServerPublicToolNameCollision(t *testing.T) {
 		t.Fatalf("initial tools = %v, want [a_b_c a_safe]", names)
 	}
 
-	publications := make(chan []string, 2)
-	c.setToolSink(func(catalog []Executable, _, _ []mcpserver.ID) { publications <- toolNames(catalog) })
-	if got := <-publications; !slices.Equal(got, toolNames(initial)) {
-		t.Fatalf("initial publication = %v, want %v", got, toolNames(initial))
-	}
+	publications := catalogPublications(t, c)
+	awaitCatalog(t, publications, func(tools []Executable) bool { return len(tools) == 2 })
 	addRemoteTool(t, secondRemote, "b_c")
+	awaitCatalog(t, publications, func(tools []Executable) bool { return len(tools) == 3 })
 	err = connectLaunch(c, t.Context(), mustLaunch(t, ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("a"), Transport: mcpserver.TransportStreamableHTTP, URL: secondHTTP.URL}}))
 	if err != nil {
 		t.Fatalf("Reconnect collision error = %v", err)
 	}
 	for phase, want := range [][]string{{"a_b_c"}, {"a_b_c", "a_b_c", "a_safe"}} {
-		if names := <-publications; !slices.Equal(names, want) {
+		if names := toolNames(<-publications); !slices.Equal(names, want) {
 			t.Fatalf("publication %d = %v, want %v", phase, names, want)
 		}
 	}
@@ -1031,7 +1024,7 @@ func testOpen(ctx, lifetime context.Context, servers []ServerConfig, oauthSessio
 			}
 		}
 		return nil, errUnknownTestServer
-	}, nil, newClient())
+	}, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1159,9 +1152,9 @@ func mustLaunch(t testing.TB, config ServerConfig) *launchPermit {
 
 // Transport invariants use the same validated ledger and startup ordering as Pool.
 func openConnections(ctx, lifetime context.Context, servers []ServerConfig, oauthSessions oauthSessionStore,
-	configuration func(context.Context, mcpserver.ID) (*launchPermit, error), callbacks *qimumcp.Callbacks, client *sdkmcp.Client,
+	configuration func(context.Context, mcpserver.ID) (*launchPermit, error), callbacks *qimumcp.Callbacks,
 ) (*connections, error) {
-	c, err := newConnections(ctx, lifetime, servers, oauthSessions, callbacks, client)
+	c, err := newConnections(ctx, lifetime, servers, oauthSessions, callbacks)
 	if err != nil {
 		return nil, err
 	}
@@ -1175,7 +1168,7 @@ var errUnknownTestServer = errors.New("test source is unknown")
 
 func newTestConnections(t testing.TB) *connections {
 	t.Helper()
-	owner, err := newConnections(t.Context(), t.Context(), nil, nil, nil, newClient())
+	owner, err := newConnections(t.Context(), t.Context(), nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

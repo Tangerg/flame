@@ -441,7 +441,7 @@ func TestDefinitivelyRefusedStartReturnsToTheDurableQueueWithANewIdentity(t *tes
 	base.Instant = true
 	runtime := &refusingFirstCommandRuntime{Runtime: base}
 	stateDirectory := t.TempDir()
-	host, stop, workbenchForHost := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), Runtime: runtime, Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(stateDirectory)})
+	host, stop, workbenchForHost := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), Runtime: runtime, Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(t, stateDirectory)})
 	host.Shows(t, "Ask flame")
 	host.Type("preserve a refused start")
 	host.Press(input.Enter)
@@ -478,7 +478,7 @@ func TestPluginChangedStartWaitsForTheUserToRetry(t *testing.T) {
 	base.Instant = true
 	runtime := &refusingFirstCommandRuntime{Runtime: base, refusal: conversation.ErrPluginChanged}
 	stateDirectory := t.TempDir()
-	host, stop, workbenchForHost := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), Runtime: runtime, Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(stateDirectory)})
+	host, stop, workbenchForHost := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), Runtime: runtime, Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(t, stateDirectory)})
 	host.Shows(t, "Ask flame")
 	host.Type("start during a plugin update")
 	host.Press(input.Enter)
@@ -549,7 +549,7 @@ func TestInvalidAcceptedStartReceiptCancelsAndSettlesTheExactMutation(t *testing
 	host.Shows(t, "canceled")
 	host.Hides(t, "start segment stream: user item identity is empty")
 	stop()
-	reopened, err := openTestWorkbench(stateDirectory)
+	reopened, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -656,7 +656,7 @@ func TestLaunchReplaysADispatchingRunFromTheDurableOutbox(t *testing.T) {
 	base.Instant = true
 	base.Script = stableCompletedScript
 	stateDirectory := t.TempDir()
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -698,7 +698,7 @@ func TestLaunchDoesNotReplayAnOutboxCommandAlreadyVisibleInRuntime(t *testing.T)
 		t.Fatal(err)
 	}
 	stateDirectory := t.TempDir()
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -732,7 +732,7 @@ func TestLaunchRequeuesARejectedHandshakeBehindAnotherActiveRun(t *testing.T) {
 		t.Fatal(err)
 	}
 	stateDirectory := t.TempDir()
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -797,7 +797,7 @@ func TestLaunchFinishesCancellationOfAnUnconfirmedRunStart(t *testing.T) {
 		t.Fatal(err)
 	}
 	stateDirectory := t.TempDir()
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -855,7 +855,7 @@ func TestCanceledStartRetainsOwnershipUntilDurableSettlementRecovers(t *testing.
 		t.Fatal(err)
 	}
 	stateDirectory := t.TempDir()
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -925,7 +925,7 @@ func TestLaunchCancelsAnAcceptedRunWithAnInvalidRecoveredReceipt(t *testing.T) {
 		Options: authoring.RunOptions{},
 	}
 	stateDirectory := t.TempDir()
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -990,6 +990,15 @@ func TestCommandReplayGuaranteeExpiresAtItsDeadline(t *testing.T) {
 }
 
 func TestRecoveredStartRefusesAGuardFromAnotherReplayStore(t *testing.T) {
+	store, err := memoryTestWorkbench()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := store.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	base := runtimefixture.New()
 	profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
 	profile = profileWithReplay(t, profile, "idp_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", 10*time.Minute)
@@ -1003,7 +1012,7 @@ func TestRecoveredStartRefusesAGuardFromAnotherReplayStore(t *testing.T) {
 		Message: authoring.Message{Text: "do not replay outside the owning store"}, Options: authoring.RunOptions{},
 	}
 	_, err = openStartRunWithBackoff(
-		t.Context(), runtime, workbench.PendingRun{Command: command,
+		t.Context(), runtime, store, workbench.PendingRun{Command: command,
 			Replay: protectedCommandReplayGuard(t, "idp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", time.Now().UTC().Add(time.Hour))},
 		policy, runtimeRecoveryBackoff,
 	)
@@ -1068,7 +1077,7 @@ func TestLaunchDoesNotReplayRunOrResumeOwnershipIntoAnotherRuntimeStore(t *testi
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			stateDirectory := t.TempDir()
-			store, err := openTestWorkbench(stateDirectory)
+			store, err := openTestWorkbench(t, stateDirectory)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1082,7 +1091,7 @@ func TestLaunchDoesNotReplayRunOrResumeOwnershipIntoAnotherRuntimeStore(t *testi
 			}
 			host, stop, workbenchForHost := runUIFromConfig(t, Config{
 				Runtime: runtime, RuntimeProfile: &profile, SessionID: "ses_demo_1",
-				Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(stateDirectory),
+				Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(t, stateDirectory),
 			})
 			host.Shows(t, test.want)
 			if runtime.startCount() != 0 {

@@ -21,8 +21,8 @@ const (
 	resultClosed
 )
 
-// ResultJSON folds a streamed run into one final JSON object. It retains only
-// assistant prose and terminal metadata; callers that need every event use [NDJSON].
+// The final object retains assistant output and terminal metadata rather than
+// the full event stream exposed by [ndjsonRenderer].
 type resultJSONRenderer struct {
 	out   io.Writer
 	err   error
@@ -105,7 +105,6 @@ type resultFrame struct {
 	Usage      *usageJSON      `json:"usage,omitzero"`
 }
 
-// NewResultJSON builds a renderer that emits at most one JSON result from Close.
 func newResultJSONRenderer(w io.Writer) *resultJSONRenderer {
 	return &resultJSONRenderer{out: w}
 }

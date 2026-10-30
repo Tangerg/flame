@@ -44,7 +44,7 @@ func TestQuestionnaireOwnsAnswersAndNavigation(t *testing.T) {
 	}
 }
 
-func TestQuestionnaireNormalizesCustomMultipleValues(t *testing.T) {
+func TestQuestionnairePreservesOneLiteralCustomValue(t *testing.T) {
 	question := conversation.Question{
 		RunID: "run_1", ItemID: "targets", Title: "Targets",
 		Fields: []conversation.QuestionField{{
@@ -57,12 +57,15 @@ func TestQuestionnaireNormalizesCustomMultipleValues(t *testing.T) {
 		t.Fatal(err)
 	}
 	review.response(0).multiple = []questionChoice{offeredQuestionChoice("linux"), customQuestionChoice()}
-	review.response(0).custom = " custom, darwin "
+	review.response(0).custom = "custom, darwin"
+	if err := review.ConfirmCurrent(); err != nil {
+		t.Fatal(err)
+	}
 	answer, err := review.Answer()
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"linux", "custom", "darwin"}
+	want := []string{"linux", "custom, darwin"}
 	if !slices.Equal(answer.Values[0], want) {
 		t.Fatalf("custom values = %q, want %q", answer.Values[0], want)
 	}
@@ -76,12 +79,12 @@ func TestQuestionnaireRestoresOfferedAndCustomChoices(t *testing.T) {
 			{Prompt: "Checks", Kind: conversation.QuestionMulti, AllowCustom: true, Options: []protocol.QuestionOption{{Label: "unit"}, {Label: "integration"}}},
 		},
 	}
-	previous := conversation.QuestionAnswer{Values: [][]string{{"freebsd"}, {"unit", "smoke", "manual"}}}
+	previous := conversation.QuestionAnswer{Values: [][]string{{"freebsd"}, {"unit", "smoke, manual"}}}
 	review, err := newQuestionnaire(question, previous)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if response := review.response(0); response == nil || !response.single.custom || response.custom != "freebsd" {
+	if response := review.response(0); response == nil || response.single.kind != customChoice || response.custom != "freebsd" {
 		t.Fatalf("restored single response = %+v", response)
 	}
 	wantChoices := []questionChoice{offeredQuestionChoice("unit"), customQuestionChoice()}
@@ -97,19 +100,56 @@ func TestQuestionnaireRestoresOfferedAndCustomChoices(t *testing.T) {
 	}
 }
 
-func TestCustomMultipleValuesRejectEmptyAndDuplicateInput(t *testing.T) {
-	for _, test := range []struct {
-		name  string
-		value string
-	}{
-		{name: "empty separators", value: " , "},
-		{name: "duplicate", value: "linux, darwin, linux"},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			if _, err := parseCustomChoices(test.value); err == nil {
-				t.Fatalf("parseCustomChoices(%q) accepted invalid input", test.value)
-			}
-		})
+func TestQuestionnaireRejectsRestoringMultipleCustomValues(t *testing.T) {
+	question := conversation.Question{RunID: "run_1", ItemID: "q_1", Title: "Choices", Fields: []conversation.QuestionField{{Prompt: "Targets", Kind: conversation.QuestionMulti, AllowCustom: true, Options: []protocol.QuestionOption{{Label: "a"}, {Label: "b"}}}}}
+	if _, err := newQuestionnaire(question, conversation.QuestionAnswer{Values: [][]string{{"custom one", "custom two"}}}); err == nil {
+		t.Fatal("multiple custom values were restored as a valid field")
+	}
+}
+
+func TestQuestionnaireRequiresExplicitConfirmationBeforeSkipping(t *testing.T) {
+	question := conversation.Question{RunID: "run_1", ItemID: "q_1", Title: "Optional", Fields: []conversation.QuestionField{
+		{Prompt: "Context", Kind: conversation.QuestionText},
+		{Prompt: "Platform", Kind: conversation.QuestionSingle, Options: []protocol.QuestionOption{{Label: "a"}, {Label: "b"}}},
+		{Prompt: "Checks", Kind: conversation.QuestionMulti, Options: []protocol.QuestionOption{{Label: "a"}, {Label: "b"}}},
+	}}
+	review, err := newQuestionnaire(question, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := review.Answer(); err == nil {
+		t.Fatal("unconfirmed blank draft became a skip")
+	}
+	if err := review.ConfirmCurrent(); err != nil {
+		t.Fatal(err)
+	}
+	review.Advance()
+	review.response(1).single = skippedQuestionChoice()
+	if err := review.ConfirmCurrent(); err != nil {
+		t.Fatal(err)
+	}
+	review.Advance()
+	if err := review.ConfirmCurrent(); err != nil {
+		t.Fatal(err)
+	}
+	answer, err := review.Answer()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if answer.Values == nil || len(answer.Values) != 3 {
+		t.Fatalf("skip response = %#v", answer)
+	}
+	for _, values := range answer.Values {
+		if values == nil || len(values) != 0 {
+			t.Fatalf("explicit skipped field = %#v", values)
+		}
+	}
+	restored, err := newQuestionnaire(question, answer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if restored.response(1).single.kind != skippedChoice {
+		t.Fatal("restored skip selected an offered answer")
 	}
 }
 
@@ -126,6 +166,6 @@ func TestQuestionnaireRejectsMissingFieldsAndIncompleteAnswers(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := review.Answer(); err == nil {
-		t.Fatal("empty required answer was accepted")
+		t.Fatal("unconfirmed field was accepted")
 	}
 }

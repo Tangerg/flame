@@ -22,6 +22,85 @@ beforeEach(() => {
 });
 
 describe("the composer's drafts", () => {
+  it("keeps partial failures attached until the user removes them", async () => {
+    const first = Promise.withResolvers<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
+    const second = Promise.withResolvers<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
+    vi.spyOn(imageInput, "fileToInputImage")
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+    composer().setValue("keep both selections");
+    composer().addImageFiles([new File([""], "first.png"), new File([""], "second.png")]);
+    expect(composer().composer.draft.imageAttachments.map((image) => image.status)).toEqual([
+      "pending",
+      "pending",
+    ]);
+    first.resolve({ mime: "image/png", data: "first-image", name: "first.png" });
+    second.reject(new Error("file read failed"));
+    await vi.waitFor(() =>
+      expect(composer().composer.draft.imageAttachments.map((image) => image.status)).toEqual([
+        "ready",
+        "failed",
+      ]),
+    );
+    expect(composer().captureSubmission().attachmentsReady).toBe(false);
+    expect(composer().captureSubmission().consume()).toBe(false);
+    const failed = composer().composer.draft.imageAttachments[1]!;
+    expect(failed.name).toBe("second.png");
+    composer().removeImage(failed.id);
+    expect(composer().captureSubmission().attachmentsReady).toBe(true);
+    expect(composer().composer.draft.images).toMatchObject([{ data: "first-image" }]);
+    expect(composer().composer.draft.value).toBe("keep both selections");
+  });
+
+  it("does not restore a pending image after the user removes it", async () => {
+    const reading =
+      Promise.withResolvers<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
+    vi.spyOn(imageInput, "fileToInputImage").mockReturnValue(reading.promise);
+    composer().addImageFiles([new File([""], "cancelled.png")]);
+    composer().removeImage(composer().composer.draft.imageAttachments[0]!.id);
+    reading.resolve({ mime: "image/png", data: "cancelled", name: "cancelled.png" });
+    await reading.promise;
+    await Promise.resolve();
+    expect(composer().composer.draft.imageAttachments).toEqual([]);
+  });
+
+  it.each(["clear", "replace", "discard"])("retires pending image input on %s", async (action) => {
+    const reading =
+      Promise.withResolvers<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
+    vi.spyOn(imageInput, "fileToInputImage").mockReturnValue(reading.promise);
+    composer().loadSession("retired");
+    composer().addImageFiles([new File([""], "retired.png")]);
+    if (action === "clear") composer().clear();
+    else if (action === "replace") composer().replaceDraft({ text: "replacement" });
+    else composer().discardSession("retired");
+    reading.resolve({ mime: "image/png", data: "retired", name: "retired.png" });
+    await reading.promise;
+    await Promise.resolve();
+    expect(composer().composer.draft.imageAttachments).toEqual([]);
+    expect(composer().composer.draft.value).toBe(action === "replace" ? "replacement" : "");
+  });
+
+  it("finishes image reading in its original Session while another draft is active", async () => {
+    const reading =
+      Promise.withResolvers<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
+    vi.spyOn(imageInput, "fileToInputImage").mockReturnValue(reading.promise);
+    composer().loadSession("original");
+    composer().setValue("original text");
+    composer().addImageFiles([new File([""], "original.png")]);
+    composer().loadSession("other");
+    composer().setValue("other text");
+    reading.resolve({ mime: "image/png", data: "original-image", name: "original.png" });
+    await reading.promise;
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(composer().composer.draft.value).toBe("other text");
+    expect(composer().composer.draft.images).toEqual([]);
+    composer().loadSession("original");
+    expect(composer().composer.draft.value).toBe("original text");
+    expect(composer().composer.draft.images).toMatchObject([{ data: "original-image" }]);
+  });
+
   it("survive a restart", async () => {
     composer().loadSession("s1");
     composer().setValue("half a thought");
@@ -238,12 +317,12 @@ describe("captured draft replacement", () => {
     await vi.waitFor(() => expect(composer().composer.draft.images).toHaveLength(2));
     expect(composer().composer.draft.value).toBe("original draft");
     expect(composer().composer.draft.images.map((image) => image.data)).toEqual([
-      "second-image",
       "first-image",
+      "second-image",
     ]);
   });
 
-  it("accumulates ordinary image imports that settle in reverse order", async () => {
+  it("keeps selection order when ordinary image imports settle in reverse order", async () => {
     const first = Promise.withResolvers<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
     const second = Promise.withResolvers<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
     vi.spyOn(imageInput, "fileToInputImage")
@@ -257,8 +336,8 @@ describe("captured draft replacement", () => {
     first.resolve({ mime: "image/png", data: "first-image", name: "first.png" });
     await vi.waitFor(() => expect(composer().composer.draft.images).toHaveLength(2));
     expect(composer().composer.draft.images.map((image) => image.data)).toEqual([
-      "second-image",
       "first-image",
+      "second-image",
     ]);
   });
 });

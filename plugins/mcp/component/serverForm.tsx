@@ -71,6 +71,8 @@ export function ServerForm({
   const timeoutErrorId = useId();
   const saving = settings.busy(key);
   const probing = state.probing.has(key);
+  const jsonIssue = edit.jsonIssue;
+  const jsonErrorId = useId();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const hasAuthStored = (server?.authorizationMasked ?? "") !== "";
   const hasHeadersStored = Object.keys(server?.headersMasked ?? {}).length > 0;
@@ -157,9 +159,22 @@ export function ServerForm({
                 spellCheck={false}
                 pending={saving}
                 value={draft.args}
+                invalid={jsonIssue === "args"}
+                aria-describedby={
+                  jsonIssue === "args" ? jsonErrorId : undefined
+                }
                 onChange={(event) => updateDraft("args", event.target.value)}
                 placeholder={t("mcp.form.args.placeholder")}
               />
+              {jsonIssue === "args" && (
+                <span
+                  id={jsonErrorId}
+                  role="alert"
+                  style={{ color: "var(--color-negative)" }}
+                >
+                  {t("mcp.form.args.invalid")}
+                </span>
+              )}
             </FormField>
             <div style={column}>
               <FormField label={t("mcp.form.env")}>
@@ -172,6 +187,10 @@ export function ServerForm({
                   spellCheck={false}
                   pending={saving}
                   value={draft.environment.text}
+                  invalid={jsonIssue === "environment"}
+                  aria-describedby={
+                    jsonIssue === "environment" ? jsonErrorId : undefined
+                  }
                   onChange={(event) =>
                     updateDraft(
                       "environment",
@@ -184,6 +203,15 @@ export function ServerForm({
                       : t("mcp.form.env.placeholder")
                   }
                 />
+                {jsonIssue === "environment" && (
+                  <span
+                    id={jsonErrorId}
+                    role="alert"
+                    style={{ color: "var(--color-negative)" }}
+                  >
+                    {t("mcp.form.env.invalid")}
+                  </span>
+                )}
               </FormField>
               {hasEnvironmentStored && (
                 <div style={split}>
@@ -294,6 +322,10 @@ export function ServerForm({
               spellCheck={false}
               pending={saving}
               value={draft.headers.text}
+              invalid={jsonIssue === "headers"}
+              aria-describedby={
+                jsonIssue === "headers" ? jsonErrorId : undefined
+              }
               onChange={(event) =>
                 updateDraft("headers", draft.headers.edited(event.target.value))
               }
@@ -303,6 +335,15 @@ export function ServerForm({
                   : t("mcp.form.headers.placeholder")
               }
             />
+            {jsonIssue === "headers" && (
+              <span
+                id={jsonErrorId}
+                role="alert"
+                style={{ color: "var(--color-negative)" }}
+              >
+                {t("mcp.form.headers.invalid")}
+              </span>
+            )}
           </FormField>
           {hasHeadersStored && (
             <div style={split}>

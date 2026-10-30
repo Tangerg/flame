@@ -64,28 +64,19 @@ func retainedRunBytes(run run.Run) int {
 }
 
 func retainedItemBytes(item transcript.Item) int {
+	snapshot := item.Snapshot()
 	bytes := retainedItemHeaderBytes + stringsBytes(
-		item.SessionID(),
-		item.ID(),
-		item.RunID(),
-		item.Text(),
-		item.Summary(),
-		string(item.SafetyClass()),
+		snapshot.Identity.SessionID, snapshot.Identity.ItemID, snapshot.Identity.RunID,
+		snapshot.Text, snapshot.Summary, snapshot.EditedArguments, snapshot.DenialReason,
+		string(snapshot.SafetyClass), string(snapshot.ApprovalDecision), string(snapshot.RememberScope),
 	)
-	content := item.Content()
-	bytes += cap(content) * retainedSliceEntryBytes
-	for _, block := range content {
+	bytes += cap(snapshot.Content) * retainedSliceEntryBytes
+	for _, block := range snapshot.Content {
 		bytes += len(block.Text) + len(block.MediaType) + cap(block.Bytes)
 	}
-	if question, ok := item.Question(); ok {
-		bytes += retainedQuestionBytes(&question)
-	}
-	if invocation, ok := item.ToolInvocation(); ok {
-		bytes += retainedToolInvocationBytes(&invocation)
-	}
-	if failure, ok := item.Failure(); ok {
-		bytes += retainedToolFailureBytes(&failure)
-	}
+	bytes += retainedQuestionBytes(snapshot.Question)
+	bytes += retainedToolInvocationBytes(snapshot.Tool)
+	bytes += retainedToolFailureBytes(snapshot.Failure)
 	return bytes
 }
 
@@ -130,6 +121,10 @@ func retainedQuestionBytes(question *transcript.Question) int {
 			bytes += stringsBytes(option.Label, option.Description, option.Preview)
 		}
 	}
+	bytes += cap(question.Answers) * retainedSliceEntryBytes
+	for _, values := range question.Answers {
+		bytes += cap(values)*retainedSliceEntryBytes + stringsBytes(values...)
+	}
 	return bytes
 }
 
@@ -137,7 +132,7 @@ func retainedToolInvocationBytes(invocation *transcript.ToolInvocation) int {
 	if invocation == nil {
 		return 0
 	}
-	bytes := len(invocation.Name) + len(invocation.Arguments.Canonical())
+	bytes := len(invocation.Name) + len(invocation.Arguments.Canonical()) + len(invocation.ArgumentsText)
 	if invocation.Result != nil {
 		bytes += len(invocation.Result.Canonical())
 	}

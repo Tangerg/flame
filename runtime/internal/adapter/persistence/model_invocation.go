@@ -15,19 +15,8 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-type modelInvocationState string
-
-const (
-	modelInvocationStarted   modelInvocationState = "started"
-	modelInvocationCompleted modelInvocationState = "completed"
-	modelInvocationFailed    modelInvocationState = "failed"
-	modelInvocationUnknown   modelInvocationState = "unknown"
-)
-
-func (m modelInvocationState) databaseValue() string { return string(m) }
-
 // ModelInvocationStore records logical Interaction observations and distinct
-// physical chat endpoints. Semantic continuation and aggregate accounting remain
+// physical provider endpoints. Semantic continuation and aggregate accounting remain
 // with history_items and runs; these observations never authorize provider replay.
 type ModelInvocationStore struct{ db *sql.DB }
 
@@ -50,7 +39,7 @@ func (m *ModelInvocationStore) ListStartedModelInvocations(
 		  FROM model_invocations
 		 WHERE state = ? AND endpoint_json IS NULL
 		 ORDER BY session_id, run_id, segment_id, call_id
-	`, modelInvocationStarted.databaseValue())
+	`, runs.ModelInvocationStarted.String())
 	if err != nil {
 		return fmt.Errorf("sqlite: list started model invocations: %w", err)
 	}
@@ -104,7 +93,7 @@ func (m *ModelInvocationStore) StartModelInvocation(
 		  WHERE run_id = ? AND session_id = ? AND state = ? AND active_segment_id = ?`,
 		callID,
 		segmentID,
-		modelInvocationStarted.databaseValue(),
+		runs.ModelInvocationStarted.String(),
 		startedAt.UTC().UnixNano(),
 		purpose.String(),
 		runID,
@@ -134,7 +123,7 @@ func (m *ModelInvocationStore) CompleteModelInvocation(
 ) error {
 	return m.finish(
 		ctx, sessionID, runID, segmentID, callID,
-		startedAt, finishedAt, modelInvocationCompleted.databaseValue(), firstOutputLatencyMillis, usage, nil,
+		startedAt, finishedAt, runs.ModelInvocationCompleted.String(), firstOutputLatencyMillis, usage, nil,
 	)
 }
 
@@ -147,7 +136,7 @@ func (m *ModelInvocationStore) FailModelInvocation(
 ) error {
 	return m.finish(
 		ctx, sessionID, runID, segmentID, callID,
-		startedAt, finishedAt, modelInvocationFailed.databaseValue(), firstOutputLatencyMillis, usage, response,
+		startedAt, finishedAt, runs.ModelInvocationFailed.String(), firstOutputLatencyMillis, usage, response,
 	)
 }
 
@@ -158,7 +147,7 @@ func (m *ModelInvocationStore) MarkModelInvocationUnknown(
 ) error {
 	return m.finish(
 		ctx, sessionID, runID, segmentID, callID,
-		startedAt, finishedAt, modelInvocationUnknown.databaseValue(), nil, nil, nil,
+		startedAt, finishedAt, runs.ModelInvocationUnknown.String(), nil, nil, nil,
 	)
 }
 
@@ -183,7 +172,7 @@ func (m *ModelInvocationStore) finish(
 	if err := instant.Validate(startedAt, finishedAt); err != nil {
 		return fmt.Errorf("sqlite: model invocation times: %w", err)
 	}
-	if firstOutputLatencyMillis != nil && (*firstOutputLatencyMillis < 0 || (state != modelInvocationCompleted.databaseValue() && state != modelInvocationFailed.databaseValue())) {
+	if firstOutputLatencyMillis != nil && (*firstOutputLatencyMillis < 0 || (state != runs.ModelInvocationCompleted.String() && state != runs.ModelInvocationFailed.String())) {
 		return errors.New("sqlite: invalid first output latency measurement")
 	}
 	encodedUsage, err := encodeModelInvocationUsage(usage)
@@ -192,7 +181,7 @@ func (m *ModelInvocationStore) finish(
 	}
 	var encodedResponse *string
 	if response != nil {
-		if state != modelInvocationFailed.databaseValue() {
+		if state != runs.ModelInvocationFailed.String() {
 			return errors.New("sqlite: known response requires failed outer invocation")
 		}
 		if err := response.Validate(); err != nil {
@@ -210,7 +199,7 @@ func (m *ModelInvocationStore) finish(
 		if !reflect.DeepEqual(usage, reported) {
 			return errors.New("sqlite: usage differs from known response")
 		}
-	} else if state == modelInvocationFailed.databaseValue() && usage != nil {
+	} else if state == runs.ModelInvocationFailed.String() && usage != nil {
 		return errors.New("sqlite: failed model usage requires a known response")
 	}
 	result, err := sqlite.Connection(ctx, m.db).ExecContext(ctx,
@@ -227,7 +216,7 @@ func (m *ModelInvocationStore) finish(
 		sessionID,
 		runID,
 		segmentID,
-		modelInvocationStarted.databaseValue(),
+		runs.ModelInvocationStarted.String(),
 		startedAt.UTC().UnixNano(),
 	)
 	if err != nil {
@@ -310,7 +299,7 @@ func scanModelInvocation(row scanRow) (modelInvocationRecord, error) {
 		return modelInvocationRecord{}, fmt.Errorf("sqlite: scan model invocation: %w", err)
 	}
 	if response.Valid {
-		if record.State != modelInvocationFailed.databaseValue() {
+		if record.State != runs.ModelInvocationFailed.String() {
 			return modelInvocationRecord{}, errors.New("sqlite: response evidence has invalid model state")
 		}
 		if err := decodeStoredJSON([]byte(response.String), &record.KnownResponse); err != nil {

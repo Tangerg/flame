@@ -1,4 +1,7 @@
-import { type ComposerImage, type PastedText } from "@/features/composer/public/attachments";
+import {
+  type ComposerImageAttachment,
+  type PastedText,
+} from "@/features/composer/public/attachments";
 import { type AgentInput } from "@/features/agent/public/input";
 import { TextArea } from "@flame/ui";
 import {
@@ -22,7 +25,7 @@ interface Props {
   value: string;
   onChange: (v: string) => void;
   captureSubmission: () => ComposerSubmission;
-  images: readonly ComposerImage[];
+  images: readonly ComposerImageAttachment[];
   onRemoveImage: (id: string) => void;
   onAddImages: (files: File[]) => void;
   pastes: readonly PastedText[];

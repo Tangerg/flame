@@ -516,9 +516,14 @@ func (s *Store) publishHeld(ctx context.Context, staged *staging, source Source)
 		return nil, err
 	}
 	if existing {
-		if _, err := s.inspect(ctx, release.Digest); err != nil {
+		cached, err := s.inspect(ctx, release.Digest)
+		if err != nil {
 			return nil, errors.Join(err, lease.Close())
 		}
+		if err := s.trust(ctx, source, cached.Manifest, cached.Lock); err != nil {
+			return nil, errors.Join(ErrUntrusted, err, lease.Close())
+		}
+		lease.release = cached
 	}
 	return lease, nil
 }

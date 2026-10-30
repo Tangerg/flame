@@ -30,7 +30,8 @@ func TestPinnedMemoryFailurePreservesHealthyPartitionAndDiagnostics(t *testing.T
 			slog.SetDefault(slog.New(slog.NewTextHandler(&diagnostics, nil)))
 			t.Cleanup(func() { slog.SetDefault(previous) })
 			composer := newTestWorkingContextComposer(t, WorkingContextConfig{AgentMemory: failingMemoryPartition{scope: scope}})
-			message, err := composer.composeSystemMessage(t.Context(), t.TempDir())
+			cwd := t.TempDir()
+			message, err := composer.composeSystemMessage(t.Context(), cwd, cwd)
 			if err != nil || !strings.Contains(message.Text(), "healthy partition fact") {
 				t.Fatalf("healthy memory lost: message=%q error=%v", message.Text(), err)
 			}

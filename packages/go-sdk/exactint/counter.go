@@ -33,10 +33,8 @@ func Restore(value uint64) (Counter, error) {
 	return Counter{value: value}, nil
 }
 
-// First returns the first committed counter value.
 func First() Counter { return Counter{value: 1} }
 
-// Value returns the exact scalar representation.
 func (c Counter) Value() uint64 { return c.value }
 
 // IsZero reports whether no value has been assigned yet.

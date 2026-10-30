@@ -9,6 +9,7 @@ import (
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
@@ -442,12 +443,12 @@ func portableQuestionFromArtifact(path string, artifact protocol.Question) (tran
 	return transcript.Question{Fields: fields, Answers: transcript.CloneAnswers(artifact.Answers)}, nil
 }
 
-func portableQuestionFieldKind(path string, value protocol.QuestionFieldType) (transcript.QuestionFieldKind, error) {
+func portableQuestionFieldKind(path string, value protocol.QuestionFieldType) (questioncontract.Kind, error) {
 	switch value {
 	case protocol.QuestionFieldText:
-		return transcript.QuestionText, nil
+		return questioncontract.Text, nil
 	case protocol.QuestionFieldChoice:
-		return transcript.QuestionChoice, nil
+		return questioncontract.Choice, nil
 	default:
 		return "", invalidArtifact(path, "unknown value %q", value)
 	}

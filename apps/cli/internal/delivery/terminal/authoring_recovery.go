@@ -78,7 +78,7 @@ func (a *app) reconcilePendingResume(pending workbench.PendingResume) {
 	dispatcher := a.loop.Dispatcher()
 	a.operations.GoSession(resumeRecoveryOperation, false, func(ctx context.Context, lease operationLease) {
 		_, err := mutation.ConfirmAdmitted(ctx, runtimeRecoveryBackoff, nil, func(ctx context.Context) (conversation.SegmentStream, error) {
-			return runworkflow.OpenPendingResume(ctx, a.runtime, pending, a.replayPolicy)
+			return runworkflow.OpenPendingResume(ctx, a.runtime, a.workbench, pending, a.replayPolicy)
 		})
 		if context.Cause(ctx) != nil {
 			return
@@ -145,7 +145,7 @@ func (a *app) reconcilePendingRun(pending workbench.PendingRun) {
 	dispatcher := a.loop.Dispatcher()
 	a.operations.GoSession(pendingRunRecoveryOperation, false, func(ctx context.Context, lease operationLease) {
 		opened, err := openStartRunWithBackoff(
-			ctx, a.runtime, pending, a.replayPolicy, runtimeRecoveryBackoff,
+			ctx, a.runtime, a.workbench, pending, a.replayPolicy, runtimeRecoveryBackoff,
 		)
 		if context.Cause(ctx) != nil {
 			return

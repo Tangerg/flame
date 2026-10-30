@@ -506,8 +506,12 @@ func TestWaitSessionStartableIncludesDurableWaitingRun(t *testing.T) {
 	default:
 	}
 
+	release, ok, err := c.admission.AcquireSession(t.Context(), "ses_1")
+	if err != nil || !ok {
+		t.Fatalf("terminal mutation admission = %t, %v", ok, err)
+	}
 	sessions.setActive(nil)
-	c.publications.publishRunMoved("ses_1", "run_waiting")
+	release()
 	select {
 	case err := <-done:
 		if err != nil {
@@ -518,20 +522,16 @@ func TestWaitSessionStartableIncludesDurableWaitingRun(t *testing.T) {
 	}
 }
 
-func TestWaitSessionStartableReleasesDurableChangeObservation(t *testing.T) {
+func TestWaitSessionStartableReturnsForIdleSession(t *testing.T) {
 	sessions := &fakeRunSessions{sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work")})}
 	c := newUseCaseCoordinator(&fakeExecutor{}, &fakeExecutionPorts{}, sessions, &fakeEffects{})
 
 	if err := c.WaitSessionStartable(t.Context(), "ses_1"); err != nil {
 		t.Fatalf("WaitSessionStartable: %v", err)
 	}
-
-	if got := len(c.publications.changes.sessions); got != 0 {
-		t.Fatalf("retained session change observations = %d, want 0", got)
-	}
 }
 
-func TestWaitSessionStartableCancellationReleasesDurableChangeObservation(t *testing.T) {
+func TestWaitSessionStartableRetainsCancellationCause(t *testing.T) {
 	waitingRun := testsupport.MustRestoreRun(run.Snapshot{
 		ID:        "run_waiting",
 		SessionID: "ses_1",
@@ -552,24 +552,6 @@ func TestWaitSessionStartableCancellationReleasesDurableChangeObservation(t *tes
 	cancel(want)
 	if err := <-done; !errors.Is(err, context.Canceled) || !errors.Is(err, want) {
 		t.Fatalf("WaitSessionStartable error = %v, want cancellation and owner cause", err)
-	}
-	if got := len(c.publications.changes.sessions); got != 0 {
-		t.Fatalf("retained canceled session change observations = %d, want 0", got)
-	}
-}
-
-func TestRunChangeWithoutObserverRetainsNoSessionState(t *testing.T) {
-	c := newUseCaseCoordinator(
-		&fakeExecutor{},
-		&fakeExecutionPorts{},
-		&fakeRunSessions{},
-		&fakeEffects{},
-	)
-
-	c.publications.publishRunMoved("ses_1", "run_1")
-
-	if got := len(c.publications.changes.sessions); got != 0 {
-		t.Fatalf("retained unobserved session changes = %d, want 0", got)
 	}
 }
 

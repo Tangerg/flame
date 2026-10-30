@@ -15,30 +15,47 @@ import (
 // data-directory lease excludes other processes; this registry owns admission
 // for every use case inside that lifetime.
 type Gate struct {
-	mu            sync.Mutex
-	runs          map[string]reservedRun
-	pending       map[*runAdmissionLease]reservedRun
-	maintenance   map[*maintenanceReservation]struct{}
-	claims        map[string]sessionClaimKind
-	treeMutations map[string]struct{}
-	changed       chan struct{}
-	resolveTree   func(string) (string, error)
+	mu                sync.Mutex
+	runs              map[string]reservedRun
+	pending           map[*runAdmissionLease]reservedRun
+	maintenance       map[*maintenanceReservation]struct{}
+	claims            map[string]sessionClaimKind
+	treeMutations     map[string]struct{}
+	changed           chan struct{}
+	resolveTree       func(string) (string, error)
+	treesOverlap      func(string, string) (bool, error)
+	retirementPending func(context.Context, string) (bool, error)
 }
 
-// NewGate uses the workspace owner's physical identity for both Run admission
-// and destructive mutations, so aliases cannot create independent reservations.
-func NewGate(resolveTree func(string) (string, error)) (*Gate, error) {
-	if resolveTree == nil {
+// GateConfig binds resolution and comparison to the same physical path semantics.
+type GateConfig struct {
+	ResolveTree       func(string) (string, error)
+	TreesOverlap      func(string, string) (bool, error)
+	RetirementPending func(context.Context, string) (bool, error)
+}
+
+// NewGate shares physical tree identity and committed resource retirement with
+// every foreground admission. Recovery alone may consume a retirement fence.
+func NewGate(cfg GateConfig) (*Gate, error) {
+	if cfg.ResolveTree == nil {
 		return nil, errors.New("session admission: working-tree resolver is required")
 	}
+	if cfg.TreesOverlap == nil {
+		return nil, errors.New("session admission: working-tree comparison is required")
+	}
+	if cfg.RetirementPending == nil {
+		return nil, errors.New("session admission: resource retirement reader is required")
+	}
 	return &Gate{
-		resolveTree:   resolveTree,
-		runs:          make(map[string]reservedRun),
-		pending:       make(map[*runAdmissionLease]reservedRun),
-		maintenance:   make(map[*maintenanceReservation]struct{}),
-		claims:        make(map[string]sessionClaimKind),
-		treeMutations: make(map[string]struct{}),
-		changed:       make(chan struct{}),
+		resolveTree:       cfg.ResolveTree,
+		treesOverlap:      cfg.TreesOverlap,
+		retirementPending: cfg.RetirementPending,
+		runs:              make(map[string]reservedRun),
+		pending:           make(map[*runAdmissionLease]reservedRun),
+		maintenance:       make(map[*maintenanceReservation]struct{}),
+		claims:            make(map[string]sessionClaimKind),
+		treeMutations:     make(map[string]struct{}),
+		changed:           make(chan struct{}),
 	}, nil
 }
 
@@ -119,8 +136,18 @@ func (g *Gate) AcquireSession(ctx context.Context, sessionID string) (release fu
 	if err := g.lockForegroundSession(ctx, sessionID); err != nil {
 		return nil, false, err
 	}
-	defer g.mu.Unlock()
-	return g.acquireSessionLocked(sessionID, sessionMutation)
+	release, ok, err = g.acquireSessionLocked(sessionID, sessionMutation)
+	g.mu.Unlock()
+	if err != nil || !ok {
+		return nil, false, err
+	}
+	pending, err := g.retirementPending(ctx, sessionID)
+	err = errors.Join(err, cancellation.Err(ctx))
+	if err != nil || pending {
+		release()
+		return nil, false, err
+	}
+	return release, true, nil
 }
 
 // AcquireRecoverySession probes abandoned ownership without delaying other recovery sweeps.
@@ -161,13 +188,27 @@ func (g *Gate) AcquireRun(ctx context.Context, sessionID, cwd string) (RunAdmiss
 	if err := g.lockForegroundSession(ctx, sessionID); err != nil {
 		return RunAdmission{}, false, err
 	}
-	defer g.mu.Unlock()
+	admission, ok, err := g.acquireRunLocked(sessionID, cwd)
+	g.mu.Unlock()
+	if err != nil || !ok {
+		return RunAdmission{}, false, err
+	}
+	pending, err := g.retirementPending(ctx, sessionID)
+	err = errors.Join(err, cancellation.Err(ctx))
+	if err != nil || pending {
+		admission.Release()
+		return RunAdmission{}, false, err
+	}
+	return admission, true, nil
+}
+
+func (g *Gate) acquireRunLocked(sessionID, cwd string) (RunAdmission, bool, error) {
 	if g.activeSessionLocked(sessionID) {
 		return RunAdmission{}, false, nil
 	}
 	if cwd != "" {
-		if _, busy := g.treeMutations[cwd]; busy {
-			return RunAdmission{}, false, nil
+		if busy, err := g.treeMutationLocked(cwd); err != nil || busy {
+			return RunAdmission{}, false, err
 		}
 	}
 	admission := &runAdmissionLease{gate: g}
@@ -177,7 +218,7 @@ func (g *Gate) AcquireRun(ctx context.Context, sessionID, cwd string) (RunAdmiss
 
 // BeginMaintenance converts a live run into a maintenance reservation. Both
 // its session and working tree remain unavailable until Release returns, so a
-// checkpoint snapshot cannot race a destructive mutation of the same tree.
+// checkpoint snapshot cannot race a destructive mutation of an overlapping tree.
 func (g *Gate) BeginMaintenance(runID string) (release func(), ok bool) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -201,7 +242,7 @@ func (g *Gate) BeginMaintenance(runID string) (release func(), ok bool) {
 
 // AcquireWorkingTreeMutation reserves exclusive access for a destructive
 // operation such as a checkpoint restore. It rejects a run while it is pending,
-// live, or executing synchronous terminal maintenance on that working tree.
+// live, or executing synchronous terminal maintenance in an overlapping tree.
 func (g *Gate) AcquireWorkingTreeMutation(cwd string) (release func(), ok bool, err error) {
 	if cwd == "" {
 		return func() {}, true, nil
@@ -212,8 +253,11 @@ func (g *Gate) AcquireWorkingTreeMutation(cwd string) (release func(), ok bool, 
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	if _, busy := g.treeMutations[cwd]; busy || g.treeReservedLocked(cwd) {
-		return nil, false, nil
+	if busy, err := g.treeMutationLocked(cwd); err != nil || busy {
+		return nil, false, err
+	}
+	if busy, err := g.treeReservedLocked(cwd); err != nil || busy {
+		return nil, false, err
 	}
 	g.treeMutations[cwd] = struct{}{}
 	return g.releaseTreeMutation(cwd), true, nil
@@ -231,6 +275,14 @@ func (g *Gate) ActiveSessions() map[string]bool {
 	return set
 }
 
+// Changes captures the current admission version before a durable read. Its
+// closure means a held claim was released; observers must re-read both facts.
+func (g *Gate) Changes() <-chan struct{} {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.changed
+}
+
 // activeSessionsLocked yields every session holding a session-only admission, a
 // pending reservation, a live Run, or a Run in maintenance. Admission asks whether one session is
 // active and observers ask which ones are; both read this, so a session cannot
@@ -241,25 +293,15 @@ func (g *Gate) activeSessionsLocked(yield func(string) bool) {
 			return
 		}
 	}
-	for _, pending := range g.pending {
-		if !yield(pending.sessionID) {
-			return
-		}
-	}
-	for _, run := range g.runs {
+	for run := range g.reservedRunsLocked {
 		if !yield(run.sessionID) {
-			return
-		}
-	}
-	for reservation := range g.maintenance {
-		if !yield(reservation.run.sessionID) {
 			return
 		}
 	}
 }
 
 // WaitRunStartable blocks until sessionID has no pending, live, maintenance, or
-// session-only admission and cwd has no destructive working-tree mutation. It
+// session-only admission and cwd overlaps no destructive working-tree mutation. It
 // is an observation boundary, not a reservation: callers must still acquire
 // their own Run admission after it returns and may wait again if another owner
 // wins that race.
@@ -283,13 +325,23 @@ func (g *Gate) WaitRunStartable(ctx context.Context, sessionID, cwd string) erro
 			g.mu.Unlock()
 			return err
 		}
-		_, treeMutation := g.treeMutations[cwd]
-		if !g.activeSessionLocked(sessionID) && (cwd == "" || !treeMutation) {
+		treeMutation, err := g.treeMutationLocked(cwd)
+		if err != nil {
 			g.mu.Unlock()
-			return nil
+			return err
 		}
+		startable := !g.activeSessionLocked(sessionID) && (cwd == "" || !treeMutation)
 		changed := g.changed
 		g.mu.Unlock()
+		if startable {
+			pending, err := g.retirementPending(ctx, sessionID)
+			if err = errors.Join(err, cancellation.Err(ctx)); err != nil {
+				return err
+			}
+			if !pending {
+				return nil
+			}
+		}
 
 		select {
 		case <-ctx.Done():
@@ -330,25 +382,46 @@ func (g *Gate) activeSessionLocked(sessionID string) bool {
 	return false
 }
 
-// treeReservedLocked reports whether a pending, live, or maintenance Run holds
-// cwd.
-func (g *Gate) treeReservedLocked(cwd string) bool {
+func (g *Gate) reservedRunsLocked(yield func(reservedRun) bool) {
 	for _, run := range g.pending {
-		if run.cwd == cwd {
-			return true
+		if !yield(run) {
+			return
 		}
 	}
 	for _, run := range g.runs {
-		if run.cwd == cwd {
-			return true
+		if !yield(run) {
+			return
 		}
 	}
 	for reservation := range g.maintenance {
-		if reservation.run.cwd == cwd {
-			return true
+		if !yield(reservation.run) {
+			return
 		}
 	}
-	return false
+}
+
+func (g *Gate) treeMutationLocked(cwd string) (bool, error) {
+	if cwd == "" {
+		return false, nil
+	}
+	for tree := range g.treeMutations {
+		if overlaps, err := g.treesOverlap(tree, cwd); err != nil || overlaps {
+			return overlaps, err
+		}
+	}
+	return false, nil
+}
+
+func (g *Gate) treeReservedLocked(cwd string) (bool, error) {
+	for run := range g.reservedRunsLocked {
+		if run.cwd == "" {
+			continue
+		}
+		if overlaps, err := g.treesOverlap(run.cwd, cwd); err != nil || overlaps {
+			return overlaps, err
+		}
+	}
+	return false, nil
 }
 
 func (g *Gate) addClaimLocked(sessionID string, kind sessionClaimKind) func() {

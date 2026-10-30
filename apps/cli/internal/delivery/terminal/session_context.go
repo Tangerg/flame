@@ -52,7 +52,7 @@ func (a *app) retireSessionContext() {
 	a.dialogs.commandDialog.Dismiss()
 	a.dialogs.timelineDialog.Dismiss()
 	a.dialogs.workspaceDialog.Dismiss()
-	a.dialogs.modelDialog.Dismiss()
+	a.dismissModelPicker()
 	a.dialogs.sessionDialog.Dismiss()
 	a.dialogs.queueDialog.Dismiss()
 	if a.dialogs.sessionRenameDialog != nil {

@@ -10,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
@@ -151,36 +152,17 @@ type Question struct {
 	Answers [][]string
 }
 
-const (
-	// MaximumQuestionFields bounds one user interaction so every delivery can
-	// present the complete form without inventing pagination or partial answers.
-	MaximumQuestionFields = 4
-	// MaximumQuestionOptions bounds one choice field. Custom input is modelled
-	// separately by AllowCustom and does not consume an advertised option.
-	MaximumQuestionOptions = 4
-	// MaximumQuestionHeaderCharacters keeps the optional presentation chip
-	// compact while Prompt retains the complete question.
-	MaximumQuestionHeaderCharacters = 12
-)
+// Headers are compact presentation chips; Prompt retains the complete question.
+const MaximumQuestionHeaderCharacters = 12
 
 type QuestionField struct {
 	Prompt      string
 	Header      string
-	Kind        QuestionFieldKind
+	Kind        questioncontract.Kind
 	Options     []QuestionOption
 	Multiple    bool
 	AllowCustom bool
 }
-
-type QuestionFieldKind string
-
-const (
-	QuestionText   QuestionFieldKind = "text"
-	QuestionChoice QuestionFieldKind = "choice"
-)
-
-// Valid reports whether kind names a supported question field shape.
-func (q QuestionFieldKind) Valid() bool { return q == QuestionText || q == QuestionChoice }
 
 type QuestionOption struct {
 	Label       string
@@ -322,32 +304,34 @@ func (c ContentBlock) Validate() error {
 
 // Validate reports whether the question can be rendered and answered unambiguously.
 func (q Question) Validate() error {
-	if len(q.Fields) < 1 || len(q.Fields) > MaximumQuestionFields {
-		return fmt.Errorf(
-			"question field count must be between 1 and %d, got %d",
-			MaximumQuestionFields,
-			len(q.Fields),
-		)
-	}
-	for index, field := range q.Fields {
-		if err := field.validate(index); err != nil {
-			return err
-		}
+	contract, err := q.AnswerContract()
+	if err != nil {
+		return err
 	}
 	if q.Answers != nil {
-		if len(q.Answers) != len(q.Fields) {
-			return fmt.Errorf(
-				"question answers contain %d entries for %d fields",
-				len(q.Answers), len(q.Fields),
-			)
-		}
-		for index, values := range q.Answers {
-			if err := q.Fields[index].ValidateAnswer(values); err != nil {
-				return fmt.Errorf("question answer %d: %w", index, err)
-			}
-		}
+		return contract.Validate(q.Answers)
 	}
 	return nil
+}
+
+// AnswerContract projects this question's admitted definition into the shared
+// Runtime contract without carrying its presentation or accepted-answer state.
+func (q Question) AnswerContract() (questioncontract.Contract, error) {
+	if err := questioncontract.ValidateFieldCount(len(q.Fields)); err != nil {
+		return questioncontract.Contract{}, err
+	}
+	fields := make([]questioncontract.Field, len(q.Fields))
+	for index, field := range q.Fields {
+		if err := field.validate(index); err != nil {
+			return questioncontract.Contract{}, err
+		}
+		labels := make([]string, len(field.Options))
+		for i, option := range field.Options {
+			labels[i] = option.Label
+		}
+		fields[index] = questioncontract.Field{Kind: field.Kind, Options: labels, Multiple: field.Multiple, AllowCustom: field.AllowCustom}
+	}
+	return questioncontract.New(fields)
 }
 
 // Answered reports whether the Runtime accepted an answer for this question.
@@ -391,95 +375,6 @@ func (field QuestionField) validate(index int) error {
 			index,
 			MaximumQuestionHeaderCharacters,
 		)
-	}
-	switch field.Kind {
-	case QuestionText:
-		if len(field.Options) != 0 || field.Multiple || field.AllowCustom {
-			return fmt.Errorf("text question field %d cannot carry choice settings", index)
-		}
-	case QuestionChoice:
-		if len(field.Options) < 2 || len(field.Options) > MaximumQuestionOptions {
-			return fmt.Errorf(
-				"choice question field %d option count must be between 2 and %d, got %d",
-				index,
-				MaximumQuestionOptions,
-				len(field.Options),
-			)
-		}
-	default:
-		return fmt.Errorf("question field %d has unknown kind %q", index, field.Kind)
-	}
-	seenOptions := make(map[string]struct{}, len(field.Options))
-	for optionIndex, option := range field.Options {
-		label := strings.TrimSpace(option.Label)
-		if label == "" {
-			return fmt.Errorf("question field %d option %d label is required", index, optionIndex)
-		}
-		if label != option.Label {
-			return fmt.Errorf("question field %d option %d label has surrounding whitespace", index, optionIndex)
-		}
-		if _, duplicate := seenOptions[label]; duplicate {
-			return fmt.Errorf("question field %d repeats option %q", index, label)
-		}
-		seenOptions[label] = struct{}{}
-	}
-	return nil
-}
-
-// ValidateAnswer reports whether values are one legal answer to this field.
-// An empty slice explicitly skips the field; the containing Question owns
-// answer count and ordering.
-func (field QuestionField) ValidateAnswer(values []string) error {
-	switch field.Kind {
-	case QuestionText:
-		if len(values) == 0 {
-			return nil
-		}
-		if len(values) != 1 || strings.TrimSpace(values[0]) == "" {
-			return errors.New("one non-empty text value is required")
-		}
-		return nil
-	case QuestionChoice:
-		if len(values) == 0 {
-			return nil
-		}
-		if !field.Multiple && len(values) != 1 {
-			return errors.New("exactly one choice is required")
-		}
-		return field.validateChoiceAnswer(values)
-	default:
-		return fmt.Errorf("unknown question field kind %q", field.Kind)
-	}
-}
-
-func (field QuestionField) validateChoiceAnswer(values []string) error {
-	allowed := make(map[string]struct{}, len(field.Options))
-	for _, option := range field.Options {
-		allowed[option.Label] = struct{}{}
-	}
-	seen := make(map[string]struct{}, len(values))
-	customSeen := false
-	for _, value := range values {
-		trimmed := strings.TrimSpace(value)
-		if trimmed == "" {
-			return errors.New("choice values must not be empty")
-		}
-		if value != trimmed {
-			return errors.New("choice values must not have surrounding whitespace")
-		}
-		if _, known := allowed[value]; !known {
-			if !field.AllowCustom {
-				return fmt.Errorf("unknown choice %q", value)
-			}
-			if customSeen {
-				return errors.New("at most one custom choice is allowed")
-			}
-			customSeen = true
-		}
-		if _, duplicate := seen[value]; duplicate {
-			return errors.New("duplicate choices are not allowed")
-		}
-		seen[value] = struct{}{}
 	}
 	return nil
 }

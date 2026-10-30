@@ -3,6 +3,7 @@ package testsupport
 import (
 	"time"
 
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -69,7 +70,7 @@ func MustRestoreItem(input ItemInput) transcript.Item {
 		input.Status = transcript.ItemCompleted
 		if input.Question == nil {
 			input.Question = &transcript.Question{Fields: []transcript.QuestionField{{
-				Prompt: "fixture", Kind: transcript.QuestionText,
+				Prompt: "fixture", Kind: questioncontract.Text,
 			}}}
 		}
 	case transcript.Compaction:

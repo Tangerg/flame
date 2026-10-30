@@ -80,7 +80,7 @@ func TestSteerPreparationFailurePreservesTheEditableInstructionAndAttachments(t 
 	host.Press(input.Enter)
 	host.Shows(t, "prepare steer input")
 	stop()
-	store, err := openTestWorkbench(state)
+	store, err := openTestWorkbench(t, state)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,7 +173,7 @@ func TestInputPreparationLeavesTheUIResponsiveAndUnsentInputEditable(t *testing.
 				}
 				stop()
 				awaitSignal(t, backend.canceled, "preparation cancellation")
-				store, err := openTestWorkbench(state)
+				store, err := openTestWorkbench(t, state)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -246,7 +246,7 @@ func TestEditingSteerDuringInputPreparationPreservesTheNewDraft(t *testing.T) {
 	close(backend.release)
 	host.Shows(t, "steer preparation canceled because the draft changed")
 	stop()
-	store, err := openTestWorkbench(state)
+	store, err := openTestWorkbench(t, state)
 	if err != nil {
 		t.Fatal(err)
 	}

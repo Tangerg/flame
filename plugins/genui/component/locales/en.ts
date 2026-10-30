@@ -50,6 +50,7 @@ export const en: Record<string, string> = {
   "map.coordinates": "Coordinates",
   "map.description": "Description",
   "interaction.running": "Waiting for the operation…",
+  "interaction.inputFailed": "This field could not be updated.",
   "interaction.failed": "The operation failed.",
   "interaction.complete": "Action accepted.",
   "interaction.unknown":

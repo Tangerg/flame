@@ -13,7 +13,7 @@ import {
   activeAgentConversation,
   forkAgentSessionAtRun,
   rollbackSessionToBeforeRun,
-  sendToAgentSession,
+  regenerateSessionRun,
 } from "./session/historyActions";
 import { rehydrateSessionView } from "./session/rehydrateSession";
 import {
@@ -26,7 +26,7 @@ import {
   dismissActiveSessionProblem,
   stopCurrentRootRun,
 } from "./run/runCommands";
-import { subscribeAnySessionRunning, subscribeRootRunSettlements } from "./run/rootAttention";
+import { subscribeAnySessionRunning } from "./run/rootAttention";
 import { retrySteerInput } from "./input/steering";
 import { forgetRule, forgetRules, setApprovalMode } from "./approvalPolicy";
 import { getActiveConversationMessages } from "./conversation/readModel";
@@ -48,7 +48,7 @@ export function createAgentAccess(dependencies: AgentDependencies) {
     activeAgentConversation: activeAgentConversation.bind(undefined, dependencies),
     forkAgentSessionAtRun: forkAgentSessionAtRun.bind(undefined, dependencies),
     rollbackSessionToBeforeRun: rollbackSessionToBeforeRun.bind(undefined, dependencies),
-    sendToAgentSession: sendToAgentSession.bind(undefined, dependencies),
+    regenerateSessionRun: regenerateSessionRun.bind(undefined, dependencies),
     rehydrateSessionView: rehydrateSessionView.bind(undefined, dependencies),
     synchronizeMountedAgentSession: synchronizeMountedAgentSession.bind(undefined, dependencies),
     synchronizeMountedAgentSessions: synchronizeMountedAgentSessions.bind(undefined, dependencies),
@@ -57,7 +57,7 @@ export function createAgentAccess(dependencies: AgentDependencies) {
     dismissActiveSessionProblem: dismissActiveSessionProblem.bind(undefined, dependencies),
     stopCurrentRootRun: stopCurrentRootRun.bind(undefined, dependencies),
     subscribeAnySessionRunning: subscribeAnySessionRunning.bind(undefined, dependencies),
-    subscribeRootRunSettlements: subscribeRootRunSettlements.bind(undefined, dependencies),
+    subscribeRootRunSettlements: dependencies.view.subscribeRootRunSettlements,
     retrySteerInput: retrySteerInput.bind(undefined, dependencies),
     forgetRule: forgetRule.bind(undefined, dependencies),
     forgetRules: forgetRules.bind(undefined, dependencies),

@@ -2,6 +2,8 @@ package protocol
 
 import (
 	"time"
+
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 )
 
 // ItemScopeType discriminates [ItemListScope]: which collection of items is being
@@ -152,9 +154,11 @@ const (
 type QuestionFieldType string
 
 const (
-	QuestionFieldText   QuestionFieldType = "text"
-	QuestionFieldChoice QuestionFieldType = "choice"
+	QuestionFieldText   QuestionFieldType = QuestionFieldType(questioncontract.Text)
+	QuestionFieldChoice QuestionFieldType = QuestionFieldType(questioncontract.Choice)
 )
+
+func (QuestionFieldType) Values() []string { return questioncontract.Kind("").Values() }
 
 // DiffRowType discriminates a structured diff row.
 //
@@ -317,6 +321,7 @@ type ToolInvocation struct {
 // DiffRow is one structured row of a unified diff. Code
 // is plain text — the client highlights. A code row requires Code even for
 // a blank line; nil denotes absence and is reserved for hunk rows.
+// NoNewline belongs to the side carrying that code (both sides for context).
 //
 //	hunk    → Text
 //	context → LeftLine, RightLine, Code
@@ -328,6 +333,7 @@ type DiffRow struct {
 	LeftLine  int         `json:"leftLine,omitzero"`
 	RightLine int         `json:"rightLine,omitzero"`
 	Code      *string     `json:"code,omitzero"`
+	NoNewline bool        `json:"noNewline,omitzero"`
 }
 
 // ModelUsage is one model's usage slice: provider-reported

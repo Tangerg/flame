@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -11,7 +12,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func BuiltInTool(t testing.TB, name tool.BuiltInName) tool.Ref {
+func BuiltInTool(t testing.TB, name builtincontract.Name) tool.Ref {
 	t.Helper()
 	ref, err := tool.BuiltIn(name)
 	if err != nil {

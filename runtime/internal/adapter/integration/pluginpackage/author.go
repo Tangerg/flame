@@ -90,7 +90,7 @@ func BuildRelease(ctx context.Context, source string, target BuildTarget, archiv
 	if err != nil {
 		return distribution.Release{}, err
 	}
-	lock, err := distribution.Build(ctx, source, manifest, nil, archive)
+	lock, err := distribution.Build(ctx, source, manifest, archive)
 	if err != nil {
 		return distribution.Release{}, err
 	}

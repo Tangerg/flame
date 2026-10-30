@@ -107,7 +107,7 @@ func (a *app) reconcileCanceledStart(pending workbench.PendingRun) {
 	dispatcher := a.loop.Dispatcher()
 	a.operations.GoSession(pendingRunRecoveryOperation, false, func(ctx context.Context, lease operationLease) {
 		opened, err := openStartRunWithBackoff(
-			ctx, a.runtime, pending, a.replayPolicy, runtimeRecoveryBackoff,
+			ctx, a.runtime, a.workbench, pending, a.replayPolicy, runtimeRecoveryBackoff,
 		)
 		if context.Cause(ctx) != nil {
 			return
@@ -158,6 +158,7 @@ func (a *app) reconcileCanceledStart(pending workbench.PendingRun) {
 func openStartRunWithBackoff(
 	ctx context.Context,
 	runtime runworkflow.OpeningSource,
+	store *workbench.Store,
 	pending workbench.PendingRun,
 	replayPolicy mutation.ReplayPolicy,
 	backoff retry.Backoff,
@@ -165,7 +166,7 @@ func openStartRunWithBackoff(
 	return mutation.ConfirmAdmitted(
 		ctx, backoff, nil,
 		func(ctx context.Context) (conversation.SegmentStream, error) {
-			return runworkflow.OpenPendingStart(ctx, runtime, pending, replayPolicy)
+			return runworkflow.OpenPendingStart(ctx, runtime, store, pending, replayPolicy)
 		},
 	)
 }
@@ -277,6 +278,11 @@ func (a *app) cancelRootRun(
 	result, err := mutation.ConfirmAdmitted(
 		ctx, runtimeRecoveryBackoff, mutation.ReplayAdmission(a.replayPolicy, replayGuard),
 		func(ctx context.Context) (conversation.RunCancellation, error) {
+			if a.workbench != nil {
+				if err := a.workbench.CancellationReady(target.CommandID); err != nil {
+					return conversation.RunCancellation{}, err
+				}
+			}
 			attemptCtx, cancel := context.WithTimeout(ctx, runtimeControlTimeout)
 			defer cancel()
 			return a.runtime.CancelRun(attemptCtx, target)
@@ -381,6 +387,11 @@ func (a *app) cancelRuntimeNow(
 	result, err := mutation.ConfirmAdmitted(
 		ctx, runtimeRecoveryBackoff, mutation.ReplayAdmission(a.replayPolicy, replayGuard),
 		func(ctx context.Context) (conversation.RunCancellation, error) {
+			if a.workbench != nil {
+				if err := a.workbench.CancellationReady(target.CommandID); err != nil {
+					return conversation.RunCancellation{}, err
+				}
+			}
 			return a.runtime.CancelRun(ctx, target)
 		},
 	)
@@ -400,7 +411,7 @@ func (a *app) cancelOpeningRunNow(ownerCtx context.Context, pending workbench.Pe
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ownerCtx), runtimeControlTimeout)
 	defer cancel()
 	opened, err := openStartRunWithBackoff(
-		ctx, a.runtime, pending, a.replayPolicy, runtimeRecoveryBackoff,
+		ctx, a.runtime, a.workbench, pending, a.replayPolicy, runtimeRecoveryBackoff,
 	)
 	if _, retired := errors.AsType[*conversation.RetiredOpeningError](err); retired {
 		return a.retireCanceledStart(pending)

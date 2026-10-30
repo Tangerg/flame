@@ -123,12 +123,18 @@
 // that still owe a translation.
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
 import { parseTree } from "jsonc-parser";
+import { join, relative, sep } from "node:path";
+import { fileURLToPath } from "node:url";
+import { parseSync, traverse } from "@babel/core";
 
-const LOCALES_DIR = new URL("../src/lib/i18n/locales", import.meta.url).pathname;
-const PLUGINS_DIR = new URL("../../../plugins", import.meta.url).pathname;
-const SRC_DIR = new URL("../src", import.meta.url).pathname;
+const SRC_DIR = fileURLToPath(new URL("../src/", import.meta.url));
+const LOCALES_DIR = join(SRC_DIR, "lib/i18n/locales");
+
+function sourceRelativePath(path) {
+  return relative(SRC_DIR, path).split(sep).join("/");
+}
+const PLUGINS_DIR = fileURLToPath(new URL("../../../plugins/", import.meta.url));
 const KEY_PATTERN = /^\s*"([^"]+)":/gm;
 // key → value, both quote styles (a value holding a double quote is single-quoted)
 // and prettier's wrapped form, where the value sits on the next line.
@@ -183,64 +189,79 @@ const MECHANISM_PROP =
   /^(?:[a-z][\w]*ClassName|className|class|style|d|viewBox|accept|srcSet|sizes|content|rel)$/;
 // The product's own view rings. Rule 14 reads a component's tables, and the dev-only
 // wiring at the tree root hands panel names to somebody else's devtools.
-const VIEW_RING = /^(?:plugins|pages|ui)\//;
-// A `key: "value"` entry in an object or array literal. The key may be an identifier or
-// quoted; a `Record<Status, string>` uses whichever the union member allows.
-
-/**
- * A value that re-cases a key sitting beside it is not copy — it is how the app writes an
- * identity it did not choose. `["openai", { mark: OpenAI, name: "OpenAI" }]` renders the
- * vendor's own spelling of the Runtime's provider id; it is the same string in every locale,
- * so a catalog entry for it would be eight copies of one proper noun.
- *
- * Narrow on purpose: the key has to be quoted on the SAME entry, and the two have to differ
- * by case and separators alone — "Hugging Face" beside "huggingface" is one identity written
- * two ways, while "Together AI" beside "together" adds a word and is a naming choice. "Fast
- * and cheap" beside "gpt-4o-mini" is still copy and still fails.
- */
-function spellsItsOwnKey(code, index, value) {
-  const start = code.lastIndexOf("\n", index) + 1;
-  const end = code.indexOf("\n", index);
-  const line = code.slice(start, end === -1 ? code.length : end);
-  const bare = (text) => text.toLowerCase().replaceAll(/[^a-z0-9]/g, "");
-  for (const [, literal] of line.matchAll(/"([^"\n]+)"/g)) {
-    if (literal !== value && bare(literal) === bare(value)) return true;
-  }
-  return false;
-}
-
-const TABLE_ENTRY = /(?:^|[,{[\s])(?:([A-Za-z_$][\w$]*)|"([^"\n]+)")\s*:\s*"([^"\n]{3,})"/g;
-// A Tailwind class list is the one table shape that reads like a phrase: `bg-surface-2
-// text-fg-muted` is two "words". Every utility in this codebase carries a hyphen or a
-// variant colon, and no sentence a catalog would hold does.
+const VIEW_RING = /^(?:(?:plugins|pages|ui)\/|features\/.+\/ui\/)/;
+// Mechanism class lists remain outside the localized-copy contract.
 const CLASS_LIST = /[-:]/;
 
-/**
- * The character ranges of every `stylex.create({ … })` call in a file.
- *
- * A style block is a table of declarations, so rule 14 reads it as a table of labels —
- * `transitionProperty: "opacity, scale, translate"` is three "words" and carries neither
- * hyphen nor colon, so the class-list escape hatch above does not catch it either. That hatch
- * is keyed on how a TAILWIND value happens to be spelled; a StyleX value has no such shape.
- *
- * So the answer is structural rather than lexical: nothing inside a style block is ever copy,
- * whatever it looks like.
- */
-function styleBlocks(code) {
-  const ranges = [];
-  for (const match of code.matchAll(/stylex\.create\s*\(/g)) {
-    let depth = 0;
-    let i = match.index + match[0].length - 1;
-    for (; i < code.length; i += 1) {
-      if (code[i] === "(") depth += 1;
-      else if (code[i] === ")") {
-        depth -= 1;
-        if (depth === 0) break;
+function lookupCopy(path, source) {
+  const ast = parseSync(source, {
+    filename: path,
+    babelrc: false,
+    configFile: false,
+    parserOpts: { plugins: ["typescript", "jsx"] },
+  });
+  const bare = (text) => text.toLowerCase().replaceAll(/[^a-z0-9]/g, "");
+  // Re-casing a quoted source identity does not make it translatable product copy.
+  const ownKey = (property, value) => {
+    const entry = property.parentPath.parentPath.node;
+    const key =
+      entry.type === "ArrayExpression"
+        ? entry.elements[0]
+        : entry.type === "ObjectProperty"
+          ? entry.key
+          : undefined;
+    return key?.type === "StringLiteral" && key.value !== value && bare(key.value) === bare(value);
+  };
+  const fromStylex = (binding) =>
+    binding?.path.parent.type === "ImportDeclaration" &&
+    binding.path.parent.source.value === "@stylexjs/stylex";
+  const failures = [];
+  traverse(ast, {
+    CallExpression(call) {
+      const callee = call.get("callee");
+      if (callee.isMemberExpression()) {
+        const object = callee.get("object");
+        const member = callee.get("property");
+        if (
+          object.isIdentifier() &&
+          (member.isIdentifier({ name: "create" }) || member.isStringLiteral({ value: "create" }))
+        ) {
+          const binding = call.scope.getBinding(object.node.name);
+          if (
+            fromStylex(binding) &&
+            (binding.path.isImportNamespaceSpecifier() || binding.path.isImportDefaultSpecifier())
+          )
+            call.skip();
+        }
+      } else if (callee.isIdentifier()) {
+        const binding = call.scope.getBinding(callee.node.name);
+        if (
+          fromStylex(binding) &&
+          binding.path.isImportSpecifier() &&
+          binding.path.node.imported.name === "create"
+        )
+          call.skip();
       }
-    }
-    ranges.push([match.index, i]);
-  }
-  return ranges;
+    },
+    ObjectProperty(property) {
+      let literal = property.get("value");
+      while (literal.isTSAsExpression() || literal.isTSSatisfiesExpression())
+        literal = literal.get("expression");
+      const value = literal.isStringLiteral()
+        ? literal.node.value
+        : literal.isTemplateLiteral() && literal.node.expressions.length === 0
+          ? literal.node.quasis[0].value.cooked
+          : undefined;
+      if (typeof value !== "string" || CLASS_LIST.test(value) || ownKey(property, value)) return;
+      if (TWO_WORDS.test(value) || TITLE_CASE_COPY.test(value)) {
+        const key = source.slice(property.node.key.start, property.node.key.end);
+        failures.push(
+          `${sourceRelativePath(path)}:${property.node.loc.start.line}: ${key}: "${value}" is copy in a lookup table — hold the catalog key`,
+        );
+      }
+    },
+  });
+  return failures;
 }
 
 /**
@@ -488,7 +509,7 @@ function* sourceFiles(dir) {
 
 for (const path of sourceFiles(SRC_DIR)) {
   const source = readFileSync(path, "utf8");
-  const relative = path.slice(SRC_DIR.length);
+  const relative = sourceRelativePath(path);
   if (relative.startsWith("lib/i18n/locales/")) continue;
   const lineOf = (index) => source.slice(0, index).split("\n").length;
 
@@ -614,27 +635,14 @@ for (const path of sourceFiles(SRC_DIR)) {
     }
 
     // Rule 14 — a table of labels is still copy, wherever the component keeps it.
-    if (VIEW_RING.test(relative)) {
-      const styles = styleBlocks(code);
-      for (const match of code.matchAll(TABLE_ENTRY)) {
-        const value = match[3];
-        if (CLASS_LIST.test(value)) continue;
-        if (styles.some(([from, to]) => match.index > from && match.index < to)) continue;
-        if (spellsItsOwnKey(code, match.index, value)) continue;
-        if (TWO_WORDS.test(value) || TITLE_CASE_COPY.test(value)) {
-          failures.push(
-            `${relative}: ${match[1] ?? match[2]}: "${value}" is copy in a lookup table — hold the catalog key`,
-          );
-        }
-      }
-    }
+    if (VIEW_RING.test(relative)) failures.push(...lookupCopy(path, source));
   }
 }
 
 // Rule 12 — a spec the shell resolves with t() carries keys, not words.
 {
   for (const path of sourceFiles(SRC_DIR)) {
-    const relative = path.slice(SRC_DIR.length);
+    const relative = sourceRelativePath(path);
     if (relative.endsWith(".test.ts") || relative.endsWith(".test.tsx")) continue;
     const code = withoutComments(readFileSync(path, "utf8"));
     for (const factory of code.matchAll(KEYED_SPEC_FACTORY)) {
@@ -712,7 +720,7 @@ for (const path of sourceFiles(SRC_DIR)) {
   const named = [];
   const prefixes = new Set();
   for (const path of sourceFiles(SRC_DIR)) {
-    const relative = path.slice(SRC_DIR.length);
+    const relative = sourceRelativePath(path);
     if (relative.startsWith("lib/i18n/locales/")) continue;
     const source = readFileSync(path, "utf8");
     named.push(source);

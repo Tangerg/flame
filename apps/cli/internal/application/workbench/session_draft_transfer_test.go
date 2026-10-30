@@ -44,7 +44,7 @@ func TestMergeSessionDraftPreservesBothAuthoringValues(t *testing.T) {
 
 func TestStoreRecoversSessionDraftTransferAfterPartialCommit(t *testing.T) {
 	directory := t.TempDir()
-	store, err := OpenDirectory(directory, Config{})
+	store, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +99,7 @@ func TestStoreRecoversSessionDraftTransferAfterPartialCommit(t *testing.T) {
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := OpenDirectory(directory, Config{})
+	reopened, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +124,7 @@ func TestDraftTransferDoesNotNormalizeSessionIdentity(t *testing.T) {
 
 func TestStoreRecoversRetiredSourceDraftWithoutDuplicatingOwnership(t *testing.T) {
 	directory := t.TempDir()
-	store, err := OpenDirectory(directory, Config{})
+	store, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,7 +137,7 @@ func TestStoreRecoversRetiredSourceDraftWithoutDuplicatingOwnership(t *testing.T
 	if saveDraftErr := store.SaveDraft(transfer.SourceSessionID, transfer.SourceBefore); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
-	if saveErr := store.save(sessionDraftTransferName, transfer); saveErr != nil {
+	if saveErr := store.save(sessionDraftTransferName, transfer, func() {}); saveErr != nil {
 		t.Fatal(saveErr)
 	}
 	// Simulate a crash after the source retirement but before the destination
@@ -150,7 +150,7 @@ func TestStoreRecoversRetiredSourceDraftWithoutDuplicatingOwnership(t *testing.T
 		t.Fatal(err)
 	}
 
-	reopened, err := OpenDirectory(directory, Config{})
+	reopened, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +160,7 @@ func TestStoreRecoversRetiredSourceDraftWithoutDuplicatingOwnership(t *testing.T
 
 func TestStoreRefusesToReplayDraftTransferOverNewerAuthoringState(t *testing.T) {
 	directory := t.TempDir()
-	store, err := OpenDirectory(directory, Config{})
+	store, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -174,7 +174,7 @@ func TestStoreRefusesToReplayDraftTransferOverNewerAuthoringState(t *testing.T) 
 	if saveDraftErr := store.SaveDraft(transfer.SourceSessionID, transfer.SourceBefore); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
-	if saveErr := store.save(sessionDraftTransferName, transfer); saveErr != nil {
+	if saveErr := store.save(sessionDraftTransferName, transfer, func() {}); saveErr != nil {
 		t.Fatal(saveErr)
 	}
 	newer := authoring.Message{Text: "authored after the stale journal"}
@@ -185,7 +185,7 @@ func TestStoreRefusesToReplayDraftTransferOverNewerAuthoringState(t *testing.T) 
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if _, openErr := OpenDirectory(directory, Config{}); openErr == nil || !strings.Contains(openErr.Error(), "source draft changed") {
+	if _, openErr := OpenDirectory(t, directory, Config{}); openErr == nil || !strings.Contains(openErr.Error(), "source draft changed") {
 		t.Fatalf("open with conflicting draft transfer = %v", openErr)
 	}
 	if removeErr := os.Remove(filepath.Join(directory, sessionDraftTransferName)); removeErr != nil {
@@ -194,7 +194,7 @@ func TestStoreRefusesToReplayDraftTransferOverNewerAuthoringState(t *testing.T) 
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := OpenDirectory(directory, Config{})
+	reopened, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}

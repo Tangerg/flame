@@ -11,6 +11,7 @@ import (
 	"syscall"
 
 	"github.com/Tangerg/flame/qimu/cancellation"
+	workspacegit "github.com/Tangerg/flame/runtime/internal/infra/git"
 )
 
 // maxCheckpointFileSize caps a single file the checkpoint will stage (2 MiB
@@ -105,68 +106,69 @@ func (s *Store) hasHead(ctx context.Context, gitDir string) (bool, error) {
 	return false, err
 }
 
-// stageChanges stages the work tree's changes into the shadow index, skipping
-// files over [maxCheckpointFileSize]. The baseline inspects all initial index
-// entries once to establish ownership; later snapshots consider only changed,
-// new, or removed paths. `git ls-files` is the ownership decision: it honors
-// .gitignore + info/exclude for untracked files while retaining paths copied
-// from the source index. The exact selected paths are then force-added because
-// a shadow backstop exclude such as build/ must not veto a legitimately tracked
-// source path after selection. The force applies only to this filtered list; it
-// cannot admit an ignored untracked path that ls-files did not return.
+// The source repository owns tracked/ignored admission. The shadow index holds
+// only its workspace-relative projection; it cannot keep owning a path that the
+// source now excludes. Force-add applies only to the admitted material.
 func (s *Store) stageChanges(ctx context.Context, gitDir, cwd string) error {
-	hasHead, err := s.hasHead(ctx, gitDir)
+	output, err := s.snapshotCandidates(ctx, gitDir, cwd)
 	if err != nil {
 		return err
 	}
-	args := []string{"ls-files", "-z", "--modified", "--others", "--deleted", "--exclude-standard"}
-	if !hasHead {
-		// A copied source index may contain unchanged files. Include every cached
-		// path at the baseline so the size policy is applied before the first tree
-		// is committed; subsequent snapshots only inspect changed paths.
-		args = append(args, "--cached")
-	}
-	out, err := s.gitOutput(ctx, gitDir, cwd, args...)
+	stage, err := checkpointCandidates(ctx, cwd, output)
 	if err != nil {
 		return err
 	}
-	stage, untrack, err := checkpointCandidates(ctx, cwd, out)
+	output, err = s.gitOutput(ctx, gitDir, cwd, "ls-files", "-z", "--cached")
 	if err != nil {
 		return err
+	}
+	previous, err := restorePaths(output)
+	if err != nil {
+		return err
+	}
+	selected := make(map[string]struct{}, len(stage))
+	for _, path := range stage {
+		selected[path] = struct{}{}
+	}
+	var untrack []string
+	for _, path := range previous {
+		if _, present := selected[path]; !present {
+			untrack = append(untrack, path)
+		}
 	}
 	if err := s.updateIndex(ctx, gitDir, cwd,
 		[]string{"rm", "-q", "-r", "-f", "--cached", "--ignore-unmatch", "--"}, untrack); err != nil {
 		return err
 	}
-	if len(untrack) > 0 {
-		// A cached file masks a directory that replaced it. Removing that entry
-		// exposes its children to the same ignore and size policy before capture.
-		out, err = s.gitOutput(ctx, gitDir, cwd, args...)
-		if err != nil {
-			return err
-		}
-		stage, untrack, err = checkpointCandidates(ctx, cwd, out)
-		if err != nil {
-			return err
-		}
-		if err := s.updateIndex(ctx, gitDir, cwd,
-			[]string{"rm", "-q", "-r", "-f", "--cached", "--ignore-unmatch", "--"}, untrack); err != nil {
-			return err
-		}
-	}
 	return s.updateIndex(ctx, gitDir, cwd, []string{"add", "--force", "--"}, stage)
 }
 
-func checkpointCandidates(ctx context.Context, cwd string, output []byte) ([]string, []string, error) {
-	if len(output) > 0 && output[len(output)-1] != 0 {
-		return nil, nil, errors.New("checkpoint: git ls-files returned an incomplete record")
+func (s *Store) snapshotCandidates(ctx context.Context, gitDir, cwd string) ([]byte, error) {
+	repository, err := workspacegit.IsRepo(ctx, cwd)
+	if err != nil {
+		return nil, err
 	}
-	var stage, untrack []string
+	args := []string{"ls-files", "-z", "--cached", "--others", "--exclude-standard"}
+	if repository {
+		for pattern := range strings.SplitSeq(strings.TrimSpace(commonExcludes), "\n") {
+			args = append(args, "--exclude="+pattern)
+		}
+		// Without the pathspec Git also emits ancestor/sibling index entries.
+		return gitInOutput(ctx, cwd, append(args, "--", ".")...)
+	}
+	return s.gitOutput(ctx, gitDir, cwd, args...)
+}
+
+func checkpointCandidates(ctx context.Context, cwd string, output []byte) ([]string, error) {
+	if len(output) > 0 && output[len(output)-1] != 0 {
+		return nil, errors.New("checkpoint: git ls-files returned an incomplete record")
+	}
+	var stage []string
 	seen := make(map[string]struct{}, min(maxCheckpointPaths, len(output)/2))
 	var admittedBytes int64
 	for p := range strings.SplitSeq(string(output), gitPathRecordSeparator) {
 		if err := cancellation.Err(ctx); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		if p == "" {
 			continue
@@ -175,46 +177,41 @@ func checkpointCandidates(ctx context.Context, cwd string, output []byte) ([]str
 			continue
 		}
 		if len(seen) == maxCheckpointPaths {
-			return nil, nil, fmt.Errorf(
-				"%w: more than %d changed paths",
+			return nil, fmt.Errorf(
+				"%w: more than %d selected paths",
 				errSnapshotTooLarge, maxCheckpointPaths,
 			)
 		}
 		if !filepath.IsLocal(p) {
-			return nil, nil, fmt.Errorf("checkpoint: git returned non-local path %q", p)
+			return nil, fmt.Errorf("checkpoint: git returned non-local path %q", p)
 		}
 		seen[p] = struct{}{}
-		// A missing path is a deletion and must be staged. Other inspection
-		// failures are operational errors, not evidence that the file vanished.
+		// Missing paths leave the projection; only previously captured entries
+		// need index removal. Other inspection failures cannot imply absence.
 		info, err := os.Lstat(filepath.Join(cwd, p))
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
-				stage = append(stage, p)
 				continue
 			}
-			return nil, nil, fmt.Errorf("checkpoint: inspect %q: %w", p, err)
+			return nil, fmt.Errorf("checkpoint: inspect %q: %w", p, err)
 		}
 		if !info.Mode().IsRegular() && info.Mode()&os.ModeSymlink == 0 {
-			untrack = append(untrack, p)
 			continue
 		}
 		if info.Size() > maxCheckpointFileSize {
-			// A path can cross the cap after an earlier snapshot, or arrive in a
-			// copied source index already oversized. Remove it from the shadow index
-			// without touching the work tree so the checkpoint stops owning it.
-			untrack = append(untrack, p)
+			// Crossing the cap retires snapshot ownership without changing the file.
 			continue
 		}
 		if info.Size() > maxCheckpointBytes-admittedBytes {
-			return nil, nil, fmt.Errorf(
-				"%w: changed file material exceeds %d bytes",
+			return nil, fmt.Errorf(
+				"%w: selected file material exceeds %d bytes",
 				errSnapshotTooLarge, maxCheckpointBytes,
 			)
 		}
 		admittedBytes += info.Size()
 		stage = append(stage, p)
 	}
-	return stage, untrack, nil
+	return stage, nil
 }
 
 func (s *Store) updateIndex(ctx context.Context, gitDir, cwd string, prefix, paths []string) error {

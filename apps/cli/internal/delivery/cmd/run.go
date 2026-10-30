@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -290,7 +289,7 @@ func readPrompt(cmd *cobra.Command, args []string) (string, error) {
 	if given := strings.TrimSpace(strings.Join(args, " ")); given != "" {
 		parts = append(parts, given)
 	}
-	piped, err := readPipedPrompt(cmd.InOrStdin())
+	piped, err := readPipedPrompt(cmd.Context(), cmd.InOrStdin())
 	if err != nil {
 		return "", err
 	}
@@ -312,17 +311,21 @@ func readPrompt(cmd *cobra.Command, args []string) (string, error) {
 
 // readPipedPrompt reads stdin when it is not a terminal. A terminal is left alone: a
 // prompt-less `flame run` should say so, not sit there looking hung.
-func readPipedPrompt(in io.Reader) (string, error) {
-	if f, ok := in.(*os.File); ok {
-		info, err := f.Stat()
-		if err != nil {
-			return "", fmt.Errorf("inspect stdin: %w", err)
-		}
-		if info.Mode()&os.ModeCharDevice != 0 {
-			return "", nil
-		}
+func readPipedPrompt(ctx context.Context, in io.Reader) (_ string, err error) {
+	reader, closeReader, err := promptReader(ctx, in)
+	if err != nil || reader == nil {
+		return "", err
 	}
-	b, err := io.ReadAll(io.LimitReader(in, authoring.MaxMessageTextBytes+1))
+	defer func() {
+		err = errors.Join(err, closeReader())
+		if cause := context.Cause(ctx); cause != nil && !errors.Is(err, cause) {
+			err = errors.Join(cause, err)
+		}
+	}()
+	b, err := io.ReadAll(io.LimitReader(reader, authoring.MaxMessageTextBytes+1))
+	if cause := context.Cause(ctx); cause != nil {
+		return "", errors.Join(cause, err)
+	}
 	if err != nil {
 		return "", fmt.Errorf("read stdin: %w", err)
 	}

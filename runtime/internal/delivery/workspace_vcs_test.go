@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -60,25 +61,28 @@ func TestWorkspaceGitWireMapping(t *testing.T) {
 	}
 	gitCmd("add", ".")
 	gitCmd("commit", "-m", "init")
-	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("a\n\nB\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("a\n\nB"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
+	if err := os.WriteFile(filepath.Join(dir, "empty.txt"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
 	s := newWorkspaceHandler(dir)
 	page, err := s.ListWorkspaceFileChanges(context.Background(), protocol.WorkspaceQuery{})
 	if err != nil {
 		t.Fatalf("listFileChanges: %v", err)
 	}
-	if len(page.Data) != 1 || page.Data[0].Status != "modified" || page.Data[0].Added == nil {
-		t.Fatalf("changes = %+v, want one modified with non-nil added", page.Data)
+	if len(page.Data) != 2 || page.Data[0].Status != "modified" || page.Data[0].Added == nil {
+		t.Fatalf("changes = %+v, want modified and empty untracked files", page.Data)
 	}
 
 	diff, err := s.GetWorkspaceDiff(context.Background(), protocol.GetDiffRequest{})
 	if err != nil {
 		t.Fatalf("getDiff: %v", err)
 	}
-	if len(diff.Files) != 1 || len(diff.Files[0].Rows) == 0 {
-		t.Fatalf("diff = %+v, want one file with rows", diff.Files)
+	if len(diff.Files) != 2 || len(diff.Files[0].Rows) == 0 {
+		t.Fatalf("diff = %+v, want modified and empty files", diff.Files)
 	}
 	if err := protocol.ValidateWireTree(diff); err != nil {
 		t.Fatalf("real Git diff violates the response contract: %v", err)
@@ -91,6 +95,19 @@ func TestWorkspaceGitWireMapping(t *testing.T) {
 	}
 	if !blank {
 		t.Fatal("real Git diff lost its blank context line")
+	}
+
+	last := diff.Files[0].Rows[len(diff.Files[0].Rows)-1]
+	if last.Type != protocol.DiffRowAdded || !last.NoNewline || *last.Code != "B" {
+		t.Fatalf("line termination = %+v", last)
+	}
+	selected, err := s.GetWorkspaceDiff(t.Context(), protocol.GetDiffRequest{Path: "a.txt"})
+	if err != nil || len(selected.Files) != 1 || !reflect.DeepEqual(selected.Files[0], diff.Files[0]) {
+		t.Fatalf("single-file projection differs: %+v, %v", selected, err)
+	}
+	raw, err := s.GetWorkspaceDiff(t.Context(), protocol.GetDiffRequest{Format: protocol.DiffFormatRaw})
+	if err != nil || strings.Count(raw.Patch, "diff --git ") != 2 || !strings.Contains(raw.Patch, `\ No newline at end of file`) {
+		t.Fatalf("raw patch = %+v, %v", raw, err)
 	}
 
 	gitCmd("checkout", "-b", "feature")

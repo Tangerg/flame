@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createFlameClient } from "@flame/runtime-client";
+import { createFlameClient, RpcCancellationError } from "@flame/runtime-client";
 import { createVisualRuntimeTransport } from "./createVisualRuntimeTransport";
 import { RUNTIME_AGENT_SESSION_SNAPSHOTS } from "./agentSessionSnapshots";
 import { VISUAL_CAPABILITIES, VISUAL_WORKSPACE_PATH } from "./agentFixtureFacts";
@@ -18,6 +18,44 @@ import { commitVisualInterruptResponses } from "./interruptResponses";
 import { VISUAL_MODELS, VISUAL_PROVIDERS } from "./runtimeSnapshots";
 import { VISUAL_SKILL_PROPOSALS } from "./skillSnapshots";
 describe("visual Runtime transport", () => {
+  it("publishes a controlled remote schedule removal through its original subscription", async () => {
+    const transport = createVisualRuntimeTransport(
+      structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
+      VISUAL_CAPABILITIES,
+      async () => REVIEW_DIFF,
+    );
+    const client = createFlameClient(transport, { capabilities: () => VISUAL_CAPABILITIES });
+    try {
+      const subscription = await client.runtimeEvents.subscribe({
+        topics: ["plugins.dataChanged"],
+      });
+      const events = subscription.events[Symbol.asyncIterator]();
+      transport.removeSchedule("sch_nightly");
+      expect(await events.next()).toMatchObject({
+        done: false,
+        value: { type: "plugins.dataChanged" },
+      });
+      const response = await client.plugins.call({
+        ...VISUAL_SCHEDULES_BINDING,
+        method: "flame.schedules/list.v1",
+        input: JSON.stringify({ Cursor: "" }),
+        target: { scope: "installation", reference: VISUAL_SCHEDULES_BINDING.installationId },
+      });
+      expect(JSON.parse(response.output!)).toEqual({
+        ...VISUAL_SCHEDULES_PAGE,
+        Rows: [VISUAL_SCHEDULES_PAGE.Rows[1]],
+      });
+      expect(VISUAL_SCHEDULES_PAGE.Rows.map((row) => row.ID)).toEqual([
+        "sch_nightly",
+        "sch_weekly",
+      ]);
+      expect(() => transport.removeSchedule("sch_nightly")).toThrow("has no record");
+      await events.return?.();
+    } finally {
+      await client.close();
+    }
+  });
+
   it("serves installed views through validated public reads and the same retained Item facts", async () => {
     const snapshot = structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.waiting);
     const client = createFlameClient(
@@ -287,10 +325,9 @@ describe("visual Runtime transport", () => {
     const cancelled = new Error("visual read cancelled");
     controller.abort(cancelled);
     try {
-      await expect(client.providers.list(controller.signal)).rejects.toMatchObject({
-        name: "RpcTransportError",
-        message: "aborted",
-      });
+      await expect(client.providers.list(controller.signal)).rejects.toBeInstanceOf(
+        RpcCancellationError,
+      );
       await client.close();
       await expect(client.providers.list()).rejects.toThrow("client closed");
     } finally {

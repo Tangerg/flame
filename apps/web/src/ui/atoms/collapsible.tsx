@@ -42,8 +42,9 @@ export function Collapsible({ open, children }: Props) {
   const lockScroll = useScrollLock(rowRef);
 
   useEffect(() => {
-    if (wasOpen.current && !open) lockScroll();
+    const closing = wasOpen.current && !open;
     wasOpen.current = open;
+    if (closing) return lockScroll();
   }, [open, lockScroll]);
 
   return (

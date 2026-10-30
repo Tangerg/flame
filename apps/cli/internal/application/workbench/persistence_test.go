@@ -6,11 +6,24 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/statefile"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem/commit"
 )
 
 type closeTrackingPersistence struct {
-	closed  int
-	listErr error
+	closed     int
+	listErr    error
+	confirmErr error
+}
+
+func (p *closeTrackingPersistence) ConfirmDurability() error { return p.confirmErr }
+
+func TestOpenClosesPersistenceWhenDurabilityCannotBeConfirmed(t *testing.T) {
+	cause := errors.New("directory sync unavailable")
+	persistence := &closeTrackingPersistence{confirmErr: cause}
+	store, err := Open(persistence, Config{})
+	if store != nil || !errors.Is(err, cause) || persistence.closed != 1 {
+		t.Fatalf("unconfirmed store opened or leaked: store=%v error=%v closes=%d", store, err, persistence.closed)
+	}
 }
 
 func (*closeTrackingPersistence) Read(string, int64) ([]byte, error) { return nil, os.ErrNotExist }
@@ -20,8 +33,12 @@ func (p *closeTrackingPersistence) ListFiles(string, string) ([]string, error) {
 	}
 	return nil, os.ErrNotExist
 }
-func (*closeTrackingPersistence) Replace(string, []byte) error { return nil }
-func (*closeTrackingPersistence) Remove(string) error          { return nil }
+func (*closeTrackingPersistence) Replace(string, []byte) commit.Result {
+	return commit.Result{State: commit.Durable}
+}
+func (*closeTrackingPersistence) Remove(string) commit.Result {
+	return commit.Result{State: commit.Durable}
+}
 func (p *closeTrackingPersistence) Close() error {
 	p.closed++
 	return nil
@@ -57,12 +74,21 @@ func TestStoreClosesOwnedPersistenceOnce(t *testing.T) {
 	}
 }
 
-func OpenDirectory(directory string, config Config) (*Store, error) {
+func OpenDirectory(t testing.TB, directory string, config Config) (*Store, error) {
+	t.Helper()
 	persistence, err := statefile.Open(directory)
 	if err != nil {
 		return nil, err
 	}
-	return Open(persistence, config)
+	store, err := Open(persistence, config)
+	if err == nil {
+		t.Cleanup(func() {
+			if err := store.Close(); err != nil {
+				t.Error(err)
+			}
+		})
+	}
+	return store, err
 }
 
 type removeFailurePersistence struct {
@@ -71,9 +97,9 @@ type removeFailurePersistence struct {
 	enabled bool
 }
 
-func (r *removeFailurePersistence) Remove(name string) error {
+func (r *removeFailurePersistence) Remove(name string) commit.Result {
 	if r.enabled && name == r.name {
-		return errors.New("injected remove failure")
+		return commit.Result{Err: errors.New("injected remove failure")}
 	}
 	return r.Persistence.Remove(name)
 }

@@ -135,23 +135,25 @@ func TestCancellationPlanRejectsInconsistentTreeFacts(t *testing.T) {
 func TestCancellationRejectsLiveOwnerFactDrift(t *testing.T) {
 	spec := testSegment()
 	root := runForSegment(spec)
-	base := liveSegment{record: Record{
+	base := liveSegment{owner: testRunTreeOwner(t, nil), record: Record{
 		ID: spec.RunID, SegmentID: spec.SegmentID, ExecutorID: spec.ExecutorID,
 	}}
-	if err := validateCancellationLiveRoot(base, root); err != nil {
+	if err := base.owner.admitCancellation(root, base.record); err != nil {
 		t.Fatalf("coherent live owner: %v", err)
 	}
 	tests := []struct {
 		name   string
 		mutate func(*liveSegment)
 	}{
+		{"run", func(live *liveSegment) { live.record.ID = "run_other" }},
+		{"executor", func(live *liveSegment) { live.record.ExecutorID = "" }},
 		{"segment", func(live *liveSegment) { live.record.SegmentID = "seg_other" }},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			live := base
 			test.mutate(&live)
-			if err := validateCancellationLiveRoot(live, root); err == nil {
+			if err := live.owner.admitCancellation(root, live.record); err == nil {
 				t.Fatalf("accepted %s drift between live owner and durable Run", test.name)
 			}
 		})

@@ -22,23 +22,43 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
-// Column constraints derive from the stored state vocabulary so SQL admission
-// and decoding cannot disagree.
+// Logical and physical requests share a table, not a state owner.
+func modelInvocationStatePredicate(logical []runs.ModelInvocationState, physical []modelref.EndpointState) string {
+	quote := func(values []string) string { return "'" + strings.Join(values, "','") + "'" }
+	left := make([]string, len(logical))
+	for i, state := range logical {
+		left[i] = state.String()
+	}
+	right := make([]string, len(physical))
+	for i, state := range physical {
+		right[i] = string(state)
+	}
+	return fmt.Sprintf("((endpoint_json IS NULL AND state IN (%s)) OR (endpoint_json IS NOT NULL AND state IN (%s)))", quote(left), quote(right))
+}
+
+func startedModelInvocationPredicate() string {
+	return modelInvocationStatePredicate([]runs.ModelInvocationState{runs.ModelInvocationStarted}, []modelref.EndpointState{modelref.EndpointStarted})
+}
+
+func endpointResponseStates() []modelref.EndpointState {
+	var states []modelref.EndpointState
+	for _, rule := range modelref.EndpointEvidenceRules() {
+		if rule.Response {
+			states = append(states, rule.State)
+		}
+	}
+	return states
+}
+
 func modelInvocationLatencyColumn() string {
-	return fmt.Sprintf(
-		"first_output_latency_millis INTEGER CHECK "+
-			"(first_output_latency_millis IS NULL OR "+
-			"(state IN ('%s', '%s') AND first_output_latency_millis >= 0))",
-		modelInvocationCompleted.databaseValue(),
-		modelInvocationFailed.databaseValue(),
-	)
+	return "first_output_latency_millis INTEGER CHECK (first_output_latency_millis IS NULL OR (" +
+		modelInvocationStatePredicate([]runs.ModelInvocationState{runs.ModelInvocationCompleted, runs.ModelInvocationFailed}, endpointResponseStates()) +
+		" AND first_output_latency_millis >= 0))"
 }
 
 func modelInvocationUsageColumn() string {
-	return fmt.Sprintf(
-		"usage TEXT CHECK (usage IS NULL OR ((state = '%s' OR (state = '%s' AND known_response IS NOT NULL)) AND json_valid(usage)))",
-		modelInvocationCompleted.databaseValue(), modelInvocationFailed.databaseValue(),
-	)
+	return fmt.Sprintf("usage TEXT CHECK (usage IS NULL OR ((%s OR (state = '%s' AND endpoint_json IS NULL AND known_response IS NOT NULL)) AND json_valid(usage)))",
+		modelInvocationStatePredicate([]runs.ModelInvocationState{runs.ModelInvocationCompleted}, endpointResponseStates()), runs.ModelInvocationFailed.String())
 }
 
 const oauthBindingColumn = "binding TEXT NOT NULL DEFAULT ''"
@@ -192,7 +212,7 @@ func currentSchema() []string {
 		// Semantic response content and aggregate accounting stay in history_items
 		// and runs; deleting the owning Run also removes its invocation records.
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS model_invocations (
-			logical_purpose TEXT CHECK (logical_purpose IS NULL OR logical_purpose IN ('%[7]s','%[8]s')),
+			logical_purpose TEXT CHECK (logical_purpose IS NULL OR logical_purpose IN ('%[3]s','%[4]s')),
 			call_id     TEXT    PRIMARY KEY,
 			session_id  TEXT,
 			run_id      TEXT REFERENCES runs(run_id) ON DELETE CASCADE,
@@ -200,36 +220,32 @@ func currentSchema() []string {
 			state       TEXT    NOT NULL,
 			started_at  INTEGER NOT NULL,
 			finished_at INTEGER,
-			%[5]s,
-			%[6]s,
+			%[1]s,
+			%[2]s,
 			endpoint_json TEXT CHECK (endpoint_json IS NULL OR json_valid(endpoint_json)),
-			endpoint_kind TEXT CHECK (endpoint_kind IS NULL OR endpoint_kind IN ('%[9]s', '%[10]s')),
+			endpoint_kind TEXT CHECK (endpoint_kind IS NULL OR endpoint_kind IN ('%[5]s', '%[6]s')),
 			endpoint_failure TEXT NOT NULL DEFAULT '',
 			endpoint_cost_usd REAL CHECK (endpoint_cost_usd IS NULL OR (endpoint_cost_usd >= 0 AND endpoint_json IS NOT NULL AND known_response IS NOT NULL)),
-			known_response TEXT CHECK (known_response IS NULL OR ((state = '%[3]s' OR (state = '%[2]s' AND endpoint_json IS NOT NULL)) AND json_valid(known_response))),
+			known_response TEXT CHECK (known_response IS NULL OR (%[7]s AND json_valid(known_response))),
 			CHECK ((endpoint_json IS NULL) = (endpoint_kind IS NULL)),
 			CHECK (endpoint_json IS NOT NULL OR (session_id IS NOT NULL AND run_id IS NOT NULL AND segment_id IS NOT NULL AND logical_purpose IS NOT NULL)),
-			CHECK (state IN ('%[1]s', '%[2]s', '%[3]s', '%[4]s')),
-			CHECK (
-				(state = '%[1]s' AND finished_at IS NULL) OR
-				(state != '%[1]s' AND finished_at IS NOT NULL AND finished_at >= started_at)
-			)
+			CHECK (%[8]s),
+			CHECK ((%[9]s AND finished_at IS NULL) OR (NOT %[9]s AND finished_at IS NOT NULL AND finished_at >= started_at))
 		)`,
-			modelInvocationStarted.databaseValue(),
-			modelInvocationCompleted.databaseValue(),
-			modelInvocationFailed.databaseValue(),
-			modelInvocationUnknown.databaseValue(),
 			modelInvocationLatencyColumn(),
 			modelInvocationUsageColumn(),
 			run.ModelConversation.String(), run.ModelIndependent.String(),
 			modelref.EndpointChat, modelref.EndpointEmbedding,
+			modelInvocationStatePredicate([]runs.ModelInvocationState{runs.ModelInvocationFailed}, endpointResponseStates()),
+			modelInvocationStatePredicate(runs.ModelInvocationState("").Values(), modelref.EndpointState("").Values()),
+			startedModelInvocationPredicate(),
 		),
 		`CREATE INDEX IF NOT EXISTS idx_model_invocations_trajectory
 			ON model_invocations(run_id, started_at DESC, call_id DESC)`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_model_endpoint_parent ON model_invocations(json_extract(endpoint_json,'$.caller.id')) WHERE endpoint_json IS NOT NULL`,
 		`CREATE INDEX IF NOT EXISTS idx_model_endpoint_ancestry ON model_invocations(json_extract(endpoint_json,'$.caller.parent'),started_at DESC,call_id DESC) WHERE endpoint_json IS NOT NULL`,
 		fmt.Sprintf(`CREATE INDEX IF NOT EXISTS idx_model_invocations_open
-			ON model_invocations(state) WHERE state = '%s'`, modelInvocationStarted.databaseValue()),
+			ON model_invocations(state) WHERE %s`, startedModelInvocationPredicate()),
 		// Attempts retain their Segment identity across waits; the final Tool Item
 		// cannot reconstruct the execution intervals that preceded continuation.
 		`CREATE TABLE IF NOT EXISTS installed_tool_callers (call_id TEXT PRIMARY KEY, caller_json TEXT NOT NULL CHECK(json_valid(caller_json)))`,
@@ -271,10 +287,10 @@ func currentSchema() []string {
 		fmt.Sprintf(`CREATE TRIGGER IF NOT EXISTS require_settled_model_invocations
 			BEFORE UPDATE OF state ON runs
 			WHEN OLD.state != '%[1]s' AND NEW.state = '%[1]s'
-			 AND EXISTS (SELECT 1 FROM model_invocations WHERE run_id = NEW.run_id AND state = '%[2]s')
+			 AND EXISTS (SELECT 1 FROM model_invocations WHERE run_id = NEW.run_id AND %[2]s)
 			BEGIN
 				SELECT RAISE(ABORT, 'model invocations must settle before run terminalization');
-			END`, runStateTerminal.databaseValue(), modelInvocationStarted.databaseValue()),
+			END`, runStateTerminal.databaseValue(), startedModelInvocationPredicate()),
 		// child_run_start_reservations are invisible executor/application ACL
 		// records. They allocate product identity after a managed child admission
 		// but before the executor has conclusively initialized. The conclusive
@@ -354,6 +370,12 @@ func currentSchema() []string {
 			to_run_id      TEXT    NOT NULL REFERENCES runs(run_id) ON DELETE RESTRICT,
 			restore_history INTEGER NOT NULL
 		)`,
+		// Cleanup responsibility survives the Session and authorizes destruction
+		// only after the history transaction that inserted it has committed.
+		`CREATE TABLE IF NOT EXISTS committed_session_resource_retirements (
+			retirement_id TEXT PRIMARY KEY,
+			session_id TEXT NOT NULL UNIQUE
+		)`,
 		`CREATE TABLE IF NOT EXISTS history_items (
 			seq         INTEGER PRIMARY KEY AUTOINCREMENT,
 			session_id  TEXT    NOT NULL,
@@ -372,10 +394,6 @@ func currentSchema() []string {
 			api_key   TEXT CHECK (api_key IS NULL OR length(api_key) > 0),
 			base_url  TEXT CHECK (base_url IS NULL OR length(base_url) > 0)
 		)`,
-		// Global utility-model role: the (provider, model)
-		// the in-house maintenance services — compaction / extraction / titling —
-		// run on. Single row, pinned by CHECK(id = 1); empty model = unset (those
-		// run on the main Run model).
 		`CREATE TABLE IF NOT EXISTS utility_role (
 			id        INTEGER PRIMARY KEY CHECK (id = 1),
 			provider  TEXT NOT NULL DEFAULT '',

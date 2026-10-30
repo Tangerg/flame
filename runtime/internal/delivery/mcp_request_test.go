@@ -3,6 +3,7 @@ package delivery
 import (
 	"testing"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -42,7 +43,7 @@ func TestToolReferenceRoundTripsEveryVariant(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	builtIn, err := tool.BuiltIn(tool.Shell)
+	builtIn, err := tool.BuiltIn(builtincontract.Shell)
 	if err != nil {
 		t.Fatal(err)
 	}

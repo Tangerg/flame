@@ -88,7 +88,7 @@ func TestRecentWorkspacePickerCreatesAndSwitchesToTheSelectedRoot(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	store, err := openTestWorkbench(state)
+	store, err := openTestWorkbench(t, state)
 	if err != nil {
 		t.Fatal(err)
 	}

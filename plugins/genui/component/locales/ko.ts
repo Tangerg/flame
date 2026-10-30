@@ -50,6 +50,7 @@ export const ko: Record<string, string> = {
   "map.coordinates": "좌표",
   "map.description": "설명",
   "interaction.running": "작업 결과를 기다리는 중…",
+  "interaction.inputFailed": "이 항목을 업데이트하지 못했습니다.",
   "interaction.failed": "작업에 실패했습니다.",
   "interaction.complete": "작업이 접수되었습니다.",
   "interaction.unknown":

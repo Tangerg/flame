@@ -42,22 +42,16 @@ export function commitCreatedAgentSession(created: AgentSessionSummary): void {
   void invalidateAgentSessions();
 }
 
-// A queued summary write runs after the same Session's earlier writes have
-// been committed to this projection, so it states the revision the Runtime
-// last returned. The commit and the revalidation that cancels older reads are
-// adjacent, so a read issued before the write cannot restore its predecessor.
+// Ordering and cache publication preserve each command's captured precondition;
+// a later projection cannot authorize an older edit against a newer revision.
 export function writeAgentSessionSummary(
   owner: AgentCommandOwner,
   sessionId: string,
-  renderedRevision: number,
-  write: (expectedRevision: number) => Promise<AgentSessionSummary>,
+  write: () => Promise<AgentSessionSummary>,
 ): Promise<AgentSessionSummary> {
   return owner.serializeSessionSummary(sessionId, async () => {
     owner.assertCurrent();
-    const current = queryClient
-      .getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY])
-      ?.find((session) => session.id === sessionId);
-    const saved = await owner.settle(write(current?.revision ?? renderedRevision));
+    const saved = await owner.settle(write());
     owner.assertCurrent();
     queryClient.setQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY], (sessions) =>
       sessions?.map((session) => (session.id === saved.id ? saved : session)),

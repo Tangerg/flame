@@ -26,6 +26,7 @@ func TestDecodePublishDiagnosticsValidatesNotification(t *testing.T) {
 		{name: "null", raw: rawMessage("null"), want: "uri is empty"},
 		{name: "malformed", raw: rawMessage("{"), want: "decode"},
 		{name: "empty uri", raw: rawMessage(`{"uri":"","diagnostics":[]}`), want: "uri is empty"},
+		{name: "negative version", raw: rawMessage(`{"uri":"file:///main.go","version":-1,"diagnostics":[]}`), want: "version is negative"},
 		{name: "unknown severity", raw: rawMessage(`{"uri":"file:///main.go","diagnostics":[{"range":{},"severity":5,"message":"broken"}]}`), want: "unknown severity"},
 		{name: "negative position", raw: rawMessage(`{"uri":"file:///main.go","diagnostics":[{"range":{"start":{"line":-1},"end":{}},"message":"broken"}]}`), want: "line is negative"},
 		{name: "reversed range", raw: rawMessage(`{"uri":"file:///main.go","diagnostics":[{"range":{"start":{"line":2},"end":{"line":1}},"message":"broken"}]}`), want: "end precedes start"},

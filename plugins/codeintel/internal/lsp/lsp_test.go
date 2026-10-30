@@ -135,6 +135,9 @@ func TestServers_Diagnostics(t *testing.T) {
 		d, err := servers.Diagnostics(ctx, root, "bad.go")
 		cancel()
 		if err != nil {
+			if _, pending := errors.AsType[*DiagnosticsPendingError](err); pending {
+				continue
+			}
 			t.Fatalf("Diagnostics: %v", err)
 		}
 		if len(d) > 0 {
@@ -257,7 +260,7 @@ func TestServersShareConcurrentStartup(t *testing.T) {
 	started := make(chan struct{})
 	release := make(chan struct{})
 	var calls atomic.Int32
-	want := inertClient(nil)
+	want := inertClient(t, nil)
 	servers.launch = func(ctx context.Context, _ ServerSpec, _ string) (*client, error) {
 		if calls.Add(1) == 1 {
 			close(started)
@@ -312,7 +315,7 @@ func TestServersCloseCancelsAndJoinsStartupCleanup(t *testing.T) {
 		close(started)
 		<-ctx.Done()
 		// Simulate a handshake that completed just after shutdown cancellation.
-		return inertClient(cleanupErr), nil
+		return inertClient(t, cleanupErr), nil
 	}
 
 	clientErr := make(chan error, 1)
@@ -337,7 +340,7 @@ func TestServersCallerCancellationDoesNotCancelSharedStartup(t *testing.T) {
 	started := make(chan struct{})
 	release := make(chan struct{})
 	var calls atomic.Int32
-	want := inertClient(nil)
+	want := inertClient(t, nil)
 	servers.launch = func(ctx context.Context, _ ServerSpec, _ string) (*client, error) {
 		calls.Add(1)
 		close(started)
@@ -420,7 +423,7 @@ func TestServersCanceledCallerDoesNotStartClient(t *testing.T) {
 	var calls atomic.Int32
 	servers.launch = func(context.Context, ServerSpec, string) (*client, error) {
 		calls.Add(1)
-		return inertClient(nil), nil
+		return inertClient(t, nil), nil
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -464,8 +467,9 @@ func TestWorkspaceSymbolsReportsEveryStartupFailure(t *testing.T) {
 	}
 }
 
-func inertClient(closeErr error) *client {
-	c := &client{closeErr: closeErr}
+func inertClient(t *testing.T, closeErr error) *client {
+	c, _ := connectedTestClient(t, replyEmpty)
+	c.cleanupErr = closeErr
 	c.closeOnce.Do(func() {})
 	return c
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
@@ -20,7 +21,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
 )
@@ -306,7 +307,7 @@ func buildExecutionComposition(
 		interactionConfig.ToolResultStore = cfg.stores.ToolResults
 		interactionConfig.ToolResultOffload = executionadapter.ToolResultOffloadPolicyValues{
 			Threshold:  &toolResultThreshold,
-			ReaderName: string(tool.ReadToolResult),
+			ReaderName: string(builtincontract.ReadToolResult),
 		}
 	}
 	interactionExecutor, err := executionadapter.NewInteractionExecutor(interactionConfig)

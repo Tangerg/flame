@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -50,7 +51,7 @@ func (r DiagnosticRegistry) List(context.Context) (_ []tool.Tool, err error) {
 	interpreter := Interpreter{}
 	out := make([]tool.Tool, 0, len(manifest.Visible))
 	for _, definition := range registry.Definitions() {
-		ref, err := tool.BuiltIn(tool.BuiltInName(definition.Name))
+		ref, err := tool.BuiltIn(builtincontract.Name(definition.Name))
 		if err != nil {
 			return nil, err
 		}

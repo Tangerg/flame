@@ -7,7 +7,7 @@ import type {
   MCPServerCandidate,
 } from "@flame/runtime-client/wire";
 import type { MCPHandshakeTimeout } from "./timeout";
-import type { MCPServerInput } from "./input";
+import type { MCPServerInput, MCPServerUpdateInput } from "./input";
 export type { MCPServerID, MCPTransport };
 export interface MCPServerSettings {
   id: MCPServerID;
@@ -101,13 +101,29 @@ export function candidate(input: MCPServerInput): MCPServerCandidate {
 }
 export function updateRequest(
   server: MCPServerID,
-  input: MCPServerInput,
+  input: MCPServerUpdateInput,
 ): UpdateMCPServerRequest {
-  const value = candidate(input);
+  const connection = input.connection;
   return {
     server,
-    description: value.description ?? "",
-    connection: value.connection,
-    handshakeTimeout: value.handshakeTimeout,
+    description: input.description,
+    handshakeTimeout: input.handshakeTimeout,
+    connection:
+      connection === undefined
+        ? undefined
+        : connection.transport === "stdio"
+          ? {
+              type: "stdio",
+              command: connection.command ?? "",
+              args: connection.args,
+              dir: connection.dir,
+              env: change(connection.env),
+            }
+          : {
+              type: "streamableHttp",
+              url: connection.url ?? "",
+              authorization: change(connection.authorization),
+              headers: change(connection.headers),
+            },
   };
 }

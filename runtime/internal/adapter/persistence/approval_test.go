@@ -5,10 +5,11 @@ import (
 	"path/filepath"
 	"testing"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -197,7 +198,7 @@ func TestApprovalRuleStore_DeleteSessionPreservesBroaderScopes(t *testing.T) {
 func TestApprovalRuleStore_VisibleEnforcesRequestedBound(t *testing.T) {
 	ctx := t.Context()
 	store := newApprovalStore(t)
-	for _, toolName := range []tool.BuiltInName{tool.Read, tool.Shell} {
+	for _, toolName := range []builtincontract.Name{builtincontract.Read, builtincontract.Shell} {
 		if err := store.Put(ctx, newApprovalRule(t, approval.ScopeGlobal, "", toolName, "", approval.Allow)); err != nil {
 			t.Fatal(err)
 		}
@@ -213,7 +214,7 @@ func TestApprovalRuleStore_VisibleEnforcesRequestedBound(t *testing.T) {
 	}
 }
 
-func newApprovalRule(t *testing.T, scope approval.Scope, scopeKey string, toolName tool.BuiltInName, subject string, decision approval.Decision) approval.Rule {
+func newApprovalRule(t *testing.T, scope approval.Scope, scopeKey string, toolName builtincontract.Name, subject string, decision approval.Decision) approval.Rule {
 	t.Helper()
 	rule, err := approval.NewRule(scope, scopeKey, testsupport.BuiltInTool(t, toolName), testsupport.ToolFingerprint(testsupport.BuiltInTool(t, toolName)), approval.InvocationSubject(subject), decision)
 	if err != nil {

@@ -6,6 +6,7 @@ import { Pressable } from "@/ui/index";
 import { ImagePreviewGallery } from "@/features/chat/message/ui/ImagePreviewGallery";
 import { ImageNotice } from "@flame/ui";
 import { radius, space } from "@flame/ui/tokens.stylex";
+import { isInlineImage } from "@/foundation/imageExport";
 const mi = stylex.create({
   trigger: {
     marginBlock: space.s3,
@@ -29,12 +30,6 @@ const mi = stylex.create({
   },
 });
 
-const INLINE_IMAGE = /^data:image\/(?:avif|gif|jpeg|jpg|png|svg\+xml|webp)(?:;[^,]*)?,/i;
-
-export function isInlineMarkdownImage(src: string): boolean {
-  return INLINE_IMAGE.test(src);
-}
-
 interface Props {
   src?: string;
   alt?: string;
@@ -52,7 +47,7 @@ export function MarkdownImage({
 }: Props) {
   const t = useT();
   const [failedSource, setFailedSource] = useState<string | null>(null);
-  const unavailable = !isInlineMarkdownImage(src) || failedSource === src;
+  const unavailable = !isInlineImage(src) || failedSource === src;
   const paragraphStyles = layout === "paragraph" && mi.paragraph;
 
   if (unavailable) {

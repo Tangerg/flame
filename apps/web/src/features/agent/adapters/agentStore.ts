@@ -1,3 +1,7 @@
+import {
+  projectRootRunSettlement,
+  type RootRunSettlement,
+} from "@/features/agent/application/run/rootAttention";
 import { type CancelRunResponse, type RunEvent, type RunRef } from "@flame/runtime-client";
 import {
   type AgentViewRefreshToken,
@@ -168,20 +172,45 @@ function patchSessionState(
 
 export function createAgentStore(sessionStore: AgentSessionStore) {
   const useAgentSessionStore = sessionStore.store;
+  const settlementListeners = new Set<(settlement: RootRunSettlement) => void>();
+  let disposed = false;
+  function publishSettlements(generation: bigint, settlements: RootRunSettlement[]): void {
+    for (const settlement of settlements) {
+      for (const listener of [...settlementListeners]) {
+        if (
+          disposed ||
+          useAgentStore.getState().sessions[settlement.sessionId]?.viewEpoch !== generation
+        )
+          return;
+        if (settlementListeners.has(listener)) listener(settlement);
+      }
+    }
+  }
   const useAgentStore = create<AgentStore>((set) => ({
     sessions: {},
     projectionGenerationSequence: initialProjectionCounter,
     applyRunEvents: (sessionId, events) => {
       let applied = false;
+      let generation = initialProjectionCounter;
+      const settlements: RootRunSettlement[] = [];
       set((state) => {
         if (events.length === 0) return state;
         const prev = state.sessions[sessionId];
         if (!prev) return state;
+        generation = prev.viewEpoch;
         let view = prev.view;
         let problem = prev.problem;
         for (const event of events) {
           const agentEvent = runtimeAgentEvent(event);
-          view = reduceAgentEvent(view, agentEvent);
+          const next = reduceAgentEvent(view, agentEvent);
+          const settlement = projectRootRunSettlement(
+            view,
+            next,
+            agentEvent.runId,
+            agentEvent.segmentId,
+          );
+          if (settlement) settlements.push(settlement);
+          view = next;
           // A started segment supersedes the command failure that preceded it.
           if (agentEvent.event.type === "segment.started")
             problem = withCommandError(problem, null);
@@ -197,6 +226,8 @@ export function createAgentStore(sessionStore: AgentSessionStore) {
           }),
         };
       });
+      // Rejected batches never publish partial lifecycle effects.
+      if (applied) publishSettlements(generation, settlements);
       return applied;
     },
     applyRunSnapshot: (sessionId, run) =>
@@ -208,6 +239,7 @@ export function createAgentStore(sessionStore: AgentSessionStore) {
       }),
     commitCancelResponse: (sessionId, expected, response) => {
       let committed = false;
+      let settlement: RootRunSettlement | null = null;
       set((state) => {
         const entry = state.sessions[sessionId];
         if (
@@ -217,12 +249,21 @@ export function createAgentStore(sessionStore: AgentSessionStore) {
         ) {
           return state;
         }
-        const sessions = patchView(state.sessions, sessionId, (view) =>
-          foldCancelRunResponse(view, runtimeCancelResult(response)),
-        );
+        const sessions = patchView(state.sessions, sessionId, (view) => {
+          const next = foldCancelRunResponse(view, runtimeCancelResult(response));
+          const rootId = response.type === "root" ? response.run.id : response.rootRun.id;
+          settlement = projectRootRunSettlement(
+            view,
+            next,
+            rootId,
+            view.runsById[rootId]?.activeSegmentId ?? null,
+          );
+          return next;
+        });
         committed = true;
         return sessions === state.sessions ? state : { sessions };
       });
+      if (committed && settlement) publishSettlements(expected.viewEpoch, [settlement]);
       return committed;
     },
     appendLocalMessage: (sessionId, message) =>
@@ -464,7 +505,16 @@ export function createAgentStore(sessionStore: AgentSessionStore) {
   return {
     store: useAgentStore,
     refresh: AgentViewRefreshOwner.install,
+    subscribeRootRunSettlements(listener: (settlement: RootRunSettlement) => void): () => void {
+      if (disposed) return () => undefined;
+      settlementListeners.add(listener);
+      return () => {
+        settlementListeners.delete(listener);
+      };
+    },
     dispose() {
+      disposed = true;
+      settlementListeners.clear();
       unsubPruneSessions();
       agentViewRefreshPublication.current()?.dispose();
     },

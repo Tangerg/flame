@@ -137,7 +137,7 @@ func TestStartupAdmissionFailureRetiresTheUnlaunchedResource(t *testing.T) {
 		other := config.Clone()
 		other.Name = testsupport.ServerName("other")
 		return newLaunch(other, nil, func() error { retired.Add(1); return nil }, admission{})
-	}, nil, newClient())
+	}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

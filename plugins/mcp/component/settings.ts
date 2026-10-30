@@ -23,7 +23,7 @@ import {
   type MCPServerSettings,
 } from "./model";
 import { MCPServerEdit } from "./draft";
-import { parseMcpImport, type McpImportResult } from "./import";
+import { parseMcpImport } from "./import";
 
 export type Read<T> =
   | { phase: "loading"; data?: T }
@@ -34,7 +34,7 @@ export type Command =
 export type Feedback =
   | { kind: "error"; error: unknown }
   | { kind: "tested"; outcome: MCPTestResult["outcome"] }
-  | { kind: "imported"; count: number; renamed: McpImportResult["renamed"] };
+  | { kind: "imported"; count: number };
 interface Snapshot {
   servers: Read<MCPServerSettings[]>;
   tools: ReadonlyMap<string, Read<MCPTool[]>>;
@@ -83,7 +83,7 @@ export class MCPSettings {
   readonly #batches = new Map<string, Batch>();
   readonly #polling = new Map<string, AbortSignal>();
   #snapshot = initial();
-  #import?: McpImportResult;
+  #import?: ReturnType<typeof parseMcpImport>;
   constructor(source: ComponentSource) {
     source.signal.throwIfAborted();
     this.#source = source;
@@ -222,6 +222,8 @@ export class MCPSettings {
     this.#assert(context);
     if (!draft.isValid) throw new Error("invalid MCP server draft");
     const input = draft.toInput();
+    const update = server ? draft.toUpdate() : undefined;
+    if (server && !update) return Promise.resolve(true);
     const key = editorKey(server);
     const target = server ?? userMCPServer(input.name);
     return this.#start(
@@ -232,7 +234,7 @@ export class MCPSettings {
         {
           execute: (context) =>
             server
-              ? context.runtime.mcp.update(updateRequest(server, input))
+              ? context.runtime.mcp.update(updateRequest(server, update!))
               : context.runtime.mcp.create(candidate(input)),
           accept: (value) => {
             this.#acceptServer(value as MCPServer);
@@ -473,15 +475,13 @@ export class MCPSettings {
     const completed = this.#snapshot.importProgress?.completed ?? 0;
     this.#snapshot = {
       ...this.#snapshot,
-      importProgress: { completed, total: parsed.servers.length },
+      importProgress: { completed, total: parsed.length },
     };
     return this.#start(
       context,
       IMPORT,
-      parsed.servers
-        .slice(completed)
-        .map((s) => serverKey(userMCPServer(s.name))),
-      parsed.servers.slice(completed).map((input) => ({
+      parsed.slice(completed).map((s) => serverKey(userMCPServer(s.name))),
+      parsed.slice(completed).map((input) => ({
         execute: (context) => context.runtime.mcp.create(candidate(input)),
         accept: (value) => {
           this.#acceptServer(value as MCPServer);
@@ -489,7 +489,7 @@ export class MCPSettings {
             ...this.#snapshot,
             importProgress: {
               completed: (this.#snapshot.importProgress?.completed ?? 0) + 1,
-              total: parsed.servers.length,
+              total: parsed.length,
             },
           };
         },
@@ -549,8 +549,7 @@ export class MCPSettings {
       if (key === IMPORT && this.#import) {
         this.#feedback(key, {
           kind: "imported",
-          count: this.#import.servers.length,
-          renamed: this.#import.renamed,
+          count: this.#import.length,
         });
         this.#publish();
       }

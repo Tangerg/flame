@@ -3,7 +3,6 @@ import { type AgentAccess } from "@/features/agent/public/agent";
 import { type Message } from "@/features/agent/public/sessionView";
 import { t } from "@/lib/i18n/index";
 import { notifyError, notifyInfo } from "@/features/notifications/public/notifications";
-import { buildInput } from "@/features/composer/public/input";
 import { agentInputToComposerDraft } from "@/features/chat/message-actions/application/inputBridge";
 import { describeRpcError } from "@/lib/rpcErrors";
 
@@ -15,12 +14,12 @@ import {
 import {
   messageDraftContent,
   messageHasDraftContent,
-  regenerationPromptBefore,
 } from "@/features/chat/message-actions/application/messageActionContent";
 import {
   canEditMessage,
   canForkMessage,
   canRollbackMessage,
+  canRegenerateMessage,
 } from "@/features/chat/message-actions/application/messageActionAvailability";
 export type { RestoreType };
 
@@ -44,27 +43,16 @@ export function regenerateMessage(
   opts?: RollbackActionOptions,
 ): void {
   const conversation = agentAccess.activeAgentConversation();
-  if (!conversation) return;
-  const { sessionId, messages } = conversation;
-  const prompt = regenerationPromptBefore(messages, msg.id);
-  if (!prompt) return;
-  if (!prompt.runId) {
-    agentAccess.sendToAgentSession(sessionId, buildInput(prompt.text, prompt.images));
-    return;
-  }
+  if (!conversation || !canRegenerateMessage(msg, conversation.messages)) return;
   void agentAccess
-    .rollbackSessionToBeforeRun(sessionId, prompt.runId, opts?.restoreFiles ? "both" : "history")
-    .then((rollback) => {
-      if (rollback.status === "inFlight") return;
-      const input =
-        rollback.status === "committed" && rollback.userInput
-          ? rollback.userInput
-          : buildInput(prompt.text, prompt.images);
-      if (!agentAccess.sendToAgentSession(sessionId, input)) {
-        notifyInfo(t("session.regenerate.switchedAway"), {
-          source: "session",
-        });
-      }
+    .regenerateSessionRun(
+      conversation.sessionId,
+      msg.runId,
+      opts?.restoreFiles ? "both" : "history",
+    )
+    .then((result) => {
+      if (result.status === "noInput" || result.status === "notReady")
+        notifyInfo(t(`session.regenerate.${result.status}`), { source: "session" });
     })
     .catch(reportRollbackError);
 }

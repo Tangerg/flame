@@ -8,13 +8,20 @@ import (
 )
 
 func TestRendererComponentAdmissionAndReleaseCopies(t *testing.T) {
-	valid := ClientComponent{ID: "search", Title: "Search", Scope: "toolResult", Placement: "toolResultRenderer", Entry: Namespace + "/components/component.js", Export: "Result", Selector: &RendererSelector{Kind: extension.RendererResultShape, Name: "search"}}
+	valid := ClientComponent{ID: "search", Title: "Search", Scope: "toolResult", Placement: "toolResultRenderer", Entry: Namespace + "/components/component.js", Export: "Result", Selector: &RendererSelector{Kind: extension.RendererResultShape, Shape: extension.ResultShapeSearch}}
 	for _, test := range []struct {
 		name   string
 		change func(*ClientComponent)
 	}{
 		{"unknown selector", func(v *ClientComponent) { v.Selector.Kind = "execute" }},
-		{"unknown shape", func(v *ClientComponent) { v.Selector.Name = "arbitrary" }},
+		{"legacy shape name", func(v *ClientComponent) {
+			v.Selector = &RendererSelector{Kind: extension.RendererResultShape, Name: "search"}
+		}},
+		{"shape with free name", func(v *ClientComponent) { v.Selector.Name = "search" }},
+		{"named tool with shape", func(v *ClientComponent) {
+			v.Selector = &RendererSelector{Kind: extension.RendererToolName, Name: "custom.scan", Shape: extension.ResultShapeSearch}
+		}},
+		{"unknown shape", func(v *ClientComponent) { v.Selector.Shape = "arbitrary" }},
 		{"blank tool name", func(v *ClientComponent) { v.Selector = &RendererSelector{Kind: extension.RendererToolName, Name: " "} }},
 		{"file selector", func(v *ClientComponent) {
 			v.Selector = &RendererSelector{Kind: extension.RendererFileExtension, Name: "md"}
@@ -38,13 +45,13 @@ func TestRendererComponentAdmissionAndReleaseCopies(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	valid.Selector.Name = "changed"
+	valid.Selector.Shape = "changed"
 	projected := release.Declaration()
-	if projected.Components[0].Selector.Name != "search" {
+	if projected.Components[0].Selector.Shape != extension.ResultShapeSearch {
 		t.Fatal("author changed admitted selector")
 	}
-	projected.Components[0].Selector.Name = "changed"
-	if release.Declaration().Components[0].Selector.Name != "search" {
+	projected.Components[0].Selector.Shape = "changed"
+	if release.Declaration().Components[0].Selector.Shape != extension.ResultShapeSearch {
 		t.Fatal("projection changed admitted selector")
 	}
 }
@@ -64,5 +71,25 @@ func TestFileComponentReleaseCopies(t *testing.T) {
 	projected.Components[0].Selector.Name = "changed"
 	if release.Declaration().Components[0].Selector.Name != "md" {
 		t.Fatal("projection changed admitted selector")
+	}
+}
+
+func TestRendererAdmissionUsesTheExtensionResultVocabulary(t *testing.T) {
+	for _, word := range extension.ResultShape("").Values() {
+		shape := extension.ResultShape(word)
+		component := ClientComponent{ID: "result", Title: "Result", Scope: extension.ComponentScopeToolResult, Placement: extension.ComponentPlacementToolResultRenderer, Entry: Namespace + "/result.js", Export: "Result", Selector: &RendererSelector{Kind: extension.RendererResultShape, Shape: shape}}
+		release, err := NewRelease(identity.DigestStrings(word), Declaration{Name: "renderer", Components: []ClientComponent{component}})
+		if err != nil {
+			t.Fatalf("owner shape %q refused: %v", word, err)
+		}
+		if release.Declaration().Components[0].Selector.Shape != shape {
+			t.Fatal("result shape changed at admission")
+		}
+	}
+	for _, word := range []string{"custom.scan_results", "project.custom-tool"} {
+		component := ClientComponent{ID: "result", Title: "Result", Scope: extension.ComponentScopeToolResult, Placement: extension.ComponentPlacementToolResultRenderer, Entry: Namespace + "/result.js", Export: "Result", Selector: &RendererSelector{Kind: extension.RendererToolName, Name: word}}
+		if _, err := NewRelease(identity.DigestStrings(word), Declaration{Name: "renderer", Components: []ClientComponent{component}}); err != nil {
+			t.Fatalf("free tool name %q refused: %v", word, err)
+		}
 	}
 }

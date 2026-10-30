@@ -24,7 +24,8 @@ export const en = {
   "open.help":
     "During this lease, model tools can control the Runtime host through Flame’s computer engine. Use an operator console outside the controlled desktop, account and browser, such as a separate device or an isolated target. Closing this view does not end the lease.",
   "open.lease": "Lease duration in seconds",
-  "open.invalid": "Enter a whole number from 60 to {{maximum}} seconds.",
+  "open.invalid":
+    "Enter a whole number from {{minimum}} to {{maximum}} seconds.",
   "open.action": "Authorize and open control",
   "close.action": "End control lease",
   "close.help":

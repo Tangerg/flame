@@ -2691,6 +2691,12 @@
           }
         },
         {
+          "name": "fromEnd",
+          "schema": {
+            "type": "boolean"
+          }
+        },
+        {
           "name": "_meta",
           "schema": {
             "$ref": "#/components/schemas/RequestMeta"
@@ -2728,6 +2734,7 @@
             "$ref": "#/components/schemas/RequestMeta"
           },
           "endLine": {},
+          "fromEnd": {},
           "maxBytes": {},
           "path": {},
           "startLine": {},

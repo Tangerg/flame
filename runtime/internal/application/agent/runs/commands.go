@@ -270,7 +270,7 @@ func (q *QuestionAnswerError) Error() string {
 	if q.Index < 0 {
 		return fmt.Sprintf("question item %q answers: %s", q.ItemID, q.Detail)
 	}
-	return fmt.Sprintf("question item %q answer %d: %s", q.ItemID, q.Index, q.Detail)
+	return fmt.Sprintf("question item %q answer %d: %s", q.ItemID, q.Index+1, q.Detail)
 }
 
 func (q *QuestionAnswerError) Unwrap() error { return ErrInvalidInterruptResponse }

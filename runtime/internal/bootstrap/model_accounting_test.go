@@ -6,10 +6,11 @@ import (
 	"iter"
 	"testing"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -85,7 +86,7 @@ func (m *knownThenUnknownModel) Call(context.Context, *chat.Request) (*chat.Resp
 		return nil, errors.New("response lost after provider dispatch")
 	}
 	message := chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{
-		ID: "read_goal_before_failure", Name: string(tool.GetGoal), Arguments: `{}`,
+		ID: "read_goal_before_failure", Name: string(builtincontract.GetGoal), Arguments: `{}`,
 	}))
 	return &chat.Response{
 		Output:   &chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls},

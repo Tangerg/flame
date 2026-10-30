@@ -200,7 +200,7 @@ func TestWorkspaceReadPreviewUsesTheFileReadWindowAndBudget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bounded.Truncated || len(bounded.Content) != 1<<20 {
+	if !bounded.Truncated || bounded.Content != "" || bounded.StartLine != 0 || bounded.EndLine != 0 {
 		t.Fatalf("byte-bounded preview = (%d bytes, truncated %v)", len(bounded.Content), bounded.Truncated)
 	}
 
@@ -343,8 +343,8 @@ func TestWorkspaceReadFileWindowAndMaxBytes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read capped: %v", err)
 	}
-	if capped.Content != "abc" || !capped.Truncated {
-		t.Fatalf("capped = %+v, want abc with truncated=true", capped)
+	if capped.Content != "" || !capped.Truncated {
+		t.Fatalf("capped = %+v, want no incomplete source line and truncated=true", capped)
 	}
 
 	emptyWindow, err := s.ReadWorkspaceFile(context.Background(), protocol.ReadFileRequest{
@@ -638,4 +638,57 @@ func (emptySkillCurator) Restore(context.Context, string) ([]string, error) {
 
 func (f fakeSkillCatalog) Get(context.Context, string, string) (workspaceapp.SkillDetail, error) {
 	return workspaceapp.SkillDetail{}, nil
+}
+
+func TestWorkspaceReadFilePagesAcrossTheByteBudgetInBothDirections(t *testing.T) {
+	dir := t.TempDir()
+	lines := make([]string, 2501)
+	for i := range lines[:len(lines)-1] {
+		lines[i] = fmt.Sprintf("%04d:%s", i+1, strings.Repeat("é", 400))
+	}
+	source := strings.Join(lines, "\n")
+	if err := os.WriteFile(filepath.Join(dir, "pages.txt"), []byte(source), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	handler := newWorkspaceHandler(dir)
+	for _, fromEnd := range []bool{false, true} {
+		t.Run(fmt.Sprintf("fromEnd=%t", fromEnd), func(t *testing.T) {
+			start, end := 1, len(lines)
+			var pages []string
+			for start <= end {
+				page, err := handler.ReadWorkspaceFile(t.Context(), protocol.ReadFileRequest{Path: "pages.txt", StartLine: &start, EndLine: &end, FromEnd: fromEnd})
+				if err != nil {
+					t.Fatal(err)
+				}
+				if page.StartLine < start || page.EndLine > end || page.EndLine < page.StartLine || len(page.Content) > 1<<20 || page.TotalLines != len(lines) {
+					t.Fatalf("invalid page: %+v", page)
+				}
+				want := strings.Join(lines[page.StartLine-1:page.EndLine], "\n")
+				if page.Content != want {
+					t.Fatal("page clipped or changed a source line")
+				}
+				pages = append(pages, page.Content)
+				if fromEnd {
+					if page.EndLine != end {
+						t.Fatalf("backward page ends at %d, want %d", page.EndLine, end)
+					}
+					end = page.StartLine - 1
+				} else {
+					if page.StartLine != start {
+						t.Fatalf("forward page starts at %d, want %d", page.StartLine, start)
+					}
+					start = page.EndLine + 1
+				}
+			}
+			if len(pages) < 2 {
+				t.Fatal("fixture did not cross the output byte budget")
+			}
+			if fromEnd {
+				slices.Reverse(pages)
+			}
+			if strings.Join(pages, "\n") != source {
+				t.Fatal("paging duplicated or skipped source material")
+			}
+		})
+	}
 }

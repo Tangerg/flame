@@ -7,9 +7,8 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 )
 
-// WriteSessionTranscript renders every durable block in an authoritative
-// session snapshot. It intentionally has no live run scope: a saved transcript
-// may contain multiple root runs and their descendants.
+// Saved transcripts can contain multiple root Runs and their descendants,
+// so they have no live Run scope.
 func writeSessionTranscript(w io.Writer, snapshot conversation.SessionSnapshot) error {
 	if err := snapshot.Validate(); err != nil {
 		return fmt.Errorf("render session transcript: %w", err)

@@ -35,7 +35,7 @@ func TestMemoryOwnerTimesRoundTripAtExactBounds(t *testing.T) {
 			if err != nil || len(storedFacts) != 1 || !storedFacts[0].CapturedAt.Equal(at) {
 				t.Fatalf("Ledger time = %+v, %v", storedFacts, err)
 			}
-			published, err := memory.Reconcile(t.Context(), agentMemoryPublication(t, "/repo", agentmemory.State{}, facts[0].Sequence, nil, at))
+			published, err := memory.Reconcile(t.Context(), agentMemoryPublication(t, memory, "/repo", agentmemory.State{}, facts[0].Sequence, nil, at))
 			if err != nil || !published {
 				t.Fatalf("Reconcile = %v, %v", published, err)
 			}

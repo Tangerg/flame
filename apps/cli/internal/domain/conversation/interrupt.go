@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 )
 
 func InterruptItemID(interrupt Interrupt) string {
@@ -138,8 +139,11 @@ func (q Question) Validate() error {
 	if err := protocol.ValidateWireTree(wire); err != nil {
 		problems = append(problems, err)
 	}
-	if q.Answered() {
-		if err := validateQuestionAnswer(q, QuestionAnswer{Values: q.Answers}); err != nil {
+	contract, contractErr := q.AnswerContract()
+	if contractErr != nil {
+		problems = append(problems, contractErr)
+	} else if q.Answered() {
+		if err := contract.Validate(q.Answers); err != nil {
 			problems = append(problems, fmt.Errorf("accepted answer: %w", err))
 		}
 	}
@@ -152,25 +156,6 @@ func (q Question) Validate() error {
 // Answered reports whether this question is an authoritative completed
 // transcript fact rather than a pending interrupt.
 func (q Question) Answered() bool { return q.Answers != nil }
-
-// Accept returns the durable transcript form of a pending question after the
-// runtime has accepted its complete ordered response. The pending value is not
-// mutated, so an editor can retain its draft independently from the accepted
-// conversation fact.
-func (q Question) Accept(answer QuestionAnswer) (Question, error) {
-	if q.Answered() {
-		return Question{}, errors.New("question already has accepted answers")
-	}
-	if err := q.Validate(); err != nil {
-		return Question{}, err
-	}
-	if err := validateQuestionAnswer(q, answer); err != nil {
-		return Question{}, err
-	}
-	accepted := q.Clone()
-	accepted.Answers = CloneAnswers(answer.Values)
-	return accepted, nil
-}
 
 // Clone returns a question with no mutable field or option storage shared with the caller.
 func (q Question) Clone() Question { return cloneQuestion(q) }
@@ -190,7 +175,11 @@ func (q QuestionField) Validate() error {
 	if err != nil {
 		return err
 	}
-	return protocol.ValidateWireTree(wire)
+	if err := protocol.ValidateWireTree(wire); err != nil {
+		return err
+	}
+	_, err = (Question{Fields: []QuestionField{q}}).AnswerContract()
+	return err
 }
 
 func (q QuestionField) wire() (protocol.QuestionField, error) {
@@ -206,13 +195,6 @@ func (q QuestionField) wire() (protocol.QuestionField, error) {
 		wire.Multiple = q.Kind == QuestionMulti
 	default:
 		return protocol.QuestionField{}, fmt.Errorf("kind %q is invalid", q.Kind)
-	}
-	seen := make(map[string]struct{}, len(q.Options))
-	for _, option := range q.Options {
-		if _, duplicate := seen[option.Label]; duplicate {
-			return protocol.QuestionField{}, fmt.Errorf("option label %q is duplicated", option.Label)
-		}
-		seen[option.Label] = struct{}{}
 	}
 	return wire, nil
 }
@@ -270,51 +252,31 @@ func (a ApprovalAnswer) Validate() error {
 	return nil
 }
 
+func (q Question) AnswerContract() (questioncontract.Contract, error) {
+	if err := questioncontract.ValidateFieldCount(len(q.Fields)); err != nil {
+		return questioncontract.Contract{}, err
+	}
+	fields := make([]questioncontract.Field, len(q.Fields))
+	for index, field := range q.Fields {
+		wire, err := field.wire()
+		if err != nil {
+			return questioncontract.Contract{}, err
+		}
+		labels := make([]string, len(wire.Options))
+		for i, option := range wire.Options {
+			labels[i] = option.Label
+		}
+		fields[index] = questioncontract.Field{Kind: questioncontract.Kind(wire.Type), Options: labels, Multiple: wire.Multiple, AllowCustom: wire.AllowCustom}
+	}
+	return questioncontract.New(fields)
+}
+
 func validateQuestionAnswer(question Question, answer QuestionAnswer) error {
-	if len(answer.Values) != len(question.Fields) {
-		return fmt.Errorf("question answer: got %d fields, want %d", len(answer.Values), len(question.Fields))
+	contract, err := question.AnswerContract()
+	if err != nil {
+		return err
 	}
-	for i, field := range question.Fields {
-		if err := validateQuestionValues(field, answer.Values[i]); err != nil {
-			return fmt.Errorf("question answer: field %d: %w", i+1, err)
-		}
-	}
-	return nil
-}
-
-func validateQuestionValues(field QuestionField, values []string) error {
-	if len(values) == 0 {
-		return errors.New("an answer is required")
-	}
-	switch field.Kind {
-	case QuestionText:
-		if len(values) != 1 || strings.TrimSpace(values[0]) == "" {
-			return errors.New("text requires one non-empty value")
-		}
-	case QuestionSingle:
-		if len(values) != 1 {
-			return errors.New("single choice accepts one value")
-		}
-		if !field.AllowCustom && !questionOffers(field, values[0]) {
-			return fmt.Errorf("option %q is not offered", values[0])
-		}
-	case QuestionMulti:
-		seen := make(map[string]struct{}, len(values))
-		for _, value := range values {
-			if !field.AllowCustom && !questionOffers(field, value) {
-				return fmt.Errorf("option %q is not offered", value)
-			}
-			if _, duplicate := seen[value]; duplicate {
-				return fmt.Errorf("option %q is duplicated", value)
-			}
-			seen[value] = struct{}{}
-		}
-	}
-	return nil
-}
-
-func questionOffers(field QuestionField, value string) bool {
-	return slices.ContainsFunc(field.Options, func(option protocol.QuestionOption) bool { return option.Label == value })
+	return contract.Validate(answer.Values)
 }
 
 func CloneInterrupt(interrupt Interrupt) Interrupt {

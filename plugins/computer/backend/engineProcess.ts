@@ -289,9 +289,28 @@ export class EngineProcess implements Transport {
       if (!exited) return false;
       clearTimeout(timer);
       const pid = this.#child?.pid;
-      while (pid !== undefined && processExists(pid)) {
+      let observationFailure: Error | undefined;
+      while (pid !== undefined) {
+        try {
+          if (!processExists(pid)) return true;
+          observationFailure = undefined;
+        } catch (cause) {
+          if (
+            !(cause instanceof Error) ||
+            !(cause.cause instanceof Error) ||
+            !("code" in cause.cause) ||
+            cause.cause.code !== "EPERM"
+          )
+            throw cause;
+          // A denied probe cannot establish exit. Keep its cause until the
+          // original close deadline or a later definitive absence observation.
+          observationFailure = cause;
+        }
         const remaining = until - performance.now();
-        if (remaining <= 0) return false;
+        if (remaining <= 0) {
+          if (observationFailure) throw observationFailure;
+          return false;
+        }
         await new Promise<void>((resolve) => {
           timer = setTimeout(resolve, Math.min(25, remaining));
         });

@@ -237,7 +237,10 @@ function createPackageReconciler(
             {
               id,
               title: `${release.name} · ${entry.title}`,
-              selector: { ...entry.selector },
+              selector:
+                entry.selector.type === "resultShape"
+                  ? { type: "resultShape", shape: entry.selector.shape }
+                  : { type: "toolName", name: entry.selector.name },
               component: (props) => (
                 <ComponentBoundary
                   scope={componentFailureScope(component, generation)}

@@ -6,7 +6,7 @@ import { useSelectedModel } from "@/features/composer/public/selectedModel";
 import {
   useAddComposerImageFiles,
   useAddComposerPaste,
-  useComposerImages,
+  useComposerImageAttachments,
   useComposerPastes,
   useEditComposerPaste,
   useRemoveComposerImage,
@@ -27,7 +27,7 @@ export const ComposerSurface = memo(function ComposerSurface({
 
   const value = useComposerText();
   const setValue = useSetComposerText();
-  const images = useComposerImages();
+  const images = useComposerImageAttachments();
   const removeImage = useRemoveComposerImage();
   const addImageFiles = useAddComposerImageFiles();
   const pastes = useComposerPastes();

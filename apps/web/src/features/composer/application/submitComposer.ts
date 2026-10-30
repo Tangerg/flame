@@ -21,6 +21,7 @@ export interface SubmitDeps {
 }
 
 export function submitComposer({ draft, sendInput, canSend, restoreFocus }: SubmitDeps): void {
+  if (!draft.attachmentsReady) return;
   const { value, images, pastes } = draft;
   const intent = createComposerSendIntent({ value, images, pastes });
   if (!intent.shouldSend) return;

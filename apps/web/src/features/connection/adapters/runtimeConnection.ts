@@ -1,4 +1,4 @@
-import { type RequestMeta } from "@flame/runtime-client";
+import { RpcCancellationError, type RequestMeta } from "@flame/runtime-client";
 import { type ClientBootstrap, type ClientHost } from "@/platform/host";
 import { tupleKey } from "@/lib/tupleKey";
 import { type FlameClient, type SidecarClient } from "@flame/runtime-client";
@@ -26,7 +26,12 @@ export function createRuntimeConnection(
     replace: (target) => {
       assertOpen();
       if (!configuration) throw new Error("Runtime endpoint is not ready");
-      configuration.replace(target);
+      return configuration.replace(target);
+    },
+    reset: () => {
+      assertOpen();
+      if (!configuration) throw new Error("Runtime endpoint is not ready");
+      return configuration.reset();
     },
   });
   const access: RuntimeAccess = {
@@ -41,7 +46,7 @@ export function createRuntimeConnection(
   let sidecar: { endpoint: string; client: SidecarClient } | null = null;
   const retiring = new Set<Promise<void>>();
   const retirementFailures: unknown[] = [];
-  let hostBootstrap: (ClientBootstrap & { kind: ClientHost["kind"] }) | null = null;
+  let hostBootstrap: ClientBootstrap | null = null;
   let bootstrapLease: object = {};
   let closed = false;
   let disposal: Promise<void> | undefined;
@@ -63,6 +68,13 @@ export function createRuntimeConnection(
     if (!hostBootstrap) throw new Error("client host has not completed bootstrap");
     return hostBootstrap;
   };
+  const readHost = async (signal?: AbortSignal) => {
+    const lease = (bootstrapLease = {});
+    const observation = await host.bootstrap();
+    if (closed || lease !== bootstrapLease || signal?.aborted) return false;
+    hostBootstrap = observation;
+    return true;
+  };
   const target = () => configuration?.read() ?? bootstrap().runtime;
   const client = () => {
     assertOpen();
@@ -71,7 +83,7 @@ export function createRuntimeConnection(
     if (shared?.signature === signature) return shared.client;
     if (shared) retire(shared.client);
     const client = createFlameClient(createHttpTransport({ baseUrl, localToken }), {
-      requestMeta: () => requestMeta(hostBootstrap?.kind ?? host.kind),
+      requestMeta: () => requestMeta(host.kind),
       capabilities: projection.capabilities.negotiated,
       mutationStorage: storage,
     });
@@ -99,10 +111,18 @@ export function createRuntimeConnection(
         (commit) => {
           void owner.replaceEndpoint(commit);
         },
-        bootstrap().runtime,
+        () => bootstrap().runtime,
       );
       configuration = binding;
-      const owner = projection.start(runtimeServiceInspector(client, sidecarClient));
+      const inspector = runtimeServiceInspector(client, sidecarClient);
+      const owner = projection.start({
+        async inspect(signal) {
+          if (binding.usesHostCredential() && !(await readHost(signal))) {
+            throw new RpcCancellationError();
+          }
+          return inspector.inspect(signal);
+        },
+      });
       return {
         owner,
         dispose() {
@@ -122,11 +142,8 @@ export function createRuntimeConnection(
     },
     async initialize() {
       assertOpen();
-      const lease = (bootstrapLease = {});
       hostBootstrap = null;
-      const bootstrap = await host.bootstrap();
-      if (closed || lease !== bootstrapLease) return;
-      hostBootstrap = { ...bootstrap, kind: host.kind };
+      await readHost();
     },
     dispose() {
       if (disposal) return disposal;

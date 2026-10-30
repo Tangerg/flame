@@ -395,8 +395,8 @@ func TestConversationRejectsCrossSegmentAndInvalidTransitions(t *testing.T) {
 	projection := New()
 	apply(t, projection, RunEvent{EventID: "start", RunID: "run_1", SegmentID: "seg_1", Event: SegmentStarted{Run: runningRun("seg_1")}})
 	_, err := projection.ApplyRunEvent(RunEvent{EventID: "wrong", RunID: "run_1", SegmentID: "seg_2", Event: BlockCompleted{Block: Block{ID: "x", RunID: "run_1", Status: BlockStatusCompleted, Kind: BlockAssistant, Text: "x"}}})
-	if !errors.Is(err, ErrInvalidTransition) && err == nil {
-		t.Fatal("cross-segment event was accepted")
+	if !errors.Is(err, ErrInvalidTransition) {
+		t.Fatalf("cross-segment error = %v, want ErrInvalidTransition", err)
 	}
 	_, err = projection.ApplyRunEvent(RunEvent{EventID: "finish", RunID: "run_1", SegmentID: "seg_1", Event: finishedSegment(runningRun("seg_1"), Outcome{Status: protocol.OutcomeCompleted}, Usage{})})
 	if err != nil {

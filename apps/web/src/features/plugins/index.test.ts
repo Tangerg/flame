@@ -648,7 +648,7 @@ it("presents and retains only the contributions Runtime admits", async () => {
       title: "Search",
       scope: "toolResult",
       placement: "toolResultRenderer",
-      selector: { type: "resultShape", name: "search" },
+      selector: { type: "resultShape", shape: "search" },
       entry: "io.github.tangerg.flame/components/component.js",
       export: "Result",
     },

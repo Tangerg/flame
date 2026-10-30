@@ -244,37 +244,23 @@ func (c *Coordinator) WaitSessionStartable(ctx context.Context, sessionID string
 		return err
 	}
 	for {
+		// Every writer releases its admission after settling durable state,
+		// including parked cancellation, recovery and failed cleanup. Capture
+		// that version before either read so no successful release is missed.
+		changed := c.admission.Changes()
 		if err := c.admission.WaitRunStartable(ctx, sess.ID(), sess.Workspace().Path()); err != nil {
 			return err
 		}
-		startable, err := c.awaitSessionRunSettled(ctx, sess.ID())
-		if err != nil || startable {
+		_, active, err := c.activeRuns.ActiveRun(ctx, sess.ID())
+		err = errors.Join(err, cancellation.Err(ctx))
+		if err != nil || !active {
 			return err
 		}
-	}
-}
-
-// awaitSessionRunSettled observes one durable Session Run transition. The
-// observation is registered before the read so a Run that settles between them
-// still wakes this caller, and it is given back on every way out of this
-// function — the gate's own wait cannot see the durable projection, so a lost
-// observer is a caller that waits for a change nobody will report again.
-func (c *Coordinator) awaitSessionRunSettled(ctx context.Context, sessionID string) (bool, error) {
-	changed, stopObserving := c.publications.changes.observe(sessionID)
-	defer stopObserving()
-	_, active, err := c.activeRuns.ActiveRun(ctx, sessionID)
-	err = errors.Join(err, cancellation.Err(ctx))
-	if err != nil {
-		return false, err
-	}
-	if !active {
-		return true, nil
-	}
-	select {
-	case <-ctx.Done():
-		return false, cancellation.Err(ctx)
-	case <-changed:
-		return false, nil
+		select {
+		case <-ctx.Done():
+			return cancellation.Err(ctx)
+		case <-changed:
+		}
 	}
 }
 

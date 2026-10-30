@@ -2,6 +2,7 @@ package input
 
 import (
 	json "encoding/json/v2"
+	"errors"
 	"strings"
 	"testing"
 
@@ -44,11 +45,12 @@ func TestDecodePromptDiscriminatesAndRejectsGuesses(t *testing.T) {
 		t.Fatalf("decoded = %#v", got)
 	}
 
+	web := testsupport.MCPTool(testsupport.UserMCPServer("web"), "web_fetch")
 	approval := runs.Interrupt{
 		Kind: run.InterruptApproval,
 		Approval: &runs.ApprovalPrompt{
 			CallID: "tool_approval_1", Arguments: `{"url":"https://example.com"}`,
-			SafetyClass: tool.SafetyClassNetwork, Risk: tool.RiskHigh, Tool: testsupport.BuiltInTool(t, "web_fetch"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "web_fetch")),
+			SafetyClass: tool.SafetyClassNetwork, Risk: tool.RiskHigh, Tool: web, SourceFingerprint: testsupport.ToolFingerprint(web),
 		},
 	}
 	raw, err = json.Marshal(promptWireFrom(approval))
@@ -59,8 +61,15 @@ func TestDecodePromptDiscriminatesAndRejectsGuesses(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DecodePrompt approval: %v", err)
 	}
-	if got.Approval == nil || got.Approval.SafetyClass != tool.SafetyClassNetwork || got.Approval.Risk != tool.RiskHigh {
+	if got.Approval == nil || got.Approval.Tool != web || got.Approval.SafetyClass != tool.SafetyClassNetwork || got.Approval.Risk != tool.RiskHigh {
 		t.Fatalf("decoded approval = %#v", got.Approval)
+	}
+
+	for _, name := range []string{"web_fetch", "web_search"} {
+		retired := strings.Replace(string(raw), web.String(), "builtIn:"+name, 1)
+		if _, err := DecodePrompt([]byte(retired)); !errors.Is(err, tool.ErrInvalidRef) {
+			t.Fatalf("retired checkpoint identity = %v, want invalid reference", err)
+		}
 	}
 
 	for _, raw := range [][]byte{

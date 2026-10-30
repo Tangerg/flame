@@ -8,7 +8,72 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
 )
+
+func TestDiscardReachesPriorProcessScratchWithoutItsInMemoryRegistry(t *testing.T) {
+	project, root, userHome := t.TempDir(), t.TempDir(), t.TempDir()
+	if err := os.WriteFile(filepath.Join(project, "source.txt"), []byte("source"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	prior, err := NewIsolator(userHome, root, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = prior.Close() })
+	old, err := prior.Workspace(t.Context(), "ses_1", project)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sibling, err := prior.Workspace(t.Context(), "ses_2", project)
+	if err != nil {
+		t.Fatal(err)
+	}
+	restarted, err := NewIsolator(userHome, root, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = restarted.Close() })
+	if err := restarted.Discard("ses_1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(old); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("old process scratch survived: %v", err)
+	}
+	if content, err := os.ReadFile(filepath.Join(sibling, "source.txt")); err != nil || string(content) != "source" {
+		t.Fatalf("retirement touched sibling namespace: %q, %v", content, err)
+	}
+	if content, err := os.ReadFile(filepath.Join(project, "source.txt")); err != nil || string(content) != "source" {
+		t.Fatalf("retirement touched source workspace: %q, %v", content, err)
+	}
+}
+
+func TestClosedIsolatorCannotRetireAReplacementNamespace(t *testing.T) {
+	root, userHome := t.TempDir(), t.TempDir()
+	prior, err := NewIsolator(userHome, root, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := prior.Close(); err != nil {
+		t.Fatal(err)
+	}
+	current, err := NewIsolator(userHome, root, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = current.Close() })
+	path, err := current.Workspace(t.Context(), "ses_1", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := prior.Discard("ses_1"); !errors.Is(err, sandbox.ErrShutdown) {
+		t.Fatalf("closed owner retirement = %v", err)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("old owner removed replacement scratch: %v", err)
+	}
+}
 
 func TestIsolatorCopiesReusesAndDiscards(t *testing.T) {
 	project := t.TempDir()

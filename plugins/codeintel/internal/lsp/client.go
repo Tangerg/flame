@@ -18,14 +18,15 @@ type client struct {
 
 	conn        *jsonrpc2.Conn
 	cancel      context.CancelFunc
-	wait        <-chan error
+	wait        <-chan processEnd
 	stopProcess func() error
 	// shutdownBase retains the process-lifetime values while allowing Close to
 	// use its own bounded graceful-shutdown budget after lifetime cancellation.
 	shutdownBase context.Context
 
-	closeOnce sync.Once
-	closeErr  error
+	closeOnce  sync.Once
+	cleanupErr error
+	processErr error
 
 	mu sync.Mutex
 	// synced counts syncs rather than time so eviction order cannot depend on a
@@ -52,4 +53,11 @@ type openDoc struct {
 type diagSet struct {
 	version     int
 	diagnostics []Diagnostic
+}
+
+// processEnd separates observed process termination from failure to retire its
+// resources. A disconnected server may restart after an ordinary failed exit.
+type processEnd struct {
+	exitErr    error
+	cleanupErr error
 }

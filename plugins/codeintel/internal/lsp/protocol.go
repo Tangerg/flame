@@ -231,6 +231,9 @@ type publishDiagnosticsParams struct {
 }
 
 func (p publishDiagnosticsParams) validate() error {
+	if p.Version < 0 {
+		return errors.New("diagnostics version is negative")
+	}
 	if strings.TrimSpace(p.URI) == "" {
 		return errors.New("uri is empty")
 	}

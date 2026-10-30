@@ -21,6 +21,67 @@ func TestDirectoryObservationRejectsEntryOverflow(t *testing.T) {
 	}
 }
 
+func TestDirectoryObservationRetainsImmediateFileDependencies(t *testing.T) {
+	boundary := t.TempDir()
+	directory := filepath.Join(boundary, "observed")
+	if err := os.Mkdir(directory, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(directory, "file")
+	if err := os.WriteFile(path, []byte("before"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	changed := make(chan []string, 8)
+	outages := make(chan error, 8)
+	observation, err := Watch([]Target{{Key: "directory", Path: directory, Boundary: boundary, MaxEntries: 1, MaxBytes: testMaxBytes}}, func(keys []string) { changed <- keys }, func(err error) { outages <- err })
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := observation.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	check := func() {
+		t.Helper()
+		select {
+		case keys := <-changed:
+			if len(keys) != 1 || keys[0] != "directory" {
+				t.Fatalf("directory changes = %v", keys)
+			}
+		case err := <-outages:
+			t.Fatalf("directory observation failed: %v", err)
+		case <-time.After(time.Second):
+			t.Fatal("immediate entry change was not observed")
+		}
+	}
+	for _, content := range []string{"changed in place", "another longer in-place update"} {
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		check()
+	}
+	// Stage outside the directory to preserve its one-entry admission bound.
+	replacement := filepath.Join(boundary, "replacement")
+	if err := os.WriteFile(replacement, []byte("atomic replacement"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(replacement, path); err != nil {
+		t.Fatal(err)
+	}
+	check()
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	check()
+	for _, content := range []string{"recreated", "updated after recreation"} {
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		check()
+	}
+}
+
 func TestDirectoryObservationDoesNotRecurseOrFollowChildSymlinks(t *testing.T) {
 	root, outside := t.TempDir(), t.TempDir()
 	nested := filepath.Join(root, "nested")
@@ -212,7 +273,7 @@ func TestFingerprintPhysicalTargetRejectsEscapingReplacement(t *testing.T) {
 	candidate := target{
 		key: "document", path: targetPath, physicalBoundary: physicalBoundary, maxBytes: testMaxBytes,
 	}
-	if _, _, err := fingerprintPhysicalTarget(newFingerprintEncoder(), candidate, physical, roots); err == nil {
+	if _, err := fingerprintPhysicalTarget(newFingerprintEncoder(), candidate, physical, roots); err == nil {
 		t.Fatal("replaced target escaped its observation boundary")
 	}
 }

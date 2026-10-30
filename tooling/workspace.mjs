@@ -103,9 +103,9 @@ async function stampDeclarations(repository) {
 }
 
 export async function generate(repository = root) {
-  const { generatePresentation } = await import("./presentation.mjs");
   run("node", ["plugins/scripts/generate-runtime-profile.mjs"], repository);
   await buildShared(repository);
+  const { generatePresentation } = await import("./presentation.mjs");
   await generatePresentation(repository);
   const env = {
     ...proxyEnvironment(join(root, "out/module-proxy")),

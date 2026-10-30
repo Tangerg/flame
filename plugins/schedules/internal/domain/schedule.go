@@ -128,6 +128,7 @@ func (s Schedule) Edit(p Patch, expectedRevision uint64, after time.Time) (Sched
 	if expectedRevision != s.revision.Value() {
 		return Schedule{}, ErrRevisionConflict
 	}
+	cronChanged := p.Cron != nil && *p.Cron != s.cron
 	if p.Title != nil {
 		s.title = *p.Title
 	}
@@ -151,7 +152,10 @@ func (s Schedule) Edit(p Patch, expectedRevision uint64, after time.Time) (Sched
 	if err != nil {
 		return Schedule{}, err
 	}
-	return next.scheduledAfter(enabled, after)
+	if enabled != s.Enabled() || (enabled && cronChanged) {
+		return next.scheduledAfter(enabled, after)
+	}
+	return next, next.Validate()
 }
 
 func (s Schedule) advanceRevision() (Schedule, error) {

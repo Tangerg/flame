@@ -190,6 +190,9 @@ rebinding old calls to a new surface.
 `contracts/capability.ts` is the source of the capability descriptor, schemas and
 local structural types. The ordinary contract generator produces installed
 resources and component methods. There is no hand-maintained parallel descriptor.
+`contracts/methods.ts` owns the pure method identity map shared by the descriptor,
+backend and browser consumers. The component does not maintain another alias map
+or import the Node descriptor implementation.
 
 ## Model tools and typed operations
 
@@ -286,7 +289,9 @@ plugin does not bypass Runtime's final model-input capability checks.
 `PLUGIN_DATA/computer.db` contains original commands and their outcomes. One
 exclusive SQLite owner prevents independent backend processes from advancing
 those records. No automatic retention expiry, deletion or replay is implemented.
-Resource budgets are defined once in `contracts/limits.ts`. The input budget
+Resource budgets and lease bounds are defined once in `contracts/limits.ts`.
+Admission, component validation and localized lease feedback consume those bounds.
+The input budget
 covers the complete original evidence, including its captured invocation. Ordinary
 admission always leaves one complete input/result slot for human revocation of
 the current lease. Only an exact current-session close or current-operation stop
@@ -298,6 +303,9 @@ Unknown command evidence is never discarded to make room.
 created before spawning the external engine. On POSIX the engine owns a distinct
 process group. Normal close sends EOF, then bounded TERM/KILL if needed, joins the
 original child and checks that the group is gone before removing its marker.
+An exit-probe permission denial retains uncertainty within the original bounded
+wait. Only definitive absence permits release; a persistent denial retains its
+diagnostic and ownership marker, and other probe failures remain explicit.
 The short `.lock` file serializes marker admission and replacement.
 
 After an abrupt backend death, a replacement refuses to start while a recorded

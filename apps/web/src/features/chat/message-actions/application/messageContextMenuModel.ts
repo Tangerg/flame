@@ -34,12 +34,12 @@ export interface MessageContextMenuModel {
 export function messageContextMenuModel({
   msg,
   copy,
-  canRestoreFiles,
+  canRestoreFilesBeforeRun,
   conversation,
 }: {
   msg: Message;
   copy: MessageContextMenuCopyState;
-  canRestoreFiles: boolean;
+  canRestoreFilesBeforeRun: boolean;
   conversation: readonly Message[];
 }): MessageContextMenuModel {
   const canEdit = canEditMessage(msg);
@@ -54,16 +54,16 @@ export function messageContextMenuModel({
       visible: canEdit || canRollback || canFork,
       editInComposer: canEdit,
       editRerun: canEdit && canRollback,
-      editRerunRestore: canEdit && canRollback && canRestoreFiles,
+      editRerunRestore: canEdit && canRollback && canRestoreFilesBeforeRun,
       restore: canRollback,
-      restoreFiles: canRollback && canRestoreFiles,
-      restoreBoth: canRollback && canRestoreFiles,
+      restoreFiles: canRollback && canRestoreFilesBeforeRun,
+      restoreBoth: canRollback && canRestoreFilesBeforeRun,
       fork: canFork,
     },
     assistant: {
       visible: canRegenerate,
       regenerate: canRegenerate,
-      regenerateRestore: canRegenerate && canRestoreFiles,
+      regenerateRestore: canRegenerate && canRestoreFilesBeforeRun,
     },
   };
 }

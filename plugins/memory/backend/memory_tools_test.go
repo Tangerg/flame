@@ -220,7 +220,7 @@ func TestMemoryToolsReviewProposalsAndFenceTheCapturedProject(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	publication, err := memory.NewPublication(canonical, memory.State{}, facts[len(facts)-1].Sequence, []string{"proposal to approve", "proposal to reject"}, now)
+	publication, err := memory.NewPublication(canonical, memory.State{}, facts[len(facts)-1].Sequence, nil, []string{"proposal to approve", "proposal to reject"}, now)
 	if err != nil {
 		t.Fatal(err)
 	}

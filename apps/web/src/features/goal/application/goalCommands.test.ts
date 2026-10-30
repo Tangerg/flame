@@ -8,19 +8,17 @@ import {
   GoalCommandOwner,
   GoalCommandSessionMismatchError,
   type GoalProjectionRepair,
-  clearGoal,
-  resumeGoal,
-  startGoal,
-  stopGoal,
-  updateGoal,
+  type GoalCommands,
 } from "@/features/goal/application/goalCommands";
+let commands: GoalCommands;
 let restoreGateway: (() => void) | undefined;
 
 function installGoalCommandOwnerForTest(
   gateway: Partial<GoalCommandsGateway>,
   repairProjection: GoalProjectionRepair = vi.fn().mockResolvedValue(true),
 ): () => void {
-  const owner = GoalCommandOwner.install(goalGateway(gateway), repairProjection);
+  const owner = new GoalCommandOwner(goalGateway(gateway), repairProjection);
+  commands = owner.capture()!;
   return () => owner.dispose();
 }
 
@@ -44,30 +42,46 @@ function goalGateway(overrides: Partial<GoalCommandsGateway> = {}): GoalCommands
 }
 
 describe("Goal lifecycle commands", () => {
+  it("rejects a captured stop command after replacement without targeting the successor", async () => {
+    const stop = vi.fn().mockResolvedValue(receipt);
+    const successorStop = vi.fn().mockResolvedValue(receipt);
+    const owner = new GoalCommandOwner(goalGateway({ stop }), vi.fn().mockResolvedValue(true));
+    restoreGateway = () => owner.dispose();
+    const capturedCommands = owner.capture()!;
+    const captured = capturedCommands.stop.bind(capturedCommands);
+    owner.replaceRuntimeGeneration(() => goalGateway({ stop: successorStop }));
+
+    await expect(captured("ses_goal")).rejects.toMatchObject({
+      message: "goal_command_generation_retired",
+    });
+    expect(stop).not.toHaveBeenCalled();
+    expect(successorStop).not.toHaveBeenCalled();
+  });
+
   it.each([
     {
       name: "start",
-      run: () => startGoal({ sessionId: "ses_goal", objective: "ship it" }),
+      run: () => commands.start({ sessionId: "ses_goal", objective: "ship it" }),
       gateway: { start: vi.fn().mockRejectedValue(new Error("start response lost")) },
     },
     {
       name: "stop",
-      run: () => stopGoal("ses_goal"),
+      run: () => commands.stop("ses_goal"),
       gateway: { stop: vi.fn().mockRejectedValue(new Error("stop response lost")) },
     },
     {
       name: "update",
-      run: () => updateGoal({ sessionId: "ses_goal", objective: "ship it better" }),
+      run: () => commands.update({ sessionId: "ses_goal", objective: "ship it better" }),
       gateway: { update: vi.fn().mockRejectedValue(new Error("update response lost")) },
     },
     {
       name: "clear",
-      run: () => clearGoal("ses_goal"),
+      run: () => commands.clear("ses_goal"),
       gateway: { clear: vi.fn().mockRejectedValue(new Error("clear response lost")) },
     },
     {
       name: "resume",
-      run: () => resumeGoal("ses_goal"),
+      run: () => commands.resume("ses_goal"),
       gateway: { resume: vi.fn().mockRejectedValue(new Error("resume response lost")) },
     },
   ])("revalidates authoritative Goal state when $name settlement is ambiguous", async (test) => {
@@ -98,7 +112,7 @@ describe("Goal lifecycle commands", () => {
       vi.fn().mockRejectedValue(new Error("snapshot unavailable")),
     );
 
-    await expect(stopGoal("ses_goal")).rejects.toBe(commandError);
+    await expect(commands.stop("ses_goal")).rejects.toBe(commandError);
   });
 
   it("does not turn an accepted Goal command into a failure when projection repair fails", async () => {
@@ -111,7 +125,7 @@ describe("Goal lifecycle commands", () => {
       vi.fn().mockRejectedValue(new Error("snapshot unavailable")),
     );
 
-    await expect(stopGoal("ses_goal")).resolves.toBeUndefined();
+    await expect(commands.stop("ses_goal")).resolves.toBeUndefined();
   });
 
   it("repairs standing state only through the mounted Session material owner", async () => {
@@ -125,7 +139,7 @@ describe("Goal lifecycle commands", () => {
       repairProjection,
     );
 
-    await stopGoal("ses_goal");
+    await commands.stop("ses_goal");
 
     expect(repairProjection).toHaveBeenCalledWith("ses_goal");
   });
@@ -140,8 +154,8 @@ describe("Goal lifecycle commands", () => {
       resume,
     });
 
-    const first = stopGoal("ses_goal");
-    const second = resumeGoal("ses_goal");
+    const first = commands.stop("ses_goal");
+    const second = commands.resume("ses_goal");
     await vi.waitFor(() => expect(stop).toHaveBeenCalledOnce());
     expect(resume).not.toHaveBeenCalled();
 
@@ -165,8 +179,8 @@ describe("Goal lifecycle commands", () => {
       repairProjection,
     );
 
-    const first = stopGoal("ses_goal");
-    const second = resumeGoal("ses_goal");
+    const first = commands.stop("ses_goal");
+    const second = commands.resume("ses_goal");
     await vi.waitFor(() => expect(stop).toHaveBeenCalledOnce());
     expect(resume).not.toHaveBeenCalled();
 
@@ -187,8 +201,8 @@ describe("Goal lifecycle commands", () => {
     });
     restoreGateway = disposePredecessor;
 
-    const inFlight = stopGoal("ses_goal");
-    const queued = resumeGoal("ses_goal");
+    const inFlight = commands.stop("ses_goal");
+    const queued = commands.resume("ses_goal");
     let inFlightOutcome = "pending";
     let queuedOutcome = "pending";
     const observedInFlight = inFlight.then(
@@ -210,6 +224,7 @@ describe("Goal lifecycle commands", () => {
     await vi.waitFor(() => expect(retiredStop).toHaveBeenCalledOnce());
 
     const successorResume = vi.fn().mockResolvedValue(receipt);
+    disposePredecessor();
     const disposeSuccessor = installGoalCommandOwnerForTest({
       start: vi.fn().mockResolvedValue(receipt),
       stop: vi.fn().mockResolvedValue(receipt),
@@ -235,7 +250,7 @@ describe("Goal lifecycle commands", () => {
     const stopping = Promise.withResolvers<GoalCommandReceipt>();
     const retiredStop = vi.fn(() => stopping.promise);
     const retiredResume = vi.fn().mockResolvedValue(receipt);
-    const owner = GoalCommandOwner.install(
+    const owner = new GoalCommandOwner(
       goalGateway({
         start: vi.fn().mockResolvedValue(receipt),
         stop: retiredStop,
@@ -244,9 +259,10 @@ describe("Goal lifecycle commands", () => {
       vi.fn().mockResolvedValue(true),
     );
     restoreGateway = () => owner.dispose();
+    commands = owner.capture()!;
 
-    const inFlight = stopGoal("ses_goal").catch((error: unknown) => error);
-    const queued = resumeGoal("ses_goal").catch((error: unknown) => error);
+    const inFlight = commands.stop("ses_goal").catch((error: unknown) => error);
+    const queued = commands.resume("ses_goal").catch((error: unknown) => error);
     await vi.waitFor(() => expect(retiredStop).toHaveBeenCalledOnce());
 
     const successorResume = vi.fn().mockResolvedValue(receipt);
@@ -265,7 +281,7 @@ describe("Goal lifecycle commands", () => {
     expect(retiredResume).not.toHaveBeenCalled();
     expect(successorResume).not.toHaveBeenCalled();
 
-    await expect(resumeGoal("ses_goal")).resolves.toBeUndefined();
+    await expect(owner.capture()!.resume("ses_goal")).resolves.toBeUndefined();
     expect(successorResume).toHaveBeenCalledOnce();
     stopping.resolve(receipt);
   });
@@ -281,7 +297,7 @@ describe("Goal lifecycle commands", () => {
       repairProjection,
     );
 
-    const failure = await stopGoal("ses_goal").catch((error: unknown) => error);
+    const failure = await commands.stop("ses_goal").catch((error: unknown) => error);
 
     expect(failure).toBeInstanceOf(GoalCommandSessionMismatchError);
     expect(failure).toMatchObject({

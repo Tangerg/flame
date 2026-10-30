@@ -1,7 +1,9 @@
+import { METHODS } from "./methods";
+import { LIMITS } from "./limits";
 import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
 import { Capability, parseJSON, type CapabilityDescriptor } from "@qimu/node";
-import descriptor, { METHODS, schemas } from "./capability";
+import descriptor, { schemas } from "./capability";
 
 it("publishes projections of the one descriptor owner", () => {
   const generated = parseJSON(
@@ -20,14 +22,20 @@ it("publishes projections of the one descriptor owner", () => {
 
 it("shares structural admission for backend calls and published contracts", () => {
   const contract = new Capability(descriptor);
-  for (const value of [
-    { leaseSeconds: 60 },
-    { leaseSeconds: 3600 },
-    { leaseSeconds: 0 },
-    { leaseSeconds: 3601 },
-    { leaseSeconds: 60, approved: true },
+  for (const { value, accepted } of [
+    { value: { leaseSeconds: LIMITS.minLeaseSeconds }, accepted: true },
+    { value: { leaseSeconds: LIMITS.maxLeaseSeconds }, accepted: true },
+    { value: { leaseSeconds: LIMITS.defaultLeaseSeconds }, accepted: true },
+    { value: { leaseSeconds: LIMITS.minLeaseSeconds - 1 }, accepted: false },
+    { value: { leaseSeconds: LIMITS.maxLeaseSeconds + 1 }, accepted: false },
+    { value: { leaseSeconds: LIMITS.minLeaseSeconds + 0.5 }, accepted: false },
+    {
+      value: { leaseSeconds: LIMITS.minLeaseSeconds, approved: true },
+      accepted: false,
+    },
   ]) {
     const valid = schemas.open.safeParse(value).success;
+    expect(valid).toBe(accepted);
     if (valid)
       expect(() =>
         contract.method(METHODS.open).validateInput(value),

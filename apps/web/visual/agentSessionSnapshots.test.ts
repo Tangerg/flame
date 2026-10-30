@@ -259,15 +259,11 @@ describe("the visual agent fixtures", () => {
     expect(violations).toEqual([]);
   });
 
-  const DECLARED_RESULT_SHAPE: Record<
-    string,
-    "SearchResult" | "PatchResult" | "CommandResult" | "WebSearchResult"
-  > = {
+  const DECLARED_RESULT_SHAPE: Record<string, "SearchResult" | "PatchResult" | "CommandResult"> = {
     glob: "SearchResult",
     grep: "SearchResult",
     apply_patch: "PatchResult",
     shell: "CommandResult",
-    web_search: "WebSearchResult",
   };
 
   it("answer each declared tool with the result shape the Runtime sends", () => {

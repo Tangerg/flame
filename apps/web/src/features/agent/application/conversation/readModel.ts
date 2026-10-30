@@ -10,6 +10,10 @@ export function useActiveConversationMessages(): Message[] {
   return agentAccess.view.useRootNarrativeMessages();
 }
 
+export function useHasPrecedingRootRun(runId: string | null): boolean {
+  return useAgentDependencies().view.useHasPrecedingRootRun(runId);
+}
+
 export function useActiveConversationRows(): readonly TranscriptRow[] {
   const agentAccess = useAgentDependencies();
 

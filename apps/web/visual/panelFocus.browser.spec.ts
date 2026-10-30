@@ -55,21 +55,28 @@ async function expectFirstLineVisible(content: Locator) {
   expect(reading.hit).toBe(true);
 }
 
-async function expectFieldContextVisible(content: Locator) {
-  const reading = await content.evaluate((field) => {
+async function expectFieldContextVisible(content: Locator, owner: "panel" | "dialog") {
+  const reading = await content.evaluate((field, owner) => {
     const label = field.closest("label")!;
     const caption = label.querySelector("span")!;
     const labelBounds = label.getBoundingClientRect();
     const captionBounds = caption.getBoundingClientRect();
-    const controls = field
-      .closest('[data-slot="panel"]')!
-      .querySelector('[data-slot="panel-controls"]')!
+    const viewport = field
+      .closest(
+        owner === "dialog" ? '[data-slot="dialog-body"]' : '[data-slot="workspace-view-body"]',
+      )!
       .getBoundingClientRect();
-    const viewport = field.closest('[data-slot="workspace-view-body"]')!.getBoundingClientRect();
+    const controlsBottom =
+      owner === "dialog"
+        ? viewport.top
+        : field
+            .closest('[data-slot="panel"]')!
+            .querySelector('[data-slot="panel-controls"]')!
+            .getBoundingClientRect().bottom;
     return {
       top: labelBounds.top,
       bottom: labelBounds.bottom,
-      visibleTop: Math.max(controls.bottom, viewport.top),
+      visibleTop: Math.max(controlsBottom, viewport.top),
       visibleBottom: Math.min(innerHeight, viewport.bottom),
       captionHit: caption.contains(
         document.elementFromPoint(
@@ -78,7 +85,7 @@ async function expectFieldContextVisible(content: Locator) {
         ),
       ),
     };
-  });
+  }, owner);
   expect(reading.top).toBeGreaterThanOrEqual(reading.visibleTop);
   expect(reading.bottom).toBeLessThanOrEqual(reading.visibleBottom);
   expect(reading.captionHit).toBe(true);
@@ -89,13 +96,13 @@ test("narrow Memory field labels remain visible after autofocus and Tab", async 
     width: 320,
     height: 640,
   });
-  await expectFieldContextVisible(content);
+  await expectFieldContextVisible(content, "panel");
   await content.press("Tab");
   const cancel = editor.getByRole("button", { name: "Cancel", exact: true });
   await expect(cancel).toBeFocused();
   await page.keyboard.press("Shift+Tab");
   await expect(content).toBeFocused();
-  await expectFieldContextVisible(content);
+  await expectFieldContextVisible(content, "panel");
   await cancel.click();
   await expect(add).toBeFocused();
 });
@@ -107,19 +114,21 @@ test("narrow Schedules field labels remain visible after autofocus and Tab", asy
   );
   await page.locator("html[data-visual-ready]").waitFor();
   await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
-  const panel = page.getByRole("region", { name: "Schedules", exact: true });
+  const panel = page
+    .getByRole("region", { name: "Schedules", exact: true })
+    .and(page.locator('[data-slot="panel"]'));
   const add = panel.getByRole("button", { name: "Add schedule", exact: true });
   await expect(add).toBeEnabled();
   await add.click();
-  const editor = panel.getByRole("region", { name: "Schedule editor", exact: true });
+  const editor = page.getByRole("dialog", { name: "New schedule", exact: true });
   const title = editor.getByRole("textbox", { name: "Title", exact: true });
   await expect(title).toBeFocused();
-  await expectFieldContextVisible(title);
+  await expectFieldContextVisible(title, "dialog");
   await title.press("Tab");
   await expect(editor.getByRole("textbox", { name: "Instructions", exact: true })).toBeFocused();
   await page.keyboard.press("Shift+Tab");
   await expect(title).toBeFocused();
-  await expectFieldContextVisible(title);
+  await expectFieldContextVisible(title, "dialog");
   await editor.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(add).toBeFocused();
 });
@@ -186,11 +195,13 @@ test("a body-owned Select portal retains its own focus and scrolling", async ({ 
   );
   await page.locator("html[data-visual-ready]").waitFor();
   await page.getByRole("button", { name: "Collapse the workspace fixture sidebar" }).click();
-  const panel = page.getByRole("region", { name: "Schedules", exact: true });
+  const panel = page
+    .getByRole("region", { name: "Schedules", exact: true })
+    .and(page.locator('[data-slot="panel"]'));
   const add = panel.getByRole("button", { name: "Add schedule", exact: true });
   await expect(add).toBeEnabled();
   await add.click();
-  const editor = panel.getByRole("region", { name: "Schedule editor", exact: true });
+  const editor = page.getByRole("dialog", { name: "New schedule", exact: true });
   await page.evaluate(async () => {
     const modulePath = "/visual/runtimeSnapshots.ts";
     const { VISUAL_MODELS }: typeof import("./runtimeSnapshots") = await import(modulePath);
@@ -232,8 +243,8 @@ test("a body-owned Select portal retains its own focus and scrolling", async ({ 
   });
   expect(candidate).toBeGreaterThanOrEqual(0);
   const option = popup.getByRole("option").nth(candidate);
-  expect(await option.evaluate((node) => node.closest('[data-slot="panel-body"]'))).toBeNull();
-  const viewport = page.locator('[data-slot="workspace-view-body"]').filter({ has: panel });
+  expect(await option.evaluate((node) => node.closest('[data-slot="dialog-body"]'))).toBeNull();
+  const viewport = editor.locator('[data-slot="dialog-body"]');
   const bodyScroll = await viewport.evaluate((node) => node.scrollTop);
   const popupScroll = await popup.evaluate((node) => node.scrollTop);
   await option.focus();

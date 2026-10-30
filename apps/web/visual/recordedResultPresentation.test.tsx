@@ -10,6 +10,7 @@ prepareTestClient(() => {
 import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { type CapturedToolResult, type ComponentContext } from "@flame/component-sdk";
+import skillPages from "@flame/runtime-client/testing/skill-pages.json";
 import { RecordedResult } from "../../../plugins/tool-results/component/component";
 import declaration from "../../../plugins/tool-results/package/io.github.tangerg.flame/declaration.json";
 import { selectToolResultRenderer } from "@/features/chat/tools/application/toolResultRenderer";
@@ -322,7 +323,7 @@ it("cycles output matches with Enter and leaves an IME Enter to the composition"
   expect(document.activeElement).toBe(screen.getByRole("region", { name: "Tool output" }));
 });
 
-it("decodes skill summary entities once, keeps descriptions inert and reports truncation", () => {
+it("keeps an unrecognized XML Skill result complete and inert as source", () => {
   const source = [
     "<available_skills>",
     "  <skill>",
@@ -334,27 +335,21 @@ it("decodes skill summary entities once, keeps descriptions inert and reports tr
   ].join("\n");
   testClient.render(<RecordedResult context={capturedContext("list_skills", source)} />);
   const result = screen.getByRole("region", { name: "Result" });
-  expect(within(result).getByText("review & <trace>", { exact: true })).toBeTruthy();
-  const description = "Keep &amp; and <img src=x onerror=alert(1)> > intact.";
-  expect(within(result).getByText(description, { exact: true }).tagName).toBe("P");
+  expect(Array.from(result.querySelectorAll("pre"), (line) => line.textContent).join("\n")).toBe(
+    source,
+  );
   expect(
-    within(result).getByText("More skills were omitted from this result.", { exact: true }),
-  ).toBeTruthy();
-  expect(result.textContent).not.toContain("<available_skills>");
+    screen.queryByText("More skills were omitted from this result.", { exact: true }),
+  ).toBeNull();
   expectInert(result);
 });
 
 it("presents the current Skill list page as complete summaries with its recorded continuation", () => {
-  const page = {
-    skills: [
-      { name: "review-diff", description: "Keep &amp; and <img src=x onerror=alert(1)> literal." },
-      { name: "trace-flaky-test", description: "Find the shared state.\nKeep the second line." },
-    ],
-    next_cursor: { offset: 2, snapshot: "a".repeat(64) },
+  const page = JSON.parse(skillPages.first) as {
+    skills: { name: string; description: string }[];
+    next_cursor: { offset: number; snapshot: string };
   };
-  testClient.render(
-    <RecordedResult context={capturedContext("list_skills", JSON.stringify(page))} />,
-  );
+  testClient.render(<RecordedResult context={capturedContext("list_skills", skillPages.first)} />);
   const result = screen.getByRole("region", { name: "Result" });
   for (const skill of page.skills) {
     expect(within(result).getByText(skill.name, { exact: true })).toBeTruthy();
@@ -382,8 +377,39 @@ it("presents the current Skill list page as complete summaries with its recorded
   expect(result.textContent).toContain("review-diff");
 });
 
+it.each([skillPages.complete, skillPages.last])(
+  "presents a final producer page without inventing a continuation",
+  (source) => {
+    const page = JSON.parse(source) as { skills: { name: string; description: string }[] };
+    testClient.render(<RecordedResult context={capturedContext("list_skills", source)} />);
+    const result = screen.getByRole("region", { name: "Result" });
+    for (const skill of page.skills) {
+      expect(within(result).getByText(skill.name, { exact: true })).toBeTruthy();
+      expect(
+        within(result).getByText(skill.description, { exact: true, normalizer: (value) => value }),
+      ).toBeTruthy();
+    }
+    expect(screen.queryByText("More pages", { exact: true })).toBeNull();
+    expectInert(result);
+  },
+);
+
+it("copies an unrecognized Skill result without normalizing its bytes", async () => {
+  const source = "<available_skills>\n  <truncated>true</truncated>\n</available_skills>\n\n";
+  const writeText = vi.fn(async () => {});
+  vi.stubGlobal("navigator", { clipboard: { writeText } });
+  try {
+    testClient.render(<RecordedResult context={capturedContext("list_skills", source)} />);
+    fireEvent.click(screen.getByRole("button", { name: "Copy result" }));
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledExactlyOnceWith(source));
+    expectInert(screen.getByRole("region", { name: "Result" }));
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
 it("keeps a complete empty Skill page distinct from locally hidden summaries", () => {
-  testClient.render(<RecordedResult context={capturedContext("list_skills", '{"skills":[]}')} />);
+  testClient.render(<RecordedResult context={capturedContext("list_skills", skillPages.empty)} />);
   const result = screen.getByRole("region", { name: "Result" });
   expect(result.textContent).toBe("No skills were returned.");
   expect(screen.queryByText("More pages", { exact: true })).toBeNull();
@@ -494,27 +520,6 @@ it.each(["list_skills", "load_skill", "read_skill_resource"])(
     }
   },
 );
-
-it("distinguishes an empty skill list from a result where no summary fit", () => {
-  const results = [
-    [
-      "<available_skills>\n  <truncated>true</truncated>\n</available_skills>",
-      "More skills were omitted from this result.",
-    ],
-    ["<available_skills>\n</available_skills>", "No skills were returned."],
-  ] as const;
-  for (const [source, notice] of results) {
-    const rendered = testClient.render(
-      <RecordedResult context={capturedContext("list_skills", source)} />,
-    );
-    const result = screen.getByRole("region", { name: "Result" });
-    expect(within(result).getByText(notice, { exact: true })).toBeTruthy();
-    expect(result.textContent).not.toContain("<available_skills>");
-    expect(result.textContent).not.toContain("<truncated>");
-    expectInert(result);
-    rendered.unmount();
-  }
-});
 
 it.each([
   { name: "glob", result: JSON.stringify({ hits: [] }), label: "Matches" },

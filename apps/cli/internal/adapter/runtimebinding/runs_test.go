@@ -2,6 +2,7 @@ package runtimebinding
 
 import (
 	"context"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"iter"
@@ -415,6 +416,38 @@ func segmentStreamEmpty(stream conversation.SegmentStream) bool {
 }
 
 func runStringPointer(value string) *string { return &value }
+
+func TestApprovalArgumentReplacementPresenceSurvivesWireProjection(t *testing.T) {
+	for _, input := range []string{"", "{}", `{"count":9007199254740993}`} {
+		t.Run(input, func(t *testing.T) {
+			var override *conversation.ToolArgumentOverride
+			if input != "" {
+				var err error
+				override, err = conversation.ParseToolArgumentOverride([]byte(input))
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			response, err := projectAnswer(conversation.InterruptAnswer{
+				ItemID: "approval", Answer: conversation.ApprovalAnswer{
+					Decision: protocol.ApprovalApprove, ArgumentOverride: override,
+				},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if (response.Response.EditedArgs == nil) != (input == "") {
+				t.Fatalf("replacement presence changed: %+v", response)
+			}
+			if input != "" {
+				encoded, err := json.Marshal(response.Response.EditedArgs, json.Deterministic(true))
+				if err != nil || string(encoded) != input {
+					t.Fatalf("replacement = %s, error = %v", encoded, err)
+				}
+			}
+		})
+	}
+}
 
 func TestResumeAndCancelMapControlContracts(t *testing.T) {
 	override, err := conversation.ParseToolArgumentOverride([]byte(`{"command":"go test -race ./...","count":9007199254740993}`))

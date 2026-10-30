@@ -22,8 +22,9 @@ its saved accounting payload. Core evidence and totals are unaffected.
 
 Each accepted command has its own immutable report ID. Replaying a capture after
 removal cannot recreate that report, and an old removal cannot target a later
-capture. Capacity is 64 reports, each at most 1 MiB of canonical accounting JSON;
-full archives refuse new captures until a report is explicitly removed. Stored
+capture. [Archive policy](contracts/limits.ts) owns the report count and canonical
+accounting byte limits; admission and component feedback consume that same policy.
+Full archives refuse new captures until a report is explicitly removed. Stored
 data that fails identity or summary validation is an error, never an empty
 archive or a newly calculated replacement.
 

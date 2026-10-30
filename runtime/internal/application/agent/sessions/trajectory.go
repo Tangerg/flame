@@ -43,7 +43,7 @@ func (e TrajectoryEntry) Position() TrajectoryPosition {
 	case e.Model != nil:
 		return TrajectoryPosition{OccurredAt: e.OccurredAt.UnixNano(), Kind: trajectoryModel, ID: e.Model.CallID}
 	case e.Endpoint != nil:
-		return TrajectoryPosition{OccurredAt: e.OccurredAt.UnixNano(), Kind: TrajectoryEndpoint, ID: e.Endpoint.Invocation.ID}
+		return TrajectoryPosition{OccurredAt: e.OccurredAt.UnixNano(), Kind: TrajectoryEndpoint, ID: e.Endpoint.Snapshot().Invocation.ID}
 	case e.Item != nil:
 		return TrajectoryPosition{OccurredAt: e.OccurredAt.UnixNano(), Kind: trajectoryItem, ID: e.Item.ID()}
 	default:

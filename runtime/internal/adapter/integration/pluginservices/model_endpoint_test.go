@@ -13,6 +13,7 @@ import (
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
@@ -71,7 +72,7 @@ func TestEndpointEvidenceSurvivesOuterObserverFailureAndHostRestart(t *testing.T
 	t.Cleanup(func() { _ = db.Close() })
 	store := db.ModelInvocations
 	source, found, err := store.EndpointForCaller(t.Context(), "original-endpoint-parent")
-	if err != nil || !found || source.CostUSD == nil || *source.CostUSD != 1.5 {
+	if err != nil || !found || source.Snapshot().CostUSD == nil || *source.Snapshot().CostUSD != 1.5 {
 		t.Fatalf("restart lost captured source price: %+v %v", source, err)
 	}
 	rows, err := store.PageEndpointInvocations(t.Context(), "original-endpoint-parent", 0, "", 10)
@@ -79,7 +80,7 @@ func TestEndpointEvidenceSurvivesOuterObserverFailureAndHostRestart(t *testing.T
 		t.Fatalf("persisted inner evidence: %+v, %v", rows, err)
 	}
 	row := rows[0]
-	storedResponse, err := jsonvalue.Encode(row.Response)
+	storedResponse, err := jsonvalue.Encode(row.Response())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +88,7 @@ func TestEndpointEvidenceSurvivesOuterObserverFailureAndHostRestart(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	storedRequest, err := jsonvalue.Encode(row.Invocation.Request)
+	storedRequest, err := jsonvalue.Encode(row.Snapshot().Invocation.Request)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +96,7 @@ func TestEndpointEvidenceSurvivesOuterObserverFailureAndHostRestart(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if row.State != "completed" || row.Failure != "" || storedResponse != expectedResponse || storedRequest != expectedRequest || row.Invocation.Provider != "anthropic" || row.Invocation.Model != "configured-model" || row.Invocation.Caller.Parent != "original-effect" || row.Invocation.ID == row.Invocation.Caller.ID {
+	if row.State() != modelref.EndpointCompleted || row.Snapshot().Failure != "" || storedResponse != expectedResponse || storedRequest != expectedRequest || row.Snapshot().Invocation.Provider != "anthropic" || row.Snapshot().Invocation.Model != "configured-model" || row.Snapshot().Invocation.Caller.Parent != "original-effect" || row.Snapshot().Invocation.ID == row.Snapshot().Invocation.Caller.ID {
 		t.Fatalf("outer failure changed physical endpoint evidence: %+v", row)
 	}
 }

@@ -4,8 +4,9 @@ import (
 	"context"
 	"errors"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -26,7 +27,7 @@ func newEnter(modes planEnterPolicy) (toolcontract.Tool, error) {
 		return nil, nil
 	}
 	return toolcontract.NewFunc[enterArgs, string](
-		toolcontract.FuncConfig{Name: string(tool.EnterPlanMode), Description: enterDescription},
+		toolcontract.FuncConfig{Name: string(builtincontract.EnterPlanMode), Description: enterDescription},
 		(&enterer{modes: modes}).enter,
 	)
 }

@@ -6,6 +6,19 @@ semantics; Web owns inputs, view projections, navigation and presentation.
 The [native host](../desktop/README.md) supplies macOS capabilities without owning
 another UI application.
 
+Shared Callouts receive their kind titles from the application locale through
+`CalloutLabelsProvider` at window and installed-component roots. The i18n React
+binding observes dictionary additions and removals, so lazy activation and locale
+retirement update mounted readers without another label store.
+
+Image previews and exports share one inline-image contract. Export decodes the
+image in an inert image context and rasterizes it as PNG before calling the host's
+file-save boundary. SVG source never crosses that boundary as executable material;
+animated formats export a still frame. Browser reports download dispatch, while
+Desktop reports a completed write or cancellation. The download action names PNG
+explicitly. [SVG image contexts](https://developer.mozilla.org/en-US/docs/Web/SVG/Guides/SVG_as_an_image)
+disable scripts and external resource loading.
+
 From the repository root:
 
 ```sh
@@ -47,6 +60,53 @@ explicit dependencies. Tests construct independent instances in `test/renderClie
 and visual fixtures compose them in `visual/client.tsx`. No default feature-instance
 registry or module-global port installer is part of the product API.
 
+Provider settings keep mutation generations and sensitive credential drafts in
+one explicitly composed feature instance. A command captures its original
+generation and rejects after retirement. Runtime replacement clears that
+instance's drafts; disposal cannot affect another instance's commands or drafts.
+
+MCP settings receive their mutation owner from the composition root. Editors,
+enablement, authorization, tool exposure and reconnect capture that instance's
+current command generation. Runtime replacement retires those commands; plugin
+shutdown retires the generation and renderer shutdown disposes the owner.
+
+Goal commands and composer mode belong to one explicitly composed feature
+instance. Commands retain their admitted Runtime generation, including a pending
+replacement confirmation. Resetting composer mode invalidates its submission
+settlement, so a late reply cannot accept or change a newer draft in the same
+Session. Plugin shutdown retires Runtime work and resets mode; renderer shutdown
+disposes both owners.
+
+Project hook trust captures the command generation supplied by its feature
+Provider. Trust writes remain serialized per project through canonical query
+revalidation. Runtime withdrawal retires pending and queued intent, and a stale
+control cannot submit that intent through a successor Runtime.
+
+Message feedback keeps optimistic selection, accepted ratings and subscriptions
+inside its explicit feature instance. The UI reads that instance's current
+projection and captures its submission generation. Runtime replacement clears
+the retired projection, while late replies and stale controls cannot alter or
+submit through its successor. An absent Runtime supplies no command generation.
+
+Question drafts retain raw text and one literal custom choice, including commas.
+The editor can explicitly skip a field with an empty answer. Runtime admits the
+complete candidate; Web does not trim or deduplicate answers before submission.
+
+Conversation search covers revealed message text, including text reached by
+scrolling. Collapsed, hidden and inert content is excluded regardless of its
+mounting history. Expand a disclosure to include its content; closing it updates
+the count and retires its ranges. Search reads that visibility projection and
+preserves the disclosure and keyboard focus owners.
+
+File reading navigates adjacent bounded line windows using Runtime's served
+start and end coordinates. Earlier pages retain their requested end at the byte
+cap; later pages begin after the served end. The reader requests Runtime's
+maximum admitted response budget so every permitted source line fits whole.
+Line references begin at the requested line. A changed page starts at its top,
+while a refresh retains that page's reading position. Source selection and copy
+refer only to the presented page, and a partial file stays in source mode with
+its range and truncation visible.
+
 The workbench keeps its layout and existing Runtime recovery notice available
 before the first Session snapshot. Conversation content starts from a defined
 snapshot, including a known empty list. Request activity can change while that
@@ -58,11 +118,42 @@ conversation region, with the same recovery action next in the Tab order. Once
 Session data arrives, the existing Composer presents connection feedback and
 retains its draft and focus through later connection status changes.
 
+Image selections belong to their Session draft as pending, ready or failed
+attachments from the moment they are chosen. Send remains unavailable until all
+retained images are ready. Failed selections stay visible for removal and
+reselection. Reads complete against the original Session, in selection order,
+even while another Session is active. Clearing, replacing or discarding that draft
+retires its pending selections. Endpoint storage replacement also retires pending
+reads; replacement at the same endpoint preserves them. Image bytes and read
+intents remain in memory; only draft text and pasted text are persisted.
+
+Root Run notifications consume settlements published after an atomic live-event
+commit, including Runs that start and finish in the same frame. Each settlement
+carries its Run and Segment identity; a parked cancellation receipt has no active
+Segment. Duplicate event folds, rejected batches and retired projection generations
+cannot publish another settlement. Cold reads and history refreshes stay quiet.
+Accepted cancellation receipts use the same committed transition projection.
+
+Session title editing captures the Session ID, revision, original title and command
+port when Rename opens. List refreshes cannot retarget that edit. Summary writes
+preserve the captured revision even when queued behind another write; Runtime owns
+conflict admission. A refused edit retains its draft and feedback. Cancel and reopen
+Rename to capture a newer target. Enter and blur share one pending submission.
+Missing-workspace edits capture the same Session precondition. A Session switch
+cannot rebind a path draft, and a late result cannot clear another edit.
+
 Accepted Composer Stop returns to the captured input without consuming its draft
 or moving its selection. Refused Stop keeps its action context; later focus and
 input replacement remain with the existing captured-focus owner. Send, Steer and
 Stop use the shared focusable-disabled contract while commands are unavailable.
 The Runtime retains cancellation admission and Run settlement ownership.
+
+Regeneration keeps rollback and follow-up admission under one captured Agent
+command lease. Only a committed rollback with Runtime's original dropped input
+can submit another Run in that Session. Missing targets, unavailable checkpoints,
+retired endpoints and joined operations never fall back to a displayed prompt.
+File-restoring actions require a preceding root Run in the current projection;
+the fresh Runtime read and rollback still decide whether restoration can commit.
 
 Manual Goal-mode exit uses that same captured Composer focus. Accepted exit
 returns to the current input with its draft and selection intact; later focus or
@@ -434,10 +525,25 @@ their existing owners. Save failures lead with the command reason, followed by
 the captured image description, so changing the current image cannot misidentify
 the failed save.
 
+Markdown math syntax is owned by `remarkMathSyntax` inside the Markdown parser.
+It accepts dollar math, LaTeX bracket delimiters (one or two backslashes), and
+the paired `[/inline]` and `[/math]` markers. A single dollar immediately followed
+by a digit is currency; digit-opening formulas use bracket, custom or double-dollar
+delimiters. Display formulas can contain blank lines. The streaming splitter uses
+that same parser grammar and slices original source at its block boundaries.
+Code, link destinations and raw artifacts never pass through math rewriting;
+code display and copying use the parser's literal code value.
+
 Generated SVG fences stay inert images inside their code preview and open through
 the shared image gallery. The gallery keeps source order within the reply, owns
 zoom/pan and source return, and captures the image set for each opening. Code
 copying retains the complete original SVG text.
+
+Collapsing disclosures share one scroll lock per containing viewport. The first
+animation captures the original scrollbar, padding and reading position; later
+animations retain that same lock. Completion, cancellation, reopening and unmount
+release only their own lease. The final release restores the captured styles.
+
 Transcript viewports reveal returned keyboard/programmatic focus against the current
 Composer clearance after window or page-zoom changes. Pointer focus keeps its
 pressed position; modal completion continues to own focus restoration.
@@ -529,6 +635,11 @@ connection readiness continues to come from the server row's canonical status.
 Test and save feedback share the action group. New feedback is revealed with its
 focused action when the group fits, without moving focus or returning to a group
 the user already left.
+MCP arguments use a JSON string array; environment and header replacements use
+JSON string-valued objects. Invalid JSON stays at its field. Exact argument
+boundaries, command/path whitespace and environment values survive edits.
+Blank secret fields keep their stored values; clearing remains explicit.
+Metadata-only saves omit the connection, and unchanged edits issue no command.
 Configuration identifiers, commands, paths and connection values explicitly opt
 out of native capitalization, autocorrection and spelling changes at their fields.
 JSON import uses the labeled format example without a repeated introduction and
@@ -539,8 +650,15 @@ field, text and focus.
 The import parser preflights every entry's known source requirements before any
 create command, including the active transport's command or URL. Typed source
 issues are localized at the UI with literal source names. Timeout bounds remain
-with the existing factory, and unexpected failures propagate. Runtime still owns
-creation and final validation; external failures can report a committed prefix.
+derived from the generated Runtime contract, and unexpected failures propagate.
+Server names are accepted exactly by that contract; import never renames or
+truncates them. Explicit transport types must be supported by Runtime. An omitted
+type is inferred only from an unambiguous command or URL. Legacy SSE is rejected.
+Strict JSON rejects duplicate members before conversion. Header names are
+classified case-insensitively once; duplicate names or an Authorization header
+alongside an explicit authorization field are errors, even when values agree.
+Runtime still owns creation and final validation; external failures can report
+a committed prefix.
 
 Tests stay beside their owners. Cross-language Runtime/schema/SDK tests live in
 `tests/integration`; repository Go cross-product checks live in

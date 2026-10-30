@@ -35,8 +35,10 @@ type ListFilesRequest struct {
 
 // ReadFileRequest is the workspace.files.read body. It reads the whole
 // file, or the StartLine..EndLine window (1-based inclusive, editor-facing)
-// when given. A zero MaxBytes selects the 1 MiB default; larger values are
-// capped at 8 MiB. FileContent.Truncated reports omitted source material.
+// when given. An omitted MaxBytes selects the 1 MiB default; larger values are
+// capped at 8 MiB. Only complete normalized source lines are returned. FromEnd
+// retains the suffix of the requested range instead of its prefix; the returned
+// lines remain in source order. FileContent.Truncated reports omitted material.
 // Non-regular files and content that is not valid UTF-8 text are unsupported.
 type ReadFileRequest struct {
 	Workspace WorkspaceRef `json:"workspace"`
@@ -44,16 +46,15 @@ type ReadFileRequest struct {
 	StartLine *int         `json:"startLine,omitzero"`
 	EndLine   *int         `json:"endLine,omitzero"`
 	MaxBytes  *int         `json:"maxBytes,omitzero"`
+	FromEnd   bool         `json:"fromEnd,omitzero"`
 }
 
 // FileContent is the workspace.files.read result. Content is valid UTF-8 text;
 // binary files are rejected before projection. TotalLines is the whole-file
 // line count even for a windowed read (so the UI can show "12–40 / 320").
 // StartLine/EndLine describe the served window (1-based inclusive) and are
-// present together when a range was requested and at least one line was served.
-// A byte-limited last line may be a valid UTF-8 prefix of that source line; when
-// even its first code point cannot fit, both window fields are omitted and
-// Truncated remains true.
+// present together whenever at least one complete line was served. If no line
+// fits the requested byte budget, both fields are omitted and Truncated is true.
 type FileContent struct {
 	Content    string `json:"content"`
 	TotalLines int    `json:"totalLines"`

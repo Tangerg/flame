@@ -303,7 +303,8 @@ func TestScheduleClaimRejectsStaleRevisionWithUnchangedCursor(t *testing.T) {
 	}
 
 	instructions := "new instructions"
-	updated, err := created.Edit(schedule.Patch{Instructions: &instructions}, created.Revision(), dueAt.Add(-time.Minute))
+	editedAt := dueAt.Add(15 * time.Minute)
+	updated, err := created.Edit(schedule.Patch{Instructions: &instructions}, created.Revision(), editedAt)
 	if err != nil {
 		t.Fatalf("Edit: %v", err)
 	}
@@ -324,10 +325,17 @@ func TestScheduleClaimRejectsStaleRevisionWithUnchangedCursor(t *testing.T) {
 		t.Fatalf("stale Claim = (%v, %v), want false, nil", claimed, err)
 	}
 
-	fresh := testClaim(updated, "ses_fresh", "run_fresh", dueAt)
+	retained, err := store.Due(ctx, editedAt, 1)
+	if err != nil || len(retained) != 1 || !retained[0].NextRunAt().Equal(dueAt) {
+		t.Fatalf("edited due occurrence = (%+v, %v), want the original cursor", retained, err)
+	}
+	fresh := testClaim(retained[0], "ses_fresh", "run_fresh", editedAt)
 	claimed, err = store.Claim(ctx, fresh)
 	if err != nil || !claimed {
 		t.Fatalf("fresh Claim = (%v, %v), want true, nil", claimed, err)
+	}
+	if claimed, err := store.Claim(ctx, fresh); err != nil || claimed {
+		t.Fatalf("duplicate Claim = (%v, %v), want false, nil", claimed, err)
 	}
 	pending, err := store.Pending(ctx, time.Time{}, "", 1)
 	if err != nil || len(pending) != 1 || pending[0].Snapshot().Execution.Instructions != "new instructions" {

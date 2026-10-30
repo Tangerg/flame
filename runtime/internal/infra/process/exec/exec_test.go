@@ -486,3 +486,29 @@ func TestShellsStopEveryAliasOfTheRestoredTree(t *testing.T) {
 		t.Fatal("StopWorkspace returned before the aliased shell joined")
 	}
 }
+
+func TestShellsStopAncestorOfRestoredSubtree(t *testing.T) {
+	shells := unconfinedShells(t)
+	t.Cleanup(func() { _ = shells.KillAll() })
+	root := t.TempDir()
+	child := filepath.Join(root, "child")
+	if err := os.Mkdir(child, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	id, err := shells.Launch(t.Context(), "ancestor", root, "sleep 30", Timeout{}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sh := mustShell(t, shells, "ancestor", id)
+	if err := shells.StopWorkspace(child); err != nil {
+		t.Fatal(err)
+	}
+	if _, exists := shells.Get("ancestor", id); exists {
+		t.Fatal("ancestor shell retained authority over the restored subtree")
+	}
+	select {
+	case <-sh.Done():
+	default:
+		t.Fatal("subtree retirement returned before its ancestor shell joined")
+	}
+}

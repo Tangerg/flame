@@ -55,6 +55,7 @@ func (r *EndpointObservations) List(ctx context.Context, parent, cursor string, 
 		return zero, err
 	}
 	return pagination.PageOf(rows, size, namespace, filters, func(row modelref.EndpointObservation) []string {
-		return []string{strconv.FormatInt(row.Invocation.StartedAt.UnixNano(), 10), row.Invocation.ID}
+		record := row.Snapshot()
+		return []string{strconv.FormatInt(record.Invocation.StartedAt.UnixNano(), 10), record.Invocation.ID}
 	})
 }

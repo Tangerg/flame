@@ -1,10 +1,12 @@
 import { unavailableComponentNotifications } from "@/test/unavailableNotifications";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { ApplicationCalloutLabels } from "@/app/calloutLabels";
 import { afterEach, beforeEach, expect, it, onTestFinished, vi } from "vitest";
 import {
   createTranslator,
   type CapturedToolResult,
+  type CapturedToolInteraction,
   type ComponentContext,
   type PluginComponent,
   type Translate,
@@ -22,6 +24,7 @@ import {
   type UiNode,
 } from "../../../plugins/genui/contracts/document";
 import { GENUI_REPORT } from "./genuiReport";
+import { limits } from "../../../plugins/genui/contracts/expression";
 
 let testClient: TestClient;
 beforeEach(() => {
@@ -98,6 +101,86 @@ function show(value: AcceptedDocument, locale = "en") {
   const context = capturedContext(JSON.stringify(value), locale);
   return { context, ...testClient.render(<GenUIResult context={context} />) };
 }
+
+it("keeps original action recovery when a real Table search rejects an oversized value", async () => {
+  const value = document(
+    [
+      {
+        id: "inventory",
+        type: "Table",
+        props: {
+          caption: "Inventory",
+          rowKey: "id",
+          columns: [{ key: "name", label: "Name" }],
+          rows: [{ id: "one", name: "Memory" }],
+          searchState: "search",
+          pageState: "page",
+          pageSize: 5,
+        },
+      },
+      { id: "send", type: "Button", props: { label: "Send readout", action: "send" } },
+    ],
+    [
+      { id: "search", value: "" },
+      { id: "page", value: 0 },
+    ],
+    [{ id: "send", steps: [{ type: "followup", message: { literal: "Review inventory" } }] }],
+  );
+  const base = capturedContext(JSON.stringify(value));
+  const recover = vi.fn(async () => ({
+    status: "accepted" as const,
+    sessionId: "ses_original",
+    runId: "run_original",
+    userItemId: "item_input",
+  }));
+  const submit = vi.fn<CapturedToolInteraction["submit"]>(async () => ({
+    status: "unknown",
+    idempotencyKey: "original-input",
+    recover,
+  }));
+  const context: ComponentContext = {
+    registerCommand: base.registerCommand,
+    subscribeRootRunSettlements: base.subscribeRootRunSettlements,
+    notifications: base.notifications,
+    component: base.component,
+    locale: base.locale,
+    signal: base.signal,
+    toolResult: base.toolResult,
+    get runtime() {
+      return base.runtime;
+    },
+    get telemetry() {
+      return base.telemetry;
+    },
+    saveFile: base.saveFile,
+    compose: base.compose,
+    track: (work) => work(base.signal),
+    interaction: { source: { runId: base.toolResult!.runId, itemId: base.toolResult!.id }, submit },
+  };
+  testClient.render(<GenUIResult context={context} />);
+  const send = screen.getByRole("button", { name: "Send readout" }) as HTMLButtonElement;
+  await waitFor(() => expect(send.disabled).toBe(false));
+  await act(async () => fireEvent.click(send));
+  expect(submit).toHaveBeenCalledOnce();
+  const recovery = await screen.findByRole("button", { name: "Recover original action" });
+  const search = screen.getByRole("searchbox", { name: "Search Inventory" }) as HTMLInputElement;
+  fireEvent.change(search, { target: { value: "x".repeat(limits.valueText + 1) } });
+  expect(screen.getByText("This field could not be updated.")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Recover original action" })).toBe(recovery);
+  expect(screen.getByText(/The original action has not been confirmed/)).toBeTruthy();
+  expect(search.value).toBe("");
+  expect(send.disabled).toBe(true);
+  fireEvent.click(send);
+  expect(submit).toHaveBeenCalledOnce();
+  fireEvent.change(search, { target: { value: "Memory" } });
+  expect(screen.queryByText("This field could not be updated.")).toBeNull();
+  expect(send.disabled).toBe(true);
+  await act(async () => fireEvent.click(recovery));
+  await waitFor(() => expect(recover).toHaveBeenCalledOnce());
+  expect(screen.getByText("Action accepted.")).toBeTruthy();
+  expect(send.disabled).toBe(false);
+  expect(submit).toHaveBeenCalledOnce();
+});
 
 it.each([
   { value: 0, max: 4, locale: "en", text: "0%" },
@@ -1494,7 +1577,9 @@ it.each([
 
 it("renders the recorded first frame on the server without component context I/O", () => {
   const html = renderToStaticMarkup(
-    <GenUIResult context={capturedContext(JSON.stringify(GENUI_REPORT))} />,
+    <ApplicationCalloutLabels>
+      <GenUIResult context={capturedContext(JSON.stringify(GENUI_REPORT))} />
+    </ApplicationCalloutLabels>,
   );
   expect(html).toContain("Agent plugin delivery review");
   expect(html).toContain("9007199254740993");

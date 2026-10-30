@@ -1,7 +1,6 @@
 package arch
 
 import (
-	"go/ast"
 	"go/parser"
 	"go/token"
 	"io/fs"
@@ -120,7 +119,7 @@ func mayImportRuntime(relative, imported string) bool {
 		return true
 	}
 	switch imported {
-	case sdkPath + "/protocol", sdkPath + "/extension", sdkPath + "/exactint", sdkPath + "/jsonvalue", sdkPath + "/model":
+	case sdkPath + "/protocol", sdkPath + "/extension", sdkPath + "/exactint", sdkPath + "/jsonvalue", sdkPath + "/model", sdkPath + "/question", sdkPath + "/filesystem/commit":
 		return true
 	case sdkPath + "/filesystem":
 		ring := ringOf(relative)
@@ -139,6 +138,8 @@ func TestRuntimeImportBoundaries(t *testing.T) {
 		consumer, imported string
 		allowed            bool
 	}{
+		{consumer: "internal/domain/conversation/interrupt.go", imported: sdkPath + "/question", allowed: true},
+		{consumer: "internal/delivery/terminal/question.go", imported: sdkPath + "/question", allowed: true},
 		{consumer: "main.go", imported: localRuntimePath, allowed: true},
 		{consumer: "internal/application/settings/config.go", imported: localRuntimePath, allowed: true},
 		{consumer: "internal/application/workbench/installed_memory_commands.go", imported: sdkPath + "/extension", allowed: true},
@@ -152,6 +153,7 @@ func TestRuntimeImportBoundaries(t *testing.T) {
 		{consumer: "internal/adapter/filesystem/store.go", imported: localRuntimePath},
 		{consumer: "internal/adapter/filesystem/statefile/store.go", imported: sdkPath + "/filesystem", allowed: true},
 		{consumer: "internal/application/workbench/store.go", imported: sdkPath + "/filesystem"},
+		{consumer: "internal/application/workbench/persistence.go", imported: sdkPath + "/filesystem/commit", allowed: true},
 		{consumer: "internal/domain/conversation/session.go", imported: sdkPath + "/filesystem"},
 		{consumer: "internal/domain/conversation/session.go", imported: sdkPath + "/exactint", allowed: true},
 		{consumer: "internal/domain/conversation/session.go", imported: sdkPath + "/jsonvalue", allowed: true},
@@ -192,71 +194,13 @@ func TestApplicationDoesNotOwnOperatingSystemIO(t *testing.T) {
 // members without a hand-written pass, and its options state the rules the CLI
 // depends on: deterministic member order in machine-readable output and durable
 // state, and omitzero where a present-but-empty value is a fact.
-//
-// The exceptions import the package for [encoding/json.Number] alone.
-// encoding/json/v2 decodes and encodes that type directly but declares no
-// replacement for it, and it is what keeps a tool argument the operator reviewed
-// from becoming something else through float64. Neither package uses the v1 codec.
 func TestCLIUsesOneJSONVocabulary(t *testing.T) {
-	root := moduleRoot(t)
-	exact := map[string]string{
-		"internal/adapter/runtimebinding": "names json.Number to keep an exit code an integer",
-	}
-	found := make(map[string]bool, len(exact))
-	walkProduction(t, root, func(_, path string) {
+	walkProduction(t, moduleRoot(t), func(relative, path string) {
 		for _, imported := range imports(t, path) {
-			if imported != "encoding/json" {
-				continue
+			if imported == "encoding/json" {
+				t.Errorf("%s imports encoding/json; the CLI decodes with encoding/json/v2", relative)
 			}
-			file, err := filepath.Rel(root, path)
-			if err != nil {
-				t.Fatal(err)
-			}
-			file = filepath.ToSlash(file)
-			pkg := filepath.ToSlash(filepath.Dir(file))
-			if _, allowed := exact[pkg]; !allowed {
-				t.Errorf("%s imports encoding/json; the CLI decodes with encoding/json/v2", file)
-				continue
-			}
-			found[pkg] = true
-			assertOnlyJSONNumberIsUsed(t, file, path)
 		}
-	})
-	for relative, reason := range exact {
-		if !found[relative] {
-			t.Errorf("%s no longer needs encoding/json (%s); drop it from the exception list", relative, reason)
-		}
-	}
-}
-
-// assertOnlyJSONNumberIsUsed keeps the exception to the one name that earns it.
-// The exception exists because encoding/json/v2 declares no replacement for
-// json.Number; reaching any other name through the same import would bring back
-// the v1 codec the guard above removes, and an import-only check cannot see it.
-func assertOnlyJSONNumberIsUsed(t *testing.T, relative, path string) {
-	t.Helper()
-	file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
-	if err != nil {
-		t.Fatalf("parse %s: %v", relative, err)
-	}
-	qualifier := "json"
-	for _, imported := range file.Imports {
-		if strings.Trim(imported.Path.Value, `"`) == "encoding/json" && imported.Name != nil {
-			qualifier = imported.Name.Name
-		}
-	}
-	ast.Inspect(file, func(node ast.Node) bool {
-		selector, isSelector := node.(*ast.SelectorExpr)
-		if !isSelector {
-			return true
-		}
-		receiver, isIdentifier := selector.X.(*ast.Ident)
-		if !isIdentifier || receiver.Name != qualifier || selector.Sel.Name == "Number" {
-			return true
-		}
-		t.Errorf("%s uses %s.%s; the exception covers json.Number alone",
-			relative, qualifier, selector.Sel.Name)
-		return true
 	})
 }
 

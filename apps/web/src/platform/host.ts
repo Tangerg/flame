@@ -21,7 +21,6 @@ export interface ClientHost {
   readonly kind: "desktop" | "web";
   bootstrap(): Promise<ClientBootstrap>;
   chooseWorkingDirectory(): Promise<string | null>;
-  saveImage(source: string): Promise<boolean>;
   // Capture bytes before yielding. Native resolves after writing or cancellation;
   // Browser reports only download dispatch. Only Browser consumes the MIME type.
   saveFile(request: SaveFileRequest): Promise<FileSaveResult>;

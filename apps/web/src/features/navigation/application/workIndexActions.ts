@@ -31,7 +31,7 @@ export interface WorkIndexActions {
   chooseSessionFolder: () => void;
   startSessionInFolder: (cwd: string) => void;
   selectSession: (id: string) => void;
-  renameSession: (id: string, expectedRevision: number, title: string) => void;
+  renameSession: (id: string, expectedRevision: number, title: string) => Promise<boolean>;
   forkSession: (id: string) => void;
   deleteSession: (id: string) => void;
   toggleFavorite: (id: string, expectedRevision: number, favorite: boolean) => void;
@@ -94,9 +94,7 @@ export function useWorkIndexActions(): WorkIndexActions {
         });
       },
       selectSession: agentAccess.selectAgentSession,
-      renameSession: (id, expectedRevision, title) => {
-        void rename(id, expectedRevision, title);
-      },
+      renameSession: rename,
       forkSession: (id) => {
         void fork(id);
       },

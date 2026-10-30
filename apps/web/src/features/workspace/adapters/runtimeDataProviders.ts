@@ -69,10 +69,16 @@ export function registerWorkspaceDataProviders(
         WORKSPACE_READ_FILE_KEY,
         params,
       );
-      const r = await (await workspace(cwd, signal)).files.read(query, signal);
+      const resources = await workspace(cwd, signal);
+      // Runtime clamps this request to its own maximum, which admits a complete legal line.
+      const r = await resources.files.read({ ...query, maxBytes: Number.MAX_SAFE_INTEGER }, signal);
+      if (r.startLine === undefined || r.endLine === undefined) {
+        throw new Error("workspace file read omitted its served line window");
+      }
       return {
         content: r.content,
-        startLine: r.startLine ?? 1,
+        startLine: r.startLine,
+        endLine: r.endLine,
         totalLines: r.totalLines,
         truncated: r.truncated,
       };

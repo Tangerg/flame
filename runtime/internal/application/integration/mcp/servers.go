@@ -66,7 +66,7 @@ func (c *Coordinator) CreateServer(ctx context.Context, input ServerInput) (Serv
 	if err != nil {
 		return Server{}, err
 	}
-	return c.commitServer(write, srv)
+	return c.commitServer(write, srv, true)
 }
 
 // UpdateServer applies an explicit partial update to an existing resource.
@@ -94,10 +94,10 @@ func (c *Coordinator) UpdateServer(ctx context.Context, name mcpserver.ID, patch
 	if err != nil {
 		return Server{}, err
 	}
-	return c.commitServer(write, updated)
+	return c.commitServer(write, updated, !current.Enabled || !current.SameConnection(updated))
 }
 
-func (c *Coordinator) commitServer(write *mutationScope, srv mcpserver.Server) (Server, error) {
+func (c *Coordinator) commitServer(write *mutationScope, srv mcpserver.Server, reconnect bool) (Server, error) {
 	if err := c.store.Save(write.requestCtx, srv); err != nil {
 		return Server{}, err
 	}
@@ -105,7 +105,7 @@ func (c *Coordinator) commitServer(write *mutationScope, srv mcpserver.Server) (
 	var redialErr error
 	start := make(chan struct{})
 	defer close(start)
-	if srv.Enabled && reconcileErr == nil {
+	if srv.Enabled && reconnect && reconcileErr == nil {
 		redialErr = c.dispatchConnection(write.ownerCtx, srv.ID(), c.connections.BeginConnect, start, nil, nil)
 	}
 	event := c.statusQueue.prepare(srv.ID())

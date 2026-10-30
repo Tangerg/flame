@@ -23,11 +23,24 @@ type acceptance struct {
 	identities map[string]bool
 }
 
-// observerLifecycle owns the one fsnotify resource and goroutine lifecycle
-// shared by exact-file and bounded child-file reconciliation policies.
+type pathRegistry interface {
+	Add(string) error
+	Remove(string) error
+	WatchList() []string
+	Close() error
+}
+
+type pathObservation struct {
+	registry pathRegistry
+	events   <-chan fsnotify.Event
+	errors   <-chan error
+}
+
+// observerLifecycle owns notification resources and the reconciliation loop
+// shared by exact-file and bounded child-file policies.
 type observerLifecycle struct {
 	label     string
-	fsw       *fsnotify.Watcher
+	fsw       pathObservation
 	done      chan struct{}
 	exited    chan struct{}
 	closeOnce sync.Once
@@ -43,7 +56,7 @@ func newObserverLifecycle(label string, report func(error)) (*observerLifecycle,
 	if report == nil {
 		return nil, fmt.Errorf("%s: outage reporter is required", label)
 	}
-	fsw, err := fsnotify.NewWatcher()
+	fsw, err := newPathObservation()
 	if err != nil {
 		return nil, fmt.Errorf("%s: create watcher: %w", label, err)
 	}
@@ -90,20 +103,23 @@ func (o *observerLifecycle) run() {
 		select {
 		case <-o.done:
 			return
-		case _, ok := <-o.fsw.Events:
+		case _, ok := <-o.fsw.events:
 			if !ok {
 				o.report(errors.New("filesystem observation event channel closed"))
 				return
 			}
 			armAfter(debounce)
-		case _, ok := <-o.fsw.Errors:
+		case err, ok := <-o.fsw.errors:
 			if !ok {
 				o.report(errors.New("filesystem observation error channel closed"))
 				return
 			}
-			// Backend errors invalidate only the wake-up hint. Reconciliation
-			// resamples the content-derived state that owns the observable fact.
-			armAfter(debounce)
+			if errors.Is(err, fsnotify.ErrEventOverflow) {
+				armAfter(debounce)
+				continue
+			}
+			o.report(fmt.Errorf("filesystem observation failed: %w", err))
+			return
 		case <-timer.C:
 			armed = false
 			if err := o.reconcile(acceptance{}); err != nil {
@@ -142,19 +158,19 @@ func (o *observerLifecycle) Accept(keys, identities []string) error {
 	return o.reconcile(accepted)
 }
 
-func (o *observerLifecycle) replaceDirectories(next map[string]struct{}) error {
+func (o *observerLifecycle) replacePaths(next map[string]struct{}) error {
 	// The backend removes watches when directories disappear. Its current
 	// registration set must drive reconciliation so recreated paths are watched.
 	watched := make(map[string]struct{})
-	for _, directory := range o.fsw.WatchList() {
+	for _, directory := range o.fsw.registry.WatchList() {
 		watched[directory] = struct{}{}
 	}
 	for directory := range next {
 		if _, present := watched[directory]; present {
 			continue
 		}
-		if err := o.fsw.Add(directory); err != nil {
-			return fmt.Errorf("%s: watch directory %q: %w", o.label, directory, err)
+		if err := o.fsw.registry.Add(directory); err != nil {
+			return fmt.Errorf("%s: watch path %q: %w", o.label, directory, err)
 		}
 	}
 	for directory := range watched {
@@ -164,17 +180,17 @@ func (o *observerLifecycle) replaceDirectories(next map[string]struct{}) error {
 		// Linux may retire the kernel watch before fsnotify observes its deletion,
 		// so Remove returns EINVAL for that absent watch. stateMu keeps this
 		// watcher's descriptor alive until reconciliation has finished.
-		if err := o.fsw.Remove(directory); err != nil &&
+		if err := o.fsw.registry.Remove(directory); err != nil &&
 			!errors.Is(err, fsnotify.ErrNonExistentWatch) && !errors.Is(err, os.ErrNotExist) &&
 			!(runtime.GOOS == "linux" && errors.Is(err, syscall.EINVAL)) {
-			return fmt.Errorf("%s: unwatch directory %q: %w", o.label, directory, err)
+			return fmt.Errorf("%s: unwatch path %q: %w", o.label, directory, err)
 		}
 	}
 	return nil
 }
 
 func (o *observerLifecycle) abort(cause error) error {
-	if err := o.fsw.Close(); err != nil {
+	if err := o.fsw.registry.Close(); err != nil {
 		return errors.Join(cause, fmt.Errorf("%s: close failed watcher: %w", o.label, err))
 	}
 	return cause
@@ -197,7 +213,7 @@ func (o *observerLifecycle) Close() error {
 		close(o.done)
 		o.stateMu.Unlock()
 		<-o.exited
-		if err := o.fsw.Close(); err != nil {
+		if err := o.fsw.registry.Close(); err != nil {
 			o.closeErr = fmt.Errorf("%s: close watcher: %w", o.label, err)
 		}
 	})

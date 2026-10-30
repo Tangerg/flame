@@ -17,7 +17,7 @@ type ToolArgumentOverride struct {
 	encoded []byte
 }
 
-// ParseToolArgumentOverride accepts exactly one non-empty JSON object. Duplicate
+// ParseToolArgumentOverride accepts exactly one JSON object. Duplicate
 // keys are rejected because their last-value-wins decoding would make the
 // reviewed text and the executed argument object disagree.
 func ParseToolArgumentOverride(encoded []byte) (*ToolArgumentOverride, error) {
@@ -29,9 +29,6 @@ func ParseToolArgumentOverride(encoded []byte) (*ToolArgumentOverride, error) {
 	if !ok {
 		return nil, errors.New("tool argument override must be a JSON object")
 	}
-	if len(object) == 0 {
-		return nil, errors.New("tool argument override must contain at least one argument")
-	}
 	normalized, err := json.Marshal(object, json.Deterministic(true))
 	if err != nil {
 		return nil, fmt.Errorf("encode tool argument override: %w", err)
@@ -40,7 +37,7 @@ func ParseToolArgumentOverride(encoded []byte) (*ToolArgumentOverride, error) {
 }
 
 // Validate reports whether this optional override was constructed. Single JSON
-// value, distinct keys, object shape, non-empty arguments and normalized
+// value, distinct keys, object shape and normalized
 // encoding are established once — by [ParseToolArgumentOverride], which
 // [ToolArgumentOverride.UnmarshalJSON] also goes through — so the only value
 // that can reach here without them is an unconstructed one.

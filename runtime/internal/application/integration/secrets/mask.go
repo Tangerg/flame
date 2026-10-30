@@ -3,19 +3,19 @@
 package secrets
 
 const (
-	maskStars      = "****"
-	maskEndsMinLen = 9
+	maskStars        = "****"
+	maskEndsMinRunes = 9
 )
 
-// Mask redacts a secret for logs and presentation. Empty values remain empty;
-// short values reveal nothing; longer values retain only their first and last
-// two bytes.
+// Mask exposes either end only when at least five code points remain hidden,
+// so a short multi-byte credential cannot reveal most of its value.
 func Mask(value string) string {
 	if value == "" {
 		return ""
 	}
-	if len(value) < maskEndsMinLen {
+	characters := []rune(value)
+	if len(characters) < maskEndsMinRunes {
 		return maskStars
 	}
-	return value[:2] + maskStars + value[len(value)-2:]
+	return string(characters[:2]) + maskStars + string(characters[len(characters)-2:])
 }

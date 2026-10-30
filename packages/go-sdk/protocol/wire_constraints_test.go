@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 )
 
@@ -1958,4 +1959,43 @@ func TestDiscoveryIdentityAndCapabilityCatalogConstraints(t *testing.T) {
 		test.invalidate(&catalog)
 		assertConstraintField(t, catalog.validateWire(), "ServerCapabilities", test.field)
 	}
+}
+
+func TestToolRefRejectsRetiredBuiltInsAndPreservesMCPWebIdentity(t *testing.T) {
+	if err := ValidateWireTree(ToolRef{Type: ToolRefBuiltIn, Name: "read"}); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"web_search", "web_fetch"} {
+		assertConstraintField(t, ValidateWireTree(ToolRef{Type: ToolRefBuiltIn, Name: name}), "ToolRef", "name")
+		ref := ToolRef{Type: ToolRefMCP, Name: name, Server: &MCPServerID{Origin: MCPOrigin{Type: MCPOriginUser}, Name: "web"}}
+		if err := ValidateWireTree(ref); err != nil {
+			t.Fatalf("current MCP identity refused: %v", err)
+		}
+	}
+}
+
+func TestRendererSelectorRefusesResultShapesInTheFreeNameField(t *testing.T) {
+	for _, name := range []string{"arbitrary", "search"} {
+		assertConstraintField(t, ValidateWireTree(PluginRendererSelector{Type: "resultShape", Name: name}), "PluginRendererSelector", "name")
+	}
+}
+
+func TestRendererSelectorsUseNamedShapesAndIndependentFreeNames(t *testing.T) {
+	for _, word := range extension.ResultShape("").Values() {
+		if err := ValidateWireTree(PluginRendererSelector{Type: extension.RendererResultShape, Shape: extension.ResultShape(word)}); err != nil {
+			t.Fatalf("owner shape %q refused: %v", word, err)
+		}
+	}
+	for _, selector := range []PluginRendererSelector{
+		{Type: extension.RendererToolName, Name: "custom.scan_results"},
+		{Type: extension.RendererFileExtension, Name: "custom_ext-1"},
+	} {
+		if err := ValidateWireTree(selector); err != nil {
+			t.Fatalf("free selector refused: %v", err)
+		}
+		selector.Shape = extension.ResultShapeSearch
+		assertConstraintField(t, ValidateWireTree(selector), "PluginRendererSelector", "shape")
+	}
+	assertConstraintField(t, ValidateWireTree(PluginRendererSelector{Type: extension.RendererResultShape, Shape: "arbitrary"}), "PluginRendererSelector", "shape")
+	assertConstraintField(t, ValidateWireTree(PluginRendererSelector{Type: extension.RendererResultShape}), "PluginRendererSelector", "shape")
 }

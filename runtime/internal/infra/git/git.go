@@ -239,8 +239,8 @@ func workspaceRelativeGitPath(path, repositoryPrefix string) (string, bool) {
 
 // ListFiles lists the non-ignored files under dir, honoring .gitignore: tracked
 // files (--cached) plus untracked-but-not-ignored ones (--others
-// --exclude-standard). Optionally scoped to relPath (a pathspec relative to
-// dir). Paths are relative to dir, recursive, slash-separated; -z keeps odd
+// --exclude-standard). relPath selects a literal resource under dir.
+// Paths are relative to dir, recursive, slash-separated; -z keeps odd
 // names (spaces/newlines) intact. Returns ErrNotRepo when dir isn't a repo, so
 // the caller can fall back to a plain filesystem walk.
 func ListFiles(ctx context.Context, dir, relPath string, maxFiles int) ([]string, error) {
@@ -252,9 +252,11 @@ func ListFiles(ctx context.Context, dir, relPath string, maxFiles int) ([]string
 		return nil, ErrNotRepo
 	}
 	args := []string{"ls-files", "--cached", "--deduplicate", "--others", "--exclude-standard", "-z"}
-	if relPath != "" && relPath != "." {
-		args = append(args, "--", ":(literal)"+relPath)
+	scope, err := workspacePathspec(dir, relPath)
+	if err != nil {
+		return nil, err
 	}
+	args = append(args, "--", scope)
 	out, err := run(ctx, dir, args...)
 	if err != nil {
 		return nil, err

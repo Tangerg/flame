@@ -3,7 +3,10 @@ import { disposeOnHmr } from "@/lib/hmr";
 import { createFlameClient, type FlameClient } from "@flame/runtime-client";
 import { VISUAL_CAPABILITIES } from "./agentFixtureFacts";
 import { type ServerCapabilities, type Diff } from "@flame/runtime-client/wire";
-import { createVisualRuntimeTransport } from "./createVisualRuntimeTransport";
+import {
+  VISUAL_REMOVE_SCHEDULE_EVENT,
+  createVisualRuntimeTransport,
+} from "./createVisualRuntimeTransport";
 import { LONG_MODEL_FACTS } from "./runtimeSnapshots";
 import { definePlugin } from "@/extensions/definePlugin";
 import { createRoot } from "react-dom/client";
@@ -206,42 +209,47 @@ async function installVisualRuntimeClient(
   readDiff: (signal?: AbortSignal) => Promise<Diff>,
   acceptSkillProposals = false,
 ): Promise<FlameClient> {
-  const client = createFlameClient(
-    createVisualRuntimeTransport(snapshot, capabilities, readDiff, {
-      acceptSkillProposals,
-      modelFacts: query.has("long-models") ? LONG_MODEL_FACTS : undefined,
-      mcpServers: query.has("mcp-transport")
-        ? [
-            {
-              id: {
-                origin: { type: "user" },
-                name: query.has("long-mcp")
-                  ? "workspace-permissions-toolserver"
-                  : "workspace-tools",
-              },
-              connection:
-                query.get("mcp-transport") === "streamableHttp"
-                  ? {
-                      type: "streamableHttp",
-                      url: "https://example.invalid/mcp",
-                      authorizationMasked: "synthetic-mask",
-                    }
-                  : { type: "stdio", command: "npx", args: [] },
-              handshakeTimeout: { type: "bounded", seconds: 30 },
-              status: query.has("long-mcp")
-                ? { type: "failed", error: { type: "mcp_configuration_failed" } }
-                : { type: "connected", toolCount: 1 },
+  const transport = createVisualRuntimeTransport(snapshot, capabilities, readDiff, {
+    acceptSkillProposals,
+    modelFacts: query.has("long-models") ? LONG_MODEL_FACTS : undefined,
+    mcpServers: query.has("mcp-transport")
+      ? [
+          {
+            id: {
+              origin: { type: "user" },
+              name: query.has("long-mcp") ? "workspace-permissions-toolserver" : "workspace-tools",
             },
-          ]
-        : undefined,
-    }),
-    { capabilities: () => capabilities },
-  );
+            connection:
+              query.get("mcp-transport") === "streamableHttp"
+                ? {
+                    type: "streamableHttp",
+                    url: "https://example.invalid/mcp",
+                    authorizationMasked: "synthetic-mask",
+                  }
+                : { type: "stdio", command: "npx", args: [] },
+            handshakeTimeout: { type: "bounded", seconds: 30 },
+            status: query.has("long-mcp")
+              ? { type: "failed", error: { type: "mcp_configuration_failed" } }
+              : { type: "connected", toolCount: 1 },
+          },
+        ]
+      : undefined,
+  });
+  const client = createFlameClient(transport, { capabilities: () => capabilities });
   await loadPluginsForTest(
     definePlugin({
       name: "flame.visual.runtime-client",
       setup(ctx) {
-        ctx.cleanup(() => client.close());
+        const removeSchedule = (event: Event) => {
+          if (!(event instanceof CustomEvent) || typeof event.detail !== "string")
+            throw new Error("visual schedule removal requires a record identity");
+          transport.removeSchedule(event.detail);
+        };
+        window.addEventListener(VISUAL_REMOVE_SCHEDULE_EVENT, removeSchedule);
+        ctx.cleanup(() => {
+          window.removeEventListener(VISUAL_REMOVE_SCHEDULE_EVENT, removeSchedule);
+          return client.close();
+        });
       },
     }),
   );

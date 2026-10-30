@@ -53,7 +53,7 @@ func (f *fakeCurationStore) Reconcile(_ context.Context, publication domain.Publ
 	return f.published, f.err
 }
 
-func (f *fakeCurationStore) Items(context.Context, domain.Scope, string) ([]domain.Item, error) {
+func (f *fakeCurationStore) GenerationItems(context.Context, string) ([]domain.Item, error) {
 	return cloneMemoryItems(f.items), f.err
 }
 
@@ -119,7 +119,7 @@ func validLedgerFact(sequence int64, content string) domain.LedgerFact {
 
 func testPublication(t *testing.T, expected domain.State, through int64, contents []string, now time.Time) domain.Publication {
 	t.Helper()
-	publication, err := domain.NewPublication("/repo", expected, through, contents, now)
+	publication, err := domain.NewPublication("/repo", expected, through, nil, contents, now)
 	if err != nil {
 		t.Fatalf("prepare curation publication: %v", err)
 	}
@@ -139,7 +139,7 @@ func TestCurationNormalizesInputAndOrdersItems(t *testing.T) {
 	first := readModelItem(t, '1', domain.ScopeProject, "/repo", "first")
 	second := readModelItem(t, '2', domain.ScopeProject, "/repo", "second")
 	store.items = []domain.Item{first, second}
-	if items, err := curation.Items(t.Context(), domain.ScopeProject, "/repo"); err != nil ||
+	if items, err := curation.GenerationItems(t.Context(), "/repo"); err != nil ||
 		len(items) != 2 || items[0].ID() != second.ID() {
 		t.Fatalf("curation item order = (%+v, %v)", items, err)
 	}
@@ -172,7 +172,7 @@ func TestPublishGenerationNormalizesBeforeStore(t *testing.T) {
 	if len(store.reconcileValues) != 1 || store.reconcileValues[0] != "fact" || store.reconcileAt.Location() != time.UTC {
 		t.Fatalf("reconcile input = %v at %s", store.reconcileValues, store.reconcileAt)
 	}
-	if _, err := domain.NewPublication("/repo", publication.State(), 2, nil, local); err == nil {
+	if _, err := domain.NewPublication("/repo", publication.State(), 2, nil, nil, local); err == nil {
 		t.Fatal("non-advancing generation was accepted")
 	}
 }

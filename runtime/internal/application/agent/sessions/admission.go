@@ -10,6 +10,7 @@ import (
 // both a sibling's segment admission and its already-live run on the same cwd.
 type Admissions interface {
 	AcquireSession(ctx context.Context, sessionID string) (release func(), ok bool, err error)
+	AcquireRecoverySession(sessionID string) (release func(), ok bool, err error)
 	AcquireWorkingTreeMutation(cwd string) (release func(), ok bool, err error)
 }
 

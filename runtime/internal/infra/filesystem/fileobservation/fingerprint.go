@@ -16,6 +16,13 @@ import (
 
 type fingerprint [sha256.Size]byte
 
+// The admitted read determines both the fingerprint and its kernel dependencies.
+type observedPath struct {
+	fingerprint  fingerprint
+	physical     string
+	dependencies []string
+}
+
 type fingerprintField string
 
 const (

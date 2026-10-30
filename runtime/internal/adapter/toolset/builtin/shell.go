@@ -9,14 +9,13 @@ import (
 	"strings"
 	"time"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/content"
-	"github.com/samber/lo"
 )
 
 // Shell tools over a shared [exec.Shells]: the primary `shell` tool plus
@@ -31,21 +30,10 @@ import (
 // instead of polling. cwd is read per call (executionctx.CWD) so a command runs in the
 // session's working directory.
 
-// defaultAutoBackgroundSeconds is how long a foreground shell command may run
-// before it is moved to the background (so the Run isn't blocked on a build /
-// dev server). Overridable per call via
-// auto_background_after_seconds.
+// Long-running commands yield their foreground slot without ending execution.
 const defaultAutoBackgroundSeconds = 60
 
-type shellArgs struct {
-	Command                    string `json:"command" jsonschema:"minLength=1" jsonschema_description:"Shell command line, run by /bin/sh -c. Each call starts a fresh shell; directory changes, variables, and shell options do not persist."`
-	Description                string `json:"description" jsonschema:"minLength=1,maxLength=120" jsonschema_description:"Concise action phrase shown while the command runs, such as Run backend tests. Describe the command's purpose; do not copy the command or predict its result."`
-	TimeoutMillis              *int   `json:"timeout_millis,omitzero" jsonschema:"minimum=1" jsonschema_description:"Hard execution timeout in milliseconds. Omit for no hard timeout."`
-	RunInBackground            bool   `json:"run_in_background,omitzero" jsonschema_description:"Return immediately with a shell_id while the command keeps running. Use for servers and watchers."`
-	AutoBackgroundAfterSeconds *int   `json:"auto_background_after_seconds,omitzero" jsonschema:"minimum=1" jsonschema_description:"Move a foreground command to the background after this many seconds. Defaults to 60."`
-}
-
-func (s shellArgs) validate() error {
+func validateShellArguments(s builtincontract.ShellArguments) error {
 	if s.Command == "" {
 		return errors.New("shell: command is required")
 	}
@@ -61,12 +49,11 @@ func (s shellArgs) validate() error {
 	return nil
 }
 
-func (s shellArgs) timeout() (exec.Timeout, error) {
-	return optionalShellTimeout(s.TimeoutMillis, time.Millisecond, "timeout_millis")
-}
-
-func (s shellArgs) autoBackgroundAfter() (time.Duration, error) {
-	after := lo.FromPtrOr(s.AutoBackgroundAfterSeconds, defaultAutoBackgroundSeconds)
+func shellAutoBackgroundAfter(seconds *int) (time.Duration, error) {
+	after := defaultAutoBackgroundSeconds
+	if seconds != nil {
+		after = *seconds
+	}
 	if int64(after) > math.MaxInt64/int64(time.Second) {
 		return 0, errors.New("shell: auto_background_after_seconds exceeds duration range")
 	}
@@ -110,9 +97,9 @@ func BuildShell(shells *exec.Shells) ([]toolcontract.Tool, error) {
 	}
 	t := &commandTools{shells: shells}
 
-	shellTool, err := toolcontract.NewFunc[shellArgs, string](
+	shellTool, err := toolcontract.NewFunc[builtincontract.ShellArguments, string](
 		toolcontract.FuncConfig{
-			Name: string(tool.Shell),
+			Name: string(builtincontract.Shell),
 			Description: "Execute a shell command via /bin/sh -c. Returns stdout/stderr, exit code, and duration. " +
 				"Set description to a concise action label that explains the command's purpose while it runs. " +
 				"Avoid `find`, `grep`, `cat`, `head`, `tail`, `sed`, `awk` here — use the dedicated `glob`, `grep`, and `read` tools instead; use `apply_patch` for file changes. Reserve `shell` for operations that genuinely need a shell (build commands, git, package managers, etc.). " +
@@ -126,7 +113,7 @@ func BuildShell(shells *exec.Shells) ([]toolcontract.Tool, error) {
 	}
 	outputTool, err := toolcontract.NewFunc[shellOutputArgs, string](
 		toolcontract.FuncConfig{
-			Name:        string(tool.ReadShellOutput),
+			Name:        string(builtincontract.ReadShellOutput),
 			Description: "Read only the new output produced by a background shell since the previous read and report whether it is still running. Reading the final output of a finished shell releases its shell_id. Set wait=true to wait event-first for exit instead of sleep polling; bound that wait with timeout_millis for servers or watchers.",
 		},
 		t.output,
@@ -136,7 +123,7 @@ func BuildShell(shells *exec.Shells) ([]toolcontract.Tool, error) {
 	}
 	killTool, err := toolcontract.NewFunc[shellIDArgs, string](
 		toolcontract.FuncConfig{
-			Name:        string(tool.StopShell),
+			Name:        string(builtincontract.StopShell),
 			Description: "Stop one background shell by the shell_id returned from shell.",
 		},
 		t.kill,
@@ -147,15 +134,15 @@ func BuildShell(shells *exec.Shells) ([]toolcontract.Tool, error) {
 	return []toolcontract.Tool{shellTool, outputTool, killTool}, nil
 }
 
-func (c *commandTools) run(ctx context.Context, a shellArgs) (string, error) {
-	if err := a.validate(); err != nil {
+func (c *commandTools) run(ctx context.Context, a builtincontract.ShellArguments) (string, error) {
+	if err := validateShellArguments(a); err != nil {
 		return "", pluginsdk.DefiniteToolFailure(err)
 	}
-	timeout, err := a.timeout()
+	timeout, err := optionalShellTimeout(a.TimeoutMillis, time.Millisecond, "timeout_millis")
 	if err != nil {
 		return "", pluginsdk.DefiniteToolFailure(err)
 	}
-	autoBackgroundAfter, err := a.autoBackgroundAfter()
+	autoBackgroundAfter, err := shellAutoBackgroundAfter(a.AutoBackgroundAfterSeconds)
 	if err != nil {
 		return "", pluginsdk.DefiniteToolFailure(err)
 	}

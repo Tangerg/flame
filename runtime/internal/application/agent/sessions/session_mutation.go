@@ -9,16 +9,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
-// DeleteSession retires everything the Session owns while its mutation
-// admission is held, removes all durable state atomically, then tears down
-// parked executions and process-local markers. The open interrupts are read up
-// front so abandoned executions can be canceled after the durable state is gone.
-//
-// Checkpoint history and the scratch tree are retired BEFORE the aggregate is
-// deleted: the Session is their only name, so retiring them afterwards would
-// leave state nothing in the catalog could reach whenever the filesystem
-// refuses. Inside the commit, a returned error means exactly one thing — the
-// Session still exists.
+// DeleteSession commits history deletion and its resource retirement together.
+// Only the committed responsibility authorizes destruction; failed cleanup
+// retains a durable admission fence for recovery rather than undoing deletion.
 func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string) error {
 	deletion, err := NewDeletePlan(sessionID)
 	if err != nil {
@@ -44,17 +37,14 @@ func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string) error
 			if err := c.transientState.QuiesceSession(sessionID); err != nil {
 				return fmt.Errorf("sessions: quiesce process-local Session state before delete: %w", err)
 			}
-			if err := c.retireSessionResources(sessionID); err != nil {
-				return err
-			}
 			return c.writes.ApplyDelete(commitCtx, deletion)
 		},
 		func(ctx context.Context) error {
 			// The durable cascade is gone as of here, so the signal cannot outrun it.
-			// What remains is process-local: an executor that refuses to release
-			// leaks nothing a restart would keep.
+			// Executor release is independent of durable resource retirement;
+			// a refusal must not suppress either cleanup responsibility.
 			c.publishAggregateMoved([]string{sessionID}, nil)
-			var cleanupErrs []error
+			cleanupErrs := []error{c.retireCommittedResources(ctx, deletion.Retirement())}
 			for _, item := range pending {
 				if err := c.releaseExecution(ctx, RunExecutionBinding{
 					RunID:      item.RootRunID,
@@ -68,24 +58,6 @@ func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string) error
 			return errors.Join(cleanupErrs...)
 		},
 	)
-}
-
-// Checkpoints and isolated copies belong to the current history. Retire them
-// before deleting the Session or replacing its history: restored Run identities
-// cannot prove that the old file boundaries belong to the replacement. A refusal
-// stops the mutation while the original history still names the remaining state.
-func (c *Coordinator) retireSessionResources(sessionID string) error {
-	if c.checkpoints != nil {
-		if err := c.checkpoints.DropSession(sessionID); err != nil {
-			return fmt.Errorf("sessions: drop checkpoints for session %q: %w", sessionID, err)
-		}
-	}
-	if c.sandbox != nil {
-		if err := c.sandbox.Discard(sessionID); err != nil {
-			return fmt.Errorf("sessions: discard sandbox copy for session %q: %w", sessionID, err)
-		}
-	}
-	return nil
 }
 
 // restoreSession applies a canonical archive and, when requested, derives its
@@ -130,16 +102,16 @@ func (c *Coordinator) restoreSession(ctx context.Context, snapshot Snapshot, pre
 			if err := c.transientState.QuiesceSession(sessionID); err != nil {
 				return fmt.Errorf("sessions: quiesce process-local Session state before restore: %w", err)
 			}
-			if err := c.retireSessionResources(sessionID); err != nil {
-				return err
-			}
 			return c.writes.ApplyRestore(ctx, restore)
 		},
-		func(context.Context) error {
+		func(ctx context.Context) error {
 			// Restore replaced the whole history, so process-local read evidence
 			// from before the restore is stale.
 			c.transientState.ForgetSessionContext(sessionID)
 			c.publishAggregateMoved([]string{sessionID}, nil)
+			if retirement, replaced := restore.Retirement(); replaced {
+				return c.retireCommittedResources(ctx, retirement)
+			}
 			return nil
 		},
 	)

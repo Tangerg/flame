@@ -67,7 +67,12 @@ func presentQuestionBody(glyphs kit.Glyphs, question conversation.Question) stri
 	for index, field := range question.Fields {
 		lines = append(lines, glyphs.Bullet+" "+field.Prompt)
 		if question.Answered() {
-			lines = append(lines, "  answer · "+strings.Join(question.Answers[index], ", "))
+			if len(question.Answers[index]) == 0 {
+				lines = append(lines, "  skipped")
+			}
+			for _, value := range question.Answers[index] {
+				lines = append(lines, "  answer · "+value)
+			}
 		}
 	}
 	body := strings.Join(lines, "\n")

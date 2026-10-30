@@ -63,11 +63,12 @@ test("packed UI and icons work without the host or a StyleX compiler", async () 
       path.join(dir, "consumer.mjs"),
       `import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { Button, ContentVisibility, DiffStat, EvidenceImage, FontScaleProvider, IconButton, ImageViewport, Popover, ProgressBar, Segmented, Slider, Switch, TooltipProvider, useContentVisible } from '@flame/ui';
+import { Button, Callout, CalloutLabelsProvider, ContentVisibility, DiffStat, EvidenceImage, FontScaleProvider, IconButton, ImageViewport, Popover, ProgressBar, Segmented, Slider, Switch, TooltipProvider, useContentVisible } from '@flame/ui';
 import { Brain } from '@flame/icons/react';
 function Visibility() { return createElement('output', null, useContentVisible() ? 'content-visible' : 'content-hidden'); }
 console.log(renderToStaticMarkup(createElement(EvidenceImage, {src: 'captured-page.png', alt: 'Captured page'})));
 console.log(renderToStaticMarkup(createElement(ImageViewport, {image: {src: 'captured-page.png', alt: 'Captured page'}, label: 'Expanded captured page'})));
+console.log(renderToStaticMarkup(createElement(CalloutLabelsProvider, {labels: {note: '宿主说明', tip: 'Host tip', important: 'Host important', warning: 'Host warning', caution: 'Host caution'}}, createElement(Callout, {kind: 'note'}, 'Independent Callout body'))));
 console.log(renderToStaticMarkup(createElement(ProgressBar, {value: 3, max: 4, label: 'Review coverage', labelVisibility: 'visible', locale: 'en'})));
 console.log(renderToStaticMarkup(createElement(Popover.Root, null, createElement(Popover.Trigger, {render: createElement(Button)}, 'Open details'), createElement(Popover.Content, {'aria-label': 'Portable details'}, 'Captured detail'))));
 console.log(renderToStaticMarkup(createElement(FontScaleProvider, {fontSize: 18}, createElement(TooltipProvider, null, createElement(Button, null, 'Review'), createElement(DiffStat, {added: 18, removed: 6}), createElement(IconButton, {icon: Brain, 'aria-label': 'Memory'}), createElement(Segmented, {value: 'list', ariaLabel: 'View mode', options: [{value: 'list', label: 'List'}, {value: 'grid', label: 'Grid'}], onChange() {}}), createElement(Switch, {checked: true, ariaLabel: 'Enable memory', onCheckedChange() {}}), createElement(Slider, {value: 40, ariaLabel: 'Contrast', onValueChange() {}}), createElement(Visibility), createElement(ContentVisibility, {visible: false}, createElement(ContentVisibility, {visible: true}, createElement(Visibility)))))));
@@ -82,6 +83,8 @@ console.log(renderToStaticMarkup(createElement(FontScaleProvider, {fontSize: 18}
     assert.match(html, /View image: Captured page/);
     assert.match(html, /Expanded captured page/);
     assert.match(html, /captured-page\.png/);
+    assert.match(html, /宿主说明/);
+    assert.match(html, /Independent Callout body/);
     assert.match(html, /Open details/);
     assert.match(html, /Review coverage/);
     assert.match(html, /aria-valuenow="3"/);

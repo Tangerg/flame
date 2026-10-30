@@ -8,8 +8,123 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 )
+
+func TestAuthoredWatcherTracksSkillDocumentSymlinkContent(t *testing.T) {
+	root := t.TempDir()
+	bundle := filepath.Join(root, "review")
+	materials := filepath.Join(bundle, "materials")
+	if err := os.MkdirAll(materials, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	first, second := filepath.Join(materials, "first.md"), filepath.Join(materials, "second.md")
+	write := func(path, body string) {
+		t.Helper()
+		if err := os.WriteFile(path, fmt.Appendf(nil, "---\nname: review\ndescription: %s\n---\n%s", body, body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write(first, "before")
+	write(second, "retargeted")
+	link := filepath.Join(bundle, "SKILL.md")
+	if err := os.Symlink(filepath.Join("materials", "first.md"), link); err != nil {
+		t.Fatal(err)
+	}
+	source, err := promptsource.NewSkillSource(root, root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertContent := func(body string) {
+		t.Helper()
+		listed, err := source.List(t.Context())
+		if err != nil || len(listed) != 1 || listed[0].Name != "review" || listed[0].Description != body {
+			t.Fatalf("catalog = %+v, %v; want %q", listed, err, body)
+		}
+		loaded, err := source.Load(t.Context(), "review")
+		if err != nil || loaded.Instructions != body {
+			t.Fatalf("loaded = %+v, %v; want %q", loaded, err, body)
+		}
+	}
+	assertContent("before")
+	watcher, err := NewAuthoredWatcher(t.TempDir(), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	events, reports := make(chan workspaceapp.AuthoredResource, 16), make(chan error, 4)
+	observation, err := watcher.Watch(nil, []workspaceapp.AuthoredResource{workspaceapp.AuthoredSkills}, func(resource workspaceapp.AuthoredResource) {
+		events <- resource
+	}, func(err error) { reports <- err })
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := observation.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	assertQuiet := func() {
+		t.Helper()
+		select {
+		case resource := <-events:
+			t.Fatalf("unchanged Skill document published %v", resource)
+		case err := <-reports:
+			t.Fatal(err)
+		case <-time.After(200 * time.Millisecond):
+		}
+	}
+	assertChanged := func() {
+		t.Helper()
+		select {
+		case resource := <-events:
+			if resource != workspaceapp.AuthoredSkills {
+				t.Fatalf("published %v, want skills", resource)
+			}
+		case err := <-reports:
+			t.Fatal(err)
+		case <-time.After(3 * time.Second):
+			t.Fatal("Skill source changed without a skills.changed invalidation")
+		}
+		assertQuiet()
+	}
+	write(first, "inplace")
+	assertContent("inplace")
+	assertChanged()
+	staged := filepath.Join(materials, "staged.md")
+	write(staged, "atomic")
+	if err := os.Rename(staged, first); err != nil {
+		t.Fatal(err)
+	}
+	assertContent("atomic")
+	assertChanged()
+	if err := os.Remove(link); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join("materials", "second.md"), link); err != nil {
+		t.Fatal(err)
+	}
+	assertContent("retargeted")
+	assertChanged()
+	write(first, "retired target")
+	assertQuiet()
+	if err := os.Remove(second); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := source.Load(t.Context(), "review"); err == nil {
+		t.Fatal("deleted document remained readable")
+	}
+	assertChanged()
+	write(second, "recreated")
+	assertContent("recreated")
+	assertChanged()
+	resources := filepath.Join(bundle, "resources")
+	if err := os.Mkdir(resources, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	write(filepath.Join(resources, "unrelated.md"), "unrelated")
+	assertQuiet()
+}
 
 func TestAuthoredWatcherReportsOutagesAndRecovers(t *testing.T) {
 	for _, test := range []struct {

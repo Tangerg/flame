@@ -41,6 +41,7 @@ type Row struct {
 	LeftLine  int
 	RightLine int
 	Code      string
+	NoNewline bool
 }
 
 // DiffFile is one file's parsed diff. Added/Removed are counted from the rows;

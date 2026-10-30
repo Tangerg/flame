@@ -49,6 +49,7 @@ export const zh: Record<string, string> = {
   "map.coordinates": "坐标",
   "map.description": "说明",
   "interaction.running": "正在等待操作结果…",
+  "interaction.inputFailed": "无法更新这个字段。",
   "interaction.failed": "操作失败。",
   "interaction.complete": "动作已接受。",
   "interaction.unknown":

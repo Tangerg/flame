@@ -1,16 +1,12 @@
-import { z } from "zod";
 import { type NotificationAuthorization } from "@/foundation/notificationAuthorization";
 import { downloadBlob } from "@/platform/download";
 import { type ClientHost } from "@/platform/host";
-const InlineImageSchema = z
-  .string()
-  .regex(/^data:image\/(png|jpeg|gif|webp);base64,[A-Za-z0-9+/]+=*$/);
 
 function browserAuthorization(): NotificationAuthorization {
   return typeof Notification === "undefined" ? "unsupported" : Notification.permission;
 }
 
-export function createBrowserHost(imageFilenameStem: string): ClientHost {
+export function createBrowserHost(): ClientHost {
   const listeners = new Set<(target: string) => void>();
   return {
     kind: "web",
@@ -22,18 +18,6 @@ export function createBrowserHost(imageFilenameStem: string): ClientHost {
       return { runtime: { endpoint }, localFilesystemEndpoint: null };
     },
     chooseWorkingDirectory: async () => null,
-    async saveImage(source) {
-      const image = InlineImageSchema.parse(source);
-      const mime = image.slice(5, image.indexOf(";"));
-      const bytes = Uint8Array.from(atob(image.slice(image.indexOf(",") + 1)), (char) =>
-        char.charCodeAt(0),
-      );
-      downloadBlob(
-        `${imageFilenameStem}.${mime === "image/jpeg" ? "jpg" : mime.slice(6)}`,
-        new Blob([bytes], { type: mime }),
-      );
-      return true;
-    },
     async saveFile({ filename, bytes, mime }) {
       if (!filename || filename === "." || filename === ".." || /[/\\:\p{Cc}]/u.test(filename)) {
         throw new Error("The file name must be a basename without control characters.");

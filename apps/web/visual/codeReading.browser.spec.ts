@@ -66,13 +66,19 @@ for (const [theme, width, fontSize, accent] of [
       await record.getByRole("button", { name: "Recorded evidence", exact: true }).click();
       const evidence = record.getByRole("region", { name: "Recorded evidence", exact: true });
       await expect(evidence.locator("code .line").first()).toBeAttached();
-      await frame.getByRole("button", { name: "Enable word wrap", exact: true }).click();
+      const wrap = frame.getByRole("button", { name: "Enable word wrap", exact: true });
+      await expect(wrap).not.toHaveAttribute("aria-pressed");
+      await wrap.click();
       await expect(source).toHaveAttribute("data-wrap", "true");
       await expect(evidence).toHaveAttribute("data-wrap", "true");
-      await expect(frame.getByRole("button", { name: "Disable word wrap" })).toHaveAttribute(
-        "aria-pressed",
-        "true",
-      );
+      const unwrap = frame.getByRole("button", { name: "Disable word wrap", exact: true });
+      await expect(unwrap).not.toHaveAttribute("aria-pressed");
+      await expect(unwrap).toBeFocused();
+      await expect(source).toHaveText(CODE_READING_SOURCE);
+      await unwrap.press("Enter");
+      await expect(source).toHaveAttribute("data-wrap", "false");
+      await expect(evidence).toHaveAttribute("data-wrap", "false");
+      await expect(wrap).toBeFocused();
       await expect(source).toHaveText(CODE_READING_SOURCE);
       expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
       const continuation = page.getByText(

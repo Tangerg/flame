@@ -208,6 +208,13 @@ application controller awaits each effect. Invalid forms do not dispatch their
 action. A pending action blocks duplicate submission. Cancellation or a known
 failure stops the remaining steps and is shown explicitly.
 
+Local input feedback is independent of the action lifecycle. A rejected field
+update retains the original running action, review or unknown acknowledgement,
+including its original recovery handle and command key. It cannot unlock another
+submission. Feedback clears only after that same field accepts a value, including
+an explicit reset. Table search, paging and other controls use this same owner;
+a successful update to another field cannot retire the failed input feedback.
+
 An invalid form submission focuses its first available invalid control in the
 current form and visible view. Field-specific errors describe their input,
 selection trigger or choice group rather than broadcasting a live update on

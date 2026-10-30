@@ -50,6 +50,7 @@ export const fr: Record<string, string> = {
   "map.coordinates": "Coordonnées",
   "map.description": "Description",
   "interaction.running": "En attente du résultat…",
+  "interaction.inputFailed": "Impossible de modifier ce champ.",
   "interaction.failed": "L’opération a échoué.",
   "interaction.complete": "Action acceptée.",
   "interaction.unknown":

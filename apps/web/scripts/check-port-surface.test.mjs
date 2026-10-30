@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { inspectPortSurface } from "./check-port-surface.mjs";
 
-function inspect(source, tests = "") {
+function inspect(source, tests = "", support = {}) {
   const root = mkdtempSync(join(tmpdir(), "flame-port-surface-"));
   try {
     mkdirSync(join(root, "src"));
@@ -15,6 +15,8 @@ function inspect(source, tests = "") {
     );
     writeFileSync(join(root, "src/consumer.ts"), source);
     writeFileSync(join(root, "src/consumer.test.ts"), tests);
+    for (const [name, content] of Object.entries(support))
+      writeFileSync(join(root, "src", name), content);
     return inspectPortSurface(root);
   } finally {
     rmSync(root, { force: true, recursive: true });
@@ -103,6 +105,9 @@ test("accepts captured instance ports and lifecycle publication without ambient 
     }
     declare const map: { get(key: string): string };
     export const lookup = map.get;
+    export class Feature {
+      readonly publication = createPublicationSlot<ConsumerPort>();
+    }
     // SingletonPort and createSingletonPort describe the retired implementation.
     export const message = 'do not import ./lib/ports/singletonPort';
   `,
@@ -110,4 +115,46 @@ test("accepts captured instance ports and lifecycle publication without ambient 
   );
   assert.deepEqual(result.dead, []);
   assert.deepEqual(result.retired, []);
+  assert.deepEqual(result.ambient ?? [], []);
+});
+
+test("rejects module-scoped publication through renamed imports, re-exports and aliases", () => {
+  const result = inspect(
+    `
+    import { createPublicationSlot as makeSlot } from './publication';
+    import * as slots from './publication';
+    import { createGeneration } from './exports';
+    const renamed = makeSlot;
+    export const first = renamed();
+    export const second = slots.createPublicationSlot();
+    export const third = createGeneration();
+    export class FeatureService {
+      static current() { return first.current(); }
+    }
+    export const read = () => FeatureService.current();
+    `,
+    "",
+    {
+      "publication.ts": `export declare function createPublicationSlot<T>(): { current(): T | null };`,
+      "exports.ts": `export { createPublicationSlot as createGeneration } from './publication';`,
+    },
+  );
+  assert.equal(result.ambient?.length ?? 0, 3);
+});
+
+test("rejects a static global publication while allowing a class scoped to an instance factory", () => {
+  const result = inspect(`
+    declare function createPublicationSlot<T>(): { current(): T | null };
+    export class AmbientOwner {
+      static readonly publication = createPublicationSlot<object>();
+      static current() { return this.publication.current(); }
+    }
+    export function createFeature() {
+      class OwnedGeneration {
+        static readonly publication = createPublicationSlot<object>();
+      }
+      return OwnedGeneration;
+    }
+  `);
+  assert.equal(result.ambient?.length ?? 0, 1);
 });

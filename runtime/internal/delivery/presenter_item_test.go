@@ -6,8 +6,9 @@ import (
 	"testing"
 	"time"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -17,16 +18,16 @@ func TestPresentToolCategoryGroupsBuiltInTools(t *testing.T) {
 		name string
 		want protocol.ToolCategory
 	}{
-		{string(tool.Shell), protocol.ToolCategoryShell},
-		{string(tool.StopShell), protocol.ToolCategoryShell},
-		{string(tool.ApplyPatch), protocol.ToolCategoryEdit},
-		{string(tool.Edit), protocol.ToolCategoryEdit},
-		{string(tool.Read), protocol.ToolCategoryRead},
-		{string(tool.Grep), protocol.ToolCategorySearch},
-		{string(tool.WebSearch), protocol.ToolCategoryWeb},
-		{string(tool.WebFetch), protocol.ToolCategoryWeb},
-		{string(tool.DelegateTask), protocol.ToolCategoryTask},
-		{string(tool.SetPlan), protocol.ToolCategoryTask},
+		{string(builtincontract.Shell), protocol.ToolCategoryShell},
+		{string(builtincontract.StopShell), protocol.ToolCategoryShell},
+		{string(builtincontract.ApplyPatch), protocol.ToolCategoryEdit},
+		{string(builtincontract.Edit), protocol.ToolCategoryEdit},
+		{string(builtincontract.Read), protocol.ToolCategoryRead},
+		{string(builtincontract.Grep), protocol.ToolCategorySearch},
+		{"web_search", protocol.ToolCategoryUnknown},
+		{"web_fetch", protocol.ToolCategoryUnknown},
+		{string(builtincontract.DelegateTask), protocol.ToolCategoryTask},
+		{string(builtincontract.SetPlan), protocol.ToolCategoryTask},
 		{"search_memory", protocol.ToolCategoryUnknown},
 		{"mcp_custom", protocol.ToolCategoryUnknown},
 	} {

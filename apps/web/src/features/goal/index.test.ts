@@ -16,7 +16,6 @@ import {
   RUNTIME_STREAM,
   type RuntimeConnectionGeneration as RuntimeConnectionGenerationValue,
 } from "@/features/connection/public/services";
-import { resumeGoal, stopGoal } from "@/features/goal/application/goalCommands";
 import { createGoalPlugin } from "@/features/goal/index";
 import { rejected } from "@/test/rejected";
 let runtimeClient: () => FlameClient = () => {
@@ -70,10 +69,14 @@ describe("Goal plugin Runtime generation wiring", () => {
         testClient.composer.access,
         testClient.runtime,
         getRuntimeClient,
+        testClient.goals,
       ),
     );
-    const predecessor = rejected(stopGoal("ses_goal"));
+    const predecessor = rejected(testClient.goals.commands.capture()!.stop("ses_goal"));
     await vi.waitFor(() => expect(retiredStop).toHaveBeenCalledOnce());
+    const replace = vi.fn();
+    testClient.goals.composerMode.activate("ses_goal");
+    testClient.goals.composerMode.requestReplacement("ses_goal", "Previous goal", replace);
 
     const successorResume = vi.fn(() =>
       mutation(Promise.resolve(runtimeGoal("ses_goal")), "successor-resume"),
@@ -81,11 +84,14 @@ describe("Goal plugin Runtime generation wiring", () => {
     runtimeClient = () => ({ goals: { resume: successorResume } }) as unknown as FlameClient;
     generation = RuntimeConnectionGeneration.forProcess("runtime_2");
     for (const subscriber of subscribers) subscriber();
+    expect(testClient.goals.composerMode.snapshot().phase).toBe("inactive");
+    expect(testClient.goals.composerMode.confirmReplacement("ses_goal")).toBe(false);
+    expect(replace).not.toHaveBeenCalled();
 
     await expect(predecessor).resolves.toMatchObject({
       message: "goal_command_generation_retired",
     });
-    await expect(resumeGoal("ses_goal")).resolves.toBeUndefined();
+    await expect(testClient.goals.commands.capture()!.resume("ses_goal")).resolves.toBeUndefined();
     expect(successorResume).toHaveBeenCalledOnce();
     expect(synchronizeMountedAgentSession).toHaveBeenCalledOnce();
 
@@ -123,19 +129,21 @@ describe("Goal plugin Runtime generation wiring", () => {
         testClient.composer.access,
         testClient.runtime,
         getRuntimeClient,
+        testClient.goals,
       ),
     );
 
     runtimeClient = () => {
       throw new Error("Desktop container is closed");
     };
+    const captured = testClient.goals.commands.capture()!;
     generation = null;
 
     expect(() => {
       for (const subscriber of subscribers) subscriber();
     }).not.toThrow();
 
-    expect(wasGenerationRetired(await rejected(stopGoal("ses_goal")))).toBe(true);
+    expect(wasGenerationRetired(await rejected(captured.stop("ses_goal")))).toBe(true);
 
     const successorResume = vi.fn(() =>
       mutation(Promise.resolve(runtimeGoal("ses_goal")), "successor-resume"),
@@ -144,7 +152,7 @@ describe("Goal plugin Runtime generation wiring", () => {
     generation = RuntimeConnectionGeneration.forProcess("runtime_2");
     for (const subscriber of subscribers) subscriber();
 
-    await expect(resumeGoal("ses_goal")).resolves.toBeUndefined();
+    await expect(testClient.goals.commands.capture()!.resume("ses_goal")).resolves.toBeUndefined();
     expect(successorResume).toHaveBeenCalledOnce();
   });
 });

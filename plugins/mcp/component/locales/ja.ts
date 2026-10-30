@@ -36,10 +36,10 @@ export const ja: Record<string, string> = {
   "mcp.form.transport.aria": "トランスポート",
   "mcp.form.command.placeholder": "npx",
   "mcp.form.command.aria": "コマンド",
-  "mcp.form.args": "引数 — 1行に1つ",
+  "mcp.form.args": "引数（JSON 配列）",
   "mcp.form.args.placeholder":
     "-y\n@modelcontextprotocol/server-filesystem\n/path",
-  "mcp.form.env": "環境変数 — KEY=value、1行に1つ",
+  "mcp.form.env": "環境変数（JSON オブジェクト）",
   "mcp.form.env.placeholder": "API_KEY=…",
   "mcp.form.env.keep": "空欄のままにすると保存済みの環境変数を保持します",
   "mcp.form.env.clear": "保存済みの環境変数を削除",
@@ -54,7 +54,7 @@ export const ja: Record<string, string> = {
   "mcp.form.auth.originChanged":
     "エンドポイントのオリジンが変わりました。新しい認証情報を入力するか、保存済みの値を削除してください。",
   "mcp.form.auth.aria": "認証トークン",
-  "mcp.form.headers": "ヘッダー — KEY=value、1行に1つ",
+  "mcp.form.headers": "ヘッダー（JSON オブジェクト）",
   "mcp.form.headers.placeholder": "X-API-Key=…",
   "mcp.form.headers.keep": "空欄のままにすると保存済みのヘッダーを保持します",
   "mcp.form.headers.clear": "保存済みのヘッダーを削除",
@@ -80,14 +80,14 @@ export const ja: Record<string, string> = {
   "mcp.import.invalidShape":
     "「mcpServers」オブジェクトを含む有効な MCP 設定を使用してください。",
   "mcp.import.invalidName":
-    "サーバー「{{server}}」には a–z または 0–9 を含む名前を付けてください。",
+    "サーバー名「<server/>」が Runtime の命名規則に合いません。キーを修正して再試行してください。",
   "mcp.import.missingTransport":
-    "サーバー「{{server}}」には、コマンド付きの stdio または URL 付きの Streamable HTTP を指定してください。",
+    "サーバー「<server/>」にコマンドまたは URL のどちらか一方だけを指定してください。",
   "mcp.import.missingCommand":
-    "サーバー「{{server}}」にコマンドを追加してください。",
-  "mcp.import.missingUrl": "サーバー「{{server}}」に URL を追加してください。",
+    "サーバー「<server/>」にコマンドを追加してください。",
+  "mcp.import.missingUrl": "サーバー「<server/>」に URL を追加してください。",
   "mcp.import.invalidTimeout":
-    "サーバー「{{server}}」のタイムアウトを正の整数の秒数で設定するか、時間制限なしにする場合は省略してください。",
+    "サーバー「<server/>」のタイムアウトを正の整数の秒数で設定するか、時間制限なしにする場合は省略してください。",
   "mcp.import.empty":
     "「mcpServers」の下にサーバーを 1 つ以上追加してください。",
   "mcp.tools.title": "{{server}} のツール",
@@ -122,12 +122,18 @@ export const ja: Record<string, string> = {
     "このサーバーに接続できません — コマンドか URL を確認して再試行してください。",
   "common.cancel": "キャンセル",
   "common.close": "閉じる",
-  title: "MCP サーバー",
   "command.uncertain":
     "元のコマンドの結果は未確認です。別のコマンドを実行したりカタログを切り替えたりする前に照合してください。",
   "command.reconcile": "元のコマンドを照合",
   "read.retained": "最後に受け入れた読み取りを保持しています。",
-  reading: "読み込み中",
-  refresh: "更新",
-  retry: "再試行",
+  "mcp.form.args.invalid":
+    "文字列の JSON 配列を入力してください。引数なしの場合は空欄にします。",
+  "mcp.form.env.invalid":
+    "値が文字列の空でない JSON オブジェクトを入力してください。",
+  "mcp.form.headers.invalid":
+    "値が文字列の空でない JSON オブジェクトを入力してください。",
+  "mcp.import.unsupportedTransport":
+    "サーバー「<server/>」の「type」は未対応です。「stdio」か「streamableHttp」を使ってください。",
+  "mcp.import.headerConflict":
+    "サーバー「<server/>」で「<header/>」が重複しています。宣言を一つにしてください。",
 };

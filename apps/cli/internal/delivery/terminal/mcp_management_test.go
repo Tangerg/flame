@@ -15,6 +15,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/apps/cli/internal/application/integration/mcp"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -115,7 +116,7 @@ func (m *mcpServiceStub) Servers(context.Context) ([]protocol.MCPServer, error) 
 	return servers, nil
 }
 
-func (m *mcpServiceStub) CreateServer(_ context.Context, candidate mcp.Candidate) (protocol.MCPServer, error) {
+func (m *mcpServiceStub) CreateServer(_ context.Context, _ authoring.CommandID, candidate mcp.Candidate) (protocol.MCPServer, error) {
 	if err := candidate.Validate(); err != nil {
 		return protocol.MCPServer{}, err
 	}
@@ -134,7 +135,7 @@ func (m *mcpServiceStub) CreateServer(_ context.Context, candidate mcp.Candidate
 	return cloneMCPServer(server), nil
 }
 
-func (m *mcpServiceStub) UpdateServer(_ context.Context, update mcp.ServerUpdate) (protocol.MCPServer, error) {
+func (m *mcpServiceStub) UpdateServer(_ context.Context, _ authoring.CommandID, update mcp.ServerUpdate) (protocol.MCPServer, error) {
 	if err := update.Validate(); err != nil {
 		return protocol.MCPServer{}, err
 	}

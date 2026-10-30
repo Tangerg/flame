@@ -1,10 +1,7 @@
 import { type MCPTransport } from "./model";
 import { type MCPHandshakeTimeout } from "./timeout";
-export interface MCPServerInput {
-  name: string;
+export interface MCPConnectionInput {
   transport: MCPTransport;
-  enabled: boolean;
-  description?: string;
   command?: string;
   args?: string[];
   env?: Record<string, string> | null;
@@ -12,5 +9,17 @@ export interface MCPServerInput {
   url?: string;
   authorization?: string | null;
   headers?: Record<string, string> | null;
+}
+
+export interface MCPServerInput extends MCPConnectionInput {
+  name: string;
+  enabled: boolean;
+  description?: string;
   handshakeTimeout: MCPHandshakeTimeout;
+}
+
+export interface MCPServerUpdateInput {
+  connection?: MCPConnectionInput;
+  description?: string;
+  handshakeTimeout?: MCPHandshakeTimeout;
 }

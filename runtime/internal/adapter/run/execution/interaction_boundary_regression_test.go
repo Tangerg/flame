@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"testing"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -20,7 +21,7 @@ func TestSemanticRefusalCrossesRealInterpreterAndTreeCommitter(t *testing.T) {
 	for _, source := range []string{"original", "hook", "authorization"} {
 		t.Run(source, func(t *testing.T) {
 			executions, modelCalls := 0, 0
-			executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: string(domaintool.Shell), Description: "Execute a command."}, func(context.Context, struct {
+			executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: string(builtincontract.Shell), Description: "Execute a command."}, func(context.Context, struct {
 				Command string `json:"command"`
 			}) (string, error) {
 				executions++
@@ -50,7 +51,7 @@ func TestSemanticRefusalCrossesRealInterpreterAndTreeCommitter(t *testing.T) {
 			model := chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
 				modelCalls++
 				if modelCalls == 1 {
-					return interactionToolResponse(chat.ToolCall{ID: "refused", Name: string(domaintool.Shell), Arguments: arguments}, 1, 1), nil
+					return interactionToolResponse(chat.ToolCall{ID: "refused", Name: string(builtincontract.Shell), Arguments: arguments}, 1, 1), nil
 				}
 				var results []chat.ToolResult
 				for _, message := range request.Messages {

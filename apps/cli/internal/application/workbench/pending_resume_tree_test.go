@@ -10,7 +10,7 @@ import (
 
 func TestPendingResumePreservesMixedMemberReviewsAcrossRestart(t *testing.T) {
 	directory := t.TempDir()
-	store, err := OpenDirectory(directory, Config{})
+	store, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +41,7 @@ func TestPendingResumePreservesMixedMemberReviewsAcrossRestart(t *testing.T) {
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := OpenDirectory(directory, Config{})
+	reopened, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}

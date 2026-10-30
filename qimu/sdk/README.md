@@ -66,6 +66,14 @@ reserve cleanup before asynchronous acquisition and release a late result when
 its owner has already begun closing. They do not create an independent cleanup
 manager.
 
+`withResource` returns a value only after clean release. Confirmed release with
+cleanup diagnostics rejects with `QimuError` code `close_failed`; unconfirmed
+release uses `close_unconfirmed`. Both retain the Lifetime's bounded
+`CloseOutcome` as their cause without retaining thrown cleanup payloads. Work
+failure plus close failure is an `AggregateError` containing the original work
+error and that close error. A work failure with clean release retains its original
+identity. Late acquisition follows the same close-diagnostic projection.
+
 ## Exact JSON
 
 Use `@qimu/sdk/json` for values that may contain integers or decimal bounds beyond

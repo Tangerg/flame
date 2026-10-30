@@ -87,15 +87,6 @@ export function CommandFeedback({
     return (
       <div role="status">
         <RecordBody>{t("mcp.import.ok", { count: feedback.count })}</RecordBody>
-        {feedback.renamed.length > 0 && (
-          <RecordBody>
-            {t("mcp.import.renamed", {
-              names: feedback.renamed
-                .map((s) => `${s.from} → ${s.to}`)
-                .join(", "),
-            })}
-          </RecordBody>
-        )}
       </div>
     );
   return null;

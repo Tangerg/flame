@@ -6,11 +6,13 @@ import (
 	"testing"
 	"testing/synctest"
 	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 )
 
 func newTestGate(t *testing.T) *Gate {
 	t.Helper()
-	gate, err := NewGate(func(path string) (string, error) { return path, nil })
+	gate, err := NewGate(GateConfig{TreesOverlap: filesystem.PathsOverlap, ResolveTree: func(path string) (string, error) { return path, nil }, RetirementPending: noResourceRetirements})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -18,8 +20,14 @@ func newTestGate(t *testing.T) *Gate {
 }
 
 func TestNewGateRequiresPhysicalIdentityResolver(t *testing.T) {
-	if gate, err := NewGate(nil); err == nil || gate != nil {
-		t.Fatalf("NewGate(nil) = %#v, %v", gate, err)
+	if gate, err := NewGate(GateConfig{}); err == nil || gate != nil {
+		t.Fatalf("NewGate(GateConfig{}) = %#v, %v", gate, err)
+	}
+}
+
+func TestNewGateRequiresPhysicalTreeComparison(t *testing.T) {
+	if gate, err := NewGate(GateConfig{ResolveTree: filesystem.CanonicalPath, RetirementPending: noResourceRetirements}); err == nil || gate != nil {
+		t.Fatalf("NewGate without tree comparison = %#v, %v", gate, err)
 	}
 }
 
@@ -225,7 +233,7 @@ func TestWaitRunStartableIsContextBounded(t *testing.T) {
 func TestFailedIdentityResolutionDoesNotLeaveAdmissionHeld(t *testing.T) {
 	cause := errors.New("filesystem failed")
 	var resolveErr error = cause
-	gate, err := NewGate(func(path string) (string, error) { return path, resolveErr })
+	gate, err := NewGate(GateConfig{TreesOverlap: filesystem.PathsOverlap, ResolveTree: func(path string) (string, error) { return path, resolveErr }, RetirementPending: noResourceRetirements})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -319,6 +327,38 @@ func TestRepeatedSessionReleaseCannotRetireItsSuccessor(t *testing.T) {
 	}
 }
 
+func TestAdmissionChangesRetainReleaseOrdering(t *testing.T) {
+	gate := newTestGate(t)
+	first, ok, err := gate.AcquireSession(t.Context(), "ses_first")
+	if err != nil || !ok {
+		t.Fatalf("first admission = %t, %v", ok, err)
+	}
+	observed := gate.Changes()
+	first()
+	select {
+	case <-observed:
+	default:
+		t.Fatal("release did not close the captured version")
+	}
+	next := gate.Changes()
+	second, ok, err := gate.AcquireSession(t.Context(), "ses_second")
+	if err != nil || !ok {
+		t.Fatalf("second admission = %t, %v", ok, err)
+	}
+	first()
+	select {
+	case <-next:
+		t.Fatal("repeated release consumed the next admission version")
+	default:
+	}
+	second()
+	select {
+	case <-next:
+	default:
+		t.Fatal("successor release did not close its captured version")
+	}
+}
+
 func TestRunAdmissionCannotReplaceAnotherSessionsLiveIdentity(t *testing.T) {
 	gate := newTestGate(t)
 	first, ok, err := gate.AcquireRun(t.Context(), "ses_first", "/first")
@@ -348,3 +388,5 @@ func TestRunAdmissionCannotReplaceAnotherSessionsLiveIdentity(t *testing.T) {
 		t.Fatalf("completed admissions retained ownership: %v", sessions)
 	}
 }
+
+func noResourceRetirements(context.Context, string) (bool, error) { return false, nil }

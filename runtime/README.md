@@ -239,7 +239,26 @@ retain exact choices; Runtime performs model admission when creating their Run. 
 the schema owner changes generated reference identities; rebuild Schedules
 contracts, typed consumers and component bytes together.
 
+## Tool material
+
+Built-in names, shell arguments and normalized transcript result values are
+declared once in the SDK's `builtin` package. Domain references, executable
+declarations, transcript presentation, schema generation and CLI presentation
+consume those contracts. Scope retains filesystem and HTTP request ownership.
+The former Runtime-private names and result types are removed; rebuild Go
+consumers together. This move changes neither wire nor persisted result shapes.
+
 ## Accepted interrupt answers
+
+The SDK's `question.Contract` owns the public ordered answer rules. Domain
+Questions compile that immutable contract from their field definitions; both
+candidate admission and accepted-history validation use it. Delivery derives
+field-kind membership and limits from the same owner. A nil outer answer slice
+means no response was accepted. A nonnil outer slice includes one values slice
+per field, and an empty inner slice explicitly skips that field. Choice values
+retain their exact text, must be unique and free of surrounding whitespace, and
+may contain at most one unadvertised custom value when allowed. Text answers
+retain their content and require one nonblank value unless explicitly skipped.
 
 Question and Approval executor answers use disjoint, strict payloads. A Question
 contains only its ordered answers; an Approval contains its Domain verdict,
@@ -401,6 +420,14 @@ settled historical projections and no invocation authority. Current renderers ma
 inspect historical results without evaluating historical producer code. Loading,
 withdrawal and ambiguity retain generic inspection and existing source access.
 See [Web component ownership](../apps/web/ARCHITECTURE.md).
+
+The extension protocol's `extension.ResultShape` owns result-selector membership.
+`resultShape` selectors carry `shape`; `toolName` and `fileExtension` carry `name`.
+Generated wire and client value unions preserve that distinction. Web owns an
+exhaustive recognition adapter for each shape, including matching priority.
+Rebuild declarations and clients together and use a fresh pre-release Runtime
+data directory when stored releases contain the former result-shape `name` field.
+Those declarations are rejected without conversion.
 
 ## Run commands and strict request identity
 
@@ -1105,6 +1132,12 @@ Completed observations survive restart for as long as their source records remai
 
 ## Agent Memory authoring
 
+Working-context composition addresses pinned project memory, relevance recall,
+hooks and maintenance by the Session's durable `WorkspaceCWD`. The execution
+`CWD` continues to own filesystem tools and Agent document discovery. Isolated
+Runs therefore read the same project and user memory without copying it into
+their disposable execution directories.
+
 Agent Memory content edits transfer the item to active user authorship while preserving
 its identity and creation time. Automatic curation cannot prune that correction. Pin-only
 updates leave authorship and review state unchanged. Persistence stores the Item's complete
@@ -1164,6 +1197,19 @@ twice. Goal usage derives cost and steps from its terminal trees while counting 
 their root Runs as Goal executions. The document carries these limitations
 alongside its evidence so downstream evaluation can preserve the distinctions.
 
+## Built-in Tool input policies
+
+Built-in input schemas derive search budgets and Question limits from their
+existing owners through Scope's per-type constraints. Closed argument vocabularies
+derive from `LSPOperation`, Goal `Outcome` and Plan `Status`; their schema methods
+project the same declarations used by runtime admission. Input-only requirements
+remain on the input types.
+
+Search pattern and path budgets count UTF-8 bytes. Their JSON Schema `maxLength`
+projections count Unicode characters and express only a necessary bound; exact
+byte validation still runs before filesystem access. Question headers count
+Unicode characters in both the transcript owner and its schema projection.
+
 ## Background shell lifetime
 
 Background commands remain addressable after they exit until `read_shell_output` consumes their final output. That final read reports completion and releases the shell handle and retained buffer; later reads report that the shell is absent. Compaction reminders preserve these retained handles, including commands that have finished with unread output. Reads while a command is running keep its handle available. Stopping a command preserves its unread output for the final read. Session teardown and Runtime shutdown also reclaim owned commands.
@@ -1179,6 +1225,21 @@ Reading or stopping a shell requires its owning Session, even when another Sessi
 Shell output uses Scope's `tools/content.Content`: `stdout` is an object with `encoding` (`utf8` or `base64`) and `data`. Both foreground completion and `read_shell_output` preserve arbitrary process bytes, including output truncated inside a UTF-8 character. Background launch responses include an explicit `shell_id`; incremental reads include `shell_id`, `status`, `stdout`, and an optional `output_dropped` flag. The command transcript still renders valid text directly and represents binary output with its lossless encoded content. Consumers of raw Tool output must use this current shape; there is no string-output compatibility decoder.
 
 ## Execution lifecycle
+
+Replay windows and subscriber queues reuse one publication charge for the full
+Item snapshot, including accepted answers, rejected argument source, approval
+edits and reasons. The journal adds its assigned cursor before fanout. An event
+over the byte budget is evicted and disconnects a slow subscriber explicitly.
+
+Tree-barrier preparation reduces every active member against speculative state.
+Only the accepted atomic barrier transaction advances all live reducers, before
+publishing any of its events. Refusal or cancellation retains the previously
+committed model/tool starts so terminal settlement can close them completely.
+
+A committed waiting Run has no active Segment. Its Run-tree owner retains the
+join and admission through parked maintenance; cancellation during that boundary
+returns `session_busy` and can be retried after the owner releases it. A live
+Running Run must still match its exact active Segment.
 
 Manual and cron firings pass only their captured Run request into the scheduled Run
 entry point. That request owns instructions, model selection, title, workspace and stable
@@ -1231,6 +1292,11 @@ receipt never consumes or changes that decision. Withdrawal of a queued child-st
 request retains its original cause. After claim, waiting still joins the conclusive
 decision even when the producer's context is canceled.
 
+Recovery consumes the storage-owned complete and unique non-terminal Run
+catalog. Domain construction and database constraints own individual records and
+active-root uniqueness; Recovery owns tree topology, cross-Session consistency
+and waiting-barrier coherence.
+
 Recovery probes only validate persisted state; they never activate a writer. Waiting checkpoints retain product bindings, while the committed execution-tree head is authoritative for restoration. A checkpoint holds no copy of the root Run's model selection, capabilities, or Goal incarnation, nor of the Session's workspace or isolation; restoration reads each from its owner. This integration requires the current Scope snapshots and the current execution-tree schema. Older waiting snapshots and databases are not converted or replayed. Schema installation rejects the former execution-tree table without modifying existing data; use a fresh data directory and retain the old one separately.
 
 Plain executor errors, lost responses, cancellation, and host failures do not prove a business outcome. They remain unknown and cannot produce normal model feedback. A concrete executor may return an explicit Scope Tool failure with its known output, including partial success; validation and authorization owners may reject calls they have not executed. Runtime's generic Tool observer never converts arbitrary errors into known failures. Approval-subject validation translates only a definite local argument refusal into a known failure, retaining effective arguments and result metadata through the same durable settlement path. Hook and authorization rewrites are validated before executable entry; arbitrary hook or authorization-store errors remain host failures. Product cancellation closes abandoned Items without inventing Tool results.
@@ -1257,16 +1323,27 @@ Unknown-effect termination closes every unfinished member in Run-tree postorder,
 
 Workspace file content has one read operation, `workspace.files.read`. A preview
 requests a window starting at line 1 and consumes the same byte budget, source
-validation and truncation result as any other read. Core `2026-10-23.1` removes
-`workspace.files.head` and its Go request/result types. Rebuild clients and
-replace former calls with `ReadWorkspaceFile` and an explicit line window.
-This changes the public protocol, not stored content.
+validation and truncation result as any other read. Reads return complete
+normalized source lines with their actual inclusive `startLine` and `endLine`,
+including for an unbounded request. `fromEnd` retains the suffix of the requested
+range in source order, allowing a previous page to remain adjacent at the byte
+cap. The default response budget remains 1 MiB, explicit budgets clamp at 8 MiB,
+individual lines are limited to 8 MiB and source files to 64 MiB. A line that
+cannot fit the requested budget is omitted whole; an empty retained window has
+no served coordinates. Rebuild SDK and protocol consumers together. Consumers
+that previously accepted a partial last line must now use the returned complete
+window, raise their explicit budget within the existing cap, or report that the
+line cannot fit.
 
 `runtime.subscribe` accepts exact workspace-relative `watches[].paths`; `"."` names the workspace directory. Omitted paths request only Git HEAD/index observation. Explicit paths observe ordinary external writes, atomic replacements, removal, and recreation in Git and non-Git workspaces. A directory target observes its immediate entry names and metadata; it does not recursively watch children or follow their symlinks. An opened file needs its own target to observe content changes.
 
 Discovery publishes the subscription's total path budget, per-directory entry budget, and file hashing budget. Content up to that byte budget is hashed; larger files remain observable through size and modification metadata. Exceeding directory or registration bounds fails explicitly. Background content-observation failures, including those of the Hooks and Skills observations behind `hooks.changed` and `skills.changed`, end the subscription, and Git sampling failures retry with bounded backoff before ending it. Clients reopen the stream and revalidate their reads; this is an invalidation channel, not a durable filesystem log or atomic snapshot. Notifications retain workspace, watch, and path scope; overflow can widen them.
 
 Directory registrations follow the filesystem backend's current watch set.
+The admitted directory sample also supplies its direct entry dependencies, so
+in-place entry metadata updates remain observable after creation, replacement
+and recreation. Sampling does not enter child directories or read their files;
+symlink metadata belongs to the link entry rather than its target.
 Automatic retirement and explicit removal may overlap; an already absent
 registration completes removal. Other registration failures remain explicit
 observation failures. Accepted application writes advance only their exact
@@ -1295,6 +1372,22 @@ The former built-in `lsp` Tool identity and `lsp.servers` configuration are remo
 Move server settings to the package's `lsp-servers` installation input and rebuild
 all protocol consumers. See [`plugins/codeintel`](../plugins/codeintel/README.md).
 
+LSP diagnostics succeed only after observing the synchronized document version,
+including an explicitly empty analysis. Missing or stale pushes report pending
+with their observed version, and older pushes cannot replace newer diagnostics.
+Workspace symbol searches retain every failed language alongside successful
+symbols; partial results are explicitly marked incomplete.
+One connection slot per workspace/server owns startup, the live connection and
+retirement before replacement. A later query replaces a disconnected server
+after joining its resources, without replaying the failed operation. Concurrent
+queries share that replacement; shutdown cancels and joins the entire slot.
+
+Formatting admits complete output up to the existing 8 MiB file bound. An external
+formatter owns its process group through cleanup, including after a successful root
+exit. Its failure retains process, capacity, cleanup and cancellation evidence;
+formatting diagnostics never replace an acknowledged file mutation. An absent
+optional formatter is skipped; other executable lookup failures remain explicit.
+
 Only the model's successful stable `read` creates read evidence. An admitted
 `edit` or `apply_patch` consumes its targets' evidence before execution, even
 when the outcome is unresolved. Read an existing file again before another
@@ -1302,6 +1395,13 @@ mutation; successful writes and formatting no longer grant fresh read evidence.
 The guard performs no post-write filesystem observation, so cancellation after
 an acknowledged write cannot erase that result. This changes only process-local
 Tool policy and requires no protocol or persisted-data migration.
+
+Filesystem admission retains the evidence that the mutable Tool has not been
+called. Path preparation and fingerprint failures become known failed calls;
+protected-path and read-evidence policy refusals retain their rejected category.
+Every pre-dispatch stage uses the same failure projection and preserves owner
+cancellation. Errors returned after mutable dispatch retain their original
+classification, including partial effects and unknown acknowledgements.
 
 Read and local search share the non-mutating Tool failure boundary. Unsuccessful queries, including invalid patterns and missing paths, become explicit failed Tool outcomes, so Scope commits their feedback before model continuation. Cancellation remains execution control. The generic Tool observer still preserves unknown external outcomes and host or publication failures.
 
@@ -1327,17 +1427,57 @@ One workspace checkpoint adapter owns snapshots, restoration and Session cleanup
 Restore projects storage refusals into application categories without replacing
 their causes; snapshot cancellation retains the inspection error chain.
 
+Session deletion and history replacement commit their resource retirement in the
+same SQLite transaction as the history mutation. An uncommitted command never
+authorizes checkpoint destruction. After commit, Runtime removes the predecessor's
+checkpoint and scratch namespaces, then clears that exact retirement. A cleanup
+failure leaves the committed history result intact and retains the durable
+responsibility; Session mutations and Run admission remain fenced until cleanup
+completes. Startup finishes those responsibilities before workspace and Run
+recovery, including when the retired Session row no longer exists.
+
+Scratch copies use a managed per-Session container so recovery can reach copies
+left by an abruptly terminated process. They remain ephemeral and are never
+written back to the source project. The new committed-retirement table requires
+a fresh Runtime data directory. Former database shapes are refused
+without conversion; the former scratch layout has no compatibility reader. Retain
+earlier data separately.
+
 Git command observation retains simultaneous output-admission, process, cleanup
 and cancellation failures. Output above 64 MiB is refused; cancellation does not
 erase that capacity failure or its owner-supplied cause. Each invocation owns and
 stops its process group, including after a normal root exit. Ordinary nonzero
 exits remain observed data for Git's predicate and diff semantics.
+Root exit is observed independently of pipe EOF. It starts group retirement and
+a bounded output drain; the drain budget never limits a still-executing root.
+
+Workspace file selection converts resource paths into literal Git pathspecs at
+one adapter boundary, shared by file listings and raw/structured diffs. The patch
+parser consumes each hunk's declared left/right ranges before interpreting file
+metadata, so header-like source lines retain their file identity and line counts.
 
 Checkpoint predicates accept exit codes only from admitted Git command results.
-A process failure carrying the same status remains a failed observation. Source
-index and alternate-file admission preserves cancellation and I/O failures;
-only opening an absent source permits an empty seed. Destination failures and
-source changes never become successful absence.
+A process failure carrying the same status remains a failed observation. Object
+alternate admission preserves cancellation and I/O failures; only opening an
+absent alternate file permits an empty seed.
+
+The source Git repository selects tracked and non-ignored untracked paths under
+the exact workspace, including parent/global ignores and `info/exclude`. Build
+backstops exclude only untracked paths. Git interprets its own ordinary, linked
+worktree and split indexes; Runtime never copies their bytes or flags. Each
+snapshot replaces the shadow index's admitted path set, bounded to 20,000 paths
+and 512 MiB of file material, with the per-file limit below. Object borrowing is
+storage reuse only. The `flame-source-workspace` metadata binds this ownership
+contract; former checkpoint directories are refused without conversion. Retain
+old data separately and use a fresh Runtime data directory after upgrading.
+
+Working-tree admission compares physically resolved path ranges. A destructive
+mutation excludes pending, live and maintenance Runs in either ancestor or
+descendant workspaces, and excludes another overlapping mutation. Disjoint sibling
+trees remain independent. Detached shells whose workspace ranges intersect the restore are joined before
+checkout. The same path relation fences new and resumed Run admission against
+retained mutation intents after restart; recovery refuses an inconsistent set of
+overlapping retained intents instead of choosing an order that can erase work.
 
 `sessions.rollback` with `files` or `both` restores a Run's checkpoint for that
 Session and workspace. Checkpoints archive admitted regular files and symlinks,
@@ -1446,6 +1586,12 @@ Discovery, inspection, and model loading share one source-selection rule and Sco
 Document admission classifies a non-regular `SKILL.md` as an invalid selected bundle,
 preserving its file-kind cause; oversized documents retain their size-admission cause.
 Cleanup failures remain I/O failures rather than skippable document diagnostics.
+Content observation derives the physical document and its parent watches from
+the same admitted read, retaining the logical parent for link changes.
+Direct writes, atomic replacement, deletion/recreation
+and retargeting invalidate the same Skill source without watching unrelated
+nested resources. Rejected external targets add no content dependency; directory
+entry and document byte bounds remain the source limits.
 Skill sources preserve both the standard cancellation category and any custom cause,
 including for an empty catalog. Read failures remain identifiable when cancellation
 occurs concurrently. Resource reads enforce their byte limit before returning a count,
@@ -1684,6 +1830,11 @@ concurrent read failures retain both cancellation categories and owner causes.
 The supervisor checks the dial lifetime under its publication
 lock; an expired authorization cannot publish a verified session. An already published
 session retains its successful result if the caller later cancels.
+Remote termination of an ordinary MCP session withdraws that exact session and
+its tools through the same connection outcome owner. The failure retains the
+terminal evidence, and a late predecessor exit cannot withdraw a replacement.
+Retirement still runs once; shutdown closes sessions before joining their
+termination observers. No failed RPC is replayed.
 The handshake owns its temporary callback, timer and untransferred session lifetime.
 Admission rejects an expired request or stopped session owner before connection I/O.
 Failures retain transport diagnostics, the handshake's timeout or cancellation and
@@ -1728,7 +1879,9 @@ Provider-reported token usage, durable conversation history, and model/Tool/exec
 
 MCP identity follows Scope's capability chain through Tool decorators for discovery, exposure, and approval queries. Invalid MCP identity declarations reject the catalog instead of silently hiding entries or grouping them as built-ins.
 
-`mcp.tools.list` reads the resolver's live MCP snapshot, the one each Run manifest freezes, and derives tool name conflicts from that same snapshot. Connections publish their current catalog when the resolver subscribes, then hand every changed tool set to that same sink inside the critical section that settles the connection. There is no separate startup catalog seed; connected Tool counts and the listing describe one state. Remote changes become visible after reconnect admits the replacement; listing no longer queries a separate live catalog. Invalid JSON Schemas, including unresolved references and oversized documents, now fail connection or probe admission through Scope rather than failing the next Run. Diagnostic and MCP schema projections preserve exact numeric literals and retain their existing protocol shape.
+`mcp.tools.list` reads the resolver's live MCP snapshot, the one each Run manifest freezes, and derives tool name conflicts from that same snapshot. Connections publish their current catalog when the resolver subscribes, then hand every changed tool set to that same sink inside the critical section that settles the connection. There is no separate startup catalog seed; connected Tool counts and the listing describe one state. Remote tool-change notifications invalidate the admitting catalog revision and schedule one coalescing discovery worker per ordinary session. Discovery and validation run outside the connection lock; only the same session and notification version can publish the complete replacement. A failed refresh withdraws that source and reports tool discovery failure without removing siblings. Listing never queries a separate live catalog. Invalid JSON Schemas, including unresolved references and oversized documents, now fail connection or probe admission through Scope rather than failing the next Run. Diagnostic and MCP schema projections preserve exact numeric literals and retain their existing protocol shape.
+
+Each executable retains the catalog revision that admitted its frozen contract. A notification invalidates that revision before refresh I/O; subsequent dispatch through a captured prior catalog is refused rather than retargeted. Already admitted calls may finish. New Runs discover the newly published catalog. Retirement cancels discovery, and shutdown joins both discovery and termination observers. Description and future handshake-policy updates preserve an equivalent live connection; enablement and the domain connection identity decide when dialing is required.
 
 ## Complete AGENTS guidance
 
@@ -1742,8 +1895,12 @@ together; a partial read can establish size but never document text validity.
 
 Tool identity is a closed built-in or MCP source/tool reference.
 Model names remain presentation labels. The closed set of built-in names is owned by the
-tool domain (`tool.BuiltInName`); the built-in behavior catalog is keyed by that type and a
+SDK (`builtin.Name`); the built-in behavior catalog is keyed by that type and a
 test holds it to exactly that set, so startup performs no comparison between them.
+Web search and page retrieval belong to the Web plugin's MCP tools. The former
+`builtIn` references `web_search` and `web_fetch` and their published Core result
+schema are removed. Rebuild clients and use a fresh pre-release data directory;
+old records with those references are rejected without aliases or conversion.
 Runtime excludes remote name collisions
 before model discovery and reserves every built-in name, including unavailable tools.
 Cross-server collisions never reject a connection: all competing remote identities
@@ -1832,6 +1989,14 @@ so the catalog is the same projection after restore or compaction. A layer with 
 deferred tools has neither `search_tools` nor the catalog message.
 
 ## Physical model evidence and accounting
+
+`modelref` admits each physical endpoint observation as an immutable value. Its
+state, response, failure, completion time and reported accounting must agree at
+one admission boundary. Storage decodes that record; recovery consumes its facts
+and checks Run ownership and recovery bounds. The logical invocation journal
+retains its own identity and state vocabulary. Both vocabularies project into the
+host schema independently. This schema revision requires a fresh data directory
+under the pre-release data policy; existing evidence is not relabeled or converted.
 
 The existing model invocation journal records each physical admission before
 provider I/O with original caller, origin, parent, exact provider/model/request,

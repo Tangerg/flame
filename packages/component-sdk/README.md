@@ -65,6 +65,12 @@ PNG imports are embedded as data URLs by the component build. Components can
 display those images and transfer their original decoded bytes through
 `context.saveFile` without opening an additional resource request.
 
+Hosts render shared `Callout` controls under `CalloutLabelsProvider` from
+`@flame/ui`, supplying their own complete localized `CalloutLabels` record. The
+shared control owns kinds and icons; the host owns visible titles and locale
+changes. Rebuild hosts using Callouts with this required label contract; there
+is no English-title fallback inside the component.
+
 ## Consumer-owned component composition
 
 An installed component can call `context.compose({ contract, target, attributes,

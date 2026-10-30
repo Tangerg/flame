@@ -9,6 +9,7 @@ import (
 	"testing"
 	"unicode"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
@@ -199,7 +200,7 @@ func TestDescriptorCatalogMatchesBuiltInTools(t *testing.T) {
 	}
 	// Agent Framework advertises delegate_task from the Interaction Definition rather than
 	// the ordinary Tool manifest.
-	existing[string(tool.DelegateTask)] = true
+	existing[string(builtincontract.DelegateTask)] = true
 
 	declared := make(map[string]bool)
 	var unreachable []string
@@ -262,7 +263,7 @@ func testApprovalPolicy(t *testing.T) *approvals.RuntimePolicy {
 
 func TestCurrentDescriptorsNameKnownDurableIdentities(t *testing.T) {
 	for name, descriptor := range builtInDescriptors {
-		if !slices.Contains(tool.BuiltInNames(), name) {
+		if !slices.Contains(builtincontract.Names(), name) {
 			t.Errorf("behavior descriptor %q names no durable built-in identity", name)
 		}
 		if !descriptor.safety.Valid() {

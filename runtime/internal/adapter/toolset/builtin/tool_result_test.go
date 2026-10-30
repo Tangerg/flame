@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
@@ -43,8 +43,8 @@ func TestNewUsesCanonicalName(t *testing.T) {
 	if err != nil || tool == nil {
 		t.Fatalf("New = (%v, %v), want a tool", tool, err)
 	}
-	if got := tool.Definition().Name; got != string(domaintool.ReadToolResult) {
-		t.Fatalf("tool name = %q, want %q", got, domaintool.ReadToolResult)
+	if got := tool.Definition().Name; got != string(builtincontract.ReadToolResult) {
+		t.Fatalf("tool name = %q, want %q", got, builtincontract.ReadToolResult)
 	}
 }
 

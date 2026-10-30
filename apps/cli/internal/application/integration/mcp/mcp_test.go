@@ -1,11 +1,47 @@
 package mcp
 
 import (
+	"maps"
 	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
+
+func TestEnvironmentEditsPreserveEmptyAndWhitespaceValues(t *testing.T) {
+	values := map[string]string{"EMPTY": "", "SPACES": " \t ", " PADDED ": " value "}
+	change := EnvironmentChange{Kind: protocol.MCPSecretSet, Value: values}
+	connection := ConnectionInput{Transport: protocol.MCPTransportStdio, Command: "server", Environment: &change}
+	if err := connection.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	if !maps.Equal(connection.Clone().Environment.Value, values) {
+		t.Fatal("environment edit changed process values")
+	}
+}
+
+func TestSecretMapEditsUseTheirWireContracts(t *testing.T) {
+	for _, test := range []struct {
+		kind  protocol.MCPSecretChangeType
+		value map[string]string
+		valid bool
+	}{
+		{protocol.MCPSecretSet, map[string]string{"NAME": ""}, true},
+		{protocol.MCPSecretSet, nil, false},
+		{protocol.MCPSecretSet, map[string]string{}, false},
+		{protocol.MCPSecretClear, nil, true},
+		{protocol.MCPSecretClear, map[string]string{}, false},
+		{protocol.MCPSecretClear, map[string]string{"NAME": ""}, false},
+		{"invalid", map[string]string{"NAME": "value"}, false},
+	} {
+		if err := (EnvironmentChange{Kind: test.kind, Value: test.value}).Validate(); (err == nil) != test.valid {
+			t.Errorf("environment %s %#v: %v, want valid=%t", test.kind, test.value, err, test.valid)
+		}
+		if err := (HeadersChange{Kind: test.kind, Value: test.value}).Validate(); (err == nil) != test.valid {
+			t.Errorf("headers %s %#v: %v, want valid=%t", test.kind, test.value, err, test.valid)
+		}
+	}
+}
 
 func TestConnectionInputsKeepTransportAndSecretScopesClosed(t *testing.T) {
 	authorization := AuthorizationChange{Kind: protocol.MCPSecretSet, Value: "Bearer secret"}

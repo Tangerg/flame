@@ -111,8 +111,16 @@ func (p *presentationDialog) Show() {
 
 func (p *presentationDialog) Dismiss() {
 	if p != nil && p.dialog != nil {
+		p.guard.lease.current.retire()
 		p.dialog.Controller().Dismiss()
 	}
+}
+
+func (p *presentationDialog) Identity() *presentationIdentity {
+	if !p.Open() {
+		return nil
+	}
+	return p.guard.lease.current
 }
 
 func (p *presentationDialog) Open() bool {

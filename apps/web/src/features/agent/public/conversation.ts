@@ -1,5 +1,6 @@
 export {
   useActiveConversationMessages,
+  useHasPrecedingRootRun,
   useActiveConversationRows,
 } from "@/features/agent/application/conversation/readModel";
 export type {

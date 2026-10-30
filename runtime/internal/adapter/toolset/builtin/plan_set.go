@@ -3,23 +3,25 @@ package builtin
 import (
 	"context"
 	"errors"
+	"fmt"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/planpresentation"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+
 	plandomain "github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-const setDescription = `Set the current session's execution plan.
+var setDescription = fmt.Sprintf(`Set the current session's execution plan.
 
 Use this for non-trivial multi-step work and whenever the plan or progress
 changes. Pass the complete ordered list every time; this call replaces the
 previous plan. Use an empty steps array to clear it. Each step needs a concise
-description and a status: pending, in_progress, or completed. At most one step
-may be in_progress. This changes Agent state only; it does not modify files or
-enter or exit Plan mode.`
+description and a status: %s, %s, or %s. At most one step
+may be %s. This changes Agent state only; it does not modify files or
+enter or exit Plan mode.`, plandomain.StatusPending, plandomain.StatusInProgress, plandomain.StatusCompleted, plandomain.StatusInProgress)
 
 type setArgs struct {
 	Steps []stepArg `json:"steps" jsonschema_description:"The complete ordered Plan. Replaces the current Plan; an empty array clears it."`
@@ -27,7 +29,7 @@ type setArgs struct {
 
 type stepArg struct {
 	Description string            `json:"description" jsonschema:"minLength=1" jsonschema_description:"Concise description of the work represented by this Step."`
-	Status      plandomain.Status `json:"status" jsonschema:"enum=pending,enum=in_progress,enum=completed" jsonschema_description:"pending = not started; in_progress = active work; completed = fully done."`
+	Status      plandomain.Status `json:"status" jsonschema_description:"Execution state of this Step."`
 }
 
 func (s setArgs) steps() []plandomain.Step {
@@ -45,7 +47,7 @@ func newSet(plans planReplacer) (toolcontract.Tool, error) {
 		return nil, nil
 	}
 	return toolcontract.NewFunc[setArgs, string](
-		toolcontract.FuncConfig{Name: string(tool.SetPlan), Description: setDescription},
+		toolcontract.FuncConfig{Name: string(builtincontract.SetPlan), Description: setDescription},
 		(&setter{plans: plans}).set,
 	)
 }

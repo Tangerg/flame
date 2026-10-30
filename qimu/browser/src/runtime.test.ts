@@ -97,6 +97,7 @@ function fixture(definitions: Record<string, Unit>) {
       authority,
       points: [],
     })),
+    closeSnapshot: vi.fn<HostControl["closeSnapshot"]>(async () => {}),
     publish: vi.fn<HostControl["publish"]>(async (request) => {
       const result: PublicationResult = {
         decision: "accepted",
@@ -876,6 +877,7 @@ async function closedHandles() {
     validateUse: async () => {},
     validateRoute: async () => {},
     snapshot: unavailable,
+    closeSnapshot: unavailable,
     publish: async (request) => ({
       decision: "accepted",
       publication: {

@@ -160,7 +160,7 @@ func runUIWithState(t *testing.T, backend Runtime, workspace, sessionID, stateDi
 	t.Helper()
 	openWorkbench := memoryTestWorkbench
 	if stateDirectory != "" {
-		openWorkbench = persistentTestWorkbench(stateDirectory)
+		openWorkbench = persistentTestWorkbench(t, stateDirectory)
 	}
 	openWorkbench, currentWorkbench := observeTestWorkbench(openWorkbench)
 	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
@@ -204,7 +204,7 @@ func runUIWithReplayState(
 	t.Helper()
 	openWorkbench := memoryTestWorkbench
 	if stateDirectory != "" {
-		openWorkbench = persistentTestWorkbench(stateDirectory)
+		openWorkbench = persistentTestWorkbench(t, stateDirectory)
 	}
 	profile := steerReplayTestProfile(t, workspace)
 	host, stop, currentWorkbench := runUIFromConfig(t, Config{
@@ -1079,7 +1079,7 @@ func TestClosingDuringAnAcceptedResumeCancelsTheRunAndRetiresTheDecision(t *test
 	if _, active := snapshot.ActiveRun(); active {
 		t.Fatalf("terminal close left the resumed run active: %+v", snapshot.Runs)
 	}
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1250,7 +1250,7 @@ func TestPendingMixedInterruptResumeSurvivesRestartWithoutLosingAnswers(t *testi
 		},
 	}
 	stateDirectory := t.TempDir()
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1360,7 +1360,7 @@ func TestLaunchRequiresTheExactReceiptToSettleAnExpiredResume(t *testing.T) {
 				}
 			}
 			stateDirectory := t.TempDir()
-			store, err := openTestWorkbench(stateDirectory)
+			store, err := openTestWorkbench(t, stateDirectory)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1379,17 +1379,34 @@ func TestLaunchRequiresTheExactReceiptToSettleAnExpiredResume(t *testing.T) {
 			}
 			host, stop, workbenchForHost := runUIFromConfig(t, Config{
 				Runtime: runtime, RuntimeProfile: &profile, SessionID: "ses_demo_1",
-				Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(stateDirectory),
+				Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(t, stateDirectory),
 			})
 			if proof {
 				host.Shows(t, "complete")
+				awaitState(t, "the original resume receipt to settle locally", func() bool {
+					store := workbenchForHost()
+					if store == nil {
+						return false
+					}
+					_, pending := store.PendingResume("ses_demo_1")
+					return !pending
+				})
 			} else {
 				host.Shows(t, "mutation replay guarantee is unavailable")
 			}
 			if attempts := runtime.resumeAttempts(); len(attempts) != 0 {
 				t.Fatalf("authoritatively settled resume was replayed: %+v", attempts)
 			}
-			reopened := workbenchForHost()
+			stop()
+			reopened, err := openTestWorkbench(t, stateDirectory)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				if err := reopened.Close(); err != nil {
+					t.Error(err)
+				}
+			})
 			durable, found := reopened.PendingResume("ses_demo_1")
 			if proof && found {
 				t.Fatalf("settled resume remains durable: %+v", durable)
@@ -1397,7 +1414,6 @@ func TestLaunchRequiresTheExactReceiptToSettleAnExpiredResume(t *testing.T) {
 			if !proof && (!found || !durable.Command.Equal(command)) {
 				t.Fatalf("another command's completed snapshot settled this resume: %+v, found %t", durable, found)
 			}
-			stop()
 		})
 	}
 }
@@ -1438,7 +1454,7 @@ func TestLaunchPreservesAnExpiredResumeWithoutAcceptanceProof(t *testing.T) {
 		}},
 	}
 	stateDirectory := t.TempDir()
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1457,7 +1473,7 @@ func TestLaunchPreservesAnExpiredResumeWithoutAcceptanceProof(t *testing.T) {
 	}
 	host, stop, workbenchForHost := runUIFromConfig(t, Config{
 		Runtime: runtime, RuntimeProfile: &profile, SessionID: "ses_demo_1",
-		Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(stateDirectory),
+		Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(t, stateDirectory),
 	})
 	host.Shows(t, "mutation replay guarantee is unavailable")
 	if attempts := runtime.resumeAttempts(); len(attempts) != 0 {
@@ -1492,7 +1508,7 @@ func TestActiveResumePreservesUncertaintyWhenReplayExpires(t *testing.T) {
 	profile = profileWithReplay(t, profile, profile.Discovery().Capabilities.Limits.Idempotency.Namespace, time.Second)
 	host, stop, workbenchForHost := runUIFromConfig(t, Config{
 		Runtime: runtime, RuntimeProfile: &profile, SessionID: "ses_demo_1",
-		Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(stateDirectory),
+		Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(t, stateDirectory),
 	})
 	host.Shows(t, "Ask flame")
 	host.Type("expire one resume acknowledgement")
@@ -1517,7 +1533,7 @@ func TestSwitchingSessionsRecoversTheDestinationPendingRunOutbox(t *testing.T) {
 	base.Script = stableCompletedScript
 	backend := &recordingRuntime{Runtime: base}
 	stateDirectory := t.TempDir()
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1600,7 +1616,7 @@ func TestSwitchingSessionsRecoversTheDestinationPendingResume(t *testing.T) {
 		}},
 	}
 	stateDirectory := t.TempDir()
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2163,7 +2179,7 @@ func TestClosingDuringAnInvalidAcceptedStartCancelsTheRecoveredRun(t *testing.T)
 	if _, active := snapshot.ActiveRun(); active {
 		t.Fatalf("terminal close left malformed accepted run active: %+v", snapshot.Runs)
 	}
-	reopened, err := openTestWorkbench(stateDirectory)
+	reopened, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2337,7 +2353,7 @@ func TestClosingTheTerminalPropagatesFinalDraftPersistenceFailure(t *testing.T) 
 		done <- Run(ctx, Config{
 			RuntimeProfile: featuredTerminalProfile(t),
 			Runtime:        base, Workspace: "/tmp/flame-cli-test",
-			OpenWorkbench: persistentTestWorkbench(stateDirectory), Host: host,
+			OpenWorkbench: persistentTestWorkbench(t, stateDirectory), Host: host,
 		})
 	}()
 	t.Cleanup(func() {
@@ -2855,7 +2871,7 @@ func TestSessionChangeOwnsTheComposerUntilItsSnapshotIsInstalled(t *testing.T) {
 		releaseChange: make(chan struct{}),
 	}
 	stateDirectory := t.TempDir()
-	host, stop, workbenchForHost := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), Runtime: backend, Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(stateDirectory)})
+	host, stop, workbenchForHost := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), Runtime: backend, Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(t, stateDirectory)})
 	host.Shows(t, "Ask flame")
 	originalSession := firstRuntimeSession(t, base)
 	host.Type("/new")
@@ -2945,7 +2961,7 @@ func TestSessionChangeDoesNotInstallAfterAnInFlightDraftSaveFailure(t *testing.T
 		releaseChange: make(chan struct{}),
 	}
 	stateDirectory := t.TempDir()
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3358,7 +3374,7 @@ func TestCustomMultipleQuestionKeepsInvalidInputEditable(t *testing.T) {
 	host.Press(input.Tab)
 	host.Type("linux")
 	host.Press(input.Enter)
-	host.Shows(t, `choice "linux" is duplicated`)
+	host.Shows(t, "duplicate choices are not allowed")
 	select {
 	case answer := <-answers:
 		t.Fatalf("invalid custom choices reached the runtime: %+v", answer)
@@ -3409,7 +3425,7 @@ func TestCustomSingleQuestionPreservesOptionsAndSurvivesResize(t *testing.T) {
 	host.Press(input.Down)
 	showsPlain(t, host, "● Other — provide a custom answer")
 	host.Press(input.Enter)
-	host.Shows(t, "an answer is required")
+	host.Shows(t, "choice values must not be empty")
 	host.Press(input.Tab)
 	host.Type("freebsd")
 	if !host.Resize(1, 1) || !host.Repaint() {
@@ -3482,7 +3498,7 @@ func TestUserCreatedSessionPreservesTheSourceDraft(t *testing.T) {
 	replacementID := firstRuntimeSession(t, backend)
 	stop()
 
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3498,7 +3514,7 @@ func TestUserCreatedSessionPreservesTheSourceDraft(t *testing.T) {
 func TestSessionChangeStopsBeforeMutationWhenTheSourceDraftCannotBeSaved(t *testing.T) {
 	backend := runtimefixture.New()
 	stateDirectory := t.TempDir()
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3561,7 +3577,7 @@ func TestPromptSubmissionStopsBeforeRuntimeWhenTheOutboxCannotBeSaved(t *testing
 	base := runtimefixture.New()
 	backend := &recordingRuntime{Runtime: base}
 	stateDirectory := t.TempDir()
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3615,7 +3631,7 @@ func TestPromptSubmissionCommitsHistoryOnlyAfterRuntimeAcknowledgement(t *testin
 	base.Instant = true
 	backend := &recordingRuntime{Runtime: base}
 	stateDirectory := t.TempDir()
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3715,7 +3731,7 @@ func TestStashKeepsTheComposerWhenDraftRetirementFails(t *testing.T) {
 
 func TestApplyingStashDoesNotExposeAnUndurableDraft(t *testing.T) {
 	stateDirectory := t.TempDir()
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3984,70 +4000,76 @@ func approvalRuleScope(scope protocol.RememberScopeKind) protocol.ApprovalRuleSc
 }
 
 func TestApprovalCanEditToolArgumentsOnceAcrossValidationAndResize(t *testing.T) {
-	backend := runtimefixture.New()
-	backend.Instant = true
-	answers := make(chan conversation.ApprovalAnswer, 1)
-	backend.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{
-			Interrupts: []conversation.Interrupt{conversation.Approval{
-				ItemID: "edit-approval", Title: "Run generated command",
-				Rememberable: true,
-				Tool: &conversation.ToolCall{
-					Kind: protocol.ToolCategoryShell, Name: "shell", Command: "rm generated.txt", Status: conversation.ToolRunning,
-					ArgumentsJSON: []byte(`{"command":"rm generated.txt","timeout":30}`),
-				},
-			}},
-			Continue: func(provided []conversation.InterruptAnswer) []runtimefixture.Step {
-				answers <- provided[0].Answer.(conversation.ApprovalAnswer)
-				return []runtimefixture.Step{{Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}
-			},
-		}
-	}
-	host, stop := runUIWith(t, backend)
-	host.Shows(t, "Ask flame")
-	host.Type("run a safer generated command")
-	host.Press(input.Enter)
-	host.Shows(t, "Tool approval")
-	host.Press(input.End)
-	showsPlain(t, host, "● Edit arguments before deciding")
-	host.Press(input.Enter)
-	host.Shows(t, "Edit tool arguments")
-	host.Shows(t, `"command": "rm generated.txt"`)
+	for _, edited := range []string{"{}", `{"command":"echo safe","timeout":45}`} {
+		t.Run(edited, func(t *testing.T) {
+			backend := runtimefixture.New()
+			backend.Instant = true
+			answers := make(chan conversation.ApprovalAnswer, 1)
+			backend.Script = func(string) runtimefixture.Script {
+				return runtimefixture.Script{
+					Interrupts: []conversation.Interrupt{conversation.Approval{
+						ItemID: "edit-approval", Title: "Run generated command",
+						Rememberable: true,
+						Tool: &conversation.ToolCall{
+							Kind: protocol.ToolCategoryShell, Name: "shell", Command: "rm generated.txt", Status: conversation.ToolRunning,
+							ArgumentsJSON: []byte(`{"command":"rm generated.txt","timeout":30}`),
+						},
+					}},
+					Continue: func(provided []conversation.InterruptAnswer) []runtimefixture.Step {
+						answers <- provided[0].Answer.(conversation.ApprovalAnswer)
+						return []runtimefixture.Step{{Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}
+					},
+				}
+			}
+			host, stop := runUIWith(t, backend)
+			host.Shows(t, "Ask flame")
+			host.Type("run a safer generated command")
+			host.Press(input.Enter)
+			host.Shows(t, "Tool approval")
+			host.Press(input.End)
+			showsPlain(t, host, "● Edit arguments before deciding")
+			host.Press(input.Enter)
+			host.Shows(t, "Edit tool arguments")
+			host.Shows(t, `"command": "rm generated.txt"`)
 
-	host.Send(input.Key{Code: input.Character, Rune: 'a', Mods: input.Alt})
-	host.Type(`{"command":"echo safe","timeout":`)
-	host.Send(input.Key{Code: input.Character, Rune: 's', Mods: input.Ctrl})
-	host.Shows(t, "tool argument override")
-	host.Shows(t, `{"command":"echo safe","timeout":`)
-	select {
-	case premature := <-answers:
-		t.Fatalf("invalid argument override resumed runtime: %+v", premature)
-	default:
-	}
+			host.Send(input.Key{Code: input.Character, Rune: 'a', Mods: input.Alt})
+			host.Type(`{"command":"echo safe","timeout":`)
+			host.Send(input.Key{Code: input.Character, Rune: 's', Mods: input.Ctrl})
+			host.Shows(t, "tool argument override")
+			host.Shows(t, `{"command":"echo safe","timeout":`)
+			select {
+			case premature := <-answers:
+				t.Fatalf("invalid argument override resumed runtime: %+v", premature)
+			default:
+			}
 
-	host.Send(input.Key{Code: input.Character, Rune: 'a', Mods: input.Alt})
-	host.Type(`{"command":"echo safe","timeout":45}`)
-	if !host.Resize(1, 1) || !host.Repaint() || !host.Resize(96, 28) {
-		t.Fatal("argument editor did not survive a minimal viewport")
-	}
-	host.Shows(t, `{"command":"echo safe","timeout":45}`)
-	host.Send(input.Key{Code: input.Character, Rune: 's', Mods: input.Ctrl})
-	host.Shows(t, "Edited arguments · one-shot")
-	showsPlain(t, host, `"command": "echo safe"`)
-	showsPlain(t, host, "● Allow once")
-	host.Press(input.Down)
-	showsPlain(t, host, "● Allow for this session")
-	host.Press(input.Enter)
-	host.Shows(t, "complete")
-	answer := <-answers
-	if answer.Decision != protocol.ApprovalApprove || answer.Remember != protocol.RememberSession ||
-		answer.ArgumentOverride == nil ||
-		string(answer.ArgumentOverride.JSON()) != `{"command":"echo safe","timeout":45}` {
-		t.Fatalf("edited approval answer = %+v", answer)
-	}
+			host.Send(input.Key{Code: input.Character, Rune: 'a', Mods: input.Alt})
+			host.Type(edited)
+			if !host.Resize(1, 1) || !host.Repaint() || !host.Resize(96, 28) {
+				t.Fatal("argument editor did not survive a minimal viewport")
+			}
+			host.Shows(t, edited)
+			host.Send(input.Key{Code: input.Character, Rune: 's', Mods: input.Ctrl})
+			host.Shows(t, "Edited arguments · one-shot")
+			if edited != "{}" {
+				showsPlain(t, host, `"command": "echo safe"`)
+			}
+			showsPlain(t, host, "● Allow once")
+			host.Press(input.Down)
+			showsPlain(t, host, "● Allow for this session")
+			host.Press(input.Enter)
+			host.Shows(t, "complete")
+			answer := <-answers
+			if answer.Decision != protocol.ApprovalApprove || answer.Remember != protocol.RememberSession ||
+				answer.ArgumentOverride == nil ||
+				string(answer.ArgumentOverride.JSON()) != edited {
+				t.Fatalf("edited approval answer = %+v", answer)
+			}
 
-	host.Send(input.Key{Code: input.Character, Rune: 'c', Mods: input.Ctrl})
-	stop()
+			host.Send(input.Key{Code: input.Character, Rune: 'c', Mods: input.Ctrl})
+			stop()
+		})
+	}
 }
 
 func TestCancelingApprovalArgumentEditReturnsToTheUnchangedApproval(t *testing.T) {
@@ -4285,7 +4307,7 @@ func multiInterruptReviewScript(answers chan<- []conversation.InterruptAnswer) r
 	}
 }
 
-func TestApprovalRememberFlameliesToLaterRuns(t *testing.T) {
+func TestApprovalRememberAppliesToLaterRuns(t *testing.T) {
 	backend := runtimefixture.New()
 	backend.Instant = true
 	host, stop := runUIWith(t, backend)
@@ -4948,4 +4970,48 @@ type testPluginSource struct {
 func (s testPluginSource) ID() string { return s.Name }
 func (s testPluginSource) Discover(context.Context) (extensions.SourceResult, error) {
 	return extensions.SourceResult{Plugins: s.Plugins}, nil
+}
+
+func TestQuestionnaireSubmitsExplicitSkipsForEveryFieldShape(t *testing.T) {
+	backend := runtimefixture.New()
+	backend.Instant = true
+	answers := make(chan conversation.QuestionAnswer, 1)
+	backend.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{
+			Interrupts: []conversation.Interrupt{conversation.Question{ItemID: "skips", Title: "Optional fields", Fields: []conversation.QuestionField{
+				{Prompt: "Context", Kind: conversation.QuestionText},
+				{Prompt: "Platform", Kind: conversation.QuestionSingle, Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}}},
+				{Prompt: "Checks", Kind: conversation.QuestionMulti, Options: []protocol.QuestionOption{{Label: "unit"}, {Label: "integration"}}},
+			}}},
+			Continue: func(answerSet []conversation.InterruptAnswer) []runtimefixture.Step {
+				answers <- answerSet[0].Answer.(conversation.QuestionAnswer)
+				return []runtimefixture.Step{{Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}
+			},
+		}
+	}
+	host, stop := runUIWith(t, backend)
+	defer stop()
+	host.Shows(t, "Ask flame")
+	host.Type("skip optional fields")
+	host.Press(input.Enter)
+	host.Shows(t, "1/3 · empty skips")
+	host.Press(input.Enter)
+	host.Shows(t, "2/3")
+	host.Shows(t, "Skip this field")
+	host.Press(input.Down)
+	host.Press(input.Down)
+	host.Press(input.Enter)
+	host.Shows(t, "3/3 · empty skips")
+	host.Press(input.Enter)
+	host.Shows(t, "complete")
+	host.Shows(t, "skipped")
+	answer := <-answers
+	if answer.Values == nil || len(answer.Values) != 3 {
+		t.Fatalf("submitted answer = %#v", answer)
+	}
+	for i, values := range answer.Values {
+		if len(values) != 0 {
+			t.Fatalf("field %d was not skipped: %q", i, values)
+		}
+	}
 }

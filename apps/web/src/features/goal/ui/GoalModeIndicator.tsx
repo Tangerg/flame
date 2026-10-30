@@ -6,7 +6,7 @@ import { Button, GlyphSwap, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import { useActiveSessionId } from "@/features/agent/public/session";
 import { useGoalMaterial } from "@/features/goal/application/goalReadModel";
-import { GoalComposerModeOwner } from "@/features/goal/application/goalComposerMode";
+import { useGoalAccess } from "@/features/goal/public/goals";
 import { goalCanEnterComposerMode } from "@/features/goal/application/goalComposerSubmitMode";
 import { useComposer } from "@/features/composer/public/composer";
 import { captureComposerFocus } from "@/features/composer/public/focus";
@@ -19,7 +19,7 @@ export function GoalModeIndicator() {
 function SessionGoalModeIndicator({ sessionId }: { sessionId: string }) {
   const t = useT();
   const composer = useComposer();
-  const owner = GoalComposerModeOwner.current();
+  const owner = useGoalAccess().composerMode;
   const snapshot = useSyncExternalStore(owner.subscribe, owner.snapshot, owner.snapshot);
   const material = useGoalMaterial().value;
   const goal = material?.goal ?? null;

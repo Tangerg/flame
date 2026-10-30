@@ -7,6 +7,8 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"os/exec"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -155,6 +157,23 @@ func TestProcessEnvironmentPreservesInheritanceAndExplicitEmpty(t *testing.T) {
 		t.Fatal("explicitly empty environment became parent inheritance")
 	}
 	require.Equal(t, []string{"A=one", "B=two"}, processEnvironment(map[string]string{"B": "two", "A": "one"}))
+}
+
+func TestProcessEnvironmentPreservesEmptyValuesInChild(t *testing.T) {
+	const marker = "FLAME_TEST_ENVIRONMENT_CHILD"
+	if os.Getenv(marker) == "1" {
+		for key, want := range map[string]string{"EMPTY": "", "SPACES": " \t "} {
+			if got, present := os.LookupEnv(key); !present || got != want {
+				t.Errorf("%s = (%q, %t), want (%q, true)", key, got, present, want)
+			}
+		}
+		return
+	}
+	command := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^TestProcessEnvironmentPreservesEmptyValuesInChild$")
+	command.Env = processEnvironment(map[string]string{marker: "1", "EMPTY": "", "SPACES": " \t "})
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("child: %v\n%s", err, output)
+	}
 }
 
 func TestDialValidatesBeforeDialing(t *testing.T) {

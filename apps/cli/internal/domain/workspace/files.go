@@ -74,10 +74,14 @@ type FileContent struct {
 	EndLine    int
 }
 
-// Validate checks the read window relationships the CLI renders with. The wire
-// contract owns presence and positivity; it cannot compare the two bounds.
+// Wire admission owns individual field bounds. A missing served window means
+// no retained material; an empty file still serves its first empty line.
 func (f FileContent) Validate() error {
 	switch {
+	case (f.StartLine == 0) != (f.EndLine == 0):
+		return errors.New("file content window is incomplete")
+	case f.StartLine == 0 && (f.Content != "" || !f.Truncated):
+		return errors.New("file content omitted its served window")
 	case f.EndLine > 0 && f.EndLine < f.StartLine:
 		return errors.New("file content window is reversed")
 	case f.EndLine > f.TotalLines:
@@ -89,7 +93,7 @@ func (f FileContent) Validate() error {
 
 func (f FileContent) Window() string {
 	if f.StartLine == 0 {
-		return fmt.Sprintf("%d lines", f.TotalLines)
+		return fmt.Sprintf("no complete lines/%d", f.TotalLines)
 	}
 	return fmt.Sprintf("lines %d-%d/%d", f.StartLine, f.EndLine, f.TotalLines)
 }

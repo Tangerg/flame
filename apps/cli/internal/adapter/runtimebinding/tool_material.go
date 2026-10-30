@@ -2,86 +2,103 @@ package runtimebinding
 
 import (
 	"bytes"
-	jsonv1 "encoding/json"
 	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"strings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/packages/go-sdk/builtin"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/scope/tools/fs"
+	"github.com/Tangerg/scope/tools/httpreq"
 )
 
-// toolText borrows Runtime's decoded JSON object. Unknown tools may use these
-// names for other values, so only string fields contribute to presentation.
-func toolText(object map[string]any, keys ...string) string {
-	for _, key := range keys {
-		if text, ok := object[key].(string); ok && text != "" {
-			return text
+func projectToolArguments(call *conversation.ToolCall) error {
+	if call.Kind == protocol.ToolCategoryUnknown || call.ArgumentsText != "" {
+		return nil
+	}
+	var summary string
+	switch builtin.Name(call.Name) {
+	case builtin.Shell:
+		var input builtin.ShellArguments
+		if err := json.Unmarshal(call.ArgumentsJSON, &input); err != nil {
+			return err
+		}
+		call.Command, summary = input.Command, input.Description
+	case builtin.Read:
+		var input fs.ReadRequest
+		if err := json.Unmarshal(call.ArgumentsJSON, &input); err != nil {
+			return err
+		}
+		call.Path, summary = input.Path, input.Path
+	case builtin.Edit:
+		var input fs.EditRequest
+		if err := json.Unmarshal(call.ArgumentsJSON, &input); err != nil {
+			return err
+		}
+		call.Path, summary = input.Path, input.Path
+	case builtin.Grep:
+		var input fs.GrepRequest
+		if err := json.Unmarshal(call.ArgumentsJSON, &input); err != nil {
+			return err
+		}
+		call.Query, call.Path, summary = input.Pattern, input.Path, input.Pattern
+	case builtin.Glob:
+		var input fs.GlobRequest
+		if err := json.Unmarshal(call.ArgumentsJSON, &input); err != nil {
+			return err
+		}
+		call.Query, call.Path, summary = input.Pattern, input.Path, input.Pattern
+	case builtin.HTTPRequest:
+		var input httpreq.Request
+		if err := json.Unmarshal(call.ArgumentsJSON, &input); err != nil {
+			return err
+		}
+		call.URL, summary = input.URL, input.URL
+	}
+	if summary != "" {
+		call.Summary = truncateRunes(summary, toolSummaryRuneLimit)
+	}
+	return nil
+}
+
+func projectToolResult(call *conversation.ToolCall) error {
+	output, err := formattedJSON(call.ResultJSON)
+	if err != nil {
+		return err
+	}
+	call.Output = output
+	if call.Kind == protocol.ToolCategoryUnknown {
+		return nil
+	}
+	switch builtin.Name(call.Name) {
+	case builtin.Shell:
+		var result builtin.CommandResult
+		if err := json.Unmarshal(call.ResultJSON, &result); err != nil {
+			return err
+		}
+		call.Output, call.ExitCode = result.Output, result.ExitCode
+	case builtin.ApplyPatch:
+		var result builtin.PatchResult
+		if err := json.Unmarshal(call.ResultJSON, &result); err != nil {
+			return err
+		}
+		paths := make([]string, len(result.Changes))
+		for i, change := range result.Changes {
+			paths[i] = change.Path
+		}
+		if len(paths) != 0 {
+			call.Path, call.Output = paths[0], strings.Join(paths, "\n")
 		}
 	}
-	return ""
+	return nil
 }
 
-func toolSummary(name string, arguments map[string]any) string {
-	text := toolText(arguments, "description", "summary", "query", "pattern", "path", "url", "command")
-	if text == "" {
-		text = name
-	}
-	return truncateRunes(text, toolSummaryRuneLimit)
-}
-
-func projectToolResult(tool *conversation.ToolCall, value any) {
-	object, _ := value.(map[string]any)
-	tool.Output = toolText(object, "output")
-	if exitCode, ok := toolExitCode(object["exitCode"]); ok {
-		tool.ExitCode = &exitCode
-	}
-	changes, _ := object["changes"].([]any)
-	var paths []string
-	for _, value := range changes {
-		change, _ := value.(map[string]any)
-		if path := toolText(change, "path"); path != "" {
-			paths = append(paths, path)
-		}
-	}
-	if tool.Path == "" && len(paths) != 0 {
-		tool.Path = paths[0]
-	}
-	if tool.Output == "" && len(paths) != 0 {
-		tool.Output = strings.Join(paths, "\n")
-	}
-	if tool.Output == "" {
-		tool.Output = formattedJSON(tool.ResultJSON)
-	}
-}
-
-// toolExitCode reads the number Runtime decoded. Runtime keeps tool-call numbers
-// as written, so a [jsonv1.Number] reaches this binding in process; naming that
-// type here is what keeps the exit code an integer. It is the standard library's
-// exact-number carrier and encoding/json/v2 has no replacement for it, so the v1
-// import is the type alone — this file decodes nothing.
-func toolExitCode(value any) (int, bool) {
-	switch number := value.(type) {
-	case int:
-		return number, true
-	case int64:
-		return int(number), int64(int(number)) == number
-	case float64:
-		converted := int(number)
-		return converted, float64(converted) == number
-	case jsonv1.Number:
-		parsed, err := number.Int64()
-		return int(parsed), err == nil && int64(int(parsed)) == parsed
-	default:
-		return 0, false
-	}
-}
-
-// formattedJSON renders a result nobody projected into text. Indent reformats
-// in place and will spend the caller's spare capacity, so the tool call's own
-// result bytes are cloned rather than rewritten.
-func formattedJSON(encoded []byte) string {
+// JSON material remains exact and complete when no declared projection owns it.
+func formattedJSON(encoded []byte) (string, error) {
 	formatted := jsontext.Value(bytes.Clone(encoded))
 	if err := formatted.Indent(jsontext.WithIndent("  ")); err != nil {
-		return ""
+		return "", err
 	}
-	return strings.TrimSpace(string(formatted))
+	return strings.TrimSpace(string(formatted)), nil
 }

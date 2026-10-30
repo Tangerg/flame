@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -180,7 +181,7 @@ func TestRuleValidationRejectsCorruptDurableValues(t *testing.T) {
 	}
 }
 
-func mustRule(t *testing.T, scope approval.Scope, scopeKey string, toolName tool.BuiltInName, subject approval.Subject, decision approval.Decision) approval.Rule {
+func mustRule(t *testing.T, scope approval.Scope, scopeKey string, toolName builtincontract.Name, subject approval.Subject, decision approval.Decision) approval.Rule {
 	t.Helper()
 	rule, err := approval.NewRule(scope, scopeKey, testsupport.BuiltInTool(t, toolName), testsupport.ToolFingerprint(testsupport.BuiltInTool(t, toolName)), subject, decision)
 	if err != nil {

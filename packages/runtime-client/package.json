@@ -8,7 +8,8 @@
     "./methods": "./src/generated/wire.methods.generated.ts",
     "./validation": "./src/validation/index.ts",
     "./testing": "./testing/index.ts",
-    "./testing/samples/*": "./testing/generated/samples/*"
+    "./testing/samples/*": "./testing/generated/samples/*",
+    "./testing/skill-pages.json": "./testing/generated/skill-pages.json"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.1",

@@ -80,7 +80,11 @@ func (s *Store) PrepareInput(ctx context.Context, message authoring.Message, inp
 		return nil, err
 	}
 	if writable {
-		if err := s.persistence.Replace(prepared.digest.name(), encoded); err != nil {
+		result := s.persistence.Replace(prepared.digest.name(), encoded)
+		s.mu.Lock()
+		err := s.acceptCommit(prepared.digest.name(), result, func() {})
+		s.mu.Unlock()
+		if err != nil {
 			return nil, fmt.Errorf("save prepared input: %w", err)
 		}
 	}

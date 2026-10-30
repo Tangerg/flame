@@ -1,5 +1,4 @@
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
-import { createPublicationSlot } from "@/lib/publicationSlot";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
 import {
   type GoalCommandsGateway,
@@ -83,64 +82,47 @@ class GoalCommandGeneration {
   }
 }
 
+export type GoalCommands = Pick<
+  GoalCommandGeneration,
+  "start" | "update" | "clear" | "stop" | "resume"
+>;
+
+export type GoalCommandAccess = Pick<GoalCommandOwner, "capture" | "subscribe">;
+
 export class GoalCommandOwner {
   #generation: GoalCommandGeneration | null;
   readonly #repairProjection: GoalProjectionRepair;
+  readonly #listeners = new Set<() => void>();
   #disposed = false;
 
-  private constructor(gateway: GoalCommandsGateway | null, repairProjection: GoalProjectionRepair) {
+  constructor(gateway: GoalCommandsGateway | null, repairProjection: GoalProjectionRepair) {
     this.#repairProjection = repairProjection;
     this.#generation = gateway ? new GoalCommandGeneration(gateway, repairProjection) : null;
   }
 
-  static install(
-    gateway: GoalCommandsGateway | null,
-    repairProjection: GoalProjectionRepair,
-  ): GoalCommandOwner {
-    const owner = new GoalCommandOwner(gateway, repairProjection);
-    goalCommandPublication.publish(owner, (predecessor) => predecessor.dispose());
-    return owner;
-  }
+  readonly capture = (): GoalCommands | null => this.#generation;
 
-  static current(): GoalCommandOwner {
-    const owner = goalCommandPublication.current();
-    if (!owner || owner.#disposed) throw new Error("Goal command owner is not installed");
-    return owner;
-  }
-
-  start(input: StartGoalInput): Promise<void> {
-    return this.#currentGeneration().start(input);
-  }
-
-  update(input: UpdateGoalInput): Promise<void> {
-    return this.#currentGeneration().update(input);
-  }
-
-  clear(sessionId: string): Promise<void> {
-    return this.#currentGeneration().clear(sessionId);
-  }
-
-  stop(sessionId: string): Promise<void> {
-    return this.#currentGeneration().stop(sessionId);
-  }
-
-  resume(sessionId: string): Promise<void> {
-    return this.#currentGeneration().resume(sessionId);
-  }
+  readonly subscribe = (listener: () => void): (() => void) => {
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
+  };
 
   replaceRuntimeGeneration(createGateway: () => GoalCommandsGateway): boolean {
-    if (this.#disposed || !goalCommandPublication.owns(this)) return false;
+    if (this.#disposed) return false;
+    const successor = new GoalCommandGeneration(createGateway(), this.#repairProjection);
     const predecessor = this.#generation;
-    this.#generation = new GoalCommandGeneration(createGateway(), this.#repairProjection);
+    this.#generation = successor;
     predecessor?.retire();
+    this.#publish();
     return true;
   }
 
   retireRuntimeGeneration(): boolean {
-    if (this.#disposed || !goalCommandPublication.owns(this)) return false;
+    if (this.#disposed) return false;
     const predecessor = this.#generation;
     this.#generation = null;
     predecessor?.retire();
+    if (predecessor) this.#publish();
     return true;
   }
 
@@ -149,35 +131,11 @@ export class GoalCommandOwner {
     this.#disposed = true;
     this.#generation?.retire();
     this.#generation = null;
-    goalCommandPublication.withdraw(this);
+    this.#publish();
+    this.#listeners.clear();
   }
 
-  #currentGeneration(): GoalCommandGeneration {
-    if (this.#disposed || !goalCommandPublication.owns(this) || !this.#generation) {
-      throw new GenerationRetiredError("goal_command_generation");
-    }
-    return this.#generation;
+  #publish(): void {
+    for (const listener of this.#listeners) listener();
   }
-}
-
-const goalCommandPublication = createPublicationSlot<GoalCommandOwner>();
-
-export async function startGoal(input: StartGoalInput): Promise<void> {
-  await GoalCommandOwner.current().start(input);
-}
-
-export async function updateGoal(input: UpdateGoalInput): Promise<void> {
-  await GoalCommandOwner.current().update(input);
-}
-
-export async function clearGoal(sessionId: string): Promise<void> {
-  await GoalCommandOwner.current().clear(sessionId);
-}
-
-export async function stopGoal(sessionId: string): Promise<void> {
-  await GoalCommandOwner.current().stop(sessionId);
-}
-
-export async function resumeGoal(sessionId: string): Promise<void> {
-  await GoalCommandOwner.current().resume(sessionId);
 }

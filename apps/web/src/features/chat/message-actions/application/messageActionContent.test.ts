@@ -3,7 +3,6 @@ import { type Message } from "@/features/agent/public/sessionView";
 import {
   messageDraftContent,
   messageHasDraftContent,
-  regenerationPromptBefore,
 } from "@/features/chat/message-actions/application/messageActionContent";
 const message = ({ runId = null, ...overrides }: Partial<Message>): Message => ({
   blocks: [],
@@ -35,45 +34,5 @@ describe("messageActionContent", () => {
       ),
     ).toBe(true);
     expect(messageHasDraftContent(message({ blocks: [] }))).toBe(false);
-  });
-
-  it("finds the user prompt before an assistant message for regeneration", () => {
-    expect(
-      regenerationPromptBefore(
-        [
-          message({
-            blocks: [{ kind: "text", status: "complete", text: "  prompt  " }],
-            id: "u1",
-            role: "user",
-            runId: "run_1",
-          }),
-          message({ id: "a1", role: "assistant" }),
-        ],
-        "a1",
-      ),
-    ).toEqual({ text: "prompt", images: [], runId: "run_1" });
-  });
-
-  it("does not skip past an empty user prompt", () => {
-    expect(
-      regenerationPromptBefore(
-        [
-          message({
-            blocks: [{ kind: "text", status: "complete", text: "older" }],
-            id: "u1",
-            role: "user",
-            runId: "run_1",
-          }),
-          message({
-            blocks: [{ kind: "text", status: "complete", text: "   " }],
-            id: "u2",
-            role: "user",
-            runId: "run_2",
-          }),
-          message({ id: "a1", role: "assistant" }),
-        ],
-        "a1",
-      ),
-    ).toBeNull();
   });
 });

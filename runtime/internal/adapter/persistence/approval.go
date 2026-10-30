@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -160,7 +161,7 @@ func approvalRuleArgs(r approval.Rule) []any {
 func decodeRuleTool(kind, name string, source storedMCPSource) (tool.Ref, error) {
 	switch tool.RefKind(kind) {
 	case tool.BuiltInKind:
-		return tool.BuiltIn(tool.BuiltInName(name))
+		return tool.BuiltIn(builtincontract.Name(name))
 	case tool.MCPKind:
 		server, err := source.id()
 		if err != nil {

@@ -110,7 +110,7 @@ func (a *app) startPreparedRun(input authoring.StartRun, prepared *workbench.Pre
 	}
 	a.presentRunStart(status)
 	a.followOpening(func(ctx context.Context) (conversation.SegmentStream, error) {
-		opened, err := runworkflow.OpenPendingStart(ctx, a.runtime, pending, a.replayPolicy)
+		opened, err := runworkflow.OpenPendingStart(ctx, a.runtime, a.workbench, pending, a.replayPolicy)
 		if err != nil {
 			if _, accepted := conversation.AcceptedMutationReceipt(err); accepted {
 				return conversation.SegmentStream{}, err

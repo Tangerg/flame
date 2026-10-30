@@ -716,7 +716,7 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 		},
 		HandshakeTimeout: timeout,
 	}
-	created, err := runtime.CreateServer(t.Context(), candidate)
+	created, err := runtime.CreateServer(t.Context(), mutation.NewCommandID(), candidate)
 	if err != nil {
 		t.Fatalf("Create MCP server: %v", err)
 	}
@@ -747,7 +747,7 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 		{
 			name: "duplicate server", want: protocol.ErrMCPServerAlreadyExists,
 			invoke: func() error {
-				_, err := runtime.CreateServer(t.Context(), candidate)
+				_, err := runtime.CreateServer(t.Context(), mutation.NewCommandID(), candidate)
 				return err
 			},
 		},
@@ -805,7 +805,7 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 			Authorization: &clearAuthorization, Headers: &clearHeaders,
 		},
 	}
-	updated, err := runtime.UpdateServer(t.Context(), update)
+	updated, err := runtime.UpdateServer(t.Context(), mutation.NewCommandID(), update)
 	if err != nil {
 		t.Fatalf("Update MCP server: %v", err)
 	}
@@ -823,6 +823,94 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 	}
 	if err := runtime.DeleteServer(t.Context(), mcp.UserServer(candidate.Name)); err != nil {
 		t.Fatalf("Delete MCP server: %v", err)
+	}
+}
+
+func TestMCPEnvironmentEditsMatchRuntimeAdmission(t *testing.T) {
+	configureIntegrationRuntime(t)
+	runtime := openIntegrationRuntime(t, runtimefixture.TempDirectory(t))
+	for _, test := range []struct {
+		name   string
+		values map[string]string
+		valid  bool
+	}{
+		{"empty", map[string]string{"OPTIONAL_FEATURE": ""}, true},
+		{"whitespace", map[string]string{"OPTIONAL_FEATURE": " \t "}, true},
+		{"padded-key", map[string]string{" PADDED ": " value "}, true},
+		{"nul-value", map[string]string{"TOKEN": "bad\x00value"}, false},
+		{"nul-key", map[string]string{"BAD\x00KEY": "value"}, false},
+		{"empty-key", map[string]string{"": "value"}, false},
+		{"separator", map[string]string{"A=B": "value"}, false},
+		{"loader", map[string]string{"ld_preload": "value"}, false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			candidate := mcp.Candidate{Name: "cli-" + test.name, Connection: mcp.ConnectionInput{
+				Transport: protocol.MCPTransportStdio, Command: "unused-disabled-server",
+				Environment: &mcp.EnvironmentChange{Kind: protocol.MCPSecretSet, Value: test.values},
+			}}
+			_, cliErr := runtime.CreateServer(t.Context(), mutation.NewCommandID(), candidate)
+			request, err := projectMCPCandidate(candidate)
+			if err != nil {
+				t.Fatal(err)
+			}
+			request.Name = "direct-" + test.name
+			_, directErr := runtime.mcp.CreateMCPServer(t.Context(), request, runtime.commandOptions())
+			if test.valid {
+				if cliErr != nil || directErr != nil {
+					t.Fatalf("CLI: %v; Runtime: %v", cliErr, directErr)
+				}
+				_, err = runtime.UpdateServer(t.Context(), mutation.NewCommandID(), mcp.ServerUpdate{Server: mcp.UserServer(candidate.Name), Connection: &candidate.Connection})
+				if err != nil {
+					t.Fatal(err)
+				}
+			} else if !errors.Is(cliErr, protocol.ErrInvalidParams) || !errors.Is(directErr, protocol.ErrInvalidParams) {
+				t.Fatalf("want Runtime invalid params; CLI: %v; Runtime: %v", cliErr, directErr)
+			}
+		})
+	}
+}
+
+func TestMCPProcessMaterialMatchesRuntimeAdmission(t *testing.T) {
+	configureIntegrationRuntime(t)
+	runtime := openIntegrationRuntime(t, runtimefixture.TempDirectory(t))
+	for _, test := range []struct {
+		name    string
+		command string
+		args    []string
+		dir     string
+		valid   bool
+	}{
+		{"literal", "/tools/mcp ", []string{"--label", " value ", "", "first\nsecond"}, "/work/project ", true},
+		{"whitespace-command", " ", []string{""}, "", true},
+		{"nul-command", "mcp\x00server", nil, "", false},
+		{"nul-argument", "mcp", []string{"bad\x00argument"}, "", false},
+		{"nul-directory", "mcp", nil, "/work/\x00bad", false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			candidate := mcp.Candidate{Name: "process-" + test.name, Connection: mcp.ConnectionInput{
+				Transport: protocol.MCPTransportStdio, Command: test.command, Args: test.args, Directory: test.dir,
+			}}
+			created, err := runtime.CreateServer(t.Context(), mutation.NewCommandID(), candidate)
+			if !test.valid {
+				if !errors.Is(err, protocol.ErrInvalidParams) {
+					t.Fatalf("process admission = %v, want Runtime invalid params", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			updated, err := runtime.UpdateServer(t.Context(), mutation.NewCommandID(), mcp.ServerUpdate{Server: created.ID, Description: new("changed")})
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, server := range []protocol.MCPServer{created, updated} {
+				connection := server.Connection
+				if connection.Command != test.command || connection.Dir != test.dir || !slices.Equal(connection.Args, test.args) {
+					t.Fatalf("Runtime changed process material: %+v", connection)
+				}
+			}
+		})
 	}
 }
 

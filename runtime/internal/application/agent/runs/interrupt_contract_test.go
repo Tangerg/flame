@@ -5,6 +5,7 @@ import (
 	"slices"
 	"testing"
 
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -57,7 +58,7 @@ func TestResolveResumeResponsesValidatesExactTypedCoverage(t *testing.T) {
 		ItemID: "item_question",
 		Kind:   run.InterruptQuestion,
 		Question: &transcript.Question{Fields: []transcript.QuestionField{{
-			Prompt: "Choose", Kind: transcript.QuestionChoice,
+			Prompt: "Choose", Kind: questioncontract.Choice,
 			Options: []transcript.QuestionOption{{Label: "Go"}, {Label: "Stop"}},
 		}}},
 	}}), bindings: []InterruptBinding{{
@@ -178,9 +179,9 @@ func TestResolveResumeResponsesPreservesCompleteBarrierInCanonicalOrder(t *testi
 
 func TestResolveQuestionResponseUsesOrderedExactAnswers(t *testing.T) {
 	question := &transcript.Question{Fields: []transcript.QuestionField{
-		{Prompt: "Name it", Kind: transcript.QuestionText},
+		{Prompt: "Name it", Kind: questioncontract.Text},
 		{
-			Prompt: "Choose", Kind: transcript.QuestionChoice, Multiple: true, AllowCustom: true,
+			Prompt: "Choose", Kind: questioncontract.Choice, Multiple: true, AllowCustom: true,
 			Options: []transcript.QuestionOption{{Label: "A"}, {Label: "B"}},
 		},
 	}}

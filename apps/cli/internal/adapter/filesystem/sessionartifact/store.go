@@ -10,6 +10,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem/commit"
 	"github.com/spf13/fileflow"
 	"github.com/spf13/pathologize"
 
@@ -29,34 +30,58 @@ const (
 // ready to use and publishes without overwriting different existing content.
 type Store struct{}
 
-func (Store) Publish(workspace, title, requestedName string, document session.Document) (string, error) {
+// Publication retains the selected path even when confirmation or staging
+// cleanup fails after publication. Repeating the export is a separate intent.
+type Publication struct {
+	Path string
+	commit.Result
+}
+
+func (Store) Publish(workspace, title, requestedName string, document session.Document) (result Publication) {
 	if err := document.Validate(); err != nil {
-		return "", fmt.Errorf("publish session document: %w", err)
+		result.Err = fmt.Errorf("publish session document: %w", err)
+		return result
 	}
 	root, err := existingDirectory(workspace)
 	if err != nil {
-		return "", err
+		result.Err = err
+		return result
 	}
 	name, err := documentName(title, requestedName, document.Extension())
 	if err != nil {
-		return "", err
+		result.Err = err
+		return result
 	}
 	destination := pathologize.Join(root, name)
 	staged, err := stage(root, document.Bytes())
 	if err != nil {
-		return "", err
+		result.Err = err
+		return result
 	}
-	defer func() { _ = os.Remove(staged) }()
+	defer func() {
+		if err := os.Remove(staged); err != nil && !errors.Is(err, os.ErrNotExist) {
+			result.Err = errors.Join(result.Err, fmt.Errorf("remove session staging file: %w", err))
+		}
+	}()
 	flow := fileflow.Flow{FindAvailableName: fileflow.FindAvailableNameAuto, NoCreateDirs: true}
-	finalPath, err := flow.Move(staged, destination)
-	if err != nil {
-		return "", fmt.Errorf("publish session document: %w", err)
+	// Staging is in the destination directory. Rename preserves the final path
+	// on post-publication cleanup failure; Move discards that evidence.
+	return publishStaged(func() (string, error) { return flow.Rename(staged, destination) }, confirmPublication)
+}
+
+func publishStaged(publish func() (string, error), confirm func(string) error) Publication {
+	path, publishErr := publish()
+	result := Publication{Path: path, Result: commit.Result{Err: publishErr}}
+	if path == "" {
+		return result
 	}
-	// Move has already published the selected final path. Directory sync is a
-	// crash-durability strengthening step, not a reason to report a false failure
-	// that would make a retry publish another conflict-renamed document.
-	syncCommittedDirectory(root)
-	return finalPath, nil
+	result.State = commit.Visible
+	if err := confirm(path); err != nil {
+		result.Err = errors.Join(publishErr, fmt.Errorf("confirm session document durability: %w", err))
+		return result
+	}
+	result.State = commit.Durable
+	return result
 }
 
 // Load reads an explicitly selected JSON artifact. Relative paths resolve from
@@ -206,11 +231,13 @@ func stage(root string, body []byte) (path string, err error) {
 	}
 	path = temporary.Name()
 	defer func() {
-		if closeErr := temporary.Close(); err == nil && closeErr != nil {
-			err = fmt.Errorf("close session document staging file: %w", closeErr)
+		if closeErr := temporary.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("close session document staging file: %w", closeErr))
 		}
 		if err != nil {
-			_ = os.Remove(temporary.Name())
+			if removeErr := os.Remove(temporary.Name()); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {
+				err = errors.Join(err, fmt.Errorf("remove session document staging file: %w", removeErr))
+			}
 		}
 	}()
 	if _, err = temporary.Write(body); err != nil {
@@ -222,10 +249,19 @@ func stage(root string, body []byte) (path string, err error) {
 	return path, nil
 }
 
-func syncCommittedDirectory(path string) {
-	directory, _, err := filesystem.OpenDirectory(path)
+func confirmPublication(path string) error {
+	file, info, err := filesystem.OpenFile(path, int64(session.MaximumDocumentBytes))
 	if err != nil {
-		return
+		return err
 	}
-	_ = errors.Join(directory.Sync(), directory.Close())
+	// An identical existing destination may have been selected instead of the
+	// staged inode, so confirm the actual published bytes as well as its name.
+	if err := errors.Join(file.Sync(), filesystem.VerifyPathVersion(file, info, path), file.Close()); err != nil {
+		return err
+	}
+	directory, _, err := filesystem.OpenDirectory(filepath.Dir(path))
+	if err != nil {
+		return err
+	}
+	return errors.Join(directory.Sync(), directory.Close())
 }

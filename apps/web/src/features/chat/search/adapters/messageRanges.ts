@@ -15,6 +15,21 @@ function continuesInlineFlow(element: Element): boolean {
   return display === "contents" || display.startsWith("inline");
 }
 
+function isHidden(element: Element): boolean {
+  if (element.hasAttribute("hidden") || element.hasAttribute("inert")) return true;
+  const style = getComputedStyle(element);
+  return (
+    style.display === "none" || style.visibility === "hidden" || style.visibility === "collapse"
+  );
+}
+
+function hasHiddenAncestor(element: Element): boolean {
+  for (let ancestor = element.parentElement; ancestor; ancestor = ancestor.parentElement) {
+    if (isHidden(ancestor)) return true;
+  }
+  return false;
+}
+
 function collectTextFlows(messageRoot: HTMLElement): Text[][] {
   const flows: Text[][] = [];
   let flow: Text[] = [];
@@ -32,6 +47,7 @@ function collectTextFlows(messageRoot: HTMLElement): Text[][] {
     if (node.nodeType !== Node.ELEMENT_NODE) return;
 
     const element = node as Element;
+    if (isHidden(element)) return;
     if (element.nodeName === "BR") {
       endFlow();
       return;
@@ -77,6 +93,7 @@ export function findMessageMatches(query: string, root: ParentNode = document): 
   const messageRoots = root.querySelectorAll<HTMLElement>(MESSAGE_CONTENT_SELECTOR);
 
   for (const messageRoot of messageRoots) {
+    if (hasHiddenAncestor(messageRoot)) continue;
     const ranges: Range[] = [];
     for (const flow of collectTextFlows(messageRoot)) {
       findFlowRanges(flow, pattern, ranges);
@@ -93,13 +110,20 @@ export function observeMessageChanges(root: HTMLElement, changed: () => void): (
   const observer = new MutationObserver((records) => {
     if (records.some(changesMessage)) changed();
   });
-  observer.observe(root, { childList: true, characterData: true, subtree: true });
+  observer.observe(root, {
+    childList: true,
+    characterData: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["hidden", "inert", "class", "style"],
+  });
   return () => observer.disconnect();
 }
 
 function changesMessage(record: MutationRecord): boolean {
   const target = record.target instanceof Element ? record.target : record.target.parentElement;
   if (target?.closest(MESSAGE_CONTENT_SELECTOR)) return true;
+  if (record.type === "attributes" && target?.querySelector(MESSAGE_CONTENT_SELECTOR)) return true;
   return [...record.addedNodes, ...record.removedNodes].some(
     (node) =>
       node instanceof Element &&

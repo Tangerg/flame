@@ -37,7 +37,7 @@ async function fixture() {
   };
   const client = createTestClient({
     host: {
-      ...createBrowserHost("flame"),
+      ...createBrowserHost(),
       notificationAuthorization: platform.authorization,
       requestNotificationAuthorization: platform.requestAuthorization,
       sendNotification: platform.send,
@@ -139,7 +139,13 @@ it("copies settled root facts, joins callbacks and refuses a late producer after
     captured.push(settlement);
     return completed.promise;
   });
-  const fact = { sessionId: "captured", status: "finished" as const, errorMessage: null };
+  const fact = {
+    sessionId: "captured",
+    runId: "run-fixture",
+    segmentId: "segment-fixture",
+    status: "finished" as const,
+    errorMessage: null,
+  };
   emit(fact);
   fact.sessionId = "later";
   expect(captured[0]!.sessionId).toBe("captured");
@@ -179,7 +185,13 @@ it("keeps a failing plugin observer separate from the fact producer", async () =
     throw failure;
   });
   expect(() =>
-    emit({ sessionId: "captured", status: "error", errorMessage: "run failed" }),
+    emit({
+      sessionId: "captured",
+      runId: "run-fixture",
+      segmentId: "segment-fixture",
+      status: "error",
+      errorMessage: "run failed",
+    }),
   ).not.toThrow();
   await vi.waitFor(() =>
     expect(usePluginErrorStore.getState().log).toContainEqual(

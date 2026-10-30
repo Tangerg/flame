@@ -46,7 +46,7 @@ func positionOfTrajectory(row trajectoryRecord) trajectoryPosition {
 	case row.Model != nil:
 		position.Kind, position.ID = "model", row.Model.CallID
 	case row.Endpoint != nil:
-		position.Kind, position.ID = "endpoint", row.Endpoint.Invocation.ID
+		position.Kind, position.ID = "endpoint", row.Endpoint.Snapshot().Invocation.ID
 	case row.Item != nil:
 		position.Kind, position.ID = "item", row.Item.ID()
 	}

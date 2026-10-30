@@ -10,22 +10,22 @@ for (const theme of ["light", "dark"]) {
       await page.locator("html[data-visual-ready]").waitFor();
       const trigger = page.getByRole("button", { name: "Configure inputs", exact: true }).first();
       await trigger.click();
-      const dialog = page.getByRole("dialog", { name: "Configure inputs", exact: true });
-      const field = dialog.getByRole("textbox");
+      const dialog = page.getByRole("dialog", { name: /^Configure inputs: / });
+      const field = dialog.getByRole("textbox", { name: "Input changes (JSON)", exact: true });
       await expect(field).toBeFocused();
       await field.fill("{");
       await field.press("Control+Enter");
       const message = dialog.getByRole("alert");
-      await expect(message).toContainText("CloseBraceExpected");
+      await expect(message).toContainText("Enter valid JSON with unique property names.");
       await expect(page.locator('[role="alert"]')).toHaveCount(1);
       await expect(field).toHaveValue("{");
       await expect(field).toHaveAttribute("aria-invalid", "true");
       await expect(field).toHaveAttribute("aria-describedby", (await message.getAttribute("id"))!);
       await expect(message).toBeInViewport({ ratio: 1 });
       await expect(field).toBeInViewport({ ratio: 1 });
-      await expect(
-        dialog.getByText("JSON input or Runtime source path", { exact: true }),
-      ).toBeInViewport({ ratio: 1 });
+      await expect(dialog.getByText("Input changes (JSON)", { exact: true })).toBeInViewport({
+        ratio: 1,
+      });
       const shortHeight = (await field.boundingBox())!.height;
       const box = (await dialog.boundingBox())!;
       expect(box.x).toBeGreaterThanOrEqual(16);
@@ -40,6 +40,7 @@ for (const theme of ["light", "dark"]) {
       await expect(message).toContainText("“digest” belongs to the reviewed release");
       await expect(field).toHaveValue(input);
       await field.fill("long input line\n".repeat(2000));
+      await field.scrollIntoViewIfNeeded();
       await expect(field).toBeInViewport({ ratio: 1 });
       expect((await field.boundingBox())!.height).toBeGreaterThan(shortHeight);
       expect(await field.evaluate((node) => node.scrollHeight > node.clientHeight)).toBe(true);

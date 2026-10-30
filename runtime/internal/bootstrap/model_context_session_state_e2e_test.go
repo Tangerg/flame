@@ -9,13 +9,14 @@ import (
 	"testing"
 	"time"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/config"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+
 	plandomain "github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
@@ -293,7 +294,7 @@ func (g *goalAndPlanLongContextModel) Call(
 		})
 		return toolCallResponse(chat.ToolCall{
 			ID:        "call_goal_set_current_plan",
-			Name:      string(tool.SetPlan),
+			Name:      string(builtincontract.SetPlan),
 			Arguments: `{"steps":[{"description":"` + currentPlanText + `","status":"in_progress"}]}`,
 		}, modelContextPressurePayload), nil
 	case call <= modelCallsBeforeMidRunCompaction:
@@ -305,7 +306,7 @@ func (g *goalAndPlanLongContextModel) Call(
 			})
 		}
 		return toolCallResponse(chat.ToolCall{
-			ID: fmt.Sprintf("call_active_goal_%02d", call), Name: string(tool.GetGoal), Arguments: `{}`,
+			ID: fmt.Sprintf("call_active_goal_%02d", call), Name: string(builtincontract.GetGoal), Arguments: `{}`,
 		}, modelContextPressurePayload), nil
 	case call == modelCallsBeforeMidRunCompaction+1:
 		g.recordCheck(func(checks *goalAndPlanStateChecks) {
@@ -315,7 +316,7 @@ func (g *goalAndPlanLongContextModel) Call(
 				requestContainsText(request, currentPlanText)
 		})
 		return toolCallResponse(chat.ToolCall{
-			ID: "call_report_compacted_goal", Name: string(tool.ReportGoalOutcome), Arguments: `{"outcome":"completed"}`,
+			ID: "call_report_compacted_goal", Name: string(builtincontract.ReportGoalOutcome), Arguments: `{"outcome":"completed"}`,
 		}), nil
 	default:
 		g.recordCheck(func(checks *goalAndPlanStateChecks) {
@@ -381,7 +382,7 @@ func (p *planChangingLongContextModel) Call(
 		}
 		return toolCallResponse(chat.ToolCall{
 			ID:        "call_set_current_plan",
-			Name:      string(tool.SetPlan),
+			Name:      string(builtincontract.SetPlan),
 			Arguments: `{"steps":[{"description":"` + currentPlanText + `","status":"in_progress"}]}`,
 		}, modelContextPressurePayload), nil
 	case p.mainCalls <= modelCallsBeforeMidRunCompaction:
@@ -390,7 +391,7 @@ func (p *planChangingLongContextModel) Call(
 			return nil, fmt.Errorf("second model call did not replace the opening Plan snapshot")
 		}
 		return toolCallResponse(chat.ToolCall{
-			ID: fmt.Sprintf("call_goal_after_plan_%02d", p.mainCalls), Name: string(tool.GetGoal), Arguments: `{}`,
+			ID: fmt.Sprintf("call_goal_after_plan_%02d", p.mainCalls), Name: string(builtincontract.GetGoal), Arguments: `{}`,
 		}, modelContextPressurePayload), nil
 	default:
 		p.staleSeen = requestContainsText(request, stalePlanText)
@@ -524,7 +525,7 @@ func (p *prefixRecordingPlanModel) Call(_ context.Context, request *chat.Request
 	if len(p.requests) == 1 {
 		return toolCallResponse(chat.ToolCall{
 			ID:        "call_replace_plan",
-			Name:      string(tool.SetPlan),
+			Name:      string(builtincontract.SetPlan),
 			Arguments: `{"steps":[{"description":"` + currentPlanText + `","status":"in_progress"}]}`,
 		}), nil
 	}

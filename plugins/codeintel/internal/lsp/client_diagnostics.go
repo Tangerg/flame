@@ -6,28 +6,52 @@ import (
 	"fmt"
 	"slices"
 	"time"
+
+	"github.com/Tangerg/flame/qimu/cancellation"
+	"github.com/sourcegraph/jsonrpc2"
 )
 
+// DiagnosticsPendingError means the current document version has no completed
+// analysis. An observed empty set succeeds only for that exact version.
+type DiagnosticsPendingError struct {
+	Version         int
+	ObservedVersion *int
+}
+
+func (e *DiagnosticsPendingError) Error() string {
+	if e.ObservedVersion == nil {
+		return fmt.Sprintf("lsp: diagnostics pending for document version %d; no analysis observed", e.Version)
+	}
+	return fmt.Sprintf("lsp: diagnostics pending for document version %d; last observed version %d", e.Version, *e.ObservedVersion)
+}
+
+// diagnostics returns only a completed analysis of the version it synchronized.
 func (c *client) diagnostics(ctx context.Context, abs string, settle time.Duration) ([]Diagnostic, error) {
 	version, err := c.ensureOpen(ctx, abs)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(err, cancellation.Err(ctx))
 	}
 	return c.diagnosticsVersion(ctx, abs, version, settle)
 }
 
-var errDiagnosticsUnavailable = errors.New("lsp: diagnostics for the requested document version are not ready")
-
 func (c *client) diagnosticsVersion(ctx context.Context, abs string, version int, settle time.Duration) ([]Diagnostic, error) {
 	uri := pathToURI(abs)
-	// Nudge servers that only publish on save (typescript-language-server) —
-	// harmless for those that publish on change (gopls).
+	// Some servers publish on save rather than change.
 	if err := c.conn.Notify(ctx, "textDocument/didSave", didSaveParams{TextDocument: textDocumentIdentifier{URI: uri}}); err != nil {
-		return nil, fmt.Errorf("lsp: notify didSave for %s: %w", abs, err)
+		return nil, fmt.Errorf("lsp: notify didSave for %s: %w", abs, errors.Join(err, cancellation.Err(ctx)))
 	}
 	deadline := time.NewTimer(settle)
 	defer deadline.Stop()
+	expired := false
 	for {
+		if err := cancellation.Err(ctx); err != nil {
+			return nil, err
+		}
+		select {
+		case <-c.conn.DisconnectNotify():
+			return nil, fmt.Errorf("lsp: diagnostics connection ended: %w", errors.Join(jsonrpc2.ErrClosed, c.close()))
+		default:
+		}
 		c.mu.Lock()
 		ds, ok := c.diags[uri]
 		protocolErr := c.diagnosticsErr
@@ -43,12 +67,19 @@ func (c *client) diagnosticsVersion(ctx context.Context, abs string, version int
 		if ok && ds.version == version {
 			return slices.Clone(ds.diagnostics), nil
 		}
+		if expired {
+			pending := &DiagnosticsPendingError{Version: version}
+			if ok {
+				pending.ObservedVersion = &ds.version
+			}
+			return nil, pending
+		}
 		select {
-		case <-wait: // a push arrived — re-check
+		case <-wait:
 		case <-deadline.C:
-			return nil, errDiagnosticsUnavailable
+			expired = true
+		case <-c.conn.DisconnectNotify():
 		case <-ctx.Done():
-			return nil, ctx.Err()
 		}
 	}
 }

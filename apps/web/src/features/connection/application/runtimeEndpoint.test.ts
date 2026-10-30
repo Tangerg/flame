@@ -1,6 +1,8 @@
-import { IMAGE_FILENAME_STEM } from "@/app/product";
 import { runtimeRequestMeta } from "@/app/runtimeProtocol";
 import { createBrowserHost } from "@/platform/browserHost";
+import { createDesktopHostClient } from "@/platform/desktopHost";
+import { DesktopMethods } from "@/platform/desktop.generated";
+import { RUNTIME_SERVICE_RETRY_BASE_MS } from "@/features/connection/application/runtimeService";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createRuntimeConnection } from "@/features/connection/adapters/runtimeConnection";
 import { Configuration } from "@/extensions/config";
@@ -75,7 +77,7 @@ beforeEach(async () => {
   vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Runtime test discovery unavailable"));
   runtimeConnection = createRuntimeConnection(
     {
-      ...createBrowserHost(IMAGE_FILENAME_STEM),
+      ...createBrowserHost(),
       bootstrap: async () => ({
         runtime: { endpoint: DEFAULT_RUNTIME_ENDPOINT },
         localFilesystemEndpoint: null,
@@ -92,6 +94,7 @@ afterEach(async () => {
   await endpointHost.stop();
   await runtimeConnection.dispose();
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 function installConnection(
@@ -99,9 +102,9 @@ function installConnection(
   replaceConnection: (commit: () => void) => void = (commit) => commit(),
 ) {
   const connection = connectionHost(initial);
-  configuration = bindRuntimeEndpointConfiguration(connection.host, replaceConnection, {
+  configuration = bindRuntimeEndpointConfiguration(connection.host, replaceConnection, () => ({
     endpoint: DEFAULT_RUNTIME_ENDPOINT,
-  });
+  }));
   endpoint = createRuntimeEndpoint(configuration);
   return connection;
 }
@@ -114,10 +117,155 @@ function bindConnection(initial?: unknown) {
   return { ...connection, binding };
 }
 
+async function bindDesktop(read: () => Promise<unknown>) {
+  await runtimeConnection.dispose();
+  runtimeConnection = createRuntimeConnection(
+    createDesktopHostClient({
+      call: async (method) => {
+        expect(method).toBe(DesktopMethods.Bootstrap.name);
+        return read();
+      },
+      on: async () => () => {},
+    }),
+    runtimeRequestMeta,
+    createRuntimeMutationJournalStorage(createStorage("test.runtime")),
+  );
+  await runtimeConnection.initialize();
+  const bound = bindConnection();
+  await runtimeConnection.access.status.refresh();
+  return bound;
+}
+
+it("refreshes native credentials through the bound connection recovery path", async () => {
+  vi.useFakeTimers();
+  let localToken: string | undefined;
+  await bindDesktop(async () => ({
+    localRuntime: { endpoint: DEFAULT_RUNTIME_ENDPOINT, localToken },
+  }));
+  expect(endpoint.hasRuntimeAccessToken()).toBe(false);
+  const first = runtimeConnection.client();
+  const close = vi.spyOn(first, "close");
+  localToken = "late-native-token";
+  await vi.advanceTimersByTimeAsync(RUNTIME_SERVICE_RETRY_BASE_MS);
+  expect(endpoint.hasRuntimeAccessToken()).toBe(true);
+  expect(runtimeConnection.client()).not.toBe(first);
+  expect(close).toHaveBeenCalledOnce();
+  const request = vi.mocked(globalThis.fetch);
+  expect(
+    new Headers(
+      request.mock.calls.findLast(([, init]) => init?.method === "POST")?.[1]?.headers,
+    ).get("Authorization"),
+  ).toBe("Bearer late-native-token");
+});
+
+it("retries failed native reads without making remote connections depend on them", async () => {
+  let fails = false;
+  let localToken: string | undefined;
+  const read = vi.fn(async () => {
+    if (fails) throw new Error("native credential read failed");
+    return { localRuntime: { endpoint: DEFAULT_RUNTIME_ENDPOINT, localToken } };
+  });
+  await bindDesktop(read);
+  fails = true;
+  await runtimeConnection.access.status.refresh();
+  expect(runtimeConnection.access.status.snapshot().failure).toMatchObject({
+    detail: "desktop host bootstrap failed: native credential read failed",
+  });
+  fails = false;
+  localToken = "recovered-native-token";
+  await runtimeConnection.access.status.refresh();
+  expect(endpoint.hasRuntimeAccessToken()).toBe(true);
+  fails = true;
+  const reads = read.mock.calls.length;
+  endpoint.applyRuntimeEndpoint("https://remote.example", "remote-token");
+  await runtimeConnection.access.status.refresh();
+  expect(read).toHaveBeenCalledTimes(reads);
+  expect(runtimeConnection.access.status.snapshot().failure).toMatchObject({
+    detail: expect.stringContaining("Runtime test discovery unavailable"),
+  });
+});
+
+it("reset selects the host observation even when a configured token currently matches it", async () => {
+  let localToken = "native-before";
+  await bindDesktop(async () => ({
+    localRuntime: { endpoint: DEFAULT_RUNTIME_ENDPOINT, localToken },
+  }));
+  endpoint.applyRuntimeEndpoint(DEFAULT_RUNTIME_ENDPOINT, "configured-token");
+  await runtimeConnection.access.status.refresh();
+  localToken = "configured-token";
+  await runtimeConnection.initialize();
+  expect(endpoint.resetRuntimeEndpoint()).toMatchObject({ changed: true });
+  await runtimeConnection.access.status.refresh();
+  localToken = "native-after";
+  await runtimeConnection.access.status.refresh();
+  const request = vi.mocked(globalThis.fetch);
+  expect(
+    new Headers(
+      request.mock.calls.findLast(([, init]) => init?.method === "POST")?.[1]?.headers,
+    ).get("Authorization"),
+  ).toBe("Bearer native-after");
+});
+
+it("fences a native recovery read when the user replaces its connection", async () => {
+  let pending: Promise<unknown> | undefined;
+  const entered = Promise.withResolvers<void>();
+  await bindDesktop(async () => {
+    if (pending) {
+      entered.resolve();
+      return pending;
+    }
+    return { localRuntime: { endpoint: DEFAULT_RUNTIME_ENDPOINT } };
+  });
+  const retired = Promise.withResolvers<unknown>();
+  pending = retired.promise;
+  const recovering = runtimeConnection.access.status.refresh();
+  await entered.promise;
+  endpoint.applyRuntimeEndpoint("https://replacement.example", "replacement-token");
+  await runtimeConnection.access.status.refresh();
+  retired.resolve({
+    localRuntime: { endpoint: "https://retired.example", localToken: "retired-token" },
+  });
+  await recovering;
+  await Promise.resolve();
+  expect(endpoint.currentRuntimeEndpoint()).toBe("https://replacement.example");
+  expect(runtimeConnection.bootstrap().runtime).toEqual({ endpoint: DEFAULT_RUNTIME_ENDPOINT });
+  const request = vi.mocked(globalThis.fetch);
+  expect(
+    new Headers(
+      request.mock.calls.findLast(([, init]) => init?.method === "POST")?.[1]?.headers,
+    ).get("Authorization"),
+  ).toBe("Bearer replacement-token");
+});
+
+it("keeps a configured remote credential separate from native refresh and resets to the live host", async () => {
+  let localToken = "native-before";
+  await bindDesktop(async () => ({
+    localRuntime: { endpoint: DEFAULT_RUNTIME_ENDPOINT, localToken },
+  }));
+  endpoint.applyRuntimeEndpoint("https://remote.example", "remote-token");
+  await runtimeConnection.access.status.refresh();
+  localToken = "native-after";
+  await runtimeConnection.access.status.refresh();
+  expect(endpoint.currentRuntimeEndpoint()).toBe("https://remote.example");
+  const request = vi.mocked(globalThis.fetch);
+  expect(
+    new Headers(
+      request.mock.calls.findLast(([, init]) => init?.method === "POST")?.[1]?.headers,
+    ).get("Authorization"),
+  ).toBe("Bearer remote-token");
+  endpoint.resetRuntimeEndpoint();
+  await runtimeConnection.access.status.refresh();
+  expect(
+    new Headers(
+      request.mock.calls.findLast(([, init]) => init?.method === "POST")?.[1]?.headers,
+    ).get("Authorization"),
+  ).toBe("Bearer native-after");
+});
+
 describe("runtime endpoint", () => {
   it("requires the environment bootstrap before exposing a Runtime endpoint", async () => {
     const owner = createRuntimeConnection(
-      createBrowserHost(IMAGE_FILENAME_STEM),
+      createBrowserHost(),
       runtimeRequestMeta,
       createRuntimeMutationJournalStorage(createStorage("test.uninitialized")),
     );
@@ -201,9 +349,13 @@ describe("runtime endpoint", () => {
 
   it("retires the storage mirror with the Runtime endpoint owner", async () => {
     const connection = connectionHost();
-    configuration = bindRuntimeEndpointConfiguration(connection.host, (commit) => commit(), {
-      endpoint: DEFAULT_RUNTIME_ENDPOINT,
-    });
+    configuration = bindRuntimeEndpointConfiguration(
+      connection.host,
+      (commit) => commit(),
+      () => ({
+        endpoint: DEFAULT_RUNTIME_ENDPOINT,
+      }),
+    );
     endpoint = createRuntimeEndpoint(configuration);
 
     endpoint.applyRuntimeEndpoint("http://127.0.0.1:27171");
@@ -220,9 +372,13 @@ describe("runtime endpoint", () => {
     };
     let configured: RuntimeEndpointConfiguration | undefined;
     expect(() => {
-      configured = bindRuntimeEndpointConfiguration(connection.host, (commit) => commit(), {
-        endpoint: DEFAULT_RUNTIME_ENDPOINT,
-      });
+      configured = bindRuntimeEndpointConfiguration(
+        connection.host,
+        (commit) => commit(),
+        () => ({
+          endpoint: DEFAULT_RUNTIME_ENDPOINT,
+        }),
+      );
     }).toThrow("configuration subscription failed");
     await connection.dispose();
     expect(configured).toBeUndefined();
@@ -235,9 +391,13 @@ describe("runtime endpoint", () => {
         throw new Error("configuration unsubscribe failed");
       },
     });
-    configuration = bindRuntimeEndpointConfiguration(connection.host, (commit) => commit(), {
-      endpoint: DEFAULT_RUNTIME_ENDPOINT,
-    });
+    configuration = bindRuntimeEndpointConfiguration(
+      connection.host,
+      (commit) => commit(),
+      () => ({
+        endpoint: DEFAULT_RUNTIME_ENDPOINT,
+      }),
+    );
     endpoint = createRuntimeEndpoint(configuration);
 
     endpoint.applyRuntimeEndpoint(DEFAULT_RUNTIME_ENDPOINT, "retired-secret");
@@ -293,9 +453,13 @@ describe("Runtime target credentials", () => {
 
   it("clears credentials when changing addresses and starts fresh after reinstall", async () => {
     const connection = connectionHost();
-    configuration = bindRuntimeEndpointConfiguration(connection.host, (commit) => commit(), {
-      endpoint: DEFAULT_RUNTIME_ENDPOINT,
-    });
+    configuration = bindRuntimeEndpointConfiguration(
+      connection.host,
+      (commit) => commit(),
+      () => ({
+        endpoint: DEFAULT_RUNTIME_ENDPOINT,
+      }),
+    );
     endpoint = createRuntimeEndpoint(configuration);
     endpoint.applyRuntimeEndpoint(DEFAULT_RUNTIME_ENDPOINT, "window-secret");
     endpoint.applyRuntimeEndpoint("https://another.example");
@@ -341,7 +505,7 @@ it("binds the local token and filesystem capability only to the bootstrapped Run
   await runtimeConnection.dispose();
   runtimeConnection = createRuntimeConnection(
     {
-      ...createBrowserHost(IMAGE_FILENAME_STEM),
+      ...createBrowserHost(),
       kind: "desktop",
       bootstrap: async () => ({
         runtime: { endpoint: localEndpoint, localToken: "native-token" },

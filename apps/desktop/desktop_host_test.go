@@ -45,12 +45,6 @@ func (w workingDirectoryPickerFunc) ChooseWorkingDirectory() (string, error) {
 	return w()
 }
 
-type imageSaverFunc func(suggestedFilename string, contents []byte) (bool, error)
-
-func (i imageSaverFunc) SaveImage(suggestedFilename string, contents []byte) (bool, error) {
-	return i(suggestedFilename, contents)
-}
-
 type fileSaverFunc func(suggestedFilename string, contents []byte) (bool, error)
 
 func (s fileSaverFunc) SaveFile(suggestedFilename string, contents []byte) (bool, error) {
@@ -74,6 +68,50 @@ func TestDesktopHostBootstrap(t *testing.T) {
 	}
 	if bootstrap.LocalRuntime.Endpoint != localruntime.DefaultOrigin || bootstrap.LocalRuntime.LocalToken != value {
 		t.Fatalf("local runtime = %#v", bootstrap.LocalRuntime)
+	}
+}
+
+func TestDesktopHostBootstrapObservesCredentialsCreatedAfterStartup(t *testing.T) {
+	home := t.TempDir()
+	host := mustDesktopHost(t, home)
+	initial, err := host.Bootstrap()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if initial.LocalRuntime.LocalToken != "" {
+		t.Fatal("bootstrap returned a credential before Runtime created it")
+	}
+	directory := mustDesktopDataDirectory(t, home)
+	if err := os.MkdirAll(directory.Path(), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	token, err := localruntime.OpenToken(directory.LocalTokenPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	observed, err := host.Bootstrap()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if observed.LocalRuntime.LocalToken != token.Value() {
+		t.Fatal("running Desktop host did not observe the new Runtime credential")
+	}
+	if err := os.WriteFile(directory.LocalTokenPath(), []byte("invalid"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := host.Bootstrap(); err == nil {
+		t.Fatal("bootstrap accepted an invalid replacement credential")
+	}
+	replacement := base64.RawURLEncoding.EncodeToString(bytes.Repeat([]byte{1}, 32))
+	if err := os.WriteFile(directory.LocalTokenPath(), []byte(replacement), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	observed, err = host.Bootstrap()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if observed.LocalRuntime.LocalToken != replacement {
+		t.Fatal("running Desktop host did not recover after credential replacement")
 	}
 }
 
@@ -361,84 +399,6 @@ func TestDesktopHostChooseWorkingDirectoryRejectsInvalidSelections(t *testing.T)
 				t.Fatalf("ChooseWorkingDirectory() = %q, nil; want error", selected)
 			}
 		})
-	}
-}
-
-func TestDesktopHostSaveImageDecodesInlineMaterial(t *testing.T) {
-	host := mustDesktopHost(t, t.TempDir())
-	var filename string
-	var contents []byte
-	host.useImageSaver(imageSaverFunc(func(suggestedFilename string, material []byte) (bool, error) {
-		filename = suggestedFilename
-		contents = append([]byte(nil), material...)
-		return true, nil
-	}))
-
-	saved, err := host.SaveImage("data:image/png;base64,aW1hZ2U=")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !saved {
-		t.Fatal("SaveImage() = false, want completed save")
-	}
-	if !bytes.Equal(contents, []byte("image")) {
-		t.Fatalf("saved material = %q; want image bytes", contents)
-	}
-	if !strings.HasPrefix(filename, "Flame Image ") || !strings.HasSuffix(filename, ".png") {
-		t.Fatalf("suggested filename = %q, want Flame image PNG name", filename)
-	}
-}
-
-func TestDesktopHostSaveImagePreservesCancellation(t *testing.T) {
-	host := mustDesktopHost(t, t.TempDir())
-	host.useImageSaver(imageSaverFunc(func(string, []byte) (bool, error) {
-		return false, nil
-	}))
-
-	if saved, err := host.SaveImage("data:image/svg+xml,%3Csvg%3E%2B%3C%2Fsvg%3E"); err != nil {
-		t.Fatal(err)
-	} else if saved {
-		t.Fatal("canceled SaveImage() = true, want false")
-	}
-}
-
-func TestDesktopHostSaveImageRejectsInvalidSourcesBeforeOpeningDialog(t *testing.T) {
-	tests := []string{
-		"https://example.com/image.png",
-		"data:text/plain;base64,aW1hZ2U=",
-		"data:image/png;base64,%%broken%%",
-		"data:image/png;base64,",
-	}
-	for _, source := range tests {
-		t.Run(source, func(t *testing.T) {
-			called := false
-			host := mustDesktopHost(t, t.TempDir())
-			host.useImageSaver(imageSaverFunc(func(string, []byte) (bool, error) {
-				called = true
-				return true, nil
-			}))
-
-			if saved, err := host.SaveImage(source); err == nil {
-				t.Fatalf("SaveImage(%q) = %v, nil; want validation error", source, saved)
-			}
-			if called {
-				t.Fatal("native image saver opened for invalid source")
-			}
-		})
-	}
-}
-
-func TestDesktopHostSaveImageRequiresAndPropagatesNativeOwner(t *testing.T) {
-	if saved, err := mustDesktopHost(t, t.TempDir()).SaveImage("data:image/png;base64,aW1hZ2U="); err == nil {
-		t.Fatalf("SaveImage() = %v, nil; want unconfigured saver error", saved)
-	}
-
-	host := mustDesktopHost(t, t.TempDir())
-	host.useImageSaver(imageSaverFunc(func(string, []byte) (bool, error) {
-		return false, errors.New("disk full")
-	}))
-	if saved, err := host.SaveImage("data:image/png;base64,aW1hZ2U="); err == nil {
-		t.Fatalf("SaveImage() = %v, nil; want native save error", saved)
 	}
 }
 

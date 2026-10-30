@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -163,24 +164,16 @@ func (a InterruptAnswer) validateQuestionResolution(request *transcript.Question
 		return errors.New("question request has no prompt")
 	}
 	answers := a.Resolution.Question().Answers()
-	if len(answers) != len(request.Fields) {
-		return &QuestionAnswerError{
-			ItemID: a.InterruptItemID,
-			Index:  -1,
-			Detail: fmt.Sprintf(
-				"must contain %d entries, got %d",
-				len(request.Fields), len(answers),
-			),
-		}
+	contract, err := request.AnswerContract()
+	if err != nil {
+		return err
 	}
-	for index, field := range request.Fields {
-		if err := field.ValidateAnswer(answers[index]); err != nil {
-			return &QuestionAnswerError{
-				ItemID: a.InterruptItemID,
-				Index:  index,
-				Detail: err.Error(),
-			}
+	if err := contract.Validate(answers); err != nil {
+		index, detail := -1, err.Error()
+		if field, ok := errors.AsType[*questioncontract.FieldError](err); ok {
+			index, detail = field.Index, field.Cause.Error()
 		}
+		return &QuestionAnswerError{ItemID: a.InterruptItemID, Index: index, Detail: detail}
 	}
 	return nil
 }

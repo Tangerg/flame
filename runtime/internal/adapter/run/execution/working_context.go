@@ -116,7 +116,7 @@ func (w *WorkingContextComposer) ComposeWorkingContext(
 		return nil, applyToErr
 	}
 
-	system, err := w.composeSystemMessage(ctx, input.CWD)
+	system, err := w.composeSystemMessage(ctx, input.CWD, input.WorkspaceCWD)
 	if err != nil {
 		return nil, err
 	}

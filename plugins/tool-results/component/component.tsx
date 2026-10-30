@@ -243,72 +243,6 @@ function httpResponse(response: Record<string, unknown>) {
   return { status, duration, truncated, headers: headers.join("\n"), body };
 }
 
-function xmlElements(element: Element): Element[] | undefined {
-  if (
-    element.attributes.length ||
-    Array.from(element.childNodes).some(
-      (node) =>
-        node.nodeType !== Node.ELEMENT_NODE &&
-        !(node.nodeType === Node.TEXT_NODE && !node.textContent?.trim()),
-    )
-  )
-    return undefined;
-  return Array.from(element.children);
-}
-
-function skillRows(source: string, t: Translate): Row[] {
-  const document = new DOMParser().parseFromString(source, "application/xml");
-  const root = document.documentElement;
-  if (!root) return sourceRows(source);
-  const entries = xmlElements(root);
-  if (
-    document.childNodes.length !== 1 ||
-    root.tagName !== "available_skills" ||
-    document.querySelector("parsererror") ||
-    !entries
-  )
-    return sourceRows(source);
-  const rows: Row[] = [];
-  for (const [index, element] of entries.entries()) {
-    if (
-      element.tagName === "truncated" &&
-      !element.attributes.length &&
-      element.childNodes.length === 1 &&
-      element.firstChild?.nodeType === Node.TEXT_NODE &&
-      element.textContent === "true" &&
-      index === entries.length - 1
-    ) {
-      rows.push({
-        kind: "notice",
-        body: t("skills.truncated"),
-      });
-      continue;
-    }
-    const fields = xmlElements(element);
-    if (
-      element.tagName !== "skill" ||
-      !fields ||
-      fields.length !== 2 ||
-      fields[0]!.tagName !== "name" ||
-      fields[1]!.tagName !== "description" ||
-      fields.some(
-        (field) =>
-          field.attributes.length ||
-          Array.from(field.childNodes).some(
-            (node) => node.nodeType !== Node.TEXT_NODE,
-          ),
-      )
-    )
-      return sourceRows(source);
-    rows.push({
-      kind: "entry",
-      title: fields[0]!.textContent ?? "",
-      body: fields[1]!.textContent ?? "",
-    });
-  }
-  return rows.length ? rows : [{ kind: "notice", body: t("skills.empty") }];
-}
-
 function resultContent(tool: CapturedToolResult, t: Translate): ResultContent {
   const source = tool.result ?? "";
   switch (tool.name) {
@@ -364,7 +298,7 @@ function resultContent(tool: CapturedToolResult, t: Translate): ResultContent {
                 body: skill.description,
               })),
             )
-          : skillRows(source, t),
+          : sourceRows(source),
         continues: page?.next_cursor !== undefined,
         emptyMessage: t("skills.empty"),
       };

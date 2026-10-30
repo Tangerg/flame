@@ -1,3 +1,4 @@
+import { METHODS } from "../contracts/methods";
 import {
   useCallback,
   useEffect,
@@ -39,7 +40,7 @@ import type { ExecuteInput, Surface } from "./types";
 import { LIMITS } from "../contracts/limits";
 import { ApprovalForm } from "./approval";
 import { Outcome, Source } from "./result";
-import { methods, useComputer } from "./useComputer";
+import { useComputer } from "./useComputer";
 import { en } from "./locales/en";
 import { zh } from "./locales/zh";
 import { zhTW } from "./locales/zh-TW";
@@ -53,15 +54,15 @@ const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
 
 function commandLabel(method: string, t: Translate) {
   switch (method) {
-    case methods.open:
+    case METHODS.open:
       return t("open.action");
-    case methods.close:
+    case METHODS.close:
       return t("close.action");
-    case methods.stop:
+    case METHODS.stop:
       return t("stop.action");
-    case methods.reply:
+    case METHODS.reply:
       return t("approval.actions");
-    case methods.execute:
+    case METHODS.execute:
       return t("execute.action");
     default:
       return method;
@@ -269,14 +270,14 @@ export function Computer({ context }: { context: ComponentContext }) {
     const leaseSeconds = Number(lease);
     if (
       !Number.isInteger(leaseSeconds) ||
-      leaseSeconds < 60 ||
+      leaseSeconds < LIMITS.minLeaseSeconds ||
       leaseSeconds > LIMITS.maxLeaseSeconds
     ) {
       setLeaseError(true);
       return;
     }
     setLeaseError(false);
-    void state.submit(methods.open, { leaseSeconds });
+    void state.submit(METHODS.open, { leaseSeconds });
   }
 
   return (
@@ -303,10 +304,10 @@ export function Computer({ context }: { context: ComponentContext }) {
           {active && (
             <Button
               disabled={
-                state.busy(methods.close) || session.state === "stopping"
+                state.busy(METHODS.close) || session.state === "stopping"
               }
               onClick={() =>
-                void state.submit(methods.close, { sessionId: session.id })
+                void state.submit(METHODS.close, { sessionId: session.id })
               }
             >
               {t("close.action")}
@@ -316,10 +317,10 @@ export function Computer({ context }: { context: ComponentContext }) {
             <Button
               variant="primary"
               disabled={
-                state.busy(methods.stop) || session.state === "stopping"
+                state.busy(METHODS.stop) || session.state === "stopping"
               }
               onClick={() =>
-                void state.submit(methods.stop, {
+                void state.submit(METHODS.stop, {
                   sessionId: session.id,
                   operationId: session.operation!.id,
                 })
@@ -468,18 +469,21 @@ export function Computer({ context }: { context: ComponentContext }) {
                   setLease(event.target.value);
                   setLeaseError(false);
                 }}
-                disabled={!currentRead || state.busy(methods.open)}
+                disabled={!currentRead || state.busy(METHODS.open)}
               />
             </FormField>
           </FormRow>
           {leaseError && (
             <p role="alert">
-              {t("open.invalid", { maximum: String(LIMITS.maxLeaseSeconds) })}
+              {t("open.invalid", {
+                minimum: String(LIMITS.minLeaseSeconds),
+                maximum: String(LIMITS.maxLeaseSeconds),
+              })}
             </p>
           )}
           <Button
             variant="primary"
-            disabled={!currentRead || state.busy(methods.open)}
+            disabled={!currentRead || state.busy(METHODS.open)}
             onClick={open}
           >
             {t("open.action")}
@@ -491,8 +495,8 @@ export function Computer({ context }: { context: ComponentContext }) {
           <ApprovalForm
             key={session.approval.id}
             approval={session.approval}
-            pending={state.busy(methods.reply)}
-            respond={(input) => state.submit(methods.reply, input)}
+            pending={state.busy(METHODS.reply)}
+            respond={(input) => state.submit(METHODS.reply, input)}
             opener={approvalReturnTarget}
             t={t}
           />
@@ -512,8 +516,8 @@ export function Computer({ context }: { context: ComponentContext }) {
             <ExecuteForm
               surface={state.surface.value}
               ready={ready}
-              pending={state.busy(methods.execute)}
-              execute={(input) => state.submit(methods.execute, input)}
+              pending={state.busy(METHODS.execute)}
+              execute={(input) => state.submit(METHODS.execute, input)}
               editor={editor}
               t={t}
             />

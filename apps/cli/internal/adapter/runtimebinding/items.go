@@ -182,23 +182,24 @@ func projectTool(projection toolProjection) (conversation.ToolCall, error) {
 		category = protocol.ToolCategoryUnknown
 	}
 	tool := conversation.ToolCall{
-		Kind: category, Name: value.Name, Summary: toolSummary(value.Name, value.Arguments),
+		Kind: category, Name: value.Name, Summary: value.Name,
 		Safety:    projection.safety,
 		StartedAt: projection.startedAt, FinishedAt: projection.finishedAt,
-		Command: toolText(value.Arguments, "command"),
-		Path:    toolText(value.Arguments, "path", "file", "filename"),
-		Query:   toolText(value.Arguments, "query", "pattern", "search"),
-		URL:     toolText(value.Arguments, "url", "uri"),
 	}
 	tool.ArgumentsJSON = argumentsJSON
 	tool.ArgumentsText = value.ArgumentsText
+	if err := projectToolArguments(&tool); err != nil {
+		return conversation.ToolCall{}, fmt.Errorf("project tool %q arguments: %w", value.Name, err)
+	}
 	if value.Result != nil {
 		resultJSON, err := encodeProjection(value.Result)
 		if err != nil {
 			return conversation.ToolCall{}, fmt.Errorf("encode tool result: %w", err)
 		}
 		tool.ResultJSON = resultJSON
-		projectToolResult(&tool, value.Result)
+		if err := projectToolResult(&tool); err != nil {
+			return conversation.ToolCall{}, fmt.Errorf("project tool %q result: %w", value.Name, err)
+		}
 	}
 	if projection.problem != nil {
 		tool.Problem = failure.Clone(projection.problem)

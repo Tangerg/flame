@@ -94,8 +94,17 @@ func (c *client) storeDiagnostics(p publishDiagnosticsParams) {
 	// empty list that clears it. Retaining diagnostics for a document we no
 	// longer synchronize would keep a claim nothing can refresh, and would
 	// reintroduce the growth closing the document was meant to bound.
-	if _, isOpen := c.open[p.URI]; isOpen {
-		c.diags[p.URI] = diagSet{version: p.Version, diagnostics: slices.Clone(p.Diagnostics)}
+	if doc, isOpen := c.open[p.URI]; isOpen {
+		if p.Version > doc.version {
+			c.diagnosticsErr = fmt.Errorf("diagnostics version %d exceeds synchronized version %d", p.Version, doc.version)
+			c.signalDiagnosticsUpdateLocked()
+			c.mu.Unlock()
+			return
+		}
+		previous, observed := c.diags[p.URI]
+		if !observed || p.Version >= previous.version {
+			c.diags[p.URI] = diagSet{version: p.Version, diagnostics: slices.Clone(p.Diagnostics)}
+		}
 	}
 	c.diagnosticsErr = nil
 	c.signalDiagnosticsUpdateLocked()

@@ -10,6 +10,25 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
+func (r *runTreeOwner) admitCancellation(root rundomain.Run, record Record) error {
+	if record.ID != root.ID() || record.ExecutorID == "" {
+		return fmt.Errorf("runs: cancellation root %q has an invalid live executor binding", root.ID())
+	}
+	r.mu.Lock()
+	parking := r.interrupt.committed || r.interrupt.active != nil
+	r.mu.Unlock()
+	if root.State() == rundomain.Waiting && parking {
+		return fmt.Errorf("%w: Run %q is completing parked maintenance", ErrSessionBusy, root.ID())
+	}
+	if root.State() != rundomain.Running || record.SegmentID != root.ActiveSegmentID() {
+		return fmt.Errorf(
+			"runs: cancellation root %q durable segment %q differs from live owner %q",
+			root.ID(), root.ActiveSegmentID(), record.SegmentID,
+		)
+	}
+	return nil
+}
+
 // childCancellation is the root Run-tree owner's one active child-cancel boundary.
 // The owner admits either this boundary or whole-tree cancellation, never both.
 type childCancellation struct {

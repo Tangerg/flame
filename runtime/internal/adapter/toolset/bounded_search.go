@@ -11,11 +11,13 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/qimu/cancellation"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+
+	"github.com/Tangerg/scope/core/jsonschema"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/samber/lo"
 )
@@ -35,15 +37,37 @@ const (
 // the file-set primitive; process-specific rg modes therefore are not part of
 // this contract.
 type runtimeGrepRequest struct {
-	Pattern    string `json:"pattern" jsonschema:"minLength=1,maxLength=65536" jsonschema_description:"Go/RE2 regular expression matched independently against each complete text line. Use inline flags such as (?i) for case-insensitive matching."`
-	Path       string `json:"path,omitempty" jsonschema:"maxLength=4096" jsonschema_description:"Workspace-relative file or directory to search. Defaults to the workspace root."`
-	MaxResults *int   `json:"max_results,omitzero" jsonschema:"minimum=1,maximum=1000" jsonschema_description:"Maximum complete matching lines to retain. Defaults to 100; total still reports the exact match count."`
+	Pattern    string `json:"pattern" jsonschema:"minLength=1" jsonschema_description:"Go/RE2 regular expression matched independently against each complete text line. Use inline flags such as (?i) for case-insensitive matching. The Tool description states its UTF-8 byte budget."`
+	Path       string `json:"path,omitempty" jsonschema_description:"Workspace-relative file or directory to search. Defaults to the workspace root. The Tool description states its UTF-8 byte budget."`
+	MaxResults *int   `json:"max_results,omitzero" jsonschema_description:"Maximum complete matching lines to retain; total still reports the exact match count."`
 }
 
 type runtimeGlobRequest struct {
-	Pattern    string `json:"pattern" jsonschema:"minLength=1,maxLength=4096" jsonschema_description:"Workspace-relative doublestar path pattern, such as **/*.go or src/**/*.ts."`
-	Path       string `json:"path,omitempty" jsonschema:"maxLength=4096" jsonschema_description:"Workspace-relative file or directory to search under. Defaults to the workspace root."`
-	MaxResults *int   `json:"max_results,omitzero" jsonschema:"minimum=1,maximum=1000" jsonschema_description:"Maximum complete paths to retain. Defaults to 100; total still reports the exact match count."`
+	Pattern    string `json:"pattern" jsonschema:"minLength=1" jsonschema_description:"Workspace-relative doublestar path pattern, such as **/*.go or src/**/*.ts. The Tool description states its UTF-8 byte budget."`
+	Path       string `json:"path,omitempty" jsonschema_description:"Workspace-relative file or directory to search under. Defaults to the workspace root. The Tool description states its UTF-8 byte budget."`
+	MaxResults *int   `json:"max_results,omitzero" jsonschema_description:"Maximum complete paths to retain; total still reports the exact match count."`
+}
+
+func runtimeSearchConstraints(patternBytes int) jsonschema.Constraints {
+	// JSON Schema counts Unicode characters. These are necessary scalar bounds;
+	// the search owner still enforces the exact UTF-8 byte budgets before I/O.
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
+		"pattern":     {MaxLength: new(uint64(patternBytes))},
+		"path":        {MaxLength: new(uint64(maxRuntimeSearchPathBytes))},
+		"max_results": {Minimum: new(float64(1)), Maximum: new(float64(workspaceapp.MaxGrepLimit))},
+	}}
+}
+
+func (runtimeGrepRequest) JSONSchemaConstraints() jsonschema.Constraints {
+	return runtimeSearchConstraints(maxRuntimeSearchPatternBytes)
+}
+
+func (runtimeGlobRequest) JSONSchemaConstraints() jsonschema.Constraints {
+	return runtimeSearchConstraints(maxRuntimeGlobPatternBytes)
+}
+
+func runtimeSearchBudgetDescription(patternBytes int) string {
+	return fmt.Sprintf(" Pattern is limited to %d UTF-8 bytes and path to %d UTF-8 bytes. JSON Schema maxLength counts Unicode characters and is only a necessary bound. max_results defaults to %d.", patternBytes, maxRuntimeSearchPathBytes, workspaceapp.DefaultGrepLimit)
 }
 
 type runtimeSearchResponse struct {
@@ -80,9 +104,9 @@ type runtimeSearchTools struct {
 func newRuntimeSearchTools(root string) runtimeSearchTools {
 	glob := mustRuntimeSearchFunc(
 		toolcontract.FuncConfig{
-			Name: string(tool.Glob),
+			Name: string(builtincontract.Glob),
 			Description: "List files from the finite, ignore-aware workspace catalog using a doublestar pattern. " +
-				"Use grep to search file contents.",
+				"Use grep to search file contents." + runtimeSearchBudgetDescription(maxRuntimeGlobPatternBytes),
 		},
 		func(ctx context.Context, request runtimeGlobRequest) (runtimePathSearchResponse, error) {
 			return runtimeGlob(ctx, root, request)
@@ -90,9 +114,9 @@ func newRuntimeSearchTools(root string) runtimeSearchTools {
 	)
 	grep := mustRuntimeSearchFunc(
 		toolcontract.FuncConfig{
-			Name: string(tool.Grep),
+			Name: string(builtincontract.Grep),
 			Description: "Search the finite, ignore-aware workspace text corpus with a Go/RE2 line regular expression. " +
-				"Use glob to choose files and read to inspect surrounding lines.",
+				"Use glob to choose files and read to inspect surrounding lines." + runtimeSearchBudgetDescription(maxRuntimeSearchPatternBytes),
 		},
 		func(ctx context.Context, request runtimeGrepRequest) (runtimeSearchResponse, error) {
 			return runtimeGrep(ctx, root, request)

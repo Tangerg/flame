@@ -74,10 +74,7 @@ for (const theme of ["light", "dark"] as const) {
         panel.getByText("Recorded image; this is not a live desktop.", { exact: true }),
       ).toBeVisible();
       const outcome = test.info().outputPath(`computer-${theme}-${width}-outcome.png`);
-      await panel
-        .getByRole("heading", { name: "Inspected original operation", exact: true })
-        .locator("../../..")
-        .screenshot({ path: outcome });
+      await panel.screenshot({ path: outcome });
       await test.info().attach("published-computer-original-outcome", { path: outcome });
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),

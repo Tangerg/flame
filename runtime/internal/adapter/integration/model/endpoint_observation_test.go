@@ -11,6 +11,7 @@ import (
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"github.com/Tangerg/scope/core/chat"
@@ -46,7 +47,7 @@ func TestEndpointRecordsOneFailureForInvalidResponse(t *testing.T) {
 		t.Fatalf("endpoint observation: %+v, %v", rows, err)
 	}
 	want := errors.Join(cause, invalid.Validate()).Error()
-	if rows[0].Response != nil || rows[0].State != "unknown" || rows[0].Failure != want {
+	if rows[0].Response() != nil || rows[0].State() != modelref.EndpointUnknown || rows[0].Snapshot().Failure != want {
 		t.Fatalf("invalid response was promoted or its failure was duplicated: %+v; want failure %q", rows[0], want)
 	}
 }
@@ -86,7 +87,7 @@ func TestEndpointRetainsGenerationWhenCatalogCannotPriceUsage(t *testing.T) {
 		t.Fatalf("endpoint observation: %+v, %v", rows, err)
 	}
 	row := rows[0]
-	if row.State != "failed" || row.Response == nil || row.Response.Text() != "generated answer" || row.Usage == nil || row.Usage.InputTokens != 10 || row.CostUSD != nil || row.Failure != callErr.Error() {
+	if row.State() != modelref.EndpointFailed || row.Response() == nil || row.Response().Text() != "generated answer" || row.Snapshot().Usage == nil || row.Snapshot().Usage.InputTokens != 10 || row.Snapshot().CostUSD != nil || row.Snapshot().Failure != callErr.Error() {
 		t.Fatalf("pricing failure lost physical evidence or invented a price: %+v", row)
 	}
 }
@@ -148,13 +149,13 @@ func TestEndpointStreamRecordsCompletionAndConsumerStopWithoutPromotion(t *testi
 		if err != nil || len(rows) != 1 {
 			t.Fatalf("endpoint observation: %+v, %v", rows, err)
 		}
-		if id == "complete" && (rows[0].State != "completed" || rows[0].Response == nil || rows[0].Response.Text() != "known stream" || rows[0].Response.Metadata.Usage.InputTokens != 7) {
+		if id == "complete" && (rows[0].State() != modelref.EndpointCompleted || rows[0].Response() == nil || rows[0].Response().Text() != "known stream" || rows[0].Response().Metadata.Usage.InputTokens != 7) {
 			t.Fatal("completion lost exact response/usage")
 		}
-		if id == "stop" && (rows[0].State != "unknown" || rows[0].Response != nil || rows[0].Failure == "") {
+		if id == "stop" && (rows[0].State() != modelref.EndpointUnknown || rows[0].Response() != nil || rows[0].Snapshot().Failure == "") {
 			t.Fatal("consumer stop became completed provider call")
 		}
-		if id == "stop-final" && (rows[0].State != "failed" || rows[0].Response == nil || rows[0].Response.Text() != "known stream" || rows[0].Failure == "") {
+		if id == "stop-final" && (rows[0].State() != modelref.EndpointFailed || rows[0].Response() == nil || rows[0].Response().Text() != "known stream" || rows[0].Snapshot().Failure == "") {
 			t.Fatal("consumer stop discarded complete known response or promoted operation success")
 		}
 	}

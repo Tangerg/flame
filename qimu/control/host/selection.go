@@ -69,6 +69,9 @@ func (b *Bridge) Snapshot(ctx context.Context, token string, names []string) (co
 	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	if session.cleanupOnly {
+		return control.Snapshot{}, qimu.ErrFenced
+	}
 	if len(b.snapshots) >= b.config.MaxPending {
 		return control.Snapshot{}, qimu.ErrCapacity
 	}
@@ -76,7 +79,28 @@ func (b *Bridge) Snapshot(ctx context.Context, token string, names []string) (co
 	return wire, nil
 }
 
-func (b *Bridge) Acquire(ctx context.Context, token string, request control.AcquireRequest) (control.UseGrant, error) {
+// CloseSnapshot discards a pending selection lease. An admitted Acquire already
+// owns its snapshot; closing that ID neither cancels it nor releases its Use.
+func (b *Bridge) CloseSnapshot(_ context.Context, token, snapshotID string) error {
+	session, err := b.session(token, false)
+	if err != nil {
+		return err
+	}
+	if snapshotID == "" {
+		return qimu.ErrInvalid
+	}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if snapshot := b.snapshots[snapshotID]; snapshot != nil {
+		if snapshot.realm != string(RealmID(session.realm)) {
+			return qimu.ErrFenced
+		}
+		delete(b.snapshots, snapshotID)
+	}
+	return nil
+}
+
+func (b *Bridge) Acquire(ctx context.Context, token string, request control.AcquireRequest) (grant control.UseGrant, returned error) {
 	session, err := b.session(token, true)
 	if err != nil {
 		return control.UseGrant{}, err
@@ -104,9 +128,13 @@ func (b *Bridge) Acquire(ctx context.Context, token string, request control.Acqu
 		b.mu.Lock()
 		defer b.mu.Unlock()
 		if old.grant == nil {
-			return control.UseGrant{}, qimu.ErrUnavailable
+			return control.UseGrant{}, old.failure
 		}
 		return clone(*old.grant), nil
+	}
+	if session.cleanupOnly {
+		b.mu.Unlock()
+		return control.UseGrant{}, qimu.ErrFenced
 	}
 	entry := b.executions[request.Execution.ID]
 	selection := b.snapshots[request.SnapshotID]
@@ -120,8 +148,17 @@ func (b *Bridge) Acquire(ctx context.Context, token string, request control.Acqu
 	}
 	operation := &controlOperation{kind: "acquire", realm: session.realm, digest: digest, execution: entry.plan.Execution.ID, parentID: request.ParentUseID, done: make(chan struct{})}
 	b.operations[request.OperationID] = operation
+	delete(b.snapshots, request.SnapshotID)
 	b.mu.Unlock()
-	defer close(operation.done)
+	defer func() {
+		b.mu.Lock()
+		operation.failure = returned
+		if operation.grant == nil && operation.failure == nil {
+			operation.failure = qimu.ErrUnavailable
+		}
+		b.mu.Unlock()
+		close(operation.done)
+	}()
 	selections := make([]qimu.SelectionRef, 0, len(request.Selections))
 	for _, chosen := range request.Selections {
 		if selection.points[chosen.Point.Name] != chosen.Point {
@@ -153,7 +190,7 @@ func (b *Bridge) Acquire(ctx context.Context, token string, request control.Acqu
 	if err != nil {
 		return control.UseGrant{}, err
 	}
-	return b.deliverUse(ctx, session, entry, use, operation, request.SnapshotID)
+	return b.deliverUse(ctx, session, entry, use, operation)
 }
 
 func (b *Bridge) useConfig(session *realmSession, entry *browserExecution, parentID string) (qimu.UseConfig, error) {
@@ -172,7 +209,7 @@ func (b *Bridge) useConfig(session *realmSession, entry *browserExecution, paren
 	return config, nil
 }
 
-func (b *Bridge) deliverUse(ctx context.Context, session *realmSession, entry *browserExecution, use *qimu.Use, operation *controlOperation, snapshotID string) (control.UseGrant, error) {
+func (b *Bridge) deliverUse(ctx context.Context, session *realmSession, entry *browserExecution, use *qimu.Use, operation *controlOperation) (control.UseGrant, error) {
 	grant := control.UseGrant{ID: use.ID(), ApprovalToken: newToken(), Authority: b.authority, Realm: session.realm, Execution: entry.plan.Execution, ScopeID: entry.plan.ScopeID, ScopeGeneration: entry.plan.ScopeGeneration, Objects: []control.ObjectRef{}}
 	for _, source := range use.Sources() {
 		err := qimu.BorrowExport(ctx, use, source, func(_ context.Context, object Object) error {
@@ -210,7 +247,6 @@ func (b *Bridge) deliverUse(ctx context.Context, session *realmSession, entry *b
 	b.uses[use.ID()] = retained
 	copy := clone(grant)
 	operation.grant = &copy
-	delete(b.snapshots, snapshotID)
 	b.mu.Unlock()
 	return grant, nil
 }

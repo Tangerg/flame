@@ -50,13 +50,35 @@ func TestToolArgumentOverrideOwnsANormalizedJSONObject(t *testing.T) {
 	}
 }
 
-func TestToolArgumentOverrideRejectsAmbiguousOrEmptyValues(t *testing.T) {
+func TestToolArgumentOverridePreservesPresentEmptyObject(t *testing.T) {
+	override, err := ParseToolArgumentOverride([]byte(`{}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	object, err := override.Object()
+	if err != nil || object == nil || len(object) != 0 {
+		t.Fatalf("empty replacement = %#v, error = %v", object, err)
+	}
+	var absent *ToolArgumentOverride
+	if absent.Equal(override) || !override.Equal(override.Clone()) {
+		t.Fatal("absent and present empty replacements lost their distinct identity")
+	}
+	encoded, err := json.Marshal(override)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var restored ToolArgumentOverride
+	if err := json.Unmarshal(encoded, &restored); err != nil || !override.Equal(&restored) {
+		t.Fatalf("empty replacement round trip = %s, error = %v", restored.JSON(), err)
+	}
+}
+
+func TestToolArgumentOverrideRejectsAmbiguousOrNonObjectValues(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
 		name  string
 		value string
 	}{
-		{name: "empty object", value: `{}`},
 		{name: "array", value: `[]`},
 		{name: "null", value: `null`},
 		{name: "trailing value", value: `{"one":1} {"two":2}`},

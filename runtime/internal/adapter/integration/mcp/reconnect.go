@@ -121,6 +121,11 @@ func (c *connections) dialAndSwap(ctx context.Context, attempt *attempt, prepare
 	} else if session != nil {
 		c.sessions[session] = &ownedSession{closeFn: cleanupSession, bindings: prepared.admission.Bindings, managed: observation}
 	}
+	owned := c.sessions[session]
+	var toolVersion uint64
+	if owned != nil {
+		toolVersion = owned.toolVersion
+	}
 	c.mu.Unlock()
 	if err == nil && prepared.admission.Run != nil {
 		step = mcpserver.FailureConfiguration
@@ -143,6 +148,14 @@ func (c *connections) dialAndSwap(ctx context.Context, attempt *attempt, prepare
 		err = errors.Join(err, prepared.close())
 	}
 	c.mu.Lock()
+	if owned != nil && owned.end != nil {
+		select {
+		case <-owned.end.done:
+			err = errors.Join(err, errSessionEnded, owned.end.err)
+			step = mcpserver.FailureConnection
+		default:
+		}
+	}
 	// Authorization may expire while waiting for the publication lock.
 	err = errors.Join(err, c.cancellationErr(ctx))
 	current := c.currentAttempt(attempt) && c.cancellationErr(attempt.ctx) == nil
@@ -166,7 +179,13 @@ func (c *connections) dialAndSwap(ctx context.Context, attempt *attempt, prepare
 			attempt.target.oauth = nil
 		}
 	} else {
+		for index := range verifiedTools {
+			verifiedTools[index].catalogVersion = toolVersion
+		}
 		attempt.target.settle(session, verifiedTools, mcpserver.ConnectionConnected, "", nil)
+		if owned != nil && owned.toolChanges != nil {
+			c.watchToolChangesLocked(session, owned, cfg, toolVersion)
+		}
 		if keepHandler {
 			attempt.target.oauth = cfg.OAuthHandler // keep the authorized handler for this session's reconnects
 		}

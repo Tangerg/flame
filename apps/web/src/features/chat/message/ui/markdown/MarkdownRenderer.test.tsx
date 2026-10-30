@@ -12,6 +12,8 @@ import { type Element, type Root } from "hast";
 import { getHighlighter } from "@/lib/highlight/shiki";
 import { MarkdownRenderer } from "@/features/chat/message/ui/markdown/MarkdownRenderer";
 import { rehypeFadeIn } from "@/features/chat/message/ui/markdown/rehypeFadeIn";
+import { mountLocaleBundle, setLocale } from "@/lib/i18n/index";
+import zh from "../../../../../../../../plugins/locale-zh/package/io.github.tangerg.flame/messages.json";
 describe("markdownMessage", () => {
   beforeAll(async () => {
     await getHighlighter();
@@ -487,6 +489,35 @@ describe("markdownMessage", () => {
       expect(title.querySelector('svg[aria-hidden="true"] path')).toBeTruthy();
     }
     expect(container.querySelector("blockquote > p")?.textContent).toBe("A plain quotation.");
+  });
+
+  it("updates every Callout title when the host switches between Chinese and English", async () => {
+    const unmount = mountLocaleBundle("zh", zh);
+    try {
+      const kinds = ["NOTE", "TIP", "IMPORTANT", "WARNING", "CAUTION"];
+      const { container } = testClient.render(
+        <MarkdownRenderer
+          text={kinds.map((kind) => `> [!${kind}]\n> Original body.`).join("\n\n")}
+          reveal="instant"
+        />,
+      );
+      const titles = () =>
+        Array.from(
+          container.querySelectorAll('[data-slot="callout-title"]'),
+          (node) => node.textContent,
+        );
+      expect(titles()).toEqual(["Note", "Tip", "Important", "Warning", "Caution"]);
+      await act(async () => setLocale("zh"));
+      expect(titles()).toEqual(["说明", "提示", "重要", "警告", "注意"]);
+      expect(
+        container.querySelectorAll('[data-slot="callout"] p:not([data-slot="callout-title"])'),
+      ).toHaveLength(5);
+      await act(async () => setLocale("en"));
+      expect(titles()).toEqual(["Note", "Tip", "Important", "Warning", "Caution"]);
+    } finally {
+      await act(async () => setLocale("en"));
+      unmount();
+    }
   });
 
   it("claims only an authored alert marker and keeps escaped or attached markers literal", () => {

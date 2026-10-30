@@ -1,4 +1,3 @@
-import { IMAGE_FILENAME_STEM } from "@/app/product";
 import { type VisualClient } from "./client";
 import { notifyFrom } from "@/features/notifications/public/notifications";
 import { InstalledComponent } from "@/features/plugins/ui/InstalledComponent";
@@ -89,6 +88,7 @@ const MCPServers = Object.values(
 const RESIZER_SOURCE: WorkspaceFileContent = {
   startLine: 1,
   totalLines: 8,
+  endLine: 8,
   content: [
     "const onKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {",
     '  if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;',
@@ -132,24 +132,28 @@ const README_SOURCE: WorkspaceFileContent = {
   content: README_CONTENT,
   startLine: 1,
   totalLines: README_CONTENT.split("\n").length,
+  endLine: README_CONTENT.split("\n").length,
 };
 
 const READING_GUIDE_SOURCE: WorkspaceFileContent = {
   content: LONG_RESPONSE_MARKDOWN,
   startLine: 1,
   totalLines: LONG_RESPONSE_MARKDOWN.split("\n").length,
+  endLine: LONG_RESPONSE_MARKDOWN.split("\n").length,
 };
 
 const READING_BLOCKS_SOURCE: WorkspaceFileContent = {
   content: READING_BLOCKS_MARKDOWN,
   startLine: 1,
   totalLines: READING_BLOCKS_MARKDOWN.split("\n").length,
+  endLine: READING_BLOCKS_MARKDOWN.split("\n").length,
 };
 
 const READING_CALLOUTS_SOURCE: WorkspaceFileContent = {
   content: CALLOUT_MARKDOWN,
   startLine: 1,
   totalLines: CALLOUT_MARKDOWN.split("\n").length,
+  endLine: CALLOUT_MARKDOWN.split("\n").length,
 };
 
 function pending<T>(signal?: AbortSignal): Promise<T> {
@@ -168,7 +172,7 @@ function workspaceDataPlugin(
     setup(ctx) {
       const brandLifetime = ctx.lifetime("visual-brand");
       const brandSources = visualComponentProps(runtimeClient(), brandLifetime, "brand");
-      const saveBrandFile = createBrowserHost(IMAGE_FILENAME_STEM).saveFile;
+      const saveBrandFile = createBrowserHost().saveFile;
       brandLifetime.contribute(SETTINGS_PANE, {
         id: "brand",
         label: "Brand identity",

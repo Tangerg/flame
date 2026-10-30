@@ -164,8 +164,9 @@ type PluginRelease struct {
 
 // A renderer selector selects display only. It never resolves execution authority.
 type PluginRendererSelector struct {
-	Type extension.RendererSelectorKind `json:"type"`
-	Name string                         `json:"name"`
+	Type  extension.RendererSelectorKind `json:"type"`
+	Name  string                         `json:"name,omitempty"`
+	Shape extension.ResultShape          `json:"shape,omitempty"`
 }
 
 //flame:enum

@@ -82,7 +82,7 @@ func TestRetiredAcceptanceSettlesTheOpeningWithoutObservingOrCancelingMaterial(t
 				t.Fatal(err)
 			}
 			stateDirectory := t.TempDir()
-			store, err := openTestWorkbench(stateDirectory)
+			store, err := openTestWorkbench(t, stateDirectory)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -127,7 +127,7 @@ func TestAnotherRunsTerminalEventCannotSettleAnUnconfirmedOpening(t *testing.T) 
 	command := testStartRun("ses_demo_1", "unconfirmed opening")
 	command.CommandID = "cli_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 	stateDirectory := t.TempDir()
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +144,7 @@ func TestAnotherRunsTerminalEventCannotSettleAnUnconfirmedOpening(t *testing.T) 
 	}
 	observation := &observedCurrentOwner{Runtime: base, subscribed: make(chan struct{}, 1)}
 	gate := &gatedRecoveryStartRuntime{Runtime: observation, commandID: command.CommandID, started: make(chan struct{}, 1), release: make(chan struct{})}
-	host, stop, workbenchForHost := runUIFromConfig(t, Config{Runtime: gate, RuntimeProfile: &profile, SessionID: command.SessionID, Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(stateDirectory), DetachOnExit: true})
+	host, stop, workbenchForHost := runUIFromConfig(t, Config{Runtime: gate, RuntimeProfile: &profile, SessionID: command.SessionID, Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(t, stateDirectory), DetachOnExit: true})
 	awaitValue(t, gate.started, "original command lookup")
 	awaitValue(t, observation.subscribed, "current owner snapshot and successor tail")
 	if _, err := base.CancelRun(t.Context(), conversation.CancelRun{RunID: current.RunID, Reason: "finish the other Runtime owner"}); err != nil {

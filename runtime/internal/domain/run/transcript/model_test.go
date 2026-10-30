@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -152,7 +153,7 @@ func TestItemValidateOwnsPayloadInvariants(t *testing.T) {
 		transcript.Reasoning: {Text: "thinking"},
 		transcript.QuestionItem: {Question: &transcript.Question{
 			Fields: []transcript.QuestionField{
-				{Prompt: "pick", Header: "Pick", Kind: transcript.QuestionText},
+				{Prompt: "pick", Header: "Pick", Kind: questioncontract.Text},
 			},
 		}},
 		transcript.Compaction: {Summary: "folded"},
@@ -277,24 +278,24 @@ func TestQuestionValidateRejectsUnanswerableShapes(t *testing.T) {
 		value   transcript.Question
 		wantErr bool
 	}{
-		{name: "text", value: transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Explain", Kind: transcript.QuestionText}}}},
-		{name: "custom choice", value: transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Choose", Kind: transcript.QuestionChoice, Options: choice("A", "B"), AllowCustom: true}}}},
+		{name: "text", value: transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Explain", Kind: questioncontract.Text}}}},
+		{name: "custom choice", value: transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Choose", Kind: questioncontract.Choice, Options: choice("A", "B"), AllowCustom: true}}}},
 		{name: "no fields", value: transcript.Question{}, wantErr: true},
 		{name: "too many fields", value: transcript.Question{Fields: []transcript.QuestionField{
-			{Prompt: "One", Kind: transcript.QuestionText},
-			{Prompt: "Two", Kind: transcript.QuestionText},
-			{Prompt: "Three", Kind: transcript.QuestionText},
-			{Prompt: "Four", Kind: transcript.QuestionText},
-			{Prompt: "Five", Kind: transcript.QuestionText},
+			{Prompt: "One", Kind: questioncontract.Text},
+			{Prompt: "Two", Kind: questioncontract.Text},
+			{Prompt: "Three", Kind: questioncontract.Text},
+			{Prompt: "Four", Kind: questioncontract.Text},
+			{Prompt: "Five", Kind: questioncontract.Text},
 		}}, wantErr: true},
-		{name: "blank prompt", value: transcript.Question{Fields: []transcript.QuestionField{{Kind: transcript.QuestionText}}}, wantErr: true},
-		{name: "long header", value: transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Explain", Header: "1234567890123", Kind: transcript.QuestionText}}}, wantErr: true},
-		{name: "text carries choice settings", value: transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Explain", Kind: transcript.QuestionText, AllowCustom: true}}}, wantErr: true},
-		{name: "choice has one option", value: transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Choose", Kind: transcript.QuestionChoice, Options: choice("A")}}}, wantErr: true},
-		{name: "choice has too many options", value: transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Choose", Kind: transcript.QuestionChoice, Options: choice("A", "B", "C", "D", "E")}}}, wantErr: true},
-		{name: "duplicate choice", value: transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Choose", Kind: transcript.QuestionChoice, Options: choice("A", "A")}}}, wantErr: true},
-		{name: "padded choice", value: transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Choose", Kind: transcript.QuestionChoice, Options: choice(" A", "B")}}}, wantErr: true},
-		{name: "unknown kind", value: transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Choose", Kind: transcript.QuestionFieldKind("invalid")}}}, wantErr: true},
+		{name: "blank prompt", value: transcript.Question{Fields: []transcript.QuestionField{{Kind: questioncontract.Text}}}, wantErr: true},
+		{name: "long header", value: transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Explain", Header: "1234567890123", Kind: questioncontract.Text}}}, wantErr: true},
+		{name: "text carries choice settings", value: transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Explain", Kind: questioncontract.Text, AllowCustom: true}}}, wantErr: true},
+		{name: "choice has one option", value: transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Choose", Kind: questioncontract.Choice, Options: choice("A")}}}, wantErr: true},
+		{name: "choice has too many options", value: transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Choose", Kind: questioncontract.Choice, Options: choice("A", "B", "C", "D", "E")}}}, wantErr: true},
+		{name: "duplicate choice", value: transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Choose", Kind: questioncontract.Choice, Options: choice("A", "A")}}}, wantErr: true},
+		{name: "padded choice", value: transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Choose", Kind: questioncontract.Choice, Options: choice(" A", "B")}}}, wantErr: true},
+		{name: "unknown kind", value: transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Choose", Kind: questioncontract.Kind("invalid")}}}, wantErr: true},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -307,10 +308,10 @@ func TestQuestionValidateRejectsUnanswerableShapes(t *testing.T) {
 
 func TestQuestionEqualityOwnsSemanticRepresentation(t *testing.T) {
 	left := transcript.Question{Fields: []transcript.QuestionField{{
-		Prompt: "Explain", Kind: transcript.QuestionText,
+		Prompt: "Explain", Kind: questioncontract.Text,
 	}}}
 	right := transcript.Question{Fields: []transcript.QuestionField{{
-		Prompt: "Explain", Kind: transcript.QuestionText, Options: []transcript.QuestionOption{},
+		Prompt: "Explain", Kind: questioncontract.Text, Options: []transcript.QuestionOption{},
 	}}}
 	if !left.Equal(right) {
 		t.Fatal("equivalent unanswered Questions differ by empty option representation")
@@ -326,7 +327,7 @@ func TestQuestionEqualityOwnsSemanticRepresentation(t *testing.T) {
 		t.Fatal("unanswered Question equals answered Question")
 	}
 	changed := left
-	changed.Fields = []transcript.QuestionField{{Prompt: "Different", Kind: transcript.QuestionText}}
+	changed.Fields = []transcript.QuestionField{{Prompt: "Different", Kind: questioncontract.Text}}
 	if left.Equal(changed) {
 		t.Fatal("Questions with different prompts are equal")
 	}

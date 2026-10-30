@@ -12,7 +12,7 @@ import (
 
 func TestPendingSteerAtomicallyReturnsAttachmentsIntoANewerDraft(t *testing.T) {
 	directory := t.TempDir()
-	store, err := OpenDirectory(directory, Config{})
+	store, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +38,7 @@ func TestPendingSteerAtomicallyReturnsAttachmentsIntoANewerDraft(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	reopened, err := OpenDirectory(directory, Config{})
+	reopened, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +63,7 @@ func TestPendingSteerAtomicallyReturnsAttachmentsIntoANewerDraft(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	settled, err := OpenDirectory(directory, Config{})
+	settled, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func TestPendingSteerAtomicallyReturnsAttachmentsIntoANewerDraft(t *testing.T) {
 
 func TestPendingSteerAcknowledgementIsRestartIdempotentAndPreservesDraft(t *testing.T) {
 	directory := t.TempDir()
-	store, err := OpenDirectory(directory, Config{})
+	store, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +107,7 @@ func TestPendingSteerAcknowledgementIsRestartIdempotentAndPreservesDraft(t *test
 		t.Fatal(err)
 	}
 
-	reopened, err := OpenDirectory(directory, Config{})
+	reopened, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,7 +211,7 @@ func steerTestPending(
 // command already replaced. The stale identity has to be well-formed, or the
 // shape check refuses it first and the claim is never asked.
 func TestSteerSettlementRefusesAnotherCommandsSteer(t *testing.T) {
-	store, err := OpenDirectory(t.TempDir(), Config{})
+	store, err := OpenDirectory(t, t.TempDir(), Config{})
 	if err != nil {
 		t.Fatal(err)
 	}

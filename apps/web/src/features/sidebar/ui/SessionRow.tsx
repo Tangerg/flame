@@ -5,7 +5,8 @@ import { type SessionActionSpec } from "@/features/navigation/public/sessionActi
 import { SessionActionDialog } from "@/features/sidebar/ui/SessionActionDialog";
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
-import { useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { failureText } from "@/lib/rpcErrors";
 import { AgentRow, AgentRowEditor } from "@/ui/agent/index";
 import { ConfirmDialog } from "@/ui/index";
 import { ContextMenu, DropdownMenu } from "@/ui/index";
@@ -26,6 +27,8 @@ const sr = stylex.create({
   host: { position: "relative", userSelect: "none" },
   trailing: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s1_5 },
   favorite: { color: color.accentText },
+  titleEdit: { display: "flex", flexDirection: "column", gap: space.s1, flex: 1, minWidth: 0 },
+  editError: { color: color.negative },
   stamp: { lineHeight: 1, color: color.fgFaint, fontVariantNumeric: "tabular-nums" },
 });
 
@@ -35,7 +38,7 @@ interface Props {
   indented?: boolean;
   showTime?: boolean;
   onSelect: (id: string) => void;
-  onRename?: (id: string, expectedRevision: number, title: string) => void;
+  onRename?: (id: string, expectedRevision: number, title: string) => Promise<boolean>;
   onFork?: (id: string) => void;
   onDelete?: (id: string) => void;
   onToggleFavorite?: (id: string, expectedRevision: number, favorite: boolean) => void;
@@ -47,41 +50,93 @@ function SessionTitleField({
   onSettle,
 }: {
   title: string;
-  onCommit: (next: string) => void;
+  onCommit: (next: string) => Promise<boolean>;
   onSettle: (restoreFocus: boolean) => void;
 }) {
   const t = useT();
-  const settled = useRef(false);
-  const settle = (restoreFocus: boolean, value?: string) => {
-    if (settled.current) return;
-    settled.current = true;
-    if (value !== undefined) {
-      const next = value.trim();
-      if (next && next !== title) onCommit(next);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const errorId = useId();
+  const mounted = useRef(true);
+  const admission = useRef<"open" | "failed" | "closed" | Promise<boolean>>("open");
+  const [feedback, setFeedback] = useState<
+    { state: "idle" | "busy" } | { state: "error"; message: string }
+  >({ state: "idle" });
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const close = (restoreFocus: boolean) => {
+    admission.current = "closed";
+    onSettle(restoreFocus && document.activeElement === inputRef.current);
+  };
+  const settle = (trigger: "enter" | "blur" | "cancel", value?: string) => {
+    if (!mounted.current) return;
+    // A trailing blur observes a refused Enter attempt instead of retrying it.
+    if (admission.current !== "open" && !(admission.current === "failed" && trigger !== "blur"))
+      return;
+    const restoreFocus = trigger !== "blur";
+    const next = value?.trim();
+    if (!next || next === title) {
+      close(restoreFocus);
+      return;
     }
-    onSettle(restoreFocus);
+    const { promise: pending, resolve, reject } = Promise.withResolvers<boolean>();
+    admission.current = pending;
+    setFeedback({ state: "busy" });
+    try {
+      resolve(onCommit(next));
+    } catch (error) {
+      reject(error);
+    }
+    const fail = (error?: unknown) => {
+      if (!mounted.current || admission.current !== pending) return;
+      admission.current = "failed";
+      setFeedback({ state: "error", message: failureText(error, t("session.error.rename")) });
+    };
+    void pending.then((saved) => {
+      if (!mounted.current || admission.current !== pending) return;
+      if (saved) close(restoreFocus);
+      else fail();
+    }, fail);
   };
 
   return (
-    <TextField
-      variant="inline"
-      defaultValue={title}
-      placeholder={t("session.untitled")}
-      aria-label={t("session.row.titleLabel")}
-      // oxlint-disable-next-line jsx-a11y/no-autofocus
-      autoFocus
-      onClick={(e) => e.stopPropagation()}
-      onKeyDown={(e) => {
-        if (isImeKey(e.nativeEvent)) return;
-        e.stopPropagation();
-        if (e.key === "Escape" || e.key === "Enter") {
-          e.preventDefault();
-          settle(true, e.key === "Enter" ? e.currentTarget.value : undefined);
-        }
-      }}
-      onBlur={(e) => settle(false, e.currentTarget.value)}
-      className={stylex.props(vocab.grow).className}
-    />
+    <div {...stylex.props(sr.titleEdit)}>
+      <TextField
+        ref={inputRef}
+        variant="inline"
+        defaultValue={title}
+        pending={feedback.state === "busy"}
+        aria-busy={feedback.state === "busy"}
+        invalid={feedback.state === "error"}
+        aria-describedby={feedback.state === "error" ? errorId : undefined}
+        placeholder={t("session.untitled")}
+        aria-label={t("session.row.titleLabel")}
+        // oxlint-disable-next-line jsx-a11y/no-autofocus
+        autoFocus
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          if (isImeKey(e.nativeEvent)) return;
+          e.stopPropagation();
+          if (e.key === "Escape" || e.key === "Enter") {
+            e.preventDefault();
+            settle(
+              e.key === "Enter" ? "enter" : "cancel",
+              e.key === "Enter" ? e.currentTarget.value : undefined,
+            );
+          }
+        }}
+        onBlur={(e) => settle("blur", e.currentTarget.value)}
+        className={stylex.props(vocab.grow).className}
+      />
+      {feedback.state === "error" && (
+        <span id={errorId} role="alert" {...stylex.props(sr.editError, typeStep.uiXs)}>
+          {feedback.message}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -97,7 +152,15 @@ export function SessionRow({
   onToggleFavorite,
 }: Props) {
   const rowRef = useRef<HTMLButtonElement>(null);
-  const [renaming, setRenaming] = useState(false);
+  const [editTarget, setEditTarget] = useState<{
+    target: CapturedSession;
+    rename: NonNullable<Props["onRename"]>;
+  } | null>(null);
+  const capturedSession = Object.freeze({
+    id: session.id,
+    revision: session.revision,
+    title: session.title,
+  });
   const contributedActions = useExtensionPoint(SESSION_ACTION);
   const [action, setAction] = useState<{ entry: SessionActionSpec; session: CapturedSession }>();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -134,7 +197,7 @@ export function SessionRow({
             id: "rename",
             icon: "edit" as const,
             label: t("session.action.rename"),
-            run: () => setRenaming(true),
+            run: () => setEditTarget({ target: capturedSession, rename: onRename }),
           },
         ]
       : []),
@@ -155,11 +218,7 @@ export function SessionRow({
       run: () =>
         setAction({
           entry,
-          session: Object.freeze({
-            id: session.id,
-            revision: session.revision,
-            title: session.title,
-          }),
+          session: capturedSession,
         }),
     })),
     ...(onDelete
@@ -206,13 +265,15 @@ export function SessionRow({
 
   const row = (
     <div {...stylex.props(sr.host)}>
-      {renaming ? (
+      {editTarget ? (
         <AgentRowEditor indent={indented ? "nested" : "none"}>
           <SessionTitleField
-            title={session.title.trim()}
-            onCommit={(next) => onRename?.(session.id, session.revision, next)}
+            title={editTarget.target.title.trim()}
+            onCommit={(next) =>
+              editTarget.rename(editTarget.target.id, editTarget.target.revision, next)
+            }
             onSettle={(restoreFocus) => {
-              setRenaming(false);
+              setEditTarget(null);
               if (restoreFocus) requestAnimationFrame(() => rowRef.current?.focus());
             }}
           />

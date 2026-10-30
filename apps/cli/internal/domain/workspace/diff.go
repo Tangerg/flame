@@ -102,35 +102,3 @@ func (d Diff) Validate() error {
 	}
 	return nil
 }
-
-// Text returns the raw patch when available and otherwise renders the complete
-// structured rows without inventing line content.
-func (d Diff) Text() string {
-	if d.Patch != "" {
-		return d.Patch
-	}
-	var output strings.Builder
-	for index, file := range d.Files {
-		if index > 0 {
-			output.WriteByte('\n')
-		}
-		fmt.Fprintf(&output, "diff -- %s (%s)\n", file.Path, file.Status)
-		for _, row := range file.Rows {
-			switch row.Type {
-			case protocol.DiffRowHunk:
-				output.WriteString(row.Text)
-			case protocol.DiffRowAdded:
-				output.WriteByte('+')
-				output.WriteString(*row.Code)
-			case protocol.DiffRowDeleted:
-				output.WriteByte('-')
-				output.WriteString(*row.Code)
-			case protocol.DiffRowContext:
-				output.WriteByte(' ')
-				output.WriteString(*row.Code)
-			}
-			output.WriteByte('\n')
-		}
-	}
-	return strings.TrimSuffix(output.String(), "\n")
-}

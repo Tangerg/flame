@@ -166,7 +166,7 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 		changes: protocol.NewPage([]protocol.WorkspaceFileChange{{Path: "main.go", Status: protocol.FileStatusModified, Added: &added, Removed: &removed}}),
 		diff: &protocol.Diff{Baseline: protocol.DiffBaseline{Type: protocol.DiffBaselineEmptyTree}, Files: []protocol.FileDiff{{
 			Path: "main.go", Status: protocol.FileStatusModified, Added: &added, Removed: &removed,
-			Rows: []protocol.DiffRow{{Type: protocol.DiffRowAdded, RightLine: 1, Code: new("package main")}},
+			Rows: []protocol.DiffRow{{Type: protocol.DiffRowAdded, RightLine: 1, Code: new("package main"), NoNewline: true}},
 		}}},
 		search: &protocol.GrepResult{Matches: []protocol.GrepMatch{{Path: "main.go", LineNumber: 1, Text: "package main"}}, Total: 1},
 		filePages: map[string]*protocol.Page[protocol.FileEntry]{
@@ -176,7 +176,7 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 				ModifiedAt: time.Date(2026, 8, 12, 0, 0, 0, 0, time.UTC),
 			}}),
 		},
-		content: &protocol.FileContent{Content: "package main\n", TotalLines: 1},
+		content: &protocol.FileContent{Content: "package main\n", TotalLines: 2, StartLine: 1, EndLine: 2},
 	}
 	runtime := &Connection{
 		workspaces: stub, meta: requestMeta("test"),
@@ -202,11 +202,11 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 	diff, err := runtime.Diff(t.Context(), workspace.DiffRequest{
 		Workspace: "/workspace", Format: protocol.DiffFormatRows, RowLimit: workspace.DefaultDiffRowLimit(),
 	})
-	if err != nil || diff.Text() != "diff -- main.go (modified)\n+package main" {
+	if err != nil || len(diff.Files) != 1 || diff.Files[0].Path != "main.go" || len(diff.Files[0].Rows) != 1 || *diff.Files[0].Rows[0].Code != "package main" || !diff.Files[0].Rows[0].NoNewline {
 		t.Fatalf("Diff = (%+v, %v)", diff, err)
 	}
 	*stub.diff.Files[0].Rows[0].Code = "mutated"
-	if diff.Text() != "diff -- main.go (modified)\n+package main" {
+	if *diff.Files[0].Rows[0].Code != "package main" {
 		t.Fatal("workspace diff projection aliases runtime row storage")
 	}
 	search, err := runtime.Search(t.Context(), workspace.SearchRequest{
@@ -232,7 +232,7 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 		Workspace: "/workspace", Path: "main.go", Range: workspace.WholeFileReadRange(),
 		ByteLimit: workspace.DefaultReadByteLimit(),
 	})
-	if err != nil || content.Content != "package main\n" || content.Window() != "1 lines" {
+	if err != nil || content.Content != "package main\n" || content.Window() != "lines 1-2/2" {
 		t.Fatalf("Read = (%+v, %v)", content, err)
 	}
 
@@ -400,7 +400,7 @@ func TestWorkspaceAdapterRejectsNilResponses(t *testing.T) {
 
 func TestWorkspaceDefaultRequestsLeaveRuntimePoliciesUnspecified(t *testing.T) {
 	stub := &workspaceBindingStub{
-		search: &protocol.GrepResult{}, content: &protocol.FileContent{},
+		search: &protocol.GrepResult{}, content: &protocol.FileContent{TotalLines: 1, StartLine: 1, EndLine: 1},
 	}
 	connection := &Connection{workspaces: stub, meta: requestMeta("test")}
 	if _, err := connection.Search(t.Context(), workspace.SearchRequest{
@@ -427,7 +427,7 @@ func TestWorkspaceDefaultRequestsLeaveRuntimePoliciesUnspecified(t *testing.T) {
 }
 
 func TestWorkspaceExplicitReadPoliciesReachRuntimeUnchanged(t *testing.T) {
-	stub := &workspaceBindingStub{search: &protocol.GrepResult{}, content: &protocol.FileContent{}}
+	stub := &workspaceBindingStub{search: &protocol.GrepResult{}, content: &protocol.FileContent{TotalLines: 1, StartLine: 1, EndLine: 1}}
 	connection := &Connection{workspaces: stub, meta: requestMeta("test")}
 	matches, err := workspace.NewSearchResultLimit(10000)
 	if err != nil {

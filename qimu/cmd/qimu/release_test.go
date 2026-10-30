@@ -19,8 +19,9 @@ func TestPackageAndVerifyPreserveTheExactArtifactAndRefusePartialOutput(t *testi
 	}
 	manifest := distribution.Manifest{
 		SchemaVersion: 1, Package: "example.theme", Version: "1.0.0",
-		Artifacts: []distribution.Artifact{{Path: "theme.css"}},
-		Units:     []distribution.Unit{{ID: "theme", Profile: qimu.StaticResource, Resources: []string{"theme.css"}}},
+		Artifacts:    []distribution.Artifact{{Path: "theme.css"}},
+		Units:        []distribution.Unit{{ID: "theme", Profile: qimu.StaticResource, Resources: []string{"theme.css"}}},
+		Dependencies: []distribution.LockedRelease{{Package: "example.dependency", Release: qimu.Hash([]byte("original dependency"))}},
 	}
 	writeManifest := func() {
 		t.Helper()
@@ -44,6 +45,9 @@ func TestPackageAndVerifyPreserveTheExactArtifactAndRefusePartialOutput(t *testi
 	}
 	if err := json.Unmarshal(output.Bytes(), &report); err != nil {
 		t.Fatal(err)
+	}
+	if len(report.Lock.Dependencies) != 1 || report.Lock.Dependencies[0] != manifest.Dependencies[0] {
+		t.Fatal("package command lost canonical manifest dependencies")
 	}
 	data, err := os.ReadFile(archive)
 	if err != nil || report.ArchiveDigest != qimu.Hash(data) {

@@ -229,6 +229,52 @@ it("retires and renews the reader budget with retained content visibility", () =
   expect(observations.every(({ nodes }) => !nodes.has(viewport))).toBe(true);
 });
 
+it("keeps its DOM ref attached across ordinary content updates", () => {
+  const projected: (HTMLElement | null)[] = [];
+  const reference = (node: HTMLElement | null) => {
+    projected.push(node);
+  };
+  const view = render(
+    <Panel ref={reference} label="Draft">
+      Before editing
+    </Panel>,
+  );
+  const panel = screen.getByRole("region", { name: "Draft" });
+  view.rerender(
+    <Panel ref={reference} label="Draft">
+      During editing
+    </Panel>,
+  );
+  expect(projected).toEqual([panel]);
+  view.unmount();
+  expect(projected).toEqual([panel, null]);
+});
+
+it("reveals a field focused while new children are committed", () => {
+  const frame = (editing: boolean) => (
+    <div data-testid="viewport" style={{ overflowY: "auto", height: 300 }}>
+      <Panel label="Draft">
+        {editing ? (
+          <input
+            aria-label="New draft"
+            ref={(node) => {
+              node?.focus();
+            }}
+          />
+        ) : (
+          <p>No draft</p>
+        )}
+      </Panel>
+    </div>
+  );
+  const view = render(frame(false));
+  rectangles.set(screen.getByTestId("viewport"), new DOMRect(0, 200, 800, 300));
+  view.rerender(frame(true));
+  const field = screen.getByRole("textbox", { name: "New draft" });
+  expect(document.activeElement).toBe(field);
+  expect(revealed).toEqual([field]);
+});
+
 it.each(["unit", "label", "group"] as const)(
   "reveals the complete %s when its control is visible but its label is above the viewport",
   (kind) => {
@@ -478,6 +524,32 @@ it("keeps the reading witness through its own queued scroll during native reflow
   expect(revealed).toEqual([field, field]);
   expect(document.activeElement).toBe(field);
 });
+it.each([
+  { controlsHeight: 100, wheel: false, reveal: true },
+  { controlsHeight: 150, wheel: false, reveal: true },
+  { controlsHeight: 150, wheel: true, reveal: false },
+])(
+  "retains viewport space recovery with controls=$controlsHeight and wheel=$wheel",
+  ({ controlsHeight, wheel, reveal }) => {
+    const { unit, field, viewport } = scene("unit", true);
+    const controls = field
+      .closest('[data-slot="panel"]')!
+      .querySelector('[data-slot="panel-controls"]')!;
+    rectangles.set(viewport, new DOMRect(0, 200, 800, 100));
+    rectangles.set(controls, new DOMRect(0, 200, 800, controlsHeight));
+    rectangles.set(unit, new DOMRect(0, 210, 300, 200));
+    rectangles.set(field, new DOMRect(0, 220, 200, 100));
+    act(() => field.focus());
+    expect(revealed).toEqual([]);
+    viewport.scrollTop = 80;
+    if (wheel) fireEvent.wheel(viewport, { deltaY: 80 });
+    fireEvent.scroll(viewport);
+    rectangles.set(controls, new DOMRect(0, 200, 800, 50));
+    resize(controls);
+    expect(revealed).toEqual(reveal ? [field] : []);
+    expect(document.activeElement).toBe(field);
+  },
+);
 
 it("responds to native window reflow before an element observer notifies", () => {
   const { unit, field, viewport } = scene();

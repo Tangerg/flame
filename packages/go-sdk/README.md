@@ -25,6 +25,51 @@ including in tests and development commands.
 | `pagination`                                                                           | Page limits and bounded opaque cursors                                |
 | `capture`, `exactint`, `httpresponse`, `httporigin`, `instant`, `procgroup`, `sandbox` | Focused technical guarantees used across owners                       |
 
+`builtin` declares Runtime's built-in tool names, shell arguments and normalized
+transcript results. Runtime produces those values and generates their schemas
+from the same types; CLI consumes them for typed presentation. Scope owns the
+filesystem and HTTP request contracts. Unknown tools retain complete JSON without
+assigning command, path, output or exit-code semantics from field names. These
+Go contracts replace the former Runtime-private declarations; rebuild consumers
+together. Wire payloads and persisted transcript shapes are unchanged.
+
+`question.Contract` is the Runtime's immutable public answer contract. Runtime
+Domain admission, command validation and CLI editing use the same field, option,
+whitespace, uniqueness and custom-value rules. A complete candidate contains one
+values slice per field; an empty inner slice explicitly skips it. Question
+lifecycle, accepted answers and durable state remain owned by Runtime. Field
+kinds and limits feed protocol and Tool schema projections from this contract.
+
+Workspace file reads return complete normalized lines and their actual served
+coordinates, including whole-file requests. `ReadFileRequest.FromEnd` selects
+the suffix of its range without reversing source order. Callers must use those
+coordinates for continuation; a budget that cannot hold a line returns no line
+instead of its former partial prefix. Rebuild Runtime and SDK consumers together.
+
+`extension.ResultShape` owns the closed result-selector vocabulary and its
+admission. A `resultShape` selector carries a typed `shape`; `toolName` and
+`fileExtension` carry independent free `name` values. Runtime contract generation
+projects this value union into Go validation, schema and TypeScript. Rebuild
+plugin declarations and clients together; the former result-shape `name` field
+is refused without conversion.
+
+| Package                                                     | Owner                                                                 |
+| ----------------------------------------------------------- | --------------------------------------------------------------------- |
+| `client`                                                    | Remote HTTP/SSE lifecycle and generated typed operations              |
+| `protocol`                                                  | Runtime wire values, complete tree admission and strict RPC envelopes |
+| `extension`                                                 | Flame invocation origins and installation/call scope policy           |
+| `plugin`                                                    | Flame model roles, tool authoring and product receipt contracts       |
+| `plugin/memory`                                             | Published Memory consumer contract                                    |
+| `plugin/sqlite`                                             | Atomic plugin mutations and durable receipts                          |
+| `model`                                                     | Provider/model selection, generation values and token estimates       |
+| `question`                                                  | Runtime's ordered answer space and field-specific validation          |
+| `builtin`                                                   | Runtime built-in identities, arguments and normalized result values   |
+| `model/catalog`                                             | Translation of Scope's released model catalog                         |
+| `identity`                                                  | Shared resource identities, canonical digests and lexical constraints |
+| `filesystem`                                                | File admission, path identity, directory resolution and leases        |
+| `pagination`                                                | Page limits and bounded opaque cursors                                |
+| `capture`, `exactint`, `httpresponse`, `instant`, `sandbox` | Focused technical guarantees used across owners                       |
+
 `cmd/flame-sdk` generates Flame model-role contracts and projects Flame backend
 policy. Runtime's `cmd/pluginpack` translates Flame declarations into Qimu releases;
 Qimu owns their archive format, validation and immutable content. Generic capability generation is
@@ -41,8 +86,18 @@ are encoded through `qimu/mcp.EncodeReply`; only the business owner commits thei
 representation. Protocol consumers validate complete values with
 `ValidateWireTree`; individual generated node validators are private.
 
+`plugin.DefiniteToolFailure` projects failures only when a caller can prove no
+external mutation. An existing Scope Failure already owns its kind, public
+output and diagnostic cause; the SDK returns it and any boundary wrapping
+unchanged. Execution cancellation remains control rather than model feedback.
+
 Use the Go version in `go.mod`. From this directory run `GOWORK=off go test ./...`.
 Cross-module regeneration is coordinated from the repository root by
 `make generate`. Publishers own contract identities; the SDK holds generated
 consumer projections and its commands never import publisher implementations.
 Runtime's generator owns the typed Runtime operations and wire constraints.
+
+`filesystem/commit` owns the pure publication evidence used by persistence ports:
+uncommitted, visible and durable outcomes retain their original I/O diagnostic.
+Applications consume that value without importing filesystem operations. The
+filesystem adapter remains responsible for establishing the physical evidence.

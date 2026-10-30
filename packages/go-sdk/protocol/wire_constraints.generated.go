@@ -1261,6 +1261,20 @@ func (m MCPAuthorizationAttemptStatus) validateWire() error {
 	)
 }
 
+func (p PluginRendererSelector) validateWire() error {
+	return collectWireViolations("PluginRendererSelector",
+		maxLength("name", p.Name, 256),
+		closedEnum("type", string(p.Type), []string{"toolName", "resultShape", "fileExtension"}, false),
+		closedEnum("shape", string(p.Shape), []string{"search", "patch", "command", "webSearch"}, true),
+		requiredWhen(wireFieldEquals(p, "type", "toolName"), "name", p),
+		forbiddenWhen(wireFieldEquals(p, "type", "toolName"), "shape", p),
+		requiredWhen(wireFieldEquals(p, "type", "resultShape"), "shape", p),
+		forbiddenWhen(wireFieldEquals(p, "type", "resultShape"), "name", p),
+		requiredWhen(wireFieldEquals(p, "type", "fileExtension"), "name", p),
+		forbiddenWhen(wireFieldEquals(p, "type", "fileExtension"), "shape", p),
+	)
+}
+
 func (p PluginValueChange) validateWire() error {
 	return collectWireViolations("PluginValueChange",
 		optionalMaxLength("value", p.Value, 8192),
@@ -1336,7 +1350,7 @@ func (t ToolRef) validateWire() error {
 		closedEnum("type", string(t.Type), []string{"builtIn", "mcp"}, false),
 		requiredWhen(wireFieldEquals(t, "type", "builtIn"), "name", t),
 		forbiddenWhen(wireFieldEquals(t, "type", "builtIn"), "server", t),
-		allowedValuesWhen(wireFieldEquals(t, "type", "builtIn"), "name", t, []string{"apply_patch", "ask_user", "create_goal", "delegate_task", "edit", "enter_plan_mode", "exit_plan_mode", "get_goal", "glob", "grep", "list_skills", "load_skill", "propose_skill", "read", "read_shell_output", "read_skill_resource", "read_tool_result", "report_goal_outcome", "search_tools", "set_plan", "shell", "stop_shell", "web_fetch", "web_search"}),
+		allowedValuesWhen(wireFieldEquals(t, "type", "builtIn"), "name", t, []string{"apply_patch", "ask_user", "create_goal", "delegate_task", "edit", "enter_plan_mode", "exit_plan_mode", "get_goal", "glob", "grep", "list_skills", "load_skill", "propose_skill", "read", "read_shell_output", "read_skill_resource", "read_tool_result", "report_goal_outcome", "search_tools", "set_plan", "shell", "stop_shell"}),
 		requiredWhen(wireFieldEquals(t, "type", "mcp"), "server", t),
 		requiredWhen(wireFieldEquals(t, "type", "mcp"), "name", t),
 	)
@@ -1772,6 +1786,7 @@ func (d DiffRow) validateWire() error {
 		forbiddenWhen(wireFieldEquals(d, "type", "hunk"), "code", d),
 		forbiddenWhen(wireFieldEquals(d, "type", "hunk"), "leftLine", d),
 		forbiddenWhen(wireFieldEquals(d, "type", "hunk"), "rightLine", d),
+		forbiddenWhen(wireFieldEquals(d, "type", "hunk"), "noNewline", d),
 		requiredWhen(wireFieldEquals(d, "type", "context"), "code", d),
 		requiredWhen(wireFieldEquals(d, "type", "context"), "leftLine", d),
 		requiredWhen(wireFieldEquals(d, "type", "context"), "rightLine", d),
@@ -2716,14 +2731,6 @@ func (p PluginContribution) validateWire() error {
 		requiredTextPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
 		requiredTextPattern("export", p.Export, "^[a-z][a-z0-9._-]{0,63}$"),
 		requiredText("contract", p.Contract),
-	)
-}
-
-func (p PluginRendererSelector) validateWire() error {
-	return collectWireViolations("PluginRendererSelector",
-		requiredText("name", p.Name),
-		maxLength("name", p.Name, 256),
-		closedEnum("type", string(p.Type), []string{"toolName", "resultShape", "fileExtension"}, false),
 	)
 }
 

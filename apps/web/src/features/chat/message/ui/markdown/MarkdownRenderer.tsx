@@ -7,14 +7,13 @@ import { remarkSyntax } from "@/features/chat/message/ui/markdown/remarkSyntax";
 import remend from "remend";
 import { splitStreamingBlocks } from "@/features/chat/message/ui/markdown/splitStreamingBlocks";
 import { createMarkdownComponents } from "@/features/chat/message/ui/markdown/markdownComponents";
-import { isInlineMarkdownImage } from "@/features/chat/message/ui/markdown/MarkdownImage";
+import { isInlineImage } from "@/foundation/imageExport";
 import { handleMarkdownCopy } from "@/features/chat/message/ui/markdown/markdownSelectionCopy";
 import { ensureKatexCss } from "@/features/chat/message/ui/markdown/katexCss";
 import { rehypeFadeIn } from "@/features/chat/message/ui/markdown/rehypeFadeIn";
 import { rehypeFileRefs } from "@/features/chat/message/ui/markdown/rehypeFileRefs";
 import { rehypeFootnoteLabels } from "@/features/chat/message/ui/markdown/rehypeFootnoteLabels";
 import { rehypeStreamCaret } from "@/features/chat/message/ui/markdown/rehypeStreamCaret";
-import { normalizeMarkdownMath } from "@/features/chat/message/ui/markdown/preprocess";
 import { remarkCallouts } from "@flame/ui";
 import { remarkLiteralUnknownHtml } from "@/features/chat/message/ui/markdown/remarkLiteralUnknownHtml";
 import {
@@ -55,7 +54,7 @@ const allowElement = (el: { tagName: string }) => !DENIED_HTML_TAGS.has(el.tagNa
 const markdownUrlTransform: NonNullable<
   React.ComponentProps<typeof ReactMarkdown>["urlTransform"]
 > = (value, _key, node) =>
-  node.tagName === "img" && isInlineMarkdownImage(value) ? value : defaultUrlTransform(value);
+  node.tagName === "img" && isInlineImage(value) ? value : defaultUrlTransform(value);
 
 export function MarkdownRenderer(props: MarkdownMessageProps) {
   const { text, reveal } = props;
@@ -71,15 +70,17 @@ export function MarkdownRenderer(props: MarkdownMessageProps) {
   const source = instant ? committed : deferred;
   useVisibleTextMaterial(source === text);
 
-  const normalized = useMemo(() => normalizeMarkdownMath(source), [source]);
-
   const repaired = useMemo(() => {
-    if (instant) return normalized;
-    return remend(normalized);
-  }, [instant, normalized]);
+    if (instant) return source;
+    return remend(source);
+  }, [instant, source]);
 
   const blocks = useMemo(() => splitStreamingBlocks(repaired), [repaired]);
   const lastIdx = blocks.length - 1;
+
+  useEffect(() => {
+    ensureKatexCss();
+  }, []);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -114,10 +115,6 @@ const MarkdownBlock = memo(function MarkdownBlock({
   footnotePrefix,
 }: MarkdownBlockProps) {
   const t = useT();
-  const hasMath = text.includes("$");
-  useEffect(() => {
-    if (hasMath) ensureKatexCss();
-  }, [hasMath]);
 
   const rehypePlugins = useMemo(() => {
     const labels: [typeof rehypeFootnoteLabels, string] = [rehypeFootnoteLabels, footnotePrefix];

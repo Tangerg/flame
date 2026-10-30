@@ -37,7 +37,6 @@ export const de: Record<string, string> = {
   "change.modified": "Bearbeitet",
   "change.moved": "Verschoben",
   "change.deleted": "Gelöscht",
-  "skills.truncated": "Weitere Skills wurden aus diesem Ergebnis ausgelassen.",
   "skills.empty": "Es wurden keine Skills zurückgegeben.",
   "http.truncated": "Gekürzt",
   "caption.source": "Quelltext",

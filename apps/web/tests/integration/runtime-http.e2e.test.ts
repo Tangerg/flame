@@ -1,4 +1,6 @@
 import { OperationFailure } from "@flame/runtime-client";
+import { parseMcpImport } from "../../../../plugins/mcp/component/import";
+import { candidate as mcpCandidate } from "../../../../plugins/mcp/component/model";
 import {
   addInstalledMemory,
   deleteInstalledMemory,
@@ -74,7 +76,7 @@ const compactionContextPressure = "context ".repeat(4_200);
 
 const defaultTestDeadlineMilliseconds = 5_000;
 
-const runnerStartupDeadlineMilliseconds = 20_000;
+const runtimeFixtureStartupMilliseconds = 60_000;
 
 const compactionCutpointDeadlineMilliseconds = 15_000;
 
@@ -673,8 +675,12 @@ function writeChatCompletion(
   response.end("data: [DONE]\n\n");
 }
 
-async function waitUntilReady(baseUrl: string, processError: () => string): Promise<void> {
-  for (let attempt = 0; attempt < 200; attempt++) {
+async function waitUntilReady(
+  baseUrl: string,
+  processError: () => string,
+  readyBefore = Date.now() + 20_000,
+): Promise<void> {
+  while (Date.now() < readyBefore) {
     try {
       const response = await fetch(`${baseUrl}/v2/health/ready`);
       await response.arrayBuffer();
@@ -766,10 +772,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
     Awaited<ReturnType<FlameClient["plugins"]["install"]>>
   >();
 
-  const activateManagedOwner = async (
-    feature: "memory" | "schedules",
-    timeoutMilliseconds = defaultTestDeadlineMilliseconds,
-  ) => {
+  const activateManagedOwner = async (feature: "memory" | "schedules", readyBefore?: number) => {
     if (!client) throw new Error("runtime client was not initialized");
     let installation = (await client.plugins.list()).data.find(
       (item) => item.selected.name === `flame.${feature}`,
@@ -801,7 +804,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
         tools.some(
           (tool) => tool.name === (feature === "memory" ? "search_memory" : "list_schedules"),
         ),
-      timeoutMilliseconds,
+      readyBefore,
     );
     return installation;
   };
@@ -809,19 +812,14 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
   const awaitMCPTools = async (
     server: Parameters<FlameClient["mcp"]["listTools"]>[0],
     ready: (tools: MCPTool[]) => boolean,
-    timeoutMilliseconds = defaultTestDeadlineMilliseconds,
+    readyBefore = Date.now() + defaultTestDeadlineMilliseconds,
   ) => {
     if (!client) throw new Error("runtime client was not initialized");
-    const deadline = Date.now() + timeoutMilliseconds;
     while (!ready((await client.mcp.listTools(server)).data)) {
-      if (Date.now() >= deadline) {
-        const states = (await client.mcp.list()).data.map(({ id, status, handshakeTimeout }) => ({
-          id,
-          status,
-          handshakeTimeout,
-        }));
+      if (Date.now() >= readyBefore) {
+        const statuses = (await client.mcp.list()).data.map(({ id, status }) => ({ id, status }));
         throw new Error(
-          `MCP source did not become ready: ${JSON.stringify(server)}; states=${JSON.stringify(states)}; runner=${runnerOutput}; ${processOutput}`,
+          `MCP source did not become ready: ${JSON.stringify(server)}; servers=${JSON.stringify(statuses)}; ${processOutput}`,
         );
       }
       await new Promise((resolve) => setTimeout(resolve, 25));
@@ -856,7 +854,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
     OTEL_SDK_DISABLED: "true",
   });
 
-  const startRunnerProcess = async () => {
+  const startRunnerProcess = async (readyBefore = Date.now() + defaultTestDeadlineMilliseconds) => {
     const directory = join(runtimeStore, "runner");
     const socketPath = join(directory, "control.sock");
     const child = spawn(
@@ -882,10 +880,9 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
         `runner exited before fixture shutdown (${code}, ${signal}): ${runnerOutput}`,
       );
     });
-    const deadline = Date.now() + runnerStartupDeadlineMilliseconds;
     // The fixture owns this process across deliberate Host crashes. This probe
     // only orders startup; Runtime still performs the original identity handshake.
-    while (Date.now() < deadline) {
+    while (Date.now() < readyBefore) {
       const socket = createConnection(socketPath);
       try {
         await within(
@@ -897,7 +894,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
             stopped,
           ]),
           "runner control listener",
-          deadline - Date.now(),
+          readyBefore - Date.now(),
         );
         return;
       } catch (error) {
@@ -925,7 +922,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
     processRunner = undefined;
   };
 
-  const startRuntimeProcess = async () => {
+  const startRuntimeProcess = async (readyBefore?: number) => {
     const { spawn } = await import("node:child_process");
     processOutput = "";
     runtime = spawn(runtimeExecutable, [], {
@@ -939,7 +936,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
     runtime.stderr?.on("data", (chunk: Buffer) => {
       processOutput += chunk.toString();
     });
-    await waitUntilReady(baseUrl, () => processOutput);
+    await waitUntilReady(baseUrl, () => processOutput, readyBefore);
   };
 
   const stopRuntimeProcess = async () => {
@@ -1029,6 +1026,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
   };
 
   beforeAll(async () => {
+    const readyBefore = Date.now() + runtimeFixtureStartupMilliseconds;
     environmentRoot = await mkdtemp(join(tmpdir(), "flame-runtime-e2e-"));
     root = join(environmentRoot, "workspace");
     runtimeHome = join(environmentRoot, "home");
@@ -1201,16 +1199,15 @@ for await (const line of lines) {
       ]),
     ]);
 
-    await startRunnerProcess();
+    await startRunnerProcess(readyBefore);
     runtimePort = await unusedLoopbackPort();
     baseUrl = `http://127.0.0.1:${runtimePort}`;
-    await startRuntimeProcess();
+    await startRuntimeProcess(readyBefore);
     client = createRuntimeClient();
     negotiated = (await client.runtime.discover()).capabilities;
-    // Initial package startup belongs to fixture setup; tests consume admitted sources.
     for (const feature of ["memory", "schedules"] as const)
-      await activateManagedOwner(feature, 30_000);
-  }, 60_000);
+      await activateManagedOwner(feature, readyBefore);
+  }, runtimeFixtureStartupMilliseconds);
 
   beforeEach(async () => {
     if (client) negotiated = (await client.runtime.discover()).capabilities;
@@ -3874,6 +3871,78 @@ for await (const line of lines) {
     await runtimeEvents.return?.();
   }, 30_000);
 
+  it("handshakes imported stdio and Streamable HTTP material through the production gateway", async () => {
+    if (!client) throw new Error("runtime client was not initialized");
+    const requests: string[] = [];
+    const authorization: (string | undefined)[] = [];
+    const headers: (string | string[] | undefined)[] = [];
+    const remote = createHttpServer(async (request, response) => {
+      if (request.method !== "POST") {
+        response.writeHead(405).end();
+        return;
+      }
+      const chunks: Buffer[] = [];
+      for await (const chunk of request) chunks.push(Buffer.from(chunk));
+      const message = JSON.parse(Buffer.concat(chunks).toString()) as {
+        method: string;
+        id?: string | number;
+        params: { protocolVersion: string };
+      };
+      requests.push(message.method);
+      authorization.push(request.headers.authorization);
+      headers.push(request.headers["x-import"]);
+      if (message.id === undefined) {
+        response.writeHead(202).end();
+        return;
+      }
+      if (message.method !== "initialize" && message.method !== "tools/list") {
+        response.writeHead(400).end();
+        return;
+      }
+      const result =
+        message.method === "initialize"
+          ? {
+              protocolVersion: message.params.protocolVersion,
+              capabilities: { tools: {} },
+              serverInfo: { name: "import-fixture", version: "1" },
+            }
+          : { tools: [] };
+      response.writeHead(200, { "Content-Type": "application/json" });
+      response.end(JSON.stringify({ jsonrpc: "2.0", id: message.id, result }));
+    });
+    await new Promise<void>((resolve) => remote.listen(0, "127.0.0.1", resolve));
+    const address = remote.address();
+    if (address === null || typeof address === "string") throw new Error("missing fixture address");
+    try {
+      const imported = parseMcpImport(
+        JSON.stringify({
+          mcpServers: {
+            "import-stdio": { type: "stdio", command: process.execPath, args: [mcpFixturePath] },
+            "import-http": {
+              type: "streamableHttp",
+              url: `http://127.0.0.1:${address.port}/mcp`,
+              headers: { AuThOrIzAtIoN: "Bearer import-fixture", "X-Import": "exact" },
+            },
+          },
+        }),
+      );
+      for (const input of imported) {
+        await expect(client!.mcp.test(mcpCandidate(input))).resolves.toEqual({
+          outcome: "reachable",
+        });
+      }
+      expect(requests).toContain("initialize");
+      expect(requests).toContain("tools/list");
+      expect(new Set(authorization)).toEqual(new Set(["Bearer import-fixture"]));
+      expect(new Set(headers)).toEqual(new Set(["exact"]));
+    } finally {
+      remote.closeAllConnections();
+      await new Promise<void>((resolve, reject) =>
+        remote.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+  }, 30_000);
+
   it("probes, connects, lists and reconnects a real stdio MCP server", async () => {
     if (!client) throw new Error("runtime client was not initialized");
 
@@ -4561,6 +4630,46 @@ for await (const line of lines) {
       });
     }
   }, 30_000);
+
+  it("pages complete source lines through the real byte-capped file protocol", async () => {
+    if (!client) throw new Error("runtime client was not initialized");
+    const directory = join(root, "file-pages");
+    await mkdir(directory);
+    const lines = Array.from({ length: 3000 }, (_, index) => `${index + 1}:${"é".repeat(1600)}`);
+    lines.push("");
+    const source = lines.join("\n");
+    expect(Buffer.byteLength(source)).toBeGreaterThan(8 << 20);
+    await writeFile(join(directory, "large.txt"), source);
+    const workspace = await client.workspaces.open({ path: directory });
+    for (const fromEnd of [false, true]) {
+      let startLine = 1;
+      let endLine = lines.length;
+      const pages: string[] = [];
+      while (startLine <= endLine) {
+        const page = await workspace.files.read({
+          path: "large.txt",
+          startLine,
+          endLine,
+          fromEnd,
+          maxBytes: Number.MAX_SAFE_INTEGER,
+        });
+        expect(page.startLine).toBeDefined();
+        expect(page.endLine).toBeDefined();
+        expect(Buffer.byteLength(page.content)).toBeLessThanOrEqual(8 << 20);
+        expect(page.content).toBe(lines.slice(page.startLine! - 1, page.endLine!).join("\n"));
+        pages.push(page.content);
+        if (fromEnd) {
+          expect(page.endLine).toBe(endLine);
+          endLine = page.startLine! - 1;
+        } else {
+          expect(page.startLine).toBe(startLine);
+          startLine = page.endLine! + 1;
+        }
+      }
+      expect(pages.length).toBeGreaterThan(1);
+      expect((fromEnd ? pages.reverse() : pages).join("\n")).toBe(source);
+    }
+  });
 
   it("consumes workspace files and hook trust through bound APIs", async () => {
     if (!client) throw new Error("runtime client was not initialized");

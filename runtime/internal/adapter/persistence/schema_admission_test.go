@@ -30,6 +30,7 @@ func TestOpenAdmitsOnlyTheExactCurrentSchema(t *testing.T) {
 		{"former command without retirement", `DROP TRIGGER plugin_command_phase; CREATE TRIGGER plugin_command_phase BEFORE UPDATE OF phase ON plugin_commands WHEN NOT (NEW.phase=OLD.phase OR (OLD.phase='prepared' AND NEW.phase='dispatched') OR (OLD.phase='dispatched' AND NEW.phase='observed')) BEGIN SELECT RAISE(ABORT,'command phase cannot regress'); END`},
 		{"former Tool result time unit", `ALTER TABLE tool_result_blobs RENAME COLUMN created_at_ns TO created_at`},
 		{"former feedback time unit", `ALTER TABLE feedback_entries RENAME COLUMN created_at_ns TO created_at`},
+		{"former history without committed resource retirement", `DROP TABLE committed_session_resource_retirements`},
 	} {
 		t.Run(change.name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "flame.db")

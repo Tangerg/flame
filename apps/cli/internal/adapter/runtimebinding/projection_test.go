@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	jsonv1 "encoding/json"
 	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"reflect"
 	"strings"
@@ -12,7 +13,9 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/scope/tools/fs"
 )
 
 func TestProjectToolPreservesStructuredDetails(t *testing.T) {
@@ -58,7 +61,7 @@ func TestProjectUnknownToolPreservesCompleteArgumentsAndResult(t *testing.T) {
 	}
 }
 
-func TestProjectToolMaterialIsolatesMalformedOptionalFields(t *testing.T) {
+func TestProjectUnknownToolRetainsFieldsWithoutAssigningSemantics(t *testing.T) {
 	tool, err := projectTool(toolProjection{invocation: &protocol.ToolInvocation{
 		Name: "custom_tool",
 		Arguments: map[string]any{
@@ -72,7 +75,7 @@ func TestProjectToolMaterialIsolatesMalformedOptionalFields(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if tool.Command != "" || tool.Path != "input.txt" || tool.ExitCode != nil || tool.Output != "src/main.go" {
+	if tool.Command != "" || tool.Path != "" || tool.ExitCode != nil || !strings.Contains(tool.Output, `"path": "src/main.go"`) || !strings.Contains(tool.Output, `"not presentation text"`) {
 		t.Fatalf("tool material = %+v", tool)
 	}
 	if !bytes.Contains(tool.ArgumentsJSON, []byte(`"command":7`)) ||
@@ -89,7 +92,7 @@ func TestProjectToolRetainsDisplayAfterSourceReuse(t *testing.T) {
 		"changes": []any{change}, "recordId": jsonv1.Number("9007199254740993"),
 	}
 	tool, err := projectTool(toolProjection{invocation: &protocol.ToolInvocation{
-		Name: "shell", Arguments: arguments, Result: result,
+		Name: string(builtin.Shell), Category: protocol.ToolCategoryShell, Arguments: arguments, Result: result,
 	}, status: protocol.ItemStatusCompleted})
 	if err != nil {
 		t.Fatal(err)
@@ -97,10 +100,11 @@ func TestProjectToolRetainsDisplayAfterSourceReuse(t *testing.T) {
 	arguments["command"] = "reused"
 	result["output"], result["exitCode"], result["recordId"] = "reused", 7, 0
 	change["path"] = "reused"
-	if tool.Command != "printf approved" || tool.Output != "approved" || tool.Path != "result.txt" ||
+	if tool.Command != "printf approved" || tool.Output != "approved" || tool.Path != "" ||
 		tool.ExitCode == nil || *tool.ExitCode != 0 ||
 		!bytes.Contains(tool.ArgumentsJSON, []byte(`"command":"printf approved"`)) ||
 		!bytes.Contains(tool.ResultJSON, []byte(`"recordId":9007199254740993`)) ||
+		!bytes.Contains(tool.ResultJSON, []byte(`"path":"result.txt"`)) ||
 		bytes.Contains(tool.ResultJSON, []byte("reused")) {
 		t.Fatalf("tool changed with reused source: %+v", tool)
 	}
@@ -626,5 +630,141 @@ func TestProjectIncompleteModelObservationsFromRuntime(t *testing.T) {
 				t.Fatalf("live/restored observation differs: live=%+v restored=%+v", completed.Block, restored)
 			}
 		})
+	}
+}
+
+func TestExplicitSkipSurvivesWireColdAndCompletionProjection(t *testing.T) {
+	at := time.Unix(1, 0).UTC()
+	item := protocol.Item{ID: "item_skip", RunID: "run_1", Status: protocol.ItemStatusCompleted, Type: protocol.ItemTypeQuestion, CreatedAt: at, Question: &protocol.Question{
+		Fields: []protocol.QuestionField{{Prompt: "Context", Type: protocol.QuestionFieldText}}, Answers: [][]string{{}},
+	}}
+	encoded, err := json.Marshal(item)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(encoded, []byte(`"answers":[[]]`)) {
+		t.Fatalf("skip encoding = %s", encoded)
+	}
+	var decoded protocol.Item
+	if err := json.Unmarshal(encoded, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if err := protocol.ValidateWireTree(decoded); err != nil {
+		t.Fatal(err)
+	}
+	cold, err := projectItem(decoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	live, included, err := projectEvent(protocol.RunEvent{EventID: "evt_skip", RunID: "run_1", SegmentID: "seg_1", Timestamp: at, Event: protocol.StreamEvent{Type: protocol.StreamItemCompleted, Item: &decoded}})
+	if err != nil || !included {
+		t.Fatalf("completion = %+v, %v", live, err)
+	}
+	completed, ok := live.Event.(conversation.BlockCompleted)
+	if !ok {
+		t.Fatalf("completion type = %T", live.Event)
+	}
+	for _, block := range []conversation.Block{cold, completed.Block} {
+		if block.Question == nil || !block.Question.Answered() || len(block.Question.Answers) != 1 || len(block.Question.Answers[0]) != 0 {
+			t.Fatalf("skip projection = %+v", block.Question)
+		}
+	}
+	if !cold.Question.Equal(*completed.Block.Question) {
+		t.Fatal("cold and completion projections disagree about skip")
+	}
+	decoded.Question.Answers = nil
+	pending, err := projectItem(decoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pending.Question.Answered() {
+		t.Fatal("an unanswered question became an accepted skip")
+	}
+}
+
+func TestUnknownToolFieldsRemainUninterpretedMaterial(t *testing.T) {
+	arguments := map[string]any{"command": "a schema label", "path": "not a filesystem target", "query": "metadata", "url": "an opaque key", "description": "a stored value"}
+	result := map[string]any{"output": "stored output metadata", "exitCode": 7, "changes": []any{map[string]any{"path": "a record key"}}, "wide": jsonv1.Number("9007199254740993")}
+	call, err := projectTool(toolProjection{status: protocol.ItemStatusCompleted, invocation: &protocol.ToolInvocation{Name: "custom.inspect", Category: protocol.ToolCategoryUnknown, Arguments: arguments, Result: result}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if call.Command != "" || call.Path != "" || call.Query != "" || call.URL != "" || call.ExitCode != nil || call.Summary != "custom.inspect" {
+		t.Fatalf("unknown material acquired tool semantics: %+v", call)
+	}
+	for _, fragment := range []string{`"output": "stored output metadata"`, `"exitCode": 7`, `9007199254740993`, `"path": "a record key"`} {
+		if !strings.Contains(call.Output, fragment) {
+			t.Fatalf("generic output lost %s: %s", fragment, call.Output)
+		}
+	}
+	if !bytes.Contains(call.ArgumentsJSON, []byte(`"command":"a schema label"`)) || !bytes.Contains(call.ResultJSON, []byte(`9007199254740993`)) {
+		t.Fatal("unknown tool lost original JSON material")
+	}
+	shadow, err := projectTool(toolProjection{status: protocol.ItemStatusCompleted, invocation: &protocol.ToolInvocation{Name: string(builtin.Shell), Category: protocol.ToolCategoryUnknown, Arguments: arguments, Result: result}})
+	if err != nil || shadow.Command != "" || shadow.ExitCode != nil || shadow.Output != call.Output {
+		t.Fatalf("an unknown tool borrowed a built-in's name: %+v, %v", shadow, err)
+	}
+}
+
+func TestBuiltinMaterialConsumesTheProducerContracts(t *testing.T) {
+	zero := 0
+	for _, test := range []struct {
+		name   builtin.Name
+		kind   protocol.ToolCategory
+		input  any
+		result any
+		assert func(*testing.T, conversation.ToolCall)
+	}{
+		{builtin.Shell, protocol.ToolCategoryShell, builtin.ShellArguments{Command: "printf done", Description: "Run the check"}, builtin.CommandResult{Output: "done", ExitCode: &zero}, func(t *testing.T, call conversation.ToolCall) {
+			if call.Command != "printf done" || call.Summary != "Run the check" || call.Output != "done" || call.ExitCode == nil || *call.ExitCode != 0 {
+				t.Fatalf("command projection = %+v", call)
+			}
+		}},
+		{builtin.Read, protocol.ToolCategoryRead, fs.ReadRequest{Path: "main.go"}, fs.ReadResponse{Content: "package main", StartLine: 1, EndLine: 1, TotalLines: 1}, func(t *testing.T, call conversation.ToolCall) {
+			if call.Path != "main.go" || call.Summary != "main.go" || !strings.Contains(call.Output, "package main") {
+				t.Fatalf("read projection = %+v", call)
+			}
+		}},
+		{builtin.ApplyPatch, protocol.ToolCategoryEdit, map[string]any{"patch": "patch data"}, builtin.PatchResult{Changes: []builtin.AppliedChange{{Path: "next.go", Status: builtin.Moved, From: "old.go"}}}, func(t *testing.T, call conversation.ToolCall) {
+			if call.Path != "next.go" || call.Output != "next.go" || !bytes.Contains(call.ResultJSON, []byte(`"from":"old.go"`)) {
+				t.Fatalf("patch projection = %+v", call)
+			}
+		}},
+	} {
+		t.Run(string(test.name), func(t *testing.T) {
+			encoded, err := json.Marshal(test.input)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var arguments map[string]any
+			if err := json.Unmarshal(encoded, &arguments); err != nil {
+				t.Fatal(err)
+			}
+			result, err := json.Marshal(test.result)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var value any
+			if err := json.Unmarshal(result, &value); err != nil {
+				t.Fatal(err)
+			}
+			call, err := projectTool(toolProjection{status: protocol.ItemStatusCompleted, invocation: &protocol.ToolInvocation{Name: string(test.name), Category: test.kind, Arguments: arguments, Result: value}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			test.assert(t, call)
+		})
+	}
+}
+
+func TestBuiltinMaterialRejectsMalformedDeclaredValues(t *testing.T) {
+	for _, invocation := range []protocol.ToolInvocation{
+		{Name: string(builtin.Shell), Category: protocol.ToolCategoryShell, Arguments: map[string]any{"command": 7}},
+		{Name: string(builtin.Shell), Category: protocol.ToolCategoryShell, Arguments: map[string]any{"command": "true"}, Result: map[string]any{"exitCode": "0"}},
+		{Name: string(builtin.ApplyPatch), Category: protocol.ToolCategoryEdit, Arguments: map[string]any{}, Result: map[string]any{"changes": []any{map[string]any{"path": 7}}}},
+	} {
+		if _, err := projectTool(toolProjection{status: protocol.ItemStatusCompleted, invocation: &invocation}); err == nil {
+			t.Fatalf("invalid %s material became a valid presentation", invocation.Name)
+		}
 	}
 }

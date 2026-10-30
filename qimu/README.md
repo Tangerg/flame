@@ -40,6 +40,11 @@ supported; non-consuming reference cycles, external schema resources and pattern
 with author-controlled backtracking are rejected. See the
 [Node profile](node/README.md) for the shared authoring constraints.
 
+Feature contract TypeScript projections use `JSONNumber` for integer and number
+frames, including nullable types and schema unions. Consumers narrow values from
+`parseJSON` with the exact JSON predicates; bigint and preserved decimal/exponent
+lexemes remain valid values without conversion to a rounded JavaScript number.
+
 A `Definition` contains an immutable release revision and its independent Units.
 Each `UnitDeclaration` declares named import slots, exports and an execution
 profile. `Define` validates that declaration. `Host.Install`, `Update`, `SetEnabled`

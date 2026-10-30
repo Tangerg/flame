@@ -33,8 +33,8 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
 	"github.com/Tangerg/flame/packages/go-sdk/procgroup"
+	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
 )
 
 // maxBuffer caps a background shell's retained output; once exceeded the
@@ -401,7 +401,7 @@ func (s *Shells) StopSession(sessionID string) error {
 	})
 }
 
-// StopWorkspace stops, joins, and removes every shell running at or below root
+// StopWorkspace stops, joins, and removes every shell whose tree overlaps root
 // across all Sessions. A destructive working-tree restore must not race a
 // detached process that can immediately rewrite the restored files.
 func (s *Shells) StopWorkspace(root string) error {
@@ -419,7 +419,7 @@ func (s *Shells) StopWorkspace(root string) error {
 		if sh.cwd == "" {
 			return false, nil
 		}
-		inside, err := filesystem.ContainsPath(physicalRoot, sh.cwd)
+		inside, err := filesystem.PathsOverlap(physicalRoot, sh.cwd)
 		if err != nil {
 			return false, fmt.Errorf("exec: compare shell %q workspace: %w", id, err)
 		}

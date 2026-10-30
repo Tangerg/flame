@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -68,7 +69,6 @@ func TestSessionExportImport_RoundTrip(t *testing.T) {
 		t.Fatalf("seed tool item: %v", appendItemErr)
 	}
 
-	// Export (json).
 	exp, err := s.ExportSession(ctx, protocol.ExportSessionRequest{SessionID: ses.ID()})
 	if err != nil {
 		t.Fatalf("export: %v", err)
@@ -86,7 +86,6 @@ func TestSessionExportImport_RoundTrip(t *testing.T) {
 	wantToolResult := `{"exit_code":0,"stderr":"","stdout":"total 0\n"}`
 	assertArtifactToolResult(t, art.Items, "item2", wantToolResult)
 
-	// Wipe the session entirely.
 	if deleteErr := rt.sess.Delete(ctx, ses.ID()); deleteErr != nil {
 		t.Fatalf("delete: %v", deleteErr)
 	}
@@ -98,7 +97,6 @@ func TestSessionExportImport_RoundTrip(t *testing.T) {
 		t.Fatal("session should be gone before import")
 	}
 
-	// Import restores it under the same id.
 	imp, err := s.ImportSession(ctx, protocol.ImportSessionRequest{Artifact: *art})
 	if err != nil {
 		t.Fatalf("import: %v", err)
@@ -107,12 +105,10 @@ func TestSessionExportImport_RoundTrip(t *testing.T) {
 		t.Fatalf("imported session = %+v, want id/title/workspace restored", imp.Session)
 	}
 
-	// Chat history restored.
 	msgs, _ := rt.ReadHistory(ctx, ses.ID())
 	if len(msgs) != 2 {
 		t.Errorf("restored messages = %d, want 2", len(msgs))
 	}
-	// Items + runs restored (items.list).
 	items, err := s.ListItems(ctx, protocol.ListItemsRequest{Scope: protocol.ItemListScope{Type: protocol.ItemScopeSession, SessionID: ses.ID()}})
 	if err != nil {
 		t.Fatalf("items.list: %v", err)
@@ -388,7 +384,7 @@ func TestCancelParkedRunProducesPortableTerminalSnapshot(t *testing.T) {
 		ID: "item_question", RunID: "run_parked", SessionID: ses.ID(),
 		Kind:       transcript.QuestionItem,
 		OccurredAt: parkedAt,
-		Question:   &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}},
+		Question:   &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}},
 	})); appendItemErr != nil {
 		t.Fatalf("open interrupt item: %v", appendItemErr)
 	}
@@ -400,7 +396,7 @@ func TestCancelParkedRunProducesPortableTerminalSnapshot(t *testing.T) {
 		[]transcript.Interrupt{{
 			ItemID:   "item_question",
 			Kind:     run.InterruptQuestion,
-			Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}},
+			Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}},
 		}},
 		parkedAt,
 	)); openErr != nil {

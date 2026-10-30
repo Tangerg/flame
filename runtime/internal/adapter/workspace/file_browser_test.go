@@ -63,7 +63,7 @@ func TestFileBrowserReadOwnsSourceLineAndWindowLimits(t *testing.T) {
 	})
 }
 
-func TestFileBrowserReadClipsAtUTF8BoundaryAndPreservesTextShape(t *testing.T) {
+func TestFileBrowserReadRetainsOnlyCompleteNormalizedLines(t *testing.T) {
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "utf8.txt"), []byte("\xef\xbb\xbféé\r\nlast\r\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -72,8 +72,22 @@ func TestFileBrowserReadClipsAtUTF8BoundaryAndPreservesTextShape(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Content != "é" || got.StartLine != 0 || got.EndLine != 1 || got.TotalLines != 3 || !got.Truncated {
-		t.Fatalf("Read = %+v, want one valid UTF-8 prefix and honest normalized shape", got)
+	if got.Content != "" || got.StartLine != 0 || got.EndLine != 0 || got.TotalLines != 3 || !got.Truncated {
+		t.Fatalf("Read = %+v, want no partial source line and an honest total", got)
+	}
+}
+
+func TestFileBrowserReadByteBoundaryDoesNotConsumeTheNextLine(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "lines.txt"), []byte("first\nsecond\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	read, err := (FileBrowser{}).Read(t.Context(), root, workspaceapp.FileReadPlan{Path: "lines.txt", MaxBytes: 8})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if read.Content != "first" || read.StartLine != 0 || read.EndLine != 1 || read.TotalLines != 3 || !read.Truncated {
+		t.Fatalf("read = %+v, want the complete first line only", read)
 	}
 }
 
@@ -330,5 +344,26 @@ func TestRootRelativeFilePathRejectsEscape(t *testing.T) {
 	}
 	if _, err := rootRelativeFilePath(root, canonicalRoot, path); err == nil {
 		t.Fatal("rootRelativeFilePath accepted a path outside the workspace")
+	}
+}
+
+func TestFileBrowserReadFromEndKeepsAdjacentWholeLines(t *testing.T) {
+	root := t.TempDir()
+	for _, content := range []string{"", "a\n", "a\n\n", "éé\r\nlast\r\n"} {
+		if err := os.WriteFile(filepath.Join(root, "end.txt"), []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		got, err := (FileBrowser{}).Read(t.Context(), root, workspaceapp.FileReadPlan{Path: "end.txt", MaxBytes: 3, FromEnd: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		normalized := strings.ReplaceAll(content, "\r\n", "\n")
+		lines := strings.Split(normalized, "\n")
+		if got.EndLine != len(lines) || got.TotalLines != len(lines) {
+			t.Fatalf("source %q: range = %d..%d / %d", content, got.StartLine, got.EndLine, got.TotalLines)
+		}
+		if want := strings.Join(lines[got.StartLine:got.EndLine], "\n"); got.Content != want || len(got.Content) > 3 {
+			t.Fatalf("source %q: content = %q, want %q", content, got.Content, want)
+		}
 	}
 }

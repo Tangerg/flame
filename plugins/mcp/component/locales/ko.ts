@@ -36,10 +36,10 @@ export const ko: Record<string, string> = {
   "mcp.form.transport.aria": "전송 방식",
   "mcp.form.command.placeholder": "npx",
   "mcp.form.command.aria": "명령",
-  "mcp.form.args": "인자 — 한 줄에 하나",
+  "mcp.form.args": "인자(JSON 배열)",
   "mcp.form.args.placeholder":
     "-y\n@modelcontextprotocol/server-filesystem\n/path",
-  "mcp.form.env": "환경 변수 — KEY=value, 한 줄에 하나",
+  "mcp.form.env": "환경 변수(JSON 객체)",
   "mcp.form.env.placeholder": "API_KEY=…",
   "mcp.form.env.keep": "비워 두면 저장된 환경 변수를 유지합니다",
   "mcp.form.env.clear": "저장된 환경 변수 제거",
@@ -54,7 +54,7 @@ export const ko: Record<string, string> = {
   "mcp.form.auth.originChanged":
     "엔드포인트 출처가 변경되었습니다. 새 인증 정보를 입력하거나 저장된 값을 제거하세요.",
   "mcp.form.auth.aria": "인증 토큰",
-  "mcp.form.headers": "헤더 — KEY=value, 한 줄에 하나",
+  "mcp.form.headers": "헤더(JSON 객체)",
   "mcp.form.headers.placeholder": "X-API-Key=…",
   "mcp.form.headers.keep": "비워 두면 저장된 헤더를 유지합니다",
   "mcp.form.headers.clear": "저장된 헤더 제거",
@@ -75,20 +75,7 @@ export const ko: Record<string, string> = {
     "Runtime 연결이 변경되어 중단했습니다. 서버 {{total}}개 중 {{count}}개를 가져왔습니다.",
   "mcp.import.partial": "서버 {{total}}개 중 {{count}}개를 가져왔습니다.",
   "mcp.import.error": "해당 설정을 가져올 수 없습니다.",
-  "mcp.import.nameCollision":
-    '서버 "{{first}}" 및 "{{second}}"의 이름이 모두 "{{canonical}}"(으)로 바뀝니다. 서로 다른 이름을 지정하세요',
   "mcp.import.invalidJson": "올바른 JSON을 입력하세요.",
-  "mcp.import.invalidShape":
-    '"mcpServers" 객체가 포함된 올바른 MCP 설정을 사용하세요.',
-  "mcp.import.invalidName":
-    '서버 "{{server}}"에 a–z 또는 0–9가 포함된 이름을 지정하세요.',
-  "mcp.import.missingTransport":
-    '서버 "{{server}}"에 명령이 있는 stdio 또는 URL이 있는 Streamable HTTP를 지정하세요.',
-  "mcp.import.missingCommand": '서버 "{{server}}"에 명령을 추가하세요.',
-  "mcp.import.missingUrl": '서버 "{{server}}"에 URL을 추가하세요.',
-  "mcp.import.invalidTimeout":
-    '서버 "{{server}}"의 타임아웃을 초 단위의 양의 정수로 설정하거나, 시간 제한을 두지 않으려면 생략하세요.',
-  "mcp.import.empty": '"mcpServers" 아래에 서버를 하나 이상 추가하세요.',
   "mcp.tools.title": "{{server}} 도구",
   "mcp.tools.enabled": "사용",
   "mcp.tools.autoApprove": "자동 승인",
@@ -121,12 +108,22 @@ export const ko: Record<string, string> = {
     "이 서버에 연결할 수 없습니다 — 명령이나 URL을 확인하고 다시 시도하세요.",
   "common.cancel": "취소",
   "common.close": "닫기",
-  title: "MCP 서버",
   "command.uncertain":
     "원래 명령의 결과가 확인되지 않았습니다. 다른 명령을 실행하거나 카탈로그를 전환하기 전에 조정하세요.",
   "command.reconcile": "원래 명령 조정",
   "read.retained": "마지막으로 수락된 읽기를 유지합니다.",
-  reading: "불러오는 중",
-  refresh: "새로 고침",
-  retry: "다시 시도",
+  "mcp.form.args.invalid":
+    "문자열의 JSON 배열을 입력하세요. 인자가 없으면 비워 두세요.",
+  "mcp.form.env.invalid":
+    "값이 문자열인 비어 있지 않은 JSON 객체를 입력하세요.",
+  "mcp.form.headers.invalid":
+    "값이 문자열인 비어 있지 않은 JSON 객체를 입력하세요.",
+  "mcp.import.invalidName":
+    "서버 이름 “<server/>”이 Runtime 이름 규칙에 맞지 않습니다. 키를 수정하고 다시 시도하세요.",
+  "mcp.import.missingTransport":
+    "서버 “<server/>”에 명령 또는 URL 중 하나만 지정하세요.",
+  "mcp.import.unsupportedTransport":
+    "서버 “<server/>”의 “type”은 지원되지 않습니다. “stdio” 또는 “streamableHttp”를 사용하세요.",
+  "mcp.import.headerConflict":
+    "서버 “<server/>”에 “<header/>”이 중복 선언되어 있습니다. 하나만 남겨 두세요.",
 };

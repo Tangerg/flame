@@ -408,6 +408,9 @@ func (a *app) Close(ctx context.Context) error {
 	a.operations.Cancel(completionOperation)
 	a.cancelPluginCommands()
 	a.operations.Close()
+	if a.dialogs.mcpForm != nil {
+		a.closeMCPForm(a.dialogs.mcpForm)
+	}
 	a.cancelScheduledDraftSave()
 	// Flush is a serialization barrier: any autosave already in the filesystem
 	// finishes first, then the last visible composer state is written last.
@@ -479,9 +482,8 @@ func (a *app) dispatchPrompt(message authoring.Message) {
 		a.enqueueDeferredPrompt()
 		return
 	}
-	a.operations.Cancel(pickerCatalogOperation)
 	a.dialogs.sessionDialog.Dismiss()
-	a.dialogs.modelDialog.Dismiss()
+	a.dismissModelPicker()
 	a.resetComposer()
 	a.operations.Cancel(completionOperation)
 	a.completion.Dismiss()

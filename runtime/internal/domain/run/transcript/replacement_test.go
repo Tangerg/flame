@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
@@ -13,7 +14,7 @@ func TestReplaceRequiresOneValidItemIdentity(t *testing.T) {
 	at := time.Unix(1, 0).UTC()
 	expected, err := NewQuestion(ItemIdentity{
 		SessionID: "ses_1", RunID: "run_1", ItemID: "item_1", OccurredAt: at,
-	}, Question{Fields: []QuestionField{{Prompt: "Answer", Kind: QuestionText}}})
+	}, Question{Fields: []QuestionField{{Prompt: "Answer", Kind: questioncontract.Text}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +50,7 @@ func TestReplacementRejectsReconstructedTranscriptRewrites(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	prompt, err := NewQuestion(identity, Question{Fields: []QuestionField{{Prompt: "Answer", Kind: QuestionText}}})
+	prompt, err := NewQuestion(identity, Question{Fields: []QuestionField{{Prompt: "Answer", Kind: questioncontract.Text}}})
 	if err != nil {
 		t.Fatal(err)
 	}

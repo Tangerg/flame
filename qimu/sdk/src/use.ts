@@ -46,11 +46,15 @@ export async function acquire<T>(
       resource = await create(signal, cleanup);
     });
     if (use.closing) {
-      await use.close();
       throw new QimuError("closed", "resource arrived after its use closed");
     }
   } catch (error) {
-    await use.close();
+    const closeFailure = resourceCloseFailure(await use.close(), true);
+    if (closeFailure)
+      throw new AggregateError(
+        [error, closeFailure],
+        "resource acquisition and close failed",
+      );
     throw error;
   }
   let live: Lifetime | undefined = use;
@@ -101,19 +105,36 @@ export async function withResource<T, R>(
     failure = error;
   }
   const outcome = await acquired.close();
-  const releaseFailure =
-    outcome.status === "released"
-      ? undefined
-      : new QimuError(
-          "close_unconfirmed",
-          "borrowed resource release is unconfirmed",
-        );
+  const releaseFailure = resourceCloseFailure(outcome, failed);
   if (failed && releaseFailure)
     throw new AggregateError(
       [failure, releaseFailure],
-      "operation failed and resource release is unconfirmed",
+      "operation and resource close failed",
     );
   if (failed) throw failure;
   if (releaseFailure) throw releaseFailure;
   return result as R;
+}
+
+function resourceCloseFailure(
+  outcome: CloseOutcome,
+  taskFailureReported: boolean,
+): QimuError | undefined {
+  // A rejected borrow already reports its task error directly to the caller.
+  const additionalFailure = outcome.failures.some(
+    (failure) => !taskFailureReported || failure.phase !== "task",
+  );
+  if (
+    outcome.status === "released" &&
+    !additionalFailure &&
+    outcome.omittedFailures === 0
+  )
+    return undefined;
+  return new QimuError(
+    outcome.status === "unconfirmed" ? "close_unconfirmed" : "close_failed",
+    outcome.status === "unconfirmed"
+      ? "borrowed resource release is unconfirmed"
+      : "borrowed resource cleanup failed",
+    { cause: outcome },
+  );
 }

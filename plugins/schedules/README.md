@@ -133,6 +133,13 @@ empty title/workspace or `enabled: false` are real patches. Pausing stops future
 cron claims without deleting identity or rewriting captured/accepted work. A
 revision conflict requires a fresh read and a new edit decision.
 
+Metadata edits retain `NextRunAt` and `LastRunAt`, including an already-due
+occurrence. Only a changed cron while enabled or a disable/re-enable transition
+recomputes the scheduling cursor. A disabled cron edit retains its zero cursor.
+Every accepted edit, including an empty or same-value patch, advances the revision
+once under the same compare-and-swap contract; a stale scanner must reread without
+losing the original due occurrence.
+
 Cron uses UTC unless the expression includes a `CRON_TZ=Area/City` prefix, such as
 `CRON_TZ=Asia/Shanghai 0 9 * * *`. The existing Domain parser owns this meaning,
 including supported standard descriptors. There is no separate timezone setting.

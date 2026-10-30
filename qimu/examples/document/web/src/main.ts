@@ -147,52 +147,64 @@ async function preview(task: TaskView): Promise<void> {
     mounted = undefined;
   }
   const snapshot = await control.snapshot([point.ref.name]);
-  const choice = select(
-    snapshot,
-    point,
-    "documents.html-preview-priority/1",
-    (choices) =>
-      [...choices]
-        .filter((choice) => choice.metadata.format === "html")
-        .sort((a, b) => b.metadata.priority - a.metadata.priority)
-        .slice(0, 1),
-    (value) => {
-      const metadata = value as { format?: unknown; priority?: unknown };
-      if (typeof metadata.format !== "string")
-        throw new TypeError("invalid preview metadata");
-      return {
-        format: metadata.format,
-        priority: projectNumber(metadata.priority),
-      };
-    },
-  );
-  const use = await runtime.acquire({
-    operationId: crypto.randomUUID(),
-    snapshotId: snapshot.id,
-    execution,
-    selections: [choice],
-  });
-  mounted = use;
-  const selected = snapshot.points[0]?.candidates.find(
-    (candidate) => candidate.token === choice.candidates[0],
-  );
-  if (!selected) throw new Error("no approved preview is available");
-  const theme = await api<{ css: string }>("/api/theme");
-  const object = use.objects.find(
-    (object) =>
-      object.export.name === selected.source.export &&
-      object.export.contract.digest === point!.ref.digest,
-  );
-  if (!object)
-    throw new Error("the original Use does not own the selected preview");
-  await use.with(object, point, (preview) =>
-    preview.mount(
-      element("preview"),
-      task.result!.converted,
-      theme.css,
-      use.lifetime,
-    ),
-  );
+  try {
+    const choice = select(
+      snapshot,
+      point,
+      "documents.html-preview-priority/1",
+      (choices) =>
+        [...choices]
+          .filter((choice) => choice.metadata.format === "html")
+          .sort((a, b) => b.metadata.priority - a.metadata.priority)
+          .slice(0, 1),
+      (value) => {
+        const metadata = value as { format?: unknown; priority?: unknown };
+        if (typeof metadata.format !== "string")
+          throw new TypeError("invalid preview metadata");
+        return {
+          format: metadata.format,
+          priority: projectNumber(metadata.priority),
+        };
+      },
+    );
+    const use = await runtime.acquire({
+      operationId: crypto.randomUUID(),
+      snapshotId: snapshot.id,
+      execution,
+      selections: [choice],
+    });
+    mounted = use;
+    const selected = snapshot.points[0]?.candidates.find(
+      (candidate) => candidate.token === choice.candidates[0],
+    );
+    if (!selected) throw new Error("no approved preview is available");
+    const theme = await api<{ css: string }>("/api/theme");
+    const object = use.objects.find(
+      (object) =>
+        object.export.name === selected.source.export &&
+        object.export.contract.digest === point!.ref.digest,
+    );
+    if (!object)
+      throw new Error("the original Use does not own the selected preview");
+    await use.with(object, point, (preview) =>
+      preview.mount(
+        element("preview"),
+        task.result!.converted,
+        theme.css,
+        use.lifetime,
+      ),
+    );
+  } catch (error) {
+    try {
+      await control.closeSnapshot(snapshot.id);
+    } catch (closeFailure) {
+      throw new AggregateError(
+        [error, closeFailure],
+        "snapshot selection and cleanup failed",
+      );
+    }
+    throw error;
+  }
 }
 
 function show(task: TaskView): void {

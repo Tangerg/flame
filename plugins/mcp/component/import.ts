@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { parseJSON } from "@qimu/sdk/json";
+import { validateWire } from "@flame/runtime-client/validation";
+import { type MCPTransport } from "./model";
 import { type MCPServerInput } from "./input";
 import {
   MCPHandshakeTimeoutError,
@@ -30,35 +33,35 @@ const serverSchema = z.object({
   url: z.string().optional(),
   authorization: z.string().optional(),
   headers: z.record(z.string(), z.string()).optional(),
-  timeout: z.number().optional(),
+  timeout: z.unknown().optional(),
 });
 
 type ParsedServer = z.infer<typeof serverSchema>;
 
-function authorizationFrom(s: ParsedServer): string | undefined {
-  const raw =
-    s.authorization ??
-    s.headers?.Authorization ??
-    s.headers?.authorization ??
-    undefined;
-  return raw;
-}
-
-function headersExceptAuth(
-  s: ParsedServer,
-): Record<string, string> | undefined {
-  if (!s.headers) return undefined;
-  const out = new Map<string, string>();
-  for (const [k, v] of Object.entries(s.headers)) {
-    if (k.toLowerCase() === "authorization") continue;
-    out.set(k, v);
+function credentialsOf(server: string, source: ParsedServer) {
+  let authorization = source.authorization;
+  const seen = new Set<string>();
+  const headers = new Map<string, string>();
+  for (const [key, value] of Object.entries(source.headers ?? {})) {
+    const field = key.toLowerCase();
+    if (
+      seen.has(field) ||
+      (field === "authorization" && authorization !== undefined)
+    ) {
+      throw new McpImportError({
+        kind: "headerConflict",
+        server,
+        header: field,
+      });
+    }
+    seen.add(field);
+    if (field === "authorization") authorization = value;
+    else headers.set(key, value);
   }
-  return out.size ? Object.fromEntries(out) : undefined;
-}
-
-export interface McpImportResult {
-  servers: MCPServerInput[];
-  renamed: { from: string; to: string }[];
+  return {
+    authorization,
+    headers: headers.size ? Object.fromEntries(headers) : undefined,
+  };
 }
 
 export type McpImportIssue =
@@ -66,11 +69,11 @@ export type McpImportIssue =
   | { readonly kind: "shape" }
   | { readonly kind: "name"; readonly server: string }
   | {
-      readonly kind: "nameCollision";
-      readonly first: string;
-      readonly second: string;
-      readonly canonical: string;
+      readonly kind: "headerConflict";
+      readonly server: string;
+      readonly header: string;
     }
+  | { readonly kind: "unsupportedTransport"; readonly server: string }
   | { readonly kind: "transport"; readonly server: string }
   | { readonly kind: "command"; readonly server: string }
   | { readonly kind: "url"; readonly server: string }
@@ -86,7 +89,7 @@ export class McpImportError extends Error {
 
 function handshakeTimeoutOf(
   server: string,
-  seconds: number | undefined,
+  seconds: unknown,
 ): MCPHandshakeTimeout {
   try {
     return mcpHandshakeTimeoutFromOptionalSeconds(seconds);
@@ -98,20 +101,31 @@ function handshakeTimeoutOf(
   }
 }
 
-function wireServerName(name: string): string | null {
-  const shaped = name
-    .toLowerCase()
-    .replace(/[^a-z0-9._-]+/g, "-")
-    .replace(/^[^a-z0-9]+/, "")
-    .slice(0, 32)
-    .replace(/[-._]+$/, "");
-  return /^[a-z0-9][a-z0-9._-]{0,31}$/.test(shaped) ? shaped : null;
+function transportOf(server: string, source: ParsedServer): MCPTransport {
+  if (
+    source.type !== undefined &&
+    validateWire("MCPTransport", source.type, "request").length
+  ) {
+    throw new McpImportError({ kind: "unsupportedTransport", server });
+  }
+  const hasCommand = source.command !== undefined;
+  const hasURL = source.url !== undefined;
+  if (
+    (hasCommand && hasURL) ||
+    (source.type === undefined && !hasCommand && !hasURL)
+  ) {
+    throw new McpImportError({ kind: "transport", server });
+  }
+  return (
+    (source.type as MCPTransport | undefined) ??
+    (hasCommand ? "stdio" : "streamableHttp")
+  );
 }
 
-export function parseMcpImport(text: string): McpImportResult {
+export function parseMcpImport(text: string): MCPServerInput[] {
   let raw: unknown;
   try {
-    raw = JSON.parse(text);
+    raw = parseJSON(text);
   } catch (error) {
     if (error instanceof SyntaxError)
       throw new McpImportError({ kind: "json" });
@@ -122,38 +136,18 @@ export function parseMcpImport(text: string): McpImportResult {
     .safeParse(raw);
   if (!parsed.success) throw new McpImportError({ kind: "shape" });
   const servers: MCPServerInput[] = [];
-  const renamed: { from: string; to: string }[] = [];
-  const sources = new Map<string, string>();
-  for (const [key, s] of Object.entries(parsed.data.mcpServers)) {
-    const name = wireServerName(key);
-    if (name === null) throw new McpImportError({ kind: "name", server: key });
-    const earlier = sources.get(name);
-    if (earlier !== undefined) {
-      throw new McpImportError({
-        kind: "nameCollision",
-        first: earlier,
-        second: key,
-        canonical: name,
-      });
+  for (const [name, s] of Object.entries(parsed.data.mcpServers)) {
+    if (
+      validateWire("MCPServerID", { origin: { type: "user" }, name }, "request")
+        .length
+    ) {
+      throw new McpImportError({ kind: "name", server: name });
     }
-    sources.set(name, key);
-    if (name !== key) renamed.push({ from: key, to: name });
-    const type = s.type
-      ? s.type === "stdio"
-        ? "stdio"
-        : s.type === "http" || s.type === "streamableHttp" || s.type === "sse"
-          ? "streamableHttp"
-          : undefined
-      : s.command
-        ? "stdio"
-        : s.url
-          ? "streamableHttp"
-          : undefined;
-    if (type === undefined)
-      throw new McpImportError({ kind: "transport", server: key });
+    const type = transportOf(name, s);
     if (type === "stdio") {
-      if (!s.command?.trim())
-        throw new McpImportError({ kind: "command", server: key });
+      if (s.command === undefined || s.command === "") {
+        throw new McpImportError({ kind: "command", server: name });
+      }
       servers.push({
         name,
         transport: type,
@@ -162,22 +156,23 @@ export function parseMcpImport(text: string): McpImportResult {
         args: s.args,
         env: s.env,
         dir: s.dir ?? s.cwd,
-        handshakeTimeout: handshakeTimeoutOf(key, s.timeout),
+        handshakeTimeout: handshakeTimeoutOf(name, s.timeout),
       });
-    } else {
+    } else if (type === "streamableHttp") {
       if (!s.url?.trim())
-        throw new McpImportError({ kind: "url", server: key });
+        throw new McpImportError({ kind: "url", server: name });
       servers.push({
         name,
         transport: type,
         enabled: true,
         url: s.url,
-        authorization: authorizationFrom(s),
-        headers: headersExceptAuth(s),
-        handshakeTimeout: handshakeTimeoutOf(key, s.timeout),
+        ...credentialsOf(name, s),
+        handshakeTimeout: handshakeTimeoutOf(name, s.timeout),
       });
+    } else {
+      throw new McpImportError({ kind: "unsupportedTransport", server: name });
     }
   }
   if (servers.length === 0) throw new McpImportError({ kind: "empty" });
-  return { servers, renamed };
+  return servers;
 }

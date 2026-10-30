@@ -7,6 +7,7 @@ package plan
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -23,14 +24,19 @@ const (
 	StatusCompleted  Status = "completed"
 )
 
+var statuses = [...]Status{StatusPending, StatusInProgress, StatusCompleted}
+
 // Valid reports whether s is a recognized Step status.
 func (s Status) Valid() bool {
-	switch s {
-	case StatusPending, StatusInProgress, StatusCompleted:
-		return true
-	default:
-		return false
+	return slices.Contains(statuses[:], s)
+}
+
+func (Status) JSONSchemaEnum() []string {
+	values := make([]string, len(statuses))
+	for index, status := range statuses {
+		values[index] = string(status)
 	}
+	return values
 }
 
 // Step is one ordered unit of work in a Plan.

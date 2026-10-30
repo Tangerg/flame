@@ -4,7 +4,7 @@ import modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 
 // Role is an optional provider/model assignment for a specialized Runtime
 // capability. Unlike an execution model selection, it has no model-owned options;
-// its zero value leaves the capability unset or inheriting its main model.
+// its zero value leaves the assignment unset for the consuming capability.
 type Role struct {
 	selection modelchoice.Selection
 }

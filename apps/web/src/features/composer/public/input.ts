@@ -16,6 +16,7 @@ export async function fileToInputImage(file: File): Promise<InputImage & { name:
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
     reader.onerror = () => reject(reader.error ?? new Error("file read failed"));
+    reader.onabort = () => reject(new DOMException("file read aborted", "AbortError"));
     reader.readAsDataURL(file);
   });
   const comma = dataUrl.indexOf(",");

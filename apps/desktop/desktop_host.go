@@ -24,11 +24,6 @@ type workingDirectoryPicker interface {
 	ChooseWorkingDirectory() (string, error)
 }
 
-// The native picker owns the write destination; IPC callers supply only image bytes.
-type imageSaver interface {
-	SaveImage(suggestedFilename string, contents []byte) (bool, error)
-}
-
 // The native picker owns the write destination; IPC callers supply only a basename and bytes.
 type fileSaver interface {
 	SaveFile(suggestedFilename string, contents []byte) (bool, error)
@@ -48,7 +43,6 @@ type DesktopHost struct {
 	localRuntimeEndpoint   string
 	localTokenPath         string
 	workingDirectoryPicker workingDirectoryPicker
-	imageSaver             imageSaver
 	fileSaver              fileSaver
 	window                 nativeWindow
 	reveal                 func()
@@ -122,10 +116,6 @@ func (d *DesktopHost) usePathOpener(opener pathOpener) {
 
 func (d *DesktopHost) useWorkingDirectoryPicker(picker workingDirectoryPicker) {
 	d.workingDirectoryPicker = picker
-}
-
-func (d *DesktopHost) useImageSaver(saver imageSaver) {
-	d.imageSaver = saver
 }
 
 func (d *DesktopHost) useFileSaver(saver fileSaver) {
@@ -235,22 +225,6 @@ func (d *DesktopHost) ChooseWorkingDirectory() (string, error) {
 		return "", fmt.Errorf("desktop host: working directory %q is not a directory", absolute)
 	}
 	return filepath.Clean(absolute), nil
-}
-
-// The bool distinguishes a completed write from user cancellation.
-func (d *DesktopHost) SaveImage(source string) (bool, error) {
-	if d.imageSaver == nil {
-		return false, errors.New("desktop host: image saver is not configured")
-	}
-	extension, contents, err := decodeInlineImage(source)
-	if err != nil {
-		return false, fmt.Errorf("desktop host: save image: %w", err)
-	}
-	saved, err := d.imageSaver.SaveImage(suggestedImageFilename(extension), contents)
-	if err != nil {
-		return false, fmt.Errorf("desktop host: save image: %w", err)
-	}
-	return saved, nil
 }
 
 // The bool distinguishes a completed write from user cancellation. The name is only a

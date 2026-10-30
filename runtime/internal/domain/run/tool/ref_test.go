@@ -6,11 +6,29 @@ import (
 	"strings"
 	"testing"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
 const testInstallation = "8ad9abf5-3a7d-4d0b-bef9-6ef92c20e746"
+
+func TestRetiredWebBuiltInsAreRejectedWithoutChangingMCPIdentity(t *testing.T) {
+	for _, name := range []string{"web_search", "web_fetch"} {
+		t.Run(name, func(t *testing.T) {
+			remote := testMCPRef(t, mcpserver.UserOrigin(), "web", name)
+			if remote.Kind() != MCPKind || remote.Validate() != nil {
+				t.Fatalf("current Web MCP identity = %v", remote)
+			}
+			if _, ok := remote.BuiltIn(); ok {
+				t.Fatal("MCP source became a built-in alias")
+			}
+			if _, err := BuiltIn(builtincontract.Name(name)); !errors.Is(err, ErrInvalidRef) {
+				t.Fatalf("retired built-in admitted: %v", err)
+			}
+		})
+	}
+}
 
 func testMCPRef(t *testing.T, origin mcpserver.Origin, server, remote string) Ref {
 	t.Helper()
@@ -94,7 +112,7 @@ func TestRefPreservesSourceAcrossModelNameCollisions(t *testing.T) {
 }
 
 func TestRefVariantsAreReachableOnlyThroughTheirKind(t *testing.T) {
-	builtIn, err := BuiltIn(Shell)
+	builtIn, err := BuiltIn(builtincontract.Shell)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +149,7 @@ func TestRefVariantsAreReachableOnlyThroughTheirKind(t *testing.T) {
 }
 
 func TestRefFingerprintFollowsSourceKind(t *testing.T) {
-	builtIn, err := BuiltIn(Shell)
+	builtIn, err := BuiltIn(builtincontract.Shell)
 	if err != nil {
 		t.Fatal(err)
 	}

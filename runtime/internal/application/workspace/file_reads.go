@@ -89,12 +89,13 @@ type FilePage struct {
 	NextCursor string
 }
 
-// FileReadInput specifies a root-relative file read. StartLine/EndLine are
-// one-based and inclusive when StartLine is positive.
+// FileReadInput specifies a root-relative complete-line read. FromEnd retains
+// the suffix of Range within ByteLimit, without reversing source order.
 type FileReadInput struct {
 	Path      string
 	Range     FileLineRange
 	ByteLimit FileReadByteLimit
+	FromEnd   bool
 }
 
 // FileReadPlan is the fully normalized primitive filesystem-port request. Read
@@ -104,6 +105,7 @@ type FileReadPlan struct {
 	MaxBytes  int
 	StartLine int
 	EndLine   int
+	FromEnd   bool
 }
 
 // FileReadResult is a file read with whole-file line information.
@@ -226,7 +228,9 @@ func (f *Files) Read(ctx context.Context, cwd string, input FileReadInput) (File
 		return FileReadResult{}, err
 	}
 	start, end := input.Range.Bounds()
-	return f.readFile(ctx, root, FileReadPlan{Path: path, StartLine: start, EndLine: end, MaxBytes: input.ByteLimit.Bytes()})
+	return f.readFile(ctx, root, FileReadPlan{
+		Path: path, StartLine: start, EndLine: end, MaxBytes: input.ByteLimit.Bytes(), FromEnd: input.FromEnd,
+	})
 }
 
 func (f *Files) readFile(ctx context.Context, root string, input FileReadPlan) (FileReadResult, error) {

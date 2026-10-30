@@ -4278,16 +4278,14 @@ references remain untouched. This receipt changes no accepted product input;
 publication is followed by fresh remote, cleanliness and preservation checks.
 The paper-texture request is qualified in Paper texture and reading surfaces.
 
-### Native image save qualification
+### Historical native image save qualification
 
-The previously unqualified native export path is now checked through the actual
-Wails beta.34 Save panel. No product source, schema, image policy, focus handler
-or style changed. `ImagePreviewGallery` still calls the existing image-save port;
-`createClientHost` selects the native bridge, and `DesktopHost.SaveImage` plus
-`wailsImageSaver` own validation, the attached sheet, cancellation and writing.
-The existing captured-image reference research and better-accessibility focus
-guidance apply; Wails/Go source confirms the native ownership rather than assuming
-browser download behavior.
+These observations describe the former inline-image IPC and its Wails beta.34
+Save panel. Current image exports rasterize inline material as PNG in shared Web
+and use `DesktopHost.SaveFile` with the same native destination owner as other
+file exports. See the [current image export contract](README.md) and
+[native file boundary](../desktop/README.md). The original SVG-file observations
+below remain a historical record, not the current export-format contract.
 
 - The private composition adds the production `createMessageImagesPlugin` with
   the real host's save function after the canonical workspace fixture installs.

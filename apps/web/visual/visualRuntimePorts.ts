@@ -10,9 +10,13 @@ export const visualRuntimeStream = (visual: VisualClient) =>
     provides: { stream: RUNTIME_STREAM, scope: RUNTIME_SERVER_SCOPE },
     requires: { config: CONFIG },
     setup(ctx) {
-      const configuration = bindRuntimeEndpointConfiguration(ctx, (commit) => commit(), {
-        endpoint: "https://visual.flame.test",
-      });
+      const configuration = bindRuntimeEndpointConfiguration(
+        ctx,
+        (commit) => commit(),
+        () => ({
+          endpoint: "https://visual.flame.test",
+        }),
+      );
       visual.bindEndpoint(configuration);
       return { scope: visual.scope, stream: visual.stream };
     },

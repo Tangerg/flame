@@ -189,14 +189,10 @@ func (s *Store) StageSessionRollback(pending PendingSessionRollback) error {
 		}
 		return errors.New("another session rollback is already pending")
 	}
-	if err := s.saveSessionStateRecord(
+	return s.saveSessionStateRecord(
 		pending.SessionID, s.drafts[pending.SessionID], s.pendingRuns[pending.SessionID],
 		s.pendingResumePointer(pending.SessionID), &pending, s.pendingSteerPointer(pending.SessionID),
-	); err != nil {
-		return err
-	}
-	s.pendingRollbacks[pending.SessionID] = pending
-	return nil
+	)
 }
 
 // ConfirmSessionRollback upgrades the exact prepared command to a durable
@@ -216,14 +212,10 @@ func (s *Store) ConfirmSessionRollback(sessionID string, commandID authoring.Com
 		return nil
 	}
 	pending.Phase = SessionRollbackConfirmed
-	if err := s.saveSessionStateRecord(
+	return s.saveSessionStateRecord(
 		sessionID, s.drafts[sessionID], s.pendingRuns[sessionID],
 		s.pendingResumePointer(sessionID), &pending, s.pendingSteerPointer(sessionID),
-	); err != nil {
-		return err
-	}
-	s.pendingRollbacks[sessionID] = pending
-	return nil
+	)
 }
 
 // RejectSessionRollback retires only the exact prepared command after a
@@ -241,14 +233,10 @@ func (s *Store) RejectSessionRollback(sessionID string, commandID authoring.Comm
 	if pending.Phase != SessionRollbackPrepared || pending.CommandID != commandID {
 		return errors.New("session rollback journal does not match the rejected command")
 	}
-	if err := s.saveSessionStateRecord(
+	return s.saveSessionStateRecord(
 		sessionID, s.drafts[sessionID], s.pendingRuns[sessionID],
 		s.pendingResumePointer(sessionID), nil, s.pendingSteerPointer(sessionID),
-	); err != nil {
-		return err
-	}
-	delete(s.pendingRollbacks, sessionID)
-	return nil
+	)
 }
 
 // ActivateSessionDraft atomically merges incoming authoring input, materializes
@@ -291,14 +279,6 @@ func (s *Store) ActivateSessionDraft(sessionID string, incoming authoring.Messag
 		s.pendingSteerPointer(sessionID),
 	); err != nil {
 		return SessionDraftActivation{}, err
-	}
-	if draft.IsEmpty() {
-		delete(s.drafts, sessionID)
-	} else {
-		s.drafts[sessionID] = draft.Clone()
-	}
-	if confirmed {
-		delete(s.pendingRollbacks, sessionID)
 	}
 	return SessionDraftActivation{Draft: draft.Clone(), Rollback: recovery}, nil
 }

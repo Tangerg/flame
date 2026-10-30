@@ -1,3 +1,5 @@
+import { type Goals } from "@/features/goal/application/goals";
+import { type MessageFeedbackOwner } from "@/features/chat/message-actions/application/feedback";
 import { type Theme } from "@/features/theme/adapters/theme";
 import { type NotificationOwner } from "@/features/notifications/adapters/notifications";
 import { type InstalledPluginsOwner } from "@/features/plugins/adapters/installedPlugins";
@@ -87,6 +89,8 @@ export function createBuiltinPlugins(
   notifications: NotificationOwner,
   installedPlugins: InstalledPluginsOwner,
   theme: Theme,
+  goals: Goals,
+  feedback: MessageFeedbackOwner,
 ): AnyPlugin[] {
   const agentAccess = agent.access;
   const composerAccess = composerOwner.access;
@@ -118,7 +122,7 @@ export function createBuiltinPlugins(
     messageCopy,
     messageEdit,
     messageRegenerate,
-    createMessageFeedbackPlugin(runtimeClient),
+    createMessageFeedbackPlugin(runtimeClient, feedback),
   ];
 
   const composer: AnyPlugin[] = [
@@ -170,7 +174,7 @@ export function createBuiltinPlugins(
     sessionSearch,
     commandMenu,
     narrativeRails,
-    createGoalPlugin(agentAccess, composerAccess, runtimeAccess, runtimeClient),
+    createGoalPlugin(agentAccess, composerAccess, runtimeAccess, runtimeClient, goals),
     planProgress,
     providerSetup,
     contextUsage,

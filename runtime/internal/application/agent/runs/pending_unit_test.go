@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -66,7 +67,7 @@ func TestResumeClaimOwnsPendingAndQuestionAnswers(t *testing.T) {
 		ID: "item_grandchild", SessionID: fixtureSessionID, RunID: "run_grandchild",
 		Kind: transcript.QuestionItem, OccurredAt: pending.CreatedAt,
 		Question: &transcript.Question{Fields: []transcript.QuestionField{{
-			Prompt: "Continue?", Kind: transcript.QuestionChoice,
+			Prompt: "Continue?", Kind: questioncontract.Choice,
 			Options: []transcript.QuestionOption{{Label: "yes"}, {Label: "no"}},
 		}}},
 	})}

@@ -1,6 +1,6 @@
 import type { RpcCallOptions, RpcClient } from "./client";
 import { cloneJSON } from "@qimu/sdk/json";
-import { RpcError } from "./errors";
+import { RpcError, RpcCancellationError } from "./errors";
 import { checkRequest, requestRequiresIdempotency } from "./request";
 import { createMutationPromise, type MutationPromise } from "./mutation";
 import type {
@@ -71,6 +71,7 @@ export interface WireCallPath {
     intent: string,
     input: PluginCommandInput,
     prepare: () => Promise<PluginCommandBinding>,
+    signal?: AbortSignal,
   ): ReturnType<MutationJournal["capturePluginCommand"]>;
 }
 
@@ -100,6 +101,7 @@ interface MutationDelivery {
   bindSteerItem(userItemId: string): void;
   lookupNamespace(): string;
   authorizeDispatch(): string;
+  markDispatched(): void;
 }
 
 export function createWireCallPath(
@@ -156,6 +158,7 @@ export function createWireCallPath(
     const preferredJournalKey = requestedKey ?? journalKey ?? crypto.randomUUID();
     let reservation: MutationReservation;
     try {
+      if (!reserveOriginal && signal?.aborted) throw new RpcCancellationError();
       preparedParams = cloneJSON(params);
       if (reserveOriginal) {
         reservation = reserveOriginal();
@@ -196,6 +199,7 @@ export function createWireCallPath(
               },
               lookupNamespace: () => reservation.lookupNamespace(),
               authorizeDispatch: () => reservation.authorizeDispatch(),
+              markDispatched: () => reservation.markDispatched(),
             },
             preparedParams,
           );
@@ -225,6 +229,7 @@ export function createWireCallPath(
           requestMeta: attempt.requestMeta,
           ...(attempt.signal ? { signal: attempt.signal } : {}),
           idempotencyKey,
+          beforeDispatch: attempt.markDispatched,
           ...(idempotencyNamespace ? { idempotencyNamespace } : {}),
         });
       },
@@ -255,8 +260,19 @@ export function createWireCallPath(
     return invoke(method, params, callOptions) as WireCallResult<M>;
   }) as WireCall;
 
-  const capturePluginCommand: WireCallPath["capturePluginCommand"] = (intent, input, prepare) =>
-    options.mutationJournal.capturePluginCommand(intent, input, prepare, options.requestMeta);
+  const capturePluginCommand: WireCallPath["capturePluginCommand"] = (
+    intent,
+    input,
+    prepare,
+    signal,
+  ) =>
+    options.mutationJournal.capturePluginCommand(
+      intent,
+      input,
+      prepare,
+      options.requestMeta,
+      signal,
+    );
 
   return { call, perform, openMutation, capturePluginCommand };
 }

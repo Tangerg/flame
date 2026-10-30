@@ -383,6 +383,14 @@ publish one namespaced pattern branch without weakening first-party tags.
 | `failed` | `error` | — |
 | `canceled` | — | — |
 
+### `PluginRendererSelector`
+
+| tag | required | optional |
+| --- | --- | --- |
+| `toolName` | `name` | — |
+| `resultShape` | `shape` | — |
+| `fileExtension` | `name` | — |
+
 ### `PluginValueChange`
 
 | tag | required | optional |
@@ -522,9 +530,9 @@ Forbidden on every variant: `durable`.
 | tag | required | optional |
 | --- | --- | --- |
 | `hunk` | `text` | — |
-| `context` | `code`, `leftLine`, `rightLine` | — |
-| `added` | `code`, `rightLine` | — |
-| `deleted` | `code`, `leftLine` | — |
+| `context` | `code`, `leftLine`, `rightLine` | `noNewline` |
+| `added` | `code`, `rightLine` | `noNewline` |
+| `deleted` | `code`, `leftLine` | `noNewline` |
 
 ## Value constraints
 

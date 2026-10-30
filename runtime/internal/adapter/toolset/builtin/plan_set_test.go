@@ -64,17 +64,25 @@ func TestSetPlanRequiresSession(t *testing.T) {
 }
 
 func TestSetPlanRejectsBadArguments(t *testing.T) {
-	tool, err := newSet(&stubStore{})
+	store := &stubStore{}
+	tool, err := newSet(store)
 	if err != nil {
 		t.Fatal(err)
+	}
+	ctx := executionctx.WithScope(t.Context(), runs.ExecutionScope{SessionID: "session-1"})
+	if _, err := callTextTool(ctx, tool, `{"steps":[{"description":"inspect","status":"pending"}]}`); err != nil {
+		t.Fatalf("valid Plan fixture rejected: %v", err)
 	}
 	for _, arguments := range []string{
 		`{not json`,
 		`{}`,
 		`{"steps":[{"description":"inspect","status":"done"}]}`,
 	} {
-		if _, err := callTextTool(context.Background(), tool, arguments); err == nil {
-			t.Errorf("Call(%s) succeeded", arguments)
+		if _, err := callTextTool(ctx, tool, arguments); !errors.Is(err, toolcontract.ErrInvalidInvocation) {
+			t.Errorf("Call(%s) = %v, want Prepare refusal", arguments, err)
+		}
+		if len(store.steps) != 1 || store.steps[0].Description != "inspect" || store.steps[0].Status != plandomain.StatusPending {
+			t.Fatalf("invalid arguments changed the admitted Plan: %+v", store.steps)
 		}
 	}
 }

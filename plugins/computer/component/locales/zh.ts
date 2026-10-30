@@ -21,7 +21,7 @@ export const zh = {
   "open.help":
     "授权期间，模型工具可通过 Flame 的电脑控制引擎操作 Runtime 主机。操作员控制台必须位于被控桌面、账户和浏览器之外，例如使用另一台设备或隔离目标。关闭此视图不会结束授权。",
   "open.lease": "授权时长（秒）",
-  "open.invalid": "请输入 60 到 {{maximum}} 之间的整数秒数。",
+  "open.invalid": "请输入 {{minimum}} 到 {{maximum}} 之间的整数秒数。",
   "open.action": "授权并打开控制",
   "close.action": "结束控制授权",
   "close.help":

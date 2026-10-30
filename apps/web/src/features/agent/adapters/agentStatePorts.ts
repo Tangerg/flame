@@ -23,6 +23,7 @@ export function createAgentState(
     useAgentAction,
     useCurrentRootRun,
     useCurrentRootRunning,
+    useHasPrecedingRootRun,
     useAgentProblem,
     useAgentPlan,
     useRootNarrativeMessages,
@@ -130,6 +131,7 @@ export function createAgentState(
   const view: AgentSessionViewPort = {
     useCurrentRootRun,
     useCurrentRootRunning,
+    useHasPrecedingRootRun,
     useRootNarrativeMessages,
     useTranscriptRows,
     useProblem: useAgentProblem,
@@ -163,6 +165,7 @@ export function createAgentState(
     replaceServerScope: (sessionIds) => refreshOwner.replaceServerScope(sessionIds),
     clearProblem: (sessionId) => useAgentStore.getState().clearProblem(sessionId),
     subscribeSessions: (onChange) => useAgentStore.subscribe((state) => onChange(state.sessions)),
+    subscribeRootRunSettlements: projection.subscribeRootRunSettlements,
   };
   return {
     state,

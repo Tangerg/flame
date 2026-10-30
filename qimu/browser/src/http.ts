@@ -165,6 +165,9 @@ export class HTTPControl implements HostControl {
   snapshot(points: readonly string[]): Promise<Snapshot> {
     return this.#request("snapshot", points);
   }
+  closeSnapshot(snapshotId: string): Promise<void> {
+    return this.#request("closeSnapshot", snapshotId, true);
+  }
   publish(request: PublicationRequest): Promise<PublicationResult> {
     return this.#request("publish", request, true);
   }

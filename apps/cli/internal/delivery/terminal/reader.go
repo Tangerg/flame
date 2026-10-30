@@ -65,6 +65,7 @@ type readerPane struct {
 	scroll           headless.Scroll
 	selection        headless.Selection
 	view             kit.Transcript
+	bodyRegion       headless.PointerRegion
 	selectionGesture readerSelectionGesture
 	search           *headless.Search
 	matches          []headless.Match
@@ -163,11 +164,13 @@ func (r *readerPane) Draw(frame headless.Frame) {
 	if width <= 0 || height <= 0 {
 		return
 	}
-	rows := frame.Subs((layout.Flow{Axis: layout.Down}).Rects(frame.Bounds().Size(), []layout.Slot{
+	rects := (layout.Flow{Axis: layout.Down}).Rects(frame.Bounds().Size(), []layout.Slot{
 		{Size: layout.Fixed(1)},
 		{Size: layout.Flex(1)},
 		{Size: layout.Fixed(1)},
-	}))
+	})
+	r.bodyRegion.Stage(frame, rects[1], &r.view)
+	rows := frame.Subs(rects)
 	kit.Label{Text: r.title, Style: r.theme.Strong, Ellipsis: r.glyphs.Ellipsis}.Draw(rows[0].View)
 	if r.detail != "" {
 		kit.Label{Text: r.detail, Style: r.theme.Subtle, Align: layout.End, Ellipsis: r.glyphs.Ellipsis}.Draw(rows[0].View)
@@ -210,11 +213,12 @@ func (r *readerPane) Handle(event input.Event) bool {
 	case input.Paste, input.FocusOut:
 		r.interruptSelectionGesture()
 	}
-	handled := r.view.Handle(event)
 	if mouse, ok := event.(input.Mouse); ok {
-		r.handleMouse(mouse, handled)
+		handled, delivered := r.bodyRegion.Handle(mouse)
+		r.handleMouse(mouse, handled, delivered)
+		return handled
 	}
-	return handled
+	return r.view.Handle(event)
 }
 
 func (r *readerPane) handleShortcut(event input.Event) bool {
@@ -249,18 +253,18 @@ func (r *readerPane) handleShortcut(event input.Event) bool {
 	}
 }
 
-func (r *readerPane) handleMouse(mouse input.Mouse, handled bool) {
+func (r *readerPane) handleMouse(mouse input.Mouse, handled, delivered bool) {
 	switch mouse.Action {
 	case input.MouseCancel:
 		r.interruptSelectionGesture()
 	case input.MouseDown:
-		if mouse.Button == input.ButtonLeft && handled {
+		if mouse.Button == input.ButtonLeft && handled && delivered {
 			r.selectionGesture.begin()
 		} else {
 			r.interruptSelectionGesture()
 		}
 	case input.MouseDrag:
-		if mouse.Button != input.ButtonLeft {
+		if mouse.Button != input.ButtonLeft || !delivered {
 			r.interruptSelectionGesture()
 		}
 	case input.MouseUp:
@@ -268,7 +272,7 @@ func (r *readerPane) handleMouse(mouse input.Mouse, handled bool) {
 		if mouse.Button != input.ButtonLeft {
 			r.interruptSelectionGesture()
 		}
-		if owned && r.selection.Active() {
+		if owned && delivered && r.selection.Active() {
 			r.copy()
 		}
 	case input.WheelUp, input.WheelDown:

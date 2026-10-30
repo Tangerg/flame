@@ -3285,12 +3285,6 @@
       "schema": {
         "$ref": "schema.json#/$defs/CommandResult"
       }
-    },
-    {
-      "toolName": "web_search",
-      "schema": {
-        "$ref": "schema.json#/$defs/WebSearchResult"
-      }
     }
   ],
   "unions": [
@@ -4334,6 +4328,30 @@
       ]
     },
     {
+      "type": "PluginRendererSelector",
+      "discriminator": "type",
+      "variants": [
+        {
+          "tag": "toolName",
+          "required": [
+            "name"
+          ]
+        },
+        {
+          "tag": "resultShape",
+          "required": [
+            "shape"
+          ]
+        },
+        {
+          "tag": "fileExtension",
+          "required": [
+            "name"
+          ]
+        }
+      ]
+    },
+    {
       "type": "PluginValueChange",
       "discriminator": "type",
       "variants": [
@@ -4495,9 +4513,7 @@
                 "search_tools",
                 "set_plan",
                 "shell",
-                "stop_shell",
-                "web_fetch",
-                "web_search"
+                "stop_shell"
               ]
             }
           ]
@@ -5013,6 +5029,9 @@
             "code",
             "leftLine",
             "rightLine"
+          ],
+          "optional": [
+            "noNewline"
           ]
         },
         {
@@ -5020,6 +5039,9 @@
           "required": [
             "code",
             "rightLine"
+          ],
+          "optional": [
+            "noNewline"
           ]
         },
         {
@@ -5027,6 +5049,9 @@
           "required": [
             "code",
             "leftLine"
+          ],
+          "optional": [
+            "noNewline"
           ]
         }
       ]

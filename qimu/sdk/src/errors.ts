@@ -8,6 +8,7 @@ export type ErrorCode =
   | "permission_denied"
   | "outcome_unknown"
   | "close_unconfirmed"
+  | "close_failed"
   | "resync_required"
   | "reload_required"
   | "reentrant_operation";

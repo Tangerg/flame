@@ -55,7 +55,7 @@ func (VCS) StructuredDiff(
 				return workspaceapp.StructuredDiffResult{}, fmt.Errorf("workspace: unsupported diff row type %q", row.Type)
 			}
 			rows = append(rows, workspaceapp.DiffRow{
-				Type: kind, Text: row.Text, LeftLine: row.LeftLine, RightLine: row.RightLine, Code: row.Code,
+				Type: kind, Text: row.Text, LeftLine: row.LeftLine, RightLine: row.RightLine, Code: row.Code, NoNewline: row.NoNewline,
 			})
 		}
 		out = append(out, workspaceapp.FileDiff{

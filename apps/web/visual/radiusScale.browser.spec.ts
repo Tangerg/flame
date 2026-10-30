@@ -135,19 +135,15 @@ for (const theme of ["light", "dark"]) {
     }[] = [];
     for (const choice of ["Sharp", "Soft"]) {
       await chooseCorners(page, theme, choice);
-      await open(
-        page,
-        theme,
-        "fixture=workspace&state=full-view&full-view=package:visual:schedules",
-      );
-      await page.getByRole("button", { name: "Add schedule", exact: true }).click();
-      const editor = page.getByRole("region", { name: "Schedule editor", exact: true });
+      await open(page, theme, "fixture=workspace&state=full-view&full-view=package:visual:memory");
+      await page.getByRole("button", { name: "Add memory", exact: true }).click();
+      const editor = page.getByRole("region", { name: "Add memory", exact: true });
       const card = await shape(editor);
       await editor.getByRole("button", { name: "Cancel", exact: true }).click();
 
       await open(page, theme, "fixture=workspace&state=settings&pane=plugins");
       await page.getByRole("button", { name: "Configure inputs", exact: true }).first().click();
-      const dialog = page.getByRole("dialog", { name: "Configure inputs", exact: true });
+      const dialog = page.getByRole("dialog", { name: /^Configure inputs: / });
       const modal = await shape(dialog);
       await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
       await expect(dialog).toHaveCount(0);

@@ -46,6 +46,8 @@ async function open(
   const directory = await mkdtemp(join(tmpdir(), "flame-computer-engine-"));
   cleanups.push(() => rm(directory, { recursive: true, force: true }));
   const file = join(directory, "calls.jsonl");
+  const cleanupRelease = join(directory, "release-cleanup");
+  const releaseCleanup = () => writeFile(cleanupRelease, "");
   const ownershipPath =
     options.ownershipPath ?? join(directory, "engine-ownership.json");
   const lease = new AbortController();
@@ -57,6 +59,7 @@ async function open(
       ownershipPath,
       env: {
         COMPUTER_FIXTURE_LOG: file,
+        COMPUTER_FIXTURE_CLEANUP_RELEASE: cleanupRelease,
         ...(options.mode ? { COMPUTER_FIXTURE_MODE: options.mode } : {}),
         ...options.env,
       },
@@ -69,11 +72,13 @@ async function open(
     },
   );
   cleanups.push(() => engine.close());
+  cleanups.push(releaseCleanup);
   return {
     engine,
     lease,
     retired,
     ownershipPath,
+    releaseCleanup,
     async records(): Promise<RecordEntry[]> {
       return (await readFile(file, "utf8"))
         .trim()
@@ -316,7 +321,7 @@ it("preserves an observed result when later turn cleanup fails", async () => {
 });
 
 it("does not erase an observed result when its caller cancels during cleanup", async () => {
-  const { engine, retired, records } = await open();
+  const { engine, retired, records, releaseCleanup } = await open();
   const cancel = new AbortController();
   const result = engine.call(
     "js",
@@ -325,15 +330,52 @@ it("does not erase an observed result when its caller cancels during cleanup", a
   );
   await expect
     .poll(async () =>
-      (await records()).some((entry) => entry.name === "turn_ended"),
+      (await records()).some((entry) => entry.kind === "cleanup-entered"),
     )
     .toBe(true);
   cancel.abort(new Error("user stopped"));
+  await releaseCleanup();
   expect(await result).toEqual({
     result: { content: [{ type: "text", text: "effect confirmed" }] },
     cleanup: "ended",
   });
   expect(retired).toHaveBeenCalledTimes(1);
+  expect((await records()).filter((entry) => entry.name === "js")).toHaveLength(
+    1,
+  );
+});
+
+it("does not retire a settled operation when its caller cancels after cleanup", async () => {
+  const { engine, retired, records, releaseCleanup } = await open();
+  const cancel = new AbortController();
+  const result = engine.call(
+    "js",
+    { code: "cleanup-delay" },
+    scope(cancel.signal),
+  );
+  await expect
+    .poll(async () =>
+      (await records()).some((entry) => entry.kind === "cleanup-entered"),
+    )
+    .toBe(true);
+  await releaseCleanup();
+  expect(await result).toEqual({
+    result: { content: [{ type: "text", text: "effect confirmed" }] },
+    cleanup: "ended",
+  });
+  cancel.abort(new Error("caller ended after settlement"));
+  expect(retired).not.toHaveBeenCalled();
+  expect(
+    await engine.call(
+      "js",
+      { code: "next reviewed operation" },
+      scope(undefined, "next-turn"),
+    ),
+  ).toEqual({
+    result: { content: [{ type: "text", text: "next reviewed operation" }] },
+    cleanup: "ended",
+  });
+  expect(retired).not.toHaveBeenCalled();
 });
 
 it("forwards the exact elicitation and the real response without a permission cache", async () => {

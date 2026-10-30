@@ -30,10 +30,10 @@ export const zh: Record<string, string> = {
   "mcp.form.transport.aria": "传输方式",
   "mcp.form.command.placeholder": "npx",
   "mcp.form.command.aria": "命令",
-  "mcp.form.args": "参数 — 每行一个",
+  "mcp.form.args": "参数（JSON 数组）",
   "mcp.form.args.placeholder":
     "-y\n@modelcontextprotocol/server-filesystem\n/path",
-  "mcp.form.env": "环境变量 — KEY=value，每行一个",
+  "mcp.form.env": "环境变量（JSON 对象）",
   "mcp.form.env.placeholder": "API_KEY=…",
   "mcp.form.env.keep": "留空以保留已存环境变量",
   "mcp.form.env.clear": "移除已保存的环境变量",
@@ -48,7 +48,7 @@ export const zh: Record<string, string> = {
   "mcp.form.auth.originChanged":
     "端点来源已改变，请输入新的授权信息或明确移除已保存的值。",
   "mcp.form.auth.aria": "授权令牌",
-  "mcp.form.headers": "请求头 — KEY=value，每行一个",
+  "mcp.form.headers": "请求头（JSON 对象）",
   "mcp.form.headers.placeholder": "X-API-Key=…",
   "mcp.form.headers.keep": "留空以保留已存请求头",
   "mcp.form.headers.clear": "移除已保存的请求头",
@@ -73,13 +73,13 @@ export const zh: Record<string, string> = {
   "mcp.import.invalidJson": "请输入有效的 JSON。",
   "mcp.import.invalidShape": "请使用包含“mcpServers”对象的有效 MCP 配置。",
   "mcp.import.invalidName":
-    "请为服务器“{{server}}”使用包含 a–z 或 0–9 的名称。",
+    "服务器名称“<server/>”不符合 Runtime 命名规则，请修改此键后重试。",
   "mcp.import.missingTransport":
-    "请为服务器“{{server}}”选择带命令的 stdio，或带 URL 的 Streamable HTTP。",
-  "mcp.import.missingCommand": "请为服务器“{{server}}”添加命令。",
-  "mcp.import.missingUrl": "请为服务器“{{server}}”添加 URL。",
+    "请为服务器“<server/>”提供命令或 URL，二者只能有一个。",
+  "mcp.import.missingCommand": "请为服务器“<server/>”添加命令。",
+  "mcp.import.missingUrl": "请为服务器“<server/>”添加 URL。",
   "mcp.import.invalidTimeout":
-    "请为服务器“{{server}}”设置以秒为单位的正整数超时，或省略此项表示不限时。",
+    "请为服务器“<server/>”设置以秒为单位的正整数超时，或省略此项表示不限时。",
   "mcp.import.empty": "请在“mcpServers”下至少添加一个服务器。",
   "mcp.tools.title": "{{server}} 的工具",
   "mcp.tools.enabled": "启用",
@@ -114,12 +114,15 @@ export const zh: Record<string, string> = {
   "mcpStatus.mcp_dial_failed": "连不上这个服务器 —— 检查命令或 URL 后重试。",
   "common.cancel": "取消",
   "common.close": "关闭",
-  title: "MCP 服务器",
   "command.uncertain":
     "原始命令的结果未确认。在发出另一条命令或切换目录前请先核对。",
   "command.reconcile": "核对原始命令",
   "read.retained": "保留上次接受的读取。",
-  reading: "加载中",
-  refresh: "刷新",
-  retry: "重试",
+  "mcp.form.args.invalid": "请输入由字符串组成的 JSON 数组；留空表示不传参数。",
+  "mcp.form.env.invalid": "请输入非空 JSON 对象，每个值必须是字符串。",
+  "mcp.form.headers.invalid": "请输入非空 JSON 对象，每个值必须是字符串。",
+  "mcp.import.unsupportedTransport":
+    "服务器“<server/>”的“type”不受支持，请使用“stdio”或“streamableHttp”。",
+  "mcp.import.headerConflict":
+    "服务器“<server/>”重复声明了“<header/>”，请只保留一个声明。",
 };

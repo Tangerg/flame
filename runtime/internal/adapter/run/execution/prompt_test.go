@@ -100,7 +100,7 @@ func TestComposePromptRejectsSilentlyDroppedAgentDocument(t *testing.T) {
 	}
 
 	if _, err := newTestWorkingContextComposer(t, WorkingContextConfig{}).
-		composeSystemMessage(t.Context(), workspace); !errors.Is(err, workspaceapp.ErrPromptSourceTooLarge) {
+		composeSystemMessage(t.Context(), workspace, workspace); !errors.Is(err, workspaceapp.ErrPromptSourceTooLarge) {
 		t.Fatalf("composeSystemMessage error = %v, want ErrPromptSourceTooLarge", err)
 	}
 }
@@ -111,7 +111,7 @@ func TestComposePromptRejectsSilentlyDroppedAgentDocument(t *testing.T) {
 
 func composeSystemPromptText(t *testing.T, config WorkingContextConfig, cwd string) string {
 	t.Helper()
-	message, err := newTestWorkingContextComposer(t, config).composeSystemMessage(t.Context(), cwd)
+	message, err := newTestWorkingContextComposer(t, config).composeSystemMessage(t.Context(), cwd, cwd)
 	if err != nil {
 		t.Fatal(err)
 	}

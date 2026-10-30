@@ -1,3 +1,9 @@
+import { createImageExport } from "@/foundation/imageExport";
+import { createGoals } from "@/features/goal/application/goals";
+import { GoalProvider } from "@/features/goal/public/goals";
+import { MessageFeedbackOwner } from "@/features/chat/message-actions/application/feedback";
+import { MessageFeedbackProvider } from "@/features/chat/message-actions/public/feedback";
+import { ApplicationCalloutLabels } from "@/app/calloutLabels";
 import { createTheme } from "@/features/theme/adapters/theme";
 import { ThemeProvider } from "@/features/theme/public/theme";
 import { createNotifications } from "@/features/notifications/adapters/notifications";
@@ -34,8 +40,9 @@ import { disposeOnHmr } from "@/lib/hmr";
 import "@/styles/markdown.css";
 import "@/styles/overlays.css";
 import "@/styles/globals.css";
-const host = createClientHost(IMAGE_FILENAME_STEM);
+const host = createClientHost();
 const theme = createTheme(document, window);
+const feedback = new MessageFeedbackOwner(null);
 
 const connection = createRuntimeConnection(
   host,
@@ -51,6 +58,9 @@ const agent = createAgent(
   connection.access,
   connection.stream,
   connection.scope,
+);
+const goals = createGoals((sessionId) =>
+  agent.access.synchronizeMountedAgentSession(sessionId, "replace-live"),
 );
 const composer = createComposer(
   {
@@ -98,29 +108,41 @@ const plugins = createBuiltinPlugins(
   notifications,
   installedPlugins,
   theme,
+  goals,
+  feedback,
 );
 
 function ApplicationContext({ children }: { children: ReactNode }) {
   return (
-    <ThemeProvider value={theme.access}>
-      <RuntimeProvider value={connection.access}>
-        <agent.Provider>
-          <ComposerProvider value={composer.access}>
-            <WorkspaceProvider value={workspace.access}>
-              <WorkingDirectoryProvider value={directory.access}>
-                <ImageSaveProvider saveImage={(source) => host.saveImage(source)}>
-                  <NotificationProvider value={notifications.access}>
-                    <InstalledPluginsProvider value={installedPlugins.access}>
-                      {children}
-                    </InstalledPluginsProvider>
-                  </NotificationProvider>
-                </ImageSaveProvider>
-              </WorkingDirectoryProvider>
-            </WorkspaceProvider>
-          </ComposerProvider>
-        </agent.Provider>
-      </RuntimeProvider>
-    </ThemeProvider>
+    <MessageFeedbackProvider value={feedback}>
+      <GoalProvider value={goals.access}>
+        <ApplicationCalloutLabels>
+          <ThemeProvider value={theme.access}>
+            <RuntimeProvider value={connection.access}>
+              <agent.Provider>
+                <ComposerProvider value={composer.access}>
+                  <WorkspaceProvider value={workspace.access}>
+                    <WorkingDirectoryProvider value={directory.access}>
+                      <ImageSaveProvider
+                        saveImage={(source) =>
+                          createImageExport(IMAGE_FILENAME_STEM, host.saveFile)(source)
+                        }
+                      >
+                        <NotificationProvider value={notifications.access}>
+                          <InstalledPluginsProvider value={installedPlugins.access}>
+                            {children}
+                          </InstalledPluginsProvider>
+                        </NotificationProvider>
+                      </ImageSaveProvider>
+                    </WorkingDirectoryProvider>
+                  </WorkspaceProvider>
+                </ComposerProvider>
+              </agent.Provider>
+            </RuntimeProvider>
+          </ThemeProvider>
+        </ApplicationCalloutLabels>
+      </GoalProvider>
+    </MessageFeedbackProvider>
   );
 }
 
@@ -154,6 +176,8 @@ const renderer = new ClientRenderer({
   closeConnection: async () => {
     const failures: unknown[] = [];
     for (const dispose of [
+      goals.dispose,
+      () => feedback.dispose(),
       notifications.dispose,
       composer.dispose,
       directory.dispose,

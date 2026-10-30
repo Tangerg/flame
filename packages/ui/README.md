@@ -66,6 +66,13 @@ percentage from the same `value` and `max`. The default maximum remains 100.
 The host supplies the locale and the meaning of the progress; the component owns
 neither an elapsed-time estimate nor an execution state.
 
+`Callout` owns its closed kinds, marker parser, icon mapping and geometry. Every
+host supplies the visible kind titles through `CalloutLabelsProvider` with a
+complete `CalloutLabels` record. Changing the host labels updates mounted
+Callouts. The component has no built-in English titles; a missing provider or
+empty label is an explicit contract error. Standalone and component-SDK hosts
+must wrap their roots in this provider when using Callouts.
+
 ```tsx
 import { Button, IconButton, FontScaleProvider } from "@flame/ui";
 import { Brain } from "@flame/icons/react";
@@ -98,6 +105,10 @@ sticky action and filter zone, and children hold the scrolling content. The host
 keeps its existing scroll viewport. The panel does not shrink inside a column
 host: its canvas and sticky-control boundary extend through the complete content.
 `Panel` projects its own controls' measured height on its root to keep focused content and anchors
+
+The panel owns its stable DOM ref; forwarded refs project that same element without
+retiring it while new children receive focus during a commit.
+`Panel` projects only its own controls' measured height on its root to keep focused content and anchors
 clear of the controls; wrapped controls update through `ResizeObserver`.
 Its existing viewport observation also projects the clipped host height as
 `--reading-frame-height` for nested source readers. Sizing and body focus use
@@ -119,6 +130,9 @@ notifications without scroll displacement do not. Later outside focus, inactive
 retained content and unmount also retire the reading witness.
 The same owner records positions after its own reveal, so a queued programmatic
 scroll event during native window animation cannot retire that reflow witness.
+
+When controls temporarily cover the entire host viewport, that witness waits for
+reflow to restore a reading frame. An explicit wheel gesture still retires it.
 Pointer-caused focus leaves the pressed control in place so activation can
 finish before any row reveal, including reflow during the press.
 The body retains the pressed target until pointerup or cancellation,
@@ -349,8 +363,8 @@ Prose color comes only from the host's accent roles: headings and inline code us
 the same heading role.
 `Callout` owns the GitHub alert presentation for every Markdown adapter: the
 marker grammar (`readCalloutMarker`), the shared remark transform (`remarkCallouts`),
-the natural-case title and icon per kind,
-and each kind's title and icon ink. A callout stays on the surrounding reading
+the icon per kind and the host-supplied
+title's layout and ink. A callout stays on the surrounding reading
 plane without its own fill, rule or corners: its content keeps the paragraph
 reading edge and the shared block rhythm. `ImageNotice` is the one inert image
 description: an alternative text and a muted detail, used for unavailable
@@ -410,6 +424,8 @@ its original indentation remain separate from the decorative marker.
 With its region focused, Ctrl/Cmd+A selects only the rendered difference rows,
 excluding the caption, column headings and surrounding application; partial
 selection and copy remain native.
+A code row marked `noNewline` retains the patch termination marker beneath its
+source in both layouts, including native selection and copy.
 Adjacent deletion/addition runs pair by position in split layout, stopping at
 context and hunk boundaries. Extra lines keep their own side; unified layout
 retains source order. Both layouts mark changed words without changing source

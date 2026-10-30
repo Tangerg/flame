@@ -162,7 +162,7 @@ type Snapshot struct {
 // WorkspaceCheckpoints is the coordinator's view of a session's working-tree
 // checkpoint store (shadow git): Restore checks out the tree to a run-boundary
 // snapshot — the filesystem half of a file rollback — and DropSession
-// discards a deleted session's snapshots as the last step of the delete cascade.
+// discards the predecessor's snapshots under a committed resource retirement.
 // Restore is reentrant (checking out an already-restored tree is a no-op), so
 // the recoverable operation can re-drive it at boot. A disabled store or missing
 // snapshot surfaces as [ErrCheckpointUnavailable]; unarchived material blocking
@@ -171,18 +171,13 @@ type Snapshot struct {
 // Implementations translate storage failures into these use-case errors.
 type WorkspaceCheckpoints interface {
 	Restore(ctx context.Context, sessionID, cwd, runID string) error
-	// DropSession removes a session's checkpoint history after the durable
-	// aggregate deletion. A failure cannot roll the transaction back, but it is
-	// returned to the caller and never disguised as successful cleanup.
+	// DropSession executes an already-committed resource retirement. The
+	// mutation owner retains responsibility and admission until cleanup succeeds.
 	DropSession(sessionID string) error
 }
 
-// SandboxDiscarder destroys a session's isolated sandbox working copy — the
-// scratch-tree half of execution-policy changes and delete/rollback/restore
-// cascades. Any mutation that can expose another execution policy or history
-// discards before commit so its replacement can never resolve to the old copy;
-// deletion may discard post-commit because no later Run can address the removed
-// Session. nil disables it (no-op — isolation is off).
+// SandboxDiscarder destroys the isolated copy owned by the addressed Session.
+// It must also reach that Session's managed scratch namespace after restart.
 type sandboxDiscarder interface {
 	Discard(sessionID string) error
 }
@@ -219,6 +214,14 @@ type workspaceMutations interface {
 	Record(ctx context.Context, m WorkspaceMutation) (bool, error)
 	Complete(ctx context.Context, m WorkspaceMutation) error
 	ListPending(ctx context.Context) ([]WorkspaceMutation, error)
+}
+
+// ResourceRetirements exposes only committed cleanup responsibilities. Their
+// creation belongs to the same write-set that retires the Session history.
+type resourceRetirements interface {
+	Lookup(context.Context, string) (ResourceRetirement, bool, error)
+	ListPending(context.Context) ([]ResourceRetirement, error)
+	Complete(context.Context, ResourceRetirement) error
 }
 
 // ExecutionReleaser is the engine-neutral resource lifecycle slice the Session
@@ -259,7 +262,8 @@ type Coordinator struct {
 	goals goalMutationGuard
 	// mutations is the recoverable operation log guarding a file+history
 	// rollback across the working tree and the durable history.
-	mutations workspaceMutations
+	mutations   workspaceMutations
+	retirements resourceRetirements
 	// admissions is shared with Runs and owns the process-local session and
 	// working-tree facts.
 	admissions Admissions
@@ -295,6 +299,7 @@ type Dependencies struct {
 	Sandbox               sandboxDiscarder
 	Goals                 goalMutationGuard
 	Mutations             workspaceMutations
+	Retirements           resourceRetirements
 	Admissions            Admissions
 	// Invalidations publishes post-commit invalidations for the session projections a
 	// mutation moved. nil disables them (no runtime change stream wired).
@@ -327,6 +332,7 @@ func New(deps Dependencies) (*Coordinator, error) {
 		{"plan replacements", deps.Plan.Replacements},
 		{"goal mutation guard", deps.Goals},
 		{"workspace mutations", deps.Mutations},
+		{"session resource retirements", deps.Retirements},
 		{"interrupt store", deps.Interrupts},
 		{"transcript store", deps.Transcript},
 		{"run store", deps.Runs},
@@ -380,6 +386,7 @@ func New(deps Dependencies) (*Coordinator, error) {
 		sandbox:               deps.Sandbox,
 		goals:                 deps.Goals,
 		mutations:             deps.Mutations,
+		retirements:           deps.Retirements,
 		admissions:            deps.Admissions,
 		invalidations:         deps.Invalidations,
 		now:                   deps.Now,

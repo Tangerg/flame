@@ -77,11 +77,24 @@ describe("questionPresentation", () => {
     expect(draft[0]).toEqual({ selected: ["B"], text: "" });
   });
 
-  it("does not duplicate a selected option entered as custom text", () => {
+  it("preserves a duplicate candidate for Runtime admission", () => {
     let draft = createQuestionDraft([multi]);
     draft = toggleQuestionOption(draft, 0, multi, "A");
     draft = setQuestionText(draft, 0, multi, "A");
-    expect(questionDraftAnswers([multi], draft)).toEqual([["A"]]);
+    expect(questionDraftAnswers([multi], draft)).toEqual([["A", "A"]]);
+  });
+
+  it("preserves raw text and one literal custom value for Runtime admission", () => {
+    const text: QuestionItem = { type: "text", prompt: "Context", header: "Context" };
+    const draft = [
+      { selected: [], text: " context, with spaces " },
+      { selected: ["A"], text: " custom, one " },
+    ];
+    expect(questionDraftAnswers([text, multi], draft)).toEqual([
+      [" context, with spaces "],
+      ["A", " custom, one "],
+    ]);
+    expect(questionDraftAnswers([text], [{ selected: [], text: " " }])).toEqual([[" "]]);
   });
 
   it("does not manufacture custom answers for a closed choice", () => {

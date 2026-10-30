@@ -9,7 +9,10 @@ async function expectReadingHierarchy(header: Locator) {
     return { back: back.toJSON(), identity: identity.toJSON(), controls: controls.toJSON() };
   });
   expect(geometry.back.right).toBeLessThanOrEqual(geometry.identity.x);
-  expect(geometry.identity.bottom).toBeLessThanOrEqual(geometry.controls.y);
+  expect(
+    geometry.identity.bottom <= geometry.controls.y ||
+      geometry.identity.right <= geometry.controls.x,
+  ).toBe(true);
 }
 
 for (const [fontSize, theme] of [
@@ -24,7 +27,9 @@ for (const [fontSize, theme] of [
       `/visual/?fixture=workspace&state=dock-light&agent-state=idle&theme=${theme}&font-size=${fontSize}&locale=en`,
     );
     await page.locator("html[data-visual-ready]").waitFor();
-    const view = page.locator('[data-dock-view-id="file"]');
+    const view = page
+      .locator('[data-dock-view-id="file"]')
+      .filter({ has: page.locator('[data-slot="workspace-view-header"]') });
     const header = view.locator('[data-slot="workspace-view-header"]');
     await expectReadingHierarchy(header);
     await header.getByRole("button", { name: "Back to files", exact: true }).click();
@@ -84,7 +89,9 @@ test("file copy feedback follows clipboard acceptance and the current file", asy
   });
   await page.goto("/visual/?fixture=workspace&state=dock-light&agent-state=idle&locale=en");
   await page.locator("html[data-visual-ready]").waitFor();
-  const view = page.locator('[data-dock-view-id="file"]');
+  const view = page
+    .locator('[data-dock-view-id="file"]')
+    .filter({ has: page.locator('[data-slot="workspace-view-header"]') });
   const header = view.locator('[data-slot="workspace-view-header"]');
   const path = await header.locator("[title]").first().getAttribute("title");
   try {

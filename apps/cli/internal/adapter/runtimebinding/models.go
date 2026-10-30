@@ -87,7 +87,7 @@ func (r *Connection) SetRole(ctx context.Context, role models.Role) (models.Role
 
 func projectUtilityRole(role protocol.UtilityRole) (models.Role, error) {
 	if role.Provider == "" && role.Model == "" {
-		return models.InheritedUtilityRole(), nil
+		return models.RuntimeDefaultUtilityRole(), nil
 	}
 	return models.NewConfiguredRole(models.UtilityRole, role.Provider, role.Model)
 }

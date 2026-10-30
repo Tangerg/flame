@@ -1,10 +1,13 @@
-import { createPublicationSlot } from "@/lib/publicationSlot";
 type GoalComposerModePhase = "inactive" | "armed" | "confirming" | "starting";
 
 export interface GoalComposerModeSnapshot {
-  sessionId: string | null;
-  phase: GoalComposerModePhase;
-  replacedObjective: string | null;
+  readonly sessionId: string | null;
+  readonly phase: GoalComposerModePhase;
+  readonly replacedObjective: string | null;
+}
+
+export interface GoalComposerSubmission {
+  finish(succeeded: boolean): boolean;
 }
 
 const INACTIVE: GoalComposerModeSnapshot = {
@@ -13,25 +16,11 @@ const INACTIVE: GoalComposerModeSnapshot = {
   replacedObjective: null,
 };
 
-const publication = createPublicationSlot<GoalComposerModeOwner>();
-
 export class GoalComposerModeOwner {
   #snapshot: GoalComposerModeSnapshot = INACTIVE;
-  #replacement: (() => void) | null = null;
+  #replacement: ((submission: GoalComposerSubmission) => void) | null = null;
   #listeners = new Set<() => void>();
   #disposed = false;
-
-  static install(): GoalComposerModeOwner {
-    const owner = new GoalComposerModeOwner();
-    publication.publish(owner, (predecessor) => predecessor.dispose());
-    return owner;
-  }
-
-  static current(): GoalComposerModeOwner {
-    const owner = publication.current();
-    if (!owner || owner.#disposed) throw new Error("Goal composer mode owner is not installed");
-    return owner;
-  }
 
   readonly subscribe = (listener: () => void): (() => void) => {
     this.#listeners.add(listener);
@@ -40,8 +29,8 @@ export class GoalComposerModeOwner {
 
   readonly snapshot = (): GoalComposerModeSnapshot => this.#snapshot;
 
-  ownsPublication(): boolean {
-    return !this.#disposed && publication.owns(this);
+  get retired(): boolean {
+    return this.#disposed;
   }
 
   active(sessionId: string): boolean {
@@ -49,14 +38,14 @@ export class GoalComposerModeOwner {
   }
 
   activate(sessionId: string): boolean {
-    if (!this.ownsPublication()) return false;
+    if (this.#disposed) return false;
     this.#replacement = null;
     this.#publish({ sessionId, phase: "armed", replacedObjective: null });
     return true;
   }
 
   toggle(sessionId: string): boolean {
-    if (!this.ownsPublication()) return false;
+    if (this.#disposed) return false;
     if (this.#snapshot.sessionId === sessionId && this.#snapshot.phase === "armed") {
       return this.deactivate(sessionId);
     }
@@ -64,16 +53,19 @@ export class GoalComposerModeOwner {
     return this.activate(sessionId);
   }
 
-  begin(sessionId: string): boolean {
-    if (!this.ownsPublication() || !this.active(sessionId) || this.#snapshot.phase !== "armed") {
-      return false;
+  begin(sessionId: string): GoalComposerSubmission | null {
+    if (this.#disposed || !this.active(sessionId) || this.#snapshot.phase !== "armed") {
+      return null;
     }
-    this.#publish({ sessionId, phase: "starting", replacedObjective: null });
-    return true;
+    return this.#begin(sessionId);
   }
 
-  requestReplacement(sessionId: string, objective: string, start: () => void): boolean {
-    if (!this.ownsPublication() || !this.active(sessionId) || this.#snapshot.phase !== "armed") {
+  requestReplacement(
+    sessionId: string,
+    objective: string,
+    start: (submission: GoalComposerSubmission) => void,
+  ): boolean {
+    if (this.#disposed || !this.active(sessionId) || this.#snapshot.phase !== "armed") {
       return false;
     }
     this.#replacement = start;
@@ -83,7 +75,7 @@ export class GoalComposerModeOwner {
 
   confirmReplacement(sessionId: string): boolean {
     if (
-      !this.ownsPublication() ||
+      this.#disposed ||
       this.#snapshot.sessionId !== sessionId ||
       this.#snapshot.phase !== "confirming" ||
       !this.#replacement
@@ -92,14 +84,13 @@ export class GoalComposerModeOwner {
     }
     const start = this.#replacement;
     this.#replacement = null;
-    this.#publish({ sessionId, phase: "starting", replacedObjective: null });
-    start();
+    start(this.#begin(sessionId));
     return true;
   }
 
   cancelReplacement(sessionId: string): boolean {
     if (
-      !this.ownsPublication() ||
+      this.#disposed ||
       this.#snapshot.sessionId !== sessionId ||
       this.#snapshot.phase !== "confirming"
     ) {
@@ -110,23 +101,35 @@ export class GoalComposerModeOwner {
     return true;
   }
 
-  finish(sessionId: string, succeeded: boolean): boolean {
-    if (
-      !this.ownsPublication() ||
-      this.#snapshot.sessionId !== sessionId ||
-      this.#snapshot.phase !== "starting"
-    ) {
-      return false;
-    }
-    this.#publish(succeeded ? INACTIVE : { sessionId, phase: "armed", replacedObjective: null });
-    return true;
+  #begin(sessionId: string): GoalComposerSubmission {
+    const snapshot: GoalComposerModeSnapshot = {
+      sessionId,
+      phase: "starting",
+      replacedObjective: null,
+    };
+    this.#publish(snapshot);
+    return {
+      finish: (succeeded) => {
+        if (this.#disposed || this.#snapshot !== snapshot) return false;
+        this.#publish(
+          succeeded ? INACTIVE : { sessionId, phase: "armed", replacedObjective: null },
+        );
+        return true;
+      },
+    };
   }
 
   deactivate(sessionId: string): boolean {
-    if (!this.ownsPublication() || this.#snapshot.sessionId !== sessionId) return false;
+    if (this.#disposed || this.#snapshot.sessionId !== sessionId) return false;
     this.#replacement = null;
     this.#publish(INACTIVE);
     return true;
+  }
+
+  reset(): void {
+    if (this.#disposed) return;
+    this.#replacement = null;
+    this.#publish(INACTIVE);
   }
 
   dispose(): void {
@@ -136,7 +139,6 @@ export class GoalComposerModeOwner {
     this.#snapshot = INACTIVE;
     for (const listener of this.#listeners) listener();
     this.#listeners.clear();
-    publication.withdraw(this);
   }
 
   #publish(snapshot: GoalComposerModeSnapshot): void {

@@ -67,14 +67,13 @@ export function questionDraftAnswers(
 ): QuestionAnswers {
   return questions.map((question, index) => {
     const { selected, text } = draft[index] ?? EMPTY_ENTRY;
-    const trimmed = text.trim();
-    if (question.type === "text") return trimmed ? [trimmed] : [];
+    if (question.type === "text") return text ? [text] : [];
     if (question.multiple) {
       const values = [...selected];
-      if (question.allowCustom && trimmed && !values.includes(trimmed)) values.push(trimmed);
+      if (question.allowCustom && text) values.push(text);
       return values;
     }
-    const answer = question.allowCustom && trimmed ? trimmed : selected[0];
+    const answer = question.allowCustom && text ? text : selected[0];
     return answer ? [answer] : [];
   });
 }

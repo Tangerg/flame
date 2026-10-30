@@ -1,10 +1,48 @@
 package conversation
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 )
+
+func TestQuestionAnswerMatchesThePublicRuntimeContract(t *testing.T) {
+	options := []protocol.QuestionOption{{Label: "a"}, {Label: "b"}}
+	for _, field := range []QuestionField{
+		{Prompt: "Context", Kind: QuestionText},
+		{Prompt: "Platform", Kind: QuestionSingle, Options: options},
+		{Prompt: "Platform", Kind: QuestionSingle, Options: options, AllowCustom: true},
+		{Prompt: "Checks", Kind: QuestionMulti, Options: options},
+		{Prompt: "Checks", Kind: QuestionMulti, Options: options, AllowCustom: true},
+	} {
+		question := Question{RunID: "run_1", ItemID: "item_1", Title: "Contract", Fields: []QuestionField{{Prompt: "First", Kind: QuestionText}, field}}
+		contract, err := question.AnswerContract()
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, values := range [][]string{nil, {}, {"a"}, {"a", "b"}, {"custom, one"}, {"a", "custom, one"}, {"one", "two"}, {"a", "a"}, {"custom", "custom"}, {""}, {" "}, {" a"}, {"a "}, {" context "}} {
+			answers := [][]string{{}, values}
+			want := contract.Validate(answers)
+			got := ValidateAnswer(question, QuestionAnswer{Values: answers})
+			if (got == nil) != (want == nil) {
+				t.Fatalf("%s custom=%t values=%q: CLI=%v, Runtime=%v", field.Kind, field.AllowCustom, values, got, want)
+			}
+			if want != nil {
+				local, ok := errors.AsType[*questioncontract.FieldError](got)
+				if !ok || local.Index != 1 {
+					t.Fatalf("field identity = %v, want index 1", got)
+				}
+			}
+			accepted := question.Clone()
+			accepted.Answers = CloneAnswers(answers)
+			if err := accepted.Validate(); (err == nil) != (want == nil) {
+				t.Fatalf("accepted projection values=%q: %v, Runtime=%v", values, err, want)
+			}
+		}
+	}
+}
 
 func TestQuestionAnswerUsesFieldOrder(t *testing.T) {
 	question := Question{RunID: "run_1", ItemID: "q_1", Title: "Configuration", Fields: []QuestionField{
@@ -20,23 +58,44 @@ func TestQuestionAnswerUsesFieldOrder(t *testing.T) {
 	}
 }
 
-func TestQuestionAcceptReturnsAnOwnedDurableFact(t *testing.T) {
+func TestQuestionProjectionPreservesExplicitSkippedAnswers(t *testing.T) {
+	question := Question{RunID: "run_1", ItemID: "q_1", Title: "Skipped", Fields: []QuestionField{
+		{Prompt: "Optional context", Kind: QuestionText},
+	}, Answers: [][]string{{}}}
+	if !question.Answered() {
+		t.Fatal("explicit skip became an unanswered question")
+	}
+	if err := question.Validate(); err != nil {
+		t.Fatalf("accepted skip was rejected: %v", err)
+	}
+	copy := question.Clone()
+	if !copy.Answered() || len(copy.Answers) != 1 || len(copy.Answers[0]) != 0 {
+		t.Fatal("cloning lost the accepted skip")
+	}
+}
+
+func TestQuestionAnswerRejectsInvalidCustomChoiceValues(t *testing.T) {
+	question := Question{RunID: "run_1", ItemID: "q_1", Title: "Choices", Fields: []QuestionField{
+		{Prompt: "Targets", Kind: QuestionMulti, AllowCustom: true, Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}}},
+	}}
+	for _, values := range [][]string{{"custom one", "custom two"}, {" "}, {" linux"}, {"custom "}} {
+		if err := ValidateAnswer(question, QuestionAnswer{Values: [][]string{values}}); err == nil {
+			t.Errorf("invalid choice answer was accepted: %q", values)
+		}
+	}
+}
+
+func TestQuestionProjectionOwnsItsAcceptedSnapshotCopy(t *testing.T) {
 	t.Parallel()
-	question := Question{RunID: "run_1", ItemID: "q_1", Title: "Target", Fields: []QuestionField{{Prompt: "Name", Kind: QuestionText}}}
-	answer := QuestionAnswer{Values: [][]string{{"linux"}}}
-	accepted, err := question.Accept(answer)
-	if err != nil {
+	answers := [][]string{{"linux"}}
+	question := Question{RunID: "run_1", ItemID: "q_1", Title: "Target", Fields: []QuestionField{{Prompt: "Name", Kind: QuestionText}}, Answers: answers}
+	if err := question.Validate(); err != nil {
 		t.Fatal(err)
 	}
-	if question.Answered() || !accepted.Answered() || accepted.Answers[0][0] != "linux" {
-		t.Fatalf("pending = %+v, accepted = %+v", question, accepted)
-	}
-	answer.Values[0][0] = "mutated"
-	if accepted.Answers[0][0] != "linux" {
-		t.Fatal("accepted question aliases the editor's response storage")
-	}
-	if _, err := accepted.Accept(QuestionAnswer{Values: [][]string{{"again"}}}); err == nil {
-		t.Fatal("accepted question accepted a second response")
+	snapshot := question.Clone()
+	answers[0][0] = "changed"
+	if !snapshot.Answered() || snapshot.Answers[0][0] != "linux" {
+		t.Fatal("snapshot did not retain the original accepted fact")
 	}
 }
 

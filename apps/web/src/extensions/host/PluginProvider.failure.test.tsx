@@ -24,6 +24,41 @@ class FailureBoundary extends Component<{ children: ReactNode }, { failed: boole
 }
 
 describe("plugin installation failure", () => {
+  it("joins a canceled real startup and its rollback before installing the next kernel", async () => {
+    const entered = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    finishTestClient(() => release.resolve());
+    const stopped = vi.fn();
+    const started = vi.fn();
+    const first = definePlugin({
+      name: "test.pending-startup",
+      async setup(ctx) {
+        ctx.cleanup(stopped);
+        entered.resolve();
+        await release.promise;
+        return {};
+      },
+    });
+    const next = definePlugin({ name: "test.successor", setup: started });
+    const view = testClient.render(
+      <PluginProvider plugins={[first]}>
+        <div>ready</div>
+      </PluginProvider>,
+    );
+    await entered.promise;
+    view.rerender(
+      <PluginProvider plugins={[next]}>
+        <div>ready</div>
+      </PluginProvider>,
+    );
+    expect(started).not.toHaveBeenCalled();
+    release.resolve();
+
+    await screen.findByText("ready");
+    expect(stopped).toHaveBeenCalledOnce();
+    expect(started).toHaveBeenCalledOnce();
+  });
+
   it("renders startup failures through the application error boundary", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     try {

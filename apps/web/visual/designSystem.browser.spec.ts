@@ -72,8 +72,11 @@ test("layout tokens change page gutters, form padding and field groups together"
   await expect(editor).toHaveCSS("border-top-left-radius", "28px");
   const group = editor.getByRole("group", { name: "Timing and workspace", exact: true });
   await expect(group.locator(":scope > div")).toHaveCSS("row-gap", "24px");
-  await editor.getByRole("button", { name: "Close schedule editor", exact: true }).click();
-  const panel = page.locator('section[data-slot="panel"][aria-label="Schedules"]');
+  await editor.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(editor).toHaveCount(0);
+  const panel = page
+    .getByRole("region", { name: "Schedules", exact: true, includeHidden: true })
+    .and(page.locator('[data-slot="panel"]'));
   const pageEdge = (await panel.boundingBox())!.x;
   expect((await panel.locator('[data-slot="panel-controls"]').boundingBox())!.x - pageEdge).toBe(
     40,

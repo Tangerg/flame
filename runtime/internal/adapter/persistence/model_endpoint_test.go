@@ -43,7 +43,7 @@ func TestUnobservedEndpointReopensUnknownWithoutReplayingCallingIdentity(t *test
 		t.Fatal(err)
 	}
 	rows, err := store.PageEndpointInvocations(t.Context(), "model-operation", 0, "", 10)
-	if err != nil || len(rows) != 1 || rows[0].State != "unknown" || rows[0].Response != nil || rows[0].Failure == "" {
+	if err != nil || len(rows) != 1 || rows[0].State() != modelref.EndpointUnknown || rows[0].Response() != nil || rows[0].Snapshot().Failure == "" {
 		t.Fatalf("restart promoted unknown request: %+v, %v", rows, err)
 	}
 	invocation.ID = "endpoint-replacement"
@@ -272,10 +272,10 @@ func TestEndpointAssociatesOnlyExplicitActiveModelOrToolOwner(t *testing.T) {
 			t.Fatalf("missing admitted source: %+v %v", row, err)
 		}
 		if test.associated {
-			if row.RunID != draft.RunID || row.SegmentID != draft.SegmentID || row.SessionID != draft.SessionID {
+			if row.Snapshot().RunID != draft.RunID || row.Snapshot().SegmentID != draft.SegmentID || row.Snapshot().SessionID != draft.SessionID {
 				t.Fatalf("independent source lost owner: %+v", row)
 			}
-		} else if row.RunID != "" || row.SegmentID != "" {
+		} else if row.Snapshot().RunID != "" || row.Snapshot().SegmentID != "" {
 			t.Fatalf("wire ancestry invented a Run: %+v", row)
 		}
 	}
@@ -356,20 +356,20 @@ func TestEmbeddingEndpointRecordsKindUsageServedModelAndRawEvidence(t *testing.T
 	if err != nil || !found {
 		t.Fatalf("embedding endpoint missing: %v", err)
 	}
-	if observed.Invocation.Kind != modelref.EndpointEmbedding || observed.State != "completed" || observed.ServedModel != "embed-model-served" {
+	if observed.Snapshot().Invocation.Kind != modelref.EndpointEmbedding || observed.State() != modelref.EndpointCompleted || observed.ServedModel() != "embed-model-served" {
 		t.Fatalf("embedding projection changed: %+v", observed)
 	}
-	if observed.Usage == nil || observed.Usage.InputTokens != 11 || observed.Usage.OutputTokens != 0 {
-		t.Fatalf("embedding usage is not input-only: %+v", observed.Usage)
+	if observed.Snapshot().Usage == nil || observed.Snapshot().Usage.InputTokens != 11 || observed.Snapshot().Usage.OutputTokens != 0 {
+		t.Fatalf("embedding usage is not input-only: %+v", observed.Snapshot().Usage)
 	}
-	if observed.CostUSD == nil || *observed.CostUSD != cost {
-		t.Fatalf("embedding cost lost: %+v", observed.CostUSD)
+	if observed.Snapshot().CostUSD == nil || *observed.Snapshot().CostUSD != cost {
+		t.Fatalf("embedding cost lost: %+v", observed.Snapshot().CostUSD)
 	}
-	if observed.Response != nil {
-		t.Fatalf("embedding must not synthesize a chat response: %+v", observed.Response)
+	if observed.Response() != nil {
+		t.Fatalf("embedding must not synthesize a chat response: %+v", observed.Response())
 	}
-	if !observed.HasResponse() || !strings.Contains(observed.ResponseJSON.String(), "0.3") || !strings.Contains(observed.RequestJSON.String(), "second text") {
-		t.Fatalf("embedding raw evidence lost: req=%s resp=%s", observed.RequestJSON.String(), observed.ResponseJSON.String())
+	if !observed.HasResponse() || !strings.Contains(observed.Snapshot().ResponseJSON.String(), "0.3") || !strings.Contains(observed.Snapshot().RequestJSON.String(), "second text") {
+		t.Fatalf("embedding raw evidence lost: req=%s resp=%s", observed.Snapshot().RequestJSON.String(), observed.Snapshot().ResponseJSON.String())
 	}
 	var folded *modelref.EndpointObservation
 	if err := store.VisitEndpointInvocations(t.Context(), "ses_embed", time.Time{}, func(o modelref.EndpointObservation) error {
@@ -379,7 +379,7 @@ func TestEmbeddingEndpointRecordsKindUsageServedModelAndRawEvidence(t *testing.T
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if folded == nil || folded.Invocation.Kind != modelref.EndpointEmbedding || folded.Usage == nil || folded.Usage.InputTokens != 11 || folded.ServedModel != "embed-model-served" {
+	if folded == nil || folded.Snapshot().Invocation.Kind != modelref.EndpointEmbedding || folded.Snapshot().Usage == nil || folded.Snapshot().Usage.InputTokens != 11 || folded.ServedModel() != "embed-model-served" {
 		t.Fatalf("usage source did not fold embedding evidence: %+v", folded)
 	}
 }

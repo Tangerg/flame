@@ -1,3 +1,4 @@
+import { METHODS } from "../contracts/methods";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   bindOperations,
@@ -17,32 +18,19 @@ import { parseJSON } from "@qimu/sdk/json";
 import type { HistoryPage, OperationRecord, Snapshot, Surface } from "./types";
 import { LIMITS } from "../contracts/limits";
 
-export const methods = {
-  read: "flame.computer/read.v1",
-  watch: "flame.computer/watch.v1",
-  open: "flame.computer/open.v1",
-  close: "flame.computer/close.v1",
-  stop: "flame.computer/stop.v1",
-  execute: "flame.computer/execute.v1",
-  reply: "flame.computer/reply.v1",
-  context: "flame.computer/context.v1",
-  history: "flame.computer/history.v1",
-  result: "flame.computer/result.v1",
-} as const satisfies Record<string, keyof MethodInputs>;
-
 type CommandMethod =
-  | typeof methods.open
-  | typeof methods.close
-  | typeof methods.stop
-  | typeof methods.execute
-  | typeof methods.reply;
+  | typeof METHODS.open
+  | typeof METHODS.close
+  | typeof METHODS.stop
+  | typeof METHODS.execute
+  | typeof METHODS.reply;
 
 const commandMethods: readonly CommandMethod[] = [
-  methods.open,
-  methods.close,
-  methods.stop,
-  methods.execute,
-  methods.reply,
+  METHODS.open,
+  METHODS.close,
+  METHODS.stop,
+  METHODS.execute,
+  METHODS.reply,
 ];
 
 type Read<T> = {
@@ -65,15 +53,15 @@ function commandTarget(
   method: CommandMethod,
   input: unknown,
 ): string | undefined {
-  if (method === methods.open) return "installation";
+  if (method === METHODS.open) return "installation";
   if (!input || typeof input !== "object" || Array.isArray(input)) return;
   const values = input as Record<string, unknown>;
   const fields =
-    method === methods.close
+    method === METHODS.close
       ? ["sessionId"]
-      : method === methods.stop
+      : method === METHODS.stop
         ? ["sessionId", "operationId"]
-        : method === methods.reply
+        : method === METHODS.reply
           ? ["sessionId", "requestId"]
           : ["sessionId", "workerId", "surfaceDigest"];
   if (
@@ -93,7 +81,7 @@ function blocks(
   // A missing original receipt cannot establish that a revocation or permission
   // reply concerns the current resource. It must not disable that resource's
   // controls. Execution and lease acquisition remain blocked until identified.
-  return method === methods.execute || method === methods.open;
+  return method === METHODS.execute || method === METHODS.open;
 }
 
 export function useComputer(context: ComponentContext) {
@@ -153,7 +141,7 @@ export function useComputer(context: ComponentContext) {
       loading: true,
     }));
     try {
-      const value = await operations.query(methods.read, {}, lifetime);
+      const value = await operations.query(METHODS.read, {}, lifetime);
       if (!lifetime.aborted) setInspection({ context, value, loading: false });
     } catch (error) {
       if (!lifetime.aborted)
@@ -180,7 +168,7 @@ export function useComputer(context: ComponentContext) {
       }));
       try {
         const value = await operations.query(
-          methods.history,
+          METHODS.history,
           { ...(before ? { before } : {}), limit: LIMITS.maxHistoryPage },
           lifetime,
         );
@@ -220,7 +208,7 @@ export function useComputer(context: ComponentContext) {
         loading: true,
       }));
       try {
-        const value = await operations.query(methods.result, { id }, lifetime);
+        const value = await operations.query(METHODS.result, { id }, lifetime);
         if (!lifetime.aborted)
           setResultRead({ context, id, value, loading: false });
       } catch (error) {
@@ -258,7 +246,7 @@ export function useComputer(context: ComponentContext) {
     }));
     void operations
       .queryStream(
-        methods.watch,
+        METHODS.watch,
         {},
         (value, chunkSignal) => {
           if (lifetime.aborted || chunkSignal.aborted) return;
@@ -310,7 +298,7 @@ export function useComputer(context: ComponentContext) {
     const lifetime = AbortSignal.any([signal, request.signal]);
     setSurfaceRead({ context, loading: true });
     void operations
-      .query(methods.context, {}, lifetime)
+      .query(METHODS.context, {}, lifetime)
       .then((value) => {
         if (lifetime.aborted) return;
         if (
@@ -360,7 +348,7 @@ export function useComputer(context: ComponentContext) {
           recover: () => original.recover(signal),
         });
         void operations
-          .query(methods.result, { id: original.idempotencyKey }, signal)
+          .query(METHODS.result, { id: original.idempotencyKey }, signal)
           .then((record) => {
             if (signal.aborted) return;
             const pending = commands.current.get(original.idempotencyKey);

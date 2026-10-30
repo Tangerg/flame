@@ -62,7 +62,9 @@ export function createDesktopHostClient(binding: DesktopHostBinding): ClientHost
           runtime: { ...parsed.data.localRuntime, endpoint },
           localFilesystemEndpoint: endpoint,
         };
-      })();
+      })().finally(() => {
+        pending = undefined;
+      });
       return pending;
     },
     async chooseWorkingDirectory() {
@@ -82,22 +84,6 @@ export function createDesktopHostClient(binding: DesktopHostBinding): ClientHost
         );
       }
       return parsed.data.length > 0 ? parsed.data : null;
-    },
-    async saveImage(source) {
-      const host = binding;
-      let value: unknown;
-      try {
-        value = await callDesktop(host, "SaveImage", source);
-      } catch (error) {
-        throw new RpcTransportError(`desktop host image save failed: ${errorMessage(error)}`);
-      }
-      const parsed = DesktopMethods.SaveImage.result.safeParse(value);
-      if (!parsed.success) {
-        throw new RpcTransportError(
-          `desktop host image save returned an invalid shape: ${parsed.error.message}`,
-        );
-      }
-      return parsed.data;
     },
     // Encoding captures the selected byte range before yielding. The native panel
     // owns the destination; neither the plugin nor IPC supplies a path.

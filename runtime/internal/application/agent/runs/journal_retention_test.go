@@ -2,17 +2,157 @@ package runs
 
 import (
 	"errors"
+	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
 
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 )
+
+func TestRetentionChargeCoversAdmittedSnapshotStrings(t *testing.T) {
+	const growth = 32 << 10
+	seeds := []transcript.Item{
+		testsupport.MustRestoreItem(testsupport.ItemInput{Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "message"}}}),
+		testsupport.MustRestoreItem(testsupport.ItemInput{Content: []transcript.ContentBlock{{Kind: transcript.ImageContent, MediaType: "image/png", Bytes: []byte{1}}}}),
+		testsupport.MustRestoreItem(testsupport.ItemInput{Kind: transcript.Reasoning, Text: "reasoning"}),
+		testsupport.MustRestoreItem(testsupport.ItemInput{Kind: transcript.Compaction, Summary: "summary"}),
+		testsupport.MustRestoreItem(testsupport.ItemInput{Kind: transcript.QuestionItem, Question: &transcript.Question{
+			Fields: []transcript.QuestionField{{Prompt: "Choose", Header: "Choice", Kind: questioncontract.Choice, AllowCustom: true,
+				Options: []transcript.QuestionOption{{Label: "Option", Description: "description", Preview: "preview"}, {Label: "Other"}},
+			}}, Answers: [][]string{{"custom"}},
+		}}),
+		testsupport.MustRestoreItem(testsupport.ItemInput{Kind: transcript.ToolCall, Status: transcript.ItemIncomplete,
+			Tool:    &transcript.ToolInvocation{Name: "shell", ArgumentsText: "rejected"},
+			Failure: &tool.Failure{Kind: tool.FailureExecution, Detail: "detail", DocURL: "https://example.com/error"},
+		}),
+	}
+	for _, seed := range seeds {
+		snapshot := seed.Snapshot()
+		baseline := retainedItemBytes(seed)
+		var walk func(reflect.Value, string)
+		walk = func(value reflect.Value, path string) {
+			if !value.CanInterface() {
+				return
+			}
+			switch value.Kind() {
+			case reflect.Pointer:
+				if !value.IsNil() {
+					walk(value.Elem(), path)
+				}
+			case reflect.Struct:
+				for index := range value.NumField() {
+					walk(value.Field(index), path+"."+value.Type().Field(index).Name)
+				}
+			case reflect.Slice:
+				for index := range value.Len() {
+					walk(value.Index(index), fmt.Sprintf("%s[%d]", path, index))
+				}
+			case reflect.String:
+				if !value.CanSet() {
+					return
+				}
+				original := value.String()
+				value.SetString(original + strings.Repeat("x", growth))
+				grown, err := transcript.RestoreItem(snapshot)
+				value.SetString(original)
+				// Closed vocabularies and bounded identities stay at their Domain boundary.
+				if err == nil && retainedItemBytes(grown)-baseline < growth {
+					t.Errorf("%s.%s has uncharged admitted text", seed.Kind(), path)
+				}
+			}
+		}
+		walk(reflect.ValueOf(&snapshot).Elem(), "Item")
+	}
+}
+
+func TestJournalBoundsAcceptedAnswersAndApprovalMaterial(t *testing.T) {
+	const growth = 32 << 10
+	base := testsupport.MustRestoreItem(testsupport.ItemInput{Kind: transcript.ToolCall, Status: transcript.ItemCompleted}).Snapshot()
+	for _, test := range []struct {
+		name    string
+		payload func(string) ProjectionEvent
+	}{
+		{"accepted answer", func(value string) ProjectionEvent {
+			return QuestionAnswered{Item: testsupport.MustRestoreItem(testsupport.ItemInput{
+				Kind: transcript.QuestionItem, Question: &transcript.Question{
+					Fields: []transcript.QuestionField{{Prompt: "Explain", Kind: questioncontract.Text}}, Answers: [][]string{{value}},
+				},
+			})}
+		}},
+		{"rejected argument source", func(value string) ProjectionEvent {
+			snapshot := base
+			snapshot.Tool = &transcript.ToolInvocation{Name: "shell", ArgumentsText: value}
+			item, err := transcript.RestoreItem(snapshot)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return ItemCompleted{Item: item}
+		}},
+		{"edited arguments", func(value string) ProjectionEvent {
+			snapshot := base
+			snapshot.ApprovalDecision = approval.Allow
+			snapshot.EditedArguments = `{"input":"` + value + `"}`
+			item, err := transcript.RestoreItem(snapshot)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return ItemCompleted{Item: item}
+		}},
+		{"denial reason", func(value string) ProjectionEvent {
+			snapshot := base
+			snapshot.ApprovalDecision, snapshot.DenialReason = approval.Deny, value
+			item, err := transcript.RestoreItem(snapshot)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return ItemCompleted{Item: item}
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			small, large := test.payload("x"), test.payload(strings.Repeat("x", growth+1))
+			if delta := large.retainedBytes() - small.retainedBytes(); delta < growth {
+				t.Errorf("retention grew %d bytes for %d bytes of accepted material", delta, growth)
+			}
+			j := mustNewJournal(t, testStreamScope(testEpoch, testRunID, testSegmentID), Retention{MaxEvents: 1024, MaxBytes: 1024})
+			mustAppendJournal(t, j, ev(true))
+			subscription := j.tail()
+			defer subscription.Cancel()
+			mustAppendJournal(t, j, Event{RunID: testRunID, SegmentID: testSegmentID, Payload: large})
+			mustCloseJournal(t, j)
+			if _, err := j.replay(cursorAt(t, 1)); !errors.Is(err, ErrReplayUnavailable) {
+				t.Errorf("oversized material remains replayable: %v", err)
+			}
+			if events := drain(subscription.Events); len(events) != 0 {
+				t.Errorf("slow subscriber retained oversized material: %v", events)
+			}
+		})
+	}
+}
+
+func TestJournalChargesItsAssignedCursorBeforeFanout(t *testing.T) {
+	event := ev(true)
+	j := mustNewJournal(t, testStreamScope(testEpoch, testRunID, testSegmentID), Retention{MaxEvents: 1024, MaxBytes: retainedBytes(event)})
+	mustAppendJournal(t, j, event)
+	subscription := j.tail()
+	defer subscription.Cancel()
+	mustAppendJournal(t, j, event)
+	mustCloseJournal(t, j)
+	if _, err := j.replay(cursorAt(t, 1)); !errors.Is(err, ErrReplayUnavailable) {
+		t.Fatalf("assigned cursor escaped the byte budget: %v", err)
+	}
+	if events := drain(subscription.Events); len(events) != 0 {
+		t.Fatalf("subscriber kept an oversized final event: %v", events)
+	}
+}
 
 func TestRetentionChargeTracksEveryVariableReplayPayload(t *testing.T) {
 	const growth = 32 << 10

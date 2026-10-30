@@ -184,10 +184,13 @@ for (const theme of ["light", "dark"] as const) {
       await expect(explore.locator("math")).toBeVisible();
       await explore.getByRole("button", { name: "Show answer", exact: true }).click();
       await expect(explore.getByText("Runtime owns execution and recovery.")).toBeVisible();
-      await explore.getByRole("button", { name: "Review hint", exact: true }).click();
-      await expect(explore.getByRole("dialog", { name: "Review hint" })).toBeVisible();
+      const hintTrigger = explore.getByRole("button", { name: "Review hint", exact: true });
+      await hintTrigger.click();
+      const hint = page.getByRole("dialog", { name: "Review hint" });
+      await expect(hint).toBeVisible();
       await page.keyboard.press("Escape");
-      await expect(explore.getByRole("dialog", { name: "Review hint" })).toHaveCount(0);
+      await expect(hint).toHaveCount(0);
+      await expect(hintTrigger).toBeFocused();
       const exploration = test.info().outputPath(`genui-${theme}-${width}-explore.png`);
       await page.screenshot({ path: exploration });
       await test.info().attach("published-interactive-displays", { path: exploration });

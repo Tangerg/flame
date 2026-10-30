@@ -235,7 +235,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 		assertSingleRuntimeTopic(t, source.subscription, protocol.TopicModelsChanged)
 		host.Type("/roles")
 		host.Press(input.Enter)
-		host.Shows(t, "inherit the run model")
+		host.Shows(t, "Runtime default")
 
 		service.mu.Lock()
 		updated, err := models.NewConfiguredRole(models.UtilityRole, "deepseek", "chat")
@@ -248,7 +248,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 		source.events <- changefeed.Event{Type: protocol.RuntimeModelsChanged, Sequence: 1}
 		awaitSignal(t, source.applied, "models.changed role delivery")
 		host.Shows(t, "deepseek/chat")
-		host.Hides(t, "inherit the run model")
+		host.Hides(t, "Runtime default")
 		stop()
 	})
 
@@ -1567,7 +1567,7 @@ func TestDeletedActiveSessionTransfersItsUnsentDraftToTheReplacement(t *testing.
 	host, stop, _ := runUIFromConfig(t, Config{
 		RuntimeProfile: featuredTerminalProfile(t),
 		Runtime:        base, Changes: source, SessionID: "ses_demo_1",
-		OpenWorkbench: persistentTestWorkbench(stateDirectory),
+		OpenWorkbench: persistentTestWorkbench(t, stateDirectory),
 	})
 	host.Shows(t, "Ask flame")
 	awaitSignal(t, source.subscription, "runtime invalidation subscription")
@@ -1587,7 +1587,7 @@ func TestDeletedActiveSessionTransfersItsUnsentDraftToTheReplacement(t *testing.
 	replacementID := firstRuntimeSession(t, base)
 	stop()
 
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}

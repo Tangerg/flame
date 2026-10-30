@@ -59,3 +59,18 @@ const (
 func (RendererSelectorKind) Values() []string {
 	return []string{string(RendererToolName), string(RendererResultShape), string(RendererFileExtension)}
 }
+
+type ResultShape string
+
+const (
+	ResultShapeSearch    ResultShape = "search"
+	ResultShapePatch     ResultShape = "patch"
+	ResultShapeCommand   ResultShape = "command"
+	ResultShapeWebSearch ResultShape = "webSearch"
+)
+
+func (ResultShape) Values() []string {
+	return []string{string(ResultShapeSearch), string(ResultShapePatch), string(ResultShapeCommand), string(ResultShapeWebSearch)}
+}
+
+func (s ResultShape) Valid() bool { return slices.Contains(s.Values(), string(s)) }

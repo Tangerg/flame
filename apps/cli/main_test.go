@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/json/jsontext"
@@ -971,48 +970,38 @@ func TestHeadlessBinaryReturnsConventionalSignalExitCodes(t *testing.T) {
 
 func requireHeadlessSignalExit(t *testing.T, binary string, signal os.Signal, want int) {
 	t.Helper()
+	ready := make(chan struct{})
+	diagnostics := &runtimeDiagnostics{ready: ready}
 	command := exec.CommandContext(t.Context(), binary, testProcessArguments("run", "--json", "--approve-all", "wait for signal")...)
 	command.Env = terminalTestEnvironment(t, nil)
 	command.Stdout = io.Discard
-	stderr, err := command.StderrPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
+	command.Stderr = diagnostics
 	if err := command.Start(); err != nil {
 		t.Fatal(err)
 	}
-	waiting := false
+	waited := make(chan error, 1)
+	go func() { waited <- command.Wait() }()
+	waiting := true
 	t.Cleanup(func() {
-		if command.ProcessState == nil {
+		if waiting {
 			_ = command.Process.Kill()
-			if !waiting {
-				_ = command.Wait()
-			}
+			<-waited
 		}
 	})
-
-	var diagnostics bytes.Buffer
-	ready, scanned := scanRuntimeReady(stderr, &diagnostics)
 	select {
-	case err := <-ready:
-		if err != nil {
-			t.Fatal(err)
-		}
+	case <-ready:
+	case err := <-waited:
+		waiting = false
+		t.Fatalf("process exited before opening the test runtime: %v\nstderr:\n%s", err, diagnostics.String())
 	case <-time.After(10 * time.Second):
 		t.Fatal("timed out waiting for headless run to start")
 	}
 	if err := command.Process.Signal(signal); err != nil {
 		t.Fatal(err)
 	}
-	waited := make(chan error, 1)
-	waiting = true
-	go func() { waited <- command.Wait() }()
 	select {
 	case err := <-waited:
 		waiting = false
-		if scanErr := <-scanned; scanErr != nil {
-			t.Fatalf("read stderr: %v", scanErr)
-		}
 		exit, ok := errors.AsType[*exec.ExitError](err)
 		if !ok || exit.ExitCode() != want {
 			t.Fatalf("signal exit = %v, want code %d\nstderr:\n%s", err, want, diagnostics.String())
@@ -1022,35 +1011,23 @@ func requireHeadlessSignalExit(t *testing.T, binary string, signal os.Signal, wa
 	}
 }
 
-func scanRuntimeReady(stderr io.Reader, diagnostics *bytes.Buffer) (<-chan error, <-chan error) {
-	ready := make(chan error, 1)
-	done := make(chan error, 1)
-	go func() {
-		scanner := bufio.NewScanner(stderr)
-		notified := false
-		for scanner.Scan() {
-			line := scanner.Text()
-			diagnostics.WriteString(line)
-			diagnostics.WriteByte('\n')
-			if !notified && strings.Contains(line, testRuntimeReadyMarkerForTest) {
-				ready <- nil
-				notified = true
-			}
-		}
-		if err := scanner.Err(); err != nil {
-			if !notified {
-				ready <- err
-			}
-			done <- err
-			return
-		}
-		if !notified {
-			ready <- errors.New("process exited before opening the test runtime")
-		}
-		done <- nil
-	}()
-	return ready, done
+// Cmd owns the only writer and joins its copy loop before Wait returns, so the
+// readiness observer cannot race process reclamation for an exposed pipe.
+type runtimeDiagnostics struct {
+	text  bytes.Buffer
+	ready chan struct{}
 }
+
+func (d *runtimeDiagnostics) Write(data []byte) (int, error) {
+	n, err := d.text.Write(data)
+	if d.ready != nil && bytes.Contains(d.text.Bytes(), []byte(testRuntimeReadyMarkerForTest)) {
+		close(d.ready)
+		d.ready = nil
+	}
+	return n, err
+}
+
+func (d *runtimeDiagnostics) String() string { return d.text.String() }
 
 const testRuntimeReadyMarkerForTest = "flame: test runtime ready"
 

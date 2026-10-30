@@ -1,4 +1,4 @@
-import { appendFileSync } from "node:fs";
+import { appendFileSync, existsSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { connect } from "node:net";
 import * as nativeAdapter from "../../package/io.github.tangerg.flame/engine/native-sky.mjs";
@@ -108,8 +108,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
   if (request.params.name === "turn_ended") {
     for (const hook of nativeHooks) await hook.run(request.params.arguments);
     if (hangCleanup) return await new Promise(() => {});
-    if (delayedCleanup)
-      await new Promise((resolve) => setTimeout(resolve, 100));
+    if (delayedCleanup) {
+      log({ kind: "cleanup-entered" });
+      while (!existsSync(process.env.COMPUTER_FIXTURE_CLEANUP_RELEASE))
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      log({ kind: "cleanup-released" });
+    }
     return { content: [], ...(rejectCleanup ? { isError: true } : {}) };
   }
   if (request.params.name === "js_reset") {

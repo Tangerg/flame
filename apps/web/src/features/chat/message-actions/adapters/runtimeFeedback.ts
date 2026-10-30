@@ -1,10 +1,7 @@
 import { type FlameClient } from "@flame/runtime-client";
 import { asItemId, asRunId, asSessionId } from "@flame/runtime-client";
-import {
-  MessageFeedbackOwner,
-  type MessageFeedbackGateway,
-} from "@/features/chat/message-actions/application/feedback";
-function runtimeFeedbackGateway(client: FlameClient): MessageFeedbackGateway {
+import { type MessageFeedbackGateway } from "@/features/chat/message-actions/application/feedback";
+export function createRuntimeFeedbackGateway(client: FlameClient): MessageFeedbackGateway {
   return {
     async createMessageFeedback({ target, rating }) {
       await client.feedback.create({
@@ -14,14 +11,5 @@ function runtimeFeedbackGateway(client: FlameClient): MessageFeedbackGateway {
         rating,
       });
     },
-  };
-}
-
-export function installRuntimeFeedbackGateway(runtimeClient: () => FlameClient) {
-  const owner = MessageFeedbackOwner.install(runtimeFeedbackGateway(runtimeClient()));
-  return {
-    replaceRuntimeGeneration: () =>
-      owner.replaceRuntimeGeneration(() => runtimeFeedbackGateway(runtimeClient())),
-    dispose: () => owner.dispose(),
   };
 }

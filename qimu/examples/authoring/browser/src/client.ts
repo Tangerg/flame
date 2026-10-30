@@ -129,52 +129,67 @@ export function connect(bootstrap: Bootstrap) {
         converters.ref.name,
         validators.ref.name,
       ]);
-      const conversion = select(
-        snapshot,
-        converters,
-        "author.markdown/1",
-        (choices) =>
-          choices
-            .filter((entry) => entry.metadata.format === "markdown")
-            .slice(0, 1),
-        (value) => {
-          const metadata = value as { format?: unknown; priority?: unknown };
-          if (typeof metadata.format !== "string")
-            throw new TypeError("invalid Converter metadata");
-          return {
-            format: metadata.format,
-            priority: projectNumber(metadata.priority),
-          };
-        },
-      );
-      const validation = select(
-        snapshot,
-        validators,
-        "author.validation-order/1",
-        (choices) =>
-          [...choices].sort(
-            (left, right) => left.metadata.order - right.metadata.order,
-          ),
-        (value) => {
-          const metadata = value as { name?: unknown; order?: unknown };
-          if (typeof metadata.name !== "string")
-            throw new TypeError("invalid Validator metadata");
-          return { name: metadata.name, order: projectNumber(metadata.order) };
-        },
-      );
-      if (
-        conversion.candidates.length !== 1 ||
-        validation.candidates.length === 0
-      )
-        throw new Error("the author composition requires both Points");
-      const use = await runtime.acquire({
-        operationId: crypto.randomUUID(),
-        snapshotId: snapshot.id,
-        execution,
-        selections: [conversion, validation],
-      });
-      const result = convert(use, reference);
-      return { result, close: (signal) => use.close(signal) };
+      try {
+        const conversion = select(
+          snapshot,
+          converters,
+          "author.markdown/1",
+          (choices) =>
+            choices
+              .filter((entry) => entry.metadata.format === "markdown")
+              .slice(0, 1),
+          (value) => {
+            const metadata = value as { format?: unknown; priority?: unknown };
+            if (typeof metadata.format !== "string")
+              throw new TypeError("invalid Converter metadata");
+            return {
+              format: metadata.format,
+              priority: projectNumber(metadata.priority),
+            };
+          },
+        );
+        const validation = select(
+          snapshot,
+          validators,
+          "author.validation-order/1",
+          (choices) =>
+            [...choices].sort(
+              (left, right) => left.metadata.order - right.metadata.order,
+            ),
+          (value) => {
+            const metadata = value as { name?: unknown; order?: unknown };
+            if (typeof metadata.name !== "string")
+              throw new TypeError("invalid Validator metadata");
+            return {
+              name: metadata.name,
+              order: projectNumber(metadata.order),
+            };
+          },
+        );
+        if (
+          conversion.candidates.length !== 1 ||
+          validation.candidates.length === 0
+        )
+          throw new Error("the author composition requires both Points");
+        const use = await runtime.acquire({
+          operationId: crypto.randomUUID(),
+          snapshotId: snapshot.id,
+          execution,
+          selections: [conversion, validation],
+        });
+        const result = convert(use, reference);
+        return { result, close: (signal) => use.close(signal) };
+      } catch (error) {
+        try {
+          await control.closeSnapshot(snapshot.id);
+        } catch (closeFailure) {
+          throw new AggregateError(
+            [error, closeFailure],
+            "snapshot selection and cleanup failed",
+          );
+        }
+        throw error;
+      }
     },
     async close(): Promise<void> {
       stop.abort();

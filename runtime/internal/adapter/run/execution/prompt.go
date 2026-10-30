@@ -45,11 +45,9 @@ task is ambiguous, ask one focused question rather than guess.`
 //	<discovered>      (agentdoc cascade — global AGENTS.md first
 //	                   (~/.flame, ~/.agents), then project root → cwd)
 //
-// The project side anchors to the TURN's working directory — the
-// session cwd carried in application context ([executionctx.CWD]), the same seam
-// the fs/shell/skill tools follow — so a session opened on
-// project A briefs the model about project A regardless of where the runtime
-// server process was started.
+// Agent documents follow the execution directory, as the filesystem tools do.
+// Durable project memory follows the Session workspace even when an isolated
+// Run executes in a disposable copy.
 //
 // The AGENTS.md cascade is the one human-authored instruction surface.
 // Memory remains best-effort enrichment. Current Goal and Plan are authoritative
@@ -59,7 +57,7 @@ task is ambiguous, ask one focused question rather than guess.`
 // fails construction instead of silently deleting instructions.
 func (w *WorkingContextComposer) composeSystemMessage(
 	ctx context.Context,
-	cwd string,
+	executionCWD, workspaceCWD string,
 ) (corechat.Message, error) {
 	var prompt promptComposition
 	prompt.append(
@@ -71,7 +69,7 @@ func (w *WorkingContextComposer) composeSystemMessage(
 	// approved memory is surfaced per turn by relevance (the recall block), so a
 	// growing corpus never bloats every prompt.
 	var pinned []MemoryPromptItem
-	if project := strings.TrimSpace(cwd); project != "" {
+	if project := strings.TrimSpace(workspaceCWD); project != "" {
 		items, err := w.config.AgentMemory.Items(ctx, memorycontract.ItemsV2InputScopeProject, filepath.Clean(project))
 		if err != nil {
 			slog.WarnContext(ctx, "execution: load pinned memory", "scope", memorycontract.ItemsV2InputScopeProject, "error", err)
@@ -91,7 +89,7 @@ func (w *WorkingContextComposer) composeSystemMessage(
 	// invalid source remains observable so a turn cannot run under silently
 	// incomplete instructions. User Home is injected rather than rediscovered
 	// inside every prompt assembly.
-	if dir := strings.TrimSpace(cwd); dir != "" {
+	if dir := strings.TrimSpace(executionCWD); dir != "" {
 		files, err := promptsource.DiscoverAgentDocs(ctx, dir, w.config.UserHome)
 		if err != nil {
 			return corechat.Message{}, fmt.Errorf("execution: load agent documents: %w", err)

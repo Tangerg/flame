@@ -1,4 +1,3 @@
-import { IMAGE_FILENAME_STEM } from "@/app/product";
 import { createRuntimeMutationJournalStorage } from "@/features/connection/adapters/runtimeMutationJournalStorage";
 import { createStorage } from "@/extensions/storage";
 import { onTestFinished as finishTestClient } from "vitest";
@@ -22,7 +21,7 @@ const resetKernelForTest = async () => {
 import { dispatchBinding } from "@/lib/combo";
 let connection: ReturnType<typeof createRuntimeConnection>;
 
-const host = createBrowserHost(IMAGE_FILENAME_STEM);
+const host = createBrowserHost();
 
 let builtinPlugins: ReturnType<typeof createBuiltinPlugins>;
 
@@ -46,6 +45,8 @@ beforeEach(async () => {
     testClient.notifications,
     testClient.installedPlugins,
     testClient.theme,
+    testClient.goals,
+    testClient.feedback,
   );
   vi.stubGlobal("fetch", () => Promise.reject(new Error("offline in tests")));
   vi.stubGlobal(

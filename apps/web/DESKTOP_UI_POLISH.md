@@ -8,7 +8,7 @@ React WebView app evolves quickly:
 - Flame should feel like a desktop app that happens to use web technology, not a
   website embedded in a window.
 
-References:
+Background references (rationale, not Flame's current boundary specification):
 
 - [高级感 UI 的边缘为什么看起来舒服：用 box-shadow hairline 解决卡片边缘发灰的问题](https://www.uweb.net.cn/zhishiku/wangzhanqianduankaifa/36454.html)
 - [A Technical Deep Dive Into the New Raycast](https://www.raycast.com/blog/a-technical-deep-dive-into-the-new-raycast)
@@ -24,56 +24,25 @@ model:
 3. **Ambient shadow**: a wide, low-alpha falloff that gives elevation without a
    muddy border.
 
-**Where the edge comes from (revised 2026-08).** A shadow ring stacked on a border
-reads as a double edge, so each role owns exactly one mechanism — and, crucially,
-**which mechanism a role uses is the active visual style's decision, not a call
-site's**. The tool-window style now shipping answers:
+A shadow ring stacked on a border reads as a double edge. Flame's current
+[Boundary roles](DESIGN.md#boundary-roles) specifies how each surface applies
+this principle and identifies the owner of its geometry. The source article's
+1px example is background rationale, not a requirement to outline every surface.
 
-- **region boundary** → a 0.5px inset edge in `border-strong` (`--app-card-edge` at the
-  drawer, `--app-pane-split` at the dock, `--app-header-edge` under a bar), on top of
-  the value step. Half a pixel is one device pixel on a 2x panel: crisp without weight.
-- **card** → fill (`bg-card`) plus the shared, quiet contact shadow. The default HeroUI-inspired resource surface uses no decorative border.
-- **well** → fill only (`bg-sunken`).
-- **floating overlay** (menus, popovers, tooltips) → one optical ring plus
-  directional depth in `--shadow-popover`, and no second border. These use greater elevation than the contact shadow on resource surfaces.
-- **fixed control** (text fields, chips, the composer) → a real border. The composer
-  takes the accent's focus-ring role on focus: the accent, held to 3:1 on the canvas.
-- **state** → background fill only (`bg-hover` / `bg-selected`), at a strength tied
-  to the same ladder step the regions use.
-
-Do not paste shadow values into components. Translate them through the rings:
-
-- geometry, elevation and region roles → the **visual style** (`visualStyles/tokens.ts`);
-- how dark a floating overlay's shadow is for this palette → the **theme** (`--shadow-cast`);
-- consume `var(--shadow-*)` / `var(--app-*)` from components.
+Inspect the computed shared token on the affected surface. A feature-local shadow
+value bypasses the visual style; a palette-specific darkness belongs to the
+theme's `--shadow-cast`.
 
 ## 2. Border Discipline
 
-A border is cheap when it is decoration or when it compensates for weak
-elevation. It is correct when it IS the edge of a control or a region.
+An edge should explain structure, focus or state. Review the surface against
+[Boundary roles](DESIGN.md#boundary-roles), distinguishing an outer flank from an
+internal seam or a control. Do not infer one treatment for all three from a shared
+word such as "boundary".
 
-**Revised 2026-08.** Two earlier models both failed, in opposite directions. The
-first separated regions by background delta alone, at a delta too small to read —
-`#f2f2f2` chrome against `#ffffff` — so the eye had no cue at all. The second gave
-every boundary a hairline, which turned three columns into a wireframe. What works
-is the third thing: a delta big enough to read as a different material, **plus** a
-half-pixel edge at the seam whose shape the visual style owns. An earlier revision
-used a directional cast there instead; a cast lands on the reading plane, so the
-seams read as pressing down on the document.
-
-Preferred:
-
-- drawer ↔ plane: the plane's own inset edge (`--app-card-edge`), because the plane
-  outranks the drawer on z-index and a panel underneath cannot draw onto it;
-- dock ↔ conversation: `--app-pane-split`;
-- chrome-bar bottoms: `--app-header-edge`;
-- composer: a real field border, accent on focus;
-- floating overlay edge: the shadow's own first layer at `--seam-line`, never a
-  border as well;
-- fixed control edge (text fields and chips): a real `border`;
-- row state: fill delta;
-- focus: the global keyboard-only ring — never a per-control one;
-- danger/warning state: semantic border/fill token.
+Compare the expanded and collapsed sidebar, an open Dock, scrolling content,
+hover, dragging and keyboard resize. Check the computed shared rule as well as
+the image so a duplicate edge cannot hide behind a similar fill.
 
 Avoid:
 
@@ -112,8 +81,8 @@ Rules for Flame:
 
 Before merging UI polish work, inspect these points:
 
-- Does the role use exactly one edge mechanism: real border, optical ring, or
-  region hairline?
+- Does the surface follow its [boundary role](DESIGN.md#boundary-roles), without
+  an additional feature-local edge?
 - Is the shadow token semantic enough for reuse, or is it a one-off arbitrary
   class?
 - Does the component still work in light and dark themes?
@@ -131,8 +100,7 @@ These are regressions:
 
 - adding a new hardcoded shadow value inside a feature component;
 - using border and shadow together without a clear reason for each layer;
-- drawing a line at a region boundary — that decision belongs to the visual style,
-  and the one shipping does not draw one;
+- overriding the shared boundary role with a feature-local line or shadow;
 - inverting a surface with `bg-fg` to make it stand out: it flips with the scheme,
   so the thing you emphasised becomes the brightest object on a dark palette and
   the only inverted one in the app (the approval card's command block did exactly

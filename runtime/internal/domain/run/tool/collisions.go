@@ -3,6 +3,8 @@ package tool
 import (
 	"slices"
 	"strings"
+
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 )
 
 // NameConflicts identifies remote tools excluded from model manifests. Built-in
@@ -18,7 +20,7 @@ func NameConflicts(refs []Ref) map[Ref][]Ref {
 	}
 	conflicts := make(map[Ref][]Ref)
 	for name, candidates := range byName {
-		if reserved, err := BuiltIn(BuiltInName(name)); err == nil && !slices.Contains(candidates, reserved) {
+		if reserved, err := BuiltIn(builtincontract.Name(name)); err == nil && !slices.Contains(candidates, reserved) {
 			candidates = append(candidates, reserved)
 		}
 		slices.SortFunc(candidates, func(a, b Ref) int { return strings.Compare(a.String(), b.String()) })

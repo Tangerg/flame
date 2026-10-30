@@ -3,6 +3,7 @@ package toolset
 import (
 	"testing"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -71,7 +72,7 @@ func TestResolverOffersSearchToolsOverDeferredCatalog(t *testing.T) {
 func TestResolverDefersRuntimeToolsWithoutMCP(t *testing.T) {
 	manifest := resolveRootManifest(t, nil)
 	advertised := definitionNames(manifest.Visible)
-	for _, direct := range []string{string(domaintool.Read), string(domaintool.Glob), string(domaintool.Grep), string(domaintool.ApplyPatch), string(domaintool.Shell), string(domaintool.SearchTools)} {
+	for _, direct := range []string{string(builtincontract.Read), string(builtincontract.Glob), string(builtincontract.Grep), string(builtincontract.ApplyPatch), string(builtincontract.Shell), string(builtincontract.SearchTools)} {
 		if !advertised[direct] {
 			t.Errorf("initial manifest = %v, missing direct tool %q", advertised, direct)
 		}

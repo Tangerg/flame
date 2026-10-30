@@ -116,7 +116,7 @@ export async function callPluginCommand<T>(
   if (pluginDeliveryMethod(input) !== "plugins.call")
     throw new TypeError("Unary plugin command requires a unary method");
   parseJSON(input.input);
-  const { request, reservation } = await wire.capturePluginCommand(intent, input, prepare);
+  const { request, reservation } = await wire.capturePluginCommand(intent, input, prepare, signal);
   return wire.openMutation(
     "plugins.call",
     request,
@@ -145,6 +145,7 @@ async function deliverPluginCommand<T>(
       idempotencyKey: key,
       idempotencyNamespace: reservation.authorizeDispatch(),
       requestMeta: reservation.requestMeta,
+      beforeDispatch: reservation.markDispatched,
     });
   } catch (error) {
     if (

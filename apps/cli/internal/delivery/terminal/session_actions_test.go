@@ -147,7 +147,7 @@ func TestSessionDraftTransitionMergesAnExistingDestinationDraft(t *testing.T) {
 
 func TestRetiringSessionStateClearsTheQueueAfterDurableTombstone(t *testing.T) {
 	directory := t.TempDir()
-	store, err := openTestWorkbench(directory)
+	store, err := openTestWorkbench(t, directory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -174,8 +174,11 @@ func TestRetiringSessionStateClearsTheQueueAfterDurableTombstone(t *testing.T) {
 
 	application := &app{workbench: store, queue: prompts}
 	discarded, err := application.retireSessionState(sessionID)
-	if err != nil {
-		t.Fatal(err)
+	if err == nil {
+		t.Fatal("retirement hid the blocked physical cleanup")
+	}
+	if _, ok := errors.AsType[*workbench.WriteError](err); !ok {
+		t.Fatalf("retirement lost physical write evidence: %v", err)
 	}
 	if discarded != 1 {
 		t.Fatalf("retirement reported %d discarded prompts", discarded)
@@ -200,7 +203,7 @@ func TestSessionCenterConvergesPostCommitDeleteFailureAndRetiresLocalState(t *te
 		t.Fatal(err)
 	}
 	stateDirectory := t.TempDir()
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,7 +214,7 @@ func TestSessionCenterConvergesPostCommitDeleteFailureAndRetiresLocalState(t *te
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	host, stop, _ := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), Runtime: backend, SessionID: "ses_demo_1", OpenWorkbench: persistentTestWorkbench(stateDirectory)})
+	host, stop, _ := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), Runtime: backend, SessionID: "ses_demo_1", OpenWorkbench: persistentTestWorkbench(t, stateDirectory)})
 	host.Shows(t, "Ask flame")
 	host.Send(input.Key{Code: input.Character, Rune: 'r', Mods: input.Ctrl})
 	host.Shows(t, "Sessions · Center")
@@ -234,7 +237,7 @@ func TestSessionCenterConvergesPostCommitDeleteFailureAndRetiresLocalState(t *te
 	if _, getSessionErr := base.GetSession(t.Context(), target.ID); !errors.Is(getSessionErr, conversation.ErrSessionNotFound) {
 		t.Fatalf("deleted session read = %v", getSessionErr)
 	}
-	reopened, err := openTestWorkbench(stateDirectory)
+	reopened, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -254,7 +257,7 @@ func TestStartupReplaysPreparedSessionDeletionBeforeLoadingDrafts(t *testing.T) 
 		t.Fatal(err)
 	}
 	stateDirectory := t.TempDir()
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -277,7 +280,7 @@ func TestStartupReplaysPreparedSessionDeletionBeforeLoadingDrafts(t *testing.T) 
 	if _, getSessionErr := backend.GetSession(t.Context(), target.ID); !errors.Is(getSessionErr, conversation.ErrSessionNotFound) {
 		t.Fatalf("recovered deletion read = %v", getSessionErr)
 	}
-	reopened, err := openTestWorkbench(stateDirectory)
+	reopened, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -918,7 +921,7 @@ func TestRestartSettlesAcceptedSteerWithoutReturningItsAttachments(t *testing.T)
 	profile := steerReplayTestProfile(t, workspace)
 	host, stop, workbenchForHost := runUIFromConfig(t, Config{
 		Runtime: runtime, RuntimeProfile: &profile, Workspace: workspace,
-		OpenWorkbench: persistentTestWorkbench(stateDirectory),
+		OpenWorkbench: persistentTestWorkbench(t, stateDirectory),
 	})
 	host.Shows(t, "Ask flame")
 	sessionID := firstRuntimeSession(t, base)
@@ -944,7 +947,7 @@ func TestRestartSettlesAcceptedSteerWithoutReturningItsAttachments(t *testing.T)
 	}
 	restarted, stopRestarted, workbenchForRestarted := runUIFromConfig(t, Config{
 		Runtime: replayGuard, RuntimeProfile: &profile, Workspace: workspace,
-		SessionID: sessionID, OpenWorkbench: persistentTestWorkbench(stateDirectory),
+		SessionID: sessionID, OpenWorkbench: persistentTestWorkbench(t, stateDirectory),
 	})
 	restarted.Shows(t, "focus on parsing")
 	restarted.Shows(t, "steer applied to model context")

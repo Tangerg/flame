@@ -161,7 +161,7 @@ func TestTrajectoryExportIncludesSessionOnlyKnownEndpointEvidence(t *testing.T) 
 		t.Fatalf("Session endpoint export: %+v %v", evidence.ModelEndpoints, err)
 	}
 	value := evidence.ModelEndpoints[0]
-	if value.SessionID != "ses_export" || value.RunID != "" || value.State != "failed" || value.Response.Metadata.Usage.InputTokens != 9007199254740993 || !strings.Contains(value.ResponseJSON.String(), "9007199254740993") || !strings.Contains(value.RequestJSON.String(), "original prompt") {
+	if value.Snapshot().SessionID != "ses_export" || value.Snapshot().RunID != "" || value.State() != modelref.EndpointFailed || value.Response().Metadata.Usage.InputTokens != 9007199254740993 || !strings.Contains(value.Snapshot().ResponseJSON.String(), "9007199254740993") || !strings.Contains(value.Snapshot().RequestJSON.String(), "original prompt") {
 		t.Fatalf("export changed known endpoint evidence: %+v", value)
 	}
 	if _, err := db.ExecContext(t.Context(), `UPDATE model_invocations SET endpoint_json=json_set(endpoint_json,'$.sessionId','ses_other') WHERE call_id='endpoint_session'`); err != nil {

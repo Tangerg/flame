@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -182,5 +183,119 @@ func TestPendingWorkspaceMutationFencesItsRecoveryInputs(t *testing.T) {
 		RunID: "run_owner_next", SessionID: "ses_owner", SegmentID: "seg_open", CreatedAt: time.Unix(3, 0),
 	})); err != nil {
 		t.Fatalf("admit after completion: %v", err)
+	}
+}
+
+func TestRetainedWorkspaceMutationFencesOverlappingTreesAfterReopen(t *testing.T) {
+	for _, pair := range [][2]string{{"/repo", "/repo/a"}, {"/repo/a", "/repo"}, {"/repo/a", "/repo/ab"}} {
+		t.Run(pair[0]+"/"+pair[1], func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "runtime.db")
+			db, err := openDatabase(t.Context(), path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = db.Close() })
+			seedWorkspaceMutationSession(t, db, "ses_owner", pair[0])
+			seedWorkspaceMutationRun(t, db, "ses_owner", "run_boundary")
+			seedWorkspaceMutationSession(t, db, "ses_other", pair[1])
+			seedWorkspaceMutationRun(t, db, "ses_other", "run_other_boundary")
+			intent := workspaceMutationRecord{SessionID: "ses_owner", CWD: pair[0], ToRunID: "run_boundary"}
+			if _, err := newWorkspaceMutationStore(db).recordMutation(t.Context(), intent); err != nil {
+				t.Fatal(err)
+			}
+			if err := db.Close(); err != nil {
+				t.Fatal(err)
+			}
+			reopened, err := openDatabase(t.Context(), path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = reopened.Close() })
+			store := newWorkspaceMutationStore(reopened)
+			_, err = store.recordMutation(t.Context(), workspaceMutationRecord{SessionID: "ses_other", CWD: pair[1], ToRunID: "run_other_boundary"})
+			disjoint := pair[1] == "/repo/ab"
+			if disjoint {
+				if err != nil {
+					t.Fatalf("disjoint mutation refused: %v", err)
+				}
+				if err := store.completeMutation(t.Context(), workspaceMutationRecord{SessionID: "ses_other", CWD: pair[1], ToRunID: "run_other_boundary"}); err != nil {
+					t.Fatal(err)
+				}
+			} else if !errors.Is(err, errWorkspaceMutationPending) {
+				t.Fatalf("overlapping mutation = %v, want retained ownership refusal", err)
+			}
+			draft := testsupport.RunDraft(run.Draft{RunID: "run_next", SessionID: "ses_other", SegmentID: "seg_next", CreatedAt: time.Unix(3, 0)})
+			err = newRunStore(reopened).Admit(t.Context(), draft)
+			if disjoint {
+				if err != nil {
+					t.Fatalf("disjoint Run admission = %v", err)
+				}
+			} else {
+				if !errors.Is(err, run.ErrSessionBusy) {
+					t.Fatalf("overlapping Run admission = %v, want busy", err)
+				}
+				if err := store.completeMutation(t.Context(), intent); err != nil {
+					t.Fatal(err)
+				}
+				if err := newRunStore(reopened).Admit(t.Context(), draft); err != nil {
+					t.Fatalf("admission after completion = %v", err)
+				}
+			}
+		})
+	}
+}
+
+func TestPendingWorkspaceMutationAlsoFencesResume(t *testing.T) {
+	for _, pair := range [][2]string{{"/repo", "/repo/a"}, {"/repo/a", "/repo"}} {
+		t.Run(pair[0]+"/"+pair[1], func(t *testing.T) {
+			runs, _ := newRunStores(t)
+			seedWorkspaceMutationSession(t, runs.db, "ses_owner", pair[0])
+			seedWorkspaceMutationRun(t, runs.db, "ses_owner", "run_boundary")
+			seedWorkspaceMutationSession(t, runs.db, "ses_waiting", pair[1])
+			draft := testsupport.RunDraft(run.Draft{RunID: "run_waiting", SessionID: "ses_waiting", SegmentID: "seg_initial", CreatedAt: time.Unix(3, 0)})
+			if err := runs.Admit(t.Context(), draft); err != nil {
+				t.Fatal(err)
+			}
+			parked := parkedRunFromDraft(draft)
+			if err := suspendRun(t.Context(), runs, parked, draft.SegmentID); err != nil {
+				t.Fatal(err)
+			}
+			intent := workspaceMutationRecord{SessionID: "ses_owner", CWD: pair[0], ToRunID: "run_boundary"}
+			mutations := newWorkspaceMutationStore(runs.db)
+			if _, err := mutations.recordMutation(t.Context(), intent); err != nil {
+				t.Fatal(err)
+			}
+			if err := resumeParkedRun(t.Context(), runs, parked, "seg_next", parked.UpdatedAt()); !errors.Is(err, run.ErrSessionBusy) {
+				t.Fatalf("resume across pending mutation = %v, want busy", err)
+			}
+			assertStoredOpenRun(t, runs, parked)
+			if err := mutations.completeMutation(t.Context(), intent); err != nil {
+				t.Fatal(err)
+			}
+			if err := resumeParkedRun(t.Context(), runs, parked, "seg_next", parked.UpdatedAt()); err != nil {
+				t.Fatalf("resume after mutation completion = %v", err)
+			}
+		})
+	}
+}
+
+func TestRecoveryRefusesOverlappingRetainedMutationOwnership(t *testing.T) {
+	runs, _ := newRunStores(t)
+	for _, scope := range []struct{ session, run, cwd string }{{"ses_parent", "run_parent", "/repo"}, {"ses_child", "run_child", "/repo/a"}} {
+		seedWorkspaceMutationSession(t, runs.db, scope.session, scope.cwd)
+		seedWorkspaceMutationRun(t, runs.db, scope.session, scope.run)
+	}
+	store := newWorkspaceMutationStore(runs.db)
+	if _, err := store.recordMutation(t.Context(), workspaceMutationRecord{SessionID: "ses_parent", CWD: "/repo", ToRunID: "run_parent"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.pendingMutations(t.Context()); err != nil {
+		t.Fatalf("valid retained ownership refused: %v", err)
+	}
+	if _, err := runs.db.ExecContext(t.Context(), `INSERT INTO pending_workspace_mutations(session_id, cwd, to_run_id, restore_history) VALUES ('ses_child', '/repo/a', 'run_child', 0)`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.pendingMutations(t.Context()); err == nil {
+		t.Fatal("recovery accepted two owners of overlapping file ranges")
 	}
 }

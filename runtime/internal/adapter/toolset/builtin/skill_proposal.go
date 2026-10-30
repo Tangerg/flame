@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"strings"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/samber/lo"
@@ -58,7 +59,7 @@ func NewProposal(proposals SkillProposalSubmitter) (toolcontract.Tool, error) {
 		return nil, nil
 	}
 	return toolcontract.NewFunc[proposalArgs, proposalResult](
-		toolcontract.FuncConfig{Name: string(tool.ProposeSkill), Description: proposalDescription},
+		toolcontract.FuncConfig{Name: string(builtincontract.ProposeSkill), Description: proposalDescription},
 		(&proposer{proposals: proposals}).run,
 	)
 }

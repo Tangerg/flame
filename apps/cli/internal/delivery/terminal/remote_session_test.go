@@ -271,7 +271,7 @@ func TestSharedTerminalExitPreservesUnknownStartsAndHonorsExplicitCancellation(t
 			profile := steerReplayTestProfile(t, created.Workspace.Path)
 			host, stop, _ := runUIFromConfig(t, Config{
 				Runtime: backend, RuntimeProfile: &profile, SessionID: created.ID,
-				LocalDirectory: local, OpenWorkbench: persistentTestWorkbench(state), DetachOnExit: true,
+				LocalDirectory: local, OpenWorkbench: persistentTestWorkbench(t, state), DetachOnExit: true,
 			})
 			host.Shows(t, "Ask flame")
 			host.Type("/attach context.txt")
@@ -291,7 +291,7 @@ func TestSharedTerminalExitPreservesUnknownStartsAndHonorsExplicitCancellation(t
 				}
 			}
 			stop()
-			store, err := openTestWorkbench(state)
+			store, err := openTestWorkbench(t, state)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -355,7 +355,7 @@ func TestOpeningCancellationReplaysTheSamePayloadAfterCloseAndRestart(t *testing
 	const sessionID = "ses_demo_1"
 	t.Cleanup(func() { cancelFixtureSession(t, base, sessionID) })
 	state := t.TempDir()
-	store, err := openTestWorkbench(state)
+	store, err := openTestWorkbench(t, state)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -366,17 +366,17 @@ func TestOpeningCancellationReplaysTheSamePayloadAfterCloseAndRestart(t *testing
 		t.Fatal(err)
 	}
 	pending := store.PendingRuns(sessionID)[0]
-	if err := store.Close(); err != nil {
-		t.Fatal(err)
-	}
 	profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
-	closing := &app{runtime: backend, runtimeProfile: &profile, replayPolicy: testReplayPolicy(t, &profile)}
+	closing := &app{runtime: backend, workbench: store, runtimeProfile: &profile, replayPolicy: testReplayPolicy(t, &profile)}
 	if err := closing.cancelOpeningRunNow(t.Context(), pending); !errors.Is(err, authoring.ErrCommandOutcomeUnknown) {
 		t.Fatalf("terminal-close cancellation = %v, want unknown acknowledgement", err)
 	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
 	host, stop, workbenchForHost := runUIFromConfig(t, Config{
 		Runtime: backend, RuntimeProfile: &profile, SessionID: sessionID,
-		LocalDirectory: t.TempDir(), OpenWorkbench: persistentTestWorkbench(state), DetachOnExit: true,
+		LocalDirectory: t.TempDir(), OpenWorkbench: persistentTestWorkbench(t, state), DetachOnExit: true,
 	})
 	host.Shows(t, "canceled")
 	awaitState(t, "the exact cancellation to be confirmed after restart", func() bool {

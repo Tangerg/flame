@@ -34,7 +34,6 @@ export const en: Record<string, string> = {
   "change.modified": "Edited",
   "change.moved": "Moved",
   "change.deleted": "Deleted",
-  "skills.truncated": "More skills were omitted from this result.",
   "skills.empty": "No skills were returned.",
   "http.truncated": "Truncated",
   "caption.source": "Source",

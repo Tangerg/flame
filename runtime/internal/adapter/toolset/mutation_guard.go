@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/qimu/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/scope/core/chat"
@@ -72,27 +73,36 @@ func withMutationGuard(inner toolcontract.Tool, tr *readTracker, root *filesyste
 	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
 		paths, err := mutationPaths(inner, invocation)
 		if err != nil {
-			return toolcontract.Result{}, fmt.Errorf("inspect mutation paths before applying patch: %w", err)
+			err = fmt.Errorf("inspect mutation paths before applying patch: %w", err)
+			return toolcontract.Result{}, beforeCallFailure(ctx, err)
 		}
 		sessionID := executionctx.SessionID(ctx)
 		targets, blocked, err := admitMutationPaths(ctx, tr, root, sessionID, paths)
 		if err != nil {
-			return toolcontract.Result{}, err
+			return toolcontract.Result{}, beforeCallFailure(ctx, err)
 		}
 		if blocked != "" {
 			failure, err := toolcontract.NewFailure(toolcontract.FailureConfig{
 				Kind: toolcontract.FailureKindRejected, Output: chat.NewTextToolOutput(blocked),
 			})
 			if err != nil {
-				return toolcontract.Result{}, err
+				return toolcontract.Result{}, beforeCallFailure(ctx, err)
 			}
-			return toolcontract.Result{}, failure
+			return toolcontract.Result{}, beforeCallFailure(ctx, failure)
 		}
 		for _, target := range targets {
 			tr.forget(sessionID, target)
 		}
 		return inner.Call(ctx, invocation)
 	})
+}
+
+// Only pre-dispatch checks have evidence that the mutable Tool did not run.
+func beforeCallFailure(ctx context.Context, cause error) error {
+	if cancelled := cancellation.Err(ctx); cancelled != nil {
+		return errors.Join(cause, cancelled)
+	}
+	return pluginsdk.DefiniteToolFailure(cause)
 }
 
 func admitMutationPaths(ctx context.Context, tr *readTracker, root *filesystemRoot, sessionID string, paths []string) ([]string, string, error) {

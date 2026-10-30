@@ -9,8 +9,6 @@ export const en: Record<string, string> = {
   "mcp.saving": "Saving…",
   "mcp.delete": "Delete",
   "mcp.delete.title": "Delete this server?",
-  "mcp.delete.body":
-    '"{{server}}" and its tools are removed. You can add it back later.',
   "mcp.test": "Test",
   "mcp.testing": "Testing…",
   "mcp.connectionOk": "Connection OK",
@@ -37,10 +35,10 @@ export const en: Record<string, string> = {
   "mcp.form.transport.aria": "Transport",
   "mcp.form.command.placeholder": "npx",
   "mcp.form.command.aria": "Command",
-  "mcp.form.args": "Arguments — one per line",
+  "mcp.form.args": "Arguments (JSON array)",
   "mcp.form.args.placeholder":
     "-y\n@modelcontextprotocol/server-filesystem\n/path",
-  "mcp.form.env": "Environment — KEY=value, one per line",
+  "mcp.form.env": "Environment (JSON object)",
   "mcp.form.env.placeholder": "API_KEY=…",
   "mcp.form.env.keep": "Leave blank to keep the stored environment",
   "mcp.form.env.clear": "Remove stored environment",
@@ -55,7 +53,7 @@ export const en: Record<string, string> = {
   "mcp.form.auth.originChanged":
     "The endpoint origin changed. Enter new authorization or remove the stored value.",
   "mcp.form.auth.aria": "Authorization token",
-  "mcp.form.headers": "Headers — KEY=value, one per line",
+  "mcp.form.headers": "Headers (JSON object)",
   "mcp.form.headers.placeholder": "X-API-Key=…",
   "mcp.form.headers.keep": "Leave blank to keep the stored headers",
   "mcp.form.headers.clear": "Remove stored headers",
@@ -77,20 +75,7 @@ export const en: Record<string, string> = {
     "Imported {{count}} of {{total}} servers before the Runtime connection changed.",
   "mcp.import.partial": "Imported {{count}} of {{total}} servers.",
   "mcp.import.error": "Couldn't import that config.",
-  "mcp.import.nameCollision":
-    'Servers "{{first}}" and "{{second}}" both become "{{canonical}}"; give them distinct names',
   "mcp.import.invalidJson": "Enter valid JSON.",
-  "mcp.import.invalidShape":
-    'Use a valid MCP configuration with a "mcpServers" object.',
-  "mcp.import.invalidName":
-    'Give server "{{server}}" a name containing a–z or 0–9.',
-  "mcp.import.missingTransport":
-    'Use stdio with a command or Streamable HTTP with a URL for server "{{server}}".',
-  "mcp.import.missingCommand": 'Add a command for server "{{server}}".',
-  "mcp.import.missingUrl": 'Add a URL for server "{{server}}".',
-  "mcp.import.invalidTimeout":
-    'Set a positive whole-second timeout for server "{{server}}", or omit it for no time limit.',
-  "mcp.import.empty": 'Add at least one server under "mcpServers".',
   "mcp.tools.title": "Tools for {{server}}",
   "mcp.tools.enabled": "Enabled",
   "mcp.tools.autoApprove": "Auto-approve",
@@ -121,12 +106,15 @@ export const en: Record<string, string> = {
     "Couldn't reach this server — check the command or URL and retry.",
   "common.cancel": "Cancel",
   "common.close": "Close",
-  title: "MCP servers",
   "command.uncertain":
     "The original command outcome is not confirmed. Reconcile it before issuing another command or changing catalogs.",
   "command.reconcile": "Reconcile original command",
   "read.retained": "The last accepted read is retained.",
-  reading: "Loading",
-  refresh: "Refresh",
-  retry: "Retry",
+  "mcp.form.args.invalid":
+    "Enter a JSON array of strings, or leave blank for no arguments.",
+  "mcp.form.env.invalid": "Enter a non-empty JSON object with string values.",
+  "mcp.form.headers.invalid":
+    "Enter a non-empty JSON object with string values.",
+  "mcp.import.unsupportedTransport": "Unsupported MCP transport.",
+  "mcp.import.headerConflict": "Conflicting HTTP headers.",
 };

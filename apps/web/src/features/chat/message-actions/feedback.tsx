@@ -1,3 +1,4 @@
+import { type MessageFeedbackOwner } from "@/features/chat/message-actions/application/feedback";
 import { type FlameClient } from "@flame/runtime-client";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useT } from "@/lib/i18n/index";
@@ -14,7 +15,7 @@ import { type Message } from "@/features/agent/public/sessionView";
 import { type FeedbackRating } from "@/features/chat/message-actions/domain/feedback";
 import { canRateMessage } from "@/features/chat/message-actions/application/messageActionAvailability";
 import { useMessageFeedback } from "@/features/chat/message-actions/public/feedback";
-import { installRuntimeFeedbackGateway } from "@/features/chat/message-actions/adapters/runtimeFeedback";
+import { createRuntimeFeedbackGateway } from "@/features/chat/message-actions/adapters/runtimeFeedback";
 import { MessageActionButton } from "@/features/chat/message-actions/MessageActionButton";
 function FeedbackButtons() {
   const msg = useCurrentMessage();
@@ -57,14 +58,24 @@ function RateableFeedbackButtons({ msg }: { msg: Message }) {
   );
 }
 
-export function createMessageFeedbackPlugin(runtimeClient: () => FlameClient) {
+export function createMessageFeedbackPlugin(
+  runtimeClient: () => FlameClient,
+  feedback: MessageFeedbackOwner,
+) {
   return definePlugin({
     name: "flame.builtin.message-feedback",
     requires: { runtime: RUNTIME_STREAM },
     setup(ctx) {
-      const gateway = installRuntimeFeedbackGateway(runtimeClient);
-      ctx.cleanup(() => gateway.dispose());
-      ctx.cleanup(followRuntimeGeneration(ctx.runtime, () => gateway.replaceRuntimeGeneration()));
+      ctx.cleanup(() => feedback.retireRuntimeGeneration());
+      const replace = () =>
+        feedback.replaceRuntimeGeneration(() => createRuntimeFeedbackGateway(runtimeClient()));
+      if (ctx.runtime.connectionGeneration() !== null) replace();
+      ctx.cleanup(
+        followRuntimeGeneration(ctx.runtime, (next) => {
+          if (next === null) feedback.retireRuntimeGeneration();
+          else replace();
+        }),
+      );
       contributeLayout(ctx, "message.actions", {
         id: "feedback",
         order: 15,

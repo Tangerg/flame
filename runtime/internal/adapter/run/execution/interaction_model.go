@@ -192,11 +192,11 @@ func (o *observedInteractionModel) endpoint(ctx context.Context, callID string) 
 	if !found {
 		return nil, nil
 	}
-	if row.Invocation.Caller.ID != callID || row.Invocation.Provider != o.session.start.ModelSelection.Provider() || row.Invocation.Model != o.session.start.ModelSelection.Model() {
+	record := row.Snapshot()
+	if record.Invocation.Caller.ID != callID || record.Invocation.Provider != o.session.start.ModelSelection.Provider() || record.Invocation.Model != o.session.start.ModelSelection.Model() {
 		return nil, errors.New("execution: physical model evidence differs from captured call")
 	}
-	value := row.Clone()
-	return &value, nil
+	return &row, nil
 }
 
 func (o *observedInteractionModel) accountEndpoint(invocation interaction.ModelInvocation, callID string, source modelref.EndpointObservation) (runs.ModelCallCompleted, error) {
@@ -240,10 +240,11 @@ func (o *observedInteractionModel) settleFailedCall(ctx context.Context, invocat
 			return err
 		}
 		failed.Accounting = &accounted
-		failed.KnownResponse = source.Response.Clone()
-		if source.Response != nil && source.Response.Output.Message != nil {
+		response := source.Response()
+		failed.KnownResponse = response
+		if response != nil && response.Output.Message != nil {
 			failed.Observation = runs.ModelObservation{}
-			for _, part := range source.Response.Output.Message.Parts {
+			for _, part := range response.Output.Message.Parts {
 				switch part.Kind {
 				case corechat.PartText, corechat.PartRefusal:
 					failed.Observation.Text += part.Text
@@ -317,7 +318,7 @@ func (o *observedInteractionModel) complete(
 	if err != nil {
 		return err
 	}
-	if source == nil || source.Response == nil {
+	if source == nil || source.Response() == nil {
 		return errors.New("execution: completed model operation has no known physical endpoint evidence")
 	}
 	fact, err := o.accountEndpoint(invocation, callID, *source)

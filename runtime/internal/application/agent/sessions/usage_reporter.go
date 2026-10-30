@@ -109,11 +109,12 @@ func (r *UsageReporter) collect(ctx context.Context, sessionID string, since tim
 	groups := []map[string]*usageAccumulator{{}, {}, {}, {}, {}}
 	sessions := map[string]struct{}{}
 	runs := map[string]struct{}{}
-	err := r.source.VisitEndpointInvocations(ctx, sessionID, since, func(source modelref.EndpointObservation) error {
-		if err := total.addCall(source); err != nil {
+	err := r.source.VisitEndpointInvocations(ctx, sessionID, since, func(observation modelref.EndpointObservation) error {
+		source := observation.Snapshot()
+		if err := total.addCall(observation); err != nil {
 			return fmt.Errorf("sessions: aggregate endpoint %q: %w", source.Invocation.ID, err)
 		}
-		model := source.ServedModel
+		model := observation.ServedModel()
 		if _, err := modelchoice.New(source.Invocation.Provider, model); err != nil {
 			return err
 		}
@@ -128,7 +129,7 @@ func (r *UsageReporter) collect(ctx context.Context, sessionID string, since tim
 		}
 		keys := []string{source.Invocation.Provider, source.Invocation.Provider + "/" + model, source.Invocation.StartedAt.UTC().Format(time.DateOnly), string(source.Invocation.Caller.Origin), scope}
 		for index, key := range keys {
-			if err := accumulatorFor(groups[index], key).addCall(source); err != nil {
+			if err := accumulatorFor(groups[index], key).addCall(observation); err != nil {
 				return err
 			}
 		}
@@ -146,27 +147,27 @@ type usageAccumulator struct {
 	coverage UsageCoverage
 }
 
-func (u *usageAccumulator) addCall(source modelref.EndpointObservation) error {
+func (u *usageAccumulator) addCall(observation modelref.EndpointObservation) error {
+	if err := observation.Validate(); err != nil {
+		return err
+	}
+	source := observation.Snapshot()
 	next := *u
 	if next.coverage.Calls == math.MaxInt {
 		return errors.New("usage call count overflows")
 	}
 	next.coverage.Calls++
 	switch source.State {
-	case "started":
+	case modelref.EndpointStarted:
 		next.coverage.StartedCalls++
-	case "completed":
+	case modelref.EndpointCompleted:
 		next.coverage.CompletedCalls++
-	case "failed":
+	case modelref.EndpointFailed:
 		next.coverage.FailedCalls++
-	case "unknown":
+	case modelref.EndpointUnknown:
 		next.coverage.UnknownCalls++
-	default:
-		return errors.New("usage source has an unknown state")
 	}
-	if (source.State == "completed" || source.State == "failed") != source.HasResponse() {
-		return errors.New("usage source outcome differs from its state")
-	}
+
 	reported := source.Usage
 	if reported != nil {
 		tokens, err := accounting.NewTokens(*reported)

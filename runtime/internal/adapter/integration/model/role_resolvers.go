@@ -13,8 +13,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// RoleSource is the read view a live specialized-model resolver needs. The
-// source's owner decides how role changes are synchronized.
+// The source's owner decides how role changes are synchronized.
 type roleSource interface {
 	Role() modelref.Role
 }
@@ -28,19 +27,20 @@ type ChatModelResolver interface {
 }
 
 // LiveUtilityModel resolves the optional specialized role on every use. An
-// absent role selects the main model; a configured role is exact and never
-// silently falls back to another provider/model when resolution fails.
+// absent role proposes the Runtime default; a configured role proposes its
+// exact selection. An installed selector may replace that proposal before
+// resolution, whose failure never triggers another route.
 func LiveUtilityModel(
 	resolver ChatModelResolver,
-	mainSelection modelchoice.Selection,
+	defaultSelection modelchoice.Selection,
 	roles roleSource,
 	selector modelapp.Selector,
 ) (AuxiliaryResolver, error) {
 	if lo.IsNil(resolver) {
 		return nil, errors.New("model: utility chat resolver is required")
 	}
-	if err := mainSelection.ValidateExact(); err != nil {
-		return nil, fmt.Errorf("model: utility main selection: %w", err)
+	if err := defaultSelection.ValidateExact(); err != nil {
+		return nil, fmt.Errorf("model: utility default selection: %w", err)
 	}
 	if lo.IsNil(roles) {
 		return nil, errors.New("model: utility role source is required")
@@ -52,7 +52,7 @@ func LiveUtilityModel(
 		if err := budget.Validate(); err != nil {
 			return SelectedChat{}, nil, err
 		}
-		selection := mainSelection
+		selection := defaultSelection
 		if role := roles.Role(); role.Configured() {
 			selection = role.Selection()
 		}

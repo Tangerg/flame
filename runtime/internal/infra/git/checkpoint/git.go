@@ -71,14 +71,19 @@ func gitExitCode(err error) int {
 // gitIn runs a git query inside the real repo at cwd (no shadow GIT_DIR), used
 // to discover what a new shadow repo can seed from. Returns trimmed stdout.
 func gitIn(ctx context.Context, cwd string, args ...string) (string, error) {
+	output, err := gitInOutput(ctx, cwd, args...)
+	return strings.TrimSpace(string(output)), err
+}
+
+func gitInOutput(ctx context.Context, cwd string, args ...string) ([]byte, error) {
 	result, err := process.At(ctx, cwd, args...)
 	if err != nil {
-		return "", fmt.Errorf("checkpoint: git %s: %w", args[0], err)
+		return nil, fmt.Errorf("checkpoint: source git %s: %w", args[0], err)
 	}
 	if result.ExitCode != 0 {
-		return "", &gitCommandError{
+		return nil, &gitCommandError{
 			operation: args[0], exitCode: result.ExitCode, diagnostic: strings.TrimSpace(result.Stderr),
 		}
 	}
-	return strings.TrimSpace(string(result.Stdout)), nil
+	return result.Stdout, nil
 }

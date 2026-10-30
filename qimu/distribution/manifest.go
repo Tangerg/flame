@@ -104,6 +104,7 @@ type Manifest struct {
 	Contracts     []qimu.ContractRef `json:"contracts,omitempty"`
 	Units         []Unit             `json:"units"`
 	Contributions []Contribution     `json:"contributions,omitempty"`
+	Dependencies  []LockedRelease    `json:"dependencies,omitempty"`
 }
 
 type LockedRelease struct {
@@ -136,17 +137,21 @@ func ParseLock(data []byte) (Lock, error) {
 	if lock.SchemaVersion != LockSchemaVersion || !qimu.ValidName(lock.Package) || lock.Release.Validate() != nil {
 		return lock, ErrInvalid
 	}
+	return lock, validateDependencies(lock.Dependencies)
+}
+
+func validateDependencies(dependencies []LockedRelease) error {
 	seen := map[string]struct{}{}
-	for _, dependency := range lock.Dependencies {
+	for _, dependency := range dependencies {
 		if !qimu.ValidName(dependency.Package) || dependency.Release.Validate() != nil {
-			return lock, ErrInvalid
+			return ErrInvalid
 		}
 		if _, ok := seen[dependency.Package]; ok {
-			return lock, ErrInvalid
+			return ErrInvalid
 		}
 		seen[dependency.Package] = struct{}{}
 	}
-	return lock, nil
+	return nil
 }
 
 func (m Manifest) Validate() error {
@@ -155,6 +160,9 @@ func (m Manifest) Validate() error {
 	}
 	if m.Release != "" && m.Release.Validate() != nil {
 		return ErrInvalid
+	}
+	if err := validateDependencies(m.Dependencies); err != nil {
+		return err
 	}
 	artifacts := make(map[string]Artifact, len(m.Artifacts))
 	paths := map[string]string{}
@@ -355,12 +363,12 @@ func (m Manifest) Identity() (qimu.Digest, error) {
 	return qimu.Hash(data), nil
 }
 
-func (m Manifest) Lock(dependencies []LockedRelease) (Lock, error) {
+func (m Manifest) Lock() (Lock, error) {
 	digest, err := m.Identity()
 	if err != nil {
 		return Lock{}, err
 	}
-	lock := Lock{SchemaVersion: LockSchemaVersion, Package: m.Package, Release: digest, Artifacts: slices.Clone(m.Artifacts), Contracts: slices.Clone(m.Contracts), Dependencies: slices.Clone(dependencies)}
+	lock := Lock{SchemaVersion: LockSchemaVersion, Package: m.Package, Release: digest, Artifacts: slices.Clone(m.Artifacts), Contracts: slices.Clone(m.Contracts), Dependencies: slices.Clone(m.Dependencies)}
 	slices.SortFunc(lock.Artifacts, func(a, b Artifact) int { return strings.Compare(a.Path, b.Path) })
 	data, err := json.Marshal(lock)
 	if err != nil {
@@ -370,7 +378,7 @@ func (m Manifest) Lock(dependencies []LockedRelease) (Lock, error) {
 }
 
 func (l Lock) Verify(m Manifest) error {
-	expected, err := m.Lock(l.Dependencies)
+	expected, err := m.Lock()
 	if err != nil {
 		return err
 	}

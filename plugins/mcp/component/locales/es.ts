@@ -39,10 +39,10 @@ export const es: Record<string, string> = {
   "mcp.form.transport.aria": "Transporte",
   "mcp.form.command.placeholder": "npx",
   "mcp.form.command.aria": "Comando",
-  "mcp.form.args": "Argumentos: uno por línea",
+  "mcp.form.args": "Argumentos (matriz JSON)",
   "mcp.form.args.placeholder":
     "-y\n@modelcontextprotocol/server-filesystem\n/ruta",
-  "mcp.form.env": "Entorno: CLAVE=valor, uno por línea",
+  "mcp.form.env": "Entorno (objeto JSON)",
   "mcp.form.env.placeholder": "API_KEY=…",
   "mcp.form.env.keep": "Déjalo en blanco para conservar el entorno guardado",
   "mcp.form.env.clear": "Eliminar el entorno guardado",
@@ -57,7 +57,7 @@ export const es: Record<string, string> = {
   "mcp.form.auth.originChanged":
     "El origen del endpoint cambió. Introduce una autorización nueva o elimina el valor guardado.",
   "mcp.form.auth.aria": "Token de autorización",
-  "mcp.form.headers": "Cabeceras: CLAVE=valor, una por línea",
+  "mcp.form.headers": "Cabeceras (objeto JSON)",
   "mcp.form.headers.placeholder": "X-API-Key=…",
   "mcp.form.headers.keep":
     "Déjalo en blanco para conservar las cabeceras guardadas",
@@ -81,21 +81,9 @@ export const es: Record<string, string> = {
     "La conexión de Runtime cambió: se importaron {{count}} de {{total}} servidores antes de la interrupción.",
   "mcp.import.partial": "Se importaron {{count}} de {{total}} servidores.",
   "mcp.import.error": "No se pudo importar esa configuración.",
-  "mcp.import.nameCollision":
-    'Los servidores "{{first}}" y "{{second}}" se convierten ambos en "{{canonical}}"; dales nombres distintos',
   "mcp.import.invalidJson": "Introduce un JSON válido.",
-  "mcp.import.invalidShape":
-    'Usa una configuración MCP válida con un objeto "mcpServers".',
-  "mcp.import.invalidName":
-    'Dale al servidor "{{server}}" un nombre que contenga a–z o 0–9.',
   "mcp.import.missingTransport":
-    "Usa stdio con un comando o Streamable HTTP con una URL para el servidor «{{server}}».",
-  "mcp.import.missingCommand":
-    'Añade un comando para el servidor "{{server}}".',
-  "mcp.import.missingUrl": 'Añade una URL para el servidor "{{server}}".',
-  "mcp.import.invalidTimeout":
-    'Establece un tiempo de espera en segundos enteros positivos para el servidor "{{server}}", u omítelo para no fijar un límite de tiempo.',
-  "mcp.import.empty": 'Añade al menos un servidor en "mcpServers".',
+    "Indica un comando o una URL para el servidor «<server/>», pero no ambos.",
   "mcp.tools.title": "Herramientas de {{server}}",
   "mcp.tools.enabled": "Activada",
   "mcp.tools.autoApprove": "Aprobar automáticamente",
@@ -130,12 +118,20 @@ export const es: Record<string, string> = {
     "No se pudo conectar con este servidor — revisa el comando o la URL y reinténtalo.",
   "common.cancel": "Cancelar",
   "common.close": "Cerrar",
-  title: "Servidores MCP",
   "command.uncertain":
     "El resultado del comando original no está confirmado. Concílialo antes de emitir otro comando o cambiar de catálogo.",
   "command.reconcile": "Conciliar el comando original",
   "read.retained": "Se conserva la última lectura aceptada.",
-  reading: "Cargando",
-  refresh: "Actualizar",
-  retry: "Reintentar",
+  "mcp.form.args.invalid":
+    "Introduce una matriz JSON de cadenas, o déjalo en blanco si no hay argumentos.",
+  "mcp.form.env.invalid":
+    "Introduce un objeto JSON no vacío con valores de tipo cadena.",
+  "mcp.form.headers.invalid":
+    "Introduce un objeto JSON no vacío con valores de tipo cadena.",
+  "mcp.import.invalidName":
+    "El nombre del servidor «<server/>» no cumple las reglas de Runtime. Corrige la clave y vuelve a intentarlo.",
+  "mcp.import.unsupportedTransport":
+    "El «type» del servidor «<server/>» no está admitido. Usa «stdio» o «streamableHttp».",
+  "mcp.import.headerConflict":
+    "El servidor «<server/>» declara «<header/>» más de una vez. Conserva una sola declaración.",
 };

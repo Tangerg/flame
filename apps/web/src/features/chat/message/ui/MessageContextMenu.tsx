@@ -19,7 +19,10 @@ import { messageContextMenuModel } from "@/features/chat/message-actions/public/
 import { writeToClipboard } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n/index";
 import { runtimeCapability } from "@/features/connection/public/capabilities";
-import { useActiveConversationMessages } from "@/features/agent/public/conversation";
+import {
+  useActiveConversationMessages,
+  useHasPrecedingRootRun,
+} from "@/features/agent/public/conversation";
 interface Props {
   msg: Message;
   label: string;
@@ -34,9 +37,10 @@ export function MessageContextMenu({ msg, label, children }: Props) {
   const t = useT();
   const selection = useRef<{ edit: (() => void) | undefined } | null>(null);
   const copy = messageCopyPayloads(msg);
-  const canRestoreFiles = runtimeCapability(runtimeAccess, "checkpoints");
+  const canRestoreFilesBeforeRun =
+    useHasPrecedingRootRun(msg.runId) && runtimeCapability(runtimeAccess, "checkpoints");
   const conversation = useActiveConversationMessages();
-  const menu = messageContextMenuModel({ msg, copy, canRestoreFiles, conversation });
+  const menu = messageContextMenuModel({ msg, copy, canRestoreFilesBeforeRun, conversation });
 
   return (
     <ContextMenu.Root

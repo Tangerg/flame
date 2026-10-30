@@ -157,7 +157,7 @@ func (e *bridgeEnvironment) start(id string) control.LocalPlan {
 	return plan
 }
 
-func (e *bridgeEnvironment) acquire(plan control.LocalPlan, operation string) (control.AcquireRequest, control.UseGrant) {
+func (e *bridgeEnvironment) selectionRequest(plan control.LocalPlan, operation string) control.AcquireRequest {
 	e.t.Helper()
 	snapshot, err := e.bridge.Snapshot(e.ctx, e.credentials.Token, []string{e.first.Ref().Name, e.second.Ref().Name})
 	if err != nil {
@@ -173,6 +173,12 @@ func (e *bridgeEnvironment) acquire(plan control.LocalPlan, operation string) (c
 		}
 		request.Selections = append(request.Selections, control.Selection{Point: point.Point, Candidates: tokens, Rule: "test/all/1"})
 	}
+	return request
+}
+
+func (e *bridgeEnvironment) acquire(plan control.LocalPlan, operation string) (control.AcquireRequest, control.UseGrant) {
+	e.t.Helper()
+	request := e.selectionRequest(plan, operation)
 	grant, err := e.bridge.Acquire(e.ctx, e.credentials.Token, request)
 	if err != nil {
 		e.t.Fatal(err)
@@ -389,6 +395,9 @@ func TestPublicationWithdrawalPreservesAcceptedUse(t *testing.T) {
 	if len(snapshot.Points[0].Candidates) != 1 {
 		t.Fatalf("withdrawn candidate remained visible: %+v", snapshot)
 	}
+	if err := e.bridge.CloseSnapshot(e.ctx, e.credentials.Token, snapshot.ID); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := e.bridge.Prove(e.ctx, e.credentials.Token, useProof(plan, grant)); err != nil {
 		t.Fatal(err)
 	}
@@ -446,6 +455,9 @@ func TestExecutionExitCoversAcceptedPublicationWithoutSeparateWithdrawal(t *test
 	snapshot, err := e.bridge.Snapshot(e.ctx, e.credentials.Token, []string{e.first.Ref().Name})
 	if err != nil || len(snapshot.Points) != 1 || len(snapshot.Points[0].Candidates) != 0 {
 		t.Fatalf("execution exit left its dynamic publication visible: %+v %v", snapshot, err)
+	}
+	if err := e.bridge.CloseSnapshot(e.ctx, e.credentials.Token, snapshot.ID); err != nil {
+		t.Fatal(err)
 	}
 }
 

@@ -1,6 +1,7 @@
 import {
   type ComposerDraftInput,
   type ComposerImage,
+  type ComposerImageAttachment,
   type PastedText,
 } from "@/features/composer/domain/draft";
 export type ComposerModelPreference =
@@ -10,6 +11,7 @@ export type ComposerModelPreference =
 export interface ComposerSubmission {
   readonly value: string;
   readonly images: readonly ComposerImage[];
+  readonly attachmentsReady: boolean;
   readonly pastes: readonly PastedText[];
   consume(historyText?: string): boolean;
 }
@@ -27,7 +29,8 @@ export interface ComposerStatePort {
   replaceDraft(input: ComposerDraftInput): void;
   beginDraftReplacement(): ComposerDraftReplacement;
   appendText(text: string): void;
-  useImages(): readonly ComposerImage[];
+  useImageAttachments(): readonly ComposerImageAttachment[];
+  useAttachmentsReady(): boolean;
   usePastes(): readonly PastedText[];
   useAddImageFiles(): (files: File[]) => void;
   useRemoveImage(): (id: string) => void;

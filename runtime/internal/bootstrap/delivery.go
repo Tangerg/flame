@@ -45,6 +45,9 @@ type workerJoins struct {
 }
 
 func (h *runtimeApplication) recoverStartup(ctx context.Context) error {
+	if err := h.sessions.RecoverRetiredResources(ctx); err != nil {
+		return err
+	}
 	return h.sessions.RecoverWorkspaceMutations(ctx)
 }
 

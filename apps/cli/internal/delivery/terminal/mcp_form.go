@@ -142,13 +142,13 @@ func (m mcpFormDraft) connection() (mcp.ConnectionInput, error) {
 		}
 		connection.Headers = headers
 	case protocol.MCPTransportStdio:
-		connection.Command = strings.TrimSpace(m.command)
+		connection.Command = m.command
 		arguments, err := parseMCPArguments(m.arguments)
 		if err != nil {
 			return mcp.ConnectionInput{}, err
 		}
 		connection.Args = arguments
-		connection.Directory = strings.TrimSpace(m.directory)
+		connection.Directory = m.directory
 		environment, err := mcpEnvironmentChange(m.environmentMode, m.environment)
 		if err != nil {
 			return mcp.ConnectionInput{}, err
@@ -172,9 +172,15 @@ func (a *app) openMCPServerForm(mode mcpFormMode, server protocol.MCPServer) {
 }
 
 func (a *app) showMCPFormStep(flow *mcpFormFlow) {
-	if a.dialogs.mcpDialog != nil {
-		a.dialogs.mcpDialog.Controller().Dismiss()
-		a.dialogs.mcpDialog = nil
+	if flow.state != mcpFormEditing {
+		return
+	}
+	if a.dialogs.mcpForm != nil && a.dialogs.mcpForm != flow {
+		a.closeMCPForm(a.dialogs.mcpForm)
+	}
+	a.dialogs.mcpForm = flow
+	if flow.dialog != nil {
+		flow.dialog.Controller().Dismiss()
 	}
 	fields, secretFields := a.mcpFormFields(flow)
 	flow.secretFields = append(flow.secretFields, secretFields...)
@@ -182,7 +188,7 @@ func (a *app) showMCPFormStep(flow *mcpFormFlow) {
 	form.Keys = headless.DefaultFormKeys()
 	var dialog *kit.Dialog
 	form.Done = func() {
-		if a.dialogs.mcpDialog != dialog {
+		if a.dialogs.mcpForm != flow || flow.dialog != dialog || flow.state != mcpFormEditing {
 			return
 		}
 		if flow.advance() {
@@ -192,7 +198,7 @@ func (a *app) showMCPFormStep(flow *mcpFormFlow) {
 		a.submitMCPForm(flow)
 	}
 	form.GaveUp = func() {
-		if a.dialogs.mcpDialog != dialog {
+		if a.dialogs.mcpForm != flow || flow.dialog != dialog || flow.state != mcpFormEditing {
 			return
 		}
 		if flow.back() {
@@ -220,44 +226,122 @@ func (a *app) showMCPFormStep(flow *mcpFormFlow) {
 		Where: layout.Placement{Width: 92, Height: formDialogHeight(body.HeightForWidth(88), len(fields), 24)},
 	})
 	dialog.Controller().SetDescription(label)
-	a.dialogs.mcpDialog = dialog
+	flow.dialog = dialog
+	flow.view = body
 	dialog.Controller().Show()
 }
 
 func (a *app) submitMCPForm(flow *mcpFormFlow) {
-	switch flow.mode {
-	case mcpFormCreate, mcpFormProbe:
-		candidate, err := flow.draft.candidate()
-		if err != nil {
-			a.message("MCP form: " + err.Error())
-			return
-		}
-		a.closeMCPForm(flow)
-		if flow.mode == mcpFormCreate {
-			a.createMCPServer(candidate)
-		} else {
-			a.probeMCPServer(candidate)
-		}
-	case mcpFormUpdate:
-		update, changed, err := flow.draft.update(flow.server)
-		if err != nil {
-			a.message("MCP form: " + err.Error())
-			return
-		}
-		a.closeMCPForm(flow)
-		if !changed {
-			a.message("MCP server configuration unchanged")
-			return
-		}
-		a.updateMCPServer(update)
+	if a.dialogs.mcpForm != flow || (flow.state != mcpFormEditing && flow.state != mcpFormUncertain) {
+		return
 	}
+	submission, err := flow.prepare(a.mcp, a.replayPolicy)
+	if err != nil {
+		flow.feedback("MCP form: " + err.Error())
+		return
+	}
+	if submission == nil {
+		a.closeMCPForm(flow)
+		a.message("MCP server configuration unchanged")
+		return
+	}
+	presentation := a.session.context
+	apply := func(result mcpFormResult, err error) {
+		if flow.state == mcpFormClosed {
+			return
+		}
+		flow.settle(err)
+		if err != nil {
+			message := submission.label + " failed: " + err.Error()
+			if flow.state == mcpFormEditing {
+				a.showMCPFormStep(flow)
+				flow.feedback(message)
+			} else {
+				message = submission.label + " outcome unknown: " + err.Error()
+				a.showMCPFormSubmission(flow, message)
+			}
+			a.message(message)
+			return
+		}
+		a.closeMCPForm(flow)
+		if flow.mode == mcpFormProbe {
+			message, err := mcpProbeMessage(result.probeName, result.probe)
+			if err != nil {
+				a.message(submission.label + " returned an invalid result: " + err.Error())
+				return
+			}
+			a.message(message)
+			return
+		}
+		document, err := mcpServersDocument([]protocol.MCPServer{result.server})
+		if err != nil {
+			a.message(submission.label + " returned an invalid result: " + err.Error())
+			return
+		}
+		a.message(submission.label + " complete")
+		if a.session.context.current(presentation) {
+			a.setRuntimeReader(runtimeReaderMCPServers)
+			a.dialogs.workspaceReader = workspaceReaderNone
+			a.openReaderDocument(document)
+			a.status.note("MCP server · " + mcp.ServerLabel(result.server.ID))
+		}
+	}
+	var started bool
+	if flow.mode == mcpFormProbe {
+		started = a.runApplicationOperation(mcpOperation, false, submission.work, apply)
+	} else {
+		started = a.runAdmissionMutation(mcpOperation, false, submission.work, apply)
+	}
+	if !started {
+		flow.feedback("another MCP operation is running")
+		a.message("another MCP operation is running")
+		return
+	}
+	flow.admitted(submission)
+	a.status.note(submission.label)
+	a.showMCPFormSubmission(flow, submission.label)
+}
+
+func (a *app) showMCPFormSubmission(flow *mcpFormFlow, message string) {
+	flow.dialog.Controller().Dismiss()
+	form := headless.NewForm()
+	form.Keys = headless.DefaultFormKeys()
+	var dialog *kit.Dialog
+	form.Done = func() {
+		if a.dialogs.mcpForm == flow && flow.dialog == dialog {
+			a.submitMCPForm(flow)
+		}
+	}
+	form.GaveUp = func() {
+		if a.dialogs.mcpForm == flow && flow.dialog == dialog {
+			a.closeMCPForm(flow)
+		}
+	}
+	title := "Submitting MCP form"
+	hints := []keymap.Action{headless.Cancel}
+	if flow.state == mcpFormUncertain {
+		title = "Outcome unknown · Enter retries the original request"
+		hints = append([]keymap.Action{headless.Submit}, hints...)
+	} else if flow.state == mcpFormBlocked {
+		title = "Outcome unknown · replay is unavailable"
+	}
+	body := kit.NewForm(kit.FormConfig{
+		Theme: a.transcript.theme, Glyphs: a.transcript.glyphs, Controller: form, Title: title + "\n" + message, Hints: hints,
+	})
+	dialog = kit.NewDialog(kit.DialogConfig{
+		Stack: &a.stack, Theme: a.transcript.theme, Glyphs: a.transcript.glyphs,
+		Title: "MCP submission", Description: message, Body: body,
+		Where: layout.Placement{Width: 92, Height: formDialogHeight(body.HeightForWidth(88), 0, 24)},
+	})
+	flow.dialog = dialog
+	flow.view = body
+	dialog.Controller().Show()
 }
 
 func (a *app) closeMCPForm(flow *mcpFormFlow) {
-	flow.clearSecrets()
-	if a.dialogs.mcpDialog != nil {
-		a.dialogs.mcpDialog.Controller().Dismiss()
-		a.dialogs.mcpDialog = nil
+	flow.close()
+	if a.dialogs.mcpForm == flow {
+		a.dialogs.mcpForm = nil
 	}
 }
 
@@ -309,16 +393,15 @@ func (a *app) mcpFormFields(flow *mcpFormFlow) ([]headless.Field, []*headless.Te
 		headersMode.SetOptions(secretOptions)
 		fields = append(fields, headersMode)
 		headers := textField("Headers JSON", `{"X-Key":"secret"}`, &draft.headers, func(value string) error {
-			if !draft.headersMode.SetsValue() {
-				return nil
-			}
-			_, err := parseMCPStringMap(value)
+			_, err := mcpHeadersChange(draft.headersMode, value)
 			return err
 		})
 		headers.SetMask("•")
 		secretFields = append(secretFields, authorization, headers)
 	case mcpFormStdio:
-		textField("stdio command", "mcp-server", &draft.command, requiredText)
+		textField("stdio command", "mcp-server", &draft.command, func(value string) error {
+			return (mcp.ConnectionInput{Transport: protocol.MCPTransportStdio, Command: value}).Validate()
+		})
 		textField("stdio args JSON", `["--stdio"]`, &draft.arguments, func(value string) error {
 			_, err := parseMCPArguments(value)
 			return err
@@ -328,10 +411,7 @@ func (a *app) mcpFormFields(flow *mcpFormFlow) ([]headless.Field, []*headless.Te
 		environmentMode.SetOptions(secretOptions)
 		fields = append(fields, environmentMode)
 		environment := textField("Environment JSON", `{"TOKEN":"secret"}`, &draft.environment, func(value string) error {
-			if !draft.environmentMode.SetsValue() {
-				return nil
-			}
-			_, err := parseMCPStringMap(value)
+			_, err := mcpEnvironmentChange(draft.environmentMode, value)
 			return err
 		})
 		environment.SetMask("•")
@@ -363,7 +443,7 @@ func mcpAuthorizationChange(mode formChange, value string) (*mcp.AuthorizationCh
 	}
 	switch mode {
 	case formChangeSet:
-		change := &mcp.AuthorizationChange{Kind: protocol.MCPSecretSet, Value: strings.TrimSpace(value)}
+		change := &mcp.AuthorizationChange{Kind: protocol.MCPSecretSet, Value: value}
 		return change, change.Validate()
 	case formChangeClear:
 		return &mcp.AuthorizationChange{Kind: protocol.MCPSecretClear}, nil
@@ -417,14 +497,6 @@ func parseMCPStringMap(value string) (map[string]string, error) {
 	var parsed map[string]string
 	if err := json.Unmarshal([]byte(value), &parsed); err != nil {
 		return nil, fmt.Errorf("parse JSON object: %w", err)
-	}
-	if len(parsed) == 0 {
-		return nil, errors.New("a non-empty JSON object is required")
-	}
-	for key, item := range parsed {
-		if strings.TrimSpace(key) == "" || strings.TrimSpace(item) == "" {
-			return nil, errors.New("JSON object names and values must be non-empty")
-		}
 	}
 	return parsed, nil
 }

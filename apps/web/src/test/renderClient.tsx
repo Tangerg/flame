@@ -1,3 +1,9 @@
+import { createImageExport } from "@/foundation/imageExport";
+import { createGoals } from "@/features/goal/application/goals";
+import { GoalProvider } from "@/features/goal/public/goals";
+import { MessageFeedbackOwner } from "@/features/chat/message-actions/application/feedback";
+import { MessageFeedbackProvider } from "@/features/chat/message-actions/public/feedback";
+import { ApplicationCalloutLabels } from "@/app/calloutLabels";
 import { IMAGE_FILENAME_STEM } from "@/app/product";
 import { type createRuntimeConnection } from "@/features/connection/adapters/runtimeConnection";
 import { type ClientHost } from "@/platform/host";
@@ -29,7 +35,8 @@ import { createWorkspace } from "@/features/workspace/adapters/workspace";
 import { WorkspaceProvider } from "@/features/workspace/public/workspace";
 import { createWorkingDirectoryPicker } from "@/features/navigation/adapters/workingDirectorySelection";
 import { WorkingDirectoryProvider } from "@/features/navigation/public/workingDirectory";
-import { ImageSaveProvider, type ImageSave } from "@/features/chat/public/imageSave";
+import { ImageSaveProvider } from "@/features/chat/public/imageSave";
+import type { ImageExport } from "@/foundation/imageExport";
 import { createBrowserHost } from "@/platform/browserHost";
 
 export function createTestClient(
@@ -39,10 +46,11 @@ export function createTestClient(
     host?: ClientHost;
     start?: boolean;
     endpoint?: string;
-    saveImage?: ImageSave;
+    saveImage?: ImageExport;
   } = {},
 ) {
   const theme = createTheme(document, window);
+  const feedback = new MessageFeedbackOwner(null);
   const navigation = createMemoryNavigator();
   const projection = createRuntimeConnectionProjection();
   const replacements = new Set<() => void>();
@@ -66,8 +74,13 @@ export function createTestClient(
       read: () => target,
       defaultTarget: () => original,
       replace(next) {
+        const changed = target.endpoint !== next.endpoint || target.localToken !== next.localToken;
         target = { ...next, localToken: next.localToken };
-        for (const listener of replacements) listener();
+        if (changed) for (const listener of replacements) listener();
+        return changed;
+      },
+      reset() {
+        return this.replace(original);
       },
     }),
   };
@@ -84,6 +97,9 @@ export function createTestClient(
     });
   const agent = createAgentFixture(client, navigation, runtime, stream, scope);
   if (options.start !== false) agent.start();
+  const goals = createGoals((sessionId) =>
+    agent.access.synchronizeMountedAgentSession(sessionId, "replace-live"),
+  );
   const composer = createComposer(
     {
       getActiveSessionId: agent.access.getActiveSessionId,
@@ -96,7 +112,7 @@ export function createTestClient(
     scope,
   );
   if (options.start !== false) composer.start();
-  const host = options.host ?? createBrowserHost(IMAGE_FILENAME_STEM);
+  const host = options.host ?? createBrowserHost();
   const workspace = createWorkspace(client, navigation, host, () => false, agent.access, runtime);
   workspace.dock.activate(runtime.endpoint.currentRuntimeEndpoint());
   const directory = createWorkingDirectoryPicker(
@@ -116,25 +132,36 @@ export function createTestClient(
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider value={theme.access}>
-          <RuntimeProvider value={runtime}>
-            <agent.Provider>
-              <ComposerProvider value={composer.access}>
-                <WorkspaceProvider value={workspace.access}>
-                  <WorkingDirectoryProvider value={directory.access}>
-                    <ImageSaveProvider saveImage={options.saveImage ?? host.saveImage}>
-                      <NotificationProvider value={notifications.access}>
-                        <InstalledPluginsProvider value={installedPlugins.access}>
-                          {children}
-                        </InstalledPluginsProvider>
-                      </NotificationProvider>
-                    </ImageSaveProvider>
-                  </WorkingDirectoryProvider>
-                </WorkspaceProvider>
-              </ComposerProvider>
-            </agent.Provider>
-          </RuntimeProvider>
-        </ThemeProvider>
+        <MessageFeedbackProvider value={feedback}>
+          <GoalProvider value={goals.access}>
+            <ApplicationCalloutLabels>
+              <ThemeProvider value={theme.access}>
+                <RuntimeProvider value={runtime}>
+                  <agent.Provider>
+                    <ComposerProvider value={composer.access}>
+                      <WorkspaceProvider value={workspace.access}>
+                        <WorkingDirectoryProvider value={directory.access}>
+                          <ImageSaveProvider
+                            saveImage={
+                              options.saveImage ??
+                              createImageExport(IMAGE_FILENAME_STEM, host.saveFile)
+                            }
+                          >
+                            <NotificationProvider value={notifications.access}>
+                              <InstalledPluginsProvider value={installedPlugins.access}>
+                                {children}
+                              </InstalledPluginsProvider>
+                            </NotificationProvider>
+                          </ImageSaveProvider>
+                        </WorkingDirectoryProvider>
+                      </WorkspaceProvider>
+                    </ComposerProvider>
+                  </agent.Provider>
+                </RuntimeProvider>
+              </ThemeProvider>
+            </ApplicationCalloutLabels>
+          </GoalProvider>
+        </MessageFeedbackProvider>
       </QueryClientProvider>
     );
   }
@@ -149,6 +176,8 @@ export function createTestClient(
   }
   return {
     theme,
+    goals,
+    feedback,
     navigation,
     runtime,
     projection,
@@ -183,6 +212,8 @@ export function createTestClient(
       });
     },
     async dispose() {
+      goals.dispose();
+      feedback.dispose();
       notifications.dispose();
       theme.dispose();
       composer.dispose();

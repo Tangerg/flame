@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -20,6 +21,18 @@ const (
 	OutcomeCompleted Outcome = "completed"
 	OutcomeBlocked   Outcome = "blocked"
 )
+
+var outcomes = [...]Outcome{OutcomeCompleted, OutcomeBlocked}
+
+func (o Outcome) Valid() bool { return slices.Contains(outcomes[:], o) }
+
+func (Outcome) JSONSchemaEnum() []string {
+	values := make([]string, len(outcomes))
+	for index, outcome := range outcomes {
+		values[index] = string(outcome)
+	}
+	return values
+}
 
 // ReportCommand is a model-originated terminal outcome for the active Goal.
 // IncarnationID is required and identifies the Goal that admitted this Run.
@@ -65,14 +78,11 @@ func (o *OutcomeReporter) Report(ctx context.Context, cmd ReportCommand) (Report
 		return "", fmt.Errorf("goals: report: %w", err)
 	}
 	reason := strings.TrimSpace(cmd.Reason)
-	switch cmd.Outcome {
-	case OutcomeCompleted:
-		if reason != "" {
-			return ReportReasonForbidden, nil
-		}
-	case OutcomeBlocked:
-	default:
+	if !cmd.Outcome.Valid() {
 		return ReportInvalidOutcome, nil
+	}
+	if cmd.Outcome == OutcomeCompleted && reason != "" {
+		return ReportReasonForbidden, nil
 	}
 	g, ok, err := loadGoal(ctx, o.goals, cmd.SessionID)
 	if err != nil {

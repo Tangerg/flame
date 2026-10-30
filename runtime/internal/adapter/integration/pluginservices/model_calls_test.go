@@ -152,7 +152,7 @@ func TestSelectedModelCallsHaveIndependentRoutesBudgetsAndDurableEvidence(t *tes
 				t.Fatalf("durable independent endpoints: %+v %v", rows, err)
 			}
 			for _, row := range rows {
-				if row.Invocation.Caller.Parent != "original-plugin-operation" || row.Invocation.Caller.Origin != extension.Model || row.Invocation.Model == "" || row.Response.Metadata.Model != "served-"+row.Invocation.Model || row.Response.Metadata.Usage.InputTokens != 11 || row.CostUSD == nil || *row.CostUSD != 1.5 {
+				if row.Snapshot().Invocation.Caller.Parent != "original-plugin-operation" || row.Snapshot().Invocation.Caller.Origin != extension.Model || row.Snapshot().Invocation.Model == "" || row.Response().Metadata.Model != "served-"+row.Snapshot().Invocation.Model || row.Response().Metadata.Usage.InputTokens != 11 || row.Snapshot().CostUSD == nil || *row.Snapshot().CostUSD != 1.5 {
 					t.Fatalf("independent evidence replaced: %+v", row)
 				}
 			}
@@ -286,7 +286,7 @@ func TestSelectedModelStreamIsLazyPreservesEvidenceAndJoinsOnRelease(t *testing.
 				t.Fatalf("canonical final outcome: %+v", result)
 			}
 			row, found, err := db.ModelInvocations.EndpointForCaller(t.Context(), "independent-stream")
-			if err != nil || !found || row.Invocation.Caller.Parent != "original-plugin-operation" || row.Invocation.Caller.Origin != extension.Model || row.Invocation.Request.Messages[0].Text() != "original input" {
+			if err != nil || !found || row.Snapshot().Invocation.Caller.Parent != "original-plugin-operation" || row.Snapshot().Invocation.Caller.Origin != extension.Model || row.Snapshot().Invocation.Request.Messages[0].Text() != "original input" {
 				t.Fatalf("stream original evidence: %+v %v", row, err)
 			}
 		})
@@ -437,12 +437,12 @@ func TestIndependentModelCallbackRetainsExecutingOwnerBeforeProviderDispatch(t *
 		t.Fatal(err)
 	}
 	auxSource, found, err := journal.EndpointForCaller(t.Context(), "auxiliary-owned")
-	if err != nil || !found || auxSource.RunID != draft.RunID || auxSource.Invocation.Caller.Parent != "original-plugin-operation" || calls.Load() != 2 {
+	if err != nil || !found || auxSource.Snapshot().RunID != draft.RunID || auxSource.Snapshot().Invocation.Caller.Parent != "original-plugin-operation" || calls.Load() != 2 {
 		t.Fatalf("auxiliary ownership = %+v %v", auxSource, err)
 	}
 	closeAux()
 	row, found, err := journal.EndpointForCaller(t.Context(), "independent-owned")
-	if err != nil || !found || row.Invocation.Caller.Parent != "original-plugin-operation" || row.Invocation.Caller.Origin != extension.Model {
+	if err != nil || !found || row.Snapshot().Invocation.Caller.Parent != "original-plugin-operation" || row.Snapshot().Invocation.Caller.Origin != extension.Model {
 		t.Fatalf("wire replaced captured origin: %+v %v", row, err)
 	}
 	active, _, err := runStore.Run(t.Context(), draft.RunID)

@@ -4,7 +4,10 @@ An optional first-party package for recorded Tool-result presentation. Install a
 enable it through the plugin manager or CLI. It has no backend and executes no Tools.
 
 Ordinary components declare `toolResult` scope, `toolResultRenderer` placement and an
-exact display-name or known result-shape selector. One exact-name match precedes one
+exact display-name or known result-shape selector. Result-shape declarations use
+`{ "type": "resultShape", "shape": "search" }`; their vocabulary belongs to
+`extension.ResultShape` in the Go SDK and is generated for clients. Tool-name and
+file-extension selectors retain their independent `name` values. One exact-name match precedes one
 shape match; equally ranked candidates remain ambiguous and use the generic inspector.
 Running and absent results stay generic. The declarations share one prebuilt ESM export.
 Installed code intelligence and HTTP calls use their model-visible names,
@@ -67,10 +70,9 @@ Current Skill pages separate summaries or instruction/resource content from thei
 recorded continuation. A nonfinal page keeps a More pages cue in the caption,
 including during Find, and the complete next_cursor as source metadata. Copy
 result retains the exact original page; reader selection copies the presented
-content. Empty complete catalogs remain empty during Find. Historical XML
-summaries still decode once with their recorded truncation notice, and literal
-instructions remain literal. Unknown members or malformed page shapes retain the
-complete source instead of silently dropping fields. This component never fetches
+content. Empty complete catalogs remain empty during Find, and literal
+instructions remain literal. Unknown formats, unknown members and malformed page
+shapes retain the complete source instead of silently dropping fields. This component never fetches
 a page, concatenates separate Tool calls or treats a captured page as the full
 Skill catalog or document.
 Recorded `web_fetch` and `web_browse` pages retain their URL, snapshot identity,

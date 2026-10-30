@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -167,10 +168,10 @@ func (q QuestionPrompt) question() transcript.Question {
 		field := transcript.QuestionField{
 			Prompt: spec.Prompt,
 			Header: spec.Header,
-			Kind:   transcript.QuestionText,
+			Kind:   questioncontract.Text,
 		}
 		if len(spec.Options) > 0 {
-			field.Kind = transcript.QuestionChoice
+			field.Kind = questioncontract.Choice
 			field.Multiple = spec.Multiple
 			field.AllowCustom = spec.AllowCustom
 			field.Options = make([]transcript.QuestionOption, len(spec.Options))

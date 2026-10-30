@@ -9,11 +9,12 @@ import (
 	"sync"
 	"testing"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/config"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
@@ -161,7 +162,7 @@ func (l *longContextModel) Call(_ context.Context, request *chat.Request) (*chat
 			}
 		}
 		transcript := request.Messages[len(request.Messages)-1].Text()
-		for _, fact := range []string{"call_goal_01", string(tool.GetGoal), "arguments={}", "error=false"} {
+		for _, fact := range []string{"call_goal_01", string(builtincontract.GetGoal), "arguments={}", "error=false"} {
 			if !strings.Contains(transcript, fact) {
 				return nil, fmt.Errorf("compaction input lost tool execution fact %q", fact)
 			}
@@ -177,11 +178,11 @@ func (l *longContextModel) Call(_ context.Context, request *chat.Request) (*chat
 	}
 	l.catalogs = append(l.catalogs, catalog)
 	if l.mainCalls <= modelCallsBeforeMidRunCompaction {
-		if !hasToolDefinition(request.Tools, string(tool.GetGoal)) {
-			return nil, fmt.Errorf("main model request does not expose %s", tool.GetGoal)
+		if !hasToolDefinition(request.Tools, string(builtincontract.GetGoal)) {
+			return nil, fmt.Errorf("main model request does not expose %s", builtincontract.GetGoal)
 		}
 		call := chat.ToolCall{
-			ID: fmt.Sprintf("call_goal_%02d", l.mainCalls), Name: string(tool.GetGoal), Arguments: `{}`,
+			ID: fmt.Sprintf("call_goal_%02d", l.mainCalls), Name: string(builtincontract.GetGoal), Arguments: `{}`,
 		}
 		message := chat.NewAssistantMessage(
 			chat.NewTextPart(modelContextPressurePayload),

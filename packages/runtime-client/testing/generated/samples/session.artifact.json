@@ -35,7 +35,7 @@
       "createdAt": "2026-07-07T10:00:00Z",
       "finishedAt": "2026-07-07T10:00:20Z",
       "updatedAt": "2026-07-07T10:00:20Z",
-      "messageMark": 4,
+      "messageMark": 0,
       "metrics": {
         "steps": 0,
         "activeDurationMillis": 0
@@ -53,7 +53,7 @@
       "status": "completed",
       "startedAt": "2026-07-07T10:00:04Z",
       "finishedAt": "2026-07-07T10:00:05Z",
-      "durationMillis": 1200,
+      "durationMillis": 1000,
       "type": "toolCall",
       "tool": {
         "name": "shell",

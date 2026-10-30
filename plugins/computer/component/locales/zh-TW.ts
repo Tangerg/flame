@@ -21,7 +21,7 @@ export const zhTW = {
   "open.help":
     "授權期間，模型工具可透過 Flame 的電腦控制引擎操作 Runtime 主機。操作員控制台必須位於受控桌面、帳號和瀏覽器之外，例如使用另一台裝置或隔離目標。關閉此檢視不會結束授權。",
   "open.lease": "授權時長（秒）",
-  "open.invalid": "請輸入 60 到 {{maximum}} 之間的整數秒數。",
+  "open.invalid": "請輸入 {{minimum}} 到 {{maximum}} 之間的整數秒數。",
   "open.action": "授權並開啟控制",
   "close.action": "結束控制授權",
   "close.help":

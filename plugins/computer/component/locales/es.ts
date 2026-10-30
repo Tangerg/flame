@@ -24,7 +24,8 @@ export const es = {
   "open.help":
     "Durante este periodo, las herramientas del modelo pueden controlar el equipo Runtime mediante el motor de control de Flame. Usa una consola fuera del escritorio, cuenta y navegador controlados: otro dispositivo o un destino aislado. Cerrar esta vista no termina el permiso.",
   "open.lease": "Duración en segundos",
-  "open.invalid": "Introduce un entero entre 60 y {{maximum}} segundos.",
+  "open.invalid":
+    "Introduce un entero entre {{minimum}} y {{maximum}} segundos.",
   "open.action": "Autorizar y abrir control",
   "close.action": "Finalizar el control",
   "close.help":

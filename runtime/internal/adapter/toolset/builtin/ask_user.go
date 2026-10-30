@@ -7,10 +7,13 @@ import (
 	"fmt"
 	"strings"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/scope/core/jsonschema"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -19,14 +22,27 @@ import (
 // schema and parsed value cannot drift. The handler maps its LLM-oriented names
 // into the application-owned [runs.QuestionPrompt] contract.
 type askUserArgs struct {
-	Questions []questionArg `json:"questions" jsonschema:"required,minItems=1,maxItems=4" jsonschema_description:"The question(s) to ask the user (1-4)."`
+	Questions []questionArg `json:"questions" jsonschema:"required,minItems=1" jsonschema_description:"The questions to ask the user."`
 }
 
 type questionArg struct {
 	Question    string      `json:"question" jsonschema:"minLength=1" jsonschema_description:"The full question text."`
-	Header      string      `json:"header,omitempty" jsonschema:"maxLength=12" jsonschema_description:"Short label of at most 12 characters that identifies the question."`
-	Options     []optionArg `json:"options,omitempty" jsonschema:"minItems=2,maxItems=4" jsonschema_description:"Two to four choices for a multiple-choice question. Omit for a free-text answer."`
+	Header      string      `json:"header,omitempty" jsonschema_description:"Short label that identifies the question, measured in Unicode characters."`
+	Options     []optionArg `json:"options,omitempty" jsonschema_description:"Choices for a multiple-choice question. Omit for a free-text answer."`
 	MultiSelect bool        `json:"multi_select,omitzero" jsonschema_description:"Allow the user to pick more than one option (only meaningful with options)."`
+}
+
+func (askUserArgs) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
+		"questions": {MaxItems: new(uint64(questioncontract.MaximumFields))},
+	}}
+}
+
+func (questionArg) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
+		"header":  {MaxLength: new(uint64(transcript.MaximumQuestionHeaderCharacters))},
+		"options": {MinItems: new(uint64(questioncontract.MinimumOptions)), MaxItems: new(uint64(questioncontract.MaximumOptions))},
+	}}
 }
 
 type optionArg struct {
@@ -63,8 +79,8 @@ func (a askUserArgs) arguments() (string, error) {
 func NewAskUser(interrupt runs.InterruptFunc) (toolcontract.Tool, error) {
 	return newInterruptTool[askUserArgs](
 		toolcontract.FuncConfig{
-			Name:        string(tool.AskUser),
-			Description: "Ask the user one to four questions and wait for their answers. Use this only when progress requires a decision, clarification, or information only the user can provide, not for routine progress updates. Give two to four `options` for a multiple-choice question and put the recommended option first; the user may still provide a custom answer. Omit `options` for free text, and set `multi_select` only when options are present and more than one may apply.",
+			Name:        string(builtincontract.AskUser),
+			Description: fmt.Sprintf("Ask the user 1 to %d questions and wait for their answers. Use this only when progress requires a decision, clarification, or information only the user can provide, not for routine progress updates. Give %d to %d `options` for a multiple-choice question and put the recommended option first; the user may still provide a custom answer. Omit `options` for free text, and set `multi_select` only when options are present and more than one may apply. Headers contain at most %d Unicode characters.", questioncontract.MaximumFields, questioncontract.MinimumOptions, questioncontract.MaximumOptions, transcript.MaximumQuestionHeaderCharacters),
 		},
 		interrupt,
 		askUserPlan,
@@ -78,7 +94,7 @@ func askUserPlan(_ context.Context, args askUserArgs) (runs.Interrupt, string, e
 		return runs.Interrupt{}, "", err
 	}
 	in := runs.QuestionPrompt{
-		ToolName:  string(tool.AskUser),
+		ToolName:  string(builtincontract.AskUser),
 		Arguments: arguments,
 		Fields:    args.toFields(),
 	}
@@ -88,11 +104,11 @@ func askUserPlan(_ context.Context, args askUserArgs) (runs.Interrupt, string, e
 	if err := pending.Validate(); err != nil {
 		return runs.Interrupt{}, "", pluginsdk.DefiniteToolFailure(fmt.Errorf("ask_user: %w", err))
 	}
-	return pending, run.InterruptKey(string(run.InterruptQuestion), string(tool.AskUser), arguments), nil
+	return pending, run.InterruptKey(string(run.InterruptQuestion), string(builtincontract.AskUser), arguments), nil
 }
 
 func askUserResolve(_ context.Context, args askUserArgs, resolution run.InterruptResolution) (string, error) {
-	in := runs.QuestionPrompt{ToolName: string(tool.AskUser), Fields: args.toFields()}
+	in := runs.QuestionPrompt{ToolName: string(builtincontract.AskUser), Fields: args.toFields()}
 	return answerText(in, resolution.Question().Answers()), nil
 }
 

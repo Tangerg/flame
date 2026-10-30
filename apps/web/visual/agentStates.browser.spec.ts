@@ -849,12 +849,13 @@ test("code blocks stay readable and expose the wrap control", async ({
   await expect(code).toContainText("Execute(context.Context");
   const wrapControls = page.getByRole("button", { name: "Enable word wrap" });
   await expect(wrapControls).toHaveCount(3);
-  await expect(wrapControls.first()).toHaveAttribute("aria-pressed", "false");
+  await expect(wrapControls.first()).not.toHaveAttribute("aria-pressed");
   await wrapControls.first().click();
 
   const wrappedControls = page.getByRole("button", { name: "Disable word wrap" });
   await expect(wrappedControls).toHaveCount(3);
-  await expect(wrappedControls.first()).toHaveAttribute("aria-pressed", "true");
+  await expect(wrappedControls.first()).not.toHaveAttribute("aria-pressed");
+  await expect(wrappedControls.first()).toBeFocused();
   await expect(page.locator('.shiki-block [data-slot="code-body"][data-wrap="true"]')).toHaveCount(
     3,
   );
@@ -1113,7 +1114,7 @@ for (const theme of ["light", "dark"] as const) {
     });
     await expect.poll(() => transcript.evaluate((viewport) => viewport.scrollTop)).toBe(0);
     const controlSizes = await Promise.all(
-      ["Download image", "Close image preview", "Zoom out image", "Zoom in image"].map((name) =>
+      ["Download PNG", "Close image preview", "Zoom out image", "Zoom in image"].map((name) =>
         page.getByRole("button", { name }).evaluate((button, accessibleName) => {
           const element = button as HTMLElement;
           return {

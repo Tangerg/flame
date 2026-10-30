@@ -61,12 +61,11 @@ func Open(
 		configs[index] = ServerConfig{Server: server.Clone()}
 	}
 	pool := &Pool{commands: commands, registry: registry, publish: publish, lifetime: lifetime, callbacks: callbacks, installed: installed}
-	client := newClient()
-	if err := qimumcp.RegisterClient(client); err != nil {
+	inner, err := newConnections(ctx, lifetime, configs, oauthSessions, callbacks)
+	if err != nil {
 		return nil, err
 	}
-	inner, err := newConnections(ctx, lifetime, configs, oauthSessions, callbacks, client)
-	if err != nil {
+	if err := qimumcp.RegisterClient(inner.client); err != nil {
 		return nil, err
 	}
 	pool.inner = inner

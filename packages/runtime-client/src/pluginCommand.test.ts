@@ -277,7 +277,11 @@ it("recovers an unresolved unary call through its Runtime-owned request after cl
     "plugins.getCommand",
     "plugins.call",
   ]);
-  expect(successor.dispatch.mock.calls[1]).toEqual(["plugins.call", admittedRequest, options]);
+  expect(successor.dispatch.mock.calls[1]).toEqual([
+    "plugins.call",
+    admittedRequest,
+    { ...options, beforeDispatch: expect.any(Function) },
+  ]);
   expect(storage.keys()).toEqual([]);
 });
 
@@ -361,7 +365,9 @@ it("keeps the shared Go numeric corpus through lost-acknowledgement recovery and
   );
   expect(stringifyJSON(recovered)).toBe(source);
   expect(prepare).not.toHaveBeenCalled();
-  expect(successor.dispatch.mock.calls).toEqual([["plugins.call", request, options]]);
+  expect(successor.dispatch.mock.calls).toEqual([
+    ["plugins.call", request, { ...options, beforeDispatch: expect.any(Function) }],
+  ]);
   expect(storage.keys()).toHaveLength(0);
 });
 afterEach(() => {
@@ -384,7 +390,11 @@ function client(
         options: RpcCallOptions,
       ) => Promise<CallPluginResponse>
     >();
-  const methods = createMethods({ call: dispatch } as unknown as RpcClient, {
+  const call = (method: string, params: CallPluginRequest, options?: RpcCallOptions) => {
+    options?.beforeDispatch?.();
+    return dispatch(method, params, options ?? {});
+  };
+  const methods = createMethods({ call } as unknown as RpcClient, {
     mutationJournal: journal,
     requestMeta,
   });
@@ -423,8 +433,16 @@ it("recovers the original installed request before provider preparation after cl
   expect(storage.keys()).toHaveLength(1);
   await successor.methods.plugins.command(intent, input, replacement, () => undefined);
   expect(replacement).not.toHaveBeenCalled();
-  expect(successor.dispatch.mock.calls[0]).toEqual(["plugins.call", request, options]);
-  expect(successor.dispatch.mock.calls[1]).toEqual(["plugins.call", request, options]);
+  expect(successor.dispatch.mock.calls[0]).toEqual([
+    "plugins.call",
+    request,
+    { ...options, beforeDispatch: expect.any(Function) },
+  ]);
+  expect(successor.dispatch.mock.calls[1]).toEqual([
+    "plugins.call",
+    request,
+    { ...options, beforeDispatch: expect.any(Function) },
+  ]);
   expect(storage.keys()).toEqual([]);
 });
 
@@ -585,7 +603,10 @@ it("does not persist authored input while retaining an unknown acknowledgement",
   ).resolves.toBeUndefined();
   expect(prepare).not.toHaveBeenCalled();
   expect(current.dispatch).toHaveBeenCalledTimes(2);
-  expect(current.dispatch.mock.calls[0]![2]).toEqual(current.dispatch.mock.calls[1]![2]);
+  expect(current.dispatch.mock.calls[0]![2]).toEqual({
+    ...current.dispatch.mock.calls[1]![2],
+    beforeDispatch: expect.any(Function),
+  });
 });
 
 it("fences concurrent preparation and revoked client ownership before staging", async () => {
@@ -657,7 +678,11 @@ it.each(["direct", "stable intent"])(
     await expect(
       successor.methods.plugins.pendingCommands()[0]!.recover((value) => value),
     ).resolves.toEqual({});
-    expect(successor.dispatch.mock.calls[1]).toEqual(["plugins.call", request, options]);
+    expect(successor.dispatch.mock.calls[1]).toEqual([
+      "plugins.call",
+      request,
+      { ...options, beforeDispatch: expect.any(Function) },
+    ]);
     expect(storage.keys()).toEqual([]);
   },
 );

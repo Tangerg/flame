@@ -615,6 +615,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
             idempotencyKey,
             idempotencyNamespace,
             requestMeta: attempt.requestMeta,
+            beforeDispatch: attempt.markDispatched,
           }),
         );
         return { result: opened.result, observation: { type: "stream", events: opened.events } };
@@ -695,6 +696,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
           idempotencyKey: key,
           idempotencyNamespace: attempt.authorizeDispatch(),
           requestMeta: attempt.requestMeta,
+          beforeDispatch: attempt.markDispatched,
         });
         if (acknowledged.userItemId !== userItemId)
           throw new RpcProtocolError("runs.steer result", [

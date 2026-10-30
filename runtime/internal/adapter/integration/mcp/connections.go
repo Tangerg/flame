@@ -62,10 +62,19 @@ type sessionCloseAttempt struct {
 }
 
 type ownedSession struct {
-	closeFn  func() error
-	managed  *installedObservation
-	close    *sessionCloseAttempt
-	bindings *plugin.RequiredBindings
+	closeFn     func() error
+	managed     *installedObservation
+	close       *sessionCloseAttempt
+	bindings    *plugin.RequiredBindings
+	end         *sessionEnd
+	toolChanges chan struct{}
+	toolVersion uint64
+	cancelTools context.CancelFunc
+}
+
+type sessionEnd struct {
+	done chan struct{}
+	err  error
 }
 
 // connections owns ordinary MCP sessions and observes managed Host instances.
@@ -97,7 +106,8 @@ type connections struct {
 
 	// attempts joins every in-flight dial/OAuth operation during Shutdown. Add is
 	// performed under mu before closed can be set, so no Add races the Wait.
-	attempts sync.WaitGroup
+	attempts  sync.WaitGroup
+	observers sync.WaitGroup
 }
 
 func (c *connections) cancellationErr(ctx context.Context) error {
@@ -114,10 +124,9 @@ func (c *connections) setToolSink(sink func([]Executable, []mcpserver.ID, []mcps
 	c.publishToolsLocked()
 }
 
-// newClient builds the shared MCP client identity used for every server's
-// session (and re-dials). No per-server handlers are needed, so one suffices.
-func newClient() *sdkmcp.Client {
-	return sdkmcp.NewClient(&sdkmcp.Implementation{Name: identity.ProductName, Version: "v0.1.0"}, nil)
+// One client routes notifications to the owner of each exact session.
+func newClient(changed func(context.Context, *sdkmcp.ToolListChangedRequest)) *sdkmcp.Client {
+	return sdkmcp.NewClient(&sdkmcp.Implementation{Name: identity.ProductName, Version: "v0.1.0"}, &sdkmcp.ClientOptions{ToolListChangedHandler: changed})
 }
 
 // find returns the server with the given name, or nil. Caller holds mu.
@@ -131,14 +140,15 @@ func (c *connections) find(name mcpserver.ID) *server {
 }
 
 // current reports whether session is still the live connection of name.
-func (c *connections) current(name mcpserver.ID, session *sdkmcp.ClientSession) bool {
+func (c *connections) current(name mcpserver.ID, session *sdkmcp.ClientSession, toolVersion uint64) bool {
 	if session == nil {
 		return false
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	configuredServer := c.find(name)
-	return configuredServer != nil && configuredServer.session == session
+	owned := c.sessions[session]
+	return configuredServer != nil && configuredServer.session == session && owned != nil && owned.close == nil && owned.toolVersion == toolVersion
 }
 
 func (c *connections) ownSessionLocked(session *sdkmcp.ClientSession, cleanup sessionCleanup, bindings *plugin.RequiredBindings) error {
@@ -150,12 +160,15 @@ func (c *connections) ownSessionLocked(session *sdkmcp.ClientSession, cleanup se
 		if c.callbacks != nil {
 			err = c.callbacks.AdmitSession(session)
 		}
-		c.sessions[session] = &ownedSession{bindings: bindings, closeFn: func() error {
+		owned := &ownedSession{bindings: bindings, toolChanges: make(chan struct{}, 1), end: &sessionEnd{done: make(chan struct{})}, closeFn: func() error {
 			if c.callbacks != nil {
 				c.callbacks.RevokeSession(session)
 			}
 			return retireSession(session, cleanup)
 		}}
+		c.sessions[session] = owned
+		c.observers.Add(1)
+		go c.observeSessionEnd(session, owned)
 	}
 	return err
 }

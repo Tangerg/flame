@@ -65,28 +65,53 @@ func (a *app) loadSessionPage(cursor string, appendPage bool) {
 
 func (a *app) toggleSessionFavorite(session conversation.Session) {
 	desired := !session.Favorite
-	a.updateSessionFromCenter(session.ID, "updating favorite", func(latest conversation.Session) conversation.UpdateSession {
-		return conversation.UpdateSession{SessionID: latest.ID, Favorite: &desired, ExpectedRevision: latest.Revision}
-	})
+	a.updateSessionFromCenter(conversation.UpdateSession{
+		SessionID: session.ID, Favorite: &desired, ExpectedRevision: session.Revision,
+	}, "updating favorite", nil)
 }
 
 func (a *app) openSessionRename(session conversation.Session) {
-	title := displayTitle(session)
+	title := session.Title
 	field := headless.NewText(headless.TextConfig{Label: "Session title", Value: headless.Bind(&title), Check: requiredText})
 	field.Clipboard = a.loop.Clipboard()
 	form := headless.NewForm(field)
 	form.Keys = headless.DefaultFormKeys()
+	dressed := kit.NewForm(kit.FormConfig{
+		Theme: a.transcript.theme, Glyphs: a.transcript.glyphs, Controller: form,
+		Hints: []keymap.Action{headless.Submit, headless.Cancel},
+	})
 	var dialog *kit.Dialog
 	form.Done = func() {
 		if a.dialogs.sessionRenameDialog != dialog {
 			return
 		}
-		dialog.Controller().Dismiss()
-		a.dialogs.sessionRenameDialog = nil
 		trimmed := strings.TrimSpace(title)
-		a.updateSessionFromCenter(session.ID, "renaming session", func(latest conversation.Session) conversation.UpdateSession {
-			return conversation.UpdateSession{SessionID: latest.ID, Title: &trimmed, ExpectedRevision: latest.Revision}
+		if trimmed == strings.TrimSpace(session.Title) {
+			dialog.Controller().Dismiss()
+			a.dialogs.sessionRenameDialog = nil
+			return
+		}
+		started := a.updateSessionFromCenter(conversation.UpdateSession{
+			SessionID: session.ID, Title: &trimmed, ExpectedRevision: session.Revision,
+		}, "renaming session", func(err error) {
+			if a.dialogs.sessionRenameDialog != dialog {
+				return
+			}
+			if err != nil {
+				dressed.Title = "Rename failed: " + err.Error()
+				if errors.Is(err, conversation.ErrRevisionConflict) {
+					dressed.Title += "\nClose this edit and reopen Sessions to load the current title."
+				}
+				dialog.Controller().Show()
+				return
+			}
+			a.dialogs.sessionRenameDialog = nil
 		})
+		if started {
+			dialog.Controller().Dismiss()
+		} else {
+			dressed.Title = "Wait for the current Session action to finish."
+		}
 	}
 	form.GaveUp = func() {
 		if a.dialogs.sessionRenameDialog == dialog {
@@ -94,14 +119,10 @@ func (a *app) openSessionRename(session conversation.Session) {
 			a.dialogs.sessionRenameDialog = nil
 		}
 	}
-	dressed := kit.NewForm(kit.FormConfig{
-		Theme: a.transcript.theme, Glyphs: a.transcript.glyphs, Controller: form,
-		Hints: []keymap.Action{headless.Submit, headless.Cancel},
-	})
 	dialog = kit.NewDialog(kit.DialogConfig{
 		Stack: &a.stack, Theme: a.transcript.theme, Glyphs: a.transcript.glyphs,
 		Title: "Rename session", Body: dressed,
-		Where: layout.Placement{Width: 68, Height: 7},
+		Where: layout.Placement{Width: 68, Height: 11},
 	})
 	a.dialogs.sessionRenameDialog = dialog
 	dialog.Controller().Show()
@@ -147,17 +168,16 @@ func (a *app) openSessionDelete(session conversation.Session) {
 	dialog.Controller().Show()
 }
 
-func (a *app) updateSessionFromCenter(id, label string, build func(conversation.Session) conversation.UpdateSession) {
+func (a *app) updateSessionFromCenter(request conversation.UpdateSession, label string, settled func(error)) bool {
 	started := a.runApplicationOperation(sessionCenterOperation, false,
 		func(ctx context.Context) (conversation.Session, error) {
-			latest, err := a.runtime.GetSession(ctx, id)
-			if err != nil {
-				return conversation.Session{}, err
-			}
-			return a.runtime.UpdateSession(ctx, build(latest.Session))
+			return a.runtime.UpdateSession(ctx, request)
 		},
 		func(updated conversation.Session, err error) {
 			if err != nil {
+				if settled != nil {
+					settled(err)
+				}
 				a.message(label + " failed: " + err.Error())
 				return
 			}
@@ -167,11 +187,15 @@ func (a *app) updateSessionFromCenter(id, label string, build func(conversation.
 			}
 			a.applySessionInvalidation(true, false)
 			a.message(label + " complete")
+			if settled != nil {
+				settled(nil)
+			}
 		},
 	)
 	if !started {
 		a.message("wait for the current session action to finish")
 	}
+	return started
 }
 
 func (a *app) deleteSessionFromCenter(id string) {
@@ -203,6 +227,9 @@ func (a *app) deleteSessionFromCenter(id string) {
 				return
 			}
 			if err := session.ConfirmDeletion(a.workbench, result); err != nil {
+				if a.queue != nil {
+					err = errors.Join(err, a.queue.Restore(result.Request.SessionID))
+				}
 				a.message("deleted session; local state cleanup failed: " + err.Error())
 				return
 			}
@@ -232,15 +259,11 @@ func (a *app) RenameSession(title string) {
 		a.message("/rename needs a non-empty title")
 		return
 	}
-	sessionID := a.session.current.ID
+	target := a.session.current
 	a.runSessionChange("renaming session",
 		func(ctx context.Context) (conversation.Session, error) {
-			latest, err := a.runtime.GetSession(ctx, sessionID)
-			if err != nil {
-				return conversation.Session{}, err
-			}
 			return a.runtime.UpdateSession(ctx, conversation.UpdateSession{
-				SessionID: sessionID, Title: &title, ExpectedRevision: latest.Session.Revision,
+				SessionID: target.ID, Title: &title, ExpectedRevision: target.Revision,
 			})
 		},
 		func(updated conversation.Session) error {
@@ -510,7 +533,13 @@ func (a *app) prepareDestinationDraft(
 func (a *app) retireSessionState(sessionID string) (int, error) {
 	if a.workbench != nil {
 		if err := a.workbench.RetireSessionState(sessionID); err != nil {
-			return 0, fmt.Errorf("discard session authoring state: %w", err)
+			discarded := 0
+			if a.queue != nil {
+				before := len(a.queue.Snapshot(sessionID).Entries)
+				err = errors.Join(err, a.queue.Restore(sessionID))
+				discarded = before - len(a.queue.Snapshot(sessionID).Entries)
+			}
+			return discarded, fmt.Errorf("discard session authoring state: %w", err)
 		}
 	}
 	discarded := 0

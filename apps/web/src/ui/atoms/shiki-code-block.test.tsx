@@ -107,7 +107,7 @@ describe("ShikiCodeBlock", () => {
     expect(region.querySelector("script, img")).toBeNull();
   });
 
-  it("shares the Codex wrap preference across code blocks", async () => {
+  it("shares the word-wrap preference across code blocks", async () => {
     testClient.render(
       <>
         <ShikiCodeBlock lang="text" code="first long line" />

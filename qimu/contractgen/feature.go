@@ -289,9 +289,7 @@ func featureNode(raw jsontext.Value) (*Schema, error) {
 			}
 		}
 	}
-	if node.Type == SchemaTypeInteger || node.Type == SchemaTypeNumber {
-		node.TypeScriptType = "JSONNumber"
-	}
+	setFeatureType(node, node.Type)
 	if value := fields["const"]; len(value) != 0 {
 		node.TypeScriptType = featureLiteralType(value)
 	}
@@ -357,12 +355,19 @@ func featureNode(raw jsontext.Value) (*Schema, error) {
 	if len(multipleTypes) != 0 {
 		for _, kind := range multipleTypes {
 			member := *node
-			member.Type = kind
+			setFeatureType(&member, kind)
 			member.AnyOf = nil
 			node.AnyOf = append(node.AnyOf, &member)
 		}
 	}
 	return node, nil
+}
+
+func setFeatureType(node *Schema, kind SchemaType) {
+	node.Type = kind
+	if node.TypeScriptType == "" && (kind == SchemaTypeInteger || kind == SchemaTypeNumber) {
+		node.TypeScriptType = "JSONNumber"
+	}
 }
 
 func featureLiteralType(value jsontext.Value) string {

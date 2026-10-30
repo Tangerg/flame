@@ -17,6 +17,22 @@ packaging. An HTTP-only client does not initialize a local Runtime.
 
 Running without a subcommand opens the Oolong terminal interface. Runtime owns durable product state and execution; CLI owns process behavior, terminal interaction, rendering, and local authoring state.
 
+MCP forms preserve command and directory bytes, and encode arguments as JSON
+arrays and environment/header replacements as JSON objects. Empty and whitespace
+values remain explicit process material; Runtime owns their final admission.
+Busy operation admission keeps the original form and step. An admitted form is
+read-only until settlement. A definite refusal restores editing; an uncertain
+acknowledgement retains the original request, target, command identity and replay
+deadline. Enter retries that exact request while replay remains available. An
+unreplayable unknown outcome stays blocked. Success or explicit cancellation
+clears the form's secret fields; closing a pending form does not undo an accepted
+Runtime operation.
+
+Workspace `/diff --raw` displays the original patch, including file headers and
+line-termination markers. `/diff --rows` renders Runtime's per-file rows with
+old/new line numbers, rename paths, binary changes and truncation feedback.
+The client does not parse raw patches into a second diff model.
+
 ## Configuration
 
 CLI preferences and Runtime configuration have separate owners.
@@ -35,6 +51,13 @@ paths retain significant whitespace; they are never trimmed into another deploym
 The process working directory is never an implicit Runtime configuration source. Source checkouts that use `runtime/config/config.yaml` select it explicitly with `FLAME_RUNTIME_CONFIG_DIR`.
 
 Run subscriptions reconnect with bounded backoff until canceled.
+
+`flame run` reads nonterminal stdin through EOF before opening Runtime. On Linux and macOS,
+canceling that read interrupts its descriptor poll without closing the borrowed
+input. Embedded callers may provide finite memory or regular-file readers; a
+blocking reader must implement `ReadContext(context.Context, []byte) (int, error)`
+and interrupt its own reads. Other platforms require that context-aware input
+contract for raw pipes; an unsupported descriptor backend is refused before reading.
 
 ## Connect to a shared Runtime
 
@@ -73,6 +96,11 @@ through the client's filesystem. The terminal uses this same local directory for
 attachments, prompt editing, imports, and exports throughout Session switches.
 Remote workspace references retain their exact spelling and are interpreted and
 validated by the executing Runtime, including when it uses another operating system.
+
+Session export reports the selected file path even if durability confirmation or
+staging cleanup fails after publication. An unconfirmed notice means the file is
+visible but its crash durability was not established; it is not an instruction
+to export another copy. Export never overwrites different existing content.
 
 Closing a terminal attached to a shared Runtime detaches its observations and saves
 its authoring state. It leaves accepted Runs running. `Ctrl-C` remains an explicit
@@ -119,6 +147,16 @@ session operation starts; subsequent execution failure is reported through that
 operation. Approval choices may lose a remembered scope, but keep their allow or deny
 decision; unknown choices cannot create an answerable approval form.
 
+Question editing uses Runtime's public `question.Contract`, including restored
+drafts and accepted history. Submit an empty text field or a multiple-choice
+field without selections to skip it; a single-choice field has an explicit
+Skip option. An unconfirmed blank draft remains unfinished. Other accepts one
+literal custom value, including commas; it is never split or silently trimmed.
+Accepted skips render as skipped, and each accepted value has its own answer
+row. Earlier drafts containing multiple custom values fail validation; retain
+those records separately and reconcile any unresolved command with its Runtime
+receipt before replacing it.
+
 ## Markdown, formulas, and diagrams
 
 Assistant and reasoning messages render Markdown through Oolong, including fenced
@@ -150,6 +188,9 @@ In the terminal, `/skills` lists available skills and local discovery diagnostic
 operation as `/read`. The default is 80 lines; an explicit count is honored within
 the shared read byte budget. The reader reports the accepted window, whole-file
 line count and any truncation. It does not impose a separate preview cap.
+Reads retain complete source lines. If an explicit byte budget cannot hold a
+line, the reader reports no complete lines; raise `--max-bytes` within Runtime's
+existing cap to read it. Full reads also display Runtime's served coordinates.
 
 Omitted search, read-byte and diff-row limits remain absent on the Runtime
 request. Runtime owns their defaults and resource caps; CLI only forwards an
@@ -175,6 +216,13 @@ workflows. Root composition opens Workbench lazily and supplies consumer-owned
 Runtime ports. Executable plugins live in `adapter/sideload`, with command contracts
 in `application/extensions`. Built-in Oolong block and tool presentations stay private
 to terminal; command output renderers stay private to `delivery/cmd`.
+
+Tool presentation consumes the SDK's canonical built-in names, shell arguments
+and normalized results, and Scope's filesystem and HTTP request types. Unknown
+tools display complete raw JSON: a field named `command`, `path`, `output` or
+`exitCode` does not declare its meaning. Raw arguments and results retain exact
+numbers and remain available alongside known tool presentations. Rebuild CLI,
+SDK and Runtime together for the moved Go contracts; wire shapes are unchanged.
 
 ## Verify
 
@@ -220,6 +268,10 @@ specific rule. Connection forms contain connection configuration only. Setting
 an allow or deny replaces the existing decision for the same scope, source, and
 subject type and value; distinct matching patterns of equal specificity still favor deny.
 Approval changes do not wait for MCP connection or authorization operations.
+MCP secret forms validate their set/clear shape through the generated protocol
+contract. Runtime owns environment and HTTP header admission. Environment keys
+and values reach that owner unchanged, including empty and whitespace values;
+an empty value sets `KEY=` rather than removing the variable.
 `flame approvals ls` lists global rules; `--session` adds that session's visible
 rules. `/mcp-tools` includes disabled tools across configured servers, and tool
 listings explain name collisions that exclude connected tools from the model.
@@ -227,6 +279,10 @@ A server's inline status problem is rendered from its closed category; a categor
 outside the one its state allows is reported as a Runtime contract violation rather
 than printed as raw text. Runtime and clients must use the same protocol revision, and obsolete Runtime
 approval databases require a fresh data directory rather than data migration.
+
+`/utility default` uses the Runtime default model for subsequent utility calls;
+`/utility <provider/model>` assigns an explicit model. An installed model selector
+may change the final route. The former `/utility inherit` command is removed.
 
 ## Runtime plugin commands
 
@@ -280,6 +336,13 @@ with the same inspected revision and original command identity as canonical Sess
 editing. Public plugin components call that same `sessions.update` owner. The former
 `plugins rename-session` wrapper is removed without an alias; do not translate an
 unresolved old request into another method or identity.
+
+Terminal Rename captures the selected Session's revision when its form opens.
+Neither a catalog refresh nor a cold read can replace that precondition. Admission
+keeps a busy form intact; a refused write restores the original form and draft with
+its error. Cancel and reopen Sessions, then Rename, to inspect a fresh title and revision.
+Favorite actions and `/rename` also submit their explicitly captured revision.
+
 Runtime rejects a stale digest without applying inputs or component enablement changes;
 do not replace the digest in an unresolved request with a newly selected release.
 Authored JSON uses Runtime's strict request decoder. Explicit typed nulls cannot become
@@ -313,7 +376,10 @@ provider discovery. An unresolved creation reuses the original draft instead of
 opening a fresh form. Startup reports pending intents. An unavailable original
 owner, expired replay guarantee or changed Runtime store leaves intent unconfirmed;
 it cannot resubmit the command to another installation. Only a decoded owner
-acknowledgement or business refusal retires it. This record contains no result.
+acknowledgement or business refusal retires it. This record contains no result. If local publication becomes visible but directory
+synchronization fails, the original intent remains pending and delivery is fenced.
+Close and reopen the workbench to confirm the actual records before retrying;
+retries cannot create a replacement command identity.
 
 Forms and the binding adapter use the same generated publisher Go projection in
 `internal/domain/schedule`; no private backend import or handwritten create DTO

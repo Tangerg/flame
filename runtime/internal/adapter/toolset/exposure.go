@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"slices"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -154,7 +155,7 @@ func instrumentTools(telemetry oteltool.Middleware, tools []toolcontract.Tool) (
 }
 
 func (m *manifestBuilder) builtIn(executable toolcontract.Tool) toolcontract.Tool {
-	ref, err := tool.BuiltIn(tool.BuiltInName(executable.Definition().Name))
+	ref, err := tool.BuiltIn(builtincontract.Name(executable.Definition().Name))
 	if err != nil {
 		m.err = err
 		return executable

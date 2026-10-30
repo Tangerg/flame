@@ -11,7 +11,7 @@ import (
 func TestPreparedInputPublicationKeepsItsPayloadAfterStateRootReplacement(t *testing.T) {
 	parent := t.TempDir()
 	directory := filepath.Join(parent, "state")
-	store, err := OpenDirectory(directory, Config{})
+	store, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,7 +35,7 @@ func TestPreparedInputPublicationKeepsItsPayloadAfterStateRootReplacement(t *tes
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := OpenDirectory(directory, Config{})
+	reopened, err := OpenDirectory(t, directory, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}

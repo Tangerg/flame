@@ -14,7 +14,7 @@ export interface DelegatedRunNarrative {
 
 export type DelegatedRunNarrativesByItemId = Record<string, DelegatedRunNarrative[]>;
 
-export type AgentRootAttention =
+type AgentRootAttention =
   { status: "idle"; runId: null } | { status: AgentRunView["status"]; runId: string };
 
 function compareRuns(left: AgentRunView, right: AgentRunView): number {
@@ -22,10 +22,20 @@ function compareRuns(left: AgentRunView, right: AgentRunView): number {
   return byCreatedAt || left.id.localeCompare(right.id);
 }
 
-export function selectRootRuns(view: AgentSessionView): AgentRunView[] {
+function selectRootRuns(view: AgentSessionView): AgentRunView[] {
   return Object.values(view.runsById)
     .filter((run) => run.parentRunId === null)
     .sort(compareRuns);
+}
+
+export function selectRootRollbackBoundary(
+  view: AgentSessionView,
+  runId: string,
+): { toRunId?: string } | null {
+  const roots = selectRootRuns(view);
+  const index = roots.findIndex((run) => run.id === runId);
+  if (index < 0) return null;
+  return index > 0 ? { toRunId: roots[index - 1]!.id } : {};
 }
 
 export function selectCurrentRootRun(view: AgentSessionView): AgentRunView | null {

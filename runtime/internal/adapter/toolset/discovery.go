@@ -18,6 +18,7 @@ import (
 	"slices"
 	"strings"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/scope/core/chat"
@@ -110,7 +111,7 @@ func NewDiscovery(withheld []toolcontract.Tool) (*Discovery, error) {
 	})
 	inner, err := toolcontract.NewFunc(
 		toolcontract.FuncConfig{
-			Name:        string(tool.SearchTools),
+			Name:        string(builtincontract.SearchTools),
 			Description: discoveryDescription,
 		},
 		t.search,
@@ -387,4 +388,7 @@ func firstLine(s string) string {
 	return strings.TrimSpace(s)
 }
 
-func (d *Discovery) ToolRef() tool.Ref { ref, _ := tool.BuiltIn(tool.SearchTools); return ref }
+func (d *Discovery) ToolRef() tool.Ref {
+	ref, _ := tool.BuiltIn(builtincontract.SearchTools)
+	return ref
+}

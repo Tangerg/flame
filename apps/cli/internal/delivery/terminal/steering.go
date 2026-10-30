@@ -99,7 +99,7 @@ func (a *app) deliverPreparedSteer(request authoring.SteerRun, sourceDraft autho
 	started := a.runSessionSettlement(steerRunOperation, false,
 		func(ctx context.Context) (runworkflow.SteerResult, error) {
 			return runworkflow.DeliverSteer(
-				ctx, a.runtime, pending, a.replayPolicy, runtimeRecoveryBackoff,
+				ctx, a.runtime, a.workbench, pending, a.replayPolicy, runtimeRecoveryBackoff,
 			)
 		},
 		func(result runworkflow.SteerResult, deliveryErr error) {

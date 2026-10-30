@@ -32,6 +32,7 @@ it.each(["AbortError", "TimeoutError"])("retains an in-progress command after %s
     createMutationPromise(
       async () => {
         reservation.authorizeDispatch();
+        reservation.markDispatched();
         throw new RpcError({
           message: "still running",
           data: { type: "idempotency_in_progress", retryAfterSeconds: 2 },

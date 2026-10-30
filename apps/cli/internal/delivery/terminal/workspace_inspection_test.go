@@ -32,7 +32,7 @@ func newWorkspaceServiceStub() *workspaceServiceStub {
 	return &workspaceServiceStub{
 		changes: []workspace.Change{{Path: "main.go", Status: protocol.FileStatusModified}},
 		calls:   make(map[string]int),
-		content: workspace.FileContent{Content: "package main\n", TotalLines: 1},
+		content: workspace.FileContent{Content: "package main\n", TotalLines: 2, StartLine: 1, EndLine: 2},
 	}
 }
 
@@ -80,7 +80,13 @@ func (w *workspaceServiceStub) Diff(_ context.Context, request workspace.DiffReq
 	w.mu.Lock()
 	w.diffRequest = request
 	w.mu.Unlock()
-	return workspace.Diff{Baseline: protocol.DiffBaseline{Type: protocol.DiffBaselineMergeBase, Commit: strings.Repeat("1", 40)}, Patch: "diff --git a/main.go b/main.go\n+var current = true"}, nil
+	diff := workspace.Diff{Baseline: protocol.DiffBaseline{Type: protocol.DiffBaselineMergeBase, Commit: strings.Repeat("1", 40)}}
+	if request.Format == protocol.DiffFormatRaw {
+		diff.Patch = "diff --git a/main.go b/main.go\n+var current = true"
+	} else {
+		diff.Files = []workspace.FileDiff{{Change: workspace.Change{Path: "main.go", Status: protocol.FileStatusModified}, Rows: []protocol.DiffRow{{Type: protocol.DiffRowAdded, RightLine: 1, Code: new("var current = true")}}}}
+	}
+	return diff, nil
 }
 
 func (w *workspaceServiceStub) lastDiffRequest() workspace.DiffRequest {
@@ -644,4 +650,16 @@ func TestWorkspaceChangeCountDoesNotFollowTheSessionIntoAnotherWorkspace(t *test
 	host.Shows(t, "session · ")
 	host.Hides(t, "Δ1")
 	stop()
+}
+
+func TestWorkspaceReadReportsWhenNoCompleteLineFitsTheBudget(t *testing.T) {
+	service := newWorkspaceServiceStub()
+	service.content = workspace.FileContent{TotalLines: 2, Truncated: true}
+	host, stop := runUIWithWorkspaceBackend(t, service, nil)
+	defer stop()
+	host.Shows(t, "Ask flame")
+	host.Type("/read --max-bytes 1 main.go")
+	host.Press(input.Enter)
+	host.Shows(t, "Workspace file")
+	host.Shows(t, "no complete lines/2 · truncated")
 }

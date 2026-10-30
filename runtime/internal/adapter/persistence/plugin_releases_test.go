@@ -128,6 +128,8 @@ func TestReleaseReadRejectsChangedInvalidDeclaration(t *testing.T) {
 	}{
 		{name: "unknown storage member", body: `{"Name":"package","unexpected":true}`},
 		{name: "invalid domain declaration", body: `{}`},
+		{name: "retired result selector", body: `{"Name":"package","Components":[{"ID":"result","Title":"Result","Scope":"toolResult","Placement":"toolResultRenderer","Entry":"io.github.tangerg.flame/result.js","Export":"Result","Selector":{"Kind":"resultShape","Name":"search"}}]}`},
+		{name: "unknown result shape", body: `{"Name":"package","Components":[{"ID":"result","Title":"Result","Scope":"toolResult","Placement":"toolResultRenderer","Entry":"io.github.tangerg.flame/result.js","Export":"Result","Selector":{"Kind":"resultShape","Shape":"arbitrary"}}]}`},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			db := openStore(t)
@@ -188,6 +190,9 @@ func TestReleaseReadsDoNotShareMutableDeclarations(t *testing.T) {
 		Components: []plugin.ClientComponent{{
 			ID: "markdown", Title: "Markdown", Scope: extension.ComponentScopeFile, Placement: extension.ComponentPlacementFileRenderer,
 			Entry: plugin.Namespace + "/components/markdown.js", Export: "Markdown", Selector: &plugin.RendererSelector{Kind: extension.RendererFileExtension, Name: "md"},
+		}, {
+			ID: "search", Title: "Search", Scope: extension.ComponentScopeToolResult, Placement: extension.ComponentPlacementToolResultRenderer,
+			Entry: plugin.Namespace + "/components/result.js", Export: "Result", Selector: &plugin.RendererSelector{Kind: extension.RendererResultShape, Shape: extension.ResultShapeSearch},
 		}},
 	})
 	if err := catalog.Admit(t.Context(), release); err != nil {
@@ -205,6 +210,7 @@ func TestReleaseReadsDoNotShareMutableDeclarations(t *testing.T) {
 	declaration.Servers[2].Managed.Entry = "changed.mjs"
 	declaration.Contributions[0].Requires[0].ID = "changed"
 	declaration.Components[0].Selector.Name = "changed"
+	declaration.Components[1].Selector.Shape = "changed"
 	contribution, found := stored.Contribution("reader")
 	if !found {
 		t.Fatal("stored release lost its contribution")

@@ -470,9 +470,9 @@ export type DiffMode = "worktree" | "base";
 
 export type DiffRow =
   | { type: "hunk"; text: string }
-  | { type: "context"; code: string; leftLine: number; rightLine: number }
-  | { type: "added"; code: string; rightLine: number }
-  | { type: "deleted"; code: string; leftLine: number };
+  | { type: "context"; code: string; leftLine: number; noNewline?: boolean; rightLine: number }
+  | { type: "added"; code: string; noNewline?: boolean; rightLine: number }
+  | { type: "deleted"; code: string; leftLine: number; noNewline?: boolean };
 
 export type DiffRowType = "hunk" | "context" | "added" | "deleted";
 
@@ -1428,10 +1428,10 @@ export interface PluginReleaseRequest {
   installationId: string;
 }
 
-export interface PluginRendererSelector {
-  name: string;
-  type: RendererSelectorKind;
-}
+export type PluginRendererSelector =
+  | { type: "toolName"; name: string }
+  | { type: "resultShape"; shape: ResultShape }
+  | { type: "fileExtension"; name: string };
 
 export interface PluginRequest {
   installationId: string;
@@ -1609,6 +1609,7 @@ export interface QuestionOption {
 
 export interface ReadFileRequest {
   endLine?: number;
+  fromEnd?: boolean;
   maxBytes?: number;
   path: string;
   startLine?: number;
@@ -1676,6 +1677,8 @@ export interface ResolveWorkspaceRequest {
 }
 
 export type RestoreType = "history" | "files" | "both";
+
+export type ResultShape = "search" | "patch" | "command" | "webSearch";
 
 export interface ResumeRunRequest {
   input?: ContentBlock[];
@@ -2169,7 +2172,7 @@ export interface ToolInvocation {
 }
 
 export type ToolRef =
-  | { type: "builtIn"; name: "apply_patch" | "ask_user" | "create_goal" | "delegate_task" | "edit" | "enter_plan_mode" | "exit_plan_mode" | "get_goal" | "glob" | "grep" | "list_skills" | "load_skill" | "propose_skill" | "read" | "read_shell_output" | "read_skill_resource" | "read_tool_result" | "report_goal_outcome" | "search_tools" | "set_plan" | "shell" | "stop_shell" | "web_fetch" | "web_search" }
+  | { type: "builtIn"; name: "apply_patch" | "ask_user" | "create_goal" | "delegate_task" | "edit" | "enter_plan_mode" | "exit_plan_mode" | "get_goal" | "glob" | "grep" | "list_skills" | "load_skill" | "propose_skill" | "read" | "read_shell_output" | "read_skill_resource" | "read_tool_result" | "report_goal_outcome" | "search_tools" | "set_plan" | "shell" | "stop_shell" }
   | { type: "mcp"; name: string; server: MCPServerID };
 
 export type ToolRefType = "builtIn" | "mcp";
@@ -2288,17 +2291,6 @@ export interface WatchSpec {
   workspace: WorkspaceRef;
 }
 
-export interface WebSearchHit {
-  faviconUrl?: string;
-  snippet?: string;
-  title?: string;
-  url: string;
-}
-
-export interface WebSearchResult {
-  results: WebSearchHit[];
-}
-
 export type WorkspaceAvailability = "available" | "missing";
 
 export interface WorkspaceFileChange {
@@ -2404,6 +2396,7 @@ export const WIRE_ENUMS = {
   RememberScopeKind: ["session", "project", "global"],
   RendererSelectorKind: ["toolName", "resultShape", "fileExtension"],
   RestoreType: ["history", "files", "both"],
+  ResultShape: ["search", "patch", "command", "webSearch"],
   RunAcceptanceType: ["notRecorded", "accepted", "retired"],
   RunCommandOperation: ["start", "resume", "steer"],
   RunOutcomeType: ["completed", "timedOut", "failed", "canceled", "lost"],

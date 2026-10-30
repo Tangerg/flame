@@ -21,8 +21,14 @@ func openStart(ctx context.Context, source OpeningSource, command authoring.Star
 	return openStartCommand(ctx, source, command, guard, policy, func() (conversation.SegmentStream, error) { return source.StartRun(ctx, command) })
 }
 
-func OpenPendingStart(ctx context.Context, source OpeningSource, pending workbench.PendingRun, policy mutation.ReplayPolicy) (conversation.SegmentStream, error) {
+func OpenPendingStart(ctx context.Context, source OpeningSource, store *workbench.Store, pending workbench.PendingRun, policy mutation.ReplayPolicy) (conversation.SegmentStream, error) {
+	if store == nil {
+		return conversation.SegmentStream{}, workbench.ErrUnavailable
+	}
 	return openStartCommand(ctx, source, pending.Command, pending.Replay, policy, func() (conversation.SegmentStream, error) {
+		if err := store.DispatchReady(); err != nil {
+			return conversation.SegmentStream{}, err
+		}
 		command, err := pending.ReplayCommand()
 		if err != nil {
 			return conversation.SegmentStream{}, err
@@ -46,8 +52,14 @@ func openResume(ctx context.Context, source OpeningSource, command conversation.
 	return openResumeCommand(ctx, source, command, guard, policy, func() (conversation.SegmentStream, error) { return source.ResumeRun(ctx, command) })
 }
 
-func OpenPendingResume(ctx context.Context, source OpeningSource, pending workbench.PendingResume, policy mutation.ReplayPolicy) (conversation.SegmentStream, error) {
+func OpenPendingResume(ctx context.Context, source OpeningSource, store *workbench.Store, pending workbench.PendingResume, policy mutation.ReplayPolicy) (conversation.SegmentStream, error) {
+	if store == nil {
+		return conversation.SegmentStream{}, workbench.ErrUnavailable
+	}
 	return openResumeCommand(ctx, source, pending.Command, pending.Replay, policy, func() (conversation.SegmentStream, error) {
+		if err := store.DispatchReady(); err != nil {
+			return conversation.SegmentStream{}, err
+		}
 		command, err := pending.ReplayCommand()
 		if err != nil {
 			return conversation.SegmentStream{}, err

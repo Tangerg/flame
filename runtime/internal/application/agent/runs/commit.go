@@ -39,11 +39,12 @@ const (
 	ModelInvocationUnknown   ModelInvocationState = "unknown"
 )
 
-// Valid reports whether m belongs to the durable model-invocation journal.
-func (m ModelInvocationState) Valid() bool {
-	return m == ModelInvocationStarted || m == ModelInvocationCompleted ||
-		m == ModelInvocationFailed || m == ModelInvocationUnknown
+func (ModelInvocationState) Values() []ModelInvocationState {
+	return []ModelInvocationState{ModelInvocationStarted, ModelInvocationCompleted, ModelInvocationFailed, ModelInvocationUnknown}
 }
+
+// Valid reports whether m belongs to the durable model-invocation journal.
+func (m ModelInvocationState) Valid() bool { return slices.Contains(m.Values(), m) }
 
 // String returns the durable model-invocation state name.
 func (m ModelInvocationState) String() string {

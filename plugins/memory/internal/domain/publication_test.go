@@ -10,7 +10,7 @@ func TestPublicationOwnsOneExactCurationAdvance(t *testing.T) {
 	now := time.Date(2026, time.September, 5, 9, 0, 0, 0, time.FixedZone("offset", 8*60*60))
 	expected := State{Watermark: 2, UpdatedAt: now.Add(-time.Hour).UTC()}
 	contents := []string{" first ", "second", "first"}
-	publication, err := NewPublication("/repo", expected, 4, contents, now)
+	publication, err := NewPublication("/repo", expected, 4, nil, contents, now)
 	if err != nil {
 		t.Fatalf("NewPublication: %v", err)
 	}
@@ -40,7 +40,7 @@ func TestPublicationRejectsInvalidStateTransitions(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			if _, err := NewPublication(test.project, test.expected, test.through, nil, test.at); err == nil {
+			if _, err := NewPublication(test.project, test.expected, test.through, nil, nil, test.at); err == nil {
 				t.Fatal("NewPublication accepted an invalid transition")
 			}
 		})

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
@@ -225,7 +226,7 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 	item := testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_running", SessionID: "session", RunID: "run_lost",
 		Kind: transcript.QuestionItem, OccurredAt: createdAt,
-		Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}},
+		Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}},
 	})
 	if appendItemErr := transcriptStore.AppendItem(ctx, item); appendItemErr != nil {
 		t.Fatalf("AppendItem: %v", appendItemErr)
@@ -421,7 +422,7 @@ func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
 	}); admitErr != nil {
 		t.Fatalf("Admit: %v", admitErr)
 	}
-	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}}
+	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}}
 	pendingInterrupt := transcript.Interrupt{
 		ItemID: "item_missing", ItemOccurredAt: createdAt.Add(time.Second),
 		RunID: "run_partial", Kind: run.InterruptQuestion, Question: question,

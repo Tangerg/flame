@@ -1,7 +1,9 @@
 package delivery
 
 import (
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -129,9 +131,9 @@ func presentQuestion(question transcript.Question) protocol.Question {
 	for i, field := range question.Fields {
 		var kind protocol.QuestionFieldType
 		switch field.Kind {
-		case transcript.QuestionText:
+		case questioncontract.Text:
 			kind = protocol.QuestionFieldText
-		case transcript.QuestionChoice:
+		case questioncontract.Choice:
 			kind = protocol.QuestionFieldChoice
 		default:
 			panic("delivery: unknown transcript question-field kind")
@@ -168,19 +170,17 @@ func presentTool(invocation transcript.ToolInvocation) protocol.ToolInvocation {
 // from, replacing the copies the CLI and Web each kept. Built-in identities are
 // grouped; plugin and MCP tools stay unknown.
 func presentToolCategory(name string) protocol.ToolCategory {
-	switch tool.BuiltInName(name) {
-	case tool.Shell, tool.ReadShellOutput, tool.StopShell:
+	switch builtincontract.Name(name) {
+	case builtincontract.Shell, builtincontract.ReadShellOutput, builtincontract.StopShell:
 		return protocol.ToolCategoryShell
-	case tool.ApplyPatch, tool.Edit:
+	case builtincontract.ApplyPatch, builtincontract.Edit:
 		return protocol.ToolCategoryEdit
-	case tool.Read, tool.ReadSkillResource, tool.ReadToolResult:
+	case builtincontract.Read, builtincontract.ReadSkillResource, builtincontract.ReadToolResult:
 		return protocol.ToolCategoryRead
-	case tool.Glob, tool.Grep, tool.SearchTools:
+	case builtincontract.Glob, builtincontract.Grep, builtincontract.SearchTools:
 		return protocol.ToolCategorySearch
-	case tool.WebSearch, tool.WebFetch:
-		return protocol.ToolCategoryWeb
-	case tool.AskUser, tool.DelegateTask, tool.CreateGoal, tool.GetGoal, tool.ReportGoalOutcome,
-		tool.LoadSkill, tool.ListSkills, tool.ProposeSkill, tool.EnterPlanMode, tool.ExitPlanMode, tool.SetPlan:
+	case builtincontract.AskUser, builtincontract.DelegateTask, builtincontract.CreateGoal, builtincontract.GetGoal, builtincontract.ReportGoalOutcome,
+		builtincontract.LoadSkill, builtincontract.ListSkills, builtincontract.ProposeSkill, builtincontract.EnterPlanMode, builtincontract.ExitPlanMode, builtincontract.SetPlan:
 		return protocol.ToolCategoryTask
 	default:
 		return protocol.ToolCategoryUnknown

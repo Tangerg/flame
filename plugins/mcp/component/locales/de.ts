@@ -38,10 +38,10 @@ export const de: Record<string, string> = {
   "mcp.form.transport.aria": "Transport",
   "mcp.form.command.placeholder": "npx",
   "mcp.form.command.aria": "Befehl",
-  "mcp.form.args": "Argumente — eines pro Zeile",
+  "mcp.form.args": "Argumente (JSON-Array)",
   "mcp.form.args.placeholder":
     "-y\n@modelcontextprotocol/server-filesystem\n/pfad",
-  "mcp.form.env": "Umgebung — KEY=Wert, eines pro Zeile",
+  "mcp.form.env": "Umgebung (JSON-Objekt)",
   "mcp.form.env.placeholder": "API_KEY=…",
   "mcp.form.env.keep":
     "Leer lassen, um die gespeicherte Umgebung beizubehalten",
@@ -57,7 +57,7 @@ export const de: Record<string, string> = {
   "mcp.form.auth.originChanged":
     "Der Ursprung des Endpunkts hat sich geändert. Neue Autorisierung eingeben oder den gespeicherten Wert entfernen.",
   "mcp.form.auth.aria": "Autorisierungstoken",
-  "mcp.form.headers": "Header — KEY=Wert, eines pro Zeile",
+  "mcp.form.headers": "Header (JSON-Objekt)",
   "mcp.form.headers.placeholder": "X-API-Key=…",
   "mcp.form.headers.keep":
     "Leer lassen, um die gespeicherten Header beizubehalten",
@@ -86,14 +86,14 @@ export const de: Record<string, string> = {
   "mcp.import.invalidShape":
     "Verwende eine gültige MCP-Konfiguration mit einem „mcpServers“-Objekt.",
   "mcp.import.invalidName":
-    "Gib dem Server „{{server}}“ einen Namen mit a–z oder 0–9.",
+    "Der Servername „<server/>“ entspricht nicht den Namensregeln der Runtime. Ändere den Schlüssel und versuche es erneut.",
   "mcp.import.missingTransport":
-    "Verwende für Server „{{server}}“ stdio mit einem Befehl oder Streamable HTTP mit einer URL.",
+    "Gib für Server „<server/>“ entweder einen Befehl oder eine URL an.",
   "mcp.import.missingCommand":
-    "Füge für den Server „{{server}}“ einen Befehl hinzu.",
-  "mcp.import.missingUrl": "Füge für den Server „{{server}}“ eine URL hinzu.",
+    "Füge für den Server „<server/>“ einen Befehl hinzu.",
+  "mcp.import.missingUrl": "Füge für den Server „<server/>“ eine URL hinzu.",
   "mcp.import.invalidTimeout":
-    "Lege für den Server „{{server}}“ ein Timeout in positiven ganzen Sekunden fest oder lass es weg für kein Zeitlimit.",
+    "Lege für den Server „<server/>“ ein Timeout in positiven ganzen Sekunden fest oder lass es weg für kein Zeitlimit.",
   "mcp.import.empty": "Füge unter „mcpServers“ mindestens einen Server hinzu.",
   "mcp.tools.title": "Tools von {{server}}",
   "mcp.tools.enabled": "Aktiviert",
@@ -129,12 +129,18 @@ export const de: Record<string, string> = {
     "Dieser Server ist nicht erreichbar — prüfe Befehl oder URL und versuche es erneut.",
   "common.cancel": "Abbrechen",
   "common.close": "Schließen",
-  title: "MCP-Server",
   "command.uncertain":
     "Das Ergebnis des ursprünglichen Befehls ist nicht bestätigt. Gleiche es ab, bevor du einen weiteren Befehl ausführst oder den Katalog wechselst.",
   "command.reconcile": "Ursprünglichen Befehl abgleichen",
   "read.retained": "Die letzte akzeptierte Lesung bleibt erhalten.",
-  reading: "Wird geladen",
-  refresh: "Aktualisieren",
-  retry: "Erneut versuchen",
+  "mcp.form.args.invalid":
+    "Gib ein JSON-Array mit Zeichenfolgen ein, oder lasse das Feld ohne Argumente leer.",
+  "mcp.form.env.invalid":
+    "Gib ein nicht leeres JSON-Objekt mit Zeichenfolgen als Werten ein.",
+  "mcp.form.headers.invalid":
+    "Gib ein nicht leeres JSON-Objekt mit Zeichenfolgen als Werten ein.",
+  "mcp.import.unsupportedTransport":
+    "Nicht unterstützter „type“ für Server „<server/>“. Verwende „stdio“ oder „streamableHttp“.",
+  "mcp.import.headerConflict":
+    "Server „<server/>“ deklariert „<header/>“ mehrfach. Behalte eine Deklaration.",
 };

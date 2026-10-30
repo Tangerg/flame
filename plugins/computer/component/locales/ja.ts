@@ -22,7 +22,7 @@ export const ja = {
   "open.help":
     "許可期間中、モデルは Flame のコンピューター操作エンジン経由で Runtime ホストを操作できます。別端末や隔離した対象など、制御されるデスクトップ・アカウント・ブラウザーの外で操作コンソールを使用してください。この画面を閉じても許可は終了しません。",
   "open.lease": "許可時間（秒）",
-  "open.invalid": "60〜{{maximum}} 秒の整数を入力してください。",
+  "open.invalid": "{{minimum}}〜{{maximum}} 秒の整数を入力してください。",
   "open.action": "許可して操作を開始",
   "close.action": "操作許可を終了",
   "close.help":

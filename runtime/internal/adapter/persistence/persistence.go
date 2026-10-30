@@ -40,6 +40,7 @@ type Bundle struct {
 	Runs                  *RunStore
 	CommandAcceptances    *commandAcceptanceStore
 	WorkspaceMutations    *WorkspaceMutationStore
+	ResourceRetirements   *ResourceRetirementStore
 	ExecutorCheckpoints   *ExecutorCheckpointStore
 	Interrupts            *InterruptStore
 	Transcript            *TranscriptStore
@@ -128,6 +129,7 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		Runs:                  newRunStore(db),
 		CommandAcceptances:    newCommandAcceptanceStore(db),
 		WorkspaceMutations:    newWorkspaceMutationStore(db),
+		ResourceRetirements:   newResourceRetirementStore(db),
 		ExecutorCheckpoints:   newExecutorCheckpointStore(db),
 		Interrupts:            newInterruptStore(db),
 		Transcript:            newTranscriptStore(db),

@@ -1,73 +1,82 @@
-import { type RefObject } from "react";
-import { useCallback, useEffect, useRef } from "react";
+import { type RefObject, useCallback } from "react";
+
+const containerLocks = new WeakMap<HTMLElement, { leases: number; restore: () => void }>();
+
+function acquireScrollLock(container: HTMLElement): () => void {
+  let lock = containerLocks.get(container);
+  if (!lock) {
+    const scrollPosition = container.scrollTop;
+    const previousScrollbarWidth = container.style.scrollbarWidth;
+    const computed = getComputedStyle(container);
+    const paddingSide = computed.direction === "rtl" ? "paddingLeft" : "paddingRight";
+    const previousPadding = container.style[paddingSide];
+    const scrollbarSize =
+      container.offsetWidth -
+      container.clientWidth -
+      parseFloat(computed.borderLeftWidth) -
+      parseFloat(computed.borderRightWidth);
+    const resetPosition = () => {
+      container.scrollTop = scrollPosition;
+    };
+    container.style.scrollbarWidth = "none";
+    if (scrollbarSize > 0) {
+      container.style[paddingSide] = `${parseFloat(computed[paddingSide]) + scrollbarSize}px`;
+    }
+    container.addEventListener("scroll", resetPosition, { passive: true });
+    lock = {
+      leases: 0,
+      restore: () => {
+        container.removeEventListener("scroll", resetPosition);
+        container.style.scrollbarWidth = previousScrollbarWidth;
+        container.style[paddingSide] = previousPadding;
+      },
+    };
+    containerLocks.set(container, lock);
+  }
+  const owned = lock;
+  owned.leases += 1;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    owned.leases -= 1;
+    if (owned.leases === 0) {
+      containerLocks.delete(container);
+      owned.restore();
+    }
+  };
+}
+
 export function useScrollLock<T extends HTMLElement = HTMLElement>(
   animatedElementRef: RefObject<T | null>,
 ) {
-  const scrollContainerRef = useRef<HTMLElement | null>(null);
-  const cleanupRef = useRef<(() => void) | null>(null);
-
-  useEffect(() => () => cleanupRef.current?.(), []);
-
   return useCallback(() => {
-    cleanupRef.current?.();
-
-    if (!scrollContainerRef.current && animatedElementRef.current) {
-      let el: HTMLElement | null = animatedElementRef.current;
-      while (el) {
-        const { overflowY } = getComputedStyle(el);
-        if (overflowY === "scroll" || overflowY === "auto") {
-          scrollContainerRef.current = el;
-          break;
-        }
-        el = el.parentElement;
-      }
-    }
-
-    const scrollContainer = scrollContainerRef.current;
     const animatedElement = animatedElementRef.current;
-    if (!scrollContainer || !animatedElement) return;
-
-    const scrollPosition = scrollContainer.scrollTop;
-    const previousScrollbarWidth = scrollContainer.style.scrollbarWidth;
-
-    const computed = getComputedStyle(scrollContainer);
-    const paddingSide = computed.direction === "rtl" ? "paddingLeft" : "paddingRight";
-    const previousPadding = scrollContainer.style[paddingSide];
-    const scrollbarSize =
-      scrollContainer.offsetWidth -
-      scrollContainer.clientWidth -
-      parseFloat(computed.borderLeftWidth) -
-      parseFloat(computed.borderRightWidth);
-
-    scrollContainer.style.scrollbarWidth = "none";
-    if (scrollbarSize > 0) {
-      scrollContainer.style[paddingSide] = `${parseFloat(computed[paddingSide]) + scrollbarSize}px`;
+    if (!animatedElement) return;
+    let container: HTMLElement | null = animatedElement;
+    while (container) {
+      const { overflowY } = getComputedStyle(container);
+      if (overflowY === "scroll" || overflowY === "auto") break;
+      container = container.parentElement;
     }
-
-    const restoreStyles = () => {
-      scrollContainer.style.scrollbarWidth = previousScrollbarWidth;
-      scrollContainer.style[paddingSide] = previousPadding;
-    };
-
-    const resetPosition = () => {
-      scrollContainer.scrollTop = scrollPosition;
-    };
-    scrollContainer.addEventListener("scroll", resetPosition, { passive: true });
-
-    const timeoutId = setTimeout(
-      () => {
-        scrollContainer.removeEventListener("scroll", resetPosition);
-        restoreStyles();
-        cleanupRef.current = null;
-      },
-      transitionWindowMs(getComputedStyle(animatedElement)),
-    );
-
-    cleanupRef.current = () => {
+    if (!container) return;
+    const release = acquireScrollLock(container);
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
       clearTimeout(timeoutId);
-      scrollContainer.removeEventListener("scroll", resetPosition);
-      restoreStyles();
+      animatedElement.removeEventListener("transitionend", onTransition);
+      animatedElement.removeEventListener("transitioncancel", onTransition);
+      release();
     };
+    const onTransition = (event: Event) => {
+      if (event.target === animatedElement) finish();
+    };
+    animatedElement.addEventListener("transitionend", onTransition);
+    animatedElement.addEventListener("transitioncancel", onTransition);
+    const timeoutId = setTimeout(finish, transitionWindowMs(getComputedStyle(animatedElement)));
+    return finish;
   }, [animatedElementRef]);
 }
 

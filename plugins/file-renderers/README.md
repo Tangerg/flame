@@ -18,6 +18,14 @@ readable code. This is ordinary trusted workbench code, using shared React, the 
 SDK and `@flame/ui`. The declared remark and react-markdown dependencies are bundled
 in the ESM; their licenses are retained in `package/THIRD_PARTY_NOTICES.txt`.
 
+Marked parses Markdown tokens. The adapter decodes character references once from
+ordinary token source with `entities`; code and raw HTML keep their literal text.
+React renders semantic elements with text content;
+authored HTML, MDX expressions, images and URLs remain text. Code fences remain
+readable code. This is ordinary trusted workbench code, using shared React, the public
+SDK and `@flame/ui`. Marked and entities are declared private dependencies bundled
+in the ESM; their licenses are retained in the namespace resources.
+
 The preview describes each image with the shared `ImageNotice`: its alternative
 text and a short source caption, never a loaded image. Complete payloads remain
 intact in the host Source view. Ordinary image URLs remain visible, inert source

@@ -2,6 +2,7 @@ package delivery
 
 import (
 	"context"
+	json "encoding/json/v2"
 	"errors"
 	"math"
 	"testing"
@@ -263,5 +264,40 @@ func TestCreateMCPServerRejectsInvalidHTTPEndpointBeforePersistence(t *testing.T
 	}
 	if len(registry.saved) != 0 {
 		t.Fatalf("saved %d server(s), want none", len(registry.saved))
+	}
+}
+
+func TestMCPUnicodeEnvironmentRemainsEncodableAcrossManagement(t *testing.T) {
+	handler := handlerWithMCP(t, mcpapp.Config{})
+	created, err := handler.CreateMCPServer(t.Context(), protocol.MCPServerCandidate{
+		Name: "unicode", HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
+		Connection: protocol.MCPConnectionInput{
+			Type: protocol.MCPTransportStdio, Command: "server",
+			Env: &protocol.MCPEnvironmentChange{Type: protocol.MCPSecretSet, Value: map[string]string{"SECRET": "你好世界"}},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := json.Marshal(created); err != nil {
+		t.Fatalf("create response cannot be encoded: %v", err)
+	}
+	description := "updated"
+	updated, err := handler.UpdateMCPServer(t.Context(), protocol.UpdateMCPServerRequest{Server: wireUserServer("unicode"), Description: &description})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := json.Marshal(updated); err != nil {
+		t.Fatalf("update response cannot be encoded: %v", err)
+	}
+	listed, err := handler.ListMCPServers(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := json.Marshal(listed); err != nil {
+		t.Fatalf("list response cannot be encoded: %v", err)
+	}
+	if len(listed.Data) != 1 || listed.Data[0].Connection.EnvMasked["SECRET"] != "****" {
+		t.Fatalf("listed mask = %+v", listed)
 	}
 }

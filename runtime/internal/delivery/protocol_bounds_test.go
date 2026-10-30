@@ -10,9 +10,10 @@ import (
 
 	hookdata "github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
 func wireUserServer(name string) protocol.MCPServerID {
@@ -52,7 +53,7 @@ func TestQuestionWireConstraints(t *testing.T) {
 	blankOption.Fields[0].Options[0].Label = "\n"
 	assertProtocolConstraintField(t, protocol.ValidateWireTree(blankOption), "Question", "fields[0].options[0].label")
 
-	tooManyFields := protocol.Question{Fields: make([]protocol.QuestionField, transcript.MaximumQuestionFields+1)}
+	tooManyFields := protocol.Question{Fields: make([]protocol.QuestionField, questioncontract.MaximumFields+1)}
 	for index := range tooManyFields.Fields {
 		tooManyFields.Fields[index] = protocol.QuestionField{Type: protocol.QuestionFieldText, Prompt: "Answer"}
 	}

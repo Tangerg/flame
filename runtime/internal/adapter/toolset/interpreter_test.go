@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
@@ -18,12 +19,11 @@ func TestSemanticsSafetyClassFailsClosed(t *testing.T) {
 		ref  tool.Ref
 		want tool.SafetyClass
 	}{
-		{ref: testsupport.BuiltInTool(t, tool.DelegateTask), want: tool.SafetyClassSafe},
-		{ref: testsupport.BuiltInTool(t, tool.ApplyPatch), want: tool.SafetyClassWrite},
-		{ref: testsupport.BuiltInTool(t, tool.Shell), want: tool.SafetyClassExec},
-		{ref: testsupport.BuiltInTool(t, tool.ReadShellOutput), want: tool.SafetyClassSafe},
-		{ref: testsupport.BuiltInTool(t, tool.StopShell), want: tool.SafetyClassExec},
-		{ref: testsupport.BuiltInTool(t, tool.WebFetch), want: tool.SafetyClassExec},
+		{ref: testsupport.BuiltInTool(t, builtincontract.DelegateTask), want: tool.SafetyClassSafe},
+		{ref: testsupport.BuiltInTool(t, builtincontract.ApplyPatch), want: tool.SafetyClassWrite},
+		{ref: testsupport.BuiltInTool(t, builtincontract.Shell), want: tool.SafetyClassExec},
+		{ref: testsupport.BuiltInTool(t, builtincontract.ReadShellOutput), want: tool.SafetyClassSafe},
+		{ref: testsupport.BuiltInTool(t, builtincontract.StopShell), want: tool.SafetyClassExec},
 		{ref: tool.Ref{}, want: tool.SafetyClassExec},
 		{ref: testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "shell"), want: tool.SafetyClassExec},
 	} {
@@ -36,17 +36,17 @@ func TestSemanticsSafetyClassFailsClosed(t *testing.T) {
 func TestSemanticsApprovalSubject(t *testing.T) {
 	interpreter := Interpreter{}
 	for _, test := range []struct {
-		name      tool.BuiltInName
+		name      builtincontract.Name
 		arguments string
 		want      string
 		wantError bool
 	}{
-		{name: tool.Shell, arguments: `{"command":"npm run build"}`, want: "npm run build"},
-		{name: tool.Read, arguments: `{"path":"go.mod"}`, want: "go.mod"},
-		{name: tool.ApplyPatch, arguments: `{"patch":"diff"}`},
-		{name: tool.Grep, arguments: `{"pattern":"foo"}`},
-		{name: tool.StopShell, arguments: `{"shell_id":"s1"}`},
-		{name: tool.Shell, arguments: `{"timeout_millis":5}`, wantError: true},
+		{name: builtincontract.Shell, arguments: `{"command":"npm run build"}`, want: "npm run build"},
+		{name: builtincontract.Read, arguments: `{"path":"go.mod"}`, want: "go.mod"},
+		{name: builtincontract.ApplyPatch, arguments: `{"patch":"diff"}`},
+		{name: builtincontract.Grep, arguments: `{"pattern":"foo"}`},
+		{name: builtincontract.StopShell, arguments: `{"shell_id":"s1"}`},
+		{name: builtincontract.Shell, arguments: `{"timeout_millis":5}`, wantError: true},
 	} {
 		arguments, err := tool.ParseArguments(test.arguments)
 		if err != nil {
@@ -67,20 +67,20 @@ func TestSemanticsApprovalSubject(t *testing.T) {
 
 func TestSemanticsShellCommand(t *testing.T) {
 	interpreter := Interpreter{}
-	if got := interpreter.ShellCommand(testsupport.BuiltInTool(t, tool.Shell), `{"command":"rm -rf /"}`); got != "rm -rf /" {
+	if got := interpreter.ShellCommand(testsupport.BuiltInTool(t, builtincontract.Shell), `{"command":"rm -rf /"}`); got != "rm -rf /" {
 		t.Fatalf("ShellCommand = %q, want command", got)
 	}
-	if got := interpreter.ShellCommand(testsupport.BuiltInTool(t, tool.ApplyPatch), `{"command":"rm -rf /"}`); got != "" {
+	if got := interpreter.ShellCommand(testsupport.BuiltInTool(t, builtincontract.ApplyPatch), `{"command":"rm -rf /"}`); got != "" {
 		t.Fatalf("non-shell command = %q, want empty", got)
 	}
 }
 
 func TestSemanticsDelegationUsesChildLifecyclePolicy(t *testing.T) {
 	interpreter := Interpreter{}
-	if interpreter.UsesStandardPolicy(testsupport.BuiltInTool(t, tool.DelegateTask)) {
+	if interpreter.UsesStandardPolicy(testsupport.BuiltInTool(t, builtincontract.DelegateTask)) {
 		t.Fatal("delegation entered ordinary tool-call policy")
 	}
-	for _, ref := range []tool.Ref{testsupport.BuiltInTool(t, tool.Read), testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "extension_tool")} {
+	for _, ref := range []tool.Ref{testsupport.BuiltInTool(t, builtincontract.Read), testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "extension_tool")} {
 		if !interpreter.UsesStandardPolicy(ref) {
 			t.Errorf("ordinary tool %q bypassed standard policy", ref)
 		}
@@ -100,7 +100,7 @@ func TestSemanticsProjectsSuccessfulPlanReplacement(t *testing.T) {
 		t.Fatal(err)
 	}
 	interpreter := NewInterpreter(fixedPlanState{state: current})
-	event, err := interpreter.ProjectOutcome(t.Context(), "session_1", testsupport.BuiltInTool(t, tool.SetPlan), true)
+	event, err := interpreter.ProjectOutcome(t.Context(), "session_1", testsupport.BuiltInTool(t, builtincontract.SetPlan), true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,11 +109,11 @@ func TestSemanticsProjectsSuccessfulPlanReplacement(t *testing.T) {
 		t.Fatalf("projected event = %#v, want PlanUpdated %#v", event, want)
 	}
 	for _, test := range []struct {
-		name      tool.BuiltInName
+		name      builtincontract.Name
 		succeeded bool
 	}{
-		{name: tool.SetPlan},
-		{name: tool.Read, succeeded: true},
+		{name: builtincontract.SetPlan},
+		{name: builtincontract.Read, succeeded: true},
 	} {
 		event, err := interpreter.ProjectOutcome(t.Context(), "session_1", testsupport.BuiltInTool(t, test.name), test.succeeded)
 		if err != nil || event != nil {

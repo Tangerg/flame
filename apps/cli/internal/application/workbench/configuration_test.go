@@ -43,8 +43,8 @@ func TestStoreRejectsPresentInvalidCapacities(t *testing.T) {
 
 func TestDirectoryPersistenceRequiresAnAbsoluteOwnedRoot(t *testing.T) {
 	for _, directory := range []string{"", "   ", filepath.Join("relative", "state")} {
-		if _, err := OpenDirectory(directory, Config{}); err == nil {
-			t.Fatalf("OpenDirectory(%q) unexpectedly succeeded", directory)
+		if _, err := OpenDirectory(t, directory, Config{}); err == nil {
+			t.Fatalf("OpenDirectory(t, %q) unexpectedly succeeded", directory)
 		}
 	}
 	if _, err := Open(nil, Config{}); err == nil {

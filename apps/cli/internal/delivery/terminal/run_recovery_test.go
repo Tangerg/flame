@@ -16,7 +16,7 @@ import (
 
 func TestPrepareSessionKeepsExpiredSteerAsARecoveryIssue(t *testing.T) {
 	stateDirectory := t.TempDir()
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +57,7 @@ func TestPrepareSessionKeepsExpiredSteerAsARecoveryIssue(t *testing.T) {
 		Runtime:        runtimefixture.New(),
 		RuntimeProfile: &profile,
 		Workspace:      workspace,
-		OpenWorkbench:  persistentTestWorkbench(stateDirectory),
+		OpenWorkbench:  persistentTestWorkbench(t, stateDirectory),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -90,7 +90,7 @@ func TestRestartKeepsEveryStartupNoticeVisible(t *testing.T) {
 	profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
 	host, stop, _ := runUIFromConfig(t, Config{
 		Runtime: runtimefixture.New(), RuntimeProfile: &profile, Workspace: "/tmp/flame-cli-test",
-		SessionID: "ses_demo_1", OpenWorkbench: persistentTestWorkbench(stateDirectory),
+		SessionID: "ses_demo_1", OpenWorkbench: persistentTestWorkbench(t, stateDirectory),
 		PluginSources: []extensions.Source{testPluginSource{Plugins: []extensions.Plugin{broken}}},
 	})
 	showsPlain(t, host, "steer sent before restart was refused")
@@ -100,7 +100,7 @@ func TestRestartKeepsEveryStartupNoticeVisible(t *testing.T) {
 
 func stageSteerRuntimeWillRefuse(t *testing.T, stateDirectory string) {
 	t.Helper()
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +138,7 @@ func TestPrepareSessionMergesInitialPromptAfterConfirmedRollbackRecovery(t *test
 		t.Fatal(err)
 	}
 	stateDirectory := t.TempDir()
-	store, err := openTestWorkbench(stateDirectory)
+	store, err := openTestWorkbench(t, stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,7 +171,7 @@ func TestPrepareSessionMergesInitialPromptAfterConfirmedRollbackRecovery(t *test
 		Runtime:        runtime,
 		SessionID:      created.ID,
 		Workspace:      workspace,
-		OpenWorkbench:  persistentTestWorkbench(stateDirectory),
+		OpenWorkbench:  persistentTestWorkbench(t, stateDirectory),
 		InitialPrompt:  "from argv",
 	})
 	if err != nil {

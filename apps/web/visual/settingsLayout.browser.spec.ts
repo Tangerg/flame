@@ -279,11 +279,11 @@ test("MCP fields retain visible labels after entering values", async ({ page }) 
   await panel.getByRole("textbox", { name: "Server name", exact: true }).fill("Desktop tools");
   await panel.getByRole("textbox", { name: "Command", exact: true }).fill("npx");
   await panel
-    .getByRole("textbox", { name: "Arguments — one per line", exact: true })
-    .fill("-y\nserver");
+    .getByRole("textbox", { name: "Arguments (JSON array)", exact: true })
+    .fill('["-y", "server"]');
   await panel
-    .getByRole("textbox", { name: "Environment — KEY=value, one per line", exact: true })
-    .fill("MODE=desktop");
+    .getByRole("textbox", { name: "Environment (JSON object)", exact: true })
+    .fill('{"MODE":"desktop"}');
   await expect(panel.getByText("Server name", { exact: true })).toBeVisible();
   await expect(panel.getByText("Command", { exact: true })).toBeVisible();
   await expect(

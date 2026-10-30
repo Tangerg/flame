@@ -42,7 +42,7 @@ type agentMemory interface {
 	PendingLedger(ctx context.Context, project string, state agentmemory.State, limit int) ([]agentmemory.LedgerFact, error)
 	State(ctx context.Context, project string) (agentmemory.State, error)
 	PublishGeneration(ctx context.Context, publication agentmemory.Publication) (bool, error)
-	Items(ctx context.Context, scope agentmemory.Scope, project string) ([]agentmemory.Item, error)
+	GenerationItems(ctx context.Context, project string) ([]agentmemory.Item, error)
 }
 
 type Conversation struct {
@@ -144,7 +144,7 @@ func (m *MemoryConsolidator) maybeCurate(ctx context.Context, project string, no
 	if len(pending) == 0 {
 		return errors.New("memory curation: pending ledger cannot fit model input envelope")
 	}
-	current, err := m.currentMemory(ctx, project)
+	current, observed, err := m.currentMemory(ctx, project)
 	if err != nil {
 		return fmt.Errorf("memory curation: load current items: %w", err)
 	}
@@ -156,7 +156,7 @@ func (m *MemoryConsolidator) maybeCurate(ctx context.Context, project string, no
 		return fmt.Errorf("memory curation: generated %d estimated tokens; limit is %d", tokens, m.policy.maxTokens)
 	}
 	through := pending[len(pending)-1].Sequence
-	publication, err := agentmemory.NewPublication(project, state, through, parseMemoryFacts(content), now)
+	publication, err := agentmemory.NewPublication(project, state, through, observed, parseMemoryFacts(content), now)
 	if err != nil {
 		return fmt.Errorf("memory curation: prepare publication through watermark %d: %w", through, err)
 	}
@@ -171,14 +171,15 @@ func (m *MemoryConsolidator) maybeCurate(ctx context.Context, project string, no
 }
 
 // Each fold needs the preceding generation so new ledger facts cannot erase retained context.
-func (m *MemoryConsolidator) currentMemory(ctx context.Context, project string) (string, error) {
-	items, err := m.memory.Items(ctx, agentmemory.ScopeProject, project)
+func (m *MemoryConsolidator) currentMemory(ctx context.Context, project string) (string, []agentmemory.Item, error) {
+	items, err := m.memory.GenerationItems(ctx, project)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	var b strings.Builder
+	var observed []agentmemory.Item
 	for _, item := range items {
-		if item.Origin() != agentmemory.OriginAuto {
+		if item.Origin() != agentmemory.OriginAuto || item.Status() == agentmemory.StatusRejected {
 			continue
 		}
 		lineBytes := len(item.Content()) + 2
@@ -193,8 +194,9 @@ func (m *MemoryConsolidator) currentMemory(ctx context.Context, project string) 
 		}
 		b.WriteString("- ")
 		b.WriteString(item.Content())
+		observed = append(observed, item)
 	}
-	return b.String(), nil
+	return b.String(), observed, nil
 }
 
 // Only a whole-fact prefix may advance the watermark, leaving every omitted fact pending.
@@ -250,7 +252,8 @@ ordered from most important to least important, without a preamble or code fence
 
 func (m *MemoryConsolidator) askForCuration(ctx context.Context, current string, pending []agentmemory.LedgerFact) (string, error) {
 	systemPrompt := `You curate a coding agent's project memory from an immutable fact ledger.
-Return the complete replacement set of memory items, not a patch.
+Return the complete replacement set for the supplied memory and new ledger facts,
+not a patch. Retained facts outside this input remain unchanged.
 
 Merge duplicates, resolve newer facts over obsolete older ones, retain durable
 commands/preferences/decisions/gotchas, and discard transient details. Treat

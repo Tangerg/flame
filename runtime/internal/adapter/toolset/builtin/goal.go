@@ -10,13 +10,14 @@ import (
 	"strings"
 	"time"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
 	goalstate "github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/samber/lo"
 )
@@ -34,16 +35,16 @@ stop reason, accumulated usage, model selection, and timestamps.
 Returns goal=null when no Goal exists. Use this before creating a Goal when its
 current state is uncertain.`
 
-const reportDescription = `Report the terminal outcome of the autonomous Goal you are currently pursuing.
+var reportDescription = fmt.Sprintf(`Report the terminal outcome of the autonomous Goal you are currently pursuing.
 
 Call this only from an autonomous Goal Run:
-  - outcome="completed" only when the entire objective is achieved and verified;
-  - outcome="blocked" only when progress genuinely requires user input or an
+  - outcome="%s" only when the entire objective is achieved and verified;
+  - outcome="%s" only when progress genuinely requires user input or an
     external state change, with a concrete reason.
 
 Do not report completion for a plan, partial result, intention, or because one
 Run ended. While no terminal outcome is reported, the Goal loop supplies the
-next Run automatically.`
+next Run automatically.`, goals.OutcomeCompleted, goals.OutcomeBlocked)
 
 type createArgs struct {
 	Objective string `json:"objective" jsonschema:"required,minLength=1" jsonschema_description:"The complete end state to achieve autonomously, in natural language."`
@@ -52,8 +53,8 @@ type createArgs struct {
 type getArgs struct{}
 
 type reportArgs struct {
-	Outcome goals.Outcome `json:"outcome" jsonschema:"required,enum=completed,enum=blocked" jsonschema_description:"completed = the whole objective is achieved and verified; blocked = progress requires the user or an external state change."`
-	Reason  *string       `json:"reason,omitzero" jsonschema_description:"Concrete blocker and what must change. Required for blocked; omit for completed."`
+	Outcome goals.Outcome `json:"outcome" jsonschema:"required" jsonschema_description:"The terminal outcome described by this Tool's reporting contract."`
+	Reason  *string       `json:"reason,omitzero" jsonschema_description:"Concrete blocker and what must change. Required when reporting a blocker; omit when reporting completion."`
 }
 
 // GoalReader is get_goal's complete consumer view.
@@ -111,7 +112,7 @@ func NewCreate(starter goalStarter) (toolcontract.Tool, error) {
 		return nil, nil
 	}
 	return toolcontract.NewFunc[createArgs, goalResult](
-		toolcontract.FuncConfig{Name: string(tool.CreateGoal), Description: createDescription},
+		toolcontract.FuncConfig{Name: string(builtincontract.CreateGoal), Description: createDescription},
 		(&creator{goals: starter}).create,
 	)
 }
@@ -122,7 +123,7 @@ func NewGet(reader GoalReader) (toolcontract.Tool, error) {
 		return nil, nil
 	}
 	return toolcontract.NewFunc[getArgs, goalResult](
-		toolcontract.FuncConfig{Name: string(tool.GetGoal), Description: getDescription},
+		toolcontract.FuncConfig{Name: string(builtincontract.GetGoal), Description: getDescription},
 		(&getter{goals: reader}).get,
 	)
 }
@@ -133,7 +134,7 @@ func NewReport(reporter GoalOutcomeReporter) (toolcontract.Tool, error) {
 		return nil, nil
 	}
 	return toolcontract.NewFunc[reportArgs, string](
-		toolcontract.FuncConfig{Name: string(tool.ReportGoalOutcome), Description: reportDescription},
+		toolcontract.FuncConfig{Name: string(builtincontract.ReportGoalOutcome), Description: reportDescription},
 		(&outcomeReporter{goals: reporter}).report,
 	)
 }
