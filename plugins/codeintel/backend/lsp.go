@@ -8,7 +8,6 @@ import (
 	"slices"
 	"strings"
 
-	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/plugins/codeintel/internal/analyzer"
 	toolcontract "github.com/Tangerg/scope/core/tool"
