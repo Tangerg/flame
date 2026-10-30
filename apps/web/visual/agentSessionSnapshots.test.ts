@@ -154,15 +154,15 @@ describe("the visual agent fixtures", () => {
     expect(JSON.parse(call.result!)).toEqual(JSON.parse(recorded.tool.result as string));
   });
 
-  it.each([
-    ["tool-search", "item_search_glob", "runtime/**/*_test.go"],
-    ["tool-remote", "item_remote_web_search", "sqlite wal checkpoint starvation"],
-  ] as const)("retains the searched object in %s summaries", (state, id, query) => {
-    const view = projectAgentSessionSnapshot(
-      projectRuntimeAgentSnapshot(RUNTIME_AGENT_SESSION_SNAPSHOTS[state]),
-    );
-    expect(view.toolCalls[id]?.fn).toBe(query);
-  });
+  it.each([["tool-search", "item_search_glob", "runtime/**/*_test.go"]] as const)(
+    "retains the searched object in %s summaries",
+    (state, id, query) => {
+      const view = projectAgentSessionSnapshot(
+        projectRuntimeAgentSnapshot(RUNTIME_AGENT_SESSION_SNAPSHOTS[state]),
+      );
+      expect(view.toolCalls[id]?.fn).toBe(query);
+    },
+  );
 
   it("retains each recorded delegation's purpose in its projected label", () => {
     const snapshot = RUNTIME_AGENT_SESSION_SNAPSHOTS.delegated;

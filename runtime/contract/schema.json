@@ -9205,8 +9205,7 @@
       "enum": [
         "search",
         "patch",
-        "command",
-        "webSearch"
+        "command"
       ]
     },
     "ResumeRunRequest": {
@@ -12297,9 +12296,7 @@
         "edit",
         "read",
         "search",
-        "web",
-        "task",
-        "unknown"
+        "task"
       ]
     },
     "ToolInvocation": {
@@ -12319,7 +12316,10 @@
           "type": "string",
           "pattern": "\\S"
         },
-        "result": {}
+        "result": {},
+        "resultShape": {
+          "$ref": "#/$defs/ResultShape"
+        }
       },
       "required": [
         "arguments",

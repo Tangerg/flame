@@ -18,8 +18,6 @@ export interface ToolMetaItem {
   tone: ToolMetaTone;
 }
 
-const GENERIC_VERB_ID = "generic";
-
 const TOOL_DETAIL_KEYS: ReadonlyArray<{ key: string; kind: ToolDetail["kind"] }> = [
   { key: "path", kind: "path" },
   { key: "query", kind: "machine" },
@@ -30,16 +28,16 @@ const TOOL_DETAIL_KEYS: ReadonlyArray<{ key: string; kind: ToolDetail["kind"] }>
 export function toolIntent(t: Translate, tool: ToolCall): ToolIntent {
   const labelKey = toolVerbId(tool.name);
   const tense = tool.status === "running" ? "doing" : tool.status === "ok" ? "done" : "action";
-  const verb: ToolDetail = {
-    kind: "prose",
-    value: t(`tool.${tense}.${labelKey ?? GENERIC_VERB_ID}`),
-  };
+  // A tool outside the built-in vocabulary names itself; the host has no verb
+  // for another owner's tool.
+  const verb: ToolDetail =
+    labelKey === undefined
+      ? { kind: "machine", value: tool.name }
+      : { kind: "prose", value: t(`tool.${tense}.${labelKey}`) };
   const command = text(tool.command);
   const described = command !== undefined && tool.fn !== command.value;
   const argument: ToolDetail | undefined =
-    tool.fn === tool.name && labelKey !== undefined
-      ? undefined
-      : { kind: tool.fnKind ?? "machine", value: tool.fn };
+    tool.fn === tool.name ? undefined : { kind: tool.fnKind ?? "machine", value: tool.fn };
   const label = described ? { kind: "prose" as const, value: tool.fn } : verb;
   const parsed = parseToolArgs(tool.args);
   const detail =
@@ -53,8 +51,7 @@ export function toolMetaItems(t: Translate, tool: ToolCall): ToolMetaItem[] {
     items.push({ id: "files", label: t("tool.meta.files", { count: tool.files }), tone: "muted" });
   }
   if (tool.hits != null) {
-    const found = tool.category === "web" ? "tool.meta.results" : "tool.meta.matches";
-    items.push({ id: "hits", label: t(found, { count: tool.hits }), tone: "muted" });
+    items.push({ id: "hits", label: t("tool.meta.matches", { count: tool.hits }), tone: "muted" });
   }
   if (tool.range != null) {
     items.push({ id: "range", label: `L${tool.range.start}-${tool.range.end}`, tone: "muted" });

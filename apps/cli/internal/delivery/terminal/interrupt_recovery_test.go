@@ -10,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
+	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/oolong/core/input"
 )
@@ -52,7 +53,7 @@ func (i invalidEventAfterInterruptRuntime) StartRun(
 func TestStreamFailureRetiresTheObsoleteInterruptProjection(t *testing.T) {
 	approval := func(arguments bool) conversation.Approval {
 		call := &conversation.ToolCall{
-			Kind: protocol.ToolCategoryShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning,
+			Kind: builtin.CategoryShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning,
 		}
 		if arguments {
 			call.ArgumentsJSON = []byte(`{"command":"go test ./..."}`)
@@ -138,7 +139,7 @@ func TestPendingResumePersistenceFailureReopensTheInterruptForRetry(t *testing.T
 			Interrupts: []conversation.Interrupt{conversation.Approval{
 				ItemID: "approval_resume_persistence", Title: "Persist before resuming",
 				Tool: &conversation.ToolCall{
-					Kind: protocol.ToolCategoryShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning,
+					Kind: builtin.CategoryShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning,
 				},
 			}},
 			Continue: func(provided []conversation.InterruptAnswer) []runtimefixture.Step {

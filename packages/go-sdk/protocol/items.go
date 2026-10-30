@@ -3,6 +3,8 @@ package protocol
 import (
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/builtin"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 )
 
@@ -288,30 +290,15 @@ type QuestionOption struct {
 //     accumulation as the source of truth.
 //   - Tool-level failure does NOT go in Result — it rides the toolCall
 //     Item's Error + status:"incomplete".
-//
-// ToolCategory is a tool's presentation grouping, projected from its identity so
-// every client renders the same tool the same way. Plugin and MCP tools carry
-// no runtime-owned category and present as unknown.
-//
-//flame:enum
-type ToolCategory string
-
-const (
-	ToolCategoryShell   ToolCategory = "shell"
-	ToolCategoryEdit    ToolCategory = "edit"
-	ToolCategoryRead    ToolCategory = "read"
-	ToolCategorySearch  ToolCategory = "search"
-	ToolCategoryWeb     ToolCategory = "web"
-	ToolCategoryTask    ToolCategory = "task"
-	ToolCategoryUnknown ToolCategory = "unknown"
-)
-
 type ToolInvocation struct {
 	// ArgumentsText is the verbatim rejected input. When present, Arguments is an empty object.
-	ArgumentsText string         `json:"argumentsText,omitempty"`
-	Name          string         `json:"name"`               // stable tool identity; MCP names are authored by mcpserver.ToolName
-	Category      ToolCategory   `json:"category,omitempty"` // presentation grouping owned by the runtime presenter
-	Arguments     map[string]any `json:"arguments"`          // parsed JSON object (always present; never a JSON string)
+	ArgumentsText string `json:"argumentsText,omitempty"`
+	Name          string `json:"name"` // stable tool identity; MCP names are authored by mcpserver.ToolName
+	// Category and ResultShape are the built-in tool's declared presentation;
+	// other tools carry neither, and clients render their results verbatim.
+	Category    builtin.ToolCategory  `json:"category,omitempty"`
+	ResultShape extension.ResultShape `json:"resultShape,omitempty"`
+	Arguments   map[string]any        `json:"arguments"` // parsed JSON object (always present; never a JSON string)
 	// Result is absent until the call settles. A settled call that produced an
 	// explicit empty object or array still carries it: omitzero drops only the
 	// absent value, so "no result yet" stays distinct from "an empty result".

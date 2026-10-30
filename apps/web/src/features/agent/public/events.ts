@@ -1,3 +1,4 @@
+import { type ResultShape } from "@/foundation/protocolValues.generated";
 import { type ItemStatus as AgentItemStatus } from "@/foundation/protocolValues.generated";
 export type { AgentItemStatus };
 import { type ApprovalDecision } from "@/features/agent/domain/hitl";
@@ -42,6 +43,7 @@ export interface AgentToolInvocation {
   argumentsText?: string;
   name: string;
   category?: ToolCategory;
+  resultShape?: ResultShape;
   arguments: Record<string, unknown>;
   result?: unknown;
 }

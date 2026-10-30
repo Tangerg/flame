@@ -24,7 +24,7 @@ func TestProjectToolPreservesStructuredDetails(t *testing.T) {
 	finished := started.Add(2 * time.Second)
 	tool, err := projectTool(toolProjection{
 		invocation: &protocol.ToolInvocation{
-			Name: "shell", Category: protocol.ToolCategoryShell, Arguments: map[string]any{"command": "go test ./..."},
+			Name: "shell", Category: builtin.CategoryShell, Arguments: map[string]any{"command": "go test ./..."},
 			Result: map[string]any{"output": "ok", "exitCode": jsonv1.Number("0")},
 		}, status: protocol.ItemStatusCompleted, safety: protocol.SafetyClassExec,
 		startedAt: started, finishedAt: finished, durationMillis: &duration,
@@ -32,7 +32,7 @@ func TestProjectToolPreservesStructuredDetails(t *testing.T) {
 	if err != nil {
 		t.Fatalf("projectTool: %v", err)
 	}
-	if tool.Kind != protocol.ToolCategoryShell || tool.Command != "go test ./..." || tool.Output != "ok" ||
+	if tool.Kind != builtin.CategoryShell || tool.Command != "go test ./..." || tool.Output != "ok" ||
 		tool.Safety != protocol.SafetyClassExec || !tool.StartedAt.Equal(started) || !tool.FinishedAt.Equal(finished) ||
 		tool.ExitCode == nil || *tool.ExitCode != 0 || tool.Duration != 1250*time.Millisecond ||
 		!jsontext.Value(tool.ArgumentsJSON).IsValid() || !bytes.Contains(tool.ArgumentsJSON, []byte(`"command":"go test ./..."`)) ||
@@ -53,7 +53,7 @@ func TestProjectUnknownToolPreservesCompleteArgumentsAndResult(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if tool.Kind != protocol.ToolCategoryUnknown || tool.Name != "mcp__calendar__create_event" ||
+	if tool.Kind != "" || tool.Name != "mcp__calendar__create_event" ||
 		!bytes.Contains(tool.ArgumentsJSON, []byte(`"guests"`)) ||
 		!bytes.Contains(tool.ArgumentsJSON, []byte(`"source":"flame"`)) ||
 		!bytes.Contains(tool.ResultJSON, []byte(`"eventId":"evt_123"`)) {
@@ -92,7 +92,7 @@ func TestProjectToolRetainsDisplayAfterSourceReuse(t *testing.T) {
 		"changes": []any{change}, "recordId": jsonv1.Number("9007199254740993"),
 	}
 	tool, err := projectTool(toolProjection{invocation: &protocol.ToolInvocation{
-		Name: string(builtin.Shell), Category: protocol.ToolCategoryShell, Arguments: arguments, Result: result,
+		Name: string(builtin.Shell), Category: builtin.CategoryShell, Arguments: arguments, Result: result,
 	}, status: protocol.ItemStatusCompleted})
 	if err != nil {
 		t.Fatal(err)
@@ -685,11 +685,11 @@ func TestExplicitSkipSurvivesWireColdAndCompletionProjection(t *testing.T) {
 func TestUnknownToolFieldsRemainUninterpretedMaterial(t *testing.T) {
 	arguments := map[string]any{"command": "a schema label", "path": "not a filesystem target", "query": "metadata", "url": "an opaque key", "description": "a stored value"}
 	result := map[string]any{"output": "stored output metadata", "exitCode": 7, "changes": []any{map[string]any{"path": "a record key"}}, "wide": jsonv1.Number("9007199254740993")}
-	call, err := projectTool(toolProjection{status: protocol.ItemStatusCompleted, invocation: &protocol.ToolInvocation{Name: "custom.inspect", Category: protocol.ToolCategoryUnknown, Arguments: arguments, Result: result}})
+	call, err := projectTool(toolProjection{status: protocol.ItemStatusCompleted, invocation: &protocol.ToolInvocation{Name: "custom.inspect", Arguments: arguments, Result: result}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if call.Command != "" || call.Path != "" || call.Query != "" || call.URL != "" || call.ExitCode != nil || call.Summary != "custom.inspect" {
+	if call.Command != "" || call.Path != "" || call.Query != "" || call.ExitCode != nil || call.Summary != "custom.inspect" {
 		t.Fatalf("unknown material acquired tool semantics: %+v", call)
 	}
 	for _, fragment := range []string{`"output": "stored output metadata"`, `"exitCode": 7`, `9007199254740993`, `"path": "a record key"`} {
@@ -700,7 +700,7 @@ func TestUnknownToolFieldsRemainUninterpretedMaterial(t *testing.T) {
 	if !bytes.Contains(call.ArgumentsJSON, []byte(`"command":"a schema label"`)) || !bytes.Contains(call.ResultJSON, []byte(`9007199254740993`)) {
 		t.Fatal("unknown tool lost original JSON material")
 	}
-	shadow, err := projectTool(toolProjection{status: protocol.ItemStatusCompleted, invocation: &protocol.ToolInvocation{Name: string(builtin.Shell), Category: protocol.ToolCategoryUnknown, Arguments: arguments, Result: result}})
+	shadow, err := projectTool(toolProjection{status: protocol.ItemStatusCompleted, invocation: &protocol.ToolInvocation{Name: string(builtin.Shell), Arguments: arguments, Result: result}})
 	if err != nil || shadow.Command != "" || shadow.ExitCode != nil || shadow.Output != call.Output {
 		t.Fatalf("an unknown tool borrowed a built-in's name: %+v, %v", shadow, err)
 	}
@@ -710,22 +710,22 @@ func TestBuiltinMaterialConsumesTheProducerContracts(t *testing.T) {
 	zero := 0
 	for _, test := range []struct {
 		name   builtin.Name
-		kind   protocol.ToolCategory
+		kind   builtin.ToolCategory
 		input  any
 		result any
 		assert func(*testing.T, conversation.ToolCall)
 	}{
-		{builtin.Shell, protocol.ToolCategoryShell, builtin.ShellArguments{Command: "printf done", Description: "Run the check"}, builtin.CommandResult{Output: "done", ExitCode: &zero}, func(t *testing.T, call conversation.ToolCall) {
+		{builtin.Shell, builtin.CategoryShell, builtin.ShellArguments{Command: "printf done", Description: "Run the check"}, builtin.CommandResult{Output: "done", ExitCode: &zero}, func(t *testing.T, call conversation.ToolCall) {
 			if call.Command != "printf done" || call.Summary != "Run the check" || call.Output != "done" || call.ExitCode == nil || *call.ExitCode != 0 {
 				t.Fatalf("command projection = %+v", call)
 			}
 		}},
-		{builtin.Read, protocol.ToolCategoryRead, fs.ReadRequest{Path: "main.go"}, fs.ReadResponse{Content: "package main", StartLine: 1, EndLine: 1, TotalLines: 1}, func(t *testing.T, call conversation.ToolCall) {
+		{builtin.Read, builtin.CategoryRead, fs.ReadRequest{Path: "main.go"}, fs.ReadResponse{Content: "package main", StartLine: 1, EndLine: 1, TotalLines: 1}, func(t *testing.T, call conversation.ToolCall) {
 			if call.Path != "main.go" || call.Summary != "main.go" || !strings.Contains(call.Output, "package main") {
 				t.Fatalf("read projection = %+v", call)
 			}
 		}},
-		{builtin.ApplyPatch, protocol.ToolCategoryEdit, map[string]any{"patch": "patch data"}, builtin.PatchResult{Changes: []builtin.AppliedChange{{Path: "next.go", Status: builtin.Moved, From: "old.go"}}}, func(t *testing.T, call conversation.ToolCall) {
+		{builtin.ApplyPatch, builtin.CategoryEdit, map[string]any{"patch": "patch data"}, builtin.PatchResult{Changes: []builtin.AppliedChange{{Path: "next.go", Status: builtin.Moved, From: "old.go"}}}, func(t *testing.T, call conversation.ToolCall) {
 			if call.Path != "next.go" || call.Output != "next.go" || !bytes.Contains(call.ResultJSON, []byte(`"from":"old.go"`)) {
 				t.Fatalf("patch projection = %+v", call)
 			}
@@ -761,9 +761,9 @@ func TestBuiltinMaterialConsumesTheProducerContracts(t *testing.T) {
 // its complete JSON and only lacks typed presentation fields.
 func TestBuiltinMaterialOutsideItsTypedShapeKeepsCompleteJSON(t *testing.T) {
 	for _, invocation := range []protocol.ToolInvocation{
-		{Name: string(builtin.Shell), Category: protocol.ToolCategoryShell, Arguments: map[string]any{"command": 7}},
-		{Name: string(builtin.Shell), Category: protocol.ToolCategoryShell, Arguments: map[string]any{"command": "true"}, Result: map[string]any{"exitCode": "0"}},
-		{Name: string(builtin.ApplyPatch), Category: protocol.ToolCategoryEdit, Arguments: map[string]any{}, Result: map[string]any{"changes": []any{map[string]any{"path": 7}}}},
+		{Name: string(builtin.Shell), Category: builtin.CategoryShell, Arguments: map[string]any{"command": 7}},
+		{Name: string(builtin.Shell), Category: builtin.CategoryShell, Arguments: map[string]any{"command": "true"}, Result: map[string]any{"exitCode": "0"}},
+		{Name: string(builtin.ApplyPatch), Category: builtin.CategoryEdit, Arguments: map[string]any{}, Result: map[string]any{"changes": []any{map[string]any{"path": 7}}}},
 	} {
 		call, err := projectTool(toolProjection{status: protocol.ItemStatusCompleted, invocation: &invocation})
 		if err != nil {
@@ -779,7 +779,7 @@ func TestProjectToolKeepsAdmittedFailedMaterialThatDoesNotFitItsExecutableShape(
 	problem := &protocol.ProblemData{Type: "tool_failed", Detail: "command must be text"}
 	tool, err := projectTool(toolProjection{
 		invocation: &protocol.ToolInvocation{
-			Name: string(builtin.Shell), Category: protocol.ToolCategoryShell,
+			Name: string(builtin.Shell), Category: builtin.CategoryShell,
 			Arguments: map[string]any{"command": jsonv1.Number("123"), "description": "observed"},
 		},
 		status: protocol.ItemStatusIncomplete, problem: problem,

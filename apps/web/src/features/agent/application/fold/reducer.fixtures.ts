@@ -27,8 +27,6 @@ const WIRE_TOOL_CATEGORY = new Map<string, ToolCategory>([
   ["glob", "search"],
   ["grep", "search"],
   ["search_tools", "search"],
-  ["web_search", "web"],
-  ["web_fetch", "web"],
   ["ask_user", "task"],
   ["delegate_task", "task"],
   ["create_goal", "task"],
@@ -43,7 +41,7 @@ const WIRE_TOOL_CATEGORY = new Map<string, ToolCategory>([
 ]);
 
 export function toolCategoryForName(name: string) {
-  return WIRE_TOOL_CATEGORY.get(name) ?? "unknown";
+  return WIRE_TOOL_CATEGORY.get(name);
 }
 
 export function stampDurableToolCategory<I extends { type: string }>(item: I): I {

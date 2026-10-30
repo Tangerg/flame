@@ -3,7 +3,6 @@ import {
   commandToolResult,
   patchToolResult,
   searchToolResult,
-  webSearchToolResult,
 } from "@/features/chat/public/tools/toolResult";
 import {
   type AgentItem,
@@ -171,8 +170,6 @@ function rawLabelSource(tool: AgentToolInvocation): { text: string; path: boolea
     }
     case "search":
       return { text: asString(a.query) || asString(a.pattern) || "search", path: false };
-    case "web":
-      return { text: asString(a.query) || "search", path: false };
     case "read": {
       const path = asString(a.path);
       return path === undefined ? { text: tool.name, path: false } : { text: path, path: true };
@@ -239,11 +236,6 @@ function categoryFields(
         hits: asArrayLength(searchToolResult(tool.result)?.hits),
         ...rawResult(tool.result),
       };
-    case "web":
-      return {
-        hits: asArrayLength(webSearchToolResult(tool.result)?.results),
-        ...rawResult(tool.result),
-      };
     case "read": {
       if (tool.name !== "read") break;
       const content = asString(result?.content);
@@ -289,7 +281,7 @@ export function commandString(tool: AgentToolInvocation): string {
 
 export function editableArgs(tool: AgentToolInvocation): Record<string, unknown> | undefined {
   const cat = tool.category;
-  return cat === "unknown" || cat === "task" ? tool.arguments : undefined;
+  return cat === undefined || cat === "task" ? tool.arguments : undefined;
 }
 
 export function projectToolCall(
@@ -302,6 +294,7 @@ export function projectToolCall(
     runId: item.runId,
     name: item.tool.name,
     ...(item.tool.category !== undefined ? { category: item.tool.category } : {}),
+    ...(item.tool.resultShape !== undefined ? { resultShape: item.tool.resultShape } : {}),
     fn: toolLabel(item.tool),
     ...(toolLabelKind(item.tool) === "path" ? { fnKind: "path" as const } : {}),
     // Live starts precede raw argument deltas; durable Items already contain

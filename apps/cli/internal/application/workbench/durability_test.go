@@ -15,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
+	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem/commit"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
@@ -252,7 +253,7 @@ func TestUnconfirmedOpeningAllowsReceiptReadsButFencesDelivery(t *testing.T) {
 			} else {
 				approval := conversation.Approval{
 					RunID: "run_original", ItemID: "approval", Title: "Approve",
-					Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryRead, Name: "read", Status: conversation.ToolRunning},
+					Tool: &conversation.ToolCall{Kind: builtin.CategoryRead, Name: "read", Status: conversation.ToolRunning},
 				}
 				pending := workbench.PendingResume{
 					Command: conversation.ResumeRun{

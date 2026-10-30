@@ -16,6 +16,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
+	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/programtest"
@@ -63,7 +64,7 @@ func TestRetiringSessionStateClearsOnlyTheRetiredSession(t *testing.T) {
 		}
 		approval := conversation.Approval{
 			RunID: sessionID + "_run", ItemID: sessionID + "_approval", Title: "Approve",
-			Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryRead, Name: "read", Path: "README.md", Status: conversation.ToolRunning},
+			Tool: &conversation.ToolCall{Kind: builtin.CategoryRead, Name: "read", Path: "README.md", Status: conversation.ToolRunning},
 		}
 		if stagePendingResumeErr := store.StagePendingResume(sessionID, workbench.PendingResume{
 			Replay: authoring.UnprotectedGuard(),

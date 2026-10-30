@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
+	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
@@ -100,13 +101,13 @@ func TestSessionSnapshotRestoresDurableProjection(t *testing.T) {
 		Session: Session{ID: "ses_1", Status: protocol.SessionStatusWaiting, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 2},
 		Transcript: []Block{
 			{ID: "user_1", RunID: "run_1", Status: BlockStatusCompleted, Kind: BlockUser, Text: "hello"},
-			{ID: "tool_1", RunID: "run_1", Status: BlockStatusRunning, Kind: BlockTool, Tool: &ToolCall{Kind: protocol.ToolCategoryEdit, Name: "edit", Status: ToolRunning}},
+			{ID: "tool_1", RunID: "run_1", Status: BlockStatusRunning, Kind: BlockTool, Tool: &ToolCall{Kind: builtin.CategoryEdit, Name: "edit", Status: ToolRunning}},
 		},
 		Plan: testPlan(t, 3, []protocol.PlanStep{{Description: "inspect", Status: protocol.PlanStatusInProgress}}),
 		Runs: []Run{testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusWaiting})},
 		Interrupts: []Interrupt{Approval{
 			RunID: "run_1", ItemID: "tool_1", Title: "edit", Rememberable: true,
-			Tool: &ToolCall{Kind: protocol.ToolCategoryEdit, Name: "edit", Status: ToolRunning},
+			Tool: &ToolCall{Kind: builtin.CategoryEdit, Name: "edit", Status: ToolRunning},
 		}},
 	}
 	if err := snapshot.Validate(); err != nil {
@@ -192,13 +193,13 @@ func TestSessionSnapshotRestoresAChildOwnedInterrupt(t *testing.T) {
 	})
 	approval := Approval{
 		RunID: child.ID, ItemID: "approval", Title: "Read generated output",
-		Tool: &ToolCall{Kind: protocol.ToolCategoryRead, Name: "read", Status: ToolRunning},
+		Tool: &ToolCall{Kind: builtin.CategoryRead, Name: "read", Status: ToolRunning},
 	}
 	snapshot := SessionSnapshot{
 		Session: Session{ID: "ses_1", Status: protocol.SessionStatusWaiting, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
 		Runs:    []Run{root, child},
 		Transcript: []Block{
-			{ID: "delegate", RunID: root.ID, Status: BlockStatusRunning, Kind: BlockTool, Tool: &ToolCall{Kind: protocol.ToolCategoryTask, Name: "delegate_task", Status: ToolRunning}},
+			{ID: "delegate", RunID: root.ID, Status: BlockStatusRunning, Kind: BlockTool, Tool: &ToolCall{Kind: builtin.CategoryTask, Name: "delegate_task", Status: ToolRunning}},
 			{ID: approval.ItemID, RunID: child.ID, Status: BlockStatusRunning, Kind: BlockTool, Tool: approval.Tool},
 		},
 		Interrupts: []Interrupt{approval},
@@ -319,7 +320,7 @@ func TestSessionSnapshotRejectsLifecycleDrift(t *testing.T) {
 func TestSessionSnapshotRejectsRunningItemsWithoutAnActiveRun(t *testing.T) {
 	snapshot := SessionSnapshot{
 		Session:    Session{ID: "ses_1", Status: protocol.SessionStatusIdle, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo")},
-		Transcript: []Block{{ID: "tool_1", RunID: "run_1", Status: BlockStatusRunning, Kind: BlockTool, Tool: &ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Status: ToolRunning}}},
+		Transcript: []Block{{ID: "tool_1", RunID: "run_1", Status: BlockStatusRunning, Kind: BlockTool, Tool: &ToolCall{Kind: builtin.CategoryShell, Name: "shell", Status: ToolRunning}}},
 	}
 	if err := snapshot.Validate(); err == nil {
 		t.Fatal("idle snapshot with a running item was accepted")

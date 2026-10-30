@@ -14,6 +14,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem/commit"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
@@ -94,7 +95,7 @@ func TestUnavailableInputPreservesOriginalRunResumeAndSteer(t *testing.T) {
 			}
 			approval := conversation.Approval{
 				RunID: "run_resume", ItemID: "item_approval", Title: "Proceed?",
-				Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Status: conversation.ToolRunning},
+				Tool: &conversation.ToolCall{Kind: builtin.CategoryShell, Name: "shell", Status: conversation.ToolRunning},
 			}
 			resume := PendingResume{
 				Command: conversation.ResumeRun{

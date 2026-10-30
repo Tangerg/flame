@@ -13,10 +13,8 @@ const baseKeys = [
   "tools.family.beta",
   "tool.doing.read",
   "tool.doing.write",
-  "tool.doing.generic",
   "tool.done.read",
   "tool.done.write",
-  "tool.done.generic",
   "rpcError.unknown",
   "rpcError.denied",
 ];
@@ -78,10 +76,6 @@ function fixture(t, prefix = "flame-locale-") {
     'export const TOOL_FAMILIES = [{id: "alpha", verbs: [{name: "read"}]}, {id: "beta", verbs: [{name: "write"}]}];',
   );
   source("lib/rpcErrors.ts", 'export const MAPPED_TYPES = ["unknown", "denied"];');
-  source(
-    "features/agent/presentation/toolPresentation.ts",
-    'export const GENERIC_VERB_ID = "generic";',
-  );
   source("features/workspace/views.ts", "export const views = [];");
   return {
     source,

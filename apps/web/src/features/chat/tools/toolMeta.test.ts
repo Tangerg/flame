@@ -15,7 +15,6 @@ const tool: ToolCall = {
   id: "grep-1",
   runId: "root-run",
   name: "notes.inspect",
-  category: "unknown",
   fn: "notes.inspect",
   args,
   safetyClass: "safe",

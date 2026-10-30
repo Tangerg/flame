@@ -19,11 +19,9 @@ export type MessagePhase = "commentary" | "finalAnswer";
 
 export type RememberScopeKind = "session" | "project" | "global";
 
-export type RendererSelectorKind = "toolName" | "resultShape" | "fileExtension";
-
 export type SettingsIntent = "modelProviders" | "mcpServers";
 
-export type ResultShape = "search" | "patch" | "command" | "webSearch";
+export type ResultShape = "search" | "patch" | "command";
 
 export type RestoreType = "history" | "files" | "both";
 
@@ -31,7 +29,7 @@ export type RunStatus = "running" | "waiting" | "finished";
 
 export type SessionStatus = "running" | "waiting" | "idle";
 
-export type ToolCategory = "shell" | "edit" | "read" | "search" | "web" | "task" | "unknown";
+export type ToolCategory = "shell" | "edit" | "read" | "search" | "task";
 
 export type WorkspaceAvailability = "available" | "missing";
 
@@ -45,7 +43,6 @@ export type RecoveryAction =
   | "stop";
 
 export const CHANGE_STATUSES = ["added", "deleted", "modified", "moved"] as const;
-export const RESULT_SHAPES = ["search", "patch", "command", "webSearch"] as const;
 
 export type PluginRendererSelector =
   | { type: "toolName"; name: string }

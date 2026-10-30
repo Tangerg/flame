@@ -3371,7 +3371,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ref: ref(() => CHECKS.WorkspaceRef),
   }, []),
   RestoreType: enumOf(["history", "files", "both"]),
-  ResultShape: enumOf(["search", "patch", "command", "webSearch"]),
+  ResultShape: enumOf(["search", "patch", "command"]),
   ResumeRunRequest: object({
     input: allOf([array(ref(() => CHECKS.ContentBlock)), minItems(1)]),
     responses: array(ref(() => CHECKS.InterruptResponse)),
@@ -4287,13 +4287,14 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ),
   ]),
   ToolAttemptState: enumOf(["started", "completed", "incomplete"]),
-  ToolCategory: enumOf(["shell", "edit", "read", "search", "web", "task", "unknown"]),
+  ToolCategory: enumOf(["shell", "edit", "read", "search", "task"]),
   ToolInvocation: object({
     arguments: record(anything()),
     argumentsText: text(),
     category: ref(() => CHECKS.ToolCategory),
     name: allOf([text(), pattern("\\S")]),
     result: anything(),
+    resultShape: ref(() => CHECKS.ResultShape),
   }, ["arguments", "name"]),
   ToolRef: allOf([
     object({

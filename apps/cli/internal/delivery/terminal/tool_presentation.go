@@ -6,10 +6,12 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/builtin"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/failure"
@@ -65,17 +67,16 @@ type toolPresenter struct {
 
 func defaultToolPresenters() []toolPresenter {
 	return []toolPresenter{
-		kindToolPresenter(protocol.ToolCategoryShell, presentShellTool),
-		kindToolPresenter(protocol.ToolCategoryEdit, presentEditTool),
-		kindToolPresenter(protocol.ToolCategoryRead, presentReadTool),
-		kindToolPresenter(protocol.ToolCategorySearch, presentSearchTool),
-		kindToolPresenter(protocol.ToolCategoryWeb, presentWebTool),
-		kindToolPresenter(protocol.ToolCategoryTask, presentTaskTool),
+		kindToolPresenter(builtin.CategoryShell, presentShellTool),
+		kindToolPresenter(builtin.CategoryEdit, presentEditTool),
+		kindToolPresenter(builtin.CategoryRead, presentReadTool),
+		kindToolPresenter(builtin.CategorySearch, presentSearchTool),
+		kindToolPresenter(builtin.CategoryTask, presentTaskTool),
 		{ID: "generic", Matches: func(conversation.ToolCall) bool { return true }, Present: presentUnknownTool},
 	}
 }
 
-func kindToolPresenter(kind protocol.ToolCategory, present func(conversation.ToolCall) toolPresentation) toolPresenter {
+func kindToolPresenter(kind builtin.ToolCategory, present func(conversation.ToolCall) toolPresentation) toolPresenter {
 	return toolPresenter{
 		ID: string(kind),
 		Matches: func(call conversation.ToolCall) bool {
@@ -117,15 +118,6 @@ func presentSearchTool(call conversation.ToolCall) toolPresentation {
 		Label: toolKindLabel("search", toolPrimary(call.Query, call.Summary)),
 		Sections: toolSections(call, toolSection{
 			Title: "Matches", Style: toolSectionParagraph, Text: call.Output,
-		}),
-	}
-}
-
-func presentWebTool(call conversation.ToolCall) toolPresentation {
-	return toolPresentation{
-		Label: toolKindLabel("web", toolPrimary(call.URL, call.Summary)),
-		Sections: toolSections(call, toolSection{
-			Title: "Response", Style: toolSectionParagraph, Text: call.Output, Links: true,
 		}),
 	}
 }

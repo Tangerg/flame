@@ -8,6 +8,7 @@ import type { FlameClient, MutationPromise } from "@flame/runtime-client";
 import type {
   CallPluginResponse,
   ChangeStatus,
+  ResultShape,
   SafetyClass,
   Session,
   PluginOperationBinding,
@@ -58,6 +59,9 @@ export interface CapturedToolResult {
   readonly fnKind?: "path";
   readonly args: string;
   readonly status: "running" | "ok" | "err" | "denied";
+  // The built-in tool's declared result contract; a renderer chosen for this
+  // shape renders by it and never re-derives one from the result's members.
+  readonly resultShape?: ResultShape;
   readonly added?: number;
   readonly removed?: number;
   readonly changes?: readonly RecordedFileChange[];

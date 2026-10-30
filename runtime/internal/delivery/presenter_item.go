@@ -161,29 +161,9 @@ func presentTool(invocation transcript.ToolInvocation) protocol.ToolInvocation {
 		result = invocation.Result.Any()
 	}
 	return protocol.ToolInvocation{
-		Name: invocation.Name, Category: presentToolCategory(invocation.Name),
+		Name: invocation.Name, Category: builtincontract.Name(invocation.Name).Category(),
+		ResultShape:   builtincontract.Name(invocation.Name).ResultShape(),
 		ArgumentsText: invocation.ArgumentsText, Arguments: invocation.Arguments.Map(), Result: result,
-	}
-}
-
-// presentToolCategory owns the one tool-to-category mapping every client renders
-// from, replacing the copies the CLI and Web each kept. Built-in identities are
-// grouped; plugin and MCP tools stay unknown.
-func presentToolCategory(name string) protocol.ToolCategory {
-	switch builtincontract.Name(name) {
-	case builtincontract.Shell, builtincontract.ReadShellOutput, builtincontract.StopShell:
-		return protocol.ToolCategoryShell
-	case builtincontract.ApplyPatch, builtincontract.Edit:
-		return protocol.ToolCategoryEdit
-	case builtincontract.Read, builtincontract.ReadSkillResource, builtincontract.ReadToolResult:
-		return protocol.ToolCategoryRead
-	case builtincontract.Glob, builtincontract.Grep, builtincontract.SearchTools:
-		return protocol.ToolCategorySearch
-	case builtincontract.AskUser, builtincontract.DelegateTask, builtincontract.CreateGoal, builtincontract.GetGoal, builtincontract.ReportGoalOutcome,
-		builtincontract.LoadSkill, builtincontract.ListSkills, builtincontract.ProposeSkill, builtincontract.EnterPlanMode, builtincontract.ExitPlanMode, builtincontract.SetPlan:
-		return protocol.ToolCategoryTask
-	default:
-		return protocol.ToolCategoryUnknown
 	}
 }
 

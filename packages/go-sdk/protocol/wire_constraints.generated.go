@@ -1265,7 +1265,7 @@ func (p PluginRendererSelector) validateWire() error {
 	return collectWireViolations("PluginRendererSelector",
 		maxLength("name", p.Name, 256),
 		closedEnum("type", string(p.Type), []string{"toolName", "resultShape", "fileExtension"}, false),
-		closedEnum("shape", string(p.Shape), []string{"search", "patch", "command", "webSearch"}, true),
+		closedEnum("shape", string(p.Shape), []string{"search", "patch", "command"}, true),
 		requiredWhen(wireFieldEquals(p, "type", "toolName"), "name", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "toolName"), "shape", p),
 		requiredWhen(wireFieldEquals(p, "type", "resultShape"), "shape", p),
@@ -2326,7 +2326,8 @@ func (s SessionArtifact) validateWire() error {
 func (t ToolInvocation) validateWire() error {
 	return collectWireViolations("ToolInvocation",
 		requiredTextPattern("name", t.Name, "\\S"),
-		closedEnum("category", string(t.Category), []string{"shell", "edit", "read", "search", "web", "task", "unknown"}, true),
+		closedEnum("category", string(t.Category), []string{"shell", "edit", "read", "search", "task"}, true),
+		closedEnum("resultShape", string(t.ResultShape), []string{"search", "patch", "command"}, true),
 	)
 }
 

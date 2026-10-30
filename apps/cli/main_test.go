@@ -27,6 +27,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/delivery/terminal"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
+	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/Tangerg/oolong/ptytest"
@@ -548,7 +549,7 @@ func mixedInterruptPTYInterrupts() []conversation.Interrupt {
 			ItemID: "approval", Title: "Run contract checks", Rememberable: true,
 			RuleHint: "shell:go test ./...",
 			Tool: &conversation.ToolCall{
-				Kind: protocol.ToolCategoryShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning,
+				Kind: builtin.CategoryShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning,
 				ArgumentsJSON: []byte(`{"command":"go test ./...","count":1}`),
 			},
 		},

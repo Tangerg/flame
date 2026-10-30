@@ -12,6 +12,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
+	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -111,7 +112,7 @@ func TestAttachSessionReturnsAuthoritativeStateWhenNoStreamIsRequired(t *testing
 		runtime.Script = func(string) runtimefixture.Script {
 			return runtimefixture.Script{Interrupts: []conversation.Interrupt{conversation.Approval{
 				ItemID: "approval_1", Title: "Run checks",
-				Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning},
+				Tool: &conversation.ToolCall{Kind: builtin.CategoryShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning},
 			}}}
 		}
 		session, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: t.TempDir()})

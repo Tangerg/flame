@@ -204,6 +204,7 @@ function runtimeTool(tool: ToolInvocation): AgentToolInvocation {
     name: tool.name,
     arguments: { ...tool.arguments },
     ...(tool.category !== undefined ? { category: tool.category } : {}),
+    ...(tool.resultShape !== undefined ? { resultShape: tool.resultShape } : {}),
     ...(tool.argumentsText !== undefined ? { argumentsText: tool.argumentsText } : {}),
     ...(tool.result !== undefined ? { result: tool.result } : {}),
   };

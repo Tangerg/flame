@@ -42,7 +42,6 @@ function EditableApproval() {
       resumeRunId="run-1"
       itemId="approval-1"
       toolName="unknown_tool"
-      category="unknown"
       cmd=""
       reason="Review the document."
       args={VERIFICATION_ARGS}

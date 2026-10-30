@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 )
@@ -138,7 +139,7 @@ func TestApprovalAnswerOwnsOnlyApprovedArgumentOverrides(t *testing.T) {
 func runningApproval(itemID, title string) Approval {
 	return Approval{
 		RunID: "run_1", ItemID: itemID, Title: title,
-		Tool: &ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Status: ToolRunning},
+		Tool: &ToolCall{Kind: builtin.CategoryShell, Name: "shell", Status: ToolRunning},
 	}
 }
 

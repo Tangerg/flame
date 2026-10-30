@@ -13,6 +13,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/failure"
+	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -196,7 +197,7 @@ const (
 // are the stable vocabulary renderers use. This keeps provider tool semantics in
 // one adapter rather than rediscovering them in every UI.
 type ToolCall struct {
-	Kind       protocol.ToolCategory
+	Kind       builtin.ToolCategory
 	Name       string
 	Summary    string
 	Status     ToolStatus
@@ -206,7 +207,6 @@ type ToolCall struct {
 	Command    string
 	Path       string
 	Query      string
-	URL        string
 	Output     string
 	// ArgumentsJSON and ResultJSON preserve the complete, normalized JSON
 	// values for generic presenters and machine consumers. Semantic fields such
@@ -243,7 +243,7 @@ func (t ToolCall) Equal(other ToolCall) bool {
 	if t.Kind != other.Kind || t.Name != other.Name || t.Summary != other.Summary ||
 		t.Status != other.Status || t.Safety != other.Safety || !t.StartedAt.Equal(other.StartedAt) ||
 		!t.FinishedAt.Equal(other.FinishedAt) || t.Command != other.Command || t.Path != other.Path ||
-		t.Query != other.Query || t.URL != other.URL || t.Output != other.Output ||
+		t.Query != other.Query || t.Output != other.Output ||
 		t.ArgumentsText != other.ArgumentsText || !bytes.Equal(t.ArgumentsJSON, other.ArgumentsJSON) || !bytes.Equal(t.ResultJSON, other.ResultJSON) ||
 		!failure.Equal(t.Problem, other.Problem) ||
 		t.Diff != other.Diff || t.Duration != other.Duration ||
@@ -259,13 +259,13 @@ func (t ToolCall) Equal(other ToolCall) bool {
 func (t ToolCall) sameInvocation(other ToolCall) bool {
 	return t.Kind == other.Kind && t.Name == other.Name && t.Summary == other.Summary &&
 		t.Command == other.Command && t.Path == other.Path && t.Query == other.Query &&
-		t.URL == other.URL && t.ArgumentsText == other.ArgumentsText && bytes.Equal(t.ArgumentsJSON, other.ArgumentsJSON)
+		t.ArgumentsText == other.ArgumentsText && bytes.Equal(t.ArgumentsJSON, other.ArgumentsJSON)
 }
 
 func (t ToolCall) Validate() error {
 	var problems []error
 	switch t.Kind {
-	case protocol.ToolCategoryUnknown, protocol.ToolCategoryShell, protocol.ToolCategoryEdit, protocol.ToolCategoryRead, protocol.ToolCategorySearch, protocol.ToolCategoryWeb, protocol.ToolCategoryTask:
+	case "", builtin.CategoryShell, builtin.CategoryEdit, builtin.CategoryRead, builtin.CategorySearch, builtin.CategoryTask:
 	default:
 		problems = append(problems, fmt.Errorf("kind %q is invalid", t.Kind))
 	}
@@ -279,7 +279,7 @@ func (t ToolCall) Validate() error {
 	default:
 		problems = append(problems, fmt.Errorf("safety class %q is invalid", t.Safety))
 	}
-	if t.Kind == protocol.ToolCategoryUnknown && strings.TrimSpace(t.Name) == "" {
+	if t.Kind == "" && strings.TrimSpace(t.Name) == "" {
 		problems = append(problems, errors.New("unknown tool has no provider name"))
 	}
 	if t.Status == ToolRunning && t.ExitCode != nil {

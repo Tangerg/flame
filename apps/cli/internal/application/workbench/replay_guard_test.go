@@ -6,6 +6,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -37,7 +38,7 @@ func TestStorePersistsRunAndResumeReplayOwnership(t *testing.T) {
 	resumeGuard := protectedReplayGuard(t, "runtime-a", cancelGuard.Until().Add(time.Minute))
 	approval := conversation.Approval{
 		RunID: "run_2", ItemID: "approval_1", Title: "Proceed?",
-		Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Status: conversation.ToolRunning},
+		Tool: &conversation.ToolCall{Kind: builtin.CategoryShell, Name: "shell", Status: conversation.ToolRunning},
 	}
 	resume := PendingResume{
 		Command: conversation.ResumeRun{

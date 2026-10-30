@@ -2,13 +2,13 @@ package terminal
 
 import (
 	"fmt"
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"image"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
@@ -22,7 +22,7 @@ func TestReaderKeepsToolContentThatTheInlineBlockSummarizes(t *testing.T) {
 		lines[i] = fmt.Sprintf("contract line %03d", i+1)
 	}
 	call := conversation.ToolCall{
-		Kind: protocol.ToolCategoryShell, Command: "long output", Status: conversation.ToolOK,
+		Kind: builtin.CategoryShell, Command: "long output", Status: conversation.ToolOK,
 		Output: strings.Join(lines, "\n"),
 	}
 	presentation := blockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
@@ -52,7 +52,7 @@ func TestReaderKeepsToolContentThatTheInlineBlockSummarizes(t *testing.T) {
 func TestReaderLiveTailFollowsOnlyAfterTheReaderMovesToTheBottom(t *testing.T) {
 	presentation := blockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
 	call := conversation.ToolCall{
-		Kind: protocol.ToolCategoryShell, Command: "stream", Status: conversation.ToolRunning,
+		Kind: builtin.CategoryShell, Command: "stream", Status: conversation.ToolRunning,
 		Output: strings.Repeat("initial output row\n", 40),
 	}
 	tool := newToolBlock(presentation, conversation.Block{Kind: conversation.BlockTool, Tool: &call})

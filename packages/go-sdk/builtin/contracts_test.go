@@ -3,6 +3,7 @@ package builtin
 import (
 	json "encoding/json/v2"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -42,5 +43,19 @@ func TestShellSchemaStatesTheAutoBackgroundDefault(t *testing.T) {
 	want := "Defaults to " + strconv.Itoa(ShellAutoBackgroundSeconds) + "."
 	if !strings.Contains(field.Tag.Get("jsonschema_description"), want) {
 		t.Fatalf("auto-background description does not state %q", want)
+	}
+}
+
+func TestEveryBuiltinDeclaresItsPresentation(t *testing.T) {
+	for _, name := range Names() {
+		if !slices.Contains(name.Category().Values(), string(name.Category())) {
+			t.Errorf("%s has no presentation category", name)
+		}
+		if shape := name.ResultShape(); shape != "" && !shape.Valid() {
+			t.Errorf("%s declares unknown result shape %q", name, shape)
+		}
+	}
+	if len(presentations) != len(Names()) {
+		t.Fatal("presentation table names a tool outside the built-in set")
 	}
 }

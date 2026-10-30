@@ -15,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
+	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -457,7 +458,7 @@ func TestExecuteResumesTheCompleteTreeAfterItsRootSuspends(t *testing.T) {
 					ID: "run_child_" + suffix, SessionID: session.ID, Lineage: lineage,
 					Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_child_" + suffix,
 				}
-				tool := &conversation.ToolCall{Kind: protocol.ToolCategoryRead, Name: "read", Status: conversation.ToolRunning}
+				tool := &conversation.ToolCall{Kind: builtin.CategoryRead, Name: "read", Status: conversation.ToolRunning}
 				block := conversation.Block{ID: "item_approval_" + suffix, RunID: child.ID, Status: conversation.BlockStatusRunning, Kind: conversation.BlockTool, Tool: tool}
 				approval := conversation.Approval{RunID: child.ID, ItemID: block.ID, Title: "Inspect " + suffix, Tool: tool}
 				initial = append(initial,

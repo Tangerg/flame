@@ -140,7 +140,6 @@ type toolFrame struct {
 	Command       string                `json:"command,omitzero"`
 	Path          string                `json:"path,omitzero"`
 	Query         string                `json:"query,omitzero"`
-	URL           string                `json:"url,omitzero"`
 	Output        string                `json:"output,omitzero"`
 	ArgumentsText string                `json:"argumentsText,omitzero"`
 	Arguments     jsontext.Value        `json:"arguments,omitzero"`
@@ -475,7 +474,6 @@ func encodeTool(tool *conversation.ToolCall) *toolFrame {
 		Command:       tool.Command,
 		Path:          tool.Path,
 		Query:         tool.Query,
-		URL:           tool.URL,
 		Output:        tool.Output,
 		Arguments:     jsontext.Value(tool.ArgumentsJSON),
 		ArgumentsText: tool.ArgumentsText,

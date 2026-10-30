@@ -1,5 +1,5 @@
 import { type RecordedFileChange } from "@flame/component-sdk";
-import { CHANGE_STATUSES, type ResultShape } from "@/foundation/protocolValues.generated";
+import { CHANGE_STATUSES } from "@/foundation/protocolValues.generated";
 import { isJSONNumber, parseJSON, projectNumber } from "@qimu/sdk/json";
 
 export interface CommandResult {
@@ -13,10 +13,6 @@ export interface PatchResult {
 
 export interface SearchResult {
   hits: unknown[];
-}
-
-export interface WebSearchResult {
-  results: unknown[];
 }
 
 function readToolResultObject(value: unknown): Record<string, unknown> | undefined {
@@ -95,25 +91,4 @@ export function commandToolResult(raw: unknown): CommandResult | undefined {
     ...(output === undefined ? {} : { output }),
     ...(exitCode === undefined ? {} : { exitCode }),
   };
-}
-
-export function webSearchToolResult(raw: unknown): WebSearchResult | undefined {
-  const value = readToolResultObject(raw);
-  return Array.isArray(value?.results) ? { results: value.results } : undefined;
-}
-
-const RESULT_SHAPE_MATCHERS = {
-  search: (value) => Array.isArray(value.hits),
-  patch: (value) => Array.isArray(value.changes),
-  webSearch: (value) => Array.isArray(value.results),
-  command: (value) => typeof value.output === "string",
-} satisfies Record<ResultShape, (value: Record<string, unknown>) => boolean>;
-
-export function toolResultShape(raw: unknown): ResultShape | undefined {
-  const value = readToolResultObject(raw);
-  if (!value) return undefined;
-  for (const [shape, matches] of Object.entries(RESULT_SHAPE_MATCHERS)) {
-    if (matches(value)) return shape as ResultShape;
-  }
-  return undefined;
 }

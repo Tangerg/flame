@@ -5,13 +5,14 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 func TestInterruptReviewRecordsEditsAndCommitsInRuntimeOrder(t *testing.T) {
 	approval := conversation.Approval{
 		RunID: "run_1", ItemID: "approval", Title: "Run command", Rememberable: true,
-		Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning},
+		Tool: &conversation.ToolCall{Kind: builtin.CategoryShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning},
 	}
 	question := conversation.Question{
 		RunID: "run_1", ItemID: "question", Title: "Choose target",
@@ -56,7 +57,7 @@ func TestInterruptReviewRecordsEditsAndCommitsInRuntimeOrder(t *testing.T) {
 func TestInterruptReviewRejectsInvalidAnswersAndIncompleteCommit(t *testing.T) {
 	approval := conversation.Approval{
 		RunID: "run_1", ItemID: "approval", Title: "Read file",
-		Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryRead, Name: "read", Path: "README.md", Status: conversation.ToolRunning},
+		Tool: &conversation.ToolCall{Kind: builtin.CategoryRead, Name: "read", Path: "README.md", Status: conversation.ToolRunning},
 	}
 	review, err := newInterruptReview([]conversation.Interrupt{approval})
 	if err != nil {
@@ -73,7 +74,7 @@ func TestInterruptReviewRejectsInvalidAnswersAndIncompleteCommit(t *testing.T) {
 func TestInterruptReviewRestoresACommittedBatchWithoutSharingAnswers(t *testing.T) {
 	approval := conversation.Approval{
 		RunID: "run_1", ItemID: "approval", Title: "Run command", Rememberable: true,
-		Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning},
+		Tool: &conversation.ToolCall{Kind: builtin.CategoryShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning},
 	}
 	question := conversation.Question{
 		RunID: "run_1", ItemID: "question", Title: "Choose target",
@@ -108,7 +109,7 @@ func TestInterruptSummaryDisclosesEditedApprovalArguments(t *testing.T) {
 	t.Parallel()
 	approval := conversation.Approval{
 		RunID: "run_1", ItemID: "approval", Title: "Run command",
-		Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Status: conversation.ToolRunning},
+		Tool: &conversation.ToolCall{Kind: builtin.CategoryShell, Name: "shell", Status: conversation.ToolRunning},
 	}
 	override, err := conversation.ParseToolArgumentOverride([]byte(`{"command":"echo safe"}`))
 	if err != nil {

@@ -8,7 +8,6 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/scope/tools/fs"
 )
 
@@ -17,7 +16,7 @@ import (
 // executable shape (a failed call's observed arguments) keeps its complete
 // ArgumentsJSON and simply has no typed summary.
 func summarizeToolArguments(call *conversation.ToolCall) {
-	if call.Kind == protocol.ToolCategoryUnknown || call.ArgumentsText != "" {
+	if call.Kind == "" || call.ArgumentsText != "" {
 		return
 	}
 	var summary string
@@ -66,7 +65,7 @@ func projectToolResult(call *conversation.ToolCall) error {
 		return err
 	}
 	call.Output = output
-	if call.Kind == protocol.ToolCategoryUnknown {
+	if call.Kind == "" {
 		return nil
 	}
 	switch builtin.Name(call.Name) {

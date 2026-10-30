@@ -288,18 +288,6 @@
       },
       "entry": "io.github.tangerg.flame/components/component.js",
       "export": "RecordedResult"
-    },
-    {
-      "id": "shape-websearch",
-      "title": "webSearch result",
-      "scope": "toolResult",
-      "placement": "toolResultRenderer",
-      "selector": {
-        "type": "resultShape",
-        "shape": "webSearch"
-      },
-      "entry": "io.github.tangerg.flame/components/component.js",
-      "export": "RecordedResult"
     }
   ]
 }

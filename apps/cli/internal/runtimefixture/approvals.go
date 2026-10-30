@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/integration/mcp"
+	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
@@ -188,15 +189,13 @@ func approvalRuleParts(approval conversation.Approval) (tool, subject string) {
 		tool = string(approval.Tool.Kind)
 	}
 	switch approval.Tool.Kind {
-	case protocol.ToolCategoryShell:
+	case builtin.CategoryShell:
 		subject = approval.Tool.Command
-	case protocol.ToolCategoryEdit, protocol.ToolCategoryRead:
+	case builtin.CategoryEdit, builtin.CategoryRead:
 		subject = approval.Tool.Path
-	case protocol.ToolCategorySearch:
+	case builtin.CategorySearch:
 		subject = approval.Tool.Query
-	case protocol.ToolCategoryWeb:
-		subject = approval.Tool.URL
-	case protocol.ToolCategoryUnknown, protocol.ToolCategoryTask:
+	case "", builtin.CategoryTask:
 	}
 	if strings.TrimSpace(subject) == "" {
 		subject = approval.Tool.Summary

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/failure"
+	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -14,7 +15,7 @@ func TestRunEventEqualityUsesDomainValues(t *testing.T) {
 	cost := 0.0
 	approval := Approval{
 		RunID: "run_1", ItemID: "approval_1", Title: "Run command", Rememberable: true,
-		Tool: &ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Status: ToolRunning, Command: "go test ./..."},
+		Tool: &ToolCall{Kind: builtin.CategoryShell, Name: "shell", Status: ToolRunning, Command: "go test ./..."},
 	}
 	question := Question{
 		RunID: "run_1", ItemID: "question_1", Title: "Choose target",
@@ -182,7 +183,7 @@ func TestBlockCloneOwnsAssistantImageBytes(t *testing.T) {
 
 func TestToolCallCloneOwnsRawJSON(t *testing.T) {
 	call := ToolCall{
-		Kind: protocol.ToolCategoryUnknown, Name: "provider_tool", Status: ToolError,
+		Name: "provider_tool", Status: ToolError,
 		ArgumentsJSON: []byte(`{"nested":{"wide":9007199254740993,"exponent":1e+400}}`),
 		Problem:       &protocol.ProblemData{Type: protocol.ProblemRateLimited, RetryAfterSeconds: 2},
 	}
@@ -195,7 +196,7 @@ func TestToolCallCloneOwnsRawJSON(t *testing.T) {
 		t.Fatalf("tool JSON clone aliases source: source=%+v clone=%+v", call, clone)
 	}
 
-	result := ToolCall{Kind: protocol.ToolCategoryUnknown, Name: "provider_tool", Status: ToolOK, ResultJSON: []byte(`{"ok":true}`)}
+	result := ToolCall{Name: "provider_tool", Status: ToolOK, ResultJSON: []byte(`{"ok":true}`)}
 	resultClone := result.Clone()
 	resultClone.ResultJSON[0] = '['
 	if bytes.Equal(result.ResultJSON, resultClone.ResultJSON) || !result.Equal(result.Clone()) {
@@ -205,9 +206,9 @@ func TestToolCallCloneOwnsRawJSON(t *testing.T) {
 
 func TestRunningToolRejectsTerminalTiming(t *testing.T) {
 	for _, call := range []ToolCall{
-		{Kind: protocol.ToolCategoryShell, Status: ToolRunning, Duration: time.Second},
-		{Kind: protocol.ToolCategoryShell, Status: ToolRunning, FinishedAt: time.Now()},
-		{Kind: protocol.ToolCategoryShell, Status: ToolOK, Duration: -time.Millisecond},
+		{Kind: builtin.CategoryShell, Status: ToolRunning, Duration: time.Second},
+		{Kind: builtin.CategoryShell, Status: ToolRunning, FinishedAt: time.Now()},
+		{Kind: builtin.CategoryShell, Status: ToolOK, Duration: -time.Millisecond},
 	} {
 		if err := call.Validate(); err == nil {
 			t.Fatalf("invalid tool timing was accepted: %+v", call)

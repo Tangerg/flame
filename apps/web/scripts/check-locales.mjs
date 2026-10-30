@@ -750,29 +750,16 @@ for (const path of sourceFiles(SRC_DIR)) {
 // and the error copy is `MAPPED_TYPES`. Under the blanket exemption a tool added to that table
 // without copy renders its own key at the reader — `tool.doing.someNewThing` — and a key left
 // behind by a rename is translated into all eight catalogs forever. Both directions are checked
-// here. Each family's fallback is READ from the constant that names it, so renaming the constant
-// cannot quietly turn its key into a dead one.
+// here.
 {
   const read = (path) => readFileSync(join(SRC_DIR, path), "utf8");
   const toolFamiliesSource = read("lib/toolFamilies.ts");
-  const constant = (text, name, where) => {
-    const found = text.match(new RegExp(`${name} = "([\\w-]+)"`))?.[1];
-    if (!found) failures.push(`Rule 16: ${where} no longer declares ${name}`);
-    return found;
-  };
-
   const families = [...toolFamiliesSource.matchAll(/\bid:\s*"([\w-]+)"/g)].map((m) => m[1]);
   const verbs = [...toolFamiliesSource.matchAll(/\{\s*name:\s*"([\w]+)"/g)].map((m) =>
     m[1].replace(/_([a-z])/g, (_, initial) => initial.toUpperCase()),
   );
   const mappedBlock = read("lib/rpcErrors.ts").match(/MAPPED_TYPES[\s\S]*?\];/)?.[0] ?? "";
   const mapped = [...mappedBlock.matchAll(/"([a-z_]+)"/g)].map((m) => m[1]);
-
-  const generic = constant(
-    read("features/agent/presentation/toolPresentation.ts"),
-    "GENERIC_VERB_ID",
-    "toolPresentation.ts",
-  );
 
   const holds = (prefix, produced, label) => {
     // Floor, not a target: a table that read as empty agrees with any catalog at all.
@@ -795,8 +782,8 @@ for (const path of sourceFiles(SRC_DIR)) {
   };
 
   holds("tools.family.", families, "tool families");
-  holds("tool.doing.", [...verbs, generic], "tool verbs while running");
-  holds("tool.done.", [...verbs, generic], "tool verbs once settled");
+  holds("tool.doing.", verbs, "tool verbs while running");
+  holds("tool.done.", verbs, "tool verbs once settled");
   holds("rpcError.", mapped, "error copy");
 }
 

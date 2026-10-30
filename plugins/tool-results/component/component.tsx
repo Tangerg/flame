@@ -361,22 +361,7 @@ function resultContent(tool: CapturedToolResult, t: Translate): ResultContent {
         }
       : { kind: "rows", label: t("caption.result"), rows: sourceRows(source) };
   }
-  if (Array.isArray(result.changes))
-    return { kind: "changes", changes: result.changes.map(record) };
-  if (Array.isArray(result.hits))
-    return {
-      kind: "rows",
-      label: t("caption.matches"),
-      rows: result.hits.map((hit) => {
-        const value = record(hit);
-        return {
-          kind: "located",
-          location: `${text(value.path)}${value.lineNumber === undefined ? "" : `:${text(value.lineNumber)}`}`,
-          body: value.snippet === undefined ? undefined : text(value.snippet),
-        };
-      }),
-    };
-  if (Array.isArray(result.results))
+  if (tool.name === "web_search" && Array.isArray(result.results))
     return {
       kind: "rows",
       label: t("caption.results"),
@@ -392,13 +377,39 @@ function resultContent(tool: CapturedToolResult, t: Translate): ResultContent {
         };
       }),
     };
-  return {
-    kind: "rows",
-    label: t("caption.result"),
-    rows: sourceRows(
-      typeof result.output === "string" ? result.output : source,
-    ),
-  };
+  // A shape-selected result renders by the shape its tool declared; member
+  // names alone never decide what a result means.
+  switch (tool.resultShape) {
+    case "patch":
+      if (Array.isArray(result.changes))
+        return { kind: "changes", changes: result.changes.map(record) };
+      break;
+    case "search":
+      if (Array.isArray(result.hits))
+        return {
+          kind: "rows",
+          label: t("caption.matches"),
+          rows: result.hits.map((hit) => {
+            const value = record(hit);
+            return {
+              kind: "located",
+              location: `${text(value.path)}${value.lineNumber === undefined ? "" : `:${text(value.lineNumber)}`}`,
+              body:
+                value.snippet === undefined ? undefined : text(value.snippet),
+            };
+          }),
+        };
+      break;
+    case "command":
+      if (typeof result.output === "string")
+        return {
+          kind: "rows",
+          label: t("caption.result"),
+          rows: sourceRows(result.output),
+        };
+      break;
+  }
+  return { kind: "rows", label: t("caption.result"), rows: sourceRows(source) };
 }
 
 function rowText(row: Row): string {

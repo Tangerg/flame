@@ -10,6 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
@@ -732,7 +733,7 @@ func TestRuntimeColdReadTracksAndSettlesRunningItems(t *testing.T) {
 	runtime.Script = func(string) Script {
 		return Script{Prelude: []Step{
 			eventStep(0, conversation.BlockStarted{Block: conversation.Block{ID: "answer", Kind: conversation.BlockAssistant}}),
-			eventStep(0, conversation.BlockStarted{Block: conversation.Block{ID: "tool", Kind: conversation.BlockTool, Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Status: conversation.ToolRunning}}}),
+			eventStep(0, conversation.BlockStarted{Block: conversation.Block{ID: "tool", Kind: conversation.BlockTool, Tool: &conversation.ToolCall{Kind: builtin.CategoryShell, Name: "shell", Status: conversation.ToolRunning}}}),
 			finishStep(time.Hour, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}),
 		}}
 	}
@@ -820,7 +821,7 @@ func TestApprovalArgumentOverrideBecomesTheCompletedToolProjection(t *testing.T)
 			Interrupts: []conversation.Interrupt{conversation.Approval{
 				ItemID: "approval", Title: "Run command",
 				Tool: &conversation.ToolCall{
-					Kind: protocol.ToolCategoryShell, Name: "shell", Status: conversation.ToolRunning, ArgumentsJSON: original,
+					Kind: builtin.CategoryShell, Name: "shell", Status: conversation.ToolRunning, ArgumentsJSON: original,
 				},
 			}},
 			Continue: func([]conversation.InterruptAnswer) []Step {
@@ -967,7 +968,7 @@ func drain(t *testing.T, stream conversation.SegmentStream, projection *conversa
 func approvalFixture(itemID, title string) conversation.Approval {
 	return conversation.Approval{
 		ItemID: itemID, Title: title,
-		Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Status: conversation.ToolRunning},
+		Tool: &conversation.ToolCall{Kind: builtin.CategoryShell, Name: "shell", Status: conversation.ToolRunning},
 	}
 }
 

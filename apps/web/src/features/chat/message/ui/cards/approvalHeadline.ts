@@ -12,8 +12,6 @@ export function approvalHeadline(
       return t("approval.what.fileEdit");
     case "search":
       return t("approval.what.search");
-    case "web":
-      return t("approval.what.webSearch");
     case "task":
       return t("approval.what.subagent");
     default:

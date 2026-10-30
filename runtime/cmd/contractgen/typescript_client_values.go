@@ -25,13 +25,12 @@ func newClientValues(set *schemaSet) (string, error) {
 		reflect.TypeFor[protocol.ItemStatus](),
 		reflect.TypeFor[protocol.MessagePhase](),
 		reflect.TypeFor[protocol.RememberScopeKind](),
-		reflect.TypeFor[extension.RendererSelectorKind](),
 		reflect.TypeFor[extension.SettingsIntent](),
 		reflect.TypeFor[extension.ResultShape](),
 		reflect.TypeFor[protocol.RestoreType](),
 		reflect.TypeFor[protocol.RunStatus](),
 		reflect.TypeFor[protocol.SessionStatus](),
-		reflect.TypeFor[protocol.ToolCategory](),
+		reflect.TypeFor[builtin.ToolCategory](),
 		reflect.TypeFor[protocol.WorkspaceAvailability](),
 	} {
 		values, err := clientScalarValues(set, scalar)
@@ -50,12 +49,7 @@ func newClientValues(set *schemaSet) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fmt.Fprintf(&out, "export const CHANGE_STATUSES = [%s] as const;\n", strings.Join(contractgen.QuoteAll(changes), ", "))
-	shapes, err := clientScalarValues(set, reflect.TypeFor[extension.ResultShape]())
-	if err != nil {
-		return "", err
-	}
-	fmt.Fprintf(&out, "export const RESULT_SHAPES = [%s] as const;\n\n", strings.Join(contractgen.QuoteAll(shapes), ", "))
+	fmt.Fprintf(&out, "export const CHANGE_STATUSES = [%s] as const;\n\n", strings.Join(contractgen.QuoteAll(changes), ", "))
 	selector := defName(reflect.TypeFor[protocol.PluginRendererSelector]())
 	if set.defs[selector] == nil {
 		return "", fmt.Errorf("client selector has no schema")

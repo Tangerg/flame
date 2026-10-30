@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
@@ -36,7 +37,7 @@ func TestTranscriptPresenterPanicBecomesAnError(t *testing.T) {
 }
 
 func TestToolPresentersUseOrderedMatchingAndAGenericFallback(t *testing.T) {
-	call := conversation.ToolCall{Kind: protocol.ToolCategoryUnknown, Name: "provider_tool", Summary: "work", Status: conversation.ToolRunning}
+	call := conversation.ToolCall{Name: "provider_tool", Summary: "work", Status: conversation.ToolRunning}
 	presenters := []toolPresenter{
 		{
 			ID:      "specific",
@@ -53,7 +54,7 @@ func TestToolPresentersUseOrderedMatchingAndAGenericFallback(t *testing.T) {
 		t.Fatalf("selected label = %q", presentation.Label)
 	}
 
-	fallback, err := selectToolPresentation(nil, conversation.ToolCall{Kind: protocol.ToolCategoryUnknown, Name: "other", Status: conversation.ToolRunning})
+	fallback, err := selectToolPresentation(nil, conversation.ToolCall{Name: "other", Status: conversation.ToolRunning})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +77,7 @@ func TestToolPresenterPanicsBecomePresentationErrors(t *testing.T) {
 
 func TestRawToolPatchPreservesFileHeadersAndMarkers(t *testing.T) {
 	patch := "diff --git a/one.txt b/one.txt\n--- a/one.txt\n+++ b/one.txt\n@@ -1 +1 @@\n-old one\n+new one\ndiff --git a/two.txt b/two.txt\n--- a/two.txt\n+++ b/two.txt\n@@ -1 +1 @@\n-old two\n+new two\n\\ No newline at end of file"
-	presentation := presentEditTool(conversation.ToolCall{Kind: protocol.ToolCategoryEdit, Diff: patch})
+	presentation := presentEditTool(conversation.ToolCall{Kind: builtin.CategoryEdit, Diff: patch})
 	blocks := renderToolSections(blockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}, presentation.Sections, false)
 	var copied []string
 	for _, block := range blocks {
@@ -92,11 +93,11 @@ func TestRawToolPatchPreservesFileHeadersAndMarkers(t *testing.T) {
 }
 
 func TestToolLabelUsesSemanticKindInsteadOfProviderName(t *testing.T) {
-	call := conversation.ToolCall{Kind: protocol.ToolCategoryShell, Name: "opaque_provider_17", Command: "go test ./...", Summary: "ignored fallback"}
+	call := conversation.ToolCall{Kind: builtin.CategoryShell, Name: "opaque_provider_17", Command: "go test ./...", Summary: "ignored fallback"}
 	if got := toolLabel(call); got != "$ go test ./..." || strings.Contains(got, call.Name) {
 		t.Fatalf("label = %q", got)
 	}
-	call = conversation.ToolCall{Kind: protocol.ToolCategoryUnknown, Name: "custom", Summary: "do work"}
+	call = conversation.ToolCall{Name: "custom", Summary: "do work"}
 	if got := toolLabel(call); got != "custom · do work" {
 		t.Fatalf("unknown label = %q", got)
 	}
@@ -121,12 +122,11 @@ func TestToolKindsBuildSpecializedOolongBlocks(t *testing.T) {
 		call conversation.ToolCall
 		want string
 	}{
-		{name: "shell", call: conversation.ToolCall{Kind: protocol.ToolCategoryShell, Status: conversation.ToolOK, Output: "ok"}, want: "code"},
-		{name: "read", call: conversation.ToolCall{Kind: protocol.ToolCategoryRead, Status: conversation.ToolOK, Path: "main.go", Output: "package main"}, want: "numbered-code"},
-		{name: "edit", call: conversation.ToolCall{Kind: protocol.ToolCategoryEdit, Status: conversation.ToolOK, Path: "a.go", Diff: diff}, want: "code"},
-		{name: "search", call: conversation.ToolCall{Kind: protocol.ToolCategorySearch, Status: conversation.ToolOK, Query: "needle", Output: "a.go:1"}, want: "paragraph"},
-		{name: "web", call: conversation.ToolCall{Kind: protocol.ToolCategoryWeb, Status: conversation.ToolOK, URL: "https://example.com", Output: "https://example.com/result"}, want: "linked-paragraph"},
-		{name: "task", call: conversation.ToolCall{Kind: protocol.ToolCategoryTask, Status: conversation.ToolOK, Summary: "delegate", Output: "done"}, want: "paragraph"},
+		{name: "shell", call: conversation.ToolCall{Kind: builtin.CategoryShell, Status: conversation.ToolOK, Output: "ok"}, want: "code"},
+		{name: "read", call: conversation.ToolCall{Kind: builtin.CategoryRead, Status: conversation.ToolOK, Path: "main.go", Output: "package main"}, want: "numbered-code"},
+		{name: "edit", call: conversation.ToolCall{Kind: builtin.CategoryEdit, Status: conversation.ToolOK, Path: "a.go", Diff: diff}, want: "code"},
+		{name: "search", call: conversation.ToolCall{Kind: builtin.CategorySearch, Status: conversation.ToolOK, Query: "needle", Output: "a.go:1"}, want: "paragraph"},
+		{name: "task", call: conversation.ToolCall{Kind: builtin.CategoryTask, Status: conversation.ToolOK, Summary: "delegate", Output: "done"}, want: "paragraph"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -141,7 +141,7 @@ func TestToolKindsBuildSpecializedOolongBlocks(t *testing.T) {
 
 func TestUnknownToolPresentsCompleteArgumentsAndResult(t *testing.T) {
 	call := conversation.ToolCall{
-		Kind: protocol.ToolCategoryUnknown, Name: "mcp__calendar__create", Status: conversation.ToolOK,
+		Name: "mcp__calendar__create", Status: conversation.ToolOK,
 		ArgumentsJSON: []byte(`{"calendar":"work","guests":["a@example.com"]}`),
 		ResultJSON:    []byte(`{"eventId":"evt_123","accepted":true}`),
 	}
@@ -156,7 +156,7 @@ func TestUnknownToolPresentsCompleteArgumentsAndResult(t *testing.T) {
 
 func TestKnownToolAlsoPresentsCompleteArgumentsAndResult(t *testing.T) {
 	call := conversation.ToolCall{
-		Kind: protocol.ToolCategoryShell, Command: "go test ./...", Status: conversation.ToolOK,
+		Kind: builtin.CategoryShell, Command: "go test ./...", Status: conversation.ToolOK,
 		ArgumentsJSON: []byte(`{"command":"go test ./...","timeoutMs":30000}`),
 		ResultJSON:    []byte(`{"exitCode":0,"truncated":false}`),
 	}
@@ -172,7 +172,7 @@ func TestKnownToolAlsoPresentsCompleteArgumentsAndResult(t *testing.T) {
 func TestToolDetailsPresentSafetyAndLifecycleMetadata(t *testing.T) {
 	started := time.Date(2026, time.August, 12, 9, 0, 0, 0, time.UTC)
 	presentation := presentShellTool(conversation.ToolCall{
-		Kind: protocol.ToolCategoryShell, Command: "go test ./...", Status: conversation.ToolOK,
+		Kind: builtin.CategoryShell, Command: "go test ./...", Status: conversation.ToolOK,
 		Safety: protocol.SafetyClassExec, StartedAt: started, FinishedAt: started.Add(2 * time.Second),
 	})
 	if len(presentation.Sections) == 0 || presentation.Sections[0].Title != "Execution" ||
@@ -185,7 +185,7 @@ func TestToolDetailsPresentSafetyAndLifecycleMetadata(t *testing.T) {
 
 func TestToolDetailsPreserveStructuredProblems(t *testing.T) {
 	presentation := presentUnknownTool(conversation.ToolCall{
-		Kind: protocol.ToolCategoryUnknown, Name: "provider_tool", Status: conversation.ToolError,
+		Name: "provider_tool", Status: conversation.ToolError,
 		Problem: &protocol.ProblemData{
 			Type:   protocol.ProblemToolFailed,
 			DocURL: "https://docs.example/errors/rate-limit",
@@ -201,7 +201,7 @@ func TestToolDetailsPreserveStructuredProblems(t *testing.T) {
 func TestToolBlockOwnsCompleteToolValues(t *testing.T) {
 	presentation := blockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
 	call := conversation.ToolCall{
-		Kind: protocol.ToolCategoryUnknown, Name: "provider_tool", Status: conversation.ToolOK,
+		Name: "provider_tool", Status: conversation.ToolOK,
 		ArgumentsJSON: []byte(`{"scope":"source"}`), ResultJSON: []byte(`{"status":"source"}`),
 	}
 	block := newToolBlock(presentation, conversation.Block{ID: "tool", Kind: conversation.BlockTool, Tool: &call})
@@ -215,7 +215,7 @@ func TestToolBlockOwnsCompleteToolValues(t *testing.T) {
 
 func TestUpdatingARunningToolPreservesItsDetailChoice(t *testing.T) {
 	presentation := blockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
-	running := conversation.ToolCall{Kind: protocol.ToolCategoryShell, Command: "go test ./...", Status: conversation.ToolRunning}
+	running := conversation.ToolCall{Kind: builtin.CategoryShell, Command: "go test ./...", Status: conversation.ToolRunning}
 	block := newToolBlock(presentation, conversation.Block{ID: "tool", Kind: conversation.BlockTool, Tool: &running})
 	block.ToggleExpanded()
 
@@ -230,7 +230,7 @@ func TestUpdatingARunningToolPreservesItsDetailChoice(t *testing.T) {
 
 func TestToolBlockStreamsOutputWithoutLosingItsDetailChoice(t *testing.T) {
 	presentation := blockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
-	running := conversation.ToolCall{Kind: protocol.ToolCategoryShell, Command: "go test ./...", Status: conversation.ToolRunning}
+	running := conversation.ToolCall{Kind: builtin.CategoryShell, Command: "go test ./...", Status: conversation.ToolRunning}
 	block := newToolBlock(presentation, conversation.Block{ID: "tool", Kind: conversation.BlockTool, Tool: &running})
 	if !block.Expandable() {
 		t.Fatal("running tool was not expandable before its first output")
@@ -252,7 +252,7 @@ func TestToolBlockStreamsOutputWithoutLosingItsDetailChoice(t *testing.T) {
 
 func TestCompletedToolWithoutDetailsCannotExpand(t *testing.T) {
 	presentation := blockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
-	completed := conversation.ToolCall{Kind: protocol.ToolCategoryShell, Command: "true", Status: conversation.ToolOK}
+	completed := conversation.ToolCall{Kind: builtin.CategoryShell, Command: "true", Status: conversation.ToolOK}
 	block := newToolBlock(presentation, conversation.Block{ID: "tool", Kind: conversation.BlockTool, Tool: &completed})
 	if block.Expandable() || block.Expanded() {
 		t.Fatal("detail-free completed tool was expandable")
@@ -273,7 +273,7 @@ func TestCompletedToolWithoutDetailsCannotExpand(t *testing.T) {
 func TestToolBlockDrawsALocaleSafeStatusRailThroughExpandedDetails(t *testing.T) {
 	theme, glyphs := kit.Dark(), kit.ASCII()
 	call := conversation.ToolCall{
-		Kind: protocol.ToolCategoryShell, Command: "go test ./...", Status: conversation.ToolOK, Output: "all packages passed",
+		Kind: builtin.CategoryShell, Command: "go test ./...", Status: conversation.ToolOK, Output: "all packages passed",
 	}
 	block := newToolBlock(blockPresentation{Theme: theme, Glyphs: glyphs, Syntax: highlight.New("github-dark")}, conversation.Block{
 		ID: "test", Kind: conversation.BlockTool, Tool: &call,
@@ -316,7 +316,7 @@ func TestToolStatusVocabularyDoesNotCollideWithRunOutcomes(t *testing.T) {
 		{status: conversation.ToolCanceled, want: "canceled"},
 		{status: conversation.ToolRunning, want: "running"},
 	} {
-		call := conversation.ToolCall{Kind: protocol.ToolCategoryTask, Status: test.status}
+		call := conversation.ToolCall{Kind: builtin.CategoryTask, Status: test.status}
 		block := newToolBlock(presentation, conversation.Block{Kind: conversation.BlockTool, Tool: &call})
 		_, _, status, _ := block.header()
 		if !strings.Contains(status, test.want) || strings.Contains(status, "complete") || strings.Contains(status, "failed") {

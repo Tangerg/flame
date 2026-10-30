@@ -5,6 +5,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -16,7 +17,7 @@ func TestPendingResumePreservesMixedMemberReviewsAcrossRestart(t *testing.T) {
 	}
 	approval := conversation.Approval{
 		RunID: "run_child_a", ItemID: "item_approval", Title: "Approve child",
-		Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Command: "printf approved", Status: conversation.ToolRunning},
+		Tool: &conversation.ToolCall{Kind: builtin.CategoryShell, Name: "shell", Command: "printf approved", Status: conversation.ToolRunning},
 	}
 	question := conversation.Question{
 		RunID: "run_child_b", ItemID: "item_question", Title: "Choose child strategy",

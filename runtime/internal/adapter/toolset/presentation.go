@@ -31,13 +31,14 @@ type PresentationContract struct {
 
 func PresentationContracts() []PresentationContract {
 	var contracts []PresentationContract
-	for name, descriptor := range descriptors() {
-		if descriptor.result.project == nil {
+	for name := range descriptors() {
+		result, ok := resultContractFor(name)
+		if !ok {
 			continue
 		}
-		contract := PresentationContract{ToolName: string(name), ResultType: descriptor.result.resultType}
-		if descriptor.result.enums != nil {
-			contract.EnumValues = descriptor.result.enums()
+		contract := PresentationContract{ToolName: string(name), ResultType: result.resultType}
+		if result.enums != nil {
+			contract.EnumValues = result.enums()
 		}
 		contracts = append(contracts, contract)
 	}
@@ -104,11 +105,15 @@ func isConciseActivityText(value string, maxRunes int) bool {
 // client transcript shape. The second result is optional plain output for
 // clients that render command text separately.
 func (Presenter) Present(ref tool.Ref, arguments tool.Arguments, result tool.Result) (tool.Result, string) {
-	descriptor, ok := descriptorFor(ref)
-	if !ok || descriptor.result.project == nil {
+	name, ok := ref.BuiltIn()
+	if !ok {
 		return result, ""
 	}
-	return descriptor.result.project(arguments, result)
+	contract, ok := resultContractFor(name)
+	if !ok {
+		return result, ""
+	}
+	return contract.project(arguments, result)
 }
 
 func presentCommand(_ tool.Arguments, result tool.Result) (tool.Result, string) {

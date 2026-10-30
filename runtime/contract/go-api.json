@@ -2,6 +2,9 @@
   "packages": [
     {
       "path": "github.com/Tangerg/flame/packages/go-sdk/builtin",
+      "imports": [
+        "github.com/Tangerg/flame/packages/go-sdk/extension"
+      ],
       "constants": [
         {
           "name": "Added",
@@ -17,6 +20,31 @@
           "name": "AskUser",
           "type": "Name",
           "value": "\"ask_user\""
+        },
+        {
+          "name": "CategoryEdit",
+          "type": "ToolCategory",
+          "value": "\"edit\""
+        },
+        {
+          "name": "CategoryRead",
+          "type": "ToolCategory",
+          "value": "\"read\""
+        },
+        {
+          "name": "CategorySearch",
+          "type": "ToolCategory",
+          "value": "\"search\""
+        },
+        {
+          "name": "CategoryShell",
+          "type": "ToolCategory",
+          "value": "\"shell\""
+        },
+        {
+          "name": "CategoryTask",
+          "type": "ToolCategory",
+          "value": "\"task\""
         },
         {
           "name": "CreateGoal",
@@ -210,6 +238,14 @@
           "underlying": "string",
           "methods": [
             {
+              "name": "Category",
+              "signature": "func() ToolCategory"
+            },
+            {
+              "name": "ResultShape",
+              "signature": "func() extension.ResultShape"
+            },
+            {
               "name": "Valid",
               "signature": "func() bool"
             }
@@ -286,6 +322,17 @@
               "name": "AutoBackgroundAfterSeconds",
               "type": "*int",
               "tag": "json:\"auto_background_after_seconds,omitzero\" jsonschema:\"minimum=1\" jsonschema_description:\"Move a foreground command to the background after this many seconds. Defaults to 60.\""
+            }
+          ]
+        },
+        {
+          "name": "ToolCategory",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "Values",
+              "signature": "func() []string"
             }
           ]
         }
@@ -1146,11 +1193,6 @@
           "name": "ResultShapeSearch",
           "type": "ResultShape",
           "value": "\"search\""
-        },
-        {
-          "name": "ResultShapeWebSearch",
-          "type": "ResultShape",
-          "value": "\"webSearch\""
         },
         {
           "name": "ScopeCall",
@@ -4661,6 +4703,7 @@
       "path": "github.com/Tangerg/flame/packages/go-sdk/protocol",
       "imports": [
         "encoding/json/jsontext",
+        "github.com/Tangerg/flame/packages/go-sdk/builtin",
         "github.com/Tangerg/flame/packages/go-sdk/extension",
         "github.com/Tangerg/flame/qimu/portable",
         "github.com/Tangerg/go-sdk/jsonrpc",
@@ -6236,41 +6279,6 @@
           "name": "ToolAttemptStarted",
           "type": "ToolAttemptState",
           "value": "\"started\""
-        },
-        {
-          "name": "ToolCategoryEdit",
-          "type": "ToolCategory",
-          "value": "\"edit\""
-        },
-        {
-          "name": "ToolCategoryRead",
-          "type": "ToolCategory",
-          "value": "\"read\""
-        },
-        {
-          "name": "ToolCategorySearch",
-          "type": "ToolCategory",
-          "value": "\"search\""
-        },
-        {
-          "name": "ToolCategoryShell",
-          "type": "ToolCategory",
-          "value": "\"shell\""
-        },
-        {
-          "name": "ToolCategoryTask",
-          "type": "ToolCategory",
-          "value": "\"task\""
-        },
-        {
-          "name": "ToolCategoryUnknown",
-          "type": "ToolCategory",
-          "value": "\"unknown\""
-        },
-        {
-          "name": "ToolCategoryWeb",
-          "type": "ToolCategory",
-          "value": "\"web\""
         },
         {
           "name": "ToolRefBuiltIn",
@@ -13293,11 +13301,6 @@
           "underlying": "string"
         },
         {
-          "name": "ToolCategory",
-          "kind": "defined",
-          "underlying": "string"
-        },
-        {
           "name": "ToolInvocation",
           "kind": "struct",
           "fields": [
@@ -13313,8 +13316,13 @@
             },
             {
               "name": "Category",
-              "type": "ToolCategory",
+              "type": "builtin.ToolCategory",
               "tag": "json:\"category,omitempty\""
+            },
+            {
+              "name": "ResultShape",
+              "type": "extension.ResultShape",
+              "tag": "json:\"resultShape,omitempty\""
             },
             {
               "name": "Arguments",

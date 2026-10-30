@@ -2119,7 +2119,6 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
         durationMillis: 20,
         tool: {
           name: "genui_ui_present",
-          category: "unknown",
           arguments: GENUI_REPORT,
           result: GENUI_REPORT,
         },

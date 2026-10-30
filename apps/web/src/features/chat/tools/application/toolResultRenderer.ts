@@ -1,6 +1,5 @@
 import { type ToolResultRendererSpec } from "@/features/chat/public/tools/types";
 import { type ToolCall } from "@/features/agent/public/sessionView";
-import { toolResultShape } from "@/features/chat/public/tools/toolResult";
 export function selectToolResultRenderer(
   renderers: readonly ToolResultRendererSpec[],
   tool: ToolCall,
@@ -10,7 +9,7 @@ export function selectToolResultRenderer(
     ({ selector }) => selector.type === "toolName" && selector.name === tool.name,
   );
   if (named.length) return named.length === 1 ? named[0] : undefined;
-  const shape = toolResultShape(tool.result);
+  const shape = tool.resultShape;
   if (!shape) return undefined;
   const shaped = renderers.filter(
     ({ selector }) => selector.type === "resultShape" && selector.shape === shape,

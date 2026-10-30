@@ -7,32 +7,30 @@ import (
 	"time"
 
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
-func TestPresentToolCategoryGroupsBuiltInTools(t *testing.T) {
+// Only built-in tools carry a declared presentation; plugin and MCP tools carry
+// none, whatever their names suggest.
+func TestPresentToolInvocationProjectsTheBuiltinPresentation(t *testing.T) {
 	for _, test := range []struct {
-		name string
-		want protocol.ToolCategory
+		name     string
+		category builtincontract.ToolCategory
+		shape    extension.ResultShape
 	}{
-		{string(builtincontract.Shell), protocol.ToolCategoryShell},
-		{string(builtincontract.StopShell), protocol.ToolCategoryShell},
-		{string(builtincontract.ApplyPatch), protocol.ToolCategoryEdit},
-		{string(builtincontract.Edit), protocol.ToolCategoryEdit},
-		{string(builtincontract.Read), protocol.ToolCategoryRead},
-		{string(builtincontract.Grep), protocol.ToolCategorySearch},
-		{"web_search", protocol.ToolCategoryUnknown},
-		{"web_fetch", protocol.ToolCategoryUnknown},
-		{string(builtincontract.DelegateTask), protocol.ToolCategoryTask},
-		{string(builtincontract.SetPlan), protocol.ToolCategoryTask},
-		{"search_memory", protocol.ToolCategoryUnknown},
-		{"mcp_custom", protocol.ToolCategoryUnknown},
+		{string(builtincontract.Shell), builtincontract.CategoryShell, extension.ResultShapeCommand},
+		{string(builtincontract.ApplyPatch), builtincontract.CategoryEdit, extension.ResultShapePatch},
+		{string(builtincontract.Grep), builtincontract.CategorySearch, extension.ResultShapeSearch},
+		{string(builtincontract.Read), builtincontract.CategoryRead, ""},
+		{"web_search", "", ""},
+		{"search_memory", "", ""},
 	} {
-		if got := presentToolCategory(test.name); got != test.want {
-			t.Errorf("presentToolCategory(%q) = %q, want %q", test.name, got, test.want)
+		presented := presentTool(transcript.ToolInvocation{Name: test.name})
+		if presented.Category != test.category || presented.ResultShape != test.shape {
+			t.Errorf("%s presentation = (%q, %q), want (%q, %q)", test.name, presented.Category, presented.ResultShape, test.category, test.shape)
 		}
 	}
 }

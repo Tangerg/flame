@@ -177,12 +177,8 @@ func projectTool(projection toolProjection) (conversation.ToolCall, error) {
 	if err != nil {
 		return conversation.ToolCall{}, fmt.Errorf("encode tool arguments: %w", err)
 	}
-	category := value.Category
-	if category == "" {
-		category = protocol.ToolCategoryUnknown
-	}
 	tool := conversation.ToolCall{
-		Kind: category, Name: value.Name, Summary: value.Name,
+		Kind: value.Category, Name: value.Name, Summary: value.Name,
 		Safety:    projection.safety,
 		StartedAt: projection.startedAt, FinishedAt: projection.finishedAt,
 	}

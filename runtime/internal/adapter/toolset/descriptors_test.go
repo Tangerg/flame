@@ -219,8 +219,8 @@ func TestDescriptorCatalogMatchesBuiltInTools(t *testing.T) {
 		if descriptor.activityText != "" && !isConciseActivityText(descriptor.activityText, 120) {
 			t.Errorf("built-in identity %q has invalid static activity %q", name, descriptor.activityText)
 		}
-		if (descriptor.result.project == nil) != (descriptor.result.resultType == nil) {
-			t.Errorf("built-in identity %q must pair its result projection with its published type", name)
+		if result, ok := resultContractFor(builtincontract.Name(name)); ok != (builtincontract.Name(name).ResultShape() != "") || ok && (result.project == nil || result.resultType == nil) {
+			t.Errorf("built-in identity %q must pair its declared result shape with a projection and published type", name)
 		}
 		if !existing[name] {
 			unreachable = append(unreachable, name)

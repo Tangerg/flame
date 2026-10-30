@@ -1,6 +1,12 @@
+import { type ToolRef } from "@flame/runtime-client/wire";
+
+// Families group Runtime built-in tools only; a plugin or MCP tool's name is
+// its owner's vocabulary, so the host renders it generically.
+type BuiltinToolName = Extract<ToolRef, { type: "builtIn" }>["name"];
+
 interface ToolFamily {
   id: string;
-  tools: readonly { name: string; icon: string }[];
+  tools: readonly { name: BuiltinToolName; icon: string }[];
 }
 
 export const TOOL_FAMILIES = [
@@ -24,15 +30,7 @@ export const TOOL_FAMILIES = [
     tools: [
       { name: "grep", icon: "text-search" },
       { name: "glob", icon: "folder-search" },
-      { name: "codeintel_lsp", icon: "code" },
-    ],
-  },
-  {
-    id: "network",
-    tools: [
-      { name: "web_search", icon: "web-search" },
-      { name: "web_fetch", icon: "cloud-download" },
-      { name: "web_http_request", icon: "network" },
+      { name: "search_tools", icon: "tool-search" },
     ],
   },
   {
@@ -61,19 +59,7 @@ export const TOOL_FAMILIES = [
   },
   {
     id: "recall",
-    tools: [
-      { name: "search_memory", icon: "memory-search" },
-      { name: "search_tools", icon: "tool-search" },
-      { name: "read_tool_result", icon: "file-output" },
-    ],
-  },
-  {
-    id: "schedules",
-    tools: [
-      { name: "list_schedules", icon: "calendar-clock" },
-      { name: "create_schedule", icon: "calendar-plus" },
-      { name: "delete_schedule", icon: "calendar-x" },
-    ],
+    tools: [{ name: "read_tool_result", icon: "file-output" }],
   },
   {
     id: "goals",

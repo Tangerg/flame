@@ -19,6 +19,7 @@ const tool: ToolCall = {
   id: "t1",
   runId: "r1",
   name: "grep",
+  resultShape: "search",
   fn: "grep",
   args: "{}",
   status: "ok",

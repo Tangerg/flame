@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
@@ -29,15 +30,14 @@ type builtInDescriptor struct {
 	safety        tool.SafetyClass
 	activityText  string
 	activity      activityProjection
-	result        resultProjectionContract
 	orchestration bool
 	outcome       outcomeProjection
 }
 
 var builtInDescriptors = map[builtincontract.Name]builtInDescriptor{
 	builtincontract.Read:              builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Reading file"},
-	builtincontract.Glob:              builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Finding files", result: searchResultContract()},
-	builtincontract.Grep:              builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Searching", result: searchResultContract()},
+	builtincontract.Glob:              builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Finding files"},
+	builtincontract.Grep:              builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Searching"},
 	builtincontract.ReadShellOutput:   builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Reading command output"},
 	builtincontract.ListSkills:        builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Listing Skills"},
 	builtincontract.LoadSkill:         builtInDescriptor{safety: tool.SafetyClassSafe, activity: loadSkillActivity},
@@ -54,9 +54,24 @@ var builtInDescriptors = map[builtincontract.Name]builtInDescriptor{
 	builtincontract.ReportGoalOutcome: builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Reporting a Goal outcome"},
 	builtincontract.ProposeSkill:      builtInDescriptor{safety: tool.SafetyClassSafe, activity: proposeSkillActivity},
 	builtincontract.Edit:              builtInDescriptor{safety: tool.SafetyClassWrite, activityText: "Editing file"},
-	builtincontract.ApplyPatch:        builtInDescriptor{safety: tool.SafetyClassWrite, activityText: "Applying a patch", result: patchResultContract()},
-	builtincontract.Shell:             builtInDescriptor{safety: tool.SafetyClassExec, activity: shellActivity, result: commandResultContract()},
+	builtincontract.ApplyPatch:        builtInDescriptor{safety: tool.SafetyClassWrite, activityText: "Applying a patch"},
+	builtincontract.Shell:             builtInDescriptor{safety: tool.SafetyClassExec, activity: shellActivity},
 	builtincontract.StopShell:         builtInDescriptor{safety: tool.SafetyClassExec, activityText: "Stopping command"},
+}
+
+// resultContractFor binds the projection implementing a built-in's declared
+// result shape; the shape itself is owned by the builtin contract.
+func resultContractFor(name builtincontract.Name) (resultProjectionContract, bool) {
+	switch name.ResultShape() {
+	case extension.ResultShapeCommand:
+		return commandResultContract(), true
+	case extension.ResultShapeSearch:
+		return searchResultContract(), true
+	case extension.ResultShapePatch:
+		return patchResultContract(), true
+	default:
+		return resultProjectionContract{}, false
+	}
 }
 
 func descriptors() iter.Seq2[builtincontract.Name, builtInDescriptor] {

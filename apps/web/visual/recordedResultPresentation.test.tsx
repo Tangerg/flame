@@ -21,6 +21,15 @@ afterEach(() => {
   document.documentElement.style.removeProperty("--leading-relaxed");
 });
 
+// The Runtime stamps each built-in's declared result shape on the wire;
+// captured fixtures reproduce that projection.
+const WIRE_RESULT_SHAPE: Readonly<Record<string, CapturedToolResult["resultShape"]>> = {
+  apply_patch: "patch",
+  glob: "search",
+  grep: "search",
+  shell: "command",
+};
+
 function capturedContext(
   name: string,
   result: string,
@@ -38,6 +47,7 @@ function capturedContext(
       id: "item_recorded_result",
       runId: "run_recorded_result",
       name,
+      ...(WIRE_RESULT_SHAPE[name] ? { resultShape: WIRE_RESULT_SHAPE[name] } : {}),
       fn: name,
       args: "{}",
       status: "ok" as const,

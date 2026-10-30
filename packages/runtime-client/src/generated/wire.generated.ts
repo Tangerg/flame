@@ -1678,7 +1678,7 @@ export interface ResolveWorkspaceRequest {
 
 export type RestoreType = "history" | "files" | "both";
 
-export type ResultShape = "search" | "patch" | "command" | "webSearch";
+export type ResultShape = "search" | "patch" | "command";
 
 export interface ResumeRunRequest {
   input?: ContentBlock[];
@@ -2161,7 +2161,7 @@ export interface ToolAttempt {
 
 export type ToolAttemptState = "started" | "completed" | "incomplete";
 
-export type ToolCategory = "shell" | "edit" | "read" | "search" | "web" | "task" | "unknown";
+export type ToolCategory = "shell" | "edit" | "read" | "search" | "task";
 
 export interface ToolInvocation {
   arguments: Record<string, unknown>;
@@ -2169,6 +2169,7 @@ export interface ToolInvocation {
   category?: ToolCategory;
   name: string;
   result?: unknown;
+  resultShape?: ResultShape;
 }
 
 export type ToolRef =
@@ -2396,7 +2397,7 @@ export const WIRE_ENUMS = {
   RememberScopeKind: ["session", "project", "global"],
   RendererSelectorKind: ["toolName", "resultShape", "fileExtension"],
   RestoreType: ["history", "files", "both"],
-  ResultShape: ["search", "patch", "command", "webSearch"],
+  ResultShape: ["search", "patch", "command"],
   RunAcceptanceType: ["notRecorded", "accepted", "retired"],
   RunCommandOperation: ["start", "resume", "steer"],
   RunOutcomeType: ["completed", "timedOut", "failed", "canceled", "lost"],
@@ -2415,7 +2416,7 @@ export const WIRE_ENUMS = {
   StreamEventType: ["segment.started", "segment.progress", "segment.finished", "item.started", "item.delta", "item.completed", "plan.updated"],
   SuppressibleRunEventType: ["segment.progress", "item.delta"],
   ToolAttemptState: ["started", "completed", "incomplete"],
-  ToolCategory: ["shell", "edit", "read", "search", "web", "task", "unknown"],
+  ToolCategory: ["shell", "edit", "read", "search", "task"],
   ToolRefType: ["builtIn", "mcp"],
   TrajectoryEntryType: ["run", "model", "endpoint", "item"],
   TransportKind: ["http"],

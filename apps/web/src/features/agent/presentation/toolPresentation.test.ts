@@ -33,6 +33,22 @@ describe("toolPresentation", () => {
     });
   });
 
+  it("names another owner's tool by itself and keeps its searched object", () => {
+    expect(
+      toolIntent(
+        t,
+        tool({
+          name: "web_search",
+          fn: "web_search",
+          args: JSON.stringify({ query: "sqlite wal checkpoint starvation" }),
+        }),
+      ),
+    ).toEqual({
+      label: { kind: "machine", value: "web_search" },
+      detail: { kind: "machine", value: "sqlite wal checkpoint starvation" },
+    });
+  });
+
   it("drops a detail that repeats the label", () => {
     expect(toolIntent(t, tool({ name: "shell", fn: "pnpm test", command: "pnpm test" }))).toEqual({
       label: { kind: "prose", value: "Ran" },
@@ -86,17 +102,15 @@ describe("toolPresentation", () => {
     },
   );
 
-  it("gives a tool it has no verb for the generic one", () => {
+  it("names a tool it has no verb for by its own name", () => {
     expect(toolIntent(t, tool({ name: "acme_docs", fn: "acme_docs" }))).toEqual({
-      label: { kind: "prose", value: "Used tool" },
-      detail: { kind: "machine", value: "acme_docs" },
+      label: { kind: "machine", value: "acme_docs" },
     });
   });
 
   it("ignores malformed args while keeping the tool label", () => {
     expect(toolIntent(t, tool({ name: "acme_docs", fn: "acme_docs", args: "{" }))).toEqual({
-      label: { kind: "prose", value: "Used tool" },
-      detail: { kind: "machine", value: "acme_docs" },
+      label: { kind: "machine", value: "acme_docs" },
     });
   });
 
@@ -109,10 +123,7 @@ describe("toolPresentation", () => {
     ]);
   });
 
-  it("counts web search results as results and pattern hits as matches", () => {
-    expect(
-      toolMetaItems(t, tool({ name: "web_search", category: "web", fn: "web_search", hits: 2 })),
-    ).toEqual([{ id: "hits", label: "2 results", tone: "muted" }]);
+  it("counts pattern hits as matches", () => {
     expect(toolMetaItems(t, tool({ name: "grep", fn: "grep", hits: 2 }))).toEqual([
       { id: "hits", label: "2 matches", tone: "muted" },
     ]);

@@ -2,11 +2,11 @@ package terminal
 
 import (
 	"fmt"
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"slices"
 	"strings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
@@ -234,5 +234,5 @@ func (t *toolGroupBlock) notify() {
 }
 
 func groupableTool(call conversation.ToolCall) bool {
-	return slices.Contains([]protocol.ToolCategory{protocol.ToolCategoryRead, protocol.ToolCategorySearch, protocol.ToolCategoryWeb}, call.Kind)
+	return slices.Contains([]builtin.ToolCategory{builtin.CategoryRead, builtin.CategorySearch}, call.Kind)
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/statefile"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -259,7 +260,7 @@ func TestStoreStashesDraftWithoutRetiringSessionOutboxes(t *testing.T) {
 	}
 	approval := conversation.Approval{
 		RunID: "run_waiting", ItemID: "approval", Title: "Approve",
-		Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryRead, Name: "read", Path: "README.md", Status: conversation.ToolRunning},
+		Tool: &conversation.ToolCall{Kind: builtin.CategoryRead, Name: "read", Path: "README.md", Status: conversation.ToolRunning},
 	}
 	resume := PendingResume{
 		Command: conversation.ResumeRun{
@@ -499,7 +500,7 @@ func TestStoreRetiresCompleteSessionStateBehindADurableTombstone(t *testing.T) {
 	}
 	approval := conversation.Approval{
 		RunID: "run_waiting", ItemID: "approval", Title: "Approve",
-		Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryRead, Name: "read", Path: "README.md", Status: conversation.ToolRunning},
+		Tool: &conversation.ToolCall{Kind: builtin.CategoryRead, Name: "read", Path: "README.md", Status: conversation.ToolRunning},
 	}
 	resume := PendingResume{
 		Command: conversation.ResumeRun{
@@ -1420,7 +1421,7 @@ func TestStorePersistsPendingInterruptResumeUntilExactSettlement(t *testing.T) {
 			}
 			approval := conversation.Approval{
 				RunID: "run_1", ItemID: "item_approval_1", Title: "Delete generated files",
-				Tool:         &conversation.ToolCall{Kind: protocol.ToolCategoryEdit, Name: "delete", Status: conversation.ToolRunning},
+				Tool:         &conversation.ToolCall{Kind: builtin.CategoryEdit, Name: "delete", Status: conversation.ToolRunning},
 				Rememberable: true,
 			}
 			var override *conversation.ToolArgumentOverride
@@ -1488,7 +1489,7 @@ func TestStagingTheSameResumeCommandRejectsDifferentDecisions(t *testing.T) {
 	}
 	approval := conversation.Approval{
 		RunID: "run_1", ItemID: "item_1", Title: "Run checks", Rememberable: true,
-		Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Status: conversation.ToolRunning},
+		Tool: &conversation.ToolCall{Kind: builtin.CategoryShell, Name: "shell", Status: conversation.ToolRunning},
 	}
 	pending := PendingResume{
 		Command: conversation.ResumeRun{
@@ -1514,7 +1515,7 @@ func TestStagingTheSameResumeCommandRejectsDifferentDecisions(t *testing.T) {
 	changedInterrupt := clonePendingResume(pending)
 	changedInterrupt.Interrupts[0] = conversation.Approval{
 		RunID: approval.RunID, ItemID: approval.ItemID, Title: "Different request", Rememberable: true,
-		Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Status: conversation.ToolRunning},
+		Tool: &conversation.ToolCall{Kind: builtin.CategoryShell, Name: "shell", Status: conversation.ToolRunning},
 	}
 	if err := store.StagePendingResume("ses_1", changedInterrupt, nil); err == nil {
 		t.Fatal("same resume identity accepted a different interrupt")
@@ -1539,7 +1540,7 @@ func TestStoreRejectsPendingResumeWithoutCommandIdentity(t *testing.T) {
 	}
 	approval := conversation.Approval{
 		RunID: "run_1", ItemID: "item_1", Title: "Run checks",
-		Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Status: conversation.ToolRunning},
+		Tool: &conversation.ToolCall{Kind: builtin.CategoryShell, Name: "shell", Status: conversation.ToolRunning},
 	}
 	pending := PendingResume{
 		Command: conversation.ResumeRun{
@@ -1568,7 +1569,7 @@ func TestStorePersistsTheCompleteMixedInterruptReview(t *testing.T) {
 	}
 	approval := conversation.Approval{
 		RunID: "run_1", ItemID: "item_approval", Title: "Run checks", Rememberable: true,
-		Tool: &conversation.ToolCall{Kind: protocol.ToolCategoryShell, Name: "shell", Status: conversation.ToolRunning},
+		Tool: &conversation.ToolCall{Kind: builtin.CategoryShell, Name: "shell", Status: conversation.ToolRunning},
 	}
 	question := conversation.Question{
 		RunID: "run_1", ItemID: "item_question", Title: "Choose targets",

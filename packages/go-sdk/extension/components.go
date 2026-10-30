@@ -63,14 +63,13 @@ func (RendererSelectorKind) Values() []string {
 type ResultShape string
 
 const (
-	ResultShapeSearch    ResultShape = "search"
-	ResultShapePatch     ResultShape = "patch"
-	ResultShapeCommand   ResultShape = "command"
-	ResultShapeWebSearch ResultShape = "webSearch"
+	ResultShapeSearch  ResultShape = "search"
+	ResultShapePatch   ResultShape = "patch"
+	ResultShapeCommand ResultShape = "command"
 )
 
 func (ResultShape) Values() []string {
-	return []string{string(ResultShapeSearch), string(ResultShapePatch), string(ResultShapeCommand), string(ResultShapeWebSearch)}
+	return []string{string(ResultShapeSearch), string(ResultShapePatch), string(ResultShapeCommand)}
 }
 
 func (s ResultShape) Valid() bool { return slices.Contains(s.Values(), string(s)) }

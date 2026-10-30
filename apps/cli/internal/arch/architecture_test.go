@@ -119,7 +119,7 @@ func mayImportRuntime(relative, imported string) bool {
 		return true
 	}
 	switch imported {
-	case sdkPath + "/protocol", sdkPath + "/extension", sdkPath + "/exactint", sdkPath + "/httporigin", sdkPath + "/jsonvalue", sdkPath + "/model", sdkPath + "/question", sdkPath + "/filesystem/commit":
+	case sdkPath + "/protocol", sdkPath + "/builtin", sdkPath + "/extension", sdkPath + "/exactint", sdkPath + "/httporigin", sdkPath + "/jsonvalue", sdkPath + "/model", sdkPath + "/question", sdkPath + "/filesystem/commit":
 		return true
 	case sdkPath + "/filesystem":
 		ring := ringOf(relative)
