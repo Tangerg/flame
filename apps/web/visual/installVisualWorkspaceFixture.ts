@@ -5,6 +5,7 @@ import { InstalledComponent } from "@/features/plugins/ui/InstalledComponent";
 import { Schedules } from "../../../plugins/schedules/component/component";
 import { Hooks } from "../../../plugins/hooks/component/component";
 import { type ComponentDefinition, type PluginComponent } from "@flame/component-sdk";
+import mcpDeclaration from "../../../plugins/mcp/package/io.github.tangerg.flame/declaration.json";
 import providersDeclaration from "../../../plugins/providers/package/io.github.tangerg.flame/declaration.json";
 import { visualComponentProps } from "./installedComponentProps";
 import { visualFileRenderers } from "./visualFileRenderers";
@@ -25,7 +26,6 @@ import appearanceSettings from "@/features/settings/appearance";
 import { createProviderCatalogPlugin } from "@/features/providers/index";
 import approvalsSettings from "@/features/approvals/index";
 import connectionSettings from "@/features/connection/settings/index";
-import { createMCPServersPlugin } from "@/features/mcp/index";
 import personalizationSettings from "@/features/settings/personalization/index";
 import { createPluginsPlugin } from "@/features/plugins/index";
 import {
@@ -80,6 +80,12 @@ const Providers = Object.values(
     { eager: true },
   ),
 )[0]!.Providers;
+const MCPServers = Object.values(
+  import.meta.glob<{ MCPServers: ComponentDefinition }>(
+    "../../../plugins/mcp/package/io.github.tangerg.flame/components/component.js",
+    { eager: true },
+  ),
+)[0]!.MCPServers;
 const RESIZER_SOURCE: WorkspaceFileContent = {
   startLine: 1,
   totalLines: 8,
@@ -197,6 +203,25 @@ function workspaceDataPlugin(
             ...providersSources,
             scope: "client",
             entry: ProviderSettings,
+          }),
+      });
+      const mcpLifetime = ctx.lifetime("visual-mcp");
+      const mcpSources = visualComponentProps(runtimeClient(), mcpLifetime, "mcp");
+      const MCPSettingsView = MCPServers.create({
+        runtimeIdentity: mcpSources.runtime,
+        component: mcpSources.component,
+        signal: mcpLifetime.signal,
+      });
+      mcpLifetime.contribute(SETTINGS_PANE, {
+        id: "mcp-servers",
+        label: mcpDeclaration.components[0]!.title,
+        intent: "mcpServers",
+        group: "extensions",
+        component: () =>
+          createElement(InstalledComponent, {
+            ...mcpSources,
+            scope: "client",
+            entry: MCPSettingsView,
           }),
       });
       const hooksLifetime = ctx.lifetime("visual-hooks");
@@ -573,7 +598,6 @@ export async function installVisualWorkspaceFixture(
     shortcutsSettings(visual.workspace.access),
     approvalsSettings,
     connectionSettings,
-    createMCPServersPlugin(runtimeClient),
     personalizationSettings,
     createPluginsPlugin(visual.installedPlugins),
     visualNotifier,

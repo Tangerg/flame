@@ -134,7 +134,6 @@ function visualAgentRuntimeGateway(
     isRunGone: () => false,
     isReplayLost: () => false,
     setApprovalMode: (mode) => runtimeClient().approval.setMode(mode),
-    allowMCPTool: async () => undefined,
     forgetApprovalRule: async () => undefined,
   };
 }

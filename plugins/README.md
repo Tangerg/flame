@@ -4,8 +4,8 @@ Memory, Schedules, Knowledge base, GitHub, Model router, Guardrails, Web researc
 Saved usage reports, Generated interfaces, Deliverables, Computer use, Native sandbox,
 File watch, Code intelligence, Remote agents, Skill learning, Model providers and Hooks have optional
 backends. Memory, Schedules, Saved usage reports, Generated interfaces, Deliverables,
-Computer use, Skills, Model providers and Hooks expose ordinary public components;
-the remaining packages are backend-only.
+Computer use, Skills, Model providers and Hooks expose ordinary public components.
+Brand, icon gallery, MCP settings and the presentation packages are client-only.
 MCP model Tools and human Runtime commands
 enter the same existing backend owners. A component does not create a second store.
 
@@ -19,6 +19,10 @@ token counting and Embedding execution. Runtime retains credentials, exact
 selection, call evidence, accounting and recovery. Its installed settings page
 owns graphical drafts and command observation through those public operations. See
 [`providers/README.md`](providers/README.md).
+
+MCP settings (`mcp`) owns client configuration drafts, import progress and original
+command observation. Runtime retains its server registry, connections, OAuth
+attempts and tool policy. See [`mcp/README.md`](mcp/README.md).
 
 Hooks (`hooks`) owns authored rule discovery and bounded command execution.
 Runtime supplies project identity and trust, retains each captured source and

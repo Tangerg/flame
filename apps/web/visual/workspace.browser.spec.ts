@@ -1,3 +1,4 @@
+import { en as mcpEn } from "../../../plugins/mcp/component/locales/en";
 import { expect, test, type Locator, type Page } from "./test";
 import AxeBuilder from "@axe-core/playwright";
 import { type VisualAgentState } from "./agentSessionSnapshots";
@@ -847,7 +848,7 @@ for (const pane of VISUAL_SETTINGS_PANES) {
       ).toHaveText(providersEnglish["providers.embedding.off"]!);
     }
     const emptyLabel = {
-      "mcp-servers": en["mcp.empty"],
+      "mcp-servers": mcpEn["mcp.empty"],
       hooks: hooksEnglish.empty,
       approvals: en["approvals.rules.empty"],
     };

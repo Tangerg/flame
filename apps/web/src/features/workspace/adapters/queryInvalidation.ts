@@ -5,11 +5,6 @@ import { AGENT_SESSIONS_KEY } from "@/features/agent/public/session";
 import { APPROVAL_MODE_KEY, APPROVAL_RULES_KEY } from "@/features/agent/public/approvalPolicy";
 import { MODELS_KEY, PROVIDERS_KEY } from "@/features/providers/public/queries";
 import {
-  MCP_SERVERS_KEY,
-  MCP_TOOLS_KEY,
-  MCP_EXPOSURE_KEY,
-} from "@/features/mcp/public/serverCatalog";
-import {
   WORKSPACE_FILES_CHANGED_KEY,
   WORKSPACE_LIST_FILES_KEY,
   WORKSPACE_READ_FILE_KEY,
@@ -30,9 +25,6 @@ const QUERY_KEYS: Record<
   fileRead: WORKSPACE_READ_FILE_KEY,
   filesChanged: WORKSPACE_FILES_CHANGED_KEY,
   models: MODELS_KEY,
-  mcpServers: MCP_SERVERS_KEY,
-  mcpTools: MCP_TOOLS_KEY,
-  mcpExposure: MCP_EXPOSURE_KEY,
   providers: PROVIDERS_KEY,
   sessions: AGENT_SESSIONS_KEY,
 };

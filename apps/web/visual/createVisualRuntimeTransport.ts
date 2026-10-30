@@ -2,6 +2,8 @@ import { createMemoryTransport } from "@flame/runtime-client/testing";
 import { type Transport, type TransportRequest } from "@flame/runtime-client";
 import {
   type ApprovalModeResult,
+  type MCPServer,
+  type MCPServerID,
   type Diff,
   type GetDiffRequest,
   type CallPluginRequest,
@@ -37,6 +39,7 @@ function resultFor(
   capabilities: ServerCapabilities,
   approval: ApprovalModeResult,
   models: VisualModelFacts,
+  mcpServers: MCPServer[],
   readDiff: (signal?: AbortSignal, request?: GetDiffRequest) => Promise<Diff>,
   signal?: AbortSignal,
 ): unknown {
@@ -70,7 +73,23 @@ function resultFor(
     case "models.getEmbeddingRole":
       return models.embedding;
     case "mcp.servers.list":
-      return { data: [] };
+      return { data: mcpServers };
+    case "mcp.tools.list": {
+      const { server } = request.params as { server: MCPServerID };
+      return {
+        data: [
+          {
+            server,
+            name: "read_workspace_files",
+            description: "Read files from the current workspace without changing them.",
+            modelName: "read_workspace_files",
+            nameConflicts: [],
+          },
+        ],
+      };
+    }
+    case "mcp.tools.exposure":
+      return { server: (request.params as { server: MCPServerID }).server, disabledTools: [] };
     case "plugins.list":
       return { data: VISUAL_PACKAGES };
     case "plugins.listProviders":
@@ -105,11 +124,16 @@ export function createVisualRuntimeTransport(
   snapshot: RuntimeAgentSessionSnapshot,
   capabilities: ServerCapabilities,
   readDiff: (signal?: AbortSignal, request?: GetDiffRequest) => Promise<Diff>,
-  configuration: { acceptSkillProposals?: boolean; modelFacts?: VisualModelFacts } = {},
+  configuration: {
+    acceptSkillProposals?: boolean;
+    modelFacts?: VisualModelFacts;
+    mcpServers?: MCPServer[];
+  } = {},
 ): Transport {
   const transport = createMemoryTransport();
   const skillProposals = structuredClone(VISUAL_SKILL_PROPOSALS);
   const models = structuredClone(configuration.modelFacts ?? VISUAL_MODEL_FACTS);
+  const mcpServers = structuredClone(configuration.mcpServers ?? []);
   const approval: ApprovalModeResult = {
     mode: "balanced",
     modes: [
@@ -125,7 +149,13 @@ export function createVisualRuntimeTransport(
       signal?.throwIfAborted();
       if (
         request.method === "models.setUtilityRole" ||
-        request.method === "models.setEmbeddingRole"
+        request.method === "models.setEmbeddingRole" ||
+        request.method === "mcp.servers.test" ||
+        request.method === "mcp.servers.create" ||
+        request.method === "mcp.servers.update" ||
+        request.method === "mcp.servers.delete" ||
+        request.method === "mcp.servers.reconnect" ||
+        request.method === "mcp.tools.setExposure"
       ) {
         await transport.send(request, signal, options);
         transport.inject({
@@ -170,6 +200,7 @@ export function createVisualRuntimeTransport(
           capabilities,
           approval,
           models,
+          mcpServers,
           readDiff,
           signal,
         );

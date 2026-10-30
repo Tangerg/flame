@@ -7,9 +7,6 @@ export type WorkspaceInvalidationTarget =
   | "fileRead"
   | "filesChanged"
   | "models"
-  | "mcpServers"
-  | "mcpTools"
-  | "mcpExposure"
   | "providers"
   | "sessionUsage"
   | "sessions";
@@ -126,9 +123,9 @@ export function workspaceInvalidations(ev: WorkspaceEventLike): WorkspaceInvalid
     case "skills.changed":
       return [];
     case "plugins.changed":
-      return ["mcpServers", "mcpTools", "mcpExposure", "approvalRules"];
+      return ["approvalRules"];
     case "mcp.changed":
-      return ["mcpServers", "mcpTools", "mcpExposure", "approvalRules"];
+      return ["approvalRules"];
     case "sessions.changed":
       return ["sessions"];
     case "runs.changed":

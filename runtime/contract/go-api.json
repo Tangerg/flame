@@ -843,6 +843,11 @@
           "value": "\"installation\""
         },
         {
+          "name": "SettingsIntentMCPServers",
+          "type": "SettingsIntent",
+          "value": "\"mcpServers\""
+        },
+        {
           "name": "SettingsIntentModelProviders",
           "type": "SettingsIntent",
           "value": "\"modelProviders\""

@@ -214,9 +214,7 @@ describe("visual Runtime transport", () => {
         model: VISUAL_MODELS[0]!.id,
       });
       expect(await client.models.getEmbeddingRole()).toEqual({});
-      await expect(client.mcp.list()).rejects.toMatchObject({
-        data: { type: "capability_not_negotiated" },
-      });
+      expect(await client.mcp.list()).toEqual({ data: [] });
       expect((await client.plugins.list()).data).toEqual(VISUAL_PACKAGES);
       expect((await client.plugins.listProviders()).data).toEqual(VISUAL_PLUGIN_PROVIDERS);
       expect(await client.approval.listRules()).toEqual({ rules: [] });

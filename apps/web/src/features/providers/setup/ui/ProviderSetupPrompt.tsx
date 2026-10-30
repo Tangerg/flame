@@ -1,7 +1,7 @@
 import { useWorkspace } from "@/features/workspace/public/workspace";
 import { Button } from "@flame/ui";
 import * as stylex from "@stylexjs/stylex";
-import { useProviderSettingsPane } from "@/features/providers/public/settings";
+import { useSettingsPaneForIntent } from "@/features/settings/public/intent";
 import { Icon } from "@/ui/index";
 import { Surface } from "@/ui/index";
 import { useT } from "@/lib/i18n/index";
@@ -20,7 +20,7 @@ const ps = stylex.create({
 });
 
 export function ProviderSetupPrompt() {
-  const providersPane = useProviderSettingsPane();
+  const providersPane = useSettingsPaneForIntent("modelProviders");
   const workspaceAccess = useWorkspace();
 
   const t = useT();

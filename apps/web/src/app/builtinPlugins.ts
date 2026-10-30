@@ -36,7 +36,6 @@ import { workspaceSessionNavigation } from "@/features/workspace/sessionNavigati
 import { workspaceKeymap } from "@/features/workspace/keymap";
 import sessionSearch from "@/features/navigation/session-search/index";
 import commandMenu from "@/features/command/menu/index";
-import { createMCPServersPlugin } from "@/features/mcp/index";
 import { createRpcAgentPlugin } from "@/features/agent/rpcAgent";
 import {
   workbenchChat,
@@ -138,7 +137,6 @@ export function createBuiltinPlugins(
     connectionSettings,
     createPluginsPlugin(installedPlugins),
     createProviderCatalogPlugin(runtimeClient),
-    createMCPServersPlugin(runtimeClient),
     fileView,
     subagentsView,
   ];

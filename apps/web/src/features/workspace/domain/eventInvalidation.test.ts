@@ -8,12 +8,7 @@ describe("workspaceInvalidations", () => {
       "fileRead",
     ]);
     expect(workspaceInvalidations({ type: "skills.changed", sequence: 2 })).toEqual([]);
-    expect(workspaceInvalidations({ type: "mcp.changed", sequence: 3 })).toEqual([
-      "mcpServers",
-      "mcpTools",
-      "mcpExposure",
-      "approvalRules",
-    ]);
+    expect(workspaceInvalidations({ type: "mcp.changed", sequence: 3 })).toEqual(["approvalRules"]);
     expect(workspaceInvalidations({ type: "plugins.dataChanged", sequence: 4 })).toEqual([]);
     expect(workspaceInvalidations({ type: "sessions.changed", sequence: 5 })).toEqual(["sessions"]);
     expect(workspaceInvalidations({ type: "hooks.changed", sequence: 7 })).toEqual([]);

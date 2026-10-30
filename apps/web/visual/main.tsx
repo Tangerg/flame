@@ -210,6 +210,30 @@ async function installVisualRuntimeClient(
     createVisualRuntimeTransport(snapshot, capabilities, readDiff, {
       acceptSkillProposals,
       modelFacts: query.has("long-models") ? LONG_MODEL_FACTS : undefined,
+      mcpServers: query.has("mcp-transport")
+        ? [
+            {
+              id: {
+                origin: { type: "user" },
+                name: query.has("long-mcp")
+                  ? "workspace-permissions-toolserver"
+                  : "workspace-tools",
+              },
+              connection:
+                query.get("mcp-transport") === "streamableHttp"
+                  ? {
+                      type: "streamableHttp",
+                      url: "https://example.invalid/mcp",
+                      authorizationMasked: "synthetic-mask",
+                    }
+                  : { type: "stdio", command: "npx", args: [] },
+              handshakeTimeout: { type: "bounded", seconds: 30 },
+              status: query.has("long-mcp")
+                ? { type: "failed", error: { type: "mcp_configuration_failed" } }
+                : { type: "connected", toolCount: 1 },
+            },
+          ]
+        : undefined,
     }),
     { capabilities: () => capabilities },
   );

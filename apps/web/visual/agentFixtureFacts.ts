@@ -10,6 +10,7 @@ export const VISUAL_NOW = Date.parse("2026-07-31T14:30:00Z");
 
 export const VISUAL_RUNTIME_FEATURES = [
   "git",
+  "mcp",
   "fileWatch",
   "plan",
   "skills",
@@ -37,7 +38,14 @@ export const VISUAL_RUNTIME_GENERATION = RuntimeConnectionGeneration.forProcess(
 
 export const VISUAL_CAPABILITIES: ServerCapabilities = {
   runEvents: [],
-  runtimeTopics: ["files.changed", "skills.changed", "plugins.changed", "plugins.dataChanged"],
+  runtimeTopics: [
+    "files.changed",
+    "skills.changed",
+    "plugins.changed",
+    "plugins.dataChanged",
+    "mcp.changed",
+    "approvals.changed",
+  ],
   features: visualFeatureCapabilities(),
   streamingMethods: ["runtime.subscribe"],
   limits: {

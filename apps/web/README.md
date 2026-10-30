@@ -449,6 +449,9 @@ error and reports accepted or failed writes through the existing clipboard owner
 Clearing a plugin's transient errors returns focus to the loaded-plugin list,
 including when an unloaded plugin's row disappears.
 
+Installed MCP settings live in `plugins/mcp`; the graphical Host resolves their
+settings intent and retains no MCP configuration gateway or feature query cache.
+Runtime remains the registry, connection, authorization and approval owner.
 MCP server and expanded-tool lists keep their initial loading presentation while
 the existing query is pending, including a paused first request. Empty states
 require accepted empty data; accepted rows and tools remain available through

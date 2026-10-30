@@ -15,18 +15,13 @@ export type InterruptType = "approval" | "question";
 
 export type ItemStatus = "running" | "completed" | "incomplete";
 
-export type MCPServerStateType =
-  "disabled" | "disconnected" | "connecting" | "connected" | "failed" | "needsAuth";
-
-export type MCPTransport = "stdio" | "streamableHttp";
-
 export type MessagePhase = "commentary" | "finalAnswer";
 
 export type RememberScopeKind = "session" | "project" | "global";
 
 export type RendererSelectorKind = "toolName" | "resultShape" | "fileExtension";
 
-export type SettingsIntent = "modelProviders";
+export type SettingsIntent = "modelProviders" | "mcpServers";
 
 export type RestoreType = "history" | "files" | "both";
 

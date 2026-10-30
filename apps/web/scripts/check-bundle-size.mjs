@@ -100,7 +100,6 @@ const LAZY_FEATURES = [
       "AppearancePane-",
       "ApprovalsPane-",
       "ConnectionPane-",
-      "McpServersPane-",
       "PersonalizationPane-",
       "PluginsPane-",
     ],

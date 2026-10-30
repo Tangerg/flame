@@ -13,11 +13,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { queryClient } from "@/lib/queryClient";
 import { type FlameClient } from "@flame/runtime-client";
 import { type AgentRuntimeGateway } from "@/features/agent/application/runtimeGateway";
-import {
-  forgetRules,
-  setApprovalMode,
-  allowMCPTool,
-} from "@/features/agent/application/approvalPolicy";
+import { forgetRules, setApprovalMode } from "@/features/agent/application/approvalPolicy";
 import {
   APPROVAL_MODE_KEY,
   APPROVAL_RULES_KEY,
@@ -41,25 +37,6 @@ afterEach(() => {
 });
 
 describe("approval policy", () => {
-  it("sets a global MCP rule through approval and invalidates every rule view", async () => {
-    const setRule = vi.fn().mockResolvedValue(undefined);
-    runtimeClient = () => ({ approval: { setRule } }) as unknown as FlameClient;
-    uninstall = createAgentGatewayFixture(testClient, getRuntimeClient).dispose;
-    const invalidate = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
-    const docs = { origin: { type: "user" as const }, name: "docs" };
-    const request = {
-      tool: { type: "mcp" as const, server: docs, name: "read" },
-      scope: "global" as const,
-      subject: { type: "all" as const },
-      decision: "allow" as const,
-    };
-
-    await allowMCPTool(testClient.agent.dependencies, docs, "read");
-
-    expect(setRule).toHaveBeenCalledWith(request);
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: [APPROVAL_RULES_KEY] });
-  });
-
   it("serializes mode changes and commits each authoritative response", async () => {
     const first = Promise.withResolvers<ApprovalModeResult>();
     const second = Promise.withResolvers<ApprovalModeResult>();

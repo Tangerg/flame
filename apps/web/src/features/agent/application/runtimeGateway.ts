@@ -1,6 +1,5 @@
 import { type RestoreType } from "@/foundation/protocolValues.generated";
 export type { RestoreType };
-import { type MCPServerID } from "@/features/mcp/public/serverIdentity";
 import {
   type AgentItem,
   type AgentPendingInterruptSet,
@@ -108,6 +107,5 @@ export interface AgentRuntimeGateway {
   isRunGone(error: unknown): boolean;
   isReplayLost(error: unknown): boolean;
   setApprovalMode(mode: ApprovalMode): Promise<ApprovalModeResult>;
-  allowMCPTool(server: MCPServerID, name: string): Promise<void>;
   forgetApprovalRule(id: string): Promise<void>;
 }

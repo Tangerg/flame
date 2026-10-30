@@ -12,8 +12,8 @@ the host's Extensions group. Client, workspace and installation contexts use the
 same captured identity, resource lease and command lifetime as workspace views.
 Disabling the installation removes its entry. Locale changes update the display
 projection while preserving accepted work and its original cancellation signal.
-The optional `settingsIntent: "modelProviders"` declaration identifies the model
-configuration entry for Composer and setup navigation. The host opens a unique
+The optional `settingsIntent` declaration identifies `modelProviders` for model
+configuration navigation and `mcpServers` for the tools shortcut. The host opens a unique
 available entry; absence or ambiguity opens plugin management.
 
 State that must survive a view close uses `defineComponent(source => View)`. The
@@ -23,7 +23,7 @@ identity, the component identity and a signal bound to the contribution, resourc
 Host lifetimes. Construction is synchronous and performs no I/O. The source clears
 sensitive drafts and retained command observations when its signal ends; it never
 publishes a module-global feature instance or port installer.
-The Providers settings component is the concrete consumer of this boundary.
+The Providers and MCP settings components consume this boundary.
 Ordinary stateless exports remain React components.
 
 `context.signal` belongs to the mounted view. New I/O still enters that view's

@@ -9,7 +9,7 @@ import { SystemMessage } from "@/ui/index";
 import { Button, FormActions } from "@flame/ui";
 import { useWorkspace } from "@/features/workspace/public/workspace";
 import { openWorkspaceSettingsPane } from "@/features/workspace/public/navigation";
-import { useProviderSettingsPane } from "@/features/providers/public/settings";
+import { useSettingsPaneForIntent } from "@/features/settings/public/intent";
 import { type SelectableModel } from "@/features/providers/public/queries";
 import { useModels } from "@/features/providers/public/queries";
 import { useRecentModelsStore, type RecentModel } from "@/features/composer/adapters/recentModels";
@@ -113,7 +113,7 @@ function modelCapabilities(model: SelectableModel, t: Translate): string {
 }
 
 export function ModelPicker() {
-  const providersPane = useProviderSettingsPane();
+  const providersPane = useSettingsPaneForIntent("modelProviders");
   const t = useT();
   const workspace = useWorkspace();
   const { data, isPending, isError, isFetching, refetch } = useModels();
