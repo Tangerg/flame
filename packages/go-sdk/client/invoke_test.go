@@ -13,7 +13,7 @@ import (
 // invalid_params identity the local handler also uses; otherwise callers cannot
 // branch on it with errors.Is/As.
 func TestInvocationOperationKeepsInvalidParamsIdentityBeforeTransport(t *testing.T) {
-	meta := methodMeta{Operation: "extension"}
+	meta := methodMeta{Operation: extensionOperation}
 	if _, err := invocationOperation(meta, protocol.CallPluginRequest{Contract: "{not a contract", Method: "any"}); !errors.Is(err, protocol.ErrInvalidParams) {
 		t.Fatalf("malformed contract lost its invalid_params identity: %v", err)
 	}

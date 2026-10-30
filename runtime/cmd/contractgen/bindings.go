@@ -89,7 +89,7 @@ func writeGoBindings(local, remote string) error {
 		if meta.Event != nil {
 			event = "reflect.TypeFor[" + goType(meta.Event) + "]()"
 		}
-		fmt.Fprintf(&body, "%q: {Name:%q, Kind:%q, Operation:%q, Result:reflect.TypeFor[%s](), Event:%s, ResultNullable:%t},\n", meta.Name, meta.Name, meta.Kind, meta.Operation, goType(meta.Result), event, meta.ResultNullable)
+		fmt.Fprintf(&body, "%q: {Name:%q, Kind:%sMethod, Operation:%sOperation, Result:reflect.TypeFor[%s](), Event:%s, ResultNullable:%t},\n", meta.Name, meta.Name, meta.Kind, meta.Operation, goType(meta.Result), event, meta.ResultNullable)
 	}
 	body.WriteString("}\nvar problemCodes = map[string]int{\n")
 	codes := dispatch.ProblemCodes()

@@ -53,7 +53,7 @@ func (r *Client) invokeOperation(ctx context.Context, name string, parameters an
 		if !streaming {
 			call.finish(nil)
 		}
-		if dispatched && operation == "command" && err != nil && !knownTransportRefusal(err) {
+		if dispatched && operation == commandOperation && err != nil && !knownTransportRefusal(err) {
 			err = errors.Join(ErrAcknowledgementUnknown, err)
 		}
 	}()
@@ -117,12 +117,12 @@ func (r *Client) invokeOperation(ctx context.Context, name string, parameters an
 			return callResult{}, call.readError(err)
 		}
 		result, err := decodeRemoteResponse(encoded, id, meta)
-		if err == nil && result.Failure == nil && meta.Kind == "stream" {
+		if err == nil && result.Failure == nil && meta.Kind == streamMethod {
 			err = invalidRemote("stream acknowledgement arrived without an event stream")
 		}
 		return result, err
 	}
-	if mediaType != "text/event-stream" || meta.Kind != "stream" {
+	if mediaType != "text/event-stream" || meta.Kind != streamMethod {
 		return callResult{}, invalidRemote("response content type does not match the operation")
 	}
 	// SSE's web-standard decoder repairs malformed UTF-8. Runtime JSON is exact,

@@ -18,8 +18,8 @@ type callResult struct {
 }
 type methodMeta struct {
 	Name           string
-	Kind           string
-	Operation      string
+	Kind           methodKind
+	Operation      operation
 	Result         reflect.Type
 	Event          reflect.Type
 	ResultNullable bool
@@ -44,25 +44,45 @@ func valueAs[T any](r callResult) (T, bool) {
 	value, ok := r.Value.(T)
 	return value, ok
 }
-func invocationOperation(meta methodMeta, request any) (string, error) {
-	if meta.Operation != "extension" {
+
+// methodKind is how a Runtime method delivers its result.
+type methodKind uint8
+
+const (
+	unaryMethod methodKind = iota + 1
+	streamMethod
+)
+
+// operation is what a call means; an extension call takes its meaning from
+// the plugin method it invokes.
+type operation uint8
+
+const (
+	queryOperation operation = iota + 1
+	commandOperation
+	subscriptionOperation
+	extensionOperation
+)
+
+func invocationOperation(meta methodMeta, request any) (operation, error) {
+	if meta.Operation != extensionOperation {
 		return meta.Operation, nil
 	}
 	call, ok := request.(protocol.CallPluginRequest)
 	if !ok {
-		return "", protocol.ErrInvalidParams
+		return 0, protocol.ErrInvalidParams
 	}
 	kind, err := portable.MethodKindFor([]byte(call.Contract), call.Method)
 	if err != nil {
 		// A malformed contract or an undeclared method is a caller error; project
 		// it to the public invalid_params identity the local handler also uses,
 		// before any transport, so errors.Is/As stay recognizable to callers.
-		return "", protocol.InvalidParameters(err)
+		return 0, protocol.InvalidParameters(err)
 	}
 	if kind == portable.Mutation {
-		return "command", nil
+		return commandOperation, nil
 	}
-	return "query", nil
+	return queryOperation, nil
 }
 
 type transportProblem struct {

@@ -12,12 +12,12 @@ import (
 	"github.com/Tangerg/sse"
 )
 
-func remoteEvents(call *remoteCall, reader *sse.Reader, eventType reflect.Type, operation string, acknowledgement any) iter.Seq2[any, error] {
+func remoteEvents(call *remoteCall, reader *sse.Reader, eventType reflect.Type, operation operation, acknowledgement any) iter.Seq2[any, error] {
 	var consumed atomic.Bool
 	rootID, segmentID := streamIdentity(acknowledgement)
 	return func(yield func(any, error) bool) {
 		fail := func(err error) {
-			if eventType == reflect.TypeFor[protocol.PluginStreamEvent]() && operation == "command" {
+			if eventType == reflect.TypeFor[protocol.PluginStreamEvent]() && operation == commandOperation {
 				err = errors.Join(ErrAcknowledgementUnknown, err)
 			}
 			yield(nil, err)
