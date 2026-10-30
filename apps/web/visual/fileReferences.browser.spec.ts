@@ -201,9 +201,11 @@ for (const [fontSize, codeFontSize, theme] of [
     const source = view.locator('[data-quote-source="file"]');
     await expect(source).toBeVisible();
     await page.evaluate(async (size) => {
-      const appearancePath = "/src/features/theme/adapters/appearanceStore.ts";
-      const { useAppearanceStore } = await import(appearancePath);
-      useAppearanceStore.getState().setCodeFontSize(size);
+      if (!location.pathname.startsWith("/visual/"))
+        throw new Error("An isolated fixture is required");
+      const fixturePath = "/visual/main.tsx";
+      const { visualClient } = (await import(fixturePath)) as typeof import("./main");
+      visualClient.theme.store.getState().setCodeFontSize(size);
     }, codeFontSize);
     await expect(source).toHaveCSS("font-size", `${codeFontSize}px`);
     const gutter = source.locator('[data-quote-line="2"] > span').first();
@@ -229,7 +231,7 @@ for (const [fontSize, codeFontSize, theme] of [
     await expect(source.locator('[data-quote-line="1000000"]')).toBeVisible();
     await page.evaluate(() => document.fonts.ready);
     const rows = await source.evaluate((node) =>
-      [...node.children].map((row) => {
+      [...node.querySelectorAll("[data-quote-line]")].map((row) => {
         const gutter = row.children[0]!;
         const code = row.children[1]!;
         const range = document.createRange();
