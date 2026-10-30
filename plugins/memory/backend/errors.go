@@ -12,20 +12,44 @@ import (
 	"github.com/Tangerg/flame/qimu/portable"
 )
 
-var errorCodes = map[string]error{"workspace": app.ErrWorkspaceUnavailable, "command_conflict": portable.ErrInvocationConflict,
-	"not_found": memory.ErrNotFound, "not_visible": memory.ErrNotVisible, "not_pending": memory.ErrNotPending,
-	"target_full": memory.ErrTargetFull, "duplicate_content": memory.ErrDuplicateContent, "invalid_input": app.ErrInvalidInput, "revision_conflict": memory.ErrRevisionConflict, "revision_exhausted": exactint.ErrExhausted, "cursor": pagination.ErrInvalidCursor, "limit": pagination.ErrInvalidLimit,
+// errorCodes is ordered: an error joining several causes takes the first
+// code listed, so classification never depends on map iteration.
+var errorCodes = []struct {
+	code  string
+	cause error
+}{
+	{"workspace", app.ErrWorkspaceUnavailable},
+	{"command_conflict", portable.ErrInvocationConflict},
+	{"not_found", memory.ErrNotFound},
+	{"not_visible", memory.ErrNotVisible},
+	{"not_pending", memory.ErrNotPending},
+	{"target_full", memory.ErrTargetFull},
+	{"duplicate_content", memory.ErrDuplicateContent},
+	{"invalid_input", app.ErrInvalidInput},
+	{"revision_conflict", memory.ErrRevisionConflict},
+	{"revision_exhausted", exactint.ErrExhausted},
+	{"cursor", pagination.ErrInvalidCursor},
+	{"limit", pagination.ErrInvalidLimit},
+}
+
+func codedCause(code string) error {
+	for _, entry := range errorCodes {
+		if entry.code == code {
+			return entry.cause
+		}
+	}
+	return nil
 }
 
 func classify(err error) string {
 	if failure, ok := errors.AsType[*portable.Refusal](err); ok {
-		if errorCodes[failure.Code] != nil {
+		if codedCause(failure.Code) != nil {
 			return failure.Code
 		}
 	}
-	for code, cause := range errorCodes {
-		if errors.Is(err, cause) {
-			return code
+	for _, entry := range errorCodes {
+		if errors.Is(err, entry.cause) {
+			return entry.code
 		}
 	}
 	return ""

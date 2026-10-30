@@ -357,3 +357,12 @@ func (m *memoryScheduleRegistry) RecordRun(context.Context, scheduledomain.RunRe
 func unexpectedManualRun(context.Context, wire.ItemInput) (scheduleapp.RunReference, error) {
 	return scheduleapp.RunReference{}, errors.New("unexpected manual Run")
 }
+
+func TestClassifyPicksTheFirstListedCauseOfAJoinedError(t *testing.T) {
+	joined := errors.Join(scheduledomain.ErrRevisionConflict, scheduledomain.ErrNotFound)
+	for range 64 {
+		if got := classify(joined); got != "not_found" {
+			t.Fatalf("classify(joined) = %q, want the earlier-listed not_found", got)
+		}
+	}
+}
