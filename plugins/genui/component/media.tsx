@@ -3,6 +3,7 @@ import {
   useEffect,
   useId,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -38,19 +39,35 @@ function ImageResource({
   inline,
   t,
 }: DisplayProps["Image"] & { inline?: boolean; t: Translate }) {
+  const resourceRef = useRef<HTMLElement>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "failed">(
     "loading",
   );
   const Container = inline ? "span" : "figure";
   return (
     <Container
+      ref={resourceRef}
+      role={inline ? "group" : undefined}
+      aria-label={alt || caption || t("image.view")}
+      tabIndex={-1}
       style={{ margin: 0, minWidth: 0 }}
       aria-busy={status === "loading"}
     >
       {status === "failed" ? (
         <>
           <ImageNotice label={alt} detail={t("image.unavailable")} />
-          <Button onClick={() => setStatus("loading")}>{t("retry")}</Button>
+          <Button
+            onClick={(event) => {
+              if (
+                event.currentTarget ===
+                event.currentTarget.ownerDocument.activeElement
+              )
+                resourceRef.current?.focus({ preventScroll: true });
+              setStatus("loading");
+            }}
+          >
+            {t("retry")}
+          </Button>
         </>
       ) : (
         <span

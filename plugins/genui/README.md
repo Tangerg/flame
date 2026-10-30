@@ -88,6 +88,10 @@ image reader. The authored alternative text and caption retain their meaning;
 local zoom and panning do not advance OpenUI fields or operation state. Resource
 loading, failure and explicit retry keep their existing owner. Hiding the report
 or replacing an image source ends its open reading capture.
+Explicit retry hands its own focus to the surviving, named image container
+before replacing the action. Loading, decoding and failure do not reclaim later
+editing focus. Independent images and Markdown images share that same resource
+boundary, without adding another natural Tab stop.
 
 ## Local computation
 

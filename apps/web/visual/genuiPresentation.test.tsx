@@ -791,7 +791,7 @@ it("shows map tile failures without hiding location data and retries only when r
   expect(screen.getByRole("button", { name: "Zoom in" })).toBeTruthy();
 });
 
-it("keeps image loading and failures explicit and retries the original URL on user request", () => {
+it("keeps image loading and failures explicit and retries the original URL on user request", async () => {
   show(
     document([
       {
@@ -817,7 +817,89 @@ it("keeps image loading and failures explicit and retries the original URL on us
   fireEvent.load(retried);
   expect(retried.closest("figure")?.getAttribute("aria-busy")).toBe("false");
   expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+  const trigger = screen.getByRole("button", { name: "View image: Review diagram" });
+  act(() => trigger.focus());
+  fireEvent.click(trigger);
+  const preview = await screen.findByRole("dialog", { name: "Review diagram" });
+  expect(within(preview).getByRole("img").getAttribute("src")).toBe(
+    "https://example.test/review.png",
+  );
+  fireEvent.keyDown(preview, { key: "Escape" });
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  await waitFor(() => expect(window.document.activeElement).toBe(trigger));
 });
+
+it.each(["Image", "Markdown"] as const)(
+  "retains the %s reading context while its focused Retry is replaced",
+  async (kind) => {
+    show(
+      document([
+        kind === "Image"
+          ? {
+              id: "diagram",
+              type: "Image",
+              props: { src: "https://example.test/review.png", alt: "Review diagram" },
+            }
+          : {
+              id: "diagram",
+              type: "Markdown",
+              props: { text: "![Review diagram](https://example.test/review.png)" },
+            },
+      ]),
+    );
+    await act(async () => {});
+    fireEvent.error(screen.getByRole("img", { name: "Review diagram" }));
+    const retry = screen.getByRole("button", { name: "Retry" });
+    act(() => retry.focus());
+    fireEvent.click(retry);
+    const host = window.document.activeElement as HTMLElement;
+    expect(host.getAttribute("aria-label")).toBe("Review diagram");
+    expect(host.tabIndex).toBe(-1);
+    expect(host.contains(screen.getByRole("button", { name: "View image: Review diagram" }))).toBe(
+      true,
+    );
+    const retried = screen.getByRole("img", { name: "Review diagram" });
+    expect(retried.getAttribute("src")).toBe("https://example.test/review.png");
+    fireEvent.load(retried);
+    expect(window.document.activeElement).toBe(host);
+    fireEvent.error(retried);
+    expect(window.document.activeElement).toBe(host);
+    expect(host.contains(screen.getByRole("button", { name: "Retry" }))).toBe(true);
+  },
+);
+
+it.each(["load", "error"] as const)(
+  "preserves later editing focus when a retried image settles with %s",
+  async (result) => {
+    show(
+      document(
+        [
+          {
+            id: "diagram",
+            type: "Image",
+            props: { src: "https://example.test/review.png", alt: "Review diagram" },
+          },
+          { id: "note", type: "Input", props: { field: "note", label: "Review note" } },
+        ],
+        [{ id: "note", value: "Keep this draft." }],
+      ),
+    );
+    await act(async () => {});
+    fireEvent.error(screen.getByRole("img", { name: "Review diagram" }));
+    const retry = screen.getByRole("button", { name: "Retry" });
+    act(() => retry.focus());
+    fireEvent.click(retry);
+    const note = screen.getByRole("textbox", { name: "Review note" });
+    act(() => note.focus());
+    const retried = screen.getByRole("img", { name: "Review diagram" });
+    fireEvent[result](retried);
+    expect(window.document.activeElement).toBe(note);
+    expect(note).toHaveProperty("value", "Keep this draft.");
+    if (result === "load") fireEvent.error(retried);
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(window.document.activeElement).toBe(note);
+  },
+);
 
 it("validates date bounds through the document owner before any form action", async () => {
   show(GENUI_REPORT);

@@ -129,6 +129,9 @@ scrolls; see **Panel reader budget and owned reflow scroll**. The separate nativ
 reverse-Tab finding remains open. Its hit-position follow-up distinguishes a
 button's text from its padding without changing the product focus model; physical
 input remains unqualified under **Native reverse-Tab attribution**.
+Generated Image and Markdown-image retries now retain their local reading context;
+see **Generated-image retry context** for the native failure/recovery and source-return
+qualification.
 The user resumed the paused goal.
 Completed batches are verified, explicitly committed and pushed to main under the
 goal publication policy. Preserve parallel work in the primary checkout. Do not
@@ -10566,6 +10569,92 @@ remains. The memory-only archive round-trips **110 UTF-8 records**,
 810971be40c0ead9d1bdc52c05325829ffd71bdda3080f96d961370712477972. Native screenshots remain in the CUA transcript. This final
 handoff changes no qualified product bytes. Continue from new content/Dock task
 evidence; the continuous goal remains active.
+
+### Generated-image retry context
+
+Actual original Wails at `531a002cf` loses focus to the document after Retry
+replaces a failed GenUI image. The action can be reached again, but the user loses
+the current reading position in the keyboard sequence. Both Image and Markdown
+images use `ImageResource` in `plugins/genui/component/media.tsx`.
+
+The existing resource container now carries its image identity and remains a
+programmatic focus target outside the natural Tab order. Retry hands focus there
+synchronously only when that action owns focus, before replacing the failed
+content. The same loading/ready/failed state still owns browser decoding. Neither
+settlement nor an unfocused activation reclaims later editing focus. Authored
+alternative text, captions, URL admission, original-source expansion and local
+OpenUI values retain their owners. No timer, focus history, dependency, Runtime
+command, persistence format or locale key is added. Normal generation changes
+only GenUI's `component.js` among 34 installed resources; install/select the rebuilt
+component through the ordinary release path with its matching Host.
+
+The existing Web DataError uses the same owned-action to surviving-host handoff.
+Read-only ChatGPT image-lightbox interface code retains failed-image context and
+an explicit retry; its close-focus handler and ZCode's image preview controls
+remain reference evidence, not implementations copied into this resource. The
+better-series review applies to recovery through the current image, related file
+and continued conversation, keeping shared Base UI, StyleX and semantic tokens.
+
+| Severity         | Location                               | Before                                         | After                                                                                            | Why                                                                  |
+| ---------------- | -------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| MEDIUM, resolved | `plugins/genui/component/media.tsx:60` | Replacing focused Retry leaves document focus. | Its named image container survives and the next Tab reaches Retry or the recovered image action. | Focus-order continuity (2.4.3) keeps correction in the current task. |
+
+Accessibility and interaction use native Tab/Return, an existing focus perimeter
+and a named figure or inline group. Layout, whitespace and hierarchy retain the
+image/feedback/caption boundary through the recorded window and zoom changes.
+Authored text and translated controls retain their typography at 14/18px. Colors
+use the existing Orange/blue focus roles in light/dark scenes; rendered contrast
+ratios are not newly measured. Full-motion and motion-off scenes preserve the
+existing behavior without a new animation or visual asset. **Approve** this
+bounded repair; it does not establish whole-product or award-level completion.
+
+- The original focused baseline passes 50 tests. The added regressions expose
+  two failures with 52 passes. Final related Frontend verification passes
+  **6 files / 119 tests**, including both image forms, owned and unowned retry,
+  later editing focus, successful decode, original-source preview and trigger
+  return. Assertions are not weakened.
+- Plugin type/lint/format/i18n/resource checks, Web type/lint/format, layers,
+  design-system/token/style/class/shorthand/chrome/locale checks, bundle and
+  installed-module checks pass. Normal **make check-native passes in 17.761 s**,
+  including Desktop test/vet/build and the supported Wails build. Shared UI and
+  backend implementations are unchanged; their standalone suites are not rerun.
+- Actual EN/light/14px/Orange/full-motion Wails qualifies pointer and keyboard
+  Retry, both named image hosts, a retained local note, README reading/back and
+  continued draft `Draft before image recovery. Continued after retry.`.
+- Actual ZH/dark/18px/blue/motion-off Wails qualifies both retries at **200%**,
+  **560 x 475** reading, native window zoom to **756 x 475**, full-width README
+  reading/Close and continued draft `从图片恢复继续。 已核对失败反馈。`. Actual Size
+  is restored before Quit.
+- A separate ordinary launch repeats both keyboard retries at 200%, file return
+  and continued draft `普通版本图片恢复草稿。 继续输入。`. Its **345 assets** differ
+  from the observed build only by removing the observer file and changing the
+  two HTML entries; the native binary is unchanged. Observer event/request
+  deltas are zero. AX task observations remain in CUA, without a screenshot-file
+  or clean-launch DOM-measurement claim.
+
+The private canonical report uses reserved `.invalid` HTTPS image URLs to produce
+real browser load failures; it injects no image-error or focus event. Production
+components and the installed-component lifecycle consume the existing validated
+fixture reads. Successful image decoding/preview after Retry is composed coverage,
+not a new native remote-image success claim. Live provider/Runtime writes, release
+acquisition/Realm admission, Send, VoiceOver, OS IME and other platforms are not
+qualified. No browser suite, performance baseline, Claude CLI or subagent is used.
+
+All four native launches exit, the bundle is unregistered and the listener is
+closed. Cleanup removes seven newly created checkout outputs and three private
+profiles, restoring the changed native-check binary from its preserved bytes.
+Preservation passes before and after retirement for **6,386** qualified
+non-Markdown inputs, **34** resources, **55** read-only references, three
+instructions, 21 output baselines, four original files/modes and five profile
+absences. The primary parallel checkout and installed toolchain remain untouched.
+The exact root `/private/tmp/flame-image-recovery-bSOGus` is absent. The memory-only
+archive round-trips **65 UTF-8 records**, **2,564,370 raw bytes** and **685,419 gzip
+bytes**, SHA-256 `049032481615913af9490c15fee24bded4d8f2ef83575ed14e3ae15e90114e76`.
+The interval fetch finds zero incoming main commits at `531a002cf`.
+Next compare actual Markdown-image identity through an independent local-field
+update: native AX replaced that failed image group while the note was edited,
+which alone does not prove a resource or open-reader lifetime defect. The native
+reverse-Tab finding and broader UI goal remain open.
 
 ### Recorded-image decoder feedback
 
