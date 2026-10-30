@@ -1041,7 +1041,7 @@ func (f *fakeSession) Save(_ context.Context, replacement session.Replacement) e
 	if state.ID() != f.sess.ID() {
 		return session.ErrNotFound
 	}
-	if f.sess.Revision() != replacement.ExpectedRevision() {
+	if expected, replacing := replacement.Expected(); !replacing || f.sess.Revision() != expected.Revision() {
 		return session.ErrRevisionConflict
 	}
 	if f.modelErr != nil {

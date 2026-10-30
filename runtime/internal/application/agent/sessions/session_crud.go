@@ -174,10 +174,9 @@ func (c *Coordinator) Update(ctx context.Context, id string, patch Patch) (sessi
 		}
 		selection = &resolved
 	}
-	updated, changed, err := current.Apply(session.Patch{
+	updated, changed, err := current.Edit(patch.ExpectedRevision, session.Patch{
 		Title: patch.Title, Selection: selection, Workspace: workspace,
 		Favorite: patch.Favorite, Isolated: patch.Isolated,
-		ExpectedRevision: patch.ExpectedRevision,
 	}, c.now())
 	if err != nil {
 		return session.Session{}, err

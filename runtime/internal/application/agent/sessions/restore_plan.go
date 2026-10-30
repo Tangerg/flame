@@ -44,7 +44,7 @@ func NewRestorePlan(
 	// The replacement is the sole stored representation of restored Plan steps.
 	owned.Plan = nil
 	var retirement *ResourceRetirement
-	if sessionReplacement.ExpectedRevision() != 0 {
+	if _, replacing := sessionReplacement.Expected(); replacing {
 		value, err := newResourceRetirement(restoredSession.ID())
 		if err != nil {
 			return RestorePlan{}, err

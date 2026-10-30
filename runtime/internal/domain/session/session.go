@@ -43,16 +43,13 @@ type Draft struct {
 }
 
 // Patch is the editable surface of a user-facing Session. Nil fields are left
-// unchanged. ExpectedRevision is an optimistic-concurrency precondition rather
-// than an editable field; zero deliberately omits that precondition for
-// Runtime-owned maintenance.
+// unchanged.
 type Patch struct {
-	Title            *string
-	Selection        *modelchoice.Selection
-	Workspace        *Workspace
-	Favorite         *bool
-	Isolated         *bool
-	ExpectedRevision uint64
+	Title     *string
+	Selection *modelchoice.Selection
+	Workspace *Workspace
+	Favorite  *bool
+	Isolated  *bool
 }
 
 // Empty reports whether p requests no field change.
@@ -125,16 +122,22 @@ func Restore(snapshot Snapshot) (Session, error) {
 	return value, nil
 }
 
-// Apply returns the Session produced by one edit. Text normalization and all
+// Edit applies a person's patch to the revision they inspected; any other
+// revision, including none, conflicts.
+func (s Session) Edit(expectedRevision uint64, patch Patch, updatedAt time.Time) (Session, bool, error) {
+	if s.id != "" && expectedRevision != s.revision.Value() {
+		return Session{}, false, ErrRevisionConflict
+	}
+	return s.Apply(patch, updatedAt)
+}
+
+// Apply returns the Session produced by one Runtime-owned edit. Text normalization and all
 // preconditions are enforced on this single path, so callers cannot normalize a
 // command and then bypass its aggregate checks. A semantic no-op returns s and
 // changed=false without advancing revision or time.
 func (s Session) Apply(patch Patch, updatedAt time.Time) (next Session, changed bool, err error) {
 	if s.id == "" {
 		return Session{}, false, fmt.Errorf("%w: current state was never constructed", ErrInvalid)
-	}
-	if patch.ExpectedRevision != 0 && patch.ExpectedRevision != s.revision.Value() {
-		return Session{}, false, ErrRevisionConflict
 	}
 	if patch.Empty() {
 		return s, false, nil
@@ -179,7 +182,7 @@ func (s Session) NameIfUntitled(title string, updatedAt time.Time) (Session, boo
 	if strings.TrimSpace(s.title) != "" {
 		return s, false, nil
 	}
-	return s.Apply(Patch{Title: &title, ExpectedRevision: s.revision.Value()}, updatedAt)
+	return s.Apply(Patch{Title: &title}, updatedAt)
 }
 
 // Fork derives a new child Session. It inherits the admitted workspace and

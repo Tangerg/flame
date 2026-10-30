@@ -663,7 +663,7 @@ func TestSessionImportAdvancesTargetRevision(t *testing.T) {
 
 	liveTitle := "Changed after export"
 	if _, updateSessionErr := server.UpdateSession(ctx, protocol.UpdateSessionRequest{
-		SessionID: created.ID(), Title: &liveTitle,
+		SessionID: created.ID(), ExpectedRevision: created.Revision(), Title: &liveTitle,
 	}); updateSessionErr != nil {
 		t.Fatalf("advance live Session: %v", updateSessionErr)
 	}

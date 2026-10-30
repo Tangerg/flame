@@ -33,12 +33,10 @@ func NextReplacement(expected, state Session) (Replacement, error) {
 	return replacement, nil
 }
 
-// ExpectedRevision returns zero for an initial replacement.
-func (r Replacement) ExpectedRevision() uint64 {
-	if r.initial {
-		return 0
-	}
-	return r.expected.Revision()
+// Expected returns the aggregate this replacement advances, or false for the
+// initial write of a Session.
+func (r Replacement) Expected() (Session, bool) {
+	return r.expected, !r.initial
 }
 
 // State returns the complete already-decided replacement aggregate.

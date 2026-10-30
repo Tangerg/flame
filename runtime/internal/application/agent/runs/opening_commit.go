@@ -172,7 +172,7 @@ func (o OpeningCommit) validateAdmission() error {
 		if err := o.sessionReplacement.Validate(); err != nil {
 			return fmt.Errorf("runs: invalid opening Session replacement: %w", err)
 		}
-		if o.sessionReplacement.ExpectedRevision() == 0 ||
+		if _, replacing := o.sessionReplacement.Expected(); !replacing ||
 			o.sessionReplacement.State().ID() != o.admit.SessionID {
 			return errors.New("runs: opening Session replacement differs from admitted Run")
 		}

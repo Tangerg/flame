@@ -380,7 +380,7 @@ func (s *SessionStores) saveSessionReplacement(
 	ctx context.Context,
 	replacement session.Replacement,
 ) error {
-	if replacement.ExpectedRevision() == 0 {
+	if _, replacing := replacement.Expected(); !replacing {
 		return s.sessions.Insert(ctx, replacement.State())
 	}
 	return s.sessions.Save(ctx, replacement)

@@ -23,7 +23,7 @@ func TestUpdateSession(t *testing.T) {
 	created, _ := insertSessionFixture(ctx, svc, "old", "/w")
 
 	title := "new title"
-	out, err := s.UpdateSession(ctx, protocol.UpdateSessionRequest{SessionID: created.ID(), Title: &title})
+	out, err := s.UpdateSession(ctx, protocol.UpdateSessionRequest{SessionID: created.ID(), ExpectedRevision: created.Revision(), Title: &title})
 	if err != nil {
 		t.Fatalf("rename: %v", err)
 	}
@@ -36,7 +36,7 @@ func TestUpdateSession(t *testing.T) {
 	model := "claude-opus-4-8"
 	effort := "high"
 	out, err = s.UpdateSession(ctx, protocol.UpdateSessionRequest{
-		SessionID: created.ID(), Provider: &provider, Model: &model, ReasoningEffort: &effort,
+		SessionID: created.ID(), ExpectedRevision: out.Revision, Provider: &provider, Model: &model, ReasoningEffort: &effort,
 	})
 	if err != nil {
 		t.Fatalf("set model: %v", err)
@@ -46,33 +46,33 @@ func TestUpdateSession(t *testing.T) {
 	}
 	medium := "medium"
 	out, err = s.UpdateSession(ctx, protocol.UpdateSessionRequest{
-		SessionID: created.ID(), ReasoningEffort: &medium,
+		SessionID: created.ID(), ExpectedRevision: out.Revision, ReasoningEffort: &medium,
 	})
 	if err != nil || out.Provider != provider || out.Model != model || out.ReasoningEffort != medium {
 		t.Fatalf("reasoning-only edit = (%+v, %v), want retained identity with medium effort", out, err)
 	}
 	provider, model = "openai", "gpt-5.6-sol"
 	out, err = s.UpdateSession(ctx, protocol.UpdateSessionRequest{
-		SessionID: created.ID(), Provider: &provider, Model: &model,
+		SessionID: created.ID(), ExpectedRevision: out.Revision, Provider: &provider, Model: &model,
 	})
 	if err != nil || out.Provider != provider || out.Model != model || out.ReasoningEffort != "" {
 		t.Fatalf("model switch = (%+v, %v), want cleared prior-model effort", out, err)
 	}
 
 	if _, updateSessionErr := s.UpdateSession(ctx, protocol.UpdateSessionRequest{
-		SessionID: created.ID(), Provider: &provider,
+		SessionID: created.ID(), ExpectedRevision: out.Revision, Provider: &provider,
 	}); !errors.Is(updateSessionErr, protocol.ErrInvalidParams) {
 		t.Errorf("provider-only selection err = %v, want ErrInvalidParams", updateSessionErr)
 	}
 	if _, updateSessionErr := s.UpdateSession(ctx, protocol.UpdateSessionRequest{
-		SessionID: created.ID(), Model: &model,
+		SessionID: created.ID(), ExpectedRevision: out.Revision, Model: &model,
 	}); !errors.Is(updateSessionErr, protocol.ErrInvalidParams) {
 		t.Errorf("model-only selection err = %v, want ErrInvalidParams", updateSessionErr)
 	}
 
 	// whitespace-only title → invalid_params (a session title must be non-empty)
 	blank := "   "
-	if _, updateSessionErr := s.UpdateSession(ctx, protocol.UpdateSessionRequest{SessionID: created.ID(), Title: &blank}); !errors.Is(updateSessionErr, protocol.ErrInvalidParams) {
+	if _, updateSessionErr := s.UpdateSession(ctx, protocol.UpdateSessionRequest{SessionID: created.ID(), ExpectedRevision: out.Revision, Title: &blank}); !errors.Is(updateSessionErr, protocol.ErrInvalidParams) {
 		t.Errorf("blank title err = %v, want ErrInvalidParams", updateSessionErr)
 	}
 
@@ -85,7 +85,7 @@ func TestUpdateSession(t *testing.T) {
 	// silently break later runs)
 	ghost := "/no/such/dir"
 	if _, updateSessionErr := s.UpdateSession(ctx, protocol.UpdateSessionRequest{
-		SessionID: created.ID(), Workspace: &protocol.WorkspaceRef{Path: ghost},
+		SessionID: created.ID(), ExpectedRevision: out.Revision, Workspace: &protocol.WorkspaceRef{Path: ghost},
 	}); !errors.Is(updateSessionErr, protocol.ErrWorkspaceUnavailable) {
 		t.Errorf("relocate to ghost err = %v, want ErrWorkspaceUnavailable", updateSessionErr)
 	}
@@ -93,7 +93,7 @@ func TestUpdateSession(t *testing.T) {
 	// relocate to a real dir → cwd surfaces on the wire
 	newCWD := t.TempDir()
 	out, err = s.UpdateSession(ctx, protocol.UpdateSessionRequest{
-		SessionID: created.ID(), Workspace: &protocol.WorkspaceRef{Path: newCWD},
+		SessionID: created.ID(), ExpectedRevision: out.Revision, Workspace: &protocol.WorkspaceRef{Path: newCWD},
 	})
 	if err != nil {
 		t.Fatalf("relocate: %v", err)
@@ -107,7 +107,7 @@ func TestUpdateSession(t *testing.T) {
 	}
 	busyCWD := t.TempDir()
 	if _, updateSessionErr := s.UpdateSession(ctx, protocol.UpdateSessionRequest{
-		SessionID: created.ID(), Workspace: &protocol.WorkspaceRef{Path: busyCWD},
+		SessionID: created.ID(), ExpectedRevision: out.Revision, Workspace: &protocol.WorkspaceRef{Path: busyCWD},
 	}); !errors.Is(updateSessionErr, protocol.ErrSessionBusy) {
 		t.Fatalf("relocate under active run = %v, want ErrSessionBusy", updateSessionErr)
 	}

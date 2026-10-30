@@ -14,7 +14,7 @@ func TestReplacementOwnsInitialAndExactNextRevision(t *testing.T) {
 	if err != nil {
 		t.Fatalf("InitialReplacement: %v", err)
 	}
-	if initial.ExpectedRevision() != 0 || initial.State().ID() != current.ID() {
+	if _, replacing := initial.Expected(); replacing || initial.State().ID() != current.ID() {
 		t.Fatalf("initial replacement = %+v", initial)
 	}
 
@@ -27,7 +27,7 @@ func TestReplacementOwnsInitialAndExactNextRevision(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NextReplacement: %v", err)
 	}
-	if replacement.ExpectedRevision() != current.Revision() || replacement.State().Title() != title {
+	if expected, replacing := replacement.Expected(); !replacing || expected.Revision() != current.Revision() || replacement.State().Title() != title {
 		t.Fatalf("next replacement = %+v", replacement)
 	}
 }

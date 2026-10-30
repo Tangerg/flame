@@ -147,8 +147,8 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 	<-blockingGoal.entered
 
 	updatedTitle := "after"
-	updatedSession, changed, err := original.Apply(session.Patch{
-		Title: &updatedTitle, ExpectedRevision: original.Revision(),
+	updatedSession, changed, err := original.Edit(original.Revision(), session.Patch{
+		Title: &updatedTitle,
 	}, createdAt.Add(time.Second))
 	if err != nil || !changed {
 		t.Fatalf("prepare Session replacement: changed=%t err=%v", changed, err)

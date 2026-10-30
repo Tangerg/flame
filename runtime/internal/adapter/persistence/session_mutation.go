@@ -30,11 +30,12 @@ func (s *SessionStore) Save(
 	ctx context.Context,
 	change session.Replacement,
 ) error {
-	expectedRevision := change.ExpectedRevision()
-	replacement := change.State()
-	if expectedRevision == 0 {
+	expected, replacing := change.Expected()
+	if !replacing {
 		return fmt.Errorf("sqlite: initial Session replacement passed to Save: %w", session.ErrInvalid)
 	}
+	expectedRevision := expected.Revision()
+	replacement := change.State()
 	snapshot := replacement.Snapshot()
 	titleSearch, err := session.NormalizeCatalogText(snapshot.Title)
 	if err != nil {

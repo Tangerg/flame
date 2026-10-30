@@ -79,7 +79,8 @@ func (c *crudSessionStore) Save(_ context.Context, replacement session.Replaceme
 	if c.operations != nil {
 		*c.operations = append(*c.operations, "session.save")
 	}
-	c.expected = replacement.ExpectedRevision()
+	expected, _ := replacement.Expected()
+	c.expected = expected.Revision()
 	c.saved = replacement.State()
 	if c.saveErr != nil {
 		return c.saveErr
@@ -274,7 +275,8 @@ func TestCoordinatorUpdateAppliesPatch(t *testing.T) {
 	favorite := true
 
 	got, err := c.Update(ctx, "ses_1", Patch{
-		Title: &title,
+		ExpectedRevision: 1,
+		Title:            &title,
 		ModelSelection: modelchoice.Patch{
 			Provider: &provider, Model: &model, ReasoningEffort: &effort,
 		},
@@ -350,7 +352,7 @@ func TestCoordinatorUpdateRetiresPreviousExecutionPolicyBeforeSave(t *testing.T)
 	}))
 	cwd := "/requested/project"
 
-	if _, err := coordinator.Update(t.Context(), "ses_1", Patch{WorkspacePath: &cwd}); err != nil {
+	if _, err := coordinator.Update(t.Context(), "ses_1", Patch{ExpectedRevision: 1, WorkspacePath: &cwd}); err != nil {
 		t.Fatalf("Update: %v", err)
 	}
 	want := []string{
@@ -374,7 +376,7 @@ func TestCoordinatorUpdateKeepsExecutionPolicyForMetadataOnlyEdit(t *testing.T) 
 	}))
 	title := "Renamed"
 
-	if _, err := coordinator.Update(t.Context(), "ses_1", Patch{Title: &title}); err != nil {
+	if _, err := coordinator.Update(t.Context(), "ses_1", Patch{ExpectedRevision: 1, Title: &title}); err != nil {
 		t.Fatalf("Update: %v", err)
 	}
 	want := []string{"session.save"}
@@ -395,7 +397,7 @@ func TestCoordinatorUpdateDoesNotExposePolicyWhenCleanupFails(t *testing.T) {
 	}))
 	cwd := "/requested/project"
 
-	_, err := coordinator.Update(t.Context(), "ses_1", Patch{WorkspacePath: &cwd})
+	_, err := coordinator.Update(t.Context(), "ses_1", Patch{ExpectedRevision: 1, WorkspacePath: &cwd})
 	if !errors.Is(err, wantErr) {
 		t.Fatalf("Update error = %v, want sandbox cleanup failure", err)
 	}
@@ -415,7 +417,7 @@ func TestCoordinatorUpdateRejectsRelocationDuringRun(t *testing.T) {
 	c := mustNewCoordinator(testDependencies(stores, Dependencies{Paths: testWorkspaceResolver{resolved: "/resolved/project"}, Admissions: claims}))
 	cwd := "/requested/project"
 
-	_, err := c.Update(t.Context(), "ses_1", Patch{WorkspacePath: &cwd})
+	_, err := c.Update(t.Context(), "ses_1", Patch{ExpectedRevision: 1, WorkspacePath: &cwd})
 	if !errors.Is(err, rundomain.ErrSessionBusy) {
 		t.Fatalf("Update relocation error = %v, want rundomain.ErrSessionBusy", err)
 	}
@@ -464,7 +466,7 @@ func TestCoordinatorUpdateRejectsInvalidPatch(t *testing.T) {
 	c := mustNewCoordinator(testDependencies(stores, Dependencies{Paths: testWorkspaceResolver{err: errors.New("cwd unavailable")}}))
 
 	blank := "  "
-	if _, err := c.Update(t.Context(), "ses_1", Patch{Title: &blank}); !errors.Is(err, session.ErrTitleRequired) {
+	if _, err := c.Update(t.Context(), "ses_1", Patch{ExpectedRevision: 1, Title: &blank}); !errors.Is(err, session.ErrTitleRequired) {
 		t.Fatalf("blank title err = %v, want ErrTitleRequired", err)
 	}
 	if store.saved.ID() != "" {
@@ -472,7 +474,7 @@ func TestCoordinatorUpdateRejectsInvalidPatch(t *testing.T) {
 	}
 
 	ghost := "/no/such/dir"
-	if _, err := c.Update(t.Context(), "ses_1", Patch{WorkspacePath: &ghost}); !errors.Is(err, workspaceapp.ErrCWDUnavailable) {
+	if _, err := c.Update(t.Context(), "ses_1", Patch{ExpectedRevision: 1, WorkspacePath: &ghost}); !errors.Is(err, workspaceapp.ErrCWDUnavailable) {
 		t.Fatalf("ghost cwd err = %v, want ErrCWDUnavailable", err)
 	}
 	if store.saved.ID() != "" {
@@ -480,7 +482,7 @@ func TestCoordinatorUpdateRejectsInvalidPatch(t *testing.T) {
 	}
 
 	title := "Renamed"
-	if _, err := c.Update(t.Context(), "ses_1", Patch{Title: &title, WorkspacePath: &ghost}); !errors.Is(err, workspaceapp.ErrCWDUnavailable) {
+	if _, err := c.Update(t.Context(), "ses_1", Patch{ExpectedRevision: 1, Title: &title, WorkspacePath: &ghost}); !errors.Is(err, workspaceapp.ErrCWDUnavailable) {
 		t.Fatalf("mixed patch err = %v, want ErrCWDUnavailable", err)
 	}
 	if store.saved.ID() != "" {

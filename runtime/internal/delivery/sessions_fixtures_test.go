@@ -853,7 +853,7 @@ func (s stubLifecycleStores) ApplyRestore(ctx context.Context, plan sessions.Res
 	planReplacement := plan.PlanReplacement()
 	restored := sessionReplacement.State()
 	id := restored.ID()
-	if sessionReplacement.ExpectedRevision() == 0 {
+	if _, replacing := sessionReplacement.Expected(); !replacing {
 		if err := s.rt.sess.Insert(ctx, restored); err != nil {
 			return err
 		}

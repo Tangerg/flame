@@ -109,9 +109,8 @@ func TestSessionApplyOwnsNormalizationRevisionAndTime(t *testing.T) {
 	title := "  After  "
 	selection := mustModelSelection("provider", "model")
 	favorite := true
-	next, changed, err := current.Apply(Patch{
+	next, changed, err := current.Edit(current.Revision(), Patch{
 		Title: &title, Selection: &selection, Favorite: &favorite,
-		ExpectedRevision: current.Revision(),
 	}, startedAt.Add(time.Second))
 	if err != nil {
 		t.Fatalf("Apply: %v", err)
@@ -135,8 +134,10 @@ func TestSessionApplyNoopAndConflicts(t *testing.T) {
 	if err != nil || changed || unmoved.Snapshot() != current.Snapshot() {
 		t.Fatalf("semantic no-op = %+v, changed=%v, err=%v", unmoved.Snapshot(), changed, err)
 	}
-	if _, _, err := current.Apply(Patch{ExpectedRevision: 2}, startedAt); !errors.Is(err, ErrRevisionConflict) {
-		t.Fatalf("stale revision error = %v, want ErrRevisionConflict", err)
+	for _, stale := range []uint64{0, 2} {
+		if _, _, err := current.Edit(stale, Patch{}, startedAt); !errors.Is(err, ErrRevisionConflict) {
+			t.Fatalf("revision %d error = %v, want ErrRevisionConflict", stale, err)
+		}
 	}
 	blank := "  "
 	if _, _, err := current.Apply(Patch{Title: &blank}, startedAt); !errors.Is(err, ErrTitleRequired) {
