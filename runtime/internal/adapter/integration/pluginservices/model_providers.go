@@ -68,7 +68,7 @@ func (p *ModelProviders) Held(_ context.Context, installation qimu.InstallationI
 	for use := range p.uses {
 		for _, dependency := range use.binding.Activation.Dependencies {
 			if dependency.InstallationID.String() == installation.String() {
-				value := qimu.Dependency{InstallationID: installation, Release: qimu.Digest(dependency.Digest.String())}
+				value := qimu.Dependency{InstallationID: installation, Release: dependency.Digest}
 				if !slices.Contains(result, value) {
 					result = append(result, value)
 				}

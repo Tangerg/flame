@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -19,7 +19,7 @@ type identifiedPolicyTool struct {
 }
 
 func (i identifiedPolicyTool) MCPToolIdentity() (string, string) { return i.server, i.remote }
-func (i identifiedPolicyTool) SourceFingerprint() identity.Digest {
+func (i identifiedPolicyTool) SourceFingerprint() integrity.Digest {
 	return testsupport.ToolFingerprint(tool.Ref{})
 }
 

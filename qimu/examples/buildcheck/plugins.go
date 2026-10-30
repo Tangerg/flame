@@ -6,11 +6,12 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 func StandardPlugins(contracts Contracts) ([]*qimu.Plugin, error) {
 	definitions := []qimu.Definition{
-		{Revision: qimu.Hash([]byte("buildcheck/compiler/1")), Units: []qimu.Unit{{Declaration: qimu.UnitDeclaration{ID: "compiler", Profile: qimu.NativeGo, Exports: []qimu.ExportDeclaration{{Name: "normalize", Contract: contracts.Passes.Ref()}, {Name: "emit", Contract: contracts.Passes.Ref()}}}, Setup: func(context.Context, *qimu.Setup) ([]qimu.ExportValue, error) {
+		{Revision: integrity.Hash([]byte("buildcheck/compiler/1")), Units: []qimu.Unit{{Declaration: qimu.UnitDeclaration{ID: "compiler", Profile: qimu.NativeGo, Exports: []qimu.ExportDeclaration{{Name: "normalize", Contract: contracts.Passes.Ref()}, {Name: "emit", Contract: contracts.Passes.Ref()}}}, Setup: func(context.Context, *qimu.Setup) ([]qimu.ExportValue, error) {
 			return []qimu.ExportValue{
 				qimu.Contribute("normalize", contracts.Passes, PassMetadata{Stage: "normalize", Order: 10}, CompilerPass(func(ctx context.Context, input string) (string, error) {
 					if err := ctx.Err(); err != nil {
@@ -26,7 +27,7 @@ func StandardPlugins(contracts Contracts) ([]*qimu.Plugin, error) {
 				})),
 			}, nil
 		}}}},
-		{Revision: qimu.Hash([]byte("buildcheck/analysis/1")), Units: []qimu.Unit{{Declaration: qimu.UnitDeclaration{ID: "analysis", Profile: qimu.NativeGo, Exports: []qimu.ExportDeclaration{{Name: "todo", Contract: contracts.Analyzers.Ref()}, {Name: "long-line", Contract: contracts.Analyzers.Ref()}}}, Setup: func(context.Context, *qimu.Setup) ([]qimu.ExportValue, error) {
+		{Revision: integrity.Hash([]byte("buildcheck/analysis/1")), Units: []qimu.Unit{{Declaration: qimu.UnitDeclaration{ID: "analysis", Profile: qimu.NativeGo, Exports: []qimu.ExportDeclaration{{Name: "todo", Contract: contracts.Analyzers.Ref()}, {Name: "long-line", Contract: contracts.Analyzers.Ref()}}}, Setup: func(context.Context, *qimu.Setup) ([]qimu.ExportValue, error) {
 			return []qimu.ExportValue{
 				qimu.Contribute("todo", contracts.Analyzers, AnalyzerMetadata{Name: "todo", Required: true}, Analyzer(func(ctx context.Context, input SourceRevision) ([]Diagnostic, error) {
 					var found []Diagnostic
@@ -54,7 +55,7 @@ func StandardPlugins(contracts Contracts) ([]*qimu.Plugin, error) {
 				})),
 			}, nil
 		}}}},
-		{Revision: qimu.Hash([]byte("buildcheck/format/1")), Units: []qimu.Unit{{Declaration: qimu.UnitDeclaration{ID: "format", Profile: qimu.NativeGo, Exports: []qimu.ExportDeclaration{{Name: "trim", Contract: contracts.Formatters.Ref()}, {Name: "identity", Contract: contracts.Formatters.Ref()}}}, Setup: func(context.Context, *qimu.Setup) ([]qimu.ExportValue, error) {
+		{Revision: integrity.Hash([]byte("buildcheck/format/1")), Units: []qimu.Unit{{Declaration: qimu.UnitDeclaration{ID: "format", Profile: qimu.NativeGo, Exports: []qimu.ExportDeclaration{{Name: "trim", Contract: contracts.Formatters.Ref()}, {Name: "identity", Contract: contracts.Formatters.Ref()}}}, Setup: func(context.Context, *qimu.Setup) ([]qimu.ExportValue, error) {
 			return []qimu.ExportValue{
 				qimu.Contribute("trim", contracts.Formatters, FormatterMetadata{Name: "trim", Priority: 10}, Formatter(func(ctx context.Context, input SourceRevision) (Patch, error) {
 					if err := ctx.Err(); err != nil {
@@ -70,7 +71,7 @@ func StandardPlugins(contracts Contracts) ([]*qimu.Plugin, error) {
 				})),
 			}, nil
 		}}}},
-		{Revision: qimu.Hash([]byte("buildcheck/trace/1")), Units: []qimu.Unit{{Declaration: qimu.UnitDeclaration{ID: "trace", Profile: qimu.NativeGo, Exports: []qimu.ExportDeclaration{{Name: "trace", Contract: contracts.Around.Ref()}}}, Setup: func(context.Context, *qimu.Setup) ([]qimu.ExportValue, error) {
+		{Revision: integrity.Hash([]byte("buildcheck/trace/1")), Units: []qimu.Unit{{Declaration: qimu.UnitDeclaration{ID: "trace", Profile: qimu.NativeGo, Exports: []qimu.ExportDeclaration{{Name: "trace", Contract: contracts.Around.Ref()}}}, Setup: func(context.Context, *qimu.Setup) ([]qimu.ExportValue, error) {
 			return []qimu.ExportValue{
 				qimu.Contribute("trace", contracts.Around, AroundMetadata{Name: "trace", Order: 1}, Around(func(ctx context.Context, input SourceRevision, next Next) (Result, error) {
 					if next == nil {

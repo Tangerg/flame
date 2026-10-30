@@ -1,8 +1,6 @@
 package qimu
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -30,7 +28,6 @@ type UnitID string
 type ScopeID string
 type RealmID string
 type Profile string
-type Digest string
 
 const MaxNameBytes = 256
 
@@ -66,31 +63,8 @@ func (id InstallationID) String() string  { return string(id) }
 func (id UnitID) String() string          { return string(id) }
 func (id ScopeID) String() string         { return string(id) }
 func (id RealmID) String() string         { return string(id) }
-func (d Digest) String() string           { return string(d) }
 
 func ParseInstallationID(value string) (InstallationID, error) {
 	id := InstallationID(value)
 	return id, id.Validate()
-}
-
-func Hash(value []byte) Digest {
-	digest := sha256.Sum256(value)
-	return Digest(hex.EncodeToString(digest[:]))
-}
-
-func (d Digest) Validate() error {
-	if len(d) != 64 {
-		return fmt.Errorf("%w: sha256 digest", ErrInvalid)
-	}
-	for _, b := range []byte(d) {
-		if !(b >= '0' && b <= '9' || b >= 'a' && b <= 'f') {
-			return fmt.Errorf("%w: sha256 digest", ErrInvalid)
-		}
-	}
-	return nil
-}
-
-func ParseDigest(value string) (Digest, error) {
-	d := Digest(value)
-	return d, d.Validate()
 }

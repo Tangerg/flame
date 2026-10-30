@@ -3,11 +3,11 @@
 package jsonvalue
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
+
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 type Value struct{ value string }
@@ -38,10 +38,7 @@ func (i Value) Validate() error {
 func (i Value) String() string       { return i.value }
 func (i Value) JSON() jsontext.Value { return []byte(i.value) }
 
-func (i Value) Digest() string {
-	hash := sha256.Sum256([]byte(i.value))
-	return hex.EncodeToString(hash[:])
-}
+func (i Value) Digest() integrity.Digest { return integrity.Hash([]byte(i.value)) }
 
 func (i Value) MarshalJSON() ([]byte, error) {
 	if err := i.Validate(); err != nil {

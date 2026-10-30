@@ -4,6 +4,8 @@ package mcp
 import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
+
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
 )
@@ -58,9 +60,9 @@ func ProtocolJSON() ([]byte, error) {
 		return nil, err
 	}
 	type inputVector struct {
-		Source    string `json:"source"`
-		Canonical string `json:"canonical"`
-		Digest    string `json:"digest"`
+		Source    string           `json:"source"`
+		Canonical string           `json:"canonical"`
+		Digest    integrity.Digest `json:"digest"`
 	}
 	var vectors []inputVector
 	for _, source := range []string{`{"z":1.0,"a":9007199254740993}`, `{"a":1e+20,"n":-0,"s":"\u0061"}`, `{"\ud83d\ude00":1,"\uffff":2,"a":[false,null]}`} {
@@ -84,11 +86,11 @@ func ProtocolJSON() ([]byte, error) {
 		Constants          ProtocolConstants `json:"constants"`
 		Limits             portable.Limits   `json:"limits"`
 		Receipt            string            `json:"receipt"`
-		ReceiptIdentity    string            `json:"receiptIdentity"`
+		ReceiptIdentity    integrity.Digest  `json:"receiptIdentity"`
 		StreamDelivery     string            `json:"streamDelivery"`
 		Inputs             []inputVector     `json:"inputs"`
 		Capability         string            `json:"capability"`
-		CapabilityIdentity string            `json:"capabilityIdentity"`
+		CapabilityIdentity integrity.Digest  `json:"capabilityIdentity"`
 	}{constants, portable.ProfileLimits(), receiptJSON.String(), receipt.contract.Identity().Digest(), deliveryJSON.String(), vectors, contractJSON.String(), contract.Identity().Digest()}, jsontext.WithIndent("  "), json.Deterministic(true))
 	if err != nil {
 		return nil, err

@@ -8,7 +8,7 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -29,7 +29,7 @@ type scheduleReceiptTool struct {
 
 func (s scheduleReceiptTool) Unwrap() toolcontract.Tool      { return s.Tool }
 func (s scheduleReceiptTool) SourceConfig() mcp.ServerConfig { return s.configuration }
-func (s scheduleReceiptTool) SourceFingerprint() identity.Digest {
+func (s scheduleReceiptTool) SourceFingerprint() integrity.Digest {
 	return s.configuration.AuthorityFingerprint()
 }
 func (s scheduleReceiptTool) InstallationActivation() (plugin.Activation, error) {
@@ -49,13 +49,13 @@ type scheduleReceiptProbe struct {
 	context atomic.Pointer[context.Context]
 }
 
-func (*scheduleReceiptProbe) AwaitOriginalToolSource(context.Context, domaintool.Ref, identity.Digest, identity.Digest, plugin.Activation) (bool, error) {
+func (*scheduleReceiptProbe) AwaitOriginalToolSource(context.Context, domaintool.Ref, integrity.Digest, integrity.Digest, plugin.Activation) (bool, error) {
 	return true, nil
 }
-func (s *scheduleReceiptProbe) OwnsToolSource(context.Context, domaintool.Ref, identity.Digest, plugin.Activation) (bool, error) {
+func (s *scheduleReceiptProbe) OwnsToolSource(context.Context, domaintool.Ref, integrity.Digest, plugin.Activation) (bool, error) {
 	return s.owned, nil
 }
-func (s *scheduleReceiptProbe) OriginalToolResult(ctx context.Context, _ domaintool.Ref, _, _ identity.Digest, _ plugin.Activation, _, _ string) (*chat.ToolOutput, error) {
+func (s *scheduleReceiptProbe) OriginalToolResult(ctx context.Context, _ domaintool.Ref, _, _ integrity.Digest, _ plugin.Activation, _, _ string) (*chat.ToolOutput, error) {
 	s.calls.Add(1)
 	s.context.Store(new(ctx))
 	return s.query(ctx)

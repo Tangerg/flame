@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 // AbsenceRequest names the original authority and creation epoch of an attempt
@@ -65,5 +66,5 @@ func absentProof(request AbsenceRequest, fenceEpoch uint64) (AbsenceProof, error
 	if err != nil {
 		return AbsenceProof{}, err
 	}
-	return AbsenceProof{AttemptID: request.AttemptID, Epoch: request.Epoch, RunnerID: request.RunnerID, FenceEpoch: fenceEpoch, ProofID: qimu.Hash(encoded).String()}, nil
+	return AbsenceProof{AttemptID: request.AttemptID, Epoch: request.Epoch, RunnerID: request.RunnerID, FenceEpoch: fenceEpoch, ProofID: integrity.Hash(encoded).String()}, nil
 }

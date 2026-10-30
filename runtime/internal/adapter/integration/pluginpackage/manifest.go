@@ -15,9 +15,9 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	sdkplugin "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/qimu/cancellation"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -30,7 +30,7 @@ import (
 const manifestSchema = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"
 const MCPSchema = "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json"
 
-func parse(ctx context.Context, root *os.Root, digest identity.Digest) (plugin.Release, error) {
+func parse(ctx context.Context, root *os.Root, digest integrity.Digest) (plugin.Release, error) {
 	builder, err := parseMetadata(ctx, root)
 	if err != nil {
 		return plugin.Release{}, err

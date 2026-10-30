@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -73,7 +74,7 @@ func DecodeFrameworkConfiguration(record qimu.InstallationRecord) (plugin.Record
 	if err != nil {
 		return plugin.Record{}, err
 	}
-	digest, err := identity.ParseDigest(record.Release.String())
+	digest, err := integrity.ParseDigest(record.Release.String())
 	if err != nil {
 		return plugin.Record{}, err
 	}
@@ -153,7 +154,7 @@ func capabilityContract(contract *portable.Capability) (qimu.Contract[any], erro
 	if contract == nil {
 		return qimu.Contract[any]{}, plugin.ErrInvalid
 	}
-	ref := qimu.ContractRef{Name: contract.Descriptor().Reference, Version: "1", Digest: qimu.Hash(contract.Identity().JSON()), Kind: qimu.ServiceKind, Mode: qimu.PortableMode}
+	ref := qimu.ContractRef{Name: contract.Descriptor().Reference, Version: "1", Digest: integrity.Hash(contract.Identity().JSON()), Kind: qimu.ServiceKind, Mode: qimu.PortableMode}
 	return qimu.BindContract[any](ref, contract.Identity().JSON())
 }
 
@@ -172,7 +173,7 @@ func DataPoint(contract *portable.Point) (qimu.Point[jsonvalue.Value, jsonvalue.
 	if contract == nil {
 		return qimu.Point[jsonvalue.Value, jsonvalue.Value]{}, plugin.ErrInvalid
 	}
-	ref := qimu.ContractRef{Name: contract.Definition().Reference, Version: "1", Digest: qimu.Hash(contract.Identity().JSON()), Kind: qimu.ServiceKind, Mode: qimu.PortableMode}
+	ref := qimu.ContractRef{Name: contract.Definition().Reference, Version: "1", Digest: integrity.Hash(contract.Identity().JSON()), Kind: qimu.ServiceKind, Mode: qimu.PortableMode}
 	value, err := qimu.BindContract[jsonvalue.Value](ref, contract.Identity().JSON())
 	if err != nil {
 		return qimu.Point[jsonvalue.Value, jsonvalue.Value]{}, err
@@ -192,7 +193,7 @@ func ProjectFrameworkRelease(release plugin.Release) (FrameworkRelease, error) {
 	if err != nil {
 		return FrameworkRelease{}, err
 	}
-	plugin, err := qimu.Define(qimu.Definition{Revision: qimu.Digest(release.Digest().String()), Units: projection.Units})
+	plugin, err := qimu.Define(qimu.Definition{Revision: release.Digest(), Units: projection.Units})
 	if err != nil {
 		return FrameworkRelease{}, err
 	}
@@ -300,7 +301,7 @@ func ContributionSource(binding ContributionBinding) (qimu.ExportRef, error) {
 	if err != nil {
 		return qimu.ExportRef{}, err
 	}
-	return qimu.ExportRef{InstallationID: qimu.InstallationID(binding.InstallationID.String()), Release: qimu.Digest(binding.Digest.String()), UnitID: BackendUnit(binding.ServerName), Export: binding.ContributionID.String(), Contract: point.Ref()}, nil
+	return qimu.ExportRef{InstallationID: qimu.InstallationID(binding.InstallationID.String()), Release: binding.Digest, UnitID: BackendUnit(binding.ServerName), Export: binding.ContributionID.String(), Contract: point.Ref()}, nil
 }
 
 // FrameworkError gives Core failures one Flame category without losing their

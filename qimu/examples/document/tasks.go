@@ -12,6 +12,7 @@ import (
 	"os"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/sqlite"
 )
 
@@ -144,7 +145,7 @@ func (a *App) Reference(ctx context.Context, path string) (DocumentRef, error) {
 	if err := ctx.Err(); err != nil {
 		return DocumentRef{}, err
 	}
-	return DocumentRef{Path: path, Revision: qimu.Hash(data)}, nil
+	return DocumentRef{Path: path, Revision: integrity.Hash(data)}, nil
 }
 
 func (a *App) PrepareTask(ctx context.Context, id string, source DocumentRef) (*PreparedTask, error) {

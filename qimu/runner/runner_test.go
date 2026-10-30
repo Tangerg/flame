@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 func launchFixture(t *testing.T, id string, epoch uint64, directory string) LaunchRequest {
@@ -28,7 +28,7 @@ func launchFixture(t *testing.T, id string, epoch uint64, directory string) Laun
 	if err != nil {
 		t.Fatal(err)
 	}
-	return LaunchRequest{AttemptID: id, Epoch: epoch, Command: executable, ExecutableDigest: qimu.Hash(data), Configuration: qimu.Hash([]byte(directory)), Args: []string{"-test.run=^TestRunnerProcessHelper$"}, Env: append(os.Environ(), "QIMU_RUNNER_HELPER=echo", "QIMU_RUNNER_COUNT="+filepath.Join(directory, "created")), Directory: directory}
+	return LaunchRequest{AttemptID: id, Epoch: epoch, Command: executable, ExecutableDigest: integrity.Hash(data), Configuration: integrity.Hash([]byte(directory)), Args: []string{"-test.run=^TestRunnerProcessHelper$"}, Env: append(os.Environ(), "QIMU_RUNNER_HELPER=echo", "QIMU_RUNNER_COUNT="+filepath.Join(directory, "created")), Directory: directory}
 }
 
 func serveFixture(t *testing.T) (*Server, *Client, context.Context) {
@@ -86,7 +86,7 @@ func TestAttemptStartsOnceAndAttachCarriesActualProcessIO(t *testing.T) {
 		t.Fatalf("second attachment: %v", err)
 	}
 	changed := request
-	changed.Configuration = qimu.Hash([]byte("another configuration"))
+	changed.Configuration = integrity.Hash([]byte("another configuration"))
 	if _, err := client.Launch(ctx, changed); !errors.Is(err, ErrConflict) {
 		t.Fatalf("changed attempt: %v", err)
 	}
@@ -145,7 +145,7 @@ func TestFailedExecutableIsTerminalAndNeverStartsOnRetry(t *testing.T) {
 		t.Fatal(err)
 	}
 	request := launchFixture(t, "bad", 1, t.TempDir())
-	request.ExecutableDigest = qimu.Hash([]byte("not the executable"))
+	request.ExecutableDigest = integrity.Hash([]byte("not the executable"))
 	first, err := client.Launch(ctx, request)
 	if err == nil || first.State != Exited || first.ProofID == "" {
 		t.Fatalf("bad executable: %+v %v", first, err)
@@ -179,7 +179,7 @@ func TestFailedProcessCreationReleasesVerifiedExecutable(t *testing.T) {
 			if failure == "invalid-format" {
 				data := []byte("not an executable format\n")
 				request.Command = filepath.Join(request.Directory, "invalid")
-				request.ExecutableDigest = qimu.Hash(data)
+				request.ExecutableDigest = integrity.Hash(data)
 				if err := os.WriteFile(request.Command, data, 0700); err != nil {
 					t.Fatal(err)
 				}

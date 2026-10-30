@@ -6,19 +6,23 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/qimu/control"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 // Populate every actual source field, including fields added by a future Qimu
 // change. A forgotten delivery projection must fail before publishing that wire.
 func populateBrowserProjection(value reflect.Value, path string) {
+	if value.Type() == reflect.TypeFor[integrity.Digest]() {
+		value.Set(reflect.ValueOf(integrity.Hash([]byte(path))))
+		return
+	}
 	switch value.Kind() {
 	case reflect.String:
 		if vocabulary, ok := value.Interface().(interface{ Values() []string }); ok {
 			value.SetString(vocabulary.Values()[0])
 		} else {
-			value.SetString(qimu.Hash([]byte(path)).String())
+			value.SetString(integrity.Hash([]byte(path)).String())
 		}
 	case reflect.Struct:
 		for i := range value.NumField() {

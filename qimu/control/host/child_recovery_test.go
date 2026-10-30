@@ -16,6 +16,7 @@ import (
 	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/qimu/control"
 	controlhost "github.com/Tangerg/flame/qimu/control/host"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/sqlite"
 )
 
@@ -198,7 +199,7 @@ func TestChildDependencyOutsideStartAttemptSurvivesHostProcessCrash(t *testing.T
 	if _, err := e.bridge.Acquire(e.ctx, credentials.Token, control.AcquireRequest{OperationID: "after-crash", ParentUseID: fixture.Parent.Grant.ID}); !errors.Is(err, qimu.ErrFenced) {
 		t.Fatalf("old parent admitted new work after reconstruction: %v", err)
 	}
-	replacement, err := qimu.Define(qimu.Definition{Revision: qimu.Hash([]byte("replacement-browser-plugin")), Units: []qimu.Unit{{Declaration: e.plugin.Units()[0]}}})
+	replacement, err := qimu.Define(qimu.Definition{Revision: integrity.Hash([]byte("replacement-browser-plugin")), Units: []qimu.Unit{{Declaration: e.plugin.Units()[0]}}})
 	if err != nil {
 		t.Fatal(err)
 	}

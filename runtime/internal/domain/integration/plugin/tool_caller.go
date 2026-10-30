@@ -6,6 +6,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -18,9 +19,9 @@ type ToolCaller struct{ value ToolCallerSnapshot }
 type ToolCallerSnapshot struct {
 	Invocation portable.Invocation
 	Tool       tool.Ref
-	Release    identity.Digest
+	Release    integrity.Digest
 	// Actor authority comes from the admitted source, not its transport fingerprint.
-	Authority identity.Digest
+	Authority integrity.Digest
 }
 
 func NewToolCaller(value ToolCallerSnapshot) (ToolCaller, error) {
@@ -47,7 +48,7 @@ func NewToolCaller(value ToolCallerSnapshot) (ToolCaller, error) {
 func (t ToolCaller) Snapshot() ToolCallerSnapshot { return t.value }
 func (t ToolCaller) Validate() error              { _, err := NewToolCaller(t.value); return err }
 
-func (t ToolCaller) Matches(invocation portable.Invocation, installation identity.InstallationID, release, authority identity.Digest, server mcpserver.ServerName) bool {
+func (t ToolCaller) Matches(invocation portable.Invocation, installation identity.InstallationID, release, authority integrity.Digest, server mcpserver.ServerName) bool {
 	source, _, _ := t.value.Tool.MCP()
 	owner, _ := source.Origin().Installation()
 	return t.value.Invocation == invocation && owner == installation && t.value.Release == release && t.value.Authority == authority && source.Name() == server

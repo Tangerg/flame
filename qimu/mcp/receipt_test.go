@@ -80,10 +80,10 @@ func TestReceiptRequestRefusesMissingAndInvalidBindings(t *testing.T) {
 	}
 	for _, data := range []string{
 		`{}`, `{"id":"original","method":"review.update","inputDigest":"short"}`,
-		`{"id":"original","method":"","inputDigest":"` + digest.Digest() + `"}`,
-		`{"id":"original","method":"two methods","inputDigest":"` + digest.Digest() + `"}`,
-		`{"id":"","method":"review.update","inputDigest":"` + digest.Digest() + `"}`,
-		`{"id":"original","method":"review.update","inputDigest":"` + digest.Digest() + `","extra":true}`,
+		`{"id":"original","method":"","inputDigest":"` + digest.Digest().String() + `"}`,
+		`{"id":"original","method":"two methods","inputDigest":"` + digest.Digest().String() + `"}`,
+		`{"id":"","method":"review.update","inputDigest":"` + digest.Digest().String() + `"}`,
+		`{"id":"original","method":"review.update","inputDigest":"` + digest.Digest().String() + `","extra":true}`,
 	} {
 		var request ReceiptRequest
 		if err := json.Unmarshal([]byte(data), &request); err == nil {

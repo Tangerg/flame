@@ -6,7 +6,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	agent "github.com/Tangerg/scope/agent"
@@ -16,7 +16,7 @@ import (
 )
 
 func TestInteractionToolDeploymentBindsItsFrozenManifest(t *testing.T) {
-	binding := func(t *testing.T, description, schema string, fingerprint identity.Digest, deferred bool) (agent.DeploymentRef, agent.DeploymentRef) {
+	binding := func(t *testing.T, description, schema string, fingerprint integrity.Digest, deferred bool) (agent.DeploymentRef, agent.DeploymentRef) {
 		t.Helper()
 		executable := &scopeDefinitionTool{definition: chat.ToolDefinition{
 			Name: "fixture_echo", Description: description, InputSchema: []byte(schema),
@@ -61,7 +61,7 @@ func TestInteractionToolDeploymentBindsItsFrozenManifest(t *testing.T) {
 		name        string
 		description string
 		schema      string
-		fingerprint identity.Digest
+		fingerprint integrity.Digest
 		deferred    bool
 		changed     bool
 	}{

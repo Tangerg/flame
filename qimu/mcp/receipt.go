@@ -2,13 +2,11 @@ package mcp
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
-	"strings"
 
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -17,9 +15,9 @@ import (
 const ReceiptMethod = "io.github.tangerg.qimu/commands.get"
 
 type ReceiptRequest struct {
-	ID          string `json:"id"`
-	Method      string `json:"method"`
-	InputDigest string `json:"inputDigest"`
+	ID          string           `json:"id"`
+	Method      string           `json:"method"`
+	InputDigest integrity.Digest `json:"inputDigest"`
 }
 
 func (r *ReceiptRequest) UnmarshalJSON(data []byte) error {
@@ -43,8 +41,7 @@ func (r ReceiptRequest) Validate() error {
 	if !portable.ValidMethodName(r.Method) {
 		return errors.New("plugin: bounded receipt method identity is required")
 	}
-	digest, err := hex.DecodeString(r.InputDigest)
-	if err != nil || len(digest) != sha256.Size || r.InputDigest != strings.ToLower(r.InputDigest) {
+	if r.InputDigest.IsZero() {
 		return errors.New("plugin: canonical receipt input digest is required")
 	}
 	return nil

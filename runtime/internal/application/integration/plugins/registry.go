@@ -10,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -19,7 +20,7 @@ import (
 type Store interface {
 	List(context.Context) ([]plugin.Snapshot, error)
 	Get(context.Context, identity.InstallationID) (plugin.Snapshot, bool, error)
-	Stage(context.Context, identity.InstallationID, identity.Digest) error
+	Stage(context.Context, identity.InstallationID, integrity.Digest) error
 }
 type packageSources interface {
 	Definitions(context.Context, *plugin.Installation, plugin.Release) ([]mcpserver.Server, error)
@@ -75,7 +76,7 @@ func (r *Registry) Framework() *qimu.Host { return r.framework }
 
 // ComponentPlan prepares one immutable component export in its target Realm.
 // The Host revalidates the plan before the browser receives execution authority.
-func (r *Registry) ComponentPlan(ctx context.Context, realm qimu.RealmID, id identity.InstallationID, digest identity.Digest, component plugin.ContributionID) (*qimu.BindingPlan, error) {
+func (r *Registry) ComponentPlan(ctx context.Context, realm qimu.RealmID, id identity.InstallationID, digest integrity.Digest, component plugin.ContributionID) (*qimu.BindingPlan, error) {
 	snapshot, found, err := r.installations.Get(ctx, id)
 	if err != nil {
 		return nil, err
@@ -92,7 +93,7 @@ func (r *Registry) ComponentPlan(ctx context.Context, realm qimu.RealmID, id ide
 	}
 	return r.framework.PlanWith(ctx, realm, nil, qimu.ExportRef{
 		InstallationID: qimu.InstallationID(id.String()),
-		Release:        qimu.Digest(digest.String()),
+		Release:        digest,
 		UnitID:         ComponentUnit(component),
 		Export:         extension.ComponentExport,
 		Contract:       contract.Ref(),

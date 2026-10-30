@@ -9,6 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/samber/lo"
 )
@@ -103,7 +104,7 @@ func (o *frameworkTestUseOwner) Held(_ context.Context, id qimu.InstallationID) 
 	if !o.observed.inUse || o.memory == nil || o.memory.record == nil || o.memory.record.ID.String() != id.String() {
 		return nil, nil
 	}
-	return []qimu.Dependency{{InstallationID: id, Release: qimu.Digest(o.memory.record.Selected.String())}}, nil
+	return []qimu.Dependency{{InstallationID: id, Release: o.memory.record.Selected}}, nil
 }
 
 type frameworkTestStore struct {
@@ -146,7 +147,7 @@ func (s *frameworkTestStore) Installations(context.Context) ([]qimu.Installation
 	return nil, errors.New("fixture restore is explicitly seeded")
 }
 
-func (s *installationMemory) Stage(_ context.Context, id identity.InstallationID, digest identity.Digest) error {
+func (s *installationMemory) Stage(_ context.Context, id identity.InstallationID, digest integrity.Digest) error {
 	if s.record == nil || s.record.ID != id {
 		return plugin.ErrNotFound
 	}

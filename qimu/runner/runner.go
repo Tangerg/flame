@@ -20,6 +20,7 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 var (
@@ -40,15 +41,15 @@ const (
 )
 
 type LaunchRequest struct {
-	AttemptID          string      `json:"attemptId"`
-	Epoch              uint64      `json:"epoch"`
-	Command            string      `json:"command"`
-	ExecutableDigest   qimu.Digest `json:"executableDigest"`
-	Args               []string    `json:"args,omitempty"`
-	Env                []string    `json:"env,omitempty"`
-	Directory          string      `json:"directory,omitempty"`
-	Configuration      qimu.Digest `json:"configuration"`
-	CredentialRevision string      `json:"credentialRevision,omitempty"`
+	AttemptID          string           `json:"attemptId"`
+	Epoch              uint64           `json:"epoch"`
+	Command            string           `json:"command"`
+	ExecutableDigest   integrity.Digest `json:"executableDigest"`
+	Args               []string         `json:"args,omitempty"`
+	Env                []string         `json:"env,omitempty"`
+	Directory          string           `json:"directory,omitempty"`
+	Configuration      integrity.Digest `json:"configuration"`
+	CredentialRevision string           `json:"credentialRevision,omitempty"`
 }
 
 type Observation struct {
@@ -84,8 +85,8 @@ type Config struct {
 }
 
 type storedAttempt struct {
-	Observation   Observation `json:"observation"`
-	RequestDigest qimu.Digest `json:"requestDigest"`
+	Observation   Observation      `json:"observation"`
+	RequestDigest integrity.Digest `json:"requestDigest"`
 }
 
 type journal struct {
@@ -436,7 +437,7 @@ func (s *Server) snapshotExecutable(request LaunchRequest) (_ string, err error)
 	if err != nil {
 		return "", err
 	}
-	if n > s.config.MaxExecutableBytes || qimu.Digest(hex.EncodeToString(hash.Sum(nil))) != request.ExecutableDigest {
+	if n > s.config.MaxExecutableBytes || integrity.DigestOf([sha256.Size]byte(hash.Sum(nil))) != request.ExecutableDigest {
 		return "", errors.New("runner: executable digest mismatch")
 	}
 	if err := file.Chmod(0500); err != nil {
@@ -516,14 +517,14 @@ func validateLaunch(request LaunchRequest) error {
 	return nil
 }
 
-func requestIdentity(request LaunchRequest) (qimu.Digest, error) {
+func requestIdentity(request LaunchRequest) (integrity.Digest, error) {
 	copy := request
 	copy.Env = nil
 	data, err := json.Marshal(copy)
 	if err != nil {
-		return "", err
+		return integrity.Digest{}, err
 	}
-	return qimu.Hash(data), nil
+	return integrity.Hash(data), nil
 }
 
 func validID(value string) bool {

@@ -71,6 +71,14 @@ func opaqueType(target reflect.Type) bool {
 	return target == reflect.TypeFor[jsontext.Value]() || target == reflect.TypeFor[Value]() || target.Kind() == reflect.Interface
 }
 
+// TextEncoded reports a value that crosses JSON as its own text spelling, so a
+// schema or type projection renders it as a string and never as its private
+// representation.
+func TextEncoded(target reflect.Type) bool {
+	return target.Implements(reflect.TypeFor[encoding.TextMarshaler]()) &&
+		reflect.PointerTo(target).Implements(reflect.TypeFor[encoding.TextUnmarshaler]())
+}
+
 func customDecoder(target reflect.Type) bool {
 	for _, candidate := range []reflect.Type{target, reflect.PointerTo(target)} {
 		if candidate.Implements(reflect.TypeFor[json.Unmarshaler]()) ||

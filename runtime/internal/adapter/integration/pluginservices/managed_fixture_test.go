@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/process"
 	"github.com/Tangerg/flame/qimu/runner"
@@ -40,7 +40,7 @@ func TestManagedTransportHelper(t *testing.T) {
 
 type managedPackages struct {
 	server mcpserver.Server
-	digest identity.Digest
+	digest integrity.Digest
 }
 
 func (p managedPackages) Server(_ context.Context, installation *plugin.Installation, release plugin.Release, name mcpserver.ServerName, _ plugins.Reach) (mcpserver.Server, bool, error) {
@@ -110,7 +110,7 @@ func newManagedFixture(t *testing.T, store *toolInstallationStore, server mcpser
 	if err != nil {
 		t.Fatal(err)
 	}
-	digest, err := identity.ParseDigest(qimu.Hash(data).String())
+	digest, err := integrity.ParseDigest(integrity.Hash(data).String())
 	if err != nil {
 		t.Fatal(err)
 	}

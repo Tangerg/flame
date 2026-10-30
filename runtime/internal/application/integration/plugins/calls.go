@@ -5,6 +5,7 @@ import (
 	"iter"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -12,7 +13,7 @@ import (
 
 type CallRequest struct {
 	Installation identity.InstallationID
-	Digest       identity.Digest
+	Digest       integrity.Digest
 	Contribution plugin.ContributionID
 	Contract     *portable.Capability
 	Method       string

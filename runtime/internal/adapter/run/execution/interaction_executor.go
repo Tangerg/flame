@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/qimu"
 	"iter"
 	"os"
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
@@ -51,9 +53,9 @@ type interactionModelEvidence interface {
 }
 
 type originalToolResults interface {
-	OwnsToolSource(context.Context, domaintool.Ref, flameidentity.Digest, plugin.Activation) (bool, error)
-	AwaitOriginalToolSource(context.Context, domaintool.Ref, flameidentity.Digest, flameidentity.Digest, plugin.Activation) (bool, error)
-	OriginalToolResult(context.Context, domaintool.Ref, flameidentity.Digest, flameidentity.Digest, plugin.Activation, string, string) (*corechat.ToolOutput, error)
+	OwnsToolSource(context.Context, domaintool.Ref, integrity.Digest, plugin.Activation) (bool, error)
+	AwaitOriginalToolSource(context.Context, domaintool.Ref, integrity.Digest, integrity.Digest, plugin.Activation) (bool, error)
+	OriginalToolResult(context.Context, domaintool.Ref, integrity.Digest, integrity.Digest, plugin.Activation, string, string) (*corechat.ToolOutput, error)
 }
 
 // InteractionExecutorConfig freezes the host-owned inputs shared by

@@ -6,6 +6,7 @@ import (
 	"errors"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 // RealmCredential stores only an authentication verifier. It is not release,
@@ -14,7 +15,7 @@ type RealmCredential struct {
 	ID             string
 	Epoch          string
 	OperationID    string
-	ResumeVerifier qimu.Digest
+	ResumeVerifier integrity.Digest
 }
 
 func (s *Store) RegisterRealm(ctx context.Context, credential RealmCredential) error {

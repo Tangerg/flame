@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
@@ -29,8 +30,8 @@ var (
 type Record struct {
 	ID              identity.InstallationID
 	Source          string
-	Selected        identity.Digest
-	Staged          *identity.Digest
+	Selected        integrity.Digest
+	Staged          *integrity.Digest
 	Enabled         bool
 	Values          map[string]string
 	DisabledServers []mcpserver.ServerName
@@ -165,11 +166,11 @@ func clone(r Record) Record {
 
 func (i *Installation) Snapshot() Record            { return clone(i.record) }
 func (i *Installation) ID() identity.InstallationID { return i.record.ID }
-func (i *Installation) Selected() identity.Digest   { return i.record.Selected }
+func (i *Installation) Selected() integrity.Digest  { return i.record.Selected }
 func (i *Installation) Enabled() bool               { return i.record.Enabled }
-func (i *Installation) Staged() (identity.Digest, bool) {
+func (i *Installation) Staged() (integrity.Digest, bool) {
 	if i.record.Staged == nil {
-		return identity.Digest{}, false
+		return integrity.Digest{}, false
 	}
 	return *i.record.Staged, true
 }
@@ -383,7 +384,7 @@ func requiredValues(release Release, values map[string]string, disabled []mcpser
 // selected release digest and the server's name in it. Any release change
 // makes standing approvals for its tools stale; credentials and availability
 // affect connection realization, not permission.
-func (i *Installation) ServerAuthority(server mcpserver.ServerName) identity.Digest {
+func (i *Installation) ServerAuthority(server mcpserver.ServerName) integrity.Digest {
 	return identity.DigestStrings(i.record.Selected.String(), server.String())
 }
 
@@ -429,7 +430,7 @@ func (i *Installation) ServerSource(release Release, server mcpserver.ServerName
 	return mcpserver.InstallationSource(i.record.ID, i.record.Selected, i.ServerAuthority(server), recipient)
 }
 
-func (i *Installation) authorizePresentation(release Release, digest identity.Digest) error {
+func (i *Installation) authorizePresentation(release Release, digest integrity.Digest) error {
 	if i.Selected() != digest || release.Digest() != digest {
 		return fmt.Errorf("%w: presentation release", ErrStale)
 	}

@@ -11,6 +11,7 @@ import (
 	"weak"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/sqlite"
 )
 
@@ -192,7 +193,7 @@ func reportAdditionalRecovery(admission *qimu.Admission) []weak.Pointer[recovery
 
 func TestRecoveryDiagnosticsRetainTheFirstCauseWithoutAccumulatingErrorGraphs(t *testing.T) {
 	admission := qimu.NewAdmission()
-	dependency := qimu.Dependency{InstallationID: "original", Release: qimu.Hash([]byte("original-release"))}
+	dependency := qimu.Dependency{InstallationID: "original", Release: integrity.Hash([]byte("original-release"))}
 	if err := admission.RegisterUseOwner(&diagnosticUseOwner{id: "consumer.original", values: []qimu.Dependency{dependency}}); err != nil {
 		t.Fatal(err)
 	}
@@ -311,7 +312,7 @@ func TestUseOwnerCapacityDoesNotEvictOriginalBusinessReferences(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dependency := qimu.Dependency{InstallationID: "original", Release: qimu.Hash([]byte("release"))}
+	dependency := qimu.Dependency{InstallationID: "original", Release: integrity.Hash([]byte("release"))}
 	original := &diagnosticUseOwner{id: "consumer.original", values: []qimu.Dependency{dependency}}
 	if err := admission.RegisterUseOwner(original); err != nil {
 		t.Fatal(err)
@@ -397,7 +398,7 @@ func TestRestorationChecksTheWholeScopeBudgetBeforeProjection(t *testing.T) {
 	}
 	host := testHost(t, qimu.HostConfig{Admission: admission})
 	plugin, err := qimu.Define(qimu.Definition{
-		Revision: qimu.Hash([]byte("restored")),
+		Revision: integrity.Hash([]byte("restored")),
 		Units: []qimu.Unit{{
 			Declaration: qimu.UnitDeclaration{ID: "main", Profile: qimu.NativeGo},
 			Setup:       func(context.Context, *qimu.Setup) ([]qimu.ExportValue, error) { return nil, nil },

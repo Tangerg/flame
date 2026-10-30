@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -19,7 +19,7 @@ type localePackages struct {
 
 func (p *localePackages) ReadLocale(ctx context.Context, installation *plugin.Installation, locale plugin.Locale) (map[string]string, error) {
 	p.reads++
-	if locale != p.expected || installation.Selected() == (identity.Digest{}) {
+	if locale != p.expected || installation.Selected() == (integrity.Digest{}) {
 		return nil, errors.New("wrong locale release")
 	}
 	if err := ctx.Err(); err != nil {
@@ -55,7 +55,7 @@ func TestLocaleReadAdmitsExactEnabledDeclarationBeforeContentAccess(t *testing.T
 		t.Fatal(err)
 	}
 	for _, test := range []struct {
-		digest identity.Digest
+		digest integrity.Digest
 		tag    string
 		want   error
 	}{

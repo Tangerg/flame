@@ -8,6 +8,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -22,7 +23,7 @@ func (r PointReference) key() string { return r.Installation.String() + "/" + r.
 
 type PointBinding struct {
 	Reference PointReference
-	Digest    identity.Digest
+	Digest    integrity.Digest
 	Value     jsonvalue.Value
 }
 
@@ -54,7 +55,7 @@ func ResolvePoint(ctx context.Context, host *qimu.Host, store Store, contract *p
 			}
 		}
 		if slices.ContainsFunc(declaration.PointValues, func(value plugin.PointValue) bool { return value.Contract == contract.Identity() }) {
-			unit := qimu.UnitRef{InstallationID: qimu.InstallationID(snapshot.Installation.ID().String()), Release: qimu.Digest(snapshot.Selected.Digest().String()), UnitID: PointValuesUnit}
+			unit := qimu.UnitRef{InstallationID: qimu.InstallationID(snapshot.Installation.ID().String()), Release: snapshot.Selected.Digest(), UnitID: PointValuesUnit}
 			providers = append(providers, unit)
 		}
 	}
@@ -94,7 +95,7 @@ func ResolvePoint(ctx context.Context, host *qimu.Host, store Store, contract *p
 		if err != nil {
 			return nil, err
 		}
-		digest, err := identity.ParseDigest(source.Release.String())
+		digest, err := integrity.ParseDigest(source.Release.String())
 		if err != nil {
 			return nil, err
 		}

@@ -7,8 +7,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -36,7 +36,7 @@ func InterruptUnavailable(context.Context, toolcontract.Invocation, string, Inte
 // its model-visible name is Tool.ModelName.
 type ApprovalPrompt struct {
 	Tool              tool.Ref
-	SourceFingerprint identity.Digest
+	SourceFingerprint integrity.Digest
 	CallID            string
 	Arguments         string
 	SafetyClass       tool.SafetyClass

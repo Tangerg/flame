@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 // Activate prepares the exact graph outside admission. Its accepted attempts
@@ -348,7 +350,7 @@ func (i *Instance) finishPrepare(exports []ExportValue, setupErr error) {
 				return err
 			}
 			installation := h.installations[i.binding.Source.InstallationID]
-			if installation == nil || !installation.record.Enabled || installation.record.Release != i.binding.Source.Release || Hash(installation.record.Configuration) != i.binding.Configuration {
+			if installation == nil || !installation.record.Enabled || installation.record.Release != i.binding.Source.Release || integrity.Hash(installation.record.Configuration) != i.binding.Configuration {
 				return ErrStaleBinding
 			}
 			for _, dependency := range i.dependencies {

@@ -122,7 +122,7 @@ func TestCommandsRejectMalformedEnvelopeBeforeMutation(t *testing.T) {
 	} {
 		params.Protocol = portable.Protocol
 		params.Method = "flame.test/admission"
-		params.Contract = contract.Digest()
+		params.Contract = contract.Digest().String()
 		if result, err := sdk.CallCustomMethod[*malformedParams, *methodResult[jsontext.Value]](t.Context(), session, InvokeMethod, &params); err == nil || result != nil {
 			t.Fatalf("malformed command reached a result: %+v, %v", result, err)
 		}

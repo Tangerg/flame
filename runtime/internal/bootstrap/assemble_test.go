@@ -14,6 +14,7 @@ import (
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/qimu/distribution"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/runner"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
@@ -256,14 +257,14 @@ func TestAssemblyRetainsUnreferencedPluginReleaseUntilConstructionSucceeds(t *te
 	content, err := distribution.Open(distribution.Config{
 		Directory: filepath.Join(cfg.stores.DataDirectory, "plugins", "qimu"), Admission: cfg.stores.Admission,
 		Trust: func(context.Context, distribution.Source, distribution.Manifest, distribution.Lock) error { return nil },
-		Retained: func(ctx context.Context, digest qimu.Digest) (bool, error) {
+		Retained: func(ctx context.Context, digest integrity.Digest) (bool, error) {
 			return retainedPluginContent(ctx, cfg.stores, digest)
 		},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	root, pathErr := content.Path(qimu.Digest(installed.Selected.Digest().String()))
+	root, pathErr := content.Path(installed.Selected.Digest())
 	if err := errors.Join(pathErr, content.Close(t.Context())); err != nil {
 		t.Fatal(err)
 	}

@@ -10,9 +10,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/flame/plugins/a2a/internal/wire"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -29,7 +29,7 @@ type connector struct {
 // persisted here: it remains the remote agent's fact.
 type taskBinding struct {
 	Agent     string             `json:"agent"`
-	Authority identity.Digest    `json:"authority"`
+	Authority integrity.Digest   `json:"authority"`
 	Endpoint  a2a.AgentInterface `json:"endpoint"`
 	TaskID    a2a.TaskID         `json:"taskId"`
 	ContextID string             `json:"contextId"`

@@ -16,6 +16,7 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 type Limits struct {
@@ -32,7 +33,7 @@ func DefaultLimits() Limits {
 
 type Source struct {
 	Location      string
-	ArchiveDigest qimu.Digest
+	ArchiveDigest integrity.Digest
 }
 
 // Trust is supplied by the application. A digest fixes bytes but cannot decide
@@ -44,7 +45,7 @@ type Config struct {
 	Admission *qimu.Admission
 	Limits    Limits
 	Trust     Trust
-	Retained  func(context.Context, qimu.Digest) (bool, error)
+	Retained  func(context.Context, integrity.Digest) (bool, error)
 }
 
 type Store struct {
@@ -55,9 +56,9 @@ type Store struct {
 	admission      *qimu.Admission
 	limits         Limits
 	trust          Trust
-	retained       func(context.Context, qimu.Digest) (bool, error)
+	retained       func(context.Context, integrity.Digest) (bool, error)
 	mu             sync.Mutex
-	leases         map[qimu.Digest]int
+	leases         map[integrity.Digest]int
 	operations     int
 	closing        bool
 	closeAttempted bool
@@ -67,7 +68,7 @@ type Store struct {
 }
 
 type Release struct {
-	Digest   qimu.Digest
+	Digest   integrity.Digest
 	Manifest Manifest
 	Lock     Lock
 }
@@ -93,7 +94,7 @@ func Open(config Config) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	store := &Store{directory: directory, admission: config.Admission, limits: config.Limits, trust: config.Trust, retained: config.Retained, leases: map[qimu.Digest]int{}, changed: make(chan struct{}), closeDone: make(chan struct{})}
+	store := &Store{directory: directory, admission: config.Admission, limits: config.Limits, trust: config.Trust, retained: config.Retained, leases: map[integrity.Digest]int{}, changed: make(chan struct{}), closeDone: make(chan struct{})}
 	if err := store.openOwner(); err != nil {
 		return nil, err
 	}
@@ -173,7 +174,7 @@ func (s *Store) InstallDirectoryHeld(ctx context.Context, directory string) (lea
 
 // InstallArchive accepts only a digest-pinned, completely read archive. An HTTPS
 // fetcher may supply a private temporary file; networking is application policy.
-func (s *Store) InstallArchiveHeld(ctx context.Context, fileName string, expected qimu.Digest) (lease *Lease, err error) {
+func (s *Store) InstallArchiveHeld(ctx context.Context, fileName string, expected integrity.Digest) (lease *Lease, err error) {
 	done, err := s.beginOperation(false)
 	if err != nil {
 		return nil, err
@@ -204,7 +205,7 @@ func (s *Store) InstallArchiveHeld(ctx context.Context, fileName string, expecte
 	if err != nil {
 		return nil, err
 	}
-	if qimu.Hash(data) != expected {
+	if integrity.Hash(data) != expected {
 		return nil, ErrIntegrity
 	}
 	archive, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
@@ -249,7 +250,7 @@ func (s *Store) InstallArchiveHeld(ctx context.Context, fileName string, expecte
 	return s.publishHeld(ctx, staged, Source{Location: fileName, ArchiveDigest: expected})
 }
 
-func (s *Store) Inspect(ctx context.Context, digest qimu.Digest) (Release, error) {
+func (s *Store) Inspect(ctx context.Context, digest integrity.Digest) (Release, error) {
 	done, err := s.beginOperation(false)
 	if err != nil {
 		return Release{}, err
@@ -258,7 +259,7 @@ func (s *Store) Inspect(ctx context.Context, digest qimu.Digest) (Release, error
 	return s.inspect(ctx, digest)
 }
 
-func (s *Store) inspect(ctx context.Context, digest qimu.Digest) (Release, error) {
+func (s *Store) inspect(ctx context.Context, digest integrity.Digest) (Release, error) {
 	if digest.Validate() != nil {
 		return Release{}, ErrInvalid
 	}
@@ -284,7 +285,7 @@ type Lease struct {
 	closed  bool
 }
 
-func (s *Store) Acquire(ctx context.Context, digest qimu.Digest) (_ *Lease, err error) {
+func (s *Store) Acquire(ctx context.Context, digest integrity.Digest) (_ *Lease, err error) {
 	done, err := s.beginOperation(false)
 	if err != nil {
 		return nil, err
@@ -342,7 +343,7 @@ func (l *Lease) Executable(ctx context.Context, name string) (string, error) {
 	if _, err := l.store.readArtifact(ctx, l.release, name); err != nil {
 		return "", err
 	}
-	return filepath.Join(l.store.directory, string(l.release.Digest), filepath.FromSlash(name)), nil
+	return filepath.Join(l.store.directory, l.release.Digest.String(), filepath.FromSlash(name)), nil
 }
 
 func (l *Lease) Close() error {
@@ -362,7 +363,7 @@ func (l *Lease) Close() error {
 	return nil
 }
 
-func (s *Store) Remove(ctx context.Context, digest qimu.Digest) (err error) {
+func (s *Store) Remove(ctx context.Context, digest integrity.Digest) (err error) {
 	done, err := s.beginOperation(false)
 	if err != nil {
 		return err
@@ -421,7 +422,7 @@ func (s *Store) Remove(ctx context.Context, digest qimu.Digest) (err error) {
 		if err := releaseRoot.Chmod(".", 0700); err != nil {
 			return err
 		}
-		err = s.root.Rename(string(digest), retiring)
+		err = s.root.Rename(digest.String(), retiring)
 		if err != nil {
 			restoreErr := releaseRoot.Chmod(".", info.Mode().Perm())
 			if errors.Is(err, os.ErrNotExist) {
@@ -463,7 +464,7 @@ func (s *Store) readArtifact(ctx context.Context, release Release, name string) 
 	if err != nil {
 		return nil, err
 	}
-	if int64(len(data)) != found.Size || qimu.Hash(data) != found.Digest {
+	if int64(len(data)) != found.Size || integrity.Hash(data) != found.Digest {
 		return nil, ErrIntegrity
 	}
 	return data, nil
@@ -483,7 +484,7 @@ func (s *Store) publishHeld(ctx context.Context, staged *staging, source Source)
 	lease := &Lease{store: s, release: release}
 	var existing bool
 	err = s.admission.Under(ctx, func() error {
-		destination := string(release.Digest)
+		destination := release.Digest.String()
 		if _, err := s.root.Lstat(destination); err == nil {
 			existing = true
 		} else if !errors.Is(err, os.ErrNotExist) {
@@ -541,7 +542,7 @@ func (s *Store) validate(ctx context.Context, root *os.Root) (Release, error) {
 	if err != nil {
 		return Release{}, err
 	}
-	if manifest.Release != "" && manifest.Release != digest {
+	if !manifest.Release.IsZero() && manifest.Release != digest {
 		return Release{}, ErrIntegrity
 	}
 	lockBytes, err := readRegular(ctx, root, LockName, s.limits.ManifestBytes)
@@ -594,7 +595,7 @@ func (s *Store) validate(ctx context.Context, root *os.Root) (Release, error) {
 		if err != nil {
 			return err
 		}
-		if qimu.Hash(data) != artifact.Digest {
+		if integrity.Hash(data) != artifact.Digest {
 			return ErrIntegrity
 		}
 		delete(expected, name)

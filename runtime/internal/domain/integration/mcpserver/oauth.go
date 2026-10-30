@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 var ErrOAuthSessionSuperseded = errors.New("mcp: oauth session superseded")
@@ -28,7 +29,7 @@ func (o OAuthTarget) ID() ID { return o.Source.ID(o.Name) }
 // recipient is declared by its source, which excludes configured input values
 // and survives a release that keeps the endpoint, so an OAuth grant and a
 // static secret input follow the same rule.
-func (o OAuthTarget) Fingerprint() identity.Digest {
+func (o OAuthTarget) Fingerprint() integrity.Digest {
 	installation, installed := o.Source.Origin().Installation()
 	fields := []string{string(o.Source.Origin().Kind()), installation.String(), o.Name.String()}
 	if installed {

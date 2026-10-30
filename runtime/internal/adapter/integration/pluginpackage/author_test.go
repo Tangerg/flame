@@ -9,8 +9,8 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/qimu/distribution"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -26,7 +26,7 @@ func TestNeutralDeclarationCannotSubstituteManagedRuntimeOrCapabilities(t *testi
 			manifest := built.Manifest
 			switch change {
 			case "interpreter":
-				manifest.Units[0].Variants[0].Runtime.Digest = qimu.Hash([]byte("different interpreter"))
+				manifest.Units[0].Variants[0].Runtime.Digest = integrity.Hash([]byte("different interpreter"))
 			case "capability":
 				manifest.Units[0].RequestedCapabilities = []string{"undeclared-host-access"}
 			}

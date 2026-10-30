@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 func (s *Store) openOwner() (err error) {
@@ -164,7 +165,7 @@ func (s *Store) Close(ctx context.Context) error {
 	}
 }
 
-func (s *Store) openRelease(digest qimu.Digest) (*os.Root, error) {
+func (s *Store) openRelease(digest integrity.Digest) (*os.Root, error) {
 	name := digest.String()
 	info, err := s.root.Lstat(name)
 	if err != nil {

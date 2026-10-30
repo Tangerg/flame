@@ -18,6 +18,7 @@ import (
 	sdkplugin "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/qimu/distribution"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -92,7 +93,7 @@ func testReleaseStore(t *testing.T) (*Releases, *installationFixture, *persisten
 			return distribution.ErrUntrusted
 		}
 		return nil
-	}, Retained: func(ctx context.Context, digest qimu.Digest) (bool, error) {
+	}, Retained: func(ctx context.Context, digest integrity.Digest) (bool, error) {
 		states, err := db.Installations.List(ctx)
 		if err != nil {
 			return false, err
@@ -359,7 +360,7 @@ func TestNativeConnectionRetainsOriginalContentAndDigest(t *testing.T) {
 		t.Fatalf("connection: %v, %v", found, err)
 	}
 	defer launch.Retire.Close()
-	if launch.Stdio.ExpectedExecutable.String() != qimu.Hash([]byte("native fixture")).String() {
+	if launch.Stdio.ExpectedExecutable.String() != integrity.Hash([]byte("native fixture")).String() {
 		t.Fatal("launch re-hashed mutable executable as new authority")
 	}
 	if err := releases.Reclaim(t.Context()); err != nil {

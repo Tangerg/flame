@@ -10,6 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/qimu/distribution"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 func TestPackageAndVerifyPreserveTheExactArtifactAndRefusePartialOutput(t *testing.T) {
@@ -21,7 +22,7 @@ func TestPackageAndVerifyPreserveTheExactArtifactAndRefusePartialOutput(t *testi
 		SchemaVersion: 1, Package: "example.theme", Version: "1.0.0",
 		Artifacts:    []distribution.Artifact{{Path: "theme.css"}},
 		Units:        []distribution.Unit{{ID: "theme", Profile: qimu.StaticResource, Resources: []string{"theme.css"}}},
-		Dependencies: []distribution.LockedRelease{{Package: "example.dependency", Release: qimu.Hash([]byte("original dependency"))}},
+		Dependencies: []distribution.LockedRelease{{Package: "example.dependency", Release: integrity.Hash([]byte("original dependency"))}},
 	}
 	writeManifest := func() {
 		t.Helper()
@@ -40,7 +41,7 @@ func TestPackageAndVerifyPreserveTheExactArtifactAndRefusePartialOutput(t *testi
 		t.Fatal(err)
 	}
 	var report struct {
-		ArchiveDigest qimu.Digest       `json:"archiveDigest"`
+		ArchiveDigest integrity.Digest  `json:"archiveDigest"`
 		Lock          distribution.Lock `json:"lock"`
 	}
 	if err := json.Unmarshal(output.Bytes(), &report); err != nil {
@@ -50,7 +51,7 @@ func TestPackageAndVerifyPreserveTheExactArtifactAndRefusePartialOutput(t *testi
 		t.Fatal("package command lost canonical manifest dependencies")
 	}
 	data, err := os.ReadFile(archive)
-	if err != nil || report.ArchiveDigest != qimu.Hash(data) {
+	if err != nil || report.ArchiveDigest != integrity.Hash(data) {
 		t.Fatalf("archive receipt: %v, %v", report.ArchiveDigest, err)
 	}
 	output.Reset()

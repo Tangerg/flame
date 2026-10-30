@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/go-sdk/auth"
@@ -73,7 +73,7 @@ func TestSupersededOAuthHandlersCannotChangeReplacementCredentials(t *testing.T)
 
 type memoryOAuthStore struct {
 	mu      sync.Mutex
-	target  identity.Digest
+	target  integrity.Digest
 	payload []byte
 	binding string
 	removed int

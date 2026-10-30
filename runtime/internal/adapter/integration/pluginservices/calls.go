@@ -8,6 +8,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -39,7 +40,7 @@ func (c *CommandCalls) Prepare(_ context.Context, request plugins.CallRequest) (
 	return &installedCall{calls: c, request: request, method: method}, nil
 }
 
-func (c *CommandCalls) Resolve(ctx context.Context, installation identity.InstallationID, digest identity.Digest, contribution plugin.ContributionID) ([]plugins.Collaborator, error) {
+func (c *CommandCalls) Resolve(ctx context.Context, installation identity.InstallationID, digest integrity.Digest, contribution plugin.ContributionID) ([]plugins.Collaborator, error) {
 	return plugins.ResolveRequirements(ctx, c.framework, c.installations, c.selections, c.compositions, installation, digest, contribution)
 }
 

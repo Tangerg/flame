@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -53,7 +53,7 @@ type ToolAuthorizationRequest struct {
 	WorkspaceCWD      string
 	CallID            string
 	Tool              tool.Ref
-	SourceFingerprint identity.Digest
+	SourceFingerprint integrity.Digest
 	Arguments         tool.Arguments
 	SafetyClass       tool.SafetyClass
 	FileMutation      tool.FileMutationScope

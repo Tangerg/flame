@@ -9,6 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -41,7 +42,7 @@ type ProcessSource struct {
 
 type processProjection struct {
 	actor       operation.Actor
-	fingerprint identity.Digest
+	fingerprint integrity.Digest
 	bindings    *plugin.RequiredBindings
 }
 
@@ -69,7 +70,7 @@ func (s *ProcessSource) snapshot(ctx context.Context, binding qimu.UnitBinding) 
 		return plugin.Snapshot{}, server, qimu.ErrStaleBinding
 	}
 	configuration, err := plugins.EncodeFrameworkConfiguration(snapshot.Installation.Snapshot())
-	if err != nil || qimu.Hash(configuration) != binding.Configuration {
+	if err != nil || integrity.Hash(configuration) != binding.Configuration {
 		return plugin.Snapshot{}, server, errors.Join(qimu.ErrStaleBinding, err)
 	}
 	return snapshot, server, nil
@@ -94,7 +95,7 @@ func (s *ProcessSource) Program(ctx context.Context, binding qimu.UnitBinding) (
 		return program, errors.New("mcp: installed executable requires an immutable absolute artifact")
 	}
 	program.Command = launch.Stdio.Command
-	program.ExecutableDigest = qimu.Digest(launch.Stdio.ExpectedExecutable.String())
+	program.ExecutableDigest = launch.Stdio.ExpectedExecutable
 	program.Args = slices.Clone(launch.Stdio.Args)
 	program.Env = processEnvironment(launch.Stdio.Env)
 	program.Directory = launch.Stdio.Dir

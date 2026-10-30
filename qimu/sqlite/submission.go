@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 type SubmissionID struct {
@@ -25,11 +26,11 @@ const (
 )
 
 type Settlement struct {
-	ID           SubmissionID    `json:"id"`
-	State        SettlementState `json:"state"`
-	Digest       qimu.Digest     `json:"digest"`
-	Evidence     []byte          `json:"evidence,omitempty"`
-	Synchronized bool            `json:"synchronized"`
+	ID           SubmissionID     `json:"id"`
+	State        SettlementState  `json:"state"`
+	Digest       integrity.Digest `json:"digest"`
+	Evidence     []byte           `json:"evidence,omitempty"`
+	Synchronized bool             `json:"synchronized"`
 }
 
 // Prepare issues an identity only after its sequence and original request are
@@ -69,7 +70,7 @@ func (o *Owner) prepare(ctx context.Context, request []byte) (id SubmissionID, e
 			if err := tx.QueryRowContext(ctx, `UPDATE qimu_owners SET next_sequence=next_sequence+1 WHERE id=? RETURNING next_sequence`, o.id).Scan(&sequence); err != nil {
 				return err
 			}
-			_, err := tx.ExecContext(ctx, `INSERT INTO qimu_submissions(owner_id,sequence,digest,request,state) VALUES(?,?,?,?,'prepared')`, o.id, sequence, qimu.Hash(request), request)
+			_, err := tx.ExecContext(ctx, `INSERT INTO qimu_submissions(owner_id,sequence,digest,request,state) VALUES(?,?,?,?,'prepared')`, o.id, sequence, integrity.Hash(request), request)
 			return err
 		})
 		if err != nil {
@@ -146,14 +147,14 @@ func (o *Owner) commit(ctx context.Context, id SubmissionID, request []byte, mut
 			var state string
 			var synchronized bool
 			var evidence []byte
-			var digest qimu.Digest
+			var digest integrity.Digest
 			if err := o.requireIssued(ctx, tx, id); err != nil {
 				return err
 			}
 			if err := tx.QueryRowContext(ctx, `SELECT digest,request,state,evidence,synchronized FROM qimu_submissions WHERE owner_id=? AND sequence=?`, o.id, id.Sequence).Scan(&digest, &stored, &state, &evidence, &synchronized); err != nil {
 				return err
 			}
-			if digest != qimu.Hash(request) || !bytes.Equal(request, stored) {
+			if digest != integrity.Hash(request) || !bytes.Equal(request, stored) {
 				return ErrConflict
 			}
 			settlement = Settlement{ID: id, State: stateFor(state), Digest: digest, Evidence: bytes.Clone(evidence), Synchronized: synchronized}

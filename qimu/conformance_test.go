@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 func TestCandidateProvenanceCannotCrossCaptureBoundaries(t *testing.T) {
@@ -247,7 +248,7 @@ func TestOneReleaseHasIndependentInstallationConfigurationAndLifetime(t *testing
 		t.Fatal(err)
 	}
 	released := map[qimu.InstallationID]chan struct{}{"left": make(chan struct{}), "right": make(chan struct{})}
-	plugin, err := qimu.Define(qimu.Definition{Revision: qimu.Hash([]byte("one immutable release")), Units: []qimu.Unit{{
+	plugin, err := qimu.Define(qimu.Definition{Revision: integrity.Hash([]byte("one immutable release")), Units: []qimu.Unit{{
 		Declaration: qimu.UnitDeclaration{ID: "main", Profile: qimu.NativeGo, Exports: []qimu.ExportDeclaration{{Name: "value", Contract: contract.Ref()}}},
 		Setup: func(_ context.Context, setup *qimu.Setup) ([]qimu.ExportValue, error) {
 			id := setup.Binding().Source.InstallationID
@@ -445,7 +446,7 @@ func TestConvenientAndExplicitUsesKeepTheSameAdmissionAndOutcome(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, scope := ownerAndScope(t, host)
-	var bindingIdentity qimu.Digest
+	var bindingIdentity integrity.Digest
 	var lastUse *qimu.Use
 	call := func(use *qimu.Use) error {
 		lastUse = use
@@ -453,7 +454,7 @@ func TestConvenientAndExplicitUsesKeepTheSameAdmissionAndOutcome(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		if bindingIdentity != "" && bindingIdentity != identity {
+		if !bindingIdentity.IsZero() && bindingIdentity != identity {
 			t.Fatal("convenience path changed the original binding")
 		}
 		bindingIdentity = identity

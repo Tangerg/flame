@@ -5,6 +5,7 @@ import (
 
 	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/qimu/control"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/sqlite"
 )
 
@@ -93,7 +94,7 @@ func (b *Bridge) acquireBinding(ctx context.Context, token, operationID string, 
 		}
 	} else {
 		root := binding.Roots[0].Unit()
-		var configuration qimu.Digest
+		var configuration integrity.Digest
 		for _, unit := range binding.Units {
 			if unit.Source == root {
 				configuration = unit.Configuration

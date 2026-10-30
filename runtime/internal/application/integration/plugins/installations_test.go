@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
@@ -77,9 +78,9 @@ func (s *installationMemory) Remove(context.Context, identity.InstallationID) er
 	return nil
 }
 
-type releaseMemory map[identity.Digest]plugin.Release
+type releaseMemory map[integrity.Digest]plugin.Release
 
-func (m releaseMemory) Get(_ context.Context, digest identity.Digest) (plugin.Release, error) {
+func (m releaseMemory) Get(_ context.Context, digest integrity.Digest) (plugin.Release, error) {
 	release, found := m[digest]
 	if !found {
 		return plugin.Release{}, plugin.ErrNotFound

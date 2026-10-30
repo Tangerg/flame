@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/qimu/control"
 	"github.com/Tangerg/flame/qimu/distribution"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -43,7 +44,7 @@ func (s *Source) component(ctx context.Context, binding qimu.UnitBinding) (plugi
 	if err != nil {
 		return plugin.Snapshot{}, plugin.ClientComponent{}, err
 	}
-	digest, err := identity.ParseDigest(binding.Source.Release.String())
+	digest, err := integrity.ParseDigest(binding.Source.Release.String())
 	if err != nil {
 		return plugin.Snapshot{}, plugin.ClientComponent{}, err
 	}
@@ -59,7 +60,7 @@ func (s *Source) component(ctx context.Context, binding qimu.UnitBinding) (plugi
 		return plugin.Snapshot{}, plugin.ClientComponent{}, err
 	}
 	configuration, err := plugins.EncodeFrameworkConfiguration(snapshot.Installation.Snapshot())
-	if err != nil || qimu.Hash(configuration) != binding.Configuration {
+	if err != nil || integrity.Hash(configuration) != binding.Configuration {
 		return plugin.Snapshot{}, plugin.ClientComponent{}, errors.Join(qimu.ErrStaleBinding, err)
 	}
 	return snapshot, component, nil
@@ -74,7 +75,7 @@ func (s *Source) Module(ctx context.Context, binding qimu.UnitBinding) (control.
 	if err != nil {
 		return control.Artifact{}, err
 	}
-	return control.Artifact{Path: component.Entry, Digest: qimu.Hash(content)}, nil
+	return control.Artifact{Path: component.Entry, Digest: integrity.Hash(content)}, nil
 }
 
 func (s *Source) Configuration(ctx context.Context, setup *qimu.Setup) ([]byte, error) {

@@ -12,14 +12,15 @@ import (
 	"github.com/Tangerg/flame/qimu"
 	controlhost "github.com/Tangerg/flame/qimu/control/host"
 	"github.com/Tangerg/flame/qimu/distribution"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 var ErrSourceChanged = errors.New("document: source revision changed")
 var ErrTaskFinished = errors.New("document: task is already terminal")
 
 type DocumentRef struct {
-	Path     string      `json:"path"`
-	Revision qimu.Digest `json:"revision"`
+	Path     string           `json:"path"`
+	Revision integrity.Digest `json:"revision"`
 }
 type Document struct {
 	Ref  DocumentRef `json:"ref"`
@@ -107,7 +108,7 @@ func readDocument(ctx context.Context, root *os.Root, reference DocumentRef) (Do
 	if len(data) > 4<<20 {
 		return Document{}, errors.New("document: source is too large")
 	}
-	if qimu.Hash(data) != reference.Revision {
+	if integrity.Hash(data) != reference.Revision {
 		return Document{}, ErrSourceChanged
 	}
 	if err := ctx.Err(); err != nil {

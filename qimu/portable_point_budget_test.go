@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
 )
@@ -14,7 +15,7 @@ import (
 func TestPortablePointUsesTheOriginalProfileBudgets(t *testing.T) {
 	host := testHost(t, qimu.HostConfig{})
 	descriptor := []byte(`{"protocol":"example","methods":["read"]}`)
-	valueRef := qimu.ContractRef{Name: "example.point-budget-value", Version: "1", Digest: qimu.Hash(descriptor), Kind: qimu.ServiceKind, Mode: qimu.PortableMode}
+	valueRef := qimu.ContractRef{Name: "example.point-budget-value", Version: "1", Digest: integrity.Hash(descriptor), Kind: qimu.ServiceKind, Mode: qimu.PortableMode}
 	value, err := qimu.BindContract[string](valueRef, descriptor)
 	if err != nil {
 		t.Fatal(err)
@@ -41,7 +42,7 @@ func TestPortablePointUsesTheOriginalProfileBudgets(t *testing.T) {
 	oversizedDescriptor := point.Descriptor()
 	oversizedDescriptor = append(oversizedDescriptor, bytes.Repeat([]byte(" "), limits.MaxDescriptorBytes+1-len(oversizedDescriptor))...)
 	oversizedRef := point.Ref()
-	oversizedRef.Digest = qimu.Hash(oversizedDescriptor)
+	oversizedRef.Digest = integrity.Hash(oversizedDescriptor)
 	if _, err := qimu.BindPoint[jsonvalue.Value, string](oversizedRef, oversizedDescriptor); !errors.Is(err, portable.ErrLimit) {
 		t.Fatalf("typed Point binding bypassed descriptor admission: %v", err)
 	}

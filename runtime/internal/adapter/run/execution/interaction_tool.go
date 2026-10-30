@@ -11,7 +11,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
-	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
@@ -32,7 +32,7 @@ import (
 type observedInteractionTool struct {
 	ref               tool.Ref
 	receiptEvidence   *toolReceiptEvidence
-	sourceFingerprint flameidentity.Digest
+	sourceFingerprint integrity.Digest
 	inner             toolcontract.Tool
 	binding           toolcontract.Binding
 	session           *interactionSession

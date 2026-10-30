@@ -4,11 +4,12 @@ import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"fmt"
-	"github.com/Tangerg/flame/qimu/portable"
 	"maps"
 	"slices"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/Tangerg/flame/qimu/portable"
 )
 
 type featureMethod struct {
@@ -108,7 +109,7 @@ func buildFeature(data []byte) (*featureArtifacts, error) {
 		line("  %s: { kind: %s, target: %s%s },", TypeScriptStringLiteral(method.Name), TypeScriptStringLiteral(string(method.Kind)), TypeScriptStringLiteral(method.Target), stream)
 	}
 	line("} as const;")
-	line("export const CAPABILITY = { protocol: %s, reference: %s, composition: %s, scope: %s, contract: %s } as const;", TypeScriptStringLiteral(descriptor.Protocol), TypeScriptStringLiteral(descriptor.Reference), TypeScriptStringLiteral(string(descriptor.Composition)), TypeScriptStringLiteral(descriptor.Scope), TypeScriptStringLiteral(contract.Identity().Digest()))
+	line("export const CAPABILITY = { protocol: %s, reference: %s, composition: %s, scope: %s, contract: %s } as const;", TypeScriptStringLiteral(descriptor.Protocol), TypeScriptStringLiteral(descriptor.Reference), TypeScriptStringLiteral(string(descriptor.Composition)), TypeScriptStringLiteral(descriptor.Scope), TypeScriptStringLiteral(contract.Identity().Digest().String()))
 	line("export const CAPABILITY_JSON = %s;", TypeScriptStringLiteral(string(contract.Identity().JSON())))
 	artifacts.typescript = output.String()
 	return artifacts, nil

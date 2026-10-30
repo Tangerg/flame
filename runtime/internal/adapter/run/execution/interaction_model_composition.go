@@ -7,6 +7,7 @@ import (
 
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -73,7 +74,7 @@ func decodeContributionBindings(values []contributionBindingWire, contract *port
 		if err != nil {
 			return nil, err
 		}
-		digest, err := flameidentity.ParseDigest(value.Digest)
+		digest, err := integrity.ParseDigest(value.Digest)
 		if err != nil {
 			return nil, err
 		}

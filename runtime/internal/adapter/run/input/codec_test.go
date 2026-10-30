@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -93,7 +93,7 @@ func TestDecodePromptDiscriminatesAndRejectsGuesses(t *testing.T) {
 
 func TestApprovalPromptRequiresIdentityRegardlessOfRememberability(t *testing.T) {
 	for _, rememberable := range []bool{false, true} {
-		for _, fingerprint := range []identity.Digest{{}, testsupport.Digest("source")} {
+		for _, fingerprint := range []integrity.Digest{{}, testsupport.Digest("source")} {
 			prompt := runs.Interrupt{
 				Kind: run.InterruptApproval,
 				Approval: &runs.ApprovalPrompt{

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 
@@ -130,7 +130,7 @@ func TestApprovalSubjectTypesSurviveRestart(t *testing.T) {
 		if subject.Type == approval.SubjectExact {
 			decision = approval.Allow
 		}
-		rule, err := approval.NewRule(approval.ScopeGlobal, "", ref, identity.Digest{}, subject, decision)
+		rule, err := approval.NewRule(approval.ScopeGlobal, "", ref, integrity.Digest{}, subject, decision)
 		if err != nil {
 			t.Fatal(err)
 		}

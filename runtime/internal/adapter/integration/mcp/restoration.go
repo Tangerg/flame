@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/runner"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -16,7 +16,7 @@ import (
 // restorationFailure belongs to the existing connection attempt. Its binding
 // identity prevents a failed replacement from settling an original waiting Run.
 type restorationFailure struct {
-	binding   identity.Digest
+	binding   integrity.Digest
 	completed bool
 	cause     error
 }

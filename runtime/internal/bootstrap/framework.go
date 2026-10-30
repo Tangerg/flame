@@ -9,10 +9,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/qimu"
 	controlhost "github.com/Tangerg/flame/qimu/control/host"
 	"github.com/Tangerg/flame/qimu/distribution"
+	"github.com/Tangerg/flame/qimu/integrity"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/process"
 	mcpadapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
@@ -49,7 +49,7 @@ func buildPluginPackages(cfg assemblyConfig, lifetime *runtimeLifetime) (*plugin
 			}
 			return nil
 		},
-		Retained: func(ctx context.Context, digest qimu.Digest) (bool, error) {
+		Retained: func(ctx context.Context, digest integrity.Digest) (bool, error) {
 			return retainedPluginContent(ctx, cfg.stores, digest)
 		},
 	})
@@ -62,7 +62,7 @@ func buildPluginPackages(cfg assemblyConfig, lifetime *runtimeLifetime) (*plugin
 
 // Remove invokes this reader while holding the same admission as every writer
 // that can add a reference. The original business rows remain the authority.
-func retainedPluginContent(ctx context.Context, stores *persistence.Bundle, digest qimu.Digest) (bool, error) {
+func retainedPluginContent(ctx context.Context, stores *persistence.Bundle, digest integrity.Digest) (bool, error) {
 	installations, err := stores.Installations.List(ctx)
 	if err != nil {
 		return false, err
@@ -181,7 +181,7 @@ func restoreFramework(ctx context.Context, stores *persistence.Bundle, host *qim
 	}
 	definitions := make([]*qimu.Plugin, 0, len(records))
 	for _, record := range records {
-		digest, err := identity.ParseDigest(record.Release.String())
+		digest, err := integrity.ParseDigest(record.Release.String())
 		if err != nil {
 			return err
 		}

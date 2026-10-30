@@ -7,6 +7,7 @@ import (
 
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -20,7 +21,7 @@ type pluginCallUseCases interface {
 	NotifyChange(context.Context, plugin.ContributionID) error
 	Prepare(context.Context, plugins.CallRequest) (plugins.Call, error)
 	PrepareStream(context.Context, plugins.CallRequest) (plugins.StreamCall, error)
-	Resolve(context.Context, flameidentity.InstallationID, flameidentity.Digest, plugin.ContributionID) ([]plugins.Collaborator, error)
+	Resolve(context.Context, flameidentity.InstallationID, integrity.Digest, plugin.ContributionID) ([]plugins.Collaborator, error)
 	ResolvePoint(context.Context, *portable.Point, portable.PointContext, []plugins.PointReference) ([]plugins.PointBinding, error)
 }
 

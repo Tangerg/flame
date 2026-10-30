@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/qimu"
 	"slices"
 	"sync/atomic"
 	"testing"
 	"testing/synctest"
 	"time"
+
+	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
@@ -43,7 +45,7 @@ func (pendingInstallationCheckpoints) ID() string { return "fixture.checkpoints"
 func (p pendingInstallationCheckpoints) Held(_ context.Context, id qimu.InstallationID) ([]qimu.Dependency, error) {
 	for installation, pending := range p {
 		if pending && installation.String() == id.String() {
-			return []qimu.Dependency{{InstallationID: id, Release: qimu.Digest(testsupport.Digest("checkpoint release").String())}}, nil
+			return []qimu.Dependency{{InstallationID: id, Release: testsupport.Digest("checkpoint release")}}, nil
 		}
 	}
 	return nil, nil
@@ -51,7 +53,7 @@ func (p pendingInstallationCheckpoints) Held(_ context.Context, id qimu.Installa
 
 func installationTestPlugin(t testing.TB, revision string) *qimu.Plugin {
 	t.Helper()
-	definition, err := qimu.Define(qimu.Definition{Revision: qimu.Hash([]byte(revision))})
+	definition, err := qimu.Define(qimu.Definition{Revision: integrity.Hash([]byte(revision))})
 	if err != nil {
 		t.Fatal(err)
 	}

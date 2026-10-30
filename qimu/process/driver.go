@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -25,7 +26,7 @@ import (
 // Env, never Args or Configuration; CredentialRevision is an opaque revision.
 type Program struct {
 	Command            string
-	ExecutableDigest   qimu.Digest
+	ExecutableDigest   integrity.Digest
 	Args               []string
 	Env                []string
 	Directory          string
@@ -161,7 +162,7 @@ func (d *Driver) Prepare(ctx context.Context, setup *qimu.Setup) ([]qimu.ExportV
 		if err != nil {
 			return nil, err
 		}
-		if contract == nil || valueContract.Mode != qimu.PortableMode || valueContract.Kind != qimu.ServiceKind || contract.Descriptor().Reference != valueContract.Name || qimu.Digest(contract.Identity().Digest()) != valueContract.Digest {
+		if contract == nil || valueContract.Mode != qimu.PortableMode || valueContract.Kind != qimu.ServiceKind || contract.Descriptor().Reference != valueContract.Name || contract.Identity().Digest() != valueContract.Digest {
 			return nil, qimu.ErrContractMismatch
 		}
 		contracts[export.Name] = contract

@@ -16,6 +16,7 @@ import (
 
 	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/qimu/control"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/sqlite"
 )
@@ -76,7 +77,7 @@ type Bridge struct {
 }
 
 type realmOpening struct {
-	verifier    qimu.Digest
+	verifier    integrity.Digest
 	done        chan struct{}
 	credentials Credentials
 	failure     error
@@ -97,7 +98,7 @@ type browserExecution struct {
 	resource       *qimu.ResourceHandle
 	ready          chan preparedResult
 	readyOperation string
-	readyDigest    qimu.Digest
+	readyDigest    integrity.Digest
 	objects        []control.ObjectRef
 	released       bool
 	exposed        bool
@@ -110,7 +111,7 @@ type preparedResult struct {
 type controlOperation struct {
 	kind        string
 	realm       control.Realm
-	digest      qimu.Digest
+	digest      integrity.Digest
 	execution   string
 	parentID    string
 	publication control.PublicationResult
@@ -181,10 +182,10 @@ func (b *Bridge) OpenRealm(ctx context.Context, operationID, resumeToken string)
 	if qimu.InstallationID(operationID).Validate() != nil || len(resumeToken) < 32 || len(resumeToken) > 512 {
 		return Credentials{}, qimu.ErrInvalid
 	}
-	verifier := qimu.Hash([]byte(resumeToken))
+	verifier := integrity.Hash([]byte(resumeToken))
 	b.mu.Lock()
 	if previous := b.openings[operationID]; previous != nil {
-		if subtle.ConstantTimeCompare([]byte(previous.verifier), []byte(verifier)) != 1 {
+		if subtle.ConstantTimeCompare([]byte(previous.verifier.String()), []byte(verifier.String())) != 1 {
 			b.mu.Unlock()
 			return Credentials{}, qimu.ErrFenced
 		}
@@ -232,7 +233,7 @@ func (b *Bridge) openRealm(ctx context.Context, operationID, resumeToken string)
 		return Credentials{}, qimu.ErrCapacity
 	}
 	b.mu.Unlock()
-	if err := b.config.Store.RegisterRealm(ctx, sqlite.RealmCredential{ID: credentials.Realm.ID, Epoch: credentials.Realm.Epoch, OperationID: operationID, ResumeVerifier: qimu.Hash([]byte(credentials.ResumeToken))}); err != nil {
+	if err := b.config.Store.RegisterRealm(ctx, sqlite.RealmCredential{ID: credentials.Realm.ID, Epoch: credentials.Realm.Epoch, OperationID: operationID, ResumeVerifier: integrity.Hash([]byte(credentials.ResumeToken))}); err != nil {
 		return Credentials{}, err
 	}
 	b.mu.Lock()
@@ -251,8 +252,8 @@ func (b *Bridge) ResumeRealm(ctx context.Context, realm control.Realm, resumeTok
 	if err != nil {
 		return Credentials{}, qimu.ErrFenced
 	}
-	actual := qimu.Hash([]byte(resumeToken))
-	if subtle.ConstantTimeCompare([]byte(actual), []byte(credential.ResumeVerifier)) != 1 {
+	actual := integrity.Hash([]byte(resumeToken))
+	if subtle.ConstantTimeCompare([]byte(actual.String()), []byte(credential.ResumeVerifier.String())) != 1 {
 		return Credentials{}, qimu.ErrFenced
 	}
 	b.mu.Lock()
@@ -587,14 +588,14 @@ func clone[T any](value T) T {
 	}
 	return copy
 }
-func requestDigest(value any) (qimu.Digest, error) {
+func requestDigest(value any) (integrity.Digest, error) {
 	encoded, err := json.Marshal(value)
 	if err != nil {
-		return "", err
+		return integrity.Digest{}, err
 	}
 	canonical, err := jsonvalue.Parse(encoded)
 	if err != nil {
-		return "", err
+		return integrity.Digest{}, err
 	}
-	return qimu.Hash(canonical.JSON()), nil
+	return integrity.Hash(canonical.JSON()), nil
 }

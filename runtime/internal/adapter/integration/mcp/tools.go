@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -116,9 +116,9 @@ func (t Executable) Current() bool {
 	return t.owner != nil && t.owner.current(t.config.ID(), t.session, t.catalogVersion)
 }
 
-func (t Executable) Unwrap() toolcontract.Tool          { return t.Tool }
-func (t Executable) SourceFingerprint() identity.Digest { return t.config.AuthorityFingerprint() }
-func (t Executable) SourceConfig() ServerConfig         { return t.config.Clone() }
+func (t Executable) Unwrap() toolcontract.Tool           { return t.Tool }
+func (t Executable) SourceFingerprint() integrity.Digest { return t.config.AuthorityFingerprint() }
+func (t Executable) SourceConfig() ServerConfig          { return t.config.Clone() }
 
 // BorrowSession holds this executable's original Use while callback grants are
 // being prepared and used. The caller closes it after revoking those grants.

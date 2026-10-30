@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 type absentDriver struct{ qimu.Driver }
@@ -78,7 +79,7 @@ func TestContractBatchRejectsConflictsWithoutPartialRegistration(t *testing.T) {
 	event, _ := qimu.NewEvent[string]("example.batch", "1")
 	eventPayload, _ := qimu.NewEvent[int]("example.batch", "1")
 	portable := func(descriptor string) qimu.Contract[string] {
-		ref := qimu.ContractRef{Name: "example.batch", Version: "1", Kind: qimu.ServiceKind, Mode: qimu.PortableMode, Digest: qimu.Hash([]byte(descriptor))}
+		ref := qimu.ContractRef{Name: "example.batch", Version: "1", Kind: qimu.ServiceKind, Mode: qimu.PortableMode, Digest: integrity.Hash([]byte(descriptor))}
 		value, err := qimu.BindContract[string](ref, []byte(descriptor))
 		if err != nil {
 			t.Fatal(err)

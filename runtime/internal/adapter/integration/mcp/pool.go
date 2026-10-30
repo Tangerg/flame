@@ -8,7 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
-	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -239,7 +239,7 @@ func (p *Pool) AwaitInstallationActivation(ctx context.Context, id mcpserver.ID)
 	return p.inner.activation(session)
 }
 
-func (p *Pool) BorrowBoundSession(ctx context.Context, id mcpserver.ID, authority flameidentity.Digest) (_ *BorrowedSession, err error) {
+func (p *Pool) BorrowBoundSession(ctx context.Context, id mcpserver.ID, authority integrity.Digest) (_ *BorrowedSession, err error) {
 	defer func() { err = connectionError(id, err) }()
 	descriptor, found, err := p.registry.Dispatchable(ctx, id)
 	if err != nil {

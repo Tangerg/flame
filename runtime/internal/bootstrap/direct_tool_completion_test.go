@@ -8,8 +8,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
@@ -164,7 +164,7 @@ type directAnswerTool struct{ toolcontract.Tool }
 func (directAnswerTool) ReturnsDirectResult() bool         { return true }
 func (directAnswerTool) MCPToolIdentity() (string, string) { return "fixture", "answer" }
 
-func (directAnswerTool) SourceFingerprint() identity.Digest {
+func (directAnswerTool) SourceFingerprint() integrity.Digest {
 	return testsupport.Digest("fixture authority")
 }
 

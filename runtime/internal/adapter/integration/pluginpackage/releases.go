@@ -5,7 +5,6 @@ package pluginpackage
 import (
 	"context"
 	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -13,10 +12,10 @@ import (
 	"path/filepath"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/qimu/cancellation"
 	"github.com/Tangerg/flame/qimu/distribution"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/samber/lo"
@@ -28,7 +27,7 @@ const maxManifestBytes int64 = 4 << 20
 var errResourceLimit = errors.New("pluginpackage: resource limit exceeded")
 
 type releaseCatalog interface {
-	Get(context.Context, flameidentity.Digest) (plugin.Release, error)
+	Get(context.Context, integrity.Digest) (plugin.Release, error)
 	Admit(context.Context, plugin.Release) error
 }
 
@@ -60,11 +59,11 @@ func New(content *distribution.Store, dataDirectory string, catalog releaseCatal
 
 // Root is a display projection, not a content claim. Reads and process launch
 // retain an original Qimu Lease before using this location.
-func (r *Releases) Root(digest flameidentity.Digest) (string, error) {
+func (r *Releases) Root(digest integrity.Digest) (string, error) {
 	if err := digest.Validate(); err != nil {
 		return "", errors.Join(plugin.ErrInvalid, err)
 	}
-	return r.content.Path(qimu.Digest(digest.String()))
+	return r.content.Path(digest)
 }
 
 type Candidate struct {
@@ -112,7 +111,7 @@ func (r *Releases) Materialize(ctx context.Context, source string) (_ plugins.Ca
 		if err = errors.Join(readErr, file.Close()); err != nil {
 			return nil, err
 		}
-		lease, err = r.content.InstallArchiveHeld(ctx, source, qimu.Digest(hex.EncodeToString(hash.Sum(nil))))
+		lease, err = r.content.InstallArchiveHeld(ctx, source, integrity.DigestOf([sha256.Size]byte(hash.Sum(nil))))
 	} else {
 		return nil, fmt.Errorf("%w: package source must be a directory or regular archive: %w", plugin.ErrInvalid, filesystem.ErrNotRegular)
 	}
@@ -125,7 +124,7 @@ func (r *Releases) Materialize(ctx context.Context, source string) (_ plugins.Ca
 		}
 	}()
 	neutral := lease.Release()
-	digest, err := flameidentity.ParseDigest(neutral.Digest.String())
+	digest, err := integrity.ParseDigest(neutral.Digest.String())
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +173,7 @@ func (r *Releases) readResource(ctx context.Context, installation *plugin.Instal
 	if !plugin.ValidResourcePath(name) {
 		return nil, fmt.Errorf("%w: invalid resource path", plugin.ErrInvalid)
 	}
-	lease, err := r.content.Acquire(ctx, qimu.Digest(installation.Selected().String()))
+	lease, err := r.content.Acquire(ctx, installation.Selected())
 	if err != nil {
 		return nil, err
 	}

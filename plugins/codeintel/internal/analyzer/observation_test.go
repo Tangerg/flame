@@ -24,7 +24,7 @@ func TestMutationReportsPendingWithoutClaimingCleanDiagnostics(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "diagnostics pending") || strings.Contains(text, "No diagnostics") {
 		t.Fatalf("unobserved diagnostics = %q, %v", text, err)
 	}
-	document, err := codeintel.NewDocument(root, file, "package changed\n")
+	document, err := codeintel.NewDocument(root, "main.go", "package changed\n")
 	if err != nil {
 		t.Fatal(err)
 	}

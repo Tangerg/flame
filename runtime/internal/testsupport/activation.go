@@ -1,8 +1,8 @@
 package testsupport
 
 import (
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
@@ -13,9 +13,9 @@ func ServerActivation(configuration, server string, dependencies ...plugin.Depen
 	dependencies = plugin.CompactDependencies(dependencies)
 	binding := qimu.BindingSnapshot{FormatVersion: 1, Roots: []qimu.ExportRef{}, UnitRoots: []qimu.UnitRef{}, Units: []qimu.UnitBinding{}}
 	for _, dependency := range dependencies {
-		source := qimu.UnitRef{InstallationID: qimu.InstallationID(dependency.InstallationID.String()), Release: qimu.Digest(dependency.Digest.String()), UnitID: qimu.UnitID("backend/" + server)}
+		source := qimu.UnitRef{InstallationID: qimu.InstallationID(dependency.InstallationID.String()), Release: dependency.Digest, UnitID: qimu.UnitID("backend/" + server)}
 		binding.UnitRoots = append(binding.UnitRoots, source)
-		binding.Units = append(binding.Units, qimu.UnitBinding{Source: source, Configuration: qimu.Hash([]byte(configuration)), Imports: []qimu.ImportDeclaration{}})
+		binding.Units = append(binding.Units, qimu.UnitBinding{Source: source, Configuration: integrity.Hash([]byte(configuration)), Imports: []qimu.ImportDeclaration{}})
 	}
 	data, err := binding.CanonicalJSON()
 	if err != nil {
@@ -25,7 +25,7 @@ func ServerActivation(configuration, server string, dependencies ...plugin.Depen
 	if err != nil {
 		panic(err)
 	}
-	digest, err := identity.ParseDigest(qimu.Hash(data).String())
+	digest, err := integrity.ParseDigest(integrity.Hash(data).String())
 	if err != nil {
 		panic(err)
 	}

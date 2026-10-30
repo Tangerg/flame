@@ -274,6 +274,7 @@ a process, method or business operation.
 | -------------------------------------- | ------------------------------------------------------------------------------------------ |
 | `qimu`                                 | Contracts, exact graphs, admission, installation state, Points, Events, Uses and Lifetimes |
 | `portable`, `jsonvalue`, `contractgen` | Portable descriptor validation, exact JSON and generated contract projections              |
+| `integrity`                            | The one SHA-256 digest spelling shared by releases, contracts, receipts and consumers      |
 | `mcp`, `process`, `runner`             | Author protocol, approved process execution and actual process ownership                   |
 | `sqlite`, `distribution`               | Durable settlement/protection and immutable release content                                |
 | `control`, `control/host`              | Control protocol and authenticated browser Host adapter                                    |

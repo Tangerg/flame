@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 )
 
@@ -38,7 +39,7 @@ func testHost(t *testing.T, config qimu.HostConfig) *qimu.Host {
 
 func installNative(t *testing.T, host *qimu.Host, id string, units ...qimu.Unit) *qimu.Plugin {
 	t.Helper()
-	plugin, err := qimu.Define(qimu.Definition{Revision: qimu.Hash([]byte(id)), Units: units})
+	plugin, err := qimu.Define(qimu.Definition{Revision: integrity.Hash([]byte(id)), Units: units})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -335,7 +336,7 @@ func TestPortablePointHasIndependentMetadataAndValueIdentity(t *testing.T) {
 	ctx := testContext(t)
 	host := testHost(t, qimu.HostConfig{})
 	descriptor := []byte(`{"protocol":"example","methods":["format"]}`)
-	valueRef := qimu.ContractRef{Name: "example.portable.format", Version: "1", Digest: qimu.Hash(descriptor), Kind: qimu.ServiceKind, Mode: qimu.PortableMode}
+	valueRef := qimu.ContractRef{Name: "example.portable.format", Version: "1", Digest: integrity.Hash(descriptor), Kind: qimu.ServiceKind, Mode: qimu.PortableMode}
 	valueContract, err := qimu.BindContract[func() string](valueRef, descriptor)
 	if err != nil {
 		t.Fatal(err)

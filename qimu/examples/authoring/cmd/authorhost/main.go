@@ -25,6 +25,7 @@ import (
 	"github.com/Tangerg/flame/qimu/control"
 	controlhost "github.com/Tangerg/flame/qimu/control/host"
 	"github.com/Tangerg/flame/qimu/examples/document"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/sqlite"
 )
 
@@ -57,8 +58,8 @@ type Bootstrap struct {
 }
 
 type moduleSource struct {
-	release qimu.Digest
-	digest  qimu.Digest
+	release integrity.Digest
+	digest  integrity.Digest
 }
 
 func (s moduleSource) Module(_ context.Context, binding qimu.UnitBinding) (control.Artifact, error) {
@@ -119,7 +120,7 @@ func run() (returned error) {
 	}
 	// This trusted fixture reads immutable bytes before starting execution. It
 	// does not claim remote package trust or define another distribution format.
-	plugin, err := qimu.Define(qimu.Definition{Revision: qimu.Hash(append(append(bytes.Clone(declaration), 0), module...)), Units: units})
+	plugin, err := qimu.Define(qimu.Definition{Revision: integrity.Hash(append(append(bytes.Clone(declaration), 0), module...)), Units: units})
 	if err != nil {
 		return err
 	}
@@ -161,7 +162,7 @@ func run() (returned error) {
 	}
 	defer listener.Close()
 	origin := "http://" + listener.Addr().String()
-	bridge, err := controlhost.NewBridge(controlhost.BridgeConfig{Host: host, Store: store, Source: moduleSource{release: plugin.Revision(), digest: qimu.Hash(module)}, Points: []qimu.ContractRef{contracts.Converters.Ref(), contracts.Validators.Ref()}, PublicConfiguration: func(context.Context, *qimu.Setup) ([]byte, error) {
+	bridge, err := controlhost.NewBridge(controlhost.BridgeConfig{Host: host, Store: store, Source: moduleSource{release: plugin.Revision(), digest: integrity.Hash(module)}, Points: []qimu.ContractRef{contracts.Converters.Ref(), contracts.Validators.Ref()}, PublicConfiguration: func(context.Context, *qimu.Setup) ([]byte, error) {
 		return json.Marshal(SourceConfiguration{DocumentBase: origin + "/documents/"})
 	}})
 	if err != nil {

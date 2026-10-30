@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/qimu/cancellation"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -22,12 +22,12 @@ type ToolResults struct {
 	pool          *mcp.Pool
 }
 
-func (s *ToolResults) OwnsToolSource(ctx context.Context, ref tool.Ref, release identity.Digest, activation plugin.Activation) (bool, error) {
+func (s *ToolResults) OwnsToolSource(ctx context.Context, ref tool.Ref, release integrity.Digest, activation plugin.Activation) (bool, error) {
 	_, found, err := s.toolSource(ctx, ref, release, activation)
 	return found, err
 }
 
-func (s *ToolResults) toolSource(ctx context.Context, ref tool.Ref, release identity.Digest, activation plugin.Activation) (mcpserver.ID, bool, error) {
+func (s *ToolResults) toolSource(ctx context.Context, ref tool.Ref, release integrity.Digest, activation plugin.Activation) (mcpserver.ID, bool, error) {
 	var zero mcpserver.ID
 	server, _, found := ref.MCP()
 	if !found {
@@ -62,7 +62,7 @@ func (s *ToolResults) toolSource(ctx context.Context, ref tool.Ref, release iden
 	return zero, false, nil
 }
 
-func (s *ToolResults) OriginalToolResult(ctx context.Context, ref tool.Ref, release, authority identity.Digest, activation plugin.Activation, callID, arguments string) (_ *chat.ToolOutput, err error) {
+func (s *ToolResults) OriginalToolResult(ctx context.Context, ref tool.Ref, release, authority integrity.Digest, activation plugin.Activation, callID, arguments string) (_ *chat.ToolOutput, err error) {
 	borrowed, err := s.originalToolSession(ctx, ref, release, authority, activation)
 	if err != nil {
 		return nil, err
@@ -78,7 +78,7 @@ func (s *ToolResults) OriginalToolResult(ctx context.Context, ref tool.Ref, rele
 	return pluginsdk.ReadToolReceipt(ctx, session, callID, remote.String(), admitted)
 }
 
-func (s *ToolResults) AwaitOriginalToolSource(ctx context.Context, ref tool.Ref, release, authority identity.Digest, activation plugin.Activation) (bool, error) {
+func (s *ToolResults) AwaitOriginalToolSource(ctx context.Context, ref tool.Ref, release, authority integrity.Digest, activation plugin.Activation) (bool, error) {
 	if err := cancellation.Err(ctx); err != nil {
 		return false, err
 	}
@@ -92,7 +92,7 @@ func (s *ToolResults) AwaitOriginalToolSource(ctx context.Context, ref tool.Ref,
 	return err == nil, err
 }
 
-func (s *ToolResults) originalToolSession(ctx context.Context, ref tool.Ref, release, authority identity.Digest, activation plugin.Activation) (*mcp.BorrowedSession, error) {
+func (s *ToolResults) originalToolSession(ctx context.Context, ref tool.Ref, release, authority integrity.Digest, activation plugin.Activation) (*mcp.BorrowedSession, error) {
 	source, found, err := s.toolSource(ctx, ref, release, activation)
 	if err != nil {
 		return nil, err

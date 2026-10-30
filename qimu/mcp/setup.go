@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -324,7 +325,7 @@ func validateSetupBindings(id string, bindings []SetupBinding) error {
 		if err := validateSetupInstallation(value.InstallationID); err != nil {
 			return err
 		}
-		if _, err := qimu.ParseDigest(value.Digest); err != nil {
+		if _, err := integrity.ParseDigest(value.Digest); err != nil {
 			return err
 		}
 		if err := validateSetupID(value.Contribution); err != nil {

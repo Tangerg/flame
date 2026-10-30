@@ -8,6 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
@@ -58,7 +59,7 @@ type InterruptBinding struct {
 	// a remembered rule without inferring authority from a display name. Both are
 	// empty for a Question boundary.
 	ToolRef           tool.Ref
-	SourceFingerprint identity.Digest
+	SourceFingerprint integrity.Digest
 }
 
 type memberRequestIdentity struct {

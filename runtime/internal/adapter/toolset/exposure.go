@@ -7,7 +7,7 @@ import (
 	"slices"
 
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -160,7 +160,7 @@ func (m *manifestBuilder) builtIn(executable toolcontract.Tool) toolcontract.Too
 		m.err = err
 		return executable
 	}
-	identified, err := WithIdentity(executable, ref, identity.Digest{})
+	identified, err := WithIdentity(executable, ref, integrity.Digest{})
 	if err != nil {
 		m.err = err
 		return executable

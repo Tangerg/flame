@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -21,13 +22,13 @@ const ValidateMethod = "io.github.tangerg.qimu/operations.validate"
 
 type invokeParams struct {
 	sdk.ParamsBase
-	Protocol   string         `json:"protocol"`
-	Method     string         `json:"method"`
-	Contract   string         `json:"contract"`
-	Export     string         `json:"export,omitzero"`
-	Capability string         `json:"capability,omitzero"`
-	Input      jsontext.Value `json:"input"`
-	CommandID  string         `json:"commandId,omitzero"`
+	Protocol   string           `json:"protocol"`
+	Method     string           `json:"method"`
+	Contract   integrity.Digest `json:"contract"`
+	Export     string           `json:"export,omitzero"`
+	Capability integrity.Digest `json:"capability,omitzero"`
+	Input      jsontext.Value   `json:"input"`
+	CommandID  string           `json:"commandId,omitzero"`
 }
 
 func (p *invokeParams) UnmarshalJSON(data []byte) error {
@@ -36,10 +37,10 @@ func (p *invokeParams) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &decoded, json.RejectUnknownMembers(true)); err != nil {
 		return err
 	}
-	if decoded.Protocol != portable.Protocol || decoded.Method == "" || len(decoded.Contract) != 64 || len(decoded.Input) == 0 {
+	if decoded.Protocol != portable.Protocol || decoded.Method == "" || decoded.Contract.IsZero() || len(decoded.Input) == 0 {
 		return errors.New("plugin: current backend protocol, method, contract and input are required")
 	}
-	if (decoded.Export == "") != (decoded.Capability == "") || decoded.Export != "" && (!portable.ValidExportName(decoded.Export) || len(decoded.Capability) != 64) {
+	if (decoded.Export == "") != decoded.Capability.IsZero() || decoded.Export != "" && !portable.ValidExportName(decoded.Export) {
 		return errors.New("plugin: capability export and contract must be supplied together")
 	}
 	*p = invokeParams(decoded)

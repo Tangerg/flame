@@ -7,9 +7,9 @@ import (
 	"runtime"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/qimu/distribution"
+	"github.com/Tangerg/flame/qimu/integrity"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -23,7 +23,7 @@ func (r *Releases) Connection(ctx context.Context, installation *plugin.Installa
 	if err != nil || !found || !server.Enabled {
 		return mcpapp.Launch{Server: server}, found, err
 	}
-	lease, err := r.content.Acquire(ctx, qimu.Digest(release.Digest().String()))
+	lease, err := r.content.Acquire(ctx, release.Digest())
 	if err != nil {
 		return mcpapp.Launch{}, false, errors.Join(plugin.ErrUnavailable, err)
 	}
@@ -61,14 +61,14 @@ func (r *Releases) Connection(ctx context.Context, installation *plugin.Installa
 	if err := realizeBackend(ctx, executable, declared, directory, data); err != nil {
 		return mcpapp.Launch{}, false, fmt.Errorf("%w: server %q backend: %w", plugin.ErrUnavailable, name, err)
 	}
-	var expected identity.Digest
+	var expected integrity.Digest
 	if declared.Managed != nil {
 		node, nodeErr := hostNode()
 		if nodeErr != nil {
 			return mcpapp.Launch{}, false, nodeErr
 		}
-		expected, err = identity.ParseDigest(node.ExecutableDigest())
-		if variant.Runtime == nil || qimu.Digest(expected.String()) != variant.Runtime.Digest {
+		expected, err = integrity.ParseDigest(node.ExecutableDigest())
+		if variant.Runtime == nil || expected != variant.Runtime.Digest {
 			return mcpapp.Launch{}, false, fmt.Errorf("%w: installed interpreter differs from its original runtime pin", plugin.ErrUnavailable)
 		}
 	} else {
@@ -78,7 +78,7 @@ func (r *Releases) Connection(ctx context.Context, installation *plugin.Installa
 		}
 		for _, artifact := range lease.Release().Manifest.Artifacts {
 			if artifact.Path == command && artifact.Executable {
-				expected, err = identity.ParseDigest(artifact.Digest.String())
+				expected, err = integrity.ParseDigest(artifact.Digest.String())
 				break
 			}
 		}

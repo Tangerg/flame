@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"golang.org/x/text/language"
 )
 
@@ -41,7 +41,7 @@ func (b *Builder) AdmitLocale(value Locale) error {
 	return nil
 }
 
-func (i *Installation) AuthorizeLocale(release Release, digest identity.Digest, tag string) (Locale, error) {
+func (i *Installation) AuthorizeLocale(release Release, digest integrity.Digest, tag string) (Locale, error) {
 	if err := i.authorizePresentation(release, digest); err != nil {
 		return Locale{}, err
 	}

@@ -9,6 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/qimu/examples/buildcheck"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 func TestAroundContinuationKeepsItsOriginalRemainderAfterPointChanges(t *testing.T) {
@@ -36,7 +37,7 @@ func TestAroundContinuationKeepsItsOriginalRemainderAfterPointChanges(t *testing
 		}
 	}
 	var instanceID string
-	plugin, err := qimu.Define(qimu.Definition{Revision: qimu.Hash([]byte("mutable-around")), Units: []qimu.Unit{{
+	plugin, err := qimu.Define(qimu.Definition{Revision: integrity.Hash([]byte("mutable-around")), Units: []qimu.Unit{{
 		Declaration: qimu.UnitDeclaration{ID: "main", Profile: qimu.NativeGo, Exports: []qimu.ExportDeclaration{{Name: "tail", Contract: e.Contracts.Around.Ref()}}},
 		Setup: func(_ context.Context, setup *qimu.Setup) ([]qimu.ExportValue, error) {
 			instanceID = setup.InstanceID()

@@ -5,8 +5,8 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -128,9 +128,9 @@ func (b *BorrowedSession) Activation() (plugin.Activation, error) {
 // SourceFingerprint describes the exact server realized during this Use's
 // setup. Actor authority names its installation grant; it does not include
 // the transport and executable configuration captured by a tool manifest.
-func (b *BorrowedSession) SourceFingerprint() (identity.Digest, error) {
+func (b *BorrowedSession) SourceFingerprint() (integrity.Digest, error) {
 	if b.managed == nil || b.ctx.Err() != nil {
-		return identity.Digest{}, ErrUnavailable
+		return integrity.Digest{}, ErrUnavailable
 	}
 	return b.managed.projection.fingerprint, nil
 }

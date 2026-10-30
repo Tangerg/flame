@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -70,7 +72,7 @@ func (s *ExecutorCheckpointStore) resourceReferences(ctx context.Context, rootID
 		if dependency.InstallationID, err = identity.ParseInstallation(installation); err != nil {
 			return nil, fmt.Errorf("sqlite: decode executor checkpoint %q dependency: %w", rootID, err)
 		}
-		if dependency.Digest, err = identity.ParseDigest(digest); err != nil {
+		if dependency.Digest, err = integrity.ParseDigest(digest); err != nil {
 			return nil, fmt.Errorf("sqlite: decode executor checkpoint %q dependency: %w", rootID, err)
 		}
 		dependencies = append(dependencies, dependency)

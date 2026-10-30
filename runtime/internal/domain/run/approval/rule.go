@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
@@ -58,7 +59,7 @@ func ValidateVisibleRules(rules []Rule, sessionID, projectDir string) error {
 }
 
 // NewRule constructs one durable rule and derives its deterministic identity.
-func NewRule(scope Scope, scopeKey string, ref tool.Ref, source identity.Digest, subject Subject, decision Decision) (Rule, error) {
+func NewRule(scope Scope, scopeKey string, ref tool.Ref, source integrity.Digest, subject Subject, decision Decision) (Rule, error) {
 	rule := Rule{
 		Scope: scope, ScopeKey: scopeKey, Tool: ref, SourceFingerprint: source,
 		Subject: subject, Decision: decision,

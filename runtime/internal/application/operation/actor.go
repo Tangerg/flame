@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -13,8 +14,8 @@ import (
 // the connection owner and never decoded from a plugin's business arguments.
 type Actor struct {
 	installation identity.InstallationID
-	release      identity.Digest
-	authority    identity.Digest
+	release      integrity.Digest
+	authority    integrity.Digest
 	server       mcpserver.ServerName
 	bindings     *plugin.RequiredBindings
 }
@@ -24,7 +25,7 @@ func NewActor(installation, release, authority, server string) (Actor, error) {
 	if err != nil {
 		return Actor{}, err
 	}
-	digest, err := identity.ParseDigest(release)
+	digest, err := integrity.ParseDigest(release)
 	if err != nil {
 		return Actor{}, err
 	}
@@ -32,7 +33,7 @@ func NewActor(installation, release, authority, server string) (Actor, error) {
 	if err != nil {
 		return Actor{}, err
 	}
-	admitted, err := identity.ParseDigest(authority)
+	admitted, err := integrity.ParseDigest(authority)
 	if err != nil {
 		return Actor{}, err
 	}
@@ -40,9 +41,9 @@ func NewActor(installation, release, authority, server string) (Actor, error) {
 }
 
 func (a Actor) InstallationID() identity.InstallationID { return a.installation }
-func (a Actor) Release() identity.Digest                { return a.release }
+func (a Actor) Release() integrity.Digest               { return a.release }
 func (a Actor) Server() mcpserver.ServerName            { return a.server }
-func (a Actor) Authority() identity.Digest              { return a.authority }
+func (a Actor) Authority() integrity.Digest             { return a.authority }
 
 func (a Actor) WithBindings(bindings *plugin.RequiredBindings) Actor {
 	a.bindings = bindings

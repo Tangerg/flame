@@ -64,7 +64,7 @@ func sdkLayer(path string) string {
 
 func qimuLayer(path string) string {
 	switch path {
-	case "jsonvalue", "portable":
+	case "jsonvalue", "portable", "integrity":
 		return ringValue
 	case "cancellation", "control":
 		return ringMechanism

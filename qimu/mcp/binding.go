@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -19,7 +20,7 @@ type Binding struct {
 	session    *sdk.ClientSession
 	method     *portable.Method
 	export     string
-	capability string
+	capability integrity.Digest
 }
 
 // NewBinding accepts an already captured contract. The backend checks its exact

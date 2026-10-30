@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"slices"
 	"sync"
+
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 type CommitState string
@@ -21,7 +23,7 @@ const (
 
 type InstallationRecord struct {
 	ID            InstallationID    `json:"id"`
-	Release       Digest            `json:"release"`
+	Release       integrity.Digest  `json:"release"`
 	Configuration []byte            `json:"configuration"`
 	Enabled       bool              `json:"enabled"`
 	Units         []UnitDeclaration `json:"units"`
@@ -129,7 +131,7 @@ type Instance struct {
 	binding               UnitBinding
 	snapshot              BindingSnapshot
 	preparation           []bindingRead
-	identity              Digest
+	identity              integrity.Digest
 	configuration         []byte
 	setup                 SetupFunc
 	lifetime              *Lifetime
@@ -152,7 +154,7 @@ type Instance struct {
 }
 
 type publicationOperation struct {
-	request     Digest
+	request     integrity.Digest
 	publication *publication
 	withdrawn   bool
 }
@@ -324,7 +326,7 @@ func (h *Host) RegisterDescriptor(ref ContractRef, descriptor []byte) error {
 			return err
 		}
 	} else {
-		if Hash(descriptor) != ref.Digest {
+		if integrity.Hash(descriptor) != ref.Digest {
 			return ErrContractMismatch
 		}
 		definition = &declaration{ref: ref, descriptor: bytes.Clone(descriptor)}

@@ -8,6 +8,7 @@ import (
 
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
@@ -155,10 +156,10 @@ func TestRefFingerprintFollowsSourceKind(t *testing.T) {
 	}
 	mcp := testMCPRef(t, mcpserver.UserOrigin(), "files", "read")
 	authority := identity.DigestStrings("endpoint")
-	if builtIn.ValidateFingerprint(identity.Digest{}) != nil || builtIn.ValidateFingerprint(authority) == nil {
+	if builtIn.ValidateFingerprint(integrity.Digest{}) != nil || builtIn.ValidateFingerprint(authority) == nil {
 		t.Fatal("built-in fingerprint rule")
 	}
-	if mcp.ValidateFingerprint(authority) != nil || mcp.ValidateFingerprint(identity.Digest{}) == nil {
+	if mcp.ValidateFingerprint(authority) != nil || mcp.ValidateFingerprint(integrity.Digest{}) == nil {
 		t.Fatal("MCP fingerprint rule")
 	}
 }

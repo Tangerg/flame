@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/plugins/a2a/internal/wire"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 type agentSpec struct {
@@ -25,7 +26,7 @@ type agent struct {
 	cardURL    string
 	cardOrigin httporigin.Origin
 	origins    []httporigin.Origin
-	authority  identity.Digest
+	authority  integrity.Digest
 }
 
 var agentName = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`)

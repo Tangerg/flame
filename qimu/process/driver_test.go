@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -100,7 +101,7 @@ func (s *source) Program(context.Context, qimu.UnitBinding) (process.Program, er
 }
 
 func (s *source) Contract(_ context.Context, ref qimu.ContractRef) (*portable.Capability, error) {
-	if ref.Digest != qimu.Digest(s.contract.Identity().Digest()) {
+	if ref.Digest != integrity.Hash(s.contract.Identity().JSON()) {
 		return nil, qimu.ErrContractMismatch
 	}
 	return s.contract, nil
@@ -161,7 +162,7 @@ func newEnvironment(t *testing.T, wait bool) *environment {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ref := qimu.ContractRef{Name: capability.Descriptor().Reference, Version: "1", Digest: qimu.Digest(capability.Identity().Digest()), Kind: qimu.ServiceKind, Mode: qimu.PortableMode}
+	ref := qimu.ContractRef{Name: capability.Descriptor().Reference, Version: "1", Digest: integrity.Hash(capability.Identity().JSON()), Kind: qimu.ServiceKind, Mode: qimu.PortableMode}
 	contract, err := qimu.BindContract[*mcp.CapabilityBinding](ref, capability.Identity().JSON())
 	if err != nil {
 		t.Fatal(err)
@@ -174,7 +175,7 @@ func newEnvironment(t *testing.T, wait bool) *environment {
 	if err != nil {
 		t.Fatal(err)
 	}
-	source := &source{contract: capability, program: process.Program{Command: executable, ExecutableDigest: qimu.Hash(data), Args: []string{"-test.run=^TestMCPProcessHelper$"}, Env: append(os.Environ(), "QIMU_PROCESS_HELPER="+directory), Directory: directory}}
+	source := &source{contract: capability, program: process.Program{Command: executable, ExecutableDigest: integrity.Hash(data), Args: []string{"-test.run=^TestMCPProcessHelper$"}, Env: append(os.Environ(), "QIMU_PROCESS_HELPER="+directory), Directory: directory}}
 	if wait {
 		source.program.Env = append(source.program.Env, "QIMU_PROCESS_WAIT=1")
 	}
@@ -196,7 +197,7 @@ func newEnvironment(t *testing.T, wait bool) *environment {
 	if err := host.Register(contract); err != nil {
 		t.Fatal(err)
 	}
-	plugin, err := qimu.Define(qimu.Definition{Revision: qimu.Hash([]byte("echo release")), Units: []qimu.Unit{{Declaration: qimu.UnitDeclaration{ID: "backend", Profile: qimu.MCPProcess, Exports: []qimu.ExportDeclaration{{Name: "echo", Contract: ref}}}}}})
+	plugin, err := qimu.Define(qimu.Definition{Revision: integrity.Hash([]byte("echo release")), Units: []qimu.Unit{{Declaration: qimu.UnitDeclaration{ID: "backend", Profile: qimu.MCPProcess, Exports: []qimu.ExportDeclaration{{Name: "echo", Contract: ref}}}}}})
 	if err != nil {
 		t.Fatal(err)
 	}

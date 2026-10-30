@@ -2,7 +2,10 @@
 // materializes approved plans; these messages never delegate provider selection.
 package control
 
-import "github.com/Tangerg/flame/qimu"
+import (
+	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
+)
 
 const Protocol = "io.github.tangerg.qimu/control/1"
 
@@ -22,10 +25,10 @@ type Execution struct {
 }
 
 type Instance struct {
-	ID            string       `json:"id"`
-	Generation    string       `json:"generation"`
-	Source        qimu.UnitRef `json:"source"`
-	Configuration qimu.Digest  `json:"configuration"`
+	ID            string           `json:"id"`
+	Generation    string           `json:"generation"`
+	Source        qimu.UnitRef     `json:"source"`
+	Configuration integrity.Digest `json:"configuration"`
 }
 
 type LocalExport struct {
@@ -56,8 +59,8 @@ type Import struct {
 }
 
 type Artifact struct {
-	Path   string      `json:"path"`
-	Digest qimu.Digest `json:"digest"`
+	Path   string           `json:"path"`
+	Digest integrity.Digest `json:"digest"`
 }
 
 type PlannedUnit struct {

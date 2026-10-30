@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"slices"
 
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 )
 
@@ -542,7 +543,7 @@ func Capture(snapshot *Snapshot, selections ...SelectionRef) (*BindingPlan, erro
 		if err != nil {
 			return nil, err
 		}
-		plan.binding.Rule = string(Hash(encoded))
+		plan.binding.Rule = integrity.Hash(encoded).String()
 	}
 	ordered, err := subsetBinding(plan.binding, plan.binding.Roots)
 	if err != nil {
@@ -760,7 +761,7 @@ func (h *Host) Publish(ctx context.Context, instanceID, operationID string, valu
 	if err != nil {
 		return Publication{}, err
 	}
-	fingerprint := Hash(append([]byte(value.Name+"\x00"+value.Contract.Digest.String()+"\x00"), metadata...))
+	fingerprint := integrity.Hash(append([]byte(value.Name+"\x00"+value.Contract.Digest.String()+"\x00"), metadata...))
 	var result Publication
 	err = h.admission.Admit(ctx, func(context.Context) error {
 		if err := h.admission.ValidateScope(instance.scope); err != nil {

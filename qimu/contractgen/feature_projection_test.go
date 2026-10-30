@@ -127,7 +127,7 @@ func TestFeatureGenerationReusesTheAdmittedSchemas(t *testing.T) {
 		t.Fatalf("generated surface lost contract: %+v\n%s", generated.methods, generated.typescript)
 	}
 	contract, err := portable.ParseCapability(data)
-	if err != nil || generated.capability.Identity() != contract.Identity() || !strings.Contains(generated.typescript, contract.Identity().Digest()) {
+	if err != nil || generated.capability.Identity() != contract.Identity() || !strings.Contains(generated.typescript, contract.Identity().Digest().String()) {
 		t.Fatalf("generator changed canonical capability identity: %v", err)
 	}
 	original, err := jsonschema.Parse(descriptor.Input)

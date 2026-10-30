@@ -12,7 +12,6 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
-	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/qimu/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -27,7 +26,7 @@ func (r *Releases) Prepare(ctx context.Context, installation *plugin.Installatio
 	if !installation.Enabled() {
 		return nil
 	}
-	lease, err := r.content.Acquire(ctx, qimu.Digest(release.Digest().String()))
+	lease, err := r.content.Acquire(ctx, release.Digest())
 	if err != nil {
 		return fmt.Errorf("pluginpackage: prepare release %s: %w", release.Digest(), err)
 	}
@@ -72,7 +71,7 @@ func (r *Releases) Server(ctx context.Context, installation *plugin.Installation
 	if reach != plugins.Dispatchable {
 		return mcpserver.Server{}, false, fmt.Errorf("pluginpackage: unknown server reach %d", reach)
 	}
-	lease, err := r.content.Acquire(ctx, qimu.Digest(release.Digest().String()))
+	lease, err := r.content.Acquire(ctx, release.Digest())
 	if err != nil {
 		if cause := cancellation.Err(ctx); cause != nil {
 			return mcpserver.Server{}, false, errors.Join(err, cause)
@@ -167,7 +166,7 @@ func (r *Releases) Realize(ctx context.Context, installation *plugin.Installatio
 	if err != nil {
 		return plugins.Realization{}, fmt.Errorf("pluginpackage: release directory: %w", err)
 	}
-	lease, verifyErr := r.content.Acquire(ctx, qimu.Digest(release.Digest().String()))
+	lease, verifyErr := r.content.Acquire(ctx, release.Digest())
 	if cause := cancellation.Err(ctx); cause != nil {
 		cause = errors.Join(cause, verifyErr)
 		if lease != nil {

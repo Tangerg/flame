@@ -6,6 +6,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -22,7 +23,7 @@ func ProjectActivation(binding qimu.BindingSnapshot) (plugin.Activation, error) 
 	if err != nil {
 		return plugin.Activation{}, err
 	}
-	digest, err := identity.ParseDigest(qimu.Hash(data).String())
+	digest, err := integrity.ParseDigest(integrity.Hash(data).String())
 	if err != nil {
 		return plugin.Activation{}, err
 	}
@@ -32,7 +33,7 @@ func ProjectActivation(binding qimu.BindingSnapshot) (plugin.Activation, error) 
 		if err != nil {
 			return plugin.Activation{}, err
 		}
-		release, err := identity.ParseDigest(dependency.Release.String())
+		release, err := integrity.ParseDigest(dependency.Release.String())
 		if err != nil {
 			return plugin.Activation{}, err
 		}
@@ -73,8 +74,8 @@ func ReadActivation(data []byte) (plugin.Activation, error) {
 
 // OriginalActivation locates a retained entry without selecting collaborators.
 // Transitive membership does not grant a new root entry into another Unit.
-func OriginalActivation(activations []plugin.Activation, installation identity.InstallationID, release identity.Digest, server mcpserver.ServerName) (plugin.Activation, error) {
-	source := qimu.UnitRef{InstallationID: qimu.InstallationID(installation.String()), Release: qimu.Digest(release.String()), UnitID: BackendUnit(server)}
+func OriginalActivation(activations []plugin.Activation, installation identity.InstallationID, release integrity.Digest, server mcpserver.ServerName) (plugin.Activation, error) {
+	source := qimu.UnitRef{InstallationID: qimu.InstallationID(installation.String()), Release: release, UnitID: BackendUnit(server)}
 	var selected *plugin.Activation
 	for _, activation := range activations {
 		binding, err := DecodeActivation(activation)

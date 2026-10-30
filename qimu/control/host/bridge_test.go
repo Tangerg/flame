@@ -17,6 +17,7 @@ import (
 	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/qimu/control"
 	controlhost "github.com/Tangerg/flame/qimu/control/host"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/sqlite"
 )
 
@@ -26,7 +27,7 @@ type testMetadata struct {
 type testModules struct{}
 
 func (testModules) Module(context.Context, qimu.UnitBinding) (control.Artifact, error) {
-	return control.Artifact{Path: "/plugins/test.js", Digest: qimu.Hash([]byte("test-module"))}, nil
+	return control.Artifact{Path: "/plugins/test.js", Digest: integrity.Hash([]byte("test-module"))}, nil
 }
 
 type bridgeEnvironment struct {
@@ -73,7 +74,7 @@ func openBridge(t *testing.T, path string, cleanup bool) *bridgeEnvironment {
 	if err := host.RegisterDriver(bridge); err != nil {
 		t.Fatal(err)
 	}
-	plugin, err := qimu.Define(qimu.Definition{Revision: qimu.Hash([]byte("test-browser-plugin")), Units: []qimu.Unit{{Declaration: qimu.UnitDeclaration{ID: "view", Profile: qimu.BrowserJS, Exports: []qimu.ExportDeclaration{{Name: "preview", Contract: first.Ref()}, {Name: "theme", Contract: second.Ref()}}}}}})
+	plugin, err := qimu.Define(qimu.Definition{Revision: integrity.Hash([]byte("test-browser-plugin")), Units: []qimu.Unit{{Declaration: qimu.UnitDeclaration{ID: "view", Profile: qimu.BrowserJS, Exports: []qimu.ExportDeclaration{{Name: "preview", Contract: first.Ref()}, {Name: "theme", Contract: second.Ref()}}}}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -210,7 +211,7 @@ func TestBridgeExactPlanCaptureUseAndProof(t *testing.T) {
 	if plan.Units[0].ConfigurationJSON != "{}" {
 		t.Fatal("opaque installation configuration was sent to the Realm")
 	}
-	if plan.Units[0].Instance.Configuration != qimu.Hash([]byte(`{"privateCredential":"must-not-reach-js"}`)) {
+	if plan.Units[0].Instance.Configuration != integrity.Hash([]byte(`{"privateCredential":"must-not-reach-js"}`)) {
 		t.Fatal("public projection replaced the original configuration identity")
 	}
 	forged := plan

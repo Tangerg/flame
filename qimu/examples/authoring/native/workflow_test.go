@@ -15,6 +15,7 @@ import (
 
 	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/qimu/examples/document"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 func authorContext(t *testing.T) context.Context {
@@ -31,12 +32,12 @@ func authorFiles(t *testing.T) (Configuration, string, document.DocumentRef) {
 	if err := os.WriteFile(filepath.Join(config.SourceDirectory, "template.html"), template, 0600); err != nil {
 		t.Fatal(err)
 	}
-	config.Template = document.DocumentRef{Path: "template.html", Revision: qimu.Hash(template)}
+	config.Template = document.DocumentRef{Path: "template.html", Revision: integrity.Hash(template)}
 	text := []byte("Memo\nHello <world>\n")
 	if err := os.WriteFile(filepath.Join(config.SourceDirectory, "memo.txt"), text, 0600); err != nil {
 		t.Fatal(err)
 	}
-	return config, t.TempDir(), document.DocumentRef{Path: "memo.txt", Revision: qimu.Hash(text)}
+	return config, t.TempDir(), document.DocumentRef{Path: "memo.txt", Revision: integrity.Hash(text)}
 }
 
 func authorWorkbench(t *testing.T) (*Workbench, Configuration, string, document.DocumentRef, context.Context) {
@@ -187,7 +188,7 @@ func TestAuthoredMultiPointCaptureRefusesAChangedValidatorSet(t *testing.T) {
 		t.Fatal(err)
 	}
 	point := workbench.Contracts.Validators
-	addition, err := qimu.Define(qimu.Definition{Revision: qimu.Hash([]byte("authoring/extra-validator/1")), Units: []qimu.Unit{{
+	addition, err := qimu.Define(qimu.Definition{Revision: integrity.Hash([]byte("authoring/extra-validator/1")), Units: []qimu.Unit{{
 		Declaration: qimu.UnitDeclaration{ID: "validation", Profile: qimu.NativeGo, Exports: []qimu.ExportDeclaration{{Name: "extra", Contract: point.Ref()}}},
 		Setup: func(context.Context, *qimu.Setup) ([]qimu.ExportValue, error) {
 			return []qimu.ExportValue{qimu.Contribute("extra", point, document.ValidatorMetadata{Name: "extra", Order: 30}, document.Validator(func(context.Context, document.Converted) ([]document.Diagnostic, error) { return nil, nil }))}, nil

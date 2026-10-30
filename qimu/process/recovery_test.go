@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/process"
 	"github.com/Tangerg/flame/qimu/runner"
 	"github.com/Tangerg/flame/qimu/sqlite"
@@ -80,9 +81,9 @@ func TestRecoveryRequiresOriginalSealedNonCreationEvidence(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			contract := qimu.ContractRef{Name: capability.Descriptor().Reference, Version: "1", Digest: qimu.Digest(capability.Identity().Digest()), Kind: qimu.ServiceKind, Mode: qimu.PortableMode}
-			root := qimu.ExportRef{InstallationID: "original", Release: qimu.Hash([]byte("release")), UnitID: "backend", Export: "echo", Contract: contract}
-			binding := qimu.BindingSnapshot{FormatVersion: 1, Roots: []qimu.ExportRef{root}, Units: []qimu.UnitBinding{{Source: root.Unit(), Configuration: qimu.Hash([]byte(`{}`)), Imports: []qimu.ImportDeclaration{}}}}
+			contract := qimu.ContractRef{Name: capability.Descriptor().Reference, Version: "1", Digest: integrity.Hash(capability.Identity().JSON()), Kind: qimu.ServiceKind, Mode: qimu.PortableMode}
+			root := qimu.ExportRef{InstallationID: "original", Release: integrity.Hash([]byte("release")), UnitID: "backend", Export: "echo", Contract: contract}
+			binding := qimu.BindingSnapshot{FormatVersion: 1, Roots: []qimu.ExportRef{root}, Units: []qimu.UnitBinding{{Source: root.Unit(), Configuration: integrity.Hash([]byte(`{}`)), Imports: []qimu.ImportDeclaration{}}}}
 			attempt := sqlite.Attempt{ID: "approved-before-crash", Epoch: store.Epoch(), Source: root.Unit(), Binding: binding, Realm: identity.ID, Profile: qimu.MCPProcess}
 			if err := store.RecordAttempt(t.Context(), attempt); err != nil {
 				t.Fatal(err)

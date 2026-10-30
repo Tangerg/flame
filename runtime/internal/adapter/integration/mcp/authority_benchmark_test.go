@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/qimu/distribution"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -58,7 +58,7 @@ func BenchmarkInstalledSourceAdmission(b *testing.B) {
 	content, err := distribution.Open(distribution.Config{
 		Directory: filepath.Join(directory, "releases"), Admission: db.Admission,
 		Trust:    func(context.Context, distribution.Source, distribution.Manifest, distribution.Lock) error { return nil },
-		Retained: func(context.Context, qimu.Digest) (bool, error) { return true, nil },
+		Retained: func(context.Context, integrity.Digest) (bool, error) { return true, nil },
 	})
 	if err != nil {
 		b.Fatal(err)

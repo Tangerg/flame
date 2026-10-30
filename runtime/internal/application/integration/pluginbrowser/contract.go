@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/qimu/control"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
@@ -34,7 +35,7 @@ type ComponentRequest struct {
 	ParentUseID  string
 	Realm        control.Realm
 	Installation identity.InstallationID
-	Digest       identity.Digest
+	Digest       integrity.Digest
 	Component    plugin.ContributionID
 }
 

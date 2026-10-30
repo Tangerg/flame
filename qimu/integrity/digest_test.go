@@ -1,4 +1,4 @@
-package identity
+package integrity
 
 import (
 	"errors"
@@ -23,7 +23,7 @@ func TestParseDigestAdmitsOnlyCanonicalSHA256(t *testing.T) {
 }
 
 func TestDigestTextEncodingRoundTripsWithoutRepair(t *testing.T) {
-	digest := DigestStrings("release")
+	digest := Hash([]byte("release"))
 	text, err := digest.MarshalText()
 	if err != nil {
 		t.Fatal(err)
@@ -34,5 +34,20 @@ func TestDigestTextEncodingRoundTripsWithoutRepair(t *testing.T) {
 	}
 	if err := decoded.UnmarshalText([]byte(strings.ToUpper(digest.String()))); err == nil {
 		t.Fatal("noncanonical digest text decoded")
+	}
+}
+
+func TestDigestSQLEncodingRoundTripsThroughParsing(t *testing.T) {
+	digest := Hash([]byte("release"))
+	stored, err := digest.Value()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var scanned Digest
+	if err := scanned.Scan(stored); err != nil || scanned != digest {
+		t.Fatalf("scan = %q, %v", scanned, err)
+	}
+	if err := scanned.Scan([]byte("not a digest")); !errors.Is(err, ErrInvalidDigest) {
+		t.Fatalf("scan(noncanonical) error = %v", err)
 	}
 }

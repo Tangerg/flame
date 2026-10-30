@@ -10,10 +10,11 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 func ownerConfig(directory string) Config {
-	return Config{Directory: directory, Admission: qimu.NewAdmission(), Trust: func(context.Context, Source, Manifest, Lock) error { return nil }, Retained: func(context.Context, qimu.Digest) (bool, error) { return false, nil }}
+	return Config{Directory: directory, Admission: qimu.NewAdmission(), Trust: func(context.Context, Source, Manifest, Lock) error { return nil }, Retained: func(context.Context, integrity.Digest) (bool, error) { return false, nil }}
 }
 
 func closeStore(t *testing.T, store *Store) {
@@ -91,7 +92,7 @@ func TestCloseJoinsAcceptedIOAndLeasesAfterItsFirstWaiterCancels(t *testing.T) {
 	}
 	installed := make(chan result, 1)
 	go func() {
-		lease, err := store.InstallArchiveHeld(t.Context(), archive, qimu.Hash(data))
+		lease, err := store.InstallArchiveHeld(t.Context(), archive, integrity.Hash(data))
 		installed <- result{lease, err}
 	}()
 	<-entered
@@ -100,7 +101,7 @@ func TestCloseJoinsAcceptedIOAndLeasesAfterItsFirstWaiterCancels(t *testing.T) {
 	if err := store.Close(ctx); !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancelled close wait = %v", err)
 	}
-	if _, err := store.Acquire(t.Context(), qimu.Hash([]byte("unrelated"))); !errors.Is(err, qimu.ErrClosed) {
+	if _, err := store.Acquire(t.Context(), integrity.Hash([]byte("unrelated"))); !errors.Is(err, qimu.ErrClosed) {
 		t.Fatalf("closing store admitted new claim: %v", err)
 	}
 	if _, err := Open(ownerConfig(directory)); !errors.Is(err, qimu.ErrInUse) {
@@ -231,7 +232,7 @@ func TestRecoveryReclaimsPrivateOperationsOnlyAfterExclusiveOwnership(t *testing
 		t.Fatal("unowned recovery removed live staging")
 	}
 	closeStore(t, store)
-	public := qimu.Hash([]byte("public release")).String()
+	public := integrity.Hash([]byte("public release")).String()
 	if err := os.Mkdir(filepath.Join(directory, public), 0700); err != nil {
 		t.Fatal(err)
 	}

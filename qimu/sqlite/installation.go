@@ -9,6 +9,7 @@ import (
 	"errors"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 var _ qimu.InstallationStore = (*Store)(nil)
@@ -227,7 +228,7 @@ func (s *Store) ApproveUse(ctx context.Context, approval qimu.UseApproval) error
 				return qimu.ErrClosed
 			}
 		}
-		_, err = tx.ExecContext(ctx, `INSERT INTO qimu_use_approvals(id,request,request_digest,state) VALUES(?,?,?,'approved')`, approval.ID, encoded, qimu.Hash(encoded))
+		_, err = tx.ExecContext(ctx, `INSERT INTO qimu_use_approvals(id,request,request_digest,state) VALUES(?,?,?,'approved')`, approval.ID, encoded, integrity.Hash(encoded))
 		return err
 	})
 	if err != nil && !errors.Is(err, ErrConflict) && !errors.Is(err, qimu.ErrClosed) {
@@ -256,12 +257,12 @@ func (s *Store) Uses(ctx context.Context) (records []UseRecord, err error) {
 		defer rows.Close()
 		for rows.Next() {
 			var request, proof []byte
-			var digest qimu.Digest
+			var digest integrity.Digest
 			var state string
 			if err := rows.Scan(&request, &digest, &state, &proof); err != nil {
 				return err
 			}
-			if qimu.Hash(request) != digest {
+			if integrity.Hash(request) != digest {
 				return errors.New("sqlite: use approval integrity failure")
 			}
 			var record UseRecord

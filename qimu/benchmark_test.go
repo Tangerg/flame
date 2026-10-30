@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 func benchmarkGraph(b *testing.B, count int) (*qimu.Host, qimu.BindingSnapshot, qimu.ScopeGrant) {
@@ -27,7 +28,7 @@ func benchmarkGraph(b *testing.B, count int) (*qimu.Host, qimu.BindingSnapshot, 
 	if err := host.Register(contract); err != nil {
 		b.Fatal(err)
 	}
-	release := qimu.Hash([]byte(fmt.Sprintf("benchmark-chain-%d", count)))
+	release := integrity.Hash([]byte(fmt.Sprintf("benchmark-chain-%d", count)))
 	ref := func(index int) qimu.ExportRef {
 		return qimu.ExportRef{InstallationID: "benchmark", Release: release, UnitID: qimu.UnitID(fmt.Sprintf("unit%d", index)), Export: "value", Contract: contract.Ref()}
 	}

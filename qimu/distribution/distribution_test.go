@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 func packageFixture(t *testing.T) (string, Manifest, []byte, Lock) {
@@ -32,10 +33,10 @@ func packageFixture(t *testing.T) (string, Manifest, []byte, Lock) {
 	return directory, manifest, archive.Bytes(), lock
 }
 
-func storeFixture(t *testing.T, retained func(context.Context, qimu.Digest) (bool, error)) *Store {
+func storeFixture(t *testing.T, retained func(context.Context, integrity.Digest) (bool, error)) *Store {
 	t.Helper()
 	if retained == nil {
-		retained = func(context.Context, qimu.Digest) (bool, error) { return false, nil }
+		retained = func(context.Context, integrity.Digest) (bool, error) { return false, nil }
 	}
 	store, err := Open(Config{Directory: t.TempDir(), Admission: qimu.NewAdmission(), Trust: func(context.Context, Source, Manifest, Lock) error { return nil }, Retained: retained})
 	if err != nil {
@@ -60,7 +61,7 @@ func installArchive(t *testing.T, store *Store, data []byte) Release {
 	if err := os.WriteFile(file, data, 0600); err != nil {
 		t.Fatal(err)
 	}
-	release, err := store.InstallArchive(context.Background(), file, qimu.Hash(data))
+	release, err := store.InstallArchive(context.Background(), file, integrity.Hash(data))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +98,7 @@ func TestLockCannotIntroduceUnownedReleaseDependencies(t *testing.T) {
 	_, _, archive, _ := packageFixture(t)
 	release := installArchive(t, storeFixture(t, nil), archive)
 	lock := release.Lock
-	lock.Dependencies = []LockedRelease{{Package: "other.release", Release: qimu.Hash([]byte("other"))}}
+	lock.Dependencies = []LockedRelease{{Package: "other.release", Release: integrity.Hash([]byte("other"))}}
 	if err := lock.Verify(release.Manifest); !errors.Is(err, ErrIntegrity) {
 		t.Fatalf("lock advanced dependencies without changing the manifest identity: %v", err)
 	}
@@ -108,7 +109,7 @@ func TestDuplicateInstallReturnsAndTrustsTheFinalCachedSnapshot(t *testing.T) {
 	store := storeFixture(t, nil)
 	first := installArchive(t, store, archive)
 	manifest := first.Manifest
-	manifest.Release = ""
+	manifest.Release = integrity.Digest{}
 	for name, value := range map[string]any{ManifestName: manifest, LockName: first.Lock} {
 		data, err := json.Marshal(value)
 		if err != nil {
@@ -169,7 +170,7 @@ func TestManifestDependencyChangesCreateDistinctImmutableReleases(t *testing.T) 
 	store := storeFixture(t, nil)
 	var releases []Release
 	for _, name := range []string{"first", "second"} {
-		manifest.Dependencies = []LockedRelease{{Package: "dependency", Release: qimu.Hash([]byte(name))}}
+		manifest.Dependencies = []LockedRelease{{Package: "dependency", Release: integrity.Hash([]byte(name))}}
 		var archive bytes.Buffer
 		lock, err := Build(t.Context(), source, manifest, &archive)
 		if err != nil {
@@ -190,8 +191,8 @@ func TestManifestDependencyChangesCreateDistinctImmutableReleases(t *testing.T) 
 		}
 	}
 	for _, invalid := range [][]LockedRelease{
-		{{Package: "invalid package", Release: qimu.Hash([]byte("valid"))}},
-		{{Package: "dependency", Release: "invalid"}},
+		{{Package: "invalid package", Release: integrity.Hash([]byte("valid"))}},
+		{{Package: "dependency", Release: integrity.Digest{}}},
 		{manifest.Dependencies[0], manifest.Dependencies[0]},
 	} {
 		manifest.Dependencies = invalid
@@ -215,7 +216,7 @@ func TestArchivePathsAliasesAndSymlinksAreRefusedBeforeTrust(t *testing.T) {
 			})
 			file := filepath.Join(t.TempDir(), "bad.zip")
 			_ = os.WriteFile(file, data, 0600)
-			if _, err := store.InstallArchive(context.Background(), file, qimu.Hash(data)); err == nil {
+			if _, err := store.InstallArchive(context.Background(), file, integrity.Hash(data)); err == nil {
 				t.Fatal("unsafe or undeclared archive was accepted")
 			}
 		})
@@ -232,7 +233,7 @@ func TestArchivePathsAliasesAndSymlinksAreRefusedBeforeTrust(t *testing.T) {
 	})
 	file := filepath.Join(t.TempDir(), "symlink.zip")
 	_ = os.WriteFile(file, data, 0600)
-	if _, err := store.InstallArchive(context.Background(), file, qimu.Hash(data)); err == nil {
+	if _, err := store.InstallArchive(context.Background(), file, integrity.Hash(data)); err == nil {
 		t.Fatal("symlink archive accepted")
 	}
 }
@@ -242,16 +243,16 @@ func TestArchiveDigestLimitsAndTrust(t *testing.T) {
 	store := storeFixture(t, nil)
 	file := filepath.Join(t.TempDir(), "plugin.zip")
 	_ = os.WriteFile(file, data, 0600)
-	if _, err := store.InstallArchive(context.Background(), file, qimu.Hash([]byte("different"))); !errors.Is(err, ErrIntegrity) {
+	if _, err := store.InstallArchive(context.Background(), file, integrity.Hash([]byte("different"))); !errors.Is(err, ErrIntegrity) {
 		t.Fatalf("digest: %v", err)
 	}
 	store.limits.ExpandedBytes = 4
-	if _, err := store.InstallArchive(context.Background(), file, qimu.Hash(data)); !errors.Is(err, ErrCapacity) {
+	if _, err := store.InstallArchive(context.Background(), file, integrity.Hash(data)); !errors.Is(err, ErrCapacity) {
 		t.Fatalf("size: %v", err)
 	}
 	store.limits = DefaultLimits()
 	store.trust = func(context.Context, Source, Manifest, Lock) error { return errors.New("publisher is not approved") }
-	if _, err := store.InstallArchive(context.Background(), file, qimu.Hash(data)); !errors.Is(err, ErrUntrusted) {
+	if _, err := store.InstallArchive(context.Background(), file, integrity.Hash(data)); !errors.Is(err, ErrUntrusted) {
 		t.Fatalf("trust: %v", err)
 	}
 	entries, err := os.ReadDir(store.directory)
@@ -306,7 +307,7 @@ func TestDirectorySnapshotCannotFollowLaterSourceChanges(t *testing.T) {
 func TestReadAndDurableProtectionPreventCollection(t *testing.T) {
 	_, _, data, _ := packageFixture(t)
 	retained := true
-	store := storeFixture(t, func(context.Context, qimu.Digest) (bool, error) { return retained, nil })
+	store := storeFixture(t, func(context.Context, integrity.Digest) (bool, error) { return retained, nil })
 	release := installArchive(t, store, data)
 	lease, err := store.Acquire(context.Background(), release.Digest)
 	if err != nil {
@@ -336,7 +337,7 @@ func TestCachedByteDriftAndManifestAliasesAreRefused(t *testing.T) {
 	_, manifest, data, _ := packageFixture(t)
 	store := storeFixture(t, nil)
 	release := installArchive(t, store, data)
-	file := filepath.Join(store.directory, string(release.Digest), "theme.css")
+	file := filepath.Join(store.directory, release.Digest.String(), "theme.css")
 	if err := os.Chmod(file, 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -346,7 +347,7 @@ func TestCachedByteDriftAndManifestAliasesAreRefused(t *testing.T) {
 	if _, err := store.Acquire(context.Background(), release.Digest); !errors.Is(err, ErrIntegrity) {
 		t.Fatalf("cache drift: %v", err)
 	}
-	manifest.Artifacts = []Artifact{{Path: "A/one", Digest: qimu.Hash(nil)}, {Path: "a/two", Digest: qimu.Hash(nil)}}
+	manifest.Artifacts = []Artifact{{Path: "A/one", Digest: integrity.Hash(nil)}, {Path: "a/two", Digest: integrity.Hash(nil)}}
 	manifest.Units[0].Resources = nil
 	if err := manifest.Validate(); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("parent alias: %v", err)
@@ -378,7 +379,7 @@ func TestManifestDuplicateKeysAndWrongLockAreRefused(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	lock.Release = qimu.Hash([]byte("another release"))
+	lock.Release = integrity.Hash([]byte("another release"))
 	if err := lock.Verify(manifest); !errors.Is(err, ErrIntegrity) {
 		t.Fatalf("wrong lock: %v", err)
 	}

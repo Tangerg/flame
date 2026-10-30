@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 )
 
@@ -31,10 +32,10 @@ var (
 )
 
 type Artifact struct {
-	Path       string      `json:"path"`
-	Digest     qimu.Digest `json:"digest"`
-	Size       int64       `json:"size"`
-	Executable bool        `json:"executable,omitempty"`
+	Path       string           `json:"path"`
+	Digest     integrity.Digest `json:"digest"`
+	Size       int64            `json:"size"`
+	Executable bool             `json:"executable,omitempty"`
 }
 
 // An import is still a declaration here. Installation and binding supply its
@@ -46,9 +47,9 @@ type Import struct {
 }
 
 type RuntimeReference struct {
-	Name    string      `json:"name"`
-	Version string      `json:"version"`
-	Digest  qimu.Digest `json:"digest"`
+	Name    string           `json:"name"`
+	Version string           `json:"version"`
+	Digest  integrity.Digest `json:"digest"`
 }
 
 type Variant struct {
@@ -99,7 +100,7 @@ type Manifest struct {
 	SchemaVersion int                `json:"schemaVersion"`
 	Package       string             `json:"package"`
 	Version       string             `json:"version"`
-	Release       qimu.Digest        `json:"release,omitempty"`
+	Release       integrity.Digest   `json:"release,omitempty"`
 	Artifacts     []Artifact         `json:"artifacts"`
 	Contracts     []qimu.ContractRef `json:"contracts,omitempty"`
 	Units         []Unit             `json:"units"`
@@ -108,14 +109,14 @@ type Manifest struct {
 }
 
 type LockedRelease struct {
-	Package string      `json:"package"`
-	Release qimu.Digest `json:"release"`
+	Package string           `json:"package"`
+	Release integrity.Digest `json:"release"`
 }
 
 type Lock struct {
 	SchemaVersion int                `json:"schemaVersion"`
 	Package       string             `json:"package"`
-	Release       qimu.Digest        `json:"release"`
+	Release       integrity.Digest   `json:"release"`
 	Artifacts     []Artifact         `json:"artifacts"`
 	Contracts     []qimu.ContractRef `json:"contracts,omitempty"`
 	Dependencies  []LockedRelease    `json:"dependencies,omitempty"`
@@ -158,7 +159,7 @@ func (m Manifest) Validate() error {
 	if m.SchemaVersion != ManifestSchemaVersion || !qimu.ValidName(m.Package) || !qimu.ValidName(m.Version) {
 		return ErrInvalid
 	}
-	if m.Release != "" && m.Release.Validate() != nil {
+	if !m.Release.IsZero() && m.Release.Validate() != nil {
 		return ErrInvalid
 	}
 	if err := validateDependencies(m.Dependencies); err != nil {
@@ -341,7 +342,7 @@ func (m Manifest) Canonical() ([]byte, error) {
 	if err := m.Validate(); err != nil {
 		return nil, err
 	}
-	m.Release = ""
+	m.Release = integrity.Digest{}
 	m.Artifacts = slices.Clone(m.Artifacts)
 	slices.SortFunc(m.Artifacts, func(a, b Artifact) int { return strings.Compare(a.Path, b.Path) })
 	encoded, err := json.Marshal(m)
@@ -355,12 +356,12 @@ func (m Manifest) Canonical() ([]byte, error) {
 	return canonical.JSON(), nil
 }
 
-func (m Manifest) Identity() (qimu.Digest, error) {
+func (m Manifest) Identity() (integrity.Digest, error) {
 	data, err := m.Canonical()
 	if err != nil {
-		return "", err
+		return integrity.Digest{}, err
 	}
-	return qimu.Hash(data), nil
+	return integrity.Hash(data), nil
 }
 
 func (m Manifest) Lock() (Lock, error) {

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -43,7 +44,7 @@ func TestParsedMutationResultSurvivesLaterCallerCancellationAndUseExit(t *testin
 	defer cancel(nil)
 	cause := errors.New("caller stopped after receiving the original response")
 	parsed := false
-	plugin, err := qimu.Define(qimu.Definition{Revision: qimu.Hash([]byte("known-result-consumer")), Units: []qimu.Unit{{
+	plugin, err := qimu.Define(qimu.Definition{Revision: integrity.Hash([]byte("known-result-consumer")), Units: []qimu.Unit{{
 		Declaration: qimu.UnitDeclaration{ID: "main", Profile: qimu.NativeGo, Exports: []qimu.ExportDeclaration{{Name: "invoke", Contract: contract.Ref()}}},
 		Setup: func(context.Context, *qimu.Setup) ([]qimu.ExportValue, error) {
 			return []qimu.ExportValue{qimu.Provide("invoke", contract, func(ctx context.Context) (string, error) {

@@ -8,6 +8,7 @@ import (
 
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
@@ -189,7 +190,7 @@ func (r *Ref) UnmarshalText(text []byte) error {
 
 // ValidateFingerprint states which references carry source authority: a
 // built-in's authority is the Runtime binary, every other source has one.
-func (r Ref) ValidateFingerprint(source identity.Digest) error {
+func (r Ref) ValidateFingerprint(source integrity.Digest) error {
 	if err := r.Validate(); err != nil {
 		return err
 	}

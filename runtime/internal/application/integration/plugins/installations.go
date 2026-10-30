@@ -9,6 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -19,7 +20,7 @@ import (
 // Catalog is the admitted release catalog, the only owner of release content.
 // Installations name releases by digest and read them here when needed.
 type catalog interface {
-	Get(context.Context, identity.Digest) (plugin.Release, error)
+	Get(context.Context, integrity.Digest) (plugin.Release, error)
 }
 
 // Packages owns release bytes: it admits a package as a candidate, publishes
@@ -161,7 +162,7 @@ func (c *Coordinator) inspect(ctx context.Context, snapshot plugin.Snapshot) (In
 
 // named reads a release a client named by digest. A digest the catalog has
 // never admitted cannot be the installation's release, so it is stale.
-func (c *Coordinator) named(ctx context.Context, digest identity.Digest) (plugin.Release, error) {
+func (c *Coordinator) named(ctx context.Context, digest integrity.Digest) (plugin.Release, error) {
 	release, err := c.catalog.Get(ctx, digest)
 	if errors.Is(err, plugin.ErrNotFound) {
 		return plugin.Release{}, fmt.Errorf("%w: release %s is not admitted", plugin.ErrStale, digest)
@@ -255,7 +256,7 @@ func (c *Coordinator) Reclaim(ctx context.Context) error {
 	return nil
 }
 
-func (c *Coordinator) Select(ctx context.Context, id identity.InstallationID, digest identity.Digest) (Inspection, error) {
+func (c *Coordinator) Select(ctx context.Context, id identity.InstallationID, digest integrity.Digest) (Inspection, error) {
 	return c.change(ctx, id, func(ctx context.Context, i *plugin.Installation, selected plugin.Release) error {
 		staged, err := c.named(ctx, digest)
 		if err != nil {
@@ -280,7 +281,7 @@ func (c *Coordinator) Disable(ctx context.Context, id identity.InstallationID) (
 		return nil
 	})
 }
-func (c *Coordinator) Configure(ctx context.Context, id identity.InstallationID, digest identity.Digest, configuration plugin.Configuration) (Inspection, error) {
+func (c *Coordinator) Configure(ctx context.Context, id identity.InstallationID, digest integrity.Digest, configuration plugin.Configuration) (Inspection, error) {
 	return c.change(ctx, id, func(ctx context.Context, i *plugin.Installation, _ plugin.Release) error {
 		release, err := c.named(ctx, digest)
 		if err != nil {

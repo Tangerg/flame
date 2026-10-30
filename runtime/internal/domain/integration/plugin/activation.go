@@ -3,7 +3,7 @@ package plugin
 import (
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 )
 
@@ -12,7 +12,7 @@ import (
 // distinguish two different compositions inside the same installed bytes.
 type Activation struct {
 	Binding      jsonvalue.Value
-	Identity     identity.Digest
+	Identity     integrity.Digest
 	Dependencies []Dependency
 }
 

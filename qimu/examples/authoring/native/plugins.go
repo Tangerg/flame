@@ -16,6 +16,7 @@ import (
 
 	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/qimu/examples/document"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 const maxSourceBytes = 1 << 20
@@ -43,7 +44,7 @@ func configuration(setup *qimu.Setup) (Configuration, error) {
 // Plugin uses the bytes of the authored implementation as its release identity.
 // Contract names and identities come from their existing document owner.
 func Plugin(contracts document.Contracts) (*qimu.Plugin, error) {
-	return qimu.Define(qimu.Definition{Revision: qimu.Hash(pluginSource), Units: []qimu.Unit{
+	return qimu.Define(qimu.Definition{Revision: integrity.Hash(pluginSource), Units: []qimu.Unit{
 		{
 			Declaration: qimu.UnitDeclaration{
 				ID: "files", Profile: qimu.NativeGo,
@@ -183,7 +184,7 @@ func readSource(ctx context.Context, root *os.Root, ref document.DocumentRef) (_
 	if len(data) > maxSourceBytes {
 		return document.Document{}, errors.New("authoring: source byte budget exceeded")
 	}
-	if qimu.Hash(data) != ref.Revision {
+	if integrity.Hash(data) != ref.Revision {
 		return document.Document{}, document.ErrSourceChanged
 	}
 	if err := context.Cause(ctx); err != nil {

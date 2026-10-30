@@ -7,6 +7,7 @@ import (
 	"regexp"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 const (
@@ -176,14 +177,14 @@ func (i ID) String() string {
 // claimed by a user record or omitted from an installation record.
 type Source struct {
 	origin    Origin
-	release   identity.Digest
-	authority identity.Digest
-	recipient identity.Digest
+	release   integrity.Digest
+	authority integrity.Digest
+	recipient integrity.Digest
 }
 
 func UserSource() Source { return Source{origin: UserOrigin()} }
 
-func InstallationSource(installation identity.InstallationID, release, authority, recipient identity.Digest) (Source, error) {
+func InstallationSource(installation identity.InstallationID, release, authority, recipient integrity.Digest) (Source, error) {
 	origin, err := InstallationOrigin(installation)
 	if err != nil {
 		return Source{}, fmt.Errorf("mcpserver: installation source: %w", err)
@@ -208,7 +209,7 @@ func (s Source) ID(name ServerName) ID { return ID{origin: s.origin, name: name}
 
 // Release reports the admitted release and tool authority of an installation
 // source.
-func (s Source) Release() (release, authority identity.Digest, found bool) {
+func (s Source) Release() (release, authority integrity.Digest, found bool) {
 	return s.release, s.authority, s.origin.kind == OriginInstallation
 }
 

@@ -7,6 +7,7 @@ import (
 
 	"github.com/Tangerg/flame/qimu"
 	controlhost "github.com/Tangerg/flame/qimu/control/host"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 func TestBridgeFreshPlanPreservesPreparationPremises(t *testing.T) {
@@ -18,7 +19,7 @@ func TestBridgeFreshPlanPreservesPreparationPremises(t *testing.T) {
 	if err := e.host.Register(optional); err != nil {
 		t.Fatal(err)
 	}
-	consumer, err := qimu.Define(qimu.Definition{Revision: qimu.Hash([]byte("optional-browser")), Units: []qimu.Unit{{Declaration: qimu.UnitDeclaration{
+	consumer, err := qimu.Define(qimu.Definition{Revision: integrity.Hash([]byte("optional-browser")), Units: []qimu.Unit{{Declaration: qimu.UnitDeclaration{
 		ID: "view", Profile: qimu.BrowserJS,
 		Exports: []qimu.ExportDeclaration{{Name: "preview", Contract: e.first.Ref()}},
 		Imports: []qimu.ImportDeclaration{{Slot: "optional", Contract: optional.Ref(), Optional: true}},
@@ -38,7 +39,7 @@ func TestBridgeFreshPlanPreservesPreparationPremises(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	provider, err := qimu.Define(qimu.Definition{Revision: qimu.Hash([]byte("late-provider")), Units: []qimu.Unit{{Declaration: qimu.UnitDeclaration{ID: "provider", Profile: qimu.BrowserJS, Exports: []qimu.ExportDeclaration{{Name: "optional", Contract: optional.Ref()}}}}}})
+	provider, err := qimu.Define(qimu.Definition{Revision: integrity.Hash([]byte("late-provider")), Units: []qimu.Unit{{Declaration: qimu.UnitDeclaration{ID: "provider", Profile: qimu.BrowserJS, Exports: []qimu.ExportDeclaration{{Name: "optional", Contract: optional.Ref()}}}}}})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -5,7 +5,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -38,7 +38,7 @@ func TestToolCallerFencesOriginalInvocationAndInstalledAuthority(t *testing.T) {
 		func(v *plugin.ToolCallerSnapshot) { v.Invocation.Origin = extension.Human },
 		func(v *plugin.ToolCallerSnapshot) { v.Invocation.Parent = "" },
 		func(v *plugin.ToolCallerSnapshot) { v.Invocation.Target.Reference = "another-installation" },
-		func(v *plugin.ToolCallerSnapshot) { v.Release = identity.Digest{} },
+		func(v *plugin.ToolCallerSnapshot) { v.Release = integrity.Digest{} },
 		func(v *plugin.ToolCallerSnapshot) {
 			v.Tool = testsupport.MCPTool(testsupport.UserMCPServer("schedules"), "run_schedule")
 		},

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	chat "github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -17,7 +17,7 @@ type toolAdmission struct {
 	binding     toolcontract.Binding
 	executable  toolcontract.Tool
 	ref         tool.Ref
-	fingerprint identity.Digest
+	fingerprint integrity.Digest
 	interpreter interactionToolInterpreter
 	authorizer  interactionToolAuthorizer
 	hooks       interactionToolHooks

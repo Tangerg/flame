@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"slices"
+
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 // Driver materializes one approved unit. Its exports and resources remain
@@ -150,14 +152,14 @@ type Unit struct {
 }
 
 type Definition struct {
-	Revision Digest
+	Revision integrity.Digest
 	Units    []Unit
 }
 
 // Plugin is a reusable declaration. Installing it creates installation and
 // instance ownership; constructing it never starts code.
 type Plugin struct {
-	revision Digest
+	revision integrity.Digest
 	units    []Unit
 }
 
@@ -186,7 +188,7 @@ func Define(definition Definition) (*Plugin, error) {
 	return plugin, nil
 }
 
-func (p *Plugin) Revision() Digest { return p.revision }
+func (p *Plugin) Revision() integrity.Digest { return p.revision }
 func (p *Plugin) Units() []UnitDeclaration {
 	result := make([]UnitDeclaration, len(p.units))
 	for i, unit := range p.units {

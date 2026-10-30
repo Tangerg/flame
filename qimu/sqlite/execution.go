@@ -11,6 +11,7 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 type Attempt struct {
@@ -102,7 +103,7 @@ func (s *Store) RecordAttempt(ctx context.Context, attempt Attempt) error {
 					return qimu.ErrClosed
 				}
 			}
-			_, err = tx.ExecContext(ctx, `INSERT INTO qimu_attempts(id,epoch,request,request_digest,state) VALUES(?,?,?,?,'approved')`, attempt.ID, attempt.Epoch, encoded, qimu.Hash(encoded))
+			_, err = tx.ExecContext(ctx, `INSERT INTO qimu_attempts(id,epoch,request,request_digest,state) VALUES(?,?,?,?,'approved')`, attempt.ID, attempt.Epoch, encoded, integrity.Hash(encoded))
 			return err
 		})
 		if err != nil && !errors.Is(err, ErrConflict) && !errors.Is(err, qimu.ErrClosed) {
@@ -121,12 +122,12 @@ func (s *Store) Attempts(ctx context.Context) (records []AttemptRecord, err erro
 		defer rows.Close()
 		for rows.Next() {
 			var request, proof []byte
-			var digest qimu.Digest
+			var digest integrity.Digest
 			var state string
 			if err := rows.Scan(&request, &digest, &state, &proof); err != nil {
 				return err
 			}
-			if qimu.Hash(request) != digest {
+			if integrity.Hash(request) != digest {
 				return errors.New("sqlite: execution request integrity failure")
 			}
 			var record AttemptRecord

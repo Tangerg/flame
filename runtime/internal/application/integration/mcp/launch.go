@@ -2,9 +2,9 @@ package mcp
 
 import (
 	"fmt"
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"io"
 
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -25,7 +25,7 @@ type Launch struct {
 }
 
 type Stdio struct {
-	ExpectedExecutable identity.Digest
+	ExpectedExecutable integrity.Digest
 	Command            string
 	Args               []string
 	Env                map[string]string

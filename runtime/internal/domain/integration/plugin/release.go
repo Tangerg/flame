@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	skillspec "github.com/Tangerg/scope/skills"
@@ -161,12 +162,12 @@ func (s Server) clone() Server {
 // validated once on construction; persistence, installations and projections
 // trust it afterwards and read it only through copies.
 type Release struct {
-	digest      identity.Digest
+	digest      integrity.Digest
 	declaration Declaration
 }
 
 // NewRelease admits a complete declaration, each member exactly once.
-func NewRelease(digest identity.Digest, declaration Declaration) (Release, error) {
+func NewRelease(digest integrity.Digest, declaration Declaration) (Release, error) {
 	builder, err := NewBuilder(declaration.Name, declaration.Version, declaration.Description)
 	if err != nil {
 		return Release{}, err
@@ -222,8 +223,8 @@ func NewRelease(digest identity.Digest, declaration Declaration) (Release, error
 	return builder.Release(digest)
 }
 
-func (r Release) Digest() identity.Digest { return r.digest }
-func (r Release) Name() string            { return r.declaration.Name }
+func (r Release) Digest() integrity.Digest { return r.digest }
+func (r Release) Name() string             { return r.declaration.Name }
 
 // Declaration returns an owned copy; no reader can advance the release.
 func (r Release) Declaration() Declaration { return r.declaration.clone() }
@@ -250,10 +251,10 @@ func (r Release) input(id string) (Input, bool) {
 // release changes. For a process it is the executable itself, which only the
 // exact release bytes and the server's name within them identify. Static
 // secret inputs and OAuth grants both follow this one rule.
-func (r Release) recipient(name mcpserver.ServerName) (identity.Digest, bool) {
+func (r Release) recipient(name mcpserver.ServerName) (integrity.Digest, bool) {
 	server, found := r.server(name)
 	if !found {
-		return identity.Digest{}, false
+		return integrity.Digest{}, false
 	}
 	fields := []string{string(server.Transport)}
 	if server.Managed != nil {
@@ -370,7 +371,7 @@ func (b *Builder) AdmitSkill(skill Skill) error {
 }
 
 // Release binds the admitted declaration to the digest of its exact bytes.
-func (b *Builder) Release(digest identity.Digest) (Release, error) {
+func (b *Builder) Release(digest integrity.Digest) (Release, error) {
 	if err := digest.Validate(); err != nil {
 		return Release{}, fmt.Errorf("%w: release digest: %w", ErrInvalid, err)
 	}

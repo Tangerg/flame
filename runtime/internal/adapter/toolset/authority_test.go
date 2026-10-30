@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -92,7 +92,7 @@ func TestStandingRulesFollowCurrentSourceAuthority(t *testing.T) {
 		t.Fatal(err)
 	}
 	original := server.AuthorityFingerprint()
-	check := func(fingerprint identity.Digest, wantMatch, wantStale bool) {
+	check := func(fingerprint integrity.Digest, wantMatch, wantStale bool) {
 		t.Helper()
 		decision, matched, err := policy.Decide(t.Context(), approval.Query{Tool: ref, SourceFingerprint: fingerprint})
 		if err != nil || matched != wantMatch || (matched && decision != approval.Allow) {

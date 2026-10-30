@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 func TestInstanceObservationProjectsOriginalCloseEvidence(t *testing.T) {
@@ -122,7 +123,7 @@ func (o *diagnosticUseOwner) Held(context.Context, qimu.InstallationID) ([]qimu.
 
 func TestRetainedDependenciesIdentifyTheirOriginalOwners(t *testing.T) {
 	admission := qimu.NewAdmission()
-	dependency := qimu.Dependency{InstallationID: "original", Release: qimu.Hash([]byte("release"))}
+	dependency := qimu.Dependency{InstallationID: "original", Release: integrity.Hash([]byte("release"))}
 	documents := &diagnosticUseOwner{id: "consumer.documents", values: []qimu.Dependency{dependency}}
 	tasks := &diagnosticUseOwner{id: "consumer.tasks", values: []qimu.Dependency{dependency, dependency}}
 	for _, owner := range []*diagnosticUseOwner{tasks, documents} {
@@ -141,7 +142,7 @@ func TestRetainedDependenciesIdentifyTheirOriginalOwners(t *testing.T) {
 	if !slices.Equal(retained, expected) {
 		t.Fatalf("retention lost original owner identity: %+v", retained)
 	}
-	retained[0].Dependency.Release = qimu.Hash([]byte("changed projection"))
+	retained[0].Dependency.Release = integrity.Hash([]byte("changed projection"))
 	retained[0].OwnerID = "changed projection"
 	if documents.values[0] != dependency {
 		t.Fatal("diagnostic projection mutated its business owner")

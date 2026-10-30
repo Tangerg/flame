@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 func (s *Store) InstallDirectory(ctx context.Context, directory string) (Release, error) {
@@ -19,7 +20,7 @@ func (s *Store) InstallDirectory(ctx context.Context, directory string) (Release
 	return lease.Release(), lease.Close()
 }
 
-func (s *Store) InstallArchive(ctx context.Context, fileName string, expected qimu.Digest) (Release, error) {
+func (s *Store) InstallArchive(ctx context.Context, fileName string, expected integrity.Digest) (Release, error) {
 	lease, err := s.InstallArchiveHeld(ctx, fileName, expected)
 	if err != nil {
 		return Release{}, err
@@ -74,7 +75,7 @@ func (l *Lease) ReadLimit(ctx context.Context, name string, maximum int64) ([]by
 
 // Path projects an immutable release location for diagnostics and declarations.
 // It performs no admission: actual reads and execution require an acquired Lease.
-func (s *Store) Path(digest qimu.Digest) (string, error) {
+func (s *Store) Path(digest integrity.Digest) (string, error) {
 	done, err := s.beginOperation(true)
 	if err != nil {
 		return "", err
@@ -83,12 +84,12 @@ func (s *Store) Path(digest qimu.Digest) (string, error) {
 	if digest.Validate() != nil {
 		return "", ErrInvalid
 	}
-	return filepath.Join(s.directory, string(digest)), nil
+	return filepath.Join(s.directory, digest.String()), nil
 }
 
 // Digests observes the content namespace. Each later Remove still checks the
 // original retention facts and live claims under the shared admission gate.
-func (s *Store) Digests(ctx context.Context) (_ []qimu.Digest, err error) {
+func (s *Store) Digests(ctx context.Context) (_ []integrity.Digest, err error) {
 	done, err := s.beginOperation(false)
 	if err != nil {
 		return nil, err
@@ -99,19 +100,19 @@ func (s *Store) Digests(ctx context.Context) (_ []qimu.Digest, err error) {
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, directory.Close()) }()
-	var result []qimu.Digest
+	var result []integrity.Digest
 	for {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
 		entries, readErr := directory.ReadDir(256)
 		for _, entry := range entries {
-			if digest, err := qimu.ParseDigest(entry.Name()); err == nil {
+			if digest, err := integrity.ParseDigest(entry.Name()); err == nil {
 				result = append(result, digest)
 			}
 		}
 		if errors.Is(readErr, io.EOF) {
-			slices.Sort(result)
+			slices.SortFunc(result, integrity.Digest.Compare)
 			return result, nil
 		}
 		if readErr != nil {

@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 func (h *Host) unitLocked(ref UnitRef) (Unit, *installed, error) {
@@ -154,7 +156,7 @@ func (h *Host) resolveLocked(roots []ExportRef, unitRoots []UnitRef, realm Realm
 		visiting[ref] = true
 		path = append(path, ref.InstallationID.String()+"/"+string(ref.UnitID))
 		defer func() { path = path[:len(path)-1] }()
-		bound := UnitBinding{Source: ref, Configuration: Hash(installation.record.Configuration), Imports: make([]ImportDeclaration, len(unit.Declaration.Imports))}
+		bound := UnitBinding{Source: ref, Configuration: integrity.Hash(installation.record.Configuration), Imports: make([]ImportDeclaration, len(unit.Declaration.Imports))}
 		requirements := unit.Declaration.Imports
 		actualRealm, err := h.realmLocked(unit.Declaration, realm)
 		if err != nil {
@@ -360,7 +362,7 @@ func (h *Host) validateBindingLocked(binding BindingSnapshot) error {
 		if err != nil {
 			return err
 		}
-		if Hash(installation.record.Configuration) != unit.Configuration {
+		if integrity.Hash(installation.record.Configuration) != unit.Configuration {
 			return ErrStaleBinding
 		}
 		if err := h.admission.ValidateScope(installation.scope); err != nil {
@@ -405,7 +407,7 @@ func (h *Host) Restore(ctx context.Context, records []InstallationRecord, plugin
 	if len(records) > h.maxInstallations {
 		return ErrCapacity
 	}
-	definitions := make(map[Digest]*Plugin, len(plugins))
+	definitions := make(map[integrity.Digest]*Plugin, len(plugins))
 	for _, plugin := range plugins {
 		if plugin == nil {
 			return ErrInvalid

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 type retainedUseOwner struct {
@@ -67,8 +68,8 @@ func TestInvalidUseOwnerProjectionRequiresRecovery(t *testing.T) {
 		name       string
 		dependency qimu.Dependency
 	}{
-		{"invalid release", qimu.Dependency{InstallationID: "original", Release: "invalid"}},
-		{"different installation", qimu.Dependency{InstallationID: "another", Release: qimu.Hash([]byte("release"))}},
+		{"invalid release", qimu.Dependency{InstallationID: "original", Release: integrity.Digest{}}},
+		{"different installation", qimu.Dependency{InstallationID: "another", Release: integrity.Hash([]byte("release"))}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			admission := qimu.NewAdmission()

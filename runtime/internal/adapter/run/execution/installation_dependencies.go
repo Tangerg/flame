@@ -26,7 +26,7 @@ func (i *InteractionExecutor) Held(ctx context.Context, id qimu.InstallationID) 
 	var result []qimu.Dependency
 	for _, dependency := range held {
 		if dependency.InstallationID.String() == id.String() {
-			result = append(result, qimu.Dependency{InstallationID: id, Release: qimu.Digest(dependency.Digest.String())})
+			result = append(result, qimu.Dependency{InstallationID: id, Release: dependency.Digest})
 		}
 	}
 	return qimu.CompactDependencies(result), nil

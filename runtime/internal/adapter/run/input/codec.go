@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -89,7 +89,7 @@ type interruptWire struct {
 
 type approvalPromptWire struct {
 	Tool              tool.Ref         `json:"tool"`
-	SourceFingerprint identity.Digest  `json:"sourceFingerprint,omitzero"`
+	SourceFingerprint integrity.Digest `json:"sourceFingerprint,omitzero"`
 	CallID            string           `json:"callId"`
 	Arguments         string           `json:"arguments"`
 	SafetyClass       tool.SafetyClass `json:"safetyClass"`

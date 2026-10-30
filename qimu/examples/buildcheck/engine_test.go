@@ -10,6 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/qimu/examples/buildcheck"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 func engine(t *testing.T, text string) (*buildcheck.Engine, context.Context) {
@@ -36,7 +37,7 @@ func install(t *testing.T, ctx context.Context, e *buildcheck.Engine, id string,
 	for _, export := range exports {
 		declarations = append(declarations, qimu.ExportDeclaration{Name: export.Name, Contract: export.Contract})
 	}
-	plugin, err := qimu.Define(qimu.Definition{Revision: qimu.Hash([]byte(id)), Units: []qimu.Unit{{Declaration: qimu.UnitDeclaration{ID: "main", Profile: qimu.NativeGo, Exports: declarations}, Setup: func(context.Context, *qimu.Setup) ([]qimu.ExportValue, error) { return exports, nil }}}})
+	plugin, err := qimu.Define(qimu.Definition{Revision: integrity.Hash([]byte(id)), Units: []qimu.Unit{{Declaration: qimu.UnitDeclaration{ID: "main", Profile: qimu.NativeGo, Exports: declarations}, Setup: func(context.Context, *qimu.Setup) ([]qimu.ExportValue, error) { return exports, nil }}}})
 	if err != nil {
 		t.Fatal(err)
 	}

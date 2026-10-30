@@ -8,6 +8,7 @@ import (
 	"weak"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 type retainedPayload struct{ bytes [1 << 20]byte }
@@ -62,7 +63,7 @@ func closedUse(t *testing.T) (*qimu.Use, weak.Pointer[qimu.Host], weak.Pointer[r
 	}
 	value := new(retainedPayload)
 	value.bytes[0] = 1
-	plugin, err := qimu.Define(qimu.Definition{Revision: qimu.Hash([]byte("retention")), Units: []qimu.Unit{{
+	plugin, err := qimu.Define(qimu.Definition{Revision: integrity.Hash([]byte("retention")), Units: []qimu.Unit{{
 		Declaration: qimu.UnitDeclaration{ID: "value", Profile: qimu.NativeGo, Exports: []qimu.ExportDeclaration{{Name: "value", Contract: service.Ref()}}},
 		Setup: func(context.Context, *qimu.Setup) ([]qimu.ExportValue, error) {
 			return []qimu.ExportValue{qimu.Provide("value", service, value)}, nil

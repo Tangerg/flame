@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
@@ -18,7 +18,7 @@ import (
 type ReleaseStore struct {
 	db          *sql.DB
 	mu          sync.Mutex
-	projections map[identity.Digest]releaseProjection
+	projections map[integrity.Digest]releaseProjection
 }
 
 type releaseProjection struct {
@@ -27,10 +27,10 @@ type releaseProjection struct {
 }
 
 func newReleaseStore(db *sql.DB) *ReleaseStore {
-	return &ReleaseStore{db: db, projections: make(map[identity.Digest]releaseProjection)}
+	return &ReleaseStore{db: db, projections: make(map[integrity.Digest]releaseProjection)}
 }
 
-func (s *ReleaseStore) Get(ctx context.Context, digest identity.Digest) (plugin.Release, error) {
+func (s *ReleaseStore) Get(ctx context.Context, digest integrity.Digest) (plugin.Release, error) {
 	var body string
 	err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT declaration FROM plugin_releases WHERE digest=?`, digest.String()).Scan(&body)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -88,19 +88,19 @@ func (s *ReleaseStore) Admit(ctx context.Context, release plugin.Release) error 
 }
 
 // Digests lists every admitted release.
-func (s *ReleaseStore) Digests(ctx context.Context) ([]identity.Digest, error) {
+func (s *ReleaseStore) Digests(ctx context.Context) ([]integrity.Digest, error) {
 	rows, err := sqlite.Connection(ctx, s.db).QueryContext(ctx, `SELECT digest FROM plugin_releases ORDER BY digest`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var result []identity.Digest
+	var result []integrity.Digest
 	for rows.Next() {
 		var text string
 		if err := rows.Scan(&text); err != nil {
 			return nil, err
 		}
-		digest, err := identity.ParseDigest(text)
+		digest, err := integrity.ParseDigest(text)
 		if err != nil {
 			return nil, fmt.Errorf("sqlite: decode release digest: %w", err)
 		}
@@ -112,7 +112,7 @@ func (s *ReleaseStore) Digests(ctx context.Context) ([]identity.Digest, error) {
 // Remove deletes an unreferenced release with its server membership. An
 // installation still naming it makes the delete fail, so a referenced release
 // cannot be removed whatever its caller believes.
-func (s *ReleaseStore) Remove(ctx context.Context, digest identity.Digest) error {
+func (s *ReleaseStore) Remove(ctx context.Context, digest integrity.Digest) error {
 	_, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM plugin_releases WHERE digest=?`, digest.String())
 	if err != nil {
 		return err

@@ -6,32 +6,37 @@ import (
 	jsonv2 "encoding/json/v2"
 	"fmt"
 	"slices"
+
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 type Dependency struct {
-	InstallationID InstallationID `json:"installationId"`
-	Release        Digest         `json:"release"`
+	InstallationID InstallationID   `json:"installationId"`
+	Release        integrity.Digest `json:"release"`
 }
 
 func (d Dependency) Validate() error {
 	if err := d.InstallationID.Validate(); err != nil {
 		return err
 	}
-	return d.Release.Validate()
+	if err := d.Release.Validate(); err != nil {
+		return fmt.Errorf("%w: dependency release: %w", ErrInvalid, err)
+	}
+	return nil
 }
 
 func CompactDependencies(values []Dependency) []Dependency {
 	result := slices.Clone(values)
 	slices.SortFunc(result, func(a, b Dependency) int {
-		return cmp.Or(cmp.Compare(a.InstallationID, b.InstallationID), cmp.Compare(a.Release, b.Release))
+		return cmp.Or(cmp.Compare(a.InstallationID, b.InstallationID), a.Release.Compare(b.Release))
 	})
 	return slices.Compact(result)
 }
 
 type UnitRef struct {
-	InstallationID InstallationID `json:"installationId"`
-	Release        Digest         `json:"release"`
-	UnitID         UnitID         `json:"unitId"`
+	InstallationID InstallationID   `json:"installationId"`
+	Release        integrity.Digest `json:"release"`
+	UnitID         UnitID           `json:"unitId"`
 }
 
 func (r UnitRef) Validate() error {
@@ -46,11 +51,11 @@ func (r UnitRef) Dependency() Dependency {
 }
 
 type ExportRef struct {
-	InstallationID InstallationID `json:"installationId"`
-	Release        Digest         `json:"release"`
-	UnitID         UnitID         `json:"unitId"`
-	Export         string         `json:"export"`
-	Contract       ContractRef    `json:"contract"`
+	InstallationID InstallationID   `json:"installationId"`
+	Release        integrity.Digest `json:"release"`
+	UnitID         UnitID           `json:"unitId"`
+	Export         string           `json:"export"`
+	Contract       ContractRef      `json:"contract"`
 }
 
 func (r ExportRef) Unit() UnitRef {
@@ -145,7 +150,7 @@ func (d UnitDeclaration) Validate() error {
 
 type UnitBinding struct {
 	Source        UnitRef             `json:"source"`
-	Configuration Digest              `json:"configuration"`
+	Configuration integrity.Digest    `json:"configuration"`
 	Imports       []ImportDeclaration `json:"imports"`
 }
 
@@ -191,7 +196,7 @@ func (b BindingSnapshot) Clone() BindingSnapshot {
 }
 
 func compareUnit(a, b UnitRef) int {
-	return cmp.Or(cmp.Compare(a.InstallationID, b.InstallationID), cmp.Compare(a.Release, b.Release), cmp.Compare(a.UnitID, b.UnitID))
+	return cmp.Or(cmp.Compare(a.InstallationID, b.InstallationID), a.Release.Compare(b.Release), cmp.Compare(a.UnitID, b.UnitID))
 }
 
 func (b BindingSnapshot) Validate() error {
@@ -330,10 +335,10 @@ func (b BindingSnapshot) CanonicalJSON() ([]byte, error) {
 	return json.Marshal(value)
 }
 
-func (b BindingSnapshot) Identity() (Digest, error) {
+func (b BindingSnapshot) Identity() (integrity.Digest, error) {
 	data, err := b.CanonicalJSON()
 	if err != nil {
-		return "", err
+		return integrity.Digest{}, err
 	}
-	return Hash(data), nil
+	return integrity.Hash(data), nil
 }

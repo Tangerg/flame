@@ -13,6 +13,7 @@ import (
 	"github.com/Tangerg/flame/qimu"
 	controlhost "github.com/Tangerg/flame/qimu/control/host"
 	"github.com/Tangerg/flame/qimu/distribution"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/sqlite"
 )
 
@@ -66,13 +67,13 @@ func Open(ctx context.Context, config Config) (_ *App, err error) {
 		return nil, err
 	}
 	a := &App{Host: host, Store: store, Contracts: contracts, owner: owner, lifetime: lifetime, running: map[string]bool{}, reconstructed: true}
-	var trustedArchive qimu.Digest
+	var trustedArchive integrity.Digest
 	content, err := distribution.Open(distribution.Config{Directory: config.ContentDirectory, Admission: admission, Trust: func(_ context.Context, source distribution.Source, manifest distribution.Manifest, _ distribution.Lock) error {
-		if trustedArchive == "" || source.ArchiveDigest != trustedArchive || manifest.Package != "example.document-preview" || manifest.Version != "1" {
+		if trustedArchive.IsZero() || source.ArchiveDigest != trustedArchive || manifest.Package != "example.document-preview" || manifest.Version != "1" {
 			return distribution.ErrUntrusted
 		}
 		return nil
-	}, Retained: func(ctx context.Context, release qimu.Digest) (bool, error) {
+	}, Retained: func(ctx context.Context, release integrity.Digest) (bool, error) {
 		records, err := store.Installations(ctx)
 		if err != nil {
 			return false, err
@@ -150,7 +151,7 @@ func Open(ctx context.Context, config Config) (_ *App, err error) {
 	if len(records) == 0 {
 		// This distribution is built from files embedded in this executable.
 		// Remote or user-authored packages require their own trust decision.
-		a.preview, err = buildPreview(ctx, content, contracts, func(digest qimu.Digest) { trustedArchive = digest })
+		a.preview, err = buildPreview(ctx, content, contracts, func(digest integrity.Digest) { trustedArchive = digest })
 		if err != nil {
 			return nil, err
 		}
@@ -163,7 +164,7 @@ func Open(ctx context.Context, config Config) (_ *App, err error) {
 				}
 			}
 		}
-		if a.preview.Digest == "" {
+		if a.preview.Digest.IsZero() {
 			return nil, errors.New("document: retained preview release is missing")
 		}
 	}

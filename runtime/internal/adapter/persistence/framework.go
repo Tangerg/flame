@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -36,7 +36,7 @@ func openFrameworkDatabase(ctx context.Context, path string) (*sqlite.Store, *qi
 					}
 					for _, dependency := range append(checkpoints, commands...) {
 						if dependency.InstallationID.String() == installation.String() {
-							dependencies = append(dependencies, qimu.Dependency{InstallationID: installation, Release: qimu.Digest(dependency.Digest.String())})
+							dependencies = append(dependencies, qimu.Dependency{InstallationID: installation, Release: dependency.Digest})
 						}
 					}
 					return nil
@@ -63,7 +63,7 @@ func openFrameworkDatabase(ctx context.Context, path string) (*sqlite.Store, *qi
 						return err
 					}
 					if staged != nil {
-						digest, err := identity.ParseDigest(*staged)
+						digest, err := integrity.ParseDigest(*staged)
 						if err != nil {
 							return err
 						}

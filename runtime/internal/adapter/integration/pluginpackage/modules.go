@@ -9,7 +9,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/qimu/distribution"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -92,7 +91,7 @@ func componentModule(ctx context.Context, root *os.Root, component plugin.Client
 // ComponentModules supplies the exact native shared profile and complete local
 // module closure to Flame's browser bootstrap without forwarding private config.
 func (r *Releases) ComponentModules(ctx context.Context, release plugin.Release, id plugin.ContributionID) (*distribution.Module, error) {
-	lease, err := r.content.Acquire(ctx, qimu.Digest(release.Digest().String()))
+	lease, err := r.content.Acquire(ctx, release.Digest())
 	if err != nil {
 		return nil, err
 	}

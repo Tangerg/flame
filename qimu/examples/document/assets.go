@@ -13,12 +13,13 @@ import (
 	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/qimu/control"
 	"github.com/Tangerg/flame/qimu/distribution"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 //go:embed assets/preview.js assets/theme.css
 var assets embed.FS
 
-func buildPreview(ctx context.Context, store *distribution.Store, contracts Contracts, authorize func(qimu.Digest)) (distribution.Release, error) {
+func buildPreview(ctx context.Context, store *distribution.Store, contracts Contracts, authorize func(integrity.Digest)) (distribution.Release, error) {
 	directory, err := os.MkdirTemp("", "qimu-document-package-")
 	if err != nil {
 		return distribution.Release{}, err
@@ -52,8 +53,8 @@ func buildPreview(ctx context.Context, store *distribution.Store, contracts Cont
 	if err := os.WriteFile(path, archive.Bytes(), 0600); err != nil {
 		return distribution.Release{}, err
 	}
-	authorize(qimu.Hash(archive.Bytes()))
-	return store.InstallArchive(ctx, path, qimu.Hash(archive.Bytes()))
+	authorize(integrity.Hash(archive.Bytes()))
+	return store.InstallArchive(ctx, path, integrity.Hash(archive.Bytes()))
 }
 
 func previewDefinition(release distribution.Release) (*qimu.Plugin, error) {
@@ -78,7 +79,7 @@ func (s moduleSource) Module(ctx context.Context, binding qimu.UnitBinding) (con
 		if unit.ID == binding.Source.UnitID && unit.Profile == qimu.BrowserJS && unit.Module != nil {
 			for _, artifact := range release.Manifest.Artifacts {
 				if artifact.Path == unit.Module.Entry {
-					return control.Artifact{Path: "/qimu/artifacts/" + string(release.Digest) + "/" + artifact.Path, Digest: artifact.Digest}, nil
+					return control.Artifact{Path: "/qimu/artifacts/" + release.Digest.String() + "/" + artifact.Path, Digest: artifact.Digest}, nil
 				}
 			}
 		}
@@ -88,7 +89,7 @@ func (s moduleSource) Module(ctx context.Context, binding qimu.UnitBinding) (con
 
 func (a *App) artifact(ctx context.Context, path string) ([]byte, string, error) {
 	release, name, found := strings.Cut(path, "/")
-	if !found || qimu.Digest(release) != a.preview.Digest {
+	if !found || release != a.preview.Digest.String() {
 		return nil, "", qimu.ErrUnavailable
 	}
 	lease, err := a.Content.Acquire(ctx, a.preview.Digest)

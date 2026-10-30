@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 type FileConfiguration struct {
@@ -16,7 +17,7 @@ type FileConfiguration struct {
 }
 
 func FilePlugin(contracts Contracts) (*qimu.Plugin, error) {
-	return qimu.Define(qimu.Definition{Revision: qimu.Hash([]byte("document/file-reader/1")), Units: []qimu.Unit{{Declaration: qimu.UnitDeclaration{ID: "files", Profile: qimu.NativeGo, Exports: []qimu.ExportDeclaration{{Name: "read", Contract: contracts.Files.Ref()}}}, Setup: func(ctx context.Context, setup *qimu.Setup) ([]qimu.ExportValue, error) {
+	return qimu.Define(qimu.Definition{Revision: integrity.Hash([]byte("document/file-reader/1")), Units: []qimu.Unit{{Declaration: qimu.UnitDeclaration{ID: "files", Profile: qimu.NativeGo, Exports: []qimu.ExportDeclaration{{Name: "read", Contract: contracts.Files.Ref()}}}, Setup: func(ctx context.Context, setup *qimu.Setup) ([]qimu.ExportValue, error) {
 		var configuration FileConfiguration
 		if err := json.Unmarshal(setup.Configuration(), &configuration); err != nil {
 			return nil, err
@@ -33,7 +34,7 @@ func FilePlugin(contracts Contracts) (*qimu.Plugin, error) {
 }
 
 func ConverterPlugin(contracts Contracts, revision string) (*qimu.Plugin, error) {
-	return qimu.Define(qimu.Definition{Revision: qimu.Hash([]byte("document/converter/" + revision)), Units: []qimu.Unit{{Declaration: qimu.UnitDeclaration{ID: "converter", Profile: qimu.NativeGo, Imports: []qimu.ImportDeclaration{{Slot: "files", Contract: contracts.Files.Ref()}}, Exports: []qimu.ExportDeclaration{{Name: "markdown", Contract: contracts.Converters.Ref()}}}, Setup: func(ctx context.Context, setup *qimu.Setup) ([]qimu.ExportValue, error) {
+	return qimu.Define(qimu.Definition{Revision: integrity.Hash([]byte("document/converter/" + revision)), Units: []qimu.Unit{{Declaration: qimu.UnitDeclaration{ID: "converter", Profile: qimu.NativeGo, Imports: []qimu.ImportDeclaration{{Slot: "files", Contract: contracts.Files.Ref()}}, Exports: []qimu.ExportDeclaration{{Name: "markdown", Contract: contracts.Converters.Ref()}}}, Setup: func(ctx context.Context, setup *qimu.Setup) ([]qimu.ExportValue, error) {
 		files, err := qimu.Import(setup, "files", contracts.Files)
 		if err != nil {
 			return nil, err
@@ -66,7 +67,7 @@ func ConverterPlugin(contracts Contracts, revision string) (*qimu.Plugin, error)
 }
 
 func ValidationPlugin(contracts Contracts) (*qimu.Plugin, error) {
-	return qimu.Define(qimu.Definition{Revision: qimu.Hash([]byte("document/validation/1")), Units: []qimu.Unit{{Declaration: qimu.UnitDeclaration{ID: "validation", Profile: qimu.NativeGo, Exports: []qimu.ExportDeclaration{{Name: "title", Contract: contracts.Validators.Ref()}}}, Setup: func(context.Context, *qimu.Setup) ([]qimu.ExportValue, error) {
+	return qimu.Define(qimu.Definition{Revision: integrity.Hash([]byte("document/validation/1")), Units: []qimu.Unit{{Declaration: qimu.UnitDeclaration{ID: "validation", Profile: qimu.NativeGo, Exports: []qimu.ExportDeclaration{{Name: "title", Contract: contracts.Validators.Ref()}}}, Setup: func(context.Context, *qimu.Setup) ([]qimu.ExportValue, error) {
 		return []qimu.ExportValue{qimu.Contribute("title", contracts.Validators, ValidatorMetadata{Name: "title", Order: 10}, Validator(func(ctx context.Context, converted Converted) ([]Diagnostic, error) {
 			if err := ctx.Err(); err != nil {
 				return nil, err

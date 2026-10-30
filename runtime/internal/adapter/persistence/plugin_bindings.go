@@ -8,6 +8,7 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -40,10 +41,10 @@ func (b *Bundle) commitPluginReferences(ctx context.Context, host *qimu.Host, id
 		return err
 	}
 	request, err := json.Marshal(struct {
-		Kind       string      `json:"kind"`
-		Identity   string      `json:"identity"`
-		Checkpoint qimu.Digest `json:"checkpoint"`
-	}{"execution.checkpoint", identity, qimu.Hash(encoded)})
+		Kind       string           `json:"kind"`
+		Identity   string           `json:"identity"`
+		Checkpoint integrity.Digest `json:"checkpoint"`
+	}{"execution.checkpoint", identity, integrity.Hash(encoded)})
 	if err != nil {
 		return err
 	}

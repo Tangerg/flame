@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -80,11 +81,11 @@ func (s *InstallationStore) records(ctx context.Context, query string, args ...a
 		if record.ID, err = identity.ParseInstallation(id); err != nil {
 			return nil, fmt.Errorf("sqlite: decode installation identity: %w", err)
 		}
-		if record.Selected, err = identity.ParseDigest(selected); err != nil {
+		if record.Selected, err = integrity.ParseDigest(selected); err != nil {
 			return nil, fmt.Errorf("sqlite: decode selected release: %w", err)
 		}
 		if staged.Valid {
-			digest, err := identity.ParseDigest(staged.String)
+			digest, err := integrity.ParseDigest(staged.String)
 			if err != nil {
 				return nil, fmt.Errorf("sqlite: decode staged release: %w", err)
 			}
@@ -219,7 +220,7 @@ func (s *InstallationStore) MarkInitialized(ctx context.Context) error {
 }
 
 // Stage advances only Flame's proposed update, not the Host's selected release.
-func (s *InstallationStore) Stage(ctx context.Context, id identity.InstallationID, digest identity.Digest) error {
+func (s *InstallationStore) Stage(ctx context.Context, id identity.InstallationID, digest integrity.Digest) error {
 	if err := digest.Validate(); err != nil {
 		return err
 	}

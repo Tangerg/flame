@@ -7,6 +7,7 @@ import (
 	"github.com/Tangerg/flame/qimu"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -18,7 +19,7 @@ import (
 type ContributionBinding struct {
 	InstallationID identity.InstallationID
 	ContributionID plugin.ContributionID
-	Digest         identity.Digest
+	Digest         integrity.Digest
 	ServerID       mcpserver.ID
 	ServerName     mcpserver.ServerName
 	Export         string

@@ -11,8 +11,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/qimu/distribution"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 func runPackage(args []string, output io.Writer) (err error) {
@@ -73,7 +73,7 @@ func runVerify(args []string, output io.Writer) error {
 	if flags.NArg() != 0 || *archive == "" {
 		return errors.New("archive and digest are required")
 	}
-	digest, err := qimu.ParseDigest(*expected)
+	digest, err := integrity.ParseDigest(*expected)
 	if err != nil {
 		return err
 	}

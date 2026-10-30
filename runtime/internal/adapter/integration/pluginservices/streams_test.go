@@ -14,6 +14,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -35,7 +36,7 @@ type streamFixture struct {
 	invocations atomic.Int32
 	mu          sync.Mutex
 	receipt     qimumcp.Receipt
-	digest      string
+	digest      integrity.Digest
 }
 
 type streamInput struct {
@@ -428,7 +429,7 @@ func TestPreparedCommandRefusesChangedSetupWithTheSameReleases(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	binding.Units[0].Configuration = qimu.Hash([]byte("another setup in the same release"))
+	binding.Units[0].Configuration = integrity.Hash([]byte("another setup in the same release"))
 	changed.Activation, err = plugins.ProjectActivation(binding)
 	if err != nil {
 		t.Fatal(err)

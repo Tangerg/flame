@@ -72,7 +72,7 @@ func wireBrowserAuthority(value control.Authority) protocol.PluginBrowserAuthori
 func wireBrowserContract(value qimu.ContractRef) protocol.PluginBrowserContractRef {
 	return protocol.PluginBrowserContractRef{
 		Name: value.Name, Version: value.Version,
-		Digest: protocol.PluginBrowserDigest(value.Digest),
+		Digest: protocol.PluginBrowserDigest(value.Digest.String()),
 		Kind:   protocol.PluginBrowserContractKind(value.Kind),
 		Mode:   protocol.PluginBrowserContractMode(value.Mode),
 	}

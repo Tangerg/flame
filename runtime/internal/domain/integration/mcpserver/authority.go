@@ -6,13 +6,14 @@ import (
 	"strconv"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 // AuthorityFingerprint excludes credentials and connection lifecycle settings:
 // a token rotation does not grant authority to a different endpoint. Every slot
 // is always present and the variable-length Args come last behind their count,
 // so two different descriptors cannot frame to the same field sequence.
-func (s Server) AuthorityFingerprint() identity.Digest {
+func (s Server) AuthorityFingerprint() integrity.Digest {
 	var authority string
 	if _, release, found := s.Source.Release(); found {
 		authority = release.String()

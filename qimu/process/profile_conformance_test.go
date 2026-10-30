@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 func TestRealProcessDriverRejectsNativeObjectsBeforeCreationOrBusiness(t *testing.T) {
@@ -26,7 +27,7 @@ func TestRealProcessDriverRejectsNativeObjectsBeforeCreationOrBusiness(t *testin
 				declaration.Exports = []qimu.ExportDeclaration{{Name: "echo", Contract: e.ref.Contract}}
 				declaration.Imports = []qimu.ImportDeclaration{{Slot: "shared", Contract: native.Ref(), Optional: true}}
 			}
-			plugin, err := qimu.Define(qimu.Definition{Revision: qimu.Hash([]byte(direction)), Units: []qimu.Unit{{Declaration: declaration}}})
+			plugin, err := qimu.Define(qimu.Definition{Revision: integrity.Hash([]byte(direction)), Units: []qimu.Unit{{Declaration: declaration}}})
 			if err != nil {
 				t.Fatal(err)
 			}

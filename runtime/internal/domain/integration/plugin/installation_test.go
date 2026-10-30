@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/google/uuid"
 )
@@ -556,7 +557,7 @@ func testRelease(t *testing.T, seed string, declaration Declaration) Release {
 	return release
 }
 
-func testDigest(seed string) identity.Digest { return identity.DigestStrings(seed) }
+func testDigest(seed string) integrity.Digest { return identity.DigestStrings(seed) }
 
 func serverName(raw string) mcpserver.ServerName {
 	parsed, err := mcpserver.ParseServerName(raw)

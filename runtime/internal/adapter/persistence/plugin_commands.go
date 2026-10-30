@@ -5,10 +5,10 @@ import (
 	"database/sql"
 	json "encoding/json/v2"
 	"errors"
-	"github.com/Tangerg/flame/qimu"
 	"slices"
 
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/qimu/sqlite"
@@ -45,7 +45,7 @@ func (s *pluginCommandStore) Get(ctx context.Context, id string) (*plugin.Comman
 	if record.Provider.InstallationID, err = flameidentity.ParseInstallation(installation); err != nil {
 		return nil, false, err
 	}
-	if record.Provider.Digest, err = flameidentity.ParseDigest(digest); err != nil {
+	if record.Provider.Digest, err = integrity.ParseDigest(digest); err != nil {
 		return nil, false, err
 	}
 	if record.Server, err = mcpserver.ParseServerName(server); err != nil {
@@ -90,10 +90,10 @@ func (s *pluginCommandStore) Save(ctx context.Context, command *plugin.Command) 
 		return err
 	}
 	request, err := json.Marshal(struct {
-		Kind     string      `json:"kind"`
-		Identity string      `json:"identity"`
-		Digest   qimu.Digest `json:"digest"`
-	}{"plugin.command", record.ID, qimu.Hash(encoded)})
+		Kind     string           `json:"kind"`
+		Identity string           `json:"identity"`
+		Digest   integrity.Digest `json:"digest"`
+	}{"plugin.command", record.ID, integrity.Hash(encoded)})
 	if err != nil {
 		return err
 	}

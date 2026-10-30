@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
@@ -54,7 +55,7 @@ func (a CommandAcceptance) Validate() error {
 	if a.Key == "" {
 		return errors.New("runs: command acceptance has no idempotency key")
 	}
-	if _, err := flameidentity.ParseDigest(a.Fingerprint); err != nil {
+	if _, err := integrity.ParseDigest(a.Fingerprint); err != nil {
 		return fmt.Errorf("runs: command acceptance fingerprint: %w", err)
 	}
 	if !a.Operation.Valid() {
@@ -107,7 +108,7 @@ func (c CommandIdentity) Validate() error {
 	if c.Key == "" {
 		return errors.New("runs: command identity has no idempotency key")
 	}
-	if _, err := flameidentity.ParseDigest(c.Fingerprint); err != nil {
+	if _, err := integrity.ParseDigest(c.Fingerprint); err != nil {
 		return fmt.Errorf("runs: command identity fingerprint: %w", err)
 	}
 	return nil

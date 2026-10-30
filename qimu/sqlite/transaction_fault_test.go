@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 	modernc "modernc.org/sqlite"
 )
 
@@ -113,7 +114,7 @@ func installTransactionFault(t *testing.T, store *Store, fault transactionFault)
 }
 
 func insertFaultDocument(ctx context.Context, tx Executor, id string) ([]byte, error) {
-	_, err := tx.ExecContext(ctx, `INSERT INTO documents VALUES(?,'converter',?,1)`, id, qimu.Hash([]byte("original-release")))
+	_, err := tx.ExecContext(ctx, `INSERT INTO documents VALUES(?,'converter',?,1)`, id, integrity.Hash([]byte("original-release")))
 	return []byte("document:" + id), err
 }
 

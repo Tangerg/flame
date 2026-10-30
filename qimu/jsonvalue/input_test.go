@@ -4,6 +4,8 @@ import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"testing"
+
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 func TestObjectRepresentationCannotChangeRequestIdentity(t *testing.T) {
@@ -35,7 +37,7 @@ func TestObjectRepresentationCannotChangeRequestIdentity(t *testing.T) {
 
 func TestNumericLexemesAndArrayOrderRemainExact(t *testing.T) {
 	values := []string{`{"n":9007199254740992}`, `{"n":9007199254740993}`, `{"n":1}`, `{"n":1.0}`, `{"n":1e0}`, `{"n":-0}`, `{"n":0}`, `[1,2]`, `[2,1]`}
-	seen := map[string]bool{}
+	seen := map[integrity.Digest]bool{}
 	for _, value := range values {
 		input, err := Parse([]byte(value))
 		if err != nil {

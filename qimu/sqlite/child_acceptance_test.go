@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/integrity"
 )
 
 var errParentFinal = errors.New("jobs: parent is final")
@@ -128,7 +129,7 @@ func openChildAcceptance(t *testing.T, path string, initialize bool) *childAccep
 		t.Fatal(err)
 	}
 	for _, id := range []qimu.InstallationID{"parent-provider", "child-provider"} {
-		plugin, err := qimu.Define(qimu.Definition{Revision: qimu.Hash([]byte(id)), Units: []qimu.Unit{{
+		plugin, err := qimu.Define(qimu.Definition{Revision: integrity.Hash([]byte(id)), Units: []qimu.Unit{{
 			Declaration: qimu.UnitDeclaration{ID: "main", Profile: qimu.NativeGo, Exports: []qimu.ExportDeclaration{{Name: "run", Contract: f.contract.Ref()}}},
 			Setup: func(context.Context, *qimu.Setup) ([]qimu.ExportValue, error) {
 				return []qimu.ExportValue{qimu.Provide("run", f.contract, func() string { f.calls.Add(1); return string(id) })}, nil

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"slices"
 
-	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -31,11 +31,11 @@ type toolResultMetadata struct {
 }
 
 type toolReceiptEvidence struct {
-	ProcessID string               `json:"process_id"`
-	EffectID  string               `json:"effect_id"`
-	Tool      tool.Ref             `json:"tool"`
-	Release   flameidentity.Digest `json:"release"`
-	Authority flameidentity.Digest `json:"authority"`
+	ProcessID string           `json:"process_id"`
+	EffectID  string           `json:"effect_id"`
+	Tool      tool.Ref         `json:"tool"`
+	Release   integrity.Digest `json:"release"`
+	Authority integrity.Digest `json:"authority"`
 }
 
 func (t toolResultMetadata) clone() toolResultMetadata {

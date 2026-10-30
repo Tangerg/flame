@@ -1797,6 +1797,9 @@
     },
     {
       "path": "github.com/Tangerg/flame/packages/go-sdk/identity",
+      "imports": [
+        "github.com/Tangerg/flame/qimu/integrity"
+      ],
       "constants": [
         {
           "name": "DeclarationIDPattern",
@@ -1854,32 +1857,14 @@
           "value": "\"^[A-Za-z0-9._:-]+$\""
         }
       ],
-      "variables": [
-        {
-          "name": "ErrInvalidDigest",
-          "type": "error"
-        }
-      ],
       "functions": [
         {
-          "name": "DigestFromSum",
-          "signature": "func(sum [32]byte) Digest"
-        },
-        {
-          "name": "DigestPattern",
-          "signature": "func() string"
-        },
-        {
           "name": "DigestStrings",
-          "signature": "func(fields ...string) Digest"
+          "signature": "func(fields ...string) integrity.Digest"
         },
         {
           "name": "InstallationIDPattern",
           "signature": "func() string"
-        },
-        {
-          "name": "ParseDigest",
-          "signature": "func(text string) (Digest, error)"
         },
         {
           "name": "ParseInstallation",
@@ -1939,32 +1924,6 @@
         }
       ],
       "types": [
-        {
-          "name": "Digest",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "IsZero",
-              "signature": "func() bool"
-            },
-            {
-              "name": "MarshalText",
-              "signature": "func() ([]byte, error)"
-            },
-            {
-              "name": "String",
-              "signature": "func() string"
-            },
-            {
-              "name": "UnmarshalText",
-              "signature": "func(text []byte) error"
-            },
-            {
-              "name": "Validate",
-              "signature": "func() error"
-            }
-          ]
-        },
         {
           "name": "InstallationID",
           "kind": "struct",

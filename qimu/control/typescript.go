@@ -53,7 +53,7 @@ func writeTypeScript(out io.Writer, includeProtocol bool, roots ...reflect.Type)
 			return nil
 		}
 		types[t.Name()] = t
-		if t.Kind() == reflect.Struct {
+		if t.Kind() == reflect.Struct && !jsonvalue.TextEncoded(t) {
 			for _, field := range jsonvalue.Fields(t) {
 				if err := collect(field.Type); err != nil {
 					return err
@@ -115,16 +115,11 @@ func writeTypeScript(out io.Writer, includeProtocol bool, roots ...reflect.Type)
 			}
 			continue
 		}
-		if t.Kind() != reflect.Struct {
-			base := reflect.New(t).Elem()
-			var value string
-			switch base.Kind() {
-			case reflect.String:
-				value = "string"
-			default:
+		if jsonvalue.TextEncoded(t) || t.Kind() != reflect.Struct {
+			if t.Kind() != reflect.String && t.Kind() != reflect.Struct {
 				return fmt.Errorf("control: unsupported named scalar %s", t)
 			}
-			fmt.Fprintf(&result, "export type %s = %s;\n\n", name, value)
+			fmt.Fprintf(&result, "export type %s = string;\n\n", name)
 			continue
 		}
 		fmt.Fprintf(&result, "export interface %s {\n", name)

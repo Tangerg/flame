@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/qimu"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -27,7 +28,7 @@ type requirementCatalog struct {
 	compositions  map[string]plugin.CompositionRecord
 }
 
-func ResolveRequirements(ctx context.Context, host *qimu.Host, store Store, selections SelectionStore, compositions CompositionStore, installation identity.InstallationID, digest identity.Digest, contribution plugin.ContributionID) ([]Collaborator, error) {
+func ResolveRequirements(ctx context.Context, host *qimu.Host, store Store, selections SelectionStore, compositions CompositionStore, installation identity.InstallationID, digest integrity.Digest, contribution plugin.ContributionID) ([]Collaborator, error) {
 	if host == nil {
 		return nil, plugin.ErrInvalid
 	}
@@ -230,7 +231,7 @@ func (c requirementCatalog) collaborators(root plugin.Snapshot, declaration plug
 	for _, required := range declaration.Requires {
 		var chosen *qimu.ImportDeclaration
 		for _, unit := range binding.Units {
-			if unit.Source.InstallationID != qimu.InstallationID(root.Installation.ID().String()) || unit.Source.Release != qimu.Digest(root.Selected.Digest().String()) || unit.Source.UnitID != BackendUnit(declaration.Server) {
+			if unit.Source.InstallationID != qimu.InstallationID(root.Installation.ID().String()) || unit.Source.Release != root.Selected.Digest() || unit.Source.UnitID != BackendUnit(declaration.Server) {
 				continue
 			}
 			for _, slot := range unit.Imports {
@@ -281,7 +282,7 @@ func (c requirementCatalog) plan(ctx context.Context, host *qimu.Host, root plug
 		}
 		for _, contribution := range snapshot.Selected.Declaration().Contributions {
 			for _, required := range contribution.Requires {
-				choice := qimu.BindingChoice{Unit: qimu.UnitRef{InstallationID: qimu.InstallationID(snapshot.Installation.ID().String()), Release: qimu.Digest(snapshot.Selected.Digest().String()), UnitID: BackendUnit(contribution.Server)}, Slot: RequirementSlot(contribution.ID, required.ID), Providers: []qimu.ExportRef{}}
+				choice := qimu.BindingChoice{Unit: qimu.UnitRef{InstallationID: qimu.InstallationID(snapshot.Installation.ID().String()), Release: snapshot.Selected.Digest(), UnitID: BackendUnit(contribution.Server)}, Slot: RequirementSlot(contribution.ID, required.ID), Providers: []qimu.ExportRef{}}
 				providers, err := c.candidates(required)
 				if err != nil {
 					choice.Providers = nil
@@ -299,7 +300,7 @@ func (c requirementCatalog) plan(ctx context.Context, host *qimu.Host, root plug
 			}
 		}
 	}
-	unit := qimu.UnitRef{InstallationID: qimu.InstallationID(root.Installation.ID().String()), Release: qimu.Digest(root.Selected.Digest().String()), UnitID: BackendUnit(server)}
+	unit := qimu.UnitRef{InstallationID: qimu.InstallationID(root.Installation.ID().String()), Release: root.Selected.Digest(), UnitID: BackendUnit(server)}
 	plan, err := host.PlanUnit(ctx, "", unit, choices)
 	return plan, FrameworkError(err)
 }

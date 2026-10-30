@@ -16,6 +16,7 @@ import (
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/qimu/distribution"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
@@ -142,7 +143,11 @@ func authorManifest(ctx context.Context, root *os.Root, declaration plugin.Decla
 					return manifest, err
 				}
 				for _, selected := range targets {
-					unit.Variants = append(unit.Variants, distribution.Variant{OS: selected.OS, Arch: selected.Arch, Path: server.Managed.Entry, Runtime: &distribution.RuntimeReference{Name: "node", Version: selected.Version, Digest: qimu.Digest(selected.ExecutableDigest)}})
+					executable, err := integrity.ParseDigest(selected.ExecutableDigest)
+					if err != nil {
+						return manifest, fmt.Errorf("node %s/%s executable: %w", selected.OS, selected.Arch, err)
+					}
+					unit.Variants = append(unit.Variants, distribution.Variant{OS: selected.OS, Arch: selected.Arch, Path: server.Managed.Entry, Runtime: &distribution.RuntimeReference{Name: "node", Version: selected.Version, Digest: executable}})
 				}
 			} else {
 				path, found := server.PackagedCommand()

@@ -10,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/qimu/distribution"
+	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
@@ -22,7 +23,7 @@ func (s *sourceStore) Get(context.Context, identity.InstallationID) (plugin.Snap
 func (s *sourceStore) List(context.Context) ([]plugin.Snapshot, error) {
 	return []plugin.Snapshot{s.snapshot}, nil
 }
-func (*sourceStore) Stage(context.Context, identity.InstallationID, identity.Digest) error {
+func (*sourceStore) Stage(context.Context, identity.InstallationID, integrity.Digest) error {
 	return errors.New("fixture must not mutate installations")
 }
 
@@ -45,7 +46,7 @@ func (s *sourceResources) ReadResource(_ context.Context, _ *plugin.Installation
 
 func sourceFixture(t *testing.T) (*Source, *sourceStore, *sourceResources, qimu.UnitBinding) {
 	t.Helper()
-	digest, err := identity.ParseDigest(strings.Repeat("a", 64))
+	digest, err := integrity.ParseDigest(strings.Repeat("a", 64))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,26 +76,26 @@ func sourceFixture(t *testing.T) (*Source, *sourceStore, *sourceResources, qimu.
 	if err != nil {
 		t.Fatal(err)
 	}
-	binding := qimu.UnitBinding{Source: qimu.UnitRef{InstallationID: qimu.InstallationID(id.String()), Release: qimu.Digest(digest.String()), UnitID: plugins.ComponentUnit("panel")}, Configuration: qimu.Hash(configuration), Imports: []qimu.ImportDeclaration{}}
+	binding := qimu.UnitBinding{Source: qimu.UnitRef{InstallationID: qimu.InstallationID(id.String()), Release: digest, UnitID: plugins.ComponentUnit("panel")}, Configuration: integrity.Hash(configuration), Imports: []qimu.ImportDeclaration{}}
 	return source, store, resources, binding
 }
 
 func TestComponentArtifactUsesExactAdmittedBytesAndRefusesChangedConfiguration(t *testing.T) {
 	source, store, resources, binding := sourceFixture(t)
 	artifact, err := source.Module(t.Context(), binding)
-	if err != nil || artifact.Path != plugin.Namespace+"/component.js" || artifact.Digest != qimu.Hash(resources.body) {
+	if err != nil || artifact.Path != plugin.Namespace+"/component.js" || artifact.Digest != integrity.Hash(resources.body) {
 		t.Fatalf("artifact = %+v, %v", artifact, err)
 	}
 	if resources.reads != 1 {
 		t.Fatal("module did not use the original verified resource owner")
 	}
 	changed := binding.Clone()
-	changed.Configuration = qimu.Hash([]byte("different configuration"))
+	changed.Configuration = integrity.Hash([]byte("different configuration"))
 	if _, err := source.Module(t.Context(), changed); !errors.Is(err, qimu.ErrStaleBinding) {
 		t.Fatalf("changed configuration = %v", err)
 	}
 	changed = binding.Clone()
-	changed.Source.Release = qimu.Hash([]byte("different release"))
+	changed.Source.Release = integrity.Hash([]byte("different release"))
 	if _, err := source.Module(t.Context(), changed); !errors.Is(err, plugin.ErrStale) {
 		t.Fatalf("changed release = %v", err)
 	}
