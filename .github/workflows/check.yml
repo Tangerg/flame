@@ -52,6 +52,20 @@ jobs:
           echo "FLAME_DELIVERABLES_PDFTOTEXT=/opt/local/bin/pdftotext" >> "$GITHUB_ENV"
           echo "FLAME_DELIVERABLES_TOOL_ROOTS=[\"$office_root\",\"/opt/local\"]" >> "$GITHUB_ENV"
       - run: make setup
+      - name: Capture macOS process startup stalls
+        if: runner.os == 'macOS'
+        run: |
+          node tooling/macos-process-diagnostics.mjs "$RUNNER_TEMP/flame-process-diagnostics" > "$RUNNER_TEMP/flame-process-diagnostics.log" 2>&1 &
+      - name: Diagnose macOS Runtime startup
+        if: runner.os == 'macOS'
+        env:
+          TMPDIR: /tmp
+        run: |
+          node --input-type=module <<'JS'
+          import { join } from 'node:path';
+          import { root, run, proxyEnvironment } from './tooling/workspace.mjs';
+          run('go', ['test', '-count=3', '-run', '^(TestClientRecognizesDefinitiveTransportRefusal|TestRuntimeCanConfigureRequiredKeyProviderAfterStartup)$', '.'], join(root, 'runtime'), { ...proxyEnvironment(join(root, 'out/module-proxy')), GOWORK: 'off' });
+          JS
       - name: Qualify native deliverables
         run: node plugins/scripts/test-backends.mjs
         env:
@@ -62,6 +76,13 @@ jobs:
           FLAME_DELIVERABLES_NATIVE_TESTS: "1"
       - if: runner.os == 'macOS'
         run: make check-author
+      - name: Report macOS startup diagnostics
+        if: always() && runner.os == 'macOS'
+        run: |
+          cat "$RUNNER_TEMP/flame-process-diagnostics.log"
+          if [ -d "$RUNNER_TEMP/flame-process-diagnostics" ]; then
+            find "$RUNNER_TEMP/flame-process-diagnostics" -type f -exec cat {} \;
+          fi
   native:
     runs-on: macos-15
     steps:
