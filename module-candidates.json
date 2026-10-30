@@ -55,7 +55,8 @@
     "v0.1.0-quality.20261030.2": "48d0c040d718fa68a6d92b54ffee1f8d1a3630f1",
     "v0.1.0-quality.20261030.3": "5e6b3bf47c60dc062662c4bda337e98d20cf3083",
     "v0.1.0-quality.20261030.4": "ff4692c9ec758b3179db816b2f98cc5c5da749e5",
-    "v0.1.0-quality.20261030.5": "a9f3983ea8dc0ffc5e5a9e060f8a00239e87ec79"
+    "v0.1.0-quality.20261030.5": "a9f3983ea8dc0ffc5e5a9e060f8a00239e87ec79",
+    "v0.1.0-quality.20261030.audit-merge.1": "613ec84e668e57d8769e1c4a9a0c4d41ee7b0dde"
   },
   "github.com/Tangerg/flame/plugins": {
     "v0.1.0-architecture.20261026.3": "16d3bfa89e76615a92d01a140e677c23d353bfc5",

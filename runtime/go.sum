@@ -1,9 +1,9 @@
-github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.toolchain.1 h1:8K9HApvIhH0vfBvTEG/spvAAIySZYReYY+Rdvli4Vv8=
-github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.toolchain.1/go.mod h1:XaX92MNrJokwJwzHdCxniMYvVSKKUCR+/jHV9p4ACMk=
+github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.audit-merge.1 h1:c/C5cD6Id0RGT8N5j3kRY8nGyGKKq1nGhmOKGHEgZUY=
+github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.audit-merge.1/go.mod h1:8FJnKZrZ51k1Hg36wtfxld1uQWoPR9OyNKS0uvFfgfU=
 github.com/Tangerg/flame/packages/local-runtime v0.1.0-quality.20261029.1 h1:K4hHeTNDtsjyprD65V6+auhC6bAS1EmGeYw0l/FLc90=
 github.com/Tangerg/flame/packages/local-runtime v0.1.0-quality.20261029.1/go.mod h1:k7GImwPntRgT/FNYEO+2Bx351W/ULxJUH2cU0y3zKRg=
-github.com/Tangerg/flame/qimu v0.1.0-quality.20261030.toolchain.1 h1:IRsxs/IigFl4gks/OQceZa65+64uY43mK5SAAZUzvk8=
-github.com/Tangerg/flame/qimu v0.1.0-quality.20261030.toolchain.1/go.mod h1:uGlLRUYXDfFZvsuAv+I88PHtYeIX+w2sK5CJLGXu/qA=
+github.com/Tangerg/flame/qimu v0.1.0-quality.20261030.audit-merge.1 h1:JfjhwCP3PHTgCvFUwZronce1i2Y0WENsLtCymF1jO+U=
+github.com/Tangerg/flame/qimu v0.1.0-quality.20261030.audit-merge.1/go.mod h1:uGlLRUYXDfFZvsuAv+I88PHtYeIX+w2sK5CJLGXu/qA=
 github.com/Tangerg/go-sdk v1.8.1-scope.3 h1:hMC4qrvwu38L4/bLwnPiCYi9BTRFQxGb6Cs97pa/CzQ=
 github.com/Tangerg/go-sdk v1.8.1-scope.3/go.mod h1:9ZBcxdycY3/8/I1dCH3Uo5rCY3Run9Y4ZmEmiQIulUw=
 github.com/Tangerg/scope/agent v0.58.0 h1:xDyCAIBxQXQhdouxsFbKId6dVJ8ctbvwY2JWM3AXV7o=
