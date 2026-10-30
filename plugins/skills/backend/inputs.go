@@ -10,7 +10,6 @@ import (
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
-	"github.com/google/uuid"
 )
 
 type remoteInputs struct{}
@@ -49,7 +48,7 @@ func (remoteInputs) Complete(ctx context.Context, system, user string) (string, 
 		return "", err
 	}
 	client, err := chatclient.New(chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
-		return pluginsdk.CallModel(ctx, grant, uuid.NewString(), request)
+		return pluginsdk.CallModel(ctx, grant, qimumcp.NewCommandID(), request)
 	}), chatclient.Config{})
 	if err != nil {
 		return "", err

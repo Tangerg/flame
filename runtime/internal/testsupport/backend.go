@@ -24,7 +24,7 @@ func CallCapability[P, R any](ctx context.Context, session *sdk.ClientSession, c
 	if err != nil {
 		return zero, err
 	}
-	result, err := bound.InvokeWithMetadata(ctx, id, admitted, metadata)
+	result, err := bound.InvokeWithMetadata(ctx, qimumcp.CommandID(id), admitted, metadata)
 	if err != nil {
 		return zero, err
 	}
@@ -46,7 +46,7 @@ func ReceiptCapability[P, R any](ctx context.Context, session *sdk.ClientSession
 	if err != nil {
 		return zero, false, err
 	}
-	result, found, err := bound.ReadReceipt(ctx, id, admitted)
+	result, found, err := bound.ReadReceipt(ctx, qimumcp.CommandID(id), admitted)
 	if err != nil || !found {
 		return zero, found, err
 	}

@@ -22,7 +22,7 @@ func TextEmbeddingMethod() (*qimumcp.Method[[]string, TextEmbeddings], error) {
 	return qimumcp.NewMethod[[]string, TextEmbeddings](qimumcp.MethodConfig{Name: "flame.model/embed-texts.v2", Kind: portable.Mutation, Target: extension.ScopeCall, Description: "Embed texts and identify the vector space captured by this exchange."})
 }
 
-func CallTextEmbedding(ctx context.Context, ref qimumcp.CallbackRef, id string, texts []string) (TextEmbeddings, error) {
+func CallTextEmbedding(ctx context.Context, ref qimumcp.CallbackRef, id qimumcp.CommandID, texts []string) (TextEmbeddings, error) {
 	if len(texts) == 0 {
 		return TextEmbeddings{}, errors.New("embedding call: texts are required")
 	}
@@ -30,7 +30,7 @@ func CallTextEmbedding(ctx context.Context, ref qimumcp.CallbackRef, id string, 
 	if err != nil {
 		return TextEmbeddings{}, err
 	}
-	vectors, err := qimumcp.CallHost(ctx, ref, method, id, slices.Clone(texts))
+	vectors, err := qimumcp.CallHost(ctx, ref, method, qimumcp.CommandID(id), slices.Clone(texts))
 	if err != nil {
 		return TextEmbeddings{}, err
 	}
@@ -54,10 +54,10 @@ func NewTextEmbeddingCallback(call func(context.Context, qimumcp.Command[[]strin
 		if len(command.Input) == 0 {
 			return TextEmbeddings{}, errors.New("embedding call: texts are required")
 		}
-		if parent, err := qimumcp.InvocationFromContext(ctx); err == nil && parent.ID == command.ID {
+		if parent, err := qimumcp.InvocationFromContext(ctx); err == nil && parent.ID == string(command.ID) {
 			return TextEmbeddings{}, errors.New("embedding call: independent invocation requires a distinct identity")
 		}
-		ctx, err := modelCallContext(ctx, command.ID)
+		ctx, err := modelCallContext(ctx, string(command.ID))
 		if err != nil {
 			return TextEmbeddings{}, err
 		}

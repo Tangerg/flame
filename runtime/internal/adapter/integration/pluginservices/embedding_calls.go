@@ -19,7 +19,7 @@ func EmbeddingRoleCallback(resolve func(context.Context) (models.TextEmbedder, e
 		return qimumcp.Callback{}, errors.New("embedding call: role resolver is required")
 	}
 	return pluginsdk.NewTextEmbeddingCallback(func(ctx context.Context, command qimumcp.Command[[]string]) (result pluginsdk.TextEmbeddings, returned error) {
-		if command.ID == executionctx.InvocationOwner(ctx) {
+		if string(command.ID) == executionctx.InvocationOwner(ctx) {
 			return pluginsdk.TextEmbeddings{}, errors.New("embedding call: independent invocation cannot claim its executing owner identity")
 		}
 		model, err := resolve(ctx)

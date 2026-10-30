@@ -169,7 +169,7 @@ func serveCallbackStream(w http.ResponseWriter, r *http.Request, method boundMet
 
 // StreamHost starts one delivery only when consumed. Closing iteration cancels it;
 // transport writes and reads provide bounded backpressure without an event queue.
-func StreamHost[P, C, R any](ctx context.Context, ref CallbackRef, method *StreamingMethod[P, C, R], id string, input P) iter.Seq2[StreamValue[C, R], error] {
+func StreamHost[P, C, R any](ctx context.Context, ref CallbackRef, method *StreamingMethod[P, C, R], id CommandID, input P) iter.Seq2[StreamValue[C, R], error] {
 	admitted, admissionErr := jsonvalue.Encode(input)
 	return func(yield func(StreamValue[C, R], error) bool) {
 		fail := func(err error) {
@@ -188,7 +188,7 @@ func StreamHost[P, C, R any](ctx context.Context, ref CallbackRef, method *Strea
 			return
 		}
 		if method.contract.Kind() == portable.Mutation {
-			if err := ValidateCommandID(id); err != nil {
+			if err := CommandID(id).Validate(); err != nil {
 				fail(err)
 				return
 			}

@@ -50,7 +50,7 @@ func ReadToolReceipt(ctx context.Context, session *sdk.ClientSession, callID, re
 	if err != nil {
 		return nil, err
 	}
-	request := qimumcp.ReceiptRequest{ID: id, Method: remote, InputDigest: admitted.Digest()}
+	request := qimumcp.ReceiptRequest{ID: qimumcp.CommandID(id), Method: remote, InputDigest: admitted.Digest()}
 	if err := request.Validate(); err != nil {
 		return nil, err
 	}

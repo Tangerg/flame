@@ -52,7 +52,7 @@ func ModelMethod() (*qimumcp.Method[chat.Request, ModelResult], error) {
 	})
 }
 
-func CallModel(ctx context.Context, ref qimumcp.CallbackRef, id string, request *chat.Request) (*chat.Response, error) {
+func CallModel(ctx context.Context, ref qimumcp.CallbackRef, id qimumcp.CommandID, request *chat.Request) (*chat.Response, error) {
 	if err := request.Validate(); err != nil {
 		return nil, err
 	}
@@ -60,7 +60,7 @@ func CallModel(ctx context.Context, ref qimumcp.CallbackRef, id string, request 
 	if err != nil {
 		return nil, err
 	}
-	result, err := qimumcp.CallHost(ctx, ref, method, id, *request.Clone())
+	result, err := qimumcp.CallHost(ctx, ref, method, qimumcp.CommandID(id), *request.Clone())
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func NewModelCallback(call func(context.Context, qimumcp.Command[chat.Request]) 
 			return ModelResult{}, err
 		}
 		command.Input = *command.Input.Clone()
-		ctx, err := modelCallContext(ctx, command.ID)
+		ctx, err := modelCallContext(ctx, string(command.ID))
 		if err != nil {
 			return ModelResult{}, err
 		}

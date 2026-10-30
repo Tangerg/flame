@@ -11,6 +11,7 @@ import (
 
 	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/scope/core/jsonschema"
 )
 
 func TestCallsRejectAmbiguousBackendReplies(t *testing.T) {
@@ -117,7 +118,7 @@ func TestCommandsRejectMalformedEnvelopeBeforeMutation(t *testing.T) {
 		{Input: "input"},
 		{CommandID: "command"},
 		{Input: (*string)(nil), CommandID: "command"},
-		{Input: "input", CommandID: strings.Repeat("c", MaxCommandIDBytes+1)},
+		{Input: "input", CommandID: strings.Repeat("c", MaxCommandIDCharacters+1)},
 		{Input: "input", CommandID: "command", Extra: true},
 	} {
 		params.Protocol = portable.Protocol
@@ -295,4 +296,25 @@ func testMethod[P, R any](t *testing.T, name string, kind portable.MethodKind) *
 		t.Fatal(err)
 	}
 	return method
+}
+
+// The schema projection and Validate must admit the same identities, including
+// whitespace and multibyte values at the code point boundary.
+func TestCommandIDSchemaMatchesValidation(t *testing.T) {
+	schema, err := jsonschema.For[struct {
+		ID CommandID `json:"id"`
+	}]()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"receipt_1", " ", "", strings.Repeat("😀", MaxCommandIDCharacters), strings.Repeat("😀", MaxCommandIDCharacters+1), strings.Repeat("a", MaxCommandIDCharacters+1)} {
+		valid := CommandID(id).Validate() == nil
+		encoded, err := json.Marshal(map[string]string{"id": id})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if admitted := schema.Validate(encoded) == nil; admitted != valid {
+			t.Errorf("CommandID(%q): schema admits %t, Validate admits %t", id, admitted, valid)
+		}
+	}
 }

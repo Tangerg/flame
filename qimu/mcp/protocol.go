@@ -12,36 +12,36 @@ import (
 
 //go:generate go run ./cmd/protocolgen --out ../node/src/protocol.generated.json
 type ProtocolConstants struct {
-	Protocol              string `json:"protocol"`
-	InvokeMethod          string `json:"invokeMethod"`
-	DescribeMethod        string `json:"describeMethod"`
-	ValidateMethod        string `json:"validateMethod"`
-	SetupMethod           string `json:"setupMethod"`
-	ActivateMethod        string `json:"activateMethod"`
-	CallbackMetadataKey   string `json:"callbackMetadataKey"`
-	StreamMetadataKey     string `json:"streamMetadataKey"`
-	CallHeader            string `json:"CallHeader"`
-	InvocationHeader      string `json:"InvocationHeader"`
-	InvocationMetadataKey string `json:"InvocationMetadataKey"`
-	ReceiptMethod         string `json:"ReceiptMethod"`
-	MaxCommandIDBytes     int    `json:"maxCommandIDBytes"`
+	Protocol               string `json:"protocol"`
+	InvokeMethod           string `json:"invokeMethod"`
+	DescribeMethod         string `json:"describeMethod"`
+	ValidateMethod         string `json:"validateMethod"`
+	SetupMethod            string `json:"setupMethod"`
+	ActivateMethod         string `json:"activateMethod"`
+	CallbackMetadataKey    string `json:"callbackMetadataKey"`
+	StreamMetadataKey      string `json:"streamMetadataKey"`
+	CallHeader             string `json:"CallHeader"`
+	InvocationHeader       string `json:"InvocationHeader"`
+	InvocationMetadataKey  string `json:"InvocationMetadataKey"`
+	ReceiptMethod          string `json:"ReceiptMethod"`
+	MaxCommandIDCharacters int    `json:"maxCommandIDCharacters"`
 }
 
 func ProtocolJSON() ([]byte, error) {
 	constants := ProtocolConstants{
-		Protocol:              portable.Protocol,
-		InvokeMethod:          InvokeMethod,
-		DescribeMethod:        DescribeMethod,
-		ValidateMethod:        ValidateMethod,
-		SetupMethod:           SetupMethod,
-		ActivateMethod:        ActivateMethod,
-		CallbackMetadataKey:   CallbackMetadataKey,
-		StreamMetadataKey:     StreamMetadataKey,
-		CallHeader:            CallHeader,
-		InvocationHeader:      InvocationHeader,
-		InvocationMetadataKey: InvocationMetadataKey,
-		ReceiptMethod:         ReceiptMethod,
-		MaxCommandIDBytes:     MaxCommandIDBytes,
+		Protocol:               portable.Protocol,
+		InvokeMethod:           InvokeMethod,
+		DescribeMethod:         DescribeMethod,
+		ValidateMethod:         ValidateMethod,
+		SetupMethod:            SetupMethod,
+		ActivateMethod:         ActivateMethod,
+		CallbackMetadataKey:    CallbackMetadataKey,
+		StreamMetadataKey:      StreamMetadataKey,
+		CallHeader:             CallHeader,
+		InvocationHeader:       InvocationHeader,
+		InvocationMetadataKey:  InvocationMetadataKey,
+		ReceiptMethod:          ReceiptMethod,
+		MaxCommandIDCharacters: MaxCommandIDCharacters,
 	}
 	receipt, err := ReceiptQuery()
 	if err != nil {

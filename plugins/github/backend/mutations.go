@@ -108,7 +108,7 @@ func registerWrite[P, R any](backend *qimumcp.Backend, tools *[]tool.Tool, recei
 			var zero R
 			return zero, err
 		}
-		return mutate(ctx, c, contract, command.ID, original, call)
+		return mutate(ctx, c, contract, string(command.ID), original, call)
 	}); err != nil {
 		return err
 	}

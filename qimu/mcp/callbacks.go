@@ -637,7 +637,7 @@ var callbackClient = &http.Client{
 	CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 }
 
-func CallHost[P, R any](ctx context.Context, ref CallbackRef, method *Method[P, R], id string, input P) (R, error) {
+func CallHost[P, R any](ctx context.Context, ref CallbackRef, method *Method[P, R], id CommandID, input P) (R, error) {
 	var zero R
 	if err := ref.Validate(); err != nil {
 		return zero, err
@@ -646,7 +646,7 @@ func CallHost[P, R any](ctx context.Context, ref CallbackRef, method *Method[P, 
 		return zero, errors.New("plugin: callback method is required")
 	}
 	if method.contract.Kind() == portable.Mutation {
-		if err := ValidateCommandID(id); err != nil {
+		if err := CommandID(id).Validate(); err != nil {
 			return zero, err
 		}
 	} else if id != "" {

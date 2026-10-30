@@ -95,7 +95,7 @@ func RegisterCommand[P, R any](server *qimumcp.Backend, db *sql.DB, method *qimu
 			var zero R
 			return zero, err
 		}
-		return Command(ctx, db, method.Name(), command.ID, admitted, classify, func(ctx context.Context, input P) (R, error) { return handler(ctx, session, input) })
+		return Command(ctx, db, method.Name(), string(command.ID), admitted, classify, func(ctx context.Context, input P) (R, error) { return handler(ctx, session, input) })
 	})
 }
 
@@ -103,7 +103,7 @@ func validateCommandIdentity(db *sql.DB, method, id string) error {
 	if db == nil || !portable.ValidMethodName(method) {
 		return errors.New("managed plugin: database and valid method identity are required")
 	}
-	if err := qimumcp.ValidateCommandID(id); err != nil {
+	if err := qimumcp.CommandID(id).Validate(); err != nil {
 		return fmt.Errorf("managed plugin: %w", err)
 	}
 	return nil

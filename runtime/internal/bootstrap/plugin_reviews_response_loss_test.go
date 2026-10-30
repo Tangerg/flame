@@ -504,7 +504,7 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	recovered, found, err := original.ReadReceipt(ctx, identity, input)
+	recovered, found, err := original.ReadReceipt(ctx, qimumcp.CommandID(identity), input)
 	if err != nil || !found {
 		t.Fatalf("read-only lookup did not recover the committed receipt: %+v, %t, %v", recovered, found, err)
 	}

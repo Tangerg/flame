@@ -28,7 +28,7 @@ type invokeParams struct {
 	Export     string           `json:"export,omitzero"`
 	Capability integrity.Digest `json:"capability,omitzero"`
 	Input      jsontext.Value   `json:"input"`
-	CommandID  string           `json:"commandId,omitzero"`
+	CommandID  CommandID        `json:"commandId,omitzero"`
 }
 
 func (p *invokeParams) UnmarshalJSON(data []byte) error {

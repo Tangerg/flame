@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/qimu/integrity"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -18,7 +19,7 @@ func TestDocumentAndResultKeepTheOriginalContentVersion(t *testing.T) {
 	if err := changed.Validate(); err == nil {
 		t.Fatal("altered snapshot retained original version")
 	}
-	if err := (Transformation{Version: strings.Repeat("0", 64), Content: new("replacement")}).Validate(source); err == nil {
+	if err := (Transformation{Version: integrity.Hash([]byte("another source")), Content: new("replacement")}).Validate(source); err == nil {
 		t.Fatal("another source version accepted")
 	}
 	if _, err := NewDocument(source.Workspace, "../outside", "text"); err == nil {

@@ -2474,15 +2474,15 @@
       "functions": [
         {
           "name": "CallModel",
-          "signature": "func(ctx context.Context, ref mcp.CallbackRef, id string, request *chat.Request) (*chat.Response, error)"
+          "signature": "func(ctx context.Context, ref mcp.CallbackRef, id mcp.CommandID, request *chat.Request) (*chat.Response, error)"
         },
         {
           "name": "CallSelectedModel",
-          "signature": "func(ctx context.Context, ref mcp.CallbackRef, id string, input ModelCallRequest) (*chat.Response, error)"
+          "signature": "func(ctx context.Context, ref mcp.CallbackRef, id mcp.CommandID, input ModelCallRequest) (*chat.Response, error)"
         },
         {
           "name": "CallTextEmbedding",
-          "signature": "func(ctx context.Context, ref mcp.CallbackRef, id string, texts []string) (TextEmbeddings, error)"
+          "signature": "func(ctx context.Context, ref mcp.CallbackRef, id mcp.CommandID, texts []string) (TextEmbeddings, error)"
         },
         {
           "name": "DefiniteToolFailure",
@@ -2570,11 +2570,11 @@
         },
         {
           "name": "StreamModel",
-          "signature": "func(ctx context.Context, ref mcp.CallbackRef, id string, request *chat.Request) iter.Seq2[mcp.StreamValue[chat.ResponseDelta, ModelResult], error]"
+          "signature": "func(ctx context.Context, ref mcp.CallbackRef, id mcp.CommandID, request *chat.Request) iter.Seq2[mcp.StreamValue[chat.ResponseDelta, ModelResult], error]"
         },
         {
           "name": "StreamSelectedModel",
-          "signature": "func(ctx context.Context, ref mcp.CallbackRef, id string, input ModelCallRequest) iter.Seq2[mcp.StreamValue[chat.ResponseDelta, ModelResult], error]"
+          "signature": "func(ctx context.Context, ref mcp.CallbackRef, id mcp.CommandID, input ModelCallRequest) iter.Seq2[mcp.StreamValue[chat.ResponseDelta, ModelResult], error]"
         },
         {
           "name": "TextEmbeddingMethod",
@@ -2911,6 +2911,7 @@
     {
       "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/codeintel",
       "imports": [
+        "github.com/Tangerg/flame/qimu/integrity",
         "github.com/Tangerg/flame/qimu/mcp",
         "github.com/Tangerg/flame/qimu/portable"
       ],
@@ -2966,8 +2967,8 @@
             },
             {
               "name": "Version",
-              "type": "string",
-              "tag": "json:\"version\" jsonschema:\"pattern=^[a-f0-9]{64}$\""
+              "type": "integrity.Digest",
+              "tag": "json:\"version\""
             },
             {
               "name": "Content",
@@ -3010,8 +3011,8 @@
           "fields": [
             {
               "name": "Version",
-              "type": "string",
-              "tag": "json:\"version\" jsonschema:\"pattern=^[a-f0-9]{64}$\""
+              "type": "integrity.Digest",
+              "tag": "json:\"version\""
             },
             {
               "name": "Problems",
@@ -3037,8 +3038,8 @@
           "fields": [
             {
               "name": "Version",
-              "type": "string",
-              "tag": "json:\"version\" jsonschema:\"pattern=^[a-f0-9]{64}$\""
+              "type": "integrity.Digest",
+              "tag": "json:\"version\""
             },
             {
               "name": "Content",
@@ -3870,6 +3871,10 @@
           "signature": "func() (*mcp.Method[EmbeddingRequest, EmbeddingResult], error)"
         },
         {
+          "name": "NewHandleID",
+          "signature": "func() (HandleID, error)"
+        },
+        {
           "name": "OpenChatMethod",
           "signature": "func() (*mcp.Method[Open, Chat], error)"
         },
@@ -3916,8 +3921,8 @@
             },
             {
               "name": "Original",
-              "type": "string",
-              "tag": "json:\"original\" jsonschema:\"pattern=\\\\S,maxLength=256\""
+              "type": "mcp.CommandID",
+              "tag": "json:\"original\""
             },
             {
               "name": "Provider",
@@ -4161,11 +4166,26 @@
           "fields": [
             {
               "name": "ID",
-              "type": "string",
-              "tag": "json:\"id\" jsonschema:\"pattern=^[a-f0-9]{64}$\""
+              "type": "HandleID",
+              "tag": "json:\"id\""
             }
           ],
           "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "HandleID",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaPattern",
+              "signature": "func() string"
+            },
             {
               "name": "Validate",
               "signature": "func() error"
@@ -4258,8 +4278,8 @@
           "fields": [
             {
               "name": "Original",
-              "type": "string",
-              "tag": "json:\"original\" jsonschema:\"pattern=\\\\S,maxLength=256\""
+              "type": "mcp.CommandID",
+              "tag": "json:\"original\""
             }
           ],
           "methods": [

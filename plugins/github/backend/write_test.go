@@ -89,7 +89,7 @@ func invokeGitHub(t *testing.T, session *sdk.ClientSession, contracts rpc.Contra
 	if err != nil {
 		t.Fatal(err)
 	}
-	return githubBinding(t, session, contracts, method).Invoke(ctx, id, input)
+	return githubBinding(t, session, contracts, method).Invoke(ctx, qimumcp.CommandID(id), input)
 }
 
 func TestGitHubTypedAndModelWritesShareAdmissionOutcomesAndRecovery(t *testing.T) {

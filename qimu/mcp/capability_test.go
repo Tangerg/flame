@@ -162,7 +162,7 @@ func TestCapabilityReceiptRecoveryKeepsTheCapturedExport(t *testing.T) {
 	session := methodSession(t, func(backend *Backend) error {
 		if err := method.RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command Command[string]) (string, error) {
 			calls.Add(1)
-			receipts[command.ID], _ = json.Marshal(methodResult[string]{Value: &command.Input})
+			receipts[string(command.ID)], _ = json.Marshal(methodResult[string]{Value: &command.Input})
 			return "", errors.New("observation lost after commit")
 		}); err != nil {
 			return err
@@ -170,7 +170,7 @@ func TestCapabilityReceiptRecoveryKeepsTheCapturedExport(t *testing.T) {
 		if err := testMethod[ReceiptRequest, Receipt](t, ReceiptMethod, portable.Query).RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command Command[ReceiptRequest]) (Receipt, error) {
 			request := command.Input
 			lookups.Add(1)
-			reply := receipts[request.ID]
+			reply := receipts[string(request.ID)]
 			return Receipt{Found: len(reply) > 0, Reply: reply}, nil
 		}); err != nil {
 			return err

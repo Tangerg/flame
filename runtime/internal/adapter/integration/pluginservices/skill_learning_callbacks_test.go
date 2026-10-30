@@ -103,12 +103,12 @@ func TestLearningGrantBoundsSourceReadsAndRetainsModelAncestry(t *testing.T) {
 		t.Fatalf("admitted source = %s", name)
 	}
 	for _, id := range []string{"first", "second"} {
-		if _, err := pluginsdk.CallModel(t.Context(), grant, id, testModelRequest()); err != nil {
+		if _, err := pluginsdk.CallModel(t.Context(), grant, qimumcp.CommandID(id), testModelRequest()); err != nil {
 			t.Fatal(err)
 		}
 	}
 	for _, id := range []string{"first", "third"} {
-		if _, err := pluginsdk.CallModel(t.Context(), grant, id, testModelRequest()); err == nil {
+		if _, err := pluginsdk.CallModel(t.Context(), grant, qimumcp.CommandID(id), testModelRequest()); err == nil {
 			t.Fatalf("model invocation %s escaped its budget", id)
 		}
 	}

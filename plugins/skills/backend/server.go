@@ -67,7 +67,7 @@ func learningCommand[P, R any](ctx context.Context, l *learner, method string, c
 		return zero, err
 	}
 	var request P
-	prepared, reply, err := pluginstorage.AdmitCommand(ctx, l.db, method, command.ID, input, func(context.Context) error {
+	prepared, reply, err := pluginstorage.AdmitCommand(ctx, l.db, method, string(command.ID), input, func(context.Context) error {
 		if err := json.Unmarshal(input.JSON(), &request, json.RejectUnknownMembers(true)); err != nil {
 			return err
 		}

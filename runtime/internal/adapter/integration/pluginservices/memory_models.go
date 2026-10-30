@@ -63,7 +63,7 @@ func GrantMemoryModels(ctx context.Context, callbacks *qimumcp.Callbacks, sessio
 		if err != nil {
 			return nil, err
 		}
-		if err := admission.admit(command.ID, "model", input); err != nil {
+		if err := admission.admit(string(command.ID), "model", input); err != nil {
 			return nil, err
 		}
 		return model.Call(ctx, request.Clone())
@@ -80,7 +80,7 @@ func GrantMemoryModels(ctx context.Context, callbacks *qimumcp.Callbacks, sessio
 		if lo.IsNil(embed) || len(texts) == 0 || len(texts) > memorycontract.MaxEmbeddingTexts || int64(len(input.JSON())) > memorycontract.MaxEmbeddingInputBytes {
 			return pluginsdk.TextEmbeddings{}, &portable.Refusal{Code: "embedding_envelope", Message: "memory: embedding envelope refused"}
 		}
-		if err := admission.admit(command.ID, "embedding", input); err != nil {
+		if err := admission.admit(string(command.ID), "embedding", input); err != nil {
 			return pluginsdk.TextEmbeddings{}, err
 		}
 		vectors, err := embed.Embed(ctx, texts)

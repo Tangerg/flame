@@ -91,7 +91,7 @@ func (s *store) list(ctx context.Context) ([]reviews.Snapshot, error) {
 // Receipt reads the original owner result without entering Update. Method and
 // input binding remain required even after the review has advanced again.
 func (s *store) receipt(ctx context.Context, request qimumcp.ReceiptRequest, updateMethod string) (qimumcp.Receipt, error) {
-	if err := validateInvocationID(request.ID); err != nil {
+	if err := validateInvocationID(string(request.ID)); err != nil {
 		return qimumcp.Receipt{}, err
 	}
 	if request.Method != updateMethod {

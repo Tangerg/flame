@@ -21,8 +21,7 @@
                 "type": "string"
               },
               "version": {
-                "pattern": "^[a-f0-9]{64}$",
-                "type": "string"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvaW50ZWdyaXR5_Digest"
               },
               "workspace": {
                 "type": "string"
@@ -35,6 +34,14 @@
               "content"
             ],
             "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvaW50ZWdyaXR5_Digest": {
+            "allOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            ],
+            "type": "string"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -47,8 +54,7 @@
             "type": "string"
           },
           "version": {
-            "pattern": "^[a-f0-9]{64}$",
-            "type": "string"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvaW50ZWdyaXR5_Digest"
           },
           "workspace": {
             "type": "string"
@@ -71,14 +77,21 @@
                 "type": "string"
               },
               "version": {
-                "pattern": "^[a-f0-9]{64}$",
-                "type": "string"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvaW50ZWdyaXR5_Digest"
               }
             },
             "required": [
               "version"
             ],
             "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvaW50ZWdyaXR5_Digest": {
+            "allOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            ],
+            "type": "string"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -88,8 +101,7 @@
             "type": "string"
           },
           "version": {
-            "pattern": "^[a-f0-9]{64}$",
-            "type": "string"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvaW50ZWdyaXR5_Digest"
           }
         },
         "required": [
@@ -115,8 +127,7 @@
                 "type": "string"
               },
               "version": {
-                "pattern": "^[a-f0-9]{64}$",
-                "type": "string"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvaW50ZWdyaXR5_Digest"
               },
               "workspace": {
                 "type": "string"
@@ -148,6 +159,14 @@
               "baseline"
             ],
             "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvaW50ZWdyaXR5_Digest": {
+            "allOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            ],
+            "type": "string"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -184,8 +203,7 @@
                 "type": "string"
               },
               "version": {
-                "pattern": "^[a-f0-9]{64}$",
-                "type": "string"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvaW50ZWdyaXR5_Digest"
               }
             },
             "required": [
@@ -194,6 +212,14 @@
               "summary"
             ],
             "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvaW50ZWdyaXR5_Digest": {
+            "allOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            ],
+            "type": "string"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -209,8 +235,7 @@
             "type": "string"
           },
           "version": {
-            "pattern": "^[a-f0-9]{64}$",
-            "type": "string"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvaW50ZWdyaXR5_Digest"
           }
         },
         "required": [

@@ -16,7 +16,7 @@ import (
 // ProcessRequestFrameBytes bounds a NewProcessClient frame without opening a session.
 // The SDK's int64 request counter and, for streams, any valid callback grant
 // are included, so callers can reduce input before allocating or dispatching it.
-func ProcessRequestFrameBytes(ctx context.Context, contract *portable.Capability, export, method, id string, input jsonvalue.Value, metadata sdk.ParamsBase) (int, error) {
+func ProcessRequestFrameBytes(ctx context.Context, contract *portable.Capability, export, method string, id CommandID, input jsonvalue.Value, metadata sdk.ParamsBase) (int, error) {
 	if contract == nil || !portable.ValidExportName(export) {
 		return 0, errors.New("plugin: frame requires an exact capability export")
 	}

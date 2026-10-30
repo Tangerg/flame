@@ -48,7 +48,7 @@ func TestModelCallbackProjectsDistinctCallsWithOriginalOriginAndParent(t *testin
 	seen := make(chan portable.Invocation, 2)
 	callback, err := NewModelCallback(func(ctx context.Context, command qimumcp.Command[chat.Request]) (*chat.Response, error) {
 		invocation, err := qimumcp.InvocationFromContext(ctx)
-		if err != nil || invocation.ID != command.ID {
+		if err != nil || invocation.ID != string(command.ID) {
 			return nil, errors.Join(err, errors.New("model command identity was not projected"))
 		}
 		seen <- invocation
@@ -65,7 +65,7 @@ func TestModelCallbackProjectsDistinctCallsWithOriginalOriginAndParent(t *testin
 	defer release()
 	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original input")))
 	for _, id := range []string{"extract", "curate"} {
-		if _, err := CallModel(ctx, ref, id, request); err != nil {
+		if _, err := CallModel(ctx, ref, qimumcp.CommandID(id), request); err != nil {
 			t.Fatal(err)
 		}
 		actual := <-seen

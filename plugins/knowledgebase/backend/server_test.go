@@ -61,7 +61,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	var calls atomic.Int32
 	embedding, err := pluginsdk.NewTextEmbeddingCallback(func(ctx context.Context, command qimumcp.Command[[]string]) (pluginsdk.TextEmbeddings, error) {
 		owner, err := qimumcp.InvocationFromContext(ctx)
-		if err != nil || owner.ID != command.ID || owner.Parent != "knowledge-entry" {
+		if err != nil || owner.ID != string(command.ID) || owner.Parent != "knowledge-entry" {
 			t.Errorf("embedding lost calling owner: %+v, %v", owner, err)
 		}
 		calls.Add(1)

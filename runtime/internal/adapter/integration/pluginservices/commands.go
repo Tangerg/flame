@@ -153,10 +153,10 @@ func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admit
 			return zero, err
 		}
 		defer c.publish.Notify(invalidation.Notice{Resource: invalidation.PluginData})
-		result, err = bound.InvokeWithMetadata(ctx, id, record.Input, metadata)
+		result, err = bound.InvokeWithMetadata(ctx, qimumcp.CommandID(id), record.Input, metadata)
 	} else {
 		var found bool
-		result, found, err = bound.ReadReceipt(ctx, id, record.Input)
+		result, found, err = bound.ReadReceipt(ctx, qimumcp.CommandID(id), record.Input)
 		if !found && err == nil {
 			err = plugin.ErrCommandUnconfirmed
 		}

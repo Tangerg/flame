@@ -13,11 +13,13 @@ import {
 import { compileSchema } from "./schema.ts";
 import wire from "./protocol.generated.json";
 
-it("uses the Go-owned byte budgets for protocol tokens and command identities", () => {
-  expect(validCommand("a".repeat(wire.constants.maxCommandIDBytes))).toBe(true);
-  expect(validCommand("a".repeat(wire.constants.maxCommandIDBytes + 1))).toBe(
-    false,
-  );
+it("uses the Go-owned budgets for protocol tokens and command identities", () => {
+  const limit = wire.constants.maxCommandIDCharacters;
+  expect(validCommand("a".repeat(limit))).toBe(true);
+  expect(validCommand("a".repeat(limit + 1))).toBe(false);
+  expect(validCommand("😀".repeat(limit))).toBe(true);
+  expect(validCommand("😀".repeat(limit + 1))).toBe(false);
+  expect(validCommand(" ")).toBe(true);
   expect(validToken("a".repeat(wire.limits.maxTokenBytes))).toBe(true);
   expect(validToken("a".repeat(wire.limits.maxTokenBytes + 1))).toBe(false);
   expect(validCommand("two words")).toBe(true);

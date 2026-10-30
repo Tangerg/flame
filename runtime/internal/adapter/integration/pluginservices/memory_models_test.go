@@ -93,7 +93,7 @@ func TestModelGrantBindsSessionBudgetAndRevocation(t *testing.T) {
 		t.Fatal("another connection borrowed model authority")
 	}
 	for index := range memorycontract.MaxModelCalls {
-		value, err := pluginsdk.CallModel(t.Context(), grant, fmt.Sprintf("original-%d", index), testModelRequest())
+		value, err := pluginsdk.CallModel(t.Context(), grant, qimumcp.CommandID(fmt.Sprintf("original-%d", index)), testModelRequest())
 		if err != nil || value == nil || value.Output.Message.Text() != "fact" {
 			t.Fatalf("completion=%+v %v", value, err)
 		}

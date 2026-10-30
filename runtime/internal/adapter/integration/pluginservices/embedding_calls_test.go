@@ -77,7 +77,7 @@ func TestOrdinaryCallbackPublishesEmbeddingRoleWithoutFeaturePolicy(t *testing.T
 			}
 			defer release()
 			for _, id := range []string{"first", "second", "third"} {
-				vectors, err := pluginsdk.CallTextEmbedding(t.Context(), ref, id, []string{"text"})
+				vectors, err := pluginsdk.CallTextEmbedding(t.Context(), ref, qimumcp.CommandID(id), []string{"text"})
 				if state == "configured" {
 					if err != nil || vectors.Space != model.ID() || len(vectors.Vectors) != 1 || len(vectors.Vectors[0]) != 1 || vectors.Vectors[0][0] != 1 {
 						t.Fatalf("ordinary embedding = %+v, %v", vectors, err)

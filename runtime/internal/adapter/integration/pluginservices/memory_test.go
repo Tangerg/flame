@@ -175,7 +175,7 @@ func TestMemoryMaintenanceCapturesBusinessInputAndRecoversBackendReceipts(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	receipt, found, err := maintain.ReadReceipt(receiptContext, id, recorded.Snapshot().Input)
+	receipt, found, err := maintain.ReadReceipt(receiptContext, qimumcp.CommandID(id), recorded.Snapshot().Input)
 	if err != nil || !found {
 		t.Fatalf("original backend receipt: %v, %v", found, err)
 	}

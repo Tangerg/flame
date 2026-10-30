@@ -3,11 +3,14 @@
 package modelprovider
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/url"
+	"regexp"
 	"slices"
 	"strings"
 	"unicode"
@@ -141,25 +144,43 @@ func (o Open) Validate() error {
 	return err
 }
 
-type Handle struct {
-	ID string `json:"id" jsonschema:"pattern=^[a-f0-9]{64}$"`
+var handleExpression = regexp.MustCompile(`^[a-f0-9]{64}$`)
+
+// HandleID is an opaque 256-bit capability for one opened client, spelled in
+// lowercase hexadecimal; possession of it is the only authority to call.
+type HandleID string
+
+func NewHandleID() (HandleID, error) {
+	var token [32]byte
+	if _, err := rand.Read(token[:]); err != nil {
+		return "", err
+	}
+	return HandleID(hex.EncodeToString(token[:])), nil
 }
 
-func (h Handle) Validate() error {
-	if len(h.ID) != 64 || strings.ContainsFunc(h.ID, func(r rune) bool { return !(r >= '0' && r <= '9' || r >= 'a' && r <= 'f') }) {
+func (id HandleID) Validate() error {
+	if !handleExpression.MatchString(string(id)) {
 		return errors.New("model provider: invalid model handle")
 	}
 	return nil
 }
 
+func (HandleID) JSONSchemaPattern() string { return handleExpression.String() }
+
+type Handle struct {
+	ID HandleID `json:"id"`
+}
+
+func (h Handle) Validate() error { return h.ID.Validate() }
+
 type Chat struct {
 	Handle
-	Original      string         `json:"original" jsonschema:"pattern=\\S,maxLength=256"`
-	Provider      string         `json:"provider"`
-	Model         string         `json:"model"`
-	Streaming     bool           `json:"streaming"`
-	TokenCounting bool           `json:"tokenCounting"`
-	Metadata      *catalog.Model `json:"metadata,omitzero"`
+	Original      qimumcp.CommandID `json:"original"`
+	Provider      string            `json:"provider"`
+	Model         string            `json:"model"`
+	Streaming     bool              `json:"streaming"`
+	TokenCounting bool              `json:"tokenCounting"`
+	Metadata      *catalog.Model    `json:"metadata,omitzero"`
 }
 
 func (c Chat) Validate() error {
@@ -169,7 +190,7 @@ func (c Chat) Validate() error {
 	if _, err := modelchoice.NewModelIdentity(c.Model); err != nil {
 		return err
 	}
-	if err := errors.Join(c.Handle.Validate(), qimumcp.ValidateCommandID(c.Original)); err != nil {
+	if err := errors.Join(c.Handle.Validate(), c.Original.Validate()); err != nil {
 		return err
 	}
 	if c.Metadata != nil {
@@ -184,10 +205,10 @@ func (c Chat) Validate() error {
 }
 
 type Reopen struct {
-	Original string `json:"original" jsonschema:"pattern=\\S,maxLength=256"`
+	Original qimumcp.CommandID `json:"original"`
 }
 
-func (r Reopen) Validate() error { return qimumcp.ValidateCommandID(r.Original) }
+func (r Reopen) Validate() error { return r.Original.Validate() }
 
 type Embedder struct {
 	Handle

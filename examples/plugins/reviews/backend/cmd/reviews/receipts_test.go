@@ -69,7 +69,7 @@ func TestPublicReceiptLookupRetainsOriginalOutcomeAcrossBackendRestart(t *testin
 		id     string
 		result reviews.UpdateResult
 	}{{"original", original}, {"refused", refused}} {
-		value, found, err := updateMethod.ReadReceipt(t.Context(), expected.id, input)
+		value, found, err := updateMethod.ReadReceipt(t.Context(), qimumcp.CommandID(expected.id), input)
 		if err != nil || !found || !reflect.DeepEqual(value, expected.result) {
 			t.Fatalf("original receipt = %+v, %t, %v", value, found, err)
 		}

@@ -24,14 +24,14 @@ func runNow(ctx context.Context, db *sql.DB, store store, connect runConnector, 
 	if err != nil {
 		return app.RunReference{}, err
 	}
-	if invocation.ID != command.ID {
+	if invocation.ID != string(command.ID) {
 		return app.RunReference{}, errors.New("schedules: manual command differs from its calling owner")
 	}
 	input, err := command.RequestInput()
 	if err != nil {
 		return app.RunReference{}, err
 	}
-	return captureManual(ctx, db, store, connect, manualCommand{id: command.ID, admitted: input})
+	return captureManual(ctx, db, store, connect, manualCommand{id: string(command.ID), admitted: input})
 }
 
 type manualCommand struct {

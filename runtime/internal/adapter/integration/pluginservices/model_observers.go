@@ -159,7 +159,7 @@ func (a *observationAdmission) enter(command qimumcp.Command[chat.Request]) erro
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	exact, err := sameObservationJSON(a.request, &command.Input)
-	if a.entered || command.ID != a.id || err != nil || !exact {
+	if a.entered || string(command.ID) != a.id || err != nil || !exact {
 		a.violation = &portable.Refusal{Code: "observer_contract", Message: "transparent observer cannot repeat or change its continuation"}
 		a.violation = errors.Join(a.violation, err)
 		return a.violation
@@ -242,7 +242,7 @@ func (o *observedModel) Call(ctx context.Context, request *chat.Request) (*chat.
 	if err != nil {
 		return nil, err
 	}
-	raw, err := binding.InvokeWithMetadata(ctx, invocation.ID, input, metadata)
+	raw, err := binding.InvokeWithMetadata(ctx, qimumcp.CommandID(invocation.ID), input, metadata)
 	release()
 	if err != nil {
 		return admission.outcome(nil, err)

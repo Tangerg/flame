@@ -118,7 +118,7 @@ func (c *installedStream) Stream(ctx context.Context) iter.Seq2[plugins.StreamEv
 			}
 		} else {
 			var found bool
-			result, found, err = binding.ReadReceipt(ctx, record.ID, record.Input)
+			result, found, err = binding.ReadReceipt(ctx, qimumcp.CommandID(record.ID), record.Input)
 			if err != nil {
 				if _, known := errors.AsType[*portable.Refusal](err); known {
 					if observeErr := c.calls.routing.Observe(ctx, record.ID); observeErr != nil {

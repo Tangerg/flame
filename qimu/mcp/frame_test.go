@@ -98,7 +98,7 @@ func TestRequestFrameBudgetIncludesActualSDKEnvelopeAndStreamGrant(t *testing.T)
 			if err != nil {
 				t.Fatal(err)
 			}
-			budget, err := ProcessRequestFrameBytes(ctx, contract, "frame", name, invocation.ID, admitted, sdk.ParamsBase{})
+			budget, err := ProcessRequestFrameBytes(ctx, contract, "frame", name, CommandID(invocation.ID), admitted, sdk.ParamsBase{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -107,12 +107,12 @@ func TestRequestFrameBudgetIncludesActualSDKEnvelopeAndStreamGrant(t *testing.T)
 				if err := callbacks.AdmitSession(session); err != nil {
 					t.Fatal(err)
 				}
-				for value, err := range stream.StreamWithMetadata(ctx, bound, callbacks, callbackTestLimits, invocation.ID, input, sdk.ParamsBase{}) {
+				for value, err := range stream.StreamWithMetadata(ctx, bound, callbacks, callbackTestLimits, CommandID(invocation.ID), input, sdk.ParamsBase{}) {
 					if err != nil || value.Result == nil || *value.Result != input {
 						t.Fatalf("stream=%+v %v", value, err)
 					}
 				}
-			} else if value, err := bound.Invoke(ctx, invocation.ID, admitted); err != nil || value != admitted {
+			} else if value, err := bound.Invoke(ctx, CommandID(invocation.ID), admitted); err != nil || value != admitted {
 				t.Fatalf("call=%v %v", value, err)
 			}
 			recorded.mu.Lock()

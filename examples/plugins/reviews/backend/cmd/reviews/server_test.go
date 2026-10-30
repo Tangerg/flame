@@ -207,12 +207,12 @@ func TestTypedAndToolEntrancesShareTheBusinessReceipt(t *testing.T) {
 		{ID: strings.Repeat("界", 43), ExpectedRevision: 1, Status: reviews.Resolved},
 	} {
 		identity := fmt.Sprintf("invalid-%s-%d", invalid.ID, invalid.ExpectedRevision)
-		refused, err := updateMethod.CallCommand(t.Context(), identity, invalid)
+		refused, err := updateMethod.CallCommand(t.Context(), qimumcp.CommandID(identity), invalid)
 		if err != nil || refused.Type != reviews.Invalid || refused.Review != nil {
 			t.Fatalf("typed invalid-input refusal = %+v, %v", refused, err)
 		}
 		assertToolOutcome(identity, invalid, refused)
-		recovered, found, err := updateMethod.ReadReceipt(t.Context(), identity, invalid)
+		recovered, found, err := updateMethod.ReadReceipt(t.Context(), qimumcp.CommandID(identity), invalid)
 		if err != nil || !found || !reflect.DeepEqual(recovered, refused) {
 			t.Fatalf("typed invalid-input receipt = %+v, %t, %v", recovered, found, err)
 		}

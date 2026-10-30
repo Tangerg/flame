@@ -31,7 +31,11 @@
             "additionalProperties": false,
             "properties": {
               "id": {
-                "pattern": "^[a-f0-9]{64}$",
+                "allOf": [
+                  {
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                ],
                 "type": "string"
               }
             },
@@ -939,7 +943,11 @@
             "additionalProperties": false,
             "properties": {
               "id": {
-                "pattern": "^[a-f0-9]{64}$",
+                "allOf": [
+                  {
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                ],
                 "type": "string"
               }
             },
@@ -953,7 +961,11 @@
         "additionalProperties": false,
         "properties": {
           "id": {
-            "pattern": "^[a-f0-9]{64}$",
+            "allOf": [
+              {
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            ],
             "type": "string"
           }
         },
@@ -996,7 +1008,11 @@
             "additionalProperties": false,
             "properties": {
               "id": {
-                "pattern": "^[a-f0-9]{64}$",
+                "allOf": [
+                  {
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                ],
                 "type": "string"
               }
             },
@@ -1543,7 +1559,11 @@
             "additionalProperties": false,
             "properties": {
               "id": {
-                "pattern": "^[a-f0-9]{64}$",
+                "allOf": [
+                  {
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                ],
                 "type": "string"
               }
             },
@@ -1694,7 +1714,11 @@
             "additionalProperties": false,
             "properties": {
               "id": {
-                "pattern": "^[a-f0-9]{64}$",
+                "allOf": [
+                  {
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                ],
                 "type": "string"
               },
               "metadata": {
@@ -1704,8 +1728,12 @@
                 "type": "string"
               },
               "original": {
-                "maxLength": 256,
-                "pattern": "\\S",
+                "allOf": [
+                  {
+                    "maxLength": 256,
+                    "minLength": 1
+                  }
+                ],
                 "type": "string"
               },
               "provider": {
@@ -1884,7 +1912,11 @@
         "additionalProperties": false,
         "properties": {
           "id": {
-            "pattern": "^[a-f0-9]{64}$",
+            "allOf": [
+              {
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            ],
             "type": "string"
           },
           "metadata": {
@@ -1894,8 +1926,12 @@
             "type": "string"
           },
           "original": {
-            "maxLength": 256,
-            "pattern": "\\S",
+            "allOf": [
+              {
+                "maxLength": 256,
+                "minLength": 1
+              }
+            ],
             "type": "string"
           },
           "provider": {
@@ -1983,7 +2019,11 @@
             "additionalProperties": false,
             "properties": {
               "id": {
-                "pattern": "^[a-f0-9]{64}$",
+                "allOf": [
+                  {
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                ],
                 "type": "string"
               },
               "model": {
@@ -2010,7 +2050,11 @@
         "additionalProperties": false,
         "properties": {
           "id": {
-            "pattern": "^[a-f0-9]{64}$",
+            "allOf": [
+              {
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            ],
             "type": "string"
           },
           "model": {
@@ -2330,8 +2374,12 @@
             "additionalProperties": false,
             "properties": {
               "original": {
-                "maxLength": 256,
-                "pattern": "\\S",
+                "allOf": [
+                  {
+                    "maxLength": 256,
+                    "minLength": 1
+                  }
+                ],
                 "type": "string"
               }
             },
@@ -2345,8 +2393,12 @@
         "additionalProperties": false,
         "properties": {
           "original": {
-            "maxLength": 256,
-            "pattern": "\\S",
+            "allOf": [
+              {
+                "maxLength": 256,
+                "minLength": 1
+              }
+            ],
             "type": "string"
           }
         },
@@ -2361,7 +2413,11 @@
             "additionalProperties": false,
             "properties": {
               "id": {
-                "pattern": "^[a-f0-9]{64}$",
+                "allOf": [
+                  {
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                ],
                 "type": "string"
               },
               "metadata": {
@@ -2371,8 +2427,12 @@
                 "type": "string"
               },
               "original": {
-                "maxLength": 256,
-                "pattern": "\\S",
+                "allOf": [
+                  {
+                    "maxLength": 256,
+                    "minLength": 1
+                  }
+                ],
                 "type": "string"
               },
               "provider": {
@@ -2551,7 +2611,11 @@
         "additionalProperties": false,
         "properties": {
           "id": {
-            "pattern": "^[a-f0-9]{64}$",
+            "allOf": [
+              {
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            ],
             "type": "string"
           },
           "metadata": {
@@ -2561,8 +2625,12 @@
             "type": "string"
           },
           "original": {
-            "maxLength": 256,
-            "pattern": "\\S",
+            "allOf": [
+              {
+                "maxLength": 256,
+                "minLength": 1
+              }
+            ],
             "type": "string"
           },
           "provider": {
@@ -2613,7 +2681,11 @@
             "additionalProperties": false,
             "properties": {
               "id": {
-                "pattern": "^[a-f0-9]{64}$",
+                "allOf": [
+                  {
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                ],
                 "type": "string"
               }
             },

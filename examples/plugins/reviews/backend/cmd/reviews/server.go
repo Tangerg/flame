@@ -152,7 +152,7 @@ func newServer(store *store) (*sdk.Server, error) {
 		if err != nil {
 			return reviews.UpdateResult{}, err
 		}
-		return store.update(ctx, command.ID, admitted)
+		return store.update(ctx, string(command.ID), admitted)
 	}); err != nil {
 		return nil, err
 	}

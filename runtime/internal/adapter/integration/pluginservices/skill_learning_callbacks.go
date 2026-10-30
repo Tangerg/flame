@@ -133,7 +133,7 @@ func (s *SkillLearning) grant(ctx context.Context, session *sdk.ClientSession, s
 		if err != nil {
 			return nil, err
 		}
-		if err := state.model(command.ID, input); err != nil {
+		if err := state.model(string(command.ID), input); err != nil {
 			return nil, err
 		}
 		captured, release, err := s.utility(ctx, models.AuxiliaryBudget{MaxInputBytes: skilllearning.MaxModelInputBytes, MaxOutputTokens: skilllearning.MaxModelOutputTokens})

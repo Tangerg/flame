@@ -60,7 +60,7 @@ func executeCommand(ctx context.Context, db *sql.DB, method string, command qimu
 		return hookprovider.Result{}, err
 	}
 	var request hookprovider.Command
-	prepared, reply, err := pluginstorage.AdmitCommand(ctx, db, method, command.ID, input, func(context.Context) error {
+	prepared, reply, err := pluginstorage.AdmitCommand(ctx, db, method, string(command.ID), input, func(context.Context) error {
 		if err := json.Unmarshal(input.JSON(), &request, json.RejectUnknownMembers(true)); err != nil {
 			return err
 		}

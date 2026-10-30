@@ -58,11 +58,11 @@ func ToolCommandID(ctx context.Context) (string, error) {
 }
 
 func toolCommandID(id string) (string, error) {
-	if err := qimumcp.ValidateCommandID(id); err != nil {
+	if err := qimumcp.CommandID(id).Validate(); err != nil {
 		return "", err
 	}
 	command := ToolCommandPrefix + id
-	if err := qimumcp.ValidateCommandID(command); err != nil {
+	if err := qimumcp.CommandID(command).Validate(); err != nil {
 		return "", err
 	}
 	return command, nil

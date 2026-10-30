@@ -118,7 +118,7 @@ func runDroppingStream(ctx context.Context, server *sdk.Server, backend *qimumcp
 	}
 	if err := method.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[struct{}]) iter.Seq2[qimumcp.StreamValue[string, bool], error] {
 		return func(yield func(qimumcp.StreamValue[string, bool], error) bool) {
-			if err := record(ctx, trace, map[string]string{"phase": "started", "id": command.ID}); err != nil {
+			if err := record(ctx, trace, map[string]string{"phase": "started", "id": string(command.ID)}); err != nil {
 				yield(qimumcp.StreamValue[string, bool]{}, err)
 				return
 			}
@@ -134,7 +134,7 @@ func runDroppingStream(ctx context.Context, server *sdk.Server, backend *qimumcp
 		return err
 	}
 	if err := receipt.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[qimumcp.ReceiptRequest]) (qimumcp.Receipt, error) {
-		if err := record(ctx, trace, map[string]string{"phase": "receipt", "id": command.Input.ID}); err != nil {
+		if err := record(ctx, trace, map[string]string{"phase": "receipt", "id": string(command.Input.ID)}); err != nil {
 			return qimumcp.Receipt{}, err
 		}
 		return qimumcp.Receipt{}, nil
@@ -160,10 +160,10 @@ func runObserver(ctx context.Context, server *sdk.Server, backend *qimumcp.Backe
 			return nil
 		}
 		owner, err := qimumcp.InvocationFromContext(ctx)
-		if err != nil || owner.ID != command.ID || owner.Target.Reference != command.ID {
+		if err != nil || owner.ID != string(command.ID) || owner.Target.Reference != string(command.ID) {
 			return errors.New("observer: original model identity was replaced")
 		}
-		return record(ctx, trace, map[string]string{"layer": layer, "phase": phase, "id": command.ID})
+		return record(ctx, trace, map[string]string{"layer": layer, "phase": phase, "id": string(command.ID)})
 	}
 	method, err := pluginsdk.ModelMethod()
 	if err != nil {

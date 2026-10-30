@@ -128,7 +128,7 @@ func TestInvocationConflictRuntimeFixture(t *testing.T) {
 		t.Fatalf("expected distinct prior Tool and typed identities: %v", priorIDs)
 	}
 	for _, id := range priorIDs {
-		receipt, err := store.receipt(t.Context(), qimumcp.ReceiptRequest{ID: id, Method: contracts.Update.Name(), InputDigest: admitted.Digest()}, contracts.Update.Name())
+		receipt, err := store.receipt(t.Context(), qimumcp.ReceiptRequest{ID: qimumcp.CommandID(id), Method: contracts.Update.Name(), InputDigest: admitted.Digest()}, contracts.Update.Name())
 		if err != nil || !receipt.Found {
 			t.Fatalf("original private receipt lost: %+v, %v", receipt, err)
 		}

@@ -49,7 +49,7 @@ func TestCapturedContractRejectsChangesBeforeBusinessExecution(t *testing.T) {
 			if descriptor.Kind == portable.Query {
 				id = ""
 			}
-			if _, err := binding.Invoke(t.Context(), id, input); err == nil {
+			if _, err := binding.Invoke(t.Context(), CommandID(id), input); err == nil {
 				t.Fatal("changed contract reached business execution")
 			}
 			if calls.Load() != 0 {

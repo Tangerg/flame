@@ -152,7 +152,7 @@ func TestReceiptHistoryDoesNotExhaustMutationAdmission(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		receipt, err := store.receipt(t.Context(), qimumcp.ReceiptRequest{ID: original.id, Method: contracts.Update.Name(), InputDigest: admitted.Digest()}, contracts.Update.Name())
+		receipt, err := store.receipt(t.Context(), qimumcp.ReceiptRequest{ID: qimumcp.CommandID(original.id), Method: contracts.Update.Name(), InputDigest: admitted.Digest()}, contracts.Update.Name())
 		if err != nil || !receipt.Found {
 			t.Fatalf("missing original receipt %s: %+v, %v", original.id, receipt, err)
 		}

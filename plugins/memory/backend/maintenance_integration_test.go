@@ -330,7 +330,7 @@ func invokeMaintenance(t *testing.T, ctx context.Context, session *sdk.ClientSes
 	if err != nil {
 		return rpc.MaintenanceResult{}, err
 	}
-	reply, err := binding.InvokeWithMetadata(ctx, id, admitted, metadata)
+	reply, err := binding.InvokeWithMetadata(ctx, qimumcp.CommandID(id), admitted, metadata)
 	if err != nil {
 		return rpc.MaintenanceResult{}, err
 	}
@@ -419,7 +419,7 @@ func callMemoryCapability[P, R any](ctx context.Context, session *sdk.ClientSess
 	if err != nil {
 		return zero, err
 	}
-	result, err := bound.InvokeWithMetadata(ctx, id, admitted, metadata)
+	result, err := bound.InvokeWithMetadata(ctx, qimumcp.CommandID(id), admitted, metadata)
 	if err != nil {
 		return zero, err
 	}
@@ -441,7 +441,7 @@ func receiptMemoryCapability[P, R any](ctx context.Context, session *sdk.ClientS
 	if err != nil {
 		return zero, false, err
 	}
-	result, found, err := bound.ReadReceipt(ctx, id, admitted)
+	result, found, err := bound.ReadReceipt(ctx, qimumcp.CommandID(id), admitted)
 	if err != nil || !found {
 		return zero, found, err
 	}

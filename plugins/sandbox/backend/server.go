@@ -70,7 +70,7 @@ func newServer(runner *runner) (*sdk.Server, error) {
 			if err != nil {
 				return sandbox.Result{}, err
 			}
-			return runner.execute(ctx, contracts.Execute.Name(), command.ID, original)
+			return runner.execute(ctx, contracts.Execute.Name(), string(command.ID), original)
 		}),
 		contracts.Limits.RegisterServer(backend, classify, func(context.Context, *sdk.ServerSession, qimumcp.Command[struct{}]) (wire.Limits, error) {
 			return runner.limits(), nil

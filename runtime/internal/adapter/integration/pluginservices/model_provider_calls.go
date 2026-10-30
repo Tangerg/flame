@@ -157,7 +157,7 @@ func (p *streamingProviderChat) Stream(ctx context.Context, request *chat.Reques
 		input := modelprovider.ChatRequest{Handle: p.use.handle, Request: *request}
 		limits := qimumcp.CallbackLimits{MaxRequestBytes: sdk.DefaultMaxLineLength, MaxResponseBytes: sdk.DefaultMaxLineLength}
 		chunks, complete := 0, false
-		for value, err := range method.StreamWithMetadata(borrowed.Context(), binding, p.use.owner.config.Callbacks, limits, caller.ID, input, sdk.ParamsBase{}) {
+		for value, err := range method.StreamWithMetadata(borrowed.Context(), binding, p.use.owner.config.Callbacks, limits, qimumcp.CommandID(caller.ID), input, sdk.ParamsBase{}) {
 			if err != nil {
 				sender.fail(unconfirmedProvider(err))
 				return
@@ -332,6 +332,6 @@ func (u *providerUse) admitRequest(ctx context.Context, request *chat.Request) e
 }
 
 func (u *providerUse) frameFits(ctx context.Context, name, id string, input jsonvalue.Value) (bool, error) {
-	size, err := qimumcp.ProcessRequestFrameBytes(ctx, u.owner.contract, u.binding.Export, name, id, input, sdk.ParamsBase{})
+	size, err := qimumcp.ProcessRequestFrameBytes(ctx, u.owner.contract, u.binding.Export, name, qimumcp.CommandID(id), input, sdk.ParamsBase{})
 	return size <= sdk.DefaultMaxLineLength, err
 }

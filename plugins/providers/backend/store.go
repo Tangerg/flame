@@ -2,9 +2,7 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
 	"database/sql"
-	"encoding/hex"
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
@@ -46,7 +44,7 @@ type client struct {
 type store struct {
 	db      *sql.DB
 	mu      sync.Mutex
-	clients map[string]*client
+	clients map[modelprovider.HandleID]*client
 }
 
 func openStore(ctx context.Context, path string) (*store, error) {
@@ -57,7 +55,7 @@ func openStore(ctx context.Context, path string) (*store, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &store{db: db, clients: make(map[string]*client)}, nil
+	return &store{db: db, clients: make(map[modelprovider.HandleID]*client)}, nil
 }
 
 func constructClient(ctx context.Context, kind clientKind, input modelprovider.Open) (*client, error) {
@@ -100,7 +98,7 @@ func openClient[R any](ctx context.Context, s *store, method string, kind client
 	if err != nil {
 		return zero, err
 	}
-	return pluginstorage.Command(ctx, s.db, method, command.ID, input, nil, func(ctx context.Context, input modelprovider.Open) (R, error) {
+	return pluginstorage.Command(ctx, s.db, method, string(command.ID), input, nil, func(ctx context.Context, input modelprovider.Open) (R, error) {
 		handle, created, err := s.insertClient(ctx, kind, input)
 		if err != nil {
 			return zero, err
@@ -114,11 +112,11 @@ func (s *store) insertClient(ctx context.Context, kind clientKind, input modelpr
 	if err != nil {
 		return modelprovider.Handle{}, nil, &portable.Refusal{Code: "model_unavailable", Message: "model provider: client construction was refused"}
 	}
-	var token [32]byte
-	if _, err := rand.Read(token[:]); err != nil {
+	id, err := modelprovider.NewHandleID()
+	if err != nil {
 		return modelprovider.Handle{}, nil, err
 	}
-	handle := modelprovider.Handle{ID: hex.EncodeToString(token[:])}
+	handle := modelprovider.Handle{ID: id}
 	encoded, err := json.Marshal(input)
 	if err != nil {
 		return modelprovider.Handle{}, nil, err
@@ -134,7 +132,7 @@ func (s *store) reopenChat(ctx context.Context, method, originalMethod string, c
 	if err != nil {
 		return modelprovider.Chat{}, err
 	}
-	return pluginstorage.Command(ctx, s.db, method, command.ID, input, nil, func(ctx context.Context, input modelprovider.Reopen) (modelprovider.Chat, error) {
+	return pluginstorage.Command(ctx, s.db, method, string(command.ID), input, nil, func(ctx context.Context, input modelprovider.Reopen) (modelprovider.Chat, error) {
 		if err := input.Validate(); err != nil {
 			return modelprovider.Chat{}, err
 		}
@@ -255,7 +253,7 @@ func (s *store) Close() error {
 	return s.db.Close()
 }
 
-func chatProjection(handle modelprovider.Handle, client *client, input modelprovider.Open, original string) modelprovider.Chat {
+func chatProjection(handle modelprovider.Handle, client *client, input modelprovider.Open, original qimumcp.CommandID) modelprovider.Chat {
 	result := modelprovider.Chat{Handle: handle, Original: original, Provider: input.Connection.Provider, Model: input.Model, Streaming: client.stream != nil, TokenCounting: client.count != nil}
 	if metadata, ok := catalog.Default.Lookup(input.Connection.Provider, input.Model); ok {
 		copy := metadata.Clone()

@@ -20,7 +20,7 @@ func TestContractAdmitsTheCompleteNativeRequestAndRefusesMissingInput(t *testing
 	if !ok {
 		t.Fatal("missing model call")
 	}
-	request := ChatRequest{Handle: Handle{ID: strings.Repeat("a", 64)}, Request: chat.Request{
+	request := ChatRequest{Handle: Handle{ID: HandleID(strings.Repeat("a", 64))}, Request: chat.Request{
 		Messages: []chat.Message{chat.NewUserMessage(chat.NewTextPart("question"))},
 		Options:  chat.Options{Model: "exact-model", MaxOutputTokens: new(int64(64))},
 	}}
@@ -41,7 +41,7 @@ func TestContractAdmitsTheCompleteNativeRequestAndRefusesMissingInput(t *testing
 }
 
 func TestEmbeddingEnvelopesUseNativeAdmissionWithoutLosingUsage(t *testing.T) {
-	request := EmbeddingRequest{Handle: Handle{ID: strings.Repeat("a", 64)}, Request: jsontext.Value(`{"texts":["question"],"options":{"model":"embedding-model","dimensions":2}}`)}
+	request := EmbeddingRequest{Handle: Handle{ID: HandleID(strings.Repeat("a", 64))}, Request: jsontext.Value(`{"texts":["question"],"options":{"model":"embedding-model","dimensions":2}}`)}
 	native, err := request.Native()
 	if err != nil || len(native.Texts) != 1 || *native.Options.Dimensions != 2 {
 		t.Fatalf("complete embedding input = %+v %v", native, err)
@@ -98,7 +98,7 @@ func TestFailureEvidenceCannotTurnAnUnknownExchangeIntoSuccess(t *testing.T) {
 }
 
 func TestConstructionDeclaresItsExactIdentityWhenCatalogFactsAreUnknown(t *testing.T) {
-	client := Chat{Handle: Handle{ID: strings.Repeat("a", 64)}, Original: "original-open", Provider: "custom-provider", Model: "private-model"}
+	client := Chat{Handle: Handle{ID: HandleID(strings.Repeat("a", 64))}, Original: "original-open", Provider: "custom-provider", Model: "private-model"}
 	if err := client.Validate(); err != nil {
 		t.Fatal(err)
 	}

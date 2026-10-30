@@ -172,7 +172,7 @@ func (c *connector) cancel(ctx context.Context, method, id string, input jsonval
 }
 
 func (c *connector) binding(ctx context.Context, id string) (taskBinding, agent, error) {
-	if id == "" || len(id) > qimumcp.MaxCommandIDBytes || !utf8.ValidString(id) {
+	if qimumcp.CommandID(id).Validate() != nil {
 		return taskBinding{}, agent{}, invalidRequest()
 	}
 	var raw string

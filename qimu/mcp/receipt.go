@@ -15,7 +15,7 @@ import (
 const ReceiptMethod = "io.github.tangerg.qimu/commands.get"
 
 type ReceiptRequest struct {
-	ID          string           `json:"id"`
+	ID          CommandID        `json:"id"`
 	Method      string           `json:"method"`
 	InputDigest integrity.Digest `json:"inputDigest"`
 }
@@ -35,7 +35,7 @@ func (r *ReceiptRequest) UnmarshalJSON(data []byte) error {
 }
 
 func (r ReceiptRequest) Validate() error {
-	if err := ValidateCommandID(r.ID); err != nil {
+	if err := CommandID(r.ID).Validate(); err != nil {
 		return err
 	}
 	if !portable.ValidMethodName(r.Method) {
@@ -77,7 +77,7 @@ func DecodeReply[T any](data []byte) (T, error) {
 
 // A missing receipt is only absence of evidence. It never authorizes a fresh
 // mutation or proves that the original command had no effect.
-func ReadReceipt[P, R any](ctx context.Context, session *sdk.ClientSession, id, method string, input P) (R, bool, error) {
+func ReadReceipt[P, R any](ctx context.Context, session *sdk.ClientSession, id CommandID, method string, input P) (R, bool, error) {
 	var zero R
 	admitted, err := jsonvalue.Encode(input)
 	if err != nil {
@@ -109,7 +109,7 @@ func receiptBinding(session *sdk.ClientSession) (*Binding, error) {
 	return &Binding{session: session, method: method.contract}, nil
 }
 
-func readReceipt(ctx context.Context, binding *Binding, id, method string, admitted jsonvalue.Value) (jsontext.Value, bool, error) {
+func readReceipt(ctx context.Context, binding *Binding, id CommandID, method string, admitted jsonvalue.Value) (jsontext.Value, bool, error) {
 	request := ReceiptRequest{ID: id, Method: method, InputDigest: admitted.Digest()}
 	if err := request.Validate(); err != nil {
 		return nil, false, err

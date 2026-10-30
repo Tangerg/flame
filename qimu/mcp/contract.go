@@ -142,12 +142,12 @@ func (m *Method[P, R]) Call(ctx context.Context, session *sdk.ClientSession, inp
 	return m.call(ctx, session, &methodParams[P]{Input: input})
 }
 
-func (m *Method[P, R]) CallCommand(ctx context.Context, session *sdk.ClientSession, id string, input P) (R, error) {
+func (m *Method[P, R]) CallCommand(ctx context.Context, session *sdk.ClientSession, id CommandID, input P) (R, error) {
 	var zero R
 	if m.contract.Kind() != portable.Mutation {
 		return zero, errors.New("plugin: query must not carry a command identity")
 	}
-	if err := ValidateCommandID(id); err != nil {
+	if err := id.Validate(); err != nil {
 		return zero, err
 	}
 	return m.call(ctx, session, &methodParams[P]{Input: input, CommandID: id})
@@ -210,18 +210,18 @@ func (m *BoundMethod[P, R]) CallWithMetadata(ctx context.Context, input P, metad
 	return m.method.callBinding(ctx, m.binding, &methodParams[P]{Input: input, ParamsBase: metadata})
 }
 
-func (m *BoundMethod[P, R]) CallCommand(ctx context.Context, id string, input P) (R, error) {
+func (m *BoundMethod[P, R]) CallCommand(ctx context.Context, id CommandID, input P) (R, error) {
 	var zero R
 	if m.method.contract.Kind() != portable.Mutation {
 		return zero, errors.New("plugin: query must not carry a command identity")
 	}
-	if err := ValidateCommandID(id); err != nil {
+	if err := id.Validate(); err != nil {
 		return zero, err
 	}
 	return m.method.callBinding(ctx, m.binding, &methodParams[P]{Input: input, CommandID: id})
 }
 
-func (m *BoundMethod[P, R]) ReadReceipt(ctx context.Context, id string, input P) (R, bool, error) {
+func (m *BoundMethod[P, R]) ReadReceipt(ctx context.Context, id CommandID, input P) (R, bool, error) {
 	var zero R
 	admitted, err := jsonvalue.Encode(input)
 	if err != nil {
@@ -242,7 +242,7 @@ func admitCommand[P any](ctx context.Context, contract *portable.Method, wire *i
 	encoded, err := json.Marshal(struct {
 		sdk.ParamsBase
 		Input     jsontext.Value `json:"input"`
-		CommandID string         `json:"commandId,omitzero"`
+		CommandID CommandID      `json:"commandId,omitzero"`
 	}{wire.ParamsBase, wire.Input, wire.CommandID})
 	if err != nil {
 		return ctx, Command[P]{}, err
@@ -258,7 +258,7 @@ func admitCommand[P any](ctx context.Context, contract *portable.Method, wire *i
 		return ctx, Command[P]{}, errors.New("plugin: query must not carry a command identity")
 	}
 	if contract.Kind() == portable.Mutation {
-		if err := ValidateCommandID(params.CommandID); err != nil {
+		if err := CommandID(params.CommandID).Validate(); err != nil {
 			return ctx, Command[P]{}, err
 		}
 	}

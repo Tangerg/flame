@@ -93,7 +93,7 @@ func newServer(research *research, requests *requests) (*sdk.Server, error) {
 			if err != nil {
 				return wire.HTTPResponse{}, err
 			}
-			return requests.execute(ctx, contracts.Request.Name(), command.ID, input)
+			return requests.execute(ctx, contracts.Request.Name(), string(command.ID), input)
 		}),
 		toolReceipts.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[qimumcp.ReceiptRequest]) (pluginsdk.ToolReceipt, error) {
 			input := command.Input

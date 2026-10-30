@@ -12,19 +12,21 @@ import (
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/scope/core/jsonschema"
+	"github.com/google/uuid"
 )
 
 type methodParams[T any] struct {
 	sdk.ParamsBase
-	Input     T      `json:"input"`
-	CommandID string `json:"commandId,omitempty"`
+	Input     T         `json:"input"`
+	CommandID CommandID `json:"commandId,omitempty"`
 	inputJSON jsonvalue.Value
 }
 
 // Command carries a caller's logical identity and input. Business admission and
 // the atomic mutation/receipt commit remain with the business owner.
 type Command[T any] struct {
-	ID        string
+	ID        CommandID
 	Input     T
 	inputJSON jsonvalue.Value
 }
@@ -54,7 +56,7 @@ func (p methodParams[T]) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		sdk.ParamsBase
 		Input     jsonvalue.Value `json:"input"`
-		CommandID string          `json:"commandId,omitzero"`
+		CommandID CommandID       `json:"commandId,omitzero"`
 	}{p.ParamsBase, input, p.CommandID})
 }
 
@@ -62,13 +64,13 @@ func (p *methodParams[T]) UnmarshalJSON(data []byte) error {
 	var wire struct {
 		sdk.ParamsBase
 		Input     jsontext.Value `json:"input"`
-		CommandID string         `json:"commandId,omitzero"`
+		CommandID CommandID      `json:"commandId,omitzero"`
 	}
 	if err := json.Unmarshal(data, &wire, json.RejectUnknownMembers(true)); err != nil {
 		return err
 	}
 	if wire.CommandID != "" {
-		if err := ValidateCommandID(wire.CommandID); err != nil {
+		if err := CommandID(wire.CommandID).Validate(); err != nil {
 			return err
 		}
 	}
@@ -183,11 +185,23 @@ func RegisterClient(client *sdk.Client) error {
 	)
 }
 
-const MaxCommandIDBytes = 256
+// CommandID is one logical command identity. Its bound counts Unicode code
+// points, as JSON Schema maxLength does, so the published schema admits exactly
+// the identities Validate admits.
+type CommandID string
 
-func ValidateCommandID(id string) error {
-	if id == "" || len(id) > MaxCommandIDBytes || !utf8.ValidString(id) {
+const MaxCommandIDCharacters = 256
+
+// NewCommandID allocates a fresh identity for a command that has no caller-owned one.
+func NewCommandID() CommandID { return CommandID(uuid.NewString()) }
+
+func (id CommandID) Validate() error {
+	if id == "" || !utf8.ValidString(string(id)) || utf8.RuneCountInString(string(id)) > MaxCommandIDCharacters {
 		return errors.New("plugin: bounded logical command identity is required")
 	}
 	return nil
+}
+
+func (CommandID) JSONSchemaConstraints() jsonschema.Constraints {
+	return jsonschema.Constraints{MinLength: new(uint64(1)), MaxLength: new(uint64(MaxCommandIDCharacters))}
 }

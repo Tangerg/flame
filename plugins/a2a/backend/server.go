@@ -77,7 +77,7 @@ func newServer(connector *connector) (*sdk.Server, error) {
 			if err != nil {
 				return wire.Result{}, err
 			}
-			return connector.send(ctx, contracts.Send.Name(), command.ID, input)
+			return connector.send(ctx, contracts.Send.Name(), string(command.ID), input)
 		}),
 		contracts.Status.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[wire.TaskRequest]) (wire.Result, error) {
 			return connector.status(ctx, command.Input)
@@ -87,7 +87,7 @@ func newServer(connector *connector) (*sdk.Server, error) {
 			if err != nil {
 				return wire.Result{}, err
 			}
-			return connector.cancel(ctx, contracts.Cancel.Name(), command.ID, input)
+			return connector.cancel(ctx, contracts.Cancel.Name(), string(command.ID), input)
 		}),
 		receipts.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[qimumcp.ReceiptRequest]) (pluginsdk.ToolReceipt, error) {
 			input := command.Input

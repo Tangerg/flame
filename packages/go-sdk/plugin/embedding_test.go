@@ -34,7 +34,7 @@ func TestTextEmbeddingCallbackKeepsChildAttributionAndCallerBudget(t *testing.T)
 	var calls atomic.Int32
 	callback, err := NewTextEmbeddingCallback(func(ctx context.Context, command qimumcp.Command[[]string]) (TextEmbeddings, error) {
 		invocation, err := qimumcp.InvocationFromContext(ctx)
-		if err != nil || invocation.ID != command.ID || invocation.Origin != owner.Origin || invocation.Parent != owner.ID || invocation.Target != (portable.Target{Scope: "call", Reference: command.ID}) {
+		if err != nil || invocation.ID != string(command.ID) || invocation.Origin != owner.Origin || invocation.Parent != owner.ID || invocation.Target != (portable.Target{Scope: "call", Reference: string(command.ID)}) {
 			t.Errorf("embedding changed original ownership: %+v, %v", invocation, err)
 		}
 		input, err := command.RequestInput()
@@ -53,12 +53,12 @@ func TestTextEmbeddingCallbackKeepsChildAttributionAndCallerBudget(t *testing.T)
 	}
 	defer release()
 	for _, id := range []string{"first", "second", "third"} {
-		vectors, err := CallTextEmbedding(t.Context(), ref, id, []string{"captured text"})
+		vectors, err := CallTextEmbedding(t.Context(), ref, qimumcp.CommandID(id), []string{"captured text"})
 		if err != nil || vectors.Space != "captured-space" || len(vectors.Vectors) != 1 || !slices.Equal(vectors.Vectors[0], []float32{1, 2}) {
 			t.Fatalf("exchange %s: %+v, %v", id, vectors, err)
 		}
 	}
-	if _, err := CallTextEmbedding(t.Context(), ref, owner.ID, []string{"captured text"}); err == nil {
+	if _, err := CallTextEmbedding(t.Context(), ref, qimumcp.CommandID(owner.ID), []string{"captured text"}); err == nil {
 		t.Error("independent embedding reused its calling owner's identity")
 	}
 	if calls.Load() != 3 {

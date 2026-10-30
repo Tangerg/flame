@@ -49,7 +49,7 @@ func TestBoundMethodRetainsRawNumbersBeforeTypedConversion(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := binding.Invoke(t.Context(), value, admitted); err != nil {
+		if _, err := binding.Invoke(t.Context(), CommandID(value), admitted); err != nil {
 			t.Fatal(err)
 		}
 		if captured.String() != value {
@@ -133,19 +133,19 @@ func TestDynamicNumbersRemainExactThroughMethodAndReceiptCodecs(t *testing.T) {
 					t.Fatalf("%s changed number lexemes: %s, want %s: %v", name, encoded.String(), expected.String(), err)
 				}
 			}
-			output, err := bound.CallCommand(t.Context(), literal, input)
+			output, err := bound.CallCommand(t.Context(), CommandID(literal), input)
 			assertExact("method output", output, err)
 			if captured.String() != expected.String() {
 				t.Fatalf("business input changed number lexemes: %s", captured.String())
 			}
-			output, found, err := bound.ReadReceipt(t.Context(), literal, input)
+			output, found, err := bound.ReadReceipt(t.Context(), CommandID(literal), input)
 			if !found {
 				t.Fatalf("bound receipt missing: %v", err)
 			}
 			assertExact("bound receipt", output, err)
-			output, err = bare.CallCommand(t.Context(), session, literal, input)
+			output, err = bare.CallCommand(t.Context(), session, CommandID(literal), input)
 			assertExact("direct method", output, err)
-			output, found, err = ReadReceipt[payload, payload](t.Context(), session, literal, bare.Name(), input)
+			output, found, err = ReadReceipt[payload, payload](t.Context(), session, CommandID(literal), bare.Name(), input)
 			if !found {
 				t.Fatalf("receipt missing: %v", err)
 			}
@@ -208,8 +208,8 @@ func TestDynamicNumbersRemainExactThroughBothStreamingDirections(t *testing.T) {
 			name   string
 			stream iter.Seq2[StreamValue[payload, payload], error]
 		}{
-			{"backend", method.StreamWithMetadata(t.Context(), binding, callbacks, callbackTestLimits, literal, input, sdk.ParamsBase{})},
-			{"host", StreamHost(t.Context(), ref, method, literal, input)},
+			{"backend", method.StreamWithMetadata(t.Context(), binding, callbacks, callbackTestLimits, CommandID(literal), input, sdk.ParamsBase{})},
+			{"host", StreamHost(t.Context(), ref, method, CommandID(literal), input)},
 		} {
 			t.Run(direction.name+"/"+literal, func(t *testing.T) {
 				chunks, results := 0, 0

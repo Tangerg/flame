@@ -12,7 +12,6 @@ import (
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
-	"github.com/google/uuid"
 )
 
 type remoteModels struct {
@@ -25,7 +24,7 @@ func (r remoteModels) Complete(ctx context.Context, prompt app.Prompt) (string, 
 		return "", err
 	}
 	client, err := chatclient.New(chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
-		return pluginsdk.CallModel(ctx, r.grant, uuid.NewString(), request)
+		return pluginsdk.CallModel(ctx, r.grant, qimumcp.NewCommandID(), request)
 	}), chatclient.Config{})
 	if err != nil {
 		return "", err
@@ -41,7 +40,7 @@ func (r remoteModels) Complete(ctx context.Context, prompt app.Prompt) (string, 
 }
 func (r remoteModels) ID() string { return r.space }
 func (r remoteModels) Embed(ctx context.Context, texts []string) ([][]float32, error) {
-	result, err := pluginsdk.CallTextEmbedding(ctx, r.grant, uuid.NewString(), texts)
+	result, err := pluginsdk.CallTextEmbedding(ctx, r.grant, qimumcp.NewCommandID(), texts)
 	if err != nil {
 		return nil, err
 	}

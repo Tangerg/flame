@@ -67,7 +67,7 @@ func SelectedModelMethod() (*qimumcp.Method[ModelCallRequest, ModelResult], erro
 func SelectedModelStreamMethod() (*qimumcp.StreamingMethod[ModelCallRequest, chat.ResponseDelta, ModelResult], error) {
 	return qimumcp.NewStreamingMethod[ModelCallRequest, chat.ResponseDelta, ModelResult](qimumcp.MethodConfig{Name: "flame.model/selected-stream.v1", Kind: portable.Mutation, Target: extension.ScopeCall, Description: "Consume one independently selected, budgeted and observed model stream."})
 }
-func CallSelectedModel(ctx context.Context, ref qimumcp.CallbackRef, id string, input ModelCallRequest) (*chat.Response, error) {
+func CallSelectedModel(ctx context.Context, ref qimumcp.CallbackRef, id qimumcp.CommandID, input ModelCallRequest) (*chat.Response, error) {
 	if err := input.Validate(); err != nil {
 		return nil, err
 	}
@@ -76,13 +76,13 @@ func CallSelectedModel(ctx context.Context, ref qimumcp.CallbackRef, id string, 
 	if err != nil {
 		return nil, err
 	}
-	result, err := qimumcp.CallHost(ctx, ref, method, id, input)
+	result, err := qimumcp.CallHost(ctx, ref, method, qimumcp.CommandID(id), input)
 	if err != nil {
 		return nil, err
 	}
 	return modelOutcome(result)
 }
-func StreamSelectedModel(ctx context.Context, ref qimumcp.CallbackRef, id string, input ModelCallRequest) iter.Seq2[qimumcp.StreamValue[chat.ResponseDelta, ModelResult], error] {
+func StreamSelectedModel(ctx context.Context, ref qimumcp.CallbackRef, id qimumcp.CommandID, input ModelCallRequest) iter.Seq2[qimumcp.StreamValue[chat.ResponseDelta, ModelResult], error] {
 	method, err := SelectedModelStreamMethod()
 	if err == nil {
 		err = input.Validate()
@@ -93,7 +93,7 @@ func StreamSelectedModel(ctx context.Context, ref qimumcp.CallbackRef, id string
 		}
 	}
 	input.Request = *input.Request.Clone()
-	return qimumcp.StreamHost(ctx, ref, method, id, input)
+	return qimumcp.StreamHost(ctx, ref, method, qimumcp.CommandID(id), input)
 }
 func NewSelectedModelCallback(call func(context.Context, qimumcp.Command[ModelCallRequest]) (*chat.Response, error)) (qimumcp.Callback, error) {
 	if call == nil {
@@ -108,7 +108,7 @@ func NewSelectedModelCallback(call func(context.Context, qimumcp.Command[ModelCa
 			return ModelResult{}, err
 		}
 		command.Input.Request = *command.Input.Request.Clone()
-		ctx, err := selectedModelCallContext(ctx, command.ID)
+		ctx, err := selectedModelCallContext(ctx, string(command.ID))
 		if err != nil {
 			return ModelResult{}, err
 		}
@@ -134,7 +134,7 @@ func NewSelectedModelStreamCallback(stream func(context.Context, qimumcp.Command
 				return
 			}
 			command.Input.Request = *command.Input.Request.Clone()
-			ctx, err := selectedModelCallContext(ctx, command.ID)
+			ctx, err := selectedModelCallContext(ctx, string(command.ID))
 			if err != nil {
 				yield(qimumcp.StreamValue[chat.ResponseDelta, ModelResult]{}, err)
 				return

@@ -88,14 +88,14 @@ func Resolve(ctx context.Context, session *sdk.ClientSession, name string) (*Bin
 	return NewBinding(session, *selected)
 }
 
-func (b *Binding) invoke(ctx context.Context, id string, input jsonvalue.Value, meta sdk.ParamsBase) (*methodResult[jsontext.Value], error) {
+func (b *Binding) invoke(ctx context.Context, id CommandID, input jsonvalue.Value, meta sdk.ParamsBase) (*methodResult[jsontext.Value], error) {
 	if b != nil && len(b.method.Descriptor().Stream) != 0 {
 		return nil, errors.New("plugin: streaming method requires streaming delivery")
 	}
 	return b.invokeMode(ctx, id, input, meta)
 }
 
-func (b *Binding) invokeMode(ctx context.Context, id string, input jsonvalue.Value, meta sdk.ParamsBase) (*methodResult[jsontext.Value], error) {
+func (b *Binding) invokeMode(ctx context.Context, id CommandID, input jsonvalue.Value, meta sdk.ParamsBase) (*methodResult[jsontext.Value], error) {
 	params, err := b.invocationParams(ctx, id, input, meta)
 	if err != nil {
 		return nil, err
@@ -113,7 +113,7 @@ func (b *Binding) invokeMode(ctx context.Context, id string, input jsonvalue.Val
 	return result, nil
 }
 
-func (b *Binding) invocationParams(ctx context.Context, id string, input jsonvalue.Value, meta sdk.ParamsBase) (*invokeParams, error) {
+func (b *Binding) invocationParams(ctx context.Context, id CommandID, input jsonvalue.Value, meta sdk.ParamsBase) (*invokeParams, error) {
 	var err error
 	meta, err = invocationMetadata(ctx, meta)
 	if err != nil {
@@ -123,7 +123,7 @@ func (b *Binding) invocationParams(ctx context.Context, id string, input jsonval
 		return nil, errors.New("plugin: operation binding is required")
 	}
 	if b.method.Kind() == portable.Mutation {
-		if err := ValidateCommandID(id); err != nil {
+		if err := CommandID(id).Validate(); err != nil {
 			return nil, err
 		}
 	} else if id != "" {
@@ -135,12 +135,12 @@ func (b *Binding) invocationParams(ctx context.Context, id string, input jsonval
 	return &invokeParams{ParamsBase: meta, Protocol: portable.Protocol, Method: b.method.Name(), Contract: b.method.Identity().Digest(), Export: b.export, Capability: b.capability, Input: input.JSON(), CommandID: id}, nil
 }
 
-func (b *Binding) Invoke(ctx context.Context, id string, input jsonvalue.Value) (jsonvalue.Value, error) {
+func (b *Binding) Invoke(ctx context.Context, id CommandID, input jsonvalue.Value) (jsonvalue.Value, error) {
 	return b.InvokeWithMetadata(ctx, id, input, sdk.ParamsBase{})
 }
 
 // InvokeWithMetadata keeps ephemeral call collaborators outside admitted input.
-func (b *Binding) InvokeWithMetadata(ctx context.Context, id string, input jsonvalue.Value, metadata sdk.ParamsBase) (jsonvalue.Value, error) {
+func (b *Binding) InvokeWithMetadata(ctx context.Context, id CommandID, input jsonvalue.Value, metadata sdk.ParamsBase) (jsonvalue.Value, error) {
 	if b != nil && len(b.method.Descriptor().Stream) != 0 {
 		return jsonvalue.Value{}, errors.New("plugin: streaming method requires streaming delivery")
 	}
@@ -151,7 +151,7 @@ func (b *Binding) InvokeWithMetadata(ctx context.Context, id string, input jsonv
 	return jsonvalue.Parse(result.valueJSON)
 }
 
-func (b *Binding) ReadReceipt(ctx context.Context, id string, input jsonvalue.Value) (jsonvalue.Value, bool, error) {
+func (b *Binding) ReadReceipt(ctx context.Context, id CommandID, input jsonvalue.Value) (jsonvalue.Value, bool, error) {
 	if b == nil || b.method.Kind() != portable.Mutation {
 		return jsonvalue.Value{}, false, errors.New("plugin: command binding is required")
 	}

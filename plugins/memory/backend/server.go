@@ -134,7 +134,7 @@ func registerServer(server *sdk.Server, db *sql.DB, store store, roots app.RootR
 				return rpc.MaintenanceResult{}, err
 			}
 			var grant qimumcp.CallbackRef
-			prepared, original, err := pluginstorage.AdmitCommand(ctx, db, rpc.Maintain, command.ID, admitted, func(ctx context.Context) error {
+			prepared, original, err := pluginstorage.AdmitCommand(ctx, db, rpc.Maintain, string(command.ID), admitted, func(ctx context.Context) error {
 				if !input.Compacted {
 					return nil
 				}

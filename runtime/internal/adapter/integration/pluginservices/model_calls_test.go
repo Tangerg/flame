@@ -114,7 +114,7 @@ func TestSelectedModelCallsHaveIndependentRoutesBudgetsAndDurableEvidence(t *tes
 			for i := range 3 {
 				input.Selection.Model = fmt.Sprintf("route-%d", i)
 				input.Request.Options.Model = input.Selection.Model
-				response, err := pluginsdk.CallSelectedModel(t.Context(), ref, fmt.Sprintf("independent-%d", i), input)
+				response, err := pluginsdk.CallSelectedModel(t.Context(), ref, qimumcp.CommandID(fmt.Sprintf("independent-%d", i)), input)
 				if response == nil || response.Text() != "known "+input.Selection.Model || (err != nil) != outerFailure {
 					t.Fatalf("independent outcome %d: %+v %v", i, response, err)
 				}
@@ -324,7 +324,7 @@ func TestSelectedModelResolvesInstalledSelectionForEveryIndependentCall(t *testi
 	ref, _ := selectedCallRef(t, composition, routing)
 	input := selectedCallInput("proposed-model")
 	for i := range 3 {
-		response, err := pluginsdk.CallSelectedModel(t.Context(), ref, fmt.Sprintf("selected-route-%d", i), input)
+		response, err := pluginsdk.CallSelectedModel(t.Context(), ref, qimumcp.CommandID(fmt.Sprintf("selected-route-%d", i)), input)
 		if err != nil || response == nil || response.Text() != fmt.Sprintf("chosen-%d", i+1) {
 			t.Fatalf("fresh selection %d: %+v %v", i, response, err)
 		}

@@ -12,6 +12,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/qimu/integrity"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
 )
@@ -23,14 +24,14 @@ const MaxProblems = 4096
 const MaxSummaryBytes = 64 << 10
 
 type Document struct {
-	Workspace string `json:"workspace"`
-	Path      string `json:"path"`
-	Version   string `json:"version" jsonschema:"pattern=^[a-f0-9]{64}$"`
-	Content   string `json:"content"`
+	Workspace string           `json:"workspace"`
+	Path      string           `json:"path"`
+	Version   integrity.Digest `json:"version"`
+	Content   string           `json:"content"`
 }
 
 func NewDocument(workspace, path, content string) (Document, error) {
-	document := Document{Workspace: workspace, Path: path, Content: content, Version: fmt.Sprintf("%x", sha256.Sum256([]byte(content)))}
+	document := Document{Workspace: workspace, Path: path, Content: content, Version: integrity.Hash([]byte(content))}
 	return document, document.Validate()
 }
 
@@ -43,15 +44,15 @@ func (d Document) Validate() error {
 	if err := validateContent(d.Content); err != nil {
 		return err
 	}
-	if d.Version != fmt.Sprintf("%x", sha256.Sum256([]byte(d.Content))) {
+	if d.Version != integrity.Hash([]byte(d.Content)) {
 		return errors.New("code intelligence: document version does not identify its content")
 	}
 	return nil
 }
 
 type Transformation struct {
-	Version string  `json:"version" jsonschema:"pattern=^[a-f0-9]{64}$"`
-	Content *string `json:"content,omitzero"`
+	Version integrity.Digest `json:"version"`
+	Content *string          `json:"content,omitzero"`
 }
 
 func (t Transformation) Validate(source Document) error {
@@ -76,9 +77,9 @@ func (i Inspection) Validate() error {
 }
 
 type Report struct {
-	Version  string   `json:"version" jsonschema:"pattern=^[a-f0-9]{64}$"`
-	Problems []string `json:"problems"`
-	Summary  string   `json:"summary"`
+	Version  integrity.Digest `json:"version"`
+	Problems []string         `json:"problems"`
+	Summary  string           `json:"summary"`
 }
 
 func (r Report) Validate(source Document) error {

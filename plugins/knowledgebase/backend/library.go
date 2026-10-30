@@ -13,7 +13,6 @@ import (
 	"github.com/Tangerg/flame/plugins/knowledgebase/internal/wire"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
-	"github.com/google/uuid"
 )
 
 type embed func(context.Context, []string) (pluginsdk.TextEmbeddings, error)
@@ -25,7 +24,7 @@ func remoteEmbedding(ctx context.Context) (embed, error) {
 		return nil, err
 	}
 	return func(ctx context.Context, texts []string) (pluginsdk.TextEmbeddings, error) {
-		return pluginsdk.CallTextEmbedding(ctx, ref, uuid.NewString(), texts)
+		return pluginsdk.CallTextEmbedding(ctx, ref, qimumcp.NewCommandID(), texts)
 	}, nil
 }
 

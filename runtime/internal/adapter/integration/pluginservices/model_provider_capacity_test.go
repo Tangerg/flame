@@ -28,7 +28,7 @@ func TestModelProviderRejectsOversizedCompleteFrameBeforeDispatch(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	use := &providerUse{owner: &ModelProviders{contract: contract}, binding: plugins.ContributionBinding{InstallationID: installation, Export: "model-provider"}, handle: modelprovider.Handle{ID: strings.Repeat("a", 64)}, requestMethods: []string{method.Name()}}
+	use := &providerUse{owner: &ModelProviders{contract: contract}, binding: plugins.ContributionBinding{InstallationID: installation, Export: "model-provider"}, handle: modelprovider.Handle{ID: modelprovider.HandleID(strings.Repeat("a", 64))}, requestMethods: []string{method.Name()}}
 	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "original-call", Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeCall, Reference: "original-call"}})
 	if err != nil {
 		t.Fatal(err)

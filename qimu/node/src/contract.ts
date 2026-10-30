@@ -47,8 +47,15 @@ function boundedUTF8(value: unknown, maximumBytes: number): value is string {
     !/\p{Surrogate}/u.test(value)
   );
 }
+// Command identities are bounded in code points, as JSON Schema maxLength
+// counts them, so every schema that embeds one admits exactly this set.
 export function validCommand(value: unknown): value is string {
-  return boundedUTF8(value, wire.constants.maxCommandIDBytes);
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    !/\p{Surrogate}/u.test(value) &&
+    [...value].length <= wire.constants.maxCommandIDCharacters
+  );
 }
 export function validToken(value: unknown): value is string {
   return (

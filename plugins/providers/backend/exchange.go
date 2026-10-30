@@ -24,7 +24,7 @@ func execute[P, R any](ctx context.Context, s *store, method string, command qim
 		return zero, err
 	}
 	var request P
-	prepared, reply, err := pluginstorage.AdmitCommand(ctx, s.db, method, command.ID, input, func(context.Context) error {
+	prepared, reply, err := pluginstorage.AdmitCommand(ctx, s.db, method, string(command.ID), input, func(context.Context) error {
 		if err := json.Unmarshal(input.JSON(), &request, json.RejectUnknownMembers(true)); err != nil {
 			return err
 		}

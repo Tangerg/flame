@@ -90,7 +90,7 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := method.InvokeWithMetadata(ctx, invocation.ID, input, metadata); err == nil {
+	if _, err := method.InvokeWithMetadata(ctx, qimumcp.CommandID(invocation.ID), input, metadata); err == nil {
 		t.Fatal("lost acceptance was reported as success")
 	}
 	pending, err := store.PendingManual(ctx, "", 10)
@@ -101,7 +101,7 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 	if captured.Invocation() != invocation || captured.Snapshot().Execution.Instructions != definition.Instructions() {
 		t.Fatal("manual capture lost its original caller or input")
 	}
-	if _, found, err := method.ReadReceipt(ctx, invocation.ID, input); err != nil || found {
+	if _, found, err := method.ReadReceipt(ctx, qimumcp.CommandID(invocation.ID), input); err != nil || found {
 		t.Fatalf("unknown receipt: %t, %v", found, err)
 	}
 	if _, err := store.Delete(ctx, definition.ID()); err != nil {
@@ -111,14 +111,14 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 	if _, err := db.ExecContext(ctx, `CREATE TRIGGER refuse_manual_reply BEFORE UPDATE OF reply ON commands BEGIN SELECT RAISE(ABORT,'receipt failed'); END`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := method.InvokeWithMetadata(ctx, invocation.ID, input, metadata); err == nil {
+	if _, err := method.InvokeWithMetadata(ctx, qimumcp.CommandID(invocation.ID), input, metadata); err == nil {
 		t.Fatal("failed private receipt commit became success")
 	}
 	pending, err = store.PendingManual(ctx, "", 10)
 	if err != nil || len(pending) != 1 || pending[0].Snapshot() != captured.Snapshot() {
 		t.Fatalf("receipt failure changed original pending work: %v", err)
 	}
-	if _, found, err := method.ReadReceipt(ctx, invocation.ID, input); err != nil || found {
+	if _, found, err := method.ReadReceipt(ctx, qimumcp.CommandID(invocation.ID), input); err != nil || found {
 		t.Fatalf("failed receipt fabricated completion: %t, %v", found, err)
 	}
 	if _, err := db.ExecContext(ctx, `DROP TRIGGER refuse_manual_reply`); err != nil {
@@ -130,7 +130,7 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 	}
 	callsAfterRecovery := host.calls.Load()
 
-	value, err := method.InvokeWithMetadata(ctx, invocation.ID, input, metadata)
+	value, err := method.InvokeWithMetadata(ctx, qimumcp.CommandID(invocation.ID), input, metadata)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,10 +138,10 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 		t.Fatal("public replay repeated a recovered Run admission")
 	}
 	calls := host.calls.Load()
-	if receipt, found, err := method.ReadReceipt(ctx, invocation.ID, input); err != nil || !found || receipt != value {
+	if receipt, found, err := method.ReadReceipt(ctx, qimumcp.CommandID(invocation.ID), input); err != nil || !found || receipt != value {
 		t.Fatalf("original receipt: %t, %v", found, err)
 	}
-	if replay, err := method.Invoke(ctx, invocation.ID, input); err != nil || replay != value || host.calls.Load() != calls {
+	if replay, err := method.Invoke(ctx, qimumcp.CommandID(invocation.ID), input); err != nil || replay != value || host.calls.Load() != calls {
 		t.Fatalf("completed replay reacquired collaborators: %v", err)
 	}
 	pending, err = store.PendingManual(ctx, "", 10)
@@ -156,7 +156,7 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := method.Invoke(ctx, invocation.ID, changed); !errors.Is(decodeError(err), portable.ErrInvocationConflict) {
+	if _, err := method.Invoke(ctx, qimumcp.CommandID(invocation.ID), changed); !errors.Is(decodeError(err), portable.ErrInvocationConflict) {
 		t.Fatalf("changed input did not conflict: %v", err)
 	}
 	refused := invocation
@@ -165,10 +165,10 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := method.InvokeWithMetadata(refusalContext, refused.ID, changed, metadata); !errors.Is(decodeError(err), schedule.ErrNotFound) {
+	if _, err := method.InvokeWithMetadata(refusalContext, qimumcp.CommandID(refused.ID), changed, metadata); !errors.Is(decodeError(err), schedule.ErrNotFound) {
 		t.Fatalf("business refusal: %v", err)
 	}
-	if _, found, err := method.ReadReceipt(refusalContext, refused.ID, changed); !found || !errors.Is(decodeError(err), schedule.ErrNotFound) {
+	if _, found, err := method.ReadReceipt(refusalContext, qimumcp.CommandID(refused.ID), changed); !found || !errors.Is(decodeError(err), schedule.ErrNotFound) {
 		t.Fatalf("business refusal was not retained: %t, %v", found, err)
 	}
 	var rows int

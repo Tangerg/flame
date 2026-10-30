@@ -19,7 +19,7 @@ func ModelStreamMethod() (*qimumcp.StreamingMethod[chat.Request, chat.ResponseDe
 	})
 }
 
-func StreamModel(ctx context.Context, ref qimumcp.CallbackRef, id string, request *chat.Request) iter.Seq2[qimumcp.StreamValue[chat.ResponseDelta, ModelResult], error] {
+func StreamModel(ctx context.Context, ref qimumcp.CallbackRef, id qimumcp.CommandID, request *chat.Request) iter.Seq2[qimumcp.StreamValue[chat.ResponseDelta, ModelResult], error] {
 	method, err := ModelStreamMethod()
 	if err == nil {
 		err = request.Validate()
@@ -29,7 +29,7 @@ func StreamModel(ctx context.Context, ref qimumcp.CallbackRef, id string, reques
 			yield(qimumcp.StreamValue[chat.ResponseDelta, ModelResult]{}, err)
 		}
 	}
-	return qimumcp.StreamHost(ctx, ref, method, id, *request.Clone())
+	return qimumcp.StreamHost(ctx, ref, method, qimumcp.CommandID(id), *request.Clone())
 }
 
 func NewModelStreamCallback(stream func(context.Context, qimumcp.Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error]) (qimumcp.Callback, error) {
@@ -47,7 +47,7 @@ func NewModelStreamCallback(stream func(context.Context, qimumcp.Command[chat.Re
 				return
 			}
 			command.Input = *command.Input.Clone()
-			ctx, err := modelCallContext(ctx, command.ID)
+			ctx, err := modelCallContext(ctx, string(command.ID))
 			if err != nil {
 				yield(qimumcp.StreamValue[chat.ResponseDelta, ModelResult]{}, err)
 				return

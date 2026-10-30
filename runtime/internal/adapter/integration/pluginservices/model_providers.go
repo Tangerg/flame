@@ -224,7 +224,7 @@ func (p *ModelProviders) OpenChat(ctx context.Context, selection modelchoice.Sel
 		return models.ResolvedChat{}, err
 	}
 	use.handle = opened.Handle
-	if opened.Original != id {
+	if opened.Original != qimumcp.CommandID(id) {
 		return models.ResolvedChat{}, errors.New("model providers: original construction identity changed")
 	}
 	return use.chat(selection, profile, opened)
@@ -411,11 +411,11 @@ func invokeProvider[P, R any](ctx context.Context, use *providerUse, method *qim
 	if id == "" {
 		return bound.Call(borrowed.Context(), input)
 	}
-	value, err := bound.CallCommand(borrowed.Context(), id, input)
+	value, err := bound.CallCommand(borrowed.Context(), qimumcp.CommandID(id), input)
 	if err == nil {
 		return value, nil
 	}
-	original, found, receiptErr := bound.ReadReceipt(borrowed.Context(), id, input)
+	original, found, receiptErr := bound.ReadReceipt(borrowed.Context(), qimumcp.CommandID(id), input)
 	if found {
 		return original, receiptErr
 	}

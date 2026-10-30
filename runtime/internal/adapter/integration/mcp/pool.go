@@ -315,7 +315,7 @@ func (p *Pool) Stream(ctx context.Context, id mcpserver.ID, session *sdk.ClientS
 			yield(qimumcp.StreamValue[jsontext.Value, jsontext.Value]{}, err)
 			return
 		}
-		for value, err := range binding.StreamWithMetadata(ctx, p.callbacks, callbackPayloadLimits, command, input, metadata) {
+		for value, err := range binding.StreamWithMetadata(ctx, p.callbacks, callbackPayloadLimits, qimumcp.CommandID(command), input, metadata) {
 			if !yield(value, err) {
 				return
 			}

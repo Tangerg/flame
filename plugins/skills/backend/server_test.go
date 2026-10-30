@@ -134,7 +134,7 @@ func TestLearningReceiptsSurviveRestartWithoutRepeatingModelCalls(t *testing.T) 
 				t.Fatal(err)
 			}
 			for n := range 2 {
-				if _, err := mine.Invoke(ctx, fmt.Sprintf("cadence-%d", n), input); err != nil {
+				if _, err := mine.Invoke(ctx, qimumcp.CommandID(fmt.Sprintf("cadence-%d", n)), input); err != nil {
 					t.Fatal(err)
 				}
 			}
