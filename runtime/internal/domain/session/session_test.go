@@ -163,7 +163,7 @@ func TestSessionFork(t *testing.T) {
 		t.Fatalf("Fork: %v", err)
 	}
 	if child.ID() != "ses_child" || child.ParentID() != parent.ID() ||
-		child.Title() != "Research (fork)" || child.Workspace() != parent.Workspace() || !child.Isolated() {
+		child.Title() != "Research" || child.Workspace() != parent.Workspace() || !child.Isolated() {
 		t.Fatalf("child = %+v", child.Snapshot())
 	}
 	if child.Selection() != parent.Selection() || child.Favorite() || child.Revision() != 1 ||

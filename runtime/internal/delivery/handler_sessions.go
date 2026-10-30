@@ -205,7 +205,7 @@ func (s *Handler) UpdateSession(ctx context.Context, in protocol.UpdateSessionRe
 // ForkSession branches a session into a fresh child that continues from the
 // parent's conversation: the child inherits the
 // parent's cwd and a copy of its chat history, then diverges. An optional title
-// overrides the default "<parent> (fork)".
+// overrides the parent's title, which the child otherwise keeps.
 //
 // FromRunID (run-boundary fork — "branch from this run", B4) truncate-copies
 // history up to and including that Run; omit it for a whole-conversation

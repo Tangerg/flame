@@ -187,19 +187,15 @@ func (s Session) NameIfUntitled(title string, updatedAt time.Time) (Session, boo
 
 // Fork derives a new child Session. It inherits the admitted workspace and
 // isolation choice and exact model selection, starts a fresh conversation with
-// no favorite flag, and records immutable lineage back to s. An empty title uses
-// the parent's human-readable fork title.
+// no favorite flag, and records immutable lineage back to s. An empty title keeps
+// the parent's own title; wording a fork in a person's language is the client's.
 func (s Session) Fork(id, title string, createdAt time.Time) (Session, error) {
 	if s.id == "" {
 		return Session{}, fmt.Errorf("%w: parent was never constructed", ErrInvalid)
 	}
 	title = strings.TrimSpace(title)
 	if title == "" {
-		if s.title == "" {
-			title = "Fork"
-		} else {
-			title = s.title + " (fork)"
-		}
+		title = s.title
 	}
 	createdAt = createdAt.UTC()
 	return Restore(Snapshot{

@@ -271,7 +271,7 @@ func (r *Runtime) ForkSession(ctx context.Context, in conversation.ForkSession) 
 	id := r.identities.next(sessionIdentity)
 	title := strings.TrimSpace(in.Title)
 	if title == "" {
-		title = source.meta.Title + " (fork)"
+		title = source.meta.Title
 	}
 	now := r.now()
 	meta := conversation.Session{
