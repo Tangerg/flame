@@ -10,7 +10,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/scope/tools/fs"
-	"github.com/Tangerg/scope/tools/httpreq"
 )
 
 func projectToolArguments(call *conversation.ToolCall) error {
@@ -49,12 +48,7 @@ func projectToolArguments(call *conversation.ToolCall) error {
 			return err
 		}
 		call.Query, call.Path, summary = input.Pattern, input.Path, input.Pattern
-	case builtin.HTTPRequest:
-		var input httpreq.Request
-		if err := json.Unmarshal(call.ArgumentsJSON, &input); err != nil {
-			return err
-		}
-		call.URL, summary = input.URL, input.URL
+
 	}
 	if summary != "" {
 		call.Summary = truncateRunes(summary, toolSummaryRuneLimit)
