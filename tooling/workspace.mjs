@@ -762,6 +762,12 @@ async function main(command) {
       run("npm", ["run", "format:check"]);
       await checkGenerated();
       await goMembers(false);
+      run(
+        "go",
+        ["run", "./complexity", "-baseline", "complexity/baseline.txt", root],
+        join(root, "tooling"),
+        { ...process.env, GOWORK: "off" },
+      );
       for (const p of ordered(await workspaces())) {
         const script = p.scripts?.check
           ? "check"
