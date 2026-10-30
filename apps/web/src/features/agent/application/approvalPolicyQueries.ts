@@ -1,16 +1,5 @@
+import { type ApprovalSubject, type ToolRef } from "@flame/runtime-client/wire";
 import { type ApprovalRuleDecision } from "@/foundation/protocolValues.generated";
-type ApprovalSubject =
-  { type: "all" } | { type: "exact"; value: string } | { type: "glob"; value: string };
-type ToolRef =
-  | { type: "builtIn"; name: string }
-  | {
-      type: "mcp";
-      name: string;
-      server: {
-        name: string;
-        origin: { type: "user" } | { type: "installation"; installationId: string };
-      };
-    };
 
 import { createDataQuery, createParameterizedDataQuery } from "@/extensions/dataQuery";
 import { type ApprovalModeResult, type RememberScope } from "@/features/agent/domain/hitl";
