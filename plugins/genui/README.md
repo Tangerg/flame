@@ -78,7 +78,11 @@ button semantics as their labels change between showing the answer and question;
 the current face remains expressed by the existing face label and body.
 Local flip state stays in the same OpenUI field.
 Native chart geometry uses labels, patterns and a data table rather than color
-alone. Markdown uses the established renderer with raw HTML disabled. KaTeX
+alone. All twelve admitted Cartesian series have distinct point marks or bar
+patterns, reused by their data-column legends. Plot labels keep at least the host's
+small-text size in a separate named scroll region instead of shrinking with
+the container; exact values remain in the independently readable data table.
+Markdown uses the established renderer with raw HTML disabled. KaTeX
 produces MathML with trusted commands disabled. Map tiles use OpenStreetMap with
 attribution; tile errors remain visible and can be explicitly retried. A supplied
 route is displayed as supplied geometry, not represented as newly computed road

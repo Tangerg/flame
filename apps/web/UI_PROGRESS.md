@@ -138,6 +138,10 @@ for the original native comparison, continuous reading, translated labels and cl
 Horizontal report tabs now leave vertical arrows to the browser while retaining
 their horizontal selection model and the radio group's separate key model. See
 **Horizontal report tabs and reading keys** for the native task and delivery bounds.
+Cartesian charts now keep twelve distinct series and matching data legends, with
+readable plot sizing and locally owned horizontal keyboard reading. See
+**Chart series identity and horizontal reading** for the native task, shared
+component boundary and qualification limits.
 The user resumed the paused goal.
 Completed batches are verified, explicitly committed and pushed to main under the
 goal publication policy. Preserve parallel work in the primary checkout. Do not
@@ -2895,6 +2899,129 @@ SHA-256 `ad1c5447bb58224be4cd8af4a6254990f4a5ab633864ed296e0f7e43a7644add`.
 Native AX and screenshots remain in CUA. This batch uses the published frozen
 main base without another synchronization/validation loop. Continue from new
 content/Dock evidence; the separate native reverse-Tab finding and UI goal remain open.
+
+### Chart series identity and horizontal reading
+
+At frozen published base `45663d22d`, the Chart contract admits twelve series,
+but scatter points repeat two circle sizes, line/area combinations repeat after
+ten and bar fills repeat after five. Scatter and bar data-column legends draw
+line dashes that do not identify the plotted marks. Original EN Wails renders
+the 640-unit figure at **578 x 289**, reducing its 12-unit labels to about
+**10.84px**. The complete exact-value table already exists; it remains the
+authoritative readable projection of the captured numbers.
+
+`plugins/genui/component/chart.tsx` now supplies six point shapes in filled and
+outlined forms for all twelve Cartesian series. The plot and its data-column
+legend use the same mark helper. Bars reuse the existing pie pattern vocabulary
+and reference the same paint server in their data legends. The unchanged pie
+pattern definitions have one implementation. Numeric x positioning, signed
+values, zero totals, literal text and existing chart geometry retain their
+contracts. Pie/donut retain the existing first-ten overview legend and complete
+HTML value table; this change does not claim an exhaustive slice legend.
+
+All plot types have a named shared `ScrollRegion` distinct from the exact-data
+region. SVG minimum width derives from the host small-text role and the actual
+12-unit label size, retaining the 2:1 geometry and a 56rem width ceiling. Narrow
+content scrolls horizontally instead of shrinking its figure text indefinitely.
+No palette, locale key, dependency, schema, Runtime command, persistent state
+or draft owner is added. The installed GenUI resource is rebuilt normally.
+
+Native qualification of that layout first exposes a separate shared reading
+contract gap: a focused plot receives uncancelled Right but stays at zero, while
+an unfocused sibling table can move under browser handling. Replacing SVG sizing
+with an HTML width wrapper does not repair it; that experiment is withdrawn.
+`packages/ui/src/scroll-region.tsx` now handles plain Left/Right only when the
+region itself receives the event and has an actual horizontal range. Its caller
+handler runs once first and can prevent the default. DOM `scrollLeft` remains
+the sole position owner; steps use 10% of visible width, consistent with the
+existing image reader. Handled keys are contained even at an edge. Descendant
+controls, composition, modified keys, vertical reading, refs and caller tab stops
+retain their existing contracts. The generic change includes its package README
+and regression coverage; no global listener, timer, focus assignment or mirrored
+React pan state is introduced.
+
+Read-only ZCode's actual chart container/legend and coding-plan series projection
+inform correspondence between captured series and their legend. The inspected
+ChatGPT `line-chart` loader and its `chart-line` module are Lucide icon code;
+they supply no chart behavior evidence. The
+[W3C non-text contrast explanation](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html)
+recognizes equivalent tabular information. Existing alpha values alone therefore
+do not establish a contrast failure here, and no new contrast ratio is claimed.
+Earlier HeroUI/Arc/Radix and Ace research remains design context. The better-series
+review retains named keyboard readers, complete data and return paths, existing
+copy, shared font roles and theme tokens. Typography and responsive behavior gain
+the measured minimum; whitespace and hierarchy keep figure/data/authoring scopes;
+motion and control surfaces remain with their existing owners. Brand originality
+adds no decorative card, accent strip or asset.
+
+- Original chart baseline passes **8 tests**. After correcting the test harness's
+  unsupported nested-SVG-title query, replaying original production source yields
+  **5 failures / 8 passes**; candidate bytes are restored exactly. The final
+  **13 chart tests** pass, including twelve distinct marks, matching plot/legend
+  signatures, twelve unique bar patterns and independently named plot/data readers.
+  Initial invalid title-query failures are not treated as product regressions.
+- Five shared-reader regressions expose **2 failures / 5 passes** against the
+  original built component. Full shared UI verification passes **12 files /
+  209 tests**, build/type/lint/format and independent offline packed UI/icon
+  consumption. Tests cover own/sibling position, focus, both bounds, caller
+  cancellation, descendants, modifiers, composition, no-overflow and native-style
+  negative RTL offsets. Native RTL is not newly qualified.
+- Related Frontend verification passes **7 files / 141 tests**. Plugin
+  build/type/lint/format/i18n/resource checks and Web type/lint/format,
+  layer/design-system/token/style/class/shorthand/chrome/locale, bundle and
+  installed-module checks pass. Normal **make check-native passes in 36.380s**,
+  including Desktop tests/vet/build and supported Wails production compilation.
+  Duplicate-library and deployment-version linker warnings are non-failing.
+  One incorrect `build:components` dispatch exits before building; the verified
+  package `build` script succeeds. No assertion or gate is weakened.
+- Final actual Wails EN/light/14px/Orange/full-motion qualifies all six chart
+  kinds, matching marks/patterns and legends, distinct plot/table entry, forward
+  and reverse pan, related README/back and continued drafting. Plot width is
+  **693.328125**, its labels about **13px** at actual size; plot and table
+  independently reach offsets **114 / 743**. The note remains
+  `Keep the chart comparison and exact data.` and the Composer continues as
+  `Draft before chart reading. Ready to continue.`
+- Actual ZH/dark/18px/custom blue/motion-off qualifies native half-screen resize,
+  **560 x 475 at 200%**, native window zoom to **756 x 475**, scatter/bar reading,
+  plot edge containment, complete table reading, full-width README/Close and
+  retained note/selection. The two readers independently reach **410 / 1182**.
+  The draft continues as `图表阅读草稿。 已核对完整数据。`; Actual Size is restored.
+  No numerical text-size claim is derived from zoomed WebKit computed styles.
+- An ordinary observer-free ZH/18px/200% launch repeats plot/data horizontal
+  reading, bar selection, full-width README/Close and the continued draft
+  `普通版本图表草稿。 继续核对。`. Its **345 assets** differ only in the two HTML
+  entries and removal of `chart-observer.js`; the native binary is unchanged.
+  Collector record/request deltas are zero. Its visible CUA task carries no
+  private offset or event-cancellation measurement claim.
+
+The private scene uses validated captured inputs, installed GenUI ESM/lifecycle
+and production Wails services, window/menu and components. The passive observer
+only records; it adds no input or state transition. Earlier native probes that
+focus the tabpanel instead of the plot, receive no observable wheel event, or use
+an unsupported macOS pixel-scroll argument do not establish plot acceptance.
+The rejected HTML wrapper and pre-repair scenes are not passing qualifications.
+This is a focused reading/component repair, not a WebKit or physical-input cause
+claim. Live provider/Runtime writes, release acquisition/admission, Send,
+VoiceOver, OS IME and other-platform GUIs remain unqualified. No browser suite,
+benchmark, Claude CLI or subagent runs. **Approve** this scoped chart-reading
+task; whole-product and award-level acceptance remain unproven.
+
+All **seven** native launches exit, the bundle is unregistered and its listener
+is closed. Cleanup removes **eight** newly created checkout output/cache roots
+and three private profiles, restoring the changed UI test-result file and native
+check binary. All four original modes are checked explicitly. Only GenUI's
+`component.js` changes among **34** installed resources. Preservation passes
+before and after retirement for **6,386** qualified non-Markdown inputs, 34
+resources, **61** read-only references, three instructions, 21 output baselines,
+four originals and five profile absences. The primary parallel checkout and
+installed toolchain remain untouched. The exact root
+`/private/tmp/flame-chart-reading-53Dftz` is absent. The memory-only archive
+round-trips **107 UTF-8 records**, **27,885,992 raw bytes** and **1,338,041 gzip
+bytes**, SHA-256
+`e1070591c43ba113a1583e46762559dff2dae0cc7f7297660c86fe128b949b56`.
+AX and screenshots remain in CUA. No advancing-main synchronization/validation
+loop is started. Continue from fresh content/Dock evidence; the separate native
+reverse-Tab finding and UI goal remain open.
 
 ### Command focus and visible pane boundaries
 
@@ -11702,6 +11829,11 @@ with the repository's selected Wails **v3.0.0**. It makes no production code,
 dependency, generated-resource or preference change. The MEDIUM mixed-input
 finding remains **open**; the result narrows its attribution rather than claiming
 a repair.
+
+The user later reports being temporarily unable to perform the requested
+physical Button B / Shift+Tab comparison. That step remains unqualified. Its old
+private review window is already retired; do not reopen it or treat this reply
+as a test result. Independent UI work continues without a physical-input claim.
 
 The shared Button still leaves Tab with its existing owner. The installed Wails
 source maps `Mac.WebviewPreferences.TabFocusesLinks` to WKPreferences and passes

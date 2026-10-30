@@ -71,6 +71,21 @@ import { vocab } from "../dist/vocabulary.js";
 afterEach(cleanup);
 
 describe("named scroll readers", () => {
+  function horizontalRange(region: HTMLElement, rtl = false) {
+    let offset = 0;
+    Object.defineProperties(region, {
+      clientWidth: { configurable: true, value: 200 },
+      scrollWidth: { configurable: true, value: 800 },
+      scrollLeft: {
+        configurable: true,
+        get: () => offset,
+        set: (value: number) => {
+          offset = Math.max(rtl ? -600 : 0, Math.min(rtl ? 0 : 600, value));
+        },
+      },
+    });
+  }
+
   it("keeps inline identity inside a heading keyboard reachable and complete", () => {
     const identity = `https://runtime.example/${"workspace/".repeat(50)}`;
     const reader = createRef<HTMLSpanElement>();
@@ -107,6 +122,109 @@ describe("named scroll readers", () => {
     expect(region.tagName).toBe("DIV");
     expect(reader.current).toBe(region);
     expect(region.tabIndex).toBe(-1);
+  });
+
+  it("pans the focused reader without moving a sibling or focus", () => {
+    const parentKeyDown = vi.fn();
+    render(
+      <div onKeyDown={parentKeyDown}>
+        <ScrollRegion label="Plot">Wide figure</ScrollRegion>
+        <ScrollRegion label="Values">Exact values</ScrollRegion>
+      </div>,
+    );
+    const plot = screen.getByRole("region", { name: "Plot" });
+    const values = screen.getByRole("region", { name: "Values" });
+    horizontalRange(plot);
+    horizontalRange(values);
+    plot.focus();
+
+    expect(fireEvent.keyDown(plot, { key: "ArrowRight" })).toBe(false);
+    expect(plot.scrollLeft).toBeGreaterThan(0);
+    expect(values.scrollLeft).toBe(0);
+    expect(document.activeElement).toBe(plot);
+    expect(fireEvent.keyDown(plot, { key: "ArrowLeft" })).toBe(false);
+    expect(plot.scrollLeft).toBe(0);
+
+    expect(fireEvent.keyDown(plot, { key: "ArrowLeft" })).toBe(false);
+    plot.scrollLeft = 600;
+    expect(fireEvent.keyDown(plot, { key: "ArrowRight" })).toBe(false);
+    expect(plot.scrollLeft).toBe(600);
+    expect(parentKeyDown).not.toHaveBeenCalled();
+  });
+
+  it("lets the caller handle a key first and invokes it once", () => {
+    const caller = vi.fn((event: { preventDefault(): void }) => {
+      event.preventDefault();
+    });
+    render(
+      <ScrollRegion as="span" label="Source identity" onKeyDown={caller}>
+        Long source identity
+      </ScrollRegion>,
+    );
+    const region = screen.getByRole("region", { name: "Source identity" });
+    horizontalRange(region);
+    expect(fireEvent.keyDown(region, { key: "ArrowRight" })).toBe(false);
+    expect(caller).toHaveBeenCalledOnce();
+    expect(region.scrollLeft).toBe(0);
+  });
+
+  it("leaves child controls, modified keys, composition and vertical reading alone", () => {
+    const caller = vi.fn();
+    render(
+      <ScrollRegion label="Editable results" onKeyDown={caller}>
+        <input aria-label="Filter values" />
+        <button>Next result</button>
+      </ScrollRegion>,
+    );
+    const region = screen.getByRole("region", { name: "Editable results" });
+    horizontalRange(region);
+    const input = screen.getByRole("textbox", { name: "Filter values" });
+    const button = screen.getByRole("button", { name: "Next result" });
+    expect(fireEvent.keyDown(input, { key: "ArrowRight" })).toBe(true);
+    expect(fireEvent.keyDown(button, { key: "ArrowRight" })).toBe(true);
+    const untouched = [
+      { key: "ArrowRight", altKey: true },
+      { key: "ArrowRight", ctrlKey: true },
+      { key: "ArrowRight", metaKey: true },
+      { key: "ArrowRight", shiftKey: true },
+      { key: "ArrowRight", isComposing: true },
+      { key: "ArrowUp" },
+      { key: "ArrowDown" },
+      { key: "Home" },
+      { key: "End" },
+      { key: "Tab" },
+    ];
+    for (const key of untouched) {
+      expect(fireEvent.keyDown(region, key)).toBe(true);
+    }
+    expect(region.scrollLeft).toBe(0);
+    expect(caller).toHaveBeenCalledTimes(untouched.length + 2);
+  });
+
+  it("keeps native keys when the reader has no horizontal range", () => {
+    render(<ScrollRegion label="Short result">Complete result</ScrollRegion>);
+    const region = screen.getByRole("region", { name: "Short result" });
+    Object.defineProperties(region, {
+      clientWidth: { configurable: true, value: 200 },
+      scrollWidth: { configurable: true, value: 200 },
+    });
+    expect(fireEvent.keyDown(region, { key: "ArrowRight" })).toBe(true);
+    Object.defineProperty(region, "clientWidth", { value: 0 });
+    expect(fireEvent.keyDown(region, { key: "ArrowLeft" })).toBe(true);
+  });
+
+  it("pans in the physical arrow direction with native RTL offsets", () => {
+    render(
+      <ScrollRegion label="RTL source" dir="rtl">
+        Wide source
+      </ScrollRegion>,
+    );
+    const region = screen.getByRole("region", { name: "RTL source" });
+    horizontalRange(region, true);
+    expect(fireEvent.keyDown(region, { key: "ArrowLeft" })).toBe(false);
+    expect(region.scrollLeft).toBeLessThan(0);
+    expect(fireEvent.keyDown(region, { key: "ArrowRight" })).toBe(false);
+    expect(region.scrollLeft).toBe(0);
   });
 });
 

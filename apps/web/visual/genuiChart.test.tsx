@@ -4,6 +4,114 @@ import { ChartView } from "../../../plugins/genui/component/chart";
 
 afterEach(cleanup);
 
+const comparisonSeries = Array.from({ length: 12 }, (_, index) => ({
+  label: `Evidence ${index + 1}`,
+  values: [index + 1, index + 2],
+}));
+
+function markerSignature(element: Element | null) {
+  const selector = "circle,rect,path,polygon";
+  const shape = element?.matches(selector) ? element : element?.querySelector(selector);
+  if (!shape) return undefined;
+  const paint = (name: string) => {
+    for (let node: Element | null = shape; node; node = node.parentElement) {
+      if (node.hasAttribute(name)) return node.getAttribute(name);
+    }
+    return null;
+  };
+  return JSON.stringify({
+    shape: shape.localName,
+    geometry: ["d", "points", "r", "width", "height"].map((name) => shape.getAttribute(name)),
+    fill: paint("fill"),
+    stroke: paint("stroke"),
+    strokeWidth: paint("stroke-width"),
+  });
+}
+
+it.each(["scatter", "line", "area"] as const)(
+  "keeps all twelve %s series distinct and matches their markers to the data legend",
+  (kind) => {
+    render(
+      <ChartView
+        kind={kind}
+        caption="Evidence comparison"
+        labels={["A", "B"]}
+        xValues={[10, 110]}
+        series={comparisonSeries}
+        dataLabel="Comparison data"
+        emptyLabel="No data"
+      />,
+    );
+    const chart = screen.getByRole("img", { name: "Evidence comparison" });
+    const table = screen.getByRole("table", { name: "Comparison data" });
+    const signatures = comparisonSeries.map((series) => {
+      const point = within(chart).getByText(`${series.label} · A: ${series.values[0]}`, {
+        selector: "title",
+      }).parentElement;
+      const marker = markerSignature(point);
+      const header = within(table).getByRole("columnheader", { name: series.label });
+      expect(marker).toBeDefined();
+      expect(markerSignature(header.querySelector("svg"))).toBe(marker);
+      return marker;
+    });
+    expect(new Set(signatures).size).toBe(12);
+    expect(within(table).getByRole("cell", { name: "13" })).toBeTruthy();
+  },
+);
+
+it("matches each grouped-bar fill to its own data legend and keeps all twelve series distinct", () => {
+  const { container } = render(
+    <ChartView
+      kind="bar"
+      caption="Evidence comparison"
+      labels={["A", "B"]}
+      series={comparisonSeries}
+      dataLabel="Comparison data"
+      emptyLabel="No data"
+    />,
+  );
+  const chart = screen.getByRole("img", { name: "Evidence comparison" });
+  const table = screen.getByRole("table", { name: "Comparison data" });
+  const patterns = comparisonSeries.map((series) => {
+    const bar = within(chart).getByText(`${series.label} · A: ${series.values[0]}`, {
+      selector: "title",
+    }).parentElement;
+    expect(bar?.localName).toBe("rect");
+    const fill = bar?.getAttribute("fill");
+    expect(fill).toMatch(/^url\(#.+\)$/);
+    const header = within(table).getByRole("columnheader", { name: series.label });
+    expect(header.querySelector("svg rect")?.getAttribute("fill")).toBe(fill);
+    const id = fill!.slice(5, -1);
+    const pattern = container.querySelector(`[id="${id}"]`);
+    expect(pattern?.localName).toBe("pattern");
+    return ["width", "height", "patternTransform"]
+      .map((name) => pattern!.getAttribute(name))
+      .join(";");
+  });
+  expect(new Set(patterns).size).toBe(12);
+  expect(within(table).getByRole("cell", { name: "13" })).toBeTruthy();
+});
+
+it("provides separate named keyboard reading regions for the plot and its exact data", () => {
+  render(
+    <ChartView
+      kind="line"
+      caption="Evidence comparison"
+      labels={["A", "B"]}
+      series={comparisonSeries}
+      dataLabel="Comparison data"
+      emptyLabel="No data"
+    />,
+  );
+  const plot = screen.getByRole("region", { name: "Evidence comparison" });
+  const data = screen.getByRole("region", { name: "Comparison data" });
+  expect(plot.tabIndex).toBe(0);
+  expect(within(plot).getByRole("img", { name: "Evidence comparison" })).toBeTruthy();
+  expect(data.tabIndex).toBe(0);
+  expect(within(data).getByRole("table", { name: "Comparison data" })).toBeTruthy();
+  expect(data).not.toBe(plot);
+});
+
 it.each(["line", "bar", "area", "pie", "donut"] as const)(
   "renders %s geometry with complete readable data and literal labels",
   (kind) => {

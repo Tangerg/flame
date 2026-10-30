@@ -425,6 +425,11 @@ It does not move focus or handle source replacement as navigation.
 `ScrollRegion` defaults to a `div`; `as="span"` keeps a bounded, named keyboard
 reader valid inside a heading. Both forms retain native refs, attributes and the
 same scrolling and focus contract.
+When a reader itself receives an unmodified horizontal arrow key and has overflow,
+it moves its own horizontal position by 10% of its visible width, including at
+either boundary. Child controls, composing or modified keys and vertical reading
+retain their existing behavior. Caller key handlers run first and can prevent this
+default. The DOM scroll position remains the only owner of the reading position.
 `ScrollRegion` contains horizontal overscroll while allowing vertical scrolling
 to continue through the enclosing reading viewport. Bounded image and diagram
 viewers explicitly contain both axes in their own viewport styles.
