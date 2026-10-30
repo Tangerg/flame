@@ -3,74 +3,74 @@ package testsupport
 
 import "time"
 
-type SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fselectionJSON_5bstring_5d struct {
-	Model           string `json:"model"`
-	Provider        string `json:"provider"`
-	ReasoningEffort string `json:"reasoningEffort"`
+type SchedulesAck struct {
 }
 
-type SchedulesRunNowV1Output struct {
-	RunID     string `json:"RunID"`
-	SessionID string `json:"SessionID"`
+type SchedulesDraft struct {
+	CWD            string             `json:"CWD"`
+	Cron           string             `json:"Cron"`
+	Enabled        bool               `json:"Enabled"`
+	Instructions   string             `json:"Instructions"`
+	ModelSelection SchedulesSelection `json:"ModelSelection"`
+	TimeZone       string             `json:"TimeZone"`
+	Title          string             `json:"Title"`
 }
 
-type SchedulesCreateV1Input struct {
-	CWD            string                                                                                                          `json:"CWD"`
-	Cron           string                                                                                                          `json:"Cron"`
-	Enabled        bool                                                                                                            `json:"Enabled"`
-	Instructions   string                                                                                                          `json:"Instructions"`
-	ModelSelection SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fselectionJSON_5bstring_5d `json:"ModelSelection"`
-	TimeZone       string                                                                                                          `json:"TimeZone"`
-	Title          string                                                                                                          `json:"Title"`
-}
-
-type SchedulesCreateV1Output struct {
-	CWD            string                                                                                                          `json:"CWD"`
-	CreatedAt      time.Time                                                                                                       `json:"CreatedAt"`
-	Cron           string                                                                                                          `json:"Cron"`
-	ID             string                                                                                                          `json:"ID"`
-	Instructions   string                                                                                                          `json:"Instructions"`
-	LastRunAt      time.Time                                                                                                       `json:"LastRunAt"`
-	ModelSelection SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fselectionJSON_5bstring_5d `json:"ModelSelection"`
-	NextRunAt      time.Time                                                                                                       `json:"NextRunAt"`
-	Revision       uint64                                                                                                          `json:"Revision"`
-	TimeZone       string                                                                                                          `json:"TimeZone"`
-	Title          string                                                                                                          `json:"Title"`
-}
-
-type SchedulesDeleteV1Output struct {
-}
-
-type SchedulesDeleteV1Input struct {
+type SchedulesItemInput struct {
 	ID string `json:"ID"`
 }
 
-type SchedulesListV1Input struct {
+type SchedulesListInput struct {
 	Cursor string `json:"Cursor"`
 	Limit  *int64 `json:"Limit,omitzero"`
 }
 
-type SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fModelPatch struct {
+type SchedulesModelPatch struct {
 	Model           *string `json:"Model,omitzero"`
 	Provider        *string `json:"Provider,omitzero"`
 	ReasoningEffort *string `json:"ReasoningEffort,omitzero"`
 }
 
-type SchedulesListV1Output struct {
-	NextCursor string                    `json:"NextCursor"`
-	Rows       []SchedulesCreateV1Output `json:"Rows"`
+type SchedulesPage struct {
+	NextCursor string              `json:"NextCursor"`
+	Rows       []SchedulesSnapshot `json:"Rows"`
 }
 
-type SchedulesUpdateV1Input struct {
-	CWD              *string                                                                                                       `json:"CWD,omitzero"`
-	Cron             *string                                                                                                       `json:"Cron,omitzero"`
-	Enabled          *bool                                                                                                         `json:"Enabled,omitzero"`
-	ExpectedRevision uint64                                                                                                        `json:"ExpectedRevision"`
-	ID               string                                                                                                        `json:"ID"`
-	Instructions     *string                                                                                                       `json:"Instructions,omitzero"`
-	ModelSelection   SchedulesMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fModelPatch `json:"ModelSelection"`
-	TimeZone         *string                                                                                                       `json:"TimeZone,omitzero"`
-	Title            *string                                                                                                       `json:"Title,omitzero"`
+type SchedulesRunReference struct {
+	RunID     string `json:"RunID"`
+	SessionID string `json:"SessionID"`
+}
+
+type SchedulesSelection struct {
+	Model           string `json:"model"`
+	Provider        string `json:"provider"`
+	ReasoningEffort string `json:"reasoningEffort"`
+}
+
+type SchedulesSnapshot struct {
+	CWD            string             `json:"CWD"`
+	CreatedAt      time.Time          `json:"CreatedAt"`
+	Cron           string             `json:"Cron"`
+	ID             string             `json:"ID"`
+	Instructions   string             `json:"Instructions"`
+	LastRunAt      time.Time          `json:"LastRunAt"`
+	ModelSelection SchedulesSelection `json:"ModelSelection"`
+	NextRunAt      time.Time          `json:"NextRunAt"`
+	Revision       uint64             `json:"Revision"`
+	TimeZone       string             `json:"TimeZone"`
+	Title          string             `json:"Title"`
+}
+
+type SchedulesUpdateInput struct {
+	CWD              *string             `json:"CWD,omitzero"`
+	Cron             *string             `json:"Cron,omitzero"`
+	Enabled          *bool               `json:"Enabled,omitzero"`
+	ExpectedRevision uint64              `json:"ExpectedRevision"`
+	ID               string              `json:"ID"`
+	Instructions     *string             `json:"Instructions,omitzero"`
+	ModelSelection   SchedulesModelPatch `json:"ModelSelection"`
+	TimeZone         *string             `json:"TimeZone,omitzero"`
+	Title            *string             `json:"Title,omitzero"`
 }
 
 const SchedulesCapabilityJSON = "{\"protocol\":\"io.github.tangerg.qimu/portable/1\",\"reference\":\"schedules\",\"composition\":\"selection\",\"scope\":\"installation\",\"methods\":[{\"name\":\"flame.schedules/create.v1\",\"kind\":\"command\",\"target\":\"installation\",\"description\":\"Create one schedule definition.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_Selection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_selectionJSON[string]\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_selectionJSON[string]\":{\"additionalProperties\":false,\"properties\":{\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"reasoningEffort\":{\"type\":\"string\"}},\"required\":[\"model\",\"provider\",\"reasoningEffort\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_Draft\":{\"additionalProperties\":false,\"properties\":{\"CWD\":{\"type\":\"string\"},\"Cron\":{\"type\":\"string\"},\"Enabled\":{\"type\":\"boolean\"},\"Instructions\":{\"type\":\"string\"},\"ModelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_Selection\"},\"TimeZone\":{\"type\":\"string\"},\"Title\":{\"type\":\"string\"}},\"required\":[\"Title\",\"Instructions\",\"CWD\",\"ModelSelection\",\"Cron\",\"TimeZone\",\"Enabled\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"CWD\":{\"type\":\"string\"},\"Cron\":{\"type\":\"string\"},\"Enabled\":{\"type\":\"boolean\"},\"Instructions\":{\"type\":\"string\"},\"ModelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_Selection\"},\"TimeZone\":{\"type\":\"string\"},\"Title\":{\"type\":\"string\"}},\"required\":[\"Title\",\"Instructions\",\"CWD\",\"ModelSelection\",\"Cron\",\"TimeZone\",\"Enabled\"],\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_Selection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_selectionJSON[string]\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_selectionJSON[string]\":{\"additionalProperties\":false,\"properties\":{\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"reasoningEffort\":{\"type\":\"string\"}},\"required\":[\"model\",\"provider\",\"reasoningEffort\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_Snapshot\":{\"additionalProperties\":false,\"properties\":{\"CWD\":{\"type\":\"string\"},\"CreatedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"Cron\":{\"type\":\"string\"},\"ID\":{\"type\":\"string\"},\"Instructions\":{\"type\":\"string\"},\"LastRunAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"ModelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_Selection\"},\"NextRunAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"Revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"TimeZone\":{\"type\":\"string\"},\"Title\":{\"type\":\"string\"}},\"required\":[\"ID\",\"Title\",\"Instructions\",\"CWD\",\"ModelSelection\",\"Cron\",\"TimeZone\",\"LastRunAt\",\"NextRunAt\",\"CreatedAt\",\"Revision\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"CWD\":{\"type\":\"string\"},\"CreatedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"Cron\":{\"type\":\"string\"},\"ID\":{\"type\":\"string\"},\"Instructions\":{\"type\":\"string\"},\"LastRunAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"ModelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_Selection\"},\"NextRunAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"Revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"TimeZone\":{\"type\":\"string\"},\"Title\":{\"type\":\"string\"}},\"required\":[\"ID\",\"Title\",\"Instructions\",\"CWD\",\"ModelSelection\",\"Cron\",\"TimeZone\",\"LastRunAt\",\"NextRunAt\",\"CreatedAt\",\"Revision\"],\"type\":\"object\"}},{\"name\":\"flame.schedules/delete.v1\",\"kind\":\"command\",\"target\":\"installation\",\"description\":\"Delete one schedule definition.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_ItemInput\":{\"additionalProperties\":false,\"properties\":{\"ID\":{\"type\":\"string\"}},\"required\":[\"ID\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"ID\":{\"type\":\"string\"}},\"required\":[\"ID\"],\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_Ack\":{\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"}},{\"name\":\"flame.schedules/list.v1\",\"kind\":\"query\",\"target\":\"installation\",\"description\":\"List current schedule definitions and revisions.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_ListInput\":{\"additionalProperties\":false,\"properties\":{\"Cursor\":{\"type\":\"string\"},\"Limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"Cursor\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"Cursor\":{\"type\":\"string\"},\"Limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"Cursor\"],\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_Selection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_selectionJSON[string]\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_selectionJSON[string]\":{\"additionalProperties\":false,\"properties\":{\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"reasoningEffort\":{\"type\":\"string\"}},\"required\":[\"model\",\"provider\",\"reasoningEffort\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_Snapshot\":{\"additionalProperties\":false,\"properties\":{\"CWD\":{\"type\":\"string\"},\"CreatedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"Cron\":{\"type\":\"string\"},\"ID\":{\"type\":\"string\"},\"Instructions\":{\"type\":\"string\"},\"LastRunAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"ModelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_Selection\"},\"NextRunAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"Revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"TimeZone\":{\"type\":\"string\"},\"Title\":{\"type\":\"string\"}},\"required\":[\"ID\",\"Title\",\"Instructions\",\"CWD\",\"ModelSelection\",\"Cron\",\"TimeZone\",\"LastRunAt\",\"NextRunAt\",\"CreatedAt\",\"Revision\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_Page\":{\"additionalProperties\":false,\"properties\":{\"NextCursor\":{\"type\":\"string\"},\"Rows\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_Snapshot\"},\"type\":\"array\"}},\"required\":[\"Rows\",\"NextCursor\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"NextCursor\":{\"type\":\"string\"},\"Rows\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_Snapshot\"},\"type\":\"array\"}},\"required\":[\"Rows\",\"NextCursor\"],\"type\":\"object\"}},{\"name\":\"flame.schedules/runNow.v1\",\"kind\":\"command\",\"target\":\"installation\",\"description\":\"Capture and reconcile one manual Run through its original Runtime acceptance.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_ItemInput\":{\"additionalProperties\":false,\"properties\":{\"ID\":{\"type\":\"string\"}},\"required\":[\"ID\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"ID\":{\"type\":\"string\"}},\"required\":[\"ID\"],\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2FwcGxpY2F0aW9u_RunReference\":{\"additionalProperties\":false,\"properties\":{\"RunID\":{\"type\":\"string\"},\"SessionID\":{\"type\":\"string\"}},\"required\":[\"SessionID\",\"RunID\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"RunID\":{\"type\":\"string\"},\"SessionID\":{\"type\":\"string\"}},\"required\":[\"SessionID\",\"RunID\"],\"type\":\"object\"}},{\"name\":\"flame.schedules/update.v1\",\"kind\":\"command\",\"target\":\"installation\",\"description\":\"Change one schedule using its inspected revision.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_ModelPatch\":{\"additionalProperties\":false,\"properties\":{\"Model\":{\"type\":\"string\"},\"Provider\":{\"type\":\"string\"},\"ReasoningEffort\":{\"type\":\"string\"}},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_UpdateInput\":{\"additionalProperties\":false,\"properties\":{\"CWD\":{\"type\":\"string\"},\"Cron\":{\"type\":\"string\"},\"Enabled\":{\"type\":\"boolean\"},\"ExpectedRevision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"ID\":{\"type\":\"string\"},\"Instructions\":{\"type\":\"string\"},\"ModelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_ModelPatch\"},\"TimeZone\":{\"type\":\"string\"},\"Title\":{\"type\":\"string\"}},\"required\":[\"ID\",\"ExpectedRevision\",\"ModelSelection\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"CWD\":{\"type\":\"string\"},\"Cron\":{\"type\":\"string\"},\"Enabled\":{\"type\":\"boolean\"},\"ExpectedRevision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"ID\":{\"type\":\"string\"},\"Instructions\":{\"type\":\"string\"},\"ModelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_ModelPatch\"},\"TimeZone\":{\"type\":\"string\"},\"Title\":{\"type\":\"string\"}},\"required\":[\"ID\",\"ExpectedRevision\",\"ModelSelection\"],\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_Selection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_selectionJSON[string]\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_selectionJSON[string]\":{\"additionalProperties\":false,\"properties\":{\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"reasoningEffort\":{\"type\":\"string\"}},\"required\":[\"model\",\"provider\",\"reasoningEffort\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_Snapshot\":{\"additionalProperties\":false,\"properties\":{\"CWD\":{\"type\":\"string\"},\"CreatedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"Cron\":{\"type\":\"string\"},\"ID\":{\"type\":\"string\"},\"Instructions\":{\"type\":\"string\"},\"LastRunAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"ModelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_Selection\"},\"NextRunAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"Revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"TimeZone\":{\"type\":\"string\"},\"Title\":{\"type\":\"string\"}},\"required\":[\"ID\",\"Title\",\"Instructions\",\"CWD\",\"ModelSelection\",\"Cron\",\"TimeZone\",\"LastRunAt\",\"NextRunAt\",\"CreatedAt\",\"Revision\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"CWD\":{\"type\":\"string\"},\"CreatedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"Cron\":{\"type\":\"string\"},\"ID\":{\"type\":\"string\"},\"Instructions\":{\"type\":\"string\"},\"LastRunAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"ModelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_Selection\"},\"NextRunAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"Revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"TimeZone\":{\"type\":\"string\"},\"Title\":{\"type\":\"string\"}},\"required\":[\"ID\",\"Title\",\"Instructions\",\"CWD\",\"ModelSelection\",\"Cron\",\"TimeZone\",\"LastRunAt\",\"NextRunAt\",\"CreatedAt\",\"Revision\"],\"type\":\"object\"}}]}"
@@ -83,8 +83,4 @@ const SchedulesListV1Method = "flame.schedules/list.v1"
 
 const SchedulesRunNowV1Method = "flame.schedules/runNow.v1"
 
-type SchedulesRunNowV1Input SchedulesDeleteV1Input
-
 const SchedulesUpdateV1Method = "flame.schedules/update.v1"
-
-type SchedulesUpdateV1Output SchedulesCreateV1Output

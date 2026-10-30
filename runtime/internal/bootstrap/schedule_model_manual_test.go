@@ -87,7 +87,7 @@ func scheduleModelManualRun(t *testing.T, lost bool) {
 	if modelName == "" {
 		t.Fatal("manual schedule tool was not published")
 	}
-	definition := readScheduleCreate(r, scheduleCreateRequest(r, testsupport.SchedulesCreateV1Input{Instructions: "Run the captured fixture once", Cron: "@hourly", TimeZone: "UTC", Enabled: false}), "manual-definition")
+	definition := readScheduleCreate(r, scheduleCreateRequest(r, testsupport.SchedulesDraft{Instructions: "Run the captured fixture once", Cron: "@hourly", TimeZone: "UTC", Enabled: false}), "manual-definition")
 	scheduleID = definition.ID
 	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Manual schedule caller"}, "manual-session").(*protocol.Session)
 	started := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Run this schedule once now."}}}, delivery.Options{IdempotencyKey: "manual-from-model", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
@@ -99,7 +99,7 @@ func scheduleModelManualRun(t *testing.T, lost bool) {
 			t.Fatal(err)
 		}
 	}
-	var accepted testsupport.SchedulesRunNowV1Output
+	var accepted testsupport.SchedulesRunReference
 	if lost {
 		select {
 		case committed := <-opening:

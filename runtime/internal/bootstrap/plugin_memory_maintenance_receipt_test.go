@@ -68,7 +68,7 @@ func TestMemoryMaintenanceCommittedReplyLossRecoversWithoutAnotherModelCall(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	input := memorycontract.MaintainV1Input{SessionID: "ses_maintenance_receipt", Project: project, Compacted: true}
+	input := memorycontract.MaintenanceInput{SessionID: "ses_maintenance_receipt", Project: project, Compacted: true}
 	input.Conversation.MessageCount = 4
 	input.Conversation.Transcript = "captured conversation"
 	metadata, err := qimumcp.CallbackMetadata(grant)
@@ -108,19 +108,19 @@ func TestMemoryMaintenanceCommittedReplyLossRecoversWithoutAnotherModelCall(t *t
 	broker.RevokeSession(session)
 	_ = session.Close()
 	session = connect(false)
-	result, found, err := testsupport.ReceiptCapability[memorycontract.MaintainV1Input, memorycontract.MaintainV1Output](ctx, session, memoryContract(t), "memory", memorycontract.MaintainV1Method, "original", input)
+	result, found, err := testsupport.ReceiptCapability[memorycontract.MaintenanceInput, memorycontract.MaintenanceResult](ctx, session, memoryContract(t), "memory", memorycontract.MaintainV1Method, "original", input)
 	if err != nil || !found || !result.Published {
 		t.Fatalf("original publication receipt=%+v, %t, %v", result, found, err)
 	}
-	replayed, err := testsupport.CallCapability[memorycontract.MaintainV1Input, memorycontract.MaintainV1Output](ctx, session, memoryContract(t), "memory", memorycontract.MaintainV1Method, "original", input, sdk.ParamsBase{})
+	replayed, err := testsupport.CallCapability[memorycontract.MaintenanceInput, memorycontract.MaintenanceResult](ctx, session, memoryContract(t), "memory", memorycontract.MaintainV1Method, "original", input, sdk.ParamsBase{})
 	if err != nil || replayed != result || calls.Load() != 2 {
 		t.Fatalf("receipt replay restarted models: %+v, %d, %v", replayed, calls.Load(), err)
 	}
 	input.Compacted = false
-	if _, err := testsupport.CallCapability[memorycontract.MaintainV1Input, memorycontract.MaintainV1Output](ctx, session, memoryContract(t), "memory", memorycontract.MaintainV1Method, "original", input, sdk.ParamsBase{}); err == nil {
+	if _, err := testsupport.CallCapability[memorycontract.MaintenanceInput, memorycontract.MaintenanceResult](ctx, session, memoryContract(t), "memory", memorycontract.MaintainV1Method, "original", input, sdk.ParamsBase{}); err == nil {
 		t.Fatal("same identity adopted changed maintenance input")
 	}
-	listed, err := testsupport.CallCapability[memorycontract.ListV2Input, memorycontract.ListV2Output](ctx, session, memoryContract(t), "memory", memorycontract.ListV2Method, "", memorycontract.ListV2Input{Scope: memorycontract.ListV2InputScopeProject, CWD: project}, sdk.ParamsBase{})
+	listed, err := testsupport.CallCapability[memorycontract.ListInput, memorycontract.Page](ctx, session, memoryContract(t), "memory", memorycontract.ListV2Method, "", memorycontract.ListInput{Scope: memorycontract.ListInputScopeProject, CWD: project}, sdk.ParamsBase{})
 	if err != nil || len(listed.Rows) != 1 || listed.Rows[0].Content != "retained publication" {
 		t.Fatalf("recovered private memory=%+v, %v", listed, err)
 	}

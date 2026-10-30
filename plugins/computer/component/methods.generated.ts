@@ -2,11 +2,11 @@
 // Numeric and cross-field constraints remain in schema.json and the business owner.
 import type { JSONNumber } from "@qimu/sdk/json";
 
-export interface Method_flame_2ecomputer_2fclose_2ev1Input {
+export interface CloseV1Input {
   sessionId: string;
 }
 
-export interface Method_flame_2ecomputer_2fclose_2ev1Output {
+export interface CloseV1Output {
   approval?: { id: string; operationId: string; requestJSON: string; sessionId: string };
   expiresAt: string;
   id: string;
@@ -18,10 +18,10 @@ export interface Method_flame_2ecomputer_2fclose_2ev1Output {
   workerId: string;
 }
 
-export interface Method_flame_2ecomputer_2fcontext_2ev1Input {
+export interface ContextV1Input {
 }
 
-export interface Method_flame_2ecomputer_2fcontext_2ev1Output {
+export interface ContextV1Output {
   expiresAt: string;
   host: { arch: string; hostname: string; platform: string };
   instructions: string;
@@ -32,7 +32,7 @@ export interface Method_flame_2ecomputer_2fcontext_2ev1Output {
   workerId: string;
 }
 
-export interface Method_flame_2ecomputer_2fexecute_2ev1Input {
+export interface ExecuteV1Input {
   argumentsJSON: string;
   sessionId: string;
   surfaceDigest: string;
@@ -40,27 +40,27 @@ export interface Method_flame_2ecomputer_2fexecute_2ev1Input {
   workerId: string;
 }
 
-export interface Method_flame_2ecomputer_2fexecute_2ev1Output {
+export interface ExecuteV1Output {
   cleanup: "ended" | "unconfirmed";
   commandId: string;
   result: Record<string, unknown>;
 }
 
-export interface Method_flame_2ecomputer_2fhistory_2ev1Input {
+export interface HistoryV1Input {
   before?: string;
   limit: JSONNumber;
 }
 
-export interface Method_flame_2ecomputer_2fhistory_2ev1Output {
+export interface HistoryV1Output {
   entries: ({ admittedAt: string; dispatched: boolean; id: string; kind: "tool" | "command"; method: string; settled: boolean })[];
   next?: string;
 }
 
-export interface Method_flame_2ecomputer_2fopen_2ev1Input {
+export interface OpenV1Input {
   leaseSeconds: JSONNumber;
 }
 
-export interface Method_flame_2ecomputer_2fopen_2ev1Output {
+export interface OpenV1Output {
   approval?: { id: string; operationId: string; requestJSON: string; sessionId: string };
   expiresAt: string;
   id: string;
@@ -72,28 +72,28 @@ export interface Method_flame_2ecomputer_2fopen_2ev1Output {
   workerId: string;
 }
 
-export interface Method_flame_2ecomputer_2fread_2ev1Input {
+export interface ReadV1Input {
 }
 
-export interface Method_flame_2ecomputer_2fread_2ev1Output {
+export interface ReadV1Output {
   configured: boolean;
   host: { arch: string; hostname: string; platform: string };
   session?: { approval?: { id: string; operationId: string; requestJSON: string; sessionId: string }; expiresAt: string; id: string; openedAt: string; operation?: { id: string; startedAt: string; tool: "js" | "js_reset" }; reason?: "user" | "expired" | "shutdown" | "engine" | "cleanup" | "startup" | "cancelled"; state: "opening" | "ready" | "executing" | "stopping" | "closed" | "faulted"; surfaceDigest?: string; workerId: string };
 }
 
-export interface Method_flame_2ecomputer_2freply_2ev1Input {
+export interface ReplyV1Input {
   requestId: string;
   responseJSON: string;
   sessionId: string;
 }
 
-export type Method_flame_2ecomputer_2freply_2ev1Output = boolean;
+export type ReplyV1Output = boolean;
 
-export interface Method_flame_2ecomputer_2fresult_2ev1Input {
+export interface ResultV1Input {
   id: string;
 }
 
-export interface Method_flame_2ecomputer_2fresult_2ev1Output {
+export interface ResultV1Output {
   admittedAt: string;
   dispatched: boolean;
   id: string;
@@ -105,12 +105,12 @@ export interface Method_flame_2ecomputer_2fresult_2ev1Output {
   settled: boolean;
 }
 
-export interface Method_flame_2ecomputer_2fstop_2ev1Input {
+export interface StopV1Input {
   operationId: string;
   sessionId: string;
 }
 
-export interface Method_flame_2ecomputer_2fstop_2ev1Output {
+export interface StopV1Output {
   approval?: { id: string; operationId: string; requestJSON: string; sessionId: string };
   expiresAt: string;
   id: string;
@@ -122,43 +122,43 @@ export interface Method_flame_2ecomputer_2fstop_2ev1Output {
   workerId: string;
 }
 
-export interface Method_flame_2ecomputer_2fwatch_2ev1Chunk {
+export interface WatchV1Chunk {
   configured: boolean;
   host: { arch: string; hostname: string; platform: string };
   session?: { approval?: { id: string; operationId: string; requestJSON: string; sessionId: string }; expiresAt: string; id: string; openedAt: string; operation?: { id: string; startedAt: string; tool: "js" | "js_reset" }; reason?: "user" | "expired" | "shutdown" | "engine" | "cleanup" | "startup" | "cancelled"; state: "opening" | "ready" | "executing" | "stopping" | "closed" | "faulted"; surfaceDigest?: string; workerId: string };
 }
 
-export interface Method_flame_2ecomputer_2fwatch_2ev1Input {
+export interface WatchV1Input {
 }
 
-export type Method_flame_2ecomputer_2fwatch_2ev1Output = boolean;
+export type WatchV1Output = boolean;
 
 export interface MethodInputs {
-  "flame.computer/close.v1": Method_flame_2ecomputer_2fclose_2ev1Input;
-  "flame.computer/context.v1": Method_flame_2ecomputer_2fcontext_2ev1Input;
-  "flame.computer/execute.v1": Method_flame_2ecomputer_2fexecute_2ev1Input;
-  "flame.computer/history.v1": Method_flame_2ecomputer_2fhistory_2ev1Input;
-  "flame.computer/open.v1": Method_flame_2ecomputer_2fopen_2ev1Input;
-  "flame.computer/read.v1": Method_flame_2ecomputer_2fread_2ev1Input;
-  "flame.computer/reply.v1": Method_flame_2ecomputer_2freply_2ev1Input;
-  "flame.computer/result.v1": Method_flame_2ecomputer_2fresult_2ev1Input;
-  "flame.computer/stop.v1": Method_flame_2ecomputer_2fstop_2ev1Input;
-  "flame.computer/watch.v1": Method_flame_2ecomputer_2fwatch_2ev1Input;
+  "flame.computer/close.v1": CloseV1Input;
+  "flame.computer/context.v1": ContextV1Input;
+  "flame.computer/execute.v1": ExecuteV1Input;
+  "flame.computer/history.v1": HistoryV1Input;
+  "flame.computer/open.v1": OpenV1Input;
+  "flame.computer/read.v1": ReadV1Input;
+  "flame.computer/reply.v1": ReplyV1Input;
+  "flame.computer/result.v1": ResultV1Input;
+  "flame.computer/stop.v1": StopV1Input;
+  "flame.computer/watch.v1": WatchV1Input;
 }
 export interface MethodOutputs {
-  "flame.computer/close.v1": Method_flame_2ecomputer_2fclose_2ev1Output;
-  "flame.computer/context.v1": Method_flame_2ecomputer_2fcontext_2ev1Output;
-  "flame.computer/execute.v1": Method_flame_2ecomputer_2fexecute_2ev1Output;
-  "flame.computer/history.v1": Method_flame_2ecomputer_2fhistory_2ev1Output;
-  "flame.computer/open.v1": Method_flame_2ecomputer_2fopen_2ev1Output;
-  "flame.computer/read.v1": Method_flame_2ecomputer_2fread_2ev1Output;
-  "flame.computer/reply.v1": Method_flame_2ecomputer_2freply_2ev1Output;
-  "flame.computer/result.v1": Method_flame_2ecomputer_2fresult_2ev1Output;
-  "flame.computer/stop.v1": Method_flame_2ecomputer_2fstop_2ev1Output;
-  "flame.computer/watch.v1": Method_flame_2ecomputer_2fwatch_2ev1Output;
+  "flame.computer/close.v1": CloseV1Output;
+  "flame.computer/context.v1": ContextV1Output;
+  "flame.computer/execute.v1": ExecuteV1Output;
+  "flame.computer/history.v1": HistoryV1Output;
+  "flame.computer/open.v1": OpenV1Output;
+  "flame.computer/read.v1": ReadV1Output;
+  "flame.computer/reply.v1": ReplyV1Output;
+  "flame.computer/result.v1": ResultV1Output;
+  "flame.computer/stop.v1": StopV1Output;
+  "flame.computer/watch.v1": WatchV1Output;
 }
 export interface MethodChunks {
-  "flame.computer/watch.v1": Method_flame_2ecomputer_2fwatch_2ev1Chunk;
+  "flame.computer/watch.v1": WatchV1Chunk;
 }
 export const METHODS = {
   "flame.computer/close.v1": { kind: "command", target: "installation" },

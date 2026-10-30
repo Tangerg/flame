@@ -70,16 +70,16 @@ func (w *WorkingContextComposer) composeSystemMessage(
 	// growing corpus never bloats every prompt.
 	var pinned []MemoryPromptItem
 	if project := strings.TrimSpace(workspaceCWD); project != "" {
-		items, err := w.config.AgentMemory.Items(ctx, memorycontract.ItemsV2InputScopeProject, filepath.Clean(project))
+		items, err := w.config.AgentMemory.Items(ctx, memorycontract.ItemsInputScopeProject, filepath.Clean(project))
 		if err != nil {
-			slog.WarnContext(ctx, "execution: load pinned memory", "scope", memorycontract.ItemsV2InputScopeProject, "error", err)
+			slog.WarnContext(ctx, "execution: load pinned memory", "scope", memorycontract.ItemsInputScopeProject, "error", err)
 		} else {
 			pinned = appendPinned(pinned, items)
 		}
 	}
-	userItems, err := w.config.AgentMemory.Items(ctx, memorycontract.ItemsV2InputScopeUser, "")
+	userItems, err := w.config.AgentMemory.Items(ctx, memorycontract.ItemsInputScopeUser, "")
 	if err != nil {
-		slog.WarnContext(ctx, "execution: load pinned memory", "scope", memorycontract.ItemsV2InputScopeUser, "error", err)
+		slog.WarnContext(ctx, "execution: load pinned memory", "scope", memorycontract.ItemsInputScopeUser, "error", err)
 	} else {
 		pinned = appendPinned(pinned, userItems)
 	}

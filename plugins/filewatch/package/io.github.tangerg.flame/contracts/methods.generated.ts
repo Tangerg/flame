@@ -2,32 +2,9 @@
 // Numeric and cross-field constraints remain in schema.json and the business owner.
 import type { JSONNumber } from "@qimu/sdk/json";
 
-export type Method_flame_2efilewatch_2fconfigure_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL3dpcmU_5fConfigureInput;
-
-export type Method_flame_2efilewatch_2fconfigure_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fSnapshot;
-
-export type Method_flame_2efilewatch_2fevent_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL3dpcmU_5fEventInput;
-
-export type Method_flame_2efilewatch_2fevent_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fEvent;
-
-export interface Method_flame_2efilewatch_2fevents_2ev1Input {
-}
-
-export type Method_flame_2efilewatch_2fevents_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fHeader[];
-
-export interface Method_flame_2efilewatch_2fget_2ev1Input {
-}
-
-export type Method_flame_2efilewatch_2fget_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fSnapshot;
-
-export interface Method_flame_2efilewatch_2fstatus_2ev1Input {
-}
-
-export type Method_flame_2efilewatch_2fstatus_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fStatus;
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fCapture {
+export interface Capture {
   generation: string;
-  invocation: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvcG9ydGFibGU_5fInvocation;
+  invocation: Invocation;
   kind: string & ("changed" | "resync");
   observedAt: string;
   paths: string[];
@@ -35,10 +12,19 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXd
   runId: string;
   sequence: JSONNumber;
   sessionId: string;
-  trigger: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fDraft;
+  trigger: Draft;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fDraft {
+export interface ConfigureInput {
+  expectedRevision: JSONNumber;
+  trigger?: Draft;
+}
+
+export type ConfigureV1Input = ConfigureInput;
+
+export type ConfigureV1Output = Snapshot;
+
+export interface Draft {
   instructions: string;
   model: string;
   paths: string[];
@@ -48,12 +34,30 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXd
   workspace: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fEvent {
+export interface Event {
   accepted: boolean;
-  capture: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fCapture;
+  capture: Capture;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fHeader {
+export interface EventInput {
+  id: string;
+}
+
+export type EventV1Input = EventInput;
+
+export type EventV1Output = Event;
+
+export interface EventsV1Input {
+}
+
+export type EventsV1Output = Header[];
+
+export interface GetV1Input {
+}
+
+export type GetV1Output = Snapshot;
+
+export interface Header {
   accepted: boolean;
   id: string;
   kind: string & ("changed" | "resync");
@@ -64,52 +68,48 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXd
   sessionId: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fSnapshot {
-  revision: JSONNumber;
-  trigger?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fDraft;
+export interface Invocation {
+  id: string;
+  origin: string;
+  parent?: string;
+  target: Target;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fStatus {
+export interface Snapshot {
+  revision: JSONNumber;
+  trigger?: Draft;
+}
+
+export interface Status {
   dispatchError?: string;
   error?: string;
   phase: string & ("inactive" | "disabled" | "watching" | "failed");
   revision: JSONNumber;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL3dpcmU_5fConfigureInput {
-  expectedRevision: JSONNumber;
-  trigger?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fDraft;
+export interface StatusV1Input {
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL3dpcmU_5fEventInput {
-  id: string;
-}
+export type StatusV1Output = Status;
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvcG9ydGFibGU_5fInvocation {
-  id: string;
-  origin: string;
-  parent?: string;
-  target: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvcG9ydGFibGU_5fTarget;
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvcG9ydGFibGU_5fTarget {
+export interface Target {
   reference: string;
   scope: string;
 }
 
 export interface MethodInputs {
-  "flame.filewatch/configure.v1": Method_flame_2efilewatch_2fconfigure_2ev1Input;
-  "flame.filewatch/event.v1": Method_flame_2efilewatch_2fevent_2ev1Input;
-  "flame.filewatch/events.v1": Method_flame_2efilewatch_2fevents_2ev1Input;
-  "flame.filewatch/get.v1": Method_flame_2efilewatch_2fget_2ev1Input;
-  "flame.filewatch/status.v1": Method_flame_2efilewatch_2fstatus_2ev1Input;
+  "flame.filewatch/configure.v1": ConfigureV1Input;
+  "flame.filewatch/event.v1": EventV1Input;
+  "flame.filewatch/events.v1": EventsV1Input;
+  "flame.filewatch/get.v1": GetV1Input;
+  "flame.filewatch/status.v1": StatusV1Input;
 }
 export interface MethodOutputs {
-  "flame.filewatch/configure.v1": Method_flame_2efilewatch_2fconfigure_2ev1Output;
-  "flame.filewatch/event.v1": Method_flame_2efilewatch_2fevent_2ev1Output;
-  "flame.filewatch/events.v1": Method_flame_2efilewatch_2fevents_2ev1Output;
-  "flame.filewatch/get.v1": Method_flame_2efilewatch_2fget_2ev1Output;
-  "flame.filewatch/status.v1": Method_flame_2efilewatch_2fstatus_2ev1Output;
+  "flame.filewatch/configure.v1": ConfigureV1Output;
+  "flame.filewatch/event.v1": EventV1Output;
+  "flame.filewatch/events.v1": EventsV1Output;
+  "flame.filewatch/get.v1": GetV1Output;
+  "flame.filewatch/status.v1": StatusV1Output;
 }
 export const METHODS = {
   "flame.filewatch/configure.v1": { kind: "command", target: "installation" },

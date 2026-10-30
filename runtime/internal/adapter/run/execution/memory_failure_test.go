@@ -12,10 +12,10 @@ import (
 )
 
 type failingMemoryPartition struct {
-	scope memorycontract.ItemsV2InputScope
+	scope memorycontract.ItemsInputScope
 }
 
-func (f failingMemoryPartition) Items(_ context.Context, scope memorycontract.ItemsV2InputScope, _ string) ([]MemoryPromptItem, error) {
+func (f failingMemoryPartition) Items(_ context.Context, scope memorycontract.ItemsInputScope, _ string) ([]MemoryPromptItem, error) {
 	if scope == f.scope {
 		return nil, errors.New("memory storage unavailable")
 	}
@@ -23,7 +23,7 @@ func (f failingMemoryPartition) Items(_ context.Context, scope memorycontract.It
 }
 
 func TestPinnedMemoryFailurePreservesHealthyPartitionAndDiagnostics(t *testing.T) {
-	for _, scope := range []memorycontract.ItemsV2InputScope{memorycontract.ItemsV2InputScopeProject, memorycontract.ItemsV2InputScopeUser} {
+	for _, scope := range []memorycontract.ItemsInputScope{memorycontract.ItemsInputScopeProject, memorycontract.ItemsInputScopeUser} {
 		t.Run(string(scope), func(t *testing.T) {
 			var diagnostics bytes.Buffer
 			previous := slog.Default()

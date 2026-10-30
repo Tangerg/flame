@@ -49,13 +49,13 @@ func TestUsageReportsRecoversItsOriginalReceiptAfterBackendExitsBeforeReply(t *t
 		t.Fatal(recovered.Failure)
 	}
 	reply := recovered.Value.(*protocol.CallPluginResponse)
-	var saved testsupport.UsageReportsCaptureV1Output
+	var saved testsupport.UsageReportsHeader
 	if reply.Failure != nil || json.Unmarshal([]byte(reply.Output), &saved) != nil || saved.Id == "" {
 		t.Fatalf("original capture was not reconciled: %+v", reply)
 	}
 	request.Method, request.Input = testsupport.UsageReportsListV1Method, `{}`
 	listed := r.must(delivery.PluginsCall, request, "").(*protocol.CallPluginResponse)
-	var headers []testsupport.UsageReportsCaptureV1Output
+	var headers []testsupport.UsageReportsHeader
 	if err := json.Unmarshal([]byte(listed.Output), &headers); err != nil || len(headers) != 1 || headers[0].Id != saved.Id || !headers[0].ObservedAt.Equal(saved.ObservedAt) {
 		t.Fatalf("recovery repeated or changed the captured accounting observation: %s: %v", listed.Output, err)
 	}
@@ -96,15 +96,15 @@ func TestUsageReportsInstalledCaptureKeepsCoreFactsAcrossLaterWorkAndRestart(t *
 		}
 	}
 	run("before-capture")
-	input := testsupport.UsageReportsCaptureV1Input{Period: "daily"}
+	input := testsupport.UsageReportsCaptureInput{Period: "daily"}
 	captured := call(testsupport.UsageReportsCaptureV1Method, input, "save-report")
-	var header testsupport.UsageReportsCaptureV1Output
+	var header testsupport.UsageReportsHeader
 	if err := json.Unmarshal([]byte(captured.Output), &header); err != nil {
 		t.Fatal(err)
 	}
-	request := testsupport.UsageReportsGetV1Input{Id: header.Id}
+	request := testsupport.UsageReportsReportInput{Id: header.Id}
 	original := call(testsupport.UsageReportsGetV1Method, request, "").Output
-	var saved testsupport.UsageReportsGetV1Output
+	var saved testsupport.UsageReportsReportGithubComTangergFlameRuntimeProtocolUsageSummary
 	if err := json.Unmarshal([]byte(original), &saved); err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +122,7 @@ func TestUsageReportsInstalledCaptureKeepsCoreFactsAcrossLaterWorkAndRestart(t *
 	}
 	call(testsupport.UsageReportsDeleteV1Method, request, "remove-report")
 	call(testsupport.UsageReportsCaptureV1Method, input, "save-report")
-	var remaining []testsupport.UsageReportsCaptureV1Output
+	var remaining []testsupport.UsageReportsHeader
 	listed := call(testsupport.UsageReportsListV1Method, struct{}{}, "")
 	if err := json.Unmarshal([]byte(listed.Output), &remaining); err != nil || len(remaining) != 0 {
 		t.Fatalf("capture replay recreated removed evidence: %s %v", listed.Output, err)

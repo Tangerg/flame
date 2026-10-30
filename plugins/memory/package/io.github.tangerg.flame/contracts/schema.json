@@ -1,66 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
-    "Method_flame_2ememory_2fadd_2ev2Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fAddInput"
-    },
-    "Method_flame_2ememory_2fadd_2ev2Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fAddResult"
-    },
-    "Method_flame_2ememory_2fdelete_2ev2Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fItemInput"
-    },
-    "Method_flame_2ememory_2fdelete_2ev2Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fAck"
-    },
-    "Method_flame_2ememory_2fitems_2ev2Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fItemsInput"
-    },
-    "Method_flame_2ememory_2fitems_2ev2Output": {
-      "items": {
-        "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot"
-      },
-      "type": "array"
-    },
-    "Method_flame_2ememory_2flist_2ev2Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fListInput"
-    },
-    "Method_flame_2ememory_2flist_2ev2Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fPage"
-    },
-    "Method_flame_2ememory_2fmaintain_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fMaintenanceInput"
-    },
-    "Method_flame_2ememory_2fmaintain_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fMaintenanceResult"
-    },
-    "Method_flame_2ememory_2freview_2ev2Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fReviewInput"
-    },
-    "Method_flame_2ememory_2freview_2ev2Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fAck"
-    },
-    "Method_flame_2ememory_2fsearch_2ev2Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fSearchInput"
-    },
-    "Method_flame_2ememory_2fsearch_2ev2Output": {
-      "items": {
-        "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot"
-      },
-      "type": "array"
-    },
-    "Method_flame_2ememory_2fupdate_2ev2Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fUpdateInput"
-    },
-    "Method_flame_2ememory_2fupdate_2ev2Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fAck": {
+    "Ack": {
       "additionalProperties": false,
       "properties": {},
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fAddInput": {
+    "AddInput": {
       "additionalProperties": false,
       "properties": {
         "CWD": {
@@ -88,14 +34,14 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fAddResult": {
+    "AddResult": {
       "additionalProperties": false,
       "properties": {
         "Changed": {
           "type": "boolean"
         },
         "Item": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot"
+          "$ref": "#/$defs/ItemSnapshot"
         }
       },
       "required": [
@@ -104,7 +50,13 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fConversation": {
+    "AddV2Input": {
+      "$ref": "#/$defs/AddInput"
+    },
+    "AddV2Output": {
+      "$ref": "#/$defs/AddResult"
+    },
+    "Conversation": {
       "additionalProperties": false,
       "properties": {
         "MessageCount": {
@@ -126,257 +78,13 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fItemInput": {
-      "additionalProperties": false,
-      "properties": {
-        "ExpectedRevision": {
-          "allOf": [
-            {
-              "maximum": 18446744073709551615,
-              "minimum": 0
-            }
-          ],
-          "maximum": 9007199254740991,
-          "minimum": 1,
-          "type": "integer"
-        },
-        "ID": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "ID",
-        "ExpectedRevision"
-      ],
-      "type": "object"
+    "DeleteV2Input": {
+      "$ref": "#/$defs/ItemInput"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fItemsInput": {
-      "additionalProperties": false,
-      "properties": {
-        "Project": {
-          "type": "string"
-        },
-        "Scope": {
-          "allOf": [
-            {
-              "enum": [
-                "project",
-                "user"
-              ]
-            }
-          ],
-          "type": "string"
-        }
-      },
-      "required": [
-        "Scope",
-        "Project"
-      ],
-      "type": "object"
+    "DeleteV2Output": {
+      "$ref": "#/$defs/Ack"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fListInput": {
-      "additionalProperties": false,
-      "properties": {
-        "CWD": {
-          "type": "string"
-        },
-        "Cursor": {
-          "type": "string"
-        },
-        "Limit": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "maximum": 100,
-          "minimum": 1,
-          "type": "integer"
-        },
-        "Scope": {
-          "allOf": [
-            {
-              "enum": [
-                "project",
-                "user"
-              ]
-            }
-          ],
-          "type": "string"
-        }
-      },
-      "required": [
-        "Scope",
-        "CWD",
-        "Cursor"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fMaintenanceInput": {
-      "additionalProperties": false,
-      "properties": {
-        "Compacted": {
-          "type": "boolean"
-        },
-        "Conversation": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fConversation"
-        },
-        "Project": {
-          "type": "string"
-        },
-        "SessionID": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "SessionID",
-        "Project",
-        "Compacted",
-        "Conversation"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fMaintenanceResult": {
-      "additionalProperties": false,
-      "properties": {
-        "Published": {
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "Published"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fPage": {
-      "additionalProperties": false,
-      "properties": {
-        "Capacity": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "const": 512,
-          "type": "integer"
-        },
-        "NextCursor": {
-          "type": "string"
-        },
-        "Rows": {
-          "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot"
-          },
-          "maxItems": 100,
-          "type": "array"
-        }
-      },
-      "required": [
-        "Rows",
-        "NextCursor",
-        "Capacity"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fReviewInput": {
-      "additionalProperties": false,
-      "properties": {
-        "Decision": {
-          "allOf": [
-            {
-              "enum": [
-                "approve",
-                "reject"
-              ]
-            }
-          ],
-          "type": "string"
-        },
-        "ExpectedRevision": {
-          "allOf": [
-            {
-              "maximum": 18446744073709551615,
-              "minimum": 0
-            }
-          ],
-          "maximum": 9007199254740991,
-          "minimum": 1,
-          "type": "integer"
-        },
-        "ID": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "ID",
-        "ExpectedRevision",
-        "Decision"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fSearchInput": {
-      "additionalProperties": false,
-      "properties": {
-        "EmbeddingSpace": {
-          "type": "string"
-        },
-        "Project": {
-          "type": "string"
-        },
-        "Query": {
-          "type": "string"
-        },
-        "TopK": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "type": "integer"
-        }
-      },
-      "required": [
-        "Project",
-        "Query",
-        "TopK",
-        "EmbeddingSpace"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fUpdateInput": {
-      "additionalProperties": false,
-      "properties": {
-        "Content": {
-          "type": "string"
-        },
-        "ExpectedRevision": {
-          "allOf": [
-            {
-              "maximum": 18446744073709551615,
-              "minimum": 0
-            }
-          ],
-          "maximum": 9007199254740991,
-          "minimum": 1,
-          "type": "integer"
-        },
-        "ID": {
-          "type": "string"
-        },
-        "Pinned": {
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "ID",
-        "ExpectedRevision"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemID": {
+    "ItemID": {
       "allOf": [
         {
           "pattern": "^mem_[0-9a-f]{32}$"
@@ -384,7 +92,31 @@
       ],
       "type": "string"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot": {
+    "ItemInput": {
+      "additionalProperties": false,
+      "properties": {
+        "ExpectedRevision": {
+          "allOf": [
+            {
+              "maximum": 18446744073709551615,
+              "minimum": 0
+            }
+          ],
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "ID": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ID",
+        "ExpectedRevision"
+      ],
+      "type": "object"
+    },
+    "ItemSnapshot": {
       "additionalProperties": false,
       "properties": {
         "Content": {
@@ -409,7 +141,7 @@
           "type": "string"
         },
         "ID": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemID"
+          "$ref": "#/$defs/ItemID"
         },
         "Origin": {
           "allOf": [
@@ -487,6 +219,274 @@
         "Embedding"
       ],
       "type": "object"
+    },
+    "ItemsInput": {
+      "additionalProperties": false,
+      "properties": {
+        "Project": {
+          "type": "string"
+        },
+        "Scope": {
+          "allOf": [
+            {
+              "enum": [
+                "project",
+                "user"
+              ]
+            }
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "Scope",
+        "Project"
+      ],
+      "type": "object"
+    },
+    "ItemsV2Input": {
+      "$ref": "#/$defs/ItemsInput"
+    },
+    "ItemsV2Output": {
+      "items": {
+        "$ref": "#/$defs/ItemSnapshot"
+      },
+      "type": "array"
+    },
+    "ListInput": {
+      "additionalProperties": false,
+      "properties": {
+        "CWD": {
+          "type": "string"
+        },
+        "Cursor": {
+          "type": "string"
+        },
+        "Limit": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "Scope": {
+          "allOf": [
+            {
+              "enum": [
+                "project",
+                "user"
+              ]
+            }
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "Scope",
+        "CWD",
+        "Cursor"
+      ],
+      "type": "object"
+    },
+    "ListV2Input": {
+      "$ref": "#/$defs/ListInput"
+    },
+    "ListV2Output": {
+      "$ref": "#/$defs/Page"
+    },
+    "MaintainV1Input": {
+      "$ref": "#/$defs/MaintenanceInput"
+    },
+    "MaintainV1Output": {
+      "$ref": "#/$defs/MaintenanceResult"
+    },
+    "MaintenanceInput": {
+      "additionalProperties": false,
+      "properties": {
+        "Compacted": {
+          "type": "boolean"
+        },
+        "Conversation": {
+          "$ref": "#/$defs/Conversation"
+        },
+        "Project": {
+          "type": "string"
+        },
+        "SessionID": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "SessionID",
+        "Project",
+        "Compacted",
+        "Conversation"
+      ],
+      "type": "object"
+    },
+    "MaintenanceResult": {
+      "additionalProperties": false,
+      "properties": {
+        "Published": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "Published"
+      ],
+      "type": "object"
+    },
+    "Page": {
+      "additionalProperties": false,
+      "properties": {
+        "Capacity": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "const": 512,
+          "type": "integer"
+        },
+        "NextCursor": {
+          "type": "string"
+        },
+        "Rows": {
+          "items": {
+            "$ref": "#/$defs/ItemSnapshot"
+          },
+          "maxItems": 100,
+          "type": "array"
+        }
+      },
+      "required": [
+        "Rows",
+        "NextCursor",
+        "Capacity"
+      ],
+      "type": "object"
+    },
+    "ReviewInput": {
+      "additionalProperties": false,
+      "properties": {
+        "Decision": {
+          "allOf": [
+            {
+              "enum": [
+                "approve",
+                "reject"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "ExpectedRevision": {
+          "allOf": [
+            {
+              "maximum": 18446744073709551615,
+              "minimum": 0
+            }
+          ],
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "ID": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ID",
+        "ExpectedRevision",
+        "Decision"
+      ],
+      "type": "object"
+    },
+    "ReviewV2Input": {
+      "$ref": "#/$defs/ReviewInput"
+    },
+    "ReviewV2Output": {
+      "$ref": "#/$defs/Ack"
+    },
+    "SearchInput": {
+      "additionalProperties": false,
+      "properties": {
+        "EmbeddingSpace": {
+          "type": "string"
+        },
+        "Project": {
+          "type": "string"
+        },
+        "Query": {
+          "type": "string"
+        },
+        "TopK": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        }
+      },
+      "required": [
+        "Project",
+        "Query",
+        "TopK",
+        "EmbeddingSpace"
+      ],
+      "type": "object"
+    },
+    "SearchV2Input": {
+      "$ref": "#/$defs/SearchInput"
+    },
+    "SearchV2Output": {
+      "items": {
+        "$ref": "#/$defs/ItemSnapshot"
+      },
+      "type": "array"
+    },
+    "UpdateInput": {
+      "additionalProperties": false,
+      "properties": {
+        "Content": {
+          "type": "string"
+        },
+        "ExpectedRevision": {
+          "allOf": [
+            {
+              "maximum": 18446744073709551615,
+              "minimum": 0
+            }
+          ],
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "ID": {
+          "type": "string"
+        },
+        "Pinned": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ID",
+        "ExpectedRevision"
+      ],
+      "type": "object"
+    },
+    "UpdateV2Input": {
+      "$ref": "#/$defs/UpdateInput"
+    },
+    "UpdateV2Output": {
+      "$ref": "#/$defs/ItemSnapshot"
     }
   }
 }

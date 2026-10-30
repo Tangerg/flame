@@ -41,7 +41,7 @@ type MemoryPromptItem struct {
 
 // AgentMemoryReader supplies the pinned memory included in every fresh root.
 type agentMemoryReader interface {
-	Items(ctx context.Context, scope memorycontract.ItemsV2InputScope, project string) ([]MemoryPromptItem, error)
+	Items(ctx context.Context, scope memorycontract.ItemsInputScope, project string) ([]MemoryPromptItem, error)
 }
 
 // AgentMemorySearcher supplies prompt-relevant non-pinned memory.

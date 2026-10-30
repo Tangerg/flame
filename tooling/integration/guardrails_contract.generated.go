@@ -4,12 +4,12 @@ package integration
 type GuardrailsGetPolicyV1Input struct {
 }
 
-type GuardrailsReplacePolicyV1Input struct {
+type GuardrailsReplaceInput struct {
 	ExpectedRevision uint64   `json:"expectedRevision"`
 	Phrases          []string `json:"phrases"`
 }
 
-type GuardrailsGetPolicyV1Output struct {
+type GuardrailsSummary struct {
 	ProtectedPhraseCount uint64 `json:"protectedPhraseCount"`
 	Revision             uint64 `json:"revision"`
 }
@@ -19,5 +19,3 @@ const GuardrailsCapabilityJSON = "{\"protocol\":\"io.github.tangerg.qimu/portabl
 const GuardrailsGetPolicyV1Method = "flame.guardrails/get-policy.v1"
 
 const GuardrailsReplacePolicyV1Method = "flame.guardrails/replace-policy.v1"
-
-type GuardrailsReplacePolicyV1Output GuardrailsGetPolicyV1Output

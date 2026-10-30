@@ -24,12 +24,12 @@ const (
 	maximumSchedulePageRequests = 100
 )
 
-func (r *Connection) Schedules(ctx context.Context) ([]schedule.CreateV1Output, error) {
+func (r *Connection) Schedules(ctx context.Context) ([]schedule.Snapshot, error) {
 	bound, err := r.selectedInstalledCall(ctx, schedule.CapabilityJSON, schedule.ListV1Method)
 	if err != nil {
 		return nil, err
 	}
-	var schedules []schedule.CreateV1Output
+	var schedules []schedule.Snapshot
 	seenIDs := make(map[string]struct{})
 	cursors, err := newCursorTraversal("list schedules", "", maximumSchedulePageRequests)
 	if err != nil {
@@ -37,7 +37,7 @@ func (r *Connection) Schedules(ctx context.Context) ([]schedule.CreateV1Output, 
 	}
 	for {
 		cursor := cursors.cursor()
-		input, err := jsonvalue.Encode(schedule.ListV1Input{Cursor: cursor, Limit: new(int64(schedulePageLimit))})
+		input, err := jsonvalue.Encode(schedule.ListInput{Cursor: cursor, Limit: new(int64(schedulePageLimit))})
 		if err != nil {
 			return nil, err
 		}
@@ -47,7 +47,7 @@ func (r *Connection) Schedules(ctx context.Context) ([]schedule.CreateV1Output, 
 		if err != nil {
 			return nil, classifyError(err)
 		}
-		var page schedule.ListV1Output
+		var page schedule.Page
 		if err := json.Unmarshal([]byte(reply.Output), &page, json.RejectUnknownMembers(true)); err != nil {
 			return nil, runtimeContractViolation("list schedules output: %v", err)
 		}
@@ -59,7 +59,7 @@ func (r *Connection) Schedules(ctx context.Context) ([]schedule.CreateV1Output, 
 				return nil, runtimeContractViolation("list schedules repeats %q", row.ID)
 			}
 			seenIDs[row.ID] = struct{}{}
-			schedules = append(schedules, schedule.CreateV1Output(row))
+			schedules = append(schedules, schedule.Snapshot(row))
 		}
 		more, err := cursors.advance(page.NextCursor)
 		if err != nil {
@@ -71,7 +71,7 @@ func (r *Connection) Schedules(ctx context.Context) ([]schedule.CreateV1Output, 
 	}
 }
 
-func (r *Connection) PrepareCreate(ctx context.Context, request schedule.CreateV1Input) (protocol.CallPluginRequest, error) {
+func (r *Connection) PrepareCreate(ctx context.Context, request schedule.Draft) (protocol.CallPluginRequest, error) {
 	if request.CWD != "" {
 		resolved, err := r.Resolve(ctx, workspace.ResolveRequest{Path: request.CWD})
 		if err != nil {
@@ -86,21 +86,21 @@ func (r *Connection) PrepareCreate(ctx context.Context, request schedule.CreateV
 	return r.prepareSchedulesCommand(ctx, schedule.CreateV1Method, input)
 }
 
-func (r *Connection) DecodeCreate(reply *protocol.CallPluginResponse) (schedule.CreateV1Output, error) {
+func (r *Connection) DecodeCreate(reply *protocol.CallPluginResponse) (schedule.Snapshot, error) {
 	if reply == nil {
-		return schedule.CreateV1Output{}, runtimeContractViolation("create schedule returned nil")
+		return schedule.Snapshot{}, runtimeContractViolation("create schedule returned nil")
 	}
-	var result schedule.CreateV1Output
+	var result schedule.Snapshot
 	if err := json.Unmarshal([]byte(reply.Output), &result, json.RejectUnknownMembers(true)); err != nil {
-		return schedule.CreateV1Output{}, runtimeContractViolation("create schedule output: %v", err)
+		return schedule.Snapshot{}, runtimeContractViolation("create schedule output: %v", err)
 	}
 	if result.ID == "" || result.Revision == 0 || result.CreatedAt.IsZero() || strings.TrimSpace(result.Instructions) == "" || result.Cron == "" {
-		return schedule.CreateV1Output{}, runtimeContractViolation("schedule snapshot is incomplete")
+		return schedule.Snapshot{}, runtimeContractViolation("schedule snapshot is incomplete")
 	}
 	return result, nil
 }
 
-func (r *Connection) PrepareUpdate(ctx context.Context, request schedule.UpdateV1Input) (protocol.CallPluginRequest, error) {
+func (r *Connection) PrepareUpdate(ctx context.Context, request schedule.UpdateInput) (protocol.CallPluginRequest, error) {
 	if request.CWD != nil && *request.CWD != "" {
 		resolved, err := r.Resolve(ctx, workspace.ResolveRequest{Path: *request.CWD})
 		if err != nil {
@@ -115,19 +115,19 @@ func (r *Connection) PrepareUpdate(ctx context.Context, request schedule.UpdateV
 	return r.prepareSchedulesCommand(ctx, schedule.UpdateV1Method, input)
 }
 
-func (r *Connection) DecodeUpdate(expectedID string, reply *protocol.CallPluginResponse) (schedule.UpdateV1Output, error) {
+func (r *Connection) DecodeUpdate(expectedID string, reply *protocol.CallPluginResponse) (schedule.Snapshot, error) {
 	value, err := r.DecodeCreate(reply)
 	if err != nil {
-		return schedule.UpdateV1Output{}, err
+		return schedule.Snapshot{}, err
 	}
 	if err := requireIdentity("update schedule", value.ID, expectedID); err != nil {
-		return schedule.UpdateV1Output{}, err
+		return schedule.Snapshot{}, err
 	}
-	return schedule.UpdateV1Output(value), nil
+	return schedule.Snapshot(value), nil
 }
 
 func (r *Connection) PrepareDelete(ctx context.Context, id string) (protocol.CallPluginRequest, error) {
-	input, err := jsonvalue.Encode(schedule.DeleteV1Input{ID: strings.TrimSpace(id)})
+	input, err := jsonvalue.Encode(schedule.ItemInput{ID: strings.TrimSpace(id)})
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
@@ -135,7 +135,7 @@ func (r *Connection) PrepareDelete(ctx context.Context, id string) (protocol.Cal
 }
 
 func (r *Connection) PrepareRunNow(ctx context.Context, id string) (protocol.CallPluginRequest, error) {
-	input, err := jsonvalue.Encode(schedule.RunNowV1Input{ID: strings.TrimSpace(id)})
+	input, err := jsonvalue.Encode(schedule.ItemInput{ID: strings.TrimSpace(id)})
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
@@ -166,7 +166,7 @@ func (r *Connection) DecodeRunNow(reply *protocol.CallPluginResponse) (conversat
 	if reply == nil {
 		return conversation.RunReference{}, runtimeContractViolation("run schedule now returned nil")
 	}
-	var result schedule.RunNowV1Output
+	var result schedule.RunReference
 	if err := json.Unmarshal([]byte(reply.Output), &result, json.RejectUnknownMembers(true)); err != nil {
 		return conversation.RunReference{}, runtimeContractViolation("run schedule now output: %v", err)
 	}

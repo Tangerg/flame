@@ -112,11 +112,11 @@ type Plugins interface {
 // Schedules borrows mutation inputs until return and transfers owned results.
 // A form hands its fresh request to the operation that invokes this port.
 type Schedules interface {
-	Schedules(context.Context) ([]schedule.CreateV1Output, error)
-	PrepareCreate(context.Context, schedule.CreateV1Input) (protocol.CallPluginRequest, error)
-	DecodeCreate(*protocol.CallPluginResponse) (schedule.CreateV1Output, error)
-	PrepareUpdate(context.Context, schedule.UpdateV1Input) (protocol.CallPluginRequest, error)
-	DecodeUpdate(string, *protocol.CallPluginResponse) (schedule.UpdateV1Output, error)
+	Schedules(context.Context) ([]schedule.Snapshot, error)
+	PrepareCreate(context.Context, schedule.Draft) (protocol.CallPluginRequest, error)
+	DecodeCreate(*protocol.CallPluginResponse) (schedule.Snapshot, error)
+	PrepareUpdate(context.Context, schedule.UpdateInput) (protocol.CallPluginRequest, error)
+	DecodeUpdate(string, *protocol.CallPluginResponse) (schedule.Snapshot, error)
 	PrepareDelete(context.Context, string) (protocol.CallPluginRequest, error)
 	CallPlugin(context.Context, protocol.CallPluginRequest, authoring.CommandID) (*protocol.CallPluginResponse, error)
 	PrepareRunNow(context.Context, string) (protocol.CallPluginRequest, error)

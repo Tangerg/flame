@@ -1,12 +1,16 @@
 package contractgen
 
 import (
+	"encoding/base64"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"fmt"
+	"go/token"
 	"maps"
+	"path"
 	"slices"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/qimu/portable"
@@ -38,15 +42,19 @@ func buildFeature(data []byte) (*featureArtifacts, error) {
 	descriptors := descriptor.Methods
 	artifacts := &featureArtifacts{definitions: make(map[string]jsontext.Value), capability: contract}
 	definitions := make(Definitions)
+	roots, renamed, err := featureNames(descriptors)
+	if err != nil {
+		return nil, err
+	}
 	for _, descriptor := range descriptors {
 		if descriptor.Description == "" || !utf8.ValidString(descriptor.Description) {
 			return nil, fmt.Errorf("feature contracts: method description is required for %q", descriptor.Name)
 		}
-		root := featureTypeName(descriptor.Name)
+		root := roots[descriptor.Name]
 		method := featureMethod{Name: descriptor.Name, Kind: descriptor.Kind, Target: descriptor.Target, Description: descriptor.Description, Input: "schema.json" + RefPrefix + root + "Input", Output: "schema.json" + RefPrefix + root + "Output"}
 		if len(descriptor.Stream) != 0 {
 			method.Stream = "schema.json" + RefPrefix + root + "Chunk"
-			if err := addFeatureSchema(artifacts, root+"Chunk", descriptor.Stream); err != nil {
+			if err := addFeatureSchema(artifacts, root+"Chunk", descriptor.Stream, renamed); err != nil {
 				return nil, err
 			}
 		}
@@ -54,7 +62,7 @@ func buildFeature(data []byte) (*featureArtifacts, error) {
 			name string
 			raw  jsontext.Value
 		}{{root + "Input", descriptor.Input}, {root + "Output", descriptor.Output}} {
-			if err := addFeatureSchema(artifacts, frame.name, frame.raw); err != nil {
+			if err := addFeatureSchema(artifacts, frame.name, frame.raw, renamed); err != nil {
 				return nil, err
 			}
 		}
@@ -115,22 +123,120 @@ func buildFeature(data []byte) (*featureArtifacts, error) {
 	return artifacts, nil
 }
 
-// Names are identifiers inside generated files, never filesystem components.
-// Hex escapes preserve distinct semantic names rather than silently colliding.
-func featureTypeName(name string) string {
-	var out strings.Builder
-	out.WriteString("Method_")
-	for _, value := range []byte(name) {
-		if value >= 'a' && value <= 'z' || value >= 'A' && value <= 'Z' || value >= '0' && value <= '9' {
-			out.WriteByte(value)
-		} else {
-			fmt.Fprintf(&out, "_%02x", value)
+// featureNames gives every method frame and schema definition a readable
+// identifier. A method is named by its last path segment; Scope keys a Go type
+// as go_<base64url(package path)>_<type>, which is named by the type alone
+// unless two packages publish it, and then by package and type. A name that
+// still collides is rejected rather than escaped into an unreadable one.
+func featureNames(descriptors []portable.MethodDescriptor) (map[string]string, map[string]string, error) {
+	roots := make(map[string]string, len(descriptors))
+	owners := make(map[string]string)
+	claim := func(name, owner string) error {
+		if !token.IsIdentifier(name) {
+			return fmt.Errorf("feature contracts: %q has no identifier name", owner)
+		}
+		if previous, taken := owners[name]; taken && previous != owner {
+			return fmt.Errorf("feature contracts: %q and %q both name %s", previous, owner, name)
+		}
+		owners[name] = owner
+		return nil
+	}
+	keys := make(map[string]jsontext.Value)
+	for _, descriptor := range descriptors {
+		root := goFeatureIdentifier(descriptor.Name[strings.LastIndex(descriptor.Name, "/")+1:])
+		for _, suffix := range []string{"Input", "Output", "Chunk"} {
+			if err := claim(root+suffix, descriptor.Name); err != nil {
+				return nil, nil, err
+			}
+		}
+		roots[descriptor.Name] = root
+		for _, raw := range []jsontext.Value{descriptor.Input, descriptor.Output, descriptor.Stream} {
+			if len(raw) == 0 {
+				continue
+			}
+			var document struct {
+				Defs map[string]jsontext.Value `json:"$defs"`
+			}
+			if err := json.Unmarshal(raw, &document); err != nil {
+				return nil, nil, err
+			}
+			maps.Copy(keys, document.Defs)
 		}
 	}
-	return out.String()
+	type source struct{ pkg, name string }
+	sources := make(map[string]source, len(keys))
+	packages := make(map[string]map[string]bool)
+	for key := range keys {
+		pkg, name := goDefinitionSource(key)
+		sources[key] = source{pkg, goFeatureIdentifier(name)}
+		if packages[sources[key].name] == nil {
+			packages[sources[key].name] = make(map[string]bool)
+		}
+		packages[sources[key].name][pkg] = true
+	}
+	renamed := make(map[string]string, len(keys))
+	for _, key := range slices.Sorted(maps.Keys(keys)) {
+		name := sources[key].name
+		if len(packages[name]) > 1 {
+			name = goFeatureIdentifier(path.Base(sources[key].pkg)) + name
+		}
+		if err := claim(name, key); err != nil {
+			return nil, nil, err
+		}
+		renamed[key] = name
+	}
+	// An exported type that encodes itself through an unexported one publishes
+	// that encoding under its own name; the reference between them disappears.
+	encodedBy := make(map[string][]string)
+	for key, body := range keys {
+		var reference struct {
+			Ref string `json:"$ref"`
+		}
+		if json.Unmarshal(body, &reference) == nil && reference.Ref != "" {
+			if target, local := strings.CutPrefix(reference.Ref, RefPrefix); local {
+				encodedBy[target] = append(encodedBy[target], key)
+			}
+		}
+	}
+	for target, encoders := range encodedBy {
+		if _, name := goDefinitionSource(target); len(encoders) == 1 && keys[target] != nil && unicode.IsLower([]rune(name)[0]) {
+			renamed[target] = renamed[encoders[0]]
+		}
+	}
+	return roots, renamed, nil
 }
 
-func addFeatureSchema(artifacts *featureArtifacts, root string, raw jsontext.Value) error {
+// goDefinitionSource reads the package path and type name from a Scope Go
+// definition key; any other key is its own name. Base64url and Go type names
+// may both contain '_', so the separator is the first one after which the
+// prefix decodes to an import path and the rest begins a type name.
+func goDefinitionSource(key string) (pkg, name string) {
+	encoded, ok := strings.CutPrefix(key, "go_")
+	if !ok {
+		return "", key
+	}
+	for index := strings.IndexByte(encoded, '_'); index >= 0; {
+		decoded, err := base64.RawURLEncoding.DecodeString(encoded[:index])
+		rest := encoded[index+1:]
+		if err == nil && importPath(string(decoded)) && rest != "" && unicode.IsLetter([]rune(rest)[0]) {
+			return string(decoded), rest
+		}
+		next := strings.IndexByte(rest, '_')
+		if next < 0 {
+			break
+		}
+		index += next + 1
+	}
+	return "", key
+}
+
+func importPath(value string) bool {
+	return value != "" && !strings.ContainsFunc(value, func(r rune) bool {
+		return !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("./-_~+", r))
+	})
+}
+
+func addFeatureSchema(artifacts *featureArtifacts, root string, raw jsontext.Value, renamed map[string]string) error {
 	var document map[string]jsontext.Value
 	if err := json.Unmarshal(raw, &document); err != nil {
 		return err
@@ -143,14 +249,13 @@ func addFeatureSchema(artifacts *featureArtifacts, root string, raw jsontext.Val
 	}
 	delete(document, "$defs")
 	delete(document, "$schema")
-	renamed := make(map[string]string)
-	for name := range definitions {
-		renamed[name] = featureTypeName(name)
-	}
 	for name, body := range definitions {
 		updated, err := rewriteFeatureRefs(body, renamed)
 		if err != nil {
 			return err
+		}
+		if string(updated) == `{"$ref":"`+RefPrefix+renamed[name]+`"}` {
+			continue
 		}
 		if previous, exists := artifacts.definitions[renamed[name]]; exists && string(previous) != string(updated) {
 			return fmt.Errorf("feature contracts: definition %q has competing schemas", name)

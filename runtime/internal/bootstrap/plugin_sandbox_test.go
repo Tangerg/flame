@@ -39,7 +39,7 @@ func TestSandboxInstalledNativeToolAndTypedCommandsKeepCoreRunOwnership(t *testi
 						t.Error(err)
 					}
 					toolResult.Store(string(encoded))
-					var result testsupport.SandboxExecuteV1Output
+					var result testsupport.SandboxResult
 					if err := json.Unmarshal(part.ToolResult.Output.Details, &result); err != nil {
 						t.Error(err)
 					}
@@ -74,13 +74,13 @@ func TestSandboxInstalledNativeToolAndTypedCommandsKeepCoreRunOwnership(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := jsonvalue.Encode(testsupport.SandboxExecuteV1Input{Script: "printf native-typed-result; exit 5", TimeoutMillis: 3000})
+	input, err := jsonvalue.Encode(testsupport.SandboxExecuteInput{Script: "printf native-typed-result; exit 5", TimeoutMillis: 3000})
 	if err != nil {
 		t.Fatal(err)
 	}
 	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "sandbox-operations", Contract: contracts.Identity().String(), Method: testsupport.SandboxExecuteV1Method, Input: input.String(), Target: portable.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}
 	typed := r.must(delivery.PluginsCall, request, "native-typed").(*protocol.CallPluginResponse)
-	var result testsupport.SandboxExecuteV1Output
+	var result testsupport.SandboxResult
 	if err := json.Unmarshal([]byte(typed.Output), &result); err != nil || typed.Failure != nil || result.ExitCode != 5 || result.Stdout.Content != "native-typed-result" {
 		t.Fatalf("installed native callback failed: %+v %+v %v", typed, result, err)
 	}

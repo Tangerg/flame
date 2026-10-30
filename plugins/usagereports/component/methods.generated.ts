@@ -2,47 +2,35 @@
 // Numeric and cross-field constraints remain in schema.json and the business owner.
 import type { JSONNumber } from "@qimu/sdk/json";
 
-export type Method_flame_2eusage_2dreports_2fcapture_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fCaptureInput;
-
-export type Method_flame_2eusage_2dreports_2fcapture_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fHeader;
-
-export type Method_flame_2eusage_2dreports_2fdelete_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fReportInput;
-
-export type Method_flame_2eusage_2dreports_2fdelete_2ev1Output = boolean;
-
-export type Method_flame_2eusage_2dreports_2fget_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fReportInput;
-
-export type Method_flame_2eusage_2dreports_2fget_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fReport_5bgithub_2ecom_2fTangerg_2fflame_2fruntime_2fprotocol_2eUsageSummary_5d;
-
-export interface Method_flame_2eusage_2dreports_2flist_2ev1Input {
-}
-
-export type Method_flame_2eusage_2dreports_2flist_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fHeader[];
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fCaptureInput {
+export interface CaptureInput {
   period: "daily" | "weekly";
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fHeader {
+export type CaptureV1Input = CaptureInput;
+
+export type CaptureV1Output = Header;
+
+export type DeleteV1Input = ReportInput;
+
+export type DeleteV1Output = boolean;
+
+export type GetV1Input = ReportInput;
+
+export type GetV1Output = ReportGithubComTangergFlameRuntimeProtocolUsageSummary;
+
+export interface Header {
   id: string;
   observedAt: string;
   period: "daily" | "weekly";
   since?: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fReportInput {
-  id: string;
+export interface ListV1Input {
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fReport_5bgithub_2ecom_2fTangerg_2fflame_2fruntime_2fprotocol_2eUsageSummary_5d {
-  id: string;
-  observedAt: string;
-  period: "daily" | "weekly";
-  since?: string;
-  summary: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageSummary;
-}
+export type ListV1Output = Header[];
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fModelUsage {
+export interface ModelUsage {
   cacheReadTokens?: JSONNumber;
   cacheWriteTokens?: JSONNumber;
   costUsd?: JSONNumber;
@@ -51,14 +39,26 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9
   reasoningTokens?: JSONNumber;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageBucket {
-  coverage: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageCoverage;
-  key: string;
-  recordedCostUsd?: JSONNumber;
-  total: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fModelUsage;
+export interface ReportGithubComTangergFlameRuntimeProtocolUsageSummary {
+  id: string;
+  observedAt: string;
+  period: "daily" | "weekly";
+  since?: string;
+  summary: UsageSummary;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageCoverage {
+export interface ReportInput {
+  id: string;
+}
+
+export interface UsageBucket {
+  coverage: UsageCoverage;
+  key: string;
+  recordedCostUsd?: JSONNumber;
+  total: ModelUsage;
+}
+
+export interface UsageCoverage {
   calls: JSONNumber;
   completedCalls: JSONNumber;
   failedCalls: JSONNumber;
@@ -68,32 +68,32 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9
   unknownCalls: JSONNumber;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageSummary {
-  byDay: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageBucket[];
-  byModel: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageBucket[];
-  byOrigin: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageBucket[];
-  byProvider: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageBucket[];
-  byScope: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageBucket[];
-  coverage: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageCoverage;
+export interface UsageSummary {
+  byDay: UsageBucket[];
+  byModel: UsageBucket[];
+  byOrigin: UsageBucket[];
+  byProvider: UsageBucket[];
+  byScope: UsageBucket[];
+  coverage: UsageCoverage;
   observedAt: string;
   recordedCostUsd?: JSONNumber;
   runs: JSONNumber;
   sessions: JSONNumber;
   since?: string;
-  total: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fModelUsage;
+  total: ModelUsage;
 }
 
 export interface MethodInputs {
-  "flame.usage-reports/capture.v1": Method_flame_2eusage_2dreports_2fcapture_2ev1Input;
-  "flame.usage-reports/delete.v1": Method_flame_2eusage_2dreports_2fdelete_2ev1Input;
-  "flame.usage-reports/get.v1": Method_flame_2eusage_2dreports_2fget_2ev1Input;
-  "flame.usage-reports/list.v1": Method_flame_2eusage_2dreports_2flist_2ev1Input;
+  "flame.usage-reports/capture.v1": CaptureV1Input;
+  "flame.usage-reports/delete.v1": DeleteV1Input;
+  "flame.usage-reports/get.v1": GetV1Input;
+  "flame.usage-reports/list.v1": ListV1Input;
 }
 export interface MethodOutputs {
-  "flame.usage-reports/capture.v1": Method_flame_2eusage_2dreports_2fcapture_2ev1Output;
-  "flame.usage-reports/delete.v1": Method_flame_2eusage_2dreports_2fdelete_2ev1Output;
-  "flame.usage-reports/get.v1": Method_flame_2eusage_2dreports_2fget_2ev1Output;
-  "flame.usage-reports/list.v1": Method_flame_2eusage_2dreports_2flist_2ev1Output;
+  "flame.usage-reports/capture.v1": CaptureV1Output;
+  "flame.usage-reports/delete.v1": DeleteV1Output;
+  "flame.usage-reports/get.v1": GetV1Output;
+  "flame.usage-reports/list.v1": ListV1Output;
 }
 export const METHODS = {
   "flame.usage-reports/capture.v1": { kind: "command", target: "installation" },

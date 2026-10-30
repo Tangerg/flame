@@ -4,31 +4,31 @@
     "kind": "query",
     "target": "installation",
     "description": "Read a bounded page of a previously captured snapshot by ID and Unicode codepoint offset. This reads captured material without network I/O; an evicted snapshot is refused.",
-    "input": "schema.json#/$defs/Method_flame_2eweb_2fbrowse_2ev1Input",
-    "output": "schema.json#/$defs/Method_flame_2eweb_2fbrowse_2ev1Output"
+    "input": "schema.json#/$defs/BrowseV1Input",
+    "output": "schema.json#/$defs/BrowseV1Output"
   },
   {
     "name": "flame.web/fetch.v1",
     "kind": "query",
     "target": "installation",
     "description": "Fetch a URL through configured Jina Reader credentials and capture a private immutable snapshot. Return its first 8192 Unicode codepoints and exact continuation offset.",
-    "input": "schema.json#/$defs/Method_flame_2eweb_2ffetch_2ev1Input",
-    "output": "schema.json#/$defs/Method_flame_2eweb_2ffetch_2ev1Output"
+    "input": "schema.json#/$defs/FetchV1Input",
+    "output": "schema.json#/$defs/FetchV1Output"
   },
   {
     "name": "flame.web/request.v1",
     "kind": "command",
     "target": "installation",
     "description": "Execute one HTTP request within the installed host allowlist. GET and HEAD are allowed; other methods are refused. Responses are bounded to 256 KiB. Preserve the command identity: an unconfirmed request must never be resubmitted.",
-    "input": "schema.json#/$defs/Method_flame_2eweb_2frequest_2ev1Input",
-    "output": "schema.json#/$defs/Method_flame_2eweb_2frequest_2ev1Output"
+    "input": "schema.json#/$defs/RequestV1Input",
+    "output": "schema.json#/$defs/RequestV1Output"
   },
   {
     "name": "flame.web/search.v1",
     "kind": "query",
     "target": "installation",
     "description": "Search through configured Tavily credentials with a query up to 8192 bytes, honoring explicit domain and supported recency filters. Each call queries the provider; results are bounded to 128 KiB.",
-    "input": "schema.json#/$defs/Method_flame_2eweb_2fsearch_2ev1Input",
-    "output": "schema.json#/$defs/Method_flame_2eweb_2fsearch_2ev1Output"
+    "input": "schema.json#/$defs/SearchV1Input",
+    "output": "schema.json#/$defs/SearchV1Output"
   }
 ]

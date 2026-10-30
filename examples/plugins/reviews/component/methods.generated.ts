@@ -2,63 +2,63 @@
 // Numeric and cross-field constraints remain in schema.json and the business owner.
 import type { JSONNumber } from "@qimu/sdk/json";
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fAnalysis {
-  findings: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fFinding[];
-  review: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fSnapshot;
+export interface Analysis {
+  findings: Finding[];
+  review: Snapshot;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fFinding {
+export interface Finding {
   code: string;
   message: string;
   reviewId: string;
   revision: JSONNumber;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fListResult {
-  reviews: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fSnapshot[];
+export interface ListResult {
+  reviews: Snapshot[];
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fSnapshot {
+export interface ReviewsAnalyzersInput {
+}
+
+export type ReviewsAnalyzersOutput = Analysis;
+
+export interface ReviewsListInput {
+}
+
+export type ReviewsListOutput = ListResult;
+
+export type ReviewsUpdateInput = Update;
+
+export type ReviewsUpdateOutput = UpdateResult;
+
+export interface Snapshot {
   id: string;
   revision: JSONNumber;
   status: string & ("open" | "resolved");
   title: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fUpdate {
+export interface Update {
   expectedRevision: JSONNumber;
   id: string;
   status: string & ("open" | "resolved");
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fUpdateResult {
-  review?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fSnapshot;
+export interface UpdateResult {
+  review?: Snapshot;
   type: string & ("updated" | "revisionConflict" | "notFound" | "invalidUpdate" | "invocationConflict" | "revisionExhausted");
 }
 
-export interface Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eanalyzersInput {
-}
-
-export type Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eanalyzersOutput = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fAnalysis;
-
-export interface Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2elistInput {
-}
-
-export type Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2elistOutput = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fListResult;
-
-export type Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eupdateInput = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fUpdate;
-
-export type Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eupdateOutput = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fUpdateResult;
-
 export interface MethodInputs {
-  "io.github.tangerg.flame.examples/reviews.analyzers": Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eanalyzersInput;
-  "io.github.tangerg.flame.examples/reviews.list": Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2elistInput;
-  "io.github.tangerg.flame.examples/reviews.update": Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eupdateInput;
+  "io.github.tangerg.flame.examples/reviews.analyzers": ReviewsAnalyzersInput;
+  "io.github.tangerg.flame.examples/reviews.list": ReviewsListInput;
+  "io.github.tangerg.flame.examples/reviews.update": ReviewsUpdateInput;
 }
 export interface MethodOutputs {
-  "io.github.tangerg.flame.examples/reviews.analyzers": Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eanalyzersOutput;
-  "io.github.tangerg.flame.examples/reviews.list": Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2elistOutput;
-  "io.github.tangerg.flame.examples/reviews.update": Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eupdateOutput;
+  "io.github.tangerg.flame.examples/reviews.analyzers": ReviewsAnalyzersOutput;
+  "io.github.tangerg.flame.examples/reviews.list": ReviewsListOutput;
+  "io.github.tangerg.flame.examples/reviews.update": ReviewsUpdateOutput;
 }
 export const METHODS = {
   "io.github.tangerg.flame.examples/reviews.analyzers": { kind: "query", target: "installation" },

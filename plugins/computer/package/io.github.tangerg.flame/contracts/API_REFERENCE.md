@@ -13,7 +13,7 @@ Generated from the feature's Go-owned method contracts.
 | `flame.computer/reply.v1` | command | installation | Human-only: answer the exact live upstream permission request. The original runtime owns allowed scopes; cancelled, settled or replaced requests cannot be answered. |
 | `flame.computer/result.v1` | query | installation | Read original input, identity and the one observed outcome. An absent outcome means unconfirmed; this method never executes or infers desktop effects. |
 | `flame.computer/stop.v1` | command | installation | Human-only: interrupt the exact current operation and retire its engine before any later operation can run. A missing original result remains unknown. |
-| `flame.computer/watch.v1` | query | installation | Observe bounded complete snapshots of the computer-control owner. Disconnecting this observation does not close the session. Stream chunks: schema.json#/$defs/Method_flame_2ecomputer_2fwatch_2ev1Chunk; final result: schema.json#/$defs/Method_flame_2ecomputer_2fwatch_2ev1Output. |
+| `flame.computer/watch.v1` | query | installation | Observe bounded complete snapshots of the computer-control owner. Disconnecting this observation does not close the session. Stream chunks: schema.json#/$defs/WatchV1Chunk; final result: schema.json#/$defs/WatchV1Output. |
 
 Capability `flame.computer.v1` uses `collection` composition in `installation` scope. Required backend protocol: `io.github.tangerg.qimu/portable/1`.
 

@@ -1,31 +1,141 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
-    "Method_flame_2eweb_2fbrowse_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fBrowseInput"
+    "BrowseInput": {
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "maximum": 8192,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "offset": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 0,
+          "type": "integer"
+        },
+        "snapshotId": {
+          "maxLength": 64,
+          "minLength": 64,
+          "type": "string"
+        }
+      },
+      "required": [
+        "snapshotId",
+        "offset",
+        "limit"
+      ],
+      "type": "object"
     },
-    "Method_flame_2eweb_2fbrowse_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL2RvbWFpbg_5fPage"
+    "BrowseV1Input": {
+      "$ref": "#/$defs/BrowseInput"
     },
-    "Method_flame_2eweb_2ffetch_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fFetchRequest"
+    "BrowseV1Output": {
+      "$ref": "#/$defs/Page"
     },
-    "Method_flame_2eweb_2ffetch_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL2RvbWFpbg_5fPage"
+    "FetchRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "allOf": [
+            {
+              "enum": [
+                "markdown",
+                "html",
+                "text"
+              ]
+            }
+          ],
+          "description": "Content format: markdown (default and best for readable structure), html, or text.",
+          "type": "string"
+        },
+        "url": {
+          "description": "Absolute http(s) URL of the page to fetch.",
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "type": "object"
     },
-    "Method_flame_2eweb_2frequest_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL2h0dHByZXE_5fRequest"
+    "FetchV1Input": {
+      "$ref": "#/$defs/FetchRequest"
     },
-    "Method_flame_2eweb_2frequest_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPResponse"
+    "FetchV1Output": {
+      "$ref": "#/$defs/Page"
     },
-    "Method_flame_2eweb_2fsearch_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchRequest"
+    "HTTPContent": {
+      "additionalProperties": false,
+      "properties": {
+        "data": {
+          "type": "string"
+        },
+        "encoding": {
+          "enum": [
+            "utf8",
+            "base64"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "encoding",
+        "data"
+      ],
+      "type": "object"
     },
-    "Method_flame_2eweb_2fsearch_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchResponse"
+    "HTTPResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "$ref": "#/$defs/HTTPContent"
+        },
+        "duration": {
+          "type": "string"
+        },
+        "headers": {
+          "additionalProperties": {
+            "items": {
+              "$ref": "#/$defs/HTTPContent"
+            },
+            "type": "array"
+          },
+          "type": "object"
+        },
+        "status": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "status",
+        "body",
+        "duration"
+      ],
+      "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL2RvbWFpbg_5fPage": {
+    "Page": {
       "additionalProperties": false,
       "properties": {
         "content": {
@@ -87,102 +197,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fBrowseInput": {
-      "additionalProperties": false,
-      "properties": {
-        "limit": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "maximum": 8192,
-          "minimum": 1,
-          "type": "integer"
-        },
-        "offset": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "minimum": 0,
-          "type": "integer"
-        },
-        "snapshotId": {
-          "maxLength": 64,
-          "minLength": 64,
-          "type": "string"
-        }
-      },
-      "required": [
-        "snapshotId",
-        "offset",
-        "limit"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPContent": {
-      "additionalProperties": false,
-      "properties": {
-        "data": {
-          "type": "string"
-        },
-        "encoding": {
-          "enum": [
-            "utf8",
-            "base64"
-          ],
-          "type": "string"
-        }
-      },
-      "required": [
-        "encoding",
-        "data"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPResponse": {
-      "additionalProperties": false,
-      "properties": {
-        "body": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPContent"
-        },
-        "duration": {
-          "type": "string"
-        },
-        "headers": {
-          "additionalProperties": {
-            "items": {
-              "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPContent"
-            },
-            "type": "array"
-          },
-          "type": "object"
-        },
-        "status": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "type": "integer"
-        },
-        "truncated": {
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "status",
-        "body",
-        "duration"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL2h0dHByZXE_5fRequest": {
+    "Request": {
       "additionalProperties": false,
       "allOf": [
         {
@@ -250,34 +265,13 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fFetchRequest": {
-      "additionalProperties": false,
-      "properties": {
-        "format": {
-          "allOf": [
-            {
-              "enum": [
-                "markdown",
-                "html",
-                "text"
-              ]
-            }
-          ],
-          "description": "Content format: markdown (default and best for readable structure), html, or text.",
-          "type": "string"
-        },
-        "url": {
-          "description": "Absolute http(s) URL of the page to fetch.",
-          "minLength": 1,
-          "type": "string"
-        }
-      },
-      "required": [
-        "url"
-      ],
-      "type": "object"
+    "RequestV1Input": {
+      "$ref": "#/$defs/Request"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchRequest": {
+    "RequestV1Output": {
+      "$ref": "#/$defs/HTTPResponse"
+    },
+    "SearchRequest": {
       "additionalProperties": false,
       "allOf": [
         {
@@ -346,7 +340,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchResponse": {
+    "SearchResponse": {
       "additionalProperties": false,
       "properties": {
         "query": {
@@ -354,7 +348,7 @@
         },
         "results": {
           "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchResult"
+            "$ref": "#/$defs/SearchResult"
           },
           "type": "array"
         }
@@ -365,7 +359,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchResult": {
+    "SearchResult": {
       "additionalProperties": false,
       "properties": {
         "favicon_url": {
@@ -394,6 +388,12 @@
         "snippet"
       ],
       "type": "object"
+    },
+    "SearchV1Input": {
+      "$ref": "#/$defs/SearchRequest"
+    },
+    "SearchV1Output": {
+      "$ref": "#/$defs/SearchResponse"
     }
   }
 }

@@ -4,23 +4,23 @@
     "kind": "query",
     "target": "installation",
     "description": "Analyze the current review through its installed analyzer collection and return admitted findings.",
-    "input": "schema.json#/$defs/Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eanalyzersInput",
-    "output": "schema.json#/$defs/Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eanalyzersOutput"
+    "input": "schema.json#/$defs/ReviewsAnalyzersInput",
+    "output": "schema.json#/$defs/ReviewsAnalyzersOutput"
   },
   {
     "name": "io.github.tangerg.flame.examples/reviews.list",
     "kind": "query",
     "target": "installation",
     "description": "Read the review backend's current review and revision.",
-    "input": "schema.json#/$defs/Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2elistInput",
-    "output": "schema.json#/$defs/Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2elistOutput"
+    "input": "schema.json#/$defs/ReviewsListInput",
+    "output": "schema.json#/$defs/ReviewsListOutput"
   },
   {
     "name": "io.github.tangerg.flame.examples/reviews.update",
     "kind": "command",
     "target": "installation",
     "description": "Change one review's status using its inspected revision.",
-    "input": "schema.json#/$defs/Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eupdateInput",
-    "output": "schema.json#/$defs/Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eupdateOutput"
+    "input": "schema.json#/$defs/ReviewsUpdateInput",
+    "output": "schema.json#/$defs/ReviewsUpdateOutput"
   }
 ]

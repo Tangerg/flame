@@ -2,23 +2,39 @@
 // Numeric and cross-field constraints remain in schema.json and the business owner.
 import type { JSONNumber } from "@qimu/sdk/json";
 
-export type Method_flame_2eweb_2fbrowse_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fBrowseInput;
+export interface BrowseInput {
+  limit: JSONNumber;
+  offset: JSONNumber;
+  snapshotId: string;
+}
 
-export type Method_flame_2eweb_2fbrowse_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL2RvbWFpbg_5fPage;
+export type BrowseV1Input = BrowseInput;
 
-export type Method_flame_2eweb_2ffetch_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fFetchRequest;
+export type BrowseV1Output = Page;
 
-export type Method_flame_2eweb_2ffetch_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL2RvbWFpbg_5fPage;
+export interface FetchRequest {
+  format?: string & ("markdown" | "html" | "text");
+  url: string;
+}
 
-export type Method_flame_2eweb_2frequest_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL2h0dHByZXE_5fRequest;
+export type FetchV1Input = FetchRequest;
 
-export type Method_flame_2eweb_2frequest_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPResponse;
+export type FetchV1Output = Page;
 
-export type Method_flame_2eweb_2fsearch_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchRequest;
+export interface HTTPContent {
+  data: string;
+  encoding: "utf8" | "base64";
+}
 
-export type Method_flame_2eweb_2fsearch_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchResponse;
+export interface HTTPResponse {
+  body: HTTPContent;
+  duration: string;
+  headers?: Record<string, HTTPContent[]>;
+  status: JSONNumber;
+  truncated?: boolean;
+}
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL2RvbWFpbg_5fPage {
+export interface Page {
   content: string;
   format: string & ("markdown" | "html" | "text");
   nextOffset?: JSONNumber;
@@ -28,26 +44,7 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2l
   url: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fBrowseInput {
-  limit: JSONNumber;
-  offset: JSONNumber;
-  snapshotId: string;
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPContent {
-  data: string;
-  encoding: "utf8" | "base64";
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPResponse {
-  body: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPContent;
-  duration: string;
-  headers?: Record<string, Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPContent[]>;
-  status: JSONNumber;
-  truncated?: boolean;
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL2h0dHByZXE_5fRequest {
+export interface Request {
   body?: string;
   headers?: Record<string, string>;
   method?: string & ("GET" | "HEAD" | "POST" | "PUT" | "PATCH" | "DELETE");
@@ -56,12 +53,11 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL2h0dHByZXE
   url: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fFetchRequest {
-  format?: string & ("markdown" | "html" | "text");
-  url: string;
-}
+export type RequestV1Input = Request;
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchRequest {
+export type RequestV1Output = HTTPResponse;
+
+export interface SearchRequest {
   allowed_domains?: string[];
   blocked_domains?: string[];
   max_results?: JSONNumber;
@@ -69,12 +65,12 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSe
   recency?: string & ("hour" | "day" | "week" | "month" | "year");
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchResponse {
+export interface SearchResponse {
   query: string;
-  results: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchResult[];
+  results: SearchResult[];
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchResult {
+export interface SearchResult {
   favicon_url?: string;
   published_time?: string;
   snippet: string;
@@ -83,17 +79,21 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSe
   url: string;
 }
 
+export type SearchV1Input = SearchRequest;
+
+export type SearchV1Output = SearchResponse;
+
 export interface MethodInputs {
-  "flame.web/browse.v1": Method_flame_2eweb_2fbrowse_2ev1Input;
-  "flame.web/fetch.v1": Method_flame_2eweb_2ffetch_2ev1Input;
-  "flame.web/request.v1": Method_flame_2eweb_2frequest_2ev1Input;
-  "flame.web/search.v1": Method_flame_2eweb_2fsearch_2ev1Input;
+  "flame.web/browse.v1": BrowseV1Input;
+  "flame.web/fetch.v1": FetchV1Input;
+  "flame.web/request.v1": RequestV1Input;
+  "flame.web/search.v1": SearchV1Input;
 }
 export interface MethodOutputs {
-  "flame.web/browse.v1": Method_flame_2eweb_2fbrowse_2ev1Output;
-  "flame.web/fetch.v1": Method_flame_2eweb_2ffetch_2ev1Output;
-  "flame.web/request.v1": Method_flame_2eweb_2frequest_2ev1Output;
-  "flame.web/search.v1": Method_flame_2eweb_2fsearch_2ev1Output;
+  "flame.web/browse.v1": BrowseV1Output;
+  "flame.web/fetch.v1": FetchV1Output;
+  "flame.web/request.v1": RequestV1Output;
+  "flame.web/search.v1": SearchV1Output;
 }
 export const METHODS = {
   "flame.web/browse.v1": { kind: "query", target: "installation" },

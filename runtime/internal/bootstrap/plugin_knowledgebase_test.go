@@ -160,14 +160,14 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 		}
 		return response
 	}
-	input := testsupport.KnowledgebaseImportV1Input{}
+	input := testsupport.KnowledgebaseImportInput{}
 	input.Content.Id, input.Content.Title = "fruit", "Fruit guide"
 	input.Content.Source, input.Content.Text = "docs/fruit.md", "apple guide"
 	first := call(testsupport.KnowledgebaseImportV1Method, input, "knowledge-import")
 	if replay := call(testsupport.KnowledgebaseImportV1Method, input, "knowledge-import"); replay.Output != first.Output || embeddings.Load() != 1 {
 		t.Fatalf("import repeated its model exchange: %+v, count=%d", replay, embeddings.Load())
 	}
-	typed := call(testsupport.KnowledgebaseSearchV1Method, testsupport.KnowledgebaseSearchV1Input{Query: "apple", Limit: 1}, "")
+	typed := call(testsupport.KnowledgebaseSearchV1Method, testsupport.KnowledgebaseSearchInput{Query: "apple", Limit: 1}, "")
 	contextContract, err := pluginsdk.ModelContextContract()
 	if err != nil {
 		t.Fatal(err)
@@ -198,12 +198,12 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 		t.Fatalf("context contribution became authored history: %s, %v", encoded, err)
 	}
 	beforeRead := embeddings.Load()
-	read := call(testsupport.KnowledgebaseReadV1Method, testsupport.KnowledgebaseReadV1Input{Id: "fruit"}, "")
-	var original testsupport.KnowledgebaseReadV1Output
+	read := call(testsupport.KnowledgebaseReadV1Method, testsupport.KnowledgebaseReadInput{Id: "fruit"}, "")
+	var original testsupport.KnowledgebaseDocumentRead
 	if err := json.Unmarshal([]byte(read.Output), &original); err != nil || original.Text != input.Content.Text || embeddings.Load() != beforeRead {
 		t.Fatalf("installed original read performed embedding or lost text: %+v %v", original, err)
 	}
-	reindex := testsupport.KnowledgebaseReindexV1Input{Id: "fruit", ExpectedRevision: uint64(original.Document.Revision)}
+	reindex := testsupport.KnowledgebaseDocumentInput{Id: "fruit", ExpectedRevision: uint64(original.Document.Revision)}
 	rebuilt := call(testsupport.KnowledgebaseReindexV1Method, reindex, "knowledge-reindex")
 	if replay := call(testsupport.KnowledgebaseReindexV1Method, reindex, "knowledge-reindex"); replay.Output != rebuilt.Output || embeddings.Load() != beforeRead+1 {
 		t.Fatalf("installed reindex repeated embedding: %+v count=%d", replay, embeddings.Load())

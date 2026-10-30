@@ -2,21 +2,16 @@
 // Numeric and cross-field constraints remain in schema.json and the business owner.
 import type { JSONNumber } from "@qimu/sdk/json";
 
-export type Method_flame_2esandbox_2fexecute_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9pbnRlcm5hbC93aXJl_5fExecuteInput;
-
-export type Method_flame_2esandbox_2fexecute_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9pbnRlcm5hbC9kb21haW4_5fResult;
-
-export interface Method_flame_2esandbox_2flimits_2ev1Input {
-}
-
-export type Method_flame_2esandbox_2flimits_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9pbnRlcm5hbC93aXJl_5fLimits;
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9pbnRlcm5hbC93aXJl_5fExecuteInput {
+export interface ExecuteInput {
   script: string;
   timeoutMillis: JSONNumber;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9pbnRlcm5hbC93aXJl_5fLimits {
+export type ExecuteV1Input = ExecuteInput;
+
+export type ExecuteV1Output = Result;
+
+export interface Limits {
   available: boolean;
   cpuAndMemoryQuotas: boolean;
   maxScriptBytes: JSONNumber;
@@ -25,26 +20,31 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJ
   retainedBytesPerStream: JSONNumber;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9pbnRlcm5hbC9kb21haW4_5fOutput {
+export interface LimitsV1Input {
+}
+
+export type LimitsV1Output = Limits;
+
+export interface Output {
   content: string;
   encoding: string & ("utf8" | "base64");
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9pbnRlcm5hbC9kb21haW4_5fResult {
+export interface Result {
   durationMillis: JSONNumber;
   exitCode: JSONNumber;
   status: string & ("completed" | "timed_out");
-  stderr: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9pbnRlcm5hbC9kb21haW4_5fOutput;
-  stdout: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9pbnRlcm5hbC9kb21haW4_5fOutput;
+  stderr: Output;
+  stdout: Output;
 }
 
 export interface MethodInputs {
-  "flame.sandbox/execute.v1": Method_flame_2esandbox_2fexecute_2ev1Input;
-  "flame.sandbox/limits.v1": Method_flame_2esandbox_2flimits_2ev1Input;
+  "flame.sandbox/execute.v1": ExecuteV1Input;
+  "flame.sandbox/limits.v1": LimitsV1Input;
 }
 export interface MethodOutputs {
-  "flame.sandbox/execute.v1": Method_flame_2esandbox_2fexecute_2ev1Output;
-  "flame.sandbox/limits.v1": Method_flame_2esandbox_2flimits_2ev1Output;
+  "flame.sandbox/execute.v1": ExecuteV1Output;
+  "flame.sandbox/limits.v1": LimitsV1Output;
 }
 export const METHODS = {
   "flame.sandbox/execute.v1": { kind: "command", target: "installation" },

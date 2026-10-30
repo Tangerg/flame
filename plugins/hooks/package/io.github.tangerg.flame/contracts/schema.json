@@ -1,22 +1,38 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
-    "Method_flame_2ehooks_2fdiscover_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy_5fDiscovery"
-    },
-    "Method_flame_2ehooks_2fdiscover_2ev1Output": {
-      "items": {
-        "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_5fHook"
+    "Command": {
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "type": "string"
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "input": {
+          "$ref": "#/$defs/Input"
+        },
+        "timeoutMillis": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        }
       },
-      "type": "array"
+      "required": [
+        "command",
+        "cwd",
+        "input",
+        "timeoutMillis"
+      ],
+      "type": "object"
     },
-    "Method_flame_2ehooks_2fexecute_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy_5fCommand"
-    },
-    "Method_flame_2ehooks_2fexecute_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy_5fResult"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_5fCommandDecision": {
+    "CommandDecision": {
       "additionalProperties": false,
       "properties": {
         "injectContext": {
@@ -46,7 +62,70 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_5fHook": {
+    "DiscoverV1Input": {
+      "$ref": "#/$defs/Discovery"
+    },
+    "DiscoverV1Output": {
+      "items": {
+        "$ref": "#/$defs/Hook"
+      },
+      "type": "array"
+    },
+    "Discovery": {
+      "additionalProperties": false,
+      "properties": {
+        "cwd": {
+          "type": "string"
+        },
+        "home": {
+          "type": "string"
+        },
+        "includeProject": {
+          "type": "boolean"
+        },
+        "projectRoot": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "cwd",
+        "projectRoot",
+        "includeProject"
+      ],
+      "type": "object"
+    },
+    "ExecuteV1Input": {
+      "$ref": "#/$defs/Command"
+    },
+    "ExecuteV1Output": {
+      "$ref": "#/$defs/Result"
+    },
+    "Failure": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "allOf": [
+            {
+              "enum": [
+                "failed",
+                "canceled",
+                "timedOut"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "message"
+      ],
+      "type": "object"
+    },
+    "Hook": {
       "additionalProperties": false,
       "properties": {
         "command": {
@@ -105,7 +184,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_5fInput": {
+    "Input": {
       "additionalProperties": false,
       "properties": {
         "cwd": {
@@ -140,7 +219,7 @@
           "type": "string"
         },
         "tool": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_5fToolInput"
+          "$ref": "#/$defs/ToolInput"
         }
       },
       "required": [
@@ -148,7 +227,34 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_5fToolInput": {
+    "Result": {
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "$ref": "#/$defs/CommandDecision"
+        },
+        "exitCode": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "failure": {
+          "$ref": "#/$defs/Failure"
+        },
+        "stderr": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "exitCode"
+      ],
+      "type": "object"
+    },
+    "ToolInput": {
       "additionalProperties": false,
       "properties": {
         "arguments": {
@@ -166,112 +272,6 @@
       },
       "required": [
         "name"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy_5fCommand": {
-      "additionalProperties": false,
-      "properties": {
-        "command": {
-          "type": "string"
-        },
-        "cwd": {
-          "type": "string"
-        },
-        "input": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_5fInput"
-        },
-        "timeoutMillis": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "minimum": 1,
-          "type": "integer"
-        }
-      },
-      "required": [
-        "command",
-        "cwd",
-        "input",
-        "timeoutMillis"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy_5fDiscovery": {
-      "additionalProperties": false,
-      "properties": {
-        "cwd": {
-          "type": "string"
-        },
-        "home": {
-          "type": "string"
-        },
-        "includeProject": {
-          "type": "boolean"
-        },
-        "projectRoot": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "cwd",
-        "projectRoot",
-        "includeProject"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy_5fFailure": {
-      "additionalProperties": false,
-      "properties": {
-        "kind": {
-          "allOf": [
-            {
-              "enum": [
-                "failed",
-                "canceled",
-                "timedOut"
-              ]
-            }
-          ],
-          "type": "string"
-        },
-        "message": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "kind",
-        "message"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy_5fResult": {
-      "additionalProperties": false,
-      "properties": {
-        "decision": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_5fCommandDecision"
-        },
-        "exitCode": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "type": "integer"
-        },
-        "failure": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy_5fFailure"
-        },
-        "stderr": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "exitCode"
       ],
       "type": "object"
     }

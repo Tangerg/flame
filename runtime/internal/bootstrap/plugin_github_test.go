@@ -108,8 +108,8 @@ func TestGitHubInstalledSecretLifecycleAndModelWritesShareThePublishedOwner(t *t
 		name, method, key, code, prompt string
 		input                           any
 	}{
-		{"get_issue", testsupport.GitHubGetIssueV1Method, "", "invalid_resource", "Inspect the requested issue.", testsupport.GitHubGetIssueV1Input{Repository: "../private", Number: 42}},
-		{"create_issue", testsupport.GitHubCreateIssueV1Method, "github-create-without-token", "credential_required", "Create the requested issue.", testsupport.GitHubCreateIssueV1Input{Repository: "owner/repo", Title: "Requested issue"}},
+		{"get_issue", testsupport.GitHubGetIssueV1Method, "", "invalid_resource", "Inspect the requested issue.", testsupport.GitHubIssueInput{Repository: "../private", Number: 42}},
+		{"create_issue", testsupport.GitHubCreateIssueV1Method, "github-create-without-token", "credential_required", "Create the requested issue.", testsupport.GitHubCreateIssueInput{Repository: "owner/repo", Title: "Requested issue"}},
 	} {
 		for _, tool := range tools {
 			if tool.Name == test.name {

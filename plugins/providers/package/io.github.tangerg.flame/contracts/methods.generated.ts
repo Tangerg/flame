@@ -2,58 +2,13 @@
 // Numeric and cross-field constraints remain in schema.json and the business owner.
 import type { JSONNumber } from "@qimu/sdk/json";
 
-export type Method_flame_2emodel_2dprovider_2fcall_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChatRequest;
+export type CallV1Input = ChatRequest;
 
-export type Method_flame_2emodel_2dprovider_2fcall_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChatResult;
+export type CallV1Output = ChatResult;
 
-export type Method_flame_2emodel_2dprovider_2fclose_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fHandle;
-
-export interface Method_flame_2emodel_2dprovider_2fclose_2ev1Output {
-}
-
-export type Method_flame_2emodel_2dprovider_2fcount_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChatRequest;
-
-export type Method_flame_2emodel_2dprovider_2fcount_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fTokenCount;
-
-export type Method_flame_2emodel_2dprovider_2fembed_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fEmbeddingRequest;
-
-export type Method_flame_2emodel_2dprovider_2fembed_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fEmbeddingResult;
-
-export type Method_flame_2emodel_2dprovider_2fopen_2dchat_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fOpen;
-
-export type Method_flame_2emodel_2dprovider_2fopen_2dchat_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChat;
-
-export type Method_flame_2emodel_2dprovider_2fopen_2dembedding_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fOpen;
-
-export type Method_flame_2emodel_2dprovider_2fopen_2dembedding_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fEmbedder;
-
-export interface Method_flame_2emodel_2dprovider_2fprofiles_2ev1Input {
-}
-
-export type Method_flame_2emodel_2dprovider_2fprofiles_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fProfile[];
-
-export type Method_flame_2emodel_2dprovider_2fremote_2dmodels_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fConnection;
-
-export type Method_flame_2emodel_2dprovider_2fremote_2dmodels_2ev1Output = string[];
-
-export type Method_flame_2emodel_2dprovider_2freopen_2dchat_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fReopen;
-
-export type Method_flame_2emodel_2dprovider_2freopen_2dchat_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChat;
-
-export type Method_flame_2emodel_2dprovider_2fstream_2ev1Chunk = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fResponseDelta;
-
-export type Method_flame_2emodel_2dprovider_2fstream_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChatRequest;
-
-export type Method_flame_2emodel_2dprovider_2fstream_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChatResult;
-
-export type Method_flame_2emodel_2dprovider_2fverify_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fConnection;
-
-export interface Method_flame_2emodel_2dprovider_2fverify_2ev1Output {
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChat {
+export interface Chat {
   id: string;
-  metadata?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fModel;
+  metadata?: Model;
   model: string;
   original: string;
   provider: string;
@@ -61,197 +16,140 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXN
   tokenCounting: boolean;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChatRequest {
-  handle: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fHandle;
-  request: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fRequest;
+export interface ChatRequest {
+  handle: Handle;
+  request: Request;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChatResult {
-  failure?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fFailure;
-  response?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fResponse;
+export interface ChatResult {
+  failure?: Failure;
+  response?: Response;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fConnection {
+export interface Citation {
+  quote?: string;
+  source: CitationSource;
+  title?: string;
+}
+
+export interface CitationSource {
+  kind: string;
+  value: string;
+}
+
+export type CloseV1Input = Handle;
+
+export interface CloseV1Output {
+}
+
+export interface Connection {
   apiKey?: string;
   baseURL?: string;
   provider: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fEmbedder {
+export type CountV1Input = ChatRequest;
+
+export type CountV1Output = TokenCount;
+
+export type EmbedV1Input = EmbeddingRequest;
+
+export type EmbedV1Output = EmbeddingResult;
+
+export interface Embedder {
   id: string;
   model: string;
   provider: string;
   space: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fEmbeddingProfile {
+export interface EmbeddingProfile {
   defaultModel?: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fEmbeddingRequest {
-  handle: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fHandle;
+export interface EmbeddingRequest {
+  handle: Handle;
   request: unknown;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fEmbeddingResult {
-  failure?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fFailure;
+export interface EmbeddingResult {
+  failure?: Failure;
   response?: unknown;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fFailure {
+export type Extensions = Map;
+
+export interface Failure {
   execution: string;
   kind: string & ("internal" | "canceled" | "timeout" | "invalid_credentials" | "rate_limited" | "provider_rejected" | "provider_unavailable");
   retryAfterMillis?: JSONNumber;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fHandle {
+export interface Handle {
   id: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fOpen {
-  connection: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fConnection;
-  model: string;
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fProfile {
-  authentication: string & ("keyRequired" | "keyOptional");
-  defaultModel?: string;
-  embedding?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fEmbeddingProfile;
-  endpointRequired: boolean;
-  id: string;
-  modelSource: string & ("bundled" | "endpoint");
-  models: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fModel[];
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fReopen {
-  original: string;
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fTokenCount {
-  count?: JSONNumber;
-  failure?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fFailure;
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fLimits {
+export interface Limits {
   context_window?: JSONNumber;
   max_input_tokens?: JSONNumber;
   max_output_tokens?: JSONNumber;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fModalities {
+export type Map = null | Record<string, unknown>;
+
+export interface Media {
+  id?: string;
+  metadata?: Map;
+  mime: string;
+  name?: string;
+  source: Source;
+}
+
+export interface Message {
+  metadata?: Map;
+  parts: Part[];
+  role: string;
+}
+
+export interface Modalities {
   input?: string[];
   output?: string[];
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fModel {
+export interface Model {
   deprecated?: boolean;
   display_name?: string;
   id?: string;
   knowledge_cutoff?: string;
   last_updated?: string;
-  limits?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fLimits;
-  modalities?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fModalities;
-  pricing?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fPricingSchedule;
-  reasoning?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fReasoning;
+  limits?: Limits;
+  modalities?: Modalities;
+  pricing?: PricingSchedule;
+  reasoning?: Reasoning;
   release_date?: string;
   structured_output?: boolean;
   tool_call?: boolean;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fPricing {
-  cache_read_per_1m?: JSONNumber;
-  cache_write_per_1m?: JSONNumber;
-  input_per_1m: JSONNumber;
-  output_per_1m: JSONNumber;
-  threshold?: JSONNumber;
+export interface Open {
+  connection: Connection;
+  model: string;
 }
 
-export type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fPricingSchedule = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fPricing[];
+export type OpenChatV1Input = Open;
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fReasoning {
-  default_level?: string;
-  levels?: string[];
-  supported?: boolean;
-}
+export type OpenChatV1Output = Chat;
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fCitation {
-  quote?: string;
-  source: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fCitationSource;
-  title?: string;
-}
+export type OpenEmbeddingV1Input = Open;
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fCitationSource {
-  kind: string;
-  value: string;
-}
+export type OpenEmbeddingV1Output = Embedder;
 
-export type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fMessage = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireMessage;
-
-export type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fOptions = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireOptions;
-
-export type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fOutput = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireOutput;
-
-export type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fOutputFormat = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireOutputFormat;
-
-export type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fOutputMetadata = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireOutputMetadata;
-
-export type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fPart = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwirePart;
-
-export type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fPartDelta = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwirePartDelta;
-
-export type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fRequest = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireRequest;
-
-export type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fResponse = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireResponse;
-
-export type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fResponseDelta = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireResponseDelta;
-
-export type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fResponseMetadata = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireResponseMetadata;
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolCall {
-  arguments?: string;
-  id: string;
-  name: string;
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolCallDelta {
-  arguments?: string;
-  id: string;
-  name: string;
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolChoice {
-  mode: string;
-  name?: string;
-  parallelism?: string;
-}
-
-export type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolContent = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireToolContent;
-
-export type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolDefinition = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireToolDefinition;
-
-export type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolOutput = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireToolOutput;
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolResult {
-  id: string;
-  is_error?: boolean;
-  name: string;
-  output: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolOutput;
-}
-
-export type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fUsage = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireUsage;
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireMessage {
-  metadata?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fMap;
-  parts: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fPart[];
-  role: string;
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireOptions {
-  extensions?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fExtensions;
+export interface Options {
+  extensions?: Extensions;
   frequency_penalty?: JSONNumber;
   max_output_tokens?: JSONNumber;
   model?: string;
-  output_format?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fOutputFormat;
+  output_format?: OutputFormat;
   presence_penalty?: JSONNumber;
   reasoning_effort?: string;
   stop?: string[];
@@ -260,92 +158,178 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwi
   top_p?: JSONNumber;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireOutput {
+export interface Output {
   finish_reason?: string;
-  message?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fMessage;
-  metadata?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fOutputMetadata;
+  message?: Message;
+  metadata?: OutputMetadata;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireOutputFormat {
+export interface OutputFormat {
   description?: string;
   name?: string;
   schema?: unknown;
   type: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireOutputMetadata {
-  extra?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fMap;
+export interface OutputMetadata {
+  extra?: Map;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwirePart {
-  citations?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fCitation[];
+export interface Part {
+  citations?: Citation[];
   kind: string;
-  media?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_5fMedia;
-  metadata?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fMap;
+  media?: Media;
+  metadata?: Map;
   reasoning_state?: null | string;
   text?: string;
-  tool_call?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolCall;
-  tool_result?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolResult;
+  tool_call?: ToolCall;
+  tool_result?: ToolResult;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwirePartDelta {
-  citation?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fCitation;
+export interface PartDelta {
+  citation?: Citation;
   kind: string;
-  media?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_5fMedia;
-  metadata?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fMap;
+  media?: Media;
+  metadata?: Map;
   reasoning_state?: null | string;
   text?: string;
-  tool_call?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolCallDelta;
+  tool_call?: ToolCallDelta;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireRequest {
-  messages: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fMessage[];
-  options?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fOptions;
-  tool_choice?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolChoice;
-  tools?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolDefinition[];
+export interface Pricing {
+  cache_read_per_1m?: JSONNumber;
+  cache_write_per_1m?: JSONNumber;
+  input_per_1m: JSONNumber;
+  output_per_1m: JSONNumber;
+  threshold?: JSONNumber;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireResponse {
-  metadata?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fResponseMetadata;
-  output?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fOutput;
+export type PricingSchedule = Pricing[];
+
+export interface Profile {
+  authentication: string & ("keyRequired" | "keyOptional");
+  defaultModel?: string;
+  embedding?: EmbeddingProfile;
+  endpointRequired: boolean;
+  id: string;
+  modelSource: string & ("bundled" | "endpoint");
+  models: Model[];
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireResponseDelta {
+export interface ProfilesV1Input {
+}
+
+export type ProfilesV1Output = Profile[];
+
+export interface Reasoning {
+  default_level?: string;
+  levels?: string[];
+  supported?: boolean;
+}
+
+export type RemoteModelsV1Input = Connection;
+
+export type RemoteModelsV1Output = string[];
+
+export interface Reopen {
+  original: string;
+}
+
+export type ReopenChatV1Input = Reopen;
+
+export type ReopenChatV1Output = Chat;
+
+export interface Request {
+  messages: Message[];
+  options?: Options;
+  tool_choice?: ToolChoice;
+  tools?: ToolDefinition[];
+}
+
+export interface Response {
+  metadata?: ResponseMetadata;
+  output?: Output;
+}
+
+export interface ResponseDelta {
   finish_reason?: string;
-  message_metadata?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fMap;
-  metadata?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fResponseMetadata;
-  output_metadata?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fOutputMetadata;
-  parts?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fPartDelta[];
+  message_metadata?: Map;
+  metadata?: ResponseMetadata;
+  output_metadata?: OutputMetadata;
+  parts?: PartDelta[];
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireResponseMetadata {
+export interface ResponseMetadata {
   created_at?: string;
-  extra?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fMap;
+  extra?: Map;
   id?: string;
   model?: string;
-  usage?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fUsage;
+  usage?: Usage;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireToolContent {
-  citations?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fCitation[];
+export interface Source {
+  bytes?: null | string;
   kind: string;
-  media?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_5fMedia;
-  metadata?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fMap;
+  ref?: string;
+  uri?: string;
+}
+
+export type StreamV1Chunk = ResponseDelta;
+
+export type StreamV1Input = ChatRequest;
+
+export type StreamV1Output = ChatResult;
+
+export interface TokenCount {
+  count?: JSONNumber;
+  failure?: Failure;
+}
+
+export interface ToolCall {
+  arguments?: string;
+  id: string;
+  name: string;
+}
+
+export interface ToolCallDelta {
+  arguments?: string;
+  id: string;
+  name: string;
+}
+
+export interface ToolChoice {
+  mode: string;
+  name?: string;
+  parallelism?: string;
+}
+
+export interface ToolContent {
+  citations?: Citation[];
+  kind: string;
+  media?: Media;
+  metadata?: Map;
   text?: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireToolDefinition {
+export interface ToolDefinition {
   description?: string;
   input_schema: unknown;
   name: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireToolOutput {
-  content?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolContent[];
+export interface ToolOutput {
+  content?: ToolContent[];
   details?: unknown;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireUsage {
+export interface ToolResult {
+  id: string;
+  is_error?: boolean;
+  name: string;
+  output: ToolOutput;
+}
+
+export interface Usage {
   cache_read_input_tokens?: JSONNumber;
   cache_write_input_tokens?: JSONNumber;
   input_tokens?: JSONNumber;
@@ -353,57 +337,39 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwi
   reasoning_tokens?: JSONNumber;
 }
 
-export type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fExtensions = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fMap;
+export type VerifyV1Input = Connection;
 
-export type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fMap = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fwireMap;
-
-export type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fwireMap = null | Record<string, unknown>;
-
-export type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_5fMedia = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_5fwireMedia;
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_5fSource {
-  bytes?: null | string;
-  kind: string;
-  ref?: string;
-  uri?: string;
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_5fwireMedia {
-  id?: string;
-  metadata?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fMap;
-  mime: string;
-  name?: string;
-  source: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_5fSource;
+export interface VerifyV1Output {
 }
 
 export interface MethodInputs {
-  "flame.model-provider/call.v1": Method_flame_2emodel_2dprovider_2fcall_2ev1Input;
-  "flame.model-provider/close.v1": Method_flame_2emodel_2dprovider_2fclose_2ev1Input;
-  "flame.model-provider/count.v1": Method_flame_2emodel_2dprovider_2fcount_2ev1Input;
-  "flame.model-provider/embed.v1": Method_flame_2emodel_2dprovider_2fembed_2ev1Input;
-  "flame.model-provider/open-chat.v1": Method_flame_2emodel_2dprovider_2fopen_2dchat_2ev1Input;
-  "flame.model-provider/open-embedding.v1": Method_flame_2emodel_2dprovider_2fopen_2dembedding_2ev1Input;
-  "flame.model-provider/profiles.v1": Method_flame_2emodel_2dprovider_2fprofiles_2ev1Input;
-  "flame.model-provider/remote-models.v1": Method_flame_2emodel_2dprovider_2fremote_2dmodels_2ev1Input;
-  "flame.model-provider/reopen-chat.v1": Method_flame_2emodel_2dprovider_2freopen_2dchat_2ev1Input;
-  "flame.model-provider/stream.v1": Method_flame_2emodel_2dprovider_2fstream_2ev1Input;
-  "flame.model-provider/verify.v1": Method_flame_2emodel_2dprovider_2fverify_2ev1Input;
+  "flame.model-provider/call.v1": CallV1Input;
+  "flame.model-provider/close.v1": CloseV1Input;
+  "flame.model-provider/count.v1": CountV1Input;
+  "flame.model-provider/embed.v1": EmbedV1Input;
+  "flame.model-provider/open-chat.v1": OpenChatV1Input;
+  "flame.model-provider/open-embedding.v1": OpenEmbeddingV1Input;
+  "flame.model-provider/profiles.v1": ProfilesV1Input;
+  "flame.model-provider/remote-models.v1": RemoteModelsV1Input;
+  "flame.model-provider/reopen-chat.v1": ReopenChatV1Input;
+  "flame.model-provider/stream.v1": StreamV1Input;
+  "flame.model-provider/verify.v1": VerifyV1Input;
 }
 export interface MethodOutputs {
-  "flame.model-provider/call.v1": Method_flame_2emodel_2dprovider_2fcall_2ev1Output;
-  "flame.model-provider/close.v1": Method_flame_2emodel_2dprovider_2fclose_2ev1Output;
-  "flame.model-provider/count.v1": Method_flame_2emodel_2dprovider_2fcount_2ev1Output;
-  "flame.model-provider/embed.v1": Method_flame_2emodel_2dprovider_2fembed_2ev1Output;
-  "flame.model-provider/open-chat.v1": Method_flame_2emodel_2dprovider_2fopen_2dchat_2ev1Output;
-  "flame.model-provider/open-embedding.v1": Method_flame_2emodel_2dprovider_2fopen_2dembedding_2ev1Output;
-  "flame.model-provider/profiles.v1": Method_flame_2emodel_2dprovider_2fprofiles_2ev1Output;
-  "flame.model-provider/remote-models.v1": Method_flame_2emodel_2dprovider_2fremote_2dmodels_2ev1Output;
-  "flame.model-provider/reopen-chat.v1": Method_flame_2emodel_2dprovider_2freopen_2dchat_2ev1Output;
-  "flame.model-provider/stream.v1": Method_flame_2emodel_2dprovider_2fstream_2ev1Output;
-  "flame.model-provider/verify.v1": Method_flame_2emodel_2dprovider_2fverify_2ev1Output;
+  "flame.model-provider/call.v1": CallV1Output;
+  "flame.model-provider/close.v1": CloseV1Output;
+  "flame.model-provider/count.v1": CountV1Output;
+  "flame.model-provider/embed.v1": EmbedV1Output;
+  "flame.model-provider/open-chat.v1": OpenChatV1Output;
+  "flame.model-provider/open-embedding.v1": OpenEmbeddingV1Output;
+  "flame.model-provider/profiles.v1": ProfilesV1Output;
+  "flame.model-provider/remote-models.v1": RemoteModelsV1Output;
+  "flame.model-provider/reopen-chat.v1": ReopenChatV1Output;
+  "flame.model-provider/stream.v1": StreamV1Output;
+  "flame.model-provider/verify.v1": VerifyV1Output;
 }
 export interface MethodChunks {
-  "flame.model-provider/stream.v1": Method_flame_2emodel_2dprovider_2fstream_2ev1Chunk;
+  "flame.model-provider/stream.v1": StreamV1Chunk;
 }
 export const METHODS = {
   "flame.model-provider/call.v1": { kind: "command", target: "installation" },

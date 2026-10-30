@@ -3330,13 +3330,13 @@
       ],
       "constants": [
         {
-          "name": "AddV2InputScopeProject",
-          "type": "AddV2InputScope",
+          "name": "AddInputScopeProject",
+          "type": "AddInputScope",
           "value": "\"project\""
         },
         {
-          "name": "AddV2InputScopeUser",
-          "type": "AddV2InputScope",
+          "name": "AddInputScopeUser",
+          "type": "AddInputScope",
           "value": "\"user\""
         },
         {
@@ -3355,13 +3355,48 @@
           "value": "\"flame.memory/delete.v2\""
         },
         {
-          "name": "ItemsV2InputScopeProject",
-          "type": "ItemsV2InputScope",
+          "name": "ItemSnapshotOriginAuto",
+          "type": "ItemSnapshotOrigin",
+          "value": "\"auto\""
+        },
+        {
+          "name": "ItemSnapshotOriginUser",
+          "type": "ItemSnapshotOrigin",
+          "value": "\"user\""
+        },
+        {
+          "name": "ItemSnapshotScopeProject",
+          "type": "ItemSnapshotScope",
           "value": "\"project\""
         },
         {
-          "name": "ItemsV2InputScopeUser",
-          "type": "ItemsV2InputScope",
+          "name": "ItemSnapshotScopeUser",
+          "type": "ItemSnapshotScope",
+          "value": "\"user\""
+        },
+        {
+          "name": "ItemSnapshotStatusActive",
+          "type": "ItemSnapshotStatus",
+          "value": "\"active\""
+        },
+        {
+          "name": "ItemSnapshotStatusPending",
+          "type": "ItemSnapshotStatus",
+          "value": "\"pending\""
+        },
+        {
+          "name": "ItemSnapshotStatusRejected",
+          "type": "ItemSnapshotStatus",
+          "value": "\"rejected\""
+        },
+        {
+          "name": "ItemsInputScopeProject",
+          "type": "ItemsInputScope",
+          "value": "\"project\""
+        },
+        {
+          "name": "ItemsInputScopeUser",
+          "type": "ItemsInputScope",
           "value": "\"user\""
         },
         {
@@ -3370,13 +3405,13 @@
           "value": "\"flame.memory/items.v2\""
         },
         {
-          "name": "ListV2InputScopeProject",
-          "type": "ListV2InputScope",
+          "name": "ListInputScopeProject",
+          "type": "ListInputScope",
           "value": "\"project\""
         },
         {
-          "name": "ListV2InputScopeUser",
-          "type": "ListV2InputScope",
+          "name": "ListInputScopeUser",
+          "type": "ListInputScope",
           "value": "\"user\""
         },
         {
@@ -3425,13 +3460,13 @@
           "value": "2048"
         },
         {
-          "name": "ReviewV2InputDecisionApprove",
-          "type": "ReviewV2InputDecision",
+          "name": "ReviewInputDecisionApprove",
+          "type": "ReviewInputDecision",
           "value": "\"approve\""
         },
         {
-          "name": "ReviewV2InputDecisionReject",
-          "type": "ReviewV2InputDecision",
+          "name": "ReviewInputDecisionReject",
+          "type": "ReviewInputDecision",
           "value": "\"reject\""
         },
         {
@@ -3453,46 +3488,15 @@
           "name": "UpdateV2Method",
           "type": "untyped string",
           "value": "\"flame.memory/update.v2\""
-        },
-        {
-          "name": "UpdateV2OutputOriginAuto",
-          "type": "UpdateV2OutputOrigin",
-          "value": "\"auto\""
-        },
-        {
-          "name": "UpdateV2OutputOriginUser",
-          "type": "UpdateV2OutputOrigin",
-          "value": "\"user\""
-        },
-        {
-          "name": "UpdateV2OutputScopeProject",
-          "type": "UpdateV2OutputScope",
-          "value": "\"project\""
-        },
-        {
-          "name": "UpdateV2OutputScopeUser",
-          "type": "UpdateV2OutputScope",
-          "value": "\"user\""
-        },
-        {
-          "name": "UpdateV2OutputStatusActive",
-          "type": "UpdateV2OutputStatus",
-          "value": "\"active\""
-        },
-        {
-          "name": "UpdateV2OutputStatusPending",
-          "type": "UpdateV2OutputStatus",
-          "value": "\"pending\""
-        },
-        {
-          "name": "UpdateV2OutputStatusRejected",
-          "type": "UpdateV2OutputStatus",
-          "value": "\"rejected\""
         }
       ],
       "types": [
         {
-          "name": "AddV2Input",
+          "name": "Ack",
+          "kind": "struct"
+        },
+        {
+          "name": "AddInput",
           "kind": "struct",
           "fields": [
             {
@@ -3507,18 +3511,18 @@
             },
             {
               "name": "Scope",
-              "type": "AddV2InputScope",
+              "type": "AddInputScope",
               "tag": "json:\"Scope\""
             }
           ]
         },
         {
-          "name": "AddV2InputScope",
+          "name": "AddInputScope",
           "kind": "defined",
           "underlying": "string"
         },
         {
-          "name": "AddV2Output",
+          "name": "AddResult",
           "kind": "struct",
           "fields": [
             {
@@ -3528,148 +3532,13 @@
             },
             {
               "name": "Item",
-              "type": "UpdateV2Output",
+              "type": "ItemSnapshot",
               "tag": "json:\"Item\""
             }
           ]
         },
         {
-          "name": "DeleteV2Input",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "ExpectedRevision",
-              "type": "uint64",
-              "tag": "json:\"ExpectedRevision\""
-            },
-            {
-              "name": "ID",
-              "type": "string",
-              "tag": "json:\"ID\""
-            }
-          ]
-        },
-        {
-          "name": "DeleteV2Output",
-          "kind": "struct"
-        },
-        {
-          "name": "ItemsV2Input",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Project",
-              "type": "string",
-              "tag": "json:\"Project\""
-            },
-            {
-              "name": "Scope",
-              "type": "ItemsV2InputScope",
-              "tag": "json:\"Scope\""
-            }
-          ]
-        },
-        {
-          "name": "ItemsV2InputScope",
-          "kind": "defined",
-          "underlying": "string"
-        },
-        {
-          "name": "ItemsV2Output",
-          "kind": "defined",
-          "underlying": "[]UpdateV2Output"
-        },
-        {
-          "name": "ListV2Input",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "CWD",
-              "type": "string",
-              "tag": "json:\"CWD\""
-            },
-            {
-              "name": "Cursor",
-              "type": "string",
-              "tag": "json:\"Cursor\""
-            },
-            {
-              "name": "Limit",
-              "type": "*uint64",
-              "tag": "json:\"Limit,omitzero\""
-            },
-            {
-              "name": "Scope",
-              "type": "ListV2InputScope",
-              "tag": "json:\"Scope\""
-            }
-          ]
-        },
-        {
-          "name": "ListV2InputScope",
-          "kind": "defined",
-          "underlying": "string"
-        },
-        {
-          "name": "ListV2Output",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Capacity",
-              "type": "int64",
-              "tag": "json:\"Capacity\""
-            },
-            {
-              "name": "NextCursor",
-              "type": "string",
-              "tag": "json:\"NextCursor\""
-            },
-            {
-              "name": "Rows",
-              "type": "[]UpdateV2Output",
-              "tag": "json:\"Rows\""
-            }
-          ]
-        },
-        {
-          "name": "MaintainV1Input",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Compacted",
-              "type": "bool",
-              "tag": "json:\"Compacted\""
-            },
-            {
-              "name": "Conversation",
-              "type": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fConversation",
-              "tag": "json:\"Conversation\""
-            },
-            {
-              "name": "Project",
-              "type": "string",
-              "tag": "json:\"Project\""
-            },
-            {
-              "name": "SessionID",
-              "type": "string",
-              "tag": "json:\"SessionID\""
-            }
-          ]
-        },
-        {
-          "name": "MaintainV1Output",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Published",
-              "type": "bool",
-              "tag": "json:\"Published\""
-            }
-          ]
-        },
-        {
-          "name": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fConversation",
+          "name": "Conversation",
           "kind": "struct",
           "fields": [
             {
@@ -3685,19 +3554,14 @@
           ]
         },
         {
-          "name": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemID",
+          "name": "ItemID",
           "kind": "defined",
           "underlying": "string"
         },
         {
-          "name": "ReviewV2Input",
+          "name": "ItemInput",
           "kind": "struct",
           "fields": [
-            {
-              "name": "Decision",
-              "type": "ReviewV2InputDecision",
-              "tag": "json:\"Decision\""
-            },
             {
               "name": "ExpectedRevision",
               "type": "uint64",
@@ -3711,73 +3575,7 @@
           ]
         },
         {
-          "name": "ReviewV2InputDecision",
-          "kind": "defined",
-          "underlying": "string"
-        },
-        {
-          "name": "ReviewV2Output",
-          "kind": "struct"
-        },
-        {
-          "name": "SearchV2Input",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "EmbeddingSpace",
-              "type": "string",
-              "tag": "json:\"EmbeddingSpace\""
-            },
-            {
-              "name": "Project",
-              "type": "string",
-              "tag": "json:\"Project\""
-            },
-            {
-              "name": "Query",
-              "type": "string",
-              "tag": "json:\"Query\""
-            },
-            {
-              "name": "TopK",
-              "type": "int64",
-              "tag": "json:\"TopK\""
-            }
-          ]
-        },
-        {
-          "name": "SearchV2Output",
-          "kind": "defined",
-          "underlying": "[]UpdateV2Output"
-        },
-        {
-          "name": "UpdateV2Input",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Content",
-              "type": "*string",
-              "tag": "json:\"Content,omitzero\""
-            },
-            {
-              "name": "ExpectedRevision",
-              "type": "uint64",
-              "tag": "json:\"ExpectedRevision\""
-            },
-            {
-              "name": "ID",
-              "type": "string",
-              "tag": "json:\"ID\""
-            },
-            {
-              "name": "Pinned",
-              "type": "*bool",
-              "tag": "json:\"Pinned,omitzero\""
-            }
-          ]
-        },
-        {
-          "name": "UpdateV2Output",
+          "name": "ItemSnapshot",
           "kind": "struct",
           "fields": [
             {
@@ -3807,12 +3605,12 @@
             },
             {
               "name": "ID",
-              "type": "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemID",
+              "type": "ItemID",
               "tag": "json:\"ID\""
             },
             {
               "name": "Origin",
-              "type": "UpdateV2OutputOrigin",
+              "type": "ItemSnapshotOrigin",
               "tag": "json:\"Origin\""
             },
             {
@@ -3832,7 +3630,7 @@
             },
             {
               "name": "Scope",
-              "type": "UpdateV2OutputScope",
+              "type": "ItemSnapshotScope",
               "tag": "json:\"Scope\""
             },
             {
@@ -3842,7 +3640,7 @@
             },
             {
               "name": "Status",
-              "type": "UpdateV2OutputStatus",
+              "type": "ItemSnapshotStatus",
               "tag": "json:\"Status\""
             },
             {
@@ -3853,19 +3651,217 @@
           ]
         },
         {
-          "name": "UpdateV2OutputOrigin",
+          "name": "ItemSnapshotOrigin",
           "kind": "defined",
           "underlying": "string"
         },
         {
-          "name": "UpdateV2OutputScope",
+          "name": "ItemSnapshotScope",
           "kind": "defined",
           "underlying": "string"
         },
         {
-          "name": "UpdateV2OutputStatus",
+          "name": "ItemSnapshotStatus",
           "kind": "defined",
           "underlying": "string"
+        },
+        {
+          "name": "ItemsInput",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Project",
+              "type": "string",
+              "tag": "json:\"Project\""
+            },
+            {
+              "name": "Scope",
+              "type": "ItemsInputScope",
+              "tag": "json:\"Scope\""
+            }
+          ]
+        },
+        {
+          "name": "ItemsInputScope",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "ItemsV2Output",
+          "kind": "defined",
+          "underlying": "[]ItemSnapshot"
+        },
+        {
+          "name": "ListInput",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "CWD",
+              "type": "string",
+              "tag": "json:\"CWD\""
+            },
+            {
+              "name": "Cursor",
+              "type": "string",
+              "tag": "json:\"Cursor\""
+            },
+            {
+              "name": "Limit",
+              "type": "*uint64",
+              "tag": "json:\"Limit,omitzero\""
+            },
+            {
+              "name": "Scope",
+              "type": "ListInputScope",
+              "tag": "json:\"Scope\""
+            }
+          ]
+        },
+        {
+          "name": "ListInputScope",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "MaintenanceInput",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Compacted",
+              "type": "bool",
+              "tag": "json:\"Compacted\""
+            },
+            {
+              "name": "Conversation",
+              "type": "Conversation",
+              "tag": "json:\"Conversation\""
+            },
+            {
+              "name": "Project",
+              "type": "string",
+              "tag": "json:\"Project\""
+            },
+            {
+              "name": "SessionID",
+              "type": "string",
+              "tag": "json:\"SessionID\""
+            }
+          ]
+        },
+        {
+          "name": "MaintenanceResult",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Published",
+              "type": "bool",
+              "tag": "json:\"Published\""
+            }
+          ]
+        },
+        {
+          "name": "Page",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Capacity",
+              "type": "int64",
+              "tag": "json:\"Capacity\""
+            },
+            {
+              "name": "NextCursor",
+              "type": "string",
+              "tag": "json:\"NextCursor\""
+            },
+            {
+              "name": "Rows",
+              "type": "[]ItemSnapshot",
+              "tag": "json:\"Rows\""
+            }
+          ]
+        },
+        {
+          "name": "ReviewInput",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Decision",
+              "type": "ReviewInputDecision",
+              "tag": "json:\"Decision\""
+            },
+            {
+              "name": "ExpectedRevision",
+              "type": "uint64",
+              "tag": "json:\"ExpectedRevision\""
+            },
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"ID\""
+            }
+          ]
+        },
+        {
+          "name": "ReviewInputDecision",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "SearchInput",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "EmbeddingSpace",
+              "type": "string",
+              "tag": "json:\"EmbeddingSpace\""
+            },
+            {
+              "name": "Project",
+              "type": "string",
+              "tag": "json:\"Project\""
+            },
+            {
+              "name": "Query",
+              "type": "string",
+              "tag": "json:\"Query\""
+            },
+            {
+              "name": "TopK",
+              "type": "int64",
+              "tag": "json:\"TopK\""
+            }
+          ]
+        },
+        {
+          "name": "SearchV2Output",
+          "kind": "defined",
+          "underlying": "[]ItemSnapshot"
+        },
+        {
+          "name": "UpdateInput",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Content",
+              "type": "*string",
+              "tag": "json:\"Content,omitzero\""
+            },
+            {
+              "name": "ExpectedRevision",
+              "type": "uint64",
+              "tag": "json:\"ExpectedRevision\""
+            },
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"ID\""
+            },
+            {
+              "name": "Pinned",
+              "type": "*bool",
+              "tag": "json:\"Pinned,omitzero\""
+            }
+          ]
         }
       ]
     },

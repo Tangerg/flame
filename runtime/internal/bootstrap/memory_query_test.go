@@ -11,7 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
 
-func memoryQuery(r *poMCPRuntime, input memorycontract.ListV2Input) (protocol.CallPluginRequest, error) {
+func memoryQuery(r *poMCPRuntime, input memorycontract.ListInput) (protocol.CallPluginRequest, error) {
 	providers := r.must(delivery.PluginsListProviders, struct{}{}, "").(*protocol.Page[protocol.PluginProviderSelection])
 	installations := r.must(delivery.PluginsList, struct{}{}, "").(*protocol.Page[protocol.PluginInstallation])
 	contracts, err := portable.ParseCapability([]byte(memorycontract.CapabilityJSON))
@@ -38,14 +38,14 @@ func memoryQuery(r *poMCPRuntime, input memorycontract.ListV2Input) (protocol.Ca
 	}
 	return protocol.CallPluginRequest{}, protocol.ErrPluginUnavailable
 }
-func memoryQueryResult(r *poMCPRuntime, input memorycontract.ListV2Input) delivery.Result {
+func memoryQueryResult(r *poMCPRuntime, input memorycontract.ListInput) delivery.Result {
 	request, err := memoryQuery(r, input)
 	if err != nil {
 		return delivery.Result{Failure: protocol.NewFailure(err, err.Error())}
 	}
 	return r.endpoint.Invoke(r.t.Context(), delivery.PluginsCall, request, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 }
-func readMemoryPage(r *poMCPRuntime, input memorycontract.ListV2Input) *protocol.Page[memorycontract.UpdateV2Output] {
+func readMemoryPage(r *poMCPRuntime, input memorycontract.ListInput) *protocol.Page[memorycontract.ItemSnapshot] {
 	r.t.Helper()
 	result := memoryQueryResult(r, input)
 	if result.Failure != nil {
@@ -55,20 +55,20 @@ func readMemoryPage(r *poMCPRuntime, input memorycontract.ListV2Input) *protocol
 	if reply.Failure != nil {
 		r.t.Fatal(reply.Failure)
 	}
-	var page memorycontract.ListV2Output
+	var page memorycontract.Page
 	if err := json.Unmarshal([]byte(reply.Output), &page); err != nil {
 		r.t.Fatal(err)
 	}
-	values := make([]memorycontract.UpdateV2Output, len(page.Rows))
+	values := make([]memorycontract.ItemSnapshot, len(page.Rows))
 	for index, row := range page.Rows {
-		values[index] = memorycontract.UpdateV2Output(row)
+		values[index] = memorycontract.ItemSnapshot(row)
 	}
 	return protocol.NewPageWithCursor(values, page.NextCursor)
 }
 
-func memoryAddRequest(r *poMCPRuntime, input memorycontract.AddV2Input) protocol.CallPluginRequest {
+func memoryAddRequest(r *poMCPRuntime, input memorycontract.AddInput) protocol.CallPluginRequest {
 	r.t.Helper()
-	request, err := memoryQuery(r, memorycontract.ListV2Input{})
+	request, err := memoryQuery(r, memorycontract.ListInput{})
 	if err != nil {
 		r.t.Fatal(err)
 	}
@@ -79,17 +79,17 @@ func memoryAddRequest(r *poMCPRuntime, input memorycontract.AddV2Input) protocol
 	request.Method, request.Input = memorycontract.AddV2Method, string(encoded)
 	return request
 }
-func mustMemoryAdd(r *poMCPRuntime, request protocol.CallPluginRequest, key string) *memorycontract.UpdateV2Output {
+func mustMemoryAdd(r *poMCPRuntime, request protocol.CallPluginRequest, key string) *memorycontract.ItemSnapshot {
 	r.t.Helper()
 	reply := r.must(delivery.PluginsCall, request, key).(*protocol.CallPluginResponse)
 	if reply.Failure != nil {
 		r.t.Fatal(reply.Failure)
 	}
-	var result memorycontract.AddV2Output
+	var result memorycontract.AddResult
 	if err := json.Unmarshal([]byte(reply.Output), &result); err != nil {
 		r.t.Fatal(err)
 	}
-	item := memorycontract.UpdateV2Output(result.Item)
+	item := memorycontract.ItemSnapshot(result.Item)
 	return &item
 }
 

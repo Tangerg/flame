@@ -11,10 +11,10 @@ import (
 type Item struct {
 	ID        string
 	Revision  uint64
-	Scope     UpdateV2OutputScope
+	Scope     ItemSnapshotScope
 	Content   string
-	Origin    UpdateV2OutputOrigin
-	Status    UpdateV2OutputStatus
+	Origin    ItemSnapshotOrigin
+	Status    ItemSnapshotStatus
 	Pinned    bool
 	SessionID string
 	Day       string
@@ -29,13 +29,13 @@ func (i Item) Validate() error {
 	if i.ID == "" || strings.TrimSpace(i.Content) == "" {
 		return fmt.Errorf("agent memory item requires identity and content")
 	}
-	if i.Scope != UpdateV2OutputScopeProject && i.Scope != UpdateV2OutputScopeUser {
+	if i.Scope != ItemSnapshotScopeProject && i.Scope != ItemSnapshotScopeUser {
 		return fmt.Errorf("agent memory item has unknown scope %q", i.Scope)
 	}
-	if i.Origin != UpdateV2OutputOriginAuto && i.Origin != UpdateV2OutputOriginUser {
+	if i.Origin != ItemSnapshotOriginAuto && i.Origin != ItemSnapshotOriginUser {
 		return fmt.Errorf("agent memory item has unknown origin %q", i.Origin)
 	}
-	if i.Status != UpdateV2OutputStatusActive && i.Status != UpdateV2OutputStatusPending || i.Origin == UpdateV2OutputOriginUser && i.Status != UpdateV2OutputStatusActive {
+	if i.Status != ItemSnapshotStatusActive && i.Status != ItemSnapshotStatusPending || i.Origin == ItemSnapshotOriginUser && i.Status != ItemSnapshotStatusActive {
 		return fmt.Errorf("agent memory item has an invalid visible status %q", i.Status)
 	}
 	if i.CreatedAt.IsZero() || i.UpdatedAt.IsZero() {

@@ -1,76 +1,24 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
-    "Method_flame_2eschedules_2fcreate_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_5fDraft"
-    },
-    "Method_flame_2eschedules_2fcreate_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_5fSnapshot"
-    },
-    "Method_flame_2eschedules_2fdelete_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fItemInput"
-    },
-    "Method_flame_2eschedules_2fdelete_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fAck"
-    },
-    "Method_flame_2eschedules_2flist_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fListInput"
-    },
-    "Method_flame_2eschedules_2flist_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fPage"
-    },
-    "Method_flame_2eschedules_2frunNow_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fItemInput"
-    },
-    "Method_flame_2eschedules_2frunNow_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2FwcGxpY2F0aW9u_5fRunReference"
-    },
-    "Method_flame_2eschedules_2fupdate_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fUpdateInput"
-    },
-    "Method_flame_2eschedules_2fupdate_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_5fSnapshot"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fSelection": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fselectionJSON_5bstring_5d"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fselectionJSON_5bstring_5d": {
+    "Ack": {
       "additionalProperties": false,
-      "properties": {
-        "model": {
-          "type": "string"
-        },
-        "provider": {
-          "type": "string"
-        },
-        "reasoningEffort": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "model",
-        "provider",
-        "reasoningEffort"
-      ],
+      "properties": {},
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2FwcGxpY2F0aW9u_5fRunReference": {
-      "additionalProperties": false,
-      "properties": {
-        "RunID": {
-          "type": "string"
-        },
-        "SessionID": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "SessionID",
-        "RunID"
-      ],
-      "type": "object"
+    "CreateV1Input": {
+      "$ref": "#/$defs/Draft"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_5fDraft": {
+    "CreateV1Output": {
+      "$ref": "#/$defs/Snapshot"
+    },
+    "DeleteV1Input": {
+      "$ref": "#/$defs/ItemInput"
+    },
+    "DeleteV1Output": {
+      "$ref": "#/$defs/Ack"
+    },
+    "Draft": {
       "additionalProperties": false,
       "properties": {
         "CWD": {
@@ -86,7 +34,7 @@
           "type": "string"
         },
         "ModelSelection": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fSelection"
+          "$ref": "#/$defs/Selection"
         },
         "TimeZone": {
           "type": "string"
@@ -106,7 +54,122 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_5fSnapshot": {
+    "ItemInput": {
+      "additionalProperties": false,
+      "properties": {
+        "ID": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ID"
+      ],
+      "type": "object"
+    },
+    "ListInput": {
+      "additionalProperties": false,
+      "properties": {
+        "Cursor": {
+          "type": "string"
+        },
+        "Limit": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        }
+      },
+      "required": [
+        "Cursor"
+      ],
+      "type": "object"
+    },
+    "ListV1Input": {
+      "$ref": "#/$defs/ListInput"
+    },
+    "ListV1Output": {
+      "$ref": "#/$defs/Page"
+    },
+    "ModelPatch": {
+      "additionalProperties": false,
+      "properties": {
+        "Model": {
+          "type": "string"
+        },
+        "Provider": {
+          "type": "string"
+        },
+        "ReasoningEffort": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "Page": {
+      "additionalProperties": false,
+      "properties": {
+        "NextCursor": {
+          "type": "string"
+        },
+        "Rows": {
+          "items": {
+            "$ref": "#/$defs/Snapshot"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "Rows",
+        "NextCursor"
+      ],
+      "type": "object"
+    },
+    "RunNowV1Input": {
+      "$ref": "#/$defs/ItemInput"
+    },
+    "RunNowV1Output": {
+      "$ref": "#/$defs/RunReference"
+    },
+    "RunReference": {
+      "additionalProperties": false,
+      "properties": {
+        "RunID": {
+          "type": "string"
+        },
+        "SessionID": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "SessionID",
+        "RunID"
+      ],
+      "type": "object"
+    },
+    "Selection": {
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "reasoningEffort": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "model",
+        "provider",
+        "reasoningEffort"
+      ],
+      "type": "object"
+    },
+    "Snapshot": {
       "additionalProperties": false,
       "properties": {
         "CWD": {
@@ -130,7 +193,7 @@
           "type": "string"
         },
         "ModelSelection": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fSelection"
+          "$ref": "#/$defs/Selection"
         },
         "NextRunAt": {
           "format": "date-time",
@@ -167,79 +230,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fAck": {
-      "additionalProperties": false,
-      "properties": {},
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fItemInput": {
-      "additionalProperties": false,
-      "properties": {
-        "ID": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "ID"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fListInput": {
-      "additionalProperties": false,
-      "properties": {
-        "Cursor": {
-          "type": "string"
-        },
-        "Limit": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "type": "integer"
-        }
-      },
-      "required": [
-        "Cursor"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fModelPatch": {
-      "additionalProperties": false,
-      "properties": {
-        "Model": {
-          "type": "string"
-        },
-        "Provider": {
-          "type": "string"
-        },
-        "ReasoningEffort": {
-          "type": "string"
-        }
-      },
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fPage": {
-      "additionalProperties": false,
-      "properties": {
-        "NextCursor": {
-          "type": "string"
-        },
-        "Rows": {
-          "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_5fSnapshot"
-          },
-          "type": "array"
-        }
-      },
-      "required": [
-        "Rows",
-        "NextCursor"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fUpdateInput": {
+    "UpdateInput": {
       "additionalProperties": false,
       "properties": {
         "CWD": {
@@ -267,7 +258,7 @@
           "type": "string"
         },
         "ModelSelection": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fModelPatch"
+          "$ref": "#/$defs/ModelPatch"
         },
         "TimeZone": {
           "type": "string"
@@ -282,6 +273,12 @@
         "ModelSelection"
       ],
       "type": "object"
+    },
+    "UpdateV1Input": {
+      "$ref": "#/$defs/UpdateInput"
+    },
+    "UpdateV1Output": {
+      "$ref": "#/$defs/Snapshot"
     }
   }
 }

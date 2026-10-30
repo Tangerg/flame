@@ -63,7 +63,7 @@ func NewMemory(config MemoryConfig) (*Memory, error) {
 	return &Memory{contract: contract, installations: config.Installations, pool: config.Connections, callbacks: config.Callbacks, utility: config.Utility, embedder: config.Embeddings, history: config.Conversation, commands: config.Commands}, nil
 }
 
-func (m *Memory) Items(ctx context.Context, scope memorycontract.ItemsV2InputScope, project string) ([]execution.MemoryPromptItem, error) {
+func (m *Memory) Items(ctx context.Context, scope memorycontract.ItemsInputScope, project string) ([]execution.MemoryPromptItem, error) {
 	ctx = operation.Start(ctx, extension.Automatic, "memory.context", uuid.NewString())
 	location, borrowed, err := contributionSession(ctx, m.commands.framework, m.installations, m.commands.selections, m.pool, m.contract)
 	if errors.Is(err, errInactive) {
@@ -75,12 +75,12 @@ func (m *Memory) Items(ctx context.Context, scope memorycontract.ItemsV2InputSco
 	defer borrowed.Close()
 	ctx = borrowed.Context()
 	session := borrowed.Session()
-	values, err := query[memorycontract.ItemsV2Input, memorycontract.ItemsV2Output](ctx, location, session, memorycontract.ItemsV2Method, memorycontract.ItemsV2Input{Scope: scope, Project: project}, sdk.ParamsBase{})
+	values, err := query[memorycontract.ItemsInput, memorycontract.ItemsV2Output](ctx, location, session, memorycontract.ItemsV2Method, memorycontract.ItemsInput{Scope: scope, Project: project}, sdk.ParamsBase{})
 	if err != nil {
 		return nil, err
 	}
 	for _, item := range values {
-		if item.Status != memorycontract.UpdateV2OutputStatusActive || item.Scope != memorycontract.UpdateV2OutputScope(scope) || item.Project != project {
+		if item.Status != memorycontract.ItemSnapshotStatusActive || item.Scope != memorycontract.ItemSnapshotScope(scope) || item.Project != project {
 			return nil, errors.New("memory: backend returned items outside the requested active target")
 		}
 	}
@@ -121,7 +121,7 @@ func (m *Memory) Search(ctx context.Context, project, text string, topK int) (_ 
 	if err != nil {
 		return nil, err
 	}
-	values, err := query[memorycontract.SearchV2Input, memorycontract.SearchV2Output](ctx, location, session, memorycontract.SearchV2Method, memorycontract.SearchV2Input{Project: project, Query: text, TopK: int64(topK), EmbeddingSpace: space}, metadata)
+	values, err := query[memorycontract.SearchInput, memorycontract.SearchV2Output](ctx, location, session, memorycontract.SearchV2Method, memorycontract.SearchInput{Project: project, Query: text, TopK: int64(topK), EmbeddingSpace: space}, metadata)
 	if err != nil {
 		return nil, err
 	}
@@ -129,8 +129,8 @@ func (m *Memory) Search(ctx context.Context, project, text string, topK int) (_ 
 		return nil, errors.New("memory: backend exceeded requested search bound")
 	}
 	for _, item := range values {
-		visibleTarget := item.Scope == memorycontract.UpdateV2OutputScopeUser && item.Project == "" || item.Scope == memorycontract.UpdateV2OutputScopeProject && item.Project == project
-		if item.Status != memorycontract.UpdateV2OutputStatusActive || !visibleTarget {
+		visibleTarget := item.Scope == memorycontract.ItemSnapshotScopeUser && item.Project == "" || item.Scope == memorycontract.ItemSnapshotScopeProject && item.Project == project
+		if item.Status != memorycontract.ItemSnapshotStatusActive || !visibleTarget {
 			return nil, errors.New("memory: backend returned search outside the active target")
 		}
 	}
@@ -150,10 +150,10 @@ func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintena
 	if err != nil {
 		return fmt.Errorf("memory: capture committed conversation: %w", err)
 	}
-	request := memorycontract.MaintainV1Input{SessionID: input.SessionID, Project: input.WorkspaceCWD, Compacted: input.DurableContextCompacted}
+	request := memorycontract.MaintenanceInput{SessionID: input.SessionID, Project: input.WorkspaceCWD, Compacted: input.DurableContextCompacted}
 	request.Conversation.MessageCount = int64(len(messages))
 	request.Conversation.Transcript = models.RenderTranscript(messages)
-	_, err = invokeResolvedCommand[memorycontract.MaintainV1Input, memorycontract.MaintainV1Output](operation.Start(ctx, extension.Automatic, "plugins.automatic", uuid.NewString()), m.commands, memorycontract.MaintainV1Method, request, nil, func(context.Context) (plugins.ContributionBinding, error) { return binding, nil }, func(ctx context.Context, _ plugins.ContributionBinding, original *sdk.ClientSession) (sdk.ParamsBase, func() error, error) {
+	_, err = invokeResolvedCommand[memorycontract.MaintenanceInput, memorycontract.MaintenanceResult](operation.Start(ctx, extension.Automatic, "plugins.automatic", uuid.NewString()), m.commands, memorycontract.MaintainV1Method, request, nil, func(context.Context) (plugins.ContributionBinding, error) { return binding, nil }, func(ctx context.Context, _ plugins.ContributionBinding, original *sdk.ClientSession) (sdk.ParamsBase, func() error, error) {
 		model, releaseModel, err := m.utility(ctx, models.AuxiliaryBudget{MaxInputBytes: memorycontract.MaxModelInputBytes, MaxOutputTokens: memorycontract.MaxModelOutputTokens})
 		if err != nil {
 			return sdk.ParamsBase{}, nil, err

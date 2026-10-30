@@ -31,19 +31,19 @@ type agentMemoryServiceStub struct {
 	project []memorycontract.Item
 	user    []memorycontract.Item
 	added   chan string
-	review  chan memorycontract.ReviewV2InputDecision
+	review  chan memorycontract.ReviewInputDecision
 }
 
 type blockingAgentMemoryReviewService struct {
 	AgentMemory
-	started  chan memorycontract.ReviewV2InputDecision
+	started  chan memorycontract.ReviewInputDecision
 	release  chan struct{}
 	canceled chan struct{}
 }
 
 type blockingAgentMemoryUpdateService struct {
 	AgentMemory
-	started  chan memorycontract.UpdateV2Input
+	started  chan memorycontract.UpdateInput
 	release  chan struct{}
 	canceled chan struct{}
 }
@@ -52,7 +52,7 @@ func (b *blockingAgentMemoryUpdateService) CallPlugin(ctx context.Context, reque
 	if request.Method != memorycontract.UpdateV2Method {
 		return b.AgentMemory.CallPlugin(ctx, request, commandID)
 	}
-	var input memorycontract.UpdateV2Input
+	var input memorycontract.UpdateInput
 	if err := json.Unmarshal([]byte(request.Input), &input); err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func (b *blockingAgentMemoryReviewService) CallPlugin(ctx context.Context, reque
 	if request.Method != memorycontract.ReviewV2Method {
 		return b.AgentMemory.CallPlugin(ctx, request, commandID)
 	}
-	var input memorycontract.ReviewV2Input
+	var input memorycontract.ReviewInput
 	if err := json.Unmarshal([]byte(request.Input), &input); err != nil {
 		return nil, err
 	}
@@ -88,16 +88,16 @@ func newAgentMemoryServiceStub() *agentMemoryServiceStub {
 	now := time.Now()
 	return &agentMemoryServiceStub{
 		project: []memorycontract.Item{{
-			Revision: 1, ID: terminalMemoryPendingID, Scope: memorycontract.UpdateV2OutputScopeProject, Content: "confirm release steps",
-			Origin: memorycontract.UpdateV2OutputOriginAuto, Status: memorycontract.UpdateV2OutputStatusPending, SessionID: "ses_origin",
+			Revision: 1, ID: terminalMemoryPendingID, Scope: memorycontract.ItemSnapshotScopeProject, Content: "confirm release steps",
+			Origin: memorycontract.ItemSnapshotOriginAuto, Status: memorycontract.ItemSnapshotStatusPending, SessionID: "ses_origin",
 			Day: "2026-08-12", CreatedAt: now, UpdatedAt: now,
 		}},
 		user: []memorycontract.Item{{
-			Revision: 1, ID: terminalMemoryUserID, Scope: memorycontract.UpdateV2OutputScopeUser, Content: "prefer concise answers",
-			Origin: memorycontract.UpdateV2OutputOriginUser, Status: memorycontract.UpdateV2OutputStatusActive, Pinned: true,
+			Revision: 1, ID: terminalMemoryUserID, Scope: memorycontract.ItemSnapshotScopeUser, Content: "prefer concise answers",
+			Origin: memorycontract.ItemSnapshotOriginUser, Status: memorycontract.ItemSnapshotStatusActive, Pinned: true,
 			CreatedAt: now, UpdatedAt: now,
 		}},
-		added: make(chan string, 1), review: make(chan memorycontract.ReviewV2InputDecision, 1),
+		added: make(chan string, 1), review: make(chan memorycontract.ReviewInputDecision, 1),
 	}
 }
 
@@ -107,14 +107,14 @@ func (a *agentMemoryServiceStub) Items(_ context.Context, target conversation.Me
 	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	if target.Scope == memorycontract.UpdateV2OutputScopeUser {
+	if target.Scope == memorycontract.ItemSnapshotScopeUser {
 		return append([]memorycontract.Item(nil), a.user...), nil
 	}
 	return append([]memorycontract.Item(nil), a.project...), nil
 }
 
-func (a *agentMemoryServiceStub) reviewItem(_ context.Context, id string, expectedRevision uint64, decision memorycontract.ReviewV2InputDecision) error {
-	if decision != memorycontract.ReviewV2InputDecisionApprove && decision != memorycontract.ReviewV2InputDecisionReject {
+func (a *agentMemoryServiceStub) reviewItem(_ context.Context, id string, expectedRevision uint64, decision memorycontract.ReviewInputDecision) error {
+	if decision != memorycontract.ReviewInputDecisionApprove && decision != memorycontract.ReviewInputDecisionReject {
 		return errors.New("invalid review decision")
 	}
 	a.mu.Lock()
@@ -123,13 +123,13 @@ func (a *agentMemoryServiceStub) reviewItem(_ context.Context, id string, expect
 		if a.project[index].ID != id {
 			continue
 		}
-		if a.project[index].Status != memorycontract.UpdateV2OutputStatusPending {
+		if a.project[index].Status != memorycontract.ItemSnapshotStatusPending {
 			return errors.New("not pending")
 		}
-		if decision == memorycontract.ReviewV2InputDecisionReject {
+		if decision == memorycontract.ReviewInputDecisionReject {
 			a.project = append(a.project[:index], a.project[index+1:]...)
 		} else {
-			a.project[index].Status = memorycontract.UpdateV2OutputStatusActive
+			a.project[index].Status = memorycontract.ItemSnapshotStatusActive
 			a.project[index].UpdatedAt = time.Now()
 		}
 		a.review <- decision
@@ -138,7 +138,7 @@ func (a *agentMemoryServiceStub) reviewItem(_ context.Context, id string, expect
 	return errors.New("not found")
 }
 
-func (a *agentMemoryServiceStub) updateItem(_ context.Context, request memorycontract.UpdateV2Input) (memorycontract.Item, error) {
+func (a *agentMemoryServiceStub) updateItem(_ context.Context, request memorycontract.UpdateInput) (memorycontract.Item, error) {
 	if request.Content == nil && request.Pinned == nil {
 		return memorycontract.Item{}, errors.New("update requires a change")
 	}
@@ -163,19 +163,19 @@ func (a *agentMemoryServiceStub) updateItem(_ context.Context, request memorycon
 	return memorycontract.Item{}, errors.New("not found")
 }
 
-func (*agentMemoryServiceStub) PrepareAdd(_ context.Context, input memorycontract.AddV2Input) (protocol.CallPluginRequest, error) {
+func (*agentMemoryServiceStub) PrepareAdd(_ context.Context, input memorycontract.AddInput) (protocol.CallPluginRequest, error) {
 	return boundMemoryRequest(memorycontract.AddV2Method, input)
 }
-func (*agentMemoryServiceStub) DecodeAdd(reply *protocol.CallPluginResponse) (memorycontract.AddV2Output, error) {
-	var result memorycontract.AddV2Output
+func (*agentMemoryServiceStub) DecodeAdd(reply *protocol.CallPluginResponse) (memorycontract.AddResult, error) {
+	var result memorycontract.AddResult
 	err := json.Unmarshal([]byte(reply.Output), &result)
 	return result, err
 }
-func (*agentMemoryServiceStub) PrepareUpdate(_ context.Context, input memorycontract.UpdateV2Input) (protocol.CallPluginRequest, error) {
+func (*agentMemoryServiceStub) PrepareUpdate(_ context.Context, input memorycontract.UpdateInput) (protocol.CallPluginRequest, error) {
 	return boundMemoryRequest(memorycontract.UpdateV2Method, input)
 }
 func (*agentMemoryServiceStub) DecodeUpdate(id string, reply *protocol.CallPluginResponse) (memorycontract.Item, error) {
-	var row memorycontract.UpdateV2Output
+	var row memorycontract.ItemSnapshot
 	if err := json.Unmarshal([]byte(reply.Output), &row); err != nil {
 		return memorycontract.Item{}, err
 	}
@@ -184,11 +184,11 @@ func (*agentMemoryServiceStub) DecodeUpdate(id string, reply *protocol.CallPlugi
 	}
 	return memorycontract.Item{ID: string(row.ID), Revision: row.Revision, Scope: row.Scope, Content: row.Content, Origin: row.Origin, Status: row.Status, Pinned: row.Pinned, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }
-func (*agentMemoryServiceStub) PrepareReview(_ context.Context, id string, expectedRevision uint64, decision memorycontract.ReviewV2InputDecision) (protocol.CallPluginRequest, error) {
-	return boundMemoryRequest(memorycontract.ReviewV2Method, memorycontract.ReviewV2Input{ID: id, ExpectedRevision: expectedRevision, Decision: decision})
+func (*agentMemoryServiceStub) PrepareReview(_ context.Context, id string, expectedRevision uint64, decision memorycontract.ReviewInputDecision) (protocol.CallPluginRequest, error) {
+	return boundMemoryRequest(memorycontract.ReviewV2Method, memorycontract.ReviewInput{ID: id, ExpectedRevision: expectedRevision, Decision: decision})
 }
 func (*agentMemoryServiceStub) PrepareDelete(_ context.Context, id string, expectedRevision uint64) (protocol.CallPluginRequest, error) {
-	return boundMemoryRequest(memorycontract.DeleteV2Method, memorycontract.DeleteV2Input{ID: id, ExpectedRevision: expectedRevision})
+	return boundMemoryRequest(memorycontract.DeleteV2Method, memorycontract.ItemInput{ID: id, ExpectedRevision: expectedRevision})
 }
 func boundMemoryRequest(method string, value any) (protocol.CallPluginRequest, error) {
 	input, err := jsonvalue.Encode(value)
@@ -204,11 +204,11 @@ func (a *agentMemoryServiceStub) CallPlugin(_ context.Context, request protocol.
 		return nil, errors.New("invalid memory command")
 	}
 	if request.Method == memorycontract.AddV2Method {
-		var input memorycontract.AddV2Input
+		var input memorycontract.AddInput
 		if err := json.Unmarshal([]byte(request.Input), &input); err != nil {
 			return nil, err
 		}
-		target, err := conversation.NewMemoryTarget(memorycontract.UpdateV2OutputScope(input.Scope), input.CWD)
+		target, err := conversation.NewMemoryTarget(memorycontract.ItemSnapshotScope(input.Scope), input.CWD)
 		if err != nil {
 			return nil, err
 		}
@@ -216,12 +216,12 @@ func (a *agentMemoryServiceStub) CallPlugin(_ context.Context, request protocol.
 		if err != nil {
 			return nil, err
 		}
-		output := memorycontract.AddV2Output{Item: memorycontract.UpdateV2Output{Revision: saved.Revision, ID: memorycontract.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemID(saved.ID), Scope: saved.Scope, Content: saved.Content, Origin: saved.Origin, Status: saved.Status, Pinned: saved.Pinned, CreatedAt: saved.CreatedAt, UpdatedAt: saved.UpdatedAt, Embedding: []float64{}}}
+		output := memorycontract.AddResult{Item: memorycontract.ItemSnapshot{Revision: saved.Revision, ID: memorycontract.ItemID(saved.ID), Scope: saved.Scope, Content: saved.Content, Origin: saved.Origin, Status: saved.Status, Pinned: saved.Pinned, CreatedAt: saved.CreatedAt, UpdatedAt: saved.UpdatedAt, Embedding: []float64{}}}
 		encoded, err := jsonvalue.Encode(output)
 		return &protocol.CallPluginResponse{Output: string(encoded.JSON())}, err
 	}
 	if request.Method == memorycontract.UpdateV2Method {
-		var input memorycontract.UpdateV2Input
+		var input memorycontract.UpdateInput
 		if err := json.Unmarshal([]byte(request.Input), &input, json.RejectUnknownMembers(true)); err != nil {
 			return nil, err
 		}
@@ -229,12 +229,12 @@ func (a *agentMemoryServiceStub) CallPlugin(_ context.Context, request protocol.
 		if err != nil {
 			return nil, err
 		}
-		output := memorycontract.UpdateV2Output{Revision: saved.Revision, ID: memorycontract.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemID(saved.ID), Scope: saved.Scope, Content: saved.Content, Origin: saved.Origin, Status: saved.Status, Pinned: saved.Pinned, CreatedAt: saved.CreatedAt, UpdatedAt: saved.UpdatedAt, Embedding: []float64{}}
+		output := memorycontract.ItemSnapshot{Revision: saved.Revision, ID: memorycontract.ItemID(saved.ID), Scope: saved.Scope, Content: saved.Content, Origin: saved.Origin, Status: saved.Status, Pinned: saved.Pinned, CreatedAt: saved.CreatedAt, UpdatedAt: saved.UpdatedAt, Embedding: []float64{}}
 		encoded, err := jsonvalue.Encode(output)
 		return &protocol.CallPluginResponse{Output: string(encoded.JSON())}, err
 	}
 	if request.Method == memorycontract.ReviewV2Method {
-		var input memorycontract.ReviewV2Input
+		var input memorycontract.ReviewInput
 		if err := json.Unmarshal([]byte(request.Input), &input, json.RejectUnknownMembers(true)); err != nil {
 			return nil, err
 		}
@@ -243,7 +243,7 @@ func (a *agentMemoryServiceStub) CallPlugin(_ context.Context, request protocol.
 		}
 		return &protocol.CallPluginResponse{Output: `{}`}, nil
 	}
-	var input memorycontract.DeleteV2Input
+	var input memorycontract.ItemInput
 	if err := json.Unmarshal([]byte(request.Input), &input, json.RejectUnknownMembers(true)); err != nil {
 		return nil, err
 	}
@@ -273,11 +273,11 @@ func (a *agentMemoryServiceStub) addItem(_ context.Context, target conversation.
 	}
 	now := time.Now()
 	item := memorycontract.Item{
-		ID: terminalMemoryAddedID, Scope: target.Scope, Content: content, Origin: memorycontract.UpdateV2OutputOriginUser,
-		Status: memorycontract.UpdateV2OutputStatusActive, CreatedAt: now, UpdatedAt: now,
+		ID: terminalMemoryAddedID, Scope: target.Scope, Content: content, Origin: memorycontract.ItemSnapshotOriginUser,
+		Status: memorycontract.ItemSnapshotStatusActive, CreatedAt: now, UpdatedAt: now,
 	}
 	a.mu.Lock()
-	if target.Scope == memorycontract.UpdateV2OutputScopeUser {
+	if target.Scope == memorycontract.ItemSnapshotScopeUser {
 		a.user = append(a.user, item)
 	} else {
 		a.project = append(a.project, item)
@@ -353,7 +353,7 @@ func TestPendingAgentMemoryReviewRequiresResizeSafeConfirmation(t *testing.T) {
 	host.Shows(t, "Approve agent memory")
 	host.Press(input.Down)
 	host.Press(input.Enter)
-	if got := awaitValue(t, memory.review, "agent memory review"); got != memorycontract.ReviewV2InputDecisionApprove {
+	if got := awaitValue(t, memory.review, "agent memory review"); got != memorycontract.ReviewInputDecisionApprove {
 		t.Fatalf("review = %q", got)
 	}
 	host.Shows(t, "Agent memory · project")
@@ -365,7 +365,7 @@ func TestAgentMemoryReviewOutlivesSameSessionProjectionReplacement(t *testing.T)
 	backend := runtimefixture.New()
 	base := newAgentMemoryServiceStub()
 	memory := &blockingAgentMemoryReviewService{
-		AgentMemory: base, started: make(chan memorycontract.ReviewV2InputDecision, 1),
+		AgentMemory: base, started: make(chan memorycontract.ReviewInputDecision, 1),
 		release: make(chan struct{}), canceled: make(chan struct{}),
 	}
 	release := sync.OnceFunc(func() { close(memory.release) })
@@ -382,7 +382,7 @@ func TestAgentMemoryReviewOutlivesSameSessionProjectionReplacement(t *testing.T)
 	host.Shows(t, "Approve agent memory")
 	host.Press(input.Down)
 	host.Press(input.Enter)
-	if decision := awaitValue(t, memory.started, "agent memory review"); decision != memorycontract.ReviewV2InputDecisionApprove {
+	if decision := awaitValue(t, memory.started, "agent memory review"); decision != memorycontract.ReviewInputDecisionApprove {
 		t.Fatalf("review decision = %q", decision)
 	}
 	if _, err := backend.RollbackSession(t.Context(), conversation.RollbackSession{
@@ -401,11 +401,11 @@ func TestAgentMemoryReviewOutlivesSameSessionProjectionReplacement(t *testing.T)
 	default:
 	}
 	release()
-	if decision := awaitValue(t, base.review, "committed agent memory review"); decision != memorycontract.ReviewV2InputDecisionApprove {
+	if decision := awaitValue(t, base.review, "committed agent memory review"); decision != memorycontract.ReviewInputDecisionApprove {
 		t.Fatalf("committed review decision = %q", decision)
 	}
-	items, err := base.Items(t.Context(), conversation.MemoryTarget{Scope: memorycontract.UpdateV2OutputScopeProject, Workspace: "/tmp/demo/store"})
-	if err != nil || len(items) != 1 || items[0].Status != memorycontract.UpdateV2OutputStatusActive {
+	items, err := base.Items(t.Context(), conversation.MemoryTarget{Scope: memorycontract.ItemSnapshotScopeProject, Workspace: "/tmp/demo/store"})
+	if err != nil || len(items) != 1 || items[0].Status != memorycontract.ItemSnapshotStatusActive {
 		t.Fatalf("project memory after review = (%+v, %v)", items, err)
 	}
 	stop()
@@ -414,7 +414,7 @@ func TestAgentMemoryReviewOutlivesSameSessionProjectionReplacement(t *testing.T)
 func TestAgentMemoryUpdateDoesNotInstallAReaderAfterSessionSwitch(t *testing.T) {
 	base := newAgentMemoryServiceStub()
 	memory := &blockingAgentMemoryUpdateService{
-		AgentMemory: base, started: make(chan memorycontract.UpdateV2Input, 1),
+		AgentMemory: base, started: make(chan memorycontract.UpdateInput, 1),
 		release: make(chan struct{}), canceled: make(chan struct{}),
 	}
 	release := sync.OnceFunc(func() { close(memory.release) })
@@ -438,7 +438,7 @@ func TestAgentMemoryUpdateDoesNotInstallAReaderAfterSessionSwitch(t *testing.T) 
 	release()
 	host.Shows(t, "agent memory updated · "+terminalMemoryUserID)
 	host.Hides(t, "Agent memory · user")
-	items, err := base.Items(t.Context(), conversation.MemoryTarget{Scope: memorycontract.UpdateV2OutputScopeUser})
+	items, err := base.Items(t.Context(), conversation.MemoryTarget{Scope: memorycontract.ItemSnapshotScopeUser})
 	if err != nil || len(items) != 1 || items[0].Pinned {
 		t.Fatalf("user memory after update = (%+v, %v)", items, err)
 	}
@@ -463,7 +463,7 @@ func TestAgentMemoryEditPinAndDeleteRoundTripThroughAuthoritativeReads(t *testin
 	host.Send(input.Key{Code: input.Character, Rune: 's', Mods: input.Ctrl})
 	host.Shows(t, "Agent memory · user")
 	host.Shows(t, "prefer explicit answers")
-	items, err := memory.Items(t.Context(), conversation.MemoryTarget{Scope: memorycontract.UpdateV2OutputScopeUser})
+	items, err := memory.Items(t.Context(), conversation.MemoryTarget{Scope: memorycontract.ItemSnapshotScopeUser})
 	if err != nil || len(items) != 1 || items[0].Content != "prefer explicit answers\nwith evidence" {
 		t.Fatalf("edited user memory = (%+v, %v)", items, err)
 	}
@@ -473,7 +473,7 @@ func TestAgentMemoryEditPinAndDeleteRoundTripThroughAuthoritativeReads(t *testin
 	host.Type("/memory-unpin user " + terminalMemoryUserID)
 	host.Press(input.Enter)
 	host.Shows(t, "Agent memory · user")
-	items, err = memory.Items(t.Context(), conversation.MemoryTarget{Scope: memorycontract.UpdateV2OutputScopeUser})
+	items, err = memory.Items(t.Context(), conversation.MemoryTarget{Scope: memorycontract.ItemSnapshotScopeUser})
 	if err != nil || len(items) != 1 || items[0].Pinned {
 		t.Fatalf("unpinned user memory = (%+v, %v)", items, err)
 	}
@@ -483,7 +483,7 @@ func TestAgentMemoryEditPinAndDeleteRoundTripThroughAuthoritativeReads(t *testin
 	host.Type("/memory-pin user " + terminalMemoryUserID)
 	host.Press(input.Enter)
 	host.Shows(t, "pinned")
-	items, err = memory.Items(t.Context(), conversation.MemoryTarget{Scope: memorycontract.UpdateV2OutputScopeUser})
+	items, err = memory.Items(t.Context(), conversation.MemoryTarget{Scope: memorycontract.ItemSnapshotScopeUser})
 	if err != nil || len(items) != 1 || !items[0].Pinned {
 		t.Fatalf("pinned user memory = (%+v, %v)", items, err)
 	}
@@ -499,7 +499,7 @@ func TestAgentMemoryEditPinAndDeleteRoundTripThroughAuthoritativeReads(t *testin
 	host.Press(input.Down)
 	host.Press(input.Enter)
 	host.Shows(t, "No active or pending memory")
-	items, err = memory.Items(t.Context(), conversation.MemoryTarget{Scope: memorycontract.UpdateV2OutputScopeUser})
+	items, err = memory.Items(t.Context(), conversation.MemoryTarget{Scope: memorycontract.ItemSnapshotScopeUser})
 	if err != nil || len(items) != 0 {
 		t.Fatalf("deleted user memory = (%+v, %v)", items, err)
 	}

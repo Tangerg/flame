@@ -176,14 +176,14 @@ func verifyStandalonePlugin(t *testing.T, name string) {
 		if err != nil || reply.Failure != nil {
 			t.Fatalf("read independent Memory: %+v, %v", reply, err)
 		}
-		var page memorycontract.ListV2Output
+		var page memorycontract.Page
 		if err := json.Unmarshal([]byte(reply.Output), &page, json.RejectUnknownMembers(true)); err != nil {
 			t.Fatal(err)
 		}
 		if len(page.Rows) != 1 || page.Rows[0].Content != "independent author fact" {
 			t.Fatalf("recovery changed the private business result: %+v", page)
 		}
-		var added memorycontract.AddV2Output
+		var added memorycontract.AddResult
 		if err := json.Unmarshal([]byte(original.Output), &added, json.RejectUnknownMembers(true)); err != nil {
 			t.Fatal(err)
 		}

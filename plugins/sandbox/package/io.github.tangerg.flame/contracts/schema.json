@@ -1,21 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
-    "Method_flame_2esandbox_2fexecute_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9pbnRlcm5hbC93aXJl_5fExecuteInput"
-    },
-    "Method_flame_2esandbox_2fexecute_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9pbnRlcm5hbC9kb21haW4_5fResult"
-    },
-    "Method_flame_2esandbox_2flimits_2ev1Input": {
-      "additionalProperties": false,
-      "properties": {},
-      "type": "object"
-    },
-    "Method_flame_2esandbox_2flimits_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9pbnRlcm5hbC93aXJl_5fLimits"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9pbnRlcm5hbC93aXJl_5fExecuteInput": {
+    "ExecuteInput": {
       "additionalProperties": false,
       "properties": {
         "script": {
@@ -41,7 +27,13 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9pbnRlcm5hbC93aXJl_5fLimits": {
+    "ExecuteV1Input": {
+      "$ref": "#/$defs/ExecuteInput"
+    },
+    "ExecuteV1Output": {
+      "$ref": "#/$defs/Result"
+    },
+    "Limits": {
       "additionalProperties": false,
       "properties": {
         "available": {
@@ -91,7 +83,15 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9pbnRlcm5hbC9kb21haW4_5fOutput": {
+    "LimitsV1Input": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "LimitsV1Output": {
+      "$ref": "#/$defs/Limits"
+    },
+    "Output": {
       "additionalProperties": false,
       "properties": {
         "content": {
@@ -115,7 +115,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9pbnRlcm5hbC9kb21haW4_5fResult": {
+    "Result": {
       "additionalProperties": false,
       "properties": {
         "durationMillis": {
@@ -149,10 +149,10 @@
           "type": "string"
         },
         "stderr": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9pbnRlcm5hbC9kb21haW4_5fOutput"
+          "$ref": "#/$defs/Output"
         },
         "stdout": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2FuZGJveC9pbnRlcm5hbC9kb21haW4_5fOutput"
+          "$ref": "#/$defs/Output"
         }
       },
       "required": [

@@ -173,15 +173,15 @@ func TestMemoryComponentUsesInstalledPublicOperationsAndPreservesPrivateFacts(t 
 	}
 	r.poMCPTools(&protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "memory"}, memoryToolsReady)
 	for _, content := range []string{"first fact", "second fact"} {
-		r.must(delivery.PluginsCall, memoryAddRequest(r, memorycontract.AddV2Input{Scope: memorycontract.AddV2InputScopeUser, Content: content}), content)
+		r.must(delivery.PluginsCall, memoryAddRequest(r, memorycontract.AddInput{Scope: memorycontract.AddInputScopeUser, Content: content}), content)
 	}
 	contracts, err := portable.ParseCapability([]byte(memorycontract.CapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
-	query := memorycontract.ListV2Input{Scope: memorycontract.ListV2InputScopeUser, Limit: new(uint64(1))}
+	query := memorycontract.ListInput{Scope: memorycontract.ListInputScopeUser, Limit: new(uint64(1))}
 	for {
-		input, err := jsonvalue.Encode(memorycontract.ListV2Input{Scope: memorycontract.ListV2InputScopeUser, Cursor: query.Cursor, Limit: query.Limit})
+		input, err := jsonvalue.Encode(memorycontract.ListInput{Scope: memorycontract.ListInputScopeUser, Cursor: query.Cursor, Limit: query.Limit})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -190,7 +190,7 @@ func TestMemoryComponentUsesInstalledPublicOperationsAndPreservesPrivateFacts(t 
 		if result.Failure != nil {
 			t.Fatalf("installed list refusal: %+v", result.Failure)
 		}
-		var page memorycontract.ListV2Output
+		var page memorycontract.Page
 		if err := json.Unmarshal([]byte(result.Output), &page); err != nil {
 			t.Fatal(err)
 		}
@@ -204,7 +204,7 @@ func TestMemoryComponentUsesInstalledPublicOperationsAndPreservesPrivateFacts(t 
 		query.Cursor = page.NextCursor
 	}
 	r.must(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, "uninstall-memory")
-	result := memoryQueryResult(r, memorycontract.ListV2Input{Scope: memorycontract.ListV2InputScopeUser})
+	result := memoryQueryResult(r, memorycontract.ListInput{Scope: memorycontract.ListInputScopeUser})
 	if !errors.Is(result.Failure, protocol.ErrPluginUnavailable) {
 		t.Fatalf("uninstalled Memory owner=%v", result.Failure)
 	}
@@ -235,7 +235,7 @@ func TestScheduleComponentUsesOwnBackendAndWithdrawalPreservesPrivateData(t *tes
 	}
 	r.poMCPTools(&protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}, scheduleToolsReady)
 	for index, cron := range []string{"0 * * * *", "0 9 * * *"} {
-		readScheduleCreate(r, scheduleCreateRequest(r, testsupport.SchedulesCreateV1Input{Enabled: true, Title: "Inspect", Instructions: "Inspect current work", Cron: cron, TimeZone: "UTC"}), fmt.Sprintf("create-%d", index))
+		readScheduleCreate(r, scheduleCreateRequest(r, testsupport.SchedulesDraft{Enabled: true, Title: "Inspect", Instructions: "Inspect current work", Cron: cron, TimeZone: "UTC"}), fmt.Sprintf("create-%d", index))
 	}
 	contracts, err := portable.ParseCapability([]byte(testsupport.SchedulesCapabilityJSON))
 	if err != nil {
@@ -244,12 +244,12 @@ func TestScheduleComponentUsesOwnBackendAndWithdrawalPreservesPrivateData(t *tes
 	query := protocol.PageQuery{Limit: new(1)}
 	seen := map[string]bool{}
 	for {
-		input, err := json.Marshal(testsupport.SchedulesListV1Input{Cursor: query.Cursor, Limit: schedulePageLimit(query.Limit)})
+		input, err := json.Marshal(testsupport.SchedulesListInput{Cursor: query.Cursor, Limit: schedulePageLimit(query.Limit)})
 		if err != nil {
 			t.Fatal(err)
 		}
 		installedReply := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "schedules-provider", Contract: string(contracts.Identity().JSON()), Method: testsupport.SchedulesListV1Method, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}, Input: string(input)}, "").(*protocol.CallPluginResponse)
-		var page testsupport.SchedulesListV1Output
+		var page testsupport.SchedulesPage
 		if err := json.Unmarshal([]byte(installedReply.Output), &page); err != nil {
 			t.Fatal(err)
 		}

@@ -2,52 +2,50 @@
 // Numeric and cross-field constraints remain in schema.json and the business owner.
 import type { JSONNumber } from "@qimu/sdk/json";
 
-export interface Method_flame_2emodel_2drouter_2fget_2dpolicy_2ev1Input {
+export interface GetPolicyV1Input {
 }
 
-export type Method_flame_2emodel_2drouter_2fget_2dpolicy_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_5fSnapshot;
+export type GetPolicyV1Output = Snapshot;
 
-export type Method_flame_2emodel_2drouter_2freplace_2dpolicy_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvd2lyZQ_5fReplaceInput;
-
-export type Method_flame_2emodel_2drouter_2freplace_2dpolicy_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_5fSnapshot;
-
-export type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fSelection = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fselectionJSON_5bstring_5d;
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fSelectionLimits {
-  inputKind: string & ("text" | "request");
-  maxInputBytes: JSONNumber;
-  maxOutputTokens: JSONNumber;
+export interface ReplaceInput {
+  expectedRevision: JSONNumber;
+  rules: Rule[];
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fselectionJSON_5bstring_5d {
+export type ReplacePolicyV1Input = ReplaceInput;
+
+export type ReplacePolicyV1Output = Snapshot;
+
+export interface Rule {
+  ceiling?: SelectionLimits;
+  selection: Selection;
+  use: string & ("interaction" | "utility" | "independent");
+}
+
+export interface Selection {
   model: string;
   provider: string;
   reasoningEffort: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_5fRule {
-  ceiling?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fSelectionLimits;
-  selection: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fSelection;
-  use: string & ("interaction" | "utility" | "independent");
+export interface SelectionLimits {
+  inputKind: string & ("text" | "request");
+  maxInputBytes: JSONNumber;
+  maxOutputTokens: JSONNumber;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_5fSnapshot {
+export interface Snapshot {
   revision: JSONNumber;
-  rules: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_5fRule[];
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvd2lyZQ_5fReplaceInput {
-  expectedRevision: JSONNumber;
-  rules: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_5fRule[];
+  rules: Rule[];
 }
 
 export interface MethodInputs {
-  "flame.model-router/get-policy.v1": Method_flame_2emodel_2drouter_2fget_2dpolicy_2ev1Input;
-  "flame.model-router/replace-policy.v1": Method_flame_2emodel_2drouter_2freplace_2dpolicy_2ev1Input;
+  "flame.model-router/get-policy.v1": GetPolicyV1Input;
+  "flame.model-router/replace-policy.v1": ReplacePolicyV1Input;
 }
 export interface MethodOutputs {
-  "flame.model-router/get-policy.v1": Method_flame_2emodel_2drouter_2fget_2dpolicy_2ev1Output;
-  "flame.model-router/replace-policy.v1": Method_flame_2emodel_2drouter_2freplace_2dpolicy_2ev1Output;
+  "flame.model-router/get-policy.v1": GetPolicyV1Output;
+  "flame.model-router/replace-policy.v1": ReplacePolicyV1Output;
 }
 export const METHODS = {
   "flame.model-router/get-policy.v1": { kind: "query", target: "installation" },

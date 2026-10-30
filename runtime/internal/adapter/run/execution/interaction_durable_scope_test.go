@@ -110,7 +110,7 @@ func (s scopeCapturingMemorySearch) Search(
 }
 
 type memoryTargetRead struct {
-	scope   memorycontract.ItemsV2InputScope
+	scope   memorycontract.ItemsInputScope
 	project string
 }
 
@@ -119,13 +119,13 @@ type scopeCapturingPinnedMemory struct {
 	reads     *[]memoryTargetRead
 }
 
-func (s scopeCapturingPinnedMemory) Items(_ context.Context, scope memorycontract.ItemsV2InputScope, project string) ([]MemoryPromptItem, error) {
+func (s scopeCapturingPinnedMemory) Items(_ context.Context, scope memorycontract.ItemsInputScope, project string) ([]MemoryPromptItem, error) {
 	*s.reads = append(*s.reads, memoryTargetRead{scope, project})
 	content := ""
-	if scope == memorycontract.ItemsV2InputScopeProject && project == s.workspace {
+	if scope == memorycontract.ItemsInputScopeProject && project == s.workspace {
 		content = "project pinned fact"
 	}
-	if scope == memorycontract.ItemsV2InputScopeUser && project == "" {
+	if scope == memorycontract.ItemsInputScopeUser && project == "" {
 		content = "user pinned fact"
 	}
 	if content == "" {
@@ -169,7 +169,7 @@ func TestWorkingContextResolvesHooksAndMemoryAgainstTheWorkspace(t *testing.T) {
 			if hooksResolvedAt != workspace || memorySearchedAt != workspace {
 				t.Fatalf("durable scope: hooks=%q recall=%q", hooksResolvedAt, memorySearchedAt)
 			}
-			if !slices.Equal(reads, []memoryTargetRead{{memorycontract.ItemsV2InputScopeProject, workspace}, {memorycontract.ItemsV2InputScopeUser, ""}}) {
+			if !slices.Equal(reads, []memoryTargetRead{{memorycontract.ItemsInputScopeProject, workspace}, {memorycontract.ItemsInputScopeUser, ""}}) {
 				t.Fatalf("pinned targets = %+v", reads)
 			}
 			instructions := messages[0].Text()

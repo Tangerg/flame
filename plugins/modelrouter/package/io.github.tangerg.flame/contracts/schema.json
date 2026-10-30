@@ -1,24 +1,96 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
-    "Method_flame_2emodel_2drouter_2fget_2dpolicy_2ev1Input": {
+    "GetPolicyV1Input": {
       "additionalProperties": false,
       "properties": {},
       "type": "object"
     },
-    "Method_flame_2emodel_2drouter_2fget_2dpolicy_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_5fSnapshot"
+    "GetPolicyV1Output": {
+      "$ref": "#/$defs/Snapshot"
     },
-    "Method_flame_2emodel_2drouter_2freplace_2dpolicy_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvd2lyZQ_5fReplaceInput"
+    "ReplaceInput": {
+      "additionalProperties": false,
+      "properties": {
+        "expectedRevision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "rules": {
+          "items": {
+            "$ref": "#/$defs/Rule"
+          },
+          "maxItems": 3,
+          "type": "array"
+        }
+      },
+      "required": [
+        "expectedRevision",
+        "rules"
+      ],
+      "type": "object"
     },
-    "Method_flame_2emodel_2drouter_2freplace_2dpolicy_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_5fSnapshot"
+    "ReplacePolicyV1Input": {
+      "$ref": "#/$defs/ReplaceInput"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fSelection": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fselectionJSON_5bstring_5d"
+    "ReplacePolicyV1Output": {
+      "$ref": "#/$defs/Snapshot"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fSelectionLimits": {
+    "Rule": {
+      "additionalProperties": false,
+      "properties": {
+        "ceiling": {
+          "$ref": "#/$defs/SelectionLimits"
+        },
+        "selection": {
+          "$ref": "#/$defs/Selection"
+        },
+        "use": {
+          "allOf": [
+            {
+              "enum": [
+                "interaction",
+                "utility",
+                "independent"
+              ]
+            }
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "use",
+        "selection"
+      ],
+      "type": "object"
+    },
+    "Selection": {
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "reasoningEffort": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "model",
+        "provider",
+        "reasoningEffort"
+      ],
+      "type": "object"
+    },
+    "SelectionLimits": {
       "additionalProperties": false,
       "properties": {
         "inputKind": {
@@ -60,55 +132,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fselectionJSON_5bstring_5d": {
-      "additionalProperties": false,
-      "properties": {
-        "model": {
-          "type": "string"
-        },
-        "provider": {
-          "type": "string"
-        },
-        "reasoningEffort": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "model",
-        "provider",
-        "reasoningEffort"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_5fRule": {
-      "additionalProperties": false,
-      "properties": {
-        "ceiling": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fSelectionLimits"
-        },
-        "selection": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fSelection"
-        },
-        "use": {
-          "allOf": [
-            {
-              "enum": [
-                "interaction",
-                "utility",
-                "independent"
-              ]
-            }
-          ],
-          "type": "string"
-        }
-      },
-      "required": [
-        "use",
-        "selection"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_5fSnapshot": {
+    "Snapshot": {
       "additionalProperties": false,
       "properties": {
         "revision": {
@@ -123,7 +147,7 @@
         },
         "rules": {
           "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_5fRule"
+            "$ref": "#/$defs/Rule"
           },
           "maxItems": 3,
           "type": "array"
@@ -131,33 +155,6 @@
       },
       "required": [
         "revision",
-        "rules"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvd2lyZQ_5fReplaceInput": {
-      "additionalProperties": false,
-      "properties": {
-        "expectedRevision": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "minimum": 1,
-          "type": "integer"
-        },
-        "rules": {
-          "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_5fRule"
-          },
-          "maxItems": 3,
-          "type": "array"
-        }
-      },
-      "required": [
-        "expectedRevision",
         "rules"
       ],
       "type": "object"

@@ -4,12 +4,12 @@ package contracts
 type GetPolicyV1Input struct {
 }
 
-type ReplacePolicyV1Input struct {
+type ReplaceInput struct {
 	ExpectedRevision uint64   `json:"expectedRevision"`
 	Phrases          []string `json:"phrases"`
 }
 
-type GetPolicyV1Output struct {
+type Summary struct {
 	ProtectedPhraseCount uint64 `json:"protectedPhraseCount"`
 	Revision             uint64 `json:"revision"`
 }
@@ -19,5 +19,3 @@ const CapabilityJSON = "{\"protocol\":\"io.github.tangerg.qimu/portable/1\",\"re
 const GetPolicyV1Method = "flame.guardrails/get-policy.v1"
 
 const ReplacePolicyV1Method = "flame.guardrails/replace-policy.v1"
-
-type ReplacePolicyV1Output GetPolicyV1Output

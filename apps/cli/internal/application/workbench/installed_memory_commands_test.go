@@ -33,25 +33,25 @@ func (c *memoryCommands) prepare(method string, value any) (protocol.CallPluginR
 	return protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("1", 64), Contribution: "memory-provider", Contract: memory.CapabilityJSON, Method: method, Target: portable.Target{Scope: "installation", Reference: installation}, Input: string(body)}, nil
 }
 
-func (c *memoryCommands) PrepareAdd(_ context.Context, input memory.AddV2Input) (protocol.CallPluginRequest, error) {
+func (c *memoryCommands) PrepareAdd(_ context.Context, input memory.AddInput) (protocol.CallPluginRequest, error) {
 	return c.prepare(memory.AddV2Method, input)
 }
-func (*memoryCommands) DecodeAdd(reply *protocol.CallPluginResponse) (memory.AddV2Output, error) {
-	var result memory.AddV2Output
+func (*memoryCommands) DecodeAdd(reply *protocol.CallPluginResponse) (memory.AddResult, error) {
+	var result memory.AddResult
 	err := json.Unmarshal([]byte(reply.Output), &result, json.RejectUnknownMembers(true))
 	return result, err
 }
-func (c *memoryCommands) PrepareUpdate(_ context.Context, input memory.UpdateV2Input) (protocol.CallPluginRequest, error) {
+func (c *memoryCommands) PrepareUpdate(_ context.Context, input memory.UpdateInput) (protocol.CallPluginRequest, error) {
 	return c.prepare(memory.UpdateV2Method, input)
 }
 func (*memoryCommands) DecodeUpdate(id string, _ *protocol.CallPluginResponse) (memory.Item, error) {
 	return memory.Item{Revision: 1, ID: id}, nil
 }
-func (c *memoryCommands) PrepareReview(_ context.Context, id string, expectedRevision uint64, decision memory.ReviewV2InputDecision) (protocol.CallPluginRequest, error) {
-	return c.prepare(memory.ReviewV2Method, memory.ReviewV2Input{ID: id, ExpectedRevision: expectedRevision, Decision: decision})
+func (c *memoryCommands) PrepareReview(_ context.Context, id string, expectedRevision uint64, decision memory.ReviewInputDecision) (protocol.CallPluginRequest, error) {
+	return c.prepare(memory.ReviewV2Method, memory.ReviewInput{ID: id, ExpectedRevision: expectedRevision, Decision: decision})
 }
 func (c *memoryCommands) PrepareDelete(_ context.Context, id string, expectedRevision uint64) (protocol.CallPluginRequest, error) {
-	return c.prepare(memory.DeleteV2Method, memory.DeleteV2Input{ID: id, ExpectedRevision: expectedRevision})
+	return c.prepare(memory.DeleteV2Method, memory.ItemInput{ID: id, ExpectedRevision: expectedRevision})
 }
 
 func TestMemoryPendingAdmissionRunsBeforePreparationOrDispatch(t *testing.T) {
@@ -69,8 +69,8 @@ func TestMemoryPendingAdmissionRunsBeforePreparationOrDispatch(t *testing.T) {
 				calls++
 				return nil, protocol.ErrPluginUnavailable
 			}}
-			addition := memory.AddV2Input{Scope: "project", CWD: "/original", Content: "original addition"}
-			update := memory.UpdateV2Input{ExpectedRevision: 1, ID: memoryID, Content: new("original patch"), Pinned: new(false)}
+			addition := memory.AddInput{Scope: "project", CWD: "/original", Content: "original addition"}
+			update := memory.UpdateInput{ExpectedRevision: 1, ID: memoryID, Content: new("original patch"), Pinned: new(false)}
 			execute := func() error {
 				switch operation {
 				case "addition":
@@ -80,7 +80,7 @@ func TestMemoryPendingAdmissionRunsBeforePreparationOrDispatch(t *testing.T) {
 					_, err := workbench.ExecuteMemoryUpdate(t.Context(), caller, store, replayPolicy, update)
 					return err
 				case "review":
-					return workbench.ExecuteMemoryReview(t.Context(), caller, store, replayPolicy, memoryID, 1, memory.ReviewV2InputDecisionApprove)
+					return workbench.ExecuteMemoryReview(t.Context(), caller, store, replayPolicy, memoryID, 1, memory.ReviewInputDecisionApprove)
 				default:
 					return workbench.ExecuteMemoryDeletion(t.Context(), caller, store, replayPolicy, memoryID, 1)
 				}
@@ -100,7 +100,7 @@ func TestMemoryPendingAdmissionRunsBeforePreparationOrDispatch(t *testing.T) {
 			var changes []func() error
 			switch operation {
 			case "addition":
-				for _, changed := range []memory.AddV2Input{
+				for _, changed := range []memory.AddInput{
 					{Scope: "user", Content: addition.Content},
 					{Scope: addition.Scope, CWD: "/replacement", Content: addition.Content},
 					{Scope: addition.Scope, CWD: addition.CWD, Content: "changed"},
@@ -111,7 +111,7 @@ func TestMemoryPendingAdmissionRunsBeforePreparationOrDispatch(t *testing.T) {
 					})
 				}
 			case "update":
-				for _, changed := range []memory.UpdateV2Input{
+				for _, changed := range []memory.UpdateInput{
 					{ExpectedRevision: 2, ID: memoryID, Content: new(*update.Content), Pinned: new(false)},
 					{ID: memoryID, Content: new("changed"), Pinned: new(false)},
 					{ID: memoryID, Content: new(*update.Content)},
@@ -124,9 +124,9 @@ func TestMemoryPendingAdmissionRunsBeforePreparationOrDispatch(t *testing.T) {
 				}
 			case "review":
 				changes = append(changes, func() error {
-					return workbench.ExecuteMemoryReview(t.Context(), caller, store, replayPolicy, memoryID, 1, memory.ReviewV2InputDecisionReject)
+					return workbench.ExecuteMemoryReview(t.Context(), caller, store, replayPolicy, memoryID, 1, memory.ReviewInputDecisionReject)
 				}, func() error {
-					return workbench.ExecuteMemoryReview(t.Context(), caller, store, replayPolicy, memoryID, 2, memory.ReviewV2InputDecisionApprove)
+					return workbench.ExecuteMemoryReview(t.Context(), caller, store, replayPolicy, memoryID, 2, memory.ReviewInputDecisionApprove)
 				})
 			case "deletion":
 				changes = append(changes, func() error {
@@ -159,14 +159,14 @@ func TestPendingMemoryReadoutsKeepExactIdentityAndDecision(t *testing.T) {
 		return nil, protocol.ErrPluginUnavailable
 	}}
 	for _, id := range []string{memoryID, "01980000-0000-7000-8000-000000000002"} {
-		if err := workbench.ExecuteMemoryReview(t.Context(), caller, store, policy(t, "store", &now), id, 1, memory.ReviewV2InputDecisionApprove); err == nil {
+		if err := workbench.ExecuteMemoryReview(t.Context(), caller, store, policy(t, "store", &now), id, 1, memory.ReviewInputDecisionApprove); err == nil {
 			t.Fatal("unavailable owner became success")
 		}
 	}
-	if _, _, err := store.PendingMemoryReview(memoryID[:len(memoryID)-1], memory.ReviewV2InputDecisionApprove); err == nil {
+	if _, _, err := store.PendingMemoryReview(memoryID[:len(memoryID)-1], memory.ReviewInputDecisionApprove); err == nil {
 		t.Fatal("ambiguous prefix selected an original intent")
 	}
-	original, found, err := store.PendingMemoryReview(memoryID, memory.ReviewV2InputDecisionReject)
+	original, found, err := store.PendingMemoryReview(memoryID, memory.ReviewInputDecisionReject)
 	if !found || err == nil || original.ID != memoryID || original.Decision != "approve" {
 		t.Fatalf("original review decision was lost: %+v found=%v error=%v", original, found, err)
 	}
@@ -182,7 +182,7 @@ func TestMemoryAdditionScopeMustMatchBeforeRetirement(t *testing.T) {
 	caller := &memoryCommands{callerFunc: func(context.Context, protocol.CallPluginRequest, authoring.CommandID) (*protocol.CallPluginResponse, error) {
 		return &protocol.CallPluginResponse{Output: `{"item":{"scope":"user"}}`}, nil
 	}}
-	_, err = workbench.ExecuteMemoryAddition(t.Context(), caller, store, policy(t, "store", &now), memory.AddV2Input{Scope: "project", CWD: "/original", Content: "fact"})
+	_, err = workbench.ExecuteMemoryAddition(t.Context(), caller, store, policy(t, "store", &now), memory.AddInput{Scope: "project", CWD: "/original", Content: "fact"})
 	if err == nil || !errors.Is(err, authoring.ErrCommandOutcomeUnknown) || len(store.PendingInstalledCommands()) != 1 {
 		t.Fatalf("changed scope retired the original addition: %v", err)
 	}

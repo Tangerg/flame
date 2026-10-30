@@ -4,39 +4,39 @@
     "kind": "command",
     "target": "installation",
     "description": "Create one schedule definition.",
-    "input": "schema.json#/$defs/Method_flame_2eschedules_2fcreate_2ev1Input",
-    "output": "schema.json#/$defs/Method_flame_2eschedules_2fcreate_2ev1Output"
+    "input": "schema.json#/$defs/CreateV1Input",
+    "output": "schema.json#/$defs/CreateV1Output"
   },
   {
     "name": "flame.schedules/delete.v1",
     "kind": "command",
     "target": "installation",
     "description": "Delete one schedule definition.",
-    "input": "schema.json#/$defs/Method_flame_2eschedules_2fdelete_2ev1Input",
-    "output": "schema.json#/$defs/Method_flame_2eschedules_2fdelete_2ev1Output"
+    "input": "schema.json#/$defs/DeleteV1Input",
+    "output": "schema.json#/$defs/DeleteV1Output"
   },
   {
     "name": "flame.schedules/list.v1",
     "kind": "query",
     "target": "installation",
     "description": "List current schedule definitions and revisions.",
-    "input": "schema.json#/$defs/Method_flame_2eschedules_2flist_2ev1Input",
-    "output": "schema.json#/$defs/Method_flame_2eschedules_2flist_2ev1Output"
+    "input": "schema.json#/$defs/ListV1Input",
+    "output": "schema.json#/$defs/ListV1Output"
   },
   {
     "name": "flame.schedules/runNow.v1",
     "kind": "command",
     "target": "installation",
     "description": "Capture and reconcile one manual Run through its original Runtime acceptance.",
-    "input": "schema.json#/$defs/Method_flame_2eschedules_2frunNow_2ev1Input",
-    "output": "schema.json#/$defs/Method_flame_2eschedules_2frunNow_2ev1Output"
+    "input": "schema.json#/$defs/RunNowV1Input",
+    "output": "schema.json#/$defs/RunNowV1Output"
   },
   {
     "name": "flame.schedules/update.v1",
     "kind": "command",
     "target": "installation",
     "description": "Change one schedule using its inspected revision.",
-    "input": "schema.json#/$defs/Method_flame_2eschedules_2fupdate_2ev1Input",
-    "output": "schema.json#/$defs/Method_flame_2eschedules_2fupdate_2ev1Output"
+    "input": "schema.json#/$defs/UpdateV1Input",
+    "output": "schema.json#/$defs/UpdateV1Output"
   }
 ]

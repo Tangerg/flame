@@ -432,7 +432,7 @@ func readScheduleOwner(t *testing.T, packages, dataDirectory string, original sd
 	if err != nil {
 		t.Fatal(err)
 	}
-	page, err := testsupport.CallCapability[testsupport.SchedulesListV1Input, testsupport.SchedulesListV1Output](t.Context(), session, contract, "schedules", testsupport.SchedulesListV1Method, "", testsupport.SchedulesListV1Input{}, sdk.ParamsBase{})
+	page, err := testsupport.CallCapability[testsupport.SchedulesListInput, testsupport.SchedulesPage](t.Context(), session, contract, "schedules", testsupport.SchedulesListV1Method, "", testsupport.SchedulesListInput{}, sdk.ParamsBase{})
 	if err != nil || len(page.Rows) != 1 || page.NextCursor != "" {
 		t.Fatalf("original backend creation: %+v, %v", page, err)
 	}

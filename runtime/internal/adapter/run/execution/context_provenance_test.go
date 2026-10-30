@@ -215,10 +215,10 @@ type provenanceMemoryReader struct {
 
 func (p provenanceMemoryReader) Items(
 	_ context.Context,
-	scope memorycontract.ItemsV2InputScope,
+	scope memorycontract.ItemsInputScope,
 	_ string,
 ) ([]MemoryPromptItem, error) {
-	if scope != memorycontract.ItemsV2InputScopeProject {
+	if scope != memorycontract.ItemsInputScopeProject {
 		return nil, nil
 	}
 	return slices.Clone(p.items), nil

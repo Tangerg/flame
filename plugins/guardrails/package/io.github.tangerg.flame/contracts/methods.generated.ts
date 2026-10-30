@@ -2,32 +2,32 @@
 // Numeric and cross-field constraints remain in schema.json and the business owner.
 import type { JSONNumber } from "@qimu/sdk/json";
 
-export interface Method_flame_2eguardrails_2fget_2dpolicy_2ev1Input {
+export interface GetPolicyV1Input {
 }
 
-export type Method_flame_2eguardrails_2fget_2dpolicy_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ3VhcmRyYWlscy9pbnRlcm5hbC9kb21haW4_5fSummary;
+export type GetPolicyV1Output = Summary;
 
-export type Method_flame_2eguardrails_2freplace_2dpolicy_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ3VhcmRyYWlscy9pbnRlcm5hbC93aXJl_5fReplaceInput;
-
-export type Method_flame_2eguardrails_2freplace_2dpolicy_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ3VhcmRyYWlscy9pbnRlcm5hbC9kb21haW4_5fSummary;
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ3VhcmRyYWlscy9pbnRlcm5hbC93aXJl_5fReplaceInput {
+export interface ReplaceInput {
   expectedRevision: JSONNumber;
   phrases: string[];
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ3VhcmRyYWlscy9pbnRlcm5hbC9kb21haW4_5fSummary {
+export type ReplacePolicyV1Input = ReplaceInput;
+
+export type ReplacePolicyV1Output = Summary;
+
+export interface Summary {
   protectedPhraseCount: JSONNumber;
   revision: JSONNumber;
 }
 
 export interface MethodInputs {
-  "flame.guardrails/get-policy.v1": Method_flame_2eguardrails_2fget_2dpolicy_2ev1Input;
-  "flame.guardrails/replace-policy.v1": Method_flame_2eguardrails_2freplace_2dpolicy_2ev1Input;
+  "flame.guardrails/get-policy.v1": GetPolicyV1Input;
+  "flame.guardrails/replace-policy.v1": ReplacePolicyV1Input;
 }
 export interface MethodOutputs {
-  "flame.guardrails/get-policy.v1": Method_flame_2eguardrails_2fget_2dpolicy_2ev1Output;
-  "flame.guardrails/replace-policy.v1": Method_flame_2eguardrails_2freplace_2dpolicy_2ev1Output;
+  "flame.guardrails/get-policy.v1": GetPolicyV1Output;
+  "flame.guardrails/replace-policy.v1": ReplacePolicyV1Output;
 }
 export const METHODS = {
   "flame.guardrails/get-policy.v1": { kind: "query", target: "installation" },

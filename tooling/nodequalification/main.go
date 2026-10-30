@@ -197,7 +197,7 @@ func qualify(ctx context.Context, directory string) (err error) {
 	if err != nil {
 		return err
 	}
-	var header UsageReportsCaptureV1Output
+	var header UsageReportsHeader
 	if err := json.Unmarshal([]byte(original.Output), &header); err != nil {
 		return err
 	}
@@ -217,7 +217,7 @@ func qualify(ctx context.Context, directory string) (err error) {
 	}
 	read := request
 	read.Method = UsageReportsGetV1Method
-	encoded, err := json.Marshal(UsageReportsGetV1Input{Id: header.Id})
+	encoded, err := json.Marshal(UsageReportsReportInput{Id: header.Id})
 	if err != nil {
 		return err
 	}

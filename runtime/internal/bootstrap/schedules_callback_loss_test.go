@@ -112,7 +112,7 @@ func TestSchedulesReconcilesLostCoreOpeningBeforePrivateAcknowledgement(t *testi
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
 	ready := scheduleToolsReady
 	r.poMCPTools(server, ready)
-	saved := readScheduleCreate(r, scheduleCreateRequest(r, testsupport.SchedulesCreateV1Input{Enabled: true, Title: "original", Instructions: "captured input", Cron: "0 0 1 1 *", TimeZone: "UTC", CWD: cfg.defaultWorkspacePath}), "create")
+	saved := readScheduleCreate(r, scheduleCreateRequest(r, testsupport.SchedulesDraft{Enabled: true, Title: "original", Instructions: "captured input", Cron: "0 0 1 1 *", TimeZone: "UTC", CWD: cfg.defaultWorkspacePath}), "create")
 	request := scheduleRunRequest(r, saved.ID)
 	lost := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "lost-core", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if lost.Failure == nil {

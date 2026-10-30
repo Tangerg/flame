@@ -2,111 +2,109 @@
 // Numeric and cross-field constraints remain in schema.json and the business owner.
 import type { JSONNumber } from "@qimu/sdk/json";
 
-export type Method_flame_2eschedules_2fcreate_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_5fDraft;
+export interface Ack {
+}
 
-export type Method_flame_2eschedules_2fcreate_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_5fSnapshot;
+export type CreateV1Input = Draft;
 
-export type Method_flame_2eschedules_2fdelete_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fItemInput;
+export type CreateV1Output = Snapshot;
 
-export type Method_flame_2eschedules_2fdelete_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fAck;
+export type DeleteV1Input = ItemInput;
 
-export type Method_flame_2eschedules_2flist_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fListInput;
+export type DeleteV1Output = Ack;
 
-export type Method_flame_2eschedules_2flist_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fPage;
+export interface Draft {
+  CWD: string;
+  Cron: string;
+  Enabled: boolean;
+  Instructions: string;
+  ModelSelection: Selection;
+  TimeZone: string;
+  Title: string;
+}
 
-export type Method_flame_2eschedules_2frunNow_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fItemInput;
+export interface ItemInput {
+  ID: string;
+}
 
-export type Method_flame_2eschedules_2frunNow_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2FwcGxpY2F0aW9u_5fRunReference;
+export interface ListInput {
+  Cursor: string;
+  Limit?: JSONNumber;
+}
 
-export type Method_flame_2eschedules_2fupdate_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fUpdateInput;
+export type ListV1Input = ListInput;
 
-export type Method_flame_2eschedules_2fupdate_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_5fSnapshot;
+export type ListV1Output = Page;
 
-export type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fSelection = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fselectionJSON_5bstring_5d;
+export interface ModelPatch {
+  Model?: string;
+  Provider?: string;
+  ReasoningEffort?: string;
+}
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fselectionJSON_5bstring_5d {
+export interface Page {
+  NextCursor: string;
+  Rows: Snapshot[];
+}
+
+export type RunNowV1Input = ItemInput;
+
+export type RunNowV1Output = RunReference;
+
+export interface RunReference {
+  RunID: string;
+  SessionID: string;
+}
+
+export interface Selection {
   model: string;
   provider: string;
   reasoningEffort: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2FwcGxpY2F0aW9u_5fRunReference {
-  RunID: string;
-  SessionID: string;
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_5fDraft {
-  CWD: string;
-  Cron: string;
-  Enabled: boolean;
-  Instructions: string;
-  ModelSelection: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fSelection;
-  TimeZone: string;
-  Title: string;
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_5fSnapshot {
+export interface Snapshot {
   CWD: string;
   CreatedAt: string;
   Cron: string;
   ID: string;
   Instructions: string;
   LastRunAt: string;
-  ModelSelection: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fSelection;
+  ModelSelection: Selection;
   NextRunAt: string;
   Revision: JSONNumber;
   TimeZone: string;
   Title: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fAck {
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fItemInput {
-  ID: string;
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fListInput {
-  Cursor: string;
-  Limit?: JSONNumber;
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fModelPatch {
-  Model?: string;
-  Provider?: string;
-  ReasoningEffort?: string;
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fPage {
-  NextCursor: string;
-  Rows: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_5fSnapshot[];
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fUpdateInput {
+export interface UpdateInput {
   CWD?: string;
   Cron?: string;
   Enabled?: boolean;
   ExpectedRevision: JSONNumber;
   ID: string;
   Instructions?: string;
-  ModelSelection: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_5fModelPatch;
+  ModelSelection: ModelPatch;
   TimeZone?: string;
   Title?: string;
 }
 
+export type UpdateV1Input = UpdateInput;
+
+export type UpdateV1Output = Snapshot;
+
 export interface MethodInputs {
-  "flame.schedules/create.v1": Method_flame_2eschedules_2fcreate_2ev1Input;
-  "flame.schedules/delete.v1": Method_flame_2eschedules_2fdelete_2ev1Input;
-  "flame.schedules/list.v1": Method_flame_2eschedules_2flist_2ev1Input;
-  "flame.schedules/runNow.v1": Method_flame_2eschedules_2frunNow_2ev1Input;
-  "flame.schedules/update.v1": Method_flame_2eschedules_2fupdate_2ev1Input;
+  "flame.schedules/create.v1": CreateV1Input;
+  "flame.schedules/delete.v1": DeleteV1Input;
+  "flame.schedules/list.v1": ListV1Input;
+  "flame.schedules/runNow.v1": RunNowV1Input;
+  "flame.schedules/update.v1": UpdateV1Input;
 }
 export interface MethodOutputs {
-  "flame.schedules/create.v1": Method_flame_2eschedules_2fcreate_2ev1Output;
-  "flame.schedules/delete.v1": Method_flame_2eschedules_2fdelete_2ev1Output;
-  "flame.schedules/list.v1": Method_flame_2eschedules_2flist_2ev1Output;
-  "flame.schedules/runNow.v1": Method_flame_2eschedules_2frunNow_2ev1Output;
-  "flame.schedules/update.v1": Method_flame_2eschedules_2fupdate_2ev1Output;
+  "flame.schedules/create.v1": CreateV1Output;
+  "flame.schedules/delete.v1": DeleteV1Output;
+  "flame.schedules/list.v1": ListV1Output;
+  "flame.schedules/runNow.v1": RunNowV1Output;
+  "flame.schedules/update.v1": UpdateV1Output;
 }
 export const METHODS = {
   "flame.schedules/create.v1": { kind: "command", target: "installation" },

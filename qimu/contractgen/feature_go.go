@@ -1,6 +1,7 @@
 package contractgen
 
 import (
+	"encoding/hex"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"fmt"
@@ -72,26 +73,6 @@ func (f *featureArtifacts) goProjection(output featureGoOptions) ([]byte, error)
 			return nil, err
 		}
 		fmt.Fprintf(&body, "const %s%sMethod = %s\n", prefix, name, strconv.Quote(method.Name))
-		for _, value := range []struct{ suffix, path string }{{"Input", method.Input}, {"Output", method.Output}} {
-			source := strings.TrimPrefix(value.path, "schema.json"+RefPrefix)
-			exported := output.Prefix + name + value.suffix
-			if exported != emitter.names[source] {
-				if err := emitter.declare(exported); err != nil {
-					return nil, err
-				}
-				fmt.Fprintf(&body, "type %s %s\n", exported, emitter.names[source])
-			}
-		}
-		if method.Stream != "" {
-			source := strings.TrimPrefix(method.Stream, "schema.json"+RefPrefix)
-			exported := output.Prefix + name + "Chunk"
-			if exported != emitter.names[source] {
-				if err := emitter.declare(exported); err != nil {
-					return nil, err
-				}
-				fmt.Fprintf(&body, "type %s %s\n", exported, emitter.names[source])
-			}
-		}
 		body.WriteString("\n")
 	}
 	var result strings.Builder
@@ -141,7 +122,7 @@ func goFeatureIdentifier(value string) string {
 	}
 	name := out.String()
 	if !token.IsIdentifier(name) {
-		return "Field" + featureTypeName(value)
+		return "Value" + strings.ToUpper(hex.EncodeToString([]byte(value)))
 	}
 	return name
 }
@@ -262,8 +243,8 @@ func featureUnsigned(fields map[string]jsontext.Value) bool {
 	return false
 }
 
-// A schema reference keeps one Go representation. Public method names replace
-// opaque source-definition keys without introducing a second enum declaration.
+// A schema reference keeps one Go representation, named by its definition.
+// Method frames add no second name; a frame is named only when it is inline.
 func (f *featureArtifacts) goNames(prefix string) (featureGo, map[string]string, error) {
 	emitter := featureGo{names: make(map[string]string), enums: make(map[string][]string), namedEnums: make(map[string]bool), declared: make(map[string]bool)}
 	aliases := make(map[string]string)
@@ -294,23 +275,6 @@ func (f *featureArtifacts) goNames(prefix string) (featureGo, map[string]string,
 			return "", fmt.Errorf("feature Go unresolved reference %s", name)
 		}
 		return name, nil
-	}
-	preferred := make(map[string]bool)
-	for _, method := range f.methods {
-		name := goFeatureIdentifier(method.Name[strings.LastIndex(method.Name, "/")+1:])
-		for _, projection := range []struct{ suffix, path string }{{"Input", method.Input}, {"Output", method.Output}, {"Chunk", method.Stream}} {
-			if projection.path == "" {
-				continue
-			}
-			canonical, err := resolve(strings.TrimPrefix(projection.path, "schema.json"+RefPrefix))
-			if err != nil {
-				return emitter, nil, err
-			}
-			if !preferred[canonical] {
-				emitter.names[canonical] = prefix + name + projection.suffix
-				preferred[canonical] = true
-			}
-		}
 	}
 	for name := range aliases {
 		canonical, err := resolve(name)

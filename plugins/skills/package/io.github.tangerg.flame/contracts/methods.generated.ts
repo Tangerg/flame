@@ -2,49 +2,49 @@
 // Numeric and cross-field constraints remain in schema.json and the business owner.
 import type { JSONNumber } from "@qimu/sdk/json";
 
-export type Method_flame_2eskill_2dlearning_2farchive_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fArchiveRequest;
-
-export type Method_flame_2eskill_2dlearning_2farchive_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fArchiveAdvice;
-
-export type Method_flame_2eskill_2dlearning_2fmine_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fRun;
-
-export type Method_flame_2eskill_2dlearning_2fmine_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fMineResult;
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fArchiveAdvice {
+export interface ArchiveAdvice {
   afterMillis?: JSONNumber;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fArchiveRequest {
+export interface ArchiveRequest {
   now: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fMineResult {
-  proposal?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fProposal;
+export type ArchiveV1Input = ArchiveRequest;
+
+export type ArchiveV1Output = ArchiveAdvice;
+
+export interface MineResult {
+  proposal?: Proposal;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fProposal {
+export type MineV1Input = Run;
+
+export type MineV1Output = MineResult;
+
+export interface Proposal {
   revises: boolean;
-  skill: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fSkill;
+  skill: Skill;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fRun {
+export interface Run {
   sessionId: string;
   toolCalls: JSONNumber;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fSkill {
+export interface Skill {
   description: string;
   instructions: string;
   name: string;
 }
 
 export interface MethodInputs {
-  "flame.skill-learning/archive.v1": Method_flame_2eskill_2dlearning_2farchive_2ev1Input;
-  "flame.skill-learning/mine.v1": Method_flame_2eskill_2dlearning_2fmine_2ev1Input;
+  "flame.skill-learning/archive.v1": ArchiveV1Input;
+  "flame.skill-learning/mine.v1": MineV1Input;
 }
 export interface MethodOutputs {
-  "flame.skill-learning/archive.v1": Method_flame_2eskill_2dlearning_2farchive_2ev1Output;
-  "flame.skill-learning/mine.v1": Method_flame_2eskill_2dlearning_2fmine_2ev1Output;
+  "flame.skill-learning/archive.v1": ArchiveV1Output;
+  "flame.skill-learning/mine.v1": MineV1Output;
 }
 export const METHODS = {
   "flame.skill-learning/archive.v1": { kind: "command", target: "installation" },

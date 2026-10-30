@@ -34,7 +34,7 @@ type scheduleFormDraft struct {
 	enabled      bool
 }
 
-func newScheduleFormDraft(mode scheduleFormMode, scheduled schedule.CreateV1Output, defaultWorkspace string) scheduleFormDraft {
+func newScheduleFormDraft(mode scheduleFormMode, scheduled schedule.Snapshot, defaultWorkspace string) scheduleFormDraft {
 	if mode == scheduleFormUpdate {
 		return scheduleFormDraft{
 			title: scheduled.Title, instructions: scheduled.Instructions, workspace: scheduled.CWD,
@@ -46,20 +46,20 @@ func newScheduleFormDraft(mode scheduleFormMode, scheduled schedule.CreateV1Outp
 	return scheduleFormDraft{workspace: defaultWorkspace, cron: defaultScheduleCron, timeZone: hostZone, enabled: true}
 }
 
-func (s scheduleFormDraft) candidate() (schedule.CreateV1Input, error) {
+func (s scheduleFormDraft) candidate() (schedule.Draft, error) {
 	if err := validateScheduleModelPair(s.provider, s.model); err != nil {
-		return schedule.CreateV1Input{}, err
+		return schedule.Draft{}, err
 	}
-	request := schedule.CreateV1Input{Title: strings.TrimSpace(s.title), Instructions: strings.TrimSpace(s.instructions), CWD: strings.TrimSpace(s.workspace), Cron: strings.TrimSpace(s.cron), TimeZone: strings.TrimSpace(s.timeZone), Enabled: true}
+	request := schedule.Draft{Title: strings.TrimSpace(s.title), Instructions: strings.TrimSpace(s.instructions), CWD: strings.TrimSpace(s.workspace), Cron: strings.TrimSpace(s.cron), TimeZone: strings.TrimSpace(s.timeZone), Enabled: true}
 	request.ModelSelection.Provider, request.ModelSelection.Model = s.provider, s.model
 	if request.Instructions == "" || request.Cron == "" || request.TimeZone == "" {
-		return schedule.CreateV1Input{}, errors.New("instructions, cron and time zone are required")
+		return schedule.Draft{}, errors.New("instructions, cron and time zone are required")
 	}
 	return request, nil
 }
 
-func (s scheduleFormDraft) patch(original schedule.CreateV1Output) (schedule.UpdateV1Input, bool, error) {
-	request := schedule.UpdateV1Input{ID: original.ID, ExpectedRevision: original.Revision}
+func (s scheduleFormDraft) patch(original schedule.Snapshot) (schedule.UpdateInput, bool, error) {
+	request := schedule.UpdateInput{ID: original.ID, ExpectedRevision: original.Revision}
 	title := strings.TrimSpace(s.title)
 	if title != original.Title {
 		request.Title = &title
@@ -67,7 +67,7 @@ func (s scheduleFormDraft) patch(original schedule.CreateV1Output) (schedule.Upd
 	instructions := strings.TrimSpace(s.instructions)
 	if instructions != original.Instructions {
 		if instructions == "" {
-			return schedule.UpdateV1Input{}, false, errors.New("instructions are required")
+			return schedule.UpdateInput{}, false, errors.New("instructions are required")
 		}
 		request.Instructions = &instructions
 	}
@@ -78,21 +78,21 @@ func (s scheduleFormDraft) patch(original schedule.CreateV1Output) (schedule.Upd
 	provider, model := s.provider, s.model
 	if provider != original.ModelSelection.Provider || model != original.ModelSelection.Model {
 		if err := validateScheduleModelPair(provider, model); err != nil {
-			return schedule.UpdateV1Input{}, false, err
+			return schedule.UpdateInput{}, false, err
 		}
 		request.ModelSelection.Provider, request.ModelSelection.Model = &provider, &model
 	}
 	cron := strings.TrimSpace(s.cron)
 	if cron != original.Cron {
 		if cron == "" {
-			return schedule.UpdateV1Input{}, false, errors.New("cron is required")
+			return schedule.UpdateInput{}, false, errors.New("cron is required")
 		}
 		request.Cron = &cron
 	}
 	timeZone := strings.TrimSpace(s.timeZone)
 	if timeZone != original.TimeZone {
 		if timeZone == "" {
-			return schedule.UpdateV1Input{}, false, errors.New("time zone is required")
+			return schedule.UpdateInput{}, false, errors.New("time zone is required")
 		}
 		request.TimeZone = &timeZone
 	}
@@ -106,11 +106,11 @@ func (s scheduleFormDraft) patch(original schedule.CreateV1Output) (schedule.Upd
 	return request, true, nil
 }
 
-func scheduleRequestHasChanges(request schedule.UpdateV1Input) bool {
+func scheduleRequestHasChanges(request schedule.UpdateInput) bool {
 	return request.Title != nil || request.Instructions != nil || request.CWD != nil || request.ModelSelection.Provider != nil || request.ModelSelection.Model != nil || request.ModelSelection.ReasoningEffort != nil || request.Cron != nil || request.TimeZone != nil || request.Enabled != nil
 }
 
-func (a *app) openScheduleForm(mode scheduleFormMode, scheduled schedule.CreateV1Output) {
+func (a *app) openScheduleForm(mode scheduleFormMode, scheduled schedule.Snapshot) {
 	if a.dialogs.scheduleDialog != nil {
 		a.dialogs.scheduleDialog.Controller().Dismiss()
 		a.dialogs.scheduleDialog = nil

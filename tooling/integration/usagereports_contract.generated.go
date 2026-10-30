@@ -3,58 +3,46 @@ package integration
 
 import "time"
 
-type UsageReportsCaptureV1InputPeriod string
+type UsageReportsCaptureInputPeriod string
 
 const (
-	UsageReportsCaptureV1InputPeriodDaily  UsageReportsCaptureV1InputPeriod = "daily"
-	UsageReportsCaptureV1InputPeriodWeekly UsageReportsCaptureV1InputPeriod = "weekly"
+	UsageReportsCaptureInputPeriodDaily  UsageReportsCaptureInputPeriod = "daily"
+	UsageReportsCaptureInputPeriodWeekly UsageReportsCaptureInputPeriod = "weekly"
 )
 
-type UsageReportsCaptureV1OutputPeriod string
+type UsageReportsHeaderPeriod string
 
 const (
-	UsageReportsCaptureV1OutputPeriodDaily  UsageReportsCaptureV1OutputPeriod = "daily"
-	UsageReportsCaptureV1OutputPeriodWeekly UsageReportsCaptureV1OutputPeriod = "weekly"
+	UsageReportsHeaderPeriodDaily  UsageReportsHeaderPeriod = "daily"
+	UsageReportsHeaderPeriodWeekly UsageReportsHeaderPeriod = "weekly"
 )
 
-type UsageReportsGetV1OutputPeriod string
+type UsageReportsReportGithubComTangergFlameRuntimeProtocolUsageSummaryPeriod string
 
 const (
-	UsageReportsGetV1OutputPeriodDaily  UsageReportsGetV1OutputPeriod = "daily"
-	UsageReportsGetV1OutputPeriodWeekly UsageReportsGetV1OutputPeriod = "weekly"
+	UsageReportsReportGithubComTangergFlameRuntimeProtocolUsageSummaryPeriodDaily  UsageReportsReportGithubComTangergFlameRuntimeProtocolUsageSummaryPeriod = "daily"
+	UsageReportsReportGithubComTangergFlameRuntimeProtocolUsageSummaryPeriodWeekly UsageReportsReportGithubComTangergFlameRuntimeProtocolUsageSummaryPeriod = "weekly"
 )
+
+type UsageReportsCaptureInput struct {
+	Period UsageReportsCaptureInputPeriod `json:"period"`
+}
 
 type UsageReportsDeleteV1Output bool
+
+type UsageReportsHeader struct {
+	Id         string                   `json:"id"`
+	ObservedAt time.Time                `json:"observedAt"`
+	Period     UsageReportsHeaderPeriod `json:"period"`
+	Since      *time.Time               `json:"since,omitzero"`
+}
 
 type UsageReportsListV1Input struct {
 }
 
-type UsageReportsListV1Output []UsageReportsCaptureV1Output
+type UsageReportsListV1Output []UsageReportsHeader
 
-type UsageReportsCaptureV1Input struct {
-	Period UsageReportsCaptureV1InputPeriod `json:"period"`
-}
-
-type UsageReportsCaptureV1Output struct {
-	Id         string                            `json:"id"`
-	ObservedAt time.Time                         `json:"observedAt"`
-	Period     UsageReportsCaptureV1OutputPeriod `json:"period"`
-	Since      *time.Time                        `json:"since,omitzero"`
-}
-
-type UsageReportsDeleteV1Input struct {
-	Id string `json:"id"`
-}
-
-type UsageReportsGetV1Output struct {
-	Id         string                                                                                         `json:"id"`
-	ObservedAt time.Time                                                                                      `json:"observedAt"`
-	Period     UsageReportsGetV1OutputPeriod                                                                  `json:"period"`
-	Since      *time.Time                                                                                     `json:"since,omitzero"`
-	Summary    UsageReportsMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageSummary `json:"summary"`
-}
-
-type UsageReportsMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fModelUsage struct {
+type UsageReportsModelUsage struct {
 	CacheReadTokens  *int64   `json:"cacheReadTokens,omitzero"`
 	CacheWriteTokens *int64   `json:"cacheWriteTokens,omitzero"`
 	CostUsd          *float64 `json:"costUsd,omitzero"`
@@ -63,14 +51,26 @@ type UsageReportsMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9
 	ReasoningTokens  *int64   `json:"reasoningTokens,omitzero"`
 }
 
-type UsageReportsMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageBucket struct {
-	Coverage        UsageReportsMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageCoverage `json:"coverage"`
-	Key             string                                                                                          `json:"key"`
-	RecordedCostUsd *float64                                                                                        `json:"recordedCostUsd,omitzero"`
-	Total           UsageReportsMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fModelUsage    `json:"total"`
+type UsageReportsReportGithubComTangergFlameRuntimeProtocolUsageSummary struct {
+	Id         string                                                                   `json:"id"`
+	ObservedAt time.Time                                                                `json:"observedAt"`
+	Period     UsageReportsReportGithubComTangergFlameRuntimeProtocolUsageSummaryPeriod `json:"period"`
+	Since      *time.Time                                                               `json:"since,omitzero"`
+	Summary    UsageReportsUsageSummary                                                 `json:"summary"`
 }
 
-type UsageReportsMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageCoverage struct {
+type UsageReportsReportInput struct {
+	Id string `json:"id"`
+}
+
+type UsageReportsUsageBucket struct {
+	Coverage        UsageReportsUsageCoverage `json:"coverage"`
+	Key             string                    `json:"key"`
+	RecordedCostUsd *float64                  `json:"recordedCostUsd,omitzero"`
+	Total           UsageReportsModelUsage    `json:"total"`
+}
+
+type UsageReportsUsageCoverage struct {
 	Calls          int64 `json:"calls"`
 	CompletedCalls int64 `json:"completedCalls"`
 	FailedCalls    int64 `json:"failedCalls"`
@@ -80,19 +80,19 @@ type UsageReportsMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9
 	UnknownCalls   int64 `json:"unknownCalls"`
 }
 
-type UsageReportsMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageSummary struct {
-	ByDay           []UsageReportsMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageBucket `json:"byDay"`
-	ByModel         []UsageReportsMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageBucket `json:"byModel"`
-	ByOrigin        []UsageReportsMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageBucket `json:"byOrigin"`
-	ByProvider      []UsageReportsMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageBucket `json:"byProvider"`
-	ByScope         []UsageReportsMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageBucket `json:"byScope"`
-	Coverage        UsageReportsMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageCoverage `json:"coverage"`
-	ObservedAt      time.Time                                                                                       `json:"observedAt"`
-	RecordedCostUsd *float64                                                                                        `json:"recordedCostUsd,omitzero"`
-	Runs            int64                                                                                           `json:"runs"`
-	Sessions        int64                                                                                           `json:"sessions"`
-	Since           *time.Time                                                                                      `json:"since,omitzero"`
-	Total           UsageReportsMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fModelUsage    `json:"total"`
+type UsageReportsUsageSummary struct {
+	ByDay           []UsageReportsUsageBucket `json:"byDay"`
+	ByModel         []UsageReportsUsageBucket `json:"byModel"`
+	ByOrigin        []UsageReportsUsageBucket `json:"byOrigin"`
+	ByProvider      []UsageReportsUsageBucket `json:"byProvider"`
+	ByScope         []UsageReportsUsageBucket `json:"byScope"`
+	Coverage        UsageReportsUsageCoverage `json:"coverage"`
+	ObservedAt      time.Time                 `json:"observedAt"`
+	RecordedCostUsd *float64                  `json:"recordedCostUsd,omitzero"`
+	Runs            int64                     `json:"runs"`
+	Sessions        int64                     `json:"sessions"`
+	Since           *time.Time                `json:"since,omitzero"`
+	Total           UsageReportsModelUsage    `json:"total"`
 }
 
 const UsageReportsCapabilityJSON = "{\"protocol\":\"io.github.tangerg.qimu/portable/1\",\"reference\":\"flame.usage-reports.v1\",\"composition\":\"collection\",\"scope\":\"installation\",\"methods\":[{\"name\":\"flame.usage-reports/capture.v1\",\"kind\":\"command\",\"target\":\"installation\",\"description\":\"Capture a daily or weekly core accounting report with its actual observation time and lower bound. Totals remain core-owned; saved reports are immutable.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_CaptureInput\":{\"additionalProperties\":false,\"properties\":{\"period\":{\"enum\":[\"daily\",\"weekly\"],\"type\":\"string\"}},\"required\":[\"period\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"period\":{\"enum\":[\"daily\",\"weekly\"],\"type\":\"string\"}},\"required\":[\"period\"],\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_Header\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"observedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"period\":{\"enum\":[\"daily\",\"weekly\"],\"type\":\"string\"},\"since\":{\"format\":\"date-time\",\"type\":\"string\"}},\"required\":[\"id\",\"period\",\"observedAt\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"observedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"period\":{\"enum\":[\"daily\",\"weekly\"],\"type\":\"string\"},\"since\":{\"format\":\"date-time\",\"type\":\"string\"}},\"required\":[\"id\",\"period\",\"observedAt\"],\"type\":\"object\"}},{\"name\":\"flame.usage-reports/delete.v1\",\"kind\":\"command\",\"target\":\"installation\",\"description\":\"Remove one immutable saved report without changing core accounting evidence or totals.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_ReportInput\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"maxLength\":64,\"minLength\":64,\"type\":\"string\"}},\"required\":[\"id\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"id\":{\"maxLength\":64,\"minLength\":64,\"type\":\"string\"}},\"required\":[\"id\"],\"type\":\"object\"},\"output\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"type\":\"boolean\"}},{\"name\":\"flame.usage-reports/get.v1\",\"kind\":\"query\",\"target\":\"installation\",\"description\":\"Read one saved core report verbatim, preserving missing usage, unknown prices and recorded zeros.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_ReportInput\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"maxLength\":64,\"minLength\":64,\"type\":\"string\"}},\"required\":[\"id\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"id\":{\"maxLength\":64,\"minLength\":64,\"type\":\"string\"}},\"required\":[\"id\"],\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_Report[github.com/Tangerg/flame/runtime/protocol.UsageSummary]\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"observedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"period\":{\"enum\":[\"daily\",\"weekly\"],\"type\":\"string\"},\"since\":{\"format\":\"date-time\",\"type\":\"string\"},\"summary\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_UsageSummary\"}},\"required\":[\"id\",\"period\",\"observedAt\",\"summary\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_ModelUsage\":{\"additionalProperties\":false,\"properties\":{\"cacheReadTokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"cacheWriteTokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"costUsd\":{\"type\":\"number\"},\"inputTokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"outputTokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"reasoningTokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_UsageBucket\":{\"additionalProperties\":false,\"properties\":{\"coverage\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_UsageCoverage\"},\"key\":{\"type\":\"string\"},\"recordedCostUsd\":{\"type\":\"number\"},\"total\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_ModelUsage\"}},\"required\":[\"key\",\"total\",\"coverage\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_UsageCoverage\":{\"additionalProperties\":false,\"properties\":{\"calls\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"completedCalls\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"failedCalls\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"pricedCalls\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"reportedCalls\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"startedCalls\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"unknownCalls\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"calls\",\"reportedCalls\",\"pricedCalls\",\"startedCalls\",\"completedCalls\",\"failedCalls\",\"unknownCalls\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_UsageSummary\":{\"additionalProperties\":false,\"properties\":{\"byDay\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_UsageBucket\"},\"type\":\"array\"},\"byModel\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_UsageBucket\"},\"type\":\"array\"},\"byOrigin\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_UsageBucket\"},\"type\":\"array\"},\"byProvider\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_UsageBucket\"},\"type\":\"array\"},\"byScope\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_UsageBucket\"},\"type\":\"array\"},\"coverage\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_UsageCoverage\"},\"observedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"recordedCostUsd\":{\"type\":\"number\"},\"runs\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"sessions\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"since\":{\"format\":\"date-time\",\"type\":\"string\"},\"total\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_ModelUsage\"}},\"required\":[\"total\",\"coverage\",\"observedAt\",\"byProvider\",\"byModel\",\"byDay\",\"byOrigin\",\"byScope\",\"sessions\",\"runs\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"observedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"period\":{\"enum\":[\"daily\",\"weekly\"],\"type\":\"string\"},\"since\":{\"format\":\"date-time\",\"type\":\"string\"},\"summary\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_UsageSummary\"}},\"required\":[\"id\",\"period\",\"observedAt\",\"summary\"],\"type\":\"object\"}},{\"name\":\"flame.usage-reports/list.v1\",\"kind\":\"query\",\"target\":\"installation\",\"description\":\"List saved accounting report headers in capture order, newest first.\",\"input\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_Header\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"observedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"period\":{\"enum\":[\"daily\",\"weekly\"],\"type\":\"string\"},\"since\":{\"format\":\"date-time\",\"type\":\"string\"}},\"required\":[\"id\",\"period\",\"observedAt\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_Header\"},\"type\":\"array\"}}]}"
@@ -102,7 +102,5 @@ const UsageReportsCaptureV1Method = "flame.usage-reports/capture.v1"
 const UsageReportsDeleteV1Method = "flame.usage-reports/delete.v1"
 
 const UsageReportsGetV1Method = "flame.usage-reports/get.v1"
-
-type UsageReportsGetV1Input UsageReportsDeleteV1Input
 
 const UsageReportsListV1Method = "flame.usage-reports/list.v1"

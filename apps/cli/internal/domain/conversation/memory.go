@@ -8,10 +8,10 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-func ParseMemoryScope(value string) (memory.UpdateV2OutputScope, error) {
-	scope := memory.UpdateV2OutputScope(strings.TrimSpace(value))
+func ParseMemoryScope(value string) (memory.ItemSnapshotScope, error) {
+	scope := memory.ItemSnapshotScope(strings.TrimSpace(value))
 	workspace := ""
-	if scope == memory.UpdateV2OutputScopeProject {
+	if scope == memory.ItemSnapshotScopeProject {
 		workspace = "/"
 	}
 	if _, err := NewMemoryTarget(scope, workspace); err != nil {
@@ -22,22 +22,22 @@ func ParseMemoryScope(value string) (memory.UpdateV2OutputScope, error) {
 
 // MemoryTarget couples a scope to exactly the workspace context it requires.
 type MemoryTarget struct {
-	Scope     memory.UpdateV2OutputScope
+	Scope     memory.ItemSnapshotScope
 	Workspace string
 }
 
-func NewMemoryTarget(scope memory.UpdateV2OutputScope, workspace string) (MemoryTarget, error) {
+func NewMemoryTarget(scope memory.ItemSnapshotScope, workspace string) (MemoryTarget, error) {
 	target := MemoryTarget{Scope: scope, Workspace: workspace}
 	return target, target.Validate()
 }
 
 func (t MemoryTarget) Validate() error {
 	switch t.Scope {
-	case memory.UpdateV2OutputScopeUser:
+	case memory.ItemSnapshotScopeUser:
 		if t.Workspace != "" {
 			return fmt.Errorf("agent memory user target cannot carry a workspace")
 		}
-	case memory.UpdateV2OutputScopeProject:
+	case memory.ItemSnapshotScopeProject:
 		if t.Workspace == "" {
 			return fmt.Errorf("agent memory project target requires a workspace")
 		}

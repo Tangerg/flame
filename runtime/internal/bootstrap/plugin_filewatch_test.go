@@ -99,12 +99,12 @@ func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t
 			}
 		}
 	}
-	status := func(phase testsupport.FilewatchStatusV1OutputPhase, revision int64) bool {
-		var value testsupport.FilewatchStatusV1Output
+	status := func(phase testsupport.FilewatchStatusPhase, revision int64) bool {
+		var value testsupport.FilewatchStatus
 		if err := json.Unmarshal([]byte(call(testsupport.FilewatchStatusV1Method, struct{}{}, "")), &value); err != nil {
 			t.Fatal(err)
 		}
-		if value.Phase == testsupport.FilewatchStatusV1OutputPhaseFailed {
+		if value.Phase == testsupport.FilewatchStatusPhaseFailed {
 			t.Fatalf("published source failed: %+v", value)
 		}
 		return value.Phase == phase && value.Revision == revision
@@ -116,9 +116,9 @@ func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t
 		}
 		return value
 	}
-	capture := func(id string) testsupport.FilewatchEventV1Output {
-		var value testsupport.FilewatchEventV1Output
-		if err := json.Unmarshal([]byte(call(testsupport.FilewatchEventV1Method, testsupport.FilewatchEventV1Input{Id: id}, "")), &value); err != nil {
+	capture := func(id string) testsupport.FilewatchEvent {
+		var value testsupport.FilewatchEvent
+		if err := json.Unmarshal([]byte(call(testsupport.FilewatchEventV1Method, testsupport.FilewatchEventInput{Id: id}, "")), &value); err != nil {
 			t.Fatal(err)
 		}
 		return value
@@ -128,11 +128,11 @@ func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t
 	if err := os.WriteFile(path, []byte("initial baseline"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	draft := testsupport.FilewatchEventV1Output{}.Capture.Trigger
+	draft := testsupport.FilewatchEvent{}.Capture.Trigger
 	draft.Title, draft.Workspace, draft.Paths = "Original file trigger", workspace.Ref.Path, []string{"source.txt"}
 	draft.Instructions, draft.Provider, draft.Model = "Inspect the original observed source.", cfg.provider, cfg.model
-	configured := call(testsupport.FilewatchConfigureV1Method, testsupport.FilewatchConfigureV1Input{ExpectedRevision: 1, Trigger: &draft}, "configure-source")
-	wait(func() bool { return status(testsupport.FilewatchStatusV1OutputPhaseWatching, 2) })
+	configured := call(testsupport.FilewatchConfigureV1Method, testsupport.FilewatchConfigureInput{ExpectedRevision: 1, Trigger: &draft}, "configure-source")
+	wait(func() bool { return status(testsupport.FilewatchStatusPhaseWatching, 2) })
 	if err := os.WriteFile(path, []byte("external source edit"), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +142,7 @@ func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t
 	case <-time.After(10 * time.Second):
 		t.Fatal("external file edit did not reach canonical Run admission")
 	}
-	original := testsupport.FilewatchEventV1Output{}.Capture
+	original := testsupport.FilewatchEvent{}.Capture
 	wait(func() bool {
 		values := events()
 		if len(values) != 1 {
@@ -157,8 +157,8 @@ func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t
 	if original.RunId != accepted.RunID || original.Invocation.Origin != string(extension.Automatic) || original.Invocation.Target.Reference != installed.ID || original.Kind != "changed" {
 		t.Fatalf("capture differs from canonical opening: %+v %+v", original, accepted)
 	}
-	call(testsupport.FilewatchConfigureV1Method, testsupport.FilewatchConfigureV1Input{ExpectedRevision: 2, Trigger: nil}, "disable-source")
-	wait(func() bool { return status(testsupport.FilewatchStatusV1OutputPhaseDisabled, 3) })
+	call(testsupport.FilewatchConfigureV1Method, testsupport.FilewatchConfigureInput{ExpectedRevision: 2, Trigger: nil}, "disable-source")
+	wait(func() bool { return status(testsupport.FilewatchStatusPhaseDisabled, 3) })
 	wait(func() bool {
 		run := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: accepted.RunID}, "").(*protocol.RunRef)
 		if run.SessionID != original.SessionId {
@@ -175,17 +175,17 @@ func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t
 	if values := events(); !reflect.DeepEqual(capture(values[0].Id).Capture, original) || calls.Load() != 1 {
 		t.Fatalf("recovery changed intent or reexecuted the accepted Run: %+v calls=%d", values, calls.Load())
 	}
-	if replay := call(testsupport.FilewatchConfigureV1Method, testsupport.FilewatchConfigureV1Input{ExpectedRevision: 1, Trigger: &draft}, "configure-source"); replay != configured {
+	if replay := call(testsupport.FilewatchConfigureV1Method, testsupport.FilewatchConfigureInput{ExpectedRevision: 1, Trigger: &draft}, "configure-source"); replay != configured {
 		t.Fatal("configure replay replaced the disabled rule")
 	}
-	wait(func() bool { return status(testsupport.FilewatchStatusV1OutputPhaseDisabled, 3) })
-	var disabled testsupport.FilewatchGetV1Output
+	wait(func() bool { return status(testsupport.FilewatchStatusPhaseDisabled, 3) })
+	var disabled testsupport.FilewatchSnapshot
 	if err := json.Unmarshal([]byte(call(testsupport.FilewatchGetV1Method, struct{}{}, "")), &disabled); err != nil || disabled.Revision != 3 || disabled.Trigger != nil {
 		t.Fatalf("disabled rule changed after receipt replay: %+v %v", disabled, err)
 	}
 	draft.Instructions = "Inspect the second observed source."
-	call(testsupport.FilewatchConfigureV1Method, testsupport.FilewatchConfigureV1Input{ExpectedRevision: 3, Trigger: &draft}, "rearm-source")
-	wait(func() bool { return status(testsupport.FilewatchStatusV1OutputPhaseWatching, 4) })
+	call(testsupport.FilewatchConfigureV1Method, testsupport.FilewatchConfigureInput{ExpectedRevision: 3, Trigger: &draft}, "rearm-source")
+	wait(func() bool { return status(testsupport.FilewatchStatusPhaseWatching, 4) })
 	if err := os.WriteFile(path, []byte("second external source edit"), 0600); err != nil {
 		t.Fatal(err)
 	}

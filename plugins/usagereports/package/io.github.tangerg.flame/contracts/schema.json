@@ -1,36 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
-    "Method_flame_2eusage_2dreports_2fcapture_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fCaptureInput"
-    },
-    "Method_flame_2eusage_2dreports_2fcapture_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fHeader"
-    },
-    "Method_flame_2eusage_2dreports_2fdelete_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fReportInput"
-    },
-    "Method_flame_2eusage_2dreports_2fdelete_2ev1Output": {
-      "type": "boolean"
-    },
-    "Method_flame_2eusage_2dreports_2fget_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fReportInput"
-    },
-    "Method_flame_2eusage_2dreports_2fget_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fReport_5bgithub_2ecom_2fTangerg_2fflame_2fruntime_2fprotocol_2eUsageSummary_5d"
-    },
-    "Method_flame_2eusage_2dreports_2flist_2ev1Input": {
-      "additionalProperties": false,
-      "properties": {},
-      "type": "object"
-    },
-    "Method_flame_2eusage_2dreports_2flist_2ev1Output": {
-      "items": {
-        "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fHeader"
-      },
-      "type": "array"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fCaptureInput": {
+    "CaptureInput": {
       "additionalProperties": false,
       "properties": {
         "period": {
@@ -46,7 +17,25 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fHeader": {
+    "CaptureV1Input": {
+      "$ref": "#/$defs/CaptureInput"
+    },
+    "CaptureV1Output": {
+      "$ref": "#/$defs/Header"
+    },
+    "DeleteV1Input": {
+      "$ref": "#/$defs/ReportInput"
+    },
+    "DeleteV1Output": {
+      "type": "boolean"
+    },
+    "GetV1Input": {
+      "$ref": "#/$defs/ReportInput"
+    },
+    "GetV1Output": {
+      "$ref": "#/$defs/ReportGithubComTangergFlameRuntimeProtocolUsageSummary"
+    },
+    "Header": {
       "additionalProperties": false,
       "properties": {
         "id": {
@@ -75,54 +64,18 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fReportInput": {
+    "ListV1Input": {
       "additionalProperties": false,
-      "properties": {
-        "id": {
-          "maxLength": 64,
-          "minLength": 64,
-          "type": "string"
-        }
-      },
-      "required": [
-        "id"
-      ],
+      "properties": {},
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvdXNhZ2VyZXBvcnRzL2JhY2tlbmQvcnBj_5fReport_5bgithub_2ecom_2fTangerg_2fflame_2fruntime_2fprotocol_2eUsageSummary_5d": {
-      "additionalProperties": false,
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "observedAt": {
-          "format": "date-time",
-          "type": "string"
-        },
-        "period": {
-          "enum": [
-            "daily",
-            "weekly"
-          ],
-          "type": "string"
-        },
-        "since": {
-          "format": "date-time",
-          "type": "string"
-        },
-        "summary": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageSummary"
-        }
+    "ListV1Output": {
+      "items": {
+        "$ref": "#/$defs/Header"
       },
-      "required": [
-        "id",
-        "period",
-        "observedAt",
-        "summary"
-      ],
-      "type": "object"
+      "type": "array"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fModelUsage": {
+    "ModelUsage": {
       "additionalProperties": false,
       "properties": {
         "cacheReadTokens": {
@@ -176,11 +129,58 @@
       },
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageBucket": {
+    "ReportGithubComTangergFlameRuntimeProtocolUsageSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "observedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "period": {
+          "enum": [
+            "daily",
+            "weekly"
+          ],
+          "type": "string"
+        },
+        "since": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "summary": {
+          "$ref": "#/$defs/UsageSummary"
+        }
+      },
+      "required": [
+        "id",
+        "period",
+        "observedAt",
+        "summary"
+      ],
+      "type": "object"
+    },
+    "ReportInput": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 64,
+          "minLength": 64,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "UsageBucket": {
       "additionalProperties": false,
       "properties": {
         "coverage": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageCoverage"
+          "$ref": "#/$defs/UsageCoverage"
         },
         "key": {
           "type": "string"
@@ -189,7 +189,7 @@
           "type": "number"
         },
         "total": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fModelUsage"
+          "$ref": "#/$defs/ModelUsage"
         }
       },
       "required": [
@@ -199,7 +199,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageCoverage": {
+    "UsageCoverage": {
       "additionalProperties": false,
       "properties": {
         "calls": {
@@ -277,41 +277,41 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageSummary": {
+    "UsageSummary": {
       "additionalProperties": false,
       "properties": {
         "byDay": {
           "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageBucket"
+            "$ref": "#/$defs/UsageBucket"
           },
           "type": "array"
         },
         "byModel": {
           "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageBucket"
+            "$ref": "#/$defs/UsageBucket"
           },
           "type": "array"
         },
         "byOrigin": {
           "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageBucket"
+            "$ref": "#/$defs/UsageBucket"
           },
           "type": "array"
         },
         "byProvider": {
           "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageBucket"
+            "$ref": "#/$defs/UsageBucket"
           },
           "type": "array"
         },
         "byScope": {
           "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageBucket"
+            "$ref": "#/$defs/UsageBucket"
           },
           "type": "array"
         },
         "coverage": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fUsageCoverage"
+          "$ref": "#/$defs/UsageCoverage"
         },
         "observedAt": {
           "format": "date-time",
@@ -343,7 +343,7 @@
           "type": "string"
         },
         "total": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvcHJvdG9jb2w_5fModelUsage"
+          "$ref": "#/$defs/ModelUsage"
         }
       },
       "required": [

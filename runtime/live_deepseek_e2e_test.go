@@ -39,7 +39,7 @@ const (
 
 func TestLiveDeepSeekManualScheduleRun(t *testing.T) {
 	fixture := newLiveDeepSeekFixture(t, 3*time.Minute)
-	creation := fixtureScheduleCreateRequest(t, fixture, testsupport.SchedulesCreateV1Input{Enabled: true, Title: "Live DeepSeek Schedule E2E", Instructions: "Reply exactly " + liveScheduleMarker + ". Do not call tools or ask the user anything.", CWD: fixture.workspace, Cron: "0 0 1 1 *", TimeZone: "UTC"})
+	creation := fixtureScheduleCreateRequest(t, fixture, testsupport.SchedulesDraft{Enabled: true, Title: "Live DeepSeek Schedule E2E", Instructions: "Reply exactly " + liveScheduleMarker + ". Do not call tools or ask the user anything.", CWD: fixture.workspace, Cron: "0 0 1 1 *", TimeZone: "UTC"})
 	created, err := fixtureScheduleCreate(fixture, creation)
 	if err != nil {
 		t.Fatal(err)
@@ -126,7 +126,7 @@ func TestLiveDeepSeekManualScheduleRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := json.Marshal(testsupport.SchedulesListV1Input{})
+	input, err := json.Marshal(testsupport.SchedulesListInput{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +134,7 @@ func TestLiveDeepSeekManualScheduleRun(t *testing.T) {
 	if err != nil || reply.Failure != nil {
 		t.Fatalf("installed schedules: %+v, %v", reply, err)
 	}
-	var schedules testsupport.SchedulesListV1Output
+	var schedules testsupport.SchedulesPage
 	if err := json.Unmarshal([]byte(reply.Output), &schedules); err != nil {
 		t.Fatal(err)
 	}
@@ -832,7 +832,7 @@ func fixtureScheduleRunRequest(t *testing.T, fixture *liveDeepSeekFixture, id st
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := json.Marshal(testsupport.SchedulesRunNowV1Input{ID: id})
+	input, err := json.Marshal(testsupport.SchedulesItemInput{ID: id})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -850,7 +850,7 @@ func fixtureScheduleRunRequest(t *testing.T, fixture *liveDeepSeekFixture, id st
 	return protocol.CallPluginRequest{}
 }
 
-func fixtureScheduleRun(fixture *liveDeepSeekFixture, request protocol.CallPluginRequest, options protocol.PluginCallOptions) (*testsupport.SchedulesRunNowV1Output, error) {
+func fixtureScheduleRun(fixture *liveDeepSeekFixture, request protocol.CallPluginRequest, options protocol.PluginCallOptions) (*testsupport.SchedulesRunReference, error) {
 	reply, err := fixture.runtime.CallPlugin(fixture.ctx, request, options)
 	if err != nil {
 		return nil, err
@@ -858,14 +858,14 @@ func fixtureScheduleRun(fixture *liveDeepSeekFixture, request protocol.CallPlugi
 	if reply.Failure != nil {
 		return nil, &portable.Refusal{Code: reply.Failure.Code, Message: reply.Failure.Message}
 	}
-	var value testsupport.SchedulesRunNowV1Output
+	var value testsupport.SchedulesRunReference
 	if err := json.Unmarshal([]byte(reply.Output), &value, json.RejectUnknownMembers(true)); err != nil {
 		return nil, err
 	}
 	return &value, nil
 }
 
-func fixtureScheduleCreateRequest(t *testing.T, fixture *liveDeepSeekFixture, draft testsupport.SchedulesCreateV1Input) protocol.CallPluginRequest {
+func fixtureScheduleCreateRequest(t *testing.T, fixture *liveDeepSeekFixture, draft testsupport.SchedulesDraft) protocol.CallPluginRequest {
 	t.Helper()
 	request := fixtureScheduleRunRequest(t, fixture, "")
 	input, err := json.Marshal(draft)
@@ -875,7 +875,7 @@ func fixtureScheduleCreateRequest(t *testing.T, fixture *liveDeepSeekFixture, dr
 	request.Method, request.Input = testsupport.SchedulesCreateV1Method, string(input)
 	return request
 }
-func fixtureScheduleCreate(fixture *liveDeepSeekFixture, request protocol.CallPluginRequest) (*testsupport.SchedulesCreateV1Output, error) {
+func fixtureScheduleCreate(fixture *liveDeepSeekFixture, request protocol.CallPluginRequest) (*testsupport.SchedulesSnapshot, error) {
 	reply, err := fixture.runtime.CallPlugin(fixture.ctx, request, protocol.PluginCallOptions{IdempotencyKey: "live-deepseek-create-schedule"})
 	if err != nil {
 		return nil, err
@@ -883,7 +883,7 @@ func fixtureScheduleCreate(fixture *liveDeepSeekFixture, request protocol.CallPl
 	if reply.Failure != nil {
 		return nil, &portable.Refusal{Code: reply.Failure.Code, Message: reply.Failure.Message}
 	}
-	var value testsupport.SchedulesCreateV1Output
+	var value testsupport.SchedulesSnapshot
 	if err := json.Unmarshal([]byte(reply.Output), &value, json.RejectUnknownMembers(true)); err != nil {
 		return nil, err
 	}

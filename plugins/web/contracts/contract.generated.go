@@ -3,107 +3,107 @@ package contracts
 
 import "time"
 
-type BrowseV1OutputFormat string
+type FetchRequestFormat string
 
 const (
-	BrowseV1OutputFormatMarkdown BrowseV1OutputFormat = "markdown"
-	BrowseV1OutputFormatHtml     BrowseV1OutputFormat = "html"
-	BrowseV1OutputFormatText     BrowseV1OutputFormat = "text"
+	FetchRequestFormatMarkdown FetchRequestFormat = "markdown"
+	FetchRequestFormatHtml     FetchRequestFormat = "html"
+	FetchRequestFormatText     FetchRequestFormat = "text"
 )
 
-type FetchV1InputFormat string
+type HTTPContentEncoding string
 
 const (
-	FetchV1InputFormatMarkdown FetchV1InputFormat = "markdown"
-	FetchV1InputFormatHtml     FetchV1InputFormat = "html"
-	FetchV1InputFormatText     FetchV1InputFormat = "text"
+	HTTPContentEncodingUtf8   HTTPContentEncoding = "utf8"
+	HTTPContentEncodingBase64 HTTPContentEncoding = "base64"
 )
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPContentEncoding string
+type PageFormat string
 
 const (
-	Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPContentEncodingUtf8   Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPContentEncoding = "utf8"
-	Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPContentEncodingBase64 Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPContentEncoding = "base64"
+	PageFormatMarkdown PageFormat = "markdown"
+	PageFormatHtml     PageFormat = "html"
+	PageFormatText     PageFormat = "text"
 )
 
-type RequestV1InputMethod string
+type RequestMethod string
 
 const (
-	RequestV1InputMethodGET    RequestV1InputMethod = "GET"
-	RequestV1InputMethodHEAD   RequestV1InputMethod = "HEAD"
-	RequestV1InputMethodPOST   RequestV1InputMethod = "POST"
-	RequestV1InputMethodPUT    RequestV1InputMethod = "PUT"
-	RequestV1InputMethodPATCH  RequestV1InputMethod = "PATCH"
-	RequestV1InputMethodDELETE RequestV1InputMethod = "DELETE"
+	RequestMethodGET    RequestMethod = "GET"
+	RequestMethodHEAD   RequestMethod = "HEAD"
+	RequestMethodPOST   RequestMethod = "POST"
+	RequestMethodPUT    RequestMethod = "PUT"
+	RequestMethodPATCH  RequestMethod = "PATCH"
+	RequestMethodDELETE RequestMethod = "DELETE"
 )
 
-type SearchV1InputRecency string
+type SearchRequestRecency string
 
 const (
-	SearchV1InputRecencyHour  SearchV1InputRecency = "hour"
-	SearchV1InputRecencyDay   SearchV1InputRecency = "day"
-	SearchV1InputRecencyWeek  SearchV1InputRecency = "week"
-	SearchV1InputRecencyMonth SearchV1InputRecency = "month"
-	SearchV1InputRecencyYear  SearchV1InputRecency = "year"
+	SearchRequestRecencyHour  SearchRequestRecency = "hour"
+	SearchRequestRecencyDay   SearchRequestRecency = "day"
+	SearchRequestRecencyWeek  SearchRequestRecency = "week"
+	SearchRequestRecencyMonth SearchRequestRecency = "month"
+	SearchRequestRecencyYear  SearchRequestRecency = "year"
 )
 
-type BrowseV1Output struct {
-	Content    string               `json:"content"`
-	Format     BrowseV1OutputFormat `json:"format"`
-	NextOffset *int64               `json:"nextOffset,omitzero"`
-	Offset     int64                `json:"offset"`
-	SnapshotId string               `json:"snapshotId"`
-	TotalRunes int64                `json:"totalRunes"`
-	Url        string               `json:"url"`
-}
-
-type BrowseV1Input struct {
+type BrowseInput struct {
 	Limit      uint64 `json:"limit"`
 	Offset     uint64 `json:"offset"`
 	SnapshotId string `json:"snapshotId"`
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPContent struct {
-	Data     string                                                                                                `json:"data"`
-	Encoding Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPContentEncoding `json:"encoding"`
-}
-
-type RequestV1Output struct {
-	Body      Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPContent               `json:"body"`
-	Duration  string                                                                                                      `json:"duration"`
-	Headers   *map[string][]Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPContent `json:"headers,omitzero"`
-	Status    int64                                                                                                       `json:"status"`
-	Truncated *bool                                                                                                       `json:"truncated,omitzero"`
-}
-
-type RequestV1Input struct {
-	Body      *string               `json:"body,omitzero"`
-	Headers   *map[string]string    `json:"headers,omitzero"`
-	Method    *RequestV1InputMethod `json:"method,omitzero"`
-	Query     *map[string]string    `json:"query,omitzero"`
-	TimeoutMs *int64                `json:"timeout_ms,omitzero"`
-	Url       string                `json:"url"`
-}
-
-type FetchV1Input struct {
-	Format *FetchV1InputFormat `json:"format,omitzero"`
+type FetchRequest struct {
+	Format *FetchRequestFormat `json:"format,omitzero"`
 	Url    string              `json:"url"`
 }
 
-type SearchV1Input struct {
+type HTTPContent struct {
+	Data     string              `json:"data"`
+	Encoding HTTPContentEncoding `json:"encoding"`
+}
+
+type HTTPResponse struct {
+	Body      HTTPContent               `json:"body"`
+	Duration  string                    `json:"duration"`
+	Headers   *map[string][]HTTPContent `json:"headers,omitzero"`
+	Status    int64                     `json:"status"`
+	Truncated *bool                     `json:"truncated,omitzero"`
+}
+
+type Page struct {
+	Content    string     `json:"content"`
+	Format     PageFormat `json:"format"`
+	NextOffset *int64     `json:"nextOffset,omitzero"`
+	Offset     int64      `json:"offset"`
+	SnapshotId string     `json:"snapshotId"`
+	TotalRunes int64      `json:"totalRunes"`
+	Url        string     `json:"url"`
+}
+
+type Request struct {
+	Body      *string            `json:"body,omitzero"`
+	Headers   *map[string]string `json:"headers,omitzero"`
+	Method    *RequestMethod     `json:"method,omitzero"`
+	Query     *map[string]string `json:"query,omitzero"`
+	TimeoutMs *int64             `json:"timeout_ms,omitzero"`
+	Url       string             `json:"url"`
+}
+
+type SearchRequest struct {
 	AllowedDomains *[]string             `json:"allowed_domains,omitzero"`
 	BlockedDomains *[]string             `json:"blocked_domains,omitzero"`
 	MaxResults     *int64                `json:"max_results,omitzero"`
 	Query          string                `json:"query"`
-	Recency        *SearchV1InputRecency `json:"recency,omitzero"`
+	Recency        *SearchRequestRecency `json:"recency,omitzero"`
 }
 
-type SearchV1Output struct {
-	Query   string                                                                      `json:"query"`
-	Results []Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchResult `json:"results"`
+type SearchResponse struct {
+	Query   string         `json:"query"`
+	Results []SearchResult `json:"results"`
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchResult struct {
+type SearchResult struct {
 	FaviconUrl    *string    `json:"favicon_url,omitzero"`
 	PublishedTime *time.Time `json:"published_time,omitzero"`
 	Snippet       string     `json:"snippet"`
@@ -117,8 +117,6 @@ const CapabilityJSON = "{\"protocol\":\"io.github.tangerg.qimu/portable/1\",\"re
 const BrowseV1Method = "flame.web/browse.v1"
 
 const FetchV1Method = "flame.web/fetch.v1"
-
-type FetchV1Output BrowseV1Output
 
 const RequestV1Method = "flame.web/request.v1"
 

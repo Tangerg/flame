@@ -84,7 +84,7 @@ const (
 )
 
 func (s Scope) valid() bool {
-	return s == ScopeProject || s == ScopeUser
+	return slices.Contains(s.JSONSchemaEnum(), string(s))
 }
 
 func (s Scope) Validate() error {
@@ -129,7 +129,7 @@ const (
 )
 
 func (s Status) valid() bool {
-	return s == StatusActive || s == StatusPending || s == StatusRejected
+	return slices.Contains(s.JSONSchemaEnum(), string(s))
 }
 
 func (s Status) validate() error {
@@ -158,7 +158,7 @@ const (
 )
 
 func (o Origin) valid() bool {
-	return o == OriginAuto || o == OriginUser
+	return slices.Contains(o.JSONSchemaEnum(), string(o))
 }
 
 func (o Origin) validate() error {

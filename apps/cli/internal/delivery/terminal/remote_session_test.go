@@ -444,7 +444,7 @@ func TestScheduleFormsPreserveForeignRuntimeWorkspaceReferences(t *testing.T) {
 	if err != nil || request.CWD != path {
 		t.Fatalf("remote schedule candidate = %+v, %v", request, err)
 	}
-	original := schedule.CreateV1Output{ID: "sch_review", Revision: 1, Instructions: "review", Cron: defaultScheduleCron, TimeZone: "UTC"}
+	original := schedule.Snapshot{ID: "sch_review", Revision: 1, Instructions: "review", Cron: defaultScheduleCron, TimeZone: "UTC"}
 	requestPatch, changed, err := draft.patch(original)
 	if err != nil || !changed || requestPatch.CWD == nil || *requestPatch.CWD != path {
 		t.Fatalf("remote schedule update = %+v, changed %t, %v", requestPatch, changed, err)

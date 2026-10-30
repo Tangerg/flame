@@ -1,155 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
-    "Method_flame_2eknowledgebase_2fdelete_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fDocumentInput"
-    },
-    "Method_flame_2eknowledgebase_2fdelete_2ev1Output": {
-      "type": "boolean"
-    },
-    "Method_flame_2eknowledgebase_2fimport_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fImportInput"
-    },
-    "Method_flame_2eknowledgebase_2fimport_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_5fHeader"
-    },
-    "Method_flame_2eknowledgebase_2flist_2ev1Input": {
-      "additionalProperties": false,
-      "properties": {},
-      "type": "object"
-    },
-    "Method_flame_2eknowledgebase_2flist_2ev1Output": {
-      "items": {
-        "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_5fHeader"
-      },
-      "type": "array"
-    },
-    "Method_flame_2eknowledgebase_2fread_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fReadInput"
-    },
-    "Method_flame_2eknowledgebase_2fread_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fDocumentRead"
-    },
-    "Method_flame_2eknowledgebase_2freindex_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fDocumentInput"
-    },
-    "Method_flame_2eknowledgebase_2freindex_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_5fHeader"
-    },
-    "Method_flame_2eknowledgebase_2fsearch_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fSearchInput"
-    },
-    "Method_flame_2eknowledgebase_2fsearch_2ev1Output": {
-      "items": {
-        "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_5fMatch"
-      },
-      "type": "array"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fDocumentInput": {
-      "additionalProperties": false,
-      "properties": {
-        "expectedRevision": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "minimum": 1,
-          "type": "integer"
-        },
-        "id": {
-          "maxLength": 128,
-          "minLength": 1,
-          "type": "string"
-        }
-      },
-      "required": [
-        "id",
-        "expectedRevision"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fDocumentRead": {
-      "additionalProperties": false,
-      "properties": {
-        "document": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_5fHeader"
-        },
-        "text": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "document",
-        "text"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fImportInput": {
-      "additionalProperties": false,
-      "properties": {
-        "content": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_5fContent"
-        },
-        "expectedRevision": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "minimum": 0,
-          "type": "integer"
-        }
-      },
-      "required": [
-        "content",
-        "expectedRevision"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fReadInput": {
-      "additionalProperties": false,
-      "properties": {
-        "id": {
-          "maxLength": 128,
-          "minLength": 1,
-          "type": "string"
-        }
-      },
-      "required": [
-        "id"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fSearchInput": {
-      "additionalProperties": false,
-      "properties": {
-        "limit": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "maximum": 8,
-          "minimum": 1,
-          "type": "integer"
-        },
-        "query": {
-          "maxLength": 4096,
-          "minLength": 1,
-          "type": "string"
-        }
-      },
-      "required": [
-        "query",
-        "limit"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_5fContent": {
+    "Content": {
       "additionalProperties": false,
       "properties": {
         "id": {
@@ -181,7 +33,54 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_5fHeader": {
+    "DeleteV1Input": {
+      "$ref": "#/$defs/DocumentInput"
+    },
+    "DeleteV1Output": {
+      "type": "boolean"
+    },
+    "DocumentInput": {
+      "additionalProperties": false,
+      "properties": {
+        "expectedRevision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "expectedRevision"
+      ],
+      "type": "object"
+    },
+    "DocumentRead": {
+      "additionalProperties": false,
+      "properties": {
+        "document": {
+          "$ref": "#/$defs/Header"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "document",
+        "text"
+      ],
+      "type": "object"
+    },
+    "Header": {
       "additionalProperties": false,
       "properties": {
         "chunks": {
@@ -225,7 +124,47 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_5fMatch": {
+    "ImportInput": {
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "$ref": "#/$defs/Content"
+        },
+        "expectedRevision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "content",
+        "expectedRevision"
+      ],
+      "type": "object"
+    },
+    "ImportV1Input": {
+      "$ref": "#/$defs/ImportInput"
+    },
+    "ImportV1Output": {
+      "$ref": "#/$defs/Header"
+    },
+    "ListV1Input": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "ListV1Output": {
+      "items": {
+        "$ref": "#/$defs/Header"
+      },
+      "type": "array"
+    },
+    "Match": {
       "additionalProperties": false,
       "properties": {
         "chunk": {
@@ -238,7 +177,7 @@
           "type": "integer"
         },
         "document": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_5fHeader"
+          "$ref": "#/$defs/Header"
         },
         "score": {
           "type": "number"
@@ -254,6 +193,67 @@
         "score"
       ],
       "type": "object"
+    },
+    "ReadInput": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "ReadV1Input": {
+      "$ref": "#/$defs/ReadInput"
+    },
+    "ReadV1Output": {
+      "$ref": "#/$defs/DocumentRead"
+    },
+    "ReindexV1Input": {
+      "$ref": "#/$defs/DocumentInput"
+    },
+    "ReindexV1Output": {
+      "$ref": "#/$defs/Header"
+    },
+    "SearchInput": {
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "maximum": 8,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "query": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "query",
+        "limit"
+      ],
+      "type": "object"
+    },
+    "SearchV1Input": {
+      "$ref": "#/$defs/SearchInput"
+    },
+    "SearchV1Output": {
+      "items": {
+        "$ref": "#/$defs/Match"
+      },
+      "type": "array"
     }
   }
 }

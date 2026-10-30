@@ -1,19 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
-    "Method_flame_2eskill_2dlearning_2farchive_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fArchiveRequest"
-    },
-    "Method_flame_2eskill_2dlearning_2farchive_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fArchiveAdvice"
-    },
-    "Method_flame_2eskill_2dlearning_2fmine_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fRun"
-    },
-    "Method_flame_2eskill_2dlearning_2fmine_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fMineResult"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fArchiveAdvice": {
+    "ArchiveAdvice": {
       "additionalProperties": false,
       "properties": {
         "afterMillis": {
@@ -29,7 +17,7 @@
       },
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fArchiveRequest": {
+    "ArchiveRequest": {
       "additionalProperties": false,
       "properties": {
         "now": {
@@ -42,23 +30,35 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fMineResult": {
+    "ArchiveV1Input": {
+      "$ref": "#/$defs/ArchiveRequest"
+    },
+    "ArchiveV1Output": {
+      "$ref": "#/$defs/ArchiveAdvice"
+    },
+    "MineResult": {
       "additionalProperties": false,
       "properties": {
         "proposal": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fProposal"
+          "$ref": "#/$defs/Proposal"
         }
       },
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fProposal": {
+    "MineV1Input": {
+      "$ref": "#/$defs/Run"
+    },
+    "MineV1Output": {
+      "$ref": "#/$defs/MineResult"
+    },
+    "Proposal": {
       "additionalProperties": false,
       "properties": {
         "revises": {
           "type": "boolean"
         },
         "skill": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fSkill"
+          "$ref": "#/$defs/Skill"
         }
       },
       "required": [
@@ -67,7 +67,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fRun": {
+    "Run": {
       "additionalProperties": false,
       "properties": {
         "sessionId": {
@@ -90,7 +90,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vc2tpbGxsZWFybmluZw_5fSkill": {
+    "Skill": {
       "additionalProperties": false,
       "properties": {
         "description": {

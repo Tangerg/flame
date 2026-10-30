@@ -3,54 +3,48 @@ package contracts
 
 import "time"
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fCaptureKind string
+type CaptureKind string
 
 const (
-	Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fCaptureKindChanged Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fCaptureKind = "changed"
-	Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fCaptureKindResync  Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fCaptureKind = "resync"
+	CaptureKindChanged CaptureKind = "changed"
+	CaptureKindResync  CaptureKind = "resync"
 )
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fHeaderKind string
+type HeaderKind string
 
 const (
-	Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fHeaderKindChanged Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fHeaderKind = "changed"
-	Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fHeaderKindResync  Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fHeaderKind = "resync"
+	HeaderKindChanged HeaderKind = "changed"
+	HeaderKindResync  HeaderKind = "resync"
 )
 
-type StatusV1OutputPhase string
+type StatusPhase string
 
 const (
-	StatusV1OutputPhaseInactive StatusV1OutputPhase = "inactive"
-	StatusV1OutputPhaseDisabled StatusV1OutputPhase = "disabled"
-	StatusV1OutputPhaseWatching StatusV1OutputPhase = "watching"
-	StatusV1OutputPhaseFailed   StatusV1OutputPhase = "failed"
+	StatusPhaseInactive StatusPhase = "inactive"
+	StatusPhaseDisabled StatusPhase = "disabled"
+	StatusPhaseWatching StatusPhase = "watching"
+	StatusPhaseFailed   StatusPhase = "failed"
 )
 
-type EventsV1Input struct {
+type Capture struct {
+	Generation string      `json:"generation"`
+	Invocation Invocation  `json:"invocation"`
+	Kind       CaptureKind `json:"kind"`
+	ObservedAt time.Time   `json:"observedAt"`
+	Paths      []string    `json:"paths"`
+	Revision   int64       `json:"revision"`
+	RunId      string      `json:"runId"`
+	Sequence   uint64      `json:"sequence"`
+	SessionId  string      `json:"sessionId"`
+	Trigger    Draft       `json:"trigger"`
 }
 
-type EventsV1Output []Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fHeader
-
-type GetV1Input struct {
+type ConfigureInput struct {
+	ExpectedRevision uint64 `json:"expectedRevision"`
+	Trigger          *Draft `json:"trigger,omitzero"`
 }
 
-type StatusV1Input struct {
-}
-
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fCapture struct {
-	Generation string                                                                                                   `json:"generation"`
-	Invocation Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvcG9ydGFibGU_5fInvocation                             `json:"invocation"`
-	Kind       Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fCaptureKind `json:"kind"`
-	ObservedAt time.Time                                                                                                `json:"observedAt"`
-	Paths      []string                                                                                                 `json:"paths"`
-	Revision   int64                                                                                                    `json:"revision"`
-	RunId      string                                                                                                   `json:"runId"`
-	Sequence   uint64                                                                                                   `json:"sequence"`
-	SessionId  string                                                                                                   `json:"sessionId"`
-	Trigger    Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fDraft       `json:"trigger"`
-}
-
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fDraft struct {
+type Draft struct {
 	Instructions    string   `json:"instructions"`
 	Model           string   `json:"model"`
 	Paths           []string `json:"paths"`
@@ -60,51 +54,57 @@ type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGV
 	Workspace       string   `json:"workspace"`
 }
 
-type EventV1Output struct {
-	Accepted bool                                                                                                 `json:"accepted"`
-	Capture  Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fCapture `json:"capture"`
+type Event struct {
+	Accepted bool    `json:"accepted"`
+	Capture  Capture `json:"capture"`
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fHeader struct {
-	Accepted   bool                                                                                                    `json:"accepted"`
-	Id         string                                                                                                  `json:"id"`
-	Kind       Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fHeaderKind `json:"kind"`
-	ObservedAt time.Time                                                                                               `json:"observedAt"`
-	PathCount  int64                                                                                                   `json:"pathCount"`
-	Revision   int64                                                                                                   `json:"revision"`
-	RunId      string                                                                                                  `json:"runId"`
-	SessionId  string                                                                                                  `json:"sessionId"`
-}
-
-type ConfigureV1Output struct {
-	Revision uint64                                                                                              `json:"revision"`
-	Trigger  *Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fDraft `json:"trigger,omitzero"`
-}
-
-type StatusV1Output struct {
-	DispatchError *string             `json:"dispatchError,omitzero"`
-	Error         *string             `json:"error,omitzero"`
-	Phase         StatusV1OutputPhase `json:"phase"`
-	Revision      int64               `json:"revision"`
-}
-
-type ConfigureV1Input struct {
-	ExpectedRevision uint64                                                                                              `json:"expectedRevision"`
-	Trigger          *Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fDraft `json:"trigger,omitzero"`
-}
-
-type EventV1Input struct {
+type EventInput struct {
 	Id string `json:"id"`
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvcG9ydGFibGU_5fInvocation struct {
-	Id     string                                                                   `json:"id"`
-	Origin string                                                                   `json:"origin"`
-	Parent *string                                                                  `json:"parent,omitzero"`
-	Target Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvcG9ydGFibGU_5fTarget `json:"target"`
+type EventsV1Input struct {
 }
 
-type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvcG9ydGFibGU_5fTarget struct {
+type EventsV1Output []Header
+
+type GetV1Input struct {
+}
+
+type Header struct {
+	Accepted   bool       `json:"accepted"`
+	Id         string     `json:"id"`
+	Kind       HeaderKind `json:"kind"`
+	ObservedAt time.Time  `json:"observedAt"`
+	PathCount  int64      `json:"pathCount"`
+	Revision   int64      `json:"revision"`
+	RunId      string     `json:"runId"`
+	SessionId  string     `json:"sessionId"`
+}
+
+type Invocation struct {
+	Id     string  `json:"id"`
+	Origin string  `json:"origin"`
+	Parent *string `json:"parent,omitzero"`
+	Target Target  `json:"target"`
+}
+
+type Snapshot struct {
+	Revision uint64 `json:"revision"`
+	Trigger  *Draft `json:"trigger,omitzero"`
+}
+
+type Status struct {
+	DispatchError *string     `json:"dispatchError,omitzero"`
+	Error         *string     `json:"error,omitzero"`
+	Phase         StatusPhase `json:"phase"`
+	Revision      int64       `json:"revision"`
+}
+
+type StatusV1Input struct {
+}
+
+type Target struct {
 	Reference string `json:"reference"`
 	Scope     string `json:"scope"`
 }
@@ -118,7 +118,5 @@ const EventV1Method = "flame.filewatch/event.v1"
 const EventsV1Method = "flame.filewatch/events.v1"
 
 const GetV1Method = "flame.filewatch/get.v1"
-
-type GetV1Output ConfigureV1Output
 
 const StatusV1Method = "flame.filewatch/status.v1"

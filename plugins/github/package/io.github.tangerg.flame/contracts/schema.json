@@ -1,151 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
-    "Method_flame_2egithub_2fcreate_2dissue_2dcomment_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCreateCommentInput"
-    },
-    "Method_flame_2egithub_2fcreate_2dissue_2dcomment_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fComment"
-    },
-    "Method_flame_2egithub_2fcreate_2dissue_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCreateIssueInput"
-    },
-    "Method_flame_2egithub_2fcreate_2dissue_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fIssue"
-    },
-    "Method_flame_2egithub_2fcreate_2dpull_2drequest_2dcomment_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCreateReviewCommentInput"
-    },
-    "Method_flame_2egithub_2fcreate_2dpull_2drequest_2dcomment_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fReviewComment"
-    },
-    "Method_flame_2egithub_2fcreate_2dpull_2drequest_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCreatePullInput"
-    },
-    "Method_flame_2egithub_2fcreate_2dpull_2drequest_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fPullRequest"
-    },
-    "Method_flame_2egithub_2fdelete_2dissue_2dcomment_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCommentInput"
-    },
-    "Method_flame_2egithub_2fdelete_2dissue_2dcomment_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fDeletedComment"
-    },
-    "Method_flame_2egithub_2fdelete_2dpull_2drequest_2dcomment_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCommentInput"
-    },
-    "Method_flame_2egithub_2fdelete_2dpull_2drequest_2dcomment_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fDeletedComment"
-    },
-    "Method_flame_2egithub_2fget_2dissue_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fIssueInput"
-    },
-    "Method_flame_2egithub_2fget_2dissue_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fIssue"
-    },
-    "Method_flame_2egithub_2fget_2dpull_2drequest_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fIssueInput"
-    },
-    "Method_flame_2egithub_2fget_2dpull_2drequest_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fPullRequest"
-    },
-    "Method_flame_2egithub_2flist_2dcheck_2dannotations_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCheckInput"
-    },
-    "Method_flame_2egithub_2flist_2dcheck_2dannotations_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fAnnotationPage"
-    },
-    "Method_flame_2egithub_2flist_2dcheck_2druns_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCommitInput"
-    },
-    "Method_flame_2egithub_2flist_2dcheck_2druns_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCheckPage"
-    },
-    "Method_flame_2egithub_2flist_2dcommit_2dstatuses_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCommitInput"
-    },
-    "Method_flame_2egithub_2flist_2dcommit_2dstatuses_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fStatusPage"
-    },
-    "Method_flame_2egithub_2flist_2dissue_2dcomments_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fThreadInput"
-    },
-    "Method_flame_2egithub_2flist_2dissue_2dcomments_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCommentPage"
-    },
-    "Method_flame_2egithub_2flist_2dissues_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fListInput"
-    },
-    "Method_flame_2egithub_2flist_2dissues_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fIssuePage"
-    },
-    "Method_flame_2egithub_2flist_2dpull_2drequest_2dcomments_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fThreadInput"
-    },
-    "Method_flame_2egithub_2flist_2dpull_2drequest_2dcomments_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fReviewCommentPage"
-    },
-    "Method_flame_2egithub_2flist_2dpull_2drequest_2dfiles_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fThreadInput"
-    },
-    "Method_flame_2egithub_2flist_2dpull_2drequest_2dfiles_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fFilePage"
-    },
-    "Method_flame_2egithub_2flist_2dpull_2drequest_2dreviews_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fThreadInput"
-    },
-    "Method_flame_2egithub_2flist_2dpull_2drequest_2dreviews_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fReviewPage"
-    },
-    "Method_flame_2egithub_2flist_2dpull_2drequests_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fPullListInput"
-    },
-    "Method_flame_2egithub_2flist_2dpull_2drequests_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fPullPage"
-    },
-    "Method_flame_2egithub_2fmerge_2dpull_2drequest_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fMergePullInput"
-    },
-    "Method_flame_2egithub_2fmerge_2dpull_2drequest_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fMergeResult"
-    },
-    "Method_flame_2egithub_2fread_2dfile_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fFileInput"
-    },
-    "Method_flame_2egithub_2fread_2dfile_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fFile"
-    },
-    "Method_flame_2egithub_2freply_2dpull_2drequest_2dcomment_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fReplyReviewCommentInput"
-    },
-    "Method_flame_2egithub_2freply_2dpull_2drequest_2dcomment_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fReviewComment"
-    },
-    "Method_flame_2egithub_2fsubmit_2dpull_2drequest_2dreview_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fSubmitReviewInput"
-    },
-    "Method_flame_2egithub_2fsubmit_2dpull_2drequest_2dreview_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fReview"
-    },
-    "Method_flame_2egithub_2fupdate_2dissue_2dcomment_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fUpdateCommentInput"
-    },
-    "Method_flame_2egithub_2fupdate_2dissue_2dcomment_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fComment"
-    },
-    "Method_flame_2egithub_2fupdate_2dissue_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fUpdateIssueInput"
-    },
-    "Method_flame_2egithub_2fupdate_2dissue_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fIssue"
-    },
-    "Method_flame_2egithub_2fupdate_2dpull_2drequest_2dcomment_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fUpdateCommentInput"
-    },
-    "Method_flame_2egithub_2fupdate_2dpull_2drequest_2dcomment_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fReviewComment"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fAnnotation": {
+    "Annotation": {
       "additionalProperties": false,
       "properties": {
         "endColumn": {
@@ -209,12 +65,12 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fAnnotationPage": {
+    "AnnotationPage": {
       "additionalProperties": false,
       "properties": {
         "annotations": {
           "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fAnnotation"
+            "$ref": "#/$defs/Annotation"
           },
           "type": "array"
         },
@@ -233,7 +89,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fBranch": {
+    "Branch": {
       "additionalProperties": false,
       "properties": {
         "label": {
@@ -256,7 +112,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fChangedFile": {
+    "ChangedFile": {
       "additionalProperties": false,
       "properties": {
         "additions": {
@@ -312,7 +168,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCheckInput": {
+    "CheckInput": {
       "additionalProperties": false,
       "properties": {
         "checkRunId": {
@@ -360,12 +216,12 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCheckPage": {
+    "CheckPage": {
       "additionalProperties": false,
       "properties": {
         "checkRuns": {
           "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCheckRun"
+            "$ref": "#/$defs/CheckRun"
           },
           "type": "array"
         },
@@ -384,7 +240,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCheckRun": {
+    "CheckRun": {
       "additionalProperties": false,
       "properties": {
         "annotationsCount": {
@@ -451,7 +307,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fComment": {
+    "Comment": {
       "additionalProperties": false,
       "properties": {
         "author": {
@@ -491,7 +347,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCommentInput": {
+    "CommentInput": {
       "additionalProperties": false,
       "properties": {
         "commentId": {
@@ -516,12 +372,12 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCommentPage": {
+    "CommentPage": {
       "additionalProperties": false,
       "properties": {
         "comments": {
           "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fComment"
+            "$ref": "#/$defs/Comment"
           },
           "type": "array"
         },
@@ -540,7 +396,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCommitInput": {
+    "CommitInput": {
       "additionalProperties": false,
       "properties": {
         "limit": {
@@ -584,7 +440,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCommitStatus": {
+    "CommitStatus": {
       "additionalProperties": false,
       "properties": {
         "context": {
@@ -626,7 +482,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCreateCommentInput": {
+    "CreateCommentInput": {
       "additionalProperties": false,
       "properties": {
         "body": {
@@ -657,7 +513,13 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCreateIssueInput": {
+    "CreateIssueCommentV1Input": {
+      "$ref": "#/$defs/CreateCommentInput"
+    },
+    "CreateIssueCommentV1Output": {
+      "$ref": "#/$defs/Comment"
+    },
+    "CreateIssueInput": {
       "additionalProperties": false,
       "properties": {
         "assignees": {
@@ -693,7 +555,13 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCreatePullInput": {
+    "CreateIssueV1Input": {
+      "$ref": "#/$defs/CreateIssueInput"
+    },
+    "CreateIssueV1Output": {
+      "$ref": "#/$defs/Issue"
+    },
+    "CreatePullInput": {
       "additionalProperties": false,
       "properties": {
         "base": {
@@ -740,7 +608,19 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCreateReviewCommentInput": {
+    "CreatePullRequestCommentV1Input": {
+      "$ref": "#/$defs/CreateReviewCommentInput"
+    },
+    "CreatePullRequestCommentV1Output": {
+      "$ref": "#/$defs/ReviewComment"
+    },
+    "CreatePullRequestV1Input": {
+      "$ref": "#/$defs/CreatePullInput"
+    },
+    "CreatePullRequestV1Output": {
+      "$ref": "#/$defs/PullRequest"
+    },
+    "CreateReviewCommentInput": {
       "additionalProperties": false,
       "properties": {
         "body": {
@@ -827,7 +707,19 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fDeletedComment": {
+    "DeleteIssueCommentV1Input": {
+      "$ref": "#/$defs/CommentInput"
+    },
+    "DeleteIssueCommentV1Output": {
+      "$ref": "#/$defs/DeletedComment"
+    },
+    "DeletePullRequestCommentV1Input": {
+      "$ref": "#/$defs/CommentInput"
+    },
+    "DeletePullRequestCommentV1Output": {
+      "$ref": "#/$defs/DeletedComment"
+    },
+    "DeletedComment": {
       "additionalProperties": false,
       "properties": {
         "deleted": {
@@ -851,7 +743,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fFile": {
+    "File": {
       "additionalProperties": false,
       "properties": {
         "path": {
@@ -879,7 +771,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fFileInput": {
+    "FileInput": {
       "additionalProperties": false,
       "properties": {
         "path": {
@@ -904,12 +796,12 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fFilePage": {
+    "FilePage": {
       "additionalProperties": false,
       "properties": {
         "files": {
           "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fChangedFile"
+            "$ref": "#/$defs/ChangedFile"
           },
           "type": "array"
         },
@@ -932,7 +824,19 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fInlineComment": {
+    "GetIssueV1Input": {
+      "$ref": "#/$defs/IssueInput"
+    },
+    "GetIssueV1Output": {
+      "$ref": "#/$defs/Issue"
+    },
+    "GetPullRequestV1Input": {
+      "$ref": "#/$defs/IssueInput"
+    },
+    "GetPullRequestV1Output": {
+      "$ref": "#/$defs/PullRequest"
+    },
+    "InlineComment": {
       "additionalProperties": false,
       "properties": {
         "body": {
@@ -996,7 +900,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fIssue": {
+    "Issue": {
       "additionalProperties": false,
       "properties": {
         "assignees": {
@@ -1084,7 +988,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fIssueInput": {
+    "IssueInput": {
       "additionalProperties": false,
       "properties": {
         "number": {
@@ -1109,12 +1013,12 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fIssuePage": {
+    "IssuePage": {
       "additionalProperties": false,
       "properties": {
         "issues": {
           "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fIssue"
+            "$ref": "#/$defs/Issue"
           },
           "type": "array"
         },
@@ -1133,7 +1037,25 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fListInput": {
+    "ListCheckAnnotationsV1Input": {
+      "$ref": "#/$defs/CheckInput"
+    },
+    "ListCheckAnnotationsV1Output": {
+      "$ref": "#/$defs/AnnotationPage"
+    },
+    "ListCheckRunsV1Input": {
+      "$ref": "#/$defs/CommitInput"
+    },
+    "ListCheckRunsV1Output": {
+      "$ref": "#/$defs/CheckPage"
+    },
+    "ListCommitStatusesV1Input": {
+      "$ref": "#/$defs/CommitInput"
+    },
+    "ListCommitStatusesV1Output": {
+      "$ref": "#/$defs/StatusPage"
+    },
+    "ListInput": {
       "additionalProperties": false,
       "properties": {
         "limit": {
@@ -1183,7 +1105,43 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fMergePullInput": {
+    "ListIssueCommentsV1Input": {
+      "$ref": "#/$defs/ThreadInput"
+    },
+    "ListIssueCommentsV1Output": {
+      "$ref": "#/$defs/CommentPage"
+    },
+    "ListIssuesV1Input": {
+      "$ref": "#/$defs/ListInput"
+    },
+    "ListIssuesV1Output": {
+      "$ref": "#/$defs/IssuePage"
+    },
+    "ListPullRequestCommentsV1Input": {
+      "$ref": "#/$defs/ThreadInput"
+    },
+    "ListPullRequestCommentsV1Output": {
+      "$ref": "#/$defs/ReviewCommentPage"
+    },
+    "ListPullRequestFilesV1Input": {
+      "$ref": "#/$defs/ThreadInput"
+    },
+    "ListPullRequestFilesV1Output": {
+      "$ref": "#/$defs/FilePage"
+    },
+    "ListPullRequestReviewsV1Input": {
+      "$ref": "#/$defs/ThreadInput"
+    },
+    "ListPullRequestReviewsV1Output": {
+      "$ref": "#/$defs/ReviewPage"
+    },
+    "ListPullRequestsV1Input": {
+      "$ref": "#/$defs/PullListInput"
+    },
+    "ListPullRequestsV1Output": {
+      "$ref": "#/$defs/PullPage"
+    },
+    "MergePullInput": {
       "additionalProperties": false,
       "properties": {
         "commitMessage": {
@@ -1236,7 +1194,13 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fMergeResult": {
+    "MergePullRequestV1Input": {
+      "$ref": "#/$defs/MergePullInput"
+    },
+    "MergePullRequestV1Output": {
+      "$ref": "#/$defs/MergeResult"
+    },
+    "MergeResult": {
       "additionalProperties": false,
       "properties": {
         "merged": {
@@ -1258,7 +1222,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fPullListInput": {
+    "PullListInput": {
       "additionalProperties": false,
       "properties": {
         "base": {
@@ -1318,7 +1282,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fPullPage": {
+    "PullPage": {
       "additionalProperties": false,
       "properties": {
         "nextPage": {
@@ -1332,7 +1296,7 @@
         },
         "pullRequests": {
           "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fPullRequest"
+            "$ref": "#/$defs/PullRequest"
           },
           "type": "array"
         }
@@ -1342,7 +1306,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fPullRequest": {
+    "PullRequest": {
       "additionalProperties": false,
       "properties": {
         "additions": {
@@ -1358,7 +1322,7 @@
           "type": "string"
         },
         "base": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fBranch"
+          "$ref": "#/$defs/Branch"
         },
         "body": {
           "type": "string"
@@ -1385,7 +1349,7 @@
           "type": "boolean"
         },
         "head": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fBranch"
+          "$ref": "#/$defs/Branch"
         },
         "maintainerCanModify": {
           "type": "boolean"
@@ -1449,7 +1413,19 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fReplyReviewCommentInput": {
+    "ReadFileV1Input": {
+      "$ref": "#/$defs/FileInput"
+    },
+    "ReadFileV1Output": {
+      "$ref": "#/$defs/File"
+    },
+    "ReplyPullRequestCommentV1Input": {
+      "$ref": "#/$defs/ReplyReviewCommentInput"
+    },
+    "ReplyPullRequestCommentV1Output": {
+      "$ref": "#/$defs/ReviewComment"
+    },
+    "ReplyReviewCommentInput": {
       "additionalProperties": false,
       "properties": {
         "body": {
@@ -1491,7 +1467,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fReview": {
+    "Review": {
       "additionalProperties": false,
       "properties": {
         "author": {
@@ -1532,7 +1508,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fReviewComment": {
+    "ReviewComment": {
       "additionalProperties": false,
       "properties": {
         "author": {
@@ -1641,12 +1617,12 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fReviewCommentPage": {
+    "ReviewCommentPage": {
       "additionalProperties": false,
       "properties": {
         "comments": {
           "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fReviewComment"
+            "$ref": "#/$defs/ReviewComment"
           },
           "type": "array"
         },
@@ -1665,7 +1641,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fReviewPage": {
+    "ReviewPage": {
       "additionalProperties": false,
       "properties": {
         "nextPage": {
@@ -1679,7 +1655,7 @@
         },
         "reviews": {
           "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fReview"
+            "$ref": "#/$defs/Review"
           },
           "type": "array"
         }
@@ -1689,7 +1665,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fStatusPage": {
+    "StatusPage": {
       "additionalProperties": false,
       "properties": {
         "nextPage": {
@@ -1703,7 +1679,7 @@
         },
         "statuses": {
           "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCommitStatus"
+            "$ref": "#/$defs/CommitStatus"
           },
           "type": "array"
         }
@@ -1713,7 +1689,13 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fSubmitReviewInput": {
+    "SubmitPullRequestReviewV1Input": {
+      "$ref": "#/$defs/SubmitReviewInput"
+    },
+    "SubmitPullRequestReviewV1Output": {
+      "$ref": "#/$defs/Review"
+    },
+    "SubmitReviewInput": {
       "additionalProperties": false,
       "properties": {
         "body": {
@@ -1722,7 +1704,7 @@
         },
         "comments": {
           "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fInlineComment"
+            "$ref": "#/$defs/InlineComment"
           },
           "type": "array"
         },
@@ -1768,7 +1750,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fThreadInput": {
+    "ThreadInput": {
       "additionalProperties": false,
       "properties": {
         "limit": {
@@ -1816,7 +1798,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fUpdateCommentInput": {
+    "UpdateCommentInput": {
       "additionalProperties": false,
       "properties": {
         "body": {
@@ -1847,7 +1829,13 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fUpdateIssueInput": {
+    "UpdateIssueCommentV1Input": {
+      "$ref": "#/$defs/UpdateCommentInput"
+    },
+    "UpdateIssueCommentV1Output": {
+      "$ref": "#/$defs/Comment"
+    },
+    "UpdateIssueInput": {
       "additionalProperties": false,
       "properties": {
         "assignees": {
@@ -1929,6 +1917,18 @@
         "number"
       ],
       "type": "object"
+    },
+    "UpdateIssueV1Input": {
+      "$ref": "#/$defs/UpdateIssueInput"
+    },
+    "UpdateIssueV1Output": {
+      "$ref": "#/$defs/Issue"
+    },
+    "UpdatePullRequestCommentV1Input": {
+      "$ref": "#/$defs/UpdateCommentInput"
+    },
+    "UpdatePullRequestCommentV1Output": {
+      "$ref": "#/$defs/ReviewComment"
     }
   }
 }

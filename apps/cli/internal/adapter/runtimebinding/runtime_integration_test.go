@@ -327,11 +327,11 @@ func requireContextManagement(t *testing.T, runtime *Connection, workspace strin
 	if agentMemory == nil {
 		t.Fatal("context adapters were not advertised")
 	}
-	userTarget, err := conversation.NewMemoryTarget(memory.UpdateV2OutputScopeUser, "")
+	userTarget, err := conversation.NewMemoryTarget(memory.ItemSnapshotScopeUser, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	addition, err := agentMemory.PrepareAdd(t.Context(), memory.AddV2Input{Scope: memory.AddV2InputScope(userTarget.Scope), Content: "integration preference"})
+	addition, err := agentMemory.PrepareAdd(t.Context(), memory.AddInput{Scope: memory.AddInputScope(userTarget.Scope), Content: "integration preference"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -340,7 +340,7 @@ func requireContextManagement(t *testing.T, runtime *Connection, workspace strin
 		t.Fatal(err)
 	}
 	addedResult, err := agentMemory.DecodeAdd(addedReply)
-	added := memoryProjection(memory.UpdateV2Output(addedResult.Item))
+	added := memoryProjection(memory.ItemSnapshot(addedResult.Item))
 	if err != nil {
 		t.Fatalf("Add agent memory: %v", err)
 	}
@@ -349,7 +349,7 @@ func requireContextManagement(t *testing.T, runtime *Connection, workspace strin
 		t.Fatalf("Items agent memory = (%+v, %v)", items, err)
 	}
 	pinned := true
-	update, err := agentMemory.PrepareUpdate(t.Context(), memory.UpdateV2Input{ExpectedRevision: 1, ID: added.ID, Pinned: &pinned})
+	update, err := agentMemory.PrepareUpdate(t.Context(), memory.UpdateInput{ExpectedRevision: 1, ID: added.ID, Pinned: &pinned})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -929,7 +929,7 @@ func requireIntegrationMCPServer(
 
 func requireScheduleLifecycle(t *testing.T, runtime *Connection, workspace string) {
 	t.Helper()
-	create := schedule.CreateV1Input{
+	create := schedule.Draft{
 		Title: "Adapter schedule", Instructions: "review the workspace",
 		CWD: workspace, Enabled: true, Cron: "0 9 * * 1-5", TimeZone: "UTC",
 	}
@@ -959,7 +959,7 @@ func requireScheduleLifecycle(t *testing.T, runtime *Connection, workspace strin
 	}
 	listed[0].CWD = "/caller-reused-list"
 	title, instructions, cron, enabled := "Updated schedule", "review again", "0 15 * * 1-5", false
-	update := schedule.UpdateV1Input{
+	update := schedule.UpdateInput{
 		ID: created.ID, ExpectedRevision: created.Revision,
 		Title: &title, Instructions: &instructions, Cron: &cron, Enabled: &enabled,
 		CWD: new(workspace),

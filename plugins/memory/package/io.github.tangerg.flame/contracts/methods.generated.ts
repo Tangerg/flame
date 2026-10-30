@@ -2,120 +2,47 @@
 // Numeric and cross-field constraints remain in schema.json and the business owner.
 import type { JSONNumber } from "@qimu/sdk/json";
 
-export type Method_flame_2ememory_2fadd_2ev2Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fAddInput;
-
-export type Method_flame_2ememory_2fadd_2ev2Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fAddResult;
-
-export type Method_flame_2ememory_2fdelete_2ev2Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fItemInput;
-
-export type Method_flame_2ememory_2fdelete_2ev2Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fAck;
-
-export type Method_flame_2ememory_2fitems_2ev2Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fItemsInput;
-
-export type Method_flame_2ememory_2fitems_2ev2Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot[];
-
-export type Method_flame_2ememory_2flist_2ev2Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fListInput;
-
-export type Method_flame_2ememory_2flist_2ev2Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fPage;
-
-export type Method_flame_2ememory_2fmaintain_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fMaintenanceInput;
-
-export type Method_flame_2ememory_2fmaintain_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fMaintenanceResult;
-
-export type Method_flame_2ememory_2freview_2ev2Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fReviewInput;
-
-export type Method_flame_2ememory_2freview_2ev2Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fAck;
-
-export type Method_flame_2ememory_2fsearch_2ev2Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fSearchInput;
-
-export type Method_flame_2ememory_2fsearch_2ev2Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot[];
-
-export type Method_flame_2ememory_2fupdate_2ev2Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fUpdateInput;
-
-export type Method_flame_2ememory_2fupdate_2ev2Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot;
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fAck {
+export interface Ack {
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fAddInput {
+export interface AddInput {
   CWD: string;
   Content: string;
   Scope: string & ("project" | "user");
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fAddResult {
+export interface AddResult {
   Changed: boolean;
-  Item: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot;
+  Item: ItemSnapshot;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fConversation {
+export type AddV2Input = AddInput;
+
+export type AddV2Output = AddResult;
+
+export interface Conversation {
   MessageCount: JSONNumber;
   Transcript: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fItemInput {
+export type DeleteV2Input = ItemInput;
+
+export type DeleteV2Output = Ack;
+
+export type ItemID = string;
+
+export interface ItemInput {
   ExpectedRevision: JSONNumber;
   ID: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fItemsInput {
-  Project: string;
-  Scope: string & ("project" | "user");
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fListInput {
-  CWD: string;
-  Cursor: string;
-  Limit?: JSONNumber;
-  Scope: string & ("project" | "user");
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fMaintenanceInput {
-  Compacted: boolean;
-  Conversation: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fConversation;
-  Project: string;
-  SessionID: string;
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fMaintenanceResult {
-  Published: boolean;
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fPage {
-  Capacity: JSONNumber;
-  NextCursor: string;
-  Rows: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot[];
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fReviewInput {
-  Decision: string & ("approve" | "reject");
-  ExpectedRevision: JSONNumber;
-  ID: string;
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fSearchInput {
-  EmbeddingSpace: string;
-  Project: string;
-  Query: string;
-  TopK: JSONNumber;
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fUpdateInput {
-  Content?: string;
-  ExpectedRevision: JSONNumber;
-  ID: string;
-  Pinned?: boolean;
-}
-
-export type Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemID = string;
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot {
+export interface ItemSnapshot {
   Content: string;
   CreatedAt: string;
   Day: string;
   Embedding: JSONNumber[];
   EmbeddingSpace: string;
-  ID: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemID;
+  ID: ItemID;
   Origin: string & ("auto" | "user");
   Pinned: boolean;
   Project: string;
@@ -126,25 +53,98 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J
   UpdatedAt: string;
 }
 
+export interface ItemsInput {
+  Project: string;
+  Scope: string & ("project" | "user");
+}
+
+export type ItemsV2Input = ItemsInput;
+
+export type ItemsV2Output = ItemSnapshot[];
+
+export interface ListInput {
+  CWD: string;
+  Cursor: string;
+  Limit?: JSONNumber;
+  Scope: string & ("project" | "user");
+}
+
+export type ListV2Input = ListInput;
+
+export type ListV2Output = Page;
+
+export type MaintainV1Input = MaintenanceInput;
+
+export type MaintainV1Output = MaintenanceResult;
+
+export interface MaintenanceInput {
+  Compacted: boolean;
+  Conversation: Conversation;
+  Project: string;
+  SessionID: string;
+}
+
+export interface MaintenanceResult {
+  Published: boolean;
+}
+
+export interface Page {
+  Capacity: JSONNumber;
+  NextCursor: string;
+  Rows: ItemSnapshot[];
+}
+
+export interface ReviewInput {
+  Decision: string & ("approve" | "reject");
+  ExpectedRevision: JSONNumber;
+  ID: string;
+}
+
+export type ReviewV2Input = ReviewInput;
+
+export type ReviewV2Output = Ack;
+
+export interface SearchInput {
+  EmbeddingSpace: string;
+  Project: string;
+  Query: string;
+  TopK: JSONNumber;
+}
+
+export type SearchV2Input = SearchInput;
+
+export type SearchV2Output = ItemSnapshot[];
+
+export interface UpdateInput {
+  Content?: string;
+  ExpectedRevision: JSONNumber;
+  ID: string;
+  Pinned?: boolean;
+}
+
+export type UpdateV2Input = UpdateInput;
+
+export type UpdateV2Output = ItemSnapshot;
+
 export interface MethodInputs {
-  "flame.memory/add.v2": Method_flame_2ememory_2fadd_2ev2Input;
-  "flame.memory/delete.v2": Method_flame_2ememory_2fdelete_2ev2Input;
-  "flame.memory/items.v2": Method_flame_2ememory_2fitems_2ev2Input;
-  "flame.memory/list.v2": Method_flame_2ememory_2flist_2ev2Input;
-  "flame.memory/maintain.v1": Method_flame_2ememory_2fmaintain_2ev1Input;
-  "flame.memory/review.v2": Method_flame_2ememory_2freview_2ev2Input;
-  "flame.memory/search.v2": Method_flame_2ememory_2fsearch_2ev2Input;
-  "flame.memory/update.v2": Method_flame_2ememory_2fupdate_2ev2Input;
+  "flame.memory/add.v2": AddV2Input;
+  "flame.memory/delete.v2": DeleteV2Input;
+  "flame.memory/items.v2": ItemsV2Input;
+  "flame.memory/list.v2": ListV2Input;
+  "flame.memory/maintain.v1": MaintainV1Input;
+  "flame.memory/review.v2": ReviewV2Input;
+  "flame.memory/search.v2": SearchV2Input;
+  "flame.memory/update.v2": UpdateV2Input;
 }
 export interface MethodOutputs {
-  "flame.memory/add.v2": Method_flame_2ememory_2fadd_2ev2Output;
-  "flame.memory/delete.v2": Method_flame_2ememory_2fdelete_2ev2Output;
-  "flame.memory/items.v2": Method_flame_2ememory_2fitems_2ev2Output;
-  "flame.memory/list.v2": Method_flame_2ememory_2flist_2ev2Output;
-  "flame.memory/maintain.v1": Method_flame_2ememory_2fmaintain_2ev1Output;
-  "flame.memory/review.v2": Method_flame_2ememory_2freview_2ev2Output;
-  "flame.memory/search.v2": Method_flame_2ememory_2fsearch_2ev2Output;
-  "flame.memory/update.v2": Method_flame_2ememory_2fupdate_2ev2Output;
+  "flame.memory/add.v2": AddV2Output;
+  "flame.memory/delete.v2": DeleteV2Output;
+  "flame.memory/items.v2": ItemsV2Output;
+  "flame.memory/list.v2": ListV2Output;
+  "flame.memory/maintain.v1": MaintainV1Output;
+  "flame.memory/review.v2": ReviewV2Output;
+  "flame.memory/search.v2": SearchV2Output;
+  "flame.memory/update.v2": UpdateV2Output;
 }
 export const METHODS = {
   "flame.memory/add.v2": { kind: "command", target: "installation" },

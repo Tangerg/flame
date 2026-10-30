@@ -35,7 +35,7 @@ func (a *app) schedulesReaderQuery() runtimeReaderQuery {
 	}
 }
 
-func schedulesDocument(schedules []schedule.CreateV1Output) readerDocument {
+func schedulesDocument(schedules []schedule.Snapshot) readerDocument {
 	if len(schedules) == 0 {
 		return paragraphDocument("Scheduled runs", "none configured", []string{"No scheduled runs are configured."})
 	}
@@ -85,11 +85,11 @@ func (a *app) OpenScheduleCreateForm() error {
 	}
 	if a.workbench != nil {
 		if _, pending := a.workbench.PendingInstalledCommand("schedule-create"); pending {
-			a.createSchedule(schedule.CreateV1Input{})
+			a.createSchedule(schedule.Draft{})
 			return nil
 		}
 	}
-	a.openScheduleForm(scheduleFormCreate, schedule.CreateV1Output{})
+	a.openScheduleForm(scheduleFormCreate, schedule.Snapshot{})
 	return nil
 }
 
@@ -100,11 +100,11 @@ func (a *app) EditSchedule(identity string) error {
 	identity = strings.TrimSpace(identity)
 	if a.workbench != nil {
 		if _, pending := a.workbench.PendingInstalledCommand(scheduleUpdateIntent(identity)); pending {
-			a.updateSchedule(schedule.UpdateV1Input{ID: identity}, "reconciling schedule "+identity)
+			a.updateSchedule(schedule.UpdateInput{ID: identity}, "reconciling schedule "+identity)
 			return nil
 		}
 	}
-	return a.loadSchedule(identity, "loading schedule to edit", func(scheduled schedule.CreateV1Output) {
+	return a.loadSchedule(identity, "loading schedule to edit", func(scheduled schedule.Snapshot) {
 		a.openScheduleForm(scheduleFormUpdate, scheduled)
 	})
 }
@@ -116,7 +116,7 @@ func (a *app) SetScheduleEnabled(identity string, enabled bool) error {
 	identity = strings.TrimSpace(identity)
 	if a.workbench != nil {
 		if _, pending := a.workbench.PendingInstalledCommand(scheduleUpdateIntent(identity)); pending {
-			a.updateSchedule(schedule.UpdateV1Input{ID: identity}, "reconciling schedule "+identity)
+			a.updateSchedule(schedule.UpdateInput{ID: identity}, "reconciling schedule "+identity)
 			return nil
 		}
 	}
@@ -124,7 +124,7 @@ func (a *app) SetScheduleEnabled(identity string, enabled bool) error {
 	if !enabled {
 		verb = "disabling"
 	}
-	return a.loadSchedule(identity, verb+" schedule", func(scheduled schedule.CreateV1Output) {
+	return a.loadSchedule(identity, verb+" schedule", func(scheduled schedule.Snapshot) {
 		if !scheduled.NextRunAt.IsZero() == enabled {
 			state := "disabled"
 			if enabled {
@@ -133,7 +133,7 @@ func (a *app) SetScheduleEnabled(identity string, enabled bool) error {
 			a.message("schedule is already " + state + " · " + scheduled.ID)
 			return
 		}
-		request := schedule.UpdateV1Input{ID: scheduled.ID, ExpectedRevision: scheduled.Revision, Enabled: &enabled}
+		request := schedule.UpdateInput{ID: scheduled.ID, ExpectedRevision: scheduled.Revision, Enabled: &enabled}
 		a.updateSchedule(request, verb+" schedule "+scheduled.ID)
 	})
 }
@@ -149,7 +149,7 @@ func (a *app) PrepareDeleteSchedule(identity string) error {
 			return nil
 		}
 	}
-	return a.loadSchedule(identity, "loading schedule to delete", func(scheduled schedule.CreateV1Output) {
+	return a.loadSchedule(identity, "loading schedule to delete", func(scheduled schedule.Snapshot) {
 		title := scheduled.Title
 		if title == "" {
 			title = scheduled.ID
@@ -171,7 +171,7 @@ func (a *app) RunScheduleNow(identity string) error {
 			return nil
 		}
 	}
-	return a.loadSchedule(identity, "loading schedule to run", func(scheduled schedule.CreateV1Output) {
+	return a.loadSchedule(identity, "loading schedule to run", func(scheduled schedule.Snapshot) {
 		a.runSchedule(scheduled.ID)
 	})
 }
@@ -205,7 +205,7 @@ func (a *app) runSchedule(id string) {
 
 func scheduleRunIntent(id string) string { return "schedule-run:" + id }
 
-func (a *app) loadSchedule(identity, label string, apply func(schedule.CreateV1Output)) error {
+func (a *app) loadSchedule(identity, label string, apply func(schedule.Snapshot)) error {
 	if a.schedules == nil {
 		return errors.New("this runtime composition has no schedule service")
 	}
@@ -215,14 +215,14 @@ func (a *app) loadSchedule(identity, label string, apply func(schedule.CreateV1O
 	}
 	a.status.note(label)
 	started := a.runOperation(scheduleOperation, false,
-		func(ctx context.Context) (schedule.CreateV1Output, error) {
+		func(ctx context.Context) (schedule.Snapshot, error) {
 			schedules, err := a.schedules.Schedules(ctx)
 			if err != nil {
-				return schedule.CreateV1Output{}, err
+				return schedule.Snapshot{}, err
 			}
 			return resolveSchedule(schedules, identity)
 		},
-		func(scheduled schedule.CreateV1Output, err error) {
+		func(scheduled schedule.Snapshot, err error) {
 			if err != nil {
 				a.message(label + " failed: " + err.Error())
 				return
@@ -236,13 +236,13 @@ func (a *app) loadSchedule(identity, label string, apply func(schedule.CreateV1O
 	return nil
 }
 
-func resolveSchedule(schedules []schedule.CreateV1Output, identity string) (schedule.CreateV1Output, error) {
+func resolveSchedule(schedules []schedule.Snapshot, identity string) (schedule.Snapshot, error) {
 	for _, scheduled := range schedules {
 		if scheduled.ID == identity {
 			return scheduled, nil
 		}
 	}
-	matches := make([]schedule.CreateV1Output, 0, 1)
+	matches := make([]schedule.Snapshot, 0, 1)
 	for _, scheduled := range schedules {
 		if strings.HasPrefix(scheduled.ID, identity) || (scheduled.Title != "" && scheduled.Title == identity) {
 			matches = append(matches, scheduled)
@@ -250,24 +250,24 @@ func resolveSchedule(schedules []schedule.CreateV1Output, identity string) (sche
 	}
 	switch len(matches) {
 	case 0:
-		return schedule.CreateV1Output{}, errors.New("schedule not found: " + identity)
+		return schedule.Snapshot{}, errors.New("schedule not found: " + identity)
 	case 1:
 		return matches[0], nil
 	default:
-		return schedule.CreateV1Output{}, errors.New("schedule identity is ambiguous; use the full id")
+		return schedule.Snapshot{}, errors.New("schedule identity is ambiguous; use the full id")
 	}
 }
 
-func (a *app) createSchedule(request schedule.CreateV1Input) {
+func (a *app) createSchedule(request schedule.Draft) {
 	presentation := a.session.context
 	a.status.note("creating schedule")
 	started := a.runApplicationOperation(scheduleOperation, false,
-		func(ctx context.Context) (schedule.CreateV1Output, error) {
+		func(ctx context.Context) (schedule.Snapshot, error) {
 			return workbench.ExecuteInstalledCommand(ctx, a.schedules, a.workbench, "schedule-create", a.replayPolicy, func(ctx context.Context) (protocol.CallPluginRequest, error) {
 				return a.schedules.PrepareCreate(ctx, request)
 			}, a.schedules.DecodeCreate)
 		},
-		func(created schedule.CreateV1Output, err error) {
+		func(created schedule.Snapshot, err error) {
 			if err != nil {
 				message := "create schedule failed: " + err.Error()
 				if a.workbench != nil {
@@ -286,18 +286,18 @@ func (a *app) createSchedule(request schedule.CreateV1Input) {
 	}
 }
 
-func (a *app) updateSchedule(request schedule.UpdateV1Input, label string) {
+func (a *app) updateSchedule(request schedule.UpdateInput, label string) {
 	presentation := a.session.context
 	a.status.note(label)
 	started := a.runApplicationOperation(scheduleOperation, false,
-		func(ctx context.Context) (schedule.UpdateV1Output, error) {
+		func(ctx context.Context) (schedule.Snapshot, error) {
 			return workbench.ExecuteInstalledCommand(ctx, a.schedules, a.workbench, scheduleUpdateIntent(request.ID), a.replayPolicy, func(ctx context.Context) (protocol.CallPluginRequest, error) {
 				return a.schedules.PrepareUpdate(ctx, request)
-			}, func(reply *protocol.CallPluginResponse) (schedule.UpdateV1Output, error) {
+			}, func(reply *protocol.CallPluginResponse) (schedule.Snapshot, error) {
 				return a.schedules.DecodeUpdate(request.ID, reply)
 			})
 		},
-		func(updated schedule.UpdateV1Output, err error) {
+		func(updated schedule.Snapshot, err error) {
 			if err != nil {
 				message := label + " failed: " + err.Error()
 				if a.workbench != nil {

@@ -31,7 +31,7 @@ func scheduleQuery(r *poMCPRuntime, query protocol.PageQuery) protocol.CallPlugi
 			if installation.ID != provider.InstallationID {
 				continue
 			}
-			input, err := json.Marshal(testsupport.SchedulesListV1Input{Cursor: query.Cursor, Limit: schedulePageLimit(query.Limit)})
+			input, err := json.Marshal(testsupport.SchedulesListInput{Cursor: query.Cursor, Limit: schedulePageLimit(query.Limit)})
 			if err != nil {
 				r.t.Fatal(err)
 			}
@@ -42,19 +42,19 @@ func scheduleQuery(r *poMCPRuntime, query protocol.PageQuery) protocol.CallPlugi
 	return protocol.CallPluginRequest{}
 }
 
-func readSchedulePage(r *poMCPRuntime, query protocol.PageQuery) *protocol.Page[testsupport.SchedulesCreateV1Output] {
+func readSchedulePage(r *poMCPRuntime, query protocol.PageQuery) *protocol.Page[testsupport.SchedulesSnapshot] {
 	r.t.Helper()
 	reply := r.must(delivery.PluginsCall, scheduleQuery(r, query), "").(*protocol.CallPluginResponse)
 	if reply.Failure != nil {
 		r.t.Fatal(reply.Failure)
 	}
-	var page testsupport.SchedulesListV1Output
+	var page testsupport.SchedulesPage
 	if err := json.Unmarshal([]byte(reply.Output), &page); err != nil {
 		r.t.Fatal(err)
 	}
-	values := make([]testsupport.SchedulesCreateV1Output, 0, len(page.Rows))
+	values := make([]testsupport.SchedulesSnapshot, 0, len(page.Rows))
 	for _, row := range page.Rows {
-		out := testsupport.SchedulesCreateV1Output(row)
+		out := testsupport.SchedulesSnapshot(row)
 		values = append(values, out)
 	}
 	return protocol.NewPageWithCursor(values, page.NextCursor)
@@ -63,7 +63,7 @@ func readSchedulePage(r *poMCPRuntime, query protocol.PageQuery) *protocol.Page[
 func scheduleRunRequest(r *poMCPRuntime, id string) protocol.CallPluginRequest {
 	r.t.Helper()
 	request := scheduleQuery(r, protocol.PageQuery{})
-	input, err := json.Marshal(testsupport.SchedulesRunNowV1Input{ID: id})
+	input, err := json.Marshal(testsupport.SchedulesItemInput{ID: id})
 	if err != nil {
 		r.t.Fatal(err)
 	}
@@ -71,20 +71,20 @@ func scheduleRunRequest(r *poMCPRuntime, id string) protocol.CallPluginRequest {
 	return request
 }
 
-func readScheduleRun(r *poMCPRuntime, request protocol.CallPluginRequest, key string) *testsupport.SchedulesRunNowV1Output {
+func readScheduleRun(r *poMCPRuntime, request protocol.CallPluginRequest, key string) *testsupport.SchedulesRunReference {
 	r.t.Helper()
 	reply := r.must(delivery.PluginsCall, request, key).(*protocol.CallPluginResponse)
 	if reply.Failure != nil {
 		r.t.Fatal(reply.Failure)
 	}
-	var value testsupport.SchedulesRunNowV1Output
+	var value testsupport.SchedulesRunReference
 	if err := json.Unmarshal([]byte(reply.Output), &value, json.RejectUnknownMembers(true)); err != nil {
 		r.t.Fatal(err)
 	}
 	return &value
 }
 
-func scheduleCreateRequest(r *poMCPRuntime, draft testsupport.SchedulesCreateV1Input) protocol.CallPluginRequest {
+func scheduleCreateRequest(r *poMCPRuntime, draft testsupport.SchedulesDraft) protocol.CallPluginRequest {
 	r.t.Helper()
 	request := scheduleQuery(r, protocol.PageQuery{})
 	input, err := json.Marshal(draft)
@@ -94,19 +94,19 @@ func scheduleCreateRequest(r *poMCPRuntime, draft testsupport.SchedulesCreateV1I
 	request.Method, request.Input = testsupport.SchedulesCreateV1Method, string(input)
 	return request
 }
-func readScheduleCreate(r *poMCPRuntime, request protocol.CallPluginRequest, key string) *testsupport.SchedulesCreateV1Output {
+func readScheduleCreate(r *poMCPRuntime, request protocol.CallPluginRequest, key string) *testsupport.SchedulesSnapshot {
 	r.t.Helper()
 	reply := r.must(delivery.PluginsCall, request, key).(*protocol.CallPluginResponse)
 	if reply.Failure != nil {
 		r.t.Fatal(reply.Failure)
 	}
-	var snapshot testsupport.SchedulesCreateV1Output
+	var snapshot testsupport.SchedulesSnapshot
 	if err := json.Unmarshal([]byte(reply.Output), &snapshot); err != nil {
 		r.t.Fatal(err)
 	}
 	return &snapshot
 }
-func scheduleUpdateRequest(r *poMCPRuntime, input testsupport.SchedulesUpdateV1Input) protocol.CallPluginRequest {
+func scheduleUpdateRequest(r *poMCPRuntime, input testsupport.SchedulesUpdateInput) protocol.CallPluginRequest {
 	r.t.Helper()
 	request := scheduleQuery(r, protocol.PageQuery{})
 	encoded, err := json.Marshal(input)

@@ -98,7 +98,7 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := json.Marshal(SchedulesListV1Input{})
+	input, err := json.Marshal(SchedulesListInput{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 	if err != nil || reply.Failure != nil {
 		t.Fatalf("default schedule backend: %+v, %v", reply, err)
 	}
-	var schedules SchedulesListV1Output
+	var schedules SchedulesPage
 	if err := json.Unmarshal([]byte(reply.Output), &schedules); err != nil || len(schedules.Rows) != 0 {
 		t.Fatalf("default schedules: %+v, %v", schedules, err)
 	}

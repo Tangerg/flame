@@ -1,53 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
-    "Method_flame_2efilewatch_2fconfigure_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL3dpcmU_5fConfigureInput"
-    },
-    "Method_flame_2efilewatch_2fconfigure_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fSnapshot"
-    },
-    "Method_flame_2efilewatch_2fevent_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL3dpcmU_5fEventInput"
-    },
-    "Method_flame_2efilewatch_2fevent_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fEvent"
-    },
-    "Method_flame_2efilewatch_2fevents_2ev1Input": {
-      "additionalProperties": false,
-      "properties": {},
-      "type": "object"
-    },
-    "Method_flame_2efilewatch_2fevents_2ev1Output": {
-      "items": {
-        "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fHeader"
-      },
-      "type": "array"
-    },
-    "Method_flame_2efilewatch_2fget_2ev1Input": {
-      "additionalProperties": false,
-      "properties": {},
-      "type": "object"
-    },
-    "Method_flame_2efilewatch_2fget_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fSnapshot"
-    },
-    "Method_flame_2efilewatch_2fstatus_2ev1Input": {
-      "additionalProperties": false,
-      "properties": {},
-      "type": "object"
-    },
-    "Method_flame_2efilewatch_2fstatus_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fStatus"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fCapture": {
+    "Capture": {
       "additionalProperties": false,
       "properties": {
         "generation": {
           "type": "string"
         },
         "invocation": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvcG9ydGFibGU_5fInvocation"
+          "$ref": "#/$defs/Invocation"
         },
         "kind": {
           "allOf": [
@@ -95,7 +56,7 @@
           "type": "string"
         },
         "trigger": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fDraft"
+          "$ref": "#/$defs/Draft"
         }
       },
       "required": [
@@ -112,7 +73,35 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fDraft": {
+    "ConfigureInput": {
+      "additionalProperties": false,
+      "properties": {
+        "expectedRevision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "trigger": {
+          "$ref": "#/$defs/Draft"
+        }
+      },
+      "required": [
+        "expectedRevision"
+      ],
+      "type": "object"
+    },
+    "ConfigureV1Input": {
+      "$ref": "#/$defs/ConfigureInput"
+    },
+    "ConfigureV1Output": {
+      "$ref": "#/$defs/Snapshot"
+    },
+    "Draft": {
       "additionalProperties": false,
       "properties": {
         "instructions": {
@@ -161,14 +150,14 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fEvent": {
+    "Event": {
       "additionalProperties": false,
       "properties": {
         "accepted": {
           "type": "boolean"
         },
         "capture": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fCapture"
+          "$ref": "#/$defs/Capture"
         }
       },
       "required": [
@@ -177,7 +166,46 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fHeader": {
+    "EventInput": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "EventV1Input": {
+      "$ref": "#/$defs/EventInput"
+    },
+    "EventV1Output": {
+      "$ref": "#/$defs/Event"
+    },
+    "EventsV1Input": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "EventsV1Output": {
+      "items": {
+        "$ref": "#/$defs/Header"
+      },
+      "type": "array"
+    },
+    "GetV1Input": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "GetV1Output": {
+      "$ref": "#/$defs/Snapshot"
+    },
+    "Header": {
       "additionalProperties": false,
       "properties": {
         "accepted": {
@@ -238,7 +266,30 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fSnapshot": {
+    "Invocation": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "origin": {
+          "type": "string"
+        },
+        "parent": {
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/Target"
+        }
+      },
+      "required": [
+        "id",
+        "origin",
+        "target"
+      ],
+      "type": "object"
+    },
+    "Snapshot": {
       "additionalProperties": false,
       "properties": {
         "revision": {
@@ -252,7 +303,7 @@
           "type": "integer"
         },
         "trigger": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fDraft"
+          "$ref": "#/$defs/Draft"
         }
       },
       "required": [
@@ -260,7 +311,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fStatus": {
+    "Status": {
       "additionalProperties": false,
       "properties": {
         "dispatchError": {
@@ -298,66 +349,15 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL3dpcmU_5fConfigureInput": {
+    "StatusV1Input": {
       "additionalProperties": false,
-      "properties": {
-        "expectedRevision": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "minimum": 1,
-          "type": "integer"
-        },
-        "trigger": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fDraft"
-        }
-      },
-      "required": [
-        "expectedRevision"
-      ],
+      "properties": {},
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL3dpcmU_5fEventInput": {
-      "additionalProperties": false,
-      "properties": {
-        "id": {
-          "maxLength": 256,
-          "minLength": 1,
-          "type": "string"
-        }
-      },
-      "required": [
-        "id"
-      ],
-      "type": "object"
+    "StatusV1Output": {
+      "$ref": "#/$defs/Status"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvcG9ydGFibGU_5fInvocation": {
-      "additionalProperties": false,
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "origin": {
-          "type": "string"
-        },
-        "parent": {
-          "type": "string"
-        },
-        "target": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvcG9ydGFibGU_5fTarget"
-        }
-      },
-      "required": [
-        "id",
-        "origin",
-        "target"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvcG9ydGFibGU_5fTarget": {
+    "Target": {
       "additionalProperties": false,
       "properties": {
         "reference": {

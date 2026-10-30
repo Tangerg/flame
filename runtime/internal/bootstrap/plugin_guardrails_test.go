@@ -46,7 +46,7 @@ func TestGuardrailsInstalledInputRefusesDispatchWithoutRewritingAuthoredHistory(
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := jsonvalue.Encode(testsupport.GuardrailsReplacePolicyV1Input{ExpectedRevision: 1, Phrases: []string{protected}})
+	input, err := jsonvalue.Encode(testsupport.GuardrailsReplaceInput{ExpectedRevision: 1, Phrases: []string{protected}})
 	if err != nil {
 		t.Fatal(err)
 	}

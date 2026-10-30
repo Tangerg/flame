@@ -1,17 +1,17 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fAnalysis": {
+    "Analysis": {
       "additionalProperties": false,
       "properties": {
         "findings": {
           "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fFinding"
+            "$ref": "#/$defs/Finding"
           },
           "type": "array"
         },
         "review": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fSnapshot"
+          "$ref": "#/$defs/Snapshot"
         }
       },
       "required": [
@@ -20,7 +20,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fFinding": {
+    "Finding": {
       "additionalProperties": false,
       "properties": {
         "code": {
@@ -50,12 +50,12 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fListResult": {
+    "ListResult": {
       "additionalProperties": false,
       "properties": {
         "reviews": {
           "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fSnapshot"
+            "$ref": "#/$defs/Snapshot"
           },
           "type": "array"
         }
@@ -65,7 +65,29 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fSnapshot": {
+    "ReviewsAnalyzersInput": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "ReviewsAnalyzersOutput": {
+      "$ref": "#/$defs/Analysis"
+    },
+    "ReviewsListInput": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "ReviewsListOutput": {
+      "$ref": "#/$defs/ListResult"
+    },
+    "ReviewsUpdateInput": {
+      "$ref": "#/$defs/Update"
+    },
+    "ReviewsUpdateOutput": {
+      "$ref": "#/$defs/UpdateResult"
+    },
+    "Snapshot": {
       "additionalProperties": false,
       "properties": {
         "id": {
@@ -103,7 +125,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fUpdate": {
+    "Update": {
       "additionalProperties": false,
       "properties": {
         "expectedRevision": {
@@ -138,11 +160,11 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fUpdateResult": {
+    "UpdateResult": {
       "additionalProperties": false,
       "properties": {
         "review": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fSnapshot"
+          "$ref": "#/$defs/Snapshot"
         },
         "type": {
           "allOf": [
@@ -164,28 +186,6 @@
         "type"
       ],
       "type": "object"
-    },
-    "Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eanalyzersInput": {
-      "additionalProperties": false,
-      "properties": {},
-      "type": "object"
-    },
-    "Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eanalyzersOutput": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fAnalysis"
-    },
-    "Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2elistInput": {
-      "additionalProperties": false,
-      "properties": {},
-      "type": "object"
-    },
-    "Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2elistOutput": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fListResult"
-    },
-    "Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eupdateInput": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fUpdate"
-    },
-    "Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eupdateOutput": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fUpdateResult"
     }
   }
 }

@@ -33,7 +33,7 @@ func TestModelRouterInstalledPolicyBindsNewRunWithoutRewritingSessionOrAcceptedR
 	selected, _ := model.New("openai", "gpt-5-mini")
 	replace := func(revision uint64, rules string, key string) {
 		t.Helper()
-		requestInput := testsupport.ModelrouterReplacePolicyV1Input{ExpectedRevision: revision}
+		requestInput := testsupport.ModelrouterReplaceInput{ExpectedRevision: revision}
 		if err := json.Unmarshal([]byte(rules), &requestInput.Rules); err != nil {
 			t.Fatal(err)
 		}

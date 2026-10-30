@@ -1,11 +1,9 @@
 package contractgen
 
 import (
+	"encoding/base64"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
-	"github.com/Tangerg/flame/qimu/portable"
-	"github.com/Tangerg/scope/core/jsonschema"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -13,6 +11,10 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/scope/core/jsonschema"
 )
 
 func TestStreamingFeatureProjectsChunkAndFinalContracts(t *testing.T) {
@@ -169,8 +171,8 @@ func TestFeatureGenerationRefusesDuplicatesAndExternalSchemas(t *testing.T) {
 			t.Fatalf("invalid feature contract admitted: %s", data)
 		}
 	}
-	if featureTypeName("a/b") == featureTypeName("a_2fb") {
-		t.Fatal("distinct semantic names share a generated identifier")
+	if _, _, err := featureNames([]portable.MethodDescriptor{{Name: "x/read.v1"}, {Name: "y/read-v1"}}); err == nil {
+		t.Fatal("two methods were given one generated name")
 	}
 }
 
@@ -322,7 +324,7 @@ func TestFeatureGoProjectionPreservesTypedFramesAndIntegerBounds(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, required := range []string{"const CapabilityJSON", "const ReadV1Method", "type ReadV1Input"} {
+	for _, required := range []string{"const CapabilityJSON", "const ReadV1Method", "type Input struct", "type Output struct"} {
 		if !strings.Contains(string(scoped), required) {
 			t.Fatalf("package-scoped projection lost %s", required)
 		}
@@ -331,5 +333,29 @@ func TestFeatureGoProjectionPreservesTypedFramesAndIntegerBounds(t *testing.T) {
 		if _, err := artifacts.goProjection(output); err == nil {
 			t.Fatal("invalid Go output configuration accepted")
 		}
+	}
+}
+
+func TestFeatureDefinitionsAreNamedByTheirGoTypes(t *testing.T) {
+	key := func(pkg, name string) string {
+		return "go_" + base64.RawURLEncoding.EncodeToString([]byte(pkg)) + "_" + name
+	}
+	schema := func(keys ...string) []byte {
+		defs := make([]string, len(keys))
+		for index, key := range keys {
+			defs[index] = strconv.Quote(key) + `:{"type":"object"}`
+		}
+		return []byte(`{"$defs":{` + strings.Join(defs, ",") + `}}`)
+	}
+	domain, wire := key("example.com/feature/internal/domain", "Snapshot"), key("example.com/feature/internal/wire", "Snapshot")
+	selection := key("example.com/sdk/model", "selection_JSON[string]")
+	_, renamed, err := featureNames([]portable.MethodDescriptor{
+		{Name: "feature/read.v1", Input: schema(domain, selection), Output: schema(wire)},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if renamed[domain] != "DomainSnapshot" || renamed[wire] != "WireSnapshot" || renamed[selection] != "SelectionJSONString" {
+		t.Fatalf("definition names = %v", renamed)
 	}
 }

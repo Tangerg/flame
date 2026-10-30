@@ -3,107 +3,107 @@ package testsupport
 
 import "time"
 
-type WebBrowseV1OutputFormat string
+type WebFetchRequestFormat string
 
 const (
-	WebBrowseV1OutputFormatMarkdown WebBrowseV1OutputFormat = "markdown"
-	WebBrowseV1OutputFormatHtml     WebBrowseV1OutputFormat = "html"
-	WebBrowseV1OutputFormatText     WebBrowseV1OutputFormat = "text"
+	WebFetchRequestFormatMarkdown WebFetchRequestFormat = "markdown"
+	WebFetchRequestFormatHtml     WebFetchRequestFormat = "html"
+	WebFetchRequestFormatText     WebFetchRequestFormat = "text"
 )
 
-type WebFetchV1InputFormat string
+type WebHTTPContentEncoding string
 
 const (
-	WebFetchV1InputFormatMarkdown WebFetchV1InputFormat = "markdown"
-	WebFetchV1InputFormatHtml     WebFetchV1InputFormat = "html"
-	WebFetchV1InputFormatText     WebFetchV1InputFormat = "text"
+	WebHTTPContentEncodingUtf8   WebHTTPContentEncoding = "utf8"
+	WebHTTPContentEncodingBase64 WebHTTPContentEncoding = "base64"
 )
 
-type WebMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPContentEncoding string
+type WebPageFormat string
 
 const (
-	WebMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPContentEncodingUtf8   WebMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPContentEncoding = "utf8"
-	WebMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPContentEncodingBase64 WebMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPContentEncoding = "base64"
+	WebPageFormatMarkdown WebPageFormat = "markdown"
+	WebPageFormatHtml     WebPageFormat = "html"
+	WebPageFormatText     WebPageFormat = "text"
 )
 
-type WebRequestV1InputMethod string
+type WebRequestMethod string
 
 const (
-	WebRequestV1InputMethodGET    WebRequestV1InputMethod = "GET"
-	WebRequestV1InputMethodHEAD   WebRequestV1InputMethod = "HEAD"
-	WebRequestV1InputMethodPOST   WebRequestV1InputMethod = "POST"
-	WebRequestV1InputMethodPUT    WebRequestV1InputMethod = "PUT"
-	WebRequestV1InputMethodPATCH  WebRequestV1InputMethod = "PATCH"
-	WebRequestV1InputMethodDELETE WebRequestV1InputMethod = "DELETE"
+	WebRequestMethodGET    WebRequestMethod = "GET"
+	WebRequestMethodHEAD   WebRequestMethod = "HEAD"
+	WebRequestMethodPOST   WebRequestMethod = "POST"
+	WebRequestMethodPUT    WebRequestMethod = "PUT"
+	WebRequestMethodPATCH  WebRequestMethod = "PATCH"
+	WebRequestMethodDELETE WebRequestMethod = "DELETE"
 )
 
-type WebSearchV1InputRecency string
+type WebSearchRequestRecency string
 
 const (
-	WebSearchV1InputRecencyHour  WebSearchV1InputRecency = "hour"
-	WebSearchV1InputRecencyDay   WebSearchV1InputRecency = "day"
-	WebSearchV1InputRecencyWeek  WebSearchV1InputRecency = "week"
-	WebSearchV1InputRecencyMonth WebSearchV1InputRecency = "month"
-	WebSearchV1InputRecencyYear  WebSearchV1InputRecency = "year"
+	WebSearchRequestRecencyHour  WebSearchRequestRecency = "hour"
+	WebSearchRequestRecencyDay   WebSearchRequestRecency = "day"
+	WebSearchRequestRecencyWeek  WebSearchRequestRecency = "week"
+	WebSearchRequestRecencyMonth WebSearchRequestRecency = "month"
+	WebSearchRequestRecencyYear  WebSearchRequestRecency = "year"
 )
 
-type WebBrowseV1Output struct {
-	Content    string                  `json:"content"`
-	Format     WebBrowseV1OutputFormat `json:"format"`
-	NextOffset *int64                  `json:"nextOffset,omitzero"`
-	Offset     int64                   `json:"offset"`
-	SnapshotId string                  `json:"snapshotId"`
-	TotalRunes int64                   `json:"totalRunes"`
-	Url        string                  `json:"url"`
-}
-
-type WebBrowseV1Input struct {
+type WebBrowseInput struct {
 	Limit      uint64 `json:"limit"`
 	Offset     uint64 `json:"offset"`
 	SnapshotId string `json:"snapshotId"`
 }
 
-type WebMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPContent struct {
-	Data     string                                                                                                   `json:"data"`
-	Encoding WebMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPContentEncoding `json:"encoding"`
-}
-
-type WebRequestV1Output struct {
-	Body      WebMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPContent               `json:"body"`
-	Duration  string                                                                                                         `json:"duration"`
-	Headers   *map[string][]WebMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPContent `json:"headers,omitzero"`
-	Status    int64                                                                                                          `json:"status"`
-	Truncated *bool                                                                                                          `json:"truncated,omitzero"`
-}
-
-type WebRequestV1Input struct {
-	Body      *string                  `json:"body,omitzero"`
-	Headers   *map[string]string       `json:"headers,omitzero"`
-	Method    *WebRequestV1InputMethod `json:"method,omitzero"`
-	Query     *map[string]string       `json:"query,omitzero"`
-	TimeoutMs *int64                   `json:"timeout_ms,omitzero"`
-	Url       string                   `json:"url"`
-}
-
-type WebFetchV1Input struct {
-	Format *WebFetchV1InputFormat `json:"format,omitzero"`
+type WebFetchRequest struct {
+	Format *WebFetchRequestFormat `json:"format,omitzero"`
 	Url    string                 `json:"url"`
 }
 
-type WebSearchV1Input struct {
+type WebHTTPContent struct {
+	Data     string                 `json:"data"`
+	Encoding WebHTTPContentEncoding `json:"encoding"`
+}
+
+type WebHTTPResponse struct {
+	Body      WebHTTPContent               `json:"body"`
+	Duration  string                       `json:"duration"`
+	Headers   *map[string][]WebHTTPContent `json:"headers,omitzero"`
+	Status    int64                        `json:"status"`
+	Truncated *bool                        `json:"truncated,omitzero"`
+}
+
+type WebPage struct {
+	Content    string        `json:"content"`
+	Format     WebPageFormat `json:"format"`
+	NextOffset *int64        `json:"nextOffset,omitzero"`
+	Offset     int64         `json:"offset"`
+	SnapshotId string        `json:"snapshotId"`
+	TotalRunes int64         `json:"totalRunes"`
+	Url        string        `json:"url"`
+}
+
+type WebRequest struct {
+	Body      *string            `json:"body,omitzero"`
+	Headers   *map[string]string `json:"headers,omitzero"`
+	Method    *WebRequestMethod  `json:"method,omitzero"`
+	Query     *map[string]string `json:"query,omitzero"`
+	TimeoutMs *int64             `json:"timeout_ms,omitzero"`
+	Url       string             `json:"url"`
+}
+
+type WebSearchRequest struct {
 	AllowedDomains *[]string                `json:"allowed_domains,omitzero"`
 	BlockedDomains *[]string                `json:"blocked_domains,omitzero"`
 	MaxResults     *int64                   `json:"max_results,omitzero"`
 	Query          string                   `json:"query"`
-	Recency        *WebSearchV1InputRecency `json:"recency,omitzero"`
+	Recency        *WebSearchRequestRecency `json:"recency,omitzero"`
 }
 
-type WebSearchV1Output struct {
-	Query   string                                                                         `json:"query"`
-	Results []WebMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchResult `json:"results"`
+type WebSearchResponse struct {
+	Query   string            `json:"query"`
+	Results []WebSearchResult `json:"results"`
 }
 
-type WebMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchResult struct {
+type WebSearchResult struct {
 	FaviconUrl    *string    `json:"favicon_url,omitzero"`
 	PublishedTime *time.Time `json:"published_time,omitzero"`
 	Snippet       string     `json:"snippet"`
@@ -117,8 +117,6 @@ const WebCapabilityJSON = "{\"protocol\":\"io.github.tangerg.qimu/portable/1\",\
 const WebBrowseV1Method = "flame.web/browse.v1"
 
 const WebFetchV1Method = "flame.web/fetch.v1"
-
-type WebFetchV1Output WebBrowseV1Output
 
 const WebRequestV1Method = "flame.web/request.v1"
 

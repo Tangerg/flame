@@ -2,26 +2,26 @@
 // Numeric and cross-field constraints remain in schema.json and the business owner.
 import type { JSONNumber } from "@qimu/sdk/json";
 
-export interface Method_flame_2edeliverables_2fappend_2ev1Input {
+export interface AppendV1Input {
   base64: string;
   offset: JSONNumber;
   uploadId: string;
 }
 
-export interface Method_flame_2edeliverables_2fappend_2ev1Output {
+export interface AppendV1Output {
   id: string;
   received: JSONNumber;
   sha256: string;
   size: JSONNumber;
 }
 
-export interface Method_flame_2edeliverables_2fassessment_2ev1Input {
+export interface AssessmentV1Input {
   assessmentId: string;
   id: string;
   revision: string;
 }
 
-export interface Method_flame_2edeliverables_2fassessment_2ev1Output {
+export interface AssessmentV1Output {
   assets: { filename: string; id: string; mime: string; sha256: string; size: JSONNumber }[];
   createdAt: string;
   id: string;
@@ -31,23 +31,23 @@ export interface Method_flame_2edeliverables_2fassessment_2ev1Output {
   sourceSha256: string;
 }
 
-export interface Method_flame_2edeliverables_2fcatalog_2ev1Input {
+export interface CatalogV1Input {
 }
 
-export interface Method_flame_2edeliverables_2fcatalog_2ev1Output {
+export interface CatalogV1Output {
   enginesJSON: string;
   formatsJSON: string;
   limitsJSON: string;
 }
 
-export interface Method_flame_2edeliverables_2fcreate_2ev1Input {
+export interface CreateV1Input {
   contentJSON: string;
   format: "docx" | "xlsx" | "pptx";
   provenance: { assumptions: string[]; reproduction: string; sources: { note: string; title: string; uri: string }[]; units: string };
   title: string;
 }
 
-export interface Method_flame_2edeliverables_2fcreate_2ev1Output {
+export interface CreateV1Output {
   createdAt: string;
   documentId: string;
   format: "docx" | "xlsx" | "pptx" | "pdf";
@@ -60,19 +60,19 @@ export interface Method_flame_2edeliverables_2fcreate_2ev1Output {
   size: JSONNumber;
 }
 
-export interface Method_flame_2edeliverables_2fdiscard_2ev1Input {
+export interface DiscardV1Input {
   uploadId: string;
 }
 
-export type Method_flame_2edeliverables_2fdiscard_2ev1Output = boolean;
+export type DiscardV1Output = boolean;
 
-export interface Method_flame_2edeliverables_2fdownload_2ev1Input {
+export interface DownloadV1Input {
   assetId: string;
   length: JSONNumber;
   offset: JSONNumber;
 }
 
-export interface Method_flame_2edeliverables_2fdownload_2ev1Output {
+export interface DownloadV1Output {
   asset: { filename: string; id: string; mime: string; sha256: string; size: JSONNumber };
   base64: string;
   done: boolean;
@@ -80,13 +80,13 @@ export interface Method_flame_2edeliverables_2fdownload_2ev1Output {
   offset: JSONNumber;
 }
 
-export interface Method_flame_2edeliverables_2fedit_2ev1Input {
+export interface EditV1Input {
   expectedRevision: string;
   id: string;
   operationsJSON: string;
 }
 
-export interface Method_flame_2edeliverables_2fedit_2ev1Output {
+export interface EditV1Output {
   createdAt: string;
   documentId: string;
   format: "docx" | "xlsx" | "pptx" | "pdf";
@@ -99,14 +99,14 @@ export interface Method_flame_2edeliverables_2fedit_2ev1Output {
   size: JSONNumber;
 }
 
-export interface Method_flame_2edeliverables_2fexport_2ev1Input {
+export interface ExportV1Input {
   id: string;
   kind: "native" | "pdf" | "bundle" | "csv";
   revision: string;
   sheetPart?: string;
 }
 
-export interface Method_flame_2edeliverables_2fexport_2ev1Output {
+export interface ExportV1Output {
   filename: string;
   id: string;
   mime: string;
@@ -114,25 +114,25 @@ export interface Method_flame_2edeliverables_2fexport_2ev1Output {
   size: JSONNumber;
 }
 
-export interface Method_flame_2edeliverables_2fhistory_2ev1Input {
+export interface HistoryV1Input {
   before?: string;
   id: string;
   limit: JSONNumber;
 }
 
-export interface Method_flame_2edeliverables_2fhistory_2ev1Output {
+export interface HistoryV1Output {
   entries: ({ createdAt: string; documentId: string; format: "docx" | "xlsx" | "pptx" | "pdf"; id: string; native: { filename: string; id: string; mime: string; sha256: string; size: JSONNumber }; operation: "create" | "import" | "edit" | "recalculate"; parent?: string; provenance: { assumptions: string[]; reproduction: string; sources: { note: string; title: string; uri: string }[]; units: string }; sha256: string; size: JSONNumber })[];
   next?: string;
 }
 
-export interface Method_flame_2edeliverables_2fimport_2ev1Input {
+export interface ImportV1Input {
   format: "docx" | "xlsx" | "pptx" | "pdf";
   provenance: { assumptions: string[]; reproduction: string; sources: { note: string; title: string; uri: string }[]; units: string };
   title: string;
   uploadId: string;
 }
 
-export interface Method_flame_2edeliverables_2fimport_2ev1Output {
+export interface ImportV1Output {
   createdAt: string;
   documentId: string;
   format: "docx" | "xlsx" | "pptx" | "pdf";
@@ -145,22 +145,22 @@ export interface Method_flame_2edeliverables_2fimport_2ev1Output {
   size: JSONNumber;
 }
 
-export interface Method_flame_2edeliverables_2flist_2ev1Input {
+export interface ListV1Input {
   before?: string;
   limit: JSONNumber;
 }
 
-export interface Method_flame_2edeliverables_2flist_2ev1Output {
+export interface ListV1Output {
   entries: ({ createdAt: string; format: "docx" | "xlsx" | "pptx" | "pdf"; head: string; id: string; title: string })[];
   next?: string;
 }
 
-export interface Method_flame_2edeliverables_2fread_2ev1Input {
+export interface ReadV1Input {
   id: string;
   revision?: string;
 }
 
-export interface Method_flame_2edeliverables_2fread_2ev1Output {
+export interface ReadV1Output {
   assessments: ({ assets: { filename: string; id: string; mime: string; sha256: string; size: JSONNumber }[]; createdAt: string; id: string; kind: "render" | "review"; revision: string; sourceSha256: string })[];
   document: { createdAt: string; format: "docx" | "xlsx" | "pptx" | "pdf"; head: string; id: string; title: string };
   inspectionJSON: string;
@@ -168,12 +168,12 @@ export interface Method_flame_2edeliverables_2fread_2ev1Output {
   revision: { createdAt: string; documentId: string; format: "docx" | "xlsx" | "pptx" | "pdf"; id: string; native: { filename: string; id: string; mime: string; sha256: string; size: JSONNumber }; operation: "create" | "import" | "edit" | "recalculate"; parent?: string; provenance: { assumptions: string[]; reproduction: string; sources: { note: string; title: string; uri: string }[]; units: string }; sha256: string; size: JSONNumber };
 }
 
-export interface Method_flame_2edeliverables_2frecalculate_2ev1Input {
+export interface RecalculateV1Input {
   expectedRevision: string;
   id: string;
 }
 
-export interface Method_flame_2edeliverables_2frecalculate_2ev1Output {
+export interface RecalculateV1Output {
   createdAt: string;
   documentId: string;
   format: "docx" | "xlsx" | "pptx" | "pdf";
@@ -186,19 +186,19 @@ export interface Method_flame_2edeliverables_2frecalculate_2ev1Output {
   size: JSONNumber;
 }
 
-export interface Method_flame_2edeliverables_2fremove_2ev1Input {
+export interface RemoveV1Input {
   expectedRevision: string;
   id: string;
 }
 
-export type Method_flame_2edeliverables_2fremove_2ev1Output = boolean;
+export type RemoveV1Output = boolean;
 
-export interface Method_flame_2edeliverables_2frender_2ev1Input {
+export interface RenderV1Input {
   id: string;
   revision: string;
 }
 
-export interface Method_flame_2edeliverables_2frender_2ev1Output {
+export interface RenderV1Output {
   assets: { filename: string; id: string; mime: string; sha256: string; size: JSONNumber }[];
   createdAt: string;
   id: string;
@@ -208,7 +208,7 @@ export interface Method_flame_2edeliverables_2frender_2ev1Output {
   sourceSha256: string;
 }
 
-export interface Method_flame_2edeliverables_2freview_2ev1Input {
+export interface ReviewV1Input {
   id: string;
   notes: string;
   pages: JSONNumber[];
@@ -217,7 +217,7 @@ export interface Method_flame_2edeliverables_2freview_2ev1Input {
   verdict: "accepted" | "changes_requested";
 }
 
-export interface Method_flame_2edeliverables_2freview_2ev1Output {
+export interface ReviewV1Output {
   assets: { filename: string; id: string; mime: string; sha256: string; size: JSONNumber }[];
   createdAt: string;
   id: string;
@@ -227,62 +227,62 @@ export interface Method_flame_2edeliverables_2freview_2ev1Output {
   sourceSha256: string;
 }
 
-export interface Method_flame_2edeliverables_2fupload_2ev1Input {
+export interface UploadV1Input {
   sha256: string;
   size: JSONNumber;
 }
 
-export interface Method_flame_2edeliverables_2fupload_2ev1Output {
+export interface UploadV1Output {
   id: string;
   received: JSONNumber;
   sha256: string;
   size: JSONNumber;
 }
 
-export interface Method_flame_2edeliverables_2fuploads_2ev1Input {
+export interface UploadsV1Input {
 }
 
-export type Method_flame_2edeliverables_2fuploads_2ev1Output = { id: string; received: JSONNumber; sha256: string; size: JSONNumber }[];
+export type UploadsV1Output = { id: string; received: JSONNumber; sha256: string; size: JSONNumber }[];
 
 export interface MethodInputs {
-  "flame.deliverables/append.v1": Method_flame_2edeliverables_2fappend_2ev1Input;
-  "flame.deliverables/assessment.v1": Method_flame_2edeliverables_2fassessment_2ev1Input;
-  "flame.deliverables/catalog.v1": Method_flame_2edeliverables_2fcatalog_2ev1Input;
-  "flame.deliverables/create.v1": Method_flame_2edeliverables_2fcreate_2ev1Input;
-  "flame.deliverables/discard.v1": Method_flame_2edeliverables_2fdiscard_2ev1Input;
-  "flame.deliverables/download.v1": Method_flame_2edeliverables_2fdownload_2ev1Input;
-  "flame.deliverables/edit.v1": Method_flame_2edeliverables_2fedit_2ev1Input;
-  "flame.deliverables/export.v1": Method_flame_2edeliverables_2fexport_2ev1Input;
-  "flame.deliverables/history.v1": Method_flame_2edeliverables_2fhistory_2ev1Input;
-  "flame.deliverables/import.v1": Method_flame_2edeliverables_2fimport_2ev1Input;
-  "flame.deliverables/list.v1": Method_flame_2edeliverables_2flist_2ev1Input;
-  "flame.deliverables/read.v1": Method_flame_2edeliverables_2fread_2ev1Input;
-  "flame.deliverables/recalculate.v1": Method_flame_2edeliverables_2frecalculate_2ev1Input;
-  "flame.deliverables/remove.v1": Method_flame_2edeliverables_2fremove_2ev1Input;
-  "flame.deliverables/render.v1": Method_flame_2edeliverables_2frender_2ev1Input;
-  "flame.deliverables/review.v1": Method_flame_2edeliverables_2freview_2ev1Input;
-  "flame.deliverables/upload.v1": Method_flame_2edeliverables_2fupload_2ev1Input;
-  "flame.deliverables/uploads.v1": Method_flame_2edeliverables_2fuploads_2ev1Input;
+  "flame.deliverables/append.v1": AppendV1Input;
+  "flame.deliverables/assessment.v1": AssessmentV1Input;
+  "flame.deliverables/catalog.v1": CatalogV1Input;
+  "flame.deliverables/create.v1": CreateV1Input;
+  "flame.deliverables/discard.v1": DiscardV1Input;
+  "flame.deliverables/download.v1": DownloadV1Input;
+  "flame.deliverables/edit.v1": EditV1Input;
+  "flame.deliverables/export.v1": ExportV1Input;
+  "flame.deliverables/history.v1": HistoryV1Input;
+  "flame.deliverables/import.v1": ImportV1Input;
+  "flame.deliverables/list.v1": ListV1Input;
+  "flame.deliverables/read.v1": ReadV1Input;
+  "flame.deliverables/recalculate.v1": RecalculateV1Input;
+  "flame.deliverables/remove.v1": RemoveV1Input;
+  "flame.deliverables/render.v1": RenderV1Input;
+  "flame.deliverables/review.v1": ReviewV1Input;
+  "flame.deliverables/upload.v1": UploadV1Input;
+  "flame.deliverables/uploads.v1": UploadsV1Input;
 }
 export interface MethodOutputs {
-  "flame.deliverables/append.v1": Method_flame_2edeliverables_2fappend_2ev1Output;
-  "flame.deliverables/assessment.v1": Method_flame_2edeliverables_2fassessment_2ev1Output;
-  "flame.deliverables/catalog.v1": Method_flame_2edeliverables_2fcatalog_2ev1Output;
-  "flame.deliverables/create.v1": Method_flame_2edeliverables_2fcreate_2ev1Output;
-  "flame.deliverables/discard.v1": Method_flame_2edeliverables_2fdiscard_2ev1Output;
-  "flame.deliverables/download.v1": Method_flame_2edeliverables_2fdownload_2ev1Output;
-  "flame.deliverables/edit.v1": Method_flame_2edeliverables_2fedit_2ev1Output;
-  "flame.deliverables/export.v1": Method_flame_2edeliverables_2fexport_2ev1Output;
-  "flame.deliverables/history.v1": Method_flame_2edeliverables_2fhistory_2ev1Output;
-  "flame.deliverables/import.v1": Method_flame_2edeliverables_2fimport_2ev1Output;
-  "flame.deliverables/list.v1": Method_flame_2edeliverables_2flist_2ev1Output;
-  "flame.deliverables/read.v1": Method_flame_2edeliverables_2fread_2ev1Output;
-  "flame.deliverables/recalculate.v1": Method_flame_2edeliverables_2frecalculate_2ev1Output;
-  "flame.deliverables/remove.v1": Method_flame_2edeliverables_2fremove_2ev1Output;
-  "flame.deliverables/render.v1": Method_flame_2edeliverables_2frender_2ev1Output;
-  "flame.deliverables/review.v1": Method_flame_2edeliverables_2freview_2ev1Output;
-  "flame.deliverables/upload.v1": Method_flame_2edeliverables_2fupload_2ev1Output;
-  "flame.deliverables/uploads.v1": Method_flame_2edeliverables_2fuploads_2ev1Output;
+  "flame.deliverables/append.v1": AppendV1Output;
+  "flame.deliverables/assessment.v1": AssessmentV1Output;
+  "flame.deliverables/catalog.v1": CatalogV1Output;
+  "flame.deliverables/create.v1": CreateV1Output;
+  "flame.deliverables/discard.v1": DiscardV1Output;
+  "flame.deliverables/download.v1": DownloadV1Output;
+  "flame.deliverables/edit.v1": EditV1Output;
+  "flame.deliverables/export.v1": ExportV1Output;
+  "flame.deliverables/history.v1": HistoryV1Output;
+  "flame.deliverables/import.v1": ImportV1Output;
+  "flame.deliverables/list.v1": ListV1Output;
+  "flame.deliverables/read.v1": ReadV1Output;
+  "flame.deliverables/recalculate.v1": RecalculateV1Output;
+  "flame.deliverables/remove.v1": RemoveV1Output;
+  "flame.deliverables/render.v1": RenderV1Output;
+  "flame.deliverables/review.v1": ReviewV1Output;
+  "flame.deliverables/upload.v1": UploadV1Output;
+  "flame.deliverables/uploads.v1": UploadsV1Output;
 }
 export const METHODS = {
   "flame.deliverables/append.v1": { kind: "command", target: "installation" },

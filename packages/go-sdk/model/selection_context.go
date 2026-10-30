@@ -1,6 +1,9 @@
 package model
 
-import "errors"
+import (
+	"errors"
+	"slices"
+)
 
 type Use string
 
@@ -15,12 +18,10 @@ func (Use) JSONSchemaEnum() []string {
 }
 
 func (u Use) Validate() error {
-	switch u {
-	case Interaction, Utility, Independent:
-		return nil
-	default:
+	if !slices.Contains(u.JSONSchemaEnum(), string(u)) {
 		return errors.New("model selection: unknown use")
 	}
+	return nil
 }
 
 type InputKind string

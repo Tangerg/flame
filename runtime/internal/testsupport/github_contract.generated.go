@@ -3,97 +3,97 @@ package testsupport
 
 import "time"
 
-type GitHubCreateIssueV1OutputState string
+type GitHubCreateReviewCommentInputSide string
 
 const (
-	GitHubCreateIssueV1OutputStateOpen   GitHubCreateIssueV1OutputState = "open"
-	GitHubCreateIssueV1OutputStateClosed GitHubCreateIssueV1OutputState = "closed"
+	GitHubCreateReviewCommentInputSideLEFT  GitHubCreateReviewCommentInputSide = "LEFT"
+	GitHubCreateReviewCommentInputSideRIGHT GitHubCreateReviewCommentInputSide = "RIGHT"
 )
 
-type GitHubCreatePullRequestCommentV1InputSide string
+type GitHubCreateReviewCommentInputStartSide string
 
 const (
-	GitHubCreatePullRequestCommentV1InputSideLEFT  GitHubCreatePullRequestCommentV1InputSide = "LEFT"
-	GitHubCreatePullRequestCommentV1InputSideRIGHT GitHubCreatePullRequestCommentV1InputSide = "RIGHT"
+	GitHubCreateReviewCommentInputStartSideLEFT  GitHubCreateReviewCommentInputStartSide = "LEFT"
+	GitHubCreateReviewCommentInputStartSideRIGHT GitHubCreateReviewCommentInputStartSide = "RIGHT"
 )
 
-type GitHubCreatePullRequestCommentV1InputStartSide string
+type GitHubInlineCommentSide string
 
 const (
-	GitHubCreatePullRequestCommentV1InputStartSideLEFT  GitHubCreatePullRequestCommentV1InputStartSide = "LEFT"
-	GitHubCreatePullRequestCommentV1InputStartSideRIGHT GitHubCreatePullRequestCommentV1InputStartSide = "RIGHT"
+	GitHubInlineCommentSideLEFT  GitHubInlineCommentSide = "LEFT"
+	GitHubInlineCommentSideRIGHT GitHubInlineCommentSide = "RIGHT"
 )
 
-type GitHubCreatePullRequestV1OutputState string
+type GitHubInlineCommentStartSide string
 
 const (
-	GitHubCreatePullRequestV1OutputStateOpen   GitHubCreatePullRequestV1OutputState = "open"
-	GitHubCreatePullRequestV1OutputStateClosed GitHubCreatePullRequestV1OutputState = "closed"
+	GitHubInlineCommentStartSideLEFT  GitHubInlineCommentStartSide = "LEFT"
+	GitHubInlineCommentStartSideRIGHT GitHubInlineCommentStartSide = "RIGHT"
 )
 
-type GitHubListIssuesV1InputState string
+type GitHubIssueState string
 
 const (
-	GitHubListIssuesV1InputStateOpen   GitHubListIssuesV1InputState = "open"
-	GitHubListIssuesV1InputStateClosed GitHubListIssuesV1InputState = "closed"
-	GitHubListIssuesV1InputStateAll    GitHubListIssuesV1InputState = "all"
+	GitHubIssueStateOpen   GitHubIssueState = "open"
+	GitHubIssueStateClosed GitHubIssueState = "closed"
 )
 
-type GitHubListPullRequestsV1InputState string
+type GitHubListInputState string
 
 const (
-	GitHubListPullRequestsV1InputStateOpen   GitHubListPullRequestsV1InputState = "open"
-	GitHubListPullRequestsV1InputStateClosed GitHubListPullRequestsV1InputState = "closed"
-	GitHubListPullRequestsV1InputStateAll    GitHubListPullRequestsV1InputState = "all"
+	GitHubListInputStateOpen   GitHubListInputState = "open"
+	GitHubListInputStateClosed GitHubListInputState = "closed"
+	GitHubListInputStateAll    GitHubListInputState = "all"
 )
 
-type GitHubMergePullRequestV1InputMergeMethod string
+type GitHubMergePullInputMergeMethod string
 
 const (
-	GitHubMergePullRequestV1InputMergeMethodMerge  GitHubMergePullRequestV1InputMergeMethod = "merge"
-	GitHubMergePullRequestV1InputMergeMethodSquash GitHubMergePullRequestV1InputMergeMethod = "squash"
-	GitHubMergePullRequestV1InputMergeMethodRebase GitHubMergePullRequestV1InputMergeMethod = "rebase"
+	GitHubMergePullInputMergeMethodMerge  GitHubMergePullInputMergeMethod = "merge"
+	GitHubMergePullInputMergeMethodSquash GitHubMergePullInputMergeMethod = "squash"
+	GitHubMergePullInputMergeMethodRebase GitHubMergePullInputMergeMethod = "rebase"
 )
 
-type GitHubMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fInlineCommentSide string
+type GitHubPullListInputState string
 
 const (
-	GitHubMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fInlineCommentSideLEFT  GitHubMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fInlineCommentSide = "LEFT"
-	GitHubMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fInlineCommentSideRIGHT GitHubMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fInlineCommentSide = "RIGHT"
+	GitHubPullListInputStateOpen   GitHubPullListInputState = "open"
+	GitHubPullListInputStateClosed GitHubPullListInputState = "closed"
+	GitHubPullListInputStateAll    GitHubPullListInputState = "all"
 )
 
-type GitHubMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fInlineCommentStartSide string
+type GitHubPullRequestState string
 
 const (
-	GitHubMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fInlineCommentStartSideLEFT  GitHubMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fInlineCommentStartSide = "LEFT"
-	GitHubMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fInlineCommentStartSideRIGHT GitHubMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fInlineCommentStartSide = "RIGHT"
+	GitHubPullRequestStateOpen   GitHubPullRequestState = "open"
+	GitHubPullRequestStateClosed GitHubPullRequestState = "closed"
 )
 
-type GitHubSubmitPullRequestReviewV1InputEvent string
+type GitHubSubmitReviewInputEvent string
 
 const (
-	GitHubSubmitPullRequestReviewV1InputEventAPPROVE        GitHubSubmitPullRequestReviewV1InputEvent = "APPROVE"
-	GitHubSubmitPullRequestReviewV1InputEventREQUESTCHANGES GitHubSubmitPullRequestReviewV1InputEvent = "REQUEST_CHANGES"
-	GitHubSubmitPullRequestReviewV1InputEventCOMMENT        GitHubSubmitPullRequestReviewV1InputEvent = "COMMENT"
+	GitHubSubmitReviewInputEventAPPROVE        GitHubSubmitReviewInputEvent = "APPROVE"
+	GitHubSubmitReviewInputEventREQUESTCHANGES GitHubSubmitReviewInputEvent = "REQUEST_CHANGES"
+	GitHubSubmitReviewInputEventCOMMENT        GitHubSubmitReviewInputEvent = "COMMENT"
 )
 
-type GitHubUpdateIssueV1InputState string
+type GitHubUpdateIssueInputState string
 
 const (
-	GitHubUpdateIssueV1InputStateOpen   GitHubUpdateIssueV1InputState = "open"
-	GitHubUpdateIssueV1InputStateClosed GitHubUpdateIssueV1InputState = "closed"
+	GitHubUpdateIssueInputStateOpen   GitHubUpdateIssueInputState = "open"
+	GitHubUpdateIssueInputStateClosed GitHubUpdateIssueInputState = "closed"
 )
 
-type GitHubUpdateIssueV1InputStateReason string
+type GitHubUpdateIssueInputStateReason string
 
 const (
-	GitHubUpdateIssueV1InputStateReasonCompleted  GitHubUpdateIssueV1InputStateReason = "completed"
-	GitHubUpdateIssueV1InputStateReasonNotPlanned GitHubUpdateIssueV1InputStateReason = "not_planned"
-	GitHubUpdateIssueV1InputStateReasonDuplicate  GitHubUpdateIssueV1InputStateReason = "duplicate"
-	GitHubUpdateIssueV1InputStateReasonReopened   GitHubUpdateIssueV1InputStateReason = "reopened"
+	GitHubUpdateIssueInputStateReasonCompleted  GitHubUpdateIssueInputStateReason = "completed"
+	GitHubUpdateIssueInputStateReasonNotPlanned GitHubUpdateIssueInputStateReason = "not_planned"
+	GitHubUpdateIssueInputStateReasonDuplicate  GitHubUpdateIssueInputStateReason = "duplicate"
+	GitHubUpdateIssueInputStateReasonReopened   GitHubUpdateIssueInputStateReason = "reopened"
 )
 
-type GitHubMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fAnnotation struct {
+type GitHubAnnotation struct {
 	EndColumn   *int64  `json:"endColumn,omitzero"`
 	EndLine     int64   `json:"endLine"`
 	Level       string  `json:"level"`
@@ -105,19 +105,19 @@ type GitHubMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2lud
 	Title       *string `json:"title,omitzero"`
 }
 
-type GitHubListCheckAnnotationsV1Output struct {
-	Annotations []GitHubMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fAnnotation `json:"annotations"`
-	NextPage    *int64                                                                                                   `json:"nextPage,omitzero"`
+type GitHubAnnotationPage struct {
+	Annotations []GitHubAnnotation `json:"annotations"`
+	NextPage    *int64             `json:"nextPage,omitzero"`
 }
 
-type GitHubMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fBranch struct {
+type GitHubBranch struct {
 	Label      string  `json:"label"`
 	Ref        string  `json:"ref"`
 	Repository *string `json:"repository,omitzero"`
 	Sha        string  `json:"sha"`
 }
 
-type GitHubMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fChangedFile struct {
+type GitHubChangedFile struct {
 	Additions    int64   `json:"additions"`
 	Changes      int64   `json:"changes"`
 	Deletions    int64   `json:"deletions"`
@@ -128,19 +128,19 @@ type GitHubMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2lud
 	Status       string  `json:"status"`
 }
 
-type GitHubListCheckAnnotationsV1Input struct {
+type GitHubCheckInput struct {
 	CheckRunId uint64 `json:"checkRunId"`
 	Limit      uint64 `json:"limit"`
 	Page       uint64 `json:"page"`
 	Repository string `json:"repository"`
 }
 
-type GitHubListCheckRunsV1Output struct {
-	CheckRuns []GitHubMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCheckRun `json:"checkRuns"`
-	NextPage  *int64                                                                                                 `json:"nextPage,omitzero"`
+type GitHubCheckPage struct {
+	CheckRuns []GitHubCheckRun `json:"checkRuns"`
+	NextPage  *int64           `json:"nextPage,omitzero"`
 }
 
-type GitHubMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCheckRun struct {
+type GitHubCheckRun struct {
 	AnnotationsCount int64      `json:"annotationsCount"`
 	CompletedAt      *time.Time `json:"completedAt,omitzero"`
 	Conclusion       *string    `json:"conclusion,omitzero"`
@@ -155,7 +155,7 @@ type GitHubMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2lud
 	Url              string     `json:"url"`
 }
 
-type GitHubCreateIssueCommentV1Output struct {
+type GitHubComment struct {
 	Author    string    `json:"author"`
 	Body      string    `json:"body"`
 	CreatedAt time.Time `json:"createdAt"`
@@ -164,24 +164,24 @@ type GitHubCreateIssueCommentV1Output struct {
 	Url       string    `json:"url"`
 }
 
-type GitHubDeleteIssueCommentV1Input struct {
+type GitHubCommentInput struct {
 	CommentId  uint64 `json:"commentId"`
 	Repository string `json:"repository"`
 }
 
-type GitHubListIssueCommentsV1Output struct {
-	Comments []GitHubCreateIssueCommentV1Output `json:"comments"`
-	NextPage *int64                             `json:"nextPage,omitzero"`
+type GitHubCommentPage struct {
+	Comments []GitHubComment `json:"comments"`
+	NextPage *int64          `json:"nextPage,omitzero"`
 }
 
-type GitHubListCheckRunsV1Input struct {
+type GitHubCommitInput struct {
 	Limit      uint64 `json:"limit"`
 	Page       uint64 `json:"page"`
 	Ref        string `json:"ref"`
 	Repository string `json:"repository"`
 }
 
-type GitHubMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCommitStatus struct {
+type GitHubCommitStatus struct {
 	Context     string    `json:"context"`
 	CreatedAt   time.Time `json:"createdAt"`
 	Description *string   `json:"description,omitzero"`
@@ -191,13 +191,13 @@ type GitHubMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2lud
 	Url         *string   `json:"url,omitzero"`
 }
 
-type GitHubCreateIssueCommentV1Input struct {
+type GitHubCreateCommentInput struct {
 	Body       string `json:"body"`
 	Number     uint64 `json:"number"`
 	Repository string `json:"repository"`
 }
 
-type GitHubCreateIssueV1Input struct {
+type GitHubCreateIssueInput struct {
 	Assignees  *[]string `json:"assignees,omitzero"`
 	Body       *string   `json:"body,omitzero"`
 	Labels     *[]string `json:"labels,omitzero"`
@@ -205,7 +205,7 @@ type GitHubCreateIssueV1Input struct {
 	Title      string    `json:"title"`
 }
 
-type GitHubCreatePullRequestV1Input struct {
+type GitHubCreatePullInput struct {
 	Base                string  `json:"base"`
 	Body                *string `json:"body,omitzero"`
 	Draft               *bool   `json:"draft,omitzero"`
@@ -216,24 +216,24 @@ type GitHubCreatePullRequestV1Input struct {
 	Title               string  `json:"title"`
 }
 
-type GitHubCreatePullRequestCommentV1Input struct {
-	Body       string                                          `json:"body"`
-	CommitId   string                                          `json:"commitId"`
-	Line       uint64                                          `json:"line"`
-	Number     uint64                                          `json:"number"`
-	Path       string                                          `json:"path"`
-	Repository string                                          `json:"repository"`
-	Side       GitHubCreatePullRequestCommentV1InputSide       `json:"side"`
-	StartLine  *uint64                                         `json:"startLine,omitzero"`
-	StartSide  *GitHubCreatePullRequestCommentV1InputStartSide `json:"startSide,omitzero"`
+type GitHubCreateReviewCommentInput struct {
+	Body       string                                   `json:"body"`
+	CommitId   string                                   `json:"commitId"`
+	Line       uint64                                   `json:"line"`
+	Number     uint64                                   `json:"number"`
+	Path       string                                   `json:"path"`
+	Repository string                                   `json:"repository"`
+	Side       GitHubCreateReviewCommentInputSide       `json:"side"`
+	StartLine  *uint64                                  `json:"startLine,omitzero"`
+	StartSide  *GitHubCreateReviewCommentInputStartSide `json:"startSide,omitzero"`
 }
 
-type GitHubDeleteIssueCommentV1Output struct {
+type GitHubDeletedComment struct {
 	Deleted bool   `json:"deleted"`
 	Id      uint64 `json:"id"`
 }
 
-type GitHubReadFileV1Output struct {
+type GitHubFile struct {
 	Path       string `json:"path"`
 	Repository string `json:"repository"`
 	Sha        string `json:"sha"`
@@ -241,118 +241,118 @@ type GitHubReadFileV1Output struct {
 	Url        string `json:"url"`
 }
 
-type GitHubReadFileV1Input struct {
+type GitHubFileInput struct {
 	Path       string  `json:"path"`
 	Ref        *string `json:"ref,omitzero"`
 	Repository string  `json:"repository"`
 }
 
-type GitHubListPullRequestFilesV1Output struct {
-	Files        []GitHubMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fChangedFile `json:"files"`
-	LimitReached bool                                                                                                      `json:"limitReached"`
-	NextPage     *int64                                                                                                    `json:"nextPage,omitzero"`
+type GitHubFilePage struct {
+	Files        []GitHubChangedFile `json:"files"`
+	LimitReached bool                `json:"limitReached"`
+	NextPage     *int64              `json:"nextPage,omitzero"`
 }
 
-type GitHubMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fInlineComment struct {
-	Body      string                                                                                                              `json:"body"`
-	Line      uint64                                                                                                              `json:"line"`
-	Path      string                                                                                                              `json:"path"`
-	Side      GitHubMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fInlineCommentSide       `json:"side"`
-	StartLine *uint64                                                                                                             `json:"startLine,omitzero"`
-	StartSide *GitHubMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fInlineCommentStartSide `json:"startSide,omitzero"`
+type GitHubInlineComment struct {
+	Body      string                        `json:"body"`
+	Line      uint64                        `json:"line"`
+	Path      string                        `json:"path"`
+	Side      GitHubInlineCommentSide       `json:"side"`
+	StartLine *uint64                       `json:"startLine,omitzero"`
+	StartSide *GitHubInlineCommentStartSide `json:"startSide,omitzero"`
 }
 
-type GitHubCreateIssueV1Output struct {
-	Assignees   []string                       `json:"assignees"`
-	Author      string                         `json:"author"`
-	Body        string                         `json:"body"`
-	Id          uint64                         `json:"id"`
-	Labels      []string                       `json:"labels"`
-	Number      uint64                         `json:"number"`
-	PullRequest bool                           `json:"pullRequest"`
-	Repository  string                         `json:"repository"`
-	State       GitHubCreateIssueV1OutputState `json:"state"`
-	StateReason *string                        `json:"stateReason,omitzero"`
-	Title       string                         `json:"title"`
-	UpdatedAt   time.Time                      `json:"updatedAt"`
-	Url         string                         `json:"url"`
+type GitHubIssue struct {
+	Assignees   []string         `json:"assignees"`
+	Author      string           `json:"author"`
+	Body        string           `json:"body"`
+	Id          uint64           `json:"id"`
+	Labels      []string         `json:"labels"`
+	Number      uint64           `json:"number"`
+	PullRequest bool             `json:"pullRequest"`
+	Repository  string           `json:"repository"`
+	State       GitHubIssueState `json:"state"`
+	StateReason *string          `json:"stateReason,omitzero"`
+	Title       string           `json:"title"`
+	UpdatedAt   time.Time        `json:"updatedAt"`
+	Url         string           `json:"url"`
 }
 
-type GitHubGetIssueV1Input struct {
+type GitHubIssueInput struct {
 	Number     uint64 `json:"number"`
 	Repository string `json:"repository"`
 }
 
-type GitHubListIssuesV1Output struct {
-	Issues   []GitHubCreateIssueV1Output `json:"issues"`
-	NextPage *int64                      `json:"nextPage,omitzero"`
+type GitHubIssuePage struct {
+	Issues   []GitHubIssue `json:"issues"`
+	NextPage *int64        `json:"nextPage,omitzero"`
 }
 
-type GitHubListIssuesV1Input struct {
-	Limit      uint64                       `json:"limit"`
-	Page       uint64                       `json:"page"`
-	Repository string                       `json:"repository"`
-	State      GitHubListIssuesV1InputState `json:"state"`
+type GitHubListInput struct {
+	Limit      uint64               `json:"limit"`
+	Page       uint64               `json:"page"`
+	Repository string               `json:"repository"`
+	State      GitHubListInputState `json:"state"`
 }
 
-type GitHubMergePullRequestV1Input struct {
-	CommitMessage *string                                  `json:"commitMessage,omitzero"`
-	CommitTitle   *string                                  `json:"commitTitle,omitzero"`
-	HeadSha       string                                   `json:"headSha"`
-	MergeMethod   GitHubMergePullRequestV1InputMergeMethod `json:"mergeMethod"`
-	Number        uint64                                   `json:"number"`
-	Repository    string                                   `json:"repository"`
+type GitHubMergePullInput struct {
+	CommitMessage *string                         `json:"commitMessage,omitzero"`
+	CommitTitle   *string                         `json:"commitTitle,omitzero"`
+	HeadSha       string                          `json:"headSha"`
+	MergeMethod   GitHubMergePullInputMergeMethod `json:"mergeMethod"`
+	Number        uint64                          `json:"number"`
+	Repository    string                          `json:"repository"`
 }
 
-type GitHubMergePullRequestV1Output struct {
+type GitHubMergeResult struct {
 	Merged  bool   `json:"merged"`
 	Message string `json:"message"`
 	Sha     string `json:"sha"`
 }
 
-type GitHubListPullRequestsV1Input struct {
-	Base       *string                            `json:"base,omitzero"`
-	Head       *string                            `json:"head,omitzero"`
-	Limit      uint64                             `json:"limit"`
-	Page       uint64                             `json:"page"`
-	Repository string                             `json:"repository"`
-	State      GitHubListPullRequestsV1InputState `json:"state"`
+type GitHubPullListInput struct {
+	Base       *string                  `json:"base,omitzero"`
+	Head       *string                  `json:"head,omitzero"`
+	Limit      uint64                   `json:"limit"`
+	Page       uint64                   `json:"page"`
+	Repository string                   `json:"repository"`
+	State      GitHubPullListInputState `json:"state"`
 }
 
-type GitHubListPullRequestsV1Output struct {
-	NextPage     *int64                            `json:"nextPage,omitzero"`
-	PullRequests []GitHubCreatePullRequestV1Output `json:"pullRequests"`
+type GitHubPullPage struct {
+	NextPage     *int64              `json:"nextPage,omitzero"`
+	PullRequests []GitHubPullRequest `json:"pullRequests"`
 }
 
-type GitHubCreatePullRequestV1Output struct {
-	Additions           *int64                                                                                             `json:"additions,omitzero"`
-	Author              string                                                                                             `json:"author"`
-	Base                GitHubMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fBranch `json:"base"`
-	Body                string                                                                                             `json:"body"`
-	ChangedFiles        *int64                                                                                             `json:"changedFiles,omitzero"`
-	Deletions           *int64                                                                                             `json:"deletions,omitzero"`
-	Draft               bool                                                                                               `json:"draft"`
-	Head                GitHubMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fBranch `json:"head"`
-	MaintainerCanModify *bool                                                                                              `json:"maintainerCanModify,omitzero"`
-	Mergeable           *bool                                                                                              `json:"mergeable,omitzero"`
-	MergeableState      *string                                                                                            `json:"mergeableState,omitzero"`
-	MergedAt            *time.Time                                                                                         `json:"mergedAt,omitzero"`
-	Number              int64                                                                                              `json:"number"`
-	Repository          string                                                                                             `json:"repository"`
-	State               GitHubCreatePullRequestV1OutputState                                                               `json:"state"`
-	Title               string                                                                                             `json:"title"`
-	UpdatedAt           time.Time                                                                                          `json:"updatedAt"`
-	Url                 string                                                                                             `json:"url"`
+type GitHubPullRequest struct {
+	Additions           *int64                 `json:"additions,omitzero"`
+	Author              string                 `json:"author"`
+	Base                GitHubBranch           `json:"base"`
+	Body                string                 `json:"body"`
+	ChangedFiles        *int64                 `json:"changedFiles,omitzero"`
+	Deletions           *int64                 `json:"deletions,omitzero"`
+	Draft               bool                   `json:"draft"`
+	Head                GitHubBranch           `json:"head"`
+	MaintainerCanModify *bool                  `json:"maintainerCanModify,omitzero"`
+	Mergeable           *bool                  `json:"mergeable,omitzero"`
+	MergeableState      *string                `json:"mergeableState,omitzero"`
+	MergedAt            *time.Time             `json:"mergedAt,omitzero"`
+	Number              int64                  `json:"number"`
+	Repository          string                 `json:"repository"`
+	State               GitHubPullRequestState `json:"state"`
+	Title               string                 `json:"title"`
+	UpdatedAt           time.Time              `json:"updatedAt"`
+	Url                 string                 `json:"url"`
 }
 
-type GitHubReplyPullRequestCommentV1Input struct {
+type GitHubReplyReviewCommentInput struct {
 	Body       string `json:"body"`
 	CommentId  uint64 `json:"commentId"`
 	Number     uint64 `json:"number"`
 	Repository string `json:"repository"`
 }
 
-type GitHubSubmitPullRequestReviewV1Output struct {
+type GitHubReview struct {
 	Author      string     `json:"author"`
 	Body        string     `json:"body"`
 	CommitId    *string    `json:"commitId,omitzero"`
@@ -362,7 +362,7 @@ type GitHubSubmitPullRequestReviewV1Output struct {
 	Url         string     `json:"url"`
 }
 
-type GitHubCreatePullRequestCommentV1Output struct {
+type GitHubReviewComment struct {
 	Author           string    `json:"author"`
 	Body             string    `json:"body"`
 	CommitId         string    `json:"commitId"`
@@ -382,53 +382,53 @@ type GitHubCreatePullRequestCommentV1Output struct {
 	Url              string    `json:"url"`
 }
 
-type GitHubListPullRequestCommentsV1Output struct {
-	Comments []GitHubCreatePullRequestCommentV1Output `json:"comments"`
-	NextPage *int64                                   `json:"nextPage,omitzero"`
+type GitHubReviewCommentPage struct {
+	Comments []GitHubReviewComment `json:"comments"`
+	NextPage *int64                `json:"nextPage,omitzero"`
 }
 
-type GitHubListPullRequestReviewsV1Output struct {
-	NextPage *int64                                  `json:"nextPage,omitzero"`
-	Reviews  []GitHubSubmitPullRequestReviewV1Output `json:"reviews"`
+type GitHubReviewPage struct {
+	NextPage *int64         `json:"nextPage,omitzero"`
+	Reviews  []GitHubReview `json:"reviews"`
 }
 
-type GitHubListCommitStatusesV1Output struct {
-	NextPage *int64                                                                                                     `json:"nextPage,omitzero"`
-	Statuses []GitHubMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCommitStatus `json:"statuses"`
+type GitHubStatusPage struct {
+	NextPage *int64               `json:"nextPage,omitzero"`
+	Statuses []GitHubCommitStatus `json:"statuses"`
 }
 
-type GitHubSubmitPullRequestReviewV1Input struct {
-	Body       *string                                                                                                      `json:"body,omitzero"`
-	Comments   *[]GitHubMethod_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fInlineComment `json:"comments,omitzero"`
-	CommitId   string                                                                                                       `json:"commitId"`
-	Event      GitHubSubmitPullRequestReviewV1InputEvent                                                                    `json:"event"`
-	Number     uint64                                                                                                       `json:"number"`
-	Repository string                                                                                                       `json:"repository"`
+type GitHubSubmitReviewInput struct {
+	Body       *string                      `json:"body,omitzero"`
+	Comments   *[]GitHubInlineComment       `json:"comments,omitzero"`
+	CommitId   string                       `json:"commitId"`
+	Event      GitHubSubmitReviewInputEvent `json:"event"`
+	Number     uint64                       `json:"number"`
+	Repository string                       `json:"repository"`
 }
 
-type GitHubListIssueCommentsV1Input struct {
+type GitHubThreadInput struct {
 	Limit      uint64 `json:"limit"`
 	Number     uint64 `json:"number"`
 	Page       uint64 `json:"page"`
 	Repository string `json:"repository"`
 }
 
-type GitHubUpdateIssueCommentV1Input struct {
+type GitHubUpdateCommentInput struct {
 	Body       string `json:"body"`
 	CommentId  uint64 `json:"commentId"`
 	Repository string `json:"repository"`
 }
 
-type GitHubUpdateIssueV1Input struct {
-	Assignees        *[]string                            `json:"assignees,omitzero"`
-	Body             *string                              `json:"body,omitzero"`
-	DuplicateIssueId *uint64                              `json:"duplicateIssueId,omitzero"`
-	Labels           *[]string                            `json:"labels,omitzero"`
-	Number           uint64                               `json:"number"`
-	Repository       string                               `json:"repository"`
-	State            *GitHubUpdateIssueV1InputState       `json:"state,omitzero"`
-	StateReason      *GitHubUpdateIssueV1InputStateReason `json:"stateReason,omitzero"`
-	Title            *string                              `json:"title,omitzero"`
+type GitHubUpdateIssueInput struct {
+	Assignees        *[]string                          `json:"assignees,omitzero"`
+	Body             *string                            `json:"body,omitzero"`
+	DuplicateIssueId *uint64                            `json:"duplicateIssueId,omitzero"`
+	Labels           *[]string                          `json:"labels,omitzero"`
+	Number           uint64                             `json:"number"`
+	Repository       string                             `json:"repository"`
+	State            *GitHubUpdateIssueInputState       `json:"state,omitzero"`
+	StateReason      *GitHubUpdateIssueInputStateReason `json:"stateReason,omitzero"`
+	Title            *string                            `json:"title,omitzero"`
 }
 
 const GitHubCapabilityJSON = "{\"protocol\":\"io.github.tangerg.qimu/portable/1\",\"reference\":\"flame.github.v1\",\"composition\":\"collection\",\"scope\":\"installation\",\"methods\":[{\"name\":\"flame.github/create-issue-comment.v1\",\"kind\":\"command\",\"target\":\"installation\",\"description\":\"Create a discussion comment on an issue or PR; code-line comments use create_pull_request_comment. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CreateCommentInput\":{\"additionalProperties\":false,\"properties\":{\"body\":{\"maxLength\":65536,\"minLength\":1,\"type\":\"string\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"number\",\"body\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"body\":{\"maxLength\":65536,\"minLength\":1,\"type\":\"string\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"number\",\"body\"],\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Comment\":{\"additionalProperties\":false,\"properties\":{\"author\":{\"type\":\"string\"},\"body\":{\"type\":\"string\"},\"createdAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"id\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"updatedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"id\",\"url\",\"author\",\"body\",\"createdAt\",\"updatedAt\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"author\":{\"type\":\"string\"},\"body\":{\"type\":\"string\"},\"createdAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"id\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"updatedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"id\",\"url\",\"author\",\"body\",\"createdAt\",\"updatedAt\"],\"type\":\"object\"}},{\"name\":\"flame.github/create-issue.v1\",\"kind\":\"command\",\"target\":\"installation\",\"description\":\"Create an issue with title, optional body, labels and assignees. Returns GitHub's actual values, including metadata GitHub may ignore without sufficient permissions. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CreateIssueInput\":{\"additionalProperties\":false,\"properties\":{\"assignees\":{\"items\":{\"type\":\"string\"},\"type\":\"array\"},\"body\":{\"maxLength\":65536,\"type\":\"string\"},\"labels\":{\"items\":{\"type\":\"string\"},\"type\":\"array\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"},\"title\":{\"maxLength\":256,\"minLength\":1,\"type\":\"string\"}},\"required\":[\"repository\",\"title\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"assignees\":{\"items\":{\"type\":\"string\"},\"type\":\"array\"},\"body\":{\"maxLength\":65536,\"type\":\"string\"},\"labels\":{\"items\":{\"type\":\"string\"},\"type\":\"array\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"},\"title\":{\"maxLength\":256,\"minLength\":1,\"type\":\"string\"}},\"required\":[\"repository\",\"title\"],\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Issue\":{\"additionalProperties\":false,\"properties\":{\"assignees\":{\"items\":{\"type\":\"string\"},\"type\":\"array\"},\"author\":{\"type\":\"string\"},\"body\":{\"type\":\"string\"},\"id\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"labels\":{\"items\":{\"type\":\"string\"},\"type\":\"array\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"pullRequest\":{\"type\":\"boolean\"},\"repository\":{\"type\":\"string\"},\"state\":{\"allOf\":[{\"enum\":[\"open\",\"closed\"]}],\"type\":\"string\"},\"stateReason\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"},\"updatedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"id\",\"repository\",\"number\",\"title\",\"body\",\"state\",\"url\",\"author\",\"pullRequest\",\"updatedAt\",\"labels\",\"assignees\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"assignees\":{\"items\":{\"type\":\"string\"},\"type\":\"array\"},\"author\":{\"type\":\"string\"},\"body\":{\"type\":\"string\"},\"id\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"labels\":{\"items\":{\"type\":\"string\"},\"type\":\"array\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"pullRequest\":{\"type\":\"boolean\"},\"repository\":{\"type\":\"string\"},\"state\":{\"allOf\":[{\"enum\":[\"open\",\"closed\"]}],\"type\":\"string\"},\"stateReason\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"},\"updatedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"id\",\"repository\",\"number\",\"title\",\"body\",\"state\",\"url\",\"author\",\"pullRequest\",\"updatedAt\",\"labels\",\"assignees\"],\"type\":\"object\"}},{\"name\":\"flame.github/create-pull-request-comment.v1\",\"kind\":\"command\",\"target\":\"installation\",\"description\":\"Create an inline PR review comment at the inspected commit/path/line/side; optional startLine/startSide defines a range. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CreateReviewCommentInput\":{\"additionalProperties\":false,\"properties\":{\"body\":{\"maxLength\":65536,\"minLength\":1,\"type\":\"string\"},\"commitId\":{\"minLength\":1,\"pattern\":\"^[0-9a-fA-F]{40}$\",\"type\":\"string\"},\"line\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"path\":{\"maxLength\":4096,\"minLength\":1,\"type\":\"string\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"},\"side\":{\"allOf\":[{\"enum\":[\"LEFT\",\"RIGHT\"]}],\"type\":\"string\"},\"startLine\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"startSide\":{\"allOf\":[{\"enum\":[\"LEFT\",\"RIGHT\"]}],\"type\":\"string\"}},\"required\":[\"repository\",\"number\",\"commitId\",\"path\",\"body\",\"line\",\"side\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"body\":{\"maxLength\":65536,\"minLength\":1,\"type\":\"string\"},\"commitId\":{\"minLength\":1,\"pattern\":\"^[0-9a-fA-F]{40}$\",\"type\":\"string\"},\"line\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"path\":{\"maxLength\":4096,\"minLength\":1,\"type\":\"string\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"},\"side\":{\"allOf\":[{\"enum\":[\"LEFT\",\"RIGHT\"]}],\"type\":\"string\"},\"startLine\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"startSide\":{\"allOf\":[{\"enum\":[\"LEFT\",\"RIGHT\"]}],\"type\":\"string\"}},\"required\":[\"repository\",\"number\",\"commitId\",\"path\",\"body\",\"line\",\"side\"],\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ReviewComment\":{\"additionalProperties\":false,\"properties\":{\"author\":{\"type\":\"string\"},\"body\":{\"type\":\"string\"},\"commitId\":{\"type\":\"string\"},\"createdAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"diffHunk\":{\"type\":\"string\"},\"id\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"inReplyTo\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"line\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"originalCommitId\":{\"type\":\"string\"},\"originalLine\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"path\":{\"type\":\"string\"},\"reviewId\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"side\":{\"type\":\"string\"},\"startLine\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"startSide\":{\"type\":\"string\"},\"updatedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"id\",\"url\",\"author\",\"body\",\"createdAt\",\"updatedAt\",\"reviewId\",\"path\",\"diffHunk\",\"commitId\",\"originalCommitId\",\"side\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"author\":{\"type\":\"string\"},\"body\":{\"type\":\"string\"},\"commitId\":{\"type\":\"string\"},\"createdAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"diffHunk\":{\"type\":\"string\"},\"id\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"inReplyTo\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"line\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"originalCommitId\":{\"type\":\"string\"},\"originalLine\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"path\":{\"type\":\"string\"},\"reviewId\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"side\":{\"type\":\"string\"},\"startLine\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"startSide\":{\"type\":\"string\"},\"updatedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"id\",\"url\",\"author\",\"body\",\"createdAt\",\"updatedAt\",\"reviewId\",\"path\",\"diffHunk\",\"commitId\",\"originalCommitId\",\"side\"],\"type\":\"object\"}},{\"name\":\"flame.github/create-pull-request.v1\",\"kind\":\"command\",\"target\":\"installation\",\"description\":\"Create a PR from existing head/base branches, optionally as a draft. This does not create commits or push a branch. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CreatePullInput\":{\"additionalProperties\":false,\"properties\":{\"base\":{\"maxLength\":1024,\"minLength\":1,\"type\":\"string\"},\"body\":{\"maxLength\":65536,\"type\":\"string\"},\"draft\":{\"type\":\"boolean\"},\"head\":{\"description\":\"Existing source branch, qualified as owner:branch for a fork.\",\"maxLength\":1024,\"minLength\":1,\"type\":\"string\"},\"headRepository\":{\"minLength\":1,\"type\":\"string\"},\"maintainerCanModify\":{\"type\":\"boolean\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"},\"title\":{\"maxLength\":256,\"minLength\":1,\"type\":\"string\"}},\"required\":[\"repository\",\"title\",\"head\",\"base\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"base\":{\"maxLength\":1024,\"minLength\":1,\"type\":\"string\"},\"body\":{\"maxLength\":65536,\"type\":\"string\"},\"draft\":{\"type\":\"boolean\"},\"head\":{\"description\":\"Existing source branch, qualified as owner:branch for a fork.\",\"maxLength\":1024,\"minLength\":1,\"type\":\"string\"},\"headRepository\":{\"minLength\":1,\"type\":\"string\"},\"maintainerCanModify\":{\"type\":\"boolean\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"},\"title\":{\"maxLength\":256,\"minLength\":1,\"type\":\"string\"}},\"required\":[\"repository\",\"title\",\"head\",\"base\"],\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Branch\":{\"additionalProperties\":false,\"properties\":{\"label\":{\"type\":\"string\"},\"ref\":{\"type\":\"string\"},\"repository\":{\"type\":\"string\"},\"sha\":{\"type\":\"string\"}},\"required\":[\"label\",\"ref\",\"sha\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_PullRequest\":{\"additionalProperties\":false,\"properties\":{\"additions\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"author\":{\"type\":\"string\"},\"base\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Branch\"},\"body\":{\"type\":\"string\"},\"changedFiles\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"deletions\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"draft\":{\"type\":\"boolean\"},\"head\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Branch\"},\"maintainerCanModify\":{\"type\":\"boolean\"},\"mergeable\":{\"type\":\"boolean\"},\"mergeableState\":{\"type\":\"string\"},\"mergedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"repository\":{\"type\":\"string\"},\"state\":{\"allOf\":[{\"enum\":[\"open\",\"closed\"]}],\"type\":\"string\"},\"title\":{\"type\":\"string\"},\"updatedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"repository\",\"number\",\"title\",\"body\",\"state\",\"url\",\"author\",\"draft\",\"head\",\"base\",\"updatedAt\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"additions\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"author\":{\"type\":\"string\"},\"base\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Branch\"},\"body\":{\"type\":\"string\"},\"changedFiles\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"deletions\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"draft\":{\"type\":\"boolean\"},\"head\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Branch\"},\"maintainerCanModify\":{\"type\":\"boolean\"},\"mergeable\":{\"type\":\"boolean\"},\"mergeableState\":{\"type\":\"string\"},\"mergedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"repository\":{\"type\":\"string\"},\"state\":{\"allOf\":[{\"enum\":[\"open\",\"closed\"]}],\"type\":\"string\"},\"title\":{\"type\":\"string\"},\"updatedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"repository\",\"number\",\"title\",\"body\",\"state\",\"url\",\"author\",\"draft\",\"head\",\"base\",\"updatedAt\"],\"type\":\"object\"}},{\"name\":\"flame.github/delete-issue-comment.v1\",\"kind\":\"command\",\"target\":\"installation\",\"description\":\"Delete one issue/PR discussion comment by its inspected ID. This does not delete an inline code-review comment. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CommentInput\":{\"additionalProperties\":false,\"properties\":{\"commentId\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"commentId\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"commentId\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"commentId\"],\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_DeletedComment\":{\"additionalProperties\":false,\"properties\":{\"deleted\":{\"const\":true,\"type\":\"boolean\"},\"id\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"}},\"required\":[\"id\",\"deleted\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"deleted\":{\"const\":true,\"type\":\"boolean\"},\"id\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"}},\"required\":[\"id\",\"deleted\"],\"type\":\"object\"}},{\"name\":\"flame.github/delete-pull-request-comment.v1\",\"kind\":\"command\",\"target\":\"installation\",\"description\":\"Delete an inline PR review comment by its inspected comment ID. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CommentInput\":{\"additionalProperties\":false,\"properties\":{\"commentId\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"commentId\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"commentId\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"commentId\"],\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_DeletedComment\":{\"additionalProperties\":false,\"properties\":{\"deleted\":{\"const\":true,\"type\":\"boolean\"},\"id\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"}},\"required\":[\"id\",\"deleted\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"deleted\":{\"const\":true,\"type\":\"boolean\"},\"id\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"}},\"required\":[\"id\",\"deleted\"],\"type\":\"object\"}},{\"name\":\"flame.github/get-issue.v1\",\"kind\":\"query\",\"target\":\"installation\",\"description\":\"Read one GitHub issue or pull request by its repository and issue number.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_IssueInput\":{\"additionalProperties\":false,\"properties\":{\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"number\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"number\"],\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Issue\":{\"additionalProperties\":false,\"properties\":{\"assignees\":{\"items\":{\"type\":\"string\"},\"type\":\"array\"},\"author\":{\"type\":\"string\"},\"body\":{\"type\":\"string\"},\"id\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"labels\":{\"items\":{\"type\":\"string\"},\"type\":\"array\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"pullRequest\":{\"type\":\"boolean\"},\"repository\":{\"type\":\"string\"},\"state\":{\"allOf\":[{\"enum\":[\"open\",\"closed\"]}],\"type\":\"string\"},\"stateReason\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"},\"updatedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"id\",\"repository\",\"number\",\"title\",\"body\",\"state\",\"url\",\"author\",\"pullRequest\",\"updatedAt\",\"labels\",\"assignees\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"assignees\":{\"items\":{\"type\":\"string\"},\"type\":\"array\"},\"author\":{\"type\":\"string\"},\"body\":{\"type\":\"string\"},\"id\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"labels\":{\"items\":{\"type\":\"string\"},\"type\":\"array\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"pullRequest\":{\"type\":\"boolean\"},\"repository\":{\"type\":\"string\"},\"state\":{\"allOf\":[{\"enum\":[\"open\",\"closed\"]}],\"type\":\"string\"},\"stateReason\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"},\"updatedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"id\",\"repository\",\"number\",\"title\",\"body\",\"state\",\"url\",\"author\",\"pullRequest\",\"updatedAt\",\"labels\",\"assignees\"],\"type\":\"object\"}},{\"name\":\"flame.github/get-pull-request.v1\",\"kind\":\"query\",\"target\":\"installation\",\"description\":\"Read a pull request's head/base SHAs, draft/merge state and change counts. A missing mergeable value means GitHub has not computed it. Use the head SHA for subsequent commit checks.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_IssueInput\":{\"additionalProperties\":false,\"properties\":{\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"number\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"number\"],\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Branch\":{\"additionalProperties\":false,\"properties\":{\"label\":{\"type\":\"string\"},\"ref\":{\"type\":\"string\"},\"repository\":{\"type\":\"string\"},\"sha\":{\"type\":\"string\"}},\"required\":[\"label\",\"ref\",\"sha\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_PullRequest\":{\"additionalProperties\":false,\"properties\":{\"additions\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"author\":{\"type\":\"string\"},\"base\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Branch\"},\"body\":{\"type\":\"string\"},\"changedFiles\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"deletions\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"draft\":{\"type\":\"boolean\"},\"head\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Branch\"},\"maintainerCanModify\":{\"type\":\"boolean\"},\"mergeable\":{\"type\":\"boolean\"},\"mergeableState\":{\"type\":\"string\"},\"mergedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"repository\":{\"type\":\"string\"},\"state\":{\"allOf\":[{\"enum\":[\"open\",\"closed\"]}],\"type\":\"string\"},\"title\":{\"type\":\"string\"},\"updatedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"repository\",\"number\",\"title\",\"body\",\"state\",\"url\",\"author\",\"draft\",\"head\",\"base\",\"updatedAt\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"additions\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"author\":{\"type\":\"string\"},\"base\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Branch\"},\"body\":{\"type\":\"string\"},\"changedFiles\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"deletions\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"draft\":{\"type\":\"boolean\"},\"head\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Branch\"},\"maintainerCanModify\":{\"type\":\"boolean\"},\"mergeable\":{\"type\":\"boolean\"},\"mergeableState\":{\"type\":\"string\"},\"mergedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"repository\":{\"type\":\"string\"},\"state\":{\"allOf\":[{\"enum\":[\"open\",\"closed\"]}],\"type\":\"string\"},\"title\":{\"type\":\"string\"},\"updatedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"repository\",\"number\",\"title\",\"body\",\"state\",\"url\",\"author\",\"draft\",\"head\",\"base\",\"updatedAt\"],\"type\":\"object\"}},{\"name\":\"flame.github/list-check-annotations.v1\",\"kind\":\"query\",\"target\":\"installation\",\"description\":\"Read one page of line-level diagnostics for a check run ID returned by list_check_runs. Preserves paths, ranges, severity and original diagnostic text.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CheckInput\":{\"additionalProperties\":false,\"properties\":{\"checkRunId\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"maximum\":100,\"minimum\":1,\"type\":\"integer\"},\"page\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"checkRunId\",\"page\",\"limit\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"checkRunId\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"maximum\":100,\"minimum\":1,\"type\":\"integer\"},\"page\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"checkRunId\",\"page\",\"limit\"],\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Annotation\":{\"additionalProperties\":false,\"properties\":{\"endColumn\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"endLine\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"level\":{\"type\":\"string\"},\"message\":{\"type\":\"string\"},\"path\":{\"type\":\"string\"},\"rawDetails\":{\"type\":\"string\"},\"startColumn\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"startLine\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"title\":{\"type\":\"string\"}},\"required\":[\"path\",\"startLine\",\"endLine\",\"level\",\"message\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_AnnotationPage\":{\"additionalProperties\":false,\"properties\":{\"annotations\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Annotation\"},\"type\":\"array\"},\"nextPage\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"annotations\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"annotations\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Annotation\"},\"type\":\"array\"},\"nextPage\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"annotations\"],\"type\":\"object\"}},{\"name\":\"flame.github/list-check-runs.v1\",\"kind\":\"query\",\"target\":\"installation\",\"description\":\"Read one page of latest check runs with upstream status, conclusion and diagnostic text. GitHub limits this endpoint to the most recent 1000 check suites. Use the exact PR head SHA, list_check_annotations for line diagnostics, and list_commit_statuses for external CI.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CommitInput\":{\"additionalProperties\":false,\"properties\":{\"limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"maximum\":100,\"minimum\":1,\"type\":\"integer\"},\"page\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"ref\":{\"description\":\"Use the exact pull request head SHA to inspect checks for that revision.\",\"maxLength\":1024,\"minLength\":1,\"type\":\"string\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"ref\",\"page\",\"limit\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"maximum\":100,\"minimum\":1,\"type\":\"integer\"},\"page\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"ref\":{\"description\":\"Use the exact pull request head SHA to inspect checks for that revision.\",\"maxLength\":1024,\"minLength\":1,\"type\":\"string\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"ref\",\"page\",\"limit\"],\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CheckPage\":{\"additionalProperties\":false,\"properties\":{\"checkRuns\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CheckRun\"},\"type\":\"array\"},\"nextPage\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"checkRuns\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CheckRun\":{\"additionalProperties\":false,\"properties\":{\"annotationsCount\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"completedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"conclusion\":{\"type\":\"string\"},\"headSha\":{\"type\":\"string\"},\"id\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"name\":{\"type\":\"string\"},\"startedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"status\":{\"type\":\"string\"},\"summary\":{\"type\":\"string\"},\"text\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"id\",\"name\",\"headSha\",\"status\",\"url\",\"title\",\"summary\",\"text\",\"annotationsCount\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"checkRuns\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CheckRun\"},\"type\":\"array\"},\"nextPage\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"checkRuns\"],\"type\":\"object\"}},{\"name\":\"flame.github/list-commit-statuses.v1\",\"kind\":\"query\",\"target\":\"installation\",\"description\":\"Read one page of commit statuses, including external CI that is not represented by check runs. Use an exact PR head SHA when assessing a revision.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CommitInput\":{\"additionalProperties\":false,\"properties\":{\"limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"maximum\":100,\"minimum\":1,\"type\":\"integer\"},\"page\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"ref\":{\"description\":\"Use the exact pull request head SHA to inspect checks for that revision.\",\"maxLength\":1024,\"minLength\":1,\"type\":\"string\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"ref\",\"page\",\"limit\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"maximum\":100,\"minimum\":1,\"type\":\"integer\"},\"page\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"ref\":{\"description\":\"Use the exact pull request head SHA to inspect checks for that revision.\",\"maxLength\":1024,\"minLength\":1,\"type\":\"string\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"ref\",\"page\",\"limit\"],\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CommitStatus\":{\"additionalProperties\":false,\"properties\":{\"context\":{\"type\":\"string\"},\"createdAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"description\":{\"type\":\"string\"},\"id\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"state\":{\"type\":\"string\"},\"updatedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"id\",\"state\",\"context\",\"createdAt\",\"updatedAt\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_StatusPage\":{\"additionalProperties\":false,\"properties\":{\"nextPage\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"statuses\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CommitStatus\"},\"type\":\"array\"}},\"required\":[\"statuses\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"nextPage\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"statuses\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CommitStatus\"},\"type\":\"array\"}},\"required\":[\"statuses\"],\"type\":\"object\"}},{\"name\":\"flame.github/list-issue-comments.v1\",\"kind\":\"query\",\"target\":\"installation\",\"description\":\"Read one page of discussion comments on an issue or pull request. Inline code review comments are returned by list_pull_request_comments.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ThreadInput\":{\"additionalProperties\":false,\"properties\":{\"limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"maximum\":100,\"minimum\":1,\"type\":\"integer\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"page\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"number\",\"page\",\"limit\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"maximum\":100,\"minimum\":1,\"type\":\"integer\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"page\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"number\",\"page\",\"limit\"],\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Comment\":{\"additionalProperties\":false,\"properties\":{\"author\":{\"type\":\"string\"},\"body\":{\"type\":\"string\"},\"createdAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"id\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"updatedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"id\",\"url\",\"author\",\"body\",\"createdAt\",\"updatedAt\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_CommentPage\":{\"additionalProperties\":false,\"properties\":{\"comments\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Comment\"},\"type\":\"array\"},\"nextPage\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"comments\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"comments\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Comment\"},\"type\":\"array\"},\"nextPage\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"comments\"],\"type\":\"object\"}},{\"name\":\"flame.github/list-issues.v1\",\"kind\":\"query\",\"target\":\"installation\",\"description\":\"Read one explicit page of repository issues and pull requests, exposing the next page number supplied by GitHub.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ListInput\":{\"additionalProperties\":false,\"properties\":{\"limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"maximum\":100,\"minimum\":1,\"type\":\"integer\"},\"page\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"},\"state\":{\"allOf\":[{\"enum\":[\"open\",\"closed\",\"all\"]}],\"type\":\"string\"}},\"required\":[\"repository\",\"state\",\"page\",\"limit\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"maximum\":100,\"minimum\":1,\"type\":\"integer\"},\"page\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"},\"state\":{\"allOf\":[{\"enum\":[\"open\",\"closed\",\"all\"]}],\"type\":\"string\"}},\"required\":[\"repository\",\"state\",\"page\",\"limit\"],\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Issue\":{\"additionalProperties\":false,\"properties\":{\"assignees\":{\"items\":{\"type\":\"string\"},\"type\":\"array\"},\"author\":{\"type\":\"string\"},\"body\":{\"type\":\"string\"},\"id\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"labels\":{\"items\":{\"type\":\"string\"},\"type\":\"array\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"pullRequest\":{\"type\":\"boolean\"},\"repository\":{\"type\":\"string\"},\"state\":{\"allOf\":[{\"enum\":[\"open\",\"closed\"]}],\"type\":\"string\"},\"stateReason\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"},\"updatedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"id\",\"repository\",\"number\",\"title\",\"body\",\"state\",\"url\",\"author\",\"pullRequest\",\"updatedAt\",\"labels\",\"assignees\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_IssuePage\":{\"additionalProperties\":false,\"properties\":{\"issues\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Issue\"},\"type\":\"array\"},\"nextPage\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"issues\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"issues\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Issue\"},\"type\":\"array\"},\"nextPage\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"issues\"],\"type\":\"object\"}},{\"name\":\"flame.github/list-pull-request-comments.v1\",\"kind\":\"query\",\"target\":\"installation\",\"description\":\"Read one page of inline PR review comments with diff context, commit identity, reply parent and available line positions. Missing current positions can indicate outdated comments.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ThreadInput\":{\"additionalProperties\":false,\"properties\":{\"limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"maximum\":100,\"minimum\":1,\"type\":\"integer\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"page\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"number\",\"page\",\"limit\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"maximum\":100,\"minimum\":1,\"type\":\"integer\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"page\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"number\",\"page\",\"limit\"],\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ReviewComment\":{\"additionalProperties\":false,\"properties\":{\"author\":{\"type\":\"string\"},\"body\":{\"type\":\"string\"},\"commitId\":{\"type\":\"string\"},\"createdAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"diffHunk\":{\"type\":\"string\"},\"id\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"inReplyTo\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"line\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"originalCommitId\":{\"type\":\"string\"},\"originalLine\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"path\":{\"type\":\"string\"},\"reviewId\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"side\":{\"type\":\"string\"},\"startLine\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"startSide\":{\"type\":\"string\"},\"updatedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"id\",\"url\",\"author\",\"body\",\"createdAt\",\"updatedAt\",\"reviewId\",\"path\",\"diffHunk\",\"commitId\",\"originalCommitId\",\"side\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ReviewCommentPage\":{\"additionalProperties\":false,\"properties\":{\"comments\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ReviewComment\"},\"type\":\"array\"},\"nextPage\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"comments\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"comments\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ReviewComment\"},\"type\":\"array\"},\"nextPage\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"comments\"],\"type\":\"object\"}},{\"name\":\"flame.github/list-pull-request-files.v1\",\"kind\":\"query\",\"target\":\"installation\",\"description\":\"Read one live page of PR file changes and available patches. An absent patch is not an empty diff. GitHub exposes at most 3000 files; limitReached means the list may be incomplete. Read repository files at an exact PR head/base SHA when needed.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ThreadInput\":{\"additionalProperties\":false,\"properties\":{\"limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"maximum\":100,\"minimum\":1,\"type\":\"integer\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"page\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"number\",\"page\",\"limit\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"maximum\":100,\"minimum\":1,\"type\":\"integer\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"page\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"number\",\"page\",\"limit\"],\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ChangedFile\":{\"additionalProperties\":false,\"properties\":{\"additions\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"changes\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"deletions\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"patch\":{\"type\":\"string\"},\"path\":{\"type\":\"string\"},\"previousPath\":{\"type\":\"string\"},\"sha\":{\"type\":\"string\"},\"status\":{\"type\":\"string\"}},\"required\":[\"path\",\"sha\",\"status\",\"additions\",\"deletions\",\"changes\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_FilePage\":{\"additionalProperties\":false,\"properties\":{\"files\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ChangedFile\"},\"type\":\"array\"},\"limitReached\":{\"type\":\"boolean\"},\"nextPage\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"files\",\"limitReached\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"files\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ChangedFile\"},\"type\":\"array\"},\"limitReached\":{\"type\":\"boolean\"},\"nextPage\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"files\",\"limitReached\"],\"type\":\"object\"}},{\"name\":\"flame.github/list-pull-request-reviews.v1\",\"kind\":\"query\",\"target\":\"installation\",\"description\":\"Read one page of PR reviews with their upstream state, commit and submitted time, including pending and dismissed reviews.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ThreadInput\":{\"additionalProperties\":false,\"properties\":{\"limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"maximum\":100,\"minimum\":1,\"type\":\"integer\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"page\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"number\",\"page\",\"limit\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"maximum\":100,\"minimum\":1,\"type\":\"integer\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"page\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"number\",\"page\",\"limit\"],\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Review\":{\"additionalProperties\":false,\"properties\":{\"author\":{\"type\":\"string\"},\"body\":{\"type\":\"string\"},\"commitId\":{\"type\":\"string\"},\"id\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"state\":{\"type\":\"string\"},\"submittedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"id\",\"url\",\"author\",\"body\",\"state\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ReviewPage\":{\"additionalProperties\":false,\"properties\":{\"nextPage\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"reviews\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Review\"},\"type\":\"array\"}},\"required\":[\"reviews\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"nextPage\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"reviews\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Review\"},\"type\":\"array\"}},\"required\":[\"reviews\"],\"type\":\"object\"}},{\"name\":\"flame.github/list-pull-requests.v1\",\"kind\":\"query\",\"target\":\"installation\",\"description\":\"List one page of pull requests with head/base refs and SHAs, optionally filtered by base or owner:branch head.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_PullListInput\":{\"additionalProperties\":false,\"properties\":{\"base\":{\"maxLength\":1024,\"minLength\":1,\"type\":\"string\"},\"head\":{\"maxLength\":1024,\"minLength\":1,\"type\":\"string\"},\"limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"maximum\":100,\"minimum\":1,\"type\":\"integer\"},\"page\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"},\"state\":{\"allOf\":[{\"enum\":[\"open\",\"closed\",\"all\"]}],\"type\":\"string\"}},\"required\":[\"repository\",\"state\",\"page\",\"limit\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"base\":{\"maxLength\":1024,\"minLength\":1,\"type\":\"string\"},\"head\":{\"maxLength\":1024,\"minLength\":1,\"type\":\"string\"},\"limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"maximum\":100,\"minimum\":1,\"type\":\"integer\"},\"page\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"},\"state\":{\"allOf\":[{\"enum\":[\"open\",\"closed\",\"all\"]}],\"type\":\"string\"}},\"required\":[\"repository\",\"state\",\"page\",\"limit\"],\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Branch\":{\"additionalProperties\":false,\"properties\":{\"label\":{\"type\":\"string\"},\"ref\":{\"type\":\"string\"},\"repository\":{\"type\":\"string\"},\"sha\":{\"type\":\"string\"}},\"required\":[\"label\",\"ref\",\"sha\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_PullPage\":{\"additionalProperties\":false,\"properties\":{\"nextPage\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"pullRequests\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_PullRequest\"},\"type\":\"array\"}},\"required\":[\"pullRequests\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_PullRequest\":{\"additionalProperties\":false,\"properties\":{\"additions\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"author\":{\"type\":\"string\"},\"base\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Branch\"},\"body\":{\"type\":\"string\"},\"changedFiles\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"deletions\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"draft\":{\"type\":\"boolean\"},\"head\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Branch\"},\"maintainerCanModify\":{\"type\":\"boolean\"},\"mergeable\":{\"type\":\"boolean\"},\"mergeableState\":{\"type\":\"string\"},\"mergedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"repository\":{\"type\":\"string\"},\"state\":{\"allOf\":[{\"enum\":[\"open\",\"closed\"]}],\"type\":\"string\"},\"title\":{\"type\":\"string\"},\"updatedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"repository\",\"number\",\"title\",\"body\",\"state\",\"url\",\"author\",\"draft\",\"head\",\"base\",\"updatedAt\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"nextPage\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"pullRequests\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_PullRequest\"},\"type\":\"array\"}},\"required\":[\"pullRequests\"],\"type\":\"object\"}},{\"name\":\"flame.github/merge-pull-request.v1\",\"kind\":\"command\",\"target\":\"installation\",\"description\":\"Directly merge a PR with the explicit merge method and inspected head SHA. GitHub enforces protection and permissions. Merge queues and stacked PRs require GitHub's separate asynchronous API and are not supported by this operation. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_MergePullInput\":{\"additionalProperties\":false,\"properties\":{\"commitMessage\":{\"maxLength\":65536,\"type\":\"string\"},\"commitTitle\":{\"maxLength\":256,\"type\":\"string\"},\"headSha\":{\"description\":\"Exact inspected head SHA. GitHub atomically refuses a different current head.\",\"minLength\":1,\"pattern\":\"^[0-9a-fA-F]{40}$\",\"type\":\"string\"},\"mergeMethod\":{\"allOf\":[{\"enum\":[\"merge\",\"squash\",\"rebase\"]}],\"type\":\"string\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"number\",\"headSha\",\"mergeMethod\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"commitMessage\":{\"maxLength\":65536,\"type\":\"string\"},\"commitTitle\":{\"maxLength\":256,\"type\":\"string\"},\"headSha\":{\"description\":\"Exact inspected head SHA. GitHub atomically refuses a different current head.\",\"minLength\":1,\"pattern\":\"^[0-9a-fA-F]{40}$\",\"type\":\"string\"},\"mergeMethod\":{\"allOf\":[{\"enum\":[\"merge\",\"squash\",\"rebase\"]}],\"type\":\"string\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"number\",\"headSha\",\"mergeMethod\"],\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_MergeResult\":{\"additionalProperties\":false,\"properties\":{\"merged\":{\"const\":true,\"type\":\"boolean\"},\"message\":{\"type\":\"string\"},\"sha\":{\"minLength\":1,\"type\":\"string\"}},\"required\":[\"sha\",\"merged\",\"message\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"merged\":{\"const\":true,\"type\":\"boolean\"},\"message\":{\"type\":\"string\"},\"sha\":{\"minLength\":1,\"type\":\"string\"}},\"required\":[\"sha\",\"merged\",\"message\"],\"type\":\"object\"}},{\"name\":\"flame.github/read-file.v1\",\"kind\":\"query\",\"target\":\"installation\",\"description\":\"Read a UTF-8 repository file up to one MiB, optionally at an exact Git ref. Directory and binary content are refused.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_FileInput\":{\"additionalProperties\":false,\"properties\":{\"path\":{\"maxLength\":4096,\"minLength\":1,\"type\":\"string\"},\"ref\":{\"maxLength\":1024,\"minLength\":1,\"type\":\"string\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"path\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"path\":{\"maxLength\":4096,\"minLength\":1,\"type\":\"string\"},\"ref\":{\"maxLength\":1024,\"minLength\":1,\"type\":\"string\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"path\"],\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_File\":{\"additionalProperties\":false,\"properties\":{\"path\":{\"type\":\"string\"},\"repository\":{\"type\":\"string\"},\"sha\":{\"type\":\"string\"},\"text\":{\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"repository\",\"path\",\"sha\",\"url\",\"text\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"path\":{\"type\":\"string\"},\"repository\":{\"type\":\"string\"},\"sha\":{\"type\":\"string\"},\"text\":{\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"repository\",\"path\",\"sha\",\"url\",\"text\"],\"type\":\"object\"}},{\"name\":\"flame.github/reply-pull-request-comment.v1\",\"kind\":\"command\",\"target\":\"installation\",\"description\":\"Reply to an existing inline PR review comment by its inspected comment ID, preserving its upstream thread. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ReplyReviewCommentInput\":{\"additionalProperties\":false,\"properties\":{\"body\":{\"maxLength\":65536,\"minLength\":1,\"type\":\"string\"},\"commentId\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"number\",\"commentId\",\"body\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"body\":{\"maxLength\":65536,\"minLength\":1,\"type\":\"string\"},\"commentId\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"number\",\"commentId\",\"body\"],\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ReviewComment\":{\"additionalProperties\":false,\"properties\":{\"author\":{\"type\":\"string\"},\"body\":{\"type\":\"string\"},\"commitId\":{\"type\":\"string\"},\"createdAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"diffHunk\":{\"type\":\"string\"},\"id\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"inReplyTo\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"line\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"originalCommitId\":{\"type\":\"string\"},\"originalLine\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"path\":{\"type\":\"string\"},\"reviewId\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"side\":{\"type\":\"string\"},\"startLine\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"startSide\":{\"type\":\"string\"},\"updatedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"id\",\"url\",\"author\",\"body\",\"createdAt\",\"updatedAt\",\"reviewId\",\"path\",\"diffHunk\",\"commitId\",\"originalCommitId\",\"side\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"author\":{\"type\":\"string\"},\"body\":{\"type\":\"string\"},\"commitId\":{\"type\":\"string\"},\"createdAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"diffHunk\":{\"type\":\"string\"},\"id\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"inReplyTo\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"line\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"originalCommitId\":{\"type\":\"string\"},\"originalLine\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"path\":{\"type\":\"string\"},\"reviewId\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"side\":{\"type\":\"string\"},\"startLine\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"startSide\":{\"type\":\"string\"},\"updatedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"id\",\"url\",\"author\",\"body\",\"createdAt\",\"updatedAt\",\"reviewId\",\"path\",\"diffHunk\",\"commitId\",\"originalCommitId\",\"side\"],\"type\":\"object\"}},{\"name\":\"flame.github/submit-pull-request-review.v1\",\"kind\":\"command\",\"target\":\"installation\",\"description\":\"Create and submit an APPROVE, REQUEST_CHANGES or COMMENT review against the explicit inspected commit, optionally with inline comments. Body is required for COMMENT and REQUEST_CHANGES. Does not leave a pending review. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_InlineComment\":{\"additionalProperties\":false,\"properties\":{\"body\":{\"maxLength\":65536,\"minLength\":1,\"type\":\"string\"},\"line\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"path\":{\"maxLength\":4096,\"minLength\":1,\"type\":\"string\"},\"side\":{\"allOf\":[{\"enum\":[\"LEFT\",\"RIGHT\"]}],\"type\":\"string\"},\"startLine\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"startSide\":{\"allOf\":[{\"enum\":[\"LEFT\",\"RIGHT\"]}],\"type\":\"string\"}},\"required\":[\"path\",\"body\",\"line\",\"side\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_SubmitReviewInput\":{\"additionalProperties\":false,\"properties\":{\"body\":{\"maxLength\":65536,\"type\":\"string\"},\"comments\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_InlineComment\"},\"type\":\"array\"},\"commitId\":{\"description\":\"Exact inspected commit SHA to review; never defaults to a newer head.\",\"minLength\":1,\"pattern\":\"^[0-9a-fA-F]{40}$\",\"type\":\"string\"},\"event\":{\"allOf\":[{\"enum\":[\"APPROVE\",\"REQUEST_CHANGES\",\"COMMENT\"]}],\"type\":\"string\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"number\",\"commitId\",\"event\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"body\":{\"maxLength\":65536,\"type\":\"string\"},\"comments\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_InlineComment\"},\"type\":\"array\"},\"commitId\":{\"description\":\"Exact inspected commit SHA to review; never defaults to a newer head.\",\"minLength\":1,\"pattern\":\"^[0-9a-fA-F]{40}$\",\"type\":\"string\"},\"event\":{\"allOf\":[{\"enum\":[\"APPROVE\",\"REQUEST_CHANGES\",\"COMMENT\"]}],\"type\":\"string\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"number\",\"commitId\",\"event\"],\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Review\":{\"additionalProperties\":false,\"properties\":{\"author\":{\"type\":\"string\"},\"body\":{\"type\":\"string\"},\"commitId\":{\"type\":\"string\"},\"id\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"state\":{\"type\":\"string\"},\"submittedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"id\",\"url\",\"author\",\"body\",\"state\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"author\":{\"type\":\"string\"},\"body\":{\"type\":\"string\"},\"commitId\":{\"type\":\"string\"},\"id\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"state\":{\"type\":\"string\"},\"submittedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"id\",\"url\",\"author\",\"body\",\"state\"],\"type\":\"object\"}},{\"name\":\"flame.github/update-issue-comment.v1\",\"kind\":\"command\",\"target\":\"installation\",\"description\":\"Replace one issue/PR discussion comment's body by its inspected comment ID. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_UpdateCommentInput\":{\"additionalProperties\":false,\"properties\":{\"body\":{\"maxLength\":65536,\"minLength\":1,\"type\":\"string\"},\"commentId\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"commentId\",\"body\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"body\":{\"maxLength\":65536,\"minLength\":1,\"type\":\"string\"},\"commentId\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"commentId\",\"body\"],\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Comment\":{\"additionalProperties\":false,\"properties\":{\"author\":{\"type\":\"string\"},\"body\":{\"type\":\"string\"},\"createdAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"id\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"updatedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"id\",\"url\",\"author\",\"body\",\"createdAt\",\"updatedAt\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"author\":{\"type\":\"string\"},\"body\":{\"type\":\"string\"},\"createdAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"id\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"updatedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"id\",\"url\",\"author\",\"body\",\"createdAt\",\"updatedAt\"],\"type\":\"object\"}},{\"name\":\"flame.github/update-issue.v1\",\"kind\":\"command\",\"target\":\"installation\",\"description\":\"Patch only supplied issue fields. Empty body clears it; empty labels/assignees clear their sets. Omitted fields are preserved. GitHub provides no atomic revision condition for these edits. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_UpdateIssueInput\":{\"additionalProperties\":false,\"properties\":{\"assignees\":{\"description\":\"Replaces the assignee set; [] clears it. Omit to preserve it.\",\"items\":{\"type\":\"string\"},\"type\":\"array\"},\"body\":{\"maxLength\":65536,\"type\":\"string\"},\"duplicateIssueId\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"description\":\"Global id returned by get_issue for the canonical duplicate, not its issue number.\",\"minimum\":1,\"type\":\"integer\"},\"labels\":{\"description\":\"Replaces the label set; [] clears it. Omit to preserve it.\",\"items\":{\"type\":\"string\"},\"type\":\"array\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"},\"state\":{\"allOf\":[{\"enum\":[\"open\",\"closed\"]}],\"type\":\"string\"},\"stateReason\":{\"allOf\":[{\"enum\":[\"completed\",\"not_planned\",\"duplicate\",\"reopened\"]}],\"type\":\"string\"},\"title\":{\"maxLength\":256,\"minLength\":1,\"type\":\"string\"}},\"required\":[\"repository\",\"number\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"assignees\":{\"description\":\"Replaces the assignee set; [] clears it. Omit to preserve it.\",\"items\":{\"type\":\"string\"},\"type\":\"array\"},\"body\":{\"maxLength\":65536,\"type\":\"string\"},\"duplicateIssueId\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"description\":\"Global id returned by get_issue for the canonical duplicate, not its issue number.\",\"minimum\":1,\"type\":\"integer\"},\"labels\":{\"description\":\"Replaces the label set; [] clears it. Omit to preserve it.\",\"items\":{\"type\":\"string\"},\"type\":\"array\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"},\"state\":{\"allOf\":[{\"enum\":[\"open\",\"closed\"]}],\"type\":\"string\"},\"stateReason\":{\"allOf\":[{\"enum\":[\"completed\",\"not_planned\",\"duplicate\",\"reopened\"]}],\"type\":\"string\"},\"title\":{\"maxLength\":256,\"minLength\":1,\"type\":\"string\"}},\"required\":[\"repository\",\"number\"],\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_Issue\":{\"additionalProperties\":false,\"properties\":{\"assignees\":{\"items\":{\"type\":\"string\"},\"type\":\"array\"},\"author\":{\"type\":\"string\"},\"body\":{\"type\":\"string\"},\"id\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"labels\":{\"items\":{\"type\":\"string\"},\"type\":\"array\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"pullRequest\":{\"type\":\"boolean\"},\"repository\":{\"type\":\"string\"},\"state\":{\"allOf\":[{\"enum\":[\"open\",\"closed\"]}],\"type\":\"string\"},\"stateReason\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"},\"updatedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"id\",\"repository\",\"number\",\"title\",\"body\",\"state\",\"url\",\"author\",\"pullRequest\",\"updatedAt\",\"labels\",\"assignees\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"assignees\":{\"items\":{\"type\":\"string\"},\"type\":\"array\"},\"author\":{\"type\":\"string\"},\"body\":{\"type\":\"string\"},\"id\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"labels\":{\"items\":{\"type\":\"string\"},\"type\":\"array\"},\"number\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"pullRequest\":{\"type\":\"boolean\"},\"repository\":{\"type\":\"string\"},\"state\":{\"allOf\":[{\"enum\":[\"open\",\"closed\"]}],\"type\":\"string\"},\"stateReason\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"},\"updatedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"id\",\"repository\",\"number\",\"title\",\"body\",\"state\",\"url\",\"author\",\"pullRequest\",\"updatedAt\",\"labels\",\"assignees\"],\"type\":\"object\"}},{\"name\":\"flame.github/update-pull-request-comment.v1\",\"kind\":\"command\",\"target\":\"installation\",\"description\":\"Replace an inline PR review comment's body by its inspected comment ID. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_UpdateCommentInput\":{\"additionalProperties\":false,\"properties\":{\"body\":{\"maxLength\":65536,\"minLength\":1,\"type\":\"string\"},\"commentId\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"commentId\",\"body\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"body\":{\"maxLength\":65536,\"minLength\":1,\"type\":\"string\"},\"commentId\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"repository\":{\"maxLength\":256,\"minLength\":3,\"type\":\"string\"}},\"required\":[\"repository\",\"commentId\",\"body\"],\"type\":\"object\"},\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_ReviewComment\":{\"additionalProperties\":false,\"properties\":{\"author\":{\"type\":\"string\"},\"body\":{\"type\":\"string\"},\"commitId\":{\"type\":\"string\"},\"createdAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"diffHunk\":{\"type\":\"string\"},\"id\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"inReplyTo\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"line\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"originalCommitId\":{\"type\":\"string\"},\"originalLine\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"path\":{\"type\":\"string\"},\"reviewId\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"side\":{\"type\":\"string\"},\"startLine\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"startSide\":{\"type\":\"string\"},\"updatedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"id\",\"url\",\"author\",\"body\",\"createdAt\",\"updatedAt\",\"reviewId\",\"path\",\"diffHunk\",\"commitId\",\"originalCommitId\",\"side\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"author\":{\"type\":\"string\"},\"body\":{\"type\":\"string\"},\"commitId\":{\"type\":\"string\"},\"createdAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"diffHunk\":{\"type\":\"string\"},\"id\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"inReplyTo\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"line\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"originalCommitId\":{\"type\":\"string\"},\"originalLine\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"path\":{\"type\":\"string\"},\"reviewId\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"side\":{\"type\":\"string\"},\"startLine\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"startSide\":{\"type\":\"string\"},\"updatedAt\":{\"format\":\"date-time\",\"type\":\"string\"},\"url\":{\"type\":\"string\"}},\"required\":[\"id\",\"url\",\"author\",\"body\",\"createdAt\",\"updatedAt\",\"reviewId\",\"path\",\"diffHunk\",\"commitId\",\"originalCommitId\",\"side\"],\"type\":\"object\"}}]}"
@@ -445,17 +445,9 @@ const GitHubDeleteIssueCommentV1Method = "flame.github/delete-issue-comment.v1"
 
 const GitHubDeletePullRequestCommentV1Method = "flame.github/delete-pull-request-comment.v1"
 
-type GitHubDeletePullRequestCommentV1Input GitHubDeleteIssueCommentV1Input
-type GitHubDeletePullRequestCommentV1Output GitHubDeleteIssueCommentV1Output
-
 const GitHubGetIssueV1Method = "flame.github/get-issue.v1"
 
-type GitHubGetIssueV1Output GitHubCreateIssueV1Output
-
 const GitHubGetPullRequestV1Method = "flame.github/get-pull-request.v1"
-
-type GitHubGetPullRequestV1Input GitHubGetIssueV1Input
-type GitHubGetPullRequestV1Output GitHubCreatePullRequestV1Output
 
 const GitHubListCheckAnnotationsV1Method = "flame.github/list-check-annotations.v1"
 
@@ -463,23 +455,15 @@ const GitHubListCheckRunsV1Method = "flame.github/list-check-runs.v1"
 
 const GitHubListCommitStatusesV1Method = "flame.github/list-commit-statuses.v1"
 
-type GitHubListCommitStatusesV1Input GitHubListCheckRunsV1Input
-
 const GitHubListIssueCommentsV1Method = "flame.github/list-issue-comments.v1"
 
 const GitHubListIssuesV1Method = "flame.github/list-issues.v1"
 
 const GitHubListPullRequestCommentsV1Method = "flame.github/list-pull-request-comments.v1"
 
-type GitHubListPullRequestCommentsV1Input GitHubListIssueCommentsV1Input
-
 const GitHubListPullRequestFilesV1Method = "flame.github/list-pull-request-files.v1"
 
-type GitHubListPullRequestFilesV1Input GitHubListIssueCommentsV1Input
-
 const GitHubListPullRequestReviewsV1Method = "flame.github/list-pull-request-reviews.v1"
-
-type GitHubListPullRequestReviewsV1Input GitHubListIssueCommentsV1Input
 
 const GitHubListPullRequestsV1Method = "flame.github/list-pull-requests.v1"
 
@@ -489,19 +473,10 @@ const GitHubReadFileV1Method = "flame.github/read-file.v1"
 
 const GitHubReplyPullRequestCommentV1Method = "flame.github/reply-pull-request-comment.v1"
 
-type GitHubReplyPullRequestCommentV1Output GitHubCreatePullRequestCommentV1Output
-
 const GitHubSubmitPullRequestReviewV1Method = "flame.github/submit-pull-request-review.v1"
 
 const GitHubUpdateIssueCommentV1Method = "flame.github/update-issue-comment.v1"
 
-type GitHubUpdateIssueCommentV1Output GitHubCreateIssueCommentV1Output
-
 const GitHubUpdateIssueV1Method = "flame.github/update-issue.v1"
 
-type GitHubUpdateIssueV1Output GitHubCreateIssueV1Output
-
 const GitHubUpdatePullRequestCommentV1Method = "flame.github/update-pull-request-comment.v1"
-
-type GitHubUpdatePullRequestCommentV1Input GitHubUpdateIssueCommentV1Input
-type GitHubUpdatePullRequestCommentV1Output GitHubCreatePullRequestCommentV1Output

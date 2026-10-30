@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
-    "Method_flame_2edeliverables_2fappend_2ev1Input": {
+    "AppendV1Input": {
       "additionalProperties": false,
       "properties": {
         "base64": {
@@ -26,7 +26,7 @@
       ],
       "type": "object"
     },
-    "Method_flame_2edeliverables_2fappend_2ev1Output": {
+    "AppendV1Output": {
       "additionalProperties": false,
       "properties": {
         "id": {
@@ -56,7 +56,7 @@
       ],
       "type": "object"
     },
-    "Method_flame_2edeliverables_2fassessment_2ev1Input": {
+    "AssessmentV1Input": {
       "additionalProperties": false,
       "properties": {
         "assessmentId": {
@@ -79,7 +79,7 @@
       ],
       "type": "object"
     },
-    "Method_flame_2edeliverables_2fassessment_2ev1Output": {
+    "AssessmentV1Output": {
       "additionalProperties": false,
       "properties": {
         "assets": {
@@ -162,12 +162,12 @@
       ],
       "type": "object"
     },
-    "Method_flame_2edeliverables_2fcatalog_2ev1Input": {
+    "CatalogV1Input": {
       "additionalProperties": false,
       "properties": {},
       "type": "object"
     },
-    "Method_flame_2edeliverables_2fcatalog_2ev1Output": {
+    "CatalogV1Output": {
       "additionalProperties": false,
       "properties": {
         "enginesJSON": {
@@ -193,7 +193,7 @@
       ],
       "type": "object"
     },
-    "Method_flame_2edeliverables_2fcreate_2ev1Input": {
+    "CreateV1Input": {
       "additionalProperties": false,
       "properties": {
         "contentJSON": {
@@ -280,7 +280,7 @@
       ],
       "type": "object"
     },
-    "Method_flame_2edeliverables_2fcreate_2ev1Output": {
+    "CreateV1Output": {
       "additionalProperties": false,
       "properties": {
         "createdAt": {
@@ -434,7 +434,7 @@
       ],
       "type": "object"
     },
-    "Method_flame_2edeliverables_2fdiscard_2ev1Input": {
+    "DiscardV1Input": {
       "additionalProperties": false,
       "properties": {
         "uploadId": {
@@ -447,10 +447,10 @@
       ],
       "type": "object"
     },
-    "Method_flame_2edeliverables_2fdiscard_2ev1Output": {
+    "DiscardV1Output": {
       "type": "boolean"
     },
-    "Method_flame_2edeliverables_2fdownload_2ev1Input": {
+    "DownloadV1Input": {
       "additionalProperties": false,
       "properties": {
         "assetId": {
@@ -475,7 +475,7 @@
       ],
       "type": "object"
     },
-    "Method_flame_2edeliverables_2fdownload_2ev1Output": {
+    "DownloadV1Output": {
       "additionalProperties": false,
       "properties": {
         "asset": {
@@ -541,7 +541,7 @@
       ],
       "type": "object"
     },
-    "Method_flame_2edeliverables_2fedit_2ev1Input": {
+    "EditV1Input": {
       "additionalProperties": false,
       "properties": {
         "expectedRevision": {
@@ -565,7 +565,7 @@
       ],
       "type": "object"
     },
-    "Method_flame_2edeliverables_2fedit_2ev1Output": {
+    "EditV1Output": {
       "additionalProperties": false,
       "properties": {
         "createdAt": {
@@ -719,7 +719,7 @@
       ],
       "type": "object"
     },
-    "Method_flame_2edeliverables_2fexport_2ev1Input": {
+    "ExportV1Input": {
       "additionalProperties": false,
       "properties": {
         "id": {
@@ -752,7 +752,7 @@
       ],
       "type": "object"
     },
-    "Method_flame_2edeliverables_2fexport_2ev1Output": {
+    "ExportV1Output": {
       "additionalProperties": false,
       "properties": {
         "filename": {
@@ -788,7 +788,7 @@
       ],
       "type": "object"
     },
-    "Method_flame_2edeliverables_2fhistory_2ev1Input": {
+    "HistoryV1Input": {
       "additionalProperties": false,
       "properties": {
         "before": {
@@ -811,7 +811,7 @@
       ],
       "type": "object"
     },
-    "Method_flame_2edeliverables_2fhistory_2ev1Output": {
+    "HistoryV1Output": {
       "additionalProperties": false,
       "properties": {
         "entries": {
@@ -982,7 +982,7 @@
       ],
       "type": "object"
     },
-    "Method_flame_2edeliverables_2fimport_2ev1Input": {
+    "ImportV1Input": {
       "additionalProperties": false,
       "properties": {
         "format": {
@@ -1069,7 +1069,7 @@
       ],
       "type": "object"
     },
-    "Method_flame_2edeliverables_2fimport_2ev1Output": {
+    "ImportV1Output": {
       "additionalProperties": false,
       "properties": {
         "createdAt": {
@@ -1223,7 +1223,7 @@
       ],
       "type": "object"
     },
-    "Method_flame_2edeliverables_2flist_2ev1Input": {
+    "ListV1Input": {
       "additionalProperties": false,
       "properties": {
         "before": {
@@ -1241,7 +1241,7 @@
       ],
       "type": "object"
     },
-    "Method_flame_2edeliverables_2flist_2ev1Output": {
+    "ListV1Output": {
       "additionalProperties": false,
       "properties": {
         "entries": {
@@ -1298,7 +1298,7 @@
       ],
       "type": "object"
     },
-    "Method_flame_2edeliverables_2fread_2ev1Input": {
+    "ReadV1Input": {
       "additionalProperties": false,
       "properties": {
         "id": {
@@ -1315,7 +1315,7 @@
       ],
       "type": "object"
     },
-    "Method_flame_2edeliverables_2fread_2ev1Output": {
+    "ReadV1Output": {
       "additionalProperties": false,
       "properties": {
         "assessments": {
@@ -1611,7 +1611,7 @@
       ],
       "type": "object"
     },
-    "Method_flame_2edeliverables_2frecalculate_2ev1Input": {
+    "RecalculateV1Input": {
       "additionalProperties": false,
       "properties": {
         "expectedRevision": {
@@ -1629,7 +1629,7 @@
       ],
       "type": "object"
     },
-    "Method_flame_2edeliverables_2frecalculate_2ev1Output": {
+    "RecalculateV1Output": {
       "additionalProperties": false,
       "properties": {
         "createdAt": {
@@ -1783,7 +1783,7 @@
       ],
       "type": "object"
     },
-    "Method_flame_2edeliverables_2fremove_2ev1Input": {
+    "RemoveV1Input": {
       "additionalProperties": false,
       "properties": {
         "expectedRevision": {
@@ -1801,10 +1801,10 @@
       ],
       "type": "object"
     },
-    "Method_flame_2edeliverables_2fremove_2ev1Output": {
+    "RemoveV1Output": {
       "type": "boolean"
     },
-    "Method_flame_2edeliverables_2frender_2ev1Input": {
+    "RenderV1Input": {
       "additionalProperties": false,
       "properties": {
         "id": {
@@ -1822,7 +1822,7 @@
       ],
       "type": "object"
     },
-    "Method_flame_2edeliverables_2frender_2ev1Output": {
+    "RenderV1Output": {
       "additionalProperties": false,
       "properties": {
         "assets": {
@@ -1905,7 +1905,7 @@
       ],
       "type": "object"
     },
-    "Method_flame_2edeliverables_2freview_2ev1Input": {
+    "ReviewV1Input": {
       "additionalProperties": false,
       "properties": {
         "id": {
@@ -1953,7 +1953,7 @@
       ],
       "type": "object"
     },
-    "Method_flame_2edeliverables_2freview_2ev1Output": {
+    "ReviewV1Output": {
       "additionalProperties": false,
       "properties": {
         "assets": {
@@ -2036,7 +2036,7 @@
       ],
       "type": "object"
     },
-    "Method_flame_2edeliverables_2fupload_2ev1Input": {
+    "UploadV1Input": {
       "additionalProperties": false,
       "properties": {
         "sha256": {
@@ -2055,7 +2055,7 @@
       ],
       "type": "object"
     },
-    "Method_flame_2edeliverables_2fupload_2ev1Output": {
+    "UploadV1Output": {
       "additionalProperties": false,
       "properties": {
         "id": {
@@ -2085,12 +2085,12 @@
       ],
       "type": "object"
     },
-    "Method_flame_2edeliverables_2fuploads_2ev1Input": {
+    "UploadsV1Input": {
       "additionalProperties": false,
       "properties": {},
       "type": "object"
     },
-    "Method_flame_2edeliverables_2fuploads_2ev1Output": {
+    "UploadsV1Output": {
       "items": {
         "additionalProperties": false,
         "properties": {

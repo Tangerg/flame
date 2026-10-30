@@ -2,63 +2,28 @@
 // Numeric and cross-field constraints remain in schema.json and the business owner.
 import type { JSONNumber } from "@qimu/sdk/json";
 
-export type Method_flame_2eknowledgebase_2fdelete_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fDocumentInput;
-
-export type Method_flame_2eknowledgebase_2fdelete_2ev1Output = boolean;
-
-export type Method_flame_2eknowledgebase_2fimport_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fImportInput;
-
-export type Method_flame_2eknowledgebase_2fimport_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_5fHeader;
-
-export interface Method_flame_2eknowledgebase_2flist_2ev1Input {
-}
-
-export type Method_flame_2eknowledgebase_2flist_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_5fHeader[];
-
-export type Method_flame_2eknowledgebase_2fread_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fReadInput;
-
-export type Method_flame_2eknowledgebase_2fread_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fDocumentRead;
-
-export type Method_flame_2eknowledgebase_2freindex_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fDocumentInput;
-
-export type Method_flame_2eknowledgebase_2freindex_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_5fHeader;
-
-export type Method_flame_2eknowledgebase_2fsearch_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fSearchInput;
-
-export type Method_flame_2eknowledgebase_2fsearch_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_5fMatch[];
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fDocumentInput {
-  expectedRevision: JSONNumber;
-  id: string;
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fDocumentRead {
-  document: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_5fHeader;
-  text: string;
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fImportInput {
-  content: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_5fContent;
-  expectedRevision: JSONNumber;
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fReadInput {
-  id: string;
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fSearchInput {
-  limit: JSONNumber;
-  query: string;
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_5fContent {
+export interface Content {
   id: string;
   source: string;
   text: string;
   title: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_5fHeader {
+export type DeleteV1Input = DocumentInput;
+
+export type DeleteV1Output = boolean;
+
+export interface DocumentInput {
+  expectedRevision: JSONNumber;
+  id: string;
+}
+
+export interface DocumentRead {
+  document: Header;
+  text: string;
+}
+
+export interface Header {
   chunks: JSONNumber;
   id: string;
   revision: JSONNumber;
@@ -67,28 +32,63 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2x
   title: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_5fMatch {
+export interface ImportInput {
+  content: Content;
+  expectedRevision: JSONNumber;
+}
+
+export type ImportV1Input = ImportInput;
+
+export type ImportV1Output = Header;
+
+export interface ListV1Input {
+}
+
+export type ListV1Output = Header[];
+
+export interface Match {
   chunk: JSONNumber;
-  document: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_5fHeader;
+  document: Header;
   score: JSONNumber;
   text: string;
 }
 
+export interface ReadInput {
+  id: string;
+}
+
+export type ReadV1Input = ReadInput;
+
+export type ReadV1Output = DocumentRead;
+
+export type ReindexV1Input = DocumentInput;
+
+export type ReindexV1Output = Header;
+
+export interface SearchInput {
+  limit: JSONNumber;
+  query: string;
+}
+
+export type SearchV1Input = SearchInput;
+
+export type SearchV1Output = Match[];
+
 export interface MethodInputs {
-  "flame.knowledgebase/delete.v1": Method_flame_2eknowledgebase_2fdelete_2ev1Input;
-  "flame.knowledgebase/import.v1": Method_flame_2eknowledgebase_2fimport_2ev1Input;
-  "flame.knowledgebase/list.v1": Method_flame_2eknowledgebase_2flist_2ev1Input;
-  "flame.knowledgebase/read.v1": Method_flame_2eknowledgebase_2fread_2ev1Input;
-  "flame.knowledgebase/reindex.v1": Method_flame_2eknowledgebase_2freindex_2ev1Input;
-  "flame.knowledgebase/search.v1": Method_flame_2eknowledgebase_2fsearch_2ev1Input;
+  "flame.knowledgebase/delete.v1": DeleteV1Input;
+  "flame.knowledgebase/import.v1": ImportV1Input;
+  "flame.knowledgebase/list.v1": ListV1Input;
+  "flame.knowledgebase/read.v1": ReadV1Input;
+  "flame.knowledgebase/reindex.v1": ReindexV1Input;
+  "flame.knowledgebase/search.v1": SearchV1Input;
 }
 export interface MethodOutputs {
-  "flame.knowledgebase/delete.v1": Method_flame_2eknowledgebase_2fdelete_2ev1Output;
-  "flame.knowledgebase/import.v1": Method_flame_2eknowledgebase_2fimport_2ev1Output;
-  "flame.knowledgebase/list.v1": Method_flame_2eknowledgebase_2flist_2ev1Output;
-  "flame.knowledgebase/read.v1": Method_flame_2eknowledgebase_2fread_2ev1Output;
-  "flame.knowledgebase/reindex.v1": Method_flame_2eknowledgebase_2freindex_2ev1Output;
-  "flame.knowledgebase/search.v1": Method_flame_2eknowledgebase_2fsearch_2ev1Output;
+  "flame.knowledgebase/delete.v1": DeleteV1Output;
+  "flame.knowledgebase/import.v1": ImportV1Output;
+  "flame.knowledgebase/list.v1": ListV1Output;
+  "flame.knowledgebase/read.v1": ReadV1Output;
+  "flame.knowledgebase/reindex.v1": ReindexV1Output;
+  "flame.knowledgebase/search.v1": SearchV1Output;
 }
 export const METHODS = {
   "flame.knowledgebase/delete.v1": { kind: "command", target: "installation" },

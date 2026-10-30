@@ -1,33 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
-    "Method_flame_2ea2a_2fagents_2ev1Input": {
-      "additionalProperties": false,
-      "properties": {},
-      "type": "object"
-    },
-    "Method_flame_2ea2a_2fagents_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU_5fAgents"
-    },
-    "Method_flame_2ea2a_2fcancel_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU_5fTaskRequest"
-    },
-    "Method_flame_2ea2a_2fcancel_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU_5fResult"
-    },
-    "Method_flame_2ea2a_2fsend_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU_5fSendRequest"
-    },
-    "Method_flame_2ea2a_2fsend_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU_5fResult"
-    },
-    "Method_flame_2ea2a_2fstatus_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU_5fTaskRequest"
-    },
-    "Method_flame_2ea2a_2fstatus_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU_5fResult"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU_5fAgent": {
+    "Agent": {
       "additionalProperties": false,
       "properties": {
         "description": {
@@ -43,12 +17,12 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU_5fAgents": {
+    "Agents": {
       "additionalProperties": false,
       "properties": {
         "agents": {
           "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU_5fAgent"
+            "$ref": "#/$defs/Agent"
           },
           "type": "array"
         }
@@ -58,7 +32,21 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU_5fResult": {
+    "AgentsV1Input": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "AgentsV1Output": {
+      "$ref": "#/$defs/Agents"
+    },
+    "CancelV1Input": {
+      "$ref": "#/$defs/TaskRequest"
+    },
+    "CancelV1Output": {
+      "$ref": "#/$defs/Result"
+    },
+    "Result": {
       "additionalProperties": false,
       "properties": {
         "agent": {
@@ -95,7 +83,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU_5fSendRequest": {
+    "SendRequest": {
       "additionalProperties": false,
       "properties": {
         "agent": {
@@ -111,7 +99,19 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU_5fTaskRequest": {
+    "SendV1Input": {
+      "$ref": "#/$defs/SendRequest"
+    },
+    "SendV1Output": {
+      "$ref": "#/$defs/Result"
+    },
+    "StatusV1Input": {
+      "$ref": "#/$defs/TaskRequest"
+    },
+    "StatusV1Output": {
+      "$ref": "#/$defs/Result"
+    },
+    "TaskRequest": {
       "additionalProperties": false,
       "properties": {
         "requestId": {

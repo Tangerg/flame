@@ -2,103 +2,7 @@
 // Numeric and cross-field constraints remain in schema.json and the business owner.
 import type { JSONNumber } from "@qimu/sdk/json";
 
-export type Method_flame_2egithub_2fcreate_2dissue_2dcomment_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCreateCommentInput;
-
-export type Method_flame_2egithub_2fcreate_2dissue_2dcomment_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fComment;
-
-export type Method_flame_2egithub_2fcreate_2dissue_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCreateIssueInput;
-
-export type Method_flame_2egithub_2fcreate_2dissue_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fIssue;
-
-export type Method_flame_2egithub_2fcreate_2dpull_2drequest_2dcomment_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCreateReviewCommentInput;
-
-export type Method_flame_2egithub_2fcreate_2dpull_2drequest_2dcomment_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fReviewComment;
-
-export type Method_flame_2egithub_2fcreate_2dpull_2drequest_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCreatePullInput;
-
-export type Method_flame_2egithub_2fcreate_2dpull_2drequest_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fPullRequest;
-
-export type Method_flame_2egithub_2fdelete_2dissue_2dcomment_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCommentInput;
-
-export type Method_flame_2egithub_2fdelete_2dissue_2dcomment_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fDeletedComment;
-
-export type Method_flame_2egithub_2fdelete_2dpull_2drequest_2dcomment_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCommentInput;
-
-export type Method_flame_2egithub_2fdelete_2dpull_2drequest_2dcomment_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fDeletedComment;
-
-export type Method_flame_2egithub_2fget_2dissue_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fIssueInput;
-
-export type Method_flame_2egithub_2fget_2dissue_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fIssue;
-
-export type Method_flame_2egithub_2fget_2dpull_2drequest_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fIssueInput;
-
-export type Method_flame_2egithub_2fget_2dpull_2drequest_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fPullRequest;
-
-export type Method_flame_2egithub_2flist_2dcheck_2dannotations_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCheckInput;
-
-export type Method_flame_2egithub_2flist_2dcheck_2dannotations_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fAnnotationPage;
-
-export type Method_flame_2egithub_2flist_2dcheck_2druns_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCommitInput;
-
-export type Method_flame_2egithub_2flist_2dcheck_2druns_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCheckPage;
-
-export type Method_flame_2egithub_2flist_2dcommit_2dstatuses_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCommitInput;
-
-export type Method_flame_2egithub_2flist_2dcommit_2dstatuses_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fStatusPage;
-
-export type Method_flame_2egithub_2flist_2dissue_2dcomments_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fThreadInput;
-
-export type Method_flame_2egithub_2flist_2dissue_2dcomments_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCommentPage;
-
-export type Method_flame_2egithub_2flist_2dissues_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fListInput;
-
-export type Method_flame_2egithub_2flist_2dissues_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fIssuePage;
-
-export type Method_flame_2egithub_2flist_2dpull_2drequest_2dcomments_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fThreadInput;
-
-export type Method_flame_2egithub_2flist_2dpull_2drequest_2dcomments_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fReviewCommentPage;
-
-export type Method_flame_2egithub_2flist_2dpull_2drequest_2dfiles_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fThreadInput;
-
-export type Method_flame_2egithub_2flist_2dpull_2drequest_2dfiles_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fFilePage;
-
-export type Method_flame_2egithub_2flist_2dpull_2drequest_2dreviews_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fThreadInput;
-
-export type Method_flame_2egithub_2flist_2dpull_2drequest_2dreviews_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fReviewPage;
-
-export type Method_flame_2egithub_2flist_2dpull_2drequests_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fPullListInput;
-
-export type Method_flame_2egithub_2flist_2dpull_2drequests_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fPullPage;
-
-export type Method_flame_2egithub_2fmerge_2dpull_2drequest_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fMergePullInput;
-
-export type Method_flame_2egithub_2fmerge_2dpull_2drequest_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fMergeResult;
-
-export type Method_flame_2egithub_2fread_2dfile_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fFileInput;
-
-export type Method_flame_2egithub_2fread_2dfile_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fFile;
-
-export type Method_flame_2egithub_2freply_2dpull_2drequest_2dcomment_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fReplyReviewCommentInput;
-
-export type Method_flame_2egithub_2freply_2dpull_2drequest_2dcomment_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fReviewComment;
-
-export type Method_flame_2egithub_2fsubmit_2dpull_2drequest_2dreview_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fSubmitReviewInput;
-
-export type Method_flame_2egithub_2fsubmit_2dpull_2drequest_2dreview_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fReview;
-
-export type Method_flame_2egithub_2fupdate_2dissue_2dcomment_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fUpdateCommentInput;
-
-export type Method_flame_2egithub_2fupdate_2dissue_2dcomment_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fComment;
-
-export type Method_flame_2egithub_2fupdate_2dissue_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fUpdateIssueInput;
-
-export type Method_flame_2egithub_2fupdate_2dissue_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fIssue;
-
-export type Method_flame_2egithub_2fupdate_2dpull_2drequest_2dcomment_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fUpdateCommentInput;
-
-export type Method_flame_2egithub_2fupdate_2dpull_2drequest_2dcomment_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fReviewComment;
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fAnnotation {
+export interface Annotation {
   endColumn?: JSONNumber;
   endLine: JSONNumber;
   level: string;
@@ -110,19 +14,19 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHV
   title?: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fAnnotationPage {
-  annotations: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fAnnotation[];
+export interface AnnotationPage {
+  annotations: Annotation[];
   nextPage?: JSONNumber;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fBranch {
+export interface Branch {
   label: string;
   ref: string;
   repository?: string;
   sha: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fChangedFile {
+export interface ChangedFile {
   additions: JSONNumber;
   changes: JSONNumber;
   deletions: JSONNumber;
@@ -133,19 +37,19 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHV
   status: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCheckInput {
+export interface CheckInput {
   checkRunId: JSONNumber;
   limit: JSONNumber;
   page: JSONNumber;
   repository: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCheckPage {
-  checkRuns: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCheckRun[];
+export interface CheckPage {
+  checkRuns: CheckRun[];
   nextPage?: JSONNumber;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCheckRun {
+export interface CheckRun {
   annotationsCount: JSONNumber;
   completedAt?: string;
   conclusion?: string;
@@ -160,7 +64,7 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHV
   url: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fComment {
+export interface Comment {
   author: string;
   body: string;
   createdAt: string;
@@ -169,24 +73,24 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHV
   url: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCommentInput {
+export interface CommentInput {
   commentId: JSONNumber;
   repository: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCommentPage {
-  comments: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fComment[];
+export interface CommentPage {
+  comments: Comment[];
   nextPage?: JSONNumber;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCommitInput {
+export interface CommitInput {
   limit: JSONNumber;
   page: JSONNumber;
   ref: string;
   repository: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCommitStatus {
+export interface CommitStatus {
   context: string;
   createdAt: string;
   description?: string;
@@ -196,13 +100,17 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHV
   url?: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCreateCommentInput {
+export interface CreateCommentInput {
   body: string;
   number: JSONNumber;
   repository: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCreateIssueInput {
+export type CreateIssueCommentV1Input = CreateCommentInput;
+
+export type CreateIssueCommentV1Output = Comment;
+
+export interface CreateIssueInput {
   assignees?: string[];
   body?: string;
   labels?: string[];
@@ -210,7 +118,11 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHV
   title: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCreatePullInput {
+export type CreateIssueV1Input = CreateIssueInput;
+
+export type CreateIssueV1Output = Issue;
+
+export interface CreatePullInput {
   base: string;
   body?: string;
   draft?: boolean;
@@ -221,7 +133,15 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHV
   title: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCreateReviewCommentInput {
+export type CreatePullRequestCommentV1Input = CreateReviewCommentInput;
+
+export type CreatePullRequestCommentV1Output = ReviewComment;
+
+export type CreatePullRequestV1Input = CreatePullInput;
+
+export type CreatePullRequestV1Output = PullRequest;
+
+export interface CreateReviewCommentInput {
   body: string;
   commitId: string;
   line: JSONNumber;
@@ -233,12 +153,20 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHV
   startSide?: string & ("LEFT" | "RIGHT");
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fDeletedComment {
+export type DeleteIssueCommentV1Input = CommentInput;
+
+export type DeleteIssueCommentV1Output = DeletedComment;
+
+export type DeletePullRequestCommentV1Input = CommentInput;
+
+export type DeletePullRequestCommentV1Output = DeletedComment;
+
+export interface DeletedComment {
   deleted: true;
   id: JSONNumber;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fFile {
+export interface File {
   path: string;
   repository: string;
   sha: string;
@@ -246,19 +174,27 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHV
   url: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fFileInput {
+export interface FileInput {
   path: string;
   ref?: string;
   repository: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fFilePage {
-  files: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fChangedFile[];
+export interface FilePage {
+  files: ChangedFile[];
   limitReached: boolean;
   nextPage?: JSONNumber;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fInlineComment {
+export type GetIssueV1Input = IssueInput;
+
+export type GetIssueV1Output = Issue;
+
+export type GetPullRequestV1Input = IssueInput;
+
+export type GetPullRequestV1Output = PullRequest;
+
+export interface InlineComment {
   body: string;
   line: JSONNumber;
   path: string;
@@ -267,7 +203,7 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHV
   startSide?: string & ("LEFT" | "RIGHT");
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fIssue {
+export interface Issue {
   assignees: string[];
   author: string;
   body: string;
@@ -283,24 +219,60 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHV
   url: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fIssueInput {
+export interface IssueInput {
   number: JSONNumber;
   repository: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fIssuePage {
-  issues: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fIssue[];
+export interface IssuePage {
+  issues: Issue[];
   nextPage?: JSONNumber;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fListInput {
+export type ListCheckAnnotationsV1Input = CheckInput;
+
+export type ListCheckAnnotationsV1Output = AnnotationPage;
+
+export type ListCheckRunsV1Input = CommitInput;
+
+export type ListCheckRunsV1Output = CheckPage;
+
+export type ListCommitStatusesV1Input = CommitInput;
+
+export type ListCommitStatusesV1Output = StatusPage;
+
+export interface ListInput {
   limit: JSONNumber;
   page: JSONNumber;
   repository: string;
   state: string & ("open" | "closed" | "all");
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fMergePullInput {
+export type ListIssueCommentsV1Input = ThreadInput;
+
+export type ListIssueCommentsV1Output = CommentPage;
+
+export type ListIssuesV1Input = ListInput;
+
+export type ListIssuesV1Output = IssuePage;
+
+export type ListPullRequestCommentsV1Input = ThreadInput;
+
+export type ListPullRequestCommentsV1Output = ReviewCommentPage;
+
+export type ListPullRequestFilesV1Input = ThreadInput;
+
+export type ListPullRequestFilesV1Output = FilePage;
+
+export type ListPullRequestReviewsV1Input = ThreadInput;
+
+export type ListPullRequestReviewsV1Output = ReviewPage;
+
+export type ListPullRequestsV1Input = PullListInput;
+
+export type ListPullRequestsV1Output = PullPage;
+
+export interface MergePullInput {
   commitMessage?: string;
   commitTitle?: string;
   headSha: string;
@@ -309,13 +281,17 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHV
   repository: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fMergeResult {
+export type MergePullRequestV1Input = MergePullInput;
+
+export type MergePullRequestV1Output = MergeResult;
+
+export interface MergeResult {
   merged: true;
   message: string;
   sha: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fPullListInput {
+export interface PullListInput {
   base?: string;
   head?: string;
   limit: JSONNumber;
@@ -324,20 +300,20 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHV
   state: string & ("open" | "closed" | "all");
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fPullPage {
+export interface PullPage {
   nextPage?: JSONNumber;
-  pullRequests: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fPullRequest[];
+  pullRequests: PullRequest[];
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fPullRequest {
+export interface PullRequest {
   additions?: JSONNumber;
   author: string;
-  base: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fBranch;
+  base: Branch;
   body: string;
   changedFiles?: JSONNumber;
   deletions?: JSONNumber;
   draft: boolean;
-  head: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fBranch;
+  head: Branch;
   maintainerCanModify?: boolean;
   mergeable?: boolean;
   mergeableState?: string;
@@ -350,14 +326,22 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHV
   url: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fReplyReviewCommentInput {
+export type ReadFileV1Input = FileInput;
+
+export type ReadFileV1Output = File;
+
+export type ReplyPullRequestCommentV1Input = ReplyReviewCommentInput;
+
+export type ReplyPullRequestCommentV1Output = ReviewComment;
+
+export interface ReplyReviewCommentInput {
   body: string;
   commentId: JSONNumber;
   number: JSONNumber;
   repository: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fReview {
+export interface Review {
   author: string;
   body: string;
   commitId?: string;
@@ -367,7 +351,7 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHV
   url: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fReviewComment {
+export interface ReviewComment {
   author: string;
   body: string;
   commitId: string;
@@ -387,44 +371,52 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHV
   url: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fReviewCommentPage {
-  comments: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fReviewComment[];
+export interface ReviewCommentPage {
+  comments: ReviewComment[];
   nextPage?: JSONNumber;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fReviewPage {
+export interface ReviewPage {
   nextPage?: JSONNumber;
-  reviews: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fReview[];
+  reviews: Review[];
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fStatusPage {
+export interface StatusPage {
   nextPage?: JSONNumber;
-  statuses: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fCommitStatus[];
+  statuses: CommitStatus[];
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fSubmitReviewInput {
+export type SubmitPullRequestReviewV1Input = SubmitReviewInput;
+
+export type SubmitPullRequestReviewV1Output = Review;
+
+export interface SubmitReviewInput {
   body?: string;
-  comments?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fInlineComment[];
+  comments?: InlineComment[];
   commitId: string;
   event: string & ("APPROVE" | "REQUEST_CHANGES" | "COMMENT");
   number: JSONNumber;
   repository: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fThreadInput {
+export interface ThreadInput {
   limit: JSONNumber;
   number: JSONNumber;
   page: JSONNumber;
   repository: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fUpdateCommentInput {
+export interface UpdateCommentInput {
   body: string;
   commentId: JSONNumber;
   repository: string;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU_5fUpdateIssueInput {
+export type UpdateIssueCommentV1Input = UpdateCommentInput;
+
+export type UpdateIssueCommentV1Output = Comment;
+
+export interface UpdateIssueInput {
   assignees?: string[];
   body?: string;
   duplicateIssueId?: JSONNumber;
@@ -436,57 +428,65 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHV
   title?: string;
 }
 
+export type UpdateIssueV1Input = UpdateIssueInput;
+
+export type UpdateIssueV1Output = Issue;
+
+export type UpdatePullRequestCommentV1Input = UpdateCommentInput;
+
+export type UpdatePullRequestCommentV1Output = ReviewComment;
+
 export interface MethodInputs {
-  "flame.github/create-issue-comment.v1": Method_flame_2egithub_2fcreate_2dissue_2dcomment_2ev1Input;
-  "flame.github/create-issue.v1": Method_flame_2egithub_2fcreate_2dissue_2ev1Input;
-  "flame.github/create-pull-request-comment.v1": Method_flame_2egithub_2fcreate_2dpull_2drequest_2dcomment_2ev1Input;
-  "flame.github/create-pull-request.v1": Method_flame_2egithub_2fcreate_2dpull_2drequest_2ev1Input;
-  "flame.github/delete-issue-comment.v1": Method_flame_2egithub_2fdelete_2dissue_2dcomment_2ev1Input;
-  "flame.github/delete-pull-request-comment.v1": Method_flame_2egithub_2fdelete_2dpull_2drequest_2dcomment_2ev1Input;
-  "flame.github/get-issue.v1": Method_flame_2egithub_2fget_2dissue_2ev1Input;
-  "flame.github/get-pull-request.v1": Method_flame_2egithub_2fget_2dpull_2drequest_2ev1Input;
-  "flame.github/list-check-annotations.v1": Method_flame_2egithub_2flist_2dcheck_2dannotations_2ev1Input;
-  "flame.github/list-check-runs.v1": Method_flame_2egithub_2flist_2dcheck_2druns_2ev1Input;
-  "flame.github/list-commit-statuses.v1": Method_flame_2egithub_2flist_2dcommit_2dstatuses_2ev1Input;
-  "flame.github/list-issue-comments.v1": Method_flame_2egithub_2flist_2dissue_2dcomments_2ev1Input;
-  "flame.github/list-issues.v1": Method_flame_2egithub_2flist_2dissues_2ev1Input;
-  "flame.github/list-pull-request-comments.v1": Method_flame_2egithub_2flist_2dpull_2drequest_2dcomments_2ev1Input;
-  "flame.github/list-pull-request-files.v1": Method_flame_2egithub_2flist_2dpull_2drequest_2dfiles_2ev1Input;
-  "flame.github/list-pull-request-reviews.v1": Method_flame_2egithub_2flist_2dpull_2drequest_2dreviews_2ev1Input;
-  "flame.github/list-pull-requests.v1": Method_flame_2egithub_2flist_2dpull_2drequests_2ev1Input;
-  "flame.github/merge-pull-request.v1": Method_flame_2egithub_2fmerge_2dpull_2drequest_2ev1Input;
-  "flame.github/read-file.v1": Method_flame_2egithub_2fread_2dfile_2ev1Input;
-  "flame.github/reply-pull-request-comment.v1": Method_flame_2egithub_2freply_2dpull_2drequest_2dcomment_2ev1Input;
-  "flame.github/submit-pull-request-review.v1": Method_flame_2egithub_2fsubmit_2dpull_2drequest_2dreview_2ev1Input;
-  "flame.github/update-issue-comment.v1": Method_flame_2egithub_2fupdate_2dissue_2dcomment_2ev1Input;
-  "flame.github/update-issue.v1": Method_flame_2egithub_2fupdate_2dissue_2ev1Input;
-  "flame.github/update-pull-request-comment.v1": Method_flame_2egithub_2fupdate_2dpull_2drequest_2dcomment_2ev1Input;
+  "flame.github/create-issue-comment.v1": CreateIssueCommentV1Input;
+  "flame.github/create-issue.v1": CreateIssueV1Input;
+  "flame.github/create-pull-request-comment.v1": CreatePullRequestCommentV1Input;
+  "flame.github/create-pull-request.v1": CreatePullRequestV1Input;
+  "flame.github/delete-issue-comment.v1": DeleteIssueCommentV1Input;
+  "flame.github/delete-pull-request-comment.v1": DeletePullRequestCommentV1Input;
+  "flame.github/get-issue.v1": GetIssueV1Input;
+  "flame.github/get-pull-request.v1": GetPullRequestV1Input;
+  "flame.github/list-check-annotations.v1": ListCheckAnnotationsV1Input;
+  "flame.github/list-check-runs.v1": ListCheckRunsV1Input;
+  "flame.github/list-commit-statuses.v1": ListCommitStatusesV1Input;
+  "flame.github/list-issue-comments.v1": ListIssueCommentsV1Input;
+  "flame.github/list-issues.v1": ListIssuesV1Input;
+  "flame.github/list-pull-request-comments.v1": ListPullRequestCommentsV1Input;
+  "flame.github/list-pull-request-files.v1": ListPullRequestFilesV1Input;
+  "flame.github/list-pull-request-reviews.v1": ListPullRequestReviewsV1Input;
+  "flame.github/list-pull-requests.v1": ListPullRequestsV1Input;
+  "flame.github/merge-pull-request.v1": MergePullRequestV1Input;
+  "flame.github/read-file.v1": ReadFileV1Input;
+  "flame.github/reply-pull-request-comment.v1": ReplyPullRequestCommentV1Input;
+  "flame.github/submit-pull-request-review.v1": SubmitPullRequestReviewV1Input;
+  "flame.github/update-issue-comment.v1": UpdateIssueCommentV1Input;
+  "flame.github/update-issue.v1": UpdateIssueV1Input;
+  "flame.github/update-pull-request-comment.v1": UpdatePullRequestCommentV1Input;
 }
 export interface MethodOutputs {
-  "flame.github/create-issue-comment.v1": Method_flame_2egithub_2fcreate_2dissue_2dcomment_2ev1Output;
-  "flame.github/create-issue.v1": Method_flame_2egithub_2fcreate_2dissue_2ev1Output;
-  "flame.github/create-pull-request-comment.v1": Method_flame_2egithub_2fcreate_2dpull_2drequest_2dcomment_2ev1Output;
-  "flame.github/create-pull-request.v1": Method_flame_2egithub_2fcreate_2dpull_2drequest_2ev1Output;
-  "flame.github/delete-issue-comment.v1": Method_flame_2egithub_2fdelete_2dissue_2dcomment_2ev1Output;
-  "flame.github/delete-pull-request-comment.v1": Method_flame_2egithub_2fdelete_2dpull_2drequest_2dcomment_2ev1Output;
-  "flame.github/get-issue.v1": Method_flame_2egithub_2fget_2dissue_2ev1Output;
-  "flame.github/get-pull-request.v1": Method_flame_2egithub_2fget_2dpull_2drequest_2ev1Output;
-  "flame.github/list-check-annotations.v1": Method_flame_2egithub_2flist_2dcheck_2dannotations_2ev1Output;
-  "flame.github/list-check-runs.v1": Method_flame_2egithub_2flist_2dcheck_2druns_2ev1Output;
-  "flame.github/list-commit-statuses.v1": Method_flame_2egithub_2flist_2dcommit_2dstatuses_2ev1Output;
-  "flame.github/list-issue-comments.v1": Method_flame_2egithub_2flist_2dissue_2dcomments_2ev1Output;
-  "flame.github/list-issues.v1": Method_flame_2egithub_2flist_2dissues_2ev1Output;
-  "flame.github/list-pull-request-comments.v1": Method_flame_2egithub_2flist_2dpull_2drequest_2dcomments_2ev1Output;
-  "flame.github/list-pull-request-files.v1": Method_flame_2egithub_2flist_2dpull_2drequest_2dfiles_2ev1Output;
-  "flame.github/list-pull-request-reviews.v1": Method_flame_2egithub_2flist_2dpull_2drequest_2dreviews_2ev1Output;
-  "flame.github/list-pull-requests.v1": Method_flame_2egithub_2flist_2dpull_2drequests_2ev1Output;
-  "flame.github/merge-pull-request.v1": Method_flame_2egithub_2fmerge_2dpull_2drequest_2ev1Output;
-  "flame.github/read-file.v1": Method_flame_2egithub_2fread_2dfile_2ev1Output;
-  "flame.github/reply-pull-request-comment.v1": Method_flame_2egithub_2freply_2dpull_2drequest_2dcomment_2ev1Output;
-  "flame.github/submit-pull-request-review.v1": Method_flame_2egithub_2fsubmit_2dpull_2drequest_2dreview_2ev1Output;
-  "flame.github/update-issue-comment.v1": Method_flame_2egithub_2fupdate_2dissue_2dcomment_2ev1Output;
-  "flame.github/update-issue.v1": Method_flame_2egithub_2fupdate_2dissue_2ev1Output;
-  "flame.github/update-pull-request-comment.v1": Method_flame_2egithub_2fupdate_2dpull_2drequest_2dcomment_2ev1Output;
+  "flame.github/create-issue-comment.v1": CreateIssueCommentV1Output;
+  "flame.github/create-issue.v1": CreateIssueV1Output;
+  "flame.github/create-pull-request-comment.v1": CreatePullRequestCommentV1Output;
+  "flame.github/create-pull-request.v1": CreatePullRequestV1Output;
+  "flame.github/delete-issue-comment.v1": DeleteIssueCommentV1Output;
+  "flame.github/delete-pull-request-comment.v1": DeletePullRequestCommentV1Output;
+  "flame.github/get-issue.v1": GetIssueV1Output;
+  "flame.github/get-pull-request.v1": GetPullRequestV1Output;
+  "flame.github/list-check-annotations.v1": ListCheckAnnotationsV1Output;
+  "flame.github/list-check-runs.v1": ListCheckRunsV1Output;
+  "flame.github/list-commit-statuses.v1": ListCommitStatusesV1Output;
+  "flame.github/list-issue-comments.v1": ListIssueCommentsV1Output;
+  "flame.github/list-issues.v1": ListIssuesV1Output;
+  "flame.github/list-pull-request-comments.v1": ListPullRequestCommentsV1Output;
+  "flame.github/list-pull-request-files.v1": ListPullRequestFilesV1Output;
+  "flame.github/list-pull-request-reviews.v1": ListPullRequestReviewsV1Output;
+  "flame.github/list-pull-requests.v1": ListPullRequestsV1Output;
+  "flame.github/merge-pull-request.v1": MergePullRequestV1Output;
+  "flame.github/read-file.v1": ReadFileV1Output;
+  "flame.github/reply-pull-request-comment.v1": ReplyPullRequestCommentV1Output;
+  "flame.github/submit-pull-request-review.v1": SubmitPullRequestReviewV1Output;
+  "flame.github/update-issue-comment.v1": UpdateIssueCommentV1Output;
+  "flame.github/update-issue.v1": UpdateIssueV1Output;
+  "flame.github/update-pull-request-comment.v1": UpdatePullRequestCommentV1Output;
 }
 export const METHODS = {
   "flame.github/create-issue-comment.v1": { kind: "command", target: "installation" },

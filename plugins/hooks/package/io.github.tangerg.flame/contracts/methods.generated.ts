@@ -2,22 +2,41 @@
 // Numeric and cross-field constraints remain in schema.json and the business owner.
 import type { JSONNumber } from "@qimu/sdk/json";
 
-export type Method_flame_2ehooks_2fdiscover_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy_5fDiscovery;
+export interface Command {
+  command: string;
+  cwd: string;
+  input: Input;
+  timeoutMillis: JSONNumber;
+}
 
-export type Method_flame_2ehooks_2fdiscover_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_5fHook[];
-
-export type Method_flame_2ehooks_2fexecute_2ev1Input = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy_5fCommand;
-
-export type Method_flame_2ehooks_2fexecute_2ev1Output = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy_5fResult;
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_5fCommandDecision {
+export interface CommandDecision {
   injectContext?: string;
   reason?: string;
   rewriteArguments?: string;
   verdict: string & ("allow" | "deny" | "ask");
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_5fHook {
+export type DiscoverV1Input = Discovery;
+
+export type DiscoverV1Output = Hook[];
+
+export interface Discovery {
+  cwd: string;
+  home?: string;
+  includeProject: boolean;
+  projectRoot: string;
+}
+
+export type ExecuteV1Input = Command;
+
+export type ExecuteV1Output = Result;
+
+export interface Failure {
+  kind: string & ("failed" | "canceled" | "timedOut");
+  message: string;
+}
+
+export interface Hook {
   command?: string;
   event: string & ("PreToolUse" | "PostToolUse" | "UserPromptSubmit" | "SessionStart" | "PreCompact" | "Stop" | "Notification");
   inject?: string;
@@ -27,56 +46,37 @@ export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXN
   timeoutMillis?: JSONNumber;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_5fInput {
+export interface Input {
   cwd?: string;
   event: string & ("PreToolUse" | "PostToolUse" | "UserPromptSubmit" | "SessionStart" | "PreCompact" | "Stop" | "Notification");
   prompt?: string;
   promptTruncated?: boolean;
   reason?: string;
   sessionId?: string;
-  tool?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_5fToolInput;
+  tool?: ToolInput;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_5fToolInput {
+export interface Result {
+  decision?: CommandDecision;
+  exitCode: JSONNumber;
+  failure?: Failure;
+  stderr?: string;
+}
+
+export interface ToolInput {
   arguments?: string;
   name: string;
   result?: string;
   resultTruncated?: boolean;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy_5fCommand {
-  command: string;
-  cwd: string;
-  input: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_5fInput;
-  timeoutMillis: JSONNumber;
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy_5fDiscovery {
-  cwd: string;
-  home?: string;
-  includeProject: boolean;
-  projectRoot: string;
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy_5fFailure {
-  kind: string & ("failed" | "canceled" | "timedOut");
-  message: string;
-}
-
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy_5fResult {
-  decision?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_5fCommandDecision;
-  exitCode: JSONNumber;
-  failure?: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy_5fFailure;
-  stderr?: string;
-}
-
 export interface MethodInputs {
-  "flame.hooks/discover.v1": Method_flame_2ehooks_2fdiscover_2ev1Input;
-  "flame.hooks/execute.v1": Method_flame_2ehooks_2fexecute_2ev1Input;
+  "flame.hooks/discover.v1": DiscoverV1Input;
+  "flame.hooks/execute.v1": ExecuteV1Input;
 }
 export interface MethodOutputs {
-  "flame.hooks/discover.v1": Method_flame_2ehooks_2fdiscover_2ev1Output;
-  "flame.hooks/execute.v1": Method_flame_2ehooks_2fexecute_2ev1Output;
+  "flame.hooks/discover.v1": DiscoverV1Output;
+  "flame.hooks/execute.v1": ExecuteV1Output;
 }
 export const METHODS = {
   "flame.hooks/discover.v1": { kind: "query", target: "installation" },

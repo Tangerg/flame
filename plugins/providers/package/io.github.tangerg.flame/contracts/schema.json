@@ -1,88 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
-    "Method_flame_2emodel_2dprovider_2fcall_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChatRequest"
+    "CallV1Input": {
+      "$ref": "#/$defs/ChatRequest"
     },
-    "Method_flame_2emodel_2dprovider_2fcall_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChatResult"
+    "CallV1Output": {
+      "$ref": "#/$defs/ChatResult"
     },
-    "Method_flame_2emodel_2dprovider_2fclose_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fHandle"
-    },
-    "Method_flame_2emodel_2dprovider_2fclose_2ev1Output": {
-      "additionalProperties": false,
-      "properties": {},
-      "type": "object"
-    },
-    "Method_flame_2emodel_2dprovider_2fcount_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChatRequest"
-    },
-    "Method_flame_2emodel_2dprovider_2fcount_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fTokenCount"
-    },
-    "Method_flame_2emodel_2dprovider_2fembed_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fEmbeddingRequest"
-    },
-    "Method_flame_2emodel_2dprovider_2fembed_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fEmbeddingResult"
-    },
-    "Method_flame_2emodel_2dprovider_2fopen_2dchat_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fOpen"
-    },
-    "Method_flame_2emodel_2dprovider_2fopen_2dchat_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChat"
-    },
-    "Method_flame_2emodel_2dprovider_2fopen_2dembedding_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fOpen"
-    },
-    "Method_flame_2emodel_2dprovider_2fopen_2dembedding_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fEmbedder"
-    },
-    "Method_flame_2emodel_2dprovider_2fprofiles_2ev1Input": {
-      "additionalProperties": false,
-      "properties": {},
-      "type": "object"
-    },
-    "Method_flame_2emodel_2dprovider_2fprofiles_2ev1Output": {
-      "items": {
-        "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fProfile"
-      },
-      "type": "array"
-    },
-    "Method_flame_2emodel_2dprovider_2fremote_2dmodels_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fConnection"
-    },
-    "Method_flame_2emodel_2dprovider_2fremote_2dmodels_2ev1Output": {
-      "items": {
-        "type": "string"
-      },
-      "type": "array"
-    },
-    "Method_flame_2emodel_2dprovider_2freopen_2dchat_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fReopen"
-    },
-    "Method_flame_2emodel_2dprovider_2freopen_2dchat_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChat"
-    },
-    "Method_flame_2emodel_2dprovider_2fstream_2ev1Chunk": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fResponseDelta"
-    },
-    "Method_flame_2emodel_2dprovider_2fstream_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChatRequest"
-    },
-    "Method_flame_2emodel_2dprovider_2fstream_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChatResult"
-    },
-    "Method_flame_2emodel_2dprovider_2fverify_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fConnection"
-    },
-    "Method_flame_2emodel_2dprovider_2fverify_2ev1Output": {
-      "additionalProperties": false,
-      "properties": {},
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChat": {
+    "Chat": {
       "additionalProperties": false,
       "properties": {
         "id": {
@@ -94,7 +19,7 @@
           "type": "string"
         },
         "metadata": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fModel"
+          "$ref": "#/$defs/Model"
         },
         "model": {
           "type": "string"
@@ -128,14 +53,14 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChatRequest": {
+    "ChatRequest": {
       "additionalProperties": false,
       "properties": {
         "handle": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fHandle"
+          "$ref": "#/$defs/Handle"
         },
         "request": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fRequest"
+          "$ref": "#/$defs/Request"
         }
       },
       "required": [
@@ -144,19 +69,61 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChatResult": {
+    "ChatResult": {
       "additionalProperties": false,
       "properties": {
         "failure": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fFailure"
+          "$ref": "#/$defs/Failure"
         },
         "response": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fResponse"
+          "$ref": "#/$defs/Response"
         }
       },
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fConnection": {
+    "Citation": {
+      "additionalProperties": false,
+      "properties": {
+        "quote": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/CitationSource"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "type": "object"
+    },
+    "CitationSource": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "value"
+      ],
+      "type": "object"
+    },
+    "CloseV1Input": {
+      "$ref": "#/$defs/Handle"
+    },
+    "CloseV1Output": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "Connection": {
       "additionalProperties": false,
       "properties": {
         "apiKey": {
@@ -174,7 +141,19 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fEmbedder": {
+    "CountV1Input": {
+      "$ref": "#/$defs/ChatRequest"
+    },
+    "CountV1Output": {
+      "$ref": "#/$defs/TokenCount"
+    },
+    "EmbedV1Input": {
+      "$ref": "#/$defs/EmbeddingRequest"
+    },
+    "EmbedV1Output": {
+      "$ref": "#/$defs/EmbeddingResult"
+    },
+    "Embedder": {
       "additionalProperties": false,
       "properties": {
         "id": {
@@ -204,7 +183,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fEmbeddingProfile": {
+    "EmbeddingProfile": {
       "additionalProperties": false,
       "properties": {
         "defaultModel": {
@@ -213,11 +192,11 @@
       },
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fEmbeddingRequest": {
+    "EmbeddingRequest": {
       "additionalProperties": false,
       "properties": {
         "handle": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fHandle"
+          "$ref": "#/$defs/Handle"
         },
         "request": true
       },
@@ -227,17 +206,20 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fEmbeddingResult": {
+    "EmbeddingResult": {
       "additionalProperties": false,
       "properties": {
         "failure": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fFailure"
+          "$ref": "#/$defs/Failure"
         },
         "response": true
       },
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fFailure": {
+    "Extensions": {
+      "$ref": "#/$defs/Map"
+    },
+    "Failure": {
       "additionalProperties": false,
       "properties": {
         "execution": {
@@ -276,7 +258,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fHandle": {
+    "Handle": {
       "additionalProperties": false,
       "properties": {
         "id": {
@@ -293,113 +275,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fOpen": {
-      "additionalProperties": false,
-      "properties": {
-        "connection": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fConnection"
-        },
-        "model": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "connection",
-        "model"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fProfile": {
-      "additionalProperties": false,
-      "properties": {
-        "authentication": {
-          "allOf": [
-            {
-              "enum": [
-                "keyRequired",
-                "keyOptional"
-              ]
-            }
-          ],
-          "type": "string"
-        },
-        "defaultModel": {
-          "type": "string"
-        },
-        "embedding": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fEmbeddingProfile"
-        },
-        "endpointRequired": {
-          "type": "boolean"
-        },
-        "id": {
-          "type": "string"
-        },
-        "modelSource": {
-          "allOf": [
-            {
-              "enum": [
-                "bundled",
-                "endpoint"
-              ]
-            }
-          ],
-          "type": "string"
-        },
-        "models": {
-          "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fModel"
-          },
-          "type": "array"
-        }
-      },
-      "required": [
-        "id",
-        "authentication",
-        "endpointRequired",
-        "modelSource",
-        "models"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fReopen": {
-      "additionalProperties": false,
-      "properties": {
-        "original": {
-          "allOf": [
-            {
-              "maxLength": 256,
-              "minLength": 1
-            }
-          ],
-          "type": "string"
-        }
-      },
-      "required": [
-        "original"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fTokenCount": {
-      "additionalProperties": false,
-      "properties": {
-        "count": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "minimum": 0,
-          "type": "integer"
-        },
-        "failure": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fFailure"
-        }
-      },
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fLimits": {
+    "Limits": {
       "additionalProperties": false,
       "properties": {
         "context_window": {
@@ -432,7 +308,65 @@
       },
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fModalities": {
+    "Map": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "additionalProperties": true,
+          "type": "object"
+        }
+      ]
+    },
+    "Media": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/$defs/Map"
+        },
+        "mime": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        }
+      },
+      "required": [
+        "mime",
+        "source"
+      ],
+      "type": "object"
+    },
+    "Message": {
+      "additionalProperties": false,
+      "properties": {
+        "metadata": {
+          "$ref": "#/$defs/Map"
+        },
+        "parts": {
+          "items": {
+            "$ref": "#/$defs/Part"
+          },
+          "type": "array"
+        },
+        "role": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "parts"
+      ],
+      "type": "object"
+    },
+    "Modalities": {
       "additionalProperties": false,
       "properties": {
         "input": {
@@ -450,7 +384,7 @@
       },
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fModel": {
+    "Model": {
       "additionalProperties": false,
       "properties": {
         "deprecated": {
@@ -471,16 +405,16 @@
           "type": "string"
         },
         "limits": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fLimits"
+          "$ref": "#/$defs/Limits"
         },
         "modalities": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fModalities"
+          "$ref": "#/$defs/Modalities"
         },
         "pricing": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fPricingSchedule"
+          "$ref": "#/$defs/PricingSchedule"
         },
         "reasoning": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fReasoning"
+          "$ref": "#/$defs/Reasoning"
         },
         "release_date": {
           "format": "date-time",
@@ -495,246 +429,39 @@
       },
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fPricing": {
+    "Open": {
       "additionalProperties": false,
       "properties": {
-        "cache_read_per_1m": {
-          "type": "number"
+        "connection": {
+          "$ref": "#/$defs/Connection"
         },
-        "cache_write_per_1m": {
-          "type": "number"
-        },
-        "input_per_1m": {
-          "type": "number"
-        },
-        "output_per_1m": {
-          "type": "number"
-        },
-        "threshold": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "type": "integer"
-        }
-      },
-      "required": [
-        "input_per_1m",
-        "output_per_1m"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fPricingSchedule": {
-      "items": {
-        "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fPricing"
-      },
-      "type": "array"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL21vZGVscy9jYXRhbG9n_5fReasoning": {
-      "additionalProperties": false,
-      "properties": {
-        "default_level": {
-          "type": "string"
-        },
-        "levels": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "supported": {
-          "type": "boolean"
-        }
-      },
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fCitation": {
-      "additionalProperties": false,
-      "properties": {
-        "quote": {
-          "type": "string"
-        },
-        "source": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fCitationSource"
-        },
-        "title": {
+        "model": {
           "type": "string"
         }
       },
       "required": [
-        "source"
+        "connection",
+        "model"
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fCitationSource": {
-      "additionalProperties": false,
-      "properties": {
-        "kind": {
-          "type": "string"
-        },
-        "value": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "kind",
-        "value"
-      ],
-      "type": "object"
+    "OpenChatV1Input": {
+      "$ref": "#/$defs/Open"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fMessage": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireMessage"
+    "OpenChatV1Output": {
+      "$ref": "#/$defs/Chat"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fOptions": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireOptions"
+    "OpenEmbeddingV1Input": {
+      "$ref": "#/$defs/Open"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fOutput": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireOutput"
+    "OpenEmbeddingV1Output": {
+      "$ref": "#/$defs/Embedder"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fOutputFormat": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireOutputFormat"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fOutputMetadata": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireOutputMetadata"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fPart": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwirePart"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fPartDelta": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwirePartDelta"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fRequest": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireRequest"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fResponse": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireResponse"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fResponseDelta": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireResponseDelta"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fResponseMetadata": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireResponseMetadata"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolCall": {
-      "additionalProperties": false,
-      "properties": {
-        "arguments": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "id",
-        "name"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolCallDelta": {
-      "additionalProperties": false,
-      "properties": {
-        "arguments": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "id",
-        "name"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolChoice": {
-      "additionalProperties": false,
-      "properties": {
-        "mode": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "parallelism": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "mode"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolContent": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireToolContent"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolDefinition": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireToolDefinition"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolOutput": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireToolOutput"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolResult": {
-      "additionalProperties": false,
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "is_error": {
-          "type": "boolean"
-        },
-        "name": {
-          "type": "string"
-        },
-        "output": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolOutput"
-        }
-      },
-      "required": [
-        "id",
-        "name",
-        "output"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fUsage": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireUsage"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireMessage": {
-      "additionalProperties": false,
-      "properties": {
-        "metadata": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fMap"
-        },
-        "parts": {
-          "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fPart"
-          },
-          "type": "array"
-        },
-        "role": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "role",
-        "parts"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireOptions": {
+    "Options": {
       "additionalProperties": false,
       "properties": {
         "extensions": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fExtensions"
+          "$ref": "#/$defs/Extensions"
         },
         "frequency_penalty": {
           "type": "number"
@@ -752,7 +479,7 @@
           "type": "string"
         },
         "output_format": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fOutputFormat"
+          "$ref": "#/$defs/OutputFormat"
         },
         "presence_penalty": {
           "type": "number"
@@ -784,22 +511,22 @@
       },
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireOutput": {
+    "Output": {
       "additionalProperties": false,
       "properties": {
         "finish_reason": {
           "type": "string"
         },
         "message": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fMessage"
+          "$ref": "#/$defs/Message"
         },
         "metadata": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fOutputMetadata"
+          "$ref": "#/$defs/OutputMetadata"
         }
       },
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireOutputFormat": {
+    "OutputFormat": {
       "additionalProperties": false,
       "properties": {
         "description": {
@@ -818,21 +545,21 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireOutputMetadata": {
+    "OutputMetadata": {
       "additionalProperties": false,
       "properties": {
         "extra": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fMap"
+          "$ref": "#/$defs/Map"
         }
       },
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwirePart": {
+    "Part": {
       "additionalProperties": false,
       "properties": {
         "citations": {
           "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fCitation"
+            "$ref": "#/$defs/Citation"
           },
           "type": "array"
         },
@@ -840,10 +567,10 @@
           "type": "string"
         },
         "media": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_5fMedia"
+          "$ref": "#/$defs/Media"
         },
         "metadata": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fMap"
+          "$ref": "#/$defs/Map"
         },
         "reasoning_state": {
           "oneOf": [
@@ -860,10 +587,10 @@
           "type": "string"
         },
         "tool_call": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolCall"
+          "$ref": "#/$defs/ToolCall"
         },
         "tool_result": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolResult"
+          "$ref": "#/$defs/ToolResult"
         }
       },
       "required": [
@@ -871,20 +598,20 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwirePartDelta": {
+    "PartDelta": {
       "additionalProperties": false,
       "properties": {
         "citation": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fCitation"
+          "$ref": "#/$defs/Citation"
         },
         "kind": {
           "type": "string"
         },
         "media": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_5fMedia"
+          "$ref": "#/$defs/Media"
         },
         "metadata": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fMap"
+          "$ref": "#/$defs/Map"
         },
         "reasoning_state": {
           "oneOf": [
@@ -901,7 +628,7 @@
           "type": "string"
         },
         "tool_call": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolCallDelta"
+          "$ref": "#/$defs/ToolCallDelta"
         }
       },
       "required": [
@@ -909,24 +636,176 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireRequest": {
+    "Pricing": {
+      "additionalProperties": false,
+      "properties": {
+        "cache_read_per_1m": {
+          "type": "number"
+        },
+        "cache_write_per_1m": {
+          "type": "number"
+        },
+        "input_per_1m": {
+          "type": "number"
+        },
+        "output_per_1m": {
+          "type": "number"
+        },
+        "threshold": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        }
+      },
+      "required": [
+        "input_per_1m",
+        "output_per_1m"
+      ],
+      "type": "object"
+    },
+    "PricingSchedule": {
+      "items": {
+        "$ref": "#/$defs/Pricing"
+      },
+      "type": "array"
+    },
+    "Profile": {
+      "additionalProperties": false,
+      "properties": {
+        "authentication": {
+          "allOf": [
+            {
+              "enum": [
+                "keyRequired",
+                "keyOptional"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "defaultModel": {
+          "type": "string"
+        },
+        "embedding": {
+          "$ref": "#/$defs/EmbeddingProfile"
+        },
+        "endpointRequired": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "modelSource": {
+          "allOf": [
+            {
+              "enum": [
+                "bundled",
+                "endpoint"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "models": {
+          "items": {
+            "$ref": "#/$defs/Model"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "authentication",
+        "endpointRequired",
+        "modelSource",
+        "models"
+      ],
+      "type": "object"
+    },
+    "ProfilesV1Input": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "ProfilesV1Output": {
+      "items": {
+        "$ref": "#/$defs/Profile"
+      },
+      "type": "array"
+    },
+    "Reasoning": {
+      "additionalProperties": false,
+      "properties": {
+        "default_level": {
+          "type": "string"
+        },
+        "levels": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "supported": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "RemoteModelsV1Input": {
+      "$ref": "#/$defs/Connection"
+    },
+    "RemoteModelsV1Output": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "Reopen": {
+      "additionalProperties": false,
+      "properties": {
+        "original": {
+          "allOf": [
+            {
+              "maxLength": 256,
+              "minLength": 1
+            }
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "original"
+      ],
+      "type": "object"
+    },
+    "ReopenChatV1Input": {
+      "$ref": "#/$defs/Reopen"
+    },
+    "ReopenChatV1Output": {
+      "$ref": "#/$defs/Chat"
+    },
+    "Request": {
       "additionalProperties": false,
       "properties": {
         "messages": {
           "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fMessage"
+            "$ref": "#/$defs/Message"
           },
           "type": "array"
         },
         "options": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fOptions"
+          "$ref": "#/$defs/Options"
         },
         "tool_choice": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolChoice"
+          "$ref": "#/$defs/ToolChoice"
         },
         "tools": {
           "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolDefinition"
+            "$ref": "#/$defs/ToolDefinition"
           },
           "type": "array"
         }
@@ -936,43 +815,43 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireResponse": {
+    "Response": {
       "additionalProperties": false,
       "properties": {
         "metadata": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fResponseMetadata"
+          "$ref": "#/$defs/ResponseMetadata"
         },
         "output": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fOutput"
+          "$ref": "#/$defs/Output"
         }
       },
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireResponseDelta": {
+    "ResponseDelta": {
       "additionalProperties": false,
       "properties": {
         "finish_reason": {
           "type": "string"
         },
         "message_metadata": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fMap"
+          "$ref": "#/$defs/Map"
         },
         "metadata": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fResponseMetadata"
+          "$ref": "#/$defs/ResponseMetadata"
         },
         "output_metadata": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fOutputMetadata"
+          "$ref": "#/$defs/OutputMetadata"
         },
         "parts": {
           "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fPartDelta"
+            "$ref": "#/$defs/PartDelta"
           },
           "type": "array"
         }
       },
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireResponseMetadata": {
+    "ResponseMetadata": {
       "additionalProperties": false,
       "properties": {
         "created_at": {
@@ -980,7 +859,7 @@
           "type": "string"
         },
         "extra": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fMap"
+          "$ref": "#/$defs/Map"
         },
         "id": {
           "type": "string"
@@ -989,17 +868,130 @@
           "type": "string"
         },
         "usage": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fUsage"
+          "$ref": "#/$defs/Usage"
         }
       },
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireToolContent": {
+    "Source": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "contentEncoding": "base64",
+              "type": "string"
+            }
+          ]
+        },
+        "kind": {
+          "type": "string"
+        },
+        "ref": {
+          "type": "string"
+        },
+        "uri": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "StreamV1Chunk": {
+      "$ref": "#/$defs/ResponseDelta"
+    },
+    "StreamV1Input": {
+      "$ref": "#/$defs/ChatRequest"
+    },
+    "StreamV1Output": {
+      "$ref": "#/$defs/ChatResult"
+    },
+    "TokenCount": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 0,
+          "type": "integer"
+        },
+        "failure": {
+          "$ref": "#/$defs/Failure"
+        }
+      },
+      "type": "object"
+    },
+    "ToolCall": {
+      "additionalProperties": false,
+      "properties": {
+        "arguments": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "type": "object"
+    },
+    "ToolCallDelta": {
+      "additionalProperties": false,
+      "properties": {
+        "arguments": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "type": "object"
+    },
+    "ToolChoice": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "parallelism": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "mode"
+      ],
+      "type": "object"
+    },
+    "ToolContent": {
       "additionalProperties": false,
       "properties": {
         "citations": {
           "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fCitation"
+            "$ref": "#/$defs/Citation"
           },
           "type": "array"
         },
@@ -1007,10 +999,10 @@
           "type": "string"
         },
         "media": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_5fMedia"
+          "$ref": "#/$defs/Media"
         },
         "metadata": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fMap"
+          "$ref": "#/$defs/Map"
         },
         "text": {
           "type": "string"
@@ -1021,7 +1013,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireToolDefinition": {
+    "ToolDefinition": {
       "additionalProperties": false,
       "properties": {
         "description": {
@@ -1038,12 +1030,12 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireToolOutput": {
+    "ToolOutput": {
       "additionalProperties": false,
       "properties": {
         "content": {
           "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fToolContent"
+            "$ref": "#/$defs/ToolContent"
           },
           "type": "array"
         },
@@ -1051,7 +1043,30 @@
       },
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_5fwireUsage": {
+    "ToolResult": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "is_error": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "output": {
+          "$ref": "#/$defs/ToolOutput"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "output"
+      ],
+      "type": "object"
+    },
+    "Usage": {
       "additionalProperties": false,
       "properties": {
         "cache_read_input_tokens": {
@@ -1102,78 +1117,12 @@
       },
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fExtensions": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fMap"
+    "VerifyV1Input": {
+      "$ref": "#/$defs/Connection"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fMap": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fwireMap"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fwireMap": {
-      "oneOf": [
-        {
-          "type": "null"
-        },
-        {
-          "additionalProperties": true,
-          "type": "object"
-        }
-      ]
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_5fMedia": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_5fwireMedia"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_5fSource": {
+    "VerifyV1Output": {
       "additionalProperties": false,
-      "properties": {
-        "bytes": {
-          "oneOf": [
-            {
-              "type": "null"
-            },
-            {
-              "contentEncoding": "base64",
-              "type": "string"
-            }
-          ]
-        },
-        "kind": {
-          "type": "string"
-        },
-        "ref": {
-          "type": "string"
-        },
-        "uri": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "kind"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_5fwireMedia": {
-      "additionalProperties": false,
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "metadata": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE_5fMap"
-        },
-        "mime": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "source": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWVkaWE_5fSource"
-        }
-      },
-      "required": [
-        "mime",
-        "source"
-      ],
+      "properties": {},
       "type": "object"
     }
   }

@@ -2,33 +2,33 @@
 // Numeric and cross-field constraints remain in schema.json and the business owner.
 import type { JSONNumber } from "@qimu/sdk/json";
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fFinding {
+export interface Finding {
   code: string;
   message: string;
   reviewId: string;
   revision: JSONNumber;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fFindings {
-  findings: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fFinding[];
+export interface Findings {
+  findings: Finding[];
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fSnapshot {
+export type ReviewsAnalyzeInput = Snapshot;
+
+export type ReviewsAnalyzeOutput = Findings;
+
+export interface Snapshot {
   id: string;
   revision: JSONNumber;
   status: string & ("open" | "resolved");
   title: string;
 }
 
-export type Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eanalyzeInput = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fSnapshot;
-
-export type Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eanalyzeOutput = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fFindings;
-
 export interface MethodInputs {
-  "io.github.tangerg.flame.examples/reviews.analyze": Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eanalyzeInput;
+  "io.github.tangerg.flame.examples/reviews.analyze": ReviewsAnalyzeInput;
 }
 export interface MethodOutputs {
-  "io.github.tangerg.flame.examples/reviews.analyze": Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eanalyzeOutput;
+  "io.github.tangerg.flame.examples/reviews.analyze": ReviewsAnalyzeOutput;
 }
 export const METHODS = {
   "io.github.tangerg.flame.examples/reviews.analyze": { kind: "query", target: "installation" },

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -336,7 +337,7 @@ const (
 func (CommandVerdict) JSONSchemaEnum() []string {
 	return []string{string(CommandAllow), string(CommandDeny), string(CommandAsk)}
 }
-func (v CommandVerdict) Valid() bool { return v == CommandAllow || v == CommandDeny || v == CommandAsk }
+func (v CommandVerdict) Valid() bool { return slices.Contains(v.JSONSchemaEnum(), string(v)) }
 
 type CommandDecision struct {
 	Verdict          CommandVerdict `json:"verdict"`
