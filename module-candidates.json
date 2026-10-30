@@ -47,7 +47,8 @@
     "v0.1.0-quality.20261030.plugin-boundaries.8": "8f762d2a4866fdb8308a949e0bcd9da1e9b90eca",
     "v0.1.0-quality.20261030.plugin-boundaries.10": "a8ed58f007c8b0e266ddd48c4f9e6b9ccfd4b692",
     "v0.1.0-quality.20261030.plugin-boundaries.11": "c65ef60dec40154d6ada988d3df4f71124454529",
-    "v0.1.0-quality.20261030.plugin-boundaries.12": "4a57e9e2740e10e2f482b16800ac9faa1d964c5c"
+    "v0.1.0-quality.20261030.plugin-boundaries.12": "4a57e9e2740e10e2f482b16800ac9faa1d964c5c",
+    "v0.1.0-quality.20261030.plugin-boundaries.13": "d3f5aff3af24e80271215959182f34a99d82b3f9"
   },
   "github.com/Tangerg/flame/plugins": {
     "v0.1.0-architecture.20261026.3": "16d3bfa89e76615a92d01a140e677c23d353bfc5",
