@@ -52,13 +52,45 @@ test(
       );
       client = connect(bootstrap);
       await client.activate("converter");
-      await client.activate("validator");
       const reference = {
         path: "hello.md",
         revision: await sha256(
           new TextEncoder().encode("# Public author\nOriginal source.\n"),
         ),
       };
+
+      await t.test(
+        "failed selection closes its original snapshot through the real Host",
+        async () => {
+          const snapshot = client.control.snapshot.bind(client.control);
+          const close = client.control.closeSnapshot.bind(client.control);
+          const selected = [];
+          const closed = [];
+          client.control.snapshot = async (points) => {
+            const value = await snapshot(points);
+            selected.push(value.id);
+            return value;
+          };
+          client.control.closeSnapshot = async (id) => {
+            await close(id);
+            closed.push(id);
+          };
+          try {
+            for (let attempt = 0; attempt < 4; attempt++) {
+              await assert.rejects(
+                client.start(reference),
+                /requires both Points/,
+              );
+            }
+            assert.deepEqual(closed, selected);
+            assert.equal(closed.length, 4);
+          } finally {
+            client.control.snapshot = snapshot;
+            client.control.closeSnapshot = close;
+          }
+        },
+      );
+      await client.activate("validator");
 
       await t.test(
         "FileReader import and a single multi-Point Use return a resource",
@@ -165,6 +197,7 @@ test(
             ),
             false,
           );
+          await client.control.closeSnapshot(snapshot.id);
           await until(
             () => client.runtime.pendingProofs.length === 0,
             () => diagnostics,

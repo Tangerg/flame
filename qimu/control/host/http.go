@@ -107,6 +107,12 @@ func (b *Bridge) dispatch(ctx context.Context, token string, request control.HTT
 			return nil, err
 		}
 		return b.Snapshot(ctx, token, value)
+	case "closeSnapshot":
+		value, err := decodeInput[string](request.Input)
+		if err != nil {
+			return nil, err
+		}
+		return nil, b.CloseSnapshot(ctx, token, value)
 	case "publish":
 		value, err := decodeInput[control.PublicationRequest](request.Input)
 		if err != nil {

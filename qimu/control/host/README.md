@@ -34,6 +34,15 @@ candidate and setup premises remain subject to the Core's final admission.
 create a child Use under its original accepted parent, and persists original
 Use approval before handing a grant to JavaScript.
 
+Each wire Snapshot is a Realm-owned selection lease. `Acquire` takes it exactly
+once when the operation is admitted, including an attempt whose selection later
+fails. Repeating that operation ID observes its original grant or refusal; a new
+selection needs a new Snapshot. `CloseSnapshot` discards a pending lease and is
+idempotent after close or acquisition. It does not cancel an admitted acquisition
+or release a Use. Close abandoned and read-only snapshots explicitly. Realm
+sealing and cleanup-only reconnect discard all of that Realm's pending leases.
+Concurrent Snapshot completion cannot insert a lease after sealing.
+
 `SealRealm` revokes new work in one Realm without fencing other windows using the
 same installation. An exposed plan remains protected until its original proof
 arrives. A Use proof settles the original parent-to-child delegated closure,

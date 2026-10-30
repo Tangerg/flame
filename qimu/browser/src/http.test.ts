@@ -71,6 +71,23 @@ describe("authenticated control transport", () => {
     await expect(f.control.poll()).rejects.toMatchObject({ code: "closed" });
   });
 
+  it("closes the original selection lease through the authenticated control port", async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>(
+      async () => new Response("null"),
+    );
+    const f = control(fetch);
+    await f.control.closeSnapshot("original-snapshot");
+    const request = fetch.mock.calls[0]![1]!;
+    expect(JSON.parse(request.body as string)).toEqual({
+      method: "closeSnapshot",
+      input: "original-snapshot",
+    });
+    expect(request.headers).toMatchObject({
+      Authorization: "Bearer realm-secret",
+    });
+    await f.lifetime.close();
+  });
+
   it("bounds both messages and preserves unknown mutation settlement on malformed responses", async () => {
     const fetch = vi.fn<typeof globalThis.fetch>(
       async () => new Response("x".repeat(128)),

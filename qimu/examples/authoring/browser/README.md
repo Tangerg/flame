@@ -27,6 +27,9 @@ returns a resource-valued `Acquired<RenderedDocument>` backed by an actual Blob
 URL. The SDK reserves the resource cleanup before creation. The convenience
 handle's `close` and `wait` target the original approved Use, which also owns the
 result resource. It does not mirror the resource lifecycle in application state.
+Abandoned selection closes its original Snapshot through the authenticated
+control port, including missing Converter or Validator candidates. The original
+selection error remains visible if cleanup also fails.
 Closing removes the Blob URL, invalidates subsequent access, cancels active work
 and joins it before the Use's proof can release protection.
 

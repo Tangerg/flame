@@ -55,6 +55,13 @@ acquisition uses the original `operationId`, input, resource owner, and Host Use
 `select` is a pure consumer metadata policy helper; the Host still admits its
 result. `Use.with` accesses approved native objects locally without per-call RPC.
 
+Close a discarded or read-only selection with `control.closeSnapshot(snapshot.id)`.
+An admitted `acquire` consumes that original lease, including a failed selection;
+retry its original operation ID to recover the same grant or refusal. Closing the
+snapshot afterward is idempotent and leaves accepted Uses and their release proofs
+with their original owners. If selection fails before acquisition, close the
+snapshot and preserve both errors when cleanup also fails.
+
 `route` accepts an exact Host-approved native Event route. Dispatch preserves the
 actual payload object in the Realm. Changing public subscriptions or acquiring
 new routes requires Host admission. Private module and DOM events need no public

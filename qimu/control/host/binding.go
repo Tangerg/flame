@@ -125,5 +125,5 @@ func (b *Bridge) acquireBinding(ctx context.Context, token, operationID string, 
 	if err != nil {
 		return grant, err
 	}
-	return b.deliverUse(ctx, session, entry, use, operation, "")
+	return b.deliverUse(ctx, session, entry, use, operation)
 }

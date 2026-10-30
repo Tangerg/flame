@@ -364,8 +364,7 @@ func (b *Bridge) Reconnect(ctx context.Context, token string, request control.Re
 	}
 	if cleanupOnly {
 		b.mu.Lock()
-		session.cleanupOnly = true
-		session.revision++
+		b.sealSessionLocked(session)
 		b.mu.Unlock()
 		for _, entry := range entries {
 			b.fence(entry)
@@ -405,8 +404,7 @@ func (b *Bridge) SealRealm(ctx context.Context, token string) error {
 		return err
 	}
 	b.mu.Lock()
-	session.cleanupOnly = true
-	session.revision++
+	b.sealSessionLocked(session)
 	var entries []*browserExecution
 	for _, entry := range b.executions {
 		if entry.plan.Realm == session.realm && !entry.released {
@@ -442,4 +440,14 @@ func (b *Bridge) SealRealm(ctx context.Context, token string) error {
 		}
 	}
 	return errors.Join(failures...)
+}
+
+func (b *Bridge) sealSessionLocked(session *realmSession) {
+	session.cleanupOnly = true
+	session.revision++
+	for id, snapshot := range b.snapshots {
+		if snapshot.realm == string(RealmID(session.realm)) {
+			delete(b.snapshots, id)
+		}
+	}
 }
