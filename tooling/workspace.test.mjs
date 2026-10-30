@@ -6,6 +6,31 @@ import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import { moduleArtifacts, root } from "./workspace.mjs";
 
+test("workspace coordination loads before npm dependencies are installed", async () => {
+  const repository = await mkdtemp(join(tmpdir(), "flame-clean-setup-"));
+  try {
+    await mkdir(join(repository, "packages/local-runtime"), {
+      recursive: true,
+    });
+    await cp(join(root, "tooling"), join(repository, "tooling"), {
+      recursive: true,
+    });
+    await cp(
+      join(root, "packages/local-runtime/node-release.json"),
+      join(repository, "packages/local-runtime/node-release.json"),
+    );
+    const probe = join(repository, "probe.mjs");
+    await writeFile(probe, 'import "./tooling/workspace.mjs";\n');
+    execFileSync(process.execPath, [probe], {
+      cwd: repository,
+      env: { ...process.env, NODE_PATH: "" },
+      encoding: "utf8",
+    });
+  } finally {
+    await rm(repository, { recursive: true, force: true });
+  }
+});
+
 test("module artifacts use pinned dependency graphs and frozen tool source", async () => {
   const repository = await mkdtemp(join(tmpdir(), "flame-candidate-closure-"));
   const git = (...args) =>
