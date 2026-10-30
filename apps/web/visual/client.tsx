@@ -1,3 +1,5 @@
+import { MessageFeedbackOwner } from "@/features/chat/message-actions/application/feedback";
+import { MessageFeedbackProvider } from "@/features/chat/message-actions/public/feedback";
 import { HookTrustMutationOwner } from "@/features/hooks/application/hookTrust";
 import { HookTrustProvider } from "@/features/hooks/public/trust";
 import { createGoals } from "@/features/goal/application/goals";
@@ -56,6 +58,7 @@ export function createVisualClient(runtimeClient: () => FlameClient) {
   const providers = createProviders();
   const mcpServers = new MCPServerMutationOwner(null);
   const hookTrust = new HookTrustMutationOwner(null);
+  const feedback = new MessageFeedbackOwner(null);
   const navigation = createMemoryNavigator();
   const projection = createRuntimeConnectionProjection();
   projection.store.setState({ connectionGeneration: VISUAL_RUNTIME_GENERATION });
@@ -145,33 +148,35 @@ export function createVisualClient(runtimeClient: () => FlameClient) {
   );
   function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <HookTrustProvider value={hookTrust}>
-        <GoalProvider value={goals.access}>
-          <MCPServersProvider value={mcpServers}>
-            <ProvidersProvider value={providers.access}>
-              <ThemeProvider value={theme.access}>
-                <RuntimeProvider value={runtime}>
-                  <agent.Provider>
-                    <ComposerProvider value={composer.access}>
-                      <WorkspaceProvider value={workspace.access}>
-                        <WorkingDirectoryProvider value={directory.access}>
-                          <ImageSaveProvider saveImage={saveImage}>
-                            <NotificationProvider value={notifications.access}>
-                              <InstalledPluginsProvider value={installedPlugins.access}>
-                                <ApplicationCalloutLabels>{children}</ApplicationCalloutLabels>
-                              </InstalledPluginsProvider>
-                            </NotificationProvider>
-                          </ImageSaveProvider>
-                        </WorkingDirectoryProvider>
-                      </WorkspaceProvider>
-                    </ComposerProvider>
-                  </agent.Provider>
-                </RuntimeProvider>
-              </ThemeProvider>
-            </ProvidersProvider>
-          </MCPServersProvider>
-        </GoalProvider>
-      </HookTrustProvider>
+      <MessageFeedbackProvider value={feedback}>
+        <HookTrustProvider value={hookTrust}>
+          <GoalProvider value={goals.access}>
+            <MCPServersProvider value={mcpServers}>
+              <ProvidersProvider value={providers.access}>
+                <ThemeProvider value={theme.access}>
+                  <RuntimeProvider value={runtime}>
+                    <agent.Provider>
+                      <ComposerProvider value={composer.access}>
+                        <WorkspaceProvider value={workspace.access}>
+                          <WorkingDirectoryProvider value={directory.access}>
+                            <ImageSaveProvider saveImage={saveImage}>
+                              <NotificationProvider value={notifications.access}>
+                                <InstalledPluginsProvider value={installedPlugins.access}>
+                                  <ApplicationCalloutLabels>{children}</ApplicationCalloutLabels>
+                                </InstalledPluginsProvider>
+                              </NotificationProvider>
+                            </ImageSaveProvider>
+                          </WorkingDirectoryProvider>
+                        </WorkspaceProvider>
+                      </ComposerProvider>
+                    </agent.Provider>
+                  </RuntimeProvider>
+                </ThemeProvider>
+              </ProvidersProvider>
+            </MCPServersProvider>
+          </GoalProvider>
+        </HookTrustProvider>
+      </MessageFeedbackProvider>
     );
   }
   return {
@@ -180,6 +185,7 @@ export function createVisualClient(runtimeClient: () => FlameClient) {
     providers,
     mcpServers,
     hookTrust,
+    feedback,
     goals,
     navigation,
     projection,
@@ -197,6 +203,7 @@ export function createVisualClient(runtimeClient: () => FlameClient) {
       configuration = next;
     },
     async dispose() {
+      feedback.dispose();
       hookTrust.dispose();
       goals.dispose();
       mcpServers.dispose();

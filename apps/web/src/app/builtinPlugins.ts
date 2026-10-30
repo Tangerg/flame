@@ -1,3 +1,4 @@
+import { type MessageFeedbackOwner } from "@/features/chat/message-actions/application/feedback";
 import { type HookTrustMutationOwner } from "@/features/hooks/application/hookTrust";
 import { type Goals } from "@/features/goal/application/goals";
 import { type MCPServerMutationOwner } from "@/features/mcp/application/mcpServerMutationOwner";
@@ -100,6 +101,7 @@ export function createBuiltinPlugins(
   mcpServers: MCPServerMutationOwner,
   goals: Goals,
   hookTrust: HookTrustMutationOwner,
+  feedback: MessageFeedbackOwner,
 ): AnyPlugin[] {
   const agentAccess = agent.access;
   const composerAccess = composerOwner.access;
@@ -131,7 +133,7 @@ export function createBuiltinPlugins(
     messageCopy,
     messageEdit,
     messageRegenerate,
-    createMessageFeedbackPlugin(runtimeClient),
+    createMessageFeedbackPlugin(runtimeClient, feedback),
   ];
 
   const composer: AnyPlugin[] = [

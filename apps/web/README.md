@@ -71,6 +71,12 @@ Provider. Trust writes remain serialized per project through canonical query
 revalidation. Runtime withdrawal retires pending and queued intent, and a stale
 control cannot submit that intent through a successor Runtime.
 
+Message feedback keeps optimistic selection, accepted ratings and subscriptions
+inside its explicit feature instance. The UI reads that instance's current
+projection and captures its submission generation. Runtime replacement clears
+the retired projection, while late replies and stale controls cannot alter or
+submit through its successor. An absent Runtime supplies no command generation.
+
 Question drafts retain raw text and one literal custom choice, including commas.
 The editor can explicitly skip a field with an empty answer. Runtime admits the
 complete candidate; Web does not trim or deduplicate answers before submission.

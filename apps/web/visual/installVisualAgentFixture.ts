@@ -274,7 +274,7 @@ export async function installVisualAgentFixture(
     messageCopy,
     messageEdit,
     messageRegenerate,
-    createMessageFeedbackPlugin(runtimeClient),
+    createMessageFeedbackPlugin(runtimeClient, visual.feedback),
     createGoalPlugin(
       visual.agent.access,
       visual.composer.access,

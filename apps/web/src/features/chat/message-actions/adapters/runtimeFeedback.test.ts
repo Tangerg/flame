@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type FlameClient } from "@flame/runtime-client";
-import { submitMessageFeedback } from "@/features/chat/message-actions/application/feedback";
-import { installRuntimeFeedbackGateway } from "@/features/chat/message-actions/adapters/runtimeFeedback";
+import { MessageFeedbackOwner } from "@/features/chat/message-actions/application/feedback";
+import { createRuntimeFeedbackGateway } from "@/features/chat/message-actions/adapters/runtimeFeedback";
 let runtimeClient: () => FlameClient = () => {
   throw new Error("Runtime test client is not configured");
 };
@@ -20,11 +20,11 @@ describe("runtimeFeedbackGateway", () => {
     const create = vi.fn().mockResolvedValue(undefined);
     const successorCreate = vi.fn().mockResolvedValue(undefined);
     runtimeClient = () => ({ feedback: { create } }) as unknown as FlameClient;
-    const installation = installRuntimeFeedbackGateway(getRuntimeClient);
-    dispose = installation.dispose;
+    const installation = new MessageFeedbackOwner(createRuntimeFeedbackGateway(getRuntimeClient()));
+    dispose = () => installation.dispose();
     runtimeClient = () => ({ feedback: { create: successorCreate } }) as unknown as FlameClient;
 
-    await submitMessageFeedback(
+    await installation.capture()!.submit(
       {
         sessionId: "ses_original",
         messageId: "item_feedback",
@@ -48,17 +48,17 @@ it("replaces the captured feedback client only at its Runtime generation boundar
   const successor = vi.fn().mockResolvedValue(undefined);
   let client = { feedback: { create: first } } as unknown as FlameClient;
   const provider = vi.fn(() => client);
-  const installation = installRuntimeFeedbackGateway(provider);
-  dispose = installation.dispose;
+  const installation = new MessageFeedbackOwner(createRuntimeFeedbackGateway(provider()));
+  dispose = () => installation.dispose();
   const target = { sessionId: "ses_feedback", messageId: "item_feedback" };
-  await submitMessageFeedback(target, "positive");
+  await installation.capture()!.submit(target, "positive");
   client = { feedback: { create: successor } } as unknown as FlameClient;
-  installation.replaceRuntimeGeneration();
-  await submitMessageFeedback(target, "negative");
+  installation.replaceRuntimeGeneration(() => createRuntimeFeedbackGateway(provider()));
+  await installation.capture()!.submit(target, "negative");
   expect(first).toHaveBeenCalledOnce();
   expect(successor).toHaveBeenCalledOnce();
   installation.dispose();
   provider.mockClear();
-  installation.replaceRuntimeGeneration();
+  installation.replaceRuntimeGeneration(() => createRuntimeFeedbackGateway(provider()));
   expect(provider).not.toHaveBeenCalled();
 });

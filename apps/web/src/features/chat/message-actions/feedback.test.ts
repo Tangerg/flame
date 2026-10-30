@@ -1,9 +1,9 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type FlameClient } from "@flame/runtime-client";
 import { definePlugin } from "@/extensions/definePlugin";
 import { loadPluginsForTest, resetKernelForTest } from "@/test/kernel";
 import { RuntimeConnectionGeneration, RUNTIME_STREAM } from "@/features/connection/public/services";
-import { submitMessageFeedback } from "@/features/chat/message-actions/application/feedback";
+import { MessageFeedbackOwner } from "@/features/chat/message-actions/application/feedback";
 import { createMessageFeedbackPlugin } from "@/features/chat/message-actions/feedback";
 import { rejected } from "@/test/rejected";
 let runtimeClient: () => FlameClient = () => {
@@ -12,7 +12,13 @@ let runtimeClient: () => FlameClient = () => {
 
 const getRuntimeClient = () => runtimeClient();
 
+let owner: MessageFeedbackOwner;
+beforeEach(() => {
+  owner = new MessageFeedbackOwner(null);
+});
+
 afterEach(async () => {
+  owner.dispose();
   await resetKernelForTest();
 });
 
@@ -21,7 +27,8 @@ describe("message feedback Runtime generation wiring", () => {
     const pending = Promise.withResolvers<void>();
     const create = vi.fn(() => pending.promise);
     runtimeClient = () => ({ feedback: { create } }) as unknown as FlameClient;
-    let generation = RuntimeConnectionGeneration.forProcess("runtime_1");
+    let generation: RuntimeConnectionGeneration | null =
+      RuntimeConnectionGeneration.forProcess("runtime_1");
     const subscribers = new Set<() => void>();
     const runtime = definePlugin({
       name: "test.runtime-generation",
@@ -39,10 +46,10 @@ describe("message feedback Runtime generation wiring", () => {
         };
       },
     });
-    await loadPluginsForTest(runtime, createMessageFeedbackPlugin(getRuntimeClient));
+    await loadPluginsForTest(runtime, createMessageFeedbackPlugin(getRuntimeClient, owner));
 
     const command = rejected(
-      submitMessageFeedback(
+      owner.capture()!.submit(
         {
           sessionId: "ses_feedback",
           messageId: "item_feedback",
@@ -59,6 +66,14 @@ describe("message feedback Runtime generation wiring", () => {
       message: "message_feedback_generation_retired",
     });
 
+    runtimeClient = () => {
+      throw new Error("Runtime connection is withdrawn");
+    };
+    generation = null;
+    expect(() => {
+      for (const subscriber of subscribers) subscriber();
+    }).not.toThrow();
+    expect(owner.capture()).toBeNull();
     pending.resolve();
   });
 });

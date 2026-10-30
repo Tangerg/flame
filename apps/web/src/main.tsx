@@ -1,3 +1,5 @@
+import { MessageFeedbackOwner } from "@/features/chat/message-actions/application/feedback";
+import { MessageFeedbackProvider } from "@/features/chat/message-actions/public/feedback";
 import { HookTrustMutationOwner } from "@/features/hooks/application/hookTrust";
 import { HookTrustProvider } from "@/features/hooks/public/trust";
 import { createGoals } from "@/features/goal/application/goals";
@@ -48,6 +50,7 @@ const theme = createTheme(document, window);
 const providers = createProviders();
 const mcpServers = new MCPServerMutationOwner(null);
 const hookTrust = new HookTrustMutationOwner(null);
+const feedback = new MessageFeedbackOwner(null);
 
 const connection = createRuntimeConnection(
   host,
@@ -118,37 +121,40 @@ const plugins = createBuiltinPlugins(
   mcpServers,
   goals,
   hookTrust,
+  feedback,
 );
 
 function ApplicationContext({ children }: { children: ReactNode }) {
   return (
-    <HookTrustProvider value={hookTrust}>
-      <GoalProvider value={goals.access}>
-        <MCPServersProvider value={mcpServers}>
-          <ProvidersProvider value={providers.access}>
-            <ThemeProvider value={theme.access}>
-              <RuntimeProvider value={connection.access}>
-                <agent.Provider>
-                  <ComposerProvider value={composer.access}>
-                    <WorkspaceProvider value={workspace.access}>
-                      <WorkingDirectoryProvider value={directory.access}>
-                        <ImageSaveProvider saveImage={saveImage}>
-                          <NotificationProvider value={notifications.access}>
-                            <InstalledPluginsProvider value={installedPlugins.access}>
-                              {children}
-                            </InstalledPluginsProvider>
-                          </NotificationProvider>
-                        </ImageSaveProvider>
-                      </WorkingDirectoryProvider>
-                    </WorkspaceProvider>
-                  </ComposerProvider>
-                </agent.Provider>
-              </RuntimeProvider>
-            </ThemeProvider>
-          </ProvidersProvider>
-        </MCPServersProvider>
-      </GoalProvider>
-    </HookTrustProvider>
+    <MessageFeedbackProvider value={feedback}>
+      <HookTrustProvider value={hookTrust}>
+        <GoalProvider value={goals.access}>
+          <MCPServersProvider value={mcpServers}>
+            <ProvidersProvider value={providers.access}>
+              <ThemeProvider value={theme.access}>
+                <RuntimeProvider value={connection.access}>
+                  <agent.Provider>
+                    <ComposerProvider value={composer.access}>
+                      <WorkspaceProvider value={workspace.access}>
+                        <WorkingDirectoryProvider value={directory.access}>
+                          <ImageSaveProvider saveImage={saveImage}>
+                            <NotificationProvider value={notifications.access}>
+                              <InstalledPluginsProvider value={installedPlugins.access}>
+                                {children}
+                              </InstalledPluginsProvider>
+                            </NotificationProvider>
+                          </ImageSaveProvider>
+                        </WorkingDirectoryProvider>
+                      </WorkspaceProvider>
+                    </ComposerProvider>
+                  </agent.Provider>
+                </RuntimeProvider>
+              </ThemeProvider>
+            </ProvidersProvider>
+          </MCPServersProvider>
+        </GoalProvider>
+      </HookTrustProvider>
+    </MessageFeedbackProvider>
   );
 }
 
@@ -182,6 +188,7 @@ const renderer = new ClientRenderer({
   closeConnection: async () => {
     const failures: unknown[] = [];
     for (const dispose of [
+      () => feedback.dispose(),
       () => hookTrust.dispose(),
       goals.dispose,
       () => mcpServers.dispose(),

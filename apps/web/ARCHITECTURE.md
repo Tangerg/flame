@@ -219,6 +219,12 @@ locator. Each owner creates its stores, persistence scope, task cohorts, subscri
 and generation publication together. Providers expose that instance rather than
 creating another store. Settings panes only consume these dependencies.
 
+Provider settings, MCP servers, Goal commands and composer mode, project hook
+trust, and message feedback follow this lifetime explicitly. Renderer composition
+constructs their owners, plugins bind and retire Runtime generations, and renderer
+shutdown disposes the owners. UI commands capture the admitted generation rather
+than resolving a mutable current service when a deferred callback runs.
+
 The Agent owns session/view state, command and usage generations, shared material,
 opening retries, and interruption coordination. Composer owns draft persistence,
 image staging, and focus/presentation leases. Workspace owns Dock persistence,

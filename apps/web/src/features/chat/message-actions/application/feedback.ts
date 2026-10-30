@@ -1,6 +1,5 @@
 import { tupleKey } from "@/lib/tupleKey";
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
-import { createPublicationSlot } from "@/lib/publicationSlot";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
 import { type FeedbackRating } from "@/features/chat/message-actions/domain/feedback";
 export interface MessageFeedbackTarget {
@@ -99,7 +98,7 @@ class MessageFeedbackGeneration {
     return this.#aggregates.get(messageFeedbackIdentity(target))?.rating();
   }
 
-  submit(target: MessageFeedbackTarget, rating: FeedbackRating): Promise<FeedbackRating> {
+  async submit(target: MessageFeedbackTarget, rating: FeedbackRating): Promise<FeedbackRating> {
     this.#cohort.assertCurrent();
     const identity = messageFeedbackIdentity(target);
     let aggregate = this.#aggregates.get(identity);
@@ -118,107 +117,86 @@ class MessageFeedbackGeneration {
   }
 }
 
-export class MessageFeedbackOwner {
-  static readonly #listeners = new Map<string, Set<RatingListener>>();
+export type MessageFeedbackCommands = Pick<MessageFeedbackGeneration, "submit">;
+export type MessageFeedbackAccess = Pick<
+  MessageFeedbackOwner,
+  "capture" | "subscribeGeneration" | "rating" | "subscribe"
+>;
 
-  #gateway: MessageFeedbackGateway;
-  #generation: MessageFeedbackGeneration;
+export class MessageFeedbackOwner {
+  readonly #listeners = new Map<string, Set<RatingListener>>();
+  readonly #generationListeners = new Set<() => void>();
+  #generation: MessageFeedbackGeneration | null;
   #disposed = false;
 
-  private constructor(gateway: MessageFeedbackGateway) {
-    this.#gateway = gateway;
-    this.#generation = this.#newGeneration();
+  constructor(gateway: MessageFeedbackGateway | null) {
+    this.#generation = gateway ? this.#newGeneration(gateway) : null;
   }
 
-  static install(gateway: MessageFeedbackGateway): MessageFeedbackOwner {
-    const owner = new MessageFeedbackOwner(gateway);
-    messageFeedbackPublication.publish(owner, (predecessor) => predecessor.dispose());
-    MessageFeedbackOwner.#publishAll();
-    return owner;
+  readonly capture = (): MessageFeedbackCommands | null => this.#generation;
+
+  readonly subscribeGeneration = (listener: () => void): (() => void) => {
+    this.#generationListeners.add(listener);
+    return () => this.#generationListeners.delete(listener);
+  };
+
+  rating(target: MessageFeedbackTarget): FeedbackRating | undefined {
+    return this.#generation?.rating(target);
   }
 
-  static current(): MessageFeedbackOwner {
-    const owner = messageFeedbackPublication.current();
-    if (!owner || owner.#disposed) throw new Error("Message feedback owner is not installed");
-    return owner;
-  }
-
-  static rating(target: MessageFeedbackTarget): FeedbackRating | undefined {
-    const owner = messageFeedbackPublication.current();
-    return owner && !owner.#disposed ? owner.#generation.rating(target) : undefined;
-  }
-
-  static subscribe(target: MessageFeedbackTarget, listener: RatingListener): () => void {
+  subscribe(target: MessageFeedbackTarget, listener: RatingListener): () => void {
     const identity = messageFeedbackIdentity(target);
-    let listeners = MessageFeedbackOwner.#listeners.get(identity);
+    let listeners = this.#listeners.get(identity);
     if (!listeners) {
       listeners = new Set();
-      MessageFeedbackOwner.#listeners.set(identity, listeners);
+      this.#listeners.set(identity, listeners);
     }
     listeners.add(listener);
     return () => {
       listeners.delete(listener);
-      if (listeners.size === 0) MessageFeedbackOwner.#listeners.delete(identity);
+      if (listeners.size === 0) this.#listeners.delete(identity);
     };
   }
 
-  submit(target: MessageFeedbackTarget, rating: FeedbackRating): Promise<FeedbackRating> {
-    return this.#generation.submit(target, rating);
+  replaceRuntimeGeneration(createGateway: () => MessageFeedbackGateway): void {
+    if (this.#disposed) return;
+    const successor = this.#newGeneration(createGateway());
+    const predecessor = this.#generation;
+    this.#generation = successor;
+    predecessor?.retire();
+    this.#publishAll();
   }
 
-  replaceRuntimeGeneration(createGateway: () => MessageFeedbackGateway): void {
-    if (this.#disposed || !messageFeedbackPublication.owns(this)) return;
+  retireRuntimeGeneration(): void {
+    if (!this.#generation) return;
     const predecessor = this.#generation;
-    this.#gateway = createGateway();
-    this.#generation = this.#newGeneration();
+    this.#generation = null;
     predecessor.retire();
-    MessageFeedbackOwner.#publishAll();
+    this.#publishAll();
   }
 
   dispose(): void {
     if (this.#disposed) return;
     this.#disposed = true;
-    this.#generation.retire();
-    if (messageFeedbackPublication.withdraw(this)) {
-      MessageFeedbackOwner.#publishAll();
-    }
+    this.retireRuntimeGeneration();
+    this.#listeners.clear();
+    this.#generationListeners.clear();
   }
 
-  static #publishAll(): void {
-    for (const listeners of MessageFeedbackOwner.#listeners.values()) {
+  #publishAll(): void {
+    for (const listeners of this.#listeners.values()) {
       for (const listener of listeners) listener();
     }
+    for (const listener of this.#generationListeners) listener();
   }
 
-  static #publish(identity: string): void {
-    for (const listener of MessageFeedbackOwner.#listeners.get(identity) ?? []) listener();
+  #publish(identity: string): void {
+    for (const listener of this.#listeners.get(identity) ?? []) listener();
   }
 
-  #newGeneration(): MessageFeedbackGeneration {
-    return new MessageFeedbackGeneration(this.#gateway, (identity) =>
-      MessageFeedbackOwner.#publish(identity),
-    );
+  #newGeneration(gateway: MessageFeedbackGateway): MessageFeedbackGeneration {
+    return new MessageFeedbackGeneration(gateway, (identity) => this.#publish(identity));
   }
-}
-
-const messageFeedbackPublication = createPublicationSlot<MessageFeedbackOwner>();
-
-export function messageFeedbackRating(target: MessageFeedbackTarget): FeedbackRating | undefined {
-  return MessageFeedbackOwner.rating(target);
-}
-
-export function subscribeMessageFeedback(
-  target: MessageFeedbackTarget,
-  listener: RatingListener,
-): () => void {
-  return MessageFeedbackOwner.subscribe(target, listener);
-}
-
-export function submitMessageFeedback(
-  target: MessageFeedbackTarget,
-  rating: FeedbackRating,
-): Promise<FeedbackRating> {
-  return MessageFeedbackOwner.current().submit(target, rating);
 }
 
 function messageFeedbackIdentity(target: MessageFeedbackTarget): string {

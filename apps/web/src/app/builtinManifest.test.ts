@@ -36,6 +36,8 @@ const kernelPoints = {
   ...i18nPoints,
 };
 import { publishedKernel } from "@/extensions/kernel";
+import { lookupDataProvider } from "@/extensions/dataProvider";
+import { MCP_SERVERS_KEY } from "@/features/mcp/application/mcpServerQueries";
 import { startKernel, stopKernel } from "@/extensions/bootstrap";
 import { type Host } from "dougong";
 let running: Host | undefined;
@@ -76,6 +78,7 @@ beforeEach(async () => {
     testClient.mcpServers,
     testClient.goals,
     testClient.hookTrust,
+    testClient.feedback,
   );
   vi.stubGlobal("fetch", () => Promise.reject(new Error("offline in tests")));
   vi.stubGlobal(
@@ -140,7 +143,7 @@ describe("built-in contributions", () => {
     expect(shadowed).toEqual([]);
   });
 
-  it("hands every startup plugin the connection's already journal-backed client", async () => {
+  it("supplies registered plugin reads with the connection's already journal-backed client", async () => {
     const earlyClient = connection.client();
     const received: FlameClient[] = [];
     vi.spyOn(connection, "client").mockImplementation(() => {
@@ -162,8 +165,15 @@ describe("built-in contributions", () => {
       testClient.mcpServers,
       testClient.goals,
       testClient.hookTrust,
+      testClient.feedback,
     );
     running = await startKernel(builtinPlugins);
+    expect(received).toEqual([]);
+    const failure = new Error("expected read failure");
+    vi.spyOn(earlyClient.mcp, "list").mockRejectedValue(failure);
+    const fetch = lookupDataProvider(MCP_SERVERS_KEY);
+    expect(fetch).toBeDefined();
+    await expect(fetch!()).rejects.toBe(failure);
     expect(received.length).toBeGreaterThan(0);
     expect(received.every((client) => client === earlyClient)).toBe(true);
   });

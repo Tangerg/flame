@@ -1,3 +1,5 @@
+import { MessageFeedbackOwner } from "@/features/chat/message-actions/application/feedback";
+import { MessageFeedbackProvider } from "@/features/chat/message-actions/public/feedback";
 import { HookTrustMutationOwner } from "@/features/hooks/application/hookTrust";
 import { HookTrustProvider } from "@/features/hooks/public/trust";
 import { createGoals } from "@/features/goal/application/goals";
@@ -56,6 +58,7 @@ export function createTestClient(
   const providers = createProviders();
   const mcpServers = new MCPServerMutationOwner(null);
   const hookTrust = new HookTrustMutationOwner(null);
+  const feedback = new MessageFeedbackOwner(null);
   const navigation = createMemoryNavigator();
   const projection = createRuntimeConnectionProjection();
   const replacements = new Set<() => void>();
@@ -140,33 +143,35 @@ export function createTestClient(
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>
-        <HookTrustProvider value={hookTrust}>
-          <GoalProvider value={goals.access}>
-            <MCPServersProvider value={mcpServers}>
-              <ProvidersProvider value={providers.access}>
-                <ThemeProvider value={theme.access}>
-                  <RuntimeProvider value={runtime}>
-                    <agent.Provider>
-                      <ComposerProvider value={composer.access}>
-                        <WorkspaceProvider value={workspace.access}>
-                          <WorkingDirectoryProvider value={directory.access}>
-                            <ImageSaveProvider saveImage={saveImage}>
-                              <NotificationProvider value={notifications.access}>
-                                <InstalledPluginsProvider value={installedPlugins.access}>
-                                  <ApplicationCalloutLabels>{children}</ApplicationCalloutLabels>
-                                </InstalledPluginsProvider>
-                              </NotificationProvider>
-                            </ImageSaveProvider>
-                          </WorkingDirectoryProvider>
-                        </WorkspaceProvider>
-                      </ComposerProvider>
-                    </agent.Provider>
-                  </RuntimeProvider>
-                </ThemeProvider>
-              </ProvidersProvider>
-            </MCPServersProvider>
-          </GoalProvider>
-        </HookTrustProvider>
+        <MessageFeedbackProvider value={feedback}>
+          <HookTrustProvider value={hookTrust}>
+            <GoalProvider value={goals.access}>
+              <MCPServersProvider value={mcpServers}>
+                <ProvidersProvider value={providers.access}>
+                  <ThemeProvider value={theme.access}>
+                    <RuntimeProvider value={runtime}>
+                      <agent.Provider>
+                        <ComposerProvider value={composer.access}>
+                          <WorkspaceProvider value={workspace.access}>
+                            <WorkingDirectoryProvider value={directory.access}>
+                              <ImageSaveProvider saveImage={saveImage}>
+                                <NotificationProvider value={notifications.access}>
+                                  <InstalledPluginsProvider value={installedPlugins.access}>
+                                    <ApplicationCalloutLabels>{children}</ApplicationCalloutLabels>
+                                  </InstalledPluginsProvider>
+                                </NotificationProvider>
+                              </ImageSaveProvider>
+                            </WorkingDirectoryProvider>
+                          </WorkspaceProvider>
+                        </ComposerProvider>
+                      </agent.Provider>
+                    </RuntimeProvider>
+                  </ThemeProvider>
+                </ProvidersProvider>
+              </MCPServersProvider>
+            </GoalProvider>
+          </HookTrustProvider>
+        </MessageFeedbackProvider>
       </QueryClientProvider>
     );
   }
@@ -184,6 +189,7 @@ export function createTestClient(
     providers,
     mcpServers,
     hookTrust,
+    feedback,
     goals,
     navigation,
     runtime,
@@ -219,6 +225,7 @@ export function createTestClient(
       });
     },
     async dispose() {
+      feedback.dispose();
       hookTrust.dispose();
       goals.dispose();
       mcpServers.dispose();
