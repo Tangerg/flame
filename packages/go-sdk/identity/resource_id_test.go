@@ -28,12 +28,8 @@ func TestOperationalIdentitiesAreExactBoundedAndDistinct(t *testing.T) {
 		})
 	}
 
-	session, err := ParseSession(strings.Repeat("界", MaximumResourceCharacters))
-	if err != nil || session.String() == "" {
-		t.Fatalf("boundary Session identity = %q, %v", session.String(), err)
-	}
-	if err := (SessionID{}).Validate(); err == nil {
-		t.Fatal("zero Session identity is valid")
+	if err := ValidateSession(strings.Repeat("界", MaximumResourceCharacters)); err != nil {
+		t.Fatalf("boundary Session identity: %v", err)
 	}
 }
 

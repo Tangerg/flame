@@ -104,8 +104,8 @@ func sized(n int) Event {
 func cursorAt(t testing.TB, sequence uint64) string {
 	t.Helper()
 	cursor, err := encodeReplayCursor(replayPosition{
-		epoch: testEpoch, runID: testRunResourceID(testRunID),
-		segmentID: testSegmentResourceID(testSegmentID), sequence: sequence,
+		epoch: testEpoch, runID: testRunID,
+		segmentID: testSegmentID, sequence: sequence,
 	})
 	if err != nil {
 		t.Fatalf("encode replay cursor: %v", err)
@@ -254,19 +254,19 @@ func TestJournal_ReplayRefusesCursorsItCannotServe(t *testing.T) {
 	}{
 		"damaged": {cursor: "!!!", want: ErrReplayCursorInvalid},
 		"another run": {cursor: other(replayPosition{
-			epoch: testEpoch, runID: testRunResourceID("run_other"),
-			segmentID: testSegmentResourceID(testSegmentID), sequence: 1,
+			epoch: testEpoch, runID: "run_other",
+			segmentID: testSegmentID, sequence: 1,
 		}), want: ErrReplayCursorInvalid},
 		// The previous segment of the SAME run: the case a resume creates, and the one
 		// a client is most likely to hold.
 		"another segment": {cursor: other(replayPosition{
-			epoch: testEpoch, runID: testRunResourceID(testRunID),
-			segmentID: testSegmentResourceID("seg_previous"), sequence: 1,
+			epoch: testEpoch, runID: testRunID,
+			segmentID: "seg_previous", sequence: 1,
 		}), want: ErrReplayCursorInvalid},
 		"ahead of the head": {cursor: cursorAt(t, 99), want: ErrReplayCursorInvalid},
 		"another process": {cursor: other(replayPosition{
-			epoch: testReplayEpoch("epoch_previous"), runID: testRunResourceID(testRunID),
-			segmentID: testSegmentResourceID(testSegmentID), sequence: 1,
+			epoch: testReplayEpoch("epoch_previous"), runID: testRunID,
+			segmentID: testSegmentID, sequence: 1,
 		}), want: ErrReplayUnavailable},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -286,8 +286,8 @@ func TestJournal_ForeignEpochOutranksAForeignScope(t *testing.T) {
 	j := testJournal(t)
 	mustAppendJournal(t, j, ev(true))
 	stale, err := encodeReplayCursor(replayPosition{
-		epoch: testReplayEpoch("epoch_previous"), runID: testRunResourceID("run_other"),
-		segmentID: testSegmentResourceID("seg_other"), sequence: 1,
+		epoch: testReplayEpoch("epoch_previous"), runID: "run_other",
+		segmentID: "seg_other", sequence: 1,
 	})
 	if err != nil {
 		t.Fatalf("encode stale replay cursor: %v", err)

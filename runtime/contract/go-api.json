@@ -1964,18 +1964,6 @@
           "signature": "func(text string) (InstallationID, error)"
         },
         {
-          "name": "ParseRun",
-          "signature": "func(text string) (RunID, error)"
-        },
-        {
-          "name": "ParseSegment",
-          "signature": "func(text string) (SegmentID, error)"
-        },
-        {
-          "name": "ParseSession",
-          "signature": "func(text string) (SessionID, error)"
-        },
-        {
           "name": "ValidDeclarationID",
           "signature": "func(value string) bool"
         },
@@ -2019,48 +2007,6 @@
       "types": [
         {
           "name": "InstallationID",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "String",
-              "signature": "func() string"
-            },
-            {
-              "name": "Validate",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "RunID",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "String",
-              "signature": "func() string"
-            },
-            {
-              "name": "Validate",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "SegmentID",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "String",
-              "signature": "func() string"
-            },
-            {
-              "name": "Validate",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "SessionID",
           "kind": "struct",
           "methods": [
             {

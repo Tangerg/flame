@@ -18,7 +18,7 @@ import (
 // constructing this value never authorizes filesystem deletion.
 type ResourceRetirement struct {
 	id        uuid.UUID
-	sessionID identity.SessionID
+	sessionID string
 }
 
 func newResourceRetirement(sessionID string) (ResourceRetirement, error) {
@@ -26,8 +26,7 @@ func newResourceRetirement(sessionID string) (ResourceRetirement, error) {
 }
 
 func RestoreResourceRetirement(id, sessionID string) (ResourceRetirement, error) {
-	owner, err := identity.ParseSession(sessionID)
-	if err != nil {
+	if err := identity.ValidateSession(sessionID); err != nil {
 		return ResourceRetirement{}, fmt.Errorf("sessions: resource retirement: %w", err)
 	}
 	parsed, err := uuid.Parse(id)
@@ -37,11 +36,11 @@ func RestoreResourceRetirement(id, sessionID string) (ResourceRetirement, error)
 	if parsed == uuid.Nil || parsed.String() != id {
 		return ResourceRetirement{}, errors.New("sessions: resource retirement identity is not a canonical UUID")
 	}
-	return ResourceRetirement{id: parsed, sessionID: owner}, nil
+	return ResourceRetirement{id: parsed, sessionID: sessionID}, nil
 }
 
 func (r ResourceRetirement) ID() string        { return r.id.String() }
-func (r ResourceRetirement) SessionID() string { return r.sessionID.String() }
+func (r ResourceRetirement) SessionID() string { return r.sessionID }
 
 func (r ResourceRetirement) Validate() error {
 	_, err := RestoreResourceRetirement(r.ID(), r.SessionID())

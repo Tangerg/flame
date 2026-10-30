@@ -1928,8 +1928,8 @@ func TestCoordinatorProjectsNestedChildrenWithExactLineageAndPostorderTerminal(t
 			t.Fatalf("event[%d] cursor: %v", index, err)
 		}
 		if position.epoch != coordinator.epoch ||
-			position.runID.String() != testRunID ||
-			position.segmentID.String() != testSegmentID ||
+			position.runID != testRunID ||
+			position.segmentID != testSegmentID ||
 			position.sequence != wantSequence {
 			t.Fatalf(
 				"event[%d] cursor = %+v, want root stream %s/%s at %d",

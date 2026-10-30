@@ -26,8 +26,8 @@ var (
 // journal is the only authority that may mint, interpret, or compare one.
 type replayPosition struct {
 	epoch     replayEpoch
-	runID     identity.RunID
-	segmentID identity.SegmentID
+	runID     string
+	segmentID string
 	sequence  uint64
 }
 
@@ -35,10 +35,10 @@ func (r replayPosition) validate() error {
 	if err := r.epoch.Validate(); err != nil {
 		return err
 	}
-	if err := r.runID.Validate(); err != nil {
+	if err := identity.ValidateRun(r.runID); err != nil {
 		return err
 	}
-	if err := r.segmentID.Validate(); err != nil {
+	if err := identity.ValidateSegment(r.segmentID); err != nil {
 		return err
 	}
 	if r.sequence == 0 {
@@ -82,7 +82,7 @@ func encodeReplayCursor(position replayPosition) (string, error) {
 	}
 	token, err := pagination.EncodeToken(encodedReplayPosition{
 		Epoch: position.epoch.String(),
-		RunID: position.runID.String(), SegmentID: position.segmentID.String(), Sequence: position.sequence,
+		RunID: position.runID, SegmentID: position.segmentID, Sequence: position.sequence,
 	}, identity.MaximumCursorCharacters)
 	if err != nil {
 		if errors.Is(err, pagination.ErrTokenTooLarge) {
@@ -105,12 +105,12 @@ func decodeReplayCursor(token string) (replayPosition, error) {
 	if err != nil {
 		return replayPosition{}, fmt.Errorf("%w: %v", errMalformedReplayCursor, err)
 	}
-	runID, err := identity.ParseRun(encoded.RunID)
-	if err != nil {
+	runID := encoded.RunID
+	if err := identity.ValidateRun(encoded.RunID); err != nil {
 		return replayPosition{}, fmt.Errorf("%w: %v", errMalformedReplayCursor, err)
 	}
-	segmentID, err := identity.ParseSegment(encoded.SegmentID)
-	if err != nil {
+	segmentID := encoded.SegmentID
+	if err := identity.ValidateSegment(encoded.SegmentID); err != nil {
 		return replayPosition{}, fmt.Errorf("%w: %v", errMalformedReplayCursor, err)
 	}
 	position := replayPosition{epoch: epoch, runID: runID, segmentID: segmentID, sequence: encoded.Sequence}

@@ -11,8 +11,8 @@ import (
 
 func testReplayPosition() replayPosition {
 	return replayPosition{
-		epoch: testReplayEpoch("epoch_1"), runID: testRunResourceID("run_1"),
-		segmentID: testSegmentResourceID("seg_1"), sequence: 42,
+		epoch: testReplayEpoch("epoch_1"), runID: "run_1",
+		segmentID: "seg_1", sequence: 42,
 	}
 }
 
@@ -22,22 +22,6 @@ func testReplayEpoch(raw string) replayEpoch {
 		panic(err)
 	}
 	return epoch
-}
-
-func testRunResourceID(raw string) flameidentity.RunID {
-	identity, err := flameidentity.ParseRun(raw)
-	if err != nil {
-		panic(err)
-	}
-	return identity
-}
-
-func testSegmentResourceID(raw string) flameidentity.SegmentID {
-	identity, err := flameidentity.ParseSegment(raw)
-	if err != nil {
-		panic(err)
-	}
-	return identity
 }
 
 func TestReplayCursorResourceEnvelopeRejectsBothDirections(t *testing.T) {

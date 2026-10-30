@@ -29,9 +29,8 @@ func requireConstructed(kind, text string) error {
 	return nil
 }
 
-// Most callers keep an identity as a field of a data value and need the rule
-// rather than the identity type. Validate answers them directly; the Parse
-// constructors below exist for the callers that carry the identity itself.
+// Operational identities are kept as validated strings by the value that owns
+// them; these rules are the one admission each of them shares.
 func ValidateSession(text string) error {
 	return ValidateResource("session", text, MaximumResourceCharacters)
 }
@@ -49,39 +48,6 @@ func ValidateSegment(text string) error {
 func ValidateItem(text string) error {
 	return ValidateResource("item", text, MaximumResourceCharacters)
 }
-
-// SessionID is one exact durable Session identity.
-type SessionID struct{ value }
-
-func ParseSession(text string) (SessionID, error) {
-	parsed, err := parse("session", text, MaximumResourceCharacters)
-	return SessionID{value: parsed}, err
-}
-
-func (i SessionID) String() string  { return i.text }
-func (i SessionID) Validate() error { return requireConstructed("session", i.text) }
-
-// RunID is one exact logical Run identity.
-type RunID struct{ value }
-
-func ParseRun(text string) (RunID, error) {
-	parsed, err := parse("run", text, MaximumResourceCharacters)
-	return RunID{value: parsed}, err
-}
-
-func (i RunID) String() string  { return i.text }
-func (i RunID) Validate() error { return requireConstructed("run", i.text) }
-
-// SegmentID is one exact execution-generation identity.
-type SegmentID struct{ value }
-
-func ParseSegment(text string) (SegmentID, error) {
-	parsed, err := parse("segment", text, MaximumResourceCharacters)
-	return SegmentID{value: parsed}, err
-}
-
-func (i SegmentID) String() string  { return i.text }
-func (i SegmentID) Validate() error { return requireConstructed("segment", i.text) }
 
 var installationIDExpression = regexp.MustCompile(nonzeroUUIDPattern())
 

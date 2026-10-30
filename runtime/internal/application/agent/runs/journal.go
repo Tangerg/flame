@@ -59,20 +59,20 @@ var (
 // instead of resolving against a stream that never issued it.
 type streamScope struct {
 	Epoch     replayEpoch
-	RunID     identity.RunID
-	SegmentID identity.SegmentID
+	RunID     string
+	SegmentID string
 }
 
 func newStreamScope(epoch replayEpoch, runID, segmentID string) (streamScope, error) {
 	if err := epoch.Validate(); err != nil {
 		return streamScope{}, err
 	}
-	parsedRunID, err := identity.ParseRun(runID)
-	if err != nil {
+	parsedRunID := runID
+	if err := identity.ValidateRun(runID); err != nil {
 		return streamScope{}, err
 	}
-	parsedSegmentID, err := identity.ParseSegment(segmentID)
-	if err != nil {
+	parsedSegmentID := segmentID
+	if err := identity.ValidateSegment(segmentID); err != nil {
 		return streamScope{}, err
 	}
 	return streamScope{Epoch: epoch, RunID: parsedRunID, SegmentID: parsedSegmentID}, nil

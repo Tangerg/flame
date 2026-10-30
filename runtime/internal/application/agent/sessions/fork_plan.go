@@ -13,7 +13,7 @@ import (
 // ForkPlan is the atomic durable command for creating one child Session with
 // the complete visible history and Plan held by its resolved parent boundary.
 type ForkPlan struct {
-	parentID        identity.SessionID
+	parentID        string
 	snapshot        Snapshot
 	planReplacement *plan.Replacement
 }
@@ -25,15 +25,14 @@ func NewForkPlan(
 	snapshot Snapshot,
 	planReplacement *plan.Replacement,
 ) (ForkPlan, error) {
-	parent, err := identity.ParseSession(parentID)
-	if err != nil {
+	if err := identity.ValidateSession(parentID); err != nil {
 		return ForkPlan{}, fmt.Errorf("sessions: fork plan parent: %w", err)
 	}
 	owned, err := ownWriteSnapshot(snapshot)
 	if err != nil {
 		return ForkPlan{}, fmt.Errorf("sessions: fork plan snapshot: %w", err)
 	}
-	if owned.Session.ParentID() != parent.String() {
+	if owned.Session.ParentID() != parentID {
 		return ForkPlan{}, errors.New("sessions: fork plan child belongs to a different parent")
 	}
 	if owned.Session.Revision() != 1 {
@@ -46,7 +45,7 @@ func NewForkPlan(
 	// The replacement is the sole stored representation of inherited Plan steps.
 	// Snapshot reconstructs the read projection from that owner when requested.
 	owned.Plan = nil
-	return ForkPlan{parentID: parent, snapshot: owned, planReplacement: replacement}, nil
+	return ForkPlan{parentID: parentID, snapshot: owned, planReplacement: replacement}, nil
 }
 
 func ownForkPlanReplacement(steps []plan.Step, replacement *plan.Replacement) (*plan.Replacement, error) {
@@ -83,7 +82,7 @@ func validateForkPlanReplacement(steps []plan.Step, replacement *plan.Replacemen
 }
 
 // ParentID returns the canonical parent Session identity.
-func (f ForkPlan) ParentID() string { return f.parentID.String() }
+func (f ForkPlan) ParentID() string { return f.parentID }
 
 // Child returns the complete Domain-derived child Session.
 func (f ForkPlan) Child() session.Session { return f.snapshot.Session }

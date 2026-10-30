@@ -16,7 +16,7 @@ import (
 // can reject a lifecycle transition that raced the plan instead of committing
 // history and Run projections derived from different snapshots.
 type ConversationCompactionPlan struct {
-	sessionID  identity.SessionID
+	sessionID  string
 	compaction conversation.Compaction
 	runs       []run.Replacement
 }
@@ -28,8 +28,7 @@ func newConversationCompactionPlan(
 	compaction conversation.Compaction,
 	runs []run.Replacement,
 ) (ConversationCompactionPlan, error) {
-	id, err := identity.ParseSession(sessionID)
-	if err != nil {
+	if err := identity.ValidateSession(sessionID); err != nil {
 		return ConversationCompactionPlan{}, fmt.Errorf("runs: conversation compaction session: %w", err)
 	}
 	seen := make(map[string]struct{}, len(runs))
@@ -38,7 +37,7 @@ func newConversationCompactionPlan(
 			return ConversationCompactionPlan{}, fmt.Errorf("runs: conversation compaction run[%d]: %w", index, err)
 		}
 		expected := replacement.Expected()
-		if expected.SessionID() != id.String() {
+		if expected.SessionID() != sessionID {
 			return ConversationCompactionPlan{}, fmt.Errorf(
 				"runs: conversation compaction run %q belongs to another session",
 				expected.ID(),
@@ -50,12 +49,12 @@ func newConversationCompactionPlan(
 		seen[expected.ID()] = struct{}{}
 	}
 	return ConversationCompactionPlan{
-		sessionID: id, compaction: compaction, runs: slices.Clone(runs),
+		sessionID: sessionID, compaction: compaction, runs: slices.Clone(runs),
 	}, nil
 }
 
 // SessionID returns the exact conversation owner.
-func (p ConversationCompactionPlan) SessionID() string { return p.sessionID.String() }
+func (p ConversationCompactionPlan) SessionID() string { return p.sessionID }
 
 // Compaction returns the validated coordinate transformation.
 func (p ConversationCompactionPlan) Compaction() conversation.Compaction { return p.compaction }
