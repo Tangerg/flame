@@ -82,6 +82,9 @@ func TestVerifiedResourceRefusesReplacementFIFOWithoutBlocking(t *testing.T) {
 	if err := unix.Mkfifo(pipe, 0600); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.Chmod(root, 0500); err != nil {
+		t.Fatal(err)
+	}
 	err = fifoFailure(t, pipe, func() error {
 		content, err := releases.readResource(t.Context(), installation, "notes.txt", maxPackageBytes)
 		if len(content) != 0 {
