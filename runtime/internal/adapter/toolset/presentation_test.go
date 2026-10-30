@@ -129,7 +129,6 @@ func TestPublishedResultContractsDecodePresenterOutput(t *testing.T) {
 		{name: tool.Shell, result: map[string]any{"stdout": content.New([]byte("ok")), "exit_code": 0}},
 		{name: tool.Glob, result: map[string]any{"paths": []string{"main.go"}}},
 		{name: tool.Grep, result: map[string]any{"matches": []any{map[string]any{"path": "main.go", "line": 1, "text": "package main"}}}},
-		{name: tool.WebSearch, result: map[string]any{"results": []any{map[string]any{"url": "https://example.com"}}}},
 		{name: tool.ApplyPatch, result: map[string]any{"files": []any{map[string]any{"path": "main.go"}}}},
 	}
 	for _, test := range tests {
@@ -184,20 +183,23 @@ func mustToolArguments(t *testing.T, value map[string]any) tool.Arguments {
 	return arguments
 }
 
-func TestHistoricalWebReferencesKeepReadContractsWithoutExecutableMetadata(t *testing.T) {
-	for _, name := range []tool.BuiltInName{tool.WebFetch, tool.WebSearch} {
-		ref, err := tool.BuiltIn(name)
-		if err != nil || ref.Validate() != nil {
-			t.Fatalf("historical reference was lost: %v", err)
-		}
-		if _, current := descriptorFor(ref); current {
-			t.Fatal("historical web identity acquired current dispatch metadata")
-		}
+func TestMCPWebResultsKeepTheirSourceWithoutBuiltInMetadata(t *testing.T) {
+	for _, name := range []string{"web_search", "web_fetch", "web_browse"} {
+		t.Run(name, func(t *testing.T) {
+			ref := testsupport.MCPTool(testsupport.UserMCPServer("web"), name)
+			if _, current := descriptorFor(ref); current {
+				t.Fatal("MCP acquired built-in dispatch metadata")
+			}
+			original := mustToolResult(t, map[string]any{"source": name, "content": "<literal>&amp;"})
+			presented, outputText := Presenter{}.Present(ref, tool.Arguments{}, original)
+			if !reflect.DeepEqual(presented.Any(), original.Any()) || outputText != "" {
+				t.Fatalf("MCP result changed: %#v, %q", presented.Any(), outputText)
+			}
+			for _, contract := range PresentationContracts() {
+				if contract.ToolName == name {
+					t.Fatal("MCP result acquired a built-in contract")
+				}
+			}
+		})
 	}
-	for _, contract := range PresentationContracts() {
-		if contract.ToolName == string(tool.WebSearch) && contract.ResultType == reflect.TypeFor[WebSearchResult]() {
-			return
-		}
-	}
-	t.Fatal("historical web result lost its published read schema")
 }

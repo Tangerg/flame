@@ -1796,6 +1796,10 @@ Tool identity is a closed built-in, MCP source/tool, or A2A endpoint reference.
 Model names remain presentation labels. The closed set of built-in names is owned by the
 tool domain (`tool.BuiltInName`); the built-in behavior catalog is keyed by that type and a
 test holds it to exactly that set, so startup performs no comparison between them.
+Web search and page retrieval belong to the Web plugin's MCP tools. The former
+`builtIn` references `web_search` and `web_fetch` and their published Core result
+schema are removed. Rebuild clients and use a fresh pre-release data directory;
+old records with those references are rejected without aliases or conversion.
 Runtime excludes remote name collisions
 before model discovery and reserves every built-in name, including unavailable tools.
 Cross-server collisions never reject a connection: all competing remote identities

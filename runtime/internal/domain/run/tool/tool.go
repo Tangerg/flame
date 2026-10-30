@@ -28,8 +28,7 @@ const (
 // Valid reports whether g names one supported Tool surface.
 func (g Group) Valid() bool { return g == GroupRoot || g == GroupDelegated }
 
-// BuiltInName is a durable Runtime tool identity. Persisted references can
-// outlive their executable; the adapter catalog owns current dispatch metadata.
+// BuiltInName identifies a current Runtime-owned tool.
 type BuiltInName string
 
 const (
@@ -57,9 +56,6 @@ const (
 	SetPlan           BuiltInName = "set_plan"
 	Shell             BuiltInName = "shell"
 	StopShell         BuiltInName = "stop_shell"
-	// Historical web references remain readable after execution moves to a plugin.
-	WebFetch  BuiltInName = "web_fetch"
-	WebSearch BuiltInName = "web_search"
 )
 
 // builtInNames is the set's only enumeration.
@@ -67,7 +63,7 @@ var builtInNames = []BuiltInName{
 	ApplyPatch, AskUser, CreateGoal, DelegateTask, Edit,
 	EnterPlanMode, ExitPlanMode, GetGoal, Glob, Grep, HTTPRequest, ListSkills,
 	LoadSkill, LSP, ProposeSkill, Read, ReadShellOutput, ReadSkillResource, ReadToolResult,
-	ReportGoalOutcome, SearchTools, SetPlan, Shell, StopShell, WebFetch, WebSearch,
+	ReportGoalOutcome, SearchTools, SetPlan, Shell, StopShell,
 }
 
 func BuiltInNames() []BuiltInName { return slices.Clone(builtInNames) }

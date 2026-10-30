@@ -177,7 +177,7 @@ func presentToolCategory(name string) protocol.ToolCategory {
 		return protocol.ToolCategoryRead
 	case tool.Glob, tool.Grep, tool.SearchTools, tool.LSP:
 		return protocol.ToolCategorySearch
-	case tool.WebSearch, tool.WebFetch, tool.HTTPRequest:
+	case tool.HTTPRequest:
 		return protocol.ToolCategoryWeb
 	case tool.AskUser, tool.DelegateTask, tool.CreateGoal, tool.GetGoal, tool.ReportGoalOutcome,
 		tool.LoadSkill, tool.ListSkills, tool.ProposeSkill, tool.EnterPlanMode, tool.ExitPlanMode, tool.SetPlan:

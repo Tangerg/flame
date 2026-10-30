@@ -400,8 +400,6 @@ export type WireTypeName =
   | "UsageSummaryRequest"
   | "UtilityRole"
   | "WatchSpec"
-  | "WebSearchHit"
-  | "WebSearchResult"
   | "WorkspaceAvailability"
   | "WorkspaceFileChange"
   | "WorkspaceInfo"
@@ -4268,7 +4266,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     oneOf([
       fields({
         endpoint: absent(),
-        name: enumOf(["apply_patch", "ask_user", "create_goal", "delegate_task", "edit", "enter_plan_mode", "exit_plan_mode", "get_goal", "glob", "grep", "http_request", "list_skills", "load_skill", "lsp", "propose_skill", "read", "read_shell_output", "read_skill_resource", "read_tool_result", "report_goal_outcome", "search_tools", "set_plan", "shell", "stop_shell", "web_fetch", "web_search"]),
+        name: enumOf(["apply_patch", "ask_user", "create_goal", "delegate_task", "edit", "enter_plan_mode", "exit_plan_mode", "get_goal", "glob", "grep", "http_request", "list_skills", "load_skill", "lsp", "propose_skill", "read", "read_shell_output", "read_skill_resource", "read_tool_result", "report_goal_outcome", "search_tools", "set_plan", "shell", "stop_shell"]),
         server: absent(),
         type: literal("builtIn"),
       }, ["name", "type"]),
@@ -4423,15 +4421,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     watchId: text(),
     workspace: ref(() => CHECKS.WorkspaceRef),
   }, ["watchId", "workspace"]),
-  WebSearchHit: object({
-    faviconUrl: text(),
-    snippet: text(),
-    title: text(),
-    url: text(),
-  }, ["url"]),
-  WebSearchResult: object({
-    results: array(ref(() => CHECKS.WebSearchHit)),
-  }, ["results"]),
   WorkspaceAvailability: enumOf(["available", "missing"]),
   WorkspaceFileChange: allOf([
     object({

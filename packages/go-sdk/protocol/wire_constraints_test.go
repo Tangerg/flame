@@ -1960,3 +1960,16 @@ func TestDiscoveryIdentityAndCapabilityCatalogConstraints(t *testing.T) {
 		assertConstraintField(t, catalog.validateWire(), "ServerCapabilities", test.field)
 	}
 }
+
+func TestToolRefRejectsRetiredBuiltInsAndPreservesMCPWebIdentity(t *testing.T) {
+	if err := ValidateWireTree(ToolRef{Type: ToolRefBuiltIn, Name: "read"}); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"web_search", "web_fetch"} {
+		assertConstraintField(t, ValidateWireTree(ToolRef{Type: ToolRefBuiltIn, Name: name}), "ToolRef", "name")
+		ref := ToolRef{Type: ToolRefMCP, Name: name, Server: &MCPServerID{Origin: MCPOrigin{Type: MCPOriginUser}, Name: "web"}}
+		if err := ValidateWireTree(ref); err != nil {
+			t.Fatalf("current MCP identity refused: %v", err)
+		}
+	}
+}

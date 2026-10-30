@@ -139,7 +139,11 @@ func run(dir, validatorDir, tsDir, sampleDir, clientValuesFile string) error {
 			return fmt.Errorf("write %s: %w", path, err)
 		}
 	}
-	return writeSamples(os.DirFS(sampleDir), filepath.Join(testing, "samples"))
+	samples := filepath.Join(testing, "samples")
+	if err := writeSamples(os.DirFS(sampleDir), samples); err != nil {
+		return err
+	}
+	return writeSkillPageSamples(filepath.Join(testing, "skill-pages.json"))
 }
 
 func writeSamples(source fs.FS, directory string) error {

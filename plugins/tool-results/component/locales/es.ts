@@ -39,7 +39,6 @@ export const es: Record<string, string> = {
   "change.modified": "Editado",
   "change.moved": "Movido",
   "change.deleted": "Eliminado",
-  "skills.truncated": "Se omitieron más Skills de este resultado.",
   "skills.empty": "No se devolvieron Skills.",
   "http.truncated": "Truncado",
   "caption.source": "Código fuente",

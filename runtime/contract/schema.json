@@ -12249,9 +12249,7 @@
                 "search_tools",
                 "set_plan",
                 "shell",
-                "stop_shell",
-                "web_fetch",
-                "web_search"
+                "stop_shell"
               ]
             },
             "server": false,
@@ -12810,40 +12808,6 @@
       "required": [
         "watchId",
         "workspace"
-      ]
-    },
-    "WebSearchHit": {
-      "type": "object",
-      "properties": {
-        "faviconUrl": {
-          "type": "string"
-        },
-        "snippet": {
-          "type": "string"
-        },
-        "title": {
-          "type": "string"
-        },
-        "url": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "url"
-      ]
-    },
-    "WebSearchResult": {
-      "type": "object",
-      "properties": {
-        "results": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/WebSearchHit"
-          }
-        }
-      },
-      "required": [
-        "results"
       ]
     },
     "WorkspaceAvailability": {

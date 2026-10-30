@@ -12,6 +12,23 @@ import (
 
 const testInstallation = "8ad9abf5-3a7d-4d0b-bef9-6ef92c20e746"
 
+func TestRetiredWebBuiltInsAreRejectedWithoutChangingMCPIdentity(t *testing.T) {
+	for _, name := range []string{"web_search", "web_fetch"} {
+		t.Run(name, func(t *testing.T) {
+			remote := testMCPRef(t, mcpserver.UserOrigin(), "web", name)
+			if remote.Kind() != MCPKind || remote.Validate() != nil {
+				t.Fatalf("current Web MCP identity = %v", remote)
+			}
+			if _, ok := remote.BuiltIn(); ok {
+				t.Fatal("MCP source became a built-in alias")
+			}
+			if _, err := BuiltIn(BuiltInName(name)); !errors.Is(err, ErrInvalidRef) {
+				t.Fatalf("retired built-in admitted: %v", err)
+			}
+		})
+	}
+}
+
 func testMCPRef(t *testing.T, origin mcpserver.Origin, server, remote string) Ref {
 	t.Helper()
 	name, err := mcpserver.ParseServerName(server)

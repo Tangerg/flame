@@ -23,7 +23,6 @@ func TestSemanticsSafetyClassFailsClosed(t *testing.T) {
 		{ref: testsupport.BuiltInTool(t, tool.Shell), want: tool.SafetyClassExec},
 		{ref: testsupport.BuiltInTool(t, tool.ReadShellOutput), want: tool.SafetyClassSafe},
 		{ref: testsupport.BuiltInTool(t, tool.StopShell), want: tool.SafetyClassExec},
-		{ref: testsupport.BuiltInTool(t, tool.WebFetch), want: tool.SafetyClassExec},
 		{ref: testsupport.BuiltInTool(t, tool.HTTPRequest), want: tool.SafetyClassNetwork},
 		{ref: tool.Ref{}, want: tool.SafetyClassExec},
 		{ref: testsupport.A2ATool(t, "shell"), want: tool.SafetyClassExec},

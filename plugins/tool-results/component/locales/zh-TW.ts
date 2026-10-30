@@ -33,7 +33,6 @@ export const zhTW: Record<string, string> = {
   "change.modified": "已編輯",
   "change.moved": "已移動",
   "change.deleted": "已刪除",
-  "skills.truncated": "此結果中省略了更多技能。",
   "skills.empty": "未傳回任何技能。",
   "http.truncated": "已截斷",
   "caption.source": "原始碼",

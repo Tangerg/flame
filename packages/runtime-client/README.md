@@ -84,3 +84,9 @@ Run `npm run check --workspace @flame/runtime-client` from the root after
 `make setup`. Independent author checks consume a real packed package, rather
 than workspace-private paths. No former package name or wildcard client export
 is provided.
+
+The `./testing/skill-pages.json` export contains current Skill list pages captured
+by the contract generator from the released Scope tool, separately from the
+canonical wire sample catalog. Empty, complete and continued
+pages exercise the producer's encoding and cursor without a parallel fixture
+format or a legacy decoder.

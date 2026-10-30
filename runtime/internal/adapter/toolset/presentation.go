@@ -29,8 +29,6 @@ type PresentationContract struct {
 	EnumValues map[reflect.Type][]string
 }
 
-// Persisted tool results retain their published read contracts after execution
-// moves to a plugin. Historical schemas do not register another executable.
 func PresentationContracts() []PresentationContract {
 	var contracts []PresentationContract
 	for name, descriptor := range descriptors() {
@@ -43,7 +41,7 @@ func PresentationContracts() []PresentationContract {
 		}
 		contracts = append(contracts, contract)
 	}
-	return append(contracts, PresentationContract{ToolName: string(tool.WebSearch), ResultType: reflect.TypeFor[WebSearchResult]()})
+	return contracts
 }
 
 // Activity returns concise progress text for a known concrete tool.
@@ -292,19 +290,6 @@ func presentSearchResult(result tool.Result) tool.Result {
 		hits = append(hits, SearchHit{Path: count.Path, Snippet: strconv.Itoa(count.Count) + " matches"})
 	}
 	return projectResult(result, SearchResult{Hits: hits})
-}
-
-// WebSearchResult is the transcript result of web_search.
-type WebSearchResult struct {
-	Results []WebSearchHit `json:"results"`
-}
-
-// WebSearchHit is one web_search source suitable for a result card.
-type WebSearchHit struct {
-	Title      string `json:"title,omitempty"`
-	URL        string `json:"url"`
-	Snippet    string `json:"snippet,omitempty"`
-	FaviconURL string `json:"faviconUrl,omitempty"`
 }
 
 func patchResultContract() resultProjectionContract {

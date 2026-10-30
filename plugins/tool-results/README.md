@@ -63,10 +63,9 @@ Current Skill pages separate summaries or instruction/resource content from thei
 recorded continuation. A nonfinal page keeps a More pages cue in the caption,
 including during Find, and the complete next_cursor as source metadata. Copy
 result retains the exact original page; reader selection copies the presented
-content. Empty complete catalogs remain empty during Find. Historical XML
-summaries still decode once with their recorded truncation notice, and literal
-instructions remain literal. Unknown members or malformed page shapes retain the
-complete source instead of silently dropping fields. This component never fetches
+content. Empty complete catalogs remain empty during Find, and literal
+instructions remain literal. Unknown formats, unknown members and malformed page
+shapes retain the complete source instead of silently dropping fields. This component never fetches
 a page, concatenates separate Tool calls or treats a captured page as the full
 Skill catalog or document.
 Recorded `web_fetch` and `web_browse` pages retain their URL, snapshot identity,

@@ -33,7 +33,6 @@ export const zh: Record<string, string> = {
   "change.modified": "已编辑",
   "change.moved": "已移动",
   "change.deleted": "已删除",
-  "skills.truncated": "此结果中省略了更多技能。",
   "skills.empty": "未返回任何技能。",
   "http.truncated": "已截断",
   "caption.source": "源代码",

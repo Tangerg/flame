@@ -34,7 +34,6 @@ export const ja: Record<string, string> = {
   "change.modified": "編集",
   "change.moved": "移動",
   "change.deleted": "削除",
-  "skills.truncated": "この結果ではさらに多くのスキルが省略されました。",
   "skills.empty": "スキルは返されませんでした。",
   "http.truncated": "切り詰め",
   "caption.source": "ソース",

@@ -1,0 +1,6 @@
+{
+  "empty": "{\"skills\":[]}",
+  "complete": "{\"skills\":[{\"name\":\"review-diff\",\"description\":\"Keep &amp; and <img src=x onerror=alert(1)> literal.\"},{\"name\":\"trace-flaky-test\",\"description\":\"Find the shared state.\\nKeep the second line.\"},{\"name\":\"verify-release\",\"description\":\"Keep release evidence. Keep release evidence. Keep release evidence. Keep release evidence. Keep release evidence. Keep release evidence. Keep release evidence. Keep release evidence. Complete.\"}]}",
+  "first": "{\"skills\":[{\"name\":\"review-diff\",\"description\":\"Keep &amp; and <img src=x onerror=alert(1)> literal.\"},{\"name\":\"trace-flaky-test\",\"description\":\"Find the shared state.\\nKeep the second line.\"}],\"next_cursor\":{\"offset\":2,\"snapshot\":\"f886d944a62446afea2e52992f93cf219bd46e911cf81341553149c9de5c3922\"}}",
+  "last": "{\"skills\":[{\"name\":\"verify-release\",\"description\":\"Keep release evidence. Keep release evidence. Keep release evidence. Keep release evidence. Keep release evidence. Keep release evidence. Keep release evidence. Keep release evidence. Complete.\"}]}"
+}

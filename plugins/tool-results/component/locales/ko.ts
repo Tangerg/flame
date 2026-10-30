@@ -34,7 +34,6 @@ export const ko: Record<string, string> = {
   "change.modified": "수정됨",
   "change.moved": "이동됨",
   "change.deleted": "삭제됨",
-  "skills.truncated": "이 결과에서 더 많은 스킬이 생략되었습니다.",
   "skills.empty": "반환된 스킬이 없습니다.",
   "http.truncated": "잘림",
   "caption.source": "소스",
