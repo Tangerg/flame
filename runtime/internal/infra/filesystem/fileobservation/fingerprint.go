@@ -16,6 +16,14 @@ import (
 
 type fingerprint [sha256.Size]byte
 
+// observedPath carries the admitted content dependency with its fingerprint.
+// A missing or rejected object has no direct watch; its parent detects creation.
+type observedPath struct {
+	fingerprint fingerprint
+	physical    string
+	watch       bool
+}
+
 type fingerprintField string
 
 const (

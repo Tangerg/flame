@@ -212,7 +212,7 @@ func TestFingerprintPhysicalTargetRejectsEscapingReplacement(t *testing.T) {
 	candidate := target{
 		key: "document", path: targetPath, physicalBoundary: physicalBoundary, maxBytes: testMaxBytes,
 	}
-	if _, _, err := fingerprintPhysicalTarget(newFingerprintEncoder(), candidate, physical, roots); err == nil {
+	if _, err := fingerprintPhysicalTarget(newFingerprintEncoder(), candidate, physical, roots); err == nil {
 		t.Fatal("replaced target escaped its observation boundary")
 	}
 }

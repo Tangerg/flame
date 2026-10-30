@@ -453,7 +453,7 @@ func TestFingerprintResolvedChildFileRejectsEscapingReplacement(t *testing.T) {
 	if err := os.Symlink(outside, directory); err != nil {
 		t.Skipf("symlink unsupported: %v", err)
 	}
-	if _, _, err := fingerprintResolvedChildFile(
+	if _, err := fingerprintResolvedChildFile(
 		logical, resolved, physicalBoundary, testMaxBytes, roots,
 	); err == nil {
 		t.Fatal("replaced child file escaped its observation boundary")

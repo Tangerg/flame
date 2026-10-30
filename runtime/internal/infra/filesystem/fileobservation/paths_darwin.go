@@ -3,6 +3,7 @@ package fileobservation
 import (
 	"errors"
 	"os"
+	"runtime"
 	"sync"
 
 	"github.com/fsnotify/fsnotify"
@@ -11,15 +12,26 @@ import (
 
 const shutdownHint = 1
 
-// fsnotify's kqueue backend infers directory changes from child names. Replacing
-// a symlink under the same name can produce no event. Reconciliation needs the
-// raw directory hint alongside file-write events. Both only wake the same
-// content baseline, which owns all content and identity decisions.
-type directoryHints struct {
+// Queued events retain this pinned registration identity across descriptor reuse.
+type pathBinding struct {
+	fd       int
+	identity *byte
+	pin      runtime.Pinner
+}
+
+func (b *pathBinding) close() error {
+	err := unix.Close(b.fd)
+	b.pin.Unpin()
+	return err
+}
+
+// fsnotify's kqueue backend infers directory changes from child names, losing
+// same-name symlink replacements. The content scanner supplies exact admitted
+// files and parents; raw vnode hints wake its single fingerprint baseline.
+type pathHints struct {
 	mu        sync.Mutex
 	queue     int
-	files     *fsnotify.Watcher
-	paths     map[string]int
+	paths     map[string]*pathBinding
 	events    chan fsnotify.Event
 	errors    chan error
 	done      chan struct{}
@@ -28,30 +40,26 @@ type directoryHints struct {
 	closeErr  error
 }
 
-func newDirectoryObservation() (directoryObservation, error) {
-	files, err := fsnotify.NewWatcher()
-	if err != nil {
-		return directoryObservation{}, err
-	}
+func newPathObservation() (pathObservation, error) {
 	queue, err := unix.Kqueue()
 	if err != nil {
-		return directoryObservation{}, errors.Join(err, files.Close())
+		return pathObservation{}, err
 	}
 	unix.CloseOnExec(queue)
 	_, err = unix.Kevent(queue, []unix.Kevent_t{{Ident: shutdownHint, Filter: unix.EVFILT_USER, Flags: unix.EV_ADD | unix.EV_CLEAR}}, nil, nil)
 	if err != nil {
-		return directoryObservation{}, errors.Join(err, unix.Close(queue), files.Close())
+		return pathObservation{}, errors.Join(err, unix.Close(queue))
 	}
-	hints := &directoryHints{
-		queue: queue, files: files, paths: make(map[string]int),
+	hints := &pathHints{
+		queue: queue, paths: make(map[string]*pathBinding),
 		events: make(chan fsnotify.Event), errors: make(chan error),
 		done: make(chan struct{}), exited: make(chan struct{}),
 	}
 	go hints.run()
-	return directoryObservation{registry: hints, events: files.Events, errors: files.Errors, hints: hints.events, hintErrors: hints.errors}, nil
+	return pathObservation{registry: hints, events: hints.events, errors: hints.errors}, nil
 }
 
-func (d *directoryHints) Add(path string) error {
+func (d *pathHints) Add(path string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	select {
@@ -62,41 +70,32 @@ func (d *directoryHints) Add(path string) error {
 	if _, present := d.paths[path]; present {
 		return nil
 	}
-	fd, err := unix.Open(path, unix.O_EVTONLY|unix.O_CLOEXEC|unix.O_DIRECTORY, 0)
+	fd, err := unix.Open(path, unix.O_EVTONLY|unix.O_CLOEXEC|unix.O_SYMLINK, 0)
 	if err != nil {
 		return &os.PathError{Op: "watch", Path: path, Err: err}
 	}
-	event := unix.Kevent_t{Ident: uint64(fd), Filter: unix.EVFILT_VNODE, Flags: unix.EV_ADD | unix.EV_CLEAR, Fflags: unix.NOTE_WRITE | unix.NOTE_DELETE | unix.NOTE_RENAME | unix.NOTE_ATTRIB | unix.NOTE_REVOKE}
+	binding := &pathBinding{fd: fd, identity: new(byte)}
+	binding.pin.Pin(binding.identity)
+	event := unix.Kevent_t{Ident: uint64(fd), Filter: unix.EVFILT_VNODE, Flags: unix.EV_ADD | unix.EV_CLEAR, Fflags: unix.NOTE_WRITE | unix.NOTE_DELETE | unix.NOTE_RENAME | unix.NOTE_ATTRIB | unix.NOTE_REVOKE, Udata: binding.identity}
 	if _, err := unix.Kevent(d.queue, []unix.Kevent_t{event}, nil, nil); err != nil {
-		return errors.Join(err, unix.Close(fd))
+		return errors.Join(err, binding.close())
 	}
-	// Its old remove event may still be pending when the directory is rebound.
-	if err := d.files.Remove(path); err != nil && !errors.Is(err, fsnotify.ErrNonExistentWatch) {
-		return errors.Join(err, unix.Close(fd))
-	}
-	if err := d.files.Add(path); err != nil {
-		return errors.Join(err, unix.Close(fd))
-	}
-	d.paths[path] = fd
+	d.paths[path] = binding
 	return nil
 }
 
-func (d *directoryHints) Remove(path string) error {
+func (d *pathHints) Remove(path string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	fd, present := d.paths[path]
+	binding, present := d.paths[path]
 	if !present {
 		return fsnotify.ErrNonExistentWatch
 	}
 	delete(d.paths, path)
-	err := d.files.Remove(path)
-	if errors.Is(err, fsnotify.ErrNonExistentWatch) {
-		err = nil
-	}
-	return errors.Join(err, unix.Close(fd))
+	return binding.close()
 }
 
-func (d *directoryHints) WatchList() []string {
+func (d *pathHints) WatchList() []string {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	paths := make([]string, 0, len(d.paths))
@@ -106,7 +105,7 @@ func (d *directoryHints) WatchList() []string {
 	return paths
 }
 
-func (d *directoryHints) run() {
+func (d *pathHints) run() {
 	defer close(d.exited)
 	defer close(d.events)
 	defer close(d.errors)
@@ -142,10 +141,10 @@ func (d *directoryHints) run() {
 			if event.Fflags&(unix.NOTE_DELETE|unix.NOTE_RENAME|unix.NOTE_REVOKE) != 0 {
 				d.mu.Lock()
 				var closeErr error
-				for path, fd := range d.paths {
-					if uint64(fd) == event.Ident {
+				for path, binding := range d.paths {
+					if binding.identity == event.Udata {
 						delete(d.paths, path)
-						closeErr = unix.Close(fd)
+						closeErr = binding.close()
 						break
 					}
 				}
@@ -167,7 +166,7 @@ func (d *directoryHints) run() {
 	}
 }
 
-func (d *directoryHints) Close() error {
+func (d *pathHints) Close() error {
 	d.closeOnce.Do(func() {
 		d.mu.Lock()
 		close(d.done)
@@ -181,11 +180,11 @@ func (d *directoryHints) Close() error {
 		defer d.mu.Unlock()
 		var errs []error
 		errs = append(errs, wakeErr)
-		for path, fd := range d.paths {
-			errs = append(errs, unix.Close(fd))
+		for path, binding := range d.paths {
+			errs = append(errs, binding.close())
 			delete(d.paths, path)
 		}
-		d.closeErr = errors.Join(append(errs, unix.Close(d.queue), d.files.Close())...)
+		d.closeErr = errors.Join(append(errs, unix.Close(d.queue))...)
 	})
 	return d.closeErr
 }

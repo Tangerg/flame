@@ -23,26 +23,24 @@ type acceptance struct {
 	identities map[string]bool
 }
 
-type directoryRegistry interface {
+type pathRegistry interface {
 	Add(string) error
 	Remove(string) error
 	WatchList() []string
 	Close() error
 }
 
-type directoryObservation struct {
-	registry   directoryRegistry
-	events     <-chan fsnotify.Event
-	errors     <-chan error
-	hints      <-chan fsnotify.Event
-	hintErrors <-chan error
+type pathObservation struct {
+	registry pathRegistry
+	events   <-chan fsnotify.Event
+	errors   <-chan error
 }
 
 // observerLifecycle owns notification resources and the reconciliation loop
 // shared by exact-file and bounded child-file policies.
 type observerLifecycle struct {
 	label     string
-	fsw       directoryObservation
+	fsw       pathObservation
 	done      chan struct{}
 	exited    chan struct{}
 	closeOnce sync.Once
@@ -58,7 +56,7 @@ func newObserverLifecycle(label string, report func(error)) (*observerLifecycle,
 	if report == nil {
 		return nil, fmt.Errorf("%s: outage reporter is required", label)
 	}
-	fsw, err := newDirectoryObservation()
+	fsw, err := newPathObservation()
 	if err != nil {
 		return nil, fmt.Errorf("%s: create watcher: %w", label, err)
 	}
@@ -111,26 +109,16 @@ func (o *observerLifecycle) run() {
 				return
 			}
 			armAfter(debounce)
-		case _, ok := <-o.fsw.hints:
-			if !ok {
-				o.report(errors.New("filesystem directory hint channel closed"))
-				return
-			}
-			armAfter(debounce)
-		case _, ok := <-o.fsw.errors:
+		case err, ok := <-o.fsw.errors:
 			if !ok {
 				o.report(errors.New("filesystem observation error channel closed"))
 				return
 			}
-			// Backend errors invalidate only the wake-up hint. Reconciliation
-			// resamples the content-derived state that owns the observable fact.
-			armAfter(debounce)
-		case err, ok := <-o.fsw.hintErrors:
-			if !ok {
-				o.report(errors.New("filesystem directory hint error channel closed"))
-				return
+			if errors.Is(err, fsnotify.ErrEventOverflow) {
+				armAfter(debounce)
+				continue
 			}
-			o.report(fmt.Errorf("filesystem directory observation failed: %w", err))
+			o.report(fmt.Errorf("filesystem observation failed: %w", err))
 			return
 		case <-timer.C:
 			armed = false
@@ -170,7 +158,7 @@ func (o *observerLifecycle) Accept(keys, identities []string) error {
 	return o.reconcile(accepted)
 }
 
-func (o *observerLifecycle) replaceDirectories(next map[string]struct{}) error {
+func (o *observerLifecycle) replacePaths(next map[string]struct{}) error {
 	// The backend removes watches when directories disappear. Its current
 	// registration set must drive reconciliation so recreated paths are watched.
 	watched := make(map[string]struct{})
@@ -182,7 +170,7 @@ func (o *observerLifecycle) replaceDirectories(next map[string]struct{}) error {
 			continue
 		}
 		if err := o.fsw.registry.Add(directory); err != nil {
-			return fmt.Errorf("%s: watch directory %q: %w", o.label, directory, err)
+			return fmt.Errorf("%s: watch path %q: %w", o.label, directory, err)
 		}
 	}
 	for directory := range watched {
@@ -195,7 +183,7 @@ func (o *observerLifecycle) replaceDirectories(next map[string]struct{}) error {
 		if err := o.fsw.registry.Remove(directory); err != nil &&
 			!errors.Is(err, fsnotify.ErrNonExistentWatch) && !errors.Is(err, os.ErrNotExist) &&
 			!(runtime.GOOS == "linux" && errors.Is(err, syscall.EINVAL)) {
-			return fmt.Errorf("%s: unwatch directory %q: %w", o.label, directory, err)
+			return fmt.Errorf("%s: unwatch path %q: %w", o.label, directory, err)
 		}
 	}
 	return nil
