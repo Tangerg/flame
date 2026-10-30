@@ -468,7 +468,7 @@ func seedFailedRun(t *testing.T, rt *stubRuntime, sessionID string) {
 func seedLostRun(t *testing.T, rt *stubRuntime, sessionID string) {
 	t.Helper()
 	if err := rt.runs.Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: "run_lost", State: run.Finished,
-		Ending: run.Lost{Loss: run.Loss{Reason: run.LossOtherBuild, Detail: "checkpoint belongs to another build"}},
+		Ending:  run.Lost{Loss: run.Loss{Reason: run.LossOtherBuild, Detail: "checkpoint belongs to another build"}},
 		Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 1}),
 		Capabilities: run.Capabilities{
 			InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
