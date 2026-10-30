@@ -28,6 +28,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes bubblewrap util-linux libreoffice poppler-utils
+          bwrap --unshare-all --die-with-parent --new-session --cap-drop ALL \
+            --ro-bind / / --proc /proc --remount-ro /proc -- /bin/true
           echo "FLAME_DELIVERABLES_OFFICE=/usr/bin/libreoffice" >> "$GITHUB_ENV"
           echo "FLAME_DELIVERABLES_PDFINFO=/usr/bin/pdfinfo" >> "$GITHUB_ENV"
           echo "FLAME_DELIVERABLES_PDFTOPPM=/usr/bin/pdftoppm" >> "$GITHUB_ENV"
@@ -43,6 +45,10 @@ jobs:
           echo "FLAME_DELIVERABLES_PDFTOTEXT=$(brew --prefix poppler)/bin/pdftotext" >> "$GITHUB_ENV"
           echo "FLAME_DELIVERABLES_TOOL_ROOTS=[\"/Applications/LibreOffice.app\",\"$(brew --cellar)\"]" >> "$GITHUB_ENV"
       - run: make setup
+      - name: Qualify native deliverables
+        run: node plugins/scripts/test-backends.mjs
+        env:
+          FLAME_DELIVERABLES_NATIVE_TESTS: "1"
       - run: make check
         env:
           FLAME_DELIVERABLES_NATIVE_TESTS: "1"

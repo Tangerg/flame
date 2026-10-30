@@ -229,9 +229,10 @@ For explicit host qualification, configure those environment projections and run
 `FLAME_DELIVERABLES_NATIVE_TESTS=1` with the backend test runner. The native tests
 exercise the production confinement, actual DOCX/XLSX/PPTX rendering and observed
 workbook formula results. Ordinary tests remain independent of host renderer
-installation. The workspace CI jobs install LibreOffice and Poppler and enable
-this qualification on Linux and macOS. The native save panel requires qualification on
-macOS; a Linux pass cannot establish those properties.
+installation. The workspace CI jobs install LibreOffice and Poppler and run
+this qualification on Linux and macOS before the complete workspace checks, so
+host prerequisites fail at the native boundary. The native save panel requires
+qualification on macOS; a Linux pass cannot establish those properties.
 
 The public component SDK now requires binary `saveFile`; `saveTextFile` has been
 removed from the host contract. Rebuild the host and external SDK consumers
