@@ -60,6 +60,8 @@ literal references checked at admission.
   embeds. Data acquisition remains an ordinary agent tool or installed query.
 
 Controls use public `@flame/ui` components and the active host locale and tokens.
+Horizontal report tabs select with Left/Right, Home and End. They leave Up/Down
+to the browser, while radio choices retain both arrow axes.
 Popover uses the shared non-modal portal and collision positioning, so a clipped
 report does not clip its detail controls. Nested Select and Popover dismissal
 use Base UI's existing layer boundary. The declared open field and all drafts

@@ -135,6 +135,9 @@ qualification.
 Markdown images, source readers, links and tables now retain their identities
 through independent local updates. See **Markdown reading across independent updates**
 for the original native comparison, continuous reading, translated labels and cleanup.
+Horizontal report tabs now leave vertical arrows to the browser while retaining
+their horizontal selection model and the radio group's separate key model. See
+**Horizontal report tabs and reading keys** for the native task and delivery bounds.
 The user resumed the paused goal.
 Completed batches are verified, explicitly committed and pushed to main under the
 goal publication policy. Preserve parallel work in the primary checkout. Do not
@@ -2799,6 +2802,99 @@ Verdict: **Approve for the inspected popup and file-return tasks**. The whole-pr
 UI goal remains active. Native light review also identifies the generated report's
 plain green HTML progress meter beside otherwise themed controls; its repair is
 recorded under **Generated-report progress reading** above.
+
+### Horizontal report tabs and reading keys
+
+Actual original Wails at `d97c2c96b` changes **Evidence -> Captured source** on
+Down and changes it back on Up. A vertical reading key replaces the current
+report page. `TabsView` shares `moveChoice` with RadioGroup, which legitimately
+uses both arrow axes; the horizontal tab owner had no boundary for its own key
+model. The accepted document already requires a selected declared panel, so this
+is not an invalid-selection or initial-state defect.
+
+`plugins/genui/component/layout.tsx` now leaves Up/Down unhandled at the horizontal
+Tabs entry. Left/Right, wrapping, Home/End, panel entry, content visibility and
+the existing OpenUI selection owner are preserved. RadioGroup keeps both arrow
+axes. No global key handler, scrolling implementation, new state, dependency,
+locale key, Runtime command or persisted-data migration is added.
+
+The [W3C Tabs pattern](https://www.w3.org/WAI/ARIA/apg/patterns/tabs/) distinguishes
+horizontal selection from vertical browser scrolling. Read-only HeroUI
+`packages/react/src/components/tabs/tabs.tsx` supplies the orientation to its
+React Aria primitive, and its actual tests cover keyboard selection. That is
+reference evidence for the semantic boundary, not a native Flame scrolling test.
+Existing ChatGPT/ZCode research supplies the retained reading/file-return model.
+The better-series review covers report reading, source/choice navigation, related
+file reading and continued authoring with the existing shared controls.
+
+| Severity         | Location                                 | Before                                                              | After                                                                                                                             | Why                                                                             |
+| ---------------- | ---------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| MEDIUM, resolved | `plugins/genui/component/layout.tsx:145` | Up/Down changes a horizontal report page and cancels its key event. | Those keys preserve the selected page and focus without cancellation; horizontal selection and radio navigation remain available. | The APG key model keeps an attempted vertical read from replacing the evidence. |
+
+Accessibility and interaction retain named tabs, one natural tab entry, panel
+entry and visible native keyboard perimeters. Layout, whitespace, hierarchy and
+typography retain complete labels and the current report/source structure at
+14/18px. Light/Orange/full-motion and dark/blue/motion-off scenes keep the shared
+color and motion owners; no new contrast measurement is claimed. Responsive
+qualification includes native resize and 200% reading. Branding and originality
+add no asset or decorative treatment. **Approve** this bounded keyboard repair;
+whole-product and award-level acceptance remain unproven.
+
+- The original focused baseline passes **59 tests**. Four added regressions
+  expose **2 failures / 61 passes**, both cancelled vertical keys. The final
+  **63 GenUI presentation tests** pass, covering unchanged selected content and
+  focus, unconsumed vertical keys, horizontal wrapping/Home/End, retained drafts
+  and both radio arrows. Final related Frontend verification passes **6 files /
+  128 tests**. Assertions are not weakened.
+- Plugin type/lint/format/i18n/resource checks, Web type/lint/format,
+  layers/design-system/token/style/class/shorthand/chrome/locale checks, bundle
+  and installed-module checks pass. Normal **make check-native passes in
+  17.585 s**, including Desktop test/vet/build and the supported Wails build.
+  Shared UI and backend implementations are unchanged; their standalone suites
+  are not rerun. An incorrect `build:components` script name exits before a
+  resource build; the verified `npm run build --workspace @flame/plugins` then
+  succeeds. The passing focused tests are not restarted for that dispatch error.
+- Actual EN/light/14px/Orange/full-motion Wails qualifies note editing, vertical
+  keys retaining Evidence, Right/Left, End/Home and wrapping, panel entry, both
+  radio arrows, related README/back and continued drafting. Page Down from the
+  focused tabpanel scrolls the actual reading viewport to **940**. Up/Down on the
+  tab button produce no measured offset movement; this repair does not claim a
+  native arrow-scrolling improvement.
+- Actual ZH/dark/18px/blue/motion-off Wails qualifies **560 x 475 at 200%**, native
+  window zoom to **756 x 475**, retained source-tab selection/focus, both radio
+  arrows, Home and panel/Page Down. That reading advances **325 -> 383** while
+  retaining Evidence. Full-width README/Close preserves the note and continues
+  the draft as `从报告页签继续。 已核对相关材料。`. Actual Size is restored.
+- An ordinary observer-free ZH/18px/200% launch repeats note editing, both key
+  models, panel/Page Down, full-width README/Close and continued draft
+  `普通版本页签阅读草稿。 继续输入。`. Its **345 assets** differ from the observed
+  build only in the two HTML entries and removal of `tab-observer.js`; the native
+  binary is unchanged. Collector event/request deltas are zero. This is CUA task
+  evidence, without clean-launch offset or event-cancellation measurements.
+
+Private captured input uses the existing validated fixture reads, installed
+GenUI ESM/lifecycle and production components. Its observer only records. The
+original capture-phase microtask reads cancellation before React handles the key,
+so those original booleans are excluded; native selection changes are independently
+visible in CUA. The candidate observer reads the live event in a later animation
+frame. The observer injects no input, focus or state change. Live provider/Runtime
+writes, release acquisition/Realm admission, Send, VoiceOver, OS IME and other platforms
+remain unqualified. No browser suite, benchmark, Claude CLI or subagent runs.
+
+All four native launches exit, the bundle is unregistered and the listener is
+closed. Cleanup removes seven new checkout outputs and three private profiles,
+restoring the changed native-check binary. All four original file modes are
+checked explicitly. Only GenUI's `component.js` changes among **34** installed
+resources. Preservation passes before and after retirement for **6,386**
+qualified non-Markdown inputs, 34 resources, **57** read-only references, three
+instructions, 21 output baselines, four originals and five profile absences.
+The primary parallel checkout and installed toolchain remain untouched. The
+exact root `/private/tmp/flame-tab-axis-ON7lto` is absent. The memory-only archive
+round-trips **72 UTF-8 records**, **2,815,731 raw bytes** and **728,512 gzip bytes**,
+SHA-256 `ad1c5447bb58224be4cd8af4a6254990f4a5ab633864ed296e0f7e43a7644add`.
+Native AX and screenshots remain in CUA. This batch uses the published frozen
+main base without another synchronization/validation loop. Continue from new
+content/Dock evidence; the separate native reverse-Tab finding and UI goal remain open.
 
 ### Command focus and visible pane boundaries
 

@@ -854,6 +854,104 @@ it("owns timer values in the same Store and releases its clock on unmount", asyn
   expect(vi.getTimerCount()).toBe(0);
 });
 
+function tabReadingDocument() {
+  return document(
+    [
+      { id: "note", type: "Input", props: { field: "note", label: "Review note" } },
+      {
+        id: "views",
+        type: "Tabs",
+        props: {
+          field: "panel",
+          items: [
+            { value: "evidence", label: "Evidence" },
+            { value: "source", label: "Captured source" },
+            { value: "options", label: "Review options" },
+          ],
+        },
+        children: [
+          { id: "evidence", type: "Text", props: { text: "Read the accepted result." } },
+          { id: "source", type: "Code", props: { code: "literal  captured source" } },
+          {
+            id: "options",
+            type: "RadioGroup",
+            props: {
+              field: "audience",
+              label: "Review audience",
+              options: [
+                { value: "internal", label: "Internal review" },
+                { value: "public", label: "Public review" },
+              ],
+            },
+          },
+        ],
+      },
+    ],
+    [
+      { id: "note", value: "Keep this note." },
+      { id: "panel", value: "evidence" },
+      { id: "audience", value: "internal" },
+    ],
+  );
+}
+
+it.each(["ArrowUp", "ArrowDown"])(
+  "leaves %s available for reading while a horizontal report tab is focused",
+  async (key) => {
+    show(tabReadingDocument());
+    await act(async () => {});
+    const source = screen.getByRole("tab", { name: "Captured source" });
+    fireEvent.click(source);
+    act(() => source.focus());
+    expect(fireEvent.keyDown(source, { key, cancelable: true })).toBe(true);
+    expect(source.getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("tabpanel", { name: "Captured source" })).toBeTruthy();
+    expect(window.document.activeElement).toBe(source);
+  },
+);
+
+it("keeps horizontal report tab selection, wrapping and local drafts together", async () => {
+  show(tabReadingDocument());
+  await act(async () => {});
+  const note = screen.getByRole("textbox", { name: "Review note" });
+  fireEvent.change(note, { target: { value: "Continue after reading." } });
+  const evidence = screen.getByRole("tab", { name: "Evidence" });
+  const source = screen.getByRole("tab", { name: "Captured source" });
+  const options = screen.getByRole("tab", { name: "Review options" });
+  act(() => evidence.focus());
+  for (const [key, target] of [
+    ["ArrowRight", source],
+    ["End", options],
+    ["ArrowRight", evidence],
+    ["ArrowLeft", options],
+    ["Home", evidence],
+  ] as const) {
+    expect(fireEvent.keyDown(window.document.activeElement!, { key, cancelable: true })).toBe(
+      false,
+    );
+    expect(window.document.activeElement).toBe(target);
+    expect(target.getAttribute("aria-selected")).toBe("true");
+    expect(screen.getAllByRole("tab").filter((tab) => tab.tabIndex === 0)).toEqual([target]);
+  }
+  expect(note).toHaveProperty("value", "Continue after reading.");
+  expect(screen.getByRole("tabpanel", { name: "Evidence" })).toBeTruthy();
+});
+
+it("keeps vertical arrows selecting a report radio choice", async () => {
+  show(tabReadingDocument());
+  await act(async () => {});
+  fireEvent.click(screen.getByRole("tab", { name: "Review options" }));
+  const internal = screen.getByRole("radio", { name: "Internal review" });
+  const external = screen.getByRole("radio", { name: "Public review" });
+  act(() => internal.focus());
+  expect(fireEvent.keyDown(internal, { key: "ArrowDown", cancelable: true })).toBe(false);
+  expect(window.document.activeElement).toBe(external);
+  expect(external.getAttribute("aria-checked")).toBe("true");
+  expect(fireEvent.keyDown(external, { key: "ArrowUp", cancelable: true })).toBe(false);
+  expect(window.document.activeElement).toBe(internal);
+  expect(internal.getAttribute("aria-checked")).toBe("true");
+});
+
 it("renders controlled accordion and carousel panels with keyboard selection", async () => {
   show(
     document(
