@@ -78,7 +78,7 @@ func TestResumeRestorationAndObservationFailuresBelongToAcceptedRun(t *testing.T
 				if len(effects.openingSnapshot()) != 1 {
 					t.Error("restoration preceded acceptance")
 				}
-				if _, found := coordinator.registry.Get("run_1"); !found {
+				if _, found := coordinator.segments.registry.Get("run_1"); !found {
 					t.Error("accepted restoration has no Run owner")
 				}
 			}
@@ -122,7 +122,7 @@ func TestResumeExposesAcceptedOwnerWhileRestorationIsBlocked(t *testing.T) {
 	delete(sessions.pending, "run_1")
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	if _, err := coordinator.Subscribe(ctx, SubscribeRequest{RunID: result.RunID, SegmentID: result.SegmentID, CallerCapabilities: run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptApproval}}}); err != nil {
+	if _, err := coordinator.segments.Subscribe(ctx, SubscribeRequest{RunID: result.RunID, SegmentID: result.SegmentID, CallerCapabilities: run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptApproval}}}); err != nil {
 		t.Fatalf("accepted restoration has no observable owner: %v", err)
 	}
 	if control.resumed {

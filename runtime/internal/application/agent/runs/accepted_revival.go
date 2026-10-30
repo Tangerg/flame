@@ -99,7 +99,7 @@ func (c *Coordinator) reviveAcceptedContinuation(ctx context.Context, accepted A
 		return err
 	}
 	ref := ExecutorRef{SessionID: waiting.SessionID, ExecutorID: waiting.ExecutorID}
-	_, err = c.openSegment(ctx, segmentSpec{
+	_, err = c.segments.openSegment(ctx, segmentSpec{
 		RunID: root.ID(), SegmentID: root.ActiveSegmentID(), SessionID: accepted.SessionID,
 		WorkspaceCWD: sess.Workspace().Path(), Isolated: sess.Isolated(), ExecutorID: ref.ExecutorID,
 		Continuation: continuation, AcceptedContinuation: &accepted, admission: &admission,

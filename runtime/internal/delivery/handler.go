@@ -27,6 +27,7 @@ type HandlerConfig struct {
 	ModelEndpoints     endpointObservationUseCases
 	Tools              toolUseCases
 	Runs               runUseCases
+	RunStreams         runStreamUseCases
 	Queries            queryUseCases
 	Usage              usageUseCases
 	Feedback           feedbackUseCases
@@ -77,6 +78,7 @@ type Handler struct {
 	modelEndpoints     endpointObservationUseCases
 	tools              toolUseCases
 	runs               runUseCases
+	runStreams         runStreamUseCases
 	queries            queryUseCases
 	usage              usageUseCases
 	feedback           feedbackUseCases
@@ -196,7 +198,7 @@ func deriveContractFacts(cfg HandlerConfig) (contractFacts, error) {
 			git:       cfg.GitAvailable,
 			isolation: cfg.IsolationAvailable,
 		},
-		replay: replayLimitsFrom(cfg.Runs.ReplayRetention()),
+		replay: replayLimitsFrom(cfg.RunStreams.ReplayRetention()),
 		mcpAuthorizationAttempts: protocol.MCPAuthorizationAttemptLimits{
 			RetentionSeconds: int(cfg.MCP.AuthorizationAttemptRetention().Seconds()),
 		},
@@ -233,6 +235,7 @@ func newHandler(cfg HandlerConfig, facts contractFacts) *Handler {
 		modelEndpoints:           cfg.ModelEndpoints,
 		tools:                    cfg.Tools,
 		runs:                     cfg.Runs,
+		runStreams:               cfg.RunStreams,
 		queries:                  cfg.Queries,
 		usage:                    cfg.Usage,
 		feedback:                 cfg.Feedback,

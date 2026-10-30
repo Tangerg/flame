@@ -86,13 +86,13 @@ func TestStartAndTerminalPublishRunAndSessionChanges(t *testing.T) {
 	sessions := &fakeRunSessions{sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work")})}
 	control := &fakeExecutionPorts{startRef: ExecutorRef{SessionID: "ses_1", ExecutorID: "turn_1"}}
 	invalidations := &invalidationRecorder{}
-	c := mustNewCoordinator(Dependencies{
+	c := mustNewTestCoordinator(testDeps{
 		RootStarts:    control,
 		Observations:  exec,
 		Releases:      control,
 		Conversation:  emptyConversationReader{},
 		Session:       testSessionPorts(sessions),
-		Projection:    testProjectionPorts(effects),
+		Projection:    effects,
 		Now:           func() time.Time { return time.Date(2026, 7, 29, 1, 2, 3, 0, time.UTC) },
 		NewRunID:      func() string { return "run_new" },
 		NewSegmentID:  func() string { return "seg_new" },
@@ -140,13 +140,13 @@ func TestPlanSnapshotStaysOnOwningRunStream(t *testing.T) {
 	invalidations := &invalidationRecorder{}
 	control := &fakeExecutionPorts{startRef: ExecutorRef{SessionID: "ses_1", ExecutorID: "turn_1"}}
 	sessions := &fakeRunSessions{sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work")})}
-	c := mustNewCoordinator(Dependencies{
+	c := mustNewTestCoordinator(testDeps{
 		RootStarts:    control,
 		Observations:  exec,
 		Releases:      control,
 		Conversation:  emptyConversationReader{},
 		Session:       testSessionPorts(sessions),
-		Projection:    testProjectionPorts(&fakeEffects{}),
+		Projection:    &fakeEffects{},
 		Now:           func() time.Time { return time.Date(2026, 7, 29, 1, 2, 3, 0, time.UTC) },
 		NewRunID:      func() string { return "run_new" },
 		NewSegmentID:  func() string { return "seg_new" },

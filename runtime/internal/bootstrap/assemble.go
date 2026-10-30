@@ -226,10 +226,25 @@ func buildAssemblyCore(
 		return nil, fmt.Errorf("runtime: construct Run finalizer: %w", err)
 	}
 	workspaceNotifier := segment.NewWorkspaceNotifier(fileChanges.publish)
+	runSegmentDependencies := runs.SegmentDependencies{
+		Observations: execution.executor,
+		Releases:     execution.executor,
+		Publication: runs.PublicationPorts{
+			Openings: runSegmentEffects, Events: runSegmentEffects, Barriers: runSegmentEffects, Workspace: workspaceNotifier,
+		},
+		ChildStarts:   runSegmentEffects,
+		Finalizer:     runFinalizer,
+		Runs:          cfg.stores.Runs,
+		Admissions:    admissionGate,
+		Now:           time.Now,
+		Retention:     runs.DefaultRetention(),
+		NewRunID:      newRunID,
+		NewSegmentID:  newSegmentID,
+		Invalidations: policy.invalidations.publish,
+	}
 	runDependencies := runs.Dependencies{
 		CommandAcceptances:                 cfg.stores.CommandAcceptances,
 		RootStarts:                         execution.executor,
-		Observations:                       execution.executor,
 		Releases:                           execution.executor,
 		RootCancellation:                   execution.executor,
 		Conversation:                       execution.conversation.messages,
@@ -250,35 +265,22 @@ func buildAssemblyCore(
 			Interrupts:   sessionCoordinator,
 			Terminations: sessionCoordinator,
 		},
-		Projection: runs.ProjectionPorts{
-			Openings:                    runSegmentEffects,
-			ChildStarts:                 runSegmentEffects,
-			Checkpoints:                 runSegmentEffects,
-			Events:                      runSegmentEffects,
-			Barriers:                    runSegmentEffects,
-			WaitingSubtreeCancellations: runSegmentEffects,
-			Workspace:                   workspaceNotifier,
-			Finalizer:                   runFinalizer,
-		},
-		Runs:          cfg.stores.Runs,
-		Items:         cfg.stores.Transcript,
-		Admissions:    admissionGate,
-		Now:           time.Now,
-		Retention:     runs.DefaultRetention(),
-		NewRunID:      newRunID,
-		NewSegmentID:  newSegmentID,
-		Invalidations: policy.invalidations.publish,
+		Checkpoints:                 runSegmentEffects,
+		WaitingSubtreeCancellations: runSegmentEffects,
+		Runs:                        cfg.stores.Runs,
+		Items:                       cfg.stores.Transcript,
+		Admissions:                  admissionGate,
 	}
 	// Set only when present so a nil *Isolator never reaches the coordinator as a
 	// non-nil interface (which would defeat its own nil check).
 	if execution.isolation != nil {
 		runDependencies.Isolation = execution.isolation
 	}
-	runCoordinator, err := runs.NewCoordinator(runDependencies)
+	runCoordinator, runSegments, err := composeRuns(runDependencies, runSegmentDependencies)
 	if err != nil {
-		return nil, fmt.Errorf("runtime: construct Run coordinator: %w", err)
+		return nil, err
 	}
-	lifetime.runCoordinator = runCoordinator
+	lifetime.runSegments = runSegments
 
 	toolCoordinator, err := workspace.NewDiagnosticTools(execution.toolRegistry, workspaceServices.scope)
 	if err != nil {
@@ -479,6 +481,7 @@ func buildAssemblyCore(
 				ModelEndpoints:         modelEndpoints,
 				Tools:                  toolCoordinator,
 				Runs:                   runCoordinator,
+				RunStreams:             runSegments,
 				FileChanges:            fileChanges.observe,
 				Invalidations:          policy.invalidations.observe,
 				Queries:                queries,
@@ -524,4 +527,20 @@ func sessionResourceCleanups(checkpoints *workspaceadapter.Checkpoints, isolatio
 		cleanups = append(cleanups, sessions.Cleanup{Resource: "sandbox", Retire: isolation.Discard})
 	}
 	return cleanups
+}
+
+// composeRuns builds the segment supervisor every Run segment opens on and the
+// run use cases that open them; the use cases share its identity allocation and
+// publication ordering.
+func composeRuns(deps runs.Dependencies, segmentDeps runs.SegmentDependencies) (*runs.Coordinator, *runs.Segments, error) {
+	segments, err := runs.NewSegments(segmentDeps)
+	if err != nil {
+		return nil, nil, fmt.Errorf("runtime: construct Run segments: %w", err)
+	}
+	deps.Segments = segments
+	coordinator, err := runs.NewCoordinator(deps)
+	if err != nil {
+		return nil, nil, fmt.Errorf("runtime: construct Run coordinator: %w", err)
+	}
+	return coordinator, segments, nil
 }

@@ -88,6 +88,9 @@ type runUseCases interface {
 	Resume(ctx context.Context, cmd runs.ResumeCommand) (runs.StartResult, error)
 	Start(ctx context.Context, cmd runs.StartCommand) (runs.StartResult, error)
 	Steer(ctx context.Context, cmd runs.SteerCommand) (string, error)
+}
+
+type runStreamUseCases interface {
 	Subscribe(ctx context.Context, req runs.SubscribeRequest) (runs.Subscription, error)
 	SubscribeSnapshot(ctx context.Context, req runs.SubscribeRequest, read func(context.Context, string) error) (runs.Subscription, error)
 	// ReplayRetention is what discovery publishes. Reading it from the enforcer is

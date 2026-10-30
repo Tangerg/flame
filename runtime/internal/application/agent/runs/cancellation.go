@@ -230,7 +230,7 @@ func (c *Coordinator) cancelWaitingChild(
 	transformation, err := prepareWaitingCancellationTransformation(
 		plan,
 		cmd.Reason,
-		c.publications.nowUTC(),
+		c.segments.publications.nowUTC(),
 		prepared,
 	)
 	if err != nil {
@@ -312,7 +312,7 @@ func (c *Coordinator) waitingChildCancellationContinuation(
 			ctx,
 			plan.root.run.SessionID(),
 			plan.root.run.ID(),
-			c.publications.nowUTC(),
+			c.segments.publications.nowUTC(),
 		)
 		if lostErr != nil {
 			return ExecutionContinuation{}, errors.Join(
@@ -371,9 +371,9 @@ func (c *Coordinator) resumeAfterWaitingChildCancellation(
 	change waitingSubtreeChange,
 	runAdmission *ownership.RunAdmission,
 ) (CancelResult, error) {
-	segmentID := c.newSegmentID()
+	segmentID := c.segments.newSegmentID()
 	var committed WaitingSubtreeCancellationResult
-	events, err := c.openSegment(ctx, segmentSpec{
+	events, err := c.segments.openSegment(ctx, segmentSpec{
 		RunID:        plan.root.run.ID(),
 		SegmentID:    segmentID,
 		SessionID:    plan.root.run.SessionID(),
@@ -477,7 +477,7 @@ func (c *Coordinator) failCommittedWaitingCancellationRecovery(
 		ctx,
 		plan.root.run.SessionID(),
 		plan.root.run.ID(),
-		c.publications.nowUTC(),
+		c.segments.publications.nowUTC(),
 	); err != nil {
 		return errors.Join(
 			fmt.Errorf(
@@ -556,7 +556,7 @@ func (c *Coordinator) publishWaitingChildCancellation(
 		}
 	}
 	appendRunID(plan.root.run.ID())
-	c.publications.publishWaitingSubtreeCanceled(
+	c.segments.publications.publishWaitingSubtreeCanceled(
 		plan.root.run.SessionID(),
 		plan.root.run.ID(),
 		affected,
@@ -660,7 +660,7 @@ func (c *Coordinator) cancelKnownParkedRun(
 }
 
 func (c *Coordinator) cancelClaimedParkedRun(ctx context.Context, cmd CancelCommand, ref ExecutorRef) (CancelResult, error) {
-	terminal, err := c.terminations.ApplyRunCancel(ctx, ref.SessionID, cmd.RunID, cmd.Reason, c.publications.nowUTC())
+	terminal, err := c.terminations.ApplyRunCancel(ctx, ref.SessionID, cmd.RunID, cmd.Reason, c.segments.publications.nowUTC())
 	if err != nil {
 		return CancelResult{}, err
 	}

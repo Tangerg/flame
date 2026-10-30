@@ -51,12 +51,12 @@ func TestSnapshotSubscriptionHandsOffBeforeItemAndRootCompletion(t *testing.T) {
 	effects := &snapshotEffects{committed: make(chan struct{}, 1)}
 	coordinator := testCoordinator(executor, effects)
 	spec := testSegment()
-	coordinator.runs = &fakeRunProjection{runs: map[string]run.Run{spec.RunID: runForSegment(spec)}}
-	if _, err := coordinator.openSegment(ctx, spec); err != nil {
+	useRunProjection(coordinator, &fakeRunProjection{runs: map[string]run.Run{spec.RunID: runForSegment(spec)}})
+	if _, err := coordinator.segments.openSegment(ctx, spec); err != nil {
 		t.Fatal(err)
 	}
 	snapshotRead := false
-	attached, err := coordinator.SubscribeSnapshot(ctx, SubscribeRequest{RunID: spec.RunID, SegmentID: spec.SegmentID}, func(_ context.Context, sessionID string) error {
+	attached, err := coordinator.segments.SubscribeSnapshot(ctx, SubscribeRequest{RunID: spec.RunID, SegmentID: spec.SegmentID}, func(_ context.Context, sessionID string) error {
 		if sessionID != spec.SessionID {
 			t.Fatalf("snapshot session = %s", sessionID)
 		}
@@ -93,10 +93,10 @@ func TestSnapshotSubscriptionHandsOffBeforeItemAndRootCompletion(t *testing.T) {
 func TestSnapshotSubscriptionReadFailureReleasesPublication(t *testing.T) {
 	coordinator, hub := liveCoordinator(t, runRecord(run.Running, testSegmentID, ""))
 	failure := errors.New("snapshot unavailable")
-	if _, err := coordinator.SubscribeSnapshot(t.Context(), SubscribeRequest{RunID: testRunID, SegmentID: testSegmentID}, func(context.Context, string) error { return failure }); !errors.Is(err, failure) {
+	if _, err := coordinator.segments.SubscribeSnapshot(t.Context(), SubscribeRequest{RunID: testRunID, SegmentID: testSegmentID}, func(context.Context, string) error { return failure }); !errors.Is(err, failure) {
 		t.Fatalf("read error = %v", err)
 	}
-	attached, err := coordinator.SubscribeSnapshot(t.Context(), SubscribeRequest{RunID: testRunID, SegmentID: testSegmentID}, func(context.Context, string) error { return nil })
+	attached, err := coordinator.segments.SubscribeSnapshot(t.Context(), SubscribeRequest{RunID: testRunID, SegmentID: testSegmentID}, func(context.Context, string) error { return nil })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,15 +122,15 @@ func TestSnapshotSubscriptionIncludesChildOpeningAndCompletion(t *testing.T) {
 		{Member: root, Payload: SegmentEnded{Ending: run.Completed{}}},
 	}}, publish: make(chan struct{}), attempted: make(chan struct{})}
 	coordinator := testCoordinator(executor, &fakeEffects{})
-	coordinator.newRunID = func() string { return "run_child" }
-	coordinator.newSegmentID = func() string { return "seg_child" }
+	coordinator.segments.newRunID = func() string { return "run_child" }
+	coordinator.segments.newSegmentID = func() string { return "seg_child" }
 	spec := testSegment()
 	spec.Capabilities = run.Capabilities{ChildRuns: true}
-	coordinator.runs = &fakeRunProjection{runs: map[string]run.Run{spec.RunID: runForSegment(spec)}}
-	if _, err := coordinator.openSegment(ctx, spec); err != nil {
+	useRunProjection(coordinator, &fakeRunProjection{runs: map[string]run.Run{spec.RunID: runForSegment(spec)}})
+	if _, err := coordinator.segments.openSegment(ctx, spec); err != nil {
 		t.Fatal(err)
 	}
-	attached, err := coordinator.SubscribeSnapshot(ctx, SubscribeRequest{RunID: spec.RunID, SegmentID: spec.SegmentID, CallerCapabilities: spec.Capabilities}, func(context.Context, string) error {
+	attached, err := coordinator.segments.SubscribeSnapshot(ctx, SubscribeRequest{RunID: spec.RunID, SegmentID: spec.SegmentID, CallerCapabilities: spec.Capabilities}, func(context.Context, string) error {
 		close(executor.publish)
 		<-executor.attempted
 		return nil
@@ -152,7 +152,7 @@ func TestSnapshotSubscriptionWaitsForCommittedOpeningPublication(t *testing.T) {
 	effects := &fakeEffects{}
 	coordinator := testCoordinator(executor, effects)
 	spec := testSegment()
-	coordinator.runs = &racingRunProjection{value: runForSegment(spec)}
+	useRunProjection(coordinator, &racingRunProjection{value: runForSegment(spec)})
 	committed, release := make(chan struct{}), make(chan struct{})
 	spec.CommitOpening = func(ctx context.Context, opening OpeningCommit) error {
 		if err := effects.CommitOpening(ctx, opening); err != nil {
@@ -167,11 +167,11 @@ func TestSnapshotSubscriptionWaitsForCommittedOpeningPublication(t *testing.T) {
 		}
 	}
 	opened := make(chan error, 1)
-	go func() { _, err := coordinator.openSegment(ctx, spec); opened <- err }()
+	go func() { _, err := coordinator.segments.openSegment(ctx, spec); opened <- err }()
 	<-committed
 	attached := make(chan error, 1)
 	go func() {
-		_, err := coordinator.SubscribeSnapshot(ctx, SubscribeRequest{RunID: spec.RunID, SegmentID: spec.SegmentID}, func(context.Context, string) error { return nil })
+		_, err := coordinator.segments.SubscribeSnapshot(ctx, SubscribeRequest{RunID: spec.RunID, SegmentID: spec.SegmentID}, func(context.Context, string) error { return nil })
 		attached <- err
 	}()
 	var earlyErr error
@@ -189,8 +189,8 @@ func TestSnapshotSubscriptionWaitsForCommittedOpeningPublication(t *testing.T) {
 		earlyErr = <-attached
 	}
 	cancel()
-	coordinator.BeginShutdown()
-	if err := coordinator.AwaitShutdown(t.Context()); err != nil {
+	coordinator.segments.BeginShutdown()
+	if err := coordinator.segments.AwaitShutdown(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	if earlyErr != nil {

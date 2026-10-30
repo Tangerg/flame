@@ -20,7 +20,7 @@ type runPublications struct {
 }
 
 func newRunPublications(
-	projection ProjectionPorts,
+	projection PublicationPorts,
 	invalidations invalidation.Publish,
 	now func() time.Time,
 ) runPublications {

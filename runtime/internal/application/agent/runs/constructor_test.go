@@ -20,8 +20,11 @@ func TestNewCoordinatorRejectsMalformedDependencies(t *testing.T) {
 	}{
 		{name: "empty", deps: Dependencies{}, want: "root execution starter"},
 		{name: "typed nil", deps: Dependencies{RootStarts: typedNilStarter}, want: "root execution starter"},
-		{name: "invalid retention", deps: completeTestDependencies(Dependencies{Retention: Retention{MaxEvents: -1, MaxBytes: 1}}), want: "retention budgets"},
-		{name: "missing clock", deps: func() Dependencies { deps := completeTestDependencies(Dependencies{}); deps.Now = nil; return deps }(), want: "clock"},
+		{name: "missing segments", deps: func() Dependencies {
+			deps := completeTestDependencies(Dependencies{}, SegmentDependencies{})
+			deps.Segments = nil
+			return deps
+		}(), want: "segment supervisor"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -29,6 +32,32 @@ func TestNewCoordinatorRejectsMalformedDependencies(t *testing.T) {
 				t.Fatalf("NewCoordinator error = %v, want %q", err, test.want)
 			}
 		})
+	}
+}
+
+func TestNewSegmentsRejectsMissingClockAndInvalidRetention(t *testing.T) {
+	complete := func(change func(*SegmentDependencies)) SegmentDependencies {
+		effects := &fakeEffects{}
+		deps := SegmentDependencies{
+			Observations: &fakeExecutor{}, Releases: &fakeExecutionPorts{},
+			Publication: PublicationPorts{Openings: effects, Events: effects, Barriers: effects, Workspace: effects},
+			ChildStarts: effects, Finalizer: effects, Runs: &fakeRunProjection{}, Admissions: testsupport.NewAdmissionGate(),
+			Now: time.Now, Retention: DefaultRetention(),
+			NewRunID: func() string { return "run" }, NewSegmentID: func() string { return "segment" },
+		}
+		change(&deps)
+		return deps
+	}
+	if _, err := NewSegments(complete(func(*SegmentDependencies) {})); err != nil {
+		t.Fatalf("NewSegments(complete) = %v", err)
+	}
+	for name, change := range map[string]func(*SegmentDependencies){
+		"clock":     func(deps *SegmentDependencies) { deps.Now = nil },
+		"retention": func(deps *SegmentDependencies) { deps.Retention = Retention{MaxEvents: -1, MaxBytes: 1} },
+	} {
+		if _, err := NewSegments(complete(change)); err == nil || !strings.Contains(err.Error(), name) {
+			t.Errorf("NewSegments without %s = %v", name, err)
+		}
 	}
 }
 
@@ -49,26 +78,26 @@ func (acceptAllModelInputs) AdmitSelection(context.Context, modelchoice.Selectio
 // production constructor remains strict; tests opt into explicit inert doubles
 // instead of manufacturing partially valid Coordinators.
 func mustNewCoordinator(deps Dependencies) *Coordinator {
-	coordinator, err := NewCoordinator(completeTestDependencies(deps))
+	return mustNewCoordinatorWithSegments(deps, SegmentDependencies{})
+}
+
+// mustNewCoordinatorWithSegments also fixes the segment supervisor's
+// collaborators; defaults are shared with the use cases' own.
+func mustNewCoordinatorWithSegments(deps Dependencies, seg SegmentDependencies) *Coordinator {
+	coordinator, err := NewCoordinator(completeTestDependencies(deps, seg))
 	if err != nil {
 		panic(err)
 	}
 	return coordinator
 }
 
-func completeTestDependencies(deps Dependencies) Dependencies {
+func completeTestDependencies(deps Dependencies, seg SegmentDependencies) Dependencies {
 	control := &fakeExecutionPorts{}
 	observer := &fakeExecutor{}
 	sessions := &fakeRunSessions{}
 	effects := &fakeEffects{}
 	if deps.RootStarts == nil {
 		deps.RootStarts = control
-	}
-	if deps.Retention == (Retention{}) {
-		deps.Retention = DefaultRetention()
-	}
-	if deps.Observations == nil {
-		deps.Observations = observer
 	}
 	if deps.Releases == nil {
 		deps.Releases = control
@@ -121,29 +150,11 @@ func completeTestDependencies(deps Dependencies) Dependencies {
 	if deps.Session.Terminations == nil {
 		deps.Session.Terminations = sessions
 	}
-	if deps.Projection.Openings == nil {
-		deps.Projection.Openings = effects
+	if deps.Checkpoints == nil {
+		deps.Checkpoints = effects
 	}
-	if deps.Projection.ChildStarts == nil {
-		deps.Projection.ChildStarts = effects
-	}
-	if deps.Projection.Events == nil {
-		deps.Projection.Events = effects
-	}
-	if deps.Projection.Barriers == nil {
-		deps.Projection.Barriers = effects
-	}
-	if deps.Projection.Checkpoints == nil {
-		deps.Projection.Checkpoints = effects
-	}
-	if deps.Projection.WaitingSubtreeCancellations == nil {
-		deps.Projection.WaitingSubtreeCancellations = effects
-	}
-	if deps.Projection.Workspace == nil {
-		deps.Projection.Workspace = effects
-	}
-	if deps.Projection.Finalizer == nil {
-		deps.Projection.Finalizer = effects
+	if deps.WaitingSubtreeCancellations == nil {
+		deps.WaitingSubtreeCancellations = effects
 	}
 	if deps.CommandAcceptances == nil {
 		deps.CommandAcceptances = noCommandAcceptances{}
@@ -157,14 +168,54 @@ func completeTestDependencies(deps Dependencies) Dependencies {
 	if deps.Admissions == nil {
 		deps.Admissions = testsupport.NewAdmissionGate()
 	}
-	if deps.NewRunID == nil {
-		deps.NewRunID = func() string { return "run_test" }
-	}
-	if deps.NewSegmentID == nil {
-		deps.NewSegmentID = func() string { return "segment_test" }
-	}
-	if deps.Now == nil {
-		deps.Now = func() time.Time { return time.Unix(1, 0).UTC() }
+	if deps.Segments == nil {
+		if seg.Observations == nil {
+			seg.Observations = observer
+		}
+		if seg.Releases == nil {
+			seg.Releases = deps.Releases
+		}
+		if seg.Publication.Openings == nil {
+			seg.Publication.Openings = effects
+		}
+		if seg.Publication.Events == nil {
+			seg.Publication.Events = effects
+		}
+		if seg.Publication.Barriers == nil {
+			seg.Publication.Barriers = effects
+		}
+		if seg.Publication.Workspace == nil {
+			seg.Publication.Workspace = effects
+		}
+		if seg.ChildStarts == nil {
+			seg.ChildStarts = effects
+		}
+		if seg.Finalizer == nil {
+			seg.Finalizer = effects
+		}
+		if seg.Runs == nil {
+			seg.Runs = deps.Runs
+		}
+		if seg.Admissions == nil {
+			seg.Admissions = deps.Admissions
+		}
+		if seg.Now == nil {
+			seg.Now = func() time.Time { return time.Unix(1, 0).UTC() }
+		}
+		if seg.Retention == (Retention{}) {
+			seg.Retention = DefaultRetention()
+		}
+		if seg.NewRunID == nil {
+			seg.NewRunID = func() string { return "run_test" }
+		}
+		if seg.NewSegmentID == nil {
+			seg.NewSegmentID = func() string { return "segment_test" }
+		}
+		segments, err := NewSegments(seg)
+		if err != nil {
+			panic(err)
+		}
+		deps.Segments = segments
 	}
 	return deps
 }

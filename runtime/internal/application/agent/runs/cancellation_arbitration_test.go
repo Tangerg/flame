@@ -277,7 +277,7 @@ func TestWaitingChildCancellationAndResumeHaveOneApplicationOwner(t *testing.T) 
 			"segment_a_resumed",
 			"segment_b_resumed",
 		}
-		coordinator.newSegmentID = func() string {
+		coordinator.segments.newSegmentID = func() string {
 			if len(segmentIDs) == 0 {
 				return "unexpected_extra_segment"
 			}

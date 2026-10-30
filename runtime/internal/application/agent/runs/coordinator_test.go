@@ -15,6 +15,7 @@ import (
 	"time"
 
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
+	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -537,17 +538,33 @@ type completeTestProjectionPorts interface {
 	SegmentFinalizer
 }
 
-func testProjectionPorts(ports completeTestProjectionPorts) ProjectionPorts {
-	return ProjectionPorts{
-		Openings:                    ports,
-		ChildStarts:                 ports,
-		Events:                      ports,
-		Barriers:                    ports,
-		Checkpoints:                 ports,
-		WaitingSubtreeCancellations: ports,
-		Workspace:                   ports,
-		Finalizer:                   ports,
+// testDeps fixes one collaborator set for a Coordinator and its segment
+// supervisor, so a test names a fake once wherever both consume it.
+type testDeps struct {
+	Dependencies
+	Observations  ExecutionObserver
+	Projection    completeTestProjectionPorts
+	Now           func() time.Time
+	Invalidations invalidation.Publish
+	Retention     Retention
+	NewRunID      func() string
+	NewSegmentID  func() string
+}
+
+func mustNewTestCoordinator(d testDeps) *Coordinator {
+	deps := d.Dependencies
+	seg := SegmentDependencies{Observations: d.Observations, Now: d.Now, Invalidations: d.Invalidations, Retention: d.Retention, NewRunID: d.NewRunID, NewSegmentID: d.NewSegmentID}
+	if d.Projection != nil {
+		seg.Publication = PublicationPorts{Openings: d.Projection, Events: d.Projection, Barriers: d.Projection, Workspace: d.Projection}
+		seg.ChildStarts, seg.Finalizer = d.Projection, d.Projection
+		if deps.Checkpoints == nil {
+			deps.Checkpoints = d.Projection
+		}
+		if deps.WaitingSubtreeCancellations == nil {
+			deps.WaitingSubtreeCancellations = d.Projection
+		}
 	}
+	return mustNewCoordinatorWithSegments(deps, seg)
 }
 
 func (f *fakeEffects) ReadWaitingCheckpoint(
@@ -734,10 +751,10 @@ func testCoordinator(executor interface {
 	ExecutionObserver
 	ExecutionReleaser
 }, effects completeTestProjectionPorts) *Coordinator {
-	return mustNewCoordinator(Dependencies{
+	return mustNewTestCoordinator(testDeps{
 		Observations: executor,
 		Releases:     executor,
-		Projection:   testProjectionPorts(effects),
+		Projection:   effects,
 		Admissions:   testsupport.NewAdmissionGate(),
 		Now: func() time.Time {
 			return time.Date(2026, 7, 13, 1, 2, 3, 0, time.UTC)
@@ -782,7 +799,7 @@ func TestResumedExecutorRouteRetainsGoalLeaseForTerminalAccounting(t *testing.T)
 	spec.Continuation = continuation
 	spec.GoalIncarnationID = facts.goalIncarnationID
 
-	routes, err := testCoordinator(&fakeExecutor{}, &fakeEffects{}).resumedExecutorRoutes(spec, nil)
+	routes, err := testCoordinator(&fakeExecutor{}, &fakeEffects{}).segments.resumedExecutorRoutes(spec, nil)
 	if err != nil {
 		t.Fatalf("resumedExecutorRoutes: %v", err)
 	}
@@ -806,12 +823,12 @@ func TestResumedExecutorRoutesBindLiveTopologyWithoutPersistingIt(t *testing.T) 
 
 	coordinator := testCoordinator(&fakeExecutor{}, &fakeEffects{})
 	segmentIDs := []string{"segment_grandchild", "segment_a", "segment_b"}
-	coordinator.newSegmentID = func() string {
+	coordinator.segments.newSegmentID = func() string {
 		segmentID := segmentIDs[0]
 		segmentIDs = segmentIDs[1:]
 		return segmentID
 	}
-	routes, err := coordinator.resumedExecutorRoutes(spec, nil)
+	routes, err := coordinator.segments.resumedExecutorRoutes(spec, nil)
 	if err != nil {
 		t.Fatalf("resumedExecutorRoutes: %v", err)
 	}
@@ -869,11 +886,11 @@ func TestCoordinatorRejectsUncommittedOpening(t *testing.T) {
 	effects := &fakeEffects{openingErr: run.ErrSessionBusy}
 	coordinator := testCoordinator(executor, effects)
 
-	events, err := coordinator.openSegment(context.Background(), testSegment())
+	events, err := coordinator.segments.openSegment(context.Background(), testSegment())
 	if !errors.Is(err, run.ErrSessionBusy) {
 		t.Fatalf("openSegment error = %v, want run.ErrSessionBusy", err)
 	}
-	if _, ok := coordinator.registry.Get("run_1"); events != nil || ok {
+	if _, ok := coordinator.segments.registry.Get("run_1"); events != nil || ok {
 		t.Fatal("an uncommitted opening became visible")
 	}
 	if executor.releases() != 1 {
@@ -890,7 +907,7 @@ func TestCoordinatorPreservesUnadmittedExecutorReleaseFailure(t *testing.T) {
 	openingErr := errors.New("opening commit failed")
 	coordinator := testCoordinator(executor, &fakeEffects{openingErr: openingErr})
 
-	_, err := coordinator.openSegment(t.Context(), testSegment())
+	_, err := coordinator.segments.openSegment(t.Context(), testSegment())
 	if !errors.Is(err, openingErr) || !errors.Is(err, cleanupErr) {
 		t.Fatalf("openSegment error = %v, want opening and cleanup failures", err)
 	}
@@ -911,7 +928,7 @@ func TestCoordinatorCommitsCanonicalOpeningAndTerminal(t *testing.T) {
 	conversationInput := corechat.NewUserMessage(corechat.NewTextPart("question"))
 	spec.ConversationInput = &conversationInput
 
-	stream, err := coordinator.openSegment(context.Background(), spec)
+	stream, err := coordinator.segments.openSegment(context.Background(), spec)
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -963,7 +980,7 @@ func TestRunProjectionDefectEndsOnlyItsOwnRun(t *testing.T) {
 	conversationInput := corechat.NewUserMessage(corechat.NewTextPart("question"))
 	spec.ConversationInput = &conversationInput
 
-	stream, err := coordinator.openSegment(t.Context(), spec)
+	stream, err := coordinator.segments.openSegment(t.Context(), spec)
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -992,7 +1009,7 @@ func TestRunProjectionDefectInTheFailurePathStillReleasesItsSubscribers(t *testi
 	effects := &fakeEffects{commitAlwaysPanics: "projection invariant broken"}
 	coordinator := testCoordinator(executor, effects)
 
-	stream, err := coordinator.openSegment(t.Context(), testAdmittedSegment(t, coordinator, testSegment()))
+	stream, err := coordinator.segments.openSegment(t.Context(), testAdmittedSegment(t, coordinator, testSegment()))
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -1015,7 +1032,7 @@ func TestCoordinatorHoldsSessionAdmissionThroughTerminalMaintenance(t *testing.T
 	effects := &fakeEffects{finishStarted: started, finishRelease: release}
 	coordinator := testCoordinator(executor, effects)
 
-	stream, err := coordinator.openSegment(t.Context(), testAdmittedSegment(t, coordinator, testSegment()))
+	stream, err := coordinator.segments.openSegment(t.Context(), testAdmittedSegment(t, coordinator, testSegment()))
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -1042,7 +1059,7 @@ func TestCoordinatorHoldsSessionAdmissionThroughTerminalMaintenance(t *testing.T
 	case <-time.After(time.Second):
 		t.Fatal("terminal maintenance did not start")
 	}
-	if _, ok := coordinator.registry.Get("run_1"); !ok {
+	if _, ok := coordinator.segments.registry.Get("run_1"); !ok {
 		t.Fatal("terminal maintenance removed the run's cancellation join identity")
 	}
 	if !hasActiveSession(coordinator, "ses_1") {
@@ -1089,7 +1106,7 @@ func TestCoordinatorCommitsExecutorStartFailureInCanonicalOrder(t *testing.T) {
 	effects := &fakeEffects{}
 	coordinator := testCoordinator(executor, effects)
 
-	stream, err := coordinator.openSegment(context.Background(), testSegment())
+	stream, err := coordinator.segments.openSegment(context.Background(), testSegment())
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -1134,7 +1151,7 @@ func TestCoordinatorResumeCommitsBeforeActivation(t *testing.T) {
 		return nil
 	}
 
-	stream, err := coordinator.openSegment(context.Background(), spec)
+	stream, err := coordinator.segments.openSegment(context.Background(), spec)
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -1170,7 +1187,7 @@ func TestCoordinatorResumesCompleteRunTreeInOneCanonicalOpening(t *testing.T) {
 	effects := &fakeEffects{}
 	coordinator := testCoordinator(executor, effects)
 	childSegmentIDs := []string{"seg_grandchild", "seg_a", "seg_b"}
-	coordinator.newSegmentID = func() string {
+	coordinator.segments.newSegmentID = func() string {
 		next := childSegmentIDs[0]
 		childSegmentIDs = childSegmentIDs[1:]
 		return next
@@ -1180,7 +1197,7 @@ func TestCoordinatorResumesCompleteRunTreeInOneCanonicalOpening(t *testing.T) {
 	pending := resumedTreePending(spec.CreatedAt)
 	spec.Continuation = mustTreeContinuation(t, pending)
 
-	stream, err := coordinator.openSegment(t.Context(), spec)
+	stream, err := coordinator.segments.openSegment(t.Context(), spec)
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -1290,7 +1307,7 @@ func TestCoordinatorActivationFailureBecomesErrorTerminal(t *testing.T) {
 	spec.DetachActivation = true
 	spec.BeginExecution = func(context.Context) error { return errors.New("resume failed") }
 
-	stream, err := coordinator.openSegment(context.Background(), spec)
+	stream, err := coordinator.segments.openSegment(context.Background(), spec)
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -1309,7 +1326,7 @@ func TestCoordinatorTreeActivationFailureTerminalizesInCanonicalPostorder(t *tes
 	effects := &fakeEffects{}
 	coordinator := testCoordinator(executor, effects)
 	childSegmentIDs := []string{"seg_grandchild", "seg_a", "seg_b"}
-	coordinator.newSegmentID = func() string {
+	coordinator.segments.newSegmentID = func() string {
 		next := childSegmentIDs[0]
 		childSegmentIDs = childSegmentIDs[1:]
 		return next
@@ -1320,7 +1337,7 @@ func TestCoordinatorTreeActivationFailureTerminalizesInCanonicalPostorder(t *tes
 	spec.Continuation = mustTreeContinuation(t, pending)
 	spec.BeginExecution = func(context.Context) error { return errors.New("resume failed") }
 
-	stream, err := coordinator.openSegment(t.Context(), spec)
+	stream, err := coordinator.segments.openSegment(t.Context(), spec)
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -1351,7 +1368,7 @@ func TestCoordinatorMalformedTreeBarrierAbortsExecutorAndTerminalizes(t *testing
 	effects := &fakeEffects{}
 	coordinator := testCoordinator(executor, effects)
 
-	stream, err := coordinator.openSegment(t.Context(), testSegment())
+	stream, err := coordinator.segments.openSegment(t.Context(), testSegment())
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -1383,7 +1400,7 @@ func TestCoordinatorProtocolViolationAbortsExecutorAndTerminalizes(t *testing.T)
 			effects := &fakeEffects{}
 			coordinator := testCoordinator(executor, effects)
 
-			stream, err := coordinator.openSegment(t.Context(), testSegment())
+			stream, err := coordinator.segments.openSegment(t.Context(), testSegment())
 			if err != nil {
 				t.Fatalf("openSegment: %v", err)
 			}
@@ -1420,7 +1437,7 @@ func TestCoordinatorRejectsUnadmittedChildSource(t *testing.T) {
 	effects := &fakeEffects{}
 	coordinator := testCoordinator(executor, effects)
 
-	stream, err := coordinator.openSegment(t.Context(), testSegment())
+	stream, err := coordinator.segments.openSegment(t.Context(), testSegment())
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -1465,11 +1482,11 @@ func TestCoordinatorAtomicallyAdmitsChildRunFromSpawningItem(t *testing.T) {
 	}}
 	effects := &fakeEffects{}
 	coordinator := testCoordinator(executor, effects)
-	coordinator.publications.now = func() time.Time { return startedAt.UTC() }
-	coordinator.newRunID = func() string { return "run_child" }
-	coordinator.newSegmentID = func() string { return "seg_child" }
+	coordinator.segments.publications.now = func() time.Time { return startedAt.UTC() }
+	coordinator.segments.newRunID = func() string { return "run_child" }
+	coordinator.segments.newSegmentID = func() string { return "seg_child" }
 
-	stream, err := coordinator.openSegment(t.Context(), testSegment())
+	stream, err := coordinator.segments.openSegment(t.Context(), testSegment())
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -1536,13 +1553,13 @@ func TestCoordinatorPublishesNativeChildWithExecutionTree(t *testing.T) {
 	}
 	effects := &fakeEffects{}
 	coordinator := testCoordinator(executor, effects)
-	coordinator.publications.now = func() time.Time { return startedAt.UTC() }
-	coordinator.newRunID = func() string { return "run_child" }
-	coordinator.newSegmentID = func() string { return "segment_child" }
+	coordinator.segments.publications.now = func() time.Time { return startedAt.UTC() }
+	coordinator.segments.newRunID = func() string { return "run_child" }
+	coordinator.segments.newSegmentID = func() string { return "segment_child" }
 	spec := testSegment()
 	spec.Capabilities = run.Capabilities{ChildRuns: true}
 
-	stream, err := coordinator.openSegment(t.Context(), spec)
+	stream, err := coordinator.segments.openSegment(t.Context(), spec)
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -1694,14 +1711,14 @@ func TestCoordinatorPublishesChildSegmentOnItsOwnRunIdentity(t *testing.T) {
 	}}
 	effects := &fakeEffects{}
 	coordinator := testCoordinator(executor, effects)
-	coordinator.newRunID = func() string { return "run_child" }
-	coordinator.newSegmentID = func() string { return "seg_child" }
+	coordinator.segments.newRunID = func() string { return "run_child" }
+	coordinator.segments.newSegmentID = func() string { return "seg_child" }
 	spec := testSegment()
 	spec.Capabilities = run.Capabilities{
 		ChildRuns: true,
 	}
 
-	stream, err := coordinator.openSegment(t.Context(), spec)
+	stream, err := coordinator.segments.openSegment(t.Context(), spec)
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -1771,18 +1788,18 @@ func TestCoordinatorKeepsConcurrentSiblingSegmentsIsolated(t *testing.T) {
 	coordinator := testCoordinator(executor, effects)
 	runIDs := []string{"run_child_a", "run_child_b"}
 	segmentIDs := []string{"seg_child_a", "seg_child_b"}
-	coordinator.newRunID = func() string {
+	coordinator.segments.newRunID = func() string {
 		id := runIDs[0]
 		runIDs = runIDs[1:]
 		return id
 	}
-	coordinator.newSegmentID = func() string {
+	coordinator.segments.newSegmentID = func() string {
 		id := segmentIDs[0]
 		segmentIDs = segmentIDs[1:]
 		return id
 	}
 
-	stream, err := coordinator.openSegment(t.Context(), testSegment())
+	stream, err := coordinator.segments.openSegment(t.Context(), testSegment())
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -1896,18 +1913,18 @@ func TestCoordinatorProjectsNestedChildrenWithExactLineageAndPostorderTerminal(t
 	coordinator := testCoordinator(executor, effects)
 	runIDs := []string{"run_child", "run_grandchild"}
 	segmentIDs := []string{"seg_child", "seg_grandchild"}
-	coordinator.newRunID = func() string {
+	coordinator.segments.newRunID = func() string {
 		id := runIDs[0]
 		runIDs = runIDs[1:]
 		return id
 	}
-	coordinator.newSegmentID = func() string {
+	coordinator.segments.newSegmentID = func() string {
 		id := segmentIDs[0]
 		segmentIDs = segmentIDs[1:]
 		return id
 	}
 
-	stream, err := coordinator.openSegment(t.Context(), testSegment())
+	stream, err := coordinator.segments.openSegment(t.Context(), testSegment())
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -1927,7 +1944,7 @@ func TestCoordinatorProjectsNestedChildrenWithExactLineageAndPostorderTerminal(t
 		if err != nil {
 			t.Fatalf("event[%d] cursor: %v", index, err)
 		}
-		if position.epoch != coordinator.epoch ||
+		if position.epoch != coordinator.segments.epoch ||
 			position.runID != testRunID ||
 			position.segmentID != testSegmentID ||
 			position.sequence != wantSequence {
@@ -2001,18 +2018,18 @@ func TestCoordinatorDrainedStreamClosesNestedChildrenBeforeAncestors(t *testing.
 	coordinator := testCoordinator(executor, effects)
 	runIDs := []string{"run_child", "run_grandchild"}
 	segmentIDs := []string{"seg_child", "seg_grandchild"}
-	coordinator.newRunID = func() string {
+	coordinator.segments.newRunID = func() string {
 		id := runIDs[0]
 		runIDs = runIDs[1:]
 		return id
 	}
-	coordinator.newSegmentID = func() string {
+	coordinator.segments.newSegmentID = func() string {
 		id := segmentIDs[0]
 		segmentIDs = segmentIDs[1:]
 		return id
 	}
 
-	stream, err := coordinator.openSegment(t.Context(), testSegment())
+	stream, err := coordinator.segments.openSegment(t.Context(), testSegment())
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -2074,10 +2091,10 @@ func TestRootBoundaryClosesAnUnreportedChildBeforeItself(t *testing.T) {
 	}}
 	effects := &fakeEffects{}
 	coordinator := testCoordinator(executor, effects)
-	coordinator.newRunID = func() string { return "run_child" }
-	coordinator.newSegmentID = func() string { return "seg_child" }
+	coordinator.segments.newRunID = func() string { return "run_child" }
+	coordinator.segments.newSegmentID = func() string { return "seg_child" }
 
-	stream, err := coordinator.openSegment(t.Context(), testSegment())
+	stream, err := coordinator.segments.openSegment(t.Context(), testSegment())
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -2137,10 +2154,10 @@ func TestCoordinatorRecoversFromChildTerminalCommitFailureBeforeClosingRoot(t *t
 	// close the root.
 	effects := &fakeEffects{commitErr: commitErr, commitErrAt: 2}
 	coordinator := testCoordinator(executor, effects)
-	coordinator.newRunID = func() string { return "run_child" }
-	coordinator.newSegmentID = func() string { return "seg_child" }
+	coordinator.segments.newRunID = func() string { return "run_child" }
+	coordinator.segments.newSegmentID = func() string { return "seg_child" }
 
-	stream, err := coordinator.openSegment(t.Context(), testSegment())
+	stream, err := coordinator.segments.openSegment(t.Context(), testSegment())
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -2202,10 +2219,10 @@ func TestCoordinatorRejectsChildWhenAtomicOpeningFails(t *testing.T) {
 	}}
 	effects := &fakeEffects{openingErr: commitErr, openingErrAt: 2}
 	coordinator := testCoordinator(executor, effects)
-	coordinator.newRunID = func() string { return "run_child" }
-	coordinator.newSegmentID = func() string { return "seg_child" }
+	coordinator.segments.newRunID = func() string { return "run_child" }
+	coordinator.segments.newSegmentID = func() string { return "seg_child" }
 
-	stream, err := coordinator.openSegment(t.Context(), testSegment())
+	stream, err := coordinator.segments.openSegment(t.Context(), testSegment())
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -2262,18 +2279,18 @@ func TestCoordinatorClosesAdmittedSiblingWhenNextOpeningRollsBack(t *testing.T) 
 	coordinator := testCoordinator(executor, effects)
 	runIDs := []string{"run_child_a", "run_child_b"}
 	segmentIDs := []string{"seg_child_a", "seg_child_b"}
-	coordinator.newRunID = func() string {
+	coordinator.segments.newRunID = func() string {
 		id := runIDs[0]
 		runIDs = runIDs[1:]
 		return id
 	}
-	coordinator.newSegmentID = func() string {
+	coordinator.segments.newSegmentID = func() string {
 		id := segmentIDs[0]
 		segmentIDs = segmentIDs[1:]
 		return id
 	}
 
-	stream, err := coordinator.openSegment(t.Context(), testSegment())
+	stream, err := coordinator.segments.openSegment(t.Context(), testSegment())
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -2334,10 +2351,10 @@ func TestCoordinatorAcknowledgesChildOnlyAfterOpeningCommit(t *testing.T) {
 		release:     releaseCommit,
 	}
 	coordinator := testCoordinator(executor, effects)
-	coordinator.newRunID = func() string { return "run_child" }
-	coordinator.newSegmentID = func() string { return "seg_child" }
+	coordinator.segments.newRunID = func() string { return "run_child" }
+	coordinator.segments.newSegmentID = func() string { return "seg_child" }
 
-	stream, err := coordinator.openSegment(t.Context(), testSegment())
+	stream, err := coordinator.segments.openSegment(t.Context(), testSegment())
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -2513,12 +2530,12 @@ func TestCoordinatorCommitsCompleteTreeBarrierInDeterministicPostorder(t *testin
 	coordinator := testCoordinator(executor, effects)
 	runIDs := []string{"run_child_a", "run_child_b", "run_grandchild"}
 	segmentIDs := []string{"seg_child_a", "seg_child_b", "seg_grandchild"}
-	coordinator.newRunID = func() string {
+	coordinator.segments.newRunID = func() string {
 		id := runIDs[0]
 		runIDs = runIDs[1:]
 		return id
 	}
-	coordinator.newSegmentID = func() string {
+	coordinator.segments.newSegmentID = func() string {
 		id := segmentIDs[0]
 		segmentIDs = segmentIDs[1:]
 		return id
@@ -2529,7 +2546,7 @@ func TestCoordinatorCommitsCompleteTreeBarrierInDeterministicPostorder(t *testin
 		ChildRuns:      true,
 		InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
 	}
-	stream, err := coordinator.openSegment(t.Context(), spec)
+	stream, err := coordinator.segments.openSegment(t.Context(), spec)
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -2580,7 +2597,7 @@ func TestCoordinatorPersistsExactApprovalCallIdentityInTreeBarrier(t *testing.T)
 	spec := testSegment()
 	spec.Capabilities = run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptApproval}}
 
-	stream, err := coordinator.openSegment(t.Context(), spec)
+	stream, err := coordinator.segments.openSegment(t.Context(), spec)
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -2617,7 +2634,7 @@ func TestCoordinatorTreeBarrierCommitFailurePublishesNoInterruptedFact(t *testin
 	}
 	coordinator := testCoordinator(executor, effects)
 
-	stream, err := coordinator.openSegment(t.Context(), testSegment())
+	stream, err := coordinator.segments.openSegment(t.Context(), testSegment())
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -2650,7 +2667,7 @@ func TestCoordinatorCommitsSyntheticTerminalBeforeRelease(t *testing.T) {
 	}
 	effects := &fakeEffects{}
 	coordinator := testCoordinator(executor, effects)
-	stream, err := coordinator.openSegment(t.Context(), testSegment())
+	stream, err := coordinator.segments.openSegment(t.Context(), testSegment())
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -2672,7 +2689,7 @@ func TestCoordinatorOpeningPublicationFailureReclaimsCommittedRun(t *testing.T) 
 	effects := &fakeEffects{}
 	coordinator := testCoordinator(executor, effects)
 	spec := testSegment()
-	startup, err := coordinator.prepareSegmentStartup(t.Context(), spec)
+	startup, err := coordinator.segments.prepareSegmentStartup(t.Context(), spec)
 	if err != nil {
 		t.Fatalf("prepare Segment: %v", err)
 	}
@@ -2686,7 +2703,7 @@ func TestCoordinatorOpeningPublicationFailureReclaimsCommittedRun(t *testing.T) 
 	case <-time.After(time.Second):
 		t.Fatal("opening publication failure left the Segment task running")
 	}
-	if _, live := coordinator.registry.Get(spec.RunID); live {
+	if _, live := coordinator.segments.registry.Get(spec.RunID); live {
 		t.Fatal("opening publication failure left the Run registered as live")
 	}
 	if !effects.terminalized(spec.SessionID, spec.RunID) {
@@ -2707,7 +2724,7 @@ func TestCoordinatorCommitFailureNeverPublishesUnbackedFact(t *testing.T) {
 	effects := &fakeEffects{commitErr: errors.New("store down")}
 	coordinator := testCoordinator(executor, effects)
 
-	stream, err := coordinator.openSegment(context.Background(), testSegment())
+	stream, err := coordinator.segments.openSegment(context.Background(), testSegment())
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -2729,11 +2746,11 @@ func TestCoordinatorStartExecutorError(t *testing.T) {
 	executor := &fakeExecutor{startErr: errors.New("boom")}
 	coordinator := testCoordinator(executor, &fakeEffects{})
 
-	_, err := coordinator.openSegment(context.Background(), testSegment())
+	_, err := coordinator.segments.openSegment(context.Background(), testSegment())
 	if err == nil {
 		t.Fatal("openSegment must surface the executor error")
 	}
-	if _, ok := coordinator.registry.Get("run_1"); executor.releases() != 1 || ok {
+	if _, ok := coordinator.segments.registry.Get("run_1"); executor.releases() != 1 || ok {
 		t.Fatal("failed executor start was not torn down")
 	}
 }
@@ -2744,7 +2761,7 @@ func TestCoordinatorPreservesSubscriptionAndCleanupFailures(t *testing.T) {
 	executor := &fakeExecutor{startErr: startErr, releaseErr: cleanupErr}
 	coordinator := testCoordinator(executor, &fakeEffects{})
 
-	_, err := coordinator.openSegment(t.Context(), testSegment())
+	_, err := coordinator.segments.openSegment(t.Context(), testSegment())
 	if !errors.Is(err, startErr) || !errors.Is(err, cleanupErr) {
 		t.Fatalf("openSegment error = %v, want subscription and cleanup failures", err)
 	}
@@ -2754,7 +2771,7 @@ func TestCoordinatorCloseCancelsAndJoins(t *testing.T) {
 	executor := &fakeExecutor{block: true}
 	effects := &fakeEffects{rejectCanceled: true}
 	coordinator := testCoordinator(executor, effects)
-	stream, err := coordinator.openSegment(context.Background(), testSegment())
+	stream, err := coordinator.segments.openSegment(context.Background(), testSegment())
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -2783,7 +2800,7 @@ func TestCoordinatorStartAfterClose(t *testing.T) {
 	coordinator := testCoordinator(executor, &fakeEffects{})
 	requireCoordinatorShutdown(t, coordinator)
 
-	_, err := coordinator.openSegment(context.Background(), testSegment())
+	_, err := coordinator.segments.openSegment(context.Background(), testSegment())
 	if !errors.Is(err, errClosed) {
 		t.Fatalf("openSegment error = %v, want ErrClosed", err)
 	}
@@ -2798,7 +2815,7 @@ func TestCoordinatorStartAfterClosePreservesCleanupFailure(t *testing.T) {
 	coordinator := testCoordinator(executor, &fakeEffects{})
 	requireCoordinatorShutdown(t, coordinator)
 
-	_, err := coordinator.openSegment(t.Context(), testSegment())
+	_, err := coordinator.segments.openSegment(t.Context(), testSegment())
 	if !errors.Is(err, errClosed) || !errors.Is(err, cleanupErr) {
 		t.Fatalf("openSegment error = %v, want ErrClosed and cleanup failure", err)
 	}
@@ -2816,11 +2833,11 @@ func TestCoordinatorCancelContextSurvivesRequestContext(t *testing.T) {
 	coordinator.activeRuns = sessions
 	coordinator.interrupts = sessions
 	coordinator.terminations = sessions
-	coordinator.runs = &fakeRunProjection{runs: map[string]run.Run{
+	useRunProjection(coordinator, &fakeRunProjection{runs: map[string]run.Run{
 		"run_1": runForSegment(testSegment()),
-	}}
+	}})
 	requestContext, cancelRequest := context.WithCancel(context.Background())
-	stream, err := coordinator.openSegment(requestContext, testSegment())
+	stream, err := coordinator.segments.openSegment(requestContext, testSegment())
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -2878,7 +2895,7 @@ func TestRootBoundaryWaitsForEveryLiveChildBeforeItCommits(t *testing.T) {
 	effects := &fakeEffects{}
 	coordinator := testCoordinator(executor, effects)
 	childSegmentIDs := []string{"seg_grandchild", "seg_a", "seg_b"}
-	coordinator.newSegmentID = func() string {
+	coordinator.segments.newSegmentID = func() string {
 		next := childSegmentIDs[0]
 		childSegmentIDs = childSegmentIDs[1:]
 		return next
@@ -2888,7 +2905,7 @@ func TestRootBoundaryWaitsForEveryLiveChildBeforeItCommits(t *testing.T) {
 	pending := resumedTreePending(spec.CreatedAt)
 	spec.Continuation = mustTreeContinuation(t, pending)
 
-	stream, err := coordinator.openSegment(t.Context(), spec)
+	stream, err := coordinator.segments.openSegment(t.Context(), spec)
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -2935,4 +2952,10 @@ func (f *fakeEffects) CommitExecutionTree(ctx context.Context, tree ExecutionTre
 		}
 	}
 	return nil
+}
+
+// useRunProjection swaps the durable Run read for both the use cases and the
+// segment supervisor, which read the same projection.
+func useRunProjection(coordinator *Coordinator, projection Projection) {
+	coordinator.runs, coordinator.segments.runs = projection, projection
 }

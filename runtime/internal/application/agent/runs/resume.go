@@ -129,7 +129,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (StartResul
 			return StartResult{}, err
 		}
 	}
-	segmentID := c.newSegmentID()
+	segmentID := c.segments.newSegmentID()
 	var committedInput *CommittedUserInput
 	if len(cmd.Input) > 0 {
 		committedInput = &CommittedUserInput{
@@ -153,7 +153,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (StartResul
 	// One acceptance transaction consumes the open set, settles its answered Items,
 	// resumes the tree, and opens the continuation Segment. Executor activation is
 	// detached and owned by the accepted Run lifecycle.
-	events, err := c.openSegment(ctx, segmentSpec{
+	events, err := c.segments.openSegment(ctx, segmentSpec{
 		RunID:             cmd.RunID,
 		SegmentID:         segmentID,
 		SessionID:         sessionID,
@@ -182,7 +182,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (StartResul
 	// The standing rules committed inside the acceptance; their read model is
 	// invalidated only now that the transaction is durable.
 	if len(acceptance.RememberedRules()) > 0 {
-		c.publications.publishApprovalsChanged()
+		c.segments.publications.publishApprovalsChanged()
 	}
 	// The continuation is durably accepted, which consumed the whole open set: the
 	// run is running again and nothing in this session is waiting on a person.
@@ -190,9 +190,9 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (StartResul
 		if continuation.RunID == pending.RootRunID {
 			continue
 		}
-		c.publications.publishRunMoved(sessionID, continuation.RunID)
+		c.segments.publications.publishRunMoved(sessionID, continuation.RunID)
 	}
-	c.publications.publishWaitingMoved(sessionID, pending.RootRunID)
+	c.segments.publications.publishWaitingMoved(sessionID, pending.RootRunID)
 	result := StartResult{RunID: cmd.RunID, SegmentID: segmentID, SessionID: sessionID, Events: events}
 	if committedInput != nil {
 		// Named only when there is an item to name: the id is derived from the segment

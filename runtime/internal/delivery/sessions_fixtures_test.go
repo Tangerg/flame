@@ -378,10 +378,34 @@ func newTestHandler(rt testRuntime) *Handler {
 		panic(err)
 	}
 	workspaceNotifier := segment.NewWorkspaceNotifier(nil)
+	runSegments, err := runs.NewSegments(runs.SegmentDependencies{
+		Observations: rt,
+		Releases:     rt,
+		Publication: runs.PublicationPorts{
+			Openings:  projectionWriter,
+			Events:    projectionWriter,
+			Barriers:  projectionWriter,
+			Workspace: workspaceNotifier,
+		},
+		ChildStarts: projectionWriter,
+		Finalizer:   finalizer,
+		Runs:        nonNilRunProjection(runProjection),
+		Admissions:  admissions,
+		Now:         time.Now,
+		Retention:   runs.DefaultRetention(),
+		NewRunID: func() string {
+			return fmt.Sprintf("run_test_%d", ids.Add(1))
+		},
+		NewSegmentID: func() string {
+			return fmt.Sprintf("seg_test_%d", ids.Add(1))
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
 	runCoordinator, err := runs.NewCoordinator(runs.Dependencies{
 		RootStarts:                         rt,
 		CommandAcceptances:                 noDeliveryCommandAcceptances{},
-		Observations:                       rt,
 		Releases:                           rt,
 		RootCancellation:                   inertRunControl{},
 		Conversation:                       conversation,
@@ -395,32 +419,18 @@ func newTestHandler(rt testRuntime) *Handler {
 		RunningSubtreeCanceler:             rt,
 		WaitingSubtreeCancellationPreparer: rt,
 		Session:                            sessionPorts,
-		Projection: runs.ProjectionPorts{
-			Openings:                    projectionWriter,
-			ChildStarts:                 projectionWriter,
-			Checkpoints:                 projectionWriter,
-			Events:                      projectionWriter,
-			Barriers:                    projectionWriter,
-			WaitingSubtreeCancellations: projectionWriter,
-			Workspace:                   workspaceNotifier,
-			Finalizer:                   finalizer,
-		},
-		Runs:       nonNilRunProjection(runProjection),
-		Items:      itemProjectionFor(rt),
-		Admissions: admissions,
-		Now:        time.Now,
-		Retention:  runs.DefaultRetention(),
-		NewRunID: func() string {
-			return fmt.Sprintf("run_test_%d", ids.Add(1))
-		},
-		NewSegmentID: func() string {
-			return fmt.Sprintf("seg_test_%d", ids.Add(1))
-		},
+		Checkpoints:                        projectionWriter,
+		WaitingSubtreeCancellations:        projectionWriter,
+		Segments:                           runSegments,
+		Runs:                               nonNilRunProjection(runProjection),
+		Items:                              itemProjectionFor(rt),
+		Admissions:                         admissions,
 	})
 	if err != nil {
 		panic(err)
 	}
 	s.runs = runCoordinator
+	s.runStreams = runSegments
 	if p, ok := rt.(queriesCoordinatorProvider); ok {
 		s.queries = p.queriesCoordinator()
 	}

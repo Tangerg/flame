@@ -44,11 +44,11 @@ func TestInteractionExecutorRunsDelegateAsProductChildRun(t *testing.T) {
 	projection := newDelegateProjection(t, current, executor)
 	runIDs := []string{"run_root", "run_child"}
 	segmentIDs := []string{"segment_root", "segment_child"}
-	coordinator := mustNewRunCoordinator(t, runs.Dependencies{
+	coordinator := mustNewRunCoordinator(t, runTestDeps{
 		RootStarts: executor, Observations: executor, Releases: executor,
 		Conversation: projection.history,
 		Session:      runs.SessionPorts{Reader: projection.sessions, Creator: projection.sessions, ActiveRuns: projection.sessions},
-		Projection: runs.ProjectionPorts{
+		Projection: runTestProjection{
 			Openings: projection, ChildStarts: projection, Events: projection,
 			Barriers: projection, Checkpoints: projection, Workspace: projection, Finalizer: projection,
 		},
@@ -192,14 +192,14 @@ func TestInteractionExecutorCanceledDelegateWithUnknownModelOutcomeFailsRoot(t *
 			close(cancelAccepted)
 		},
 	}
-	coordinator := mustNewRunCoordinator(t, runs.Dependencies{
+	coordinator := mustNewRunCoordinator(t, runTestDeps{
 		RootStarts: executor, Observations: executor, Releases: executor,
 		Conversation: projection.history, RunningSubtreeCanceler: runningSubtreeCanceler,
 		Session: runs.SessionPorts{
 			Reader: projection.sessions, Creator: projection.sessions, ActiveRuns: projection.sessions,
 			Interrupts: projection.sessions, Terminations: projection.sessions,
 		},
-		Projection: runs.ProjectionPorts{
+		Projection: runTestProjection{
 			Openings: projection, ChildStarts: projection, Events: projection,
 			Barriers: projection, Checkpoints: projection, Workspace: projection, Finalizer: projection,
 		},
@@ -512,7 +512,7 @@ func runDelegateTree(
 
 type delegateTreeFixture struct {
 	executor    *InteractionExecutor
-	coordinator *runs.Coordinator
+	coordinator testRuns
 	projection  *delegateProjection
 	events      <-chan []runs.Event
 }
@@ -544,11 +544,11 @@ func startDelegateTreeWithCompactor(t *testing.T, model chat.Model, input string
 	projection := newDelegateProjection(t, current, executor)
 	var identityMu sync.Mutex
 	runSequence, segmentSequence := 0, 0
-	coordinator := mustNewRunCoordinator(t, runs.Dependencies{
+	coordinator := mustNewRunCoordinator(t, runTestDeps{
 		RootStarts: executor, Observations: executor, Releases: executor,
 		Conversation: projection.history,
 		Session:      runs.SessionPorts{Reader: projection.sessions, Creator: projection.sessions, ActiveRuns: projection.sessions},
-		Projection: runs.ProjectionPorts{
+		Projection: runTestProjection{
 			Openings: projection, ChildStarts: projection, Events: projection,
 			Barriers: projection, Checkpoints: projection, Workspace: projection, Finalizer: projection,
 		},

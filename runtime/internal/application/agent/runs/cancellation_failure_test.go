@@ -75,8 +75,8 @@ func TestLiveRootCancellationRetainsFailedSettlement(t *testing.T) {
 	coordinator.activeRuns = sessions
 	coordinator.interrupts = sessions
 	coordinator.terminations = sessions
-	coordinator.runs = &fakeRunProjection{runs: map[string]run.Run{"run_1": runForSegment(testSegment())}}
-	stream, err := coordinator.openSegment(t.Context(), testSegment())
+	useRunProjection(coordinator, &fakeRunProjection{runs: map[string]run.Run{"run_1": runForSegment(testSegment())}})
+	stream, err := coordinator.segments.openSegment(t.Context(), testSegment())
 	if err != nil {
 		t.Fatal(err)
 	}

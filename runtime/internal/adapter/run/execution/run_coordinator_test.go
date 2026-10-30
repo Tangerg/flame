@@ -44,9 +44,41 @@ func (acceptAllRunModelInputs) AdmitSelection(context.Context, modelchoice.Selec
 	return nil
 }
 
-func mustNewRunCoordinator(t *testing.T, deps runs.Dependencies) *runs.Coordinator {
+// runTestProjection names one projection fake per port; the Coordinator and
+// its segment supervisor each take the ports they consume.
+type runTestProjection struct {
+	Openings                    runs.OpeningCommitter
+	ChildStarts                 runs.ChildRunStartCommitter
+	Events                      runs.EventCommitter
+	Barriers                    runs.TreeBarrierCommitter
+	Checkpoints                 runs.WaitingCheckpointReader
+	WaitingSubtreeCancellations runs.WaitingSubtreeCancellationCommitter
+	Workspace                   runs.WorkspaceChangeNotifier
+	Finalizer                   runs.SegmentFinalizer
+}
+
+// runTestDeps fixes one collaborator set for the run use cases and the
+// segment supervisor they open segments on.
+type runTestDeps struct {
+	runs.Dependencies
+	Observations runs.ExecutionObserver
+	Projection   runTestProjection
+	Now          func() time.Time
+	Retention    runs.Retention
+	NewRunID     func() string
+	NewSegmentID func() string
+}
+
+// testRuns is one fixture over the run use cases and their supervisor.
+type testRuns struct {
+	*runs.Coordinator
+	*runs.Segments
+}
+
+func mustNewRunCoordinator(t *testing.T, d runTestDeps) testRuns {
 	t.Helper()
-	if projection, ok := deps.Projection.Openings.(*delegateProjection); ok {
+	deps := d.Dependencies
+	if projection, ok := d.Projection.Openings.(*delegateProjection); ok {
 		deps.CommandAcceptances = projection.stores.CommandAcceptances
 		deps.AcceptedContinuations = projection.stores.AcceptedContinuations
 		deps.Isolation = projection.isolation
@@ -78,41 +110,55 @@ func mustNewRunCoordinator(t *testing.T, deps runs.Dependencies) *runs.Coordinat
 	fillRunDependency(t, &deps.Session.ActiveRuns, sessions, "active run reader")
 	fillRunDependency(t, &deps.Session.Interrupts, sessions, "pending interrupt reader")
 	fillRunDependency(t, &deps.Session.Terminations, sessions, "run termination committer")
-	projection := any(deps.Projection.Openings)
-	fillRunDependency(t, &deps.Projection.ChildStarts, projection, "child run start committer")
-	fillRunDependency(t, &deps.Projection.Events, projection, "event committer")
-	fillRunDependency(t, &deps.Projection.Barriers, projection, "tree barrier committer")
-	fillRunDependency(t, &deps.Projection.Checkpoints, projection, "waiting checkpoint reader")
-	if deps.Projection.WaitingSubtreeCancellations == nil {
+	ports := d.Projection
+	projection := any(ports.Openings)
+	fillRunDependency(t, &ports.ChildStarts, projection, "child run start committer")
+	fillRunDependency(t, &ports.Events, projection, "event committer")
+	fillRunDependency(t, &ports.Barriers, projection, "tree barrier committer")
+	fillRunDependency(t, &ports.Checkpoints, projection, "waiting checkpoint reader")
+	if ports.WaitingSubtreeCancellations == nil {
 		if value, ok := projection.(runs.WaitingSubtreeCancellationCommitter); ok {
-			deps.Projection.WaitingSubtreeCancellations = value
+			ports.WaitingSubtreeCancellations = value
 		} else {
-			deps.Projection.WaitingSubtreeCancellations = inertRunProjection{}
+			ports.WaitingSubtreeCancellations = inertRunProjection{}
 		}
 	}
-	fillRunDependency(t, &deps.Projection.Workspace, projection, "workspace notifier")
-	fillRunDependency(t, &deps.Projection.Finalizer, projection, "segment finalizer")
+	fillRunDependency(t, &ports.Workspace, projection, "workspace notifier")
+	fillRunDependency(t, &ports.Finalizer, projection, "segment finalizer")
 	fillRunDependency(t, &deps.Runs, projection, "run projection")
 	fillRunDependency(t, &deps.Items, projection, "item projection")
-	if deps.Now == nil {
-		deps.Now = time.Now
+	deps.Checkpoints, deps.WaitingSubtreeCancellations = ports.Checkpoints, ports.WaitingSubtreeCancellations
+	now := d.Now
+	if now == nil {
+		now = time.Now
 	}
-	if deps.Retention == (runs.Retention{}) {
-		deps.Retention = runs.DefaultRetention()
+	retention := d.Retention
+	if retention == (runs.Retention{}) {
+		retention = runs.DefaultRetention()
 	}
+	segments, err := runs.NewSegments(runs.SegmentDependencies{
+		Observations: d.Observations, Releases: deps.Releases,
+		Publication: runs.PublicationPorts{Openings: ports.Openings, Events: ports.Events, Barriers: ports.Barriers, Workspace: ports.Workspace},
+		ChildStarts: ports.ChildStarts, Finalizer: ports.Finalizer, Runs: deps.Runs, Admissions: deps.Admissions,
+		Now: now, Retention: retention, NewRunID: d.NewRunID, NewSegmentID: d.NewSegmentID,
+	})
+	if err != nil {
+		t.Fatalf("construct Run segments: %v", err)
+	}
+	deps.Segments = segments
 	coordinator, err := runs.NewCoordinator(deps)
 	if err != nil {
 		t.Fatalf("construct Run coordinator: %v", err)
 	}
 	t.Cleanup(func() {
-		coordinator.BeginShutdown()
+		segments.BeginShutdown()
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		if err := coordinator.AwaitShutdown(ctx); err != nil {
+		if err := segments.AwaitShutdown(ctx); err != nil {
 			t.Error(err)
 		}
 	})
-	return coordinator
+	return testRuns{Coordinator: coordinator, Segments: segments}
 }
 
 func testDefaultSelection() modelchoice.Selection {

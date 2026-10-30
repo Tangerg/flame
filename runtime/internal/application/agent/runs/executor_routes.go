@@ -41,7 +41,7 @@ type executorRoutes struct {
 	admissionOrder []*executorRoute
 }
 
-func (c *Coordinator) openingRoutes(
+func (c *Segments) openingRoutes(
 	spec segmentSpec,
 	cancelReason func(string) string,
 ) (*executorRoutes, error) {
@@ -87,7 +87,7 @@ func (c *Coordinator) openingRoutes(
 	}, nil
 }
 
-func (c *Coordinator) resumedExecutorRoutes(
+func (c *Segments) resumedExecutorRoutes(
 	spec segmentSpec,
 	cancelReason func(string) string,
 ) (*executorRoutes, error) {
@@ -638,7 +638,7 @@ func (p *preparedChildStart) releaseBinding(owner *runTreeOwner) {
 // prepareChildStart allocates and binds one prospective child identity without
 // constructing a Run. The actual lifecycle starts only after Scope reports a
 // conclusive started outcome with its authoritative start time.
-func (c *Coordinator) prepareChildStart(
+func (c *Segments) prepareChildStart(
 	spec segmentSpec,
 	owner *runTreeOwner,
 	routes *executorRoutes,
@@ -710,7 +710,7 @@ func (c *Coordinator) prepareChildStart(
 
 // The Runtime admission clock owns the product Run time. The route remains
 // invisible until its opening and the executor tree commit together.
-func (c *Coordinator) finalizeChildOpening(
+func (c *Segments) finalizeChildOpening(
 	spec segmentSpec,
 	owner *runTreeOwner,
 	prepared *preparedChildStart,
@@ -771,7 +771,7 @@ func (c *Coordinator) finalizeChildOpening(
 	return nil
 }
 
-func (c *Coordinator) activatePreparedChild(
+func (c *Segments) activatePreparedChild(
 	spec segmentSpec,
 	routes *executorRoutes,
 	prepared *preparedChildStart,

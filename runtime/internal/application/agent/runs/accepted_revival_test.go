@@ -43,7 +43,7 @@ func TestAcceptedRevivalPreservesOwnershipAndInconclusiveFailures(t *testing.T) 
 			}
 			store := &acceptedRevivalStore{value: accepted}
 			coordinator.acceptedContinuations = store
-			coordinator.newSegmentID = func() string { t.Fatal("revival allocated a Segment"); return "" }
+			coordinator.segments.newSegmentID = func() string { t.Fatal("revival allocated a Segment"); return "" }
 			coordinator.runs.(*fakeRunProjection).runs["run_1"] = resumed.State()
 			items := coordinator.items.(*fakeItemProjection).items
 			acceptance, err := NewResumeAcceptance("ses_1", pending, items, []InterruptAnswer{{InterruptItemID: "item_1", MemberID: "member_1", RequestID: "request_1", Resolution: testsupport.ApprovalAnswer(t, approval.Resolution{Decision: approval.DecisionOf(true)})}})

@@ -150,9 +150,9 @@ func (c *Coordinator) readCancellationPlanSource(
 	var live liveSegment
 	var liveFound bool
 	if root.State() == rundomain.Running {
-		live, liveFound = c.registry.Running(rootRunID)
+		live, liveFound = c.segments.registry.Running(rootRunID)
 	} else {
-		live, liveFound = c.registry.Get(rootRunID)
+		live, liveFound = c.segments.registry.Get(rootRunID)
 	}
 	executor, memberIDsByRunID, err := c.resolveCancellationOwner(
 		ctx,

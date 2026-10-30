@@ -15,7 +15,7 @@ import (
 // pump starts the single goroutine that owns every mutable route and reducer in
 // this Segment. Event handling and cleanup are methods on one concrete object;
 // no state is shared with another worker.
-func (c *Coordinator) pump(
+func (c *Segments) pump(
 	ctx context.Context,
 	ownerCtx context.Context,
 	spec segmentSpec,
@@ -25,13 +25,13 @@ func (c *Coordinator) pump(
 	initialErr error,
 ) {
 	pump := &segmentPump{
-		coordinator: c,
-		ctx:         ctx,
-		ownerCtx:    ownerCtx,
-		spec:        spec,
-		events:      executorEvents,
-		owner:       owner,
-		routes:      routes,
+		segments: c,
+		ctx:      ctx,
+		ownerCtx: ownerCtx,
+		spec:     spec,
+		events:   executorEvents,
+		owner:    owner,
+		routes:   routes,
 	}
 	pump.publisher = treePublisher{publications: &c.publications, rootSpec: spec, owner: owner}
 	// The inner recovery turns a projection defect into this Run's failure; this
@@ -46,14 +46,14 @@ func (c *Coordinator) pump(
 // successful terminal or park is committed before publication; a projection
 // failure aborts execution rather than exposing an event without durable facts.
 type segmentPump struct {
-	coordinator *Coordinator
-	ctx         context.Context
-	ownerCtx    context.Context
-	spec        segmentSpec
-	events      iter.Seq[ExecutorEvent]
-	owner       *runTreeOwner
-	routes      *executorRoutes
-	publisher   treePublisher
+	segments  *Segments
+	ctx       context.Context
+	ownerCtx  context.Context
+	spec      segmentSpec
+	events    iter.Seq[ExecutorEvent]
+	owner     *runTreeOwner
+	routes    *executorRoutes
+	publisher treePublisher
 
 	childStarts map[string]*managedChildStart
 	// deferredRootTerminal is the root's own segment boundary, withheld until
@@ -165,11 +165,11 @@ func (s *segmentPump) handleChildRunReservation(
 		_ = request.complete(ChildRunBinding{}, errors.New("runs: active child Run limit reached"))
 		return true
 	}
-	prepared, err := s.coordinator.prepareChildStart(
+	prepared, err := s.segments.prepareChildStart(
 		s.spec, s.owner, s.routes, event.Member,
 	)
 	if err == nil {
-		err = s.coordinator.childStarts.ReserveChildRunStart(s.ownerCtx, prepared.reservation)
+		err = s.segments.childStarts.ReserveChildRunStart(s.ownerCtx, prepared.reservation)
 	}
 	if err != nil {
 		if prepared != nil {
@@ -197,7 +197,7 @@ func (s *segmentPump) abortPreparedChildStart(prepared *preparedChildStart) {
 	}
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(s.ownerCtx), runCleanupTimeout)
 	defer cancel()
-	recordRunCleanupError(ctx, s.coordinator.childStarts.AbortChildRunStart(ctx, prepared.reservation))
+	recordRunCleanupError(ctx, s.segments.childStarts.AbortChildRunStart(ctx, prepared.reservation))
 	prepared.releaseBinding(s.owner)
 }
 
@@ -236,7 +236,7 @@ func (s *segmentPump) handleAuthoritativeFact(member ExecutorMember, fact Execut
 		return err
 	}
 	if compacted, ok := fact.(CompactionBoundary); ok && compacted.Rewrite != nil {
-		current, err := s.coordinator.runs.ListRuns(s.ownerCtx, s.spec.SessionID)
+		current, err := s.segments.runs.ListRuns(s.ownerCtx, s.spec.SessionID)
 		if err != nil {
 			return err
 		}
@@ -274,7 +274,7 @@ func (s *segmentPump) handleTreeBarrier(event ExecutorEvent, barrier TreeInterru
 		s.ownerCtx,
 		s.routes,
 		barrier,
-		s.coordinator.publications.nowUTC(),
+		s.segments.publications.nowUTC(),
 	); err != nil {
 		s.fail(err)
 	}
@@ -514,7 +514,7 @@ func (s *segmentPump) synthesizeRoute(ctx context.Context, route *executorRoute)
 func (s *segmentPump) tearDownExecutor() {
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(s.ownerCtx), runCleanupTimeout)
 	defer cancel()
-	if err := s.coordinator.releases.Release(ctx, s.spec.executorRef()); err != nil && !errors.Is(err, ErrExecutorNotLive) {
+	if err := s.segments.releases.Release(ctx, s.spec.executorRef()); err != nil && !errors.Is(err, ErrExecutorNotLive) {
 		s.owner.completionErr = fmt.Errorf("runs: tear down executor %q: %w", s.spec.ExecutorID, err)
 		recordRunCleanupError(ctx, s.owner.completionErr)
 	}
@@ -526,7 +526,7 @@ func (s *segmentPump) tearDownExecutor() {
 // Run, and losing this boundary instead leaves a Session that can never admit
 // another Run and a stream no subscriber can leave.
 func (s *segmentPump) finishBoundary() {
-	defer s.coordinator.registry.RemoveSegment(s.spec.RunID, s.spec.SegmentID)
+	defer s.segments.registry.RemoveSegment(s.spec.RunID, s.spec.SegmentID)
 	defer s.closeJournal()
 	s.settleMaintenanceFence()
 }
@@ -545,11 +545,11 @@ func (s *segmentPump) closeJournal() {
 // the snapshot this one is taking, and gives that admission back before
 // returning.
 func (s *segmentPump) settleMaintenanceFence() {
-	releaseMaintenance, maintenanceHeld := s.coordinator.admission.BeginMaintenance(s.spec.RunID)
+	releaseMaintenance, maintenanceHeld := s.segments.admission.BeginMaintenance(s.spec.RunID)
 	if maintenanceHeld {
 		defer releaseMaintenance()
 	}
-	entry, tracked := s.coordinator.registry.Get(s.spec.RunID)
+	entry, tracked := s.segments.registry.Get(s.spec.RunID)
 	if tracked && !s.routes.root.boundary.parked() {
 		entry.owner.stop()
 	}
@@ -558,7 +558,7 @@ func (s *segmentPump) settleMaintenanceFence() {
 	}
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(s.ownerCtx), runCleanupTimeout)
 	defer cancel()
-	if err := s.coordinator.finalizer.Finish(ctx, Finish{
+	if err := s.segments.finalizer.Finish(ctx, Finish{
 		SessionID:       s.spec.SessionID,
 		RunID:           s.spec.RunID,
 		WorkspaceCWD:    s.spec.WorkspaceCWD,

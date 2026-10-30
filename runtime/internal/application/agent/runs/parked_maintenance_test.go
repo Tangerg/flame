@@ -24,14 +24,14 @@ func TestCancellationDuringParkedMaintenanceIsBusyUntilOwnerReleases(t *testing.
 	}}}
 	sessions := &fakeRunSessions{pending: make(map[string]Pending)}
 	projection := &fakeRunProjection{runs: make(map[string]run.Run)}
-	coordinator := mustNewCoordinator(Dependencies{
+	coordinator := mustNewTestCoordinator(testDeps{
 		Observations: executor, Releases: &fakeExecutionPorts{},
-		Projection: testProjectionPorts(effects), Session: testSessionPorts(sessions),
+		Projection: effects, Session: testSessionPorts(sessions),
 		Runs: projection, Admissions: testsupport.NewAdmissionGate(),
 	})
 	spec := testSegment()
 	spec.Capabilities = run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}
-	stream, err := coordinator.openSegment(t.Context(), testAdmittedSegment(t, coordinator, spec))
+	stream, err := coordinator.segments.openSegment(t.Context(), testAdmittedSegment(t, coordinator, spec))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +45,7 @@ func TestCancellationDuringParkedMaintenanceIsBusyUntilOwnerReleases(t *testing.
 		projection.runs[commit.Run.ID()] = *commit.Run
 	}
 	sessions.pending[spec.RunID] = barriers[0].Pending()
-	owner, found := coordinator.registry.Get(spec.RunID)
+	owner, found := coordinator.segments.registry.Get(spec.RunID)
 	if !found {
 		t.Fatal("maintenance lost its join owner")
 	}

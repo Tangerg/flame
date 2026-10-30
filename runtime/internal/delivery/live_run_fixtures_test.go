@@ -83,7 +83,7 @@ func startLiveRun(t *testing.T, s *Handler, cwd string) (runID, segmentID string
 		t.Fatalf("start live run: %v", err)
 	}
 	probeCtx, cancel := context.WithCancel(context.Background())
-	_, err = s.runs.Subscribe(probeCtx, runs.SubscribeRequest{
+	_, err = s.runStreams.Subscribe(probeCtx, runs.SubscribeRequest{
 		RunID: result.RunID, SegmentID: result.SegmentID,
 	})
 	cancel()

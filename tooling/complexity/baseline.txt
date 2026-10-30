@@ -123,7 +123,7 @@
 26 runtime/internal/application/agent/runs/commit.go:EventCommit.Validate
 24 runtime/internal/application/agent/runs/commit.go:ModelInvocationCommit.Validate
 24 runtime/internal/application/agent/runs/continuation_validation.go:validatePendingRunTree
-24 runtime/internal/application/agent/runs/coordinator.go:Coordinator.commitOpening
+24 runtime/internal/application/agent/runs/coordinator.go:Segments.commitOpening
 22 runtime/internal/application/agent/runs/execution_fact_commit.go:cloneExecutionFact
 21 runtime/internal/application/agent/runs/projection_event.go:ItemStart.validate
 51 runtime/internal/application/agent/runs/pump_execution_tree.go:segmentPump.commitExecutionTree

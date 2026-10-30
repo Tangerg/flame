@@ -94,7 +94,7 @@ func (c *Coordinator) ReviveUncertainExecutions(ctx context.Context, source Reco
 			}
 			handoff := &treeContinuation{recoveredTools: plan.Tools, rootRunID: root.ID(), runs: map[string]run.Run{root.ID(): root}, items: byID, continuations: []Continuation{{RunID: root.ID(), MemberID: checkpoint.RootMemberID, DrainedTools: continuation.Members[0].DrainedTools}}}
 			ref := ExecutorRef{SessionID: continuation.SessionID, ExecutorID: continuation.ExecutorID}
-			_, err = c.openSegment(ctx, segmentSpec{RunID: root.ID(), SegmentID: root.ActiveSegmentID(), SessionID: root.SessionID(), WorkspaceCWD: sess.Workspace().Path(), Isolated: sess.Isolated(), ExecutorID: ref.ExecutorID, Continuation: handoff, admission: &admission,
+			_, err = c.segments.openSegment(ctx, segmentSpec{RunID: root.ID(), SegmentID: root.ActiveSegmentID(), SessionID: root.SessionID(), WorkspaceCWD: sess.Workspace().Path(), Isolated: sess.Isolated(), ExecutorID: ref.ExecutorID, Continuation: handoff, admission: &admission,
 				StageExecution: func(ctx context.Context) error {
 					_, err := executor.StageUncertainExecution(ctx, continuation)
 					return err

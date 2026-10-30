@@ -52,20 +52,6 @@ type SegmentFinalizer interface {
 	Finish(ctx context.Context, fin Finish) error
 }
 
-// ProjectionPorts groups independently consumed Run projection ports only at
-// composition. Construction distributes them into the publication, waiting and
-// child-opening behavior owners; no runtime object retains this bundle.
-type ProjectionPorts struct {
-	Openings                    OpeningCommitter
-	ChildStarts                 ChildRunStartCommitter
-	Events                      EventCommitter
-	Barriers                    TreeBarrierCommitter
-	Checkpoints                 WaitingCheckpointReader
-	WaitingSubtreeCancellations WaitingSubtreeCancellationCommitter
-	Workspace                   WorkspaceChangeNotifier
-	Finalizer                   SegmentFinalizer
-}
-
 // Finish describes maintenance after a segment closes, including a parked Run.
 type Finish struct {
 	SessionID       string

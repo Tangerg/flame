@@ -27,7 +27,7 @@ func TestDirectoryLeaseOutlivesCloseTimeout(t *testing.T) {
 	joined := make(chan struct{})
 	lifetime := newRuntimeLifetime(t.Context(), []terminalResource{directory})
 	lifetime.shutdownWait = testShutdownWait(t, time.Millisecond)
-	lifetime.runCoordinator = shutdownFunc{wait: func(context.Context) error {
+	lifetime.runSegments = shutdownFunc{wait: func(context.Context) error {
 		<-unblock
 		close(joined)
 		return nil
@@ -80,7 +80,7 @@ func TestInstanceShutdownOwnsReverseOrderAndIsIdempotentAcrossCopies(t *testing.
 			shutdownWait:   defaultShutdownWaitPolicy(),
 			goalDriver:     shutdownFunc{stop: recordStop("goals"), wait: recordWait("goals")},
 			mcpCoordinator: shutdownFunc{stop: recordStop("mcp"), wait: recordWait("mcp")},
-			runCoordinator: shutdownFunc{stop: recordStop("active-runs"), wait: recordWait("active-runs")},
+			runSegments:    shutdownFunc{stop: recordStop("active-runs"), wait: recordWait("active-runs")},
 			executor:       shutdownFunc{stop: recordStop("active-execution-tree"), wait: recordWait("active-execution-tree")},
 			runEffectTasks: shutdownFunc{
 				drain: func(context.Context) error { return record("drain effects", nil)() },
@@ -185,7 +185,7 @@ func TestInstanceShutdownContinuesGraphAfterCallerTimeout(t *testing.T) {
 	host := Instance{lifetime: &runtimeLifetime{
 		context: t.Context(), delivery: testEndpoint(t),
 		shutdownWait: testShutdownWait(t, time.Millisecond),
-		runCoordinator: shutdownFunc{
+		runSegments: shutdownFunc{
 			wait: func(ctx context.Context) error {
 				select {
 				case <-releaseComponent:
@@ -226,7 +226,7 @@ func TestInstanceShutdownStartsNewGenerationAfterComponentError(t *testing.T) {
 	host := Instance{lifetime: &runtimeLifetime{
 		context: t.Context(), delivery: testEndpoint(t),
 		shutdownWait: defaultShutdownWaitPolicy(),
-		runCoordinator: shutdownFunc{
+		runSegments: shutdownFunc{
 			stop: func() { stops++ },
 			wait: func(context.Context) error {
 				attempts++

@@ -56,7 +56,7 @@ func TestUnknownEffectLossOutageReachesTheOperatorOnce(t *testing.T) {
 	slog.SetDefault(slog.New(captured))
 	t.Cleanup(func() { slog.SetDefault(previousLogger) })
 
-	stream, err := coordinator.openSegment(t.Context(), testSegment())
+	stream, err := coordinator.segments.openSegment(t.Context(), testSegment())
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}

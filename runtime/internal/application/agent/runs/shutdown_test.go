@@ -7,10 +7,10 @@ import (
 )
 
 func shutdownCoordinator(c *Coordinator) error {
-	c.BeginShutdown()
+	c.segments.BeginShutdown()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	return c.AwaitShutdown(ctx)
+	return c.segments.AwaitShutdown(ctx)
 }
 
 func requireCoordinatorShutdown(t testing.TB, c *Coordinator) {

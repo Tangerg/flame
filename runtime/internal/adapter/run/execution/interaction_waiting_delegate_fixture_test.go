@@ -19,7 +19,7 @@ import (
 type waitingDelegateFixture struct {
 	model        *waitingDelegateModel
 	executor     *InteractionExecutor
-	coordinator  *runs.Coordinator
+	coordinator  testRuns
 	projection   *delegateProjection
 	workspace    string
 	observations *recordingExecutionObserver
@@ -54,12 +54,12 @@ func newWaitingDelegateFixture(t *testing.T, identity string) *waitingDelegateFi
 	segmentIDs := []string{"segment_root", "segment_child", "segment_root_resumed", "segment_child_resumed"}
 	observations := newRecordingExecutionObserver(executor)
 	cancellation := &observingWaitingCancellationPreparer{source: executor}
-	coordinator := mustNewRunCoordinator(t, runs.Dependencies{
+	coordinator := mustNewRunCoordinator(t, runTestDeps{
 		RootStarts: executor, Observations: observations, Releases: executor,
 		WaitingSubtreeCancellationPreparer: cancellation,
 		Conversation:                       projection.history,
 		Session:                            runs.SessionPorts{Reader: projection.sessions, Creator: projection.sessions, ActiveRuns: projection.sessions},
-		Projection: runs.ProjectionPorts{
+		Projection: runTestProjection{
 			Openings: projection, ChildStarts: projection, Events: projection,
 			Barriers: projection, Checkpoints: projection, Workspace: projection, Finalizer: projection,
 		},

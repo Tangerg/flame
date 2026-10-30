@@ -48,17 +48,17 @@ func TestResumeRun_KeepsInterruptOpenWhenStartFails(t *testing.T) {
 		t.Fatalf("seed interrupt: %v", err)
 	}
 
-	// Stop the run coordinator so continuation admission fails before opening.
-	shutdown, ok := s.runs.(interface {
+	// Stop the segment supervisor so continuation admission fails before opening.
+	shutdown, ok := s.runStreams.(interface {
 		BeginShutdown()
 		AwaitShutdown(context.Context) error
 	})
 	if !ok {
-		t.Fatal("test run coordinator does not expose shutdown lifecycle")
+		t.Fatal("test run segments do not expose shutdown lifecycle")
 	}
 	shutdown.BeginShutdown()
 	if err := shutdown.AwaitShutdown(ctx); err != nil {
-		t.Fatalf("shutdown run coordinator: %v", err)
+		t.Fatalf("shutdown run segments: %v", err)
 	}
 
 	if _, _, err := s.ResumeRun(ctx, protocol.ResumeRunRequest{

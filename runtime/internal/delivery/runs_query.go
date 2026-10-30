@@ -223,13 +223,13 @@ func (s *Handler) SubscribeRun(ctx context.Context, in protocol.SubscribeRunRequ
 		if request.Cursor != "" {
 			return nil, nil, protocol.NewFailure(protocol.ErrInvalidParams, "snapshot subscription cannot replay a cursor")
 		}
-		attached, err = s.runs.SubscribeSnapshot(ctx, request, func(ctx context.Context, sessionID string) error {
+		attached, err = s.runStreams.SubscribeSnapshot(ctx, request, func(ctx context.Context, sessionID string) error {
 			var readErr error
 			snapshot, readErr = s.GetSessionSnapshot(ctx, protocol.GetSessionSnapshotRequest{SessionID: sessionID, IncludeDescendants: true})
 			return readErr
 		})
 	} else {
-		attached, err = s.runs.Subscribe(ctx, request)
+		attached, err = s.runStreams.Subscribe(ctx, request)
 	}
 
 	if err != nil {

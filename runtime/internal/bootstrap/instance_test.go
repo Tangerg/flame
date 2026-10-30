@@ -132,7 +132,7 @@ func TestInstanceCloseRetainsResourcesUntilComponentsJoin(t *testing.T) {
 	host := &Instance{lifetime: &runtimeLifetime{
 		context: t.Context(), delivery: testEndpoint(t),
 		shutdownWait: testShutdownWait(t, time.Millisecond),
-		runCoordinator: shutdownFunc{wait: func(ctx context.Context) error {
+		runSegments: shutdownFunc{wait: func(ctx context.Context) error {
 			select {
 			case <-releaseComponent:
 				return nil

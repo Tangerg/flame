@@ -336,15 +336,15 @@ func (m budgetStopCompleteModel) Stream(context.Context, *chat.Request) iter.Seq
 	}
 }
 
-func scopeTestCoordinator(t *testing.T, executor *InteractionExecutor) *runs.Coordinator {
+func scopeTestCoordinator(t *testing.T, executor *InteractionExecutor) testRuns {
 	t.Helper()
 	current := testsupport.MustRestoreSession(session.Snapshot{ID: "session_1", Title: "scope", Workspace: testsupport.MustWorkspace(t.TempDir())})
 	projection := newDelegateProjection(t, current, executor)
 	var id int
-	coordinator := mustNewRunCoordinator(t, runs.Dependencies{
+	coordinator := mustNewRunCoordinator(t, runTestDeps{
 		RootStarts: executor, Observations: executor, Releases: executor, RootCancellation: executor,
 		Conversation: projection.history, Session: runs.SessionPorts{Reader: projection.sessions, Creator: projection.sessions, ActiveRuns: projection.sessions},
-		Projection: runs.ProjectionPorts{Openings: projection, ChildStarts: projection, Events: projection, Barriers: projection, Checkpoints: projection, Workspace: projection, Finalizer: projection},
+		Projection: runTestProjection{Openings: projection, ChildStarts: projection, Events: projection, Barriers: projection, Checkpoints: projection, Workspace: projection, Finalizer: projection},
 		Admissions: projection.admissions, Now: time.Now,
 		NewRunID: func() string { id++; return fmt.Sprintf("run_%d", id) }, NewSegmentID: func() string { id++; return fmt.Sprintf("segment_%d", id) },
 	})

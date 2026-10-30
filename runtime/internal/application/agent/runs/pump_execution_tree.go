@@ -58,7 +58,7 @@ func (s *segmentPump) commitExecutionTree(tree ExecutionTreeSettled) error {
 		prepared := managed.prepared
 		if publication.Outcome == ChildRunStarted {
 			if prepared.route.reducer == nil {
-				if err := s.coordinator.finalizeChildOpening(s.spec, s.owner, prepared, s.coordinator.publications.nowUTC()); err != nil {
+				if err := s.segments.finalizeChildOpening(s.spec, s.owner, prepared, s.segments.publications.nowUTC()); err != nil {
 					return err
 				}
 			}
@@ -122,14 +122,14 @@ func (s *segmentPump) commitExecutionTree(tree ExecutionTreeSettled) error {
 		staged[route] = candidate
 		projections = append(projections, projection{route, candidate, batch})
 	}
-	if err := s.coordinator.publications.events.CommitExecutionTree(s.ownerCtx, commit); err != nil {
+	if err := s.segments.publications.events.CommitExecutionTree(s.ownerCtx, commit); err != nil {
 		return err
 	}
 	for _, managed := range children {
 		prepared := managed.prepared
 		if startedRoutes[prepared.member.MemberID] != nil {
 			managed.outcome = ChildRunStarted
-			s.coordinator.activatePreparedChild(s.spec, s.routes, prepared)
+			s.segments.activatePreparedChild(s.spec, s.routes, prepared)
 			for _, reduced := range prepared.batch.events {
 				if err := s.publisher.append(prepared.route, reduced); err != nil {
 					return err
@@ -146,9 +146,9 @@ func (s *segmentPump) commitExecutionTree(tree ExecutionTreeSettled) error {
 			if reduced.Commit != nil && reduced.Commit.State == StateTerminalize {
 				projected.route.boundary = boundaryFinished
 				s.owner.recordTerminalRun(*reduced.Commit.Run)
-				s.coordinator.publications.publishRunMoved(s.spec.SessionID, projected.route.runID)
+				s.segments.publications.publishRunMoved(s.spec.SessionID, projected.route.runID)
 				if reduced.Commit.ChargesGoal() {
-					s.coordinator.publications.publishGoalMoved(s.spec.SessionID)
+					s.segments.publications.publishGoalMoved(s.spec.SessionID)
 				}
 			}
 		}

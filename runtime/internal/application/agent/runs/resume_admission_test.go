@@ -39,7 +39,7 @@ func TestResumeRejectsAHandoffConsumedBeforeAdmission(t *testing.T) {
 	control := &fakeExecutionPorts{}
 	coordinator := newUseCaseCoordinator(&fakeExecutor{}, control, sessions, effects)
 	projection := coordinator.runs.(*fakeRunProjection)
-	coordinator.runs = &consumedBeforeAdmissionProjection{
+	useRunProjection(coordinator, &consumedBeforeAdmissionProjection{
 		Projection: projection,
 		consume: func() {
 			lease, acquired, err := coordinator.admission.AcquireRun(t.Context(), "ses_1", "/work")
@@ -64,7 +64,7 @@ func TestResumeRejectsAHandoffConsumedBeforeAdmission(t *testing.T) {
 			}
 			projection.runs["run_1"] = finished
 		},
-	}
+	})
 	_, err := coordinator.Resume(t.Context(), ResumeCommand{
 		RunID:              "run_1",
 		CallerCapabilities: run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}},

@@ -131,7 +131,7 @@ func TestAuthoritativeProjectionFailurePreservesStartUntilAtomicRunLost(t *testi
 	effects := &fakeEffects{commitErr: writeFailure, commitErrAt: 2}
 	coordinator := testCoordinator(executor, effects)
 
-	stream, err := coordinator.openSegment(t.Context(), testSegment())
+	stream, err := coordinator.segments.openSegment(t.Context(), testSegment())
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -205,11 +205,11 @@ func TestUnknownEffectsCloseUnfinishedTreeAsLostInPostorder(t *testing.T) {
 	effects := &fakeEffects{}
 	coordinator := testCoordinator(executor, effects)
 	var nextRun, nextSegment int
-	coordinator.newRunID = func() string { nextRun++; return fmt.Sprintf("run_child_%d", nextRun) }
-	coordinator.newSegmentID = func() string { nextSegment++; return fmt.Sprintf("seg_child_%d", nextSegment) }
+	coordinator.segments.newRunID = func() string { nextRun++; return fmt.Sprintf("run_child_%d", nextRun) }
+	coordinator.segments.newSegmentID = func() string { nextSegment++; return fmt.Sprintf("seg_child_%d", nextSegment) }
 	spec := testSegment()
 	spec.Capabilities.ChildRuns = true
-	stream, err := coordinator.openSegment(t.Context(), spec)
+	stream, err := coordinator.segments.openSegment(t.Context(), spec)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -273,7 +273,7 @@ func TestUnknownRunLostRetriesDurableTerminalBeforeExecutorRelease(t *testing.T)
 	}
 	coordinator := testCoordinator(executor, effects)
 
-	stream, err := coordinator.openSegment(t.Context(), testSegment())
+	stream, err := coordinator.segments.openSegment(t.Context(), testSegment())
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -312,7 +312,7 @@ func TestConcurrentToolResultsCommitInModelOrder(t *testing.T) {
 	effects := &fakeEffects{}
 	coordinator := testCoordinator(executor, effects)
 
-	stream, err := coordinator.openSegment(t.Context(), testSegment())
+	stream, err := coordinator.segments.openSegment(t.Context(), testSegment())
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -381,7 +381,7 @@ func TestConcurrentToolBatchFailurePublishesOnlyIncompleteRunLost(t *testing.T) 
 	effects := &fakeEffects{commitErr: writeFailure, commitErrAt: 3}
 	coordinator := testCoordinator(executor, effects)
 
-	stream, err := coordinator.openSegment(t.Context(), testSegment())
+	stream, err := coordinator.segments.openSegment(t.Context(), testSegment())
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -434,7 +434,7 @@ func TestTerminalTransactionFailurePreservesRunningToolsForAtomicRecovery(t *tes
 	effects := &fakeEffects{commitErr: writeFailure, commitErrAt: 3}
 	coordinator := testCoordinator(executor, effects)
 
-	stream, err := coordinator.openSegment(t.Context(), testSegment())
+	stream, err := coordinator.segments.openSegment(t.Context(), testSegment())
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}

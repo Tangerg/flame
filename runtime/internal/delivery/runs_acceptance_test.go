@@ -148,7 +148,7 @@ func TestUnrecordedSteerNominatesIdentityWithoutAcceptance(t *testing.T) {
 }
 
 type acceptedSubscriptionUseCases struct {
-	runUseCases
+	runStreamUseCases
 	calls int
 	err   error
 }
@@ -161,7 +161,7 @@ func (s *acceptedSubscriptionUseCases) Subscribe(context.Context, runs.Subscribe
 func TestAcceptedOpeningRetainsItsIdentityWhenReplayIsUnavailable(t *testing.T) {
 	for _, cause := range []error{runs.ErrReplayCursorInvalid, runs.ErrReplayUnavailable, runs.ErrStaleSegment, runs.ErrRunFinished} {
 		subscriber := &acceptedSubscriptionUseCases{err: cause}
-		handler := &Handler{runs: subscriber}
+		handler := &Handler{runStreams: subscriber}
 		events, err := handler.acceptedRunEvents(t.Context(), runs.StartResult{RunID: "run_1", SegmentID: "seg_original", Reopened: true})
 		if err != nil {
 			t.Fatal(err)
@@ -172,7 +172,7 @@ func TestAcceptedOpeningRetainsItsIdentityWhenReplayIsUnavailable(t *testing.T) 
 	}
 	defect := errors.New("subscription store unavailable")
 	subscriber := &acceptedSubscriptionUseCases{err: defect}
-	handler := &Handler{runs: subscriber}
+	handler := &Handler{runStreams: subscriber}
 	if _, err := handler.acceptedRunEvents(t.Context(), runs.StartResult{RunID: "run_1", SegmentID: "seg_original"}); !errors.Is(err, defect) {
 		t.Fatalf("observation defect was suppressed: %v", err)
 	}

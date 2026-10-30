@@ -310,7 +310,7 @@ func TestPublishWaitingChildCancellationInvalidatesExactReadSet(t *testing.T) {
 				t.Fatalf("prepare waiting cancellation: %v", err)
 			}
 			invalidations := &invalidationRecorder{}
-			coordinator := &Coordinator{publications: runPublications{invalidations: invalidations.publish}}
+			coordinator := &Coordinator{segments: &Segments{publications: runPublications{invalidations: invalidations.publish}}}
 
 			coordinator.publishWaitingChildCancellation(plan, transformation)
 
@@ -562,7 +562,7 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 	executor := &fakeExecutor{block: true}
 	coordinator, _ := waitingCancellationCoordinator(t, plan, prepared, effects, executor)
 	segmentIDs := []string{"seg_root_continuation", "seg_b_continuation"}
-	coordinator.newSegmentID = func() string {
+	coordinator.segments.newSegmentID = func() string {
 		if len(segmentIDs) == 0 {
 			t.Fatal("unexpected extra segment identity")
 		}
@@ -571,10 +571,10 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 		return next
 	}
 	t.Cleanup(func() {
-		coordinator.BeginShutdown()
+		coordinator.segments.BeginShutdown()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
-		if err := coordinator.AwaitShutdown(shutdownCtx); err != nil {
+		if err := coordinator.segments.AwaitShutdown(shutdownCtx); err != nil {
 			t.Errorf("await Coordinator shutdown: %v", err)
 		}
 	})
@@ -701,7 +701,7 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 	); err == nil {
 		t.Fatal("waiting cancellation accepted an execution observation in an opening event")
 	}
-	if _, live := coordinator.registry.Get(plan.root.run.ID()); !live {
+	if _, live := coordinator.segments.registry.Get(plan.root.run.ID()); !live {
 		t.Fatal("continued root has no live segment owner")
 	}
 }
@@ -733,7 +733,7 @@ func TestCancelWaitingChildTerminalizesCommittedTreeWhenActivationFails(t *testi
 		&fakeExecutor{block: true},
 	)
 	segmentIDs := []string{"seg_root_continuation", "seg_b_continuation"}
-	coordinator.newSegmentID = func() string {
+	coordinator.segments.newSegmentID = func() string {
 		if len(segmentIDs) == 0 {
 			t.Fatal("unexpected extra segment identity")
 		}
@@ -757,10 +757,10 @@ func TestCancelWaitingChildTerminalizesCommittedTreeWhenActivationFails(t *testi
 		t.Fatalf("Cancel result root = %+v, want exact committed continuation", result.RootRun)
 	}
 
-	coordinator.BeginShutdown()
+	coordinator.segments.BeginShutdown()
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	if err := coordinator.AwaitShutdown(shutdownCtx); err != nil {
+	if err := coordinator.segments.AwaitShutdown(shutdownCtx); err != nil {
 		t.Fatalf("await failed continuation cleanup: %v", err)
 	}
 	if prepared.applied != 1 ||
@@ -796,7 +796,7 @@ func TestCancelWaitingChildTerminalizesCommittedTreeWhenActivationFails(t *testi
 			t.Fatalf("failed continuation terminal = %+v, want internal error outcome", commit.Run)
 		}
 	}
-	if _, live := coordinator.registry.Get(plan.root.run.ID()); live {
+	if _, live := coordinator.segments.registry.Get(plan.root.run.ID()); live {
 		t.Fatal("failed continuation retained a live root owner")
 	}
 	if hasActiveSession(coordinator, plan.root.run.SessionID()) {
@@ -878,7 +878,7 @@ func waitingCancellationCoordinator(
 		pending: map[string]Pending{
 			plan.pending.RootRunID: plan.pending},
 	}
-	coordinator := mustNewCoordinator(Dependencies{
+	coordinator := mustNewTestCoordinator(testDeps{
 		Observations:                       executor,
 		Releases:                           control,
 		Continuation:                       control,
@@ -886,7 +886,7 @@ func waitingCancellationCoordinator(
 		RunningSubtreeCanceler:             control,
 		WaitingSubtreeCancellationPreparer: control,
 		Session:                            testSessionPorts(sessions),
-		Projection:                         testProjectionPorts(effects),
+		Projection:                         effects,
 		Runs:                               &fakeRunProjection{runs: runsByID},
 		Items:                              &fakeItemProjection{items: waitingCancellationItems(plan)},
 		Admissions:                         testsupport.NewAdmissionGate(),

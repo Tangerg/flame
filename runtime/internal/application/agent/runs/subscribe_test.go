@@ -80,12 +80,12 @@ func liveCoordinator(t *testing.T, record run.Run) (*Coordinator, *journal) {
 		Releases: &fakeExecutionPorts{},
 		Runs:     &fakeRunProjection{runs: map[string]run.Run{testRunID: record}},
 	})
-	hub := mustNewJournal(t, testStreamScope(c.epoch, testRunID, testSegmentID), c.retention)
+	hub := mustNewJournal(t, testStreamScope(c.segments.epoch, testRunID, testSegmentID), c.segments.retention)
 	owner := testRunTreeOwner(t, hub)
 	if _, err := owner.beginExecution(t.Context(), nil); err != nil {
 		t.Fatal(err)
 	}
-	c.registry.Open(Record{ID: testRunID, SegmentID: testSegmentID, ExecutorID: "turn_1"},
+	c.segments.registry.Open(Record{ID: testRunID, SegmentID: testSegmentID, ExecutorID: "turn_1"},
 		owner, func() error { return nil })
 	return c, hub
 }
@@ -120,7 +120,7 @@ func TestSubscribeRefusesWithTheReasonTheCallerCanActOn(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			c, _ := liveCoordinator(t, test.run)
-			_, err := c.Subscribe(t.Context(), SubscribeRequest{RunID: testRunID, SegmentID: test.segmentID})
+			_, err := c.segments.Subscribe(t.Context(), SubscribeRequest{RunID: testRunID, SegmentID: test.segmentID})
 			if !errors.Is(err, test.want) {
 				t.Fatalf("Subscribe err = %v, want %v", err, test.want)
 			}
@@ -140,7 +140,7 @@ func TestSubscribeRefusesWithTheReasonTheCallerCanActOn(t *testing.T) {
 
 func TestSubscribeReportsAnUnknownRunAsNotFound(t *testing.T) {
 	c := mustNewCoordinator(Dependencies{Runs: &fakeRunProjection{}})
-	_, err := c.Subscribe(t.Context(), SubscribeRequest{RunID: "run_missing", SegmentID: testSegmentID})
+	_, err := c.segments.Subscribe(t.Context(), SubscribeRequest{RunID: "run_missing", SegmentID: testSegmentID})
 	if !errors.Is(err, ErrRunNotFound) {
 		t.Fatalf("Subscribe err = %v, want ErrRunNotFound", err)
 	}
@@ -149,9 +149,9 @@ func TestSubscribeReportsAnUnknownRunAsNotFound(t *testing.T) {
 func TestSubscribeDoesNotRetargetAnOldSegmentToARacingResume(t *testing.T) {
 	projection := &racingRunProjection{value: runRecord(run.Running, "segment_old", "")}
 	coordinator := mustNewCoordinator(Dependencies{Runs: projection})
-	oldHub := mustNewJournal(t, testStreamScope(coordinator.epoch, testRunID, "segment_old"), coordinator.retention)
-	newHub := mustNewJournal(t, testStreamScope(coordinator.epoch, testRunID, "segment_new"), coordinator.retention)
-	coordinator.registry.Open(
+	oldHub := mustNewJournal(t, testStreamScope(coordinator.segments.epoch, testRunID, "segment_old"), coordinator.segments.retention)
+	newHub := mustNewJournal(t, testStreamScope(coordinator.segments.epoch, testRunID, "segment_new"), coordinator.segments.retention)
+	coordinator.segments.registry.Open(
 		Record{ID: testRunID, SegmentID: "segment_old", ExecutorID: "executor_old"},
 		testRunTreeOwner(t, oldHub), func() error { return nil },
 	)
@@ -161,7 +161,7 @@ func TestSubscribeDoesNotRetargetAnOldSegmentToARacingResume(t *testing.T) {
 		go func() {
 			close(started)
 			defer close(opened)
-			coordinator.registry.Open(Record{ID: testRunID, SegmentID: "segment_new", ExecutorID: "executor_new"}, newOwner, func() error {
+			coordinator.segments.registry.Open(Record{ID: testRunID, SegmentID: "segment_new", ExecutorID: "executor_new"}, newOwner, func() error {
 				projection.value = runRecord(run.Running, "segment_new", "")
 				return nil
 			})
@@ -170,13 +170,13 @@ func TestSubscribeDoesNotRetargetAnOldSegmentToARacingResume(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	attached, err := coordinator.Subscribe(ctx, SubscribeRequest{RunID: testRunID, SegmentID: "segment_old"})
+	attached, err := coordinator.segments.Subscribe(ctx, SubscribeRequest{RunID: testRunID, SegmentID: "segment_old"})
 	if err != nil || attached.Record.SegmentID != "segment_old" {
 		t.Fatalf("subscription before resume = %+v, %v", attached.Record, err)
 	}
 	<-opened
 	projection.beforeReturn = nil
-	_, err = coordinator.Subscribe(ctx, SubscribeRequest{RunID: testRunID, SegmentID: "segment_old"})
+	_, err = coordinator.segments.Subscribe(ctx, SubscribeRequest{RunID: testRunID, SegmentID: "segment_old"})
 	if !errors.Is(err, ErrStaleSegment) {
 		t.Fatalf("subscription after resume = %v, want ErrStaleSegment", err)
 	}
@@ -195,12 +195,12 @@ func TestSubscribeRetainsJournalAcrossRetirement(t *testing.T) {
 	head := hub.tail()
 	cursor := head.HeadCursor
 	head.Cancel()
-	coordinator.runs = &racingRunProjection{value: record, beforeReturn: func() {
+	useRunProjection(coordinator, &racingRunProjection{value: record, beforeReturn: func() {
 		mustAppendJournal(t, hub, ev(true))
 		mustCloseJournal(t, hub)
-		coordinator.registry.RemoveSegment(testRunID, testSegmentID)
-	}}
-	attached, err := coordinator.Subscribe(t.Context(), SubscribeRequest{RunID: testRunID, SegmentID: testSegmentID, Cursor: cursor})
+		coordinator.segments.registry.RemoveSegment(testRunID, testSegmentID)
+	}})
+	attached, err := coordinator.segments.Subscribe(t.Context(), SubscribeRequest{RunID: testRunID, SegmentID: testSegmentID, Cursor: cursor})
 	if err != nil {
 		t.Fatalf("subscription crossing normal retirement: %v", err)
 	}
@@ -213,7 +213,7 @@ func TestSubscribeWithoutACursorTailsAndNamesTheHead(t *testing.T) {
 	c, hub := liveCoordinator(t, runRecord(run.Running, testSegmentID, ""))
 	mustAppendJournal(t, hub, ev(true)) // already published: history, not this subscription's
 
-	attached, err := c.Subscribe(t.Context(), SubscribeRequest{RunID: testRunID, SegmentID: testSegmentID})
+	attached, err := c.segments.Subscribe(t.Context(), SubscribeRequest{RunID: testRunID, SegmentID: testSegmentID})
 	if err != nil {
 		t.Fatalf("Subscribe: %v", err)
 	}
@@ -236,14 +236,14 @@ func TestSubscribeResumesFromTheHeadItWasHandedEarlier(t *testing.T) {
 	c, hub := liveCoordinator(t, runRecord(run.Running, testSegmentID, ""))
 	mustAppendJournal(t, hub, ev(true))
 	connection, drop := context.WithCancel(t.Context())
-	first, err := c.Subscribe(connection, SubscribeRequest{RunID: testRunID, SegmentID: testSegmentID})
+	first, err := c.segments.Subscribe(connection, SubscribeRequest{RunID: testRunID, SegmentID: testSegmentID})
 	if err != nil {
 		t.Fatalf("first Subscribe: %v", err)
 	}
 	drop() // the connection goes away without the stream ever being read
 	mustAppendJournal(t, hub, ev(true))
 
-	second, err := c.Subscribe(t.Context(), SubscribeRequest{
+	second, err := c.segments.Subscribe(t.Context(), SubscribeRequest{
 		RunID: testRunID, SegmentID: testSegmentID, Cursor: first.HeadCursor,
 	})
 	if err != nil {
@@ -261,11 +261,11 @@ func TestSubscribeResumesFromTheHeadItWasHandedEarlier(t *testing.T) {
 func TestSubscribeRefusesACursorFromAnotherSegment(t *testing.T) {
 	c, hub := liveCoordinator(t, runRecord(run.Running, testSegmentID, ""))
 	mustAppendJournal(t, hub, ev(true))
-	other := mustNewJournal(t, testStreamScope(c.epoch, testRunID, "seg_previous"), c.retention)
+	other := mustNewJournal(t, testStreamScope(c.segments.epoch, testRunID, "seg_previous"), c.segments.retention)
 	mustAppendJournal(t, other, ev(true))
 	stale := other.tail().HeadCursor
 
-	_, err := c.Subscribe(t.Context(), SubscribeRequest{
+	_, err := c.segments.Subscribe(t.Context(), SubscribeRequest{
 		RunID: testRunID, SegmentID: testSegmentID, Cursor: stale,
 	})
 	if !errors.Is(err, ErrReplayCursorInvalid) {
@@ -280,14 +280,14 @@ func TestSubscribeRefusesACursorFromAnotherSegment(t *testing.T) {
 func TestSubscribeRefusesACursorFromAnotherRuntimeInstance(t *testing.T) {
 	previous, previousHub := liveCoordinator(t, runRecord(run.Running, testSegmentID, ""))
 	mustAppendJournal(t, previousHub, ev(true))
-	before, err := previous.Subscribe(t.Context(), SubscribeRequest{RunID: testRunID, SegmentID: testSegmentID})
+	before, err := previous.segments.Subscribe(t.Context(), SubscribeRequest{RunID: testRunID, SegmentID: testSegmentID})
 	if err != nil {
 		t.Fatalf("first Subscribe: %v", err)
 	}
 
 	restarted, hub := liveCoordinator(t, runRecord(run.Running, testSegmentID, ""))
 	mustAppendJournal(t, hub, ev(true))
-	_, err = restarted.Subscribe(t.Context(), SubscribeRequest{
+	_, err = restarted.segments.Subscribe(t.Context(), SubscribeRequest{
 		RunID: testRunID, SegmentID: testSegmentID, Cursor: before.HeadCursor,
 	})
 	if !errors.Is(err, ErrReplayUnavailable) {
@@ -312,7 +312,7 @@ func TestSubscribeRefusesACursorFromAnotherRuntimeInstance(t *testing.T) {
 func TestSubscribeAfterOrphanRecoveryUsesFinishedStateBeforeOldCursor(t *testing.T) {
 	previous, previousHub := liveCoordinator(t, runRecord(run.Running, testSegmentID, ""))
 	mustAppendJournal(t, previousHub, ev(true))
-	before, err := previous.Subscribe(t.Context(), SubscribeRequest{
+	before, err := previous.segments.Subscribe(t.Context(), SubscribeRequest{
 		RunID: testRunID, SegmentID: testSegmentID,
 	})
 	if err != nil {
@@ -326,7 +326,7 @@ func TestSubscribeAfterOrphanRecoveryUsesFinishedStateBeforeOldCursor(t *testing
 	})
 	projection := &fakeRunProjection{runs: map[string]run.Run{testRunID: recovered}}
 	restarted := mustNewCoordinator(Dependencies{Runs: projection})
-	_, err = restarted.Subscribe(t.Context(), SubscribeRequest{
+	_, err = restarted.segments.Subscribe(t.Context(), SubscribeRequest{
 		RunID: testRunID, SegmentID: testSegmentID, Cursor: before.HeadCursor,
 	})
 	if !errors.Is(err, ErrRunFinished) {
@@ -350,12 +350,12 @@ func TestSubscribeRefusesACallerThatCouldNotFollowTheRun(t *testing.T) {
 	c := mustNewCoordinator(Dependencies{
 		Runs: &fakeRunProjection{runs: map[string]run.Run{testRunID: record}},
 	})
-	hub := mustNewJournal(t, testStreamScope(c.epoch, testRunID, testSegmentID), c.retention)
-	c.registry.Open(Record{
+	hub := mustNewJournal(t, testStreamScope(c.segments.epoch, testRunID, testSegmentID), c.segments.retention)
+	c.segments.registry.Open(Record{
 		ID: testRunID, SegmentID: testSegmentID,
 	}, testRunTreeOwner(t, hub), func() error { return nil })
 
-	_, err := c.Subscribe(t.Context(), SubscribeRequest{RunID: testRunID, SegmentID: testSegmentID})
+	_, err := c.segments.Subscribe(t.Context(), SubscribeRequest{RunID: testRunID, SegmentID: testSegmentID})
 	if _, ok := errors.AsType[*run.InsufficientCapabilitiesError](err); !ok {
 		t.Fatalf("Subscribe err = %v, want InsufficientCapabilitiesError", err)
 	}
@@ -369,7 +369,7 @@ func TestSubscribeReportsAMissingLiveStreamAsAnInternalFault(t *testing.T) {
 	c := mustNewCoordinator(Dependencies{Runs: &fakeRunProjection{
 		runs: map[string]run.Run{testRunID: runRecord(run.Running, testSegmentID, "")},
 	}})
-	_, err := c.Subscribe(t.Context(), SubscribeRequest{RunID: testRunID, SegmentID: testSegmentID})
+	_, err := c.segments.Subscribe(t.Context(), SubscribeRequest{RunID: testRunID, SegmentID: testSegmentID})
 	switch {
 	case err == nil:
 		t.Fatal("Subscribe succeeded with no live stream")
@@ -381,11 +381,11 @@ func TestSubscribeReportsAMissingLiveStreamAsAnInternalFault(t *testing.T) {
 
 func TestReplayRetentionIsWhatTheCoordinatorEnforces(t *testing.T) {
 	c := mustNewCoordinator(Dependencies{})
-	if c.ReplayRetention() != DefaultRetention() {
-		t.Fatalf("retention = %+v, want %+v", c.ReplayRetention(), DefaultRetention())
+	if c.segments.ReplayRetention() != DefaultRetention() {
+		t.Fatalf("retention = %+v, want %+v", c.segments.ReplayRetention(), DefaultRetention())
 	}
 	custom := Retention{MaxEvents: 8, MaxBytes: 64}
-	if got := mustNewCoordinator(Dependencies{Retention: custom}).ReplayRetention(); got != custom {
+	if got := mustNewTestCoordinator(testDeps{Retention: custom}).segments.ReplayRetention(); got != custom {
 		t.Fatalf("retention = %+v, want %+v", got, custom)
 	}
 }

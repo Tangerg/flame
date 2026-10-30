@@ -59,7 +59,7 @@ func (c *Coordinator) Steer(ctx context.Context, cmd SteerCommand) (string, erro
 			return record.Acceptance.UserItemID, nil
 		}
 	}
-	live, _, err := c.addressLiveSegment(ctx, cmd.RunID, cmd.ExpectedSegmentID)
+	live, _, err := c.segments.addressLiveSegment(ctx, cmd.RunID, cmd.ExpectedSegmentID)
 	if err != nil {
 		return "", err
 	}
@@ -70,7 +70,7 @@ func (c *Coordinator) Steer(ctx context.Context, cmd SteerCommand) (string, erro
 	if err := live.owner.awaitActivation(ctx); err != nil {
 		return "", err
 	}
-	live, durable, err := c.addressLiveSegment(ctx, cmd.RunID, cmd.ExpectedSegmentID)
+	live, durable, err := c.segments.addressLiveSegment(ctx, cmd.RunID, cmd.ExpectedSegmentID)
 	if err != nil {
 		return "", err
 	}

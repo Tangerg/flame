@@ -432,9 +432,8 @@ func newUseCaseCoordinator(exec ExecutionObserver, control *fakeExecutionPorts, 
 			}
 		}
 	}
-	deps := Dependencies{
+	deps := testDeps{Dependencies: Dependencies{
 		RootStarts:                         control,
-		Observations:                       exec,
 		Releases:                           control,
 		RootCancellation:                   control,
 		Conversation:                       emptyConversationReader{},
@@ -444,15 +443,17 @@ func newUseCaseCoordinator(exec ExecutionObserver, control *fakeExecutionPorts, 
 		RunningSubtreeCanceler:             control,
 		WaitingSubtreeCancellationPreparer: control,
 		Session:                            testSessionPorts(sessions),
-		Projection:                         testProjectionPorts(effects),
 		Runs:                               projection,
 		Items:                              items,
-		Now:                                func() time.Time { return time.Date(2026, 7, 13, 1, 2, 3, 0, time.UTC) },
-		NewRunID:                           func() string { return "run_new" },
-		NewSegmentID:                       func() string { return "seg_new" },
+		Admissions:                         testsupport.NewAdmissionGate(),
+	},
+		NewRunID:     func() string { return "run_new" },
+		NewSegmentID: func() string { return "seg_new" },
+		Observations: exec,
+		Projection:   effects,
+		Now:          func() time.Time { return time.Date(2026, 7, 13, 1, 2, 3, 0, time.UTC) },
 	}
-	deps.Admissions = testsupport.NewAdmissionGate()
-	return mustNewCoordinator(deps)
+	return mustNewTestCoordinator(deps)
 }
 
 func TestWaitSessionStartableResolvesWorkingTreeBoundary(t *testing.T) {
@@ -1005,7 +1006,7 @@ func TestStartReleasesStagedExecutionWhenSessionReplacementPreparationFails(t *t
 	sessions := &fakeRunSessions{sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work")})}
 	control := &fakeExecutionPorts{startRef: ExecutorRef{SessionID: "ses_1", ExecutorID: "turn_1"}}
 	coordinator := newUseCaseCoordinator(exec, control, sessions, effects)
-	coordinator.publications.now = func() time.Time { return time.Time{} }
+	coordinator.segments.publications.now = func() time.Time { return time.Time{} }
 
 	_, err := coordinator.Start(t.Context(), StartCommand{
 		SessionID:      "ses_1",
@@ -1478,7 +1479,7 @@ func TestResumeRehydrateRestoresChildSourceProjection(t *testing.T) {
 	}
 	c := newUseCaseCoordinator(&fakeExecutor{}, control, sessions, &fakeEffects{})
 	segmentIDs := []string{"segment_root", "segment_grandchild", "segment_a", "segment_b"}
-	c.newSegmentID = func() string {
+	c.segments.newSegmentID = func() string {
 		next := segmentIDs[0]
 		segmentIDs = segmentIDs[1:]
 		return next
@@ -1796,7 +1797,7 @@ func requireChildCancellationProjection(
 
 func requireLiveJournalHead(t *testing.T, coordinator *Coordinator, runID string) (*journal, string) {
 	t.Helper()
-	entry, live := coordinator.registry.Get(runID)
+	entry, live := coordinator.segments.registry.Get(runID)
 	if !live || entry.owner == nil || entry.owner.hub == nil {
 		t.Fatalf("continued Run %q has no event journal", runID)
 	}
@@ -1873,19 +1874,19 @@ func TestCancelRunningChildCommitsExactSubtreeBoundaryAndKeepsRootRunning(t *tes
 	projection := &fakeRunProjection{runs: map[string]run.Run{
 		"run_1": runForSegment(testSegment()),
 	}}
-	coordinator := mustNewCoordinator(Dependencies{
+	coordinator := mustNewTestCoordinator(testDeps{
 		Observations:           executor,
 		Releases:               control,
 		RunningSubtreeCanceler: control,
 		Session:                testSessionPorts(&fakeRunSessions{}),
-		Projection:             testProjectionPorts(effects),
+		Projection:             effects,
 		Runs:                   projection,
 		Admissions:             testsupport.NewAdmissionGate(),
 		Now:                    func() time.Time { return time.Date(2026, 7, 30, 1, 2, 3, 0, time.UTC) },
 		NewRunID:               func() string { return "run_child" },
 		NewSegmentID:           func() string { return "seg_child" },
 	})
-	stream, err := coordinator.openSegment(t.Context(), testSegment())
+	stream, err := coordinator.segments.openSegment(t.Context(), testSegment())
 	if err != nil {
 		t.Fatalf("open segment: %v", err)
 	}
@@ -1909,7 +1910,7 @@ func TestCancelRunningChildCommitsExactSubtreeBoundaryAndKeepsRootRunning(t *tes
 	}
 	requireCanceledChildResult(t, result, childRun, "stop delegated work")
 	requireChildCancellationProjection(t, effects.commitSnapshot(), childRun, "stop delegated work")
-	if _, live := coordinator.registry.Get("run_1"); !live {
+	if _, live := coordinator.segments.registry.Get("run_1"); !live {
 		t.Fatal("child cancellation stopped the root segment")
 	}
 	eventJournal, cancellationCursor := requireLiveJournalHead(t, coordinator, "run_1")
@@ -1947,14 +1948,14 @@ func TestCancelLiveRunReportsExecutorReleaseFailureAndStillTerminalizes(t *testi
 	executor := &fakeExecutor{block: true, releaseErr: cleanupErr}
 	effects := &fakeEffects{}
 	control := &fakeExecutionPorts{releaseErr: cleanupErr}
-	c := mustNewCoordinator(Dependencies{
-		Observations: executor, Releases: control, RootCancellation: executor, Session: testSessionPorts(&fakeRunSessions{}), Projection: testProjectionPorts(effects),
+	c := mustNewTestCoordinator(testDeps{
+		Observations: executor, Releases: control, RootCancellation: executor, Session: testSessionPorts(&fakeRunSessions{}), Projection: effects,
 		Runs: &fakeRunProjection{runs: map[string]run.Run{
 			"run_1": runForSegment(testSegment()),
 		}},
 		Admissions: testsupport.NewAdmissionGate(),
 	})
-	stream, err := c.openSegment(t.Context(), testSegment())
+	stream, err := c.segments.openSegment(t.Context(), testSegment())
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -1976,15 +1977,15 @@ func TestCancelLiveRunDefaultsOmittedReasonAtApplicationBoundary(t *testing.T) {
 	executor := &fakeExecutor{block: true}
 	effects := &fakeEffects{}
 	control := &fakeExecutionPorts{requestRootCancel: executor.requestRootCancellation}
-	c := mustNewCoordinator(Dependencies{
+	c := mustNewTestCoordinator(testDeps{
 		Observations: executor, Releases: control, RootCancellation: control,
-		Session: testSessionPorts(&fakeRunSessions{}), Projection: testProjectionPorts(effects),
+		Session: testSessionPorts(&fakeRunSessions{}), Projection: effects,
 		Runs: &fakeRunProjection{runs: map[string]run.Run{
 			"run_1": runForSegment(testSegment()),
 		}},
 		Admissions: testsupport.NewAdmissionGate(),
 	})
-	stream, err := c.openSegment(t.Context(), testSegment())
+	stream, err := c.segments.openSegment(t.Context(), testSegment())
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -2068,14 +2069,14 @@ func TestCancelLosesToACommittedNaturalTerminal(t *testing.T) {
 	}}}
 	effects := &fakeEffects{terminalStarted: terminalStarted, terminalRelease: releaseTerminal}
 	control := &fakeExecutionPorts{}
-	c := mustNewCoordinator(Dependencies{
-		Observations: executor, Releases: control, RootCancellation: executor, Session: testSessionPorts(&fakeRunSessions{}), Projection: testProjectionPorts(effects),
+	c := mustNewTestCoordinator(testDeps{
+		Observations: executor, Releases: control, RootCancellation: executor, Session: testSessionPorts(&fakeRunSessions{}), Projection: effects,
 		Runs: &fakeRunProjection{runs: map[string]run.Run{
 			"run_1": runForSegment(testSegment()),
 		}},
 		Admissions: testsupport.NewAdmissionGate(),
 	})
-	stream, err := c.openSegment(t.Context(), testSegment())
+	stream, err := c.segments.openSegment(t.Context(), testSegment())
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}
@@ -2095,7 +2096,7 @@ func TestCancelLosesToACommittedNaturalTerminal(t *testing.T) {
 		_, cancelErr := c.Cancel(t.Context(), CancelCommand{RunID: "run_1", Reason: "too late"})
 		cancelDone <- cancelErr
 	}()
-	entry, live := c.registry.Get("run_1")
+	entry, live := c.segments.registry.Get("run_1")
 	if !live {
 		t.Fatal("terminal commit lost its live cancellation join")
 	}
@@ -2143,14 +2144,14 @@ func TestCancelLetsCommittedInterruptOwnDurableFirstTeardown(t *testing.T) {
 	spec.Capabilities = run.Capabilities{
 		InterruptKinds: []run.InterruptKind{run.InterruptApproval},
 	}
-	c := mustNewCoordinator(Dependencies{
-		Observations: executor, Releases: control, RootCancellation: executor, Session: testSessionPorts(sessions), Projection: testProjectionPorts(effects),
+	c := mustNewTestCoordinator(testDeps{
+		Observations: executor, Releases: control, RootCancellation: executor, Session: testSessionPorts(sessions), Projection: effects,
 		Runs: &fakeRunProjection{runs: map[string]run.Run{
 			"run_1": runForSegment(spec),
 		}},
 		Admissions: testsupport.NewAdmissionGate(),
 	})
-	stream, err := c.openSegment(t.Context(), spec)
+	stream, err := c.segments.openSegment(t.Context(), spec)
 	if err != nil {
 		t.Fatalf("openSegment: %v", err)
 	}

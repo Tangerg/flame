@@ -139,10 +139,10 @@ func (c *Coordinator) startRoot(ctx context.Context, cmd StartCommand) (result S
 	if cmd.NewSession != nil {
 		runID = cmd.NewSession.RunID
 	} else {
-		runID = c.newRunID()
+		runID = c.segments.newRunID()
 	}
-	segmentID := c.newSegmentID()
-	createdAt := c.publications.nowUTC()
+	segmentID := c.segments.newSegmentID()
+	createdAt := c.segments.publications.nowUTC()
 	modelOnlyInput := cmd.GoalIncarnationID != ""
 	conversationInput := draft.WorkingContext[len(draft.WorkingContext)-1].Clone()
 	sessionReplacement, err := prepareStartSessionReplacement(preparation, createdAt)
@@ -152,7 +152,7 @@ func (c *Coordinator) startRoot(ctx context.Context, cmd StartCommand) (result S
 	// A fresh Segment owns rejection as soon as openSegment is entered. Until
 	// this exact hand-off, every preparation failure remains Start's responsibility.
 	ref = staged.transfer()
-	events, err := c.openSegment(ctx, segmentSpec{
+	events, err := c.segments.openSegment(ctx, segmentSpec{
 		RunID:              runID,
 		SegmentID:          segmentID,
 		SessionID:          preparation.session.ID(),
@@ -180,7 +180,7 @@ func (c *Coordinator) startRoot(ctx context.Context, cmd StartCommand) (result S
 	if err != nil {
 		return StartResult{}, c.resolveOpeningError(ctx, preparation.session.ID(), err)
 	}
-	c.publications.publishRunMoved(preparation.session.ID(), runID)
+	c.segments.publications.publishRunMoved(preparation.session.ID(), runID)
 	userItemID := userMessageItemID(segmentID)
 	if modelOnlyInput {
 		userItemID = ""

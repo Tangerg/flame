@@ -23,7 +23,7 @@ type runtimeLifetime struct {
 
 	goalDriver     shutdownComponent
 	mcpCoordinator shutdownComponent
-	runCoordinator shutdownComponent
+	runSegments    shutdownComponent
 	executor       shutdownComponent
 	runEffectTasks taskOwner
 	toolResources  []*teardownStep
@@ -135,7 +135,7 @@ func runShutdown(
 	components := []shutdownComponent{
 		lifetime.goalDriver,
 		lifetime.mcpCoordinator,
-		lifetime.runCoordinator,
+		lifetime.runSegments,
 	}
 	lifetime.closeMu.Lock()
 	begin := lifetime.phase == lifetimeRunning

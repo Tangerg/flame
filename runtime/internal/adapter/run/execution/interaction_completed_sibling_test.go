@@ -107,10 +107,10 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 	projection := newDelegateProjection(t, current, executor)
 	runSequence, segmentSequence := 0, 0
 	observations := newRecordingExecutionObserver(executor)
-	coordinator := mustNewRunCoordinator(t, runs.Dependencies{
+	coordinator := mustNewRunCoordinator(t, runTestDeps{
 		RootStarts: executor, Observations: observations, Releases: executor, Conversation: projection.history,
 		Session: runs.SessionPorts{Reader: projection.sessions, Creator: projection.sessions, ActiveRuns: projection.sessions},
-		Projection: runs.ProjectionPorts{
+		Projection: runTestProjection{
 			Openings: projection, ChildStarts: projection, Events: projection, Barriers: projection,
 			Checkpoints: projection, Workspace: projection, Finalizer: projection,
 		},
