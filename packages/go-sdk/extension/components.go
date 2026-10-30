@@ -36,10 +36,13 @@ func (ComponentPlacement) Values() []string {
 
 type SettingsIntent string
 
-const SettingsIntentModelProviders SettingsIntent = "modelProviders"
+const (
+	SettingsIntentModelProviders SettingsIntent = "modelProviders"
+	SettingsIntentMCPServers     SettingsIntent = "mcpServers"
+)
 
 func (SettingsIntent) Values() []string {
-	return []string{string(SettingsIntentModelProviders)}
+	return []string{string(SettingsIntentModelProviders), string(SettingsIntentMCPServers)}
 }
 
 func (s SettingsIntent) Valid() bool { return slices.Contains(s.Values(), string(s)) }

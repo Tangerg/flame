@@ -2627,7 +2627,7 @@ func (p PluginClientComponent) validateWire() error {
 		optionalTextPattern("material", p.Material, "^[a-z][a-z0-9._-]{0,63}$"),
 		closedEnum("scope", string(p.Scope), []string{"installation", "workspace", "session", "client", "file", "toolResult"}, false),
 		closedEnum("placement", string(p.Placement), []string{"export", "workspaceView", "settingsPane", "sessionAction", "fileRenderer", "toolResultRenderer"}, false),
-		closedEnum("settingsIntent", string(p.SettingsIntent), []string{"modelProviders"}, true),
+		closedEnum("settingsIntent", string(p.SettingsIntent), []string{"modelProviders", "mcpServers"}, true),
 	)
 }
 
