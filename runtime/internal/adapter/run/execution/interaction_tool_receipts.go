@@ -10,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
@@ -99,7 +100,7 @@ func (i *interactionSession) investigateToolReceipts(ctx context.Context) (int, 
 			state := interaction.ResultSucceeded
 			if knownFailure {
 				state = interaction.ResultFailed
-				projected.Failure = &tool.Failure{Kind: tool.FailureExecution, Detail: executorDiagnostic(queryErr)}
+				projected.Failure = &tool.Failure{Kind: tool.FailureExecution, Detail: run.Diagnostic(queryErr)}
 			}
 			if err == nil {
 				err = i.rememberToolMetadata(projected)

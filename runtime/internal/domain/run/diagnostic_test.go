@@ -1,4 +1,4 @@
-package execution
+package run
 
 import (
 	"errors"
@@ -39,11 +39,11 @@ func TestBoundDiagnosticKeepsTextValidBoundedAndMarked(t *testing.T) {
 }
 
 func TestExecutorDiagnosticBoundsPersistedText(t *testing.T) {
-	if got := executorDiagnostic(nil); got != "" {
-		t.Errorf("executorDiagnostic(nil) = %q", got)
+	if got := Diagnostic(nil); got != "" {
+		t.Errorf("Diagnostic(nil) = %q", got)
 	}
-	got := executorDiagnostic(errors.New(strings.Repeat("界", maximumExecutorDiagnosticBytes)))
-	if len(got) > maximumExecutorDiagnosticBytes || !utf8.ValidString(got) {
+	got := Diagnostic(errors.New(strings.Repeat("界", maximumDiagnosticBytes)))
+	if len(got) > maximumDiagnosticBytes || !utf8.ValidString(got) {
 		t.Errorf("persisted diagnostic is %d bytes, valid=%v", len(got), utf8.ValidString(got))
 	}
 }

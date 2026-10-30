@@ -27,7 +27,7 @@ func (i *interactionModelFailures) record(processID agent.ProcessID, cause error
 	}
 	failure := run.Failure{
 		Kind:   run.FailureProviderUnavailable,
-		Detail: executorDiagnostic(cause),
+		Detail: run.Diagnostic(cause),
 	}
 	if classified, ok := errors.AsType[*run.FailureError](cause); ok {
 		delay := classified.RetryAfter

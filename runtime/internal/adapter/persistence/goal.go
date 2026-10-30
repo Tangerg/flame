@@ -217,7 +217,7 @@ func scanGoal(row scanRow) (goal.Snapshot, error) {
 	}
 	snapshot := goal.Snapshot{
 		SessionID: sessionID, Objective: objective, Status: goal.Status(status),
-		ReasonCode: goal.ReasonCode(reasonCode),
+		ReasonCode:     goal.ReasonCode(reasonCode),
 		ModelSelection: selection, Capabilities: capabilities,
 		IncarnationID: incarnationID, Revision: revision,
 		CreatedAt: time.Unix(0, createdAt).UTC(), UpdatedAt: time.Unix(0, updatedAt).UTC(),

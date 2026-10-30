@@ -36,7 +36,7 @@ func (i *interactionSession) terminalEffects(ctx context.Context, owner agent.Pr
 		for _, observation := range i.effectFailures.observations(termination.UnresolvedEffectIDs()) {
 			evidence, err := run.NewUnresolvedEffect(run.UnresolvedEffectConfig{
 				ProcessID: processID.String(), EffectID: observation.ID, Cause: termination.Cause().String(),
-				Reason: executorDiagnostic(errors.New(termination.Reason())), Detail: observation.Detail, Output: observation.Output,
+				Reason: run.Diagnostic(errors.New(termination.Reason())), Detail: observation.Detail, Output: observation.Output,
 			})
 			if err != nil {
 				return nil, err

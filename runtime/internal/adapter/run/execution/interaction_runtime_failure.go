@@ -45,7 +45,7 @@ func (i *interactionSession) publishRuntimeFailure(cause error) error {
 			for _, observation := range i.effectFailures.observations(process.RuntimeError.UnresolvedEffectIDs()) {
 				effect, err := run.NewUnresolvedEffect(run.UnresolvedEffectConfig{
 					ProcessID: process.Snapshot.Relation().ProcessID().String(), EffectID: observation.ID, Cause: "runtime_failure",
-					Reason: executorDiagnostic(cause), Detail: executorDiagnostic(process.RuntimeError), Output: observation.Output,
+					Reason: run.Diagnostic(cause), Detail: run.Diagnostic(process.RuntimeError), Output: observation.Output,
 				})
 				if err != nil {
 					return err
@@ -53,9 +53,9 @@ func (i *interactionSession) publishRuntimeFailure(cause error) error {
 				effects = append(effects, effect)
 			}
 		}
-		var ending run.Ending = run.Failed{Failure: run.Failure{Kind: run.FailureInternal, Detail: executorDiagnostic(cause)}}
+		var ending run.Ending = run.Failed{Failure: run.Failure{Kind: run.FailureInternal, Detail: run.Diagnostic(cause)}}
 		if len(effects) > 0 {
-			ending = run.Lost{Loss: run.Loss{Reason: run.LossUnresolvedEffects, Detail: executorDiagnostic(cause)}}
+			ending = run.Lost{Loss: run.Loss{Reason: run.LossUnresolvedEffects, Detail: run.Diagnostic(cause)}}
 		}
 		if err := i.commitFact(ctx, member, runs.NewSegmentEnded(ending, 0).WithUnresolvedEffects(effects)); err != nil {
 			return err

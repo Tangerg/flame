@@ -648,7 +648,7 @@ func (r *reducer) abandonUnconsumedResumeTools() ([]ProjectionEvent, error) {
 // abort retains the first failure through terminal cleanup and persistence retries.
 func (r *reducer) abort(cause error) {
 	if r.errFailure == nil {
-		r.errFailure = &run.Failure{Kind: run.FailureInternal, Detail: cause.Error()}
+		r.errFailure = &run.Failure{Kind: run.FailureInternal, Detail: run.Diagnostic(cause)}
 	}
 }
 

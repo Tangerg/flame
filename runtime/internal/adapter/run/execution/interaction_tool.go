@@ -172,7 +172,7 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		return toolcontract.Result{}, err
 	}
 	if failure != nil {
-		metadata.Failure = &tool.Failure{Kind: tool.FailureExecution, Detail: executorDiagnostic(callErr)}
+		metadata.Failure = &tool.Failure{Kind: tool.FailureExecution, Detail: run.Diagnostic(callErr)}
 		if failure.Kind() == toolcontract.FailureKindRejected {
 			detail, _ := output.Text()
 			metadata.Failure = &tool.Failure{Kind: tool.FailureDenied, Detail: detail}
@@ -235,7 +235,7 @@ func (o *observedInteractionTool) prepareInvocation(call corechat.ToolCall, argu
 		cause := fmt.Errorf("execution: prepare Tool %q invocation: %w", call.Name, err)
 		failure, failureErr := toolcontract.NewFailure(toolcontract.FailureConfig{
 			Kind: toolcontract.FailureKindFailed, Cause: cause,
-			Output: corechat.NewTextToolOutput("invalid effective arguments: " + executorDiagnostic(cause)),
+			Output: corechat.NewTextToolOutput("invalid effective arguments: " + run.Diagnostic(cause)),
 		})
 		if failureErr != nil {
 			return toolcontract.Invocation{}, failureErr
@@ -377,7 +377,7 @@ func (o *observedInteractionTool) prepare(
 	}).prepare(ctx, callID)
 	if err != nil {
 		if errors.Is(err, tool.ErrInvalidArguments) {
-			failure, failureErr := toolcontract.NewFailure(toolcontract.FailureConfig{Kind: toolcontract.FailureKindFailed, Cause: err, Output: corechat.NewTextToolOutput("invalid effective arguments: " + executorDiagnostic(err))})
+			failure, failureErr := toolcontract.NewFailure(toolcontract.FailureConfig{Kind: toolcontract.FailureKindFailed, Cause: err, Output: corechat.NewTextToolOutput("invalid effective arguments: " + run.Diagnostic(err))})
 			if failureErr != nil {
 				return tool.Arguments{}, false, "", nil, hostFailure(failureErr)
 			}
@@ -407,7 +407,7 @@ func (o *observedInteractionTool) validateApprovalSubject(name string, arguments
 		if errors.Is(err, tool.ErrInvalidArguments) {
 			failure, failureErr := toolcontract.NewFailure(toolcontract.FailureConfig{
 				Kind: toolcontract.FailureKindFailed, Cause: cause,
-				Output: corechat.NewTextToolOutput("invalid effective arguments: " + executorDiagnostic(cause)),
+				Output: corechat.NewTextToolOutput("invalid effective arguments: " + run.Diagnostic(cause)),
 			})
 			if failureErr != nil {
 				return hostFailure(failureErr)

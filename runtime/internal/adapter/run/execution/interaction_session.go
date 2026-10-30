@@ -744,7 +744,7 @@ func (i *interactionSession) publishProjectionFailure(cause error) {
 	i.state.mu.Unlock()
 	failure := run.Failure{
 		Kind:   run.FailureInternal,
-		Detail: executorDiagnostic(cause),
+		Detail: run.Diagnostic(cause),
 	}
 	if failure.Detail == "" {
 		failure.Detail = "executor result could not be projected"
@@ -859,10 +859,10 @@ func terminationEnding(termination agent.Termination) run.Ending {
 		return run.Canceled{}
 	case agent.TerminationCauseExecutionFailure:
 		failure, _ := termination.Failure()
-		return failed(run.FailureAgentStuck, executorDiagnostic(errors.New(failure.Message())))
+		return failed(run.FailureAgentStuck, run.Diagnostic(errors.New(failure.Message())))
 	case agent.TerminationCauseExternalFailure:
 		failure, _ := termination.Failure()
-		detail := executorDiagnostic(errors.New(failure.Message()))
+		detail := run.Diagnostic(errors.New(failure.Message()))
 		switch failure.Code() {
 		case failureInvalidModelResponse, failureToolCallsNotCompleted:
 			return failed(run.FailureProviderRejected, detail)
@@ -872,7 +872,7 @@ func terminationEnding(termination agent.Termination) run.Ending {
 		return failed(run.FailureInternal, detail)
 	case agent.TerminationCauseContractFailure, agent.TerminationCausePanic:
 		failure, _ := termination.Failure()
-		return failed(run.FailureInternal, executorDiagnostic(errors.New(failure.Message())))
+		return failed(run.FailureInternal, run.Diagnostic(errors.New(failure.Message())))
 	case agent.TerminationCauseEngineKill:
 		return failed(run.FailureInternal, termination.Reason())
 	default:

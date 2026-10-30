@@ -46,7 +46,7 @@ func TestDelegateDiagnosticIsPublishedWithoutFlameReformatting(t *testing.T) {
 		t.Fatalf("known child failure was not adopted: root=%t child=%t result=%+v", rootCompleted, childFailed, observed)
 	}
 	text, _ := observed.Output.Text()
-	if len(text) < 2048 || !utf8.ValidString(text) || strings.Contains(text, diagnosticEllipsis) {
+	if len(text) < 2048 || !utf8.ValidString(text) || strings.Contains(text, "…") {
 		t.Fatalf("delegate diagnostic changed: %q", text)
 	}
 	fixture.projection.mu.Lock()

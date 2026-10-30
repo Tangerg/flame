@@ -4,6 +4,7 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -26,7 +27,7 @@ func (i *interactionEffectFailures) record(id agent.EffectID, cause error) {
 		i.causes = make(map[agent.EffectID]effectObservation)
 	}
 	if _, exists := i.causes[id]; !exists {
-		observation := effectObservation{ID: id.String(), Detail: executorDiagnostic(cause)}
+		observation := effectObservation{ID: id.String(), Detail: run.Diagnostic(cause)}
 		if evidence, found := errors.AsType[*toolcontract.CallError](cause); found && evidence.Validate() == nil {
 			observation.Output = new(evidence.Evidence())
 		}

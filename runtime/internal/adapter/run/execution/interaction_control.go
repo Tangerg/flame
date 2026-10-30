@@ -7,6 +7,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
@@ -25,7 +26,7 @@ func steerSignalID(itemID string) (agent.SignalID, error) {
 // Application retains the exact user note. Scope receives a bounded diagnostic
 // in a separate namespace so that user text cannot impersonate an executor stop.
 func scopeCancellationReason(reason string) string {
-	return boundDiagnostic("run cancellation: "+reason, maximumExecutorDiagnosticBytes)
+	return run.Diagnostic(errors.New("run cancellation: " + reason))
 }
 
 // awaitDispatchSegment keeps Scope-owned work behind the product transaction
