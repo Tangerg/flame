@@ -30,6 +30,7 @@ type retirementFixture struct {
 	stores      sessionStores
 	coordinator *sessions.Coordinator
 	gate        *ownership.Gate
+	retirer     *sessions.ResourceRetirer
 	resources   *retirementResources
 	workspace   string
 	root        string
@@ -115,13 +116,6 @@ func openRetirementFixture(t *testing.T, root, cut string) *retirementFixture {
 		}
 	})
 	stores, _, _ := newWriteSetStores(t, db.Bundle)
-	gate, err := ownership.NewGate(ownership.GateConfig{
-		TreesOverlap: filesystem.PathsOverlap,
-		ResolveTree:  filesystem.CanonicalPath, RetirementPending: db.ResourceRetirements.Pending,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
 	isolator, err := workspaceadapter.NewIsolator(root, filepath.Join(db.DataDirectory, "sandbox"), nil)
 	if err != nil {
 		t.Fatal(err)
@@ -145,6 +139,20 @@ func openRetirementFixture(t *testing.T, root, cut string) *retirementFixture {
 	case "completion":
 		ledger.beforeComplete = crash
 	}
+	retirer, err := sessions.NewResourceRetirer(ledger,
+		sessions.SessionCleanup{Resource: "checkpoints", Retire: resources.DropSession},
+		sessions.SessionCleanup{Resource: "sandbox", Retire: resources.Discard},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gate, err := ownership.NewGate(ownership.GateConfig{
+		TreesOverlap: filesystem.PathsOverlap,
+		ResolveTree:  filesystem.CanonicalPath, SettleRetirement: retirer.Settle,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	coordinator, err := sessions.New(sessions.Dependencies{
 		Sessions: stores.sessions, Interrupts: stores.interrupts, Transcript: stores.transcript, Runs: stores.runs,
 		Snapshots: stores.SessionStores, MaterialSnapshots: stores.SessionStores, Writes: writes,
@@ -152,13 +160,13 @@ func openRetirementFixture(t *testing.T, root, cut string) *retirementFixture {
 		TransientState: retirementTransient{}, ExecutionReleaser: retirementTransient{},
 		Paths: workspaceadapter.Resolver{}, Models: acceptedModelSelections{}, DefaultModelSelection: testsupport.DefaultModelSelection(),
 		Checkpoints: resources, Sandbox: resources, Goals: goals.NewSessionMutations(),
-		Mutations: db.WorkspaceMutations, Retirements: ledger, Admissions: gate,
+		Mutations: db.WorkspaceMutations, Retirer: retirer, Admissions: gate,
 		NewID: newSessionID, NewRunID: newRunID, NewItemID: newItemID,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &retirementFixture{db: db, stores: stores, coordinator: coordinator, gate: gate, resources: resources, workspace: filepath.Join(root, "project"), root: root}
+	return &retirementFixture{db: db, stores: stores, coordinator: coordinator, gate: gate, retirer: retirer, resources: resources, workspace: filepath.Join(root, "project"), root: root}
 }
 
 func (f *retirementFixture) seed(t *testing.T) sessions.PortableSnapshot {
@@ -214,7 +222,7 @@ func (f *retirementFixture) assertOriginalBoundary(t *testing.T) {
 	if body, err := os.ReadFile(filepath.Join(f.workspace, "material.txt")); err != nil || string(body) != "boundary\n" {
 		t.Fatalf("restored file = %q, %v", body, err)
 	}
-	if pending, err := f.stores.retirements.Pending(t.Context(), current.ID()); err != nil || pending {
+	if _, pending, err := f.stores.retirements.Lookup(t.Context(), current.ID()); err != nil || pending {
 		t.Fatalf("refused transaction authorized cleanup: %t, %v", pending, err)
 	}
 }
@@ -322,23 +330,25 @@ func TestCommittedResourceCleanupFailureFencesReplacement(t *testing.T) {
 				if _, err := f.coordinator.RestorePortableSession(t.Context(), portable); !errors.Is(err, sessions.ErrSessionBusy) {
 					t.Fatalf("replacement crossed pending cleanup: %v", err)
 				}
-				if err := f.coordinator.RecoverRetiredResources(t.Context()); !errors.Is(err, refusal) {
-					t.Fatalf("recovery erased cleanup refusal: %v", err)
+				if err := f.retirer.RecoverPending(t.Context(), f.gate); err != nil {
+					t.Fatalf("one Session's cleanup failure stopped recovery: %v", err)
 				}
+				if _, found, err := f.stores.retirements.Lookup(t.Context(), "ses_retirement"); err != nil || !found {
+					t.Fatalf("failed cleanup released its fence: %v, %v", found, err)
+				}
+				// The fault clears while the process keeps running: the next
+				// exclusive admission settles the fence without a restart.
 				f.resources.dropErr, f.resources.discardErr = nil, nil
-				if err := f.coordinator.RecoverRetiredResources(t.Context()); err != nil {
-					t.Fatal(err)
+				if release, ok, err := f.gate.AcquireSession(t.Context(), "ses_retirement"); err != nil || !ok {
+					t.Fatalf("recovered cleanup still fences the Session: %t, %v", ok, err)
+				} else {
+					release()
 				}
-				if pending, err := f.stores.retirements.Pending(t.Context(), "ses_retirement"); err != nil || pending {
-					t.Fatalf("completed responsibility = %v, %v", pending, err)
+				if _, found, err := f.stores.retirements.Lookup(t.Context(), "ses_retirement"); err != nil || found {
+					t.Fatalf("completed responsibility = %v, %v", found, err)
 				}
 				if err := f.resources.Restore(t.Context(), "ses_retirement", f.workspace, "run_boundary"); !errors.Is(err, sessions.ErrCheckpointUnavailable) {
 					t.Fatalf("old checkpoint survived retirement: %v", err)
-				}
-				if release, ok, err := f.gate.AcquireSession(t.Context(), "ses_retirement"); err != nil || !ok {
-					t.Fatalf("Session remained fenced: %t, %v", ok, err)
-				} else {
-					release()
 				}
 			})
 		}
@@ -389,7 +399,7 @@ func TestCommittedResourceRetirementCrashRecovery(t *testing.T) {
 			if _, err := stores.Sessions.Get(t.Context(), "ses_retirement"); !errors.Is(err, session.ErrNotFound) {
 				t.Fatalf("history was not committed before crash: %v", err)
 			}
-			if pending, err := stores.ResourceRetirements.Pending(t.Context(), "ses_retirement"); err != nil || !pending {
+			if _, pending, err := stores.ResourceRetirements.Lookup(t.Context(), "ses_retirement"); err != nil || !pending {
 				t.Fatalf("crash lost responsibility: %t, %v", pending, err)
 			}
 			host, _ := buildProtocolRuntime(t, protocolRuntimeConfig(t, stores, newReplyStub("recovered")), filepath.Join(root, "project"))
@@ -398,7 +408,7 @@ func TestCommittedResourceRetirementCrashRecovery(t *testing.T) {
 					t.Error(err)
 				}
 			})
-			if pending, err := stores.ResourceRetirements.Pending(t.Context(), "ses_retirement"); err != nil || pending {
+			if _, pending, err := stores.ResourceRetirements.Lookup(t.Context(), "ses_retirement"); err != nil || pending {
 				t.Fatalf("startup retained responsibility: %t, %v", pending, err)
 			}
 			checkpoints := workspaceadapter.NewCheckpoints(filepath.Join(stores.DataDirectory, "checkpoints"))

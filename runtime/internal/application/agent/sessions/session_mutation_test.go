@@ -167,12 +167,12 @@ func TestDeleteSessionRetainsCommittedCleanupResponsibility(t *testing.T) {
 			if !slices.Equal(stores.operations, want) || len(stores.deleted) != 1 || len(stores.retirements) != 1 {
 				t.Fatalf("commit/cleanup = %v, deleted=%v, pending=%v", stores.operations, stores.deleted, stores.retirements)
 			}
-			if err := coordinator.RecoverRetiredResources(t.Context()); !errors.Is(err, cause) {
-				t.Fatalf("recovery lost cleanup cause: %v", err)
+			if settled, err := coordinator.retirer.Settle(t.Context(), "ses_1"); err != nil || settled || len(stores.retirements) != 1 {
+				t.Fatalf("failing cleanup settled = %t, %v, pending=%v", settled, err, stores.retirements)
 			}
 			checkpoints.err, sandbox.err = nil, nil
-			if err := coordinator.RecoverRetiredResources(t.Context()); err != nil || len(stores.retirements) != 0 {
-				t.Fatalf("retirement did not complete: %v, pending=%v", err, stores.retirements)
+			if settled, err := coordinator.retirer.Settle(t.Context(), "ses_1"); err != nil || !settled || len(stores.retirements) != 0 {
+				t.Fatalf("retirement did not complete: %t, %v, pending=%v", settled, err, stores.retirements)
 			}
 		})
 	}
@@ -325,8 +325,8 @@ func TestRestoreSessionRetainsCommittedCleanupResponsibility(t *testing.T) {
 				t.Fatalf("restore = %v, committed=%d, pending=%v, operations=%v", err, len(stores.restored), stores.retirements, stores.operations)
 			}
 			checkpoints.err, sandbox.err = nil, nil
-			if err := coordinator.RecoverRetiredResources(t.Context()); err != nil || len(stores.retirements) != 0 {
-				t.Fatalf("restored history retirement did not complete: %v", err)
+			if settled, err := coordinator.retirer.Settle(t.Context(), "ses_1"); err != nil || !settled || len(stores.retirements) != 0 {
+				t.Fatalf("restored history retirement did not complete: %t, %v", settled, err)
 			}
 		})
 	}

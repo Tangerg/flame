@@ -9,11 +9,11 @@ import (
 
 // NewAdmissionGate treats fixture workspace names as already resolved identities.
 func NewAdmissionGate() *ownership.Gate {
-	gate, err := ownership.NewGate(ownership.GateConfig{TreesOverlap: filesystem.PathsOverlap, ResolveTree: func(path string) (string, error) { return path, nil }, RetirementPending: NoResourceRetirements})
+	gate, err := ownership.NewGate(ownership.GateConfig{TreesOverlap: filesystem.PathsOverlap, ResolveTree: func(path string) (string, error) { return path, nil }, SettleRetirement: NoResourceRetirements})
 	if err != nil {
 		panic(err)
 	}
 	return gate
 }
 
-func NoResourceRetirements(context.Context, string) (bool, error) { return false, nil }
+func NoResourceRetirements(context.Context, string) (bool, error) { return true, nil }

@@ -259,12 +259,12 @@ func testDependencies(stores testStores, deps Dependencies) Dependencies {
 	if deps.Mutations == nil {
 		deps.Mutations = &observingMutations{}
 	}
-	if deps.Retirements == nil {
-		if retirements, ok := stores.(resourceRetirements); ok {
-			deps.Retirements = retirements
-		} else {
-			deps.Retirements = &emptyResourceRetirements{}
+	if deps.Retirer == nil {
+		var retirements resourceRetirements = &emptyResourceRetirements{}
+		if stored, ok := stores.(resourceRetirements); ok {
+			retirements = stored
 		}
+		deps.Retirer = testResourceRetirer(retirements, deps)
 	}
 	if deps.Goals == nil {
 		deps.Goals = goals.NewSessionMutations()
@@ -341,8 +341,8 @@ func mustNewCoordinator(deps Dependencies) *Coordinator {
 	if deps.Mutations == nil {
 		deps.Mutations = &observingMutations{}
 	}
-	if deps.Retirements == nil {
-		deps.Retirements = &emptyResourceRetirements{}
+	if deps.Retirer == nil {
+		deps.Retirer = testResourceRetirer(&emptyResourceRetirements{}, deps)
 	}
 	if deps.Goals == nil {
 		deps.Goals = goals.NewSessionMutations()
@@ -448,3 +448,20 @@ func (*emptyResourceRetirements) ListPending(context.Context) ([]ResourceRetirem
 	return nil, nil
 }
 func (*emptyResourceRetirements) Complete(context.Context, ResourceRetirement) error { return nil }
+
+// testResourceRetirer retires the same resource families production composes
+// from the coordinator's checkpoint and sandbox collaborators.
+func testResourceRetirer(retirements resourceRetirements, deps Dependencies) *ResourceRetirer {
+	var cleanups []SessionCleanup
+	if deps.Checkpoints != nil {
+		cleanups = append(cleanups, SessionCleanup{Resource: "checkpoints", Retire: deps.Checkpoints.DropSession})
+	}
+	if deps.Sandbox != nil {
+		cleanups = append(cleanups, SessionCleanup{Resource: "sandbox", Retire: deps.Sandbox.Discard})
+	}
+	retirer, err := NewResourceRetirer(retirements, cleanups...)
+	if err != nil {
+		panic(err)
+	}
+	return retirer
+}

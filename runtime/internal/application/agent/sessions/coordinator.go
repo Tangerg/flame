@@ -262,8 +262,8 @@ type Coordinator struct {
 	goals goalMutationGuard
 	// mutations is the recoverable operation log guarding a file+history
 	// rollback across the working tree and the durable history.
-	mutations   workspaceMutations
-	retirements resourceRetirements
+	mutations workspaceMutations
+	retirer   *ResourceRetirer
 	// admissions is shared with Runs and owns the process-local session and
 	// working-tree facts.
 	admissions Admissions
@@ -299,7 +299,7 @@ type Dependencies struct {
 	Sandbox               sandboxDiscarder
 	Goals                 goalMutationGuard
 	Mutations             workspaceMutations
-	Retirements           resourceRetirements
+	Retirer               *ResourceRetirer
 	Admissions            Admissions
 	// Invalidations publishes post-commit invalidations for the session projections a
 	// mutation moved. nil disables them (no runtime change stream wired).
@@ -332,7 +332,7 @@ func New(deps Dependencies) (*Coordinator, error) {
 		{"plan replacements", deps.Plan.Replacements},
 		{"goal mutation guard", deps.Goals},
 		{"workspace mutations", deps.Mutations},
-		{"session resource retirements", deps.Retirements},
+		{"session resource retirer", deps.Retirer},
 		{"interrupt store", deps.Interrupts},
 		{"transcript store", deps.Transcript},
 		{"run store", deps.Runs},
@@ -386,7 +386,7 @@ func New(deps Dependencies) (*Coordinator, error) {
 		sandbox:               deps.Sandbox,
 		goals:                 deps.Goals,
 		mutations:             deps.Mutations,
-		retirements:           deps.Retirements,
+		retirer:               deps.Retirer,
 		admissions:            deps.Admissions,
 		invalidations:         deps.Invalidations,
 		now:                   deps.Now,

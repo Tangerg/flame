@@ -90,7 +90,11 @@ func buildAssemblyCore(
 	if err != nil {
 		return nil, fmt.Errorf("runtime: Goal Run recorder: %w", err)
 	}
-	admissionGate, err := ownership.NewGate(ownership.GateConfig{TreesOverlap: filesystem.PathsOverlap, ResolveTree: filesystem.CanonicalPath, RetirementPending: cfg.stores.ResourceRetirements.Pending})
+	retirer, err := sessions.NewResourceRetirer(cfg.stores.ResourceRetirements, sessionResourceCleanups(workspaceServices.checkpoints, execution.isolation)...)
+	if err != nil {
+		return nil, fmt.Errorf("runtime: session resource retirement: %w", err)
+	}
+	admissionGate, err := ownership.NewGate(ownership.GateConfig{TreesOverlap: filesystem.PathsOverlap, ResolveTree: filesystem.CanonicalPath, SettleRetirement: retirer.Settle})
 	if err != nil {
 		return nil, fmt.Errorf("runtime: session admission: %w", err)
 	}
@@ -158,7 +162,7 @@ func buildAssemblyCore(
 		Boundaries: cfg.stores.Plan, Replacements: policy.plans,
 	}
 	sessionDependencies.Mutations = cfg.stores.WorkspaceMutations
-	sessionDependencies.Retirements = cfg.stores.ResourceRetirements
+	sessionDependencies.Retirer = retirer
 	// Set only when present so a nil *Isolator never reaches the coordinator as a
 	// non-nil interface (which would defeat its own nil check).
 	if execution.isolation != nil {
@@ -496,7 +500,9 @@ func buildAssemblyCore(
 				GitAvailable:           git.Available(),
 				IsolationAvailable:     sandbox.Available(),
 			},
-			sessions: sessionCoordinator,
+			sessions:   sessionCoordinator,
+			retirer:    retirer,
+			admissions: admissionGate,
 			workers: runtimeWorkers{
 				recovery:      ownershipRecovery,
 				invalidations: policy.invalidations.publish,
@@ -509,4 +515,17 @@ func buildAssemblyCore(
 		lifetime: lifetime,
 	}
 	return host, nil
+}
+
+// sessionResourceCleanups names the resource families an available store owns
+// for a retired Session generation; an unavailable store owns none.
+func sessionResourceCleanups(checkpoints *workspaceadapter.Checkpoints, isolation *workspaceadapter.Isolator) []sessions.SessionCleanup {
+	var cleanups []sessions.SessionCleanup
+	if checkpoints != nil {
+		cleanups = append(cleanups, sessions.SessionCleanup{Resource: "checkpoints", Retire: checkpoints.DropSession})
+	}
+	if isolation != nil {
+		cleanups = append(cleanups, sessions.SessionCleanup{Resource: "sandbox", Retire: isolation.Discard})
+	}
+	return cleanups
 }

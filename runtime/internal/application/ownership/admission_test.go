@@ -12,7 +12,7 @@ import (
 
 func newTestGate(t *testing.T) *Gate {
 	t.Helper()
-	gate, err := NewGate(GateConfig{TreesOverlap: filesystem.PathsOverlap, ResolveTree: func(path string) (string, error) { return path, nil }, RetirementPending: noResourceRetirements})
+	gate, err := NewGate(GateConfig{TreesOverlap: filesystem.PathsOverlap, ResolveTree: func(path string) (string, error) { return path, nil }, SettleRetirement: noResourceRetirements})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,7 +26,7 @@ func TestNewGateRequiresPhysicalIdentityResolver(t *testing.T) {
 }
 
 func TestNewGateRequiresPhysicalTreeComparison(t *testing.T) {
-	if gate, err := NewGate(GateConfig{ResolveTree: filesystem.CanonicalPath, RetirementPending: noResourceRetirements}); err == nil || gate != nil {
+	if gate, err := NewGate(GateConfig{ResolveTree: filesystem.CanonicalPath, SettleRetirement: noResourceRetirements}); err == nil || gate != nil {
 		t.Fatalf("NewGate without tree comparison = %#v, %v", gate, err)
 	}
 }
@@ -233,7 +233,7 @@ func TestWaitRunStartableIsContextBounded(t *testing.T) {
 func TestFailedIdentityResolutionDoesNotLeaveAdmissionHeld(t *testing.T) {
 	cause := errors.New("filesystem failed")
 	var resolveErr error = cause
-	gate, err := NewGate(GateConfig{TreesOverlap: filesystem.PathsOverlap, ResolveTree: func(path string) (string, error) { return path, resolveErr }, RetirementPending: noResourceRetirements})
+	gate, err := NewGate(GateConfig{TreesOverlap: filesystem.PathsOverlap, ResolveTree: func(path string) (string, error) { return path, resolveErr }, SettleRetirement: noResourceRetirements})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -389,4 +389,4 @@ func TestRunAdmissionCannotReplaceAnotherSessionsLiveIdentity(t *testing.T) {
 	}
 }
 
-func noResourceRetirements(context.Context, string) (bool, error) { return false, nil }
+func noResourceRetirements(context.Context, string) (bool, error) { return true, nil }

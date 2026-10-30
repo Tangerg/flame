@@ -438,7 +438,7 @@ func (s *SessionStores) ApplyDelete(ctx context.Context, deletion sessions.Delet
 }
 
 func (s *SessionStores) requireAvailableResources(ctx context.Context, sessionID string) error {
-	pending, err := s.resourceRetirements.Pending(ctx, sessionID)
+	pending, err := s.resourceRetirements.pending(ctx, sessionID)
 	if err != nil {
 		return err
 	}

@@ -104,54 +104,54 @@ type streamingProviderChat struct{ *providerChat }
 func (p *streamingProviderChat) Stream(ctx context.Context, request *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
 	request = request.Clone()
 	return func(yield func(*chat.ResponseDelta, error) bool) {
+		sender := newStreamSender(yield)
 		if err := p.use.admitRequest(ctx, request); err != nil {
-			yield(nil, &chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err})
+			sender.fail(&chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err})
 			return
 		}
 		if err := request.Validate(); err != nil {
-			yield(nil, &chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err})
+			sender.fail(&chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err})
 			return
 		}
 		caller, err := qimumcp.InvocationFromContext(ctx)
 		if err != nil {
-			yield(nil, &chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err})
+			sender.fail(&chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err})
 			return
 		}
 		calling, leave, err := p.use.enter(ctx)
 		if err != nil {
-			yield(nil, &chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err})
+			sender.fail(&chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err})
 			return
 		}
 		defer leave()
 		calling, err = providerContext(calling, p.use.binding, caller.ID)
 		if err != nil {
-			yield(nil, &chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err})
+			sender.fail(&chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err})
 			return
 		}
 		borrowed, err := borrowContribution(calling, p.use.owner.config.Connections, p.use.binding)
 		if err != nil {
-			yield(nil, &chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err})
+			sender.fail(&chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err})
 			return
 		}
-		continuing := true
 		defer func() {
-			if err := borrowed.Close(); err != nil && continuing {
-				yield(nil, err)
+			if err := borrowed.Close(); err != nil {
+				sender.fail(err)
 			}
 		}()
 		method, err := modelprovider.StreamMethod()
 		if err != nil {
-			yield(nil, &chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err})
+			sender.fail(&chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err})
 			return
 		}
 		exported, err := qimumcp.NewCapabilityBinding(borrowed.Session(), p.use.binding.Export, p.use.owner.contract)
 		if err != nil {
-			yield(nil, &chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err})
+			sender.fail(&chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err})
 			return
 		}
 		binding, err := exported.Method(method.Descriptor().Name)
 		if err != nil {
-			yield(nil, &chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err})
+			sender.fail(&chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err})
 			return
 		}
 		input := modelprovider.ChatRequest{Handle: p.use.handle, Request: *request}
@@ -159,29 +159,28 @@ func (p *streamingProviderChat) Stream(ctx context.Context, request *chat.Reques
 		chunks, complete := 0, false
 		for value, err := range method.StreamWithMetadata(borrowed.Context(), binding, p.use.owner.config.Callbacks, limits, caller.ID, input, sdk.ParamsBase{}) {
 			if err != nil {
-				continuing = yield(nil, unconfirmedProvider(err))
+				sender.fail(unconfirmedProvider(err))
 				return
 			}
 			if value.Chunk != nil {
 				chunks++
-				continuing = yield(value.Chunk.Clone(), nil)
-				if !continuing {
+				if !sender.send(value.Chunk.Clone(), nil) {
 					return
 				}
 				continue
 			}
 			if value.Result == nil {
-				continuing = yield(nil, unconfirmedProvider(errors.New("model provider: missing stream outcome")))
+				sender.fail(unconfirmedProvider(errors.New("model provider: missing stream outcome")))
 				return
 			}
 			complete = true
 			if err := errors.Join(value.Result.Validate(), providerFailure(value.Result.Failure)); err != nil {
-				continuing = yield(nil, err)
+				sender.fail(err)
 				return
 			}
 		}
 		if !complete || chunks == 0 {
-			continuing = yield(nil, unconfirmedProvider(errors.New("model provider: original stream delivery is unconfirmed")))
+			sender.fail(unconfirmedProvider(errors.New("model provider: original stream delivery is unconfirmed")))
 		}
 	}
 }

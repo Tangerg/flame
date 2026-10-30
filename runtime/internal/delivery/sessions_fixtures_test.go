@@ -1019,6 +1019,14 @@ func (s *stubRuntime) sessionsCoordinatorWithRestorer(checkpoints sessions.Works
 	if s.runs != nil {
 		runStore = s.runs
 	}
+	cleanups := []sessions.SessionCleanup{{Resource: "sandbox", Retire: s.Discard}}
+	if checkpoints != nil {
+		cleanups = append(cleanups, sessions.SessionCleanup{Resource: "checkpoints", Retire: checkpoints.DropSession})
+	}
+	retirer, err := sessions.NewResourceRetirer(stores, cleanups...)
+	if err != nil {
+		panic(err)
+	}
 	deps := sessions.Dependencies{
 		Sessions:              nonNilSessionStore(s.sess),
 		Interrupts:            nonNilSessionInterrupts(s.interrupts),
@@ -1027,7 +1035,7 @@ func (s *stubRuntime) sessionsCoordinatorWithRestorer(checkpoints sessions.Works
 		Snapshots:             stores,
 		MaterialSnapshots:     stores,
 		Writes:                stores,
-		Retirements:           stores,
+		Retirer:               retirer,
 		TransientState:        s,
 		ExecutionReleaser:     stubExecutionReleaser{rt: s},
 		Paths:                 workspaceadapter.Resolver{},

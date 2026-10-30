@@ -239,10 +239,6 @@ func newDelegateProjection(t *testing.T, current session.Session, executor *Inte
 	if err != nil {
 		t.Fatal(err)
 	}
-	admissions, err := ownership.NewGate(ownership.GateConfig{TreesOverlap: filesystem.PathsOverlap, ResolveTree: filesystem.CanonicalPath, RetirementPending: stores.ResourceRetirements.Pending})
-	if err != nil {
-		t.Fatal(err)
-	}
 	isolation, err := workspaceadapter.NewIsolator(t.TempDir(), t.TempDir(), nil)
 	if err != nil {
 		t.Fatal(err)
@@ -252,6 +248,14 @@ func newDelegateProjection(t *testing.T, current session.Session, executor *Inte
 			t.Error(err)
 		}
 	})
+	retirer, err := sessions.NewResourceRetirer(stores.ResourceRetirements, sessions.SessionCleanup{Resource: "sandbox", Retire: isolation.Discard})
+	if err != nil {
+		t.Fatal(err)
+	}
+	admissions, err := ownership.NewGate(ownership.GateConfig{TreesOverlap: filesystem.PathsOverlap, ResolveTree: filesystem.CanonicalPath, SettleRetirement: retirer.Settle})
+	if err != nil {
+		t.Fatal(err)
+	}
 	sessionCoordinator, err := sessions.New(sessions.Dependencies{
 		Sessions: stores.Sessions, Interrupts: stores.Interrupts, Transcript: stores.Transcript, Runs: stores.Runs,
 		Snapshots: writes, MaterialSnapshots: writes, Writes: writes,
@@ -259,7 +263,7 @@ func newDelegateProjection(t *testing.T, current session.Session, executor *Inte
 		Paths: workspaceadapter.Resolver{}, Models: acceptAllRunModelInputs{},
 		DefaultModelSelection: testDefaultSelection(), Admissions: admissions,
 		Plan:      sessions.PlanServices{Boundaries: stores.Plan, Replacements: plans},
-		Mutations: stores.WorkspaceMutations, Retirements: stores.ResourceRetirements, Goals: goals.NewSessionMutations(), Sandbox: isolation,
+		Mutations: stores.WorkspaceMutations, Retirer: retirer, Goals: goals.NewSessionMutations(), Sandbox: isolation,
 		NewID:     func() string { return "session_" + uuid.NewString() },
 		NewRunID:  func() string { return "run_" + uuid.NewString() },
 		NewItemID: func() string { return "item_" + uuid.NewString() },

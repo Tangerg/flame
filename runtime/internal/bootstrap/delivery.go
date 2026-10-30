@@ -24,6 +24,8 @@ type runtimeApplication struct {
 	pluginControl    http.Handler
 	delivery         delivery.HandlerConfig
 	sessions         *sessions.Coordinator
+	retirer          *sessions.ResourceRetirer
+	admissions       *ownership.Gate
 	workers          runtimeWorkers
 	idempotencyStore operation.ReplayStore
 	callbacks        *qimumcp.Callbacks
@@ -45,7 +47,7 @@ type workerJoins struct {
 }
 
 func (h *runtimeApplication) recoverStartup(ctx context.Context) error {
-	if err := h.sessions.RecoverRetiredResources(ctx); err != nil {
+	if err := h.retirer.RecoverPending(ctx, h.admissions); err != nil {
 		return err
 	}
 	return h.sessions.RecoverWorkspaceMutations(ctx)

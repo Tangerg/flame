@@ -57,7 +57,7 @@ func (s *ResourceRetirementStore) Lookup(ctx context.Context, sessionID string) 
 	return retirement, err == nil, err
 }
 
-func (s *ResourceRetirementStore) Pending(ctx context.Context, sessionID string) (bool, error) {
+func (s *ResourceRetirementStore) pending(ctx context.Context, sessionID string) (bool, error) {
 	return sessionResourceRetirementPending(ctx, sqlite.Connection(ctx, s.db), sessionID)
 }
 

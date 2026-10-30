@@ -44,7 +44,7 @@ func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string) error
 			// Executor release is independent of durable resource retirement;
 			// a refusal must not suppress either cleanup responsibility.
 			c.publishAggregateMoved([]string{sessionID}, nil)
-			cleanupErrs := []error{c.retireCommittedResources(ctx, deletion.Retirement())}
+			cleanupErrs := []error{c.retirer.complete(ctx, deletion.Retirement())}
 			for _, item := range pending {
 				if err := c.releaseExecution(ctx, RunExecutionBinding{
 					RunID:      item.RootRunID,
@@ -110,7 +110,7 @@ func (c *Coordinator) restoreSession(ctx context.Context, snapshot Snapshot, pre
 			c.transientState.ForgetSessionContext(sessionID)
 			c.publishAggregateMoved([]string{sessionID}, nil)
 			if retirement, replaced := restore.Retirement(); replaced {
-				return c.retireCommittedResources(ctx, retirement)
+				return c.retirer.complete(ctx, retirement)
 			}
 			return nil
 		},

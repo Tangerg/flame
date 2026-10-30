@@ -16,9 +16,9 @@ func TestGateRejectsAdmissionWhenTreeComparisonFails(t *testing.T) {
 			root := t.TempDir()
 			comparisonErr := errors.New("tree identity comparison failed")
 			gate, err := NewGate(GateConfig{
-				ResolveTree:       filesystem.CanonicalPath,
-				TreesOverlap:      func(string, string) (bool, error) { return false, comparisonErr },
-				RetirementPending: noResourceRetirements,
+				ResolveTree:      filesystem.CanonicalPath,
+				TreesOverlap:     func(string, string) (bool, error) { return false, comparisonErr },
+				SettleRetirement: noResourceRetirements,
 			})
 			if err != nil {
 				t.Fatal(err)
@@ -60,7 +60,7 @@ func TestGateExcludesOverlappingRunAndMutationScopes(t *testing.T) {
 	for _, pair := range [][2]string{{root, child}, {child, root}, {child, alias}} {
 		for _, phase := range []string{"pending", "live", "maintenance"} {
 			t.Run(phase+"/"+pair[0]+"/"+pair[1], func(t *testing.T) {
-				gate, err := NewGate(GateConfig{TreesOverlap: filesystem.PathsOverlap, ResolveTree: filesystem.CanonicalPath, RetirementPending: noResourceRetirements})
+				gate, err := NewGate(GateConfig{TreesOverlap: filesystem.PathsOverlap, ResolveTree: filesystem.CanonicalPath, SettleRetirement: noResourceRetirements})
 				if err != nil {
 					t.Fatal(err)
 				}

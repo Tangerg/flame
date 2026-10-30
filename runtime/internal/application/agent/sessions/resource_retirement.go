@@ -4,9 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+	"slices"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/google/uuid"
+	"github.com/samber/lo"
 )
 
 // ResourceRetirement names the resource generation retired by one committed
@@ -44,8 +47,52 @@ func (r ResourceRetirement) Validate() error {
 	return err
 }
 
-func (c *Coordinator) retireCommittedResources(ctx context.Context, retirement ResourceRetirement) error {
-	committed, found, err := c.retirements.Lookup(ctx, retirement.SessionID())
+// SessionCleanup removes one family of resources a retired Session generation
+// owned. Retire must be idempotent: a failed cleanup keeps the retirement
+// pending and is attempted again.
+type SessionCleanup struct {
+	Resource string
+	Retire   func(sessionID string) error
+}
+
+// ResourceRetirer alone completes committed resource retirements. Until every
+// cleanup succeeds the durable record keeps the Session fenced; the next
+// exclusive admission of that Session retries instead of waiting for a restart.
+type ResourceRetirer struct {
+	retirements resourceRetirements
+	cleanups    []SessionCleanup
+}
+
+func NewResourceRetirer(retirements resourceRetirements, cleanups ...SessionCleanup) (*ResourceRetirer, error) {
+	if lo.IsNil(retirements) {
+		return nil, errors.New("sessions: resource retirement store is required")
+	}
+	for _, cleanup := range cleanups {
+		if cleanup.Resource == "" || cleanup.Retire == nil {
+			return nil, errors.New("sessions: resource cleanup requires a name and an action")
+		}
+	}
+	return &ResourceRetirer{retirements: retirements, cleanups: slices.Clone(cleanups)}, nil
+}
+
+// Settle completes sessionID's committed retirement, if any, under the caller's
+// exclusive admission. It reports false while a cleanup still fails; the cause
+// is logged because the caller can only answer that the Session is busy.
+func (r *ResourceRetirer) Settle(ctx context.Context, sessionID string) (bool, error) {
+	retirement, found, err := r.retirements.Lookup(ctx, sessionID)
+	if err != nil || !found {
+		return err == nil, err
+	}
+	if err := r.complete(ctx, retirement); err != nil {
+		slog.ErrorContext(ctx, "sessions: committed resource retirement is still pending",
+			"session.id", sessionID, "error", err)
+		return false, nil
+	}
+	return true, nil
+}
+
+func (r *ResourceRetirer) complete(ctx context.Context, retirement ResourceRetirement) error {
+	committed, found, err := r.retirements.Lookup(ctx, retirement.SessionID())
 	if err != nil || !found {
 		return err
 	}
@@ -53,42 +100,43 @@ func (c *Coordinator) retireCommittedResources(ctx context.Context, retirement R
 		return fmt.Errorf("%w: Session resource retirement changed", ErrSessionBusy)
 	}
 	var errs []error
-	if c.checkpoints != nil {
-		if err := c.checkpoints.DropSession(retirement.SessionID()); err != nil {
-			errs = append(errs, fmt.Errorf("sessions: retire checkpoints: %w", err))
-		}
-	}
-	if c.sandbox != nil {
-		if err := c.sandbox.Discard(retirement.SessionID()); err != nil {
-			errs = append(errs, fmt.Errorf("sessions: retire sandbox: %w", err))
+	for _, cleanup := range r.cleanups {
+		if err := cleanup.Retire(retirement.SessionID()); err != nil {
+			errs = append(errs, fmt.Errorf("sessions: retire %s: %w", cleanup.Resource, err))
 		}
 	}
 	if err := errors.Join(errs...); err != nil {
 		return err
 	}
-	return c.retirements.Complete(ctx, retirement)
+	return r.retirements.Complete(ctx, retirement)
 }
 
-// RecoverRetiredResources consumes only decisions committed with a history
-// mutation. Its recovery claim wakes foreground waiters after durable completion.
-func (c *Coordinator) RecoverRetiredResources(ctx context.Context) error {
-	pending, err := c.retirements.ListPending(ctx)
+// RecoverPending settles every retirement left by an earlier process. One
+// Session's failing cleanup keeps only that Session fenced; it never prevents
+// the Runtime from serving the others.
+func (r *ResourceRetirer) RecoverPending(ctx context.Context, admissions recoveryClaims) error {
+	pending, err := r.retirements.ListPending(ctx)
 	if err != nil {
 		return err
 	}
 	for _, retirement := range pending {
-		release, ok, err := c.admissions.AcquireRecoverySession(retirement.SessionID())
+		release, ok, err := admissions.AcquireRecoverySession(retirement.SessionID())
 		if err != nil {
 			return err
 		}
 		if !ok {
-			return fmt.Errorf("%w: retiring Session resources", ErrSessionBusy)
+			continue
 		}
-		err = c.retireCommittedResources(ctx, retirement)
+		err = r.complete(ctx, retirement)
 		release()
 		if err != nil {
-			return fmt.Errorf("sessions: recover resources for %q: %w", retirement.SessionID(), err)
+			slog.ErrorContext(ctx, "sessions: committed resource retirement is still pending",
+				"session.id", retirement.SessionID(), "error", err)
 		}
 	}
 	return nil
+}
+
+type recoveryClaims interface {
+	AcquireRecoverySession(sessionID string) (release func(), ok bool, err error)
 }

@@ -247,35 +247,34 @@ type streamedModelCapture struct{ *modelCapture }
 func (c *streamedModelCapture) Stream(ctx context.Context, request *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
 	request = request.Clone()
 	return func(yield func(*chat.ResponseDelta, error) bool) {
+		sender := newStreamSender(yield)
 		calling, leave, err := c.enter(ctx)
 		if err != nil {
-			yield(nil, err)
+			sender.fail(err)
 			return
 		}
 		defer leave()
 		calling, finish, err := beginCapturedModelCall(calling, c.resolved.Selection())
 		if err != nil {
-			yield(nil, err)
+			sender.fail(err)
 			return
 		}
 		outcome := errors.New("model call: captured stream did not return normally")
-		continuing := true
 		defer func() {
-			if err := finish(calling, errors.Join(outcome, context.Cause(calling))); err != nil && continuing {
-				yield(nil, err)
+			if err := finish(calling, errors.Join(outcome, context.Cause(calling))); err != nil {
+				sender.fail(err)
 			}
 		}()
 		sent, err := c.prepare(calling, request)
 		if err != nil {
 			outcome = err
-			continuing = yield(nil, err)
+			sender.fail(err)
 			return
 		}
 		var observed error
 		c.stream.Stream(calling, sent)(func(delta *chat.ResponseDelta, err error) bool {
 			observed = errors.Join(observed, err)
-			continuing = yield(delta, err)
-			return continuing
+			return sender.send(delta, err)
 		})
 		outcome = observed
 	}

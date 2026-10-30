@@ -77,23 +77,23 @@ func (o *CallComposition) ModelCallbacks(resolve models.ChatModelResolver) ([]qi
 	}
 	stream, err := pluginsdk.NewSelectedModelStreamCallback(func(ctx context.Context, command qimumcp.Command[pluginsdk.ModelCallRequest]) iter.Seq2[*chat.ResponseDelta, error] {
 		return func(yield func(*chat.ResponseDelta, error) bool) {
+			sender := newStreamSender(yield)
 			selected, request, release, err := capture(ctx, command.Input)
 			if err != nil {
-				yield(nil, err)
+				sender.fail(err)
 				return
 			}
-			continuing := true
 			defer func() {
-				if err := release(); err != nil && continuing {
-					yield(nil, err)
+				if err := release(); err != nil {
+					sender.fail(err)
 				}
 			}()
 			streamer, ok := selected.Model().(chat.Streamer)
 			if !ok {
-				yield(nil, errors.New("model call: selected provider does not support streaming"))
+				sender.fail(errors.New("model call: selected provider does not support streaming"))
 				return
 			}
-			streamer.Stream(ctx, request)(func(delta *chat.ResponseDelta, err error) bool { continuing = yield(delta, err); return continuing })
+			streamer.Stream(ctx, request)(sender.send)
 		}
 	})
 	if err != nil {

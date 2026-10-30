@@ -15,27 +15,29 @@ import (
 // data-directory lease excludes other processes; this registry owns admission
 // for every use case inside that lifetime.
 type Gate struct {
-	mu                sync.Mutex
-	runs              map[string]reservedRun
-	pending           map[*runAdmissionLease]reservedRun
-	maintenance       map[*maintenanceReservation]struct{}
-	claims            map[string]sessionClaimKind
-	treeMutations     map[string]struct{}
-	changed           chan struct{}
-	resolveTree       func(string) (string, error)
-	treesOverlap      func(string, string) (bool, error)
-	retirementPending func(context.Context, string) (bool, error)
+	mu               sync.Mutex
+	runs             map[string]reservedRun
+	pending          map[*runAdmissionLease]reservedRun
+	maintenance      map[*maintenanceReservation]struct{}
+	claims           map[string]sessionClaimKind
+	treeMutations    map[string]struct{}
+	changed          chan struct{}
+	resolveTree      func(string) (string, error)
+	treesOverlap     func(string, string) (bool, error)
+	settleRetirement func(context.Context, string) (bool, error)
 }
 
 // GateConfig binds resolution and comparison to the same physical path semantics.
 type GateConfig struct {
-	ResolveTree       func(string) (string, error)
-	TreesOverlap      func(string, string) (bool, error)
-	RetirementPending func(context.Context, string) (bool, error)
+	ResolveTree  func(string) (string, error)
+	TreesOverlap func(string, string) (bool, error)
+	// SettleRetirement completes the Session's committed resource retirement
+	// under the caller's exclusive claim and reports whether none remains.
+	SettleRetirement func(context.Context, string) (bool, error)
 }
 
 // NewGate shares physical tree identity and committed resource retirement with
-// every foreground admission. Recovery alone may consume a retirement fence.
+// every foreground admission: an exclusive claim settles the Session's fence.
 func NewGate(cfg GateConfig) (*Gate, error) {
 	if cfg.ResolveTree == nil {
 		return nil, errors.New("session admission: working-tree resolver is required")
@@ -43,19 +45,19 @@ func NewGate(cfg GateConfig) (*Gate, error) {
 	if cfg.TreesOverlap == nil {
 		return nil, errors.New("session admission: working-tree comparison is required")
 	}
-	if cfg.RetirementPending == nil {
-		return nil, errors.New("session admission: resource retirement reader is required")
+	if cfg.SettleRetirement == nil {
+		return nil, errors.New("session admission: resource retirement settlement is required")
 	}
 	return &Gate{
-		resolveTree:       cfg.ResolveTree,
-		treesOverlap:      cfg.TreesOverlap,
-		retirementPending: cfg.RetirementPending,
-		runs:              make(map[string]reservedRun),
-		pending:           make(map[*runAdmissionLease]reservedRun),
-		maintenance:       make(map[*maintenanceReservation]struct{}),
-		claims:            make(map[string]sessionClaimKind),
-		treeMutations:     make(map[string]struct{}),
-		changed:           make(chan struct{}),
+		resolveTree:      cfg.ResolveTree,
+		treesOverlap:     cfg.TreesOverlap,
+		settleRetirement: cfg.SettleRetirement,
+		runs:             make(map[string]reservedRun),
+		pending:          make(map[*runAdmissionLease]reservedRun),
+		maintenance:      make(map[*maintenanceReservation]struct{}),
+		claims:           make(map[string]sessionClaimKind),
+		treeMutations:    make(map[string]struct{}),
+		changed:          make(chan struct{}),
 	}, nil
 }
 
@@ -141,9 +143,9 @@ func (g *Gate) AcquireSession(ctx context.Context, sessionID string) (release fu
 	if err != nil || !ok {
 		return nil, false, err
 	}
-	pending, err := g.retirementPending(ctx, sessionID)
+	settled, err := g.settleRetirement(ctx, sessionID)
 	err = errors.Join(err, cancellation.Err(ctx))
-	if err != nil || pending {
+	if err != nil || !settled {
 		release()
 		return nil, false, err
 	}
@@ -193,9 +195,9 @@ func (g *Gate) AcquireRun(ctx context.Context, sessionID, cwd string) (RunAdmiss
 	if err != nil || !ok {
 		return RunAdmission{}, false, err
 	}
-	pending, err := g.retirementPending(ctx, sessionID)
+	settled, err := g.settleRetirement(ctx, sessionID)
 	err = errors.Join(err, cancellation.Err(ctx))
-	if err != nil || pending {
+	if err != nil || !settled {
 		admission.Release()
 		return RunAdmission{}, false, err
 	}
@@ -334,13 +336,7 @@ func (g *Gate) WaitRunStartable(ctx context.Context, sessionID, cwd string) erro
 		changed := g.changed
 		g.mu.Unlock()
 		if startable {
-			pending, err := g.retirementPending(ctx, sessionID)
-			if err = errors.Join(err, cancellation.Err(ctx)); err != nil {
-				return err
-			}
-			if !pending {
-				return nil
-			}
+			return nil
 		}
 
 		select {
