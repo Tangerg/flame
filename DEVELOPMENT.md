@@ -64,6 +64,8 @@ full native verification still requires macOS. CI runs clean workspace
 installation and checks on Apple Silicon and Intel macOS and on Linux, plus the
 macOS native job. Deliverables uses the pinned macOS LibreOfficeKit installation
 described in [its execution guide](plugins/deliverables/README.md#macos-office-installation).
+Backend test files run serially: their native processes must not compete with
+other files for the CPU and memory needed by lifecycle deadlines.
 Verification targets use `/tmp` as their temporary root so Runtime fixture
 sockets fit the platform's Unix address limit.
 Author generation, typechecking, builds and packaging deny checkout reads and

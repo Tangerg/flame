@@ -52,6 +52,7 @@ if (
         new URL("../../node_modules/vitest/vitest.mjs", import.meta.url),
       ),
       "run",
+      "--no-file-parallelism",
       ...tests,
     ],
     { cwd: directory, stdio: "inherit", env: process.env },
