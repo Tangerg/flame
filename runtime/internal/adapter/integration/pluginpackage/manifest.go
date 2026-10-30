@@ -424,17 +424,17 @@ func parseMCP(ctx context.Context, root *os.Root, release *plugin.Builder) ([]st
 	return names, nil
 }
 
-// portableServer is the only translation from the portable mcp.json spelling
+// portableServer is the only translation from a portable mcp.json declaration
 // into the MCP registry vocabulary the release declares.
 func portableServer(name string, raw jsontext.Value) (plugin.Server, error) {
 	var wire struct {
-		Type    string            `json:"type"`
-		Command string            `json:"command,omitempty"`
-		Args    []string          `json:"args,omitempty"`
-		Env     map[string]string `json:"env,omitempty"`
-		CWD     string            `json:"cwd,omitempty"`
-		URL     string            `json:"url,omitempty"`
-		Headers map[string]string `json:"headers,omitempty"`
+		Type    mcpserver.Transport `json:"type"`
+		Command string              `json:"command,omitempty"`
+		Args    []string            `json:"args,omitempty"`
+		Env     map[string]string   `json:"env,omitempty"`
+		CWD     string              `json:"cwd,omitempty"`
+		URL     string              `json:"url,omitempty"`
+		Headers map[string]string   `json:"headers,omitempty"`
 	}
 	if err := jsonvalue.UnmarshalNonNull(raw, &wire); err != nil {
 		return plugin.Server{}, fmt.Errorf("%w: server declaration: %w", plugin.ErrInvalid, err)
@@ -447,15 +447,13 @@ func portableServer(name string, raw jsontext.Value) (plugin.Server, error) {
 	if err != nil {
 		return plugin.Server{}, fmt.Errorf("%w: server name: %w", plugin.ErrInvalid, err)
 	}
-	server := plugin.Server{Name: local}
+	server := plugin.Server{Name: local, Transport: wire.Type}
 	var allowed []string
 	switch wire.Type {
-	case "stdio":
-		server.Transport = mcpserver.TransportStdio
+	case mcpserver.TransportStdio:
 		server.Command, server.Args, server.Env, server.Dir = wire.Command, wire.Args, wire.Env, wire.CWD
 		allowed = []string{"type", "command", "args", "env", "cwd"}
-	case "streamable-http":
-		server.Transport = mcpserver.TransportStreamableHTTP
+	case mcpserver.TransportStreamableHTTP:
 		server.URL, server.Headers = wire.URL, wire.Headers
 		allowed = []string{"type", "url", "headers"}
 	default:

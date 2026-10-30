@@ -333,7 +333,7 @@ func TestLegacyContentAndInstalledAmbientTransportsAreRefused(t *testing.T) {
 	if _, err := releases.Materialize(t.Context(), writePackage(t, map[string]string{"plugin.json": portableManifest})); err == nil {
 		t.Fatal("legacy tree without neutral manifest was admitted")
 	}
-	for _, server := range []string{`{"type":"stdio","command":"sh"}`, `{"type":"streamable-http","url":"https://example.test/mcp"}`} {
+	for _, server := range []string{`{"type":"stdio","command":"sh"}`, `{"type":"streamableHttp","url":"https://example.test/mcp"}`} {
 		source := writePackage(t, map[string]string{"plugin.json": portableManifest, "mcp.json": `{"$schema":"` + MCPSchema + `","mcpServers":{"backend":` + server + `}}`})
 		if _, err := publishPackage(t.Context(), releases, source); !errors.Is(err, plugin.ErrInvalid) {
 			t.Fatalf("unsupported installed profile admitted: %s: %v", server, err)
