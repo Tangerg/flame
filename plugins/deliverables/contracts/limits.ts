@@ -1,3 +1,15 @@
+// Text field bounds shared by the command schemas and the authoring forms.
+export const FIELD_LIMITS = Object.freeze({
+  title: 180,
+  sourceTitle: 300,
+  uri: 2048,
+  note: 2000,
+  units: 2000,
+  reproduction: 12000,
+  reviewNotes: 12000,
+  sheetName: 31,
+} as const);
+
 export const LIMITS = Object.freeze({
   fileBytes: 32 * 1024 * 1024,
   chunkBytes: 192 * 1024,

@@ -16,7 +16,7 @@ import {
   TextField,
   Toolbar,
 } from "@flame/ui";
-import { LIMITS } from "../contracts/limits";
+import { FIELD_LIMITS, LIMITS } from "../contracts/limits";
 import { METHODS } from "../contracts/methods";
 import { cleanProvenance, ProvenanceEditor } from "./authoring";
 import { boundedInteger, encodeChunk, sha256 } from "./transfer";
@@ -208,7 +208,7 @@ export function ImportForm({
             <TextField
               value={title}
               required
-              maxLength={180}
+              maxLength={FIELD_LIMITS.title}
               disabled={blocked}
               onChange={(event) => setTitle(event.target.value)}
             />

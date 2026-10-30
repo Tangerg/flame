@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { LIMITS } from "./limits";
+import { FIELD_LIMITS, LIMITS } from "./limits";
 
 const hash = z.string().regex(/^[a-f0-9]{64}$/);
 export const checkSchema = z.strictObject({
@@ -42,7 +42,7 @@ export const reviewReportSchema = z.strictObject({
     .min(1)
     .max(LIMITS.renderPages),
   verdict: z.enum(["accepted", "changes_requested"]),
-  notes: z.string().min(1).max(12000),
+  notes: z.string().min(1).max(FIELD_LIMITS.reviewNotes),
   reviewer: z.strictObject({
     origin: z.enum(["human", "model", "automatic"]),
     invocationId: z.string(),

@@ -1,6 +1,6 @@
 import { z } from "zod/v4";
 import { parseJSON } from "@qimu/sdk/json";
-import { LIMITS } from "./limits";
+import { FIELD_LIMITS, LIMITS } from "./limits";
 import { checkSchema } from "./evidence";
 import { projectNumbers } from "./json";
 
@@ -12,6 +12,8 @@ export const contentLimits = {
   xmlNodes: 250_000,
   jsonBytes: LIMITS.inputBytes,
   cells: 50_000,
+  authoredRows: 100_000,
+  authoredColumns: 1024,
   items: 1000,
   itemText: 4096,
   inspectionBytes: LIMITS.reportBytes,
@@ -190,7 +192,7 @@ export const workbookContentSchema = z.strictObject({
         name: z
           .string()
           .min(1)
-          .max(31)
+          .max(FIELD_LIMITS.sheetName)
           .regex(/^[^\\/*?:[\]]+$/u),
         cells: z
           .array(

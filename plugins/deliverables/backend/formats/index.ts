@@ -104,7 +104,7 @@ const officeLimits = [
   "Transitional, macro-free OOXML packages with canonical main parts are supported; strict OOXML, encryption, ZIP64, macros, active embedded content, external data and unsupported embedded files are refused.",
   "Creation JSON is command input. Native revision bytes are the editable source of truth; imported files are never reconstructed from inspection text.",
   "Native edits preserve untouched archive entries byte-for-byte after decoding. Recompression and selected XML part serialization can change the ZIP bytes.",
-  "Inspection text runs longer than 4096 characters are omitted; reports are bounded to 1000 items and 1 MiB. IDs apply only to the exact source revision.",
+  `Inspection text runs longer than ${contentLimits.itemText} characters are omitted; reports are bounded to ${contentLimits.items} items and ${contentLimits.inspectionBytes / (1024 * 1024)} MiB. IDs apply only to the exact source revision.`,
   "Rendering and actual workbook recalculation require the configured isolated LibreOffice engine. Structural admission does not certify layout, content truth or fresh formula results.",
 ];
 const examples = {
@@ -266,7 +266,7 @@ export function catalog(): FormatCatalog {
         exampleJSON: JSON.stringify(examples.xlsx),
         limitations: [
           ...officeLimits,
-          "Creates typed cells, local formulas, cell styles, comments, tables, merges, freeze panes and editable native bar/line/pie charts. At most 50000 authored cells, 100000 rows and 1024 authored columns.",
+          `Creates typed cells, local formulas, cell styles, comments, tables, merges, freeze panes and editable native bar/line/pie charts. At most ${contentLimits.cells} authored cells, ${contentLimits.authoredRows} rows and ${contentLimits.authoredColumns} authored columns.`,
           "Excel numbers use floating-point arithmetic and approximately 15 decimal digits. Inputs that cannot be projected exactly are refused; use string cells for exact identifiers or decimal text, and explicit rounding/unit policies for numerical models. Imported numbers outside exact JavaScript projection are reported as native_decimal text; CSV preserves native numeric lexemes.",
           "Native setCell preserves cell style and unrelated parts. Shared/array/data-table formula regions cannot be edited. Every edit invalidates workbook formula results, chart caches and the calculation chain.",
           "Formula caches cannot be supplied during creation or editing. CSV export requires existing calculated results and refuses spreadsheet errors; formula-like string values receive an apostrophe to prevent spreadsheet formula injection.",

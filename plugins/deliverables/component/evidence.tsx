@@ -17,6 +17,7 @@ import {
   TextArea,
   Toolbar,
 } from "@flame/ui";
+import { FIELD_LIMITS } from "../contracts/limits";
 import { METHODS } from "../contracts/methods";
 import {
   renderReportSchema,
@@ -352,7 +353,7 @@ function RenderedPages({
             <TextArea
               value={notes}
               required
-              maxLength={12000}
+              maxLength={FIELD_LIMITS.reviewNotes}
               rows={5}
               disabled={state.blocked}
               onChange={(event) => {

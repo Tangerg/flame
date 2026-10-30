@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { PROTOCOL, type CapabilityDescriptor } from "@qimu/node";
-import { LIMITS } from "./limits";
+import { FIELD_LIMITS, LIMITS } from "./limits";
 import { formatSchema } from "./content";
 
 import { METHODS } from "./methods";
@@ -8,7 +8,7 @@ export { METHODS } from "./methods";
 
 const id = z.string().regex(/^[a-f0-9]{64}$/);
 const format = formatSchema;
-const title = z.string().min(1).max(180);
+const title = z.string().min(1).max(FIELD_LIMITS.title);
 const timestamp = z.string().min(1).max(40);
 const empty = z.strictObject({});
 const json = z.string().min(2).max(LIMITS.inputBytes);
@@ -16,15 +16,15 @@ const provenance = z.strictObject({
   sources: z
     .array(
       z.strictObject({
-        title: z.string().min(1).max(300),
-        uri: z.string().max(2048),
-        note: z.string().max(2000),
+        title: z.string().min(1).max(FIELD_LIMITS.sourceTitle),
+        uri: z.string().max(FIELD_LIMITS.uri),
+        note: z.string().max(FIELD_LIMITS.note),
       }),
     )
     .max(LIMITS.provenanceSources),
-  assumptions: z.array(z.string().min(1).max(2000)).max(64),
-  units: z.string().max(2000),
-  reproduction: z.string().max(12000),
+  assumptions: z.array(z.string().min(1).max(FIELD_LIMITS.note)).max(64),
+  units: z.string().max(FIELD_LIMITS.units),
+  reproduction: z.string().max(FIELD_LIMITS.reproduction),
 });
 const asset = z.strictObject({
   id,
@@ -139,7 +139,7 @@ export const schemas = Object.freeze({
       .min(1)
       .max(LIMITS.renderPages),
     verdict: z.enum(["accepted", "changes_requested"]),
-    notes: z.string().min(1).max(12000),
+    notes: z.string().min(1).max(FIELD_LIMITS.reviewNotes),
   }),
   export: selected.extend({
     kind: z.enum(["native", "pdf", "bundle", "csv"]),

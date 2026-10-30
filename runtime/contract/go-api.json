@@ -129,6 +129,11 @@
           "value": "\"shell\""
         },
         {
+          "name": "ShellAutoBackgroundSeconds",
+          "type": "untyped int",
+          "value": "60"
+        },
+        {
           "name": "StopShell",
           "type": "Name",
           "value": "\"stop_shell\""

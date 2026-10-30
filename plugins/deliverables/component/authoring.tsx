@@ -32,7 +32,7 @@ import {
   type CellValue,
   type PresentationContent,
 } from "../contracts/content";
-import { LIMITS } from "../contracts/limits";
+import { FIELD_LIMITS, LIMITS } from "../contracts/limits";
 import { METHODS } from "../contracts/methods";
 import { projectNumbers } from "../contracts/json";
 import type { DeliverablesState } from "./useDeliverables";
@@ -83,7 +83,7 @@ export function ProvenanceEditor({
             <FormField label={t("source.title")}>
               <TextField
                 value={source.title}
-                maxLength={300}
+                maxLength={FIELD_LIMITS.sourceTitle}
                 disabled={disabled}
                 onChange={(event) =>
                   change({
@@ -100,7 +100,7 @@ export function ProvenanceEditor({
             <FormField label={t("source.uri")}>
               <TextField
                 value={source.uri}
-                maxLength={2048}
+                maxLength={FIELD_LIMITS.uri}
                 disabled={disabled}
                 onChange={(event) =>
                   change({
@@ -118,7 +118,7 @@ export function ProvenanceEditor({
           <FormField label={t("source.note")}>
             <TextArea
               value={source.note}
-              maxLength={2000}
+              maxLength={FIELD_LIMITS.note}
               disabled={disabled}
               onChange={(event) =>
                 change({
@@ -166,7 +166,7 @@ export function ProvenanceEditor({
       <FormField label={t("provenance.units")}>
         <TextField
           value={value.units}
-          maxLength={2000}
+          maxLength={FIELD_LIMITS.units}
           disabled={disabled}
           onChange={(event) => change({ ...value, units: event.target.value })}
         />
@@ -174,7 +174,7 @@ export function ProvenanceEditor({
       <FormField label={t("provenance.reproduction")}>
         <TextArea
           value={value.reproduction}
-          maxLength={12000}
+          maxLength={FIELD_LIMITS.reproduction}
           disabled={disabled}
           onChange={(event) =>
             change({ ...value, reproduction: event.target.value })
@@ -353,7 +353,7 @@ export function CreateForm({
         <FormField label={t("author.title")}>
           <TextField
             value={title}
-            maxLength={180}
+            maxLength={FIELD_LIMITS.title}
             required
             disabled={busy}
             onChange={(event) => setTitle(event.target.value)}
@@ -392,7 +392,7 @@ export function CreateForm({
             <FormField label={t("author.sheet")}>
               <TextField
                 value={sheet}
-                maxLength={31}
+                maxLength={FIELD_LIMITS.sheetName}
                 disabled={busy}
                 onChange={(event) => setSheet(event.target.value)}
               />

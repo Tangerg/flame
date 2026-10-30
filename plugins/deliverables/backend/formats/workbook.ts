@@ -93,9 +93,12 @@ export async function createWorkbook(json: string): Promise<Uint8Array> {
     const addresses = new Set<string>();
     for (const authored of sheet.cells) {
       const position = cellAddress(authored.address);
-      if (position.column > 1024 || position.row > 100_000)
+      if (
+        position.column > contentLimits.authoredColumns ||
+        position.row > contentLimits.authoredRows
+      )
         throw new Error(
-          "authored cells are limited to 1024 columns and 100000 rows",
+          `authored cells are limited to ${contentLimits.authoredColumns} columns and ${contentLimits.authoredRows} rows`,
         );
       if (addresses.has(authored.address))
         throw new Error("one authored cell has more than one value");
