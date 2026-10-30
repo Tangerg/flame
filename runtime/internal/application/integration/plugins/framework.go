@@ -114,13 +114,14 @@ type ComponentConfiguration struct {
 }
 
 type ComponentMetadata struct {
-	ID           string                       `json:"id"`
-	Title        string                       `json:"title"`
-	Scope        extension.ComponentScope     `json:"scope"`
-	Placement    extension.ComponentPlacement `json:"placement"`
-	Contribution string                       `json:"contribution,omitempty"`
-	Material     string                       `json:"material,omitempty"`
-	Selector     *ComponentSelector           `json:"selector,omitempty"`
+	ID             string                       `json:"id"`
+	Title          string                       `json:"title"`
+	Scope          extension.ComponentScope     `json:"scope"`
+	Placement      extension.ComponentPlacement `json:"placement"`
+	Contribution   string                       `json:"contribution,omitempty"`
+	Material       string                       `json:"material,omitempty"`
+	SettingsIntent extension.SettingsIntent     `json:"settingsIntent,omitempty"`
+	Selector       *ComponentSelector           `json:"selector,omitempty"`
 }
 
 type ComponentSelector struct {
@@ -135,7 +136,7 @@ func PublicComponentConfiguration(release plugin.Release, id plugin.Contribution
 		if component.ID != id {
 			continue
 		}
-		metadata := ComponentMetadata{ID: id.String(), Title: component.Title, Scope: component.Scope, Placement: component.Placement, Contribution: component.Contribution.String(), Material: component.Material}
+		metadata := ComponentMetadata{ID: id.String(), Title: component.Title, Scope: component.Scope, Placement: component.Placement, Contribution: component.Contribution.String(), Material: component.Material, SettingsIntent: component.SettingsIntent}
 		if component.Selector != nil {
 			metadata.Selector = &ComponentSelector{Kind: component.Selector.Kind, Name: component.Selector.Name}
 		}

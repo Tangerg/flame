@@ -6661,6 +6661,9 @@
         "selector": {
           "$ref": "#/$defs/PluginRendererSelector"
         },
+        "settingsIntent": {
+          "$ref": "#/$defs/SettingsIntent"
+        },
         "title": {
           "type": "string"
         }
@@ -11142,6 +11145,12 @@
       "required": [
         "enabled",
         "installationId"
+      ]
+    },
+    "SettingsIntent": {
+      "type": "string",
+      "enum": [
+        "modelProviders"
       ]
     },
     "Skill": {

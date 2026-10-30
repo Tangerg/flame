@@ -841,6 +841,11 @@
           "name": "ScopeInstallation",
           "type": "untyped string",
           "value": "\"installation\""
+        },
+        {
+          "name": "SettingsIntentModelProviders",
+          "type": "SettingsIntent",
+          "value": "\"modelProviders\""
         }
       ],
       "functions": [
@@ -881,6 +886,21 @@
           "kind": "defined",
           "underlying": "string",
           "methods": [
+            {
+              "name": "Values",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "SettingsIntent",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "Valid",
+              "signature": "func() bool"
+            },
             {
               "name": "Values",
               "signature": "func() []string"
@@ -9943,6 +9963,11 @@
               "name": "Material",
               "type": "string",
               "tag": "json:\"material,omitzero\""
+            },
+            {
+              "name": "SettingsIntent",
+              "type": "extension.SettingsIntent",
+              "tag": "json:\"settingsIntent,omitzero\""
             }
           ]
         },

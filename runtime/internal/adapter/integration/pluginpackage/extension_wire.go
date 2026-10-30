@@ -42,15 +42,16 @@ type wirePointValue struct {
 }
 
 type wireComponent struct {
-	Selector     *wireRendererSelector        `json:"selector,omitzero"`
-	ID           plugin.ContributionID        `json:"id"`
-	Title        string                       `json:"title"`
-	Scope        extension.ComponentScope     `json:"scope"`
-	Placement    extension.ComponentPlacement `json:"placement"`
-	Entry        string                       `json:"entry"`
-	Export       string                       `json:"export"`
-	Contribution *plugin.ContributionID       `json:"contribution,omitzero"`
-	Material     *string                      `json:"material,omitzero"`
+	Selector       *wireRendererSelector        `json:"selector,omitzero"`
+	ID             plugin.ContributionID        `json:"id"`
+	Title          string                       `json:"title"`
+	Scope          extension.ComponentScope     `json:"scope"`
+	Placement      extension.ComponentPlacement `json:"placement"`
+	Entry          string                       `json:"entry"`
+	Export         string                       `json:"export"`
+	Contribution   *plugin.ContributionID       `json:"contribution,omitzero"`
+	Material       *string                      `json:"material,omitzero"`
+	SettingsIntent *extension.SettingsIntent    `json:"settingsIntent,omitzero"`
 }
 
 type wireInput struct {

@@ -2,7 +2,42 @@ package pluginpackage
 
 import (
 	"testing"
+
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 )
+
+func TestSettingsIntentAdmissionDoesNotEvaluateTheComponent(t *testing.T) {
+	for _, test := range []struct {
+		name, placement, intent string
+		admitted                bool
+	}{
+		{"model settings", "settingsPane", `,"settingsIntent":"modelProviders"`, true},
+		{"empty", "settingsPane", `,"settingsIntent":""`, false},
+		{"null", "settingsPane", `,"settingsIntent":null`, false},
+		{"unknown", "settingsPane", `,"settingsIntent":"unknown"`, false},
+		{"wrong placement", "workspaceView", `,"settingsIntent":"modelProviders"`, false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			files := map[string]string{
+				"plugin.json": `{"$schema":"` + manifestSchema + `","name":"test.settings","extensions":{"io.github.tangerg.flame":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
+				"io.github.tangerg.flame/components/component.js": `throw new Error("installation must not evaluate component code");`,
+				"io.github.tangerg.flame/declaration.json":        flameDeclaration(`"components":[{"id":"settings","title":"Settings","scope":"client","placement":"` + test.placement + `","entry":"io.github.tangerg.flame/components/component.js","export":"Settings"` + test.intent + `}]`),
+			}
+			release, err := publishPackage(t.Context(), testReleases(t), writePackage(t, files))
+			if err != nil {
+				t.Fatal(err)
+			}
+			declaration := release.Declaration()
+			if test.admitted {
+				if len(declaration.Components) != 1 || declaration.Components[0].SettingsIntent != extension.SettingsIntentModelProviders || len(declaration.Diagnostics) != 0 {
+					t.Fatalf("settings intent: %+v", declaration)
+				}
+			} else if len(declaration.Components) != 0 || len(declaration.Diagnostics) != 1 {
+				t.Fatalf("invalid settings intent admitted: %+v", declaration)
+			}
+		})
+	}
+}
 
 func TestComponentOnlyPackageAdmissionDoesNotRequireOrExecuteBackend(t *testing.T) {
 	for _, test := range []struct {

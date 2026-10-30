@@ -1268,6 +1268,7 @@ export interface PluginClientComponent {
   placement: ComponentPlacement;
   scope: ComponentScope;
   selector?: PluginRendererSelector;
+  settingsIntent?: SettingsIntent;
   title: string;
 }
 
@@ -1971,6 +1972,8 @@ export interface SetPluginEnablementRequest {
   installationId: string;
 }
 
+export type SettingsIntent = "modelProviders";
+
 export interface Skill {
   description?: string;
   installation?: SkillInstallation;
@@ -2395,6 +2398,7 @@ export const WIRE_ENUMS = {
   RuntimeTopic: ["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed"],
   SafetyClass: ["safe", "write", "exec", "network"],
   SessionStatus: ["running", "waiting", "idle"],
+  SettingsIntent: ["modelProviders"],
   SkillLifecycle: ["active", "archived"],
   SkillProposalOrigin: ["requested", "mined"],
   SkillProposalScope: ["project", "user"],

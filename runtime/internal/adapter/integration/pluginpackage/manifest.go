@@ -13,6 +13,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	sdkplugin "github.com/Tangerg/flame/packages/go-sdk/plugin"
@@ -274,6 +275,13 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 			}
 			material = *w.Material
 		}
+		var settingsIntent extension.SettingsIntent
+		if w.SettingsIntent != nil {
+			if *w.SettingsIntent == "" {
+				return plugin.ErrInvalid
+			}
+			settingsIntent = *w.SettingsIntent
+		}
 		if !plugin.ValidResourcePath(w.Entry) || !strings.HasPrefix(w.Entry, plugin.Namespace+"/") {
 			return plugin.ErrInvalid
 		}
@@ -284,7 +292,7 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 		if w.Selector != nil {
 			selector = &plugin.RendererSelector{Kind: w.Selector.Type, Name: w.Selector.Name}
 		}
-		return release.AdmitComponent(plugin.ClientComponent{Selector: selector, ID: w.ID, Title: w.Title, Scope: w.Scope, Placement: w.Placement, Entry: w.Entry, Export: w.Export, Contribution: contribution, Material: material})
+		return release.AdmitComponent(plugin.ClientComponent{Selector: selector, ID: w.ID, Title: w.Title, Scope: w.Scope, Placement: w.Placement, Entry: w.Entry, Export: w.Export, Contribution: contribution, Material: material, SettingsIntent: settingsIntent})
 	})
 	for _, component := range slices.Sorted(maps.Keys(contributes)) {
 		if component != "themes" {

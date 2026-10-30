@@ -5,8 +5,8 @@ codeberg.org/go-latex/latex v0.3.0/go.mod h1:8ETijTpK2bFtwRAXLXe1RZJrYxnc5pibibZ
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/toml v1.6.0 h1:dRaEfpa2VI55EwlIW72hMRHdWouJeRF7TPYhI+AUQjk=
 github.com/BurntSushi/toml v1.6.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
-github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.plugin-boundaries.10 h1:1WF8pLBaX9DW/kMeDHzpD38AtQXo/iA4H9YX+yA9TUs=
-github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.plugin-boundaries.10/go.mod h1:GQoc5/3kmoI9Mwmzp5IfQ3hyl/iISxuuhkdtCrdEKGA=
+github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.plugin-boundaries.11 h1:SISFBGCO6NL4SglTca3e6AYRRYdnP1MCIilKXHxigDw=
+github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.plugin-boundaries.11/go.mod h1:GQoc5/3kmoI9Mwmzp5IfQ3hyl/iISxuuhkdtCrdEKGA=
 github.com/Tangerg/flame/packages/local-runtime v0.1.0-quality.20261029.1 h1:K4hHeTNDtsjyprD65V6+auhC6bAS1EmGeYw0l/FLc90=
 github.com/Tangerg/flame/packages/local-runtime v0.1.0-quality.20261029.1/go.mod h1:k7GImwPntRgT/FNYEO+2Bx351W/ULxJUH2cU0y3zKRg=
 github.com/Tangerg/flame/qimu v0.1.0-quality.20261030.plugin-boundaries.1 h1:8TwOGp3dXw2gNM6jy1o4IY5l7csQU2xvbzDgiyxgWiQ=

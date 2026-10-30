@@ -16,15 +16,16 @@ var componentExport = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]{0,63}$`)
 // ClientComponent describes a public rendering entry with an optional own
 // callable contribution. It owns no business state or backend activation policy.
 type ClientComponent struct {
-	Selector     *RendererSelector
-	ID           ContributionID
-	Title        string
-	Scope        extension.ComponentScope
-	Placement    extension.ComponentPlacement
-	Entry        string
-	Export       string
-	Contribution ContributionID
-	Material     string
+	Selector       *RendererSelector
+	ID             ContributionID
+	Title          string
+	Scope          extension.ComponentScope
+	Placement      extension.ComponentPlacement
+	Entry          string
+	Export         string
+	Contribution   ContributionID
+	Material       string
+	SettingsIntent extension.SettingsIntent
 }
 
 func (b *Builder) AdmitComponent(value ClientComponent) error {
@@ -35,6 +36,9 @@ func (b *Builder) AdmitComponent(value ClientComponent) error {
 		if err := value.Contribution.Validate(); err != nil {
 			return err
 		}
+	}
+	if value.SettingsIntent != "" && (value.Placement != extension.ComponentPlacementSettingsPane || !value.SettingsIntent.Valid()) {
+		return refuse(DiagnosticInvalidDeclaration, "invalid settings intent for component %q", value.ID)
 	}
 	if value.Title == "" || len(value.Title) > maxPresentationTitleBytes || !utf8.ValidString(value.Title) || !value.Scope.Valid() || !ValidResourcePath(value.Entry) || !strings.HasPrefix(value.Entry, Namespace+"/") || !strings.HasSuffix(value.Entry, ".js") || !componentExport.MatchString(value.Export) {
 		return refuse(DiagnosticInvalidDeclaration, "invalid component %q", value.ID)
