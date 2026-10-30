@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	"github.com/Tangerg/flame/packages/go-sdk/model/catalog"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
@@ -150,7 +150,7 @@ func openRetirementFixture(t *testing.T, root, cut string) *retirementFixture {
 		Snapshots: stores.SessionStores, MaterialSnapshots: stores.SessionStores, Writes: writes,
 		Plan:           sessions.PlanServices{Boundaries: stores.plan, Replacements: mustPlanCoordinator(sessions.PlanDependencies{Store: stores.plan, Now: time.Now})},
 		TransientState: retirementTransient{}, ExecutionReleaser: retirementTransient{},
-		Paths: workspaceadapter.Resolver{}, Models: catalog.Selections{}, DefaultModelSelection: testsupport.DefaultModelSelection(),
+		Paths: workspaceadapter.Resolver{}, Models: acceptedModelSelections{}, DefaultModelSelection: testsupport.DefaultModelSelection(),
 		Checkpoints: resources, Sandbox: resources, Goals: goals.NewSessionMutations(),
 		Mutations: db.WorkspaceMutations, Retirements: ledger, Admissions: gate,
 		NewID: newSessionID, NewRunID: newRunID, NewItemID: newItemID,
@@ -417,4 +417,10 @@ func TestCommittedResourceRetirementCrashRecovery(t *testing.T) {
 			}
 		})
 	}
+}
+
+type acceptedModelSelections struct{}
+
+func (acceptedModelSelections) AdmitSelection(context.Context, modelchoice.Selection) error {
+	return nil
 }

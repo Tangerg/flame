@@ -37,19 +37,14 @@ export const es: Record<string, string> = {
   "mcp.status.needsAuth": "Inicio de sesión necesario",
   "mcp.form.name.aria": "Nombre del servidor",
   "mcp.form.transport.aria": "Transporte",
-  "mcp.form.command.placeholder": "npx",
   "mcp.form.command.aria": "Comando",
   "mcp.form.args": "Argumentos (matriz JSON)",
-  "mcp.form.args.placeholder":
-    "-y\n@modelcontextprotocol/server-filesystem\n/ruta",
   "mcp.form.env": "Entorno (objeto JSON)",
-  "mcp.form.env.placeholder": "API_KEY=…",
   "mcp.form.env.keep": "Déjalo en blanco para conservar el entorno guardado",
   "mcp.form.env.clear": "Eliminar el entorno guardado",
   "mcp.form.env.targetChanged":
     "El destino del proceso cambió. Introduce un entorno nuevo o elimina los valores guardados.",
   "mcp.form.dir.aria": "Directorio de trabajo",
-  "mcp.form.url.placeholder": "https://example.com/mcp",
   "mcp.form.url.aria": "URL del servidor",
   "mcp.form.auth.placeholder": "Token de autorización (opcional)",
   "mcp.form.auth.keep": "Déjalo en blanco para conservar el token guardado",
@@ -58,14 +53,12 @@ export const es: Record<string, string> = {
     "El origen del endpoint cambió. Introduce una autorización nueva o elimina el valor guardado.",
   "mcp.form.auth.aria": "Token de autorización",
   "mcp.form.headers": "Cabeceras (objeto JSON)",
-  "mcp.form.headers.placeholder": "X-API-Key=…",
   "mcp.form.headers.keep":
     "Déjalo en blanco para conservar las cabeceras guardadas",
   "mcp.form.headers.clear": "Eliminar las cabeceras guardadas",
   "mcp.form.headers.originChanged":
     "El origen del endpoint cambió. Introduce cabeceras nuevas o elimina los valores guardados.",
   "mcp.form.timeout": "Tiempo de espera (segundos) — opcional",
-  "mcp.form.timeout.placeholder": "60",
   "mcp.form.timeout.invalid":
     "Introduce un número entero positivo de segundos o déjalo en blanco para no fijar un límite de tiempo.",
   "mcp.form.description.aria": "Descripción",
@@ -83,7 +76,7 @@ export const es: Record<string, string> = {
   "mcp.import.error": "No se pudo importar esa configuración.",
   "mcp.import.invalidJson": "Introduce un JSON válido.",
   "mcp.import.missingTransport":
-    "Indica un comando o una URL para el servidor «<server/>», pero no ambos.",
+    "Indica un comando o una URL para el servidor «{{server}}», pero no ambos.",
   "mcp.tools.title": "Herramientas de {{server}}",
   "mcp.tools.enabled": "Activada",
   "mcp.tools.autoApprove": "Aprobar automáticamente",
@@ -129,9 +122,21 @@ export const es: Record<string, string> = {
   "mcp.form.headers.invalid":
     "Introduce un objeto JSON no vacío con valores de tipo cadena.",
   "mcp.import.invalidName":
-    "El nombre del servidor «<server/>» no cumple las reglas de Runtime. Corrige la clave y vuelve a intentarlo.",
+    "El nombre del servidor «{{server}}» no cumple las reglas de Runtime. Corrige la clave y vuelve a intentarlo.",
   "mcp.import.unsupportedTransport":
-    "El «type» del servidor «<server/>» no está admitido. Usa «stdio» o «streamableHttp».",
+    "El «type» del servidor «{{server}}» no está admitido. Usa «stdio» o «streamableHttp».",
   "mcp.import.headerConflict":
-    "El servidor «<server/>» declara «<header/>» más de una vez. Conserva una sola declaración.",
+    "El servidor «{{server}}» declara «{{header}}» más de una vez. Conserva una sola declaración.",
+  title: "Servidores MCP",
+  retry: "Reintentar",
+  refresh: "Actualizar",
+  reading: "Cargando…",
+  "mcp.import.invalidShape":
+    "Usa una configuración MCP válida con un objeto «mcpServers».",
+  "mcp.import.empty": "Añade al menos un servidor en «mcpServers».",
+  "mcp.import.missingCommand":
+    "Añade un comando para el servidor «{{server}}».",
+  "mcp.import.missingUrl": "Añade una URL para el servidor «{{server}}».",
+  "mcp.import.invalidTimeout":
+    "Define un tiempo de espera en segundos enteros positivos para el servidor «{{server}}», u omítelo para no limitarlo.",
 };

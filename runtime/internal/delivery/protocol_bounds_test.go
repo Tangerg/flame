@@ -11,7 +11,6 @@ import (
 	hookdata "github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 )

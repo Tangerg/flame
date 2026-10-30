@@ -33,19 +33,14 @@ export const zhTW: Record<string, string> = {
   "mcp.status.needsAuth": "需要登入",
   "mcp.form.name.aria": "伺服器名稱",
   "mcp.form.transport.aria": "傳輸方式",
-  "mcp.form.command.placeholder": "npx",
   "mcp.form.command.aria": "命令",
   "mcp.form.args": "參數（JSON 陣列）",
-  "mcp.form.args.placeholder":
-    "-y\n@modelcontextprotocol/server-filesystem\n/path",
   "mcp.form.env": "環境變數（JSON 物件）",
-  "mcp.form.env.placeholder": "API_KEY=…",
   "mcp.form.env.keep": "留空則保留已存的環境變數",
   "mcp.form.env.clear": "移除已儲存的環境變數",
   "mcp.form.env.targetChanged":
     "處理程序目標已變更，請輸入新的環境變數或移除已儲存的值。",
   "mcp.form.dir.aria": "工作目錄",
-  "mcp.form.url.placeholder": "https://example.com/mcp",
   "mcp.form.url.aria": "伺服器 URL",
   "mcp.form.auth.placeholder": "授權 token（選填）",
   "mcp.form.auth.keep": "留空則保留已存的 token",
@@ -54,13 +49,11 @@ export const zhTW: Record<string, string> = {
     "端點來源已變更，請輸入新的授權資訊或明確移除已儲存的值。",
   "mcp.form.auth.aria": "授權 token",
   "mcp.form.headers": "請求標頭（JSON 物件）",
-  "mcp.form.headers.placeholder": "X-API-Key=…",
   "mcp.form.headers.keep": "留空則保留已存的標頭",
   "mcp.form.headers.clear": "移除已儲存的標頭",
   "mcp.form.headers.originChanged":
     "端點來源已變更，請輸入新的標頭或移除已儲存的值。",
   "mcp.form.timeout": "逾時（秒）—— 選填",
-  "mcp.form.timeout.placeholder": "60",
   "mcp.form.timeout.invalid": "請輸入正整數秒數，或留空表示不限時。",
   "mcp.form.description.aria": "說明",
   "mcp.import": "從 JSON 匯入",
@@ -72,18 +65,16 @@ export const zhTW: Record<string, string> = {
     "Runtime 連線已更換，已匯入 {{count}} / {{total}} 個伺服器，其餘匯入已中斷。",
   "mcp.import.partial": "已匯入 {{count}} / {{total}} 個伺服器。",
   "mcp.import.error": "無法匯入該設定。",
-  "mcp.import.nameCollision":
-    "伺服器「{{first}}」和「{{second}}」都會變成「{{canonical}}」，請為它們設定不同的名稱",
   "mcp.import.invalidJson": "請輸入有效的 JSON。",
   "mcp.import.invalidShape": "請使用包含「mcpServers」物件的有效 MCP 設定。",
   "mcp.import.invalidName":
-    "伺服器名稱「<server/>」不符合 Runtime 命名規則，請修改此鍵後重試。",
+    "伺服器名稱「{{server}}」不符合 Runtime 命名規則，請修改此鍵後重試。",
   "mcp.import.missingTransport":
-    "請為伺服器「<server/>」提供命令或 URL，兩者只能有一個。",
-  "mcp.import.missingCommand": "請為伺服器「<server/>」新增命令。",
-  "mcp.import.missingUrl": "請為伺服器「<server/>」新增 URL。",
+    "請為伺服器「{{server}}」提供命令或 URL，兩者只能有一個。",
+  "mcp.import.missingCommand": "請為伺服器「{{server}}」新增命令。",
+  "mcp.import.missingUrl": "請為伺服器「{{server}}」新增 URL。",
   "mcp.import.invalidTimeout":
-    "請為伺服器「<server/>」設定以秒為單位的正整數逾時，或省略此項表示不限時。",
+    "請為伺服器「{{server}}」設定以秒為單位的正整數逾時，或省略此項表示不限時。",
   "mcp.import.empty": "請在「mcpServers」下至少新增一個伺服器。",
   "mcp.tools.title": "{{server}} 的工具",
   "mcp.tools.enabled": "已啟用",
@@ -121,7 +112,11 @@ export const zhTW: Record<string, string> = {
   "mcp.form.env.invalid": "請輸入非空 JSON 物件，每個值必須是字串。",
   "mcp.form.headers.invalid": "請輸入非空 JSON 物件，每個值必須是字串。",
   "mcp.import.unsupportedTransport":
-    "伺服器「<server/>」的「type」不受支援，請使用「stdio」或「streamableHttp」。",
+    "伺服器「{{server}}」的「type」不受支援，請使用「stdio」或「streamableHttp」。",
   "mcp.import.headerConflict":
-    "伺服器「<server/>」重複宣告了「<header/>」，請只保留一個宣告。",
+    "伺服器「{{server}}」重複宣告了「{{header}}」，請只保留一個宣告。",
+  title: "MCP 伺服器",
+  retry: "重試",
+  refresh: "重新整理",
+  reading: "正在讀取…",
 };

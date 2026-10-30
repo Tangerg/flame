@@ -24,7 +24,8 @@ const baseKeys = [
 function fixture(t, prefix = "flame-locale-") {
   const root = mkdtempSync(join(tmpdir(), prefix));
   t.after(() => rmSync(root, { recursive: true, force: true }));
-  const script = join(root, "scripts/check-locales.mjs");
+  const web = join(root, "apps/web");
+  const script = join(web, "scripts/check-locales.mjs");
   mkdirSync(dirname(script), { recursive: true });
   copyFileSync(guard, script);
   symlinkSync(
@@ -32,15 +33,41 @@ function fixture(t, prefix = "flame-locale-") {
     join(root, "node_modules"),
     process.platform === "win32" ? "junction" : "dir",
   );
-  function source(path, content) {
-    const destination = join(root, "src", path);
+  function write(destination, content) {
     mkdirSync(dirname(destination), { recursive: true });
     writeFileSync(destination, content);
   }
+  function source(path, content) {
+    write(join(web, "src", path), content);
+  }
+  // en is the Web-owned reference catalog; every other locale is the resource of
+  // an installed locale package, exactly where the guard discovers it.
   function catalog(locale, keys = baseKeys, values = {}) {
-    source(
-      `lib/i18n/locales/${locale}.ts`,
-      `export const catalog = {\n${keys.map((key) => `  "${key}": "${values[key] ?? "Value"}",`).join("\n")}\n};\n`,
+    if (locale === "en") {
+      source(
+        "lib/i18n/locales/en.ts",
+        `export const catalog = {\n${keys.map((key) => `  "${key}": "${values[key] ?? "Value"}",`).join("\n")}\n};\n`,
+      );
+      return;
+    }
+    const pkg = join(root, "plugins", `locale-${locale}`, "package");
+    const namespace = "io.github.tangerg.flame";
+    write(
+      join(pkg, "plugin.json"),
+      JSON.stringify({
+        name: `flame.locale.${locale}`,
+        extensions: { [namespace]: { declaration: `${namespace}/declaration.json` } },
+      }),
+    );
+    write(
+      join(pkg, namespace, "declaration.json"),
+      JSON.stringify({
+        contributes: { locales: [{ tag: locale, entry: `${namespace}/messages.json` }] },
+      }),
+    );
+    write(
+      join(pkg, namespace, "messages.json"),
+      `{\n${keys.map((key) => `  "${key}": ${JSON.stringify(values[key] ?? "Value")}`).join(",\n")}\n}\n`,
     );
   }
   catalog("en");
@@ -60,7 +87,7 @@ function fixture(t, prefix = "flame-locale-") {
     source,
     catalog,
     run() {
-      const result = spawnSync(process.execPath, [script], { cwd: root, encoding: "utf8" });
+      const result = spawnSync(process.execPath, [script], { cwd: web, encoding: "utf8" });
       assert.ifError(result.error);
       return result;
     },

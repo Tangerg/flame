@@ -283,3 +283,53 @@ test("author environment providers require both an explicit declaration and a lo
       );
     },
   ));
+
+test("a helper reached only from tests stays a development dependency", () =>
+  project(
+    {
+      "component/component.tsx":
+        'import { label } from "./label"; export const View = () => <p>{label}</p>;',
+      "component/label.ts": 'export const label = "ready";',
+      "component/testing.ts":
+        'import { vi } from "@modelcontextprotocol/sdk"; export const fixture = vi;',
+      "component/view.test.tsx":
+        'import { fixture } from "./testing.ts"; import { View } from "./component"; void fixture; void View;',
+    },
+    async (source) => {
+      const result = await authorDependencies({
+        source,
+        manifest,
+        lock,
+        packages: [],
+        required: [],
+      });
+      assert.equal(
+        result.devDependencies["@modelcontextprotocol/sdk"],
+        "1.32.2",
+      );
+      assert.equal(result.dependencies["@modelcontextprotocol/sdk"], undefined);
+    },
+  ));
+
+test("a helper reached from production is a production module even when tests use it", () =>
+  project(
+    {
+      "component/component.tsx":
+        'import { fixture } from "./testing"; export const View = () => <p>{String(fixture)}</p>;',
+      "component/testing.ts":
+        'export { McpServer as fixture } from "@modelcontextprotocol/sdk";',
+      "component/view.test.ts":
+        'import { fixture } from "./testing"; void fixture;',
+    },
+    (source) =>
+      assert.rejects(
+        authorDependencies({
+          source,
+          manifest,
+          lock,
+          packages: [],
+          required: [],
+        }),
+        /author source imports undeclared dependency: @modelcontextprotocol\/sdk/,
+      ),
+  ));

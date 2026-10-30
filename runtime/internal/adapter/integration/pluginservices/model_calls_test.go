@@ -94,7 +94,8 @@ func TestSelectedModelCallsHaveIndependentRoutesBudgetsAndDurableEvidence(t *tes
 				physical.Add(1)
 				inv, err := qimumcp.InvocationFromContext(ctx)
 				row, found, evidenceErr := db.ModelInvocations.EndpointForCaller(ctx, inv.Parent)
-				if err != nil || evidenceErr != nil || !found || row.Invocation.ID != inv.ID || row.Invocation.Caller.Parent != "original-plugin-operation" || inv.Origin != extension.Model || inv.ID != inv.Target.Reference || len(request.Tools) != 1 {
+				evidence := row.Snapshot()
+				if err != nil || evidenceErr != nil || !found || evidence.Invocation.ID != inv.ID || evidence.Invocation.Caller.Parent != "original-plugin-operation" || inv.Origin != extension.Model || inv.ID != inv.Target.Reference || len(request.Tools) != 1 {
 					return nil, errors.New("independent model lost original caller or complete request")
 				}
 				message := chat.NewAssistantMessage(chat.NewTextPart("known " + request.Options.Model))
@@ -357,7 +358,8 @@ func TestIndependentModelCallbackRetainsExecutingOwnerBeforeProviderDispatch(t *
 	observed, err := models.NewObservedResolver(&routedCallResolver{model: chat.ModelFunc(func(ctx context.Context, _ *chat.Request) (*chat.Response, error) {
 		inv, _ := qimumcp.InvocationFromContext(ctx)
 		row, found, err := journal.EndpointForCaller(ctx, inv.Parent)
-		if err != nil || !found || row.RunID != draft.RunID || row.SegmentID != draft.SegmentID {
+		evidence := row.Snapshot()
+		if err != nil || !found || evidence.RunID != draft.RunID || evidence.SegmentID != draft.SegmentID {
 			return nil, errors.New("provider started without its actual execution association")
 		}
 		calls.Add(1)

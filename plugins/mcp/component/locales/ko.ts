@@ -34,19 +34,14 @@ export const ko: Record<string, string> = {
   "mcp.status.needsAuth": "로그인 필요",
   "mcp.form.name.aria": "서버 이름",
   "mcp.form.transport.aria": "전송 방식",
-  "mcp.form.command.placeholder": "npx",
   "mcp.form.command.aria": "명령",
   "mcp.form.args": "인자(JSON 배열)",
-  "mcp.form.args.placeholder":
-    "-y\n@modelcontextprotocol/server-filesystem\n/path",
   "mcp.form.env": "환경 변수(JSON 객체)",
-  "mcp.form.env.placeholder": "API_KEY=…",
   "mcp.form.env.keep": "비워 두면 저장된 환경 변수를 유지합니다",
   "mcp.form.env.clear": "저장된 환경 변수 제거",
   "mcp.form.env.targetChanged":
     "프로세스 대상이 변경되었습니다. 새 환경 변수를 입력하거나 저장된 값을 제거하세요.",
   "mcp.form.dir.aria": "작업 디렉터리",
-  "mcp.form.url.placeholder": "https://example.com/mcp",
   "mcp.form.url.aria": "서버 URL",
   "mcp.form.auth.placeholder": "인증 토큰 (선택)",
   "mcp.form.auth.keep": "비워 두면 저장된 토큰을 유지합니다",
@@ -55,13 +50,11 @@ export const ko: Record<string, string> = {
     "엔드포인트 출처가 변경되었습니다. 새 인증 정보를 입력하거나 저장된 값을 제거하세요.",
   "mcp.form.auth.aria": "인증 토큰",
   "mcp.form.headers": "헤더(JSON 객체)",
-  "mcp.form.headers.placeholder": "X-API-Key=…",
   "mcp.form.headers.keep": "비워 두면 저장된 헤더를 유지합니다",
   "mcp.form.headers.clear": "저장된 헤더 제거",
   "mcp.form.headers.originChanged":
     "엔드포인트 출처가 변경되었습니다. 새 헤더를 입력하거나 저장된 값을 제거하세요.",
   "mcp.form.timeout": "타임아웃(초) — 선택",
-  "mcp.form.timeout.placeholder": "60",
   "mcp.form.timeout.invalid":
     "초 단위의 양의 정수를 입력하거나, 시간 제한을 두지 않으려면 비워 두세요.",
   "mcp.form.description.aria": "설명",
@@ -119,11 +112,22 @@ export const ko: Record<string, string> = {
   "mcp.form.headers.invalid":
     "값이 문자열인 비어 있지 않은 JSON 객체를 입력하세요.",
   "mcp.import.invalidName":
-    "서버 이름 “<server/>”이 Runtime 이름 규칙에 맞지 않습니다. 키를 수정하고 다시 시도하세요.",
+    "서버 이름 “{{server}}”이 Runtime 이름 규칙에 맞지 않습니다. 키를 수정하고 다시 시도하세요.",
   "mcp.import.missingTransport":
-    "서버 “<server/>”에 명령 또는 URL 중 하나만 지정하세요.",
+    "서버 “{{server}}”에 명령 또는 URL 중 하나만 지정하세요.",
   "mcp.import.unsupportedTransport":
-    "서버 “<server/>”의 “type”은 지원되지 않습니다. “stdio” 또는 “streamableHttp”를 사용하세요.",
+    "서버 “{{server}}”의 “type”은 지원되지 않습니다. “stdio” 또는 “streamableHttp”를 사용하세요.",
   "mcp.import.headerConflict":
-    "서버 “<server/>”에 “<header/>”이 중복 선언되어 있습니다. 하나만 남겨 두세요.",
+    "서버 “{{server}}”에 “{{header}}”이 중복 선언되어 있습니다. 하나만 남겨 두세요.",
+  title: "MCP 서버",
+  retry: "다시 시도",
+  refresh: "새로 고침",
+  reading: "불러오는 중…",
+  "mcp.import.invalidShape":
+    "“mcpServers” 객체가 있는 올바른 MCP 구성을 사용하세요.",
+  "mcp.import.empty": "“mcpServers” 아래에 서버를 하나 이상 추가하세요.",
+  "mcp.import.missingCommand": "서버 “{{server}}”에 명령을 추가하세요.",
+  "mcp.import.missingUrl": "서버 “{{server}}”에 URL을 추가하세요.",
+  "mcp.import.invalidTimeout":
+    "서버 “{{server}}”의 시간 제한을 양의 정수 초로 지정하거나, 제한 없이 두려면 생략하세요.",
 };

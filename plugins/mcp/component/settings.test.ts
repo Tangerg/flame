@@ -56,9 +56,15 @@ it("reconciles an original unknown write and blocks other writes to that exact s
   const f = create();
   const key = serverKey(server.id);
   const retry = vi.fn().mockResolvedValue(server);
-  const original = mutation(Promise.reject(unknown()), retry);
-  f.update.mockReturnValueOnce(original);
-  const draft = MCPServerEdit.of(serverSettings(server));
+  let original: ReturnType<typeof mutation<typeof server>> | undefined;
+  f.update.mockImplementationOnce(() => {
+    original = mutation(Promise.reject<typeof server>(unknown()), retry);
+    return original;
+  });
+  const draft = MCPServerEdit.of(serverSettings(server)).with(
+    "description",
+    "changed before the connection was lost",
+  );
   f.settings.edit(f.context, key, draft);
   await expect(f.settings.save(f.context, draft, server.id)).resolves.toBe(
     false,
@@ -66,6 +72,7 @@ it("reconciles an original unknown write and blocks other writes to that exact s
   expect(f.settings.getSnapshot().commands.get(key)?.phase).toBe("unknown");
   await f.settings.setEnabled(f.context, server.id, false);
   expect(f.update).toHaveBeenCalledTimes(1);
+  expect(original).toBeDefined();
   expect(f.tracked).toContain(original);
   f.view.abort();
   const next = f.openView();
@@ -73,6 +80,16 @@ it("reconciles an original unknown write and blocks other writes to that exact s
   expect(retry).toHaveBeenCalledWith({ signal: next.context.signal });
   expect(f.update).toHaveBeenCalledTimes(1);
   expect(f.settings.getSnapshot().drafts.has(key)).toBe(false);
+});
+it("saves an unchanged draft without writing", async () => {
+  const f = create();
+  const key = serverKey(server.id);
+  const draft = MCPServerEdit.of(serverSettings(server));
+  f.settings.edit(f.context, key, draft);
+  await expect(f.settings.save(f.context, draft, server.id)).resolves.toBe(
+    true,
+  );
+  expect(f.update).not.toHaveBeenCalled();
 });
 it("retains the accepted server when an older read arrives and the refresh fails", async () => {
   const f = create();

@@ -1,6 +1,6 @@
 import { readFile, readdir } from "node:fs/promises";
 import { isBuiltin } from "node:module";
-import { extname, join } from "node:path";
+import { dirname, extname, join, resolve } from "node:path";
 import { parseSync, transform } from "rolldown/utils";
 
 function packageName(specifier) {
@@ -38,11 +38,13 @@ function testEnvironment(program, comments) {
 
 function fileDependencies(code, filename, lang, test = false) {
   const found = new Set();
+  const relative = new Set();
   const add = (source) => {
     if (source?.type !== "Literal" || typeof source.value !== "string")
       throw new Error(
         `author import must name a build-time module: ${filename}`,
       );
+    if (source.value.startsWith(".")) relative.add(source.value);
     const name = packageName(source.value);
     if (name) found.add(name);
   };
@@ -92,11 +94,35 @@ function fileDependencies(code, filename, lang, test = false) {
     const environment = testEnvironment(parsed.program, parsed.comments);
     if (environment) found.add(environment);
   }
-  return found;
+  return { packages: found, relative };
 }
 
+const RESOLUTION_SUFFIXES = [
+  "",
+  ".ts",
+  ".tsx",
+  ".mts",
+  ".cts",
+  ".js",
+  ".jsx",
+  ".mjs",
+  ".cjs",
+  "/index.ts",
+  "/index.tsx",
+  "/index.js",
+];
+
+function resolveRelative(files, importer, specifier) {
+  const base = resolve(dirname(importer), specifier);
+  for (const suffix of RESOLUTION_SUFFIXES)
+    if (files.has(base + suffix)) return base + suffix;
+}
+
+// A file's role comes from the import graph, not its name: whatever an
+// unimported non-test module reaches is production, and a helper reached only
+// from tests stays a development dependency of the author project.
 async function sourceDependencies(source) {
-  const found = { production: new Set(), tests: new Set(), hasTests: false };
+  const files = new Map();
   async function visit(directory) {
     let entries;
     try {
@@ -117,10 +143,7 @@ async function sourceDependencies(source) {
         /\.generated\.[cm]?[jt]sx?$/.test(entry.name)
       )
         continue;
-      const selected = /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(entry.name)
-        ? found.tests
-        : found.production;
-      if (selected === found.tests) found.hasTests = true;
+      const test = /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(entry.name);
       const suffix = extname(path);
       const lang = suffix.endsWith("tsx")
         ? "tsx"
@@ -130,26 +153,60 @@ async function sourceDependencies(source) {
             ? "ts"
             : "js";
       const code = await readFile(path, "utf8");
-      for (const name of fileDependencies(
-        code,
-        path,
-        lang,
-        selected === found.tests,
-      ))
-        selected.add(name);
+      const { packages, relative } = fileDependencies(code, path, lang, test);
       if (lang === "tsx" || lang === "jsx") {
         const lowered = await transform(path, code, {
           jsx: { runtime: "automatic", development: false },
         });
         if (lowered.errors.length)
           throw new Error(`author JSX transformation failed: ${path}`);
-        for (const name of fileDependencies(lowered.code, path, "js"))
-          selected.add(name);
+        for (const name of fileDependencies(lowered.code, path, "js").packages)
+          packages.add(name);
       }
+      files.set(path, { test, packages, relative });
     }
   }
   for (const directory of ["backend", "component", "contracts"])
     await visit(join(source, directory));
+
+  const imports = new Map();
+  const imported = new Set();
+  for (const [path, file] of files) {
+    const targets = [];
+    for (const specifier of file.relative) {
+      const target = resolveRelative(files, path, specifier);
+      if (target === undefined) continue;
+      targets.push(target);
+      imported.add(target);
+    }
+    imports.set(path, targets);
+  }
+  const reach = (roots) => {
+    const seen = new Set();
+    const pending = [...roots];
+    while (pending.length > 0) {
+      const path = pending.pop();
+      if (seen.has(path)) continue;
+      seen.add(path);
+      pending.push(...imports.get(path));
+    }
+    return seen;
+  };
+  const paths = [...files.keys()];
+  const production = reach(
+    paths.filter((path) => !files.get(path).test && !imported.has(path)),
+  );
+  const tests = reach(paths.filter((path) => files.get(path).test));
+  const found = {
+    production: new Set(),
+    tests: new Set(),
+    hasTests: tests.size > 0,
+  };
+  for (const path of production)
+    for (const name of files.get(path).packages) found.production.add(name);
+  for (const path of tests)
+    if (!production.has(path))
+      for (const name of files.get(path).packages) found.tests.add(name);
   return found;
 }
 

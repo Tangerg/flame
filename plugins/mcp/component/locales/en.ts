@@ -33,19 +33,14 @@ export const en: Record<string, string> = {
   "mcp.status.needsAuth": "Sign in required",
   "mcp.form.name.aria": "Server name",
   "mcp.form.transport.aria": "Transport",
-  "mcp.form.command.placeholder": "npx",
   "mcp.form.command.aria": "Command",
   "mcp.form.args": "Arguments (JSON array)",
-  "mcp.form.args.placeholder":
-    "-y\n@modelcontextprotocol/server-filesystem\n/path",
   "mcp.form.env": "Environment (JSON object)",
-  "mcp.form.env.placeholder": "API_KEY=…",
   "mcp.form.env.keep": "Leave blank to keep the stored environment",
   "mcp.form.env.clear": "Remove stored environment",
   "mcp.form.env.targetChanged":
     "The process target changed. Enter a replacement environment or remove the stored values.",
   "mcp.form.dir.aria": "Working directory",
-  "mcp.form.url.placeholder": "https://example.com/mcp",
   "mcp.form.url.aria": "Server URL",
   "mcp.form.auth.placeholder": "Authorization token (optional)",
   "mcp.form.auth.keep": "Leave blank to keep the stored token",
@@ -54,13 +49,11 @@ export const en: Record<string, string> = {
     "The endpoint origin changed. Enter new authorization or remove the stored value.",
   "mcp.form.auth.aria": "Authorization token",
   "mcp.form.headers": "Headers (JSON object)",
-  "mcp.form.headers.placeholder": "X-API-Key=…",
   "mcp.form.headers.keep": "Leave blank to keep the stored headers",
   "mcp.form.headers.clear": "Remove stored headers",
   "mcp.form.headers.originChanged":
     "The endpoint origin changed. Enter replacement headers or remove the stored values.",
   "mcp.form.timeout": "Timeout (seconds) — optional",
-  "mcp.form.timeout.placeholder": "60",
   "mcp.form.timeout.invalid":
     "Enter positive whole seconds, or leave blank for no time limit.",
   "mcp.form.description.aria": "Description",
@@ -115,6 +108,25 @@ export const en: Record<string, string> = {
   "mcp.form.env.invalid": "Enter a non-empty JSON object with string values.",
   "mcp.form.headers.invalid":
     "Enter a non-empty JSON object with string values.",
-  "mcp.import.unsupportedTransport": "Unsupported MCP transport.",
-  "mcp.import.headerConflict": "Conflicting HTTP headers.",
+  "mcp.import.unsupportedTransport":
+    "Unsupported “type” for server “{{server}}”. Use “stdio” or “streamableHttp”.",
+  "mcp.import.headerConflict":
+    "Server “{{server}}” declares “{{header}}” more than once. Keep one declaration.",
+  title: "MCP servers",
+  retry: "Retry",
+  refresh: "Refresh",
+  reading: "Loading…",
+  "mcp.delete.body":
+    "“{{server}}” and its tools will be removed. You can add it again later.",
+  "mcp.import.invalidShape":
+    "Use a valid MCP configuration with an “mcpServers” object.",
+  "mcp.import.empty": "Add at least one server under “mcpServers”.",
+  "mcp.import.invalidName":
+    "The server name “{{server}}” does not match the Runtime naming rules. Change the key and try again.",
+  "mcp.import.missingTransport":
+    "Give server “{{server}}” either a command or a URL.",
+  "mcp.import.missingCommand": "Add a command for server “{{server}}”.",
+  "mcp.import.missingUrl": "Add a URL for server “{{server}}”.",
+  "mcp.import.invalidTimeout":
+    "Set a timeout in positive whole seconds for server “{{server}}”, or leave it out for no time limit.",
 };

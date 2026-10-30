@@ -36,20 +36,15 @@ export const de: Record<string, string> = {
   "mcp.status.needsAuth": "Anmeldung erforderlich",
   "mcp.form.name.aria": "Servername",
   "mcp.form.transport.aria": "Transport",
-  "mcp.form.command.placeholder": "npx",
   "mcp.form.command.aria": "Befehl",
   "mcp.form.args": "Argumente (JSON-Array)",
-  "mcp.form.args.placeholder":
-    "-y\n@modelcontextprotocol/server-filesystem\n/pfad",
   "mcp.form.env": "Umgebung (JSON-Objekt)",
-  "mcp.form.env.placeholder": "API_KEY=…",
   "mcp.form.env.keep":
     "Leer lassen, um die gespeicherte Umgebung beizubehalten",
   "mcp.form.env.clear": "Gespeicherte Umgebung entfernen",
   "mcp.form.env.targetChanged":
     "Das Prozessziel hat sich geändert. Eine neue Umgebung eingeben oder die gespeicherten Werte entfernen.",
   "mcp.form.dir.aria": "Arbeitsverzeichnis",
-  "mcp.form.url.placeholder": "https://example.com/mcp",
   "mcp.form.url.aria": "Server-URL",
   "mcp.form.auth.placeholder": "Autorisierungstoken (optional)",
   "mcp.form.auth.keep": "Leer lassen, um das gespeicherte Token zu behalten",
@@ -58,14 +53,12 @@ export const de: Record<string, string> = {
     "Der Ursprung des Endpunkts hat sich geändert. Neue Autorisierung eingeben oder den gespeicherten Wert entfernen.",
   "mcp.form.auth.aria": "Autorisierungstoken",
   "mcp.form.headers": "Header (JSON-Objekt)",
-  "mcp.form.headers.placeholder": "X-API-Key=…",
   "mcp.form.headers.keep":
     "Leer lassen, um die gespeicherten Header beizubehalten",
   "mcp.form.headers.clear": "Gespeicherte Header entfernen",
   "mcp.form.headers.originChanged":
     "Der Ursprung des Endpunkts hat sich geändert. Neue Header eingeben oder die gespeicherten Werte entfernen.",
   "mcp.form.timeout": "Timeout (Sekunden) — optional",
-  "mcp.form.timeout.placeholder": "60",
   "mcp.form.timeout.invalid":
     "Gib eine positive ganze Zahl an Sekunden ein oder lass das Feld leer für kein Zeitlimit.",
   "mcp.form.description.aria": "Beschreibung",
@@ -80,20 +73,18 @@ export const de: Record<string, string> = {
     "Runtime-Verbindung geändert: {{count}} von {{total}} Servern vor dem Abbruch importiert.",
   "mcp.import.partial": "{{count}} von {{total}} Servern importiert.",
   "mcp.import.error": "Diese Konfiguration konnte nicht importiert werden.",
-  "mcp.import.nameCollision":
-    "Die Server „{{first}}“ und „{{second}}“ werden beide zu „{{canonical}}“; gib ihnen unterschiedliche Namen",
   "mcp.import.invalidJson": "Gib gültiges JSON ein.",
   "mcp.import.invalidShape":
     "Verwende eine gültige MCP-Konfiguration mit einem „mcpServers“-Objekt.",
   "mcp.import.invalidName":
-    "Der Servername „<server/>“ entspricht nicht den Namensregeln der Runtime. Ändere den Schlüssel und versuche es erneut.",
+    "Der Servername „{{server}}“ entspricht nicht den Namensregeln der Runtime. Ändere den Schlüssel und versuche es erneut.",
   "mcp.import.missingTransport":
-    "Gib für Server „<server/>“ entweder einen Befehl oder eine URL an.",
+    "Gib für Server „{{server}}“ entweder einen Befehl oder eine URL an.",
   "mcp.import.missingCommand":
-    "Füge für den Server „<server/>“ einen Befehl hinzu.",
-  "mcp.import.missingUrl": "Füge für den Server „<server/>“ eine URL hinzu.",
+    "Füge für den Server „{{server}}“ einen Befehl hinzu.",
+  "mcp.import.missingUrl": "Füge für den Server „{{server}}“ eine URL hinzu.",
   "mcp.import.invalidTimeout":
-    "Lege für den Server „<server/>“ ein Timeout in positiven ganzen Sekunden fest oder lass es weg für kein Zeitlimit.",
+    "Lege für den Server „{{server}}“ ein Timeout in positiven ganzen Sekunden fest oder lass es weg für kein Zeitlimit.",
   "mcp.import.empty": "Füge unter „mcpServers“ mindestens einen Server hinzu.",
   "mcp.tools.title": "Tools von {{server}}",
   "mcp.tools.enabled": "Aktiviert",
@@ -140,7 +131,11 @@ export const de: Record<string, string> = {
   "mcp.form.headers.invalid":
     "Gib ein nicht leeres JSON-Objekt mit Zeichenfolgen als Werten ein.",
   "mcp.import.unsupportedTransport":
-    "Nicht unterstützter „type“ für Server „<server/>“. Verwende „stdio“ oder „streamableHttp“.",
+    "Nicht unterstützter „type“ für Server „{{server}}“. Verwende „stdio“ oder „streamableHttp“.",
   "mcp.import.headerConflict":
-    "Server „<server/>“ deklariert „<header/>“ mehrfach. Behalte eine Deklaration.",
+    "Server „{{server}}“ deklariert „{{header}}“ mehrfach. Behalte eine Deklaration.",
+  title: "MCP-Server",
+  retry: "Erneut versuchen",
+  refresh: "Aktualisieren",
+  reading: "Wird geladen…",
 };

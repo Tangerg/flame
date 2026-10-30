@@ -149,6 +149,8 @@ export const en: Record<string, string> = {
   "dock.tabs.moveRight": "Move panel right",
   "workspace.view.openBeside": "Open in the context dock",
   "workspace.view.unavailable.title": "View unavailable",
+  "workspace.view.unavailable.body":
+    'The "{{id}}" view is not registered. Close this tab or re-enable its plugin.',
   "message.markdown.footnotes": "Footnotes",
   "message.markdown.backReference": "Back to reference {{reference}}",
   "message.image.view": "View attached image",
@@ -244,6 +246,7 @@ export const en: Record<string, string> = {
     "No goal can be set right now — this runtime may not support goals, or one is already running",
   "goal.replace.title": "Replace the current goal?",
   "goal.replace.confirm": "Replace goal",
+  "goal.replace.body": "“{{objective}}” ends here. The conversation is kept.",
   "tools.group.calls_one": "{{count}} call",
   "tools.group.calls_other": "{{count}} calls",
   "tools.group.running_one": "{{count}} running",
@@ -273,6 +276,7 @@ export const en: Record<string, string> = {
   "session.action.fork": "Fork",
   "session.action.delete": "Delete",
   "session.delete.title": "Delete this session?",
+  "session.delete.body": "“{{title}}” and everything in it will be gone. This can’t be undone.",
   "project.row.missing": "Directory missing on disk",
   "project.row.newSession": "New session in {{name}}",
   "toolInspector.arguments": "Arguments",
@@ -590,6 +594,7 @@ export const en: Record<string, string> = {
   "projects.error.title": "Couldn't load projects",
   "projects.error.sub": "Check the Runtime connection, then reopen the work index.",
   "convExport.import": "Import conversation from JSON",
+  "convExport.importSuccess": "Imported “{{title}}”.",
   "convExport.unsupported": "This runtime doesn't support session export or import.",
   "convExport.readFailed":
     "Couldn't read the selected file. Select it again or choose another JSON file.",

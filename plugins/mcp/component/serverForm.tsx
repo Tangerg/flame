@@ -23,6 +23,20 @@ import type { MCPServerSettings, MCPTransport } from "./model";
 import { MCPServerEdit, type MCPServerFields } from "./draft";
 import { MCPSettings, editorKey } from "./settings";
 import { CommandFeedback } from "./feedback";
+// Input examples are protocol values, not prose: they are written in the exact
+// JSON the draft parser accepts and stay identical in every locale.
+const EXAMPLE = {
+  command: "npx",
+  args: JSON.stringify([
+    "-y",
+    "@modelcontextprotocol/server-filesystem",
+    "/path",
+  ]),
+  environment: JSON.stringify({ API_KEY: "…" }),
+  url: "https://example.com/mcp",
+  headers: JSON.stringify({ "X-API-Key": "…" }),
+  timeoutSeconds: "60",
+};
 const column = {
   display: "grid",
   minWidth: 0,
@@ -145,7 +159,7 @@ export function ServerForm({
               pending={saving}
               value={draft.command}
               onChange={(e) => updateDraft("command", e.target.value)}
-              placeholder={t("mcp.form.command.placeholder")}
+              placeholder={EXAMPLE.command}
             />
           </FormField>
           <FormRow>
@@ -164,7 +178,7 @@ export function ServerForm({
                   jsonIssue === "args" ? jsonErrorId : undefined
                 }
                 onChange={(event) => updateDraft("args", event.target.value)}
-                placeholder={t("mcp.form.args.placeholder")}
+                placeholder={EXAMPLE.args}
               />
               {jsonIssue === "args" && (
                 <span
@@ -200,7 +214,7 @@ export function ServerForm({
                   placeholder={
                     hasEnvironmentStored
                       ? t("mcp.form.env.keep")
-                      : t("mcp.form.env.placeholder")
+                      : EXAMPLE.environment
                   }
                 />
                 {jsonIssue === "environment" && (
@@ -265,7 +279,7 @@ export function ServerForm({
               pending={saving}
               value={draft.url}
               onChange={(e) => updateDraft("url", e.target.value)}
-              placeholder={t("mcp.form.url.placeholder")}
+              placeholder={EXAMPLE.url}
             />
           </FormField>
           <FormField label={t("mcp.form.auth.aria")}>
@@ -330,9 +344,7 @@ export function ServerForm({
                 updateDraft("headers", draft.headers.edited(event.target.value))
               }
               placeholder={
-                hasHeadersStored
-                  ? t("mcp.form.headers.keep")
-                  : t("mcp.form.headers.placeholder")
+                hasHeadersStored ? t("mcp.form.headers.keep") : EXAMPLE.headers
               }
             />
             {jsonIssue === "headers" && (
@@ -380,7 +392,7 @@ export function ServerForm({
             pending={saving}
             value={draft.timeoutSec}
             onChange={(e) => updateDraft("timeoutSec", e.target.value)}
-            placeholder={t("mcp.form.timeout.placeholder")}
+            placeholder={EXAMPLE.timeoutSeconds}
           />
           {timeoutInvalid && (
             <span

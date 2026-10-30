@@ -36,19 +36,14 @@ export const fr: Record<string, string> = {
   "mcp.status.needsAuth": "Connexion requise",
   "mcp.form.name.aria": "Nom du serveur",
   "mcp.form.transport.aria": "Transport",
-  "mcp.form.command.placeholder": "npx",
   "mcp.form.command.aria": "Commande",
   "mcp.form.args": "Arguments (tableau JSON)",
-  "mcp.form.args.placeholder":
-    "-y\n@modelcontextprotocol/server-filesystem\n/chemin",
   "mcp.form.env": "Environnement (objet JSON)",
-  "mcp.form.env.placeholder": "API_KEY=…",
   "mcp.form.env.keep": "Laissez vide pour conserver l’environnement enregistré",
   "mcp.form.env.clear": "Supprimer l’environnement enregistré",
   "mcp.form.env.targetChanged":
     "La cible du processus a changé. Saisissez un nouvel environnement ou supprimez les valeurs enregistrées.",
   "mcp.form.dir.aria": "Répertoire de travail",
-  "mcp.form.url.placeholder": "https://example.com/mcp",
   "mcp.form.url.aria": "URL du serveur",
   "mcp.form.auth.placeholder": "Jeton d'autorisation (facultatif)",
   "mcp.form.auth.keep": "Laissez vide pour conserver le jeton enregistré",
@@ -57,14 +52,12 @@ export const fr: Record<string, string> = {
     "L’origine du point de terminaison a changé. Saisissez une nouvelle autorisation ou supprimez la valeur enregistrée.",
   "mcp.form.auth.aria": "Jeton d'autorisation",
   "mcp.form.headers": "En-têtes (objet JSON)",
-  "mcp.form.headers.placeholder": "X-API-Key=…",
   "mcp.form.headers.keep":
     "Laissez vide pour conserver les en-têtes enregistrés",
   "mcp.form.headers.clear": "Supprimer les en-têtes enregistrés",
   "mcp.form.headers.originChanged":
     "L’origine du point de terminaison a changé. Saisissez de nouveaux en-têtes ou supprimez les valeurs enregistrées.",
   "mcp.form.timeout": "Délai d'expiration (secondes) — facultatif",
-  "mcp.form.timeout.placeholder": "60",
   "mcp.form.timeout.invalid":
     "Saisissez un nombre entier positif de secondes, ou laissez vide pour ne fixer aucune limite de temps.",
   "mcp.form.description.aria": "Description",
@@ -79,20 +72,18 @@ export const fr: Record<string, string> = {
     "Connexion Runtime modifiée : {{count}} serveurs sur {{total}} importés avant l’interruption.",
   "mcp.import.partial": "{{count}} serveurs sur {{total}} importés.",
   "mcp.import.error": "Impossible d'importer cette configuration.",
-  "mcp.import.nameCollision":
-    "Les serveurs « {{first}} » et « {{second}} » deviennent tous deux « {{canonical}} » ; donnez-leur des noms distincts",
   "mcp.import.invalidJson": "Saisissez un JSON valide.",
   "mcp.import.invalidShape":
     "Utilisez une configuration MCP valide avec un objet « mcpServers ».",
   "mcp.import.invalidName":
-    "Le nom du serveur « <server/> » ne respecte pas les règles de Runtime. Modifie la clé et réessaie.",
+    "Le nom du serveur « {{server}} » ne respecte pas les règles de Runtime. Modifie la clé et réessaie.",
   "mcp.import.missingTransport":
-    "Indique soit une commande, soit une URL pour le serveur « <server/> », mais pas les deux.",
+    "Indique soit une commande, soit une URL pour le serveur « {{server}} », mais pas les deux.",
   "mcp.import.missingCommand":
-    "Ajoutez une commande pour le serveur « <server/> ».",
-  "mcp.import.missingUrl": "Ajoutez une URL pour le serveur « <server/> ».",
+    "Ajoutez une commande pour le serveur « {{server}} ».",
+  "mcp.import.missingUrl": "Ajoutez une URL pour le serveur « {{server}} ».",
   "mcp.import.invalidTimeout":
-    "Définissez un délai d’expiration en secondes entières positives pour le serveur « <server/> », ou omettez-le pour ne fixer aucune limite de temps.",
+    "Définissez un délai d’expiration en secondes entières positives pour le serveur « {{server}} », ou omettez-le pour ne fixer aucune limite de temps.",
   "mcp.import.empty": "Ajoutez au moins un serveur sous « mcpServers ».",
   "mcp.tools.title": "Outils de {{server}}",
   "mcp.tools.enabled": "Activé",
@@ -139,7 +130,11 @@ export const fr: Record<string, string> = {
   "mcp.form.headers.invalid":
     "Saisis un objet JSON non vide dont les valeurs sont des chaînes.",
   "mcp.import.unsupportedTransport":
-    "Le « type » du serveur « <server/> » n’est pas pris en charge. Utilise « stdio » ou « streamableHttp ».",
+    "Le « type » du serveur « {{server}} » n’est pas pris en charge. Utilise « stdio » ou « streamableHttp ».",
   "mcp.import.headerConflict":
-    "Le serveur « <server/> » déclare « <header/> » plusieurs fois. Garde une seule déclaration.",
+    "Le serveur « {{server}} » déclare « {{header}} » plusieurs fois. Garde une seule déclaration.",
+  title: "Serveurs MCP",
+  retry: "Réessayer",
+  refresh: "Actualiser",
+  reading: "Chargement…",
 };

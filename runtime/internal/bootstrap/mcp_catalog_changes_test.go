@@ -59,7 +59,7 @@ func TestMCPNotificationUpdatesManagementAndSubsequentRunDiscovery(t *testing.T)
 		t.Fatal(err)
 	}
 	cfg := poMCPConfig(t)
-	cfg.chatResolver = testChatResolver(client)
+	cfg.modelProviders = testChatResolver(client)
 	runtime := poMCPOpen(t, cfg)
 	server := runtime.must(delivery.MCPServersCreate, protocol.MCPServerCandidate{
 		Name: "catalog", Enabled: true, HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},

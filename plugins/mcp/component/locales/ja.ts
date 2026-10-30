@@ -34,19 +34,14 @@ export const ja: Record<string, string> = {
   "mcp.status.needsAuth": "サインインが必要です",
   "mcp.form.name.aria": "サーバー名",
   "mcp.form.transport.aria": "トランスポート",
-  "mcp.form.command.placeholder": "npx",
   "mcp.form.command.aria": "コマンド",
   "mcp.form.args": "引数（JSON 配列）",
-  "mcp.form.args.placeholder":
-    "-y\n@modelcontextprotocol/server-filesystem\n/path",
   "mcp.form.env": "環境変数（JSON オブジェクト）",
-  "mcp.form.env.placeholder": "API_KEY=…",
   "mcp.form.env.keep": "空欄のままにすると保存済みの環境変数を保持します",
   "mcp.form.env.clear": "保存済みの環境変数を削除",
   "mcp.form.env.targetChanged":
     "プロセスの対象が変わりました。新しい環境変数を入力するか、保存済みの値を削除してください。",
   "mcp.form.dir.aria": "作業ディレクトリ",
-  "mcp.form.url.placeholder": "https://example.com/mcp",
   "mcp.form.url.aria": "サーバー URL",
   "mcp.form.auth.placeholder": "認証トークン（任意）",
   "mcp.form.auth.keep": "空欄のままにすると保存済みのトークンを保持します",
@@ -55,13 +50,11 @@ export const ja: Record<string, string> = {
     "エンドポイントのオリジンが変わりました。新しい認証情報を入力するか、保存済みの値を削除してください。",
   "mcp.form.auth.aria": "認証トークン",
   "mcp.form.headers": "ヘッダー（JSON オブジェクト）",
-  "mcp.form.headers.placeholder": "X-API-Key=…",
   "mcp.form.headers.keep": "空欄のままにすると保存済みのヘッダーを保持します",
   "mcp.form.headers.clear": "保存済みのヘッダーを削除",
   "mcp.form.headers.originChanged":
     "エンドポイントのオリジンが変わりました。新しいヘッダーを入力するか、保存済みの値を削除してください。",
   "mcp.form.timeout": "タイムアウト（秒）— 任意",
-  "mcp.form.timeout.placeholder": "60",
   "mcp.form.timeout.invalid":
     "正の整数で秒数を入力するか、時間制限なしにする場合は空欄のままにしてください。",
   "mcp.form.description.aria": "説明",
@@ -74,20 +67,18 @@ export const ja: Record<string, string> = {
     "Runtime 接続が変更されたため中断しました。{{total}} 件中 {{count}} 件をインポートしました。",
   "mcp.import.partial": "{{total}} 件中 {{count}} 件をインポートしました。",
   "mcp.import.error": "その設定をインポートできませんでした。",
-  "mcp.import.nameCollision":
-    "サーバー「{{first}}」と「{{second}}」はどちらも「{{canonical}}」になります。別々の名前を付けてください",
   "mcp.import.invalidJson": "有効な JSON を入力してください。",
   "mcp.import.invalidShape":
     "「mcpServers」オブジェクトを含む有効な MCP 設定を使用してください。",
   "mcp.import.invalidName":
-    "サーバー名「<server/>」が Runtime の命名規則に合いません。キーを修正して再試行してください。",
+    "サーバー名「{{server}}」が Runtime の命名規則に合いません。キーを修正して再試行してください。",
   "mcp.import.missingTransport":
-    "サーバー「<server/>」にコマンドまたは URL のどちらか一方だけを指定してください。",
+    "サーバー「{{server}}」にコマンドまたは URL のどちらか一方だけを指定してください。",
   "mcp.import.missingCommand":
-    "サーバー「<server/>」にコマンドを追加してください。",
-  "mcp.import.missingUrl": "サーバー「<server/>」に URL を追加してください。",
+    "サーバー「{{server}}」にコマンドを追加してください。",
+  "mcp.import.missingUrl": "サーバー「{{server}}」に URL を追加してください。",
   "mcp.import.invalidTimeout":
-    "サーバー「<server/>」のタイムアウトを正の整数の秒数で設定するか、時間制限なしにする場合は省略してください。",
+    "サーバー「{{server}}」のタイムアウトを正の整数の秒数で設定するか、時間制限なしにする場合は省略してください。",
   "mcp.import.empty":
     "「mcpServers」の下にサーバーを 1 つ以上追加してください。",
   "mcp.tools.title": "{{server}} のツール",
@@ -133,7 +124,11 @@ export const ja: Record<string, string> = {
   "mcp.form.headers.invalid":
     "値が文字列の空でない JSON オブジェクトを入力してください。",
   "mcp.import.unsupportedTransport":
-    "サーバー「<server/>」の「type」は未対応です。「stdio」か「streamableHttp」を使ってください。",
+    "サーバー「{{server}}」の「type」は未対応です。「stdio」か「streamableHttp」を使ってください。",
   "mcp.import.headerConflict":
-    "サーバー「<server/>」で「<header/>」が重複しています。宣言を一つにしてください。",
+    "サーバー「{{server}}」で「{{header}}」が重複しています。宣言を一つにしてください。",
+  title: "MCP サーバー",
+  retry: "再試行",
+  refresh: "更新",
+  reading: "読み込み中…",
 };
