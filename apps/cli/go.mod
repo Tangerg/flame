@@ -131,7 +131,7 @@ require (
 	github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.4
 	github.com/Tangerg/flame/packages/local-runtime v0.1.0-quality.20261029.1
 	github.com/Tangerg/flame/qimu v0.1.0-quality.20261030.2
-	github.com/Tangerg/flame/runtime v0.1.0-quality.20261030.3
+	github.com/Tangerg/flame/runtime v0.1.0-quality.20261030.5
 	github.com/Tangerg/oolong/components v0.25.0
 	github.com/Tangerg/oolong/core v0.25.0
 	github.com/Tangerg/oolong/highlight v0.25.0
