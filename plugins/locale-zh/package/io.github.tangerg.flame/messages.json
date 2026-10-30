@@ -624,7 +624,7 @@
   "rpcError.workspace_unavailable": "运行时磁盘上不存在该工作区。",
   "rpcError.vcs_unavailable": "该目录不是 git 仓库。",
   "rpcError.rate_limited": "模型提供方正在限流 —— 稍等一下再重试。",
-  "rpcError.invalid_api_key": "提供方拒绝了该 API key —— 请在提供方设置里检查。",
+  "rpcError.invalid_credentials": "提供方拒绝了该 API key —— 请在提供方设置里检查。",
   "rpcError.timeout": "请求模型提供方超时 —— 检查网络后重试。",
   "rpcError.provider_unavailable": "模型提供方暂时不可用 —— 稍后重试。",
   "rpcError.provider_rejected": "模型提供方认为该请求无效并已拒绝。",

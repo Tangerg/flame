@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/qimu"
-	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"iter"
 	"slices"
+
+	"github.com/Tangerg/flame/qimu"
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"

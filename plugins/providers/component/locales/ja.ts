@@ -58,7 +58,7 @@ export const ja: Record<string, string> = {
   "providers.setup.done":
     "プロバイダーの準備ができました。設定を閉じると戻れます。下書きはそのままです。",
   "providers.roles.heading": "モデルの役割",
-  "rpcError.invalid_api_key":
+  "rpcError.invalid_credentials":
     "プロバイダが API キーを拒否しました — プロバイダ設定で確認してください。",
   "rpcError.timeout":
     "モデルプロバイダへのリクエストがタイムアウトしました — 接続を確認して再試行してください。",

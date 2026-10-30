@@ -4,9 +4,10 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
-	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"strings"
 	"testing"
+
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"

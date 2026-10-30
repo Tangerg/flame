@@ -8,11 +8,12 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
+	"log/slog"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"go.opentelemetry.io/otel/trace"
-	"log/slog"
 )
 
 // storedOutcome carries no layout version. It decodes strictly against the

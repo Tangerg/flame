@@ -58,7 +58,7 @@ export const fr: Record<string, string> = {
   "providers.setup.done":
     "Un fournisseur est prêt. Fermez les paramètres pour revenir : votre brouillon est toujours là.",
   "providers.roles.heading": "Rôles des modèles",
-  "rpcError.invalid_api_key":
+  "rpcError.invalid_credentials":
     "Le fournisseur a rejeté la clé API — vérifie-la dans les réglages du fournisseur.",
   "rpcError.timeout":
     "La requête au fournisseur de modèle a expiré — vérifie ta connexion et réessaie.",

@@ -12,12 +12,12 @@ const MaximumRetryAfter = time.Duration((1<<63-1)/int64(time.Second)) * time.Sec
 
 // FailureKind classifies a Run failure without depending on provider
 // error text. Integrations translate concrete failures at their boundary;
-// durable Run records retain this stable vocabulary.
+// durable records and the protocol's problem types share these spellings.
 type FailureKind string
 
 const (
-	FailureInternal            FailureKind = "internal"
-	FailureLost                FailureKind = "lost"
+	FailureInternal            FailureKind = "internal_error"
+	FailureLost                FailureKind = "run_lost"
 	FailureAgentStuck          FailureKind = "agent_stuck"
 	FailureRateLimited         FailureKind = "rate_limited"
 	FailureInvalidCredentials  FailureKind = "invalid_credentials"

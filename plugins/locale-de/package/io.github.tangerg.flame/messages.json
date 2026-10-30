@@ -639,7 +639,7 @@
   "rpcError.workspace_unavailable": "Dieser Workspace existiert nicht auf der Festplatte der Runtime.",
   "rpcError.vcs_unavailable": "Dieser Ordner ist kein Git-Repository.",
   "rpcError.rate_limited": "Der Modellanbieter begrenzt die Anfragerate — kurz warten, dann erneut versuchen.",
-  "rpcError.invalid_api_key": "Der Anbieter hat den API-Key abgelehnt — prüfe ihn in den Anbieter-Einstellungen.",
+  "rpcError.invalid_credentials": "Der Anbieter hat den API-Key abgelehnt — prüfe ihn in den Anbieter-Einstellungen.",
   "rpcError.timeout": "Die Anfrage an den Modellanbieter hat das Zeitlimit überschritten — Verbindung prüfen und erneut versuchen.",
   "rpcError.provider_unavailable": "Der Modellanbieter ist vorübergehend nicht erreichbar — versuche es in Kürze erneut.",
   "rpcError.provider_rejected": "Der Modellanbieter hat die Anfrage als ungültig abgelehnt.",

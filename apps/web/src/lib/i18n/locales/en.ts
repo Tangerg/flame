@@ -664,7 +664,8 @@ export const en: Record<string, string> = {
   "rpcError.vcs_unavailable": "This folder isn't a git repository.",
   "rpcError.rate_limited":
     "The model provider is rate-limiting requests — wait a moment, then retry.",
-  "rpcError.invalid_api_key": "The provider rejected the API key — check it in provider settings.",
+  "rpcError.invalid_credentials":
+    "The provider rejected the API key — check it in provider settings.",
   "rpcError.timeout":
     "The request to the model provider timed out — check your connection and retry.",
   "rpcError.provider_unavailable": "The model provider is temporarily unavailable — retry shortly.",

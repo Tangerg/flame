@@ -139,7 +139,7 @@ const (
 	ProblemRunLost             = "run_lost"             // Runtime instance exited before the run reached a durable terminal
 	ProblemAgentStuck          = "agent_stuck"          // the loop's no-forward-progress guard tripped
 	ProblemRateLimited         = "rate_limited"         // provider 429 / quota — retryable
-	ProblemInvalidAPIKey       = "invalid_api_key"      // provider 401 / 403 — not retryable
+	ProblemInvalidCredentials  = "invalid_credentials"  // provider 401 / 403 — not retryable
 	ProblemTimeout             = "timeout"              // an execution request or integration probe timed out
 	ProblemProviderUnavailable = "provider_unavailable" // provider 5xx — retryable
 	ProblemProviderRejected    = "provider_rejected"    // provider 400, request rejected as invalid — not retryable

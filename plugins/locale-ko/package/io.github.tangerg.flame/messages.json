@@ -624,7 +624,7 @@
   "rpcError.workspace_unavailable": "런타임 디스크에 해당 작업 공간이 없습니다.",
   "rpcError.vcs_unavailable": "이 폴더는 git 저장소가 아닙니다.",
   "rpcError.rate_limited": "모델 제공자가 요청 속도를 제한하고 있습니다 — 잠시 후 다시 시도하세요.",
-  "rpcError.invalid_api_key": "제공자가 API 키를 거부했습니다 — 제공자 설정에서 확인하세요.",
+  "rpcError.invalid_credentials": "제공자가 API 키를 거부했습니다 — 제공자 설정에서 확인하세요.",
   "rpcError.timeout": "모델 제공자 요청이 시간 초과되었습니다 — 연결을 확인하고 다시 시도하세요.",
   "rpcError.provider_unavailable": "모델 제공자를 일시적으로 사용할 수 없습니다 — 잠시 후 다시 시도하세요.",
   "rpcError.provider_rejected": "모델 제공자가 요청을 잘못된 것으로 거부했습니다.",

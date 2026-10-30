@@ -18,7 +18,7 @@ func TestRunReadsRefuseOpenRowsWithTerminalFacts(t *testing.T) {
 			want   string
 		}{
 			{"outcome", "outcome", "completed", "carries an outcome"},
-			{"failure", "problem", `{"kind":"internal"}`, "carries a failure"},
+			{"failure", "problem", `{"kind":"internal_error"}`, "carries a failure"},
 			{"finish time", "finished_at", runCreatedAt.Add(time.Second).UnixNano(), "carries finish time"},
 		} {
 			t.Run(string(state)+"/"+fact.name, func(t *testing.T) {

@@ -334,31 +334,31 @@ type ArtifactProblem struct {
 	Type   ArtifactProblemType `json:"type"`
 	Detail string              `json:"detail,omitempty"`
 	DocURL string              `json:"docUrl,omitempty"`
-	// RetryAfterSeconds is meaningful only for rateLimited, timeout, and
-	// providerUnavailable Run failures. Tool failures never carry retry policy.
+	// RetryAfterSeconds is meaningful only for rate_limited, timeout, and
+	// provider_unavailable Run failures. Tool failures never carry retry policy.
 	RetryAfterSeconds int `json:"retryAfterSeconds,omitzero"`
 }
 
-// ArtifactProblemType is the durable transcript error vocabulary. It remains
-// separate from ProblemData.Type because artifacts intentionally retain their
-// earlier portable names and cannot carry live channel-specific plugin errors.
+// ArtifactProblemType is the closed subset of problem types a durable
+// transcript may record: Run and Tool failures, never live channel-specific
+// plugin errors. Each value is its ProblemData.Type spelling.
 //
 //flame:enum
 type ArtifactProblemType string
 
 const (
-	ArtifactProblemInternalError       ArtifactProblemType = "internalError"
-	ArtifactProblemRunLost             ArtifactProblemType = "runLost"
-	ArtifactProblemAgentStuck          ArtifactProblemType = "agentStuck"
-	ArtifactProblemRateLimited         ArtifactProblemType = "rateLimited"
-	ArtifactProblemInvalidAPIKey       ArtifactProblemType = "invalidApiKey"
-	ArtifactProblemTimeout             ArtifactProblemType = "timeout"
-	ArtifactProblemProviderUnavailable ArtifactProblemType = "providerUnavailable"
-	ArtifactProblemProviderRejected    ArtifactProblemType = "providerRejected"
-	ArtifactProblemDeniedByUser        ArtifactProblemType = "deniedByUser"
-	ArtifactProblemToolFailed          ArtifactProblemType = "toolFailed"
-	ArtifactProblemChildRunCanceled    ArtifactProblemType = "childRunCanceled"
-	ArtifactProblemToolCanceled        ArtifactProblemType = "toolCanceled"
+	ArtifactProblemInternalError       ArtifactProblemType = ProblemInternalError
+	ArtifactProblemRunLost             ArtifactProblemType = ProblemRunLost
+	ArtifactProblemAgentStuck          ArtifactProblemType = ProblemAgentStuck
+	ArtifactProblemRateLimited         ArtifactProblemType = ProblemRateLimited
+	ArtifactProblemInvalidCredentials  ArtifactProblemType = ProblemInvalidCredentials
+	ArtifactProblemTimeout             ArtifactProblemType = ProblemTimeout
+	ArtifactProblemProviderUnavailable ArtifactProblemType = ProblemProviderUnavailable
+	ArtifactProblemProviderRejected    ArtifactProblemType = ProblemProviderRejected
+	ArtifactProblemDeniedByUser        ArtifactProblemType = ProblemDeniedByUser
+	ArtifactProblemToolFailed          ArtifactProblemType = ProblemToolFailed
+	ArtifactProblemChildRunCanceled    ArtifactProblemType = ProblemChildRunCanceled
+	ArtifactProblemToolCanceled        ArtifactProblemType = ProblemToolCanceled
 )
 
 // ArtifactToolResult carries the single full-body source for an offloaded tool

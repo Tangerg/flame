@@ -654,7 +654,7 @@
   "rpcError.workspace_unavailable": "Cet espace de travail n'existe pas sur le disque du runtime.",
   "rpcError.vcs_unavailable": "Ce dossier n'est pas un dépôt git.",
   "rpcError.rate_limited": "Le fournisseur de modèle limite le débit des requêtes — attends un instant, puis réessaie.",
-  "rpcError.invalid_api_key": "Le fournisseur a rejeté la clé API — vérifie-la dans les réglages du fournisseur.",
+  "rpcError.invalid_credentials": "Le fournisseur a rejeté la clé API — vérifie-la dans les réglages du fournisseur.",
   "rpcError.timeout": "La requête au fournisseur de modèle a expiré — vérifie ta connexion et réessaie.",
   "rpcError.provider_unavailable": "Le fournisseur de modèle est momentanément indisponible — réessaie sous peu.",
   "rpcError.provider_rejected": "Le fournisseur de modèle a rejeté la requête comme invalide.",

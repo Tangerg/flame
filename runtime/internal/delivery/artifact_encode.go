@@ -125,60 +125,24 @@ func artifactRunFailureFromDomain(failure *run.Failure) (*protocol.ArtifactProbl
 	if failure == nil {
 		return nil, nil
 	}
-	kind, err := artifactRunFailureType(failure.Kind)
-	if err != nil {
+	if err := failure.Validate(); err != nil {
 		return nil, err
 	}
 	return &protocol.ArtifactProblem{
-		Type: kind, Detail: failure.Detail, DocURL: failure.DocURL,
+		Type: protocol.ArtifactProblemType(failure.Kind), Detail: failure.Detail, DocURL: failure.DocURL,
 		RetryAfterSeconds: failure.RetryAfterSeconds(),
 	}, nil
-}
-
-func artifactRunFailureType(kind run.FailureKind) (protocol.ArtifactProblemType, error) {
-	switch kind {
-	case run.FailureInternal:
-		return protocol.ArtifactProblemInternalError, nil
-	case run.FailureLost:
-		return protocol.ArtifactProblemRunLost, nil
-	case run.FailureAgentStuck:
-		return protocol.ArtifactProblemAgentStuck, nil
-	case run.FailureRateLimited:
-		return protocol.ArtifactProblemRateLimited, nil
-	case run.FailureInvalidCredentials:
-		return protocol.ArtifactProblemInvalidAPIKey, nil
-	case run.FailureTimeout:
-		return protocol.ArtifactProblemTimeout, nil
-	case run.FailureProviderUnavailable:
-		return protocol.ArtifactProblemProviderUnavailable, nil
-	case run.FailureProviderRejected:
-		return protocol.ArtifactProblemProviderRejected, nil
-	default:
-		return "", fmt.Errorf("unknown value %q", kind)
-	}
 }
 
 func artifactToolFailureFromDomain(failure *tool.Failure) (*protocol.ArtifactProblem, error) {
 	if failure == nil {
 		return nil, nil
 	}
-	var kind protocol.ArtifactProblemType
-	switch failure.Kind {
-	case tool.FailureInternal:
-		kind = protocol.ArtifactProblemInternalError
-	case tool.FailureDenied:
-		kind = protocol.ArtifactProblemDeniedByUser
-	case tool.FailureExecution:
-		kind = protocol.ArtifactProblemToolFailed
-	case tool.FailureChildRunCanceled:
-		kind = protocol.ArtifactProblemChildRunCanceled
-	case tool.FailureCanceled:
-		kind = protocol.ArtifactProblemToolCanceled
-	default:
-		return nil, fmt.Errorf("unknown value %q", failure.Kind)
+	if err := failure.Validate(); err != nil {
+		return nil, err
 	}
 	return &protocol.ArtifactProblem{
-		Type: kind, Detail: failure.Detail, DocURL: failure.DocURL,
+		Type: protocol.ArtifactProblemType(failure.Kind), Detail: failure.Detail, DocURL: failure.DocURL,
 	}, nil
 }
 

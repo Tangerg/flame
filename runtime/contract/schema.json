@@ -560,11 +560,11 @@
               "properties": {
                 "type": {
                   "enum": [
-                    "internalError",
-                    "deniedByUser",
-                    "toolFailed",
-                    "childRunCanceled",
-                    "toolCanceled"
+                    "internal_error",
+                    "denied_by_user",
+                    "tool_failed",
+                    "child_run_canceled",
+                    "tool_canceled"
                   ]
                 }
               }
@@ -735,13 +735,13 @@
               "properties": {
                 "type": {
                   "enum": [
-                    "internalError",
-                    "agentStuck",
-                    "rateLimited",
-                    "invalidApiKey",
+                    "internal_error",
+                    "agent_stuck",
+                    "rate_limited",
+                    "invalid_credentials",
                     "timeout",
-                    "providerUnavailable",
-                    "providerRejected"
+                    "provider_unavailable",
+                    "provider_rejected"
                   ]
                 }
               }
@@ -773,7 +773,7 @@
               "properties": {
                 "type": {
                   "enum": [
-                    "runLost"
+                    "run_lost"
                   ]
                 }
               }
@@ -825,7 +825,7 @@
           "if": {
             "properties": {
               "type": {
-                "const": "internalError"
+                "const": "internal_error"
               }
             },
             "required": [
@@ -842,7 +842,7 @@
           "if": {
             "properties": {
               "type": {
-                "const": "runLost"
+                "const": "run_lost"
               }
             },
             "required": [
@@ -859,7 +859,7 @@
           "if": {
             "properties": {
               "type": {
-                "const": "agentStuck"
+                "const": "agent_stuck"
               }
             },
             "required": [
@@ -876,7 +876,7 @@
           "if": {
             "properties": {
               "type": {
-                "const": "invalidApiKey"
+                "const": "invalid_credentials"
               }
             },
             "required": [
@@ -893,7 +893,7 @@
           "if": {
             "properties": {
               "type": {
-                "const": "providerRejected"
+                "const": "provider_rejected"
               }
             },
             "required": [
@@ -910,7 +910,7 @@
           "if": {
             "properties": {
               "type": {
-                "const": "deniedByUser"
+                "const": "denied_by_user"
               }
             },
             "required": [
@@ -927,7 +927,7 @@
           "if": {
             "properties": {
               "type": {
-                "const": "toolFailed"
+                "const": "tool_failed"
               }
             },
             "required": [
@@ -944,7 +944,7 @@
           "if": {
             "properties": {
               "type": {
-                "const": "childRunCanceled"
+                "const": "child_run_canceled"
               }
             },
             "required": [
@@ -961,7 +961,7 @@
           "if": {
             "properties": {
               "type": {
-                "const": "toolCanceled"
+                "const": "tool_canceled"
               }
             },
             "required": [
@@ -979,18 +979,18 @@
     "ArtifactProblemType": {
       "type": "string",
       "enum": [
-        "internalError",
-        "runLost",
-        "agentStuck",
-        "rateLimited",
-        "invalidApiKey",
+        "internal_error",
+        "run_lost",
+        "agent_stuck",
+        "rate_limited",
+        "invalid_credentials",
         "timeout",
-        "providerUnavailable",
-        "providerRejected",
-        "deniedByUser",
-        "toolFailed",
-        "childRunCanceled",
-        "toolCanceled"
+        "provider_unavailable",
+        "provider_rejected",
+        "denied_by_user",
+        "tool_failed",
+        "child_run_canceled",
+        "tool_canceled"
       ]
     },
     "ArtifactRun": {
@@ -8104,7 +8104,7 @@
             "requiredCapabilities": false,
             "retryAfterSeconds": false,
             "type": {
-              "const": "invalid_api_key"
+              "const": "invalid_credentials"
             }
           },
           "required": [

@@ -209,7 +209,7 @@ export const RUN_PROBLEM_RECOVERY = {
   "child_run_canceled": "stop",
   "denied_by_user": "stop",
   "internal_error": "promptUser",
-  "invalid_api_key": "reauthenticate",
+  "invalid_credentials": "reauthenticate",
   "provider_rejected": "stop",
   "provider_unavailable": "waitRetryAfter",
   "rate_limited": "waitRetryAfter",
@@ -305,15 +305,15 @@ export type ArtifactItem =
   | { type: "agentMessage"; content: ContentBlock[]; createdAt: string; id: string; phase: MessagePhase; runId: string; status: "completed" | "incomplete" }
   | { type: "reasoning"; createdAt: string; id: string; redacted?: boolean; runId: string; status: "completed" | "incomplete"; text: string }
   | { type: "question"; createdAt: string; id: string; question: Question; runId: string; status: "completed" }
-  | { type: "toolCall"; approvalDecision?: ApprovalDecision; durationMillis?: number; error?: { detail?: string; docUrl?: string; retryAfterSeconds?: number; type: "internalError" | "deniedByUser" | "toolFailed" | "childRunCanceled" | "toolCanceled" }; finishedAt?: string; id: string; runId: string; safetyClass?: SafetyClass; startedAt: string; status: "completed" | "incomplete"; tool: ToolInvocation }
+  | { type: "toolCall"; approvalDecision?: ApprovalDecision; durationMillis?: number; error?: { detail?: string; docUrl?: string; retryAfterSeconds?: number; type: "internal_error" | "denied_by_user" | "tool_failed" | "child_run_canceled" | "tool_canceled" }; finishedAt?: string; id: string; runId: string; safetyClass?: SafetyClass; startedAt: string; status: "completed" | "incomplete"; tool: ToolInvocation }
   | { type: "compaction"; createdAt: string; droppedMessages?: number; id: string; runId: string; status: "completed"; summary: string };
 
 export type ArtifactOutcome =
   | { type: "completed"; unresolvedEffects?: UnresolvedEffect[] }
   | { type: "timedOut"; error: { detail?: string; docUrl?: string; retryAfterSeconds?: number; type: "timeout" }; unresolvedEffects?: UnresolvedEffect[] }
-  | { type: "failed"; error: { detail?: string; docUrl?: string; retryAfterSeconds?: number; type: "internalError" | "agentStuck" | "rateLimited" | "invalidApiKey" | "timeout" | "providerUnavailable" | "providerRejected" }; unresolvedEffects?: UnresolvedEffect[] }
+  | { type: "failed"; error: { detail?: string; docUrl?: string; retryAfterSeconds?: number; type: "internal_error" | "agent_stuck" | "rate_limited" | "invalid_credentials" | "timeout" | "provider_unavailable" | "provider_rejected" }; unresolvedEffects?: UnresolvedEffect[] }
   | { type: "canceled"; detail?: string; unresolvedEffects?: UnresolvedEffect[] }
-  | { type: "lost"; error: { detail?: string; docUrl?: string; retryAfterSeconds?: number; type: "runLost" }; unresolvedEffects?: UnresolvedEffect[] };
+  | { type: "lost"; error: { detail?: string; docUrl?: string; retryAfterSeconds?: number; type: "run_lost" }; unresolvedEffects?: UnresolvedEffect[] };
 
 export type ArtifactOutcomeType = "completed" | "timedOut" | "failed" | "canceled" | "lost";
 
@@ -324,7 +324,7 @@ export interface ArtifactProblem {
   type: ArtifactProblemType;
 }
 
-export type ArtifactProblemType = "internalError" | "runLost" | "agentStuck" | "rateLimited" | "invalidApiKey" | "timeout" | "providerUnavailable" | "providerRejected" | "deniedByUser" | "toolFailed" | "childRunCanceled" | "toolCanceled";
+export type ArtifactProblemType = "internal_error" | "run_lost" | "agent_stuck" | "rate_limited" | "invalid_credentials" | "timeout" | "provider_unavailable" | "provider_rejected" | "denied_by_user" | "tool_failed" | "child_run_canceled" | "tool_canceled";
 
 export interface ArtifactRun {
   contextTokens?: number;
@@ -1512,7 +1512,7 @@ export type ProblemData =
   | { type: "idempotency_store_mismatch"; detail?: string; docUrl?: string }
   | { type: "internal_error"; detail?: string; docUrl?: string }
   | { type: "interrupt_not_open"; detail?: string; docUrl?: string }
-  | { type: "invalid_api_key"; detail?: string; docUrl?: string }
+  | { type: "invalid_credentials"; detail?: string; docUrl?: string }
   | { type: "invalid_params"; detail?: string; docUrl?: string; errors?: FieldError[] }
   | { type: "invalid_protocol_version"; detail?: string; docUrl?: string }
   | { type: "invalid_request"; detail?: string; docUrl?: string }
@@ -2334,7 +2334,7 @@ export const WIRE_ENUMS = {
   ApprovalRuleScope: ["session", "project", "global"],
   ApprovalSubjectType: ["all", "exact", "glob"],
   ArtifactOutcomeType: ["completed", "timedOut", "failed", "canceled", "lost"],
-  ArtifactProblemType: ["internalError", "runLost", "agentStuck", "rateLimited", "invalidApiKey", "timeout", "providerUnavailable", "providerRejected", "deniedByUser", "toolFailed", "childRunCanceled", "toolCanceled"],
+  ArtifactProblemType: ["internal_error", "run_lost", "agent_stuck", "rate_limited", "invalid_credentials", "timeout", "provider_unavailable", "provider_rejected", "denied_by_user", "tool_failed", "child_run_canceled", "tool_canceled"],
   CancelRunResponseType: ["root", "child"],
   CapabilityRequirementType: ["feature", "interruptType", "runtimeTopic"],
   ChangeStatus: ["added", "deleted", "modified", "moved"],

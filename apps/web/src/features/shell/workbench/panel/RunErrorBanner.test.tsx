@@ -67,7 +67,7 @@ describe("run error banner", () => {
     ],
     [
       "a Run refused its credential",
-      { code: "invalid_api_key", recovery: RUN_PROBLEM_RECOVERY.invalid_api_key },
+      { code: "invalid_credentials", recovery: RUN_PROBLEM_RECOVERY.invalid_credentials },
     ],
     [
       "a request with invalid params",

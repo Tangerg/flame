@@ -5,11 +5,12 @@ import (
 )
 
 // FailureKind classifies why one Tool invocation did not produce a successful
-// result. It is deliberately separate from Run failure taxonomy.
+// result. It is deliberately separate from Run failure taxonomy; durable records
+// and the protocol's problem types share these spellings.
 type FailureKind string
 
 const (
-	FailureInternal         FailureKind = "internal"
+	FailureInternal         FailureKind = "internal_error"
 	FailureDenied           FailureKind = "denied_by_user"
 	FailureExecution        FailureKind = "tool_failed"
 	FailureChildRunCanceled FailureKind = "child_run_canceled"

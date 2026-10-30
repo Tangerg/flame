@@ -4734,47 +4734,47 @@
         {
           "name": "ArtifactProblemAgentStuck",
           "type": "ArtifactProblemType",
-          "value": "\"agentStuck\""
+          "value": "\"agent_stuck\""
         },
         {
           "name": "ArtifactProblemChildRunCanceled",
           "type": "ArtifactProblemType",
-          "value": "\"childRunCanceled\""
+          "value": "\"child_run_canceled\""
         },
         {
           "name": "ArtifactProblemDeniedByUser",
           "type": "ArtifactProblemType",
-          "value": "\"deniedByUser\""
+          "value": "\"denied_by_user\""
         },
         {
           "name": "ArtifactProblemInternalError",
           "type": "ArtifactProblemType",
-          "value": "\"internalError\""
+          "value": "\"internal_error\""
         },
         {
-          "name": "ArtifactProblemInvalidAPIKey",
+          "name": "ArtifactProblemInvalidCredentials",
           "type": "ArtifactProblemType",
-          "value": "\"invalidApiKey\""
+          "value": "\"invalid_credentials\""
         },
         {
           "name": "ArtifactProblemProviderRejected",
           "type": "ArtifactProblemType",
-          "value": "\"providerRejected\""
+          "value": "\"provider_rejected\""
         },
         {
           "name": "ArtifactProblemProviderUnavailable",
           "type": "ArtifactProblemType",
-          "value": "\"providerUnavailable\""
+          "value": "\"provider_unavailable\""
         },
         {
           "name": "ArtifactProblemRateLimited",
           "type": "ArtifactProblemType",
-          "value": "\"rateLimited\""
+          "value": "\"rate_limited\""
         },
         {
           "name": "ArtifactProblemRunLost",
           "type": "ArtifactProblemType",
-          "value": "\"runLost\""
+          "value": "\"run_lost\""
         },
         {
           "name": "ArtifactProblemTimeout",
@@ -4784,12 +4784,12 @@
         {
           "name": "ArtifactProblemToolCanceled",
           "type": "ArtifactProblemType",
-          "value": "\"toolCanceled\""
+          "value": "\"tool_canceled\""
         },
         {
           "name": "ArtifactProblemToolFailed",
           "type": "ArtifactProblemType",
-          "value": "\"toolFailed\""
+          "value": "\"tool_failed\""
         },
         {
           "name": "CancelRunChild",
@@ -5702,9 +5702,9 @@
           "value": "\"internal_error\""
         },
         {
-          "name": "ProblemInvalidAPIKey",
+          "name": "ProblemInvalidCredentials",
           "type": "untyped string",
-          "value": "\"invalid_api_key\""
+          "value": "\"invalid_credentials\""
         },
         {
           "name": "ProblemInvalidRequest",

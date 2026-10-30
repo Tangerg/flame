@@ -13,7 +13,7 @@ export const MAPPED_TYPES: readonly string[] = [
   "workspace_unavailable",
   "vcs_unavailable",
   "rate_limited",
-  "invalid_api_key",
+  "invalid_credentials",
   "timeout",
   "provider_unavailable",
   "provider_rejected",

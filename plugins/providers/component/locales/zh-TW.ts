@@ -50,7 +50,7 @@ export const zhTW: Record<string, string> = {
     "選一個供應商，貼上它的 API 金鑰，然後按「儲存並測試」。開始使用只需要這一步。",
   "providers.setup.done": "供應商已就緒。關閉設定即可返回——你的草稿仍在。",
   "providers.roles.heading": "模型角色",
-  "rpcError.invalid_api_key":
+  "rpcError.invalid_credentials":
     "供應方拒絕了該 API key —— 請在供應方設定裡檢查。",
   "rpcError.timeout": "請求模型供應方逾時 —— 檢查網路後重試。",
   title: "供應商",

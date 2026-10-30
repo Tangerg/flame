@@ -624,7 +624,7 @@
   "rpcError.workspace_unavailable": "執行環境磁碟上不存在該工作區。",
   "rpcError.vcs_unavailable": "該資料夾不是 git 倉庫。",
   "rpcError.rate_limited": "模型供應方正在限流 —— 稍等一下再重試。",
-  "rpcError.invalid_api_key": "供應方拒絕了該 API key —— 請在供應方設定裡檢查。",
+  "rpcError.invalid_credentials": "供應方拒絕了該 API key —— 請在供應方設定裡檢查。",
   "rpcError.timeout": "請求模型供應方逾時 —— 檢查網路後重試。",
   "rpcError.provider_unavailable": "模型供應方暫時無法使用 —— 稍後重試。",
   "rpcError.provider_rejected": "模型供應方認為該請求無效並已拒絕。",

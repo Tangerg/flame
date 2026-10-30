@@ -3,10 +3,11 @@ package delivery
 import (
 	"bytes"
 	"context"
-	"github.com/Tangerg/flame/qimu/portable"
-	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"sync"
 	"time"
+
+	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 )
 
 type memoryIdempotencyStore struct {

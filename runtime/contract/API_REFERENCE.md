@@ -178,7 +178,7 @@ publish one namespaced pattern branch without weakening first-party tags.
 | `idempotency_store_mismatch` | — | `detail`, `docUrl` |
 | `internal_error` | — | `detail`, `docUrl` |
 | `interrupt_not_open` | — | `detail`, `docUrl` |
-| `invalid_api_key` | — | `detail`, `docUrl` |
+| `invalid_credentials` | — | `detail`, `docUrl` |
 | `invalid_params` | — | `detail`, `docUrl`, `errors` |
 | `invalid_protocol_version` | — | `detail`, `docUrl` |
 | `invalid_request` | — | `detail`, `docUrl` |

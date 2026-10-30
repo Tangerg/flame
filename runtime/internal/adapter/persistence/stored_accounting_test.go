@@ -28,8 +28,8 @@ func TestRunAccountingAndFailureRejectInvalidStoredValues(t *testing.T) {
 		})
 	}
 	for _, encoded := range []string{
-		`{"kind":"internal","Detail":"lost diagnostic"}`,
-		`{"kind":"internal","future":true}`,
+		`{"kind":"internal_error","Detail":"lost diagnostic"}`,
+		`{"kind":"internal_error","future":true}`,
 	} {
 		t.Run(encoded, func(t *testing.T) {
 			if _, err := decodeRunFailure(encoded); err == nil {

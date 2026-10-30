@@ -57,7 +57,7 @@ export const de: Record<string, string> = {
   "providers.setup.done":
     "Ein Anbieter ist bereit. Schließe die Einstellungen, um zurückzukehren – dein Entwurf ist noch da.",
   "providers.roles.heading": "Modellrollen",
-  "rpcError.invalid_api_key":
+  "rpcError.invalid_credentials":
     "Der Anbieter hat den API-Key abgelehnt — prüfe ihn in den Anbieter-Einstellungen.",
   "rpcError.timeout":
     "Die Anfrage an den Modellanbieter hat das Zeitlimit überschritten — Verbindung prüfen und erneut versuchen.",

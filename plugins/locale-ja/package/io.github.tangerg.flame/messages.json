@@ -624,7 +624,7 @@
   "rpcError.workspace_unavailable": "そのワークスペースはランタイムのディスク上に存在しません。",
   "rpcError.vcs_unavailable": "このフォルダは git リポジトリではありません。",
   "rpcError.rate_limited": "モデルプロバイダがレート制限中です — 少し待ってから再試行してください。",
-  "rpcError.invalid_api_key": "プロバイダが API キーを拒否しました — プロバイダ設定で確認してください。",
+  "rpcError.invalid_credentials": "プロバイダが API キーを拒否しました — プロバイダ設定で確認してください。",
   "rpcError.timeout": "モデルプロバイダへのリクエストがタイムアウトしました — 接続を確認して再試行してください。",
   "rpcError.provider_unavailable": "モデルプロバイダは一時的に利用できません — しばらくしてから再試行してください。",
   "rpcError.provider_rejected": "モデルプロバイダがリクエストを不正として拒否しました。",

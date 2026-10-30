@@ -2433,7 +2433,7 @@
         "recoveryAction": "promptUser"
       },
       {
-        "type": "invalid_api_key",
+        "type": "invalid_credentials",
         "recoveryAction": "reauthenticate"
       },
       {
@@ -3383,7 +3383,7 @@
           ]
         },
         {
-          "tag": "invalid_api_key",
+          "tag": "invalid_credentials",
           "optional": [
             "detail",
             "docUrl"
@@ -4814,13 +4814,13 @@
             {
               "field": "error.type",
               "values": [
-                "internalError",
-                "agentStuck",
-                "rateLimited",
-                "invalidApiKey",
+                "internal_error",
+                "agent_stuck",
+                "rate_limited",
+                "invalid_credentials",
                 "timeout",
-                "providerUnavailable",
-                "providerRejected"
+                "provider_unavailable",
+                "provider_rejected"
               ]
             }
           ]
@@ -4844,7 +4844,7 @@
             {
               "field": "error.type",
               "values": [
-                "runLost"
+                "run_lost"
               ]
             }
           ]
@@ -4960,11 +4960,11 @@
             {
               "field": "error.type",
               "values": [
-                "internalError",
-                "deniedByUser",
-                "toolFailed",
-                "childRunCanceled",
-                "toolCanceled"
+                "internal_error",
+                "denied_by_user",
+                "tool_failed",
+                "child_run_canceled",
+                "tool_canceled"
               ]
             }
           ]
@@ -6719,7 +6719,7 @@
             {
               "field": "type",
               "operator": "equals",
-              "value": "internalError"
+              "value": "internal_error"
             }
           ],
           "forbidden": [
@@ -6731,7 +6731,7 @@
             {
               "field": "type",
               "operator": "equals",
-              "value": "runLost"
+              "value": "run_lost"
             }
           ],
           "forbidden": [
@@ -6743,7 +6743,7 @@
             {
               "field": "type",
               "operator": "equals",
-              "value": "agentStuck"
+              "value": "agent_stuck"
             }
           ],
           "forbidden": [
@@ -6755,7 +6755,7 @@
             {
               "field": "type",
               "operator": "equals",
-              "value": "invalidApiKey"
+              "value": "invalid_credentials"
             }
           ],
           "forbidden": [
@@ -6767,7 +6767,7 @@
             {
               "field": "type",
               "operator": "equals",
-              "value": "providerRejected"
+              "value": "provider_rejected"
             }
           ],
           "forbidden": [
@@ -6779,7 +6779,7 @@
             {
               "field": "type",
               "operator": "equals",
-              "value": "deniedByUser"
+              "value": "denied_by_user"
             }
           ],
           "forbidden": [
@@ -6791,7 +6791,7 @@
             {
               "field": "type",
               "operator": "equals",
-              "value": "toolFailed"
+              "value": "tool_failed"
             }
           ],
           "forbidden": [
@@ -6803,7 +6803,7 @@
             {
               "field": "type",
               "operator": "equals",
-              "value": "childRunCanceled"
+              "value": "child_run_canceled"
             }
           ],
           "forbidden": [
@@ -6815,7 +6815,7 @@
             {
               "field": "type",
               "operator": "equals",
-              "value": "toolCanceled"
+              "value": "tool_canceled"
             }
           ],
           "forbidden": [

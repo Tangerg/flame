@@ -1,6 +1,7 @@
 package delivery
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -77,5 +78,37 @@ func TestRunOutcomeProjectionIsExhaustive(t *testing.T) {
 				t.Fatalf("portableOutcomeFromArtifact = (%s, %v), want (%s, nil)", decoded, err, test.domain)
 			}
 		})
+	}
+}
+
+// Run and Tool failure kinds are published as their own spellings, so the
+// domain taxonomies and the durable artifact vocabulary must be the same set.
+func TestFailureKindsShareTheArtifactProblemVocabulary(t *testing.T) {
+	artifact := []protocol.ArtifactProblemType{
+		protocol.ArtifactProblemInternalError, protocol.ArtifactProblemRunLost, protocol.ArtifactProblemAgentStuck,
+		protocol.ArtifactProblemRateLimited, protocol.ArtifactProblemInvalidCredentials, protocol.ArtifactProblemTimeout,
+		protocol.ArtifactProblemProviderUnavailable, protocol.ArtifactProblemProviderRejected,
+		protocol.ArtifactProblemDeniedByUser, protocol.ArtifactProblemToolFailed,
+		protocol.ArtifactProblemChildRunCanceled, protocol.ArtifactProblemToolCanceled,
+	}
+	for _, value := range artifact {
+		if !run.FailureKind(value).Valid() && !tool.FailureKind(value).Valid() {
+			t.Errorf("artifact problem %q names no domain failure kind", value)
+		}
+	}
+	for _, kind := range []run.FailureKind{
+		run.FailureInternal, run.FailureLost, run.FailureAgentStuck, run.FailureRateLimited,
+		run.FailureInvalidCredentials, run.FailureTimeout, run.FailureProviderUnavailable, run.FailureProviderRejected,
+	} {
+		if !slices.Contains(artifact, protocol.ArtifactProblemType(kind)) {
+			t.Errorf("run failure %q has no artifact problem", kind)
+		}
+	}
+	for _, kind := range []tool.FailureKind{
+		tool.FailureInternal, tool.FailureDenied, tool.FailureExecution, tool.FailureChildRunCanceled, tool.FailureCanceled,
+	} {
+		if !slices.Contains(artifact, protocol.ArtifactProblemType(kind)) {
+			t.Errorf("tool failure %q has no artifact problem", kind)
+		}
 	}
 }

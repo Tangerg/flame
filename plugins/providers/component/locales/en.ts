@@ -56,7 +56,7 @@ export const en: Record<string, string> = {
   "providers.setup.done":
     "A provider is ready. Close Settings to return — your draft is still there.",
   "providers.roles.heading": "Model roles",
-  "rpcError.invalid_api_key":
+  "rpcError.invalid_credentials":
     "The provider rejected the API key — check it in provider settings.",
   "rpcError.timeout":
     "The request to the model provider timed out — check your connection and retry.",

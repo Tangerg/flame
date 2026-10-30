@@ -491,9 +491,9 @@ func portableRunFailureFromArtifact(path string, artifact *protocol.ArtifactProb
 	if artifact == nil {
 		return nil, nil
 	}
-	kind, err := portableRunFailureKind(path+".type", artifact.Type)
-	if err != nil {
-		return nil, err
+	kind := run.FailureKind(artifact.Type)
+	if !kind.Valid() {
+		return nil, invalidArtifact(path+".type", "unknown value %q", artifact.Type)
 	}
 	retryAfter, err := run.RetryAfterFromSeconds(artifact.RetryAfterSeconds)
 	if err != nil {
@@ -505,46 +505,12 @@ func portableRunFailureFromArtifact(path string, artifact *protocol.ArtifactProb
 	}, nil
 }
 
-func portableRunFailureKind(path string, value protocol.ArtifactProblemType) (run.FailureKind, error) {
-	switch value {
-	case protocol.ArtifactProblemInternalError:
-		return run.FailureInternal, nil
-	case protocol.ArtifactProblemRunLost:
-		return run.FailureLost, nil
-	case protocol.ArtifactProblemAgentStuck:
-		return run.FailureAgentStuck, nil
-	case protocol.ArtifactProblemRateLimited:
-		return run.FailureRateLimited, nil
-	case protocol.ArtifactProblemInvalidAPIKey:
-		return run.FailureInvalidCredentials, nil
-	case protocol.ArtifactProblemTimeout:
-		return run.FailureTimeout, nil
-	case protocol.ArtifactProblemProviderUnavailable:
-		return run.FailureProviderUnavailable, nil
-	case protocol.ArtifactProblemProviderRejected:
-		return run.FailureProviderRejected, nil
-	default:
-		return "", invalidArtifact(path, "unknown value %q", value)
-	}
-}
-
 func portableToolFailureFromArtifact(path string, artifact *protocol.ArtifactProblem) (*tool.Failure, error) {
 	if artifact == nil {
 		return nil, nil
 	}
-	var kind tool.FailureKind
-	switch artifact.Type {
-	case protocol.ArtifactProblemInternalError:
-		kind = tool.FailureInternal
-	case protocol.ArtifactProblemDeniedByUser:
-		kind = tool.FailureDenied
-	case protocol.ArtifactProblemToolFailed:
-		kind = tool.FailureExecution
-	case protocol.ArtifactProblemChildRunCanceled:
-		kind = tool.FailureChildRunCanceled
-	case protocol.ArtifactProblemToolCanceled:
-		kind = tool.FailureCanceled
-	default:
+	kind := tool.FailureKind(artifact.Type)
+	if !kind.Valid() {
 		return nil, invalidArtifact(path+".type", "unknown value %q", artifact.Type)
 	}
 	return &tool.Failure{

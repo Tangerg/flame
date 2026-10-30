@@ -448,7 +448,7 @@ func registerArtifactUnions(s *Shapes) {
 			}, {
 				Tag: string(protocol.ArtifactOutcomeFailed), Required: []string{"error"}, Optional: []string{"unresolvedEffects"},
 				AllowedValues: allowedArtifactProblemTypes(
-					"error.type", protocol.ArtifactProblemInternalError, protocol.ArtifactProblemAgentStuck, protocol.ArtifactProblemRateLimited, protocol.ArtifactProblemInvalidAPIKey, protocol.ArtifactProblemTimeout, protocol.ArtifactProblemProviderUnavailable, protocol.ArtifactProblemProviderRejected,
+					"error.type", protocol.ArtifactProblemInternalError, protocol.ArtifactProblemAgentStuck, protocol.ArtifactProblemRateLimited, protocol.ArtifactProblemInvalidCredentials, protocol.ArtifactProblemTimeout, protocol.ArtifactProblemProviderUnavailable, protocol.ArtifactProblemProviderRejected,
 				),
 			},
 			{Tag: string(protocol.ArtifactOutcomeCanceled), Optional: []string{"detail", "unresolvedEffects"}},
@@ -954,7 +954,7 @@ func registerObjectConstraints(s *Shapes) {
 }
 
 func artifactProblemRetryRules() []ConditionalRule {
-	withoutRetry := []protocol.ArtifactProblemType{protocol.ArtifactProblemInternalError, protocol.ArtifactProblemRunLost, protocol.ArtifactProblemAgentStuck, protocol.ArtifactProblemInvalidAPIKey, protocol.ArtifactProblemProviderRejected, protocol.ArtifactProblemDeniedByUser, protocol.ArtifactProblemToolFailed, protocol.ArtifactProblemChildRunCanceled, protocol.ArtifactProblemToolCanceled}
+	withoutRetry := []protocol.ArtifactProblemType{protocol.ArtifactProblemInternalError, protocol.ArtifactProblemRunLost, protocol.ArtifactProblemAgentStuck, protocol.ArtifactProblemInvalidCredentials, protocol.ArtifactProblemProviderRejected, protocol.ArtifactProblemDeniedByUser, protocol.ArtifactProblemToolFailed, protocol.ArtifactProblemChildRunCanceled, protocol.ArtifactProblemToolCanceled}
 	rules := make([]ConditionalRule, 0, len(withoutRetry))
 	for _, kind := range withoutRetry {
 		rules = append(rules, ConditionalRule{

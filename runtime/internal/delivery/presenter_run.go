@@ -177,25 +177,7 @@ func presentRunFailure(problem *rundomain.Failure) *protocol.ProblemData {
 	if problem == nil {
 		return nil
 	}
-	var kind string
-	switch problem.Kind {
-	case rundomain.FailureInternal:
-		kind = protocol.ProblemInternalError
-	case rundomain.FailureLost:
-		kind = protocol.ProblemRunLost
-	case rundomain.FailureAgentStuck:
-		kind = protocol.ProblemAgentStuck
-	case rundomain.FailureRateLimited:
-		kind = protocol.ProblemRateLimited
-	case rundomain.FailureInvalidCredentials:
-		kind = protocol.ProblemInvalidAPIKey
-	case rundomain.FailureTimeout:
-		kind = protocol.ProblemTimeout
-	case rundomain.FailureProviderUnavailable:
-		kind = protocol.ProblemProviderUnavailable
-	case rundomain.FailureProviderRejected:
-		kind = protocol.ProblemProviderRejected
-	default:
+	if !problem.Kind.Valid() {
 		panic("delivery: unknown run failure kind")
 	}
 	// The problem's scope is not published: where the frame LANDS already says it —
@@ -203,7 +185,7 @@ func presentRunFailure(problem *rundomain.Failure) *protocol.ProblemData {
 	// answer a client could find disagreeing with the first. The domain keeps its own
 	// scope, which is what stops a run problem being stored in a tool slot.
 	return &protocol.ProblemData{
-		Type: kind, Detail: problem.Detail, DocURL: problem.DocURL,
+		Type: string(problem.Kind), Detail: problem.Detail, DocURL: problem.DocURL,
 		RetryAfterSeconds: problem.RetryAfterSeconds(),
 	}
 }
@@ -212,23 +194,11 @@ func presentToolFailure(failure *tool.Failure) *protocol.ProblemData {
 	if failure == nil {
 		return nil
 	}
-	var kind string
-	switch failure.Kind {
-	case tool.FailureInternal:
-		kind = protocol.ProblemInternalError
-	case tool.FailureDenied:
-		kind = protocol.ProblemDeniedByUser
-	case tool.FailureExecution:
-		kind = protocol.ProblemToolFailed
-	case tool.FailureChildRunCanceled:
-		kind = protocol.ProblemChildRunCanceled
-	case tool.FailureCanceled:
-		kind = protocol.ProblemToolCanceled
-	default:
+	if !failure.Kind.Valid() {
 		panic("delivery: unknown tool failure kind")
 	}
 	return &protocol.ProblemData{
-		Type: kind, Detail: failure.Detail, DocURL: failure.DocURL,
+		Type: string(failure.Kind), Detail: failure.Detail, DocURL: failure.DocURL,
 	}
 }
 

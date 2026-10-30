@@ -601,7 +601,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         createdAt: absent(),
         droppedMessages: absent(),
         error: fields({
-          type: enumOf(["internalError", "deniedByUser", "toolFailed", "childRunCanceled", "toolCanceled"]),
+          type: enumOf(["internal_error", "denied_by_user", "tool_failed", "child_run_canceled", "tool_canceled"]),
         }, []),
         phase: absent(),
         question: absent(),
@@ -668,7 +668,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       fields({
         detail: absent(),
         error: fields({
-          type: enumOf(["internalError", "agentStuck", "rateLimited", "invalidApiKey", "timeout", "providerUnavailable", "providerRejected"]),
+          type: enumOf(["internal_error", "agent_stuck", "rate_limited", "invalid_credentials", "timeout", "provider_unavailable", "provider_rejected"]),
         }, []),
         type: literal("failed"),
       }, ["error", "type"]),
@@ -679,7 +679,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       fields({
         detail: absent(),
         error: fields({
-          type: enumOf(["runLost"]),
+          type: enumOf(["run_lost"]),
         }, []),
         type: literal("lost"),
       }, ["error", "type"]),
@@ -695,7 +695,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     }, ["type"]),
     ifThen(
       fields({
-        type: literal("internalError"),
+        type: literal("internal_error"),
       }, ["type"]),
       fields({
         retryAfterSeconds: absent(),
@@ -703,7 +703,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ),
     ifThen(
       fields({
-        type: literal("runLost"),
+        type: literal("run_lost"),
       }, ["type"]),
       fields({
         retryAfterSeconds: absent(),
@@ -711,7 +711,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ),
     ifThen(
       fields({
-        type: literal("agentStuck"),
+        type: literal("agent_stuck"),
       }, ["type"]),
       fields({
         retryAfterSeconds: absent(),
@@ -719,7 +719,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ),
     ifThen(
       fields({
-        type: literal("invalidApiKey"),
+        type: literal("invalid_credentials"),
       }, ["type"]),
       fields({
         retryAfterSeconds: absent(),
@@ -727,7 +727,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ),
     ifThen(
       fields({
-        type: literal("providerRejected"),
+        type: literal("provider_rejected"),
       }, ["type"]),
       fields({
         retryAfterSeconds: absent(),
@@ -735,7 +735,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ),
     ifThen(
       fields({
-        type: literal("deniedByUser"),
+        type: literal("denied_by_user"),
       }, ["type"]),
       fields({
         retryAfterSeconds: absent(),
@@ -743,7 +743,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ),
     ifThen(
       fields({
-        type: literal("toolFailed"),
+        type: literal("tool_failed"),
       }, ["type"]),
       fields({
         retryAfterSeconds: absent(),
@@ -751,7 +751,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ),
     ifThen(
       fields({
-        type: literal("childRunCanceled"),
+        type: literal("child_run_canceled"),
       }, ["type"]),
       fields({
         retryAfterSeconds: absent(),
@@ -759,14 +759,14 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ),
     ifThen(
       fields({
-        type: literal("toolCanceled"),
+        type: literal("tool_canceled"),
       }, ["type"]),
       fields({
         retryAfterSeconds: absent(),
       }, []),
     ),
   ]),
-  ArtifactProblemType: enumOf(["internalError", "runLost", "agentStuck", "rateLimited", "invalidApiKey", "timeout", "providerUnavailable", "providerRejected", "deniedByUser", "toolFailed", "childRunCanceled", "toolCanceled"]),
+  ArtifactProblemType: enumOf(["internal_error", "run_lost", "agent_stuck", "rate_limited", "invalid_credentials", "timeout", "provider_unavailable", "provider_rejected", "denied_by_user", "tool_failed", "child_run_canceled", "tool_canceled"]),
   ArtifactRun: allOf([
     object({
       contextTokens: allOf([integer(), minimum("0")]),
@@ -2935,7 +2935,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         errors: absent(),
         requiredCapabilities: absent(),
         retryAfterSeconds: absent(),
-        type: literal("invalid_api_key"),
+        type: literal("invalid_credentials"),
       }, ["type"]),
       fields({
         activeRun: absent(),

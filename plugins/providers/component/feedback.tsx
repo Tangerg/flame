@@ -65,7 +65,7 @@ export function CommandFeedback({
       return <p role="status">{t("providers.connectionOk")}</p>;
     const key = {
       notConfigured: "providers.testOutcome.notConfigured",
-      invalidCredentials: "rpcError.invalid_api_key",
+      invalidCredentials: "rpcError.invalid_credentials",
       timedOut: "rpcError.timeout",
       failed: "providers.testOutcome.failed",
     }[feedback.outcome];

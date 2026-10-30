@@ -55,7 +55,7 @@ export const ko: Record<string, string> = {
   "providers.setup.done":
     "공급자가 준비되었습니다. 설정을 닫고 돌아가면 초안이 그대로 있습니다.",
   "providers.roles.heading": "모델 역할",
-  "rpcError.invalid_api_key":
+  "rpcError.invalid_credentials":
     "제공자가 API 키를 거부했습니다 — 제공자 설정에서 확인하세요.",
   "rpcError.timeout":
     "모델 제공자 요청이 시간 초과되었습니다 — 연결을 확인하고 다시 시도하세요.",
