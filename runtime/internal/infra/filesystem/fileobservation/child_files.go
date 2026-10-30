@@ -27,7 +27,7 @@ type ChildFileTarget struct {
 }
 
 // WatchChildFiles observes bounded file collections through one content-derived
-// baseline. Watches cover roots, admitted child directories, external file aliases,
+// baseline. Watches cover roots, admitted child directories and content aliases,
 // and missing roots' existing ancestors. Error reporting and callback lifetime
 // follow Watch.
 func WatchChildFiles(targets []ChildFileTarget, notify func([]string), report func(error)) (Observation, error) {
@@ -274,7 +274,7 @@ func scanChildFileDirectory(
 			}
 			if present {
 				snapshot.files[logical] = observed
-				if candidate.extension != "" && candidate.physicalBoundary == "" && observed.physical != "" {
+				if observed.physical != "" {
 					directory, err := nearestExistingDirectory(filepath.Dir(observed.physical))
 					if err != nil {
 						return childFileSnapshot{}, nil, err
@@ -394,7 +394,7 @@ func fingerprintResolvedChildFile(
 		return fingerprint{}, "", fmt.Errorf("observe child files: confine file %q: %w", logical, err)
 	}
 	if !inside {
-		return fingerprint{}, resolved, nil
+		return fingerprint{}, "", nil
 	}
 	var info os.FileInfo
 	if root != nil {

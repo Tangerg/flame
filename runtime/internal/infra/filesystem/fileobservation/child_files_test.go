@@ -96,6 +96,56 @@ func TestWatchChildFilesRequiresPositiveHardLimits(t *testing.T) {
 	}
 }
 
+func TestSkillSymlinkWatchesOnlyConfinedDocumentDependencies(t *testing.T) {
+	root, outside := t.TempDir(), t.TempDir()
+	bundle := filepath.Join(root, "review")
+	materials := filepath.Join(bundle, "materials")
+	resources := filepath.Join(bundle, "resources")
+	escape := filepath.Join(root, "escape")
+	for _, path := range []string{materials, resources, escape} {
+		if err := os.MkdirAll(path, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	document, external := filepath.Join(materials, "instructions.md"), filepath.Join(outside, "external.md")
+	mustWriteObservedFile(t, document, "admitted")
+	mustWriteObservedFile(t, external, "outside")
+	for link, target := range map[string]string{
+		filepath.Join(bundle, "SKILL.md"): filepath.Join("materials", "instructions.md"),
+		filepath.Join(escape, "SKILL.md"): external,
+	} {
+		if err := os.Symlink(target, link); err != nil {
+			t.Fatal(err)
+		}
+	}
+	target, err := canonicalChildFileTarget(0, ChildFileTarget{Key: "skills", Path: root, Boundary: root, FileName: "SKILL.md", MaxEntries: 16, MaxBytes: testMaxBytes})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, watched := mustScanChildFiles(t, target)
+	physicalMaterials, err := filesystem.ResolvePath("", materials)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(watched, physicalMaterials) {
+		t.Fatalf("document content dependency is absent from watches: %v", watched)
+	}
+	physicalOutside, err := filesystem.ResolvePath("", outside)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slices.Contains(watched, physicalOutside) {
+		t.Fatalf("rejected external document created a watch: %v", watched)
+	}
+	physicalResources, err := filesystem.ResolvePath("", resources)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slices.Contains(watched, physicalResources) {
+		t.Fatalf("unrelated nested resources were watched: %v", watched)
+	}
+}
+
 func TestCanonicalChildFileTargetsKeepBoundaryPolicyInIdentity(t *testing.T) {
 	root := t.TempDir()
 	targets, err := canonicalChildFileTargets([]ChildFileTarget{

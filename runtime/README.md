@@ -1516,6 +1516,11 @@ Discovery, inspection, and model loading share one source-selection rule and Sco
 Document admission classifies a non-regular `SKILL.md` as an invalid selected bundle,
 preserving its file-kind cause; oversized documents retain their size-admission cause.
 Cleanup failures remain I/O failures rather than skippable document diagnostics.
+Content observation retains both the logical document parent and each admitted
+symlink target's parent. Direct writes, atomic replacement, deletion/recreation
+and retargeting invalidate the same Skill source without watching unrelated
+nested resources. Rejected external targets add no content dependency; directory
+entry and document byte bounds remain the source limits.
 Skill sources preserve both the standard cancellation category and any custom cause,
 including for an empty catalog. Read failures remain identifiable when cancellation
 occurs concurrently. Resource reads enforce their byte limit before returning a count,
