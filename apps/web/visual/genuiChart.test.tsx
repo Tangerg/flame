@@ -133,7 +133,11 @@ it.each(["line", "bar", "area", "pie", "donut"] as const)(
       within(table)
         .getAllByRole("cell")
         .map((cell) => cell.textContent),
-    ).toEqual(["12", "24", "18"]);
+    ).toEqual(
+      kind === "pie" || kind === "donut"
+        ? ["12", "22.22%", "24", "44.44%", "18", "33.33%"]
+        : ["12", "24", "18"],
+    );
     expect(container.querySelector("script")).toBeNull();
     expect(container.querySelector("svg")?.outerHTML).not.toMatch(/NaN|Infinity/);
     expect(screen.getByRole("region", { name: "Quarterly volume data" }).tabIndex).toBe(0);
@@ -210,3 +214,69 @@ it("handles a whole-circle pie and a zero-total pie without inventing a value", 
   expect(container.querySelector("circle")).toBeNull();
   expect(container.querySelector("svg")?.outerHTML).not.toMatch(/NaN|Infinity/);
 });
+
+it.each(["pie", "donut"] as const)(
+  "keeps all 256 %s categories in a complete legend with matching slice patterns and exact values",
+  (kind) => {
+    const labels = Array.from({ length: 256 }, (_, index) =>
+      index === 255
+        ? "Final category — complete captured name <literal>"
+        : `Captured category ${index + 1}`,
+    );
+    render(
+      <ChartView
+        kind={kind}
+        caption="Captured composition"
+        labels={labels}
+        series={[{ label: "Captured values", values: labels.map((_, index) => index + 1) }]}
+        dataLabel="Composition data"
+        emptyLabel="No data"
+      />,
+    );
+    const chart = screen.getByRole("img", { name: "Captured composition" });
+    const table = screen.getByRole("table", { name: "Composition data" });
+    const rows = within(table).getAllByRole("row").slice(1);
+    const slices = [...chart.querySelectorAll("path,circle")].filter((shape) =>
+      shape.querySelector("title"),
+    );
+    expect(rows).toHaveLength(256);
+    expect(slices).toHaveLength(256);
+    expect(within(table).getByRole("columnheader", { name: "%" })).toBeTruthy();
+    rows.forEach((row, index) => {
+      const header = within(row).getByRole("rowheader", { name: labels[index]! });
+      const swatch = header.querySelector("svg rect");
+      expect(swatch?.getAttribute("fill")).toBe(slices[index]!.getAttribute("fill"));
+      expect(swatch?.closest("svg")?.getAttribute("aria-hidden")).toBe("true");
+      expect(within(row).getByRole("cell", { name: String(index + 1) })).toBeTruthy();
+    });
+    expect(within(rows[255]!).getByRole("cell", { name: "0.7782%" })).toBeTruthy();
+  },
+);
+
+it.each(["pie", "donut"] as const)(
+  "keeps %s shares finite and consistent with its geometry through a zero-total update",
+  (kind) => {
+    const props = {
+      kind,
+      caption: "Captured composition",
+      labels: ["First", "Second", "Zero"],
+      dataLabel: "Composition data",
+      emptyLabel: "No data",
+    };
+    const { rerender } = render(
+      <ChartView {...props} series={[{ label: "Values", values: [1e308, 1e308, 0] }]} />,
+    );
+    const values = () =>
+      within(screen.getByRole("table", { name: "Composition data" }))
+        .getAllByRole("cell")
+        .map((cell) => cell.textContent);
+    expect(values()).toEqual(["1e+308", "50%", "1e+308", "50%", "0", "0%"]);
+    expect(screen.getByText("First: 1e+308 (50%)", { selector: "title" })).toBeTruthy();
+    expect(screen.getByRole("img").outerHTML).not.toMatch(/NaN|Infinity/);
+
+    rerender(<ChartView {...props} series={[{ label: "Values", values: [0, 0, 0] }]} />);
+    expect(values()).toEqual(["0", "0%", "0", "0%", "0", "0%"]);
+    expect(screen.getByRole("img").querySelectorAll("title")).toHaveLength(0);
+    expect(screen.getByRole("img").outerHTML).not.toMatch(/NaN|Infinity/);
+  },
+);

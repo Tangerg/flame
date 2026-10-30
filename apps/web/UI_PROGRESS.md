@@ -142,9 +142,15 @@ Cartesian charts now keep twelve distinct series and matching data legends, with
 readable plot sizing and locally owned horizontal keyboard reading. See
 **Chart series identity and horizontal reading** for the native task, shared
 component boundary and qualification limits.
-The user resumed the paused goal.
-Completed batches are verified, explicitly committed and pushed to main under the
-goal publication policy. Preserve parallel work in the primary checkout. Do not
+That repair is published as `fdc45bab2`. The circular-chart follow-up belongs to
+the user-requested **2026-10-30 publication milestone**: see **Complete
+circular-chart legend reading** for passing checks, the completed English native
+task, archived qualification evidence and remaining native qualification. Required
+CUA control remains unavailable. The user explicitly requests committing and
+pushing the current owned changes to main, followed by a milestone pause with
+those native tasks still open. Do not start another batch until the user resumes.
+Earlier completed batches were verified, explicitly committed and pushed to main
+under the goal publication policy. Preserve parallel work in the primary checkout. Do not
 continually merge and revalidate advancing main during a scoped UI task. Claude
 Code CLI remains prohibited, and this run uses no subagents or browser suites.
 The latest feedback is the user attachment
@@ -3022,6 +3028,131 @@ bytes**, SHA-256
 AX and screenshots remain in CUA. No advancing-main synchronization/validation
 loop is started. Continue from fresh content/Dock evidence; the separate native
 reverse-Tab finding and UI goal remain open.
+
+### Complete circular-chart legend reading
+
+This change starts from published `fdc45bab2`. On **2026-10-30**, after the
+reported native-tool blocker, the user explicitly requests committing and pushing
+all current owned changes to main and then pausing at this milestone. That later
+instruction authorizes publication with the outstanding qualification recorded
+here; it does not establish native acceptance. Required
+ZH/dark/18px/custom-blue/native-resize/200% and ordinary observer-free native tasks
+remain incomplete. The CUA namespace was removed after the English task and
+builds passed. No alternate UI automation, browser suite or screenshot-only
+substitute is used. The overall UI goal remains unfinished.
+
+Original Wails confirms twelve captured categories but only ten SVG legend
+entries. The SVG shortens long names and can put percentages beyond its reading
+edge; the existing complete value table has no corresponding slice swatches.
+Admission allows up to **256** labels and requires exactly one nonnegative series
+for pie/donut. Increasing the ten-item cap would leave a fixed SVG text layout
+responsible for arbitrary amounts of readable category information.
+
+`plugins/genui/component/chart.tsx` instead uses the existing HTML value table
+as the complete circular-chart legend. Each row retains its full literal label
+and exact value, adds the same pattern reference as its slice and shows its
+percentage in a separate `%` column. A pure normalized-fraction projection feeds
+both geometry/tooltips and this column, preserving large-finite and zero-total
+semantics. Circular geometry is centered in a square viewBox and fits up to
+20rem; its names now use the host's normal text rather than SVG text sizing.
+Cartesian sizing, twelve-series marks, keyboard scopes, source values, draft
+ownership and Runtime contracts remain unchanged. No new locale key, palette,
+state, dependency or operation is added. The installed GenUI ESM is rebuilt.
+
+The actual ZCode `AppUsageModelUsagePieChart.tsx` and its view model pair a
+circular figure with an HTML list of captured identities, values and shares.
+Their six-slice aggregation, palette, truncation and Recharts dependency are not
+adopted: Flame retains every admitted category and its exact value. The
+[W3C complex-images tutorial](https://www.w3.org/WAI/tutorials/images/complex/)
+supports making essential chart information readable in adjacent structured
+content. Existing ChatGPT, HeroUI/Arc, Radix and Ace research remains context;
+the previously inspected ChatGPT chart-named icon modules remain excluded as
+chart-interface evidence. Better-layout and better-typography guide complete
+identity, ordinary wrapping, aligned information and numeric reading.
+
+- Original focused baseline passes **13 tests**. Four new cases fail against
+  the original (**4 failures / 13 passes**). The final **17 chart tests** pass:
+  256 complete categories with matching pattern references and exact values for
+  both kinds, and finite shares through a zero-total update. The intentional
+  percentage column updates the two pie/donut table expectations while retaining
+  their exact captured numbers; Cartesian expectations remain unchanged.
+- Related Frontend checks pass **7 files / 145 tests**. Plugin component
+  build/type/lint/format/i18n/resource checks, Web type/lint/format,
+  layers/design-system/token/style/class/shorthand/chrome/locale, bundle and
+  installed-module checks pass. Normal **make check-native passes in 18.242s**,
+  including Desktop tests/vet/build and supported Wails production compilation.
+  Existing duplicate-library/deployment-version warnings are non-failing.
+  The unchanged shared UI's preceding 209-test qualification is historical;
+  its standalone suite is not rerun or claimed as a fresh pass here.
+- Final actual EN/light/14px/Orange/full-motion Wails qualifies pie, donut and
+  the complete 256-category set, named plot/table keyboard entry, paging,
+  pointer reading to the final category, related README/back and continued
+  editing. The circular figure is **320 x 320** at **1440 x 900**. All **256**
+  rows retain their swatches. Native reading reaches
+  `Final category 256 — complete captured name <literal>`, exact value `1`
+  and `0.3906%`. The note remains
+  `Keep the full category names and their values.`; the draft continues as
+  `Draft before composition reading. Ready to continue.`
+- The first candidate places swatches above their names because the shared
+  media reset makes SVG block-level. The chart's row swatch now explicitly
+  uses inline-block; the final native capture shows it beside the complete,
+  wrapping name. This is a marker-composition correction, with no shared reset
+  override. That first candidate is not final layout qualification.
+- **Not verified:** ZH dark/18px/custom blue, native resize/200%, ordinary
+  observer-free task, VoiceOver, physical IME, native RTL and other platforms.
+  The dark production-tagged host and signature pass, but that host has not
+  been launched. Live provider/Runtime writes and Send are outside this fixture.
+  No whole-product or award-level acceptance is claimed.
+
+The three observed native launches have exited. Milestone cleanup confirms no
+owned app process or listener on **50650**, unregisters the private bundle,
+removes seven newly created checkout output/cache roots and three private
+profiles, and restores the pre-existing native-check binary's bytes and mode.
+All **21** output baselines, four originals/modes and five private-profile
+absences pass. The **6,386** non-Markdown sources, 34 core resources, two GenUI
+dependency chunks, **346** assets and private native binary match the recovery
+checkpoint. These unchanged inputs retain the passing check results above;
+no unrelated suite is repeated for publication.
+
+Before removal, the exact private qualification tree
+`/private/tmp/flame-slice-reading-KIKgVA` is archived outside the repository as
+`/Users/tangerg/.codex/visualizations/2026/10/20/01a15a98-f908-76c3-a93e-3f9eccce3947/flame-slice-reading-milestone-20261030.tar.gz`.
+All **418** regular files are verified against their archived bytes before that
+tree is removed. The archive is **28,748,195 bytes**, SHA-256
+`f6c0863d0e752ead4670889b74e1d9a45f08c71313429904575ee69b2939aff1`.
+It retains the original, initial-candidate and final-EN observations, stage logs,
+signed dark host, private assets, collector, recovery checkpoint and verified
+original backups. Native resources are retired; the archive preserves a
+recoverable qualification scene without claiming its remaining tasks passed.
+Read-only plugin discovery returns no usable native-control integration in the
+checked results. No plugin installation, connection or permission is changed;
+the required CUA capability remains unavailable in this session.
+
+The archived `qualification-checkpoint.json` binds current source,
+binary and asset hashes, stage results, verified original backup bytes and
+recovered output/profile baselines. The **6,386** non-Markdown source map is
+reconstructed from the frozen Git base and bounded current diff; exactly three
+owned source/resource paths differ. Core resource coverage is **34** entries,
+plus the two unchanged GenUI dependency chunks. Old in-memory reference maps
+and archives are unavailable, so no renewed all-reference preservation claim
+is made. Prepared ordinary HTML entries remove exactly the additional observer
+script; they are not yet installed or run. A syntax-checked private file-backed
+collector is prepared but not running, so future observation evidence need not
+depend on a single Node kernel's lifetime.
+
+On an explicit user resume, first check current sources and native-tool
+availability. If this scene is still applicable, restore only its archived
+qualification root and recheck source/binary/asset hashes and process/port
+ownership before the Chinese and ordinary native tasks. The native host reads
+that private asset tree; unchanged inputs do not require recreating checkout
+builds. Prepared ordinary HTML entries can replace the observed entries after
+the Chinese task; verify that only the two entries and observer removal differ
+before its actual native run, then retire the restored resources. Reuse passing
+checks when their inputs match. The source diff has no additional actionable
+review finding. The publication fetch finds main already at `fdc45bab2`, with
+zero incoming or unpublished commits before this milestone change. Publication
+is authorized by the later user instruction; native qualification and the broader
+goal remain open during the requested pause.
 
 ### Command focus and visible pane boundaries
 

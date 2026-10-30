@@ -232,18 +232,23 @@ function Cartesian({
   );
 }
 
+function pieFractions(values: readonly number[]) {
+  const magnitude = Math.max(1, ...values);
+  const total = values.reduce((sum, value) => sum + value / magnitude, 0);
+  return values.map((value) => (total === 0 ? 0 : value / magnitude / total));
+}
+
 function Pie({
   kind,
   labels,
   series,
   patternId,
-}: ChartViewProps & { patternId: string }) {
+  fractions,
+}: ChartViewProps & { patternId: string; fractions: readonly number[] }) {
   const values = series[0]?.values ?? [];
-  const magnitude = Math.max(1, ...values);
-  const total = values.reduce((sum, value) => sum + value / magnitude, 0);
   let angle = -Math.PI / 2;
-  const centerX = 215;
-  const centerY = 155;
+  const centerX = HEIGHT / 2;
+  const centerY = HEIGHT / 2;
   const radius = 126;
   const innerRadius = kind === "donut" ? radius * 0.55 : 0;
 
@@ -251,7 +256,7 @@ function Pie({
     <>
       <ChartPatterns id={patternId} count={labels.length} />
       {values.map((value, index) => {
-        const fraction = total === 0 ? 0 : value / magnitude / total;
+        const fraction = fractions[index]!;
         const start = angle;
         angle += fraction * 2 * Math.PI;
         const fill = `url(#${patternId}-${index})`;
@@ -279,19 +284,6 @@ function Pie({
                 <title>{tooltip}</title>
               </path>
             ) : null}
-            {index < 10 && (
-              <g transform={`translate(380 ${30 + index * 27})`}>
-                <rect
-                  width={14}
-                  height={14}
-                  fill={fill}
-                  stroke="currentColor"
-                />
-                <text x={24} y={11} fill="currentColor" fontSize={LABEL_SIZE}>
-                  {axisLabel(labels[index]!)} · {tick(fraction * 100)}%
-                </text>
-              </g>
-            )}
           </g>
         );
       })}
@@ -302,6 +294,8 @@ function Pie({
 export function ChartView(props: ChartViewProps) {
   const id = useId().replaceAll(":", "");
   const { kind, caption, labels, series, dataLabel, emptyLabel } = props;
+  const circular = kind === "pie" || kind === "donut";
+  const fractions = circular ? pieFractions(series[0]?.values ?? []) : [];
   return (
     <figure style={{ margin: 0, minWidth: 0 }}>
       <figcaption>{caption}</figcaption>
@@ -312,17 +306,20 @@ export function ChartView(props: ChartViewProps) {
           <svg
             role="img"
             aria-label={caption}
-            viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+            viewBox={`0 0 ${circular ? HEIGHT : WIDTH} ${HEIGHT}`}
             style={{
               display: "block",
               width: "100%",
               height: "auto",
-              minWidth: `calc(var(--fs-ui-sm) * ${WIDTH} / ${LABEL_SIZE})`,
-              maxWidth: "56rem",
+              minWidth: circular
+                ? undefined
+                : `calc(var(--fs-ui-sm) * ${WIDTH} / ${LABEL_SIZE})`,
+              maxWidth: circular ? "20rem" : "56rem",
+              marginInline: circular ? "auto" : undefined,
             }}
           >
-            {kind === "pie" || kind === "donut" ? (
-              <Pie {...props} patternId={id} />
+            {circular ? (
+              <Pie {...props} patternId={id} fractions={fractions} />
             ) : (
               <Cartesian {...props} patternId={id} />
             )}
@@ -371,18 +368,54 @@ export function ChartView(props: ChartViewProps) {
                   {entry.label}
                 </th>
               ))}
+              {circular && <th scope="col">%</th>}
             </tr>
           </thead>
           <tbody>
             {labels.map((label, index) => (
               <tr key={index}>
-                <th scope="row">{label}</th>
+                <th scope="row">
+                  {circular && (
+                    <>
+                      <svg
+                        width={24}
+                        height={16}
+                        aria-hidden="true"
+                        style={{
+                          display: "inline-block",
+                          verticalAlign: "middle",
+                        }}
+                      >
+                        <rect
+                          x={3}
+                          y={2}
+                          width={18}
+                          height={12}
+                          fill={`url(#${id}-${index})`}
+                          stroke="currentColor"
+                          strokeWidth={0.5}
+                        />
+                      </svg>{" "}
+                    </>
+                  )}
+                  {label}
+                </th>
                 {kind === "scatter" && (
                   <td>{String(props.xValues?.[index])}</td>
                 )}
                 {series.map((entry) => (
                   <td key={entry.label}>{String(entry.values[index])}</td>
                 ))}
+                {circular && (
+                  <td
+                    style={{
+                      fontVariantNumeric: "tabular-nums",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {tick(fractions[index]! * 100)}%
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

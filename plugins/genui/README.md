@@ -82,6 +82,11 @@ alone. All twelve admitted Cartesian series have distinct point marks or bar
 patterns, reused by their data-column legends. Plot labels keep at least the host's
 small-text size in a separate named scroll region instead of shrinking with
 the container; exact values remain in the independently readable data table.
+Pie and donut legends use the same table: every category has its complete name,
+matching slice pattern, exact value and percentage. The chart geometry and table
+share one normalized fraction projection, including zero totals and large finite
+values. A centered circular figure no longer reserves SVG space for a truncated,
+ten-category legend; its HTML legend follows ordinary text sizing and reading.
 Markdown uses the established renderer with raw HTML disabled. KaTeX
 produces MathML with trusted commands disabled. Map tiles use OpenStreetMap with
 attribution; tile errors remain visible and can be explicitly retried. A supplied
