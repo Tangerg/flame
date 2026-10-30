@@ -3870,6 +3870,57 @@
         "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA_wireResponseDelta",
         "$schema": "https://json-schema.org/draft/2020-12/schema"
       }
+    },
+    {
+      "name": "flame.model-provider/verify.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Prove the exact configured connection authenticates with its provider.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_Connection": {
+            "additionalProperties": false,
+            "properties": {
+              "apiKey": {
+                "type": "string"
+              },
+              "baseURL": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "provider"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "apiKey": {
+            "type": "string"
+          },
+          "baseURL": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      }
     }
   ]
 }

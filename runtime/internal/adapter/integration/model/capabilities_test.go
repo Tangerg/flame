@@ -3,12 +3,16 @@ package model
 import (
 	"context"
 	"errors"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/scope/models/catalog"
 	"reflect"
 	"testing"
+
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
+	"github.com/Tangerg/flame/qimu/portable"
+	modelsapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/scope/models/catalog"
 )
 
 func TestCatalogPricesPreserveInputDefaultsAndFreeCache(t *testing.T) {
@@ -29,7 +33,7 @@ func TestCatalogPricesPreserveInputDefaultsAndFreeCache(t *testing.T) {
 				t.Fatal(err)
 			}
 			pricing := model.Details().Pricing
-			if pricing == nil || pricing.CacheReadPerMillion != test.wantRead || pricing.CacheWritePerMillion != test.wantWrite {
+			if len(pricing) != 1 || pricing[0].CacheReadPerMillion != test.wantRead || pricing[0].CacheWritePerMillion != test.wantWrite {
 				t.Fatalf("catalog cache price changed meaning: %+v", pricing)
 			}
 		})
@@ -39,6 +43,7 @@ func TestCatalogPricesPreserveInputDefaultsAndFreeCache(t *testing.T) {
 type capabilityAdapters struct {
 	profiles []modelprovider.Profile
 	err      error
+	verified error
 }
 
 func (f capabilityAdapters) Profiles(context.Context) ([]modelprovider.Profile, error) {
@@ -47,13 +52,13 @@ func (f capabilityAdapters) Profiles(context.Context) ([]modelprovider.Profile, 
 func (f capabilityAdapters) RemoteModels(context.Context, modelprovider.Connection) ([]string, error) {
 	return nil, f.err
 }
-func (f capabilityAdapters) OpenChat(context.Context, modelchoice.Selection, modelprovider.Connection) (ResolvedChat, error) {
-	return ResolvedChat{}, f.err
+func (f capabilityAdapters) Verify(context.Context, modelprovider.Connection) error {
+	return f.verified
 }
 func TestCapabilitiesAdmitOnlyInstalledProviderFacts(t *testing.T) {
 	entry := catalog.Model{ID: "model", Reasoning: catalog.Reasoning{Supported: true, Levels: []string{"custom"}, DefaultLevel: "custom"}}
 	adapters := capabilityAdapters{profiles: []modelprovider.Profile{{ID: "installed", Authentication: modelprovider.KeyOptional, ModelSource: modelprovider.BundledModels, DefaultModel: "model", Models: []catalog.Model{entry}}}}
-	c, err := NewCapabilities(adapters, fakeEndpointJournal{})
+	c, err := NewCapabilities(adapters)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +79,7 @@ func TestCapabilitiesAdmitOnlyInstalledProviderFacts(t *testing.T) {
 }
 func TestCapabilitiesPreserveUnavailableAdapterFailure(t *testing.T) {
 	cause := errors.New("selected adapter unavailable")
-	c, err := NewCapabilities(capabilityAdapters{err: cause}, fakeEndpointJournal{})
+	c, err := NewCapabilities(capabilityAdapters{err: cause})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,5 +88,39 @@ func TestCapabilitiesPreserveUnavailableAdapterFailure(t *testing.T) {
 	}
 	if _, err := c.Profiles(t.Context()); !errors.Is(err, cause) {
 		t.Fatalf("profiles=%v", err)
+	}
+}
+
+func TestProbeVerifiesThroughTheProviderAdapter(t *testing.T) {
+	installed := []modelprovider.Profile{{ID: "installed", Authentication: modelprovider.KeyOptional, ModelSource: modelprovider.BundledModels, DefaultModel: "model", Models: []catalog.Model{{ID: "model"}}}}
+	entry, err := provider.New("installed")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rejected := &portable.Refusal{Code: string(modelprovider.InvalidCredentials), Message: "model provider: connection verification failed"}
+	for name, test := range map[string]struct {
+		adapters capabilityAdapters
+		entry    string
+		want     error
+	}{
+		"verified":             {adapters: capabilityAdapters{profiles: installed}, entry: "installed"},
+		"rejected credentials": {adapters: capabilityAdapters{profiles: installed, verified: rejected}, entry: "installed", want: modelsapp.ErrProviderCredentialsRejected},
+		"uninstalled provider": {adapters: capabilityAdapters{profiles: installed}, entry: "other", want: modelsapp.ErrProviderUnsupported},
+	} {
+		t.Run(name, func(t *testing.T) {
+			probed := entry
+			if test.entry != "installed" {
+				if probed, err = provider.New(test.entry); err != nil {
+					t.Fatal(err)
+				}
+			}
+			c, err := NewCapabilities(test.adapters)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := c.Probe(t.Context(), probed); test.want == nil && err != nil || test.want != nil && !errors.Is(err, test.want) {
+				t.Fatalf("Probe() = %v, want %v", err, test.want)
+			}
+		})
 	}
 }

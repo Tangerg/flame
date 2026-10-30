@@ -51,7 +51,7 @@ func schedulesDocument(schedules []schedule.CreateV1Output) readerDocument {
 		}
 		metadata := []string{
 			"id       " + scheduled.ID,
-			"cron     " + scheduled.Cron,
+			"cron     " + scheduled.Cron + " (" + scheduled.TimeZone + ")",
 			"status   " + status,
 			"revision " + fmt.Sprint(scheduled.Revision),
 			"created  " + scheduled.CreatedAt.Format(time.RFC3339),

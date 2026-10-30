@@ -74,6 +74,14 @@
     "Method_flame_2emodel_2dprovider_2fstream_2ev1Output": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChatResult"
     },
+    "Method_flame_2emodel_2dprovider_2fverify_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fConnection"
+    },
+    "Method_flame_2emodel_2dprovider_2fverify_2ev1Output": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
     "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg_5fChat": {
       "additionalProperties": false,
       "properties": {

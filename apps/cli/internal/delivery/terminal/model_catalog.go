@@ -68,8 +68,12 @@ func modelCatalogLines(model protocol.Model) []string {
 	} else {
 		lines = append(lines, modelCapabilityLines(*model.Capabilities)...)
 	}
-	if model.Pricing != nil {
-		lines = append(lines, "pricing       "+modelPricingText(*model.Pricing))
+	for index, band := range model.Pricing {
+		label := "pricing       "
+		if index > 0 {
+			label = "              "
+		}
+		lines = append(lines, label+modelPricingText(band))
 	}
 	if len(lines) == 0 {
 		lines = append(lines, "No additional metadata was advertised.")
@@ -139,14 +143,18 @@ func joinModalities(modalities []protocol.Modality) string {
 	return strings.Join(values, ", ")
 }
 
-func modelPricingText(pricing protocol.ModelPricing) string {
+func modelPricingText(pricing protocol.ModelPriceBand) string {
 	rates := []string{
 		"input $" + formatModelRate(pricing.InputUSDPerMillionTokens) + "/M",
 		"output $" + formatModelRate(pricing.OutputUSDPerMillionTokens) + "/M",
 		"cache read $" + formatModelRate(pricing.CacheReadUSDPerMillionTokens) + "/M",
 		"cache write $" + formatModelRate(pricing.CacheWriteUSDPerMillionTokens) + "/M",
 	}
-	return strings.Join(rates, " · ")
+	text := strings.Join(rates, " · ")
+	if pricing.AboveInputTokens > 0 {
+		text = "above " + strconv.FormatInt(pricing.AboveInputTokens, 10) + " input tokens: " + text
+	}
+	return text
 }
 
 func formatModelRate(rate float64) string {

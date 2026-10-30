@@ -54,7 +54,7 @@ func buildModelEnvironment(ctx context.Context, cfg assemblyConfig, defaultSelec
 		return modelEnvironment{}, err
 	}
 
-	capabilities, err := modeladapter.NewCapabilities(providers, cfg.stores.ModelInvocations)
+	capabilities, err := modeladapter.NewCapabilities(providers)
 	if err != nil {
 		return modelEnvironment{}, err
 	}

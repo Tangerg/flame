@@ -124,10 +124,10 @@ func TestModelCatalogProjectsEveryPublishedModelField(t *testing.T) {
 		Multimodal: true, InputModalities: []protocol.Modality{protocol.ModalityText, protocol.ModalityImage},
 		OutputModalities: []protocol.Modality{protocol.ModalityText}, ToolUse: true, StructuredOutput: true,
 	}
-	pricing := &protocol.ModelPricing{
+	pricing := []protocol.ModelPriceBand{{
 		InputUSDPerMillionTokens: 0.2, OutputUSDPerMillionTokens: 0.8,
 		CacheReadUSDPerMillionTokens: 0.02, CacheWriteUSDPerMillionTokens: 0.1,
-	}
+	}}
 	contextWindow, maxInput, maxOutput := int64(200_000), int64(180_000), int64(20_000)
 	stub := modelCatalogBindingStub{
 		providers: protocol.NewPage([]protocol.Provider{{ID: "provider", CredentialRequirement: protocol.ProviderAPIKeyRequired}}),
@@ -156,19 +156,19 @@ func TestModelCatalogProjectsEveryPublishedModelField(t *testing.T) {
 		model.TokenLimits == nil || model.TokenLimits.ContextWindow == nil || *model.TokenLimits.ContextWindow != 200_000 ||
 		model.TokenLimits.MaxInputTokens == nil || *model.TokenLimits.MaxInputTokens != 180_000 ||
 		model.TokenLimits.MaxOutputTokens == nil || *model.TokenLimits.MaxOutputTokens != 20_000 ||
-		model.KnowledgeCutoff != "2026-01-31" || !model.Deprecated || model.Capabilities == nil || model.Pricing == nil ||
+		model.KnowledgeCutoff != "2026-01-31" || !model.Deprecated || model.Capabilities == nil || len(model.Pricing) != 1 ||
 		!model.Capabilities.Reasoning || model.Capabilities.ReasoningDefaultLevel != "high" ||
 		!model.Capabilities.Multimodal || !model.Capabilities.ToolUse || !model.Capabilities.StructuredOutput ||
 		!reflect.DeepEqual(model.Capabilities.InputModalities, wantInput) ||
-		model.Pricing.CacheWriteUSDPerMillionTokens != 0.1 {
+		model.Pricing[0].CacheWriteUSDPerMillionTokens != 0.1 {
 		t.Fatalf("projected model = %+v", model)
 	}
 	capabilities.ReasoningLevels[0] = "mutated"
 	capabilities.InputModalities[0] = protocol.ModalityAudio
-	pricing.InputUSDPerMillionTokens = 99
+	pricing[0].InputUSDPerMillionTokens = 99
 	if model.Capabilities.ReasoningLevels[0] != "low" ||
 		model.Capabilities.InputModalities[0] != protocol.ModalityText ||
-		model.Pricing.InputUSDPerMillionTokens != 0.2 {
+		model.Pricing[0].InputUSDPerMillionTokens != 0.2 {
 		t.Fatal("model projection aliases runtime-owned metadata")
 	}
 }

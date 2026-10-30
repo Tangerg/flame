@@ -51,7 +51,10 @@ func TestModelToWire(t *testing.T) {
 			MaxInputTokens:  modelLimitPointer(190000),
 			MaxOutputTokens: modelLimitPointer(8192),
 		}),
-		Pricing: &models.Pricing{InputPerMillion: 3, OutputPerMillion: 15, CacheReadPerMillion: 0.3, CacheWritePerMillion: 3.75},
+		Pricing: []models.PriceBand{
+			{InputPerMillion: 3, OutputPerMillion: 15, CacheReadPerMillion: 0.3, CacheWritePerMillion: 3.75},
+			{AboveInputTokens: 200000, InputPerMillion: 6, OutputPerMillion: 22.5, CacheReadPerMillion: 0.6, CacheWritePerMillion: 7.5},
+		},
 	})
 
 	m := presentModel(info)
@@ -88,11 +91,9 @@ func TestModelToWire(t *testing.T) {
 		t.Errorf("toolUse=%v structuredOutput=%v", c.ToolUse, c.StructuredOutput)
 	}
 
-	if m.Pricing == nil ||
-		m.Pricing.InputUSDPerMillionTokens != 3 ||
-		m.Pricing.OutputUSDPerMillionTokens != 15 ||
-		m.Pricing.CacheReadUSDPerMillionTokens != 0.3 ||
-		m.Pricing.CacheWriteUSDPerMillionTokens != 3.75 {
+	if len(m.Pricing) != 2 ||
+		m.Pricing[0] != (protocol.ModelPriceBand{InputUSDPerMillionTokens: 3, OutputUSDPerMillionTokens: 15, CacheReadUSDPerMillionTokens: 0.3, CacheWriteUSDPerMillionTokens: 3.75}) ||
+		m.Pricing[1] != (protocol.ModelPriceBand{AboveInputTokens: 200000, InputUSDPerMillionTokens: 6, OutputUSDPerMillionTokens: 22.5, CacheReadUSDPerMillionTokens: 0.6, CacheWriteUSDPerMillionTokens: 7.5}) {
 		t.Errorf("pricing = %+v", m.Pricing)
 	}
 }
@@ -108,7 +109,7 @@ func TestModelToWire_TextOnly(t *testing.T) {
 		t.Error("non-reasoning model must carry no levels")
 	}
 	if m.Pricing != nil {
-		t.Error("no pricing → nil ModelPricing")
+		t.Error("no pricing → no price bands")
 	}
 	if m.TokenLimits != nil {
 		t.Error("unknown token-limit facts must be omitted")

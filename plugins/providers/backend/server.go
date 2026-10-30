@@ -29,6 +29,10 @@ func newServer(store *store) (*sdk.Server, error) {
 	if err != nil {
 		return nil, err
 	}
+	verify, err := modelprovider.VerifyMethod()
+	if err != nil {
+		return nil, err
+	}
 	openChat, err := modelprovider.OpenChatMethod()
 	if err != nil {
 		return nil, err
@@ -81,6 +85,16 @@ func newServer(store *store) (*sdk.Server, error) {
 				return nil, &portable.Refusal{Code: string(failure(err).Kind), Message: "model provider: model discovery failed"}
 			}
 			return values, nil
+		}),
+		verify.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[modelprovider.Connection]) (struct{}, error) {
+			spec, err := newClientSpec(command.Input)
+			if err != nil {
+				return struct{}{}, &portable.Refusal{Code: "invalid_connection", Message: "model provider: invalid connection"}
+			}
+			if err := verifyConnection(ctx, spec); err != nil {
+				return struct{}{}, &portable.Refusal{Code: string(failure(err).Kind), Message: "model provider: connection verification failed"}
+			}
+			return struct{}{}, nil
 		}),
 		openChat.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[modelprovider.Open]) (modelprovider.Chat, error) {
 			return openClient(ctx, store, openChat.Name(), chatClient, command, func(handle modelprovider.Handle, client *client, input modelprovider.Open) modelprovider.Chat {

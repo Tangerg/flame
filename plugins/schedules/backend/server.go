@@ -8,6 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
+	"github.com/Tangerg/flame/packages/go-sdk/timezone"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	app "github.com/Tangerg/flame/plugins/schedules/internal/application"
@@ -160,7 +161,7 @@ func (t toolCommands) Create(ctx context.Context, _ createScheduleArgs) (schedul
 		return schedule.Schedule{}, decodeError(err)
 	}
 	value, err := pluginstorage.Command(ctx, t.db, wire.Create, id, admitted, classify, func(ctx context.Context, input createScheduleArgs) (schedule.Snapshot, error) {
-		draft, err := input.draft(hostTimeZone)
+		draft, err := input.draft(timezone.Host)
 		if err != nil {
 			return schedule.Snapshot{}, err
 		}

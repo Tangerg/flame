@@ -67,7 +67,7 @@ func (b *blockingScheduleRunService) CallPlugin(ctx context.Context, request pro
 func newScheduleServiceStub() *scheduleServiceStub {
 	now := time.Date(2026, time.August, 12, 10, 0, 0, 0, time.UTC)
 	next := now.Add(time.Hour)
-	return &scheduleServiceStub{schedules: []schedule.CreateV1Output{{ID: "sch_review", Title: "Repository review", Instructions: "review the repository", CWD: "/workspace", Cron: "0 * * * *", NextRunAt: next, CreatedAt: now, Revision: 1}}, created: make(chan schedule.CreateV1Input, 1), updated: make(chan schedule.UpdateV1Input, 4), deleted: make(chan string, 1), run: make(chan string, 1), now: now}
+	return &scheduleServiceStub{schedules: []schedule.CreateV1Output{{ID: "sch_review", Title: "Repository review", Instructions: "review the repository", CWD: "/workspace", Cron: "0 * * * *", TimeZone: "UTC", NextRunAt: next, CreatedAt: now, Revision: 1}}, created: make(chan schedule.CreateV1Input, 1), updated: make(chan schedule.UpdateV1Input, 4), deleted: make(chan string, 1), run: make(chan string, 1), now: now}
 }
 
 func (s *scheduleServiceStub) Schedules(context.Context) ([]schedule.CreateV1Output, error) {
@@ -83,7 +83,7 @@ func (s *scheduleServiceStub) Schedules(context.Context) ([]schedule.CreateV1Out
 
 func (s *scheduleServiceStub) create(request schedule.CreateV1Input) (schedule.CreateV1Output, error) {
 	s.created <- request
-	created := schedule.CreateV1Output{ID: "sch_created", Title: request.Title, Instructions: request.Instructions, CWD: request.CWD, ModelSelection: request.ModelSelection, Cron: request.Cron, NextRunAt: s.now.Add(2 * time.Hour), CreatedAt: s.now, Revision: 1}
+	created := schedule.CreateV1Output{ID: "sch_created", Title: request.Title, Instructions: request.Instructions, CWD: request.CWD, ModelSelection: request.ModelSelection, Cron: request.Cron, TimeZone: request.TimeZone, NextRunAt: s.now.Add(2 * time.Hour), CreatedAt: s.now, Revision: 1}
 	s.mu.Lock()
 	s.schedules = append(s.schedules, created)
 	s.mu.Unlock()
@@ -214,6 +214,9 @@ func applyScheduleUpdate(value *schedule.CreateV1Output, request schedule.Update
 	if request.Cron != nil {
 		value.Cron = *request.Cron
 	}
+	if request.TimeZone != nil {
+		value.TimeZone = *request.TimeZone
+	}
 	if request.Enabled != nil {
 		if *request.Enabled {
 			value.NextRunAt = value.CreatedAt.Add(time.Hour)
@@ -235,6 +238,7 @@ func TestScheduleCatalogReader(t *testing.T) {
 }
 
 func TestScheduleCreateFormSurvivesExtremeResize(t *testing.T) {
+	t.Setenv("TZ", "Asia/Shanghai")
 	service := newScheduleServiceStub()
 	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Schedules: service})
 	host.Shows(t, "Ask flame")
@@ -244,6 +248,7 @@ func TestScheduleCreateFormSurvivesExtremeResize(t *testing.T) {
 	host.Type("Daily audit")
 	host.Press(input.Tab)
 	host.Type("audit the repository")
+	host.Press(input.Tab)
 	host.Press(input.Tab)
 	host.Press(input.Tab)
 	host.Press(input.Tab)
@@ -264,7 +269,7 @@ func TestScheduleCreateFormSurvivesExtremeResize(t *testing.T) {
 	host.Press(input.Enter)
 	host.Shows(t, "Daily audit")
 	created := awaitValue(t, service.created, "schedule creation")
-	if created.Instructions != "audit the repository" || created.Cron != "0 9 * * 1-5" || created.CWD == "" ||
+	if created.Instructions != "audit the repository" || created.Cron != "0 9 * * 1-5" || created.TimeZone != "Asia/Shanghai" || created.CWD == "" ||
 		created.ModelSelection.Provider != "deepseek" || created.ModelSelection.Model != "deepseek-v4-flash" {
 		t.Fatalf("created schedule candidate = %+v", created)
 	}
@@ -282,12 +287,12 @@ func TestScheduleCreateFormLeavesCronGrammarToRuntime(t *testing.T) {
 	host.Type("audit the repository")
 	host.Press(input.Tab)
 	host.Send(input.Key{Code: input.Character, Rune: 'u', Mods: input.Ctrl})
-	const zoned = "CRON_TZ=Asia/Shanghai 0 9 * * 1-5"
-	host.Type(zoned)
+	const descriptor = "@weekly"
+	host.Type(descriptor)
 	host.Press(input.Enter)
 	created := awaitValue(t, service.created, "schedule creation")
-	if created.Cron != zoned {
-		t.Fatalf("created schedule cron = %q, want %q", created.Cron, zoned)
+	if created.Cron != descriptor {
+		t.Fatalf("created schedule cron = %q, want %q", created.Cron, descriptor)
 	}
 	stop()
 }

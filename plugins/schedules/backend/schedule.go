@@ -178,7 +178,7 @@ func (in createScheduleArgs) draft(hostTimeZone func() (string, error)) (schedul
 	timeZone := in.TimeZone
 	if timeZone == "" {
 		if timeZone, err = hostTimeZone(); err != nil {
-			return scheduledomain.Draft{}, fmt.Errorf("create_schedule: %w: %w", scheduledomain.ErrInvalidTimeZone, err)
+			return scheduledomain.Draft{}, fmt.Errorf("create_schedule: %w: %w; set time_zone", scheduledomain.ErrInvalidTimeZone, err)
 		}
 	}
 	return scheduledomain.Draft{

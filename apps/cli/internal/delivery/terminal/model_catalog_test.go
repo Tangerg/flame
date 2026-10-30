@@ -51,10 +51,13 @@ func TestModelCatalogDocumentConsumesCompleteModelMetadata(t *testing.T) {
 			Multimodal: true, InputModalities: []protocol.Modality{protocol.ModalityText, protocol.ModalityImage},
 			OutputModalities: []protocol.Modality{protocol.ModalityText}, ToolUse: true, StructuredOutput: true,
 		},
-		Pricing: &protocol.ModelPricing{
+		Pricing: []protocol.ModelPriceBand{{
 			InputUSDPerMillionTokens: 0.2, OutputUSDPerMillionTokens: 0.8,
 			CacheReadUSDPerMillionTokens: 0.02, CacheWriteUSDPerMillionTokens: 0.1,
-		},
+		}, {
+			AboveInputTokens: 200_000, InputUSDPerMillionTokens: 0.4, OutputUSDPerMillionTokens: 1.2,
+			CacheReadUSDPerMillionTokens: 0.04, CacheWriteUSDPerMillionTokens: 0.2,
+		}},
 	}})
 	if document.Title != "Models" || document.Detail != "1 available" || len(document.Sections) != 1 {
 		t.Fatalf("document = %+v", document)
@@ -68,6 +71,7 @@ func TestModelCatalogDocumentConsumesCompleteModelMetadata(t *testing.T) {
 		"input         text, image",
 		"output        text",
 		"input $0.2/M · output $0.8/M · cache read $0.02/M · cache write $0.1/M",
+		"above 200000 input tokens: input $0.4/M · output $1.2/M · cache read $0.04/M · cache write $0.2/M",
 	} {
 		if !strings.Contains(output, want) {
 			t.Errorf("model document omitted %q:\n%s", want, output)
@@ -76,7 +80,7 @@ func TestModelCatalogDocumentConsumesCompleteModelMetadata(t *testing.T) {
 }
 
 func TestModelCatalogDisplaysFreeCachePrices(t *testing.T) {
-	got := modelPricingText(protocol.ModelPricing{InputUSDPerMillionTokens: 3, OutputUSDPerMillionTokens: 15})
+	got := modelPricingText(protocol.ModelPriceBand{InputUSDPerMillionTokens: 3, OutputUSDPerMillionTokens: 15})
 	if want := "input $3/M · output $15/M · cache read $0/M · cache write $0/M"; got != want {
 		t.Fatalf("free cache prices were hidden: %q, want %q", got, want)
 	}

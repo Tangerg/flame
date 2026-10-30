@@ -1116,10 +1116,11 @@ TypeScript validator from this single registry projection.
 | `TestProviderRequest` | `provider` | `nonEmpty` |
 | `TestProviderRequest` | `provider` | `identity` |
 | `TestProviderRequest` | `provider` | `maxLength(64)` |
-| `ModelPricing` | `inputUsdPerMillionTokens` | `nonNegative` |
-| `ModelPricing` | `outputUsdPerMillionTokens` | `nonNegative` |
-| `ModelPricing` | `cacheReadUsdPerMillionTokens` | `nonNegative` |
-| `ModelPricing` | `cacheWriteUsdPerMillionTokens` | `nonNegative` |
+| `ModelPriceBand` | `aboveInputTokens` | `nonNegative` |
+| `ModelPriceBand` | `inputUsdPerMillionTokens` | `nonNegative` |
+| `ModelPriceBand` | `outputUsdPerMillionTokens` | `nonNegative` |
+| `ModelPriceBand` | `cacheReadUsdPerMillionTokens` | `nonNegative` |
+| `ModelPriceBand` | `cacheWriteUsdPerMillionTokens` | `nonNegative` |
 | `UtilityRole` | `provider` | `identity` |
 | `UtilityRole` | `provider` | `maxLength(64)` |
 | `UtilityRole` | `model` | `identity` |

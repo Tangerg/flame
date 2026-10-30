@@ -358,6 +358,10 @@ func RemoteModelsMethod() (*qimumcp.Method[Connection, []string], error) {
 	return qimumcp.NewMethod[Connection, []string](qimumcp.MethodConfig{Name: "flame.model-provider/remote-models.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read model identities from the exact configured provider endpoint."})
 }
 
+func VerifyMethod() (*qimumcp.Method[Connection, struct{}], error) {
+	return qimumcp.NewMethod[Connection, struct{}](qimumcp.MethodConfig{Name: "flame.model-provider/verify.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Prove the exact configured connection authenticates with its provider."})
+}
+
 func OpenChatMethod() (*qimumcp.Method[Open, Chat], error) {
 	return qimumcp.NewMethod[Open, Chat](qimumcp.MethodConfig{Name: "flame.model-provider/open-chat.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Capture one immutable provider client shared by chat, streaming and optional token counting."})
 }
@@ -399,6 +403,10 @@ func Contract() (*portable.Capability, error) {
 	if err != nil {
 		return nil, err
 	}
+	verify, err := VerifyMethod()
+	if err != nil {
+		return nil, err
+	}
 	openChat, err := OpenChatMethod()
 	if err != nil {
 		return nil, err
@@ -431,5 +439,5 @@ func Contract() (*portable.Capability, error) {
 	if err != nil {
 		return nil, err
 	}
-	return portable.NewCapability(portable.CapabilityConfig{Reference: Reference, Composition: portable.Selection, Scope: extension.ScopeInstallation}, profiles.Descriptor(), remote.Descriptor(), openChat.Descriptor(), openEmbedding.Descriptor(), reopenChat.Descriptor(), close.Descriptor(), call.Descriptor(), stream.Descriptor(), count.Descriptor(), embed.Descriptor())
+	return portable.NewCapability(portable.CapabilityConfig{Reference: Reference, Composition: portable.Selection, Scope: extension.ScopeInstallation}, profiles.Descriptor(), remote.Descriptor(), verify.Descriptor(), openChat.Descriptor(), openEmbedding.Descriptor(), reopenChat.Descriptor(), close.Descriptor(), call.Descriptor(), stream.Descriptor(), count.Descriptor(), embed.Descriptor())
 }

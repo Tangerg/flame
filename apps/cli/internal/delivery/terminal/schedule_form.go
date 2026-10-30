@@ -6,6 +6,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/schedule"
 	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/packages/go-sdk/timezone"
 
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
@@ -29,6 +30,7 @@ type scheduleFormDraft struct {
 	provider     string
 	model        string
 	cron         string
+	timeZone     string
 	enabled      bool
 }
 
@@ -36,20 +38,22 @@ func newScheduleFormDraft(mode scheduleFormMode, scheduled schedule.CreateV1Outp
 	if mode == scheduleFormUpdate {
 		return scheduleFormDraft{
 			title: scheduled.Title, instructions: scheduled.Instructions, workspace: scheduled.CWD,
-			provider: scheduled.ModelSelection.Provider, model: scheduled.ModelSelection.Model, cron: scheduled.Cron, enabled: !scheduled.NextRunAt.IsZero(),
+			provider: scheduled.ModelSelection.Provider, model: scheduled.ModelSelection.Model, cron: scheduled.Cron, timeZone: scheduled.TimeZone, enabled: !scheduled.NextRunAt.IsZero(),
 		}
 	}
-	return scheduleFormDraft{workspace: defaultWorkspace, cron: defaultScheduleCron, enabled: true}
+	// An unnamed host zone leaves the required field empty for the person to fill.
+	hostZone, _ := timezone.Host()
+	return scheduleFormDraft{workspace: defaultWorkspace, cron: defaultScheduleCron, timeZone: hostZone, enabled: true}
 }
 
 func (s scheduleFormDraft) candidate() (schedule.CreateV1Input, error) {
 	if err := validateScheduleModelPair(s.provider, s.model); err != nil {
 		return schedule.CreateV1Input{}, err
 	}
-	request := schedule.CreateV1Input{Title: strings.TrimSpace(s.title), Instructions: strings.TrimSpace(s.instructions), CWD: strings.TrimSpace(s.workspace), Cron: strings.TrimSpace(s.cron), Enabled: true}
+	request := schedule.CreateV1Input{Title: strings.TrimSpace(s.title), Instructions: strings.TrimSpace(s.instructions), CWD: strings.TrimSpace(s.workspace), Cron: strings.TrimSpace(s.cron), TimeZone: strings.TrimSpace(s.timeZone), Enabled: true}
 	request.ModelSelection.Provider, request.ModelSelection.Model = s.provider, s.model
-	if request.Instructions == "" || request.Cron == "" {
-		return schedule.CreateV1Input{}, errors.New("instructions and cron are required")
+	if request.Instructions == "" || request.Cron == "" || request.TimeZone == "" {
+		return schedule.CreateV1Input{}, errors.New("instructions, cron and time zone are required")
 	}
 	return request, nil
 }
@@ -85,6 +89,13 @@ func (s scheduleFormDraft) patch(original schedule.CreateV1Output) (schedule.Upd
 		}
 		request.Cron = &cron
 	}
+	timeZone := strings.TrimSpace(s.timeZone)
+	if timeZone != original.TimeZone {
+		if timeZone == "" {
+			return schedule.UpdateV1Input{}, false, errors.New("time zone is required")
+		}
+		request.TimeZone = &timeZone
+	}
 	enabled := s.enabled
 	if enabled != !original.NextRunAt.IsZero() {
 		request.Enabled = &enabled
@@ -96,7 +107,7 @@ func (s scheduleFormDraft) patch(original schedule.CreateV1Output) (schedule.Upd
 }
 
 func scheduleRequestHasChanges(request schedule.UpdateV1Input) bool {
-	return request.Title != nil || request.Instructions != nil || request.CWD != nil || request.ModelSelection.Provider != nil || request.ModelSelection.Model != nil || request.ModelSelection.ReasoningEffort != nil || request.Cron != nil || request.Enabled != nil
+	return request.Title != nil || request.Instructions != nil || request.CWD != nil || request.ModelSelection.Provider != nil || request.ModelSelection.Model != nil || request.ModelSelection.ReasoningEffort != nil || request.Cron != nil || request.TimeZone != nil || request.Enabled != nil
 }
 
 func (a *app) openScheduleForm(mode scheduleFormMode, scheduled schedule.CreateV1Output) {
@@ -115,6 +126,7 @@ func (a *app) openScheduleForm(mode scheduleFormMode, scheduled schedule.CreateV
 		textField("Title", "Optional name", &draft.title, nil),
 		textField("Instructions", "Prompt sent when this schedule fires", &draft.instructions, requiredText),
 		textField("Cron", defaultScheduleCron, &draft.cron, requiredText),
+		textField("Time zone", "IANA name, e.g. Asia/Shanghai", &draft.timeZone, requiredText),
 		textField("Workspace", "Empty uses the runtime default", &draft.workspace, nil),
 		textField("Provider", "Optional; set together with model", &draft.provider, nil),
 		textField("Model", "Optional; set together with provider", &draft.model, func(string) error {

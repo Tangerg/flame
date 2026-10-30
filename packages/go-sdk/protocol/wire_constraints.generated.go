@@ -2804,8 +2804,9 @@ func (p ProviderCredential) validateWire() error {
 	)
 }
 
-func (m ModelPricing) validateWire() error {
-	return collectWireViolations("ModelPricing",
+func (m ModelPriceBand) validateWire() error {
+	return collectWireViolations("ModelPriceBand",
+		nonNegativeNumber("aboveInputTokens", m.AboveInputTokens),
 		nonNegativeNumber("inputUsdPerMillionTokens", m.InputUSDPerMillionTokens),
 		nonNegativeNumber("outputUsdPerMillionTokens", m.OutputUSDPerMillionTokens),
 		nonNegativeNumber("cacheReadUsdPerMillionTokens", m.CacheReadUSDPerMillionTokens),

@@ -45,6 +45,9 @@ func (r staticTestChatResolver) Profiles(context.Context) ([]modelprovider.Profi
 func (staticTestChatResolver) RemoteModels(context.Context, modelprovider.Connection) ([]string, error) {
 	return nil, errors.New("unexpected model discovery")
 }
+func (staticTestChatResolver) Verify(context.Context, modelprovider.Connection) error {
+	return errors.New("unexpected connection verification")
+}
 func (staticTestChatResolver) OpenEmbedding(context.Context, modelchoice.Selection, modelprovider.Connection) (modeladapter.ResolvedEmbedding, error) {
 	return modeladapter.ResolvedEmbedding{}, errors.New("unexpected embedding")
 }

@@ -118,13 +118,14 @@ func presentModel(model modelapp.Model) protocol.Model {
 	if !details.KnowledgeCutoff.IsZero() {
 		out.KnowledgeCutoff = details.KnowledgeCutoff.Format(time.DateOnly)
 	}
-	if details.Pricing != nil {
-		out.Pricing = &protocol.ModelPricing{
-			InputUSDPerMillionTokens:      details.Pricing.InputPerMillion,
-			OutputUSDPerMillionTokens:     details.Pricing.OutputPerMillion,
-			CacheReadUSDPerMillionTokens:  details.Pricing.CacheReadPerMillion,
-			CacheWriteUSDPerMillionTokens: details.Pricing.CacheWritePerMillion,
-		}
+	for _, band := range details.Pricing {
+		out.Pricing = append(out.Pricing, protocol.ModelPriceBand{
+			AboveInputTokens:              band.AboveInputTokens,
+			InputUSDPerMillionTokens:      band.InputPerMillion,
+			OutputUSDPerMillionTokens:     band.OutputPerMillion,
+			CacheReadUSDPerMillionTokens:  band.CacheReadPerMillion,
+			CacheWriteUSDPerMillionTokens: band.CacheWritePerMillion,
+		})
 	}
 	return out
 }

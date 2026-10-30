@@ -39,7 +39,7 @@ const (
 
 func TestLiveDeepSeekManualScheduleRun(t *testing.T) {
 	fixture := newLiveDeepSeekFixture(t, 3*time.Minute)
-	creation := fixtureScheduleCreateRequest(t, fixture, testsupport.SchedulesCreateV1Input{Enabled: true, Title: "Live DeepSeek Schedule E2E", Instructions: "Reply exactly " + liveScheduleMarker + ". Do not call tools or ask the user anything.", CWD: fixture.workspace, Cron: "0 0 1 1 *"})
+	creation := fixtureScheduleCreateRequest(t, fixture, testsupport.SchedulesCreateV1Input{Enabled: true, Title: "Live DeepSeek Schedule E2E", Instructions: "Reply exactly " + liveScheduleMarker + ". Do not call tools or ask the user anything.", CWD: fixture.workspace, Cron: "0 0 1 1 *", TimeZone: "UTC"})
 	created, err := fixtureScheduleCreate(fixture, creation)
 	if err != nil {
 		t.Fatal(err)

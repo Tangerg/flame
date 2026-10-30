@@ -3,6 +3,7 @@ package models
 import (
 	"errors"
 	"fmt"
+	"math"
 	"slices"
 	"time"
 
@@ -203,12 +204,16 @@ type Details struct {
 	OutputModalities []string
 	ToolUse          bool
 	StructuredOutput bool
-	Pricing          *Pricing
+	// Pricing is the model's rate card in ascending threshold order; empty
+	// means the catalog has no price for the model.
+	Pricing []PriceBand
 }
 
-// Pricing is the effective base-band per-million-token rate displayed for a
-// model. Zero-valued cache rates are free.
-type Pricing struct {
+// PriceBand is one effective per-million-token rate. It applies to a whole
+// call whose input exceeds AboveInputTokens; the first band starts at zero.
+// Zero-valued rates are free.
+type PriceBand struct {
+	AboveInputTokens     int64
 	InputPerMillion      float64
 	OutputPerMillion     float64
 	CacheReadPerMillion  float64
@@ -223,10 +228,7 @@ func cloneDetails(details *Details) *Details {
 	clone.ReasoningLevels = slices.Clone(details.ReasoningLevels)
 	clone.InputModalities = slices.Clone(details.InputModalities)
 	clone.OutputModalities = slices.Clone(details.OutputModalities)
-	clone.Pricing = details.Pricing
-	if clone.Pricing != nil {
-		clone.Pricing = new(*clone.Pricing)
-	}
+	clone.Pricing = slices.Clone(details.Pricing)
 	return &clone
 }
 
@@ -256,6 +258,19 @@ func validateDetails(details *Details) error {
 		}
 		if _, offered := levels[identity.String()]; !offered {
 			return fmt.Errorf("models: default reasoning level %q is not offered", details.ReasoningDefault)
+		}
+	}
+	for index, band := range details.Pricing {
+		if index == 0 && band.AboveInputTokens != 0 {
+			return errors.New("models: the first price band must start at zero input tokens")
+		}
+		if index > 0 && band.AboveInputTokens <= details.Pricing[index-1].AboveInputTokens {
+			return errors.New("models: price bands must rise by input tokens")
+		}
+		for _, rate := range []float64{band.InputPerMillion, band.OutputPerMillion, band.CacheReadPerMillion, band.CacheWritePerMillion} {
+			if rate < 0 || math.IsInf(rate, 0) || math.IsNaN(rate) {
+				return fmt.Errorf("models: price band rate %v is not a finite non-negative amount", rate)
+			}
 		}
 	}
 	return nil

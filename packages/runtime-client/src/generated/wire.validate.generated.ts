@@ -186,7 +186,7 @@ export type WireTypeName =
   | "ModelInvocation"
   | "ModelInvocationState"
   | "ModelInvocationUsage"
-  | "ModelPricing"
+  | "ModelPriceBand"
   | "ModelTokenLimits"
   | "ModelUsage"
   | "OpenPluginBrowserRealmRequest"
@@ -2157,7 +2157,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     displayName: text(),
     id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     knowledgeCutoff: text(),
-    pricing: ref(() => CHECKS.ModelPricing),
+    pricing: array(ref(() => CHECKS.ModelPriceBand)),
     provider: allOf([text(), minLength(1), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
     tokenLimits: ref(() => CHECKS.ModelTokenLimits),
   }, ["id", "provider"]),
@@ -2291,7 +2291,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     outputTokens: allOf([integer(), minimum("0")]),
     reasoningTokens: allOf([integer(), minimum("0")]),
   }, ["inputTokens", "outputTokens"]),
-  ModelPricing: object({
+  ModelPriceBand: object({
+    aboveInputTokens: allOf([integer(), minimum("0")]),
     cacheReadUsdPerMillionTokens: allOf([numeric(), minimum("0")]),
     cacheWriteUsdPerMillionTokens: allOf([numeric(), minimum("0")]),
     inputUsdPerMillionTokens: allOf([numeric(), minimum("0")]),

@@ -628,8 +628,8 @@ func requireRuntimeCatalogs(t *testing.T, runtime *Connection, sessionID, worksp
 		if model.Capabilities != nil && len(model.Capabilities.ReasoningLevels) > 0 {
 			model.Capabilities.ReasoningLevels[0] = "caller reuse"
 		}
-		if model.Pricing != nil {
-			model.Pricing.InputUSDPerMillionTokens = 99
+		if len(model.Pricing) > 0 {
+			model.Pricing[0].InputUSDPerMillionTokens = 99
 		}
 	}
 	refreshedModels, err := runtime.ListModels(t.Context())
@@ -931,7 +931,7 @@ func requireScheduleLifecycle(t *testing.T, runtime *Connection, workspace strin
 	t.Helper()
 	create := schedule.CreateV1Input{
 		Title: "Adapter schedule", Instructions: "review the workspace",
-		CWD: workspace, Enabled: true, Cron: "0 9 * * 1-5",
+		CWD: workspace, Enabled: true, Cron: "0 9 * * 1-5", TimeZone: "UTC",
 	}
 	creation, err := runtime.PrepareCreate(t.Context(), create)
 	if err != nil {

@@ -79,5 +79,13 @@
     "input": "schema.json#/$defs/Method_flame_2emodel_2dprovider_2fstream_2ev1Input",
     "output": "schema.json#/$defs/Method_flame_2emodel_2dprovider_2fstream_2ev1Output",
     "stream": "schema.json#/$defs/Method_flame_2emodel_2dprovider_2fstream_2ev1Chunk"
+  },
+  {
+    "name": "flame.model-provider/verify.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Prove the exact configured connection authenticates with its provider.",
+    "input": "schema.json#/$defs/Method_flame_2emodel_2dprovider_2fverify_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2emodel_2dprovider_2fverify_2ev1Output"
   }
 ]

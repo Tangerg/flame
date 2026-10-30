@@ -227,3 +227,29 @@ func TestListRemoteModelsBlocksCredentialRedirectAcrossOrigins(t *testing.T) {
 		t.Fatal("cross-origin model probe redirect reached the target")
 	}
 }
+
+func TestVerifyConnectionAuthenticatesWithoutGenerating(t *testing.T) {
+	for name, status := range map[string]int{"accepted": http.StatusOK, "rejected": http.StatusUnauthorized} {
+		t.Run(name, func(t *testing.T) {
+			var requests []string
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests = append(requests, r.Method+" "+r.URL.Path)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(status)
+				_, _ = w.Write([]byte(`{"object":"list","data":[{"id":"deepseek-v4-flash"}]}`))
+			}))
+			defer srv.Close()
+
+			err := verifyConnection(t.Context(), mustClientSpec(t, providerDeepSeek, "sk-test", srv.URL+"/v1"))
+			if !slices.Equal(requests, []string{"GET /v1/models"}) {
+				t.Fatalf("verification requests = %v, want one model listing", requests)
+			}
+			if status == http.StatusOK && err != nil {
+				t.Fatalf("verifyConnection: %v", err)
+			}
+			if status != http.StatusOK && failure(err).Kind != modelprovider.InvalidCredentials {
+				t.Fatalf("verifyConnection = %v, want invalid credentials", err)
+			}
+		})
+	}
+}

@@ -1,6 +1,7 @@
 package models
 
 import (
+	"math"
 	"strings"
 	"testing"
 
@@ -42,15 +43,15 @@ func TestProviderMetadataRejectsIncompletePolicies(t *testing.T) {
 
 func TestModelOwnsValidatedIdentityAndCapabilitySnapshot(t *testing.T) {
 	levels := []string{"low", "high"}
-	details := &Details{Reasoning: true, ReasoningLevels: levels, ReasoningDefault: "low", Pricing: &Pricing{InputPerMillion: 1}}
+	details := &Details{Reasoning: true, ReasoningLevels: levels, ReasoningDefault: "low", Pricing: []PriceBand{{InputPerMillion: 1}}}
 	model, err := NewModel("openai", "gpt-5", details)
 	if err != nil {
 		t.Fatal(err)
 	}
 	levels[0] = "mutated"
-	details.Pricing.InputPerMillion = 99
+	details.Pricing[0].InputPerMillion = 99
 	first := model.Details()
-	if model.Provider() != "openai" || model.ID() != "gpt-5" || first.ReasoningLevels[0] != "low" || first.Pricing.InputPerMillion != 1 {
+	if model.Provider() != "openai" || model.ID() != "gpt-5" || first.ReasoningLevels[0] != "low" || first.Pricing[0].InputPerMillion != 1 {
 		t.Fatalf("model leaked constructor state: identity=%q/%q details=%+v", model.Provider(), model.ID(), first)
 	}
 	first.ReasoningLevels[0] = "mutated again"
@@ -86,5 +87,18 @@ func TestEmbeddingCapabilityMakesDefaultPresenceExplicit(t *testing.T) {
 	}
 	if _, err := EmbeddingCapabilityWithDefault("   "); err == nil {
 		t.Fatal("blank default embedding model was accepted")
+	}
+}
+
+func TestModelRejectsUnorderedOrInvalidPriceBands(t *testing.T) {
+	for name, bands := range map[string][]PriceBand{
+		"late first band": {{AboveInputTokens: 1}},
+		"unordered bands": {{}, {AboveInputTokens: 200000}, {AboveInputTokens: 200000}},
+		"negative rate":   {{InputPerMillion: -1}},
+		"non-finite rate": {{OutputPerMillion: math.Inf(1)}},
+	} {
+		if _, err := NewModel("openai", "gpt-5", &Details{Pricing: bands}); err == nil {
+			t.Errorf("%s: NewModel accepted %+v", name, bands)
+		}
 	}
 }

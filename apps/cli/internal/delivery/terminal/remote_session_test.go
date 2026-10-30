@@ -439,12 +439,12 @@ func TestRemoteWorkspaceInputsAndPickerPreserveRuntimePaths(t *testing.T) {
 
 func TestScheduleFormsPreserveForeignRuntimeWorkspaceReferences(t *testing.T) {
 	const path = `D:\server\scheduled`
-	draft := scheduleFormDraft{instructions: "review", workspace: path, cron: defaultScheduleCron}
+	draft := scheduleFormDraft{instructions: "review", workspace: path, cron: defaultScheduleCron, timeZone: "UTC"}
 	request, err := draft.candidate()
 	if err != nil || request.CWD != path {
 		t.Fatalf("remote schedule candidate = %+v, %v", request, err)
 	}
-	original := schedule.CreateV1Output{ID: "sch_review", Revision: 1, Instructions: "review", Cron: defaultScheduleCron}
+	original := schedule.CreateV1Output{ID: "sch_review", Revision: 1, Instructions: "review", Cron: defaultScheduleCron, TimeZone: "UTC"}
 	requestPatch, changed, err := draft.patch(original)
 	if err != nil || !changed || requestPatch.CWD == nil || *requestPatch.CWD != path {
 		t.Fatalf("remote schedule update = %+v, changed %t, %v", requestPatch, changed, err)

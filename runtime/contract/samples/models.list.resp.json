@@ -12,10 +12,17 @@
         "toolUse": true,
         "inputModalities": ["text", "image"]
       },
-      "pricing": {
-        "inputUsdPerMillionTokens": 3,
-        "outputUsdPerMillionTokens": 15
-      }
+      "pricing": [
+        {
+          "inputUsdPerMillionTokens": 3,
+          "outputUsdPerMillionTokens": 15
+        },
+        {
+          "aboveInputTokens": 200000,
+          "inputUsdPerMillionTokens": 6,
+          "outputUsdPerMillionTokens": 22.5
+        }
+      ]
     }
   ]
 }

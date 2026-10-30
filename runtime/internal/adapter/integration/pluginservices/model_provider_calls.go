@@ -72,6 +72,20 @@ func (p *ModelProviders) RemoteModels(ctx context.Context, connection modelprovi
 	return providerMethod(ctx, use, method, "", connection)
 }
 
+func (p *ModelProviders) Verify(ctx context.Context, connection modelprovider.Connection) (returned error) {
+	use, _, err := p.openUse(ctx, connection)
+	if err != nil {
+		return err
+	}
+	defer func() { returned = errors.Join(returned, use.Close(ctx)) }()
+	method, err := modelprovider.VerifyMethod()
+	if err != nil {
+		return err
+	}
+	_, err = providerMethod(ctx, use, method, "", connection)
+	return err
+}
+
 type providerChat struct{ use *providerUse }
 
 func (p *providerChat) Call(ctx context.Context, request *chat.Request) (*chat.Response, error) {

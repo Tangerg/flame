@@ -48,7 +48,7 @@ type Model struct {
 	// so a client shows that model instead of choosing a stand-in of its own.
 	Default      bool               `json:"default,omitzero"`
 	Capabilities *ModelCapabilities `json:"capabilities,omitzero"`
-	Pricing      *ModelPricing      `json:"pricing,omitzero"`
+	Pricing      []ModelPriceBand   `json:"pricing,omitempty"`
 }
 
 // ModelTokenLimits is the provider-published context envelope for one exact
@@ -102,11 +102,12 @@ type ModelCapabilities struct {
 	StructuredOutput bool `json:"structuredOutput,omitzero"`
 }
 
-// ModelPricing describes effective per-million-token prices in the primary
-// rate band. Cache rates include the catalog's input-rate default; zero is free.
-// Long-context models that reprice past a token threshold carry only their base
-// band here — full banded pricing isn't surfaced on the wire.
-type ModelPricing struct {
+// ModelPriceBand is one effective per-million-token rate in a model's rate
+// card, which lists bands in ascending threshold order. A band reprices a whole
+// call whose input exceeds AboveInputTokens; the first band starts at zero.
+// Cache rates are what the catalog bills; zero is free.
+type ModelPriceBand struct {
+	AboveInputTokens              int64   `json:"aboveInputTokens,omitzero"`
 	InputUSDPerMillionTokens      float64 `json:"inputUsdPerMillionTokens,omitzero"`
 	OutputUSDPerMillionTokens     float64 `json:"outputUsdPerMillionTokens,omitzero"`
 	CacheReadUSDPerMillionTokens  float64 `json:"cacheReadUsdPerMillionTokens,omitzero"`

@@ -235,9 +235,6 @@ func cloneProtocolModel(value protocol.Model) protocol.Model {
 		capabilities.OutputModalities = slices.Clone(capabilities.OutputModalities)
 		value.Capabilities = &capabilities
 	}
-	if value.Pricing != nil {
-		pricing := *value.Pricing
-		value.Pricing = &pricing
-	}
+	value.Pricing = slices.Clone(value.Pricing)
 	return value
 }

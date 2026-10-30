@@ -5382,7 +5382,10 @@
           "type": "string"
         },
         "pricing": {
-          "$ref": "#/$defs/ModelPricing"
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ModelPriceBand"
+          }
         },
         "provider": {
           "type": "string",
@@ -5803,9 +5806,13 @@
         "outputTokens"
       ]
     },
-    "ModelPricing": {
+    "ModelPriceBand": {
       "type": "object",
       "properties": {
+        "aboveInputTokens": {
+          "type": "integer",
+          "minimum": 0
+        },
         "cacheReadUsdPerMillionTokens": {
           "type": "number",
           "minimum": 0

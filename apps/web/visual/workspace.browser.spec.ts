@@ -1126,6 +1126,7 @@ for (const theme of ["light", "dark"] as const) {
       "Title",
       "Instructions",
       "Cron expression",
+      "Time zone",
       "Workspace path",
       "Model",
       "Reasoning effort",

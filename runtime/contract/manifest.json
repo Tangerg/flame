@@ -9978,8 +9978,12 @@
       ]
     },
     {
-      "type": "ModelPricing",
+      "type": "ModelPriceBand",
       "rules": [
+        {
+          "field": "aboveInputTokens",
+          "constraint": "nonNegative"
+        },
         {
           "field": "inputUsdPerMillionTokens",
           "constraint": "nonNegative"

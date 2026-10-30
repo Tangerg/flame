@@ -121,7 +121,7 @@ func mayImportRuntime(relative, imported string) bool {
 	switch imported {
 	case sdkPath + "/protocol", sdkPath + "/builtin", sdkPath + "/extension", sdkPath + "/exactint", sdkPath + "/httporigin", sdkPath + "/jsonvalue", sdkPath + "/model", sdkPath + "/question", sdkPath + "/filesystem/commit":
 		return true
-	case sdkPath + "/filesystem":
+	case sdkPath + "/filesystem", sdkPath + "/timezone":
 		ring := ringOf(relative)
 		return ring == ringAdapter || ring == ringDelivery
 	case sdkPath + "/capture":
@@ -154,6 +154,8 @@ func TestRuntimeImportBoundaries(t *testing.T) {
 		{consumer: "internal/adapter/filesystem/store.go", imported: localRuntimePath},
 		{consumer: "internal/adapter/filesystem/statefile/store.go", imported: sdkPath + "/filesystem", allowed: true},
 		{consumer: "internal/application/workbench/store.go", imported: sdkPath + "/filesystem"},
+		{consumer: "internal/delivery/terminal/schedule_form.go", imported: sdkPath + "/timezone", allowed: true},
+		{consumer: "internal/domain/schedule/schedule.go", imported: sdkPath + "/timezone"},
 		{consumer: "internal/application/workbench/persistence.go", imported: sdkPath + "/filesystem/commit", allowed: true},
 		{consumer: "internal/domain/conversation/session.go", imported: sdkPath + "/filesystem"},
 		{consumer: "internal/domain/conversation/session.go", imported: sdkPath + "/exactint", allowed: true},

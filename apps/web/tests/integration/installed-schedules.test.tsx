@@ -206,6 +206,7 @@ it.each(["active", "missing", "deprecated"])(
       Title: "Original",
       Instructions: "Read",
       Cron: "0 9 * * *",
+      TimeZone: "UTC",
       CWD: "",
       NextRunAt: "0001-01-01T00:00:00Z",
       LastRunAt: "0001-01-01T00:00:00Z",

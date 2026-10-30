@@ -735,8 +735,8 @@ func registerProviderValues(s *Shapes) {
 }
 
 func registerModelValues(s *Shapes) {
-	nonNegative[protocol.ModelPricing](s,
-		"inputUsdPerMillionTokens", "outputUsdPerMillionTokens",
+	nonNegative[protocol.ModelPriceBand](s,
+		"aboveInputTokens", "inputUsdPerMillionTokens", "outputUsdPerMillionTokens",
 		"cacheReadUsdPerMillionTokens", "cacheWriteUsdPerMillionTokens",
 	)
 	for _, roleType := range []reflect.Type{

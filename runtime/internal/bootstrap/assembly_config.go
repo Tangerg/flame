@@ -22,6 +22,7 @@ import (
 type modelProviderAdapters interface {
 	Profiles(context.Context) ([]modelprovider.Profile, error)
 	RemoteModels(context.Context, modelprovider.Connection) ([]string, error)
+	Verify(context.Context, modelprovider.Connection) error
 	OpenChat(context.Context, modelchoice.Selection, modelprovider.Connection) (modeladapter.ResolvedChat, error)
 	RestoreChat(context.Context, modelchoice.Selection, *modeladapter.ProviderCapture) (modeladapter.ResolvedChat, error)
 	OpenEmbedding(context.Context, modelchoice.Selection, modelprovider.Connection) (modeladapter.ResolvedEmbedding, error)

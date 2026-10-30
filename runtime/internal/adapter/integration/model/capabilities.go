@@ -6,38 +6,31 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	modelcatalog "github.com/Tangerg/flame/packages/go-sdk/model/catalog"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
-	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
 	modelsapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
-	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/scope/core/chat"
 	catalog "github.com/Tangerg/scope/models/catalog"
-	"github.com/google/uuid"
 	"github.com/samber/lo"
 )
 
 type providerCapabilities interface {
 	Profiles(context.Context) ([]modelprovider.Profile, error)
 	RemoteModels(context.Context, modelprovider.Connection) ([]string, error)
-	OpenChat(context.Context, modelchoice.Selection, modelprovider.Connection) (ResolvedChat, error)
+	Verify(context.Context, modelprovider.Connection) error
 }
 
 type Capabilities struct {
 	adapters providerCapabilities
-	journal  endpointJournal
 }
 
-func NewCapabilities(adapters providerCapabilities, journal endpointJournal) (*Capabilities, error) {
-	if lo.IsNil(adapters) || lo.IsNil(journal) {
-		return nil, errors.New("model: installed provider adapters and endpoint evidence are required")
+func NewCapabilities(adapters providerCapabilities) (*Capabilities, error) {
+	if lo.IsNil(adapters) {
+		return nil, errors.New("model: installed provider adapters are required")
 	}
-	return &Capabilities{adapters: adapters, journal: journal}, nil
+	return &Capabilities{adapters: adapters}, nil
 }
 
 func (c *Capabilities) Profiles(ctx context.Context) ([]modelsapp.ProviderProfile, error) {
@@ -96,68 +89,30 @@ func (c *Capabilities) AdmitSelection(ctx context.Context, selection modelchoice
 	return fmt.Errorf("%w: %w: %s", modelchoice.ErrUnsupported, modelsapp.ErrProviderUnsupported, selection.Provider())
 }
 
-func (c *Capabilities) Probe(ctx context.Context, entry provider.Provider) (returned error) {
+func (c *Capabilities) Probe(ctx context.Context, entry provider.Provider) error {
 	profiles, err := c.adapters.Profiles(ctx)
 	if err != nil {
 		return err
 	}
-	index := slices.IndexFunc(profiles, func(profile modelprovider.Profile) bool { return profile.ID == entry.ID() })
-	if index < 0 {
+	if !slices.ContainsFunc(profiles, func(profile modelprovider.Profile) bool { return profile.ID == entry.ID() }) {
 		return modelsapp.ErrProviderUnsupported
 	}
-	profile := profiles[index]
 	connection, err := connectionFromProvider(entry.ID(), entry)
 	if err != nil {
 		return err
 	}
-	if profile.ModelSource == modelprovider.EndpointModels {
-		ids, err := c.adapters.RemoteModels(ctx, connection)
-		if err != nil {
-			return probeFailure(err)
+	if err := c.adapters.Verify(ctx, connection); err != nil {
+		if refusal, ok := errors.AsType[*portable.Refusal](err); ok {
+			switch modelprovider.FailureKind(refusal.Code) {
+			case modelprovider.InvalidCredentials:
+				return errors.Join(modelsapp.ErrProviderCredentialsRejected, err)
+			case modelprovider.Timeout:
+				return errors.Join(context.DeadlineExceeded, err)
+			}
 		}
-		if len(ids) == 0 {
-			return errors.New("model: provider advertised no models")
-		}
-		return nil
-	}
-	selection, err := modelchoice.New(profile.ID, profile.DefaultModel)
-	if err != nil {
 		return err
 	}
-	resolved, err := c.adapters.OpenChat(ctx, selection, connection)
-	if err != nil {
-		return err
-	}
-	defer func() { returned = errors.Join(returned, resolved.Close(ctx)) }()
-	id := uuid.NewString()
-	ctx, err = qimumcp.WithInvocation(ctx, portable.Invocation{ID: id, Origin: extension.Human, Parent: operation.Identity(ctx), Target: portable.Target{Scope: extension.ScopeCall, Reference: id}})
-	if err != nil {
-		return err
-	}
-	observed := &observedEndpoint{inner: resolved.Model(), journal: c.journal, selection: selection, pricing: resolved.pricing}
-	maxTokens := int64(1)
-	_, err = observed.Call(ctx, &chat.Request{Messages: []chat.Message{chat.NewUserMessage(chat.NewTextPart("ping"))}, Options: chat.Options{MaxOutputTokens: &maxTokens}})
-	return probeFailure(err)
-}
-
-func probeFailure(err error) error {
-	if failure, ok := errors.AsType[*run.FailureError](err); ok {
-		switch failure.Kind {
-		case run.FailureInvalidCredentials:
-			return errors.Join(modelsapp.ErrProviderCredentialsRejected, err)
-		case run.FailureTimeout:
-			return errors.Join(context.DeadlineExceeded, err)
-		}
-	}
-	if refusal, ok := errors.AsType[*portable.Refusal](err); ok {
-		switch modelprovider.FailureKind(refusal.Code) {
-		case modelprovider.InvalidCredentials:
-			return errors.Join(modelsapp.ErrProviderCredentialsRejected, err)
-		case modelprovider.Timeout:
-			return errors.Join(context.DeadlineExceeded, err)
-		}
-	}
-	return err
+	return nil
 }
 
 func (c *Capabilities) ListModels(ctx context.Context, entry provider.Provider) ([]string, error) {
@@ -217,11 +172,38 @@ func catalogModel(providerID string, entry catalog.Model) (modelsapp.Model, erro
 		Multimodal: entry.Modalities.AcceptsInput(catalog.ModalityImage), InputModalities: catalogModalities(entry.Modalities.Input),
 		OutputModalities: catalogModalities(entry.Modalities.Output), ToolUse: entry.ToolCall, StructuredOutput: entry.StructuredOutput,
 	}
-	if len(entry.Pricing) > 0 {
-		primary := entry.Pricing[0]
-		details.Pricing = &modelsapp.Pricing{InputPerMillion: primary.InputPer1M, OutputPerMillion: primary.OutputPer1M, CacheReadPerMillion: lo.FromPtrOr(primary.CacheReadPer1M, primary.InputPer1M), CacheWritePerMillion: lo.FromPtrOr(primary.CacheWritePer1M, primary.InputPer1M)}
+	for _, band := range entry.Pricing {
+		priced, err := catalogPriceBand(band)
+		if err != nil {
+			return modelsapp.Model{}, err
+		}
+		details.Pricing = append(details.Pricing, priced)
 	}
 	return modelsapp.NewModel(providerID, entry.ID, details)
+}
+
+// catalogPriceBand reads each effective rate as the cost the catalog bills for
+// one million tokens of that kind, so the displayed card cannot disagree with
+// billing about defaults such as an absent cache rate.
+func catalogPriceBand(band catalog.Pricing) (modelsapp.PriceBand, error) {
+	const million = 1_000_000
+	rates := make([]float64, 4)
+	for index, usage := range []catalog.Usage{
+		{InputTokens: million},
+		{OutputTokens: million},
+		{InputTokens: million, CacheReadInputTokens: million},
+		{InputTokens: million, CacheWriteInputTokens: million},
+	} {
+		rate, err := band.Cost(usage)
+		if err != nil {
+			return modelsapp.PriceBand{}, fmt.Errorf("model catalog price: %w", err)
+		}
+		rates[index] = rate
+	}
+	return modelsapp.PriceBand{
+		AboveInputTokens: band.Threshold, InputPerMillion: rates[0], OutputPerMillion: rates[1],
+		CacheReadPerMillion: rates[2], CacheWritePerMillion: rates[3],
+	}, nil
 }
 
 func catalogModalities(values []catalog.Modality) []string {

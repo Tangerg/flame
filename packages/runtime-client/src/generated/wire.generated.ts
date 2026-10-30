@@ -1020,7 +1020,7 @@ export interface Model {
   displayName?: string;
   id: string;
   knowledgeCutoff?: string;
-  pricing?: ModelPricing;
+  pricing?: ModelPriceBand[];
   provider: string;
   tokenLimits?: ModelTokenLimits;
 }
@@ -1078,7 +1078,8 @@ export interface ModelInvocationUsage {
   reasoningTokens?: number;
 }
 
-export interface ModelPricing {
+export interface ModelPriceBand {
+  aboveInputTokens?: number;
   cacheReadUsdPerMillionTokens?: number;
   cacheWriteUsdPerMillionTokens?: number;
   inputUsdPerMillionTokens?: number;
