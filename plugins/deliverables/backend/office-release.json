@@ -1,0 +1,20 @@
+{
+  "version": "0.2.3",
+  "coreVersion": "26.8.0.3",
+  "executable": "bin/dsoffice",
+  "programDirectory": "program/LibreOfficeDev.app/Contents/Resources",
+  "targets": {
+    "arm64": {
+      "url": "https://registry.npmjs.org/@deepseek-ai/libreoffice-kit-darwin-arm64/-/libreoffice-kit-darwin-arm64-0.2.3.tgz",
+      "integrity": "sha512-0dfiEQR6SqAQjh9hxyY8x77Sj3r+AGC+Xn2A/zF+bag9g40leYPL/c2UirSqYR6xUwE9a/5YgWFIHjw1eOh+3A==",
+      "manifestSHA256": "69777cd49035f6bfe5d480685aca14a24a48c6201b426f1432fa36a91781ea48",
+      "executableSHA256": "5175f55ac5ded8c76959ad5ca14105c25854f2a77ba10d5451e0b783e98f9cc1"
+    },
+    "x64": {
+      "url": "https://registry.npmjs.org/@deepseek-ai/libreoffice-kit-darwin-x64/-/libreoffice-kit-darwin-x64-0.2.3.tgz",
+      "integrity": "sha512-vq0Fp7MTlZwV/yxLpmvQmx1uiiozLTjjODmgrOa9WC5WhrSQYZ+M1OiQKI0qbPAjpMZVBzcZvxlAGnDiTrG4jA==",
+      "manifestSHA256": "a42e035cc73170ba180d55f630c789b6ce5eebf439b5a264527ec4491a61d9b4",
+      "executableSHA256": "42fd829d2b4ea8e389f7c6ea283fab24692f3218582e0095c2a2f842966df1db"
+    }
+  }
+}

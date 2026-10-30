@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-15, ubuntu-24.04]
+        os: [macos-15, macos-15-intel, ubuntu-24.04]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7.0.1
@@ -40,12 +40,13 @@ jobs:
         run: |
           brew update
           brew install poppler
-          brew install --cask libreoffice
-          echo "FLAME_DELIVERABLES_OFFICE=/Applications/LibreOffice.app/Contents/MacOS/soffice" >> "$GITHUB_ENV"
+          office_executable=$(node tooling/office-toolchain.mjs --output "$GITHUB_WORKSPACE/out/toolchains")
+          office_root=$(dirname "$(dirname "$office_executable")")
+          echo "FLAME_DELIVERABLES_OFFICE=$office_executable" >> "$GITHUB_ENV"
           echo "FLAME_DELIVERABLES_PDFINFO=$(brew --prefix poppler)/bin/pdfinfo" >> "$GITHUB_ENV"
           echo "FLAME_DELIVERABLES_PDFTOPPM=$(brew --prefix poppler)/bin/pdftoppm" >> "$GITHUB_ENV"
           echo "FLAME_DELIVERABLES_PDFTOTEXT=$(brew --prefix poppler)/bin/pdftotext" >> "$GITHUB_ENV"
-          echo "FLAME_DELIVERABLES_TOOL_ROOTS=[\"/Applications/LibreOffice.app\",\"$(brew --cellar)\",\"$(brew --prefix)/opt\"]" >> "$GITHUB_ENV"
+          echo "FLAME_DELIVERABLES_TOOL_ROOTS=[\"$office_root\",\"$(brew --cellar)\",\"$(brew --prefix)/opt\"]" >> "$GITHUB_ENV"
       - run: make setup
       - name: Qualify native deliverables
         run: node plugins/scripts/test-backends.mjs

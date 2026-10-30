@@ -61,7 +61,9 @@ The coordinator discovers Go members from `go.work` and npm members from root
 `workspaces`. Native requirements classify the Desktop member explicitly; a
 non-native check runs only its pure `cmd/bridgegen` and `internal/bridge` packages;
 full native verification still requires macOS. CI runs clean workspace
-installation and checks on macOS and Linux, plus the macOS native job.
+installation and checks on Apple Silicon and Intel macOS and on Linux, plus the
+macOS native job. Deliverables uses the pinned macOS LibreOfficeKit installation
+described in [its execution guide](plugins/deliverables/README.md#macos-office-installation).
 Verification targets use `/tmp` as their temporary root so Runtime fixture
 sockets fit the platform's Unix address limit.
 Author generation, typechecking, builds and packaging deny checkout reads and

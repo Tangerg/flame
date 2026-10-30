@@ -10,7 +10,6 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
-import { pathToFileURL } from "node:url";
 import { createHash } from "node:crypto";
 import { Refusal } from "@qimu/node";
 import { LIMITS } from "../contracts/limits";
@@ -28,8 +27,12 @@ import {
   type PrivateDirectory,
 } from "./confinement";
 import { runProcess, UnconfirmedProcessExit } from "./process";
+import { Office } from "./office";
 
 type Tool = "office" | "pdfinfo" | "pdftoppm" | "pdftotext";
+type InstalledTools = Omit<Record<Tool, string>, "office"> & {
+  office?: Office;
+};
 interface Configuration {
   tools: Record<Tool, string>;
   roots: string[];
@@ -320,18 +323,12 @@ export class Engine {
         await writeFile(source, input, { flag: "wx", mode: 0o600 });
         const engines: EngineRenderReport["engines"] = [];
         if (format !== "pdf")
-          engines.push(
-            await this.#version("office", tools.office, directory, owned),
-          );
-        engines.push(
-          await this.#version("pdfinfo", tools.pdfinfo, directory, owned),
-        );
-        engines.push(
-          await this.#version("pdftoppm", tools.pdftoppm, directory, owned),
-        );
+          engines.push(await this.#version("office", tools, directory, owned));
+        engines.push(await this.#version("pdfinfo", tools, directory, owned));
+        engines.push(await this.#version("pdftoppm", tools, directory, owned));
         let pdfBytes = input;
         if (format !== "pdf") {
-          await this.#office(directory, tools.office, source, "pdf", owned);
+          await this.#office(directory, tools.office!, source, "pdf", owned);
           pdfBytes = await readOutput(
             join(directory.output, "source.pdf"),
             LIMITS.fileBytes,
@@ -417,7 +414,7 @@ export class Engine {
         let extractedText = "";
         if (tools.pdftotext) {
           engines.push(
-            await this.#version("pdftotext", tools.pdftotext, directory, owned),
+            await this.#version("pdftotext", tools, directory, owned),
           );
           const textPath = join(directory.output, "extracted.txt");
           await this.#command(
@@ -507,21 +504,10 @@ export class Engine {
       signal,
       async (input, directory, tools, owned) => {
         this.#required(tools, ["office"]);
-        const engine = await this.#version(
-          "office",
-          tools.office,
-          directory,
-          owned,
-        );
+        const engine = await this.#version("office", tools, directory, owned);
         const source = join(directory.input, "source.xlsx");
         await writeFile(source, input, { flag: "wx", mode: 0o600 });
-        await this.#office(
-          directory,
-          tools.office,
-          source,
-          "xlsx:Calc MS Excel 2007 XML",
-          owned,
-        );
+        await this.#office(directory, tools.office!, source, "xlsx", owned);
         const output = await readOutput(
           join(directory.output, "source.xlsx"),
           LIMITS.fileBytes,
@@ -565,7 +551,7 @@ export class Engine {
     if (this.#cleanupFailure) throw this.#cleanupFailure;
   }
 
-  #required(tools: Record<Tool, string>, names: Tool[]): void {
+  #required(tools: InstalledTools, names: Tool[]): void {
     if (names.some((name) => !tools[name]))
       throw new Refusal(
         "engine_not_configured",
@@ -579,7 +565,7 @@ export class Engine {
     operation: (
       bytes: Uint8Array,
       directory: PrivateDirectory,
-      tools: Record<Tool, string>,
+      tools: InstalledTools,
       signal: AbortSignal,
     ) => Promise<T>,
   ): Promise<T> {
@@ -639,7 +625,7 @@ export class Engine {
     operation: (
       bytes: Uint8Array,
       directory: PrivateDirectory,
-      tools: Record<Tool, string>,
+      tools: InstalledTools,
       signal: AbortSignal,
     ) => Promise<T>,
   ): Promise<T> {
@@ -675,7 +661,7 @@ export class Engine {
     return result;
   }
 
-  async #tools(signal: AbortSignal): Promise<Record<Tool, string>> {
+  async #tools(signal: AbortSignal): Promise<InstalledTools> {
     const config = this.#configuration;
     const system =
       process.platform === "linux" ? SYSTEM_ROOTS.linux : SYSTEM_ROOTS.darwin;
@@ -748,7 +734,12 @@ export class Engine {
         );
       }
     }
-    return tools;
+    return {
+      ...tools,
+      office: tools.office
+        ? await Office.load(tools.office, [...system, ...config.roots], signal)
+        : undefined,
+    };
   }
 
   async #directory(signal: AbortSignal): Promise<PrivateDirectory> {
@@ -849,10 +840,14 @@ export class Engine {
 
   async #version(
     tool: Tool,
-    executable: string,
+    tools: InstalledTools,
     directory: PrivateDirectory,
     signal: AbortSignal,
   ): Promise<{ name: string; version: string }> {
+    if (tool === "office" && tools.office!.identity)
+      return tools.office!.identity;
+    const executable =
+      tool === "office" ? tools.office!.executable : tools[tool];
     const output = await this.#command(
       directory,
       executable,
@@ -874,30 +869,19 @@ export class Engine {
     };
   }
 
-  #office(
+  async #office(
     directory: PrivateDirectory,
-    executable: string,
+    office: Office,
     source: string,
-    format: string,
+    format: "pdf" | "xlsx",
     signal: AbortSignal,
   ) {
-    return this.#command(
+    const output = await this.#command(
       directory,
-      executable,
-      [
-        `-env:UserInstallation=${pathToFileURL(join(directory.home, "libreoffice")).href}`,
-        "--headless",
-        "--invisible",
-        "--nodefault",
-        "--nolockcheck",
-        "--norestore",
-        "--convert-to",
-        format,
-        "--outdir",
-        directory.output,
-        source,
-      ],
+      office.executable,
+      office.arguments(directory, source, format),
       signal,
     );
+    office.verify(output.stdout);
   }
 }

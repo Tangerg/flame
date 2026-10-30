@@ -152,17 +152,20 @@ On Linux, configure the distribution's `libreoffice` entry point, whose startup
 wrapper owns profile initialization and restart within the private PID namespace.
 Homebrew Poppler on macOS requires both its `Cellar` and `opt` directories as
 installation roots because its dynamic libraries use `opt` symlink paths.
-Fonts in user homes are not exposed. macOS requires actual executable binaries
-that can run with `process-fork` denied; launchers requiring helper processes are
-refused. LibreOffice must also work without desktop IPC or GUI services. The
-`--headless` argument on a desktop build does not establish this compatibility;
-the Homebrew LibreOffice 26.8.2 build fails the native qualification under this
-policy. A successful version probe is not a claim that every document or platform
-installation has been qualified.
+Fonts in user homes are not exposed. macOS runs the pinned LibreOfficeKit native
+worker directly with `process-fork` denied. The desktop `soffice` launcher depends
+on desktop IPC and GUI services even with `--headless`, so it is not an accepted
+macOS installation. The native worker uses the same private profile, resource
+limits and process owner; no GUI, network or child-process permission is added.
+Its release manifest and executable are verified before invocation, and its
+report identifies the pinned LibreOffice core and native package versions.
 
 The private LibreOffice profile disables macros, active content and external-link
 updates and sets `OOXMLRecalcMode=0`, the engine's always-recalculate-on-load mode.
+macOS workbook conversion also explicitly requests LibreOfficeKit recalculation.
 An ordinary conversion with the engine's default profile can retain stale caches.
+The macOS PDF export limits embedded images to 300 DPI; page preview dimensions
+remain independently bounded.
 Each page is rasterized separately with bounded pixel dimensions; outputs must be
 regular, unlinked files with admitted sizes. A process returning zero without its
 required PDF, workbook or page image is a failure. Retirement terminates and joins
@@ -191,7 +194,7 @@ projection of those inputs, not an alternative configuration owner.
 
 | Installation input        | Backend projection              | Value                                                                                        |
 | ------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------- |
-| `office-executable`       | `FLAME_DELIVERABLES_OFFICE`     | Absolute LibreOffice executable path                                                         |
+| `office-executable`       | `FLAME_DELIVERABLES_OFFICE`     | Absolute staged `dsoffice` path on macOS; distribution LibreOffice entry point on Linux      |
 | `pdfinfo-executable`      | `FLAME_DELIVERABLES_PDFINFO`    | Absolute Poppler `pdfinfo` path                                                              |
 | `pdftoppm-executable`     | `FLAME_DELIVERABLES_PDFTOPPM`   | Absolute Poppler `pdftoppm` path                                                             |
 | `pdftotext-executable`    | `FLAME_DELIVERABLES_PDFTOTEXT`  | Absolute Poppler `pdftotext` path; optional text extraction                                  |
@@ -203,6 +206,31 @@ Seatbelt on macOS. Office rendering needs LibreOffice, `pdfinfo` and `pdftoppm`;
 needs the latter two. Recalculation needs LibreOffice. An unconfigured engine is
 visible in the catalog and refuses only operations requiring it. Format processing
 currently requires Linux or macOS; Windows does not silently run without limits.
+
+### macOS Office installation
+
+From the repository root, stage the pinned native package for the current
+architecture into an absolute installation directory:
+
+```sh
+node tooling/office-toolchain.mjs --output /absolute/toolchains
+```
+
+The command prints the executable path to use for `office-executable`. Add its
+package directory (the parent of `bin`) to `tool-installation-roots`, alongside
+Homebrew's `Cellar` and `opt` directories when using Homebrew Poppler. Existing
+macOS installations must replace their `soffice` input and its installation root
+with these values while the backend is quiescent, then select the rebuilt plugin.
+No artifact data migration is required.
+
+`backend/office-release.json` pins the Apple Silicon and Intel package URLs,
+archive integrity, manifest and executable hashes. Installation verifies the
+archive before extraction and every manifest file before publishing the directory.
+The full package, including licenses, notices and corresponding source, is retained.
+`--offline` uses the prepared archive cache; `--arch arm64` or `--arch x64` stages a
+specific macOS architecture. Reusing an installation checks its files again and
+refuses corruption; replace a damaged, quiescent installation as a unit. Runtime
+activation does not download or repair tools.
 
 ## Delivery
 
@@ -238,7 +266,7 @@ For explicit host qualification, configure those environment projections and run
 exercise the production confinement, actual DOCX/XLSX/PPTX rendering and observed
 workbook formula results. Ordinary tests remain independent of host renderer
 installation. The workspace CI jobs install LibreOffice and Poppler and run
-this qualification on Linux and macOS before the complete workspace checks, so
+this qualification on Linux and both macOS architectures before the complete workspace checks, so
 host prerequisites fail at the native boundary. The native save panel requires
 qualification on macOS; a Linux pass cannot establish those properties.
 

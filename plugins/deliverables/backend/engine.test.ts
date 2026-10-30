@@ -28,6 +28,34 @@ import {
 } from "./confinement";
 import { runProcess, UnconfirmedProcessExit } from "./process";
 import { LIMITS } from "../contracts/limits";
+import release from "./office-release.json";
+
+const officeFixture = vi.hoisted(() => ({
+  executable: "#!/bin/sh\nexit 0\n",
+  manifest: "controlled native Office fixture\n",
+}));
+
+vi.mock("./office-release.json", async (original) => {
+  const actual = await original<{ default: typeof release }>();
+  const { createHash } = await import("node:crypto");
+  const hash = (value: string) =>
+    createHash("sha256").update(value).digest("hex");
+  return {
+    default: {
+      ...actual.default,
+      targets: Object.fromEntries(
+        Object.entries(actual.default.targets).map(([arch, target]) => [
+          arch,
+          {
+            ...target,
+            manifestSHA256: hash(officeFixture.manifest),
+            executableSHA256: hash(officeFixture.executable),
+          },
+        ]),
+      ),
+    },
+  };
+});
 
 vi.mock("node:child_process", async (original) => {
   const actual = await original<typeof import("node:child_process")>();
@@ -66,6 +94,7 @@ let mode:
   | "linked"
   | "directory"
   | "oversized"
+  | "invalid-response"
   | "hang"
   | "process-failure";
 let nextPID: number;
@@ -124,8 +153,11 @@ function simulate(
       }
       if (argv.includes("--version") || argv.includes("-v")) {
         child.stdout.write(`${basename(executable)} 1.0\n`);
-      } else if (basename(executable) === "office") {
-        const path = argv.at(-1)!;
+      } else if (["office", "dsoffice"].includes(basename(executable))) {
+        const native = basename(executable) === "dsoffice";
+        const path = native
+          ? argv[argv.indexOf("--input-path") + 1]!
+          : argv.at(-1)!;
         source = await readFile(path);
         profile = await readFile(
           join(
@@ -137,11 +169,20 @@ function simulate(
           ),
           "utf8",
         );
-        const format = argv[argv.indexOf("--convert-to") + 1]!;
-        const output = join(
-          argv[argv.indexOf("--outdir") + 1]!,
-          format === "pdf" ? "source.pdf" : "source.xlsx",
-        );
+        const format =
+          argv[argv.indexOf(native ? "--format" : "--convert-to") + 1]!;
+        const output = native
+          ? argv[argv.indexOf("--output-path") + 1]!
+          : join(
+              argv[argv.indexOf("--outdir") + 1]!,
+              format === "pdf" ? "source.pdf" : "source.xlsx",
+            );
+        if (native)
+          child.stdout.write(
+            mode === "invalid-response"
+              ? '{"ok":false}'
+              : '{"ok":true,"missingFonts":[]}',
+          );
         if (mode === "linked") await symlink(path, output);
         else if (mode === "directory") await mkdir(output);
         else if (mode !== "missing") {
@@ -178,10 +219,18 @@ beforeEach(async () => {
     PRIVATE_HOST_TOKEN: "never-forward",
   };
   for (const tool of ["office", "pdfinfo", "pdftoppm", "pdftotext"]) {
-    const path = join(tools, tool);
-    await writeFile(path, "#!/bin/sh\nexit 0\n", { mode: 0o700 });
+    const path = join(
+      tools,
+      tool === "office" && process.platform === "darwin"
+        ? release.executable
+        : tool,
+    );
+    await mkdir(join(path, ".."), { recursive: true });
+    await writeFile(path, officeFixture.executable, { mode: 0o700 });
     environment[`FLAME_DELIVERABLES_${tool.toUpperCase()}`] = path;
   }
+  await mkdir(join(tools, release.programDirectory), { recursive: true });
+  await writeFile(join(tools, "prebuilds.json"), officeFixture.manifest);
   engine = new Engine(environment, data);
   pageCount = "2";
   text = "A readable report\n";
@@ -288,16 +337,88 @@ describe("professional rendering owner", () => {
     const conversion = vi
       .mocked(spawn)
       .mock.calls.find((call) =>
-        (call[1] as string[]).includes("--convert-to"),
+        (call[1] as string[]).includes(
+          process.platform === "darwin" ? "--recalculate" : "--convert-to",
+        ),
       )!;
     const argv = conversion[1] as string[];
-    expect(argv[argv.indexOf("--convert-to") + 1]).toBe(
-      "xlsx:Calc MS Excel 2007 XML",
-    );
-    expect(argv.at(-1)).toContain("/input/source.xlsx");
-    expect(argv[argv.indexOf("--outdir") + 1]).toContain("/output");
+    if (process.platform === "darwin") {
+      expect(argv[argv.indexOf("--recalculate") + 1]).toBe("true");
+      expect(argv[argv.indexOf("--format") + 1]).toBe("xlsx");
+      expect(argv[argv.indexOf("--input-path") + 1]).toContain(
+        "/input/source.xlsx",
+      );
+      expect(argv[argv.indexOf("--output-path") + 1]).toContain(
+        "/output/source.xlsx",
+      );
+      expect(result.report.engines).toEqual([
+        {
+          name: "LibreOffice",
+          version: expect.stringContaining(release.coreVersion),
+        },
+      ]);
+      expect(
+        vi
+          .mocked(spawn)
+          .mock.calls.some((call) => call[1]?.includes("--version")),
+      ).toBe(false);
+    } else {
+      expect(argv[argv.indexOf("--convert-to") + 1]).toBe(
+        "xlsx:Calc MS Excel 2007 XML",
+      );
+      expect(argv.at(-1)).toContain("/input/source.xlsx");
+      expect(argv[argv.indexOf("--outdir") + 1]).toContain("/output");
+    }
     expect(await readdir(join(data, "engine"))).toEqual([]);
   });
+
+  it
+    .runIf(process.platform === "darwin")
+    .each(["binary", "manifest", "resources", "unqualified"])(
+    "refuses a macOS Office installation with invalid %s before spawning",
+    async (failure) => {
+      if (failure === "binary")
+        await writeFile(
+          environment.FLAME_DELIVERABLES_OFFICE!,
+          "changed binary",
+        );
+      if (failure === "manifest")
+        await writeFile(join(tools, "prebuilds.json"), "changed manifest");
+      if (failure === "resources") {
+        await rm(join(tools, release.programDirectory), { recursive: true });
+        await symlink(data, join(tools, release.programDirectory));
+      }
+      if (failure === "unqualified") {
+        const executable = join(tools, "soffice");
+        await writeFile(executable, officeFixture.executable, { mode: 0o700 });
+        engine = new Engine(
+          { ...environment, FLAME_DELIVERABLES_OFFICE: executable },
+          data,
+        );
+      }
+      await expect(
+        engine.recalculate(
+          Buffer.from("PK workbook"),
+          new AbortController().signal,
+        ),
+      ).rejects.toMatchObject({ code: "engine_configuration" });
+      expect(spawn).not.toHaveBeenCalled();
+    },
+  );
+
+  it.runIf(process.platform === "darwin")(
+    "refuses an unsuccessful native response even when the output exists",
+    async () => {
+      mode = "invalid-response";
+      await expect(
+        engine.recalculate(
+          Buffer.from("PK workbook"),
+          new AbortController().signal,
+        ),
+      ).rejects.toMatchObject({ code: "engine_output_invalid" });
+      expect(await readdir(join(data, "engine"))).toEqual([]);
+    },
+  );
 
   it.each(["missing", "linked", "directory", "oversized"] as const)(
     "does not interpret a zero process exit with %s output as success",
