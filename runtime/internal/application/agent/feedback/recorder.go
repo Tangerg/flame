@@ -26,14 +26,18 @@ type store interface {
 // Recorder owns the feedback write use case.
 type Recorder struct {
 	store store
+	now   func() time.Time
 }
 
 // NewRecorder wires the complete durable receiver for feedback records.
-func NewRecorder(store store) (*Recorder, error) {
+func NewRecorder(store store, now func() time.Time) (*Recorder, error) {
 	if lo.IsNil(store) {
 		return nil, errors.New("feedback: store is required")
 	}
-	return &Recorder{store: store}, nil
+	if now == nil {
+		return nil, errors.New("feedback: clock is required")
+	}
+	return &Recorder{store: store, now: now}, nil
 }
 
 // Record validates and appends one immutable feedback observation.
@@ -44,7 +48,7 @@ func (r *Recorder) Record(ctx context.Context, command Command) error {
 		command.ItemID,
 		command.Rating,
 		command.Text,
-		time.Now().UTC(),
+		r.now().UTC(),
 	)
 	if err != nil {
 		return err

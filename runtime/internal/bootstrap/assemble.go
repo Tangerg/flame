@@ -411,7 +411,7 @@ func buildAssemblyCore(
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct usage reporter: %w", err)
 	}
-	feedback, err := feedback.NewRecorder(cfg.stores.Feedback)
+	feedback, err := feedback.NewRecorder(cfg.stores.Feedback, time.Now)
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct feedback recorder: %w", err)
 	}

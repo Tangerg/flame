@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	feedbackdomain "github.com/Tangerg/flame/runtime/internal/domain/feedback"
 )
@@ -20,21 +21,22 @@ func (s *storeFake) Append(_ context.Context, entry feedbackdomain.Entry) error 
 
 func TestRecorderPersistsValidatedEntry(t *testing.T) {
 	store := &storeFake{}
-	recorder, err := NewRecorder(store)
+	at := time.Date(2026, 10, 31, 9, 0, 0, 0, time.FixedZone("CST", 8*3600))
+	recorder, err := NewRecorder(store, func() time.Time { return at })
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := recorder.Record(t.Context(), Command{ItemID: "item_1", Rating: feedbackdomain.RatingPositive}); err != nil {
 		t.Fatalf("Record: %v", err)
 	}
-	if len(store.entries) != 1 || store.entries[0].ItemID != "item_1" || store.entries[0].CreatedAt.IsZero() {
+	if len(store.entries) != 1 || store.entries[0].ItemID != "item_1" || !store.entries[0].CreatedAt.Equal(at) || store.entries[0].CreatedAt.Location() != time.UTC {
 		t.Fatalf("entries = %+v", store.entries)
 	}
 }
 
 func TestRecorderRejectsEmptySignalWithoutPersisting(t *testing.T) {
 	store := &storeFake{}
-	recorder, err := NewRecorder(store)
+	recorder, err := NewRecorder(store, time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +51,7 @@ func TestRecorderRejectsEmptySignalWithoutPersisting(t *testing.T) {
 
 func TestNewRecorderRejectsTypedNilStore(t *testing.T) {
 	var store *storeFake
-	if _, err := NewRecorder(store); err == nil {
+	if _, err := NewRecorder(store, time.Now); err == nil {
 		t.Fatal("typed-nil feedback store was accepted")
 	}
 }
@@ -57,7 +59,7 @@ func TestNewRecorderRejectsTypedNilStore(t *testing.T) {
 func TestRecorderAcceptsGeneralFeedbackAndPreservesStoreFailure(t *testing.T) {
 	wantErr := errors.New("feedback write failed")
 	store := &storeFake{err: wantErr}
-	recorder, err := NewRecorder(store)
+	recorder, err := NewRecorder(store, time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
