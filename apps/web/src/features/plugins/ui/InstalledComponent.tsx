@@ -33,7 +33,10 @@ import { tupleKey } from "@/lib/tupleKey";
 import { useWorkspaceFileFocus } from "@/features/workspace/public/navigation";
 import { useAgent } from "@/features/agent/public/agent";
 import { type FlameClient } from "@flame/runtime-client";
-import { type PluginOperationBinding } from "@flame/runtime-client/wire";
+import {
+  type PluginClientComponent,
+  type PluginOperationBinding,
+} from "@flame/runtime-client/wire";
 import { trackContributionIO } from "@/extensions/contributionIO";
 import { type ContributionLifetime } from "@/extensions/definePlugin";
 import { type RuntimeConnectionGeneration } from "@/features/connection/public/services";
@@ -42,6 +45,7 @@ import {
   captureToolInteraction,
   type SubmitCapturedAgentInput,
 } from "@/features/plugins/adapters/toolInteraction";
+import { createClientCommandRegistration } from "@/features/plugins/adapters/clientCommands";
 export function componentFailureScope(
   component: ComponentReference,
   generation: RuntimeConnectionGeneration,
@@ -202,6 +206,17 @@ class ComponentInstance {
             openSession(sessionId);
           }
         : undefined,
+      registerCommand:
+        this.sources.placement === "clientEffect"
+          ? createClientCommandRegistration(
+              this.sources.lifetime,
+              signal,
+              this.sources.component,
+              this.sources.captureSessionId,
+            )
+          : () => {
+              throw new Error("Client command registration requires clientEffect placement.");
+            },
       saveFile: (request: SaveFileRequest) => {
         signal.throwIfAborted();
         return track(() => this.sources.saveFile(request));
@@ -265,9 +280,11 @@ function RenderingInstance({
   );
 }
 
-export function RenderingComponent(props: ComponentProps & ComponentSources) {
+export function RenderingComponent(
+  props: ComponentProps & Omit<ComponentSources, "captureSessionId">,
+) {
   const locale = useLocale();
-  const { selectAgentSession: openSession } = useAgent();
+  const { selectAgentSession: openSession, getActiveSessionId: captureSessionId } = useAgent();
   const {
     runtime,
     binding,
@@ -282,6 +299,7 @@ export function RenderingComponent(props: ComponentProps & ComponentSources) {
     component,
     compose,
     saveFile,
+    placement,
   } = props;
   const instance = useMemo(
     () =>
@@ -300,6 +318,8 @@ export function RenderingComponent(props: ComponentProps & ComponentSources) {
         compose,
         saveFile,
         openSession,
+        captureSessionId,
+        placement,
       }),
     [
       runtime,
@@ -316,6 +336,8 @@ export function RenderingComponent(props: ComponentProps & ComponentSources) {
       compose,
       saveFile,
       openSession,
+      captureSessionId,
+      placement,
     ],
   );
   return (
@@ -334,6 +356,7 @@ export function RenderingComponent(props: ComponentProps & ComponentSources) {
 }
 
 type ComponentProps = {
+  placement?: PluginClientComponent["placement"];
   reload?: () => Promise<void>;
   fallback?: ReactNode;
   entry: PluginComponent;
@@ -352,7 +375,14 @@ type ComponentProps = {
 
 type ComponentSources = Pick<
   ComponentProps,
-  "runtime" | "binding" | "lifetime" | "resources" | "component" | "compose" | "saveFile"
+  | "runtime"
+  | "binding"
+  | "lifetime"
+  | "resources"
+  | "component"
+  | "compose"
+  | "saveFile"
+  | "placement"
 > & {
   workspace?: WorkspaceContext;
   sessionId?: string;
@@ -361,6 +391,7 @@ type ComponentSources = Pick<
   submitInput?: SubmitCapturedAgentInput;
   sessionTarget?: CapturedSession;
   openSession?: (sessionId: string) => void;
+  captureSessionId: () => string | undefined;
 };
 
 function WorkspaceComponent(props: ComponentProps) {

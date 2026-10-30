@@ -97,4 +97,7 @@ export const en: Record<string, string> = {
   "rename.actions": "Save session title",
   "rename.factRevision": "Revision",
   "rename.captured": "Captured session",
+  "export.markdown": "Export conversation as Markdown",
+  "export.json": "Export conversation as JSON",
+  "export.trajectory": "Export complete Session trajectory",
 };

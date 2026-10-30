@@ -42,6 +42,9 @@ function renderCapturedMarkdown(content: string) {
     saveFile() {
       throw new Error("This captured read must not save files");
     },
+    registerCommand() {
+      throw new Error("This fixture must not register client commands");
+    },
     compose() {
       throw new Error("Captured Markdown must not compose another component");
     },

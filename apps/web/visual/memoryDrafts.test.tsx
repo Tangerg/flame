@@ -79,6 +79,9 @@ async function openMemory() {
     signal: owner.signal,
     track: (operation) => operation(owner.signal),
     saveFile: async () => "requested",
+    registerCommand() {
+      throw new Error("This fixture must not register client commands");
+    },
     compose: () => null,
   };
   testClient.render(<Memory context={context} />);

@@ -119,6 +119,18 @@ export interface SaveFileRequest {
 /** Browser download dispatch is distinct from a completed native write. */
 export type FileSaveResult = "requested" | "saved" | "cancelled";
 
+export interface ClientCommandInvocation {
+  readonly sessionId?: string;
+  readonly signal: AbortSignal;
+}
+
+export interface ClientCommand {
+  readonly id: string;
+  readonly label: string;
+  readonly combo?: string;
+  run(invocation: ClientCommandInvocation): void | Promise<void>;
+}
+
 export interface ComponentContext {
   readonly component: Readonly<ComponentReference>;
   readonly file?: Readonly<CapturedFile>;
@@ -131,6 +143,10 @@ export interface ComponentContext {
   readonly sessionTarget?: CapturedSession;
   readonly binding?: Readonly<PluginOperationBinding>;
   readonly openSession?: (sessionId: string) => void;
+  // Only clientEffect placements register global commands. IDs belong to the
+  // installed component. Dispatch captures the current
+  // Session before asynchronous work; withdrawal refuses new dispatches.
+  registerCommand(command: ClientCommand): () => void;
   // Accepted saves are joined by this captured lifetime. They do not change any
   // plugin delivery, revision or approval fact; the host only owns file transfer.
   saveFile(request: SaveFileRequest): Promise<FileSaveResult>;

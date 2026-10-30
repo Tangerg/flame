@@ -197,6 +197,14 @@ English base until an admitted source returns.
 Choosing the current language retries a failed initial catalog load through the
 same activation owner, without changing the preference.
 
+Installed `clientEffect` components use the ordinary component resource and
+contribution lifetimes, mounted outside Session navigation. Their public command
+registrations enter the existing command menu and shortcut editor. Invocation
+captures the current Session synchronously, and source withdrawal removes those
+registrations before accepting further work. The Trajectory package owns the
+optional export commands and file presentation; the Host retains the canonical
+import flow, Runtime generation retirement and native file transfer.
+
 `SettingRow` marks the label and controls as one shared focus unit. `Panel` owns
 revealing that complete unit inside the clipped host when it fits; taller rows
 retain the focused control as the reading target.

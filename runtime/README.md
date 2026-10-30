@@ -1,5 +1,10 @@
 # Flame Runtime
 
+Core `2026-10-30.2` admits client-scoped `clientEffect` components. Rebuild the
+graphical Host and public component SDK together, then select the current
+Trajectory package bytes to receive its installed export commands. Effects have
+no view navigation metadata; installation and resource admission remain Runtime-owned.
+
 Core `2026-10-30.1` exposes installed locale metadata and `plugins.readLocale`.
 Rebuild Go, TypeScript, CLI and Desktop consumers together. Locale catalogs are
 bounded static JSON resources of the exact selected, enabled release, independent

@@ -104,4 +104,7 @@ export const es: Record<string, string> = {
   "rename.actions": "Guardar el título de la sesión",
   "rename.factRevision": "Revisión",
   "rename.captured": "Sesión capturada",
+  "export.markdown": "Exportar conversación como Markdown",
+  "export.json": "Exportar conversación como JSON",
+  "export.trajectory": "Exportar la trayectoria completa de la sesión",
 };

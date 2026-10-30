@@ -421,6 +421,9 @@ function rig(server = fixture()) {
         telemetry: { read: () => ({ spans: [], metrics: [], logs: [] }), clear: () => undefined },
         track: (operation) => operation(controller.signal),
         saveFile: async () => "requested",
+        registerCommand() {
+          throw new Error("This fixture must not register client commands");
+        },
         compose: () => {
           throw new Error("computer console must not compose other plugins");
         },

@@ -20,10 +20,51 @@ import { startKernel, stopKernel } from "@/extensions/bootstrap";
 import { RuntimeConnectionGeneration } from "@/features/connection/public/services";
 import { useEffect } from "react";
 import { activeLocale, setLocale } from "@/lib/i18n/index";
+import { COMMAND } from "@/features/command/public/extensionPoints";
+import { contributionsTo } from "@/extensions/kernel";
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   vi.useRealTimers();
+});
+
+it("refuses global command registration from an ordinary mounted view", async () => {
+  let lifetime!: ContributionLifetime;
+  const host = await startKernel([
+    definePlugin({
+      name: "test.view-command-admission",
+      setup(scope) {
+        lifetime = scope.lifetime("view");
+      },
+    }),
+  ]);
+  finishTestClient(() => stopKernel(host));
+  let captured!: ComponentContext;
+  function View({ context }: { context: ComponentContext }) {
+    useEffect(() => {
+      captured = context;
+    }, [context]);
+    return null;
+  }
+  testClient.render(
+    <InstalledComponent
+      entry={View}
+      placement="settingsPane"
+      scope="installation"
+      component={{ installationId: "installed", digest: "a".repeat(64), componentId: "settings" }}
+      generation={RuntimeConnectionGeneration.forProcess("test")}
+      compose={() => null}
+      saveFile={async () => "requested"}
+      runtime={{} as FlameClient}
+      binding={undefined}
+      lifetime={lifetime}
+      resources={new AbortController().signal}
+    />,
+  );
+  expect(() => captured.registerCommand({ id: "export", label: "Export", run: vi.fn() })).toThrow(
+    "clientEffect placement",
+  );
+  expect(contributionsTo(COMMAND)).toEqual([]);
 });
 
 it("updates language without retiring the component's accepted file transfer", async () => {

@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-30.1";
+export const PROTOCOL_VERSION = "2026-10-30.2";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -419,7 +419,7 @@ export interface CommandResult {
   output: string;
 }
 
-export type ComponentPlacement = "export" | "workspaceView" | "settingsPane" | "sessionAction" | "fileRenderer" | "toolResultRenderer";
+export type ComponentPlacement = "export" | "workspaceView" | "settingsPane" | "clientEffect" | "sessionAction" | "fileRenderer" | "toolResultRenderer";
 
 export type ComponentScope = "installation" | "workspace" | "session" | "client" | "file" | "toolResult";
 
@@ -2346,7 +2346,7 @@ export const WIRE_ENUMS = {
   CancelRunResponseType: ["root", "child"],
   CapabilityRequirementType: ["feature", "interruptType", "runtimeTopic"],
   ChangeStatus: ["added", "deleted", "modified", "moved"],
-  ComponentPlacement: ["export", "workspaceView", "settingsPane", "sessionAction", "fileRenderer", "toolResultRenderer"],
+  ComponentPlacement: ["export", "workspaceView", "settingsPane", "clientEffect", "sessionAction", "fileRenderer", "toolResultRenderer"],
   ComponentScope: ["installation", "workspace", "session", "client", "file", "toolResult"],
   ContentBlockType: ["text", "image"],
   DiffBaselineType: ["head", "mergeBase", "emptyTree"],

@@ -56,6 +56,10 @@ func (b *Builder) AdmitComponent(value ClientComponent) error {
 		if (value.Scope != extension.ComponentScopeClient && value.Scope != extension.ComponentScopeWorkspace && value.Scope != extension.ComponentScopeInstallation) || value.Selector != nil {
 			return refuse(DiagnosticInvalidDeclaration, "settings component requires client, workspace or installation context")
 		}
+	case extension.ComponentPlacementClientEffect:
+		if value.Scope != extension.ComponentScopeClient || value.Material != "" || value.Selector != nil {
+			return refuse(DiagnosticInvalidDeclaration, "client effect requires client context without view metadata")
+		}
 	case extension.ComponentPlacementSessionAction:
 		if value.Scope != extension.ComponentScopeSession || value.Material != "" || value.Selector != nil {
 			return refuse(DiagnosticInvalidDeclaration, "session action requires session context")

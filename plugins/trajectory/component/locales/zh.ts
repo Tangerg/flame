@@ -90,4 +90,7 @@ export const zh: Record<string, string> = {
   "rename.actions": "保存会话标题",
   "rename.factRevision": "修订版本",
   "rename.captured": "已捕获的会话",
+  "export.markdown": "导出对话为 Markdown",
+  "export.json": "导出对话为 JSON",
+  "export.trajectory": "导出完整会话轨迹",
 };

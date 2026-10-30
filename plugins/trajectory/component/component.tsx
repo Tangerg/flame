@@ -39,16 +39,8 @@ import {
   Toolbar,
   TextField,
 } from "@flame/ui";
-import { en } from "./locales/en";
-import { zh } from "./locales/zh";
-import { zhTW } from "./locales/zh-TW";
-import { ja } from "./locales/ja";
-import { ko } from "./locales/ko";
-import { es } from "./locales/es";
-import { fr } from "./locales/fr";
-import { de } from "./locales/de";
-
-const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
+import { catalogs } from "./catalogs";
+export { SessionExports } from "./exports";
 
 type AcceptedPage = {
   page: Page<TrajectoryEntry>;
@@ -64,7 +56,7 @@ type Read = {
 
 export function Trajectory({ context }: { context: ComponentContext }) {
   const t = useMemo(
-    () => createTranslator(CATALOGS, context.locale),
+    () => createTranslator(catalogs, context.locale),
     [context.locale],
   );
   const [kind, setKind] = useState("all");
@@ -293,7 +285,7 @@ export function RenameSession({ context }: { context: ComponentContext }) {
   const session = context.sessionTarget;
   if (!session) throw new Error("A captured Session action target is required");
   const t = useMemo(
-    () => createTranslator(CATALOGS, context.locale),
+    () => createTranslator(catalogs, context.locale),
     [context.locale],
   );
   const [title, setTitle] = useState(session.title);

@@ -288,6 +288,9 @@ async function rig() {
       track: (factory) => factory(controller.signal),
       telemetry: { read: () => ({ spans: [], metrics: [], logs: [] }), clear: () => undefined },
       saveFile,
+      registerCommand() {
+        throw new Error("This fixture must not register client commands");
+      },
       compose: () => {
         throw new Error("fixture does not compose");
       },

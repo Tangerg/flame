@@ -1,8 +1,23 @@
 # Session investigation
 
-This optional package supplies a public Session trajectory view and a contextual
-`sessionAction` component for naming an investigation. Both declare Session scope
-and share one namespace-local prebuilt ESM module. The package has no backend.
+This optional package supplies a public Session trajectory view, a contextual
+`sessionAction` component for naming an investigation, and a `clientEffect` for
+export commands. The first two declare Session scope; the effect declares client
+scope and remains mounted across Session navigation. All share one namespace-local
+prebuilt ESM module. The package has no backend.
+
+The effect registers Markdown, JSON and complete trajectory exports in the actual
+command catalog, with ordinary user shortcut overrides. Dispatch captures the
+selected Session before reading. The plugin owns command labels, format choice,
+suggested filenames, MIME and UTF-8 encoding; canonical `sessions.export` and
+`sessions.exportTrajectory` retain Runtime collection, admission and bounds.
+JSON keeps exact opaque numeric values and the complete evidence envelope.
+Pending reads cannot begin a save after withdrawal. An accepted native file
+handoff is joined until it settles; cancellation is an ordinary outcome and a
+failed save keeps its original cause. Host file transfer owns the actual destination.
+The built-in client export paths are removed; import admission remains in the Host.
+Existing `chat.export.*` shortcut overrides must be reassigned to the installed
+commands in Shortcuts settings.
 
 The Session row menu offers the action using local admitted metadata. Opening it
 captures that row's accepted ID, revision and title as `context.sessionTarget`.

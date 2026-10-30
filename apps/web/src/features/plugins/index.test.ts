@@ -13,7 +13,12 @@ prepareTestClient(() => {
 });
 import { TOOL_RESULT_RENDERER } from "@/features/chat/public/tools/types";
 import { WORKSPACE_FILE_RENDERER } from "@/features/workspace/public/views";
-import { cleanup } from "@testing-library/react";
+import { act, cleanup } from "@testing-library/react";
+import { createElement, useEffect } from "react";
+import { type ComponentContext } from "@flame/component-sdk";
+import { ComponentModules } from "@/features/plugins/adapters/componentModules";
+import { Slot } from "@/extensions/host/Slot";
+import { COMMAND } from "@/features/command/public/extensionPoints";
 import { afterEach, expect, it, onTestFinished, vi } from "vitest";
 import { type FlameClient } from "@flame/runtime-client";
 import { type PluginInstallation, type ReadPluginLocaleRequest } from "@flame/runtime-client/wire";
@@ -183,6 +188,64 @@ it("loads only an admitted locale's exact release and withdraws it with its Runt
   await resetKernelForTest();
   expect(t("common.loading")).toBe("Loading");
   expect(activeLocale()).toBe("ja");
+});
+
+it("mounts an admitted client effect independently of navigation and withdraws its commands", async () => {
+  const admitted = installation("d3cbafab-ef30-4e20-9583-42f5316dc865", "exports");
+  admitted.selected.components = [
+    {
+      id: "exports",
+      title: "Exports",
+      scope: "client",
+      placement: "clientEffect",
+      entry: "io.github.tangerg.flame/components/component.js",
+      export: "Exports",
+    },
+  ];
+  const withheld = {
+    ...installation("0c31c796-224c-40fa-a721-6696971bb697", "withheld"),
+    presentation: "withheld" as const,
+  };
+  withheld.selected.components = admitted.selected.components;
+  const run = vi.fn();
+  const contexts: ComponentContext[] = [];
+  function Effect({ context }: { context: ComponentContext }) {
+    useEffect(() => {
+      contexts.push(context);
+      return context.registerCommand({ id: "export", label: "Export captured Session", run });
+    }, [context]);
+    return null;
+  }
+  const load = vi.spyOn(ComponentModules.prototype, "component").mockResolvedValue({
+    component: Effect,
+    signal: new AbortController().signal,
+    reload: async () => {},
+  });
+  onTestFinished(() => load.mockRestore());
+  await loadPluginsForTest(
+    runtimePlugin(),
+    pluginsPane(() => client(async () => ({ data: [admitted, withheld] }))),
+  );
+  testClient.navigation.go({ session: "source" });
+  testClient.render(createElement(Slot, { name: "app.overlay" }));
+  await vi.waitFor(() => expect(contributionsTo(COMMAND)).toHaveLength(1));
+  const command = contributionsTo(COMMAND)[0]!.item;
+  const mounted = contexts.length;
+  expect(load).toHaveBeenCalledOnce();
+  expect(contexts.at(-1)!.sessionId).toBeUndefined();
+  await act(() => testClient.navigation.go({ session: "chosen" }));
+  expect(contexts).toHaveLength(mounted);
+  expect(contributionsTo(COMMAND)[0]!.item).toBe(command);
+  await command.run();
+  expect(run).toHaveBeenCalledExactlyOnceWith({
+    sessionId: "chosen",
+    signal: contexts.at(-1)!.signal,
+  });
+  await act(() => resetKernelForTest());
+  expect(contexts.at(-1)!.signal.aborted).toBe(true);
+  expect(contributionsTo(COMMAND)).toEqual([]);
+  await expect(command.run()).rejects.toBe(contexts.at(-1)!.signal.reason);
+  expect(run).toHaveBeenCalledOnce();
 });
 
 it("keeps package realization owned by its generation when the query cache is cancelled", async () => {

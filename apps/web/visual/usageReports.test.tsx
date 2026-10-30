@@ -128,6 +128,9 @@ function mount(
     signal: owner.signal,
     track: (operation) => operation(owner.signal),
     saveFile: async () => "requested",
+    registerCommand() {
+      throw new Error("This fixture must not register client commands");
+    },
     compose: () => null,
   };
   testClient.render(<UsageReports context={context} />);
@@ -213,6 +216,9 @@ it("recovers the original capture and preserves exact numbers, zero prices and m
     signal: owner.signal,
     track: (operation) => operation(owner.signal),
     saveFile: async () => "requested",
+    registerCommand() {
+      throw new Error("This fixture must not register client commands");
+    },
     compose: () => null,
   };
   testClient.render(<UsageReports context={context} />);

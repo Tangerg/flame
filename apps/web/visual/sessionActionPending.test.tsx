@@ -54,6 +54,9 @@ function mountRename() {
       return original;
     },
     saveFile: async () => "requested",
+    registerCommand() {
+      throw new Error("This fixture must not register client commands");
+    },
     compose: () => null,
   };
   const dispose = async () => {

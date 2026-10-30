@@ -26,9 +26,25 @@ publishes a module-global feature instance or port installer.
 The Providers and MCP settings components consume this boundary.
 Ordinary stateless exports remain React components.
 
-`context.signal` belongs to the mounted view. New I/O still enters that view's
+`context.signal` belongs to the mounted component. New I/O still enters that component's
 `context.track` boundary; source construction grants no additional execution path.
 Rebuild components and their graphical Host together when changing this SDK.
+
+`clientEffect` placement requires client scope and has no navigation material or
+renderer selector. The Host mounts it for the admitted release independently of
+Session navigation. It receives no implied active Session or workspace snapshot.
+The Trajectory package uses this lifetime for its export commands.
+
+Only `clientEffect` components use `context.registerCommand({id, label, combo?, run})`.
+It contributes an actual command
+and optional shortcut through the Host's existing command catalog. IDs are local
+to the installed component; the Host namespaces their persistent shortcut identity
+by installation and component, rejects duplicate local registrations, and returns
+an unregister function. Labels are already localized display text. Dispatch
+captures the current `sessionId` before asynchronous work and passes it with the
+component's signal. Accepted work is joined; withdrawal refuses new dispatches and
+ends the captured signal. Failures retain their cause and appear in the command's
+notification and plugin diagnostics while its source remains current.
 
 PNG imports are embedded as data URLs by the component build. Components can
 display those images and transfer their original decoded bytes through

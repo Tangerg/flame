@@ -94,4 +94,7 @@ export const ja: Record<string, string> = {
   "rename.actions": "セッションのタイトルを保存",
   "rename.factRevision": "リビジョン",
   "rename.captured": "取得したセッション",
+  "export.markdown": "会話を Markdown でエクスポート",
+  "export.json": "会話を JSON でエクスポート",
+  "export.trajectory": "セッションの完全な履歴をエクスポート",
 };

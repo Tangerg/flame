@@ -94,4 +94,7 @@ export const ko: Record<string, string> = {
   "rename.actions": "세션 제목 저장",
   "rename.factRevision": "리비전",
   "rename.captured": "캡처된 세션",
+  "export.markdown": "대화를 Markdown으로 내보내기",
+  "export.json": "대화를 JSON으로 내보내기",
+  "export.trajectory": "전체 세션 기록 내보내기",
 };

@@ -54,6 +54,9 @@ function capturedContext(
     saveFile(): never {
       throw new Error("Captured results must not save files");
     },
+    registerCommand() {
+      throw new Error("This fixture must not register client commands");
+    },
     compose(): never {
       throw new Error("Captured results must not compose another component");
     },

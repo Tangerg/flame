@@ -67,6 +67,9 @@ function capturedContext(
     saveFile(): never {
       throw new Error("local genui must not save files");
     },
+    registerCommand() {
+      throw new Error("This fixture must not register client commands");
+    },
     compose(): never {
       throw new Error("genui must not compose another component");
     },

@@ -90,4 +90,7 @@ export const zhTW: Record<string, string> = {
   "rename.actions": "儲存工作階段標題",
   "rename.factRevision": "修訂版本",
   "rename.captured": "已擷取的工作階段",
+  "export.markdown": "匯出對話為 Markdown",
+  "export.json": "匯出對話為 JSON",
+  "export.trajectory": "匯出完整工作階段軌跡",
 };

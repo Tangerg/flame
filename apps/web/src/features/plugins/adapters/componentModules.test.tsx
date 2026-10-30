@@ -300,6 +300,9 @@ function fixture(
     signal: scope.signal,
     track: (operation) => operation(scope.signal),
     saveFile: async () => "requested",
+    registerCommand() {
+      throw new Error("This fixture must not register client commands");
+    },
     compose: () => null,
   };
   const load = (generation: object = originalGeneration, nextEndpoint = endpoint) =>

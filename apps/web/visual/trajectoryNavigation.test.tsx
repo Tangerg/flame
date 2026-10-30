@@ -130,6 +130,9 @@ async function mountTrajectory() {
     signal: owner.signal,
     track: (operation) => operation(owner.signal),
     saveFile: async () => "requested",
+    registerCommand() {
+      throw new Error("This fixture must not register client commands");
+    },
     compose: () => null,
   };
   releases.push(async () => {

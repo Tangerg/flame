@@ -60,6 +60,36 @@ func TestSessionActionPlacementAdmission(t *testing.T) {
 	}
 }
 
+func TestClientEffectRequiresClientLifetimeWithoutViewMetadata(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		scope    extension.ComponentScope
+		material string
+		selector *RendererSelector
+		valid    bool
+	}{
+		{name: "client", scope: "client", valid: true},
+		{name: "installation", scope: "installation"},
+		{name: "session", scope: "session"},
+		{name: "workspace", scope: "workspace"},
+		{name: "file", scope: "file"},
+		{name: "tool result", scope: "toolResult"},
+		{name: "material", scope: "client", material: "exports"},
+		{name: "selector", scope: "client", selector: &RendererSelector{Kind: extension.RendererToolName, Name: "read"}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			builder, err := NewBuilder("effects", "", "")
+			if err != nil {
+				t.Fatal(err)
+			}
+			err = builder.AdmitComponent(ClientComponent{ID: "exports", Title: "Exports", Scope: test.scope, Placement: "clientEffect", Material: test.material, Selector: test.selector, Entry: Namespace + "/components/component.js", Export: "Exports"})
+			if (err == nil) != test.valid {
+				t.Fatalf("admission: %v, valid %v", err, test.valid)
+			}
+		})
+	}
+}
+
 func TestSettingsPanePlacementAdmitsOnlySettingsContexts(t *testing.T) {
 	for _, test := range []struct {
 		name     string

@@ -1259,13 +1259,20 @@ for await (const line of lines) {
       expect(installed.selected.themes).toHaveLength(1);
       expect(installed.selected.skills).toHaveLength(1);
       await client.plugins.setEnablement({ installationId: installed.id, enabled: true });
-      const component = installed.selected.components[0]!;
+      const component = installed.selected.components.find((value) => value.id === "trajectory")!;
       expect(component.scope).toBe("session");
+      const effect = installed.selected.components.find(
+        (value) => value.placement === "clientEffect",
+      )!;
+      expect(effect).toMatchObject({ scope: "client", export: "SessionExports" });
       const resourceRequest = { ...target, componentId: component.id, path: component.entry };
       const resource = await client.plugins.readResource(resourceRequest);
       expect(Buffer.from(resource.body, "base64")).toEqual(
         await readFile(join(environmentRoot, "plugins", "trajectory", component.entry)),
       );
+      await expect(
+        client.plugins.readResource({ ...target, componentId: effect.id, path: effect.entry }),
+      ).resolves.toEqual(resource);
       const session = await client.sessions.create({
         workspace: { path: root },
         title: "Package evidence",

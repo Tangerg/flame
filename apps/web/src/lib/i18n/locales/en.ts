@@ -636,16 +636,12 @@ export const en: Record<string, string> = {
   "projects.error.title": "Couldn't load projects",
   "projects.error.sub": "Check the Runtime connection, then reopen the work index.",
 
-  "convExport.markdown": "Export conversation as Markdown",
-  "convExport.json": "Export conversation as JSON",
-  "convExport.trajectory": "Export complete Session trajectory",
   "convExport.import": "Import conversation from JSON",
   "convExport.unsupported": "This runtime doesn't support session export or import.",
   "convExport.readFailed":
     "Couldn't read the selected file. Select it again or choose another JSON file.",
   "convExport.notJson":
     "The selected file isn't valid JSON. Choose a conversation JSON file exported from Flame.",
-  "convExport.exportFailed": "Couldn't export the conversation.",
   "convExport.importFailed":
     "Couldn't import the conversation. Try again with a conversation JSON file exported from Flame.",
   "convExport.importSuccess": 'Imported "{{title}}".',

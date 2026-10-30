@@ -45,6 +45,9 @@ beforeEach(() => {
     saveFile() {
       throw new Error("This fixture must not save files");
     },
+    registerCommand() {
+      throw new Error("This fixture must not register client commands");
+    },
     compose() {
       throw new Error("Composition is not used by this fixture");
     },

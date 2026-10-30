@@ -24,7 +24,7 @@ import { createAgentBootstrapPlugin } from "@/features/agent/bootstrap/index";
 import { createObservabilityPlugin } from "@/features/observability/index";
 import { PRODUCT_SLUG, CLIENT_VERSION } from "@/app/product";
 import { createRuntimePlugin } from "@/features/connection/index";
-import conversationExport from "@/features/workspace/conversationExport";
+import conversationImport from "@/features/workspace/conversationImport";
 import { defaultAccents } from "@/features/theme/defaultAccents";
 import { defaultCommands } from "@/features/command/defaultCommands";
 import { defaultRoles } from "@/features/chat/defaultRoles";
@@ -174,7 +174,7 @@ export function createBuiltinPlugins(
     planProgress,
     providerSetup,
     contextUsage,
-    conversationExport(workspaceAccess),
+    conversationImport(workspaceAccess),
   ];
 
   return [

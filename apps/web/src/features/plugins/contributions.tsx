@@ -3,6 +3,7 @@ import { lazy, Suspense, type ReactNode } from "react";
 import { ComponentModules } from "@/features/plugins/adapters/componentModules";
 import {
   InstalledComponent,
+  RenderingComponent,
   InstalledFileComponent,
   InstalledToolResultComponent,
   InstalledSessionActionComponent,
@@ -34,6 +35,7 @@ import { contributePaletteTheme } from "@/features/theme/public/appearance";
 import { retainThemeSelection } from "@/features/theme/public/appearance";
 import { trackContributionIO } from "@/extensions/contributionIO";
 import { reportPluginError } from "@/extensions/errors";
+import { contributeLayout } from "@/extensions/contributeHelpers";
 import { createLocaleReconciler } from "@/features/i18n/public/locales";
 import { type RuntimeConnectionGeneration } from "@/features/connection/public/services";
 import {
@@ -118,7 +120,8 @@ function createPackageReconciler(
       const lifetime = scope.lifetime(installation.id);
       resources.set(installation.id, { signature, lifetime });
       for (const entry of release.components) {
-        if (entry.placement === "export") continue;
+        const { placement, scope: contextScope } = entry;
+        if (placement === "export") continue;
         const component = {
           installationId: installation.id,
           digest: release.digest,
@@ -137,7 +140,7 @@ function createPackageReconciler(
             }
           : undefined;
 
-        if (entry.placement === "fileRenderer") {
+        if (placement === "fileRenderer") {
           if (!entry.selector || entry.selector.type !== "fileExtension")
             throw new Error("File component requires an extension selector");
           const File = lazy(async () => {
@@ -191,7 +194,7 @@ function createPackageReconciler(
           );
           continue;
         }
-        if (entry.placement === "toolResultRenderer") {
+        if (placement === "toolResultRenderer") {
           if (!entry.selector || entry.selector.type === "fileExtension")
             throw new Error("Tool result component requires a result selector");
           const Result = lazy(async () => {
@@ -251,7 +254,7 @@ function createPackageReconciler(
           );
           continue;
         }
-        if (entry.placement === "sessionAction") {
+        if (placement === "sessionAction") {
           const Action = lazy(async () => {
             const loaded = await modules.component(
               moduleScope,
@@ -300,22 +303,26 @@ function createPackageReconciler(
             installation,
             entry,
           );
+          const rendering = {
+            placement,
+            entry: loaded.component,
+            reload: loaded.reload,
+            component,
+            generation,
+            compose,
+            saveFile,
+            resources: loaded.signal,
+            runtime: client,
+            binding,
+            lifetime,
+          };
           return {
-            default: () => (
-              <InstalledComponent
-                entry={loaded.component}
-                reload={loaded.reload}
-                component={component}
-                generation={generation}
-                compose={compose}
-                saveFile={saveFile}
-                scope={entry.scope}
-                resources={loaded.signal}
-                runtime={client}
-                binding={binding}
-                lifetime={lifetime}
-              />
-            ),
+            default: () =>
+              placement === "clientEffect" ? (
+                <RenderingComponent {...rendering} />
+              ) : (
+                <InstalledComponent {...rendering} scope={contextScope} />
+              ),
           };
         });
         const id = packageScopedId(installation.id, entry.id);
@@ -324,12 +331,16 @@ function createPackageReconciler(
             scope={componentFailureScope(component, generation)}
             reload={() => modules.reload()}
           >
-            <Suspense fallback={<ComponentLoading />}>
+            <Suspense fallback={placement === "clientEffect" ? null : <ComponentLoading />}>
               <View />
             </Suspense>
           </ComponentBoundary>
         );
-        if (entry.placement === "settingsPane") {
+        if (placement === "clientEffect") {
+          contributeLayout(lifetime, "app.overlay", { id, component: PlacedComponent });
+          continue;
+        }
+        if (placement === "settingsPane") {
           lifetime.contribute(
             SETTINGS_PANE,
             {
@@ -350,7 +361,7 @@ function createPackageReconciler(
             id,
             title: `${release.name} · ${entry.title}`,
             material: entry.material,
-            dock: entry.scope === "session" ? "session" : undefined,
+            dock: contextScope === "session" ? "session" : undefined,
             component: PlacedComponent,
           },
           { key: id },
