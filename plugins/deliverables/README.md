@@ -133,7 +133,10 @@ the plugin does not retry outside its required confinement.
 Linux also requires `/usr/bin/prlimit` and a read-only procfs mount inside its
 private PID namespace. Dynamic loaders use `/proc/self/exe` to resolve libraries
 relative to their executable; an empty procfs cannot satisfy that dependency.
-A host that prohibits the private mount is refused. The sandbox applies address-space, CPU,
+A host that prohibits the private mount is refused. Hosts enforcing
+[AppArmor user-namespace restrictions](https://documentation.ubuntu.com/security/security-features/privilege-restriction/apparmor/#apparmor-unprivileged-user-namespace-restrictions)
+must permit bubblewrap to create its private namespaces; CI loads Ubuntu's
+packaged `bwrap-userns-restrict` profile. The sandbox applies address-space, CPU,
 single-file and diagnostic-output limits before executing any renderer, including
 version probes. Debian-family packages also require read-only access to the shared
 LibreOffice configuration in `/etc/libreoffice`. macOS applies CPU, single-file and
