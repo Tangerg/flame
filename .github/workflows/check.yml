@@ -49,7 +49,32 @@ jobs:
           echo "FLAME_DELIVERABLES_TOOL_ROOTS=[\"/Applications/LibreOffice.app\",\"$(brew --cellar)\"]" >> "$GITHUB_ENV"
       - run: make setup
       - name: Qualify native deliverables
-        run: node plugins/scripts/test-backends.mjs
+        run: |
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            cat > "$RUNNER_TEMP/native-process-probe.mjs" <<'NODE'
+          import childProcess from "node:child_process";
+          import { syncBuiltinESMExports } from "node:module";
+          const original = childProcess.spawn;
+          childProcess.spawn = function (command, args, options) {
+            const child = original.call(this, command, args, options);
+            if (command === "/usr/bin/sandbox-exec" && args?.some((arg) => /\/(soffice|pdfinfo|pdftoppm|pdftotext)$/.test(arg))) {
+              let bytes = 0;
+              console.error("NATIVE_PROBE", JSON.stringify({ args: args.slice(-3), cwd: options.cwd }));
+              for (const [name, stream] of [["stdout", child.stdout], ["stderr", child.stderr]]) {
+                stream.on("data", (chunk) => {
+                  if (bytes < 65536) console.error("NATIVE_" + name, chunk.toString("utf8"));
+                  bytes += chunk.byteLength;
+                });
+              }
+              child.on("close", (status, signal) => console.error("NATIVE_CLOSE", JSON.stringify({ status, signal })));
+            }
+            return child;
+          };
+          syncBuiltinESMExports();
+          NODE
+            export NODE_OPTIONS="--import=$RUNNER_TEMP/native-process-probe.mjs"
+          fi
+          node plugins/scripts/test-backends.mjs
         env:
           FLAME_DELIVERABLES_NATIVE_TESTS: "1"
       - run: make check
