@@ -61,6 +61,7 @@ func buildPolicyComposition(ctx context.Context, cfg assemblyConfig, lifetime *r
 		cfg.approvalMode,
 		cfg.stores.ApprovalRules,
 		cfg.stores.ApprovalModes,
+		cfg.stores.Sessions,
 		toolset.NewAuthorities(registry.Definition),
 		invalidations.publish,
 	)

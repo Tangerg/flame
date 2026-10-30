@@ -8,6 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -22,7 +23,7 @@ func TestServiceRememberDecide(t *testing.T) {
 	svc := newPolicy(t)
 	if err := svc.SetRule(ctx, approvals.RuleChange{
 		Scope: approval.ScopeSession, SessionID: "s1", Tool: testsupport.BuiltInTool(t, "shell"), Subject: approval.InvocationSubject("npm run build"), Decision: approval.Allow,
-	}, ""); err != nil {
+	}); err != nil {
 		t.Fatalf("set rule: %v", err)
 	}
 
@@ -44,8 +45,8 @@ func TestServiceScopeVisibilityAndForget(t *testing.T) {
 	ctx := context.Background()
 	svc := newPolicy(t)
 	if err := svc.SetRule(ctx, approvals.RuleChange{
-		Scope: approval.ScopeProject, Tool: testsupport.BuiltInTool(t, "edit"), Subject: approval.InvocationSubject("x"), Decision: approval.Allow,
-	}, "/proj/a"); err != nil {
+		Scope: approval.ScopeProject, SessionID: "s1", Tool: testsupport.BuiltInTool(t, "edit"), Subject: approval.InvocationSubject("x"), Decision: approval.Allow,
+	}); err != nil {
 		t.Fatalf("set rule: %v", err)
 	}
 
@@ -65,14 +66,14 @@ func TestServiceScopeVisibilityAndForget(t *testing.T) {
 		t.Fatal("project rule leaked to another dir")
 	}
 
-	rules, err := svc.Rules(ctx, "s1", "/proj/a")
+	rules, err := svc.ListRules(ctx, "s1")
 	if err != nil {
 		t.Fatalf("Rules: %v", err)
 	}
 	if len(rules) != 1 {
 		t.Fatalf("Rules = %d, want 1", len(rules))
 	}
-	if err := svc.Forget(ctx, rules[0].ID); err != nil {
+	if err := svc.ForgetRule(ctx, rules[0].ID); err != nil {
 		t.Fatalf("Forget: %v", err)
 	}
 	if _, ok, err := svc.Decide(ctx, q); err != nil || ok {
@@ -83,19 +84,19 @@ func TestServiceScopeVisibilityAndForget(t *testing.T) {
 	}
 }
 
-// TestRememberRejectsUnkeyable prevents a missing project identity from being
-// reported as remembered or leaking into a wider scope.
+// TestRememberRejectsUnkeyable prevents a project rule without a Session to
+// name its project from being reported as remembered or leaking wider.
 func TestRememberRejectsUnkeyable(t *testing.T) {
 	ctx := context.Background()
 	svc := newPolicy(t)
 	err := svc.SetRule(ctx, approvals.RuleChange{
 		Scope: approval.ScopeProject, Tool: testsupport.BuiltInTool(t, "shell"),
 		Subject: approval.InvocationSubject("go test"), Decision: approval.Allow,
-	}, "")
-	if !errors.Is(err, approval.ErrInvalidRule) {
-		t.Fatalf("unkeyable rule error = %v, want ErrInvalidRule", err)
+	})
+	if !errors.Is(err, session.ErrNotFound) {
+		t.Fatalf("unkeyable rule error = %v, want session.ErrNotFound", err)
 	}
-	if rules, listErr := svc.Rules(ctx, "s1", ""); listErr != nil || len(rules) != 0 {
+	if rules, listErr := svc.ListRules(ctx, "s1"); listErr != nil || len(rules) != 0 {
 		if listErr != nil {
 			t.Fatalf("Rules: %v", listErr)
 		}
@@ -106,7 +107,7 @@ func TestRememberRejectsUnkeyable(t *testing.T) {
 func newPolicy(t *testing.T) *approvals.RuntimePolicy {
 	t.Helper()
 	store := newMemoryRuleStore()
-	policy, err := approvals.NewRuntimePolicy(approval.ModeSafe, store, store, testsupport.ToolAuthorities{}, nil)
+	policy, err := approvals.NewRuntimePolicy(approval.ModeSafe, store, store, projectSessions{"s1": "/proj/a"}, testsupport.ToolAuthorities{}, nil)
 	if err != nil {
 		t.Fatalf("new policy: %v", err)
 	}
@@ -216,4 +217,15 @@ func ruleVisibleFrom(rule approval.Rule, sessionID, projectDir string) bool {
 	default:
 		return false
 	}
+}
+
+// projectSessions maps each known Session to its workspace path.
+type projectSessions map[string]string
+
+func (p projectSessions) Get(_ context.Context, id string) (session.Session, error) {
+	path, found := p[id]
+	if !found {
+		return session.Session{}, session.ErrNotFound
+	}
+	return testsupport.MustRestoreSession(session.Snapshot{ID: id, Workspace: testsupport.MustWorkspace(path)}), nil
 }

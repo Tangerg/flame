@@ -248,7 +248,7 @@ func testApprovalPolicy(t *testing.T) *approvals.RuntimePolicy {
 			t.Error(err)
 		}
 	})
-	policy, err := approvals.NewRuntimePolicy(approval.ModeBalanced, db.ApprovalRules, db.ApprovalModes, testsupport.ToolAuthorities{}, nil)
+	policy, err := approvals.NewRuntimePolicy(approval.ModeBalanced, db.ApprovalRules, db.ApprovalModes, db.Sessions, testsupport.ToolAuthorities{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

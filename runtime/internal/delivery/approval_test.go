@@ -12,19 +12,13 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
-// handlerWithApprovals builds a Handler whose only wired coordinator is the
-// approvals one — enough for the approval.* handler tests.
-func handlerWithApprovals(t *testing.T, policy approvals.Policy, sessions approvals.SessionLookup) *Handler {
-	t.Helper()
-	coordinator, err := approvals.New(policy, sessions)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return &Handler{approvals: coordinator}
+// handlerWithApprovals builds a Handler whose only wired use case is approvals,
+// enough for the approval.* handler tests.
+func handlerWithApprovals(policy approvalUseCases) *Handler {
+	return &Handler{approvals: policy}
 }
 
-// approvalPolicyFake is the approval-management policy the coordinator drives; it
-// records the mutating calls the wire handlers make.
+// approvalPolicyFake records the approval calls the wire handlers make.
 type approvalPolicyFake struct {
 	mode             approval.Mode
 	set              []approval.Mode
@@ -41,7 +35,7 @@ func (a *approvalPolicyFake) SetDefaultMode(_ context.Context, mode approval.Mod
 	return nil
 }
 
-func (a *approvalPolicyFake) Rules(_ context.Context, sessionID, _ string) ([]approvals.RuleView, error) {
+func (a *approvalPolicyFake) ListRules(_ context.Context, sessionID string) ([]approvals.RuleView, error) {
 	a.rulesForSession = sessionID
 	var view []approvals.RuleView
 	for _, rule := range a.rules {
@@ -54,20 +48,9 @@ func (a *approvalPolicyFake) Rules(_ context.Context, sessionID, _ string) ([]ap
 	return view, nil
 }
 
-func (a *approvalPolicyFake) Forget(_ context.Context, id string) error {
+func (a *approvalPolicyFake) ForgetRule(_ context.Context, id string) error {
 	a.forgottenRuleIDs = append(a.forgottenRuleIDs, id)
 	return nil
-}
-
-// fakeSessionLookup stubs the approvals coordinator's session getter (used to
-// scope approval rules to a project dir).
-type fakeSessionLookup struct {
-	sess session.Session
-	err  error
-}
-
-func (f fakeSessionLookup) Get(context.Context, string) (session.Session, error) {
-	return f.sess, f.err
 }
 
 // TestApprovalModeWireRoundTrip checks every engine stance maps to a wire name
@@ -93,7 +76,7 @@ func TestApprovalModeWireRoundTrip(t *testing.T) {
 
 func TestApprovalModeHandlersMapToWire(t *testing.T) {
 	rt := &approvalPolicyFake{mode: approval.ModeYolo}
-	s := handlerWithApprovals(t, rt, fakeSessionLookup{})
+	s := handlerWithApprovals(rt)
 
 	got, err := s.GetApprovalMode(context.Background())
 	if err != nil {
@@ -116,7 +99,7 @@ func TestApprovalModeHandlersMapToWire(t *testing.T) {
 }
 
 func TestGetApprovalModeRejectsUnknownDomainValue(t *testing.T) {
-	s := handlerWithApprovals(t, &approvalPolicyFake{mode: approval.Mode("invalid")}, fakeSessionLookup{})
+	s := handlerWithApprovals(&approvalPolicyFake{mode: approval.Mode("invalid")})
 	if _, err := s.GetApprovalMode(t.Context()); !errors.Is(err, approval.ErrInvalidMode) {
 		t.Fatalf("GetApprovalMode error = %v, want ErrInvalidMode", err)
 	}
@@ -137,7 +120,7 @@ func TestListApprovalRulesMapsToWire(t *testing.T) {
 		Subject:  approval.InvocationSubject("npm test"),
 		Decision: approval.Allow,
 	}}}
-	s := handlerWithApprovals(t, rt, fakeSessionLookup{err: session.ErrNotFound})
+	s := handlerWithApprovals(rt)
 
 	got, err := s.ListApprovalRules(context.Background(), protocol.ListApprovalRulesRequest{SessionID: "ses_1"})
 	if err != nil {
@@ -153,7 +136,7 @@ func TestListApprovalRulesMapsToWire(t *testing.T) {
 
 func TestForgetApprovalRuleMapsToWire(t *testing.T) {
 	rt := &approvalPolicyFake{}
-	s := handlerWithApprovals(t, rt, fakeSessionLookup{})
+	s := handlerWithApprovals(rt)
 
 	if err := s.ForgetApprovalRule(context.Background(), protocol.ForgetApprovalRuleRequest{ID: "rule_1"}); err != nil {
 		t.Fatalf("forget approval rule: %v", err)
@@ -163,7 +146,7 @@ func TestForgetApprovalRuleMapsToWire(t *testing.T) {
 	}
 }
 
-func (a *approvalPolicyFake) SetRule(context.Context, approvals.RuleChange, string) error {
+func (a *approvalPolicyFake) SetRule(context.Context, approvals.RuleChange) error {
 	return a.setRuleErr
 }
 
@@ -178,7 +161,7 @@ func TestSetApprovalRuleProjectsActionableFailures(t *testing.T) {
 		{"storage failure", errors.New("storage unavailable"), protocol.ErrInternalError},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			handler := handlerWithApprovals(t, &approvalPolicyFake{setRuleErr: test.cause}, fakeSessionLookup{})
+			handler := handlerWithApprovals(&approvalPolicyFake{setRuleErr: test.cause})
 			err := handler.SetApprovalRule(t.Context(), protocol.SetApprovalRuleRequest{Subject: protocol.ApprovalSubject{Type: protocol.ApprovalSubjectAll}, Tool: protocol.ToolRef{Type: protocol.ToolRefBuiltIn, Name: "shell"}, Scope: protocol.ApprovalRuleScopeGlobal, Decision: protocol.ApprovalRuleDecisionAllow})
 			if failure := projectError(err); !errors.Is(failure, test.want) {
 				t.Fatalf("failure = %v, want %v", failure, test.want)
@@ -193,7 +176,7 @@ func TestSetApprovalRuleProjectsActionableFailures(t *testing.T) {
 // The gate a mode applies is the domain's decision; the reply publishes it so a
 // client describes modes from the policy instead of restating it.
 func TestApprovalModeReplyPublishesTheDomainGateMatrix(t *testing.T) {
-	s := handlerWithApprovals(t, &approvalPolicyFake{mode: approval.ModeSafe}, fakeSessionLookup{})
+	s := handlerWithApprovals(&approvalPolicyFake{mode: approval.ModeSafe})
 	got, err := s.GetApprovalMode(context.Background())
 	if err != nil {
 		t.Fatal(err)

@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	plandomain "github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -66,7 +67,7 @@ func planContext(t *testing.T, sessionID string) context.Context {
 
 func balancedPlanPolicy(t *testing.T) *approvals.RuntimePolicy {
 	t.Helper()
-	policy, err := approvals.NewRuntimePolicy(approval.ModeBalanced, emptyPlanRules{}, &modeStore{planning: map[string]bool{}}, testsupport.ToolAuthorities{}, nil)
+	policy, err := approvals.NewRuntimePolicy(approval.ModeBalanced, emptyPlanRules{}, &modeStore{planning: map[string]bool{}}, noSessions{}, testsupport.ToolAuthorities{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,3 +195,9 @@ func (emptyPlanRules) Visible(context.Context, string, string, int) ([]approval.
 	return nil, nil
 }
 func (emptyPlanRules) Delete(context.Context, string) error { return nil }
+
+type noSessions struct{}
+
+func (noSessions) Get(context.Context, string) (session.Session, error) {
+	return session.Session{}, session.ErrNotFound
+}

@@ -85,11 +85,11 @@ func TestStandingRulesFollowCurrentSourceAuthority(t *testing.T) {
 	}
 	ref := testMCPRef(server.Name, testsupport.RemoteToolName("read"))
 	store := db.ApprovalRules
-	policy, err := approvals.NewRuntimePolicy(approval.ModeSafe, store, db.ApprovalModes, NewAuthorities(userDefinitions(registry)), nil)
+	policy, err := approvals.NewRuntimePolicy(approval.ModeSafe, store, db.ApprovalModes, db.Sessions, NewAuthorities(userDefinitions(registry)), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := policy.SetRule(t.Context(), approvals.RuleChange{Tool: ref, Scope: approval.ScopeGlobal, Subject: approval.Subject{Type: approval.SubjectAll}, Decision: approval.Allow}, ""); err != nil {
+	if err := policy.SetRule(t.Context(), approvals.RuleChange{Tool: ref, Scope: approval.ScopeGlobal, Subject: approval.Subject{Type: approval.SubjectAll}, Decision: approval.Allow}); err != nil {
 		t.Fatal(err)
 	}
 	original := server.AuthorityFingerprint()
@@ -99,7 +99,7 @@ func TestStandingRulesFollowCurrentSourceAuthority(t *testing.T) {
 		if err != nil || matched != wantMatch || (matched && decision != approval.Allow) {
 			t.Fatalf("decision = %v, %v, %v", decision, matched, err)
 		}
-		rules, err := policy.Rules(t.Context(), "", "")
+		rules, err := policy.ListRules(t.Context(), "")
 		if err != nil || len(rules) != 1 || rules[0].Stale != wantStale {
 			t.Fatalf("rules = %+v, %v", rules, err)
 		}
@@ -124,7 +124,7 @@ func TestStandingRulesFollowCurrentSourceAuthority(t *testing.T) {
 	if _, err := policy.PrepareRule(t.Context(), approval.RememberRequest{Subject: approval.Subject{Type: approval.SubjectAll}, Tool: ref, SourceFingerprint: original, Scope: approval.ScopeGlobal, Decision: approval.Allow}); !errors.Is(err, approval.ErrSourceAuthorityChanged) {
 		t.Fatalf("obsolete connection prepare error = %v", err)
 	}
-	if err := policy.SetRule(t.Context(), approvals.RuleChange{Tool: ref, Scope: approval.ScopeGlobal, Subject: approval.Subject{Type: approval.SubjectAll}, Decision: approval.Allow}, ""); err != nil {
+	if err := policy.SetRule(t.Context(), approvals.RuleChange{Tool: ref, Scope: approval.ScopeGlobal, Subject: approval.Subject{Type: approval.SubjectAll}, Decision: approval.Allow}); err != nil {
 		t.Fatal(err)
 	}
 	check(server.AuthorityFingerprint(), true, false)
@@ -134,7 +134,7 @@ func TestStandingRulesFollowCurrentSourceAuthority(t *testing.T) {
 	if err := registry.Save(t.Context(), server); err != nil {
 		t.Fatal(err)
 	}
-	rules, err := policy.Rules(t.Context(), "", "")
+	rules, err := policy.ListRules(t.Context(), "")
 	if err != nil || len(rules) != 0 {
 		t.Fatalf("recreated source inherited rules: %v, %v", rules, err)
 	}

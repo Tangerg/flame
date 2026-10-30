@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -155,7 +156,7 @@ func TestRuntimePolicyOverfetchesAndRejectsRuleCapacity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := policy.Rules(t.Context(), "s1", "/repo"); !errors.Is(err, approval.ErrRuleCapacity) {
+	if _, err := policy.ListRules(t.Context(), "s1"); !errors.Is(err, approval.ErrRuleCapacity) {
 		t.Fatalf("Rules error = %v, want ErrRuleCapacity", err)
 	}
 	if limit != approval.MaximumVisibleRules+1 {
@@ -189,7 +190,7 @@ func TestRuntimePolicyProtectsVisibleRuleRelations(t *testing.T) {
 			if _, _, err := policy.Decide(t.Context(), query); !errors.Is(err, approval.ErrInvalidRule) {
 				t.Fatalf("Decide error = %v, want ErrInvalidRule", err)
 			}
-			if _, err := policy.Rules(t.Context(), query.SessionID, query.ProjectDir); !errors.Is(err, approval.ErrInvalidRule) {
+			if _, err := policy.ListRules(t.Context(), query.SessionID); !errors.Is(err, approval.ErrInvalidRule) {
 				t.Fatalf("Rules error = %v, want ErrInvalidRule", err)
 			}
 		})
@@ -202,13 +203,13 @@ func TestRuntimePolicyIsolatesVisibleRuleStorage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rules, err := policy.Rules(t.Context(), "s1", "/repo")
+	rules, err := policy.ListRules(t.Context(), "s1")
 	if err != nil {
 		t.Fatal(err)
 	}
 	rules[0] = RuleView{}
 
-	got, err := policy.Rules(t.Context(), "s1", "/repo")
+	got, err := policy.ListRules(t.Context(), "s1")
 	if err != nil {
 		t.Fatalf("Rules after caller mutation: %v", err)
 	}
@@ -243,10 +244,10 @@ func TestCommittedApprovalMutationsPublishInvalidations(t *testing.T) {
 	}
 	if err := policy.SetRule(t.Context(), RuleChange{
 		Scope: approval.ScopeGlobal, Tool: testsupport.BuiltInTool(t, "shell"), Subject: approval.InvocationSubject("go test"), Decision: approval.Allow,
-	}, ""); err != nil {
+	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := policy.Forget(t.Context(), "rule_1"); err != nil {
+	if err := policy.ForgetRule(t.Context(), "rule_1"); err != nil {
 		t.Fatal(err)
 	}
 	if len(notices) != 3 {
@@ -273,10 +274,10 @@ func TestFailedApprovalMutationDoesNotPublishInvalidation(t *testing.T) {
 	}
 	if err := policy.SetRule(t.Context(), RuleChange{
 		Scope: approval.ScopeGlobal, Tool: testsupport.BuiltInTool(t, "shell"), Subject: approval.InvocationSubject("go test"), Decision: approval.Allow,
-	}, ""); !errors.Is(err, wantErr) {
+	}); !errors.Is(err, wantErr) {
 		t.Fatalf("SetRule error = %v, want %v", err, wantErr)
 	}
-	if err := policy.Forget(t.Context(), "rule_1"); !errors.Is(err, wantErr) {
+	if err := policy.ForgetRule(t.Context(), "rule_1"); !errors.Is(err, wantErr) {
 		t.Fatalf("Forget error = %v, want %v", err, wantErr)
 	}
 	if len(notices) != 0 {
@@ -300,7 +301,7 @@ func newTestRuntimePolicy(mode approval.Mode, rules RuleStore, modes modeStore, 
 	if modes == nil {
 		modes = newMemoryModeStore()
 	}
-	return NewRuntimePolicy(mode, rules, modes, testsupport.ToolAuthorities{}, publish)
+	return NewRuntimePolicy(mode, rules, modes, repoSessions{}, testsupport.ToolAuthorities{}, publish)
 }
 
 func TestNewPolicyRequiresDurableStores(t *testing.T) {
@@ -312,7 +313,7 @@ func TestNewPolicyRequiresDurableStores(t *testing.T) {
 	}{
 		{nil, modes}, {ruleStoreStub{}, nil}, {ruleStoreStub{}, typedNil},
 	} {
-		if policy, err := NewRuntimePolicy(approval.ModeBalanced, test.rules, test.modes, testsupport.ToolAuthorities{}, nil); err == nil || policy != nil {
+		if policy, err := NewRuntimePolicy(approval.ModeBalanced, test.rules, test.modes, repoSessions{}, testsupport.ToolAuthorities{}, nil); err == nil || policy != nil {
 			t.Fatalf("NewRuntimePolicy = (%v, %v), want required storage error", policy, err)
 		}
 	}
@@ -335,5 +336,61 @@ func TestChosenDefaultModeOutlivesThePolicyThatSetIt(t *testing.T) {
 	}
 	if got, err := restarted.Mode(t.Context(), ""); err != nil || got != approval.ModeSafe {
 		t.Fatalf("restarted default = (%v, %v), want the chosen Safe", got, err)
+	}
+}
+
+// repoSessions places every Session in /repo.
+type repoSessions struct{}
+
+func (repoSessions) Get(_ context.Context, id string) (session.Session, error) {
+	return testsupport.MustRestoreSession(session.Snapshot{ID: id, Workspace: testsupport.MustWorkspace("/repo")}), nil
+}
+
+type scopedRuleStore struct {
+	ruleStoreStub
+	sessionID, projectDir *string
+}
+
+func (s scopedRuleStore) Visible(ctx context.Context, sessionID, projectDir string, limit int) ([]approval.Rule, error) {
+	*s.sessionID, *s.projectDir = sessionID, projectDir
+	return s.ruleStoreStub.Visible(ctx, sessionID, projectDir, limit)
+}
+
+type failingSessions struct{ err error }
+
+func (f failingSessions) Get(context.Context, string) (session.Session, error) {
+	return session.Session{}, f.err
+}
+
+func TestListRulesScopesBySessionProject(t *testing.T) {
+	storeErr := errors.New("store unavailable")
+	for _, test := range []struct {
+		name        string
+		sessions    SessionLookup
+		wantProject string
+		wantErr     error
+	}{
+		{name: "known session", sessions: repoSessions{}, wantProject: "/repo"},
+		{name: "unknown session", sessions: failingSessions{err: session.ErrNotFound}},
+		{name: "session store failure", sessions: failingSessions{err: storeErr}, wantErr: storeErr},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var sessionID, projectDir string
+			store := scopedRuleStore{sessionID: &sessionID, projectDir: &projectDir}
+			policy, err := NewRuntimePolicy(approval.ModeSafe, store, newMemoryModeStore(), test.sessions, testsupport.ToolAuthorities{}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = policy.ListRules(t.Context(), "ses_1")
+			if test.wantErr != nil {
+				if !errors.Is(err, test.wantErr) || sessionID != "" {
+					t.Fatalf("ListRules = %v after reading rules for %q, want %v before any read", err, sessionID, test.wantErr)
+				}
+				return
+			}
+			if err != nil || sessionID != "ses_1" || projectDir != test.wantProject {
+				t.Fatalf("ListRules scope = (%q, %q), %v, want (ses_1, %q)", sessionID, projectDir, err, test.wantProject)
+			}
+		})
 	}
 }

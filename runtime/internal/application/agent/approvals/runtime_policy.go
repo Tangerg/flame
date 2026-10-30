@@ -2,6 +2,7 @@ package approvals
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
@@ -9,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/samber/lo"
 )
 
@@ -19,6 +21,7 @@ func NewRuntimePolicy(
 	initialDefault approval.Mode,
 	store RuleStore,
 	modeStore modeStore,
+	sessions SessionLookup,
 	authorities sourceAuthorities,
 	invalidations invalidation.Publish,
 ) (*RuntimePolicy, error) {
@@ -29,7 +32,7 @@ func NewRuntimePolicy(
 		name  string
 		value any
 	}{
-		{"source authorities", authorities}, {"rule store", store}, {"session mode store", modeStore},
+		{"source authorities", authorities}, {"rule store", store}, {"session mode store", modeStore}, {"session lookup", sessions},
 	} {
 		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("approvals: %s is required", required.name)
@@ -37,7 +40,7 @@ func NewRuntimePolicy(
 	}
 	return &RuntimePolicy{
 		initialDefault: initialDefault, authorities: authorities, store: store,
-		modeStore: modeStore, invalidations: invalidations,
+		modeStore: modeStore, sessions: sessions, invalidations: invalidations,
 	}, nil
 }
 
@@ -67,6 +70,7 @@ type RuntimePolicy struct {
 	authorities    sourceAuthorities
 	modeStore      modeStore
 	store          RuleStore
+	sessions       SessionLookup
 	invalidations  invalidation.Publish
 }
 
@@ -204,7 +208,18 @@ type RuleView struct {
 	Stale      bool
 }
 
-func (r *RuntimePolicy) Rules(ctx context.Context, sessionID, projectDir string) ([]RuleView, error) {
+// ListRules returns the rules visible from a session. Unknown sessions degrade to
+// session/global lookup; storage failures are real errors.
+func (r *RuntimePolicy) ListRules(ctx context.Context, sessionID string) ([]RuleView, error) {
+	projectDir := ""
+	if sessionID != "" {
+		switch sess, err := r.sessions.Get(ctx, sessionID); {
+		case err == nil:
+			projectDir = sess.Workspace().Path()
+		case !errors.Is(err, session.ErrNotFound):
+			return nil, err
+		}
+	}
 	rules, err := r.visibleRules(ctx, sessionID, projectDir)
 	if err != nil {
 		return nil, err
@@ -232,7 +247,15 @@ func (r *RuntimePolicy) Rules(ctx context.Context, sessionID, projectDir string)
 	return view, nil
 }
 
-func (r *RuntimePolicy) SetRule(ctx context.Context, change RuleChange, projectDir string) error {
+func (r *RuntimePolicy) SetRule(ctx context.Context, change RuleChange) error {
+	projectDir := ""
+	if change.Scope != approval.ScopeGlobal {
+		sess, err := r.sessions.Get(ctx, change.SessionID)
+		if err != nil {
+			return err
+		}
+		projectDir = sess.Workspace().Path()
+	}
 	authority, found, err := r.authorities.Fingerprint(ctx, change.Tool)
 	if err != nil {
 		return err
@@ -260,7 +283,8 @@ func (r *RuntimePolicy) visibleRules(ctx context.Context, sessionID, projectDir 
 	return rules, nil
 }
 
-func (r *RuntimePolicy) Forget(ctx context.Context, id string) error {
+// ForgetRule removes one persisted approval rule by id.
+func (r *RuntimePolicy) ForgetRule(ctx context.Context, id string) error {
 	if id == "" {
 		return fmt.Errorf("%w: id is required", approval.ErrInvalidRule)
 	}

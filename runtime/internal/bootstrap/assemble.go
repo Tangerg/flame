@@ -16,7 +16,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
-	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/feedback"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
@@ -279,10 +278,6 @@ func buildAssemblyCore(
 		return nil, fmt.Errorf("runtime: construct Run coordinator: %w", err)
 	}
 	lifetime.runCoordinator = runCoordinator
-	approvalCoordinator, err := approvals.New(policy.approvals, sessionCoordinator)
-	if err != nil {
-		return nil, fmt.Errorf("runtime: construct approval coordinator: %w", err)
-	}
 
 	toolCoordinator, err := workspace.NewDiagnosticTools(execution.toolRegistry, workspaceServices.scope)
 	if err != nil {
@@ -478,7 +473,7 @@ func buildAssemblyCore(
 				PluginCompositions:     pluginCompositions,
 				PluginCalls:            execution.tools.pluginCalls,
 				PluginBrowser:          policy.framework.browser,
-				Approvals:              approvalCoordinator,
+				Approvals:              policy.approvals,
 				Models:                 modelCoordinator,
 				ModelEndpoints:         modelEndpoints,
 				Tools:                  toolCoordinator,
