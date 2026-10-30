@@ -11,8 +11,6 @@ export type ApprovalRuleDecision = "allow" | "deny";
 
 export type FileEntryType = "file" | "dir" | "symlink";
 
-export type HookScope = "global" | "project";
-
 export type InterruptType = "approval" | "question";
 
 export type ItemStatus = "running" | "completed" | "incomplete";
@@ -27,6 +25,8 @@ export type MessagePhase = "commentary" | "finalAnswer";
 export type RememberScopeKind = "session" | "project" | "global";
 
 export type RendererSelectorKind = "toolName" | "resultShape" | "fileExtension";
+
+export type SettingsIntent = "modelProviders";
 
 export type RestoreType = "history" | "files" | "both";
 
