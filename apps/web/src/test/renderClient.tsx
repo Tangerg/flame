@@ -1,3 +1,5 @@
+import { createGoals } from "@/features/goal/application/goals";
+import { GoalProvider } from "@/features/goal/public/goals";
 import { MCPServerMutationOwner } from "@/features/mcp/application/mcpServerMutationOwner";
 import { MCPServersProvider } from "@/features/mcp/public/servers";
 import { createProviders } from "@/features/providers/adapters/providers";
@@ -99,6 +101,9 @@ export function createTestClient(
     });
   const agent = createAgentFixture(client, navigation, runtime, stream, scope);
   if (options.start !== false) agent.start();
+  const goals = createGoals((sessionId) =>
+    agent.access.synchronizeMountedAgentSession(sessionId, "replace-live"),
+  );
   const composer = createComposer(
     {
       getActiveSessionId: agent.access.getActiveSessionId,
@@ -132,29 +137,31 @@ export function createTestClient(
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>
-        <MCPServersProvider value={mcpServers}>
-          <ProvidersProvider value={providers.access}>
-            <ThemeProvider value={theme.access}>
-              <RuntimeProvider value={runtime}>
-                <agent.Provider>
-                  <ComposerProvider value={composer.access}>
-                    <WorkspaceProvider value={workspace.access}>
-                      <WorkingDirectoryProvider value={directory.access}>
-                        <ImageSaveProvider saveImage={saveImage}>
-                          <NotificationProvider value={notifications.access}>
-                            <InstalledPluginsProvider value={installedPlugins.access}>
-                              <ApplicationCalloutLabels>{children}</ApplicationCalloutLabels>
-                            </InstalledPluginsProvider>
-                          </NotificationProvider>
-                        </ImageSaveProvider>
-                      </WorkingDirectoryProvider>
-                    </WorkspaceProvider>
-                  </ComposerProvider>
-                </agent.Provider>
-              </RuntimeProvider>
-            </ThemeProvider>
-          </ProvidersProvider>
-        </MCPServersProvider>
+        <GoalProvider value={goals.access}>
+          <MCPServersProvider value={mcpServers}>
+            <ProvidersProvider value={providers.access}>
+              <ThemeProvider value={theme.access}>
+                <RuntimeProvider value={runtime}>
+                  <agent.Provider>
+                    <ComposerProvider value={composer.access}>
+                      <WorkspaceProvider value={workspace.access}>
+                        <WorkingDirectoryProvider value={directory.access}>
+                          <ImageSaveProvider saveImage={saveImage}>
+                            <NotificationProvider value={notifications.access}>
+                              <InstalledPluginsProvider value={installedPlugins.access}>
+                                <ApplicationCalloutLabels>{children}</ApplicationCalloutLabels>
+                              </InstalledPluginsProvider>
+                            </NotificationProvider>
+                          </ImageSaveProvider>
+                        </WorkingDirectoryProvider>
+                      </WorkspaceProvider>
+                    </ComposerProvider>
+                  </agent.Provider>
+                </RuntimeProvider>
+              </ThemeProvider>
+            </ProvidersProvider>
+          </MCPServersProvider>
+        </GoalProvider>
       </QueryClientProvider>
     );
   }
@@ -171,6 +178,7 @@ export function createTestClient(
     theme,
     providers,
     mcpServers,
+    goals,
     navigation,
     runtime,
     projection,
@@ -205,6 +213,7 @@ export function createTestClient(
       });
     },
     async dispose() {
+      goals.dispose();
       mcpServers.dispose();
       providers.dispose();
       notifications.dispose();

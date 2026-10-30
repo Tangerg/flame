@@ -29,7 +29,7 @@ let owner: GoalComposerModeOwner;
 beforeEach(() => {
   model.sessionId = "session-a";
   model.goal = null;
-  owner = GoalComposerModeOwner.install();
+  owner = testClient.goals.composerMode;
 });
 
 afterEach(async () => {

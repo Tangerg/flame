@@ -14,7 +14,7 @@ import {
   type GoalCommandReceipt,
   type GoalCommandsGateway,
 } from "@/features/goal/application/ports/goalCommandsGateway";
-import { GoalCommandOwner } from "@/features/goal/application/goalCommands";
+import { type GoalCommandOwner } from "@/features/goal/application/goalCommands";
 import { type GoalReadModel, type GoalState } from "@/features/goal/application/goalReadModel";
 function goalMutationIdentity(
   method: "start" | "update" | "clear" | "stop" | "resume",
@@ -97,22 +97,25 @@ class RuntimeGoalCommandsGateway implements GoalCommandsGateway {
   }
 }
 
-export interface GoalRuntimeAdapterInstallation {
+export interface GoalRuntimeAdapter {
   replaceRuntimeGeneration(): void;
   retireRuntimeGeneration(): void;
   dispose(): void;
 }
 
-export function installGoalRuntimeAdapter(
+export function createGoalRuntimeAdapter(
   agentAccess: AgentAccess,
   runtimeAccess: RuntimeAccess,
   runtimeClient: () => FlameClient,
+  commandOwner: GoalCommandOwner,
   hasRuntimeGeneration: boolean,
-): GoalRuntimeAdapterInstallation {
-  let gateway = hasRuntimeGeneration ? new RuntimeGoalCommandsGateway(runtimeClient()) : null;
-  const commandOwner = GoalCommandOwner.install(gateway, (sessionId) =>
-    agentAccess.synchronizeMountedAgentSession(sessionId, "replace-live"),
-  );
+): GoalRuntimeAdapter {
+  let gateway: RuntimeGoalCommandsGateway | null = null;
+  if (hasRuntimeGeneration) {
+    commandOwner.replaceRuntimeGeneration(
+      () => (gateway = new RuntimeGoalCommandsGateway(runtimeClient())),
+    );
+  }
   const disposeSharedMaterial = agentAccess.registerAgentSessionSharedMaterial<SessionSnapshot>(
     "goal",
     (_sessionId, snapshot) => {
@@ -138,7 +141,7 @@ export function installGoalRuntimeAdapter(
     },
     dispose() {
       disposeSharedMaterial();
-      commandOwner.dispose();
+      commandOwner.retireRuntimeGeneration();
       gateway?.dispose();
       gateway = null;
     },

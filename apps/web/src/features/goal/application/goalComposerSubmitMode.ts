@@ -6,13 +6,16 @@ import {
 import { type GoalReadModel, type GoalState } from "@/features/goal/application/goalReadModel";
 import { goalCanResume } from "@/features/goal/application/goalStatusPresentation";
 import { type StartGoalInput } from "@/features/goal/application/ports/goalCommandsGateway";
-import { GoalComposerModeOwner } from "@/features/goal/application/goalComposerMode";
+import {
+  GoalComposerModeOwner,
+  type GoalComposerSubmission,
+} from "@/features/goal/application/goalComposerMode";
 export interface GoalComposerSubmitDependencies {
   getActiveSessionId(): string | null;
   goalState(sessionId: string): GoalState | undefined;
   runtimeAvailable(): boolean;
   runOptions(): AgentRunStartOptions;
-  start(input: StartGoalInput): Promise<void>;
+  captureStart(): (input: StartGoalInput) => Promise<void>;
   focusComposer(): void;
   reportUnavailable(): void;
   reportUnsupportedAttachments(): void;
@@ -40,7 +43,7 @@ function submitGoalComposerMode(
   context: ComposerSubmitModeContext,
 ): void {
   const sessionId = dependencies.getActiveSessionId();
-  if (!sessionId || !owner.ownsPublication() || !dependencies.runtimeAvailable()) {
+  if (!sessionId || owner.retired || !dependencies.runtimeAvailable()) {
     dependencies.reportUnavailable();
     return;
   }
@@ -74,30 +77,32 @@ function submitGoalComposerMode(
     return;
   }
 
-  const start = () => {
-    void startGoal(owner, dependencies, context, sessionId, objective);
+  const startCommand = dependencies.captureStart();
+  const start = (submission: GoalComposerSubmission) => {
+    void startGoal(submission, dependencies, startCommand, context, sessionId, objective);
   };
   if (existing) {
     owner.requestReplacement(sessionId, existing.objective, start);
     return;
   }
-  if (!owner.begin(sessionId)) return;
-  start();
+  const submission = owner.begin(sessionId);
+  if (submission) start(submission);
 }
 
 async function startGoal(
-  owner: GoalComposerModeOwner,
+  submission: GoalComposerSubmission,
   dependencies: GoalComposerSubmitDependencies,
+  startCommand: (input: StartGoalInput) => Promise<void>,
   context: ComposerSubmitModeContext,
   sessionId: string,
   objective: string,
 ): Promise<void> {
   try {
-    await dependencies.start({ sessionId, objective, ...dependencies.runOptions() });
-    const committed = owner.finish(sessionId, true);
+    await startCommand({ sessionId, objective, ...dependencies.runOptions() });
+    const committed = submission.finish(true);
     if (committed) context.accept();
   } catch (error) {
-    owner.finish(sessionId, false);
+    submission.finish(false);
     if (!dependencies.retired(error)) dependencies.reportStartError(error);
   }
 }

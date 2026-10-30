@@ -14,12 +14,7 @@ import { durationText } from "@/lib/format";
 import { useElapsedMillis } from "@/lib/useElapsedMillis";
 import { notifyError } from "@/features/notifications/public/notifications";
 import { useCommandAction } from "@/features/command/public/commandAction";
-import {
-  clearGoal,
-  resumeGoal,
-  stopGoal,
-  updateGoal,
-} from "@/features/goal/application/goalCommands";
+import { useGoalCommands } from "@/features/goal/public/goals";
 import {
   GOAL_STATUS_I18N,
   GOAL_REASON_I18N,
@@ -117,6 +112,12 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
   const runtimeAccess = useRuntime();
 
   const t = useT();
+  const {
+    clear: clearGoal,
+    resume: resumeGoal,
+    stop: stopGoal,
+    update: updateGoal,
+  } = useGoalCommands();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(goal.objective);
   const [editorError, setEditorError] = useState<string>();

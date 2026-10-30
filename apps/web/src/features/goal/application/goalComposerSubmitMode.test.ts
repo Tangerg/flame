@@ -15,15 +15,18 @@ let composerText: string;
 
 let goalState: GoalState;
 
+let start: ReturnType<GoalComposerSubmitDependencies["captureStart"]>;
+
 let dependencies: GoalComposerSubmitDependencies;
 
 let context: ComposerSubmitModeContext;
 
 beforeEach(() => {
-  owner = GoalComposerModeOwner.install();
+  owner = new GoalComposerModeOwner();
   sessionId = "ses_a";
   composerText = "/goal ship alpha";
   goalState = { available: true, goal: null };
+  start = vi.fn(async () => {});
   dependencies = {
     getActiveSessionId: () => sessionId,
     goalState: () => goalState,
@@ -33,7 +36,7 @@ beforeEach(() => {
       model: "gpt-5",
       reasoningEffort: "high",
     }),
-    start: vi.fn(async () => {}),
+    captureStart: () => start,
     focusComposer: vi.fn(),
     reportUnavailable: vi.fn(),
     reportUnsupportedAttachments: vi.fn(),
@@ -54,11 +57,27 @@ beforeEach(() => {
 
 afterEach(() => owner.dispose());
 
-function expectSendable(start: GoalComposerSubmitDependencies["start"]): void {
+function expectSendable(start: ReturnType<GoalComposerSubmitDependencies["captureStart"]>): void {
   expect(validateWire("StartGoalRequest", vi.mocked(start).mock.calls[0]?.[0])).toEqual([]);
 }
 
 describe("Goal composer submit mode", () => {
+  it("confirms replacement through the command captured when the intent was created", async () => {
+    goalState = {
+      available: true,
+      goal: { objective: "old objective", status: "paused" } as GoalState["goal"],
+    };
+    const original = start;
+    const mode = createGoalComposerSubmitMode(owner, dependencies);
+    mode.submit(context);
+    start = vi.fn(async () => {});
+
+    owner.confirmReplacement("ses_a");
+
+    await vi.waitFor(() => expect(original).toHaveBeenCalledOnce());
+    expect(start).not.toHaveBeenCalled();
+  });
+
   it("turns a bare /goal command into composer mode without opening a second draft", () => {
     context = {
       ...context,
@@ -74,7 +93,7 @@ describe("Goal composer submit mode", () => {
     expect(owner.snapshot()).toMatchObject({ sessionId: "ses_a", phase: "armed" });
     expect(context.clear).toHaveBeenCalledOnce();
     expect(dependencies.focusComposer).toHaveBeenCalledOnce();
-    expect(dependencies.start).not.toHaveBeenCalled();
+    expect(start).not.toHaveBeenCalled();
   });
 
   it("starts one uncapped Goal through the existing composer submit transaction", async () => {
@@ -83,7 +102,7 @@ describe("Goal composer submit mode", () => {
     mode.submit(context);
 
     await vi.waitFor(() =>
-      expect(dependencies.start).toHaveBeenCalledWith({
+      expect(start).toHaveBeenCalledWith({
         sessionId: "ses_a",
         objective: "ship alpha",
         provider: "openai",
@@ -91,7 +110,7 @@ describe("Goal composer submit mode", () => {
         reasoningEffort: "high",
       }),
     );
-    expectSendable(dependencies.start);
+    expectSendable(start);
     expect(context.accept).toHaveBeenCalledOnce();
     expect(owner.snapshot().phase).toBe("inactive");
   });
@@ -103,17 +122,17 @@ describe("Goal composer submit mode", () => {
     mode.submit(context);
 
     await vi.waitFor(() =>
-      expect(dependencies.start).toHaveBeenCalledWith({
+      expect(start).toHaveBeenCalledWith({
         sessionId: "ses_a",
         objective: "ship alpha",
       }),
     );
-    expectSendable(dependencies.start);
+    expectSendable(start);
   });
 
   it("keeps the exact draft armed when Runtime rejects the start", async () => {
     const error = new Error("offline");
-    dependencies.start = vi.fn(async () => {
+    start = vi.fn(async () => {
       throw error;
     });
     const mode = createGoalComposerSubmitMode(owner, dependencies);
@@ -139,16 +158,16 @@ describe("Goal composer submit mode", () => {
       phase: "confirming",
       replacedObjective: "old objective",
     });
-    expect(dependencies.start).not.toHaveBeenCalled();
+    expect(start).not.toHaveBeenCalled();
 
     owner.confirmReplacement("ses_a");
-    await vi.waitFor(() => expect(dependencies.start).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(start).toHaveBeenCalledOnce());
     expect(context.accept).toHaveBeenCalledOnce();
   });
 
   it("reports acceptance to the captured submission after a later draft edit", async () => {
     let finish!: () => void;
-    dependencies.start = vi.fn(
+    start = vi.fn(
       () =>
         new Promise<void>((resolve) => {
           finish = resolve;
@@ -185,7 +204,7 @@ describe("Goal composer submit mode", () => {
 
     expect(dependencies.reportUnavailable).toHaveBeenCalledOnce();
     expect(owner.snapshot().phase).toBe("inactive");
-    expect(dependencies.start).not.toHaveBeenCalled();
+    expect(start).not.toHaveBeenCalled();
     expect(context.accept).not.toHaveBeenCalled();
   });
 });

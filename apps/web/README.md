@@ -59,6 +59,13 @@ enablement, authorization, tool exposure and reconnect capture that instance's
 current command generation. Runtime replacement retires those commands; plugin
 shutdown retires the generation and renderer shutdown disposes the owner.
 
+Goal commands and composer mode belong to one explicitly composed feature
+instance. Commands retain their admitted Runtime generation, including a pending
+replacement confirmation. Resetting composer mode invalidates its submission
+settlement, so a late reply cannot accept or change a newer draft in the same
+Session. Plugin shutdown retires Runtime work and resets mode; renderer shutdown
+disposes both owners.
+
 Question drafts retain raw text and one literal custom choice, including commas.
 The editor can explicitly skip a field with an empty answer. Runtime admits the
 complete candidate; Web does not trim or deduplicate answers before submission.

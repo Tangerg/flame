@@ -50,6 +50,7 @@ beforeEach(async () => {
     testClient.theme,
     testClient.providers,
     testClient.mcpServers,
+    testClient.goals,
   );
   vi.stubGlobal("fetch", () => Promise.reject(new Error("offline in tests")));
   vi.stubGlobal(

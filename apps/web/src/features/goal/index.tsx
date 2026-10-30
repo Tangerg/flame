@@ -13,15 +13,15 @@ import { COMPOSER_SUBMIT_MODE, SLASH_COMMAND } from "@/features/composer/public/
 import { TOOL_STANDING_SURFACE } from "@/features/chat/public/tools/types";
 import { t } from "@/lib/i18n/index";
 import { rpcErrorText } from "@/lib/rpcErrors";
-import { installGoalRuntimeAdapter } from "@/features/goal/adapters/runtimeGoalCommandsGateway";
+import { createGoalRuntimeAdapter } from "@/features/goal/adapters/runtimeGoalCommandsGateway";
 import { GoalStatusSurface } from "@/features/goal/ui/GoalStatusSurface";
 import { GoalModeIndicator } from "@/features/goal/ui/GoalModeIndicator";
 import { RUNTIME_STREAM, followRuntimeGeneration } from "@/features/connection/public/services";
 
 import { focusComposer } from "@/features/composer/public/focus";
 import { runtimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
-import { startGoal } from "@/features/goal/application/goalCommands";
-import { GoalComposerModeOwner } from "@/features/goal/application/goalComposerMode";
+import { type Goals } from "@/features/goal/application/goals";
+import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { createGoalComposerSubmitMode } from "@/features/goal/application/goalComposerSubmitMode";
 import { type GoalState } from "@/features/goal/application/goalReadModel";
 const GOAL_SURFACE = "composer.overlay.top:goal";
@@ -35,22 +35,25 @@ export function createGoalPlugin(
   composerAccess: ComposerAccess,
   runtimeAccess: RuntimeAccess,
   runtimeClient: () => FlameClient,
+  goals: Goals,
 ) {
   return definePlugin({
     name: "flame.builtin.goal",
     requires: { runtime: RUNTIME_STREAM },
     setup(ctx) {
-      const composerMode = GoalComposerModeOwner.install();
-      ctx.cleanup(() => composerMode.dispose());
-      const runtimeAdapter = installGoalRuntimeAdapter(
+      const composerMode = goals.composerMode;
+      ctx.cleanup(() => composerMode.reset());
+      const runtimeAdapter = createGoalRuntimeAdapter(
         agentAccess,
         runtimeAccess,
         runtimeClient,
+        goals.commands,
         ctx.runtime.connectionGeneration() !== null,
       );
       ctx.cleanup(() => runtimeAdapter.dispose());
       ctx.cleanup(
         followRuntimeGeneration(ctx.runtime, (next) => {
+          composerMode.reset();
           if (next === null) runtimeAdapter.retireRuntimeGeneration();
           else runtimeAdapter.replaceRuntimeGeneration();
         }),
@@ -76,7 +79,13 @@ export function createGoalPlugin(
             agentAccess.getAgentSessionSharedMaterial<GoalState>(sessionId, "goal"),
           runtimeAvailable: runtimeCommandsAvailable.bind(null, runtimeAccess),
           runOptions: resolveAgentRunStartOptions,
-          start: startGoal,
+          captureStart: () => {
+            const commands = goals.commands.capture();
+            return (input) => {
+              if (!commands) throw new GenerationRetiredError("goal_command_generation");
+              return commands.start(input);
+            };
+          },
           focusComposer: focusComposer.bind(null, composerAccess),
           reportUnavailable: () => notifyError(t("goal.error.unavailable")),
           reportUnsupportedAttachments: () => notifyError(t("goal.error.attachmentsUnsupported")),

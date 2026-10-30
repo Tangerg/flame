@@ -57,7 +57,7 @@ afterEach(async () => {
 
 describe("Goal and mounted Session integration", () => {
   it("retains the owner stop reason across cold remount and refreshes it from the next snapshot", async () => {
-    const { installGoalRuntimeAdapter } =
+    const { createGoalRuntimeAdapter } =
       await import("@/features/goal/adapters/runtimeGoalCommandsGateway");
     const capabilities = discovery.capabilities as ServerCapabilities;
     testClient.projection.store.setState({
@@ -87,10 +87,11 @@ describe("Goal and mounted Session integration", () => {
         sessions: { snapshot },
         runs: { recoverCommands: async () => [] },
       }) as unknown as FlameClient;
-    const adapter = installGoalRuntimeAdapter(
+    const adapter = createGoalRuntimeAdapter(
       testClient.agent.access,
       testClient.runtime,
       getRuntimeClient,
+      testClient.goals.commands,
       true,
     );
     const driver = { start, resume } as unknown as RuntimeAgentDriver;
@@ -142,9 +143,8 @@ describe("Goal and mounted Session integration", () => {
   });
 
   it("settles Goal edits and admits pause while the active run keeps streaming", async () => {
-    const { installGoalRuntimeAdapter } =
+    const { createGoalRuntimeAdapter } =
       await import("@/features/goal/adapters/runtimeGoalCommandsGateway");
-    const { updateGoal, stopGoal } = await import("@/features/goal/application/goalCommands");
     const update = vi.fn().mockResolvedValue({ sessionId: SID });
     const stop = vi.fn().mockResolvedValue({ sessionId: SID });
     const material = {
@@ -170,10 +170,11 @@ describe("Goal and mounted Session integration", () => {
         runs: { recoverCommands: async () => [], subscribe },
         goals: { update, stop },
       }) as unknown as FlameClient;
-    const adapter = installGoalRuntimeAdapter(
+    const adapter = createGoalRuntimeAdapter(
       testClient.agent.access,
       testClient.runtime,
       getRuntimeClient,
+      testClient.goals.commands,
       true,
     );
     const driver = { start: vi.fn(), resume: vi.fn() } as unknown as RuntimeAgentDriver;
@@ -183,7 +184,9 @@ describe("Goal and mounted Session integration", () => {
     try {
       await waitFor(() => expect(subscribe).toHaveBeenCalledOnce());
       let edited = false;
-      const editing = updateGoal({ sessionId: SID, objective: "Finish the Go HTTP client" });
+      const editing = testClient.goals.commands
+        .capture()!
+        .update({ sessionId: SID, objective: "Finish the Go HTTP client" });
       void editing.then(
         () => {
           edited = true;
@@ -198,7 +201,7 @@ describe("Goal and mounted Session integration", () => {
         selectCurrentRootRun(testClient.agent.projection.store.getState().sessions[SID]!.view)
           ?.status,
       ).toBe("running");
-      await stopGoal(SID);
+      await testClient.goals.commands.capture()!.stop(SID);
       expect(stop).toHaveBeenCalledOnce();
       expect(snapshot).toHaveBeenCalledTimes(3);
     } finally {

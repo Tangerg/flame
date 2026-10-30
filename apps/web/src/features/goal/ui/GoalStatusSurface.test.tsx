@@ -28,11 +28,14 @@ const model = vi.hoisted(() => ({
   } as GoalReadModel,
 }));
 
-vi.mock("@/features/goal/application/goalCommands", () => ({
-  clearGoal: model.clearGoal,
-  updateGoal: model.updateGoal,
-  stopGoal: model.stopGoal,
-  resumeGoal: model.resumeGoal,
+vi.mock("@/features/goal/public/goals", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/goal/public/goals")>()),
+  useGoalCommands: () => ({
+    clear: model.clearGoal,
+    update: model.updateGoal,
+    stop: model.stopGoal,
+    resume: model.resumeGoal,
+  }),
 }));
 
 vi.mock("@/features/connection/public/serviceStatus", () => ({

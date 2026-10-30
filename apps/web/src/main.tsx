@@ -1,3 +1,5 @@
+import { createGoals } from "@/features/goal/application/goals";
+import { GoalProvider } from "@/features/goal/public/goals";
 import { MCPServerMutationOwner } from "@/features/mcp/application/mcpServerMutationOwner";
 import { MCPServersProvider } from "@/features/mcp/public/servers";
 import { createProviders } from "@/features/providers/adapters/providers";
@@ -59,6 +61,9 @@ const agent = createAgent(
   connection.stream,
   connection.scope,
 );
+const goals = createGoals((sessionId) =>
+  agent.access.synchronizeMountedAgentSession(sessionId, "replace-live"),
+);
 const composer = createComposer(
   {
     getActiveSessionId: agent.access.getActiveSessionId,
@@ -108,33 +113,36 @@ const plugins = createBuiltinPlugins(
   theme,
   providers,
   mcpServers,
+  goals,
 );
 
 function ApplicationContext({ children }: { children: ReactNode }) {
   return (
-    <MCPServersProvider value={mcpServers}>
-      <ProvidersProvider value={providers.access}>
-        <ThemeProvider value={theme.access}>
-          <RuntimeProvider value={connection.access}>
-            <agent.Provider>
-              <ComposerProvider value={composer.access}>
-                <WorkspaceProvider value={workspace.access}>
-                  <WorkingDirectoryProvider value={directory.access}>
-                    <ImageSaveProvider saveImage={saveImage}>
-                      <NotificationProvider value={notifications.access}>
-                        <InstalledPluginsProvider value={installedPlugins.access}>
-                          {children}
-                        </InstalledPluginsProvider>
-                      </NotificationProvider>
-                    </ImageSaveProvider>
-                  </WorkingDirectoryProvider>
-                </WorkspaceProvider>
-              </ComposerProvider>
-            </agent.Provider>
-          </RuntimeProvider>
-        </ThemeProvider>
-      </ProvidersProvider>
-    </MCPServersProvider>
+    <GoalProvider value={goals.access}>
+      <MCPServersProvider value={mcpServers}>
+        <ProvidersProvider value={providers.access}>
+          <ThemeProvider value={theme.access}>
+            <RuntimeProvider value={connection.access}>
+              <agent.Provider>
+                <ComposerProvider value={composer.access}>
+                  <WorkspaceProvider value={workspace.access}>
+                    <WorkingDirectoryProvider value={directory.access}>
+                      <ImageSaveProvider saveImage={saveImage}>
+                        <NotificationProvider value={notifications.access}>
+                          <InstalledPluginsProvider value={installedPlugins.access}>
+                            {children}
+                          </InstalledPluginsProvider>
+                        </NotificationProvider>
+                      </ImageSaveProvider>
+                    </WorkingDirectoryProvider>
+                  </WorkspaceProvider>
+                </ComposerProvider>
+              </agent.Provider>
+            </RuntimeProvider>
+          </ThemeProvider>
+        </ProvidersProvider>
+      </MCPServersProvider>
+    </GoalProvider>
   );
 }
 
@@ -168,6 +176,7 @@ const renderer = new ClientRenderer({
   closeConnection: async () => {
     const failures: unknown[] = [];
     for (const dispose of [
+      goals.dispose,
       () => mcpServers.dispose(),
       providers.dispose,
       notifications.dispose,

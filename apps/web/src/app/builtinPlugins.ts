@@ -1,3 +1,4 @@
+import { type Goals } from "@/features/goal/application/goals";
 import { type MCPServerMutationOwner } from "@/features/mcp/application/mcpServerMutationOwner";
 import { type Providers } from "@/features/providers/adapters/providers";
 import { type Theme } from "@/features/theme/adapters/theme";
@@ -96,6 +97,7 @@ export function createBuiltinPlugins(
   theme: Theme,
   providers: Providers,
   mcpServers: MCPServerMutationOwner,
+  goals: Goals,
 ): AnyPlugin[] {
   const agentAccess = agent.access;
   const composerAccess = composerOwner.access;
@@ -182,7 +184,7 @@ export function createBuiltinPlugins(
     sessionSearch,
     commandMenu,
     narrativeRails,
-    createGoalPlugin(agentAccess, composerAccess, runtimeAccess, runtimeClient),
+    createGoalPlugin(agentAccess, composerAccess, runtimeAccess, runtimeClient, goals),
     planProgress,
     providerSetup,
     contextUsage,
