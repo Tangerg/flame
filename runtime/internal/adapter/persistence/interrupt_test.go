@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -47,7 +48,7 @@ func TestInterruptStore_OpenGetListDelete(t *testing.T) {
 		ExecutorID: "turn_1",
 		Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 			ItemID: "item_question", ItemOccurredAt: time.Unix(2, 0).UTC(), RunID: "run_1", Kind: run.InterruptQuestion,
-			Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Choose", Kind: transcript.QuestionText}}},
+			Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Choose", Kind: questioncontract.Text}}},
 		}}),
 		Bindings: []runs.InterruptBinding{{
 			InterruptItemID: "item_question",
@@ -167,7 +168,7 @@ func TestInterruptStoreRoundTripsContinuationsWithoutExecutorTopology(t *testing
 		ExecutorID: "turn_1",
 		Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 			ItemID: "item_child", ItemOccurredAt: time.Unix(2, 0).UTC(), RunID: "run_child", Kind: run.InterruptQuestion,
-			Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}},
+			Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}},
 		}}),
 		Bindings: []runs.InterruptBinding{{
 			InterruptItemID: "item_child",
@@ -226,7 +227,7 @@ func TestInterruptStoreRejectsUnknownExecutorTopologyFields(t *testing.T) {
 		RootRunID: "run_root", ExecutorID: "turn_1",
 		Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 			ItemID: "item_question", ItemOccurredAt: time.Unix(2, 0).UTC(), RunID: "run_root", Kind: run.InterruptQuestion,
-			Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}},
+			Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}},
 		}}),
 		Bindings: []runs.InterruptBinding{{
 			InterruptItemID: "item_question", MemberID: "member_root", RequestID: "request_root",
@@ -277,7 +278,7 @@ func TestInterruptStoreExecutorRootHasOnePendingOwner(t *testing.T) {
 			RootRunID: runID, ExecutorID: "turn_" + runID,
 			Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 				ItemID: "item_" + runID, ItemOccurredAt: time.Unix(2, 0).UTC(), RunID: runID,
-				Kind: run.InterruptQuestion, Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "continue?", Kind: transcript.QuestionText}}},
+				Kind: run.InterruptQuestion, Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "continue?", Kind: questioncontract.Text}}},
 			}}),
 			Bindings: []runs.InterruptBinding{{
 				InterruptItemID: "item_" + runID,

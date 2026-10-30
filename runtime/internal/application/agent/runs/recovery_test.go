@@ -10,6 +10,7 @@ import (
 	"time"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -131,14 +132,14 @@ func TestRecoveryRejectsInvalidTranscriptBeforePlanning(t *testing.T) {
 		ID: "item_foreign", SessionID: "session_foreign", RunID: active.ID(),
 		Kind: transcript.QuestionItem, OccurredAt: createdAt.Add(time.Hour),
 		Question: &transcript.Question{
-			Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}},
+			Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}},
 		},
 	})
 	duplicate := testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_duplicate", SessionID: active.SessionID(), RunID: active.ID(),
 		Kind: transcript.QuestionItem, OccurredAt: createdAt,
 		Question: &transcript.Question{
-			Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}},
+			Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}},
 		},
 	})
 	orphanRunning := testsupport.MustRestoreItem(testsupport.ItemInput{
@@ -758,7 +759,7 @@ func TestRecoveryMarksAbandonedRunTreeLostInPostorder(t *testing.T) {
 	item := testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_running", SessionID: root.SessionID(), RunID: child.ID(),
 		Kind: transcript.QuestionItem, OccurredAt: createdAt,
-		Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}},
+		Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}},
 	})
 	toolItem := testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_tool_child", SessionID: root.SessionID(), RunID: child.ID(),
@@ -1380,7 +1381,7 @@ func coherentRecoveryPark(t *testing.T) (rundomain.Run, Pending, transcript.Item
 	if err != nil {
 		t.Fatalf("model selection: %v", err)
 	}
-	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}}
+	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}}
 	interrupt := transcript.Interrupt{
 		ItemID: "item_question", ItemOccurredAt: createdAt,
 		RunID: "run_root", Kind: rundomain.InterruptQuestion, Question: question,

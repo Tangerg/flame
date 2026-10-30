@@ -120,7 +120,7 @@ func mayImportRuntime(relative, imported string) bool {
 		return true
 	}
 	switch imported {
-	case sdkPath + "/protocol", sdkPath + "/extension", sdkPath + "/exactint", sdkPath + "/jsonvalue", sdkPath + "/model", sdkPath + "/filesystem/commit":
+	case sdkPath + "/protocol", sdkPath + "/extension", sdkPath + "/exactint", sdkPath + "/jsonvalue", sdkPath + "/model", sdkPath + "/question", sdkPath + "/filesystem/commit":
 		return true
 	case sdkPath + "/filesystem":
 		ring := ringOf(relative)
@@ -139,6 +139,8 @@ func TestRuntimeImportBoundaries(t *testing.T) {
 		consumer, imported string
 		allowed            bool
 	}{
+		{consumer: "internal/domain/conversation/interrupt.go", imported: sdkPath + "/question", allowed: true},
+		{consumer: "internal/delivery/terminal/question.go", imported: sdkPath + "/question", allowed: true},
 		{consumer: "main.go", imported: localRuntimePath, allowed: true},
 		{consumer: "internal/application/settings/config.go", imported: localRuntimePath, allowed: true},
 		{consumer: "internal/application/workbench/installed_memory_commands.go", imported: sdkPath + "/extension", allowed: true},

@@ -5,6 +5,13 @@ It consumes the independent Qimu module. It has no dependency on Runtime,
 products, first-party plugins or repository tooling,
 including in tests and development commands.
 
+`question.Contract` is the Runtime's immutable public answer contract. Runtime
+Domain admission, command validation and CLI editing use the same field, option,
+whitespace, uniqueness and custom-value rules. A complete candidate contains one
+values slice per field; an empty inner slice explicitly skips it. Question
+lifecycle, accepted answers and durable state remain owned by Runtime. Field
+kinds and limits feed protocol and Tool schema projections from this contract.
+
 Workspace file reads return complete normalized lines and their actual served
 coordinates, including whole-file requests. `ReadFileRequest.FromEnd` selects
 the suffix of its range without reversing source order. Callers must use those
@@ -27,6 +34,7 @@ is refused without conversion.
 | `plugin/memory`                                             | Published Memory consumer contract                                    |
 | `plugin/sqlite`                                             | Atomic plugin mutations and durable receipts                          |
 | `model`                                                     | Provider/model selection, generation values and token estimates       |
+| `question`                                                  | Runtime's ordered answer space and field-specific validation          |
 | `model/catalog`                                             | Translation of Scope's released model catalog                         |
 | `identity`                                                  | Shared resource identities, canonical digests and lexical constraints |
 | `filesystem`                                                | File admission, path identity, directory resolution and leases        |

@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	jsonv1 "encoding/json"
 	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"reflect"
 	"strings"
@@ -626,5 +627,54 @@ func TestProjectIncompleteModelObservationsFromRuntime(t *testing.T) {
 				t.Fatalf("live/restored observation differs: live=%+v restored=%+v", completed.Block, restored)
 			}
 		})
+	}
+}
+
+func TestExplicitSkipSurvivesWireColdAndCompletionProjection(t *testing.T) {
+	at := time.Unix(1, 0).UTC()
+	item := protocol.Item{ID: "item_skip", RunID: "run_1", Status: protocol.ItemStatusCompleted, Type: protocol.ItemTypeQuestion, CreatedAt: at, Question: &protocol.Question{
+		Fields: []protocol.QuestionField{{Prompt: "Context", Type: protocol.QuestionFieldText}}, Answers: [][]string{{}},
+	}}
+	encoded, err := json.Marshal(item)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(encoded, []byte(`"answers":[[]]`)) {
+		t.Fatalf("skip encoding = %s", encoded)
+	}
+	var decoded protocol.Item
+	if err := json.Unmarshal(encoded, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if err := protocol.ValidateWireTree(decoded); err != nil {
+		t.Fatal(err)
+	}
+	cold, err := projectItem(decoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	live, included, err := projectEvent(protocol.RunEvent{EventID: "evt_skip", RunID: "run_1", SegmentID: "seg_1", Timestamp: at, Event: protocol.StreamEvent{Type: protocol.StreamItemCompleted, Item: &decoded}})
+	if err != nil || !included {
+		t.Fatalf("completion = %+v, %v", live, err)
+	}
+	completed, ok := live.Event.(conversation.BlockCompleted)
+	if !ok {
+		t.Fatalf("completion type = %T", live.Event)
+	}
+	for _, block := range []conversation.Block{cold, completed.Block} {
+		if block.Question == nil || !block.Question.Answered() || len(block.Question.Answers) != 1 || len(block.Question.Answers[0]) != 0 {
+			t.Fatalf("skip projection = %+v", block.Question)
+		}
+	}
+	if !cold.Question.Equal(*completed.Block.Question) {
+		t.Fatal("cold and completion projections disagree about skip")
+	}
+	decoded.Question.Answers = nil
+	pending, err := projectItem(decoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pending.Question.Answered() {
+		t.Fatal("an unanswered question became an accepted skip")
 	}
 }

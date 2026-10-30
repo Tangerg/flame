@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/keymap"
@@ -14,50 +15,69 @@ import (
 
 type questionnaire struct {
 	question  conversation.Question
+	contract  questioncontract.Contract
 	current   int
 	responses []questionResponse
 }
 
 type questionResponse struct {
-	field    conversation.QuestionField
-	text     string
-	single   questionChoice
-	multiple []questionChoice
-	custom   string
+	field     conversation.QuestionField
+	contract  questioncontract.Contract
+	index     int
+	confirmed bool
+	text      string
+	single    questionChoice
+	multiple  []questionChoice
+	custom    string
 }
+
+type questionChoiceKind uint8
+
+const (
+	offeredChoice questionChoiceKind = iota + 1
+	customChoice
+	skippedChoice
+)
 
 type questionChoice struct {
-	value  string
-	custom bool
+	kind  questionChoiceKind
+	value string
 }
 
-func offeredQuestionChoice(value string) questionChoice { return questionChoice{value: value} }
-
-func customQuestionChoice() questionChoice { return questionChoice{custom: true} }
+func offeredQuestionChoice(value string) questionChoice {
+	return questionChoice{kind: offeredChoice, value: value}
+}
+func customQuestionChoice() questionChoice  { return questionChoice{kind: customChoice} }
+func skippedQuestionChoice() questionChoice { return questionChoice{kind: skippedChoice} }
 
 func newQuestionnaire(question conversation.Question, previous conversation.Answer) (*questionnaire, error) {
-	if len(question.Fields) == 0 {
-		return nil, errors.New("runtime returned a question without fields")
+	owned := question.Clone()
+	contract, err := owned.AnswerContract()
+	if err != nil {
+		return nil, err
 	}
-	review := &questionnaire{question: question.Clone(), responses: make([]questionResponse, len(question.Fields))}
-	answer, ok := previous.(conversation.QuestionAnswer)
-	for index, field := range review.question.Fields {
-		var values []string
-		if ok && index < len(answer.Values) {
-			values = answer.Values[index]
+	review := &questionnaire{question: owned, contract: contract, responses: make([]questionResponse, len(owned.Fields))}
+	answer, hasPrevious := previous.(conversation.QuestionAnswer)
+	if previous != nil && !hasPrevious {
+		return nil, errors.New("questionnaire received another answer kind")
+	}
+	if hasPrevious {
+		if err := contract.Validate(answer.Values); err != nil {
+			return nil, err
 		}
-		review.responses[index] = newQuestionResponse(field, values)
+	}
+	for index, field := range owned.Fields {
+		response := questionResponse{field: field, contract: contract, index: index}
+		if field.Kind == conversation.QuestionSingle && len(field.Options) > 0 {
+			response.single = offeredQuestionChoice(field.Options[0].Label)
+		}
+		if hasPrevious {
+			response.restore(answer.Values[index])
+			response.confirmed = true
+		}
+		review.responses[index] = response
 	}
 	return review, nil
-}
-
-func newQuestionResponse(field conversation.QuestionField, previous []string) questionResponse {
-	response := questionResponse{field: field}
-	if field.Kind == conversation.QuestionSingle && len(field.Options) > 0 {
-		response.single = offeredQuestionChoice(field.Options[0].Label)
-	}
-	response.restore(previous)
-	return response
 }
 
 func (q *questionResponse) restore(values []string) {
@@ -68,6 +88,7 @@ func (q *questionResponse) restore(values []string) {
 		}
 	case conversation.QuestionSingle:
 		if len(values) == 0 {
+			q.single = skippedQuestionChoice()
 			return
 		}
 		if fieldOffers(q.field, values[0]) || !q.field.AllowCustom {
@@ -77,17 +98,17 @@ func (q *questionResponse) restore(values []string) {
 		q.single = customQuestionChoice()
 		q.custom = values[0]
 	case conversation.QuestionMulti:
-		custom := make([]string, 0, len(values))
+		hasCustom := false
 		for _, value := range values {
 			if fieldOffers(q.field, value) || !q.field.AllowCustom {
 				q.multiple = append(q.multiple, offeredQuestionChoice(value))
 				continue
 			}
-			custom = append(custom, value)
+			q.custom = value
+			hasCustom = true
 		}
-		if len(custom) > 0 {
+		if hasCustom {
 			q.multiple = append(q.multiple, customQuestionChoice())
-			q.custom = strings.Join(custom, ", ")
 		}
 	}
 }
@@ -135,71 +156,82 @@ func (q *questionnaire) Answer() (conversation.QuestionAnswer, error) {
 	}
 	answer := conversation.QuestionAnswer{Values: make([][]string, len(q.question.Fields))}
 	for index := range q.responses {
+		if !q.responses[index].confirmed {
+			return conversation.QuestionAnswer{}, fmt.Errorf("question field %d has not been confirmed", index+1)
+		}
 		values, err := q.responses[index].values()
 		if err != nil {
 			return conversation.QuestionAnswer{}, fmt.Errorf("answer question field %d: %w", index+1, err)
 		}
 		answer.Values[index] = values
 	}
-	if err := conversation.ValidateAnswer(q.question, answer); err != nil {
+	if err := q.contract.Validate(answer.Values); err != nil {
 		return conversation.QuestionAnswer{}, fmt.Errorf("answer question: %w", err)
 	}
 	return answer, nil
 }
 
+func (q *questionnaire) ConfirmCurrent() error {
+	response := q.response(q.current)
+	if response == nil {
+		return errors.New("questionnaire has no current response")
+	}
+	if _, err := response.values(); err != nil {
+		return err
+	}
+	response.confirmed = true
+	return nil
+}
+
+func textQuestionValues(value string) []string {
+	if value == "" {
+		return []string{}
+	}
+	return []string{value}
+}
+
 func (q *questionResponse) values() ([]string, error) {
+	var values []string
 	switch q.field.Kind {
 	case conversation.QuestionText:
-		return requiredQuestionValue(q.text)
+		values = textQuestionValues(q.text)
 	case conversation.QuestionSingle:
-		return q.singleValue()
+		switch q.single.kind {
+		case offeredChoice:
+			values = []string{q.single.value}
+		case customChoice:
+			values = []string{q.custom}
+		case skippedChoice:
+			values = []string{}
+		default:
+			return nil, errors.New("question choice is not selected")
+		}
 	case conversation.QuestionMulti:
-		return q.multipleValues()
+		var err error
+		values, err = q.multipleValues(q.multiple, q.custom)
+		if err != nil {
+			return nil, err
+		}
 	default:
 		return nil, errors.New("runtime returned an unsupported question field kind")
 	}
-}
-
-func requiredQuestionValue(value string) ([]string, error) {
-	value = strings.TrimSpace(value)
-	if err := requiredText(value); err != nil {
+	if err := q.contract.ValidateField(q.index, values); err != nil {
 		return nil, err
 	}
-	return []string{value}, nil
+	return values, nil
 }
 
-func (q *questionResponse) singleValue() ([]string, error) {
-	if q.single.custom {
-		return requiredQuestionValue(q.custom)
-	}
-	if q.single.value == "" {
-		return nil, errors.New("choose an option")
-	}
-	return []string{q.single.value}, nil
-}
-
-func (q *questionResponse) multipleValues() ([]string, error) {
-	values := make([]string, 0, len(q.multiple))
-	seen := make(map[string]struct{}, len(q.multiple))
-	for _, choice := range q.multiple {
-		choiceValues := []string{choice.value}
-		if choice.custom {
-			custom, err := parseCustomChoices(q.custom)
-			if err != nil {
-				return nil, err
-			}
-			choiceValues = custom
+func (q *questionResponse) multipleValues(choices []questionChoice, custom string) ([]string, error) {
+	values := make([]string, 0, len(choices))
+	for _, choice := range choices {
+		switch choice.kind {
+		case offeredChoice:
+			values = append(values, choice.value)
+		case customChoice:
+			values = append(values, custom)
+		default:
+			return nil, errors.New("multiple-choice editor contains an unsupported selection")
 		}
-		for _, value := range choiceValues {
-			if _, duplicate := seen[value]; duplicate {
-				return nil, fmt.Errorf("choice %q is duplicated", value)
-			}
-			seen[value] = struct{}{}
-			values = append(values, value)
-		}
-	}
-	if len(values) == 0 {
-		return nil, errors.New("choose at least one option")
 	}
 	return values, nil
 }
@@ -231,6 +263,7 @@ func (a *app) openQuestionField() {
 		a.fail(err)
 		return
 	}
+	response.confirmed = false
 	a.showQuestionDialog(review, fields)
 }
 
@@ -239,7 +272,9 @@ func (a *app) buildQuestionFields(response *questionResponse) ([]headless.Field,
 	label := questionFieldLabel(specification)
 	switch specification.Kind {
 	case conversation.QuestionText:
-		return []headless.Field{a.buildQuestionText(&response.text, label, "", requiredText)}, nil
+		return []headless.Field{a.buildQuestionText(&response.text, label, "Leave empty to skip this field", func(value string) error {
+			return response.contract.ValidateField(response.index, textQuestionValues(value))
+		})}, nil
 	case conversation.QuestionSingle:
 		fields := []headless.Field{a.buildQuestionSingle(response, specification, label)}
 		return a.appendCustomQuestionField(fields, response), nil
@@ -258,7 +293,7 @@ func (a *app) buildQuestionText(value *string, label, placeholder string, check 
 }
 
 func (a *app) buildQuestionSingle(response *questionResponse, specification conversation.QuestionField, label string) headless.Field {
-	options := questionOptions(specification)
+	options := append(questionOptions(specification), headless.Option[questionChoice]{Label: "Skip this field", Value: skippedQuestionChoice()})
 	field := headless.NewSelect(headless.SelectConfig[questionChoice]{
 		Label: label, Value: headless.Bind(&response.single), Rows: min(len(options), 5),
 		Same: sameQuestionChoice,
@@ -271,7 +306,13 @@ func (a *app) buildQuestionMulti(response *questionResponse, specification conve
 	options := questionOptions(specification)
 	field := headless.NewMultiSelect(headless.MultiSelectConfig[questionChoice]{
 		Label: label, Value: headless.Bind(&response.multiple), Rows: min(len(options), 5),
-		Same: sameQuestionChoice, Check: requiredQuestionChoices,
+		Same: sameQuestionChoice, Check: func(values []questionChoice) error {
+			candidate, err := response.multipleValues(values, response.custom)
+			if err != nil {
+				return err
+			}
+			return response.contract.ValidateField(response.index, candidate)
+		},
 	})
 	field.SetOptions(options)
 	return field
@@ -281,10 +322,7 @@ func (a *app) appendCustomQuestionField(fields []headless.Field, response *quest
 	if !response.field.AllowCustom {
 		return fields
 	}
-	placeholder := "Used when “Other” is selected"
-	if response.field.Kind == conversation.QuestionMulti {
-		placeholder += "; separate multiple values with commas"
-	}
+	placeholder := "One value when Other is selected; commas are kept"
 	check := func(value string) error {
 		if !response.choosesCustom() {
 			return nil
@@ -304,10 +342,10 @@ func questionFieldLabel(specification conversation.QuestionField) string {
 
 func (q *questionResponse) choosesCustom() bool {
 	if q.field.Kind == conversation.QuestionSingle {
-		return q.single.custom
+		return q.single.kind == customChoice
 	}
 	for _, choice := range q.multiple {
-		if choice.custom {
+		if choice.kind == customChoice {
 			return true
 		}
 	}
@@ -331,12 +369,16 @@ func (a *app) showQuestionDialog(review *questionnaire, fields []headless.Field)
 		Theme: a.transcript.theme, Glyphs: a.transcript.glyphs, Controller: form,
 		Title: strings.Join(nonEmptyStrings([]string{
 			a.dialogs.interruptReview.SubmissionFailure(), review.question.Detail,
-		}), "\n"),
+		}), " · "),
 		Hints: []keymap.Action{headless.Submit, headless.Cancel},
 	})
+	title := review.Title()
+	if review.question.Fields[review.current].Kind != conversation.QuestionSingle {
+		title += " · empty skips"
+	}
 	dialog = kit.NewDialog(kit.DialogConfig{
 		Stack: &a.stack, Theme: a.transcript.theme, Glyphs: a.transcript.glyphs,
-		Title: review.Title(), Body: dressed,
+		Title: title, Body: dressed,
 		Where: layout.Placement{Width: 88, Height: formDialogHeight(dressed.HeightForWidth(80), len(fields), 18)},
 	})
 	a.dialogs.questionDialog = dialog
@@ -346,6 +388,10 @@ func (a *app) showQuestionDialog(review *questionnaire, fields []headless.Field)
 func (a *app) advanceQuestionnaire() {
 	review := a.dialogs.questionnaire
 	if review == nil {
+		return
+	}
+	if err := review.ConfirmCurrent(); err != nil {
+		a.fail(err)
 		return
 	}
 	a.dialogs.questionDialog.Controller().Dismiss()
@@ -432,37 +478,9 @@ func sameQuestionChoice(left, right questionChoice) bool {
 	return left == right
 }
 
-func requiredQuestionChoices(values []questionChoice) error {
-	if len(values) == 0 {
-		return errors.New("choose at least one option")
-	}
-	return nil
-}
-
 func requiredText(value string) error {
 	if strings.TrimSpace(value) == "" {
 		return errors.New("an answer is required")
 	}
 	return nil
-}
-
-func parseCustomChoices(value string) ([]string, error) {
-	parts := strings.Split(value, ",")
-	choices := make([]string, 0, len(parts))
-	seen := make(map[string]struct{}, len(parts))
-	for _, part := range parts {
-		choice := strings.TrimSpace(part)
-		if choice == "" {
-			continue
-		}
-		if _, duplicate := seen[choice]; duplicate {
-			return nil, fmt.Errorf("choice %q is duplicated", choice)
-		}
-		seen[choice] = struct{}{}
-		choices = append(choices, choice)
-	}
-	if len(choices) == 0 {
-		return nil, errors.New("choose at least one option")
-	}
-	return choices, nil
 }

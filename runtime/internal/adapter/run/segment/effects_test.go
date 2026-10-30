@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -49,7 +50,7 @@ func singleRunPending(
 	barrierCreatedAt time.Time,
 ) runs.Pending {
 	t.Helper()
-	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}}
+	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}}
 	return runs.Pending{
 		RootRunID:  runID,
 		ExecutorID: "turn_" + runID,
@@ -77,7 +78,7 @@ func singleRunQuestionItem(t testing.TB, sessionID string, pending runs.Pending)
 	item, err := transcript.NewQuestion(transcript.ItemIdentity{
 		SessionID: sessionID, RunID: pending.RootRunID,
 		ItemID: pending.Interrupts[0].ItemID, OccurredAt: pending.CreatedAt,
-	}, transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}})
+	}, transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}})
 	if err != nil {
 		t.Fatalf("new question Item: %v", err)
 	}

@@ -49,6 +49,10 @@ explicit dependencies. Tests construct independent instances in `test/renderClie
 and visual fixtures compose them in `visual/client.tsx`. No default feature-instance
 registry or module-global port installer is part of the product API.
 
+Question drafts retain raw text and one literal custom choice, including commas.
+The editor can explicitly skip a field with an empty answer. Runtime admits the
+complete candidate; Web does not trim or deduplicate answers before submission.
+
 File reading navigates adjacent bounded line windows using Runtime's served
 start and end coordinates. Earlier pages retain their requested end at the byte
 cap; later pages begin after the served end. The reader requests Runtime's

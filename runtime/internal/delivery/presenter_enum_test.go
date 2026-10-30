@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -15,7 +16,7 @@ func TestPresentersRejectUnknownDomainEnums(t *testing.T) {
 	mustPanic(t, func() { presentItemKind(transcript.ItemKind("unknown")) })
 	mustPanic(t, func() { presentContent(transcript.ContentBlock{Kind: transcript.ContentKind("invalid")}) })
 	mustPanic(t, func() {
-		presentQuestion(transcript.Question{Fields: []transcript.QuestionField{{Kind: transcript.QuestionFieldKind("invalid")}}})
+		presentQuestion(transcript.Question{Fields: []transcript.QuestionField{{Kind: questioncontract.Kind("invalid")}}})
 	})
 	mustPanic(t, func() { presentDelta(nil) })
 	mustPanic(t, func() { presentRunStatus(run.Status("invalid")) })

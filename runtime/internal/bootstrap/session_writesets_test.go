@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
@@ -115,7 +116,7 @@ func bootstrapPending(
 	runID, sessionID, memberID, itemID string,
 	runCreatedAt, itemOccurredAt, barrierCreatedAt time.Time,
 ) runsapp.Pending {
-	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}}
+	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}}
 	return runsapp.Pending{
 		RootRunID:  runID,
 		ExecutorID: "turn_" + runID,

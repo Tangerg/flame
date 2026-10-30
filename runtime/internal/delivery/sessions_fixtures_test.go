@@ -11,6 +11,7 @@ import (
 	"time"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/segment"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
@@ -131,7 +132,7 @@ func serverPending(
 			ItemID: "interrupt_" + runID, ItemOccurredAt: createdAt,
 			RunID:    runID,
 			Kind:     run.InterruptQuestion,
-			Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}},
+			Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}},
 		}}
 	} else {
 		open = append([]transcript.Interrupt(nil), open...)
@@ -508,7 +509,7 @@ func (s *stubRuntime) seedInterruptItems(ctx context.Context, t *testing.T, sess
 			input.Tool = &transcript.ToolInvocation{Name: "shell"}
 		} else {
 			input.Kind = transcript.QuestionItem
-			input.Question = &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}}
+			input.Question = &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}}
 		}
 		if err := s.hist.AppendItem(ctx, testsupport.MustRestoreItem(input)); err != nil {
 			t.Fatalf("seed interrupt Item %q: %v", open.ItemID, err)

@@ -271,10 +271,11 @@ func (r *Runtime) acceptedQuestionBlocksLocked(run *runState, answers []conversa
 		if !exists || block.Kind != conversation.BlockQuestion || block.Question == nil {
 			return nil, fmt.Errorf("mock: question item %s is absent from the durable transcript", response.ItemID)
 		}
-		answered, err := question.Accept(answer)
-		if err != nil {
+		if err := conversation.ValidateAnswer(*question, answer); err != nil {
 			return nil, fmt.Errorf("mock: accept question item %s: %w", response.ItemID, err)
 		}
+		answered := question.Clone()
+		answered.Answers = conversation.CloneAnswers(answer.Values)
 		block.Question = &answered
 		accepted = append(accepted, block)
 	}

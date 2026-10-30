@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -25,7 +26,7 @@ func TestRetentionChargeCoversAdmittedSnapshotStrings(t *testing.T) {
 		testsupport.MustRestoreItem(testsupport.ItemInput{Kind: transcript.Reasoning, Text: "reasoning"}),
 		testsupport.MustRestoreItem(testsupport.ItemInput{Kind: transcript.Compaction, Summary: "summary"}),
 		testsupport.MustRestoreItem(testsupport.ItemInput{Kind: transcript.QuestionItem, Question: &transcript.Question{
-			Fields: []transcript.QuestionField{{Prompt: "Choose", Header: "Choice", Kind: transcript.QuestionChoice, AllowCustom: true,
+			Fields: []transcript.QuestionField{{Prompt: "Choose", Header: "Choice", Kind: questioncontract.Choice, AllowCustom: true,
 				Options: []transcript.QuestionOption{{Label: "Option", Description: "description", Preview: "preview"}, {Label: "Other"}},
 			}}, Answers: [][]string{{"custom"}},
 		}}),
@@ -83,7 +84,7 @@ func TestJournalBoundsAcceptedAnswersAndApprovalMaterial(t *testing.T) {
 		{"accepted answer", func(value string) ProjectionEvent {
 			return QuestionAnswered{Item: testsupport.MustRestoreItem(testsupport.ItemInput{
 				Kind: transcript.QuestionItem, Question: &transcript.Question{
-					Fields: []transcript.QuestionField{{Prompt: "Explain", Kind: transcript.QuestionText}}, Answers: [][]string{{value}},
+					Fields: []transcript.QuestionField{{Prompt: "Explain", Kind: questioncontract.Text}}, Answers: [][]string{{value}},
 				},
 			})}
 		}},

@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -1248,7 +1249,7 @@ func resumedTreePending(createdAt time.Time) Pending {
 			RunID: runID, Kind: run.InterruptQuestion,
 			Question: &transcript.Question{
 				Fields: []transcript.QuestionField{{
-					Prompt: "Continue?", Kind: transcript.QuestionText,
+					Prompt: "Continue?", Kind: questioncontract.Text,
 				}},
 			},
 		}

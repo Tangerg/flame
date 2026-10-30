@@ -214,6 +214,16 @@ contracts, typed consumers and component bytes together.
 
 ## Accepted interrupt answers
 
+The SDK's `question.Contract` owns the public ordered answer rules. Domain
+Questions compile that immutable contract from their field definitions; both
+candidate admission and accepted-history validation use it. Delivery derives
+field-kind membership and limits from the same owner. A nil outer answer slice
+means no response was accepted. A nonnil outer slice includes one values slice
+per field, and an empty inner slice explicitly skips that field. Choice values
+retain their exact text, must be unique and free of surrounding whitespace, and
+may contain at most one unadvertised custom value when allowed. Text answers
+retain their content and require one nonblank value unless explicitly skipped.
+
 Question and Approval executor answers use disjoint, strict payloads. A Question
 contains only its ordered answers; an Approval contains its Domain verdict,
 edited arguments, reason and remember scope. Both first delivery and restart

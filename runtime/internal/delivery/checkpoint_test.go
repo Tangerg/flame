@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	flameruns "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
@@ -581,13 +582,13 @@ func putWaitingRun(t *testing.T, rt *stubRuntime, sessionID, runID string, atUni
 	if err := rt.hist.AppendItem(ctx, testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_" + runID, RunID: runID, SessionID: sessionID,
 		Kind: transcript.QuestionItem, OccurredAt: at,
-		Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}},
+		Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}},
 	})); err != nil {
 		t.Fatalf("open interrupt item for %s: %v", runID, err)
 	}
 	if err := rt.openPending(ctx, t, sessionID, serverPending(runID, sessionID, "", "", []transcript.Interrupt{{
 		ItemID: "item_" + runID, Kind: run.InterruptQuestion,
-		Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}},
+		Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}},
 	}}, at)); err != nil {
 		t.Fatalf("open interrupt for %s: %v", runID, err)
 	}

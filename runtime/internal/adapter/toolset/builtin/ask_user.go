@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -33,14 +34,14 @@ type questionArg struct {
 
 func (askUserArgs) JSONSchemaConstraints() jsonschema.Constraints {
 	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
-		"questions": {MaxItems: new(uint64(transcript.MaximumQuestionFields))},
+		"questions": {MaxItems: new(uint64(questioncontract.MaximumFields))},
 	}}
 }
 
 func (questionArg) JSONSchemaConstraints() jsonschema.Constraints {
 	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{
 		"header":  {MaxLength: new(uint64(transcript.MaximumQuestionHeaderCharacters))},
-		"options": {MinItems: new(uint64(transcript.MinimumQuestionOptions)), MaxItems: new(uint64(transcript.MaximumQuestionOptions))},
+		"options": {MinItems: new(uint64(questioncontract.MinimumOptions)), MaxItems: new(uint64(questioncontract.MaximumOptions))},
 	}}
 }
 
@@ -79,7 +80,7 @@ func NewAskUser(interrupt runs.InterruptFunc) (toolcontract.Tool, error) {
 	return newInterruptTool[askUserArgs](
 		toolcontract.FuncConfig{
 			Name:        string(tool.AskUser),
-			Description: fmt.Sprintf("Ask the user 1 to %d questions and wait for their answers. Use this only when progress requires a decision, clarification, or information only the user can provide, not for routine progress updates. Give %d to %d `options` for a multiple-choice question and put the recommended option first; the user may still provide a custom answer. Omit `options` for free text, and set `multi_select` only when options are present and more than one may apply. Headers contain at most %d Unicode characters.", transcript.MaximumQuestionFields, transcript.MinimumQuestionOptions, transcript.MaximumQuestionOptions, transcript.MaximumQuestionHeaderCharacters),
+			Description: fmt.Sprintf("Ask the user 1 to %d questions and wait for their answers. Use this only when progress requires a decision, clarification, or information only the user can provide, not for routine progress updates. Give %d to %d `options` for a multiple-choice question and put the recommended option first; the user may still provide a custom answer. Omit `options` for free text, and set `multi_select` only when options are present and more than one may apply. Headers contain at most %d Unicode characters.", questioncontract.MaximumFields, questioncontract.MinimumOptions, questioncontract.MaximumOptions, transcript.MaximumQuestionHeaderCharacters),
 		},
 		interrupt,
 		askUserPlan,

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -121,14 +122,14 @@ func TestAskUserSchemaProjectsTheTranscriptLimits(t *testing.T) {
 		questions, options, header int
 		valid                      bool
 	}{
-		{"maximum questions", transcript.MaximumQuestionFields, transcript.MinimumQuestionOptions, 0, true},
-		{"excess questions", transcript.MaximumQuestionFields + 1, transcript.MinimumQuestionOptions, 0, false},
-		{"minimum options", 1, transcript.MinimumQuestionOptions, 0, true},
-		{"too few options", 1, transcript.MinimumQuestionOptions - 1, 0, false},
-		{"maximum options", 1, transcript.MaximumQuestionOptions, 0, true},
-		{"excess options", 1, transcript.MaximumQuestionOptions + 1, 0, false},
-		{"maximum Unicode header", 1, transcript.MinimumQuestionOptions, transcript.MaximumQuestionHeaderCharacters, true},
-		{"excess Unicode header", 1, transcript.MinimumQuestionOptions, transcript.MaximumQuestionHeaderCharacters + 1, false},
+		{"maximum questions", questioncontract.MaximumFields, questioncontract.MinimumOptions, 0, true},
+		{"excess questions", questioncontract.MaximumFields + 1, questioncontract.MinimumOptions, 0, false},
+		{"minimum options", 1, questioncontract.MinimumOptions, 0, true},
+		{"too few options", 1, questioncontract.MinimumOptions - 1, 0, false},
+		{"maximum options", 1, questioncontract.MaximumOptions, 0, true},
+		{"excess options", 1, questioncontract.MaximumOptions + 1, 0, false},
+		{"maximum Unicode header", 1, questioncontract.MinimumOptions, transcript.MaximumQuestionHeaderCharacters, true},
+		{"excess Unicode header", 1, questioncontract.MinimumOptions, transcript.MaximumQuestionHeaderCharacters + 1, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			args := askUserArgs{}

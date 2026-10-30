@@ -3374,7 +3374,7 @@ func TestCustomMultipleQuestionKeepsInvalidInputEditable(t *testing.T) {
 	host.Press(input.Tab)
 	host.Type("linux")
 	host.Press(input.Enter)
-	host.Shows(t, `choice "linux" is duplicated`)
+	host.Shows(t, "duplicate choices are not allowed")
 	select {
 	case answer := <-answers:
 		t.Fatalf("invalid custom choices reached the runtime: %+v", answer)
@@ -3425,7 +3425,7 @@ func TestCustomSingleQuestionPreservesOptionsAndSurvivesResize(t *testing.T) {
 	host.Press(input.Down)
 	showsPlain(t, host, "● Other — provide a custom answer")
 	host.Press(input.Enter)
-	host.Shows(t, "an answer is required")
+	host.Shows(t, "choice values must not be empty")
 	host.Press(input.Tab)
 	host.Type("freebsd")
 	if !host.Resize(1, 1) || !host.Repaint() {
@@ -4970,4 +4970,48 @@ type testPluginSource struct {
 func (s testPluginSource) ID() string { return s.Name }
 func (s testPluginSource) Discover(context.Context) (extensions.SourceResult, error) {
 	return extensions.SourceResult{Plugins: s.Plugins}, nil
+}
+
+func TestQuestionnaireSubmitsExplicitSkipsForEveryFieldShape(t *testing.T) {
+	backend := runtimefixture.New()
+	backend.Instant = true
+	answers := make(chan conversation.QuestionAnswer, 1)
+	backend.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{
+			Interrupts: []conversation.Interrupt{conversation.Question{ItemID: "skips", Title: "Optional fields", Fields: []conversation.QuestionField{
+				{Prompt: "Context", Kind: conversation.QuestionText},
+				{Prompt: "Platform", Kind: conversation.QuestionSingle, Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}}},
+				{Prompt: "Checks", Kind: conversation.QuestionMulti, Options: []protocol.QuestionOption{{Label: "unit"}, {Label: "integration"}}},
+			}}},
+			Continue: func(answerSet []conversation.InterruptAnswer) []runtimefixture.Step {
+				answers <- answerSet[0].Answer.(conversation.QuestionAnswer)
+				return []runtimefixture.Step{{Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}
+			},
+		}
+	}
+	host, stop := runUIWith(t, backend)
+	defer stop()
+	host.Shows(t, "Ask flame")
+	host.Type("skip optional fields")
+	host.Press(input.Enter)
+	host.Shows(t, "1/3 · empty skips")
+	host.Press(input.Enter)
+	host.Shows(t, "2/3")
+	host.Shows(t, "Skip this field")
+	host.Press(input.Down)
+	host.Press(input.Down)
+	host.Press(input.Enter)
+	host.Shows(t, "3/3 · empty skips")
+	host.Press(input.Enter)
+	host.Shows(t, "complete")
+	host.Shows(t, "skipped")
+	answer := <-answers
+	if answer.Values == nil || len(answer.Values) != 3 {
+		t.Fatalf("submitted answer = %#v", answer)
+	}
+	for i, values := range answer.Values {
+		if len(values) != 0 {
+			t.Fatalf("field %d was not skipped: %q", i, values)
+		}
+	}
 }

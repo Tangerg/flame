@@ -2,6 +2,7 @@ package delivery
 
 import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -129,9 +130,9 @@ func presentQuestion(question transcript.Question) protocol.Question {
 	for i, field := range question.Fields {
 		var kind protocol.QuestionFieldType
 		switch field.Kind {
-		case transcript.QuestionText:
+		case questioncontract.Text:
 			kind = protocol.QuestionFieldText
-		case transcript.QuestionChoice:
+		case questioncontract.Choice:
 			kind = protocol.QuestionFieldChoice
 		default:
 			panic("delivery: unknown transcript question-field kind")

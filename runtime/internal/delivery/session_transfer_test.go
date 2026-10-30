@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -383,7 +384,7 @@ func TestCancelParkedRunProducesPortableTerminalSnapshot(t *testing.T) {
 		ID: "item_question", RunID: "run_parked", SessionID: ses.ID(),
 		Kind:       transcript.QuestionItem,
 		OccurredAt: parkedAt,
-		Question:   &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}},
+		Question:   &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}},
 	})); appendItemErr != nil {
 		t.Fatalf("open interrupt item: %v", appendItemErr)
 	}
@@ -395,7 +396,7 @@ func TestCancelParkedRunProducesPortableTerminalSnapshot(t *testing.T) {
 		[]transcript.Interrupt{{
 			ItemID:   "item_question",
 			Kind:     run.InterruptQuestion,
-			Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}},
+			Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}},
 		}},
 		parkedAt,
 	)); openErr != nil {

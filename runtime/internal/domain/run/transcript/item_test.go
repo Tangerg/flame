@@ -6,6 +6,7 @@ import (
 	"time"
 
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -108,7 +109,7 @@ func TestItemConstructorsCloseEveryVariant(t *testing.T) {
 			name: "question", kind: transcript.QuestionItem,
 			new: func() (transcript.Item, error) {
 				return transcript.NewQuestion(identity, transcript.Question{Fields: []transcript.QuestionField{{
-					Prompt: "Continue?", Kind: transcript.QuestionText,
+					Prompt: "Continue?", Kind: questioncontract.Text,
 				}}})
 			},
 		},
@@ -161,7 +162,7 @@ func TestItemOwnsMutablePayloads(t *testing.T) {
 	}
 
 	questionInput := transcript.Question{Fields: []transcript.QuestionField{{
-		Prompt: "Choose", Kind: transcript.QuestionChoice,
+		Prompt: "Choose", Kind: questioncontract.Choice,
 		Options: []transcript.QuestionOption{{Label: "A"}, {Label: "B"}},
 	}}}
 	questionItem, err := transcript.NewQuestion(itemIdentity(), questionInput)
@@ -180,7 +181,7 @@ func TestItemOwnsMutablePayloads(t *testing.T) {
 func TestAnswerQuestionEnrichesAnImmutablePromptExactlyOnce(t *testing.T) {
 	prompt, err := transcript.NewQuestion(itemIdentity(), transcript.Question{
 		Fields: []transcript.QuestionField{{
-			Prompt: "Choose", Kind: transcript.QuestionChoice,
+			Prompt: "Choose", Kind: questioncontract.Choice,
 			Options: []transcript.QuestionOption{{Label: "A"}, {Label: "B"}},
 		}},
 	})

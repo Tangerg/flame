@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -1045,7 +1046,7 @@ func TestReducerRejectsIncoherentTerminalProblems(t *testing.T) {
 }
 
 func TestReducerResumeReusesInterruptedItems(t *testing.T) {
-	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}}
+	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}}
 	approvalAt := time.Unix(1, 0).UTC()
 	questionAt := time.Unix(2, 0).UTC()
 	reviewed := transcript.ToolInvocation{
@@ -1863,7 +1864,7 @@ func TestReducerOpeningPublishesTheAnswersItsResumeCommitted(t *testing.T) {
 			SessionID: config.Opened.SessionID(), RunID: runID, ID: itemID,
 			Kind: transcript.QuestionItem, Status: transcript.ItemCompleted, OccurredAt: config.Opened.CreatedAt(),
 			Question: &transcript.Question{
-				Fields:  []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}},
+				Fields:  []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}},
 				Answers: [][]string{{"yes"}},
 			},
 		})

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -36,7 +37,7 @@ func TestGetSessionSnapshotProjectsOneLiveMaterialRead(t *testing.T) {
 	}), "seg_waiting", runs.CommitID{}); err != nil {
 		t.Fatalf("suspend waiting Run: %v", err)
 	}
-	question := transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}}
+	question := transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}}
 	if err := rt.hist.AppendItem(t.Context(), testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_question", RunID: "run_waiting", SessionID: "ses_1",
 		Kind: transcript.QuestionItem, OccurredAt: createdAt, Question: &question,
@@ -147,7 +148,7 @@ func TestGetSessionSnapshotKeepsCapabilityAndExistenceRefusals(t *testing.T) {
 		ID: "interrupt_run_waiting", RunID: "run_waiting", SessionID: "ses_1",
 		Kind: transcript.QuestionItem, OccurredAt: createdAt,
 		Question: &transcript.Question{
-			Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}},
+			Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}},
 		},
 	})); err != nil {
 		t.Fatalf("append question Item: %v", err)

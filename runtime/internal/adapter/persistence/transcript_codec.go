@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -80,12 +81,12 @@ type questionPayload struct {
 }
 
 type questionFieldPayload struct {
-	Prompt      string                       `json:"prompt"`
-	Header      string                       `json:"header,omitempty"`
-	Kind        transcript.QuestionFieldKind `json:"kind"`
-	Options     []questionOptionPayload      `json:"options,omitempty"`
-	Multiple    bool                         `json:"multiple,omitzero"`
-	AllowCustom bool                         `json:"allowCustom,omitzero"`
+	Prompt      string                  `json:"prompt"`
+	Header      string                  `json:"header,omitempty"`
+	Kind        questioncontract.Kind   `json:"kind"`
+	Options     []questionOptionPayload `json:"options,omitempty"`
+	Multiple    bool                    `json:"multiple,omitzero"`
+	AllowCustom bool                    `json:"allowCustom,omitzero"`
 }
 
 type questionOptionPayload struct {

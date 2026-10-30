@@ -147,6 +147,16 @@ session operation starts; subsequent execution failure is reported through that
 operation. Approval choices may lose a remembered scope, but keep their allow or deny
 decision; unknown choices cannot create an answerable approval form.
 
+Question editing uses Runtime's public `question.Contract`, including restored
+drafts and accepted history. Submit an empty text field or a multiple-choice
+field without selections to skip it; a single-choice field has an explicit
+Skip option. An unconfirmed blank draft remains unfinished. Other accepts one
+literal custom value, including commas; it is never split or silently trimmed.
+Accepted skips render as skipped, and each accepted value has its own answer
+row. Earlier drafts containing multiple custom values fail validation; retain
+those records separately and reconcile any unresolved command with its Runtime
+receipt before replacing it.
+
 ## Markdown, formulas, and diagrams
 
 Assistant and reasoning messages render Markdown through Oolong, including fenced

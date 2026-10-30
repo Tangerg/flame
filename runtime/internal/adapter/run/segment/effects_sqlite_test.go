@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
@@ -732,7 +733,7 @@ func newOpeningResumeFixture(t *testing.T, suspendRoot bool) openingResumeFixtur
 	transcriptStore := database.Transcript
 	childQuestion, err := transcript.NewQuestion(transcript.ItemIdentity{
 		SessionID: "session_1", RunID: "run_child", ItemID: "item_child", OccurredAt: time.Unix(1, 0).UTC(),
-	}, transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}})
+	}, transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}})
 	if err != nil {
 		t.Fatalf("new child question Item: %v", err)
 	}
@@ -791,7 +792,7 @@ func treeQuestion(itemID, runID string) transcript.Interrupt {
 		RunID: runID, Kind: run.InterruptQuestion,
 		Question: &transcript.Question{
 			Fields: []transcript.QuestionField{{
-				Prompt: "Continue?", Kind: transcript.QuestionText,
+				Prompt: "Continue?", Kind: questioncontract.Text,
 			}},
 		},
 	}
@@ -1032,7 +1033,7 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 		BuildID:   checkpointBuildID,
 		SessionID: "ses_1",
 	})
-	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}}
+	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}}
 	commitCtx, cancelCommit := context.WithCancel(ctx)
 	t.Cleanup(cancelCommit)
 	loseReceipt := true

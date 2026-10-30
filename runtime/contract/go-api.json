@@ -9639,7 +9639,13 @@
         {
           "name": "QuestionFieldType",
           "kind": "defined",
-          "underlying": "string"
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "Values",
+              "signature": "func() []string"
+            }
+          ]
         },
         {
           "name": "QuestionOption",
@@ -12063,6 +12069,123 @@
               "name": "LastActiveAt",
               "type": "*time.Time",
               "tag": "json:\"lastActiveAt,omitzero\""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/question",
+      "constants": [
+        {
+          "name": "Choice",
+          "type": "Kind",
+          "value": "\"choice\""
+        },
+        {
+          "name": "MaximumFields",
+          "type": "untyped int",
+          "value": "4"
+        },
+        {
+          "name": "MaximumOptions",
+          "type": "untyped int",
+          "value": "4"
+        },
+        {
+          "name": "MinimumOptions",
+          "type": "untyped int",
+          "value": "2"
+        },
+        {
+          "name": "Text",
+          "type": "Kind",
+          "value": "\"text\""
+        }
+      ],
+      "functions": [
+        {
+          "name": "New",
+          "signature": "func(fields []Field) (Contract, error)"
+        },
+        {
+          "name": "ValidateFieldCount",
+          "signature": "func(count int) error"
+        }
+      ],
+      "types": [
+        {
+          "name": "Contract",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func(answers [][]string) error"
+            },
+            {
+              "name": "ValidateField",
+              "signature": "func(index int, values []string) error"
+            }
+          ]
+        },
+        {
+          "name": "Field",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Kind",
+              "type": "Kind"
+            },
+            {
+              "name": "Options",
+              "type": "[]string"
+            },
+            {
+              "name": "Multiple",
+              "type": "bool"
+            },
+            {
+              "name": "AllowCustom",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "FieldError",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Index",
+              "type": "int"
+            },
+            {
+              "name": "Cause",
+              "type": "error"
+            }
+          ],
+          "methods": [
+            {
+              "name": "Error",
+              "signature": "func() string"
+            },
+            {
+              "name": "Unwrap",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Kind",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "Valid",
+              "signature": "func() bool"
+            },
+            {
+              "name": "Values",
+              "signature": "func() []string"
             }
           ]
         }

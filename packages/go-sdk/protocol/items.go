@@ -2,6 +2,8 @@ package protocol
 
 import (
 	"time"
+
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 )
 
 // ItemScopeType discriminates [ItemListScope]: which collection of items is being
@@ -152,9 +154,11 @@ const (
 type QuestionFieldType string
 
 const (
-	QuestionFieldText   QuestionFieldType = "text"
-	QuestionFieldChoice QuestionFieldType = "choice"
+	QuestionFieldText   QuestionFieldType = QuestionFieldType(questioncontract.Text)
+	QuestionFieldChoice QuestionFieldType = QuestionFieldType(questioncontract.Choice)
 )
+
+func (QuestionFieldType) Values() []string { return questioncontract.Kind("").Values() }
 
 // DiffRowType discriminates a structured diff row.
 //
