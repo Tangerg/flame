@@ -493,7 +493,7 @@ func remoteHTTPHandler(t *testing.T, endpoint *delivery.Endpoint, info protocol.
 	t.Helper()
 	server, err := flamehttp.NewServer(flamehttp.Config{
 		Endpoint: endpoint, Addr: "127.0.0.1:0", ServerInfo: info,
-		LocalToken: "test-local-token",
+		Authentication: mustLocalToken(t, "test-local-token"),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -555,4 +555,13 @@ func testDeliveryReplayStore(t *testing.T) operation.ReplayStore {
 		}
 	})
 	return stores.Idempotency
+}
+
+func mustLocalToken(t testing.TB, token string) flamehttp.Authentication {
+	t.Helper()
+	authentication, err := flamehttp.LocalTokenAuthentication(token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return authentication
 }

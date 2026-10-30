@@ -74,7 +74,7 @@ func reviewCLIInvocation(t *testing.T, runtime *poMCPRuntime) (func(...string) (
 	}
 	discovery := runtime.must(delivery.RuntimeDiscover, struct{}{}, "").(*protocol.DiscoverResponse)
 	server, err := flamehttp.NewServer(flamehttp.Config{
-		Endpoint: runtime.endpoint, Addr: "127.0.0.1:0", ServerInfo: discovery.ServerInfo, LocalToken: "review-acceptance-token",
+		Endpoint: runtime.endpoint, Addr: "127.0.0.1:0", ServerInfo: discovery.ServerInfo, Authentication: mustLocalToken(t, "review-acceptance-token"),
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -3,27 +3,26 @@ package mcpserver
 import (
 	"maps"
 	"slices"
+	"strconv"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 // AuthorityFingerprint excludes credentials and connection lifecycle settings:
-// a token rotation does not grant authority to a different endpoint.
+// a token rotation does not grant authority to a different endpoint. Every slot
+// is always present and the variable-length Args come last behind their count,
+// so two different descriptors cannot frame to the same field sequence.
 func (s Server) AuthorityFingerprint() identity.Digest {
-	fields := []string{string(s.Transport)}
-	if _, authority, found := s.Source.Release(); found {
-		fields = append(fields, authority.String())
+	var authority string
+	if _, release, found := s.Source.Release(); found {
+		authority = release.String()
 	}
+	fields := []string{string(s.Transport), authority}
 	if s.Transport == TransportStreamableHTTP {
-		fields = append(fields, s.URL)
-	} else {
-		fields = append(fields, s.Command, s.Dir)
-		fields = append(fields, s.Args...)
-		if s.ExecutionEnvironment != "" {
-			fields = append(fields, s.ExecutionEnvironment)
-		}
+		return identity.DigestStrings(append(fields, s.URL)...)
 	}
-	return identity.DigestStrings(fields...)
+	fields = append(fields, s.Command, s.Dir, s.ExecutionEnvironment, strconv.Itoa(len(s.Args)))
+	return identity.DigestStrings(append(fields, s.Args...)...)
 }
 
 // SameConnection compares the descriptor realized by an executable. Enablement

@@ -16,8 +16,9 @@ import (
 func newProbeServer(t *testing.T, probes ...flamehttp.HealthProbe) *httptest.Server {
 	t.Helper()
 	srv, err := flamehttp.NewServer(flamehttp.Config{
-		Endpoint: newTestEndpoint(t, &fakeRuntime{}, delivery.EndpointConfig{}),
-		Addr:     ":0",
+		Endpoint:       newTestEndpoint(t, &fakeRuntime{}, delivery.EndpointConfig{}),
+		Addr:           "127.0.0.1:0",
+		Authentication: flamehttp.LoopbackOnlyAuthentication(),
 		ServerInfo: protocol.ServerInfo{
 			Name: "flame-test", Version: "0.0.0", InstanceID: testRuntimeInstanceID,
 			DefaultWorkspace: protocol.WorkspaceRef{Path: "/secret/project"}, Home: "/secret/home",
@@ -188,9 +189,10 @@ func TestNewServerRequiresCanonicalRuntimeInstanceIdentity(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			_, err := flamehttp.NewServer(flamehttp.Config{
-				Endpoint:   newTestEndpoint(t, &fakeRuntime{}, delivery.EndpointConfig{}),
-				Addr:       ":0",
-				ServerInfo: protocol.ServerInfo{Name: "flame-test", Version: "0.0.0", InstanceID: test.instanceID},
+				Endpoint:       newTestEndpoint(t, &fakeRuntime{}, delivery.EndpointConfig{}),
+				Addr:           "127.0.0.1:0",
+				ServerInfo:     protocol.ServerInfo{Name: "flame-test", Version: "0.0.0", InstanceID: test.instanceID},
+				Authentication: flamehttp.LoopbackOnlyAuthentication(),
 			})
 			if err == nil {
 				t.Fatalf("NewServer accepted Runtime instance identity %q", test.instanceID)
@@ -201,9 +203,10 @@ func TestNewServerRequiresCanonicalRuntimeInstanceIdentity(t *testing.T) {
 
 func TestNewServerRejectsAmbiguousHealthProbes(t *testing.T) {
 	base := flamehttp.Config{
-		Endpoint:   newTestEndpoint(t, &fakeRuntime{}, delivery.EndpointConfig{}),
-		Addr:       ":0",
-		ServerInfo: protocol.ServerInfo{Name: "flame-test", Version: "0.0.0", InstanceID: testRuntimeInstanceID},
+		Endpoint:       newTestEndpoint(t, &fakeRuntime{}, delivery.EndpointConfig{}),
+		Addr:           "127.0.0.1:0",
+		ServerInfo:     protocol.ServerInfo{Name: "flame-test", Version: "0.0.0", InstanceID: testRuntimeInstanceID},
+		Authentication: flamehttp.LoopbackOnlyAuthentication(),
 	}
 	tests := []struct {
 		name   string

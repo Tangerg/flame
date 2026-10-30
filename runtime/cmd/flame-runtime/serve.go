@@ -19,7 +19,6 @@ import (
 const (
 	runtimeLogPrefix      = "[flame]"
 	serverShutdownTimeout = 10 * time.Second
-	runtimeCloseAttempts  = 3
 )
 
 func run(ctx context.Context, errw io.Writer) (err error) {
@@ -43,24 +42,23 @@ func run(ctx context.Context, errw io.Writer) (err error) {
 	if srv.Listen == "" {
 		return errors.New("server.listen is empty (set config server.listen or FLAME_SERVER_LISTEN)")
 	}
+	authentication := flamehttp.LoopbackOnlyAuthentication()
 	var token *localruntime.Token
 	if !srv.NoLocalToken {
 		tokenPath := srv.LocalTokenPath
 		if tokenPath == "" {
 			tokenPath = paths.dataDirectory.LocalTokenPath()
 		}
-		t, openTokenErr := localruntime.OpenToken(tokenPath)
-		if openTokenErr != nil {
-			return openTokenErr
+		token, err = localruntime.OpenToken(tokenPath)
+		if err != nil {
+			return err
 		}
-		token = t
+		authentication, err = flamehttp.LocalTokenAuthentication(token.Value())
+		if err != nil {
+			return err
+		}
 	}
-
-	tokenValue := ""
-	if token != nil {
-		tokenValue = token.Value()
-	}
-	httpServer, err := buildHTTPServer(instance, srv, tokenValue)
+	httpServer, err := buildHTTPServer(instance, srv, authentication)
 	if err != nil {
 		return err
 	}
@@ -76,23 +74,11 @@ func closeRuntimeInstance(instance runtimeCloser) error {
 	if instance == nil {
 		return nil
 	}
-	errorsByAttempt := make([]error, 0, runtimeCloseAttempts)
-	for range runtimeCloseAttempts {
-		err := instance.Close()
-		if err == nil {
-			return nil
-		}
-		errorsByAttempt = append(errorsByAttempt, err)
-	}
-	return fmt.Errorf(
-		"close runtime after %d attempts: %w",
-		runtimeCloseAttempts,
-		errors.Join(errorsByAttempt...),
-	)
+	return instance.Close()
 }
 
 // buildHTTPServer assembles the HTTP+SSE server from the resolved settings.
-func buildHTTPServer(instance *bootstrap.Instance, srv config.Server, tokenValue string) (*flamehttp.Server, error) {
+func buildHTTPServer(instance *bootstrap.Instance, srv config.Server, authentication flamehttp.Authentication) (*flamehttp.Server, error) {
 	var web http.Handler
 	if srv.WebDirectory != "" {
 		assets, err := newWebAssets(srv.WebDirectory)
@@ -107,7 +93,7 @@ func buildHTTPServer(instance *bootstrap.Instance, srv config.Server, tokenValue
 		PluginControl:  instance.PluginControl(),
 		Addr:           srv.Listen,
 		ServerInfo:     info,
-		LocalToken:     tokenValue,
+		Authentication: authentication,
 		CORSOrigins:    srv.CORSOrigins,
 		WebApplication: web,
 		HealthProbes:   []flamehttp.HealthProbe{storageHealthProbe(instance.CheckStorage), pluginHealthProbe(instance.CheckPlugins)},

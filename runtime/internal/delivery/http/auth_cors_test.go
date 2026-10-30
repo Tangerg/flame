@@ -61,6 +61,15 @@ func TestDefaultCORSOriginsAuthorizeShippedDesktopClients(t *testing.T) {
 	}
 }
 
+func mustLocalToken(t testing.TB, token string) flamehttp.Authentication {
+	t.Helper()
+	authentication, err := flamehttp.LocalTokenAuthentication(token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return authentication
+}
+
 // newGatedServer builds a test server with the local-token gate +
 // CORS allowlist set. Token is "test-token", origins is "http://app".
 func newGatedServer(t *testing.T) *httptest.Server {
@@ -74,8 +83,8 @@ func newGatedServerWithOrigins(t *testing.T, origins []string) *httptest.Server 
 		Addr:       ":0",
 		ServerInfo: protocol.ServerInfo{Name: "flame-test", Version: "0.0.0", InstanceID: testRuntimeInstanceID},
 
-		LocalToken:  "test-token",
-		CORSOrigins: origins,
+		Authentication: mustLocalToken(t, "test-token"),
+		CORSOrigins:    origins,
 	})
 	if err != nil {
 		t.Fatalf("NewServer: %v", err)
@@ -266,5 +275,46 @@ func TestCORSDisallowedOrigin(t *testing.T) {
 	defer func() { _ = resp.Body.Close() }()
 	if got := resp.Header.Get("Access-Control-Allow-Origin"); got != "" {
 		t.Fatalf("Allow-Origin = %q, want empty for disallowed origin", got)
+	}
+}
+
+func TestNewServerRefusesAnUngatedNonLoopbackListener(t *testing.T) {
+	endpoint := newTestEndpoint(t, &fakeRuntime{}, delivery.EndpointConfig{})
+	info := protocol.ServerInfo{Name: "flame-test", Version: "0.0.0", InstanceID: testRuntimeInstanceID}
+	for _, addr := range []string{":17171", "0.0.0.0:17171", "192.168.1.10:17171", "localhost:17171", "[::]:17171"} {
+		if _, err := flamehttp.NewServer(flamehttp.Config{Endpoint: endpoint, Addr: addr, ServerInfo: info, Authentication: flamehttp.LoopbackOnlyAuthentication()}); err == nil {
+			t.Fatalf("NewServer admitted an ungated listener on %q", addr)
+		}
+	}
+	for _, addr := range []string{"127.0.0.1:0", "[::1]:0"} {
+		if _, err := flamehttp.NewServer(flamehttp.Config{Endpoint: endpoint, Addr: addr, ServerInfo: info, Authentication: flamehttp.LoopbackOnlyAuthentication()}); err != nil {
+			t.Fatalf("NewServer refused loopback listener %q: %v", addr, err)
+		}
+	}
+	if _, err := flamehttp.NewServer(flamehttp.Config{Endpoint: endpoint, Addr: "127.0.0.1:0", ServerInfo: info}); err == nil {
+		t.Fatal("NewServer admitted a server without an authentication policy")
+	}
+	if _, err := flamehttp.LocalTokenAuthentication(""); err == nil {
+		t.Fatal("LocalTokenAuthentication admitted an empty token")
+	}
+}
+
+func TestAuthGateAcceptsCaseInsensitiveBearerScheme(t *testing.T) {
+	ts := newGatedServer(t)
+	defer ts.Close()
+	body := []byte(`{"jsonrpc":"2.0","id":"1","method":"runtime.discover"}`)
+	request, err := netHTTP.NewRequest(netHTTP.MethodPost, ts.URL+"/v2/rpc", bytes.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "bearer test-token")
+	resp, err := netHTTP.DefaultClient.Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode == netHTTP.StatusUnauthorized {
+		t.Fatal("lowercase bearer scheme was refused")
 	}
 }

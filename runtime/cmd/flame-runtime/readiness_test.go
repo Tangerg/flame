@@ -67,7 +67,7 @@ func TestServedReadinessReportsTheStorageCheck(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = instance.Close() })
 
-	server, err := buildHTTPServer(instance, config.Server{Listen: "127.0.0.1:0"}, "test-token")
+	server, err := buildHTTPServer(instance, config.Server{Listen: "127.0.0.1:0"}, mustLocalToken(t, "test-token"))
 	if err != nil {
 		t.Fatalf("buildHTTPServer: %v", err)
 	}

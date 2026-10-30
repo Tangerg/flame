@@ -53,10 +53,10 @@ func TestWebApplicationKeepsProtocolAuthenticationAndAssetConfinement(t *testing
 		t.Fatal(err)
 	}
 	server, err := flamehttp.NewServer(flamehttp.Config{
-		Endpoint:   endpoint,
-		Addr:       ":0",
-		ServerInfo: protocol.ServerInfo{Name: "flame-test", Version: "dev", InstanceID: testsupport.RuntimeInstanceID},
-		LocalToken: "web-test-token", WebApplication: assets,
+		Endpoint:       endpoint,
+		Addr:           ":0",
+		ServerInfo:     protocol.ServerInfo{Name: "flame-test", Version: "dev", InstanceID: testsupport.RuntimeInstanceID},
+		Authentication: mustLocalToken(t, "web-test-token"), WebApplication: assets,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -105,4 +105,13 @@ func TestWebApplicationKeepsProtocolAuthenticationAndAssetConfinement(t *testing
 			}
 		})
 	}
+}
+
+func mustLocalToken(t testing.TB, token string) flamehttp.Authentication {
+	t.Helper()
+	authentication, err := flamehttp.LocalTokenAuthentication(token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return authentication
 }

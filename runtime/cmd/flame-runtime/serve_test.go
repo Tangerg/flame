@@ -91,23 +91,12 @@ func TestResolvedVersionPrefersExplicitLinkValue(t *testing.T) {
 	}
 }
 
-func TestCloseRuntimeInstanceRetriesIncompleteShutdown(t *testing.T) {
-	transient := errors.New("component still draining")
-	instance := &scriptedRuntimeCloser{results: []error{transient, transient, nil}}
-	if err := closeRuntimeInstance(instance); err != nil {
-		t.Fatalf("closeRuntimeInstance: %v", err)
-	}
-	if instance.closes != 3 {
-		t.Fatalf("runtime close attempts = %d, want 3", instance.closes)
-	}
-}
-
-func TestCloseRuntimeInstanceBoundsRepeatedFailure(t *testing.T) {
+func TestCloseRuntimeInstanceReportsShutdownFailureOnce(t *testing.T) {
 	want := errors.New("component shutdown failed")
-	instance := &scriptedRuntimeCloser{results: []error{want, want, want, nil}}
+	instance := &scriptedRuntimeCloser{results: []error{want, nil}}
 	err := closeRuntimeInstance(instance)
-	if !errors.Is(err, want) || instance.closes != runtimeCloseAttempts {
-		t.Fatalf("close result = (%v, %d attempts)", err, instance.closes)
+	if !errors.Is(err, want) || instance.closes != 1 {
+		t.Fatalf("close result = (%v, %d attempts), want the first failure after one attempt", err, instance.closes)
 	}
 }
 

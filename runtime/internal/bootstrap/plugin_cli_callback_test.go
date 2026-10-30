@@ -23,7 +23,7 @@ func TestExecutableCLIPluginCommandCallsTheHostWithoutAPage(t *testing.T) {
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
 	r.poMCPTools(server, scheduleToolsReady)
 	discovery := r.must(delivery.RuntimeDiscover, struct{}{}, "").(*protocol.DiscoverResponse)
-	transport, err := flamehttp.NewServer(flamehttp.Config{Endpoint: r.endpoint, Addr: "127.0.0.1:0", ServerInfo: discovery.ServerInfo, LocalToken: "cli-plugin-acceptance-token"})
+	transport, err := flamehttp.NewServer(flamehttp.Config{Endpoint: r.endpoint, Addr: "127.0.0.1:0", ServerInfo: discovery.ServerInfo, Authentication: mustLocalToken(t, "cli-plugin-acceptance-token")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,4 +81,13 @@ func TestExecutableCLIPluginCommandCallsTheHostWithoutAPage(t *testing.T) {
 	if accepted.ID != handle.RunID || accepted.SessionID != handle.SessionID {
 		t.Fatalf("private callback receipt differs from the Runtime owner: %+v", accepted)
 	}
+}
+
+func mustLocalToken(t testing.TB, token string) flamehttp.Authentication {
+	t.Helper()
+	authentication, err := flamehttp.LocalTokenAuthentication(token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return authentication
 }

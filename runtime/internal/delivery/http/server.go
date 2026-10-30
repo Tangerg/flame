@@ -21,9 +21,9 @@ type Server struct {
 	info     RuntimeInfo
 	serverID string
 
-	localToken   string
-	corsOrigins  []string
-	healthProbes []*healthProbeRunner
+	authentication Authentication
+	corsOrigins    []string
+	healthProbes   []*healthProbeRunner
 
 	rpc           http.Handler
 	resources     http.Handler
@@ -55,12 +55,8 @@ type Config struct {
 	// header. Defaults to ServerInfo.Name + "/" + ServerInfo.Version.
 	ServerID string
 
-	// LocalToken, when non-empty, gates POST /v2/rpc with
-	// `Authorization: Bearer <LocalToken>` — streaming POSTs included
-	// (no header-less EventSource to exempt under streamable HTTP). Only
-	// the sidecars bypass. Empty disables the gate — tests + same-origin
-	// TUI scenarios.
-	LocalToken string
+	// Authentication gates POST /v2/rpc, streaming POSTs included. Required.
+	Authentication Authentication
 
 	// CORSOrigins is the exact-match origin allowlist; "*" is honored
 	// (without credentials). Empty disables CORS — same-origin only.
@@ -83,6 +79,9 @@ func NewServer(cfg Config) (*Server, error) {
 	}
 	if cfg.Addr == "" {
 		return nil, errors.New("http: Addr is required")
+	}
+	if err := cfg.Authentication.validateListener(cfg.Addr); err != nil {
+		return nil, err
 	}
 	if err := delivery.ValidateInstanceID(cfg.ServerInfo.InstanceID); err != nil {
 		return nil, fmt.Errorf("http: ServerInfo.InstanceID: %w", err)
@@ -110,17 +109,17 @@ func NewServer(cfg Config) (*Server, error) {
 	}
 	handlerCtx, stopHandlers := context.WithCancel(context.Background())
 	s := &Server{
-		serverID:      serverID,
-		localToken:    cfg.LocalToken,
-		corsOrigins:   slices.Clone(cfg.CORSOrigins),
-		healthProbes:  newHealthProbeRunners(cfg.HealthProbes),
-		rpc:           rpc,
-		resources:     NewPluginResourceHandler(cfg.Endpoint),
-		pluginControl: cfg.PluginControl,
-		web:           cfg.WebApplication,
-		handlerCtx:    handlerCtx,
-		stopHandlers:  stopHandlers,
-		info:          newInfoResponse(cfg.ServerInfo),
+		serverID:       serverID,
+		authentication: cfg.Authentication,
+		corsOrigins:    slices.Clone(cfg.CORSOrigins),
+		healthProbes:   newHealthProbeRunners(cfg.HealthProbes),
+		rpc:            rpc,
+		resources:      NewPluginResourceHandler(cfg.Endpoint),
+		pluginControl:  cfg.PluginControl,
+		web:            cfg.WebApplication,
+		handlerCtx:     handlerCtx,
+		stopHandlers:   stopHandlers,
+		info:           newInfoResponse(cfg.ServerInfo),
 	}
 	s.httpServer = &http.Server{
 		Addr:              cfg.Addr,
