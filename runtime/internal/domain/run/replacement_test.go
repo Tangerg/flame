@@ -25,7 +25,7 @@ func TestReplacementChainsNamedTransitionsFromItsExpectedRun(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AdvanceProgress: %v", err)
 	}
-	lost, err := progressed.RecoverLost(Failure{Kind: FailureLost}, createdAt.Add(time.Minute), MessageMarkAt(0))
+	lost, err := progressed.RecoverLost(Loss{Reason: LossRestart}, createdAt.Add(time.Minute), MessageMarkAt(0))
 	if err != nil {
 		t.Fatalf("RecoverLost: %v", err)
 	}

@@ -50,9 +50,11 @@ describe("RootRunOutcome", () => {
         },
       ];
       run.outcome =
-        type === "failed" || type === "timedOut" || type === "lost"
-          ? { type, error: { code: "run_lost" }, unresolvedEffects }
-          : { type, unresolvedEffects };
+        type === "lost"
+          ? { type, loss: { reason: "unresolvedEffects" }, unresolvedEffects }
+          : type === "failed" || type === "timedOut"
+            ? { type, error: { code: "internal_error" }, unresolvedEffects }
+            : { type, unresolvedEffects };
       const material = CurrentRootMaterial.from(run);
       const { rerender } = testClient.render(<RootRunOutcome material={material} />);
       expect(

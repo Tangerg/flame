@@ -94,8 +94,7 @@ func TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser(t *testing
 	if err != nil || len(storedRuns) != 1 {
 		t.Fatalf("runs after recovery = (%+v, %v), want one", storedRuns, err)
 	}
-	failure, failed := storedRuns[0].Failure()
-	if !storedRuns[0].State().IsTerminal() || !failed || failure.Kind != run.FailureLost {
+	if _, lost := storedRuns[0].Loss(); !storedRuns[0].State().IsTerminal() || !lost {
 		t.Fatalf("recovered Run = %+v, want a run_lost terminal", storedRuns[0].Snapshot())
 	}
 

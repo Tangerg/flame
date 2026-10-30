@@ -125,7 +125,7 @@ func assertCanceledDelegateIsNotReprojected(
 		}
 	}
 	ended := payloadsOf[runs.SegmentEnded](events)
-	if len(ended) != 1 || ended[0].Reason != run.OutcomeCompleted {
+	if len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeCompleted {
 		t.Fatalf("terminal events = %#v, want one completed root", ended)
 	}
 }

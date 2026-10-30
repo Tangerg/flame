@@ -1,6 +1,10 @@
 package persistence
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
+)
 
 func TestRunUsageDistinguishesMissingReportFromReportedZero(t *testing.T) {
 	missing, err := decodeRunUsage("")
@@ -28,11 +32,11 @@ func TestRunAccountingAndFailureRejectInvalidStoredValues(t *testing.T) {
 		})
 	}
 	for _, encoded := range []string{
-		`{"kind":"internal_error","Detail":"lost diagnostic"}`,
-		`{"kind":"internal_error","future":true}`,
+		`{"failure":{"kind":"internal_error","Detail":"lost diagnostic"}}`,
+		`{"failure":{"kind":"internal_error","future":true}}`,
 	} {
 		t.Run(encoded, func(t *testing.T) {
-			if _, err := decodeRunFailure(encoded); err == nil {
+			if _, err := decodeRunEnding(string(run.OutcomeFailed), encoded); err == nil {
 				t.Fatal("unknown stored failure field was silently discarded")
 			}
 		})

@@ -23,20 +23,17 @@ func TestArtifactOutcomePreservesUnresolvedEffects(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, test := range []struct {
-		outcome run.Outcome
-		failure *run.Failure
-	}{
-		{outcome: run.OutcomeCompleted},
-		{outcome: run.OutcomeCanceled},
-		{outcome: run.OutcomeTimedOut, failure: &run.Failure{Kind: run.FailureTimeout}},
-		{outcome: run.OutcomeFailed, failure: &run.Failure{Kind: run.FailureProviderUnavailable}},
-		{outcome: run.OutcomeLost, failure: &run.Failure{Kind: run.FailureLost}},
+	for _, ending := range []run.Ending{
+		run.Completed{},
+		run.Canceled{},
+		run.TimedOut{},
+		run.Failed{Failure: run.Failure{Kind: run.FailureProviderUnavailable}},
+		run.Lost{Loss: run.Loss{Reason: run.LossUnresolvedEffects}},
 	} {
-		t.Run(string(test.outcome), func(t *testing.T) {
+		t.Run(string(ending.Outcome()), func(t *testing.T) {
 			portable := sessions.PortableRun{
 				ID: "run_source", SessionID: "ses_source", Selection: testsupport.DefaultModelSelection(),
-				Outcome: test.outcome, Failure: test.failure, UnresolvedEffects: []run.UnresolvedEffect{effect},
+				Ending: ending, UnresolvedEffects: []run.UnresolvedEffect{effect},
 			}
 			artifact, err := artifactRunFromPortable(portable)
 			if err != nil {
@@ -58,7 +55,7 @@ func TestArtifactOutcomePreservesUnresolvedEffects(t *testing.T) {
 				t.Fatalf("decode: %v", err)
 			}
 			artifact.Outcome.UnresolvedEffects[0].Detail = "changed artifact"
-			if decoded.Outcome != test.outcome || !slices.Equal(decoded.UnresolvedEffects, []run.UnresolvedEffect{effect}) {
+			if decoded.Ending != ending || !slices.Equal(decoded.UnresolvedEffects, []run.UnresolvedEffect{effect}) {
 				t.Fatalf("decoded terminal facts = %+v, want original outcome and evidence", decoded)
 			}
 		})
@@ -67,7 +64,7 @@ func TestArtifactOutcomePreservesUnresolvedEffects(t *testing.T) {
 
 func TestArtifactOutcomeOmitsEmptyUnresolvedEffects(t *testing.T) {
 	for _, effects := range [][]run.UnresolvedEffect{nil, {}} {
-		artifact, err := artifactRunFromPortable(sessions.PortableRun{Outcome: run.OutcomeCanceled, UnresolvedEffects: effects})
+		artifact, err := artifactRunFromPortable(sessions.PortableRun{Ending: run.Canceled{}, UnresolvedEffects: effects})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -102,12 +99,12 @@ func TestSessionExportImportPreservesUnresolvedEffectsAsHistory(t *testing.T) {
 	}
 	rootOutcome, childOutcome := run.OutcomeLost, run.OutcomeCanceled
 	root := testsupport.MustRestoreRun(run.Snapshot{
-		SessionID: ses.ID(), ID: "run_root_source", Outcome: &rootOutcome,
+		SessionID: ses.ID(), ID: "run_root_source", Ending: testsupport.EndingFor(rootOutcome),
 		Capabilities: run.Capabilities{ChildRuns: true}, UnresolvedEffects: []run.UnresolvedEffect{rootEffect},
 		MessageMark: run.MessageMarkAt(0),
 	})
 	child := testsupport.MustRestoreRun(run.Snapshot{
-		SessionID: ses.ID(), ID: "run_child_source", Outcome: &childOutcome,
+		SessionID: ses.ID(), ID: "run_child_source", Ending: testsupport.EndingFor(childOutcome),
 		UnresolvedEffects: []run.UnresolvedEffect{childEffect},
 		Lineage:           run.Lineage{SpawnedByItemID: "item_spawn_source", ParentRunID: root.ID(), RootRunID: root.ID()},
 	})

@@ -58,7 +58,7 @@ func terminalizeStoredRun(
 // strict terminal write of a running Run derives.
 func lostRunReplacement(expected run.Run) run.Replacement {
 	return testsupport.MustRunReplacement(expected.Replace().RecoverLost(
-		run.Failure{Kind: run.FailureLost}, expected.UpdatedAt().Add(time.Minute), run.MessageMarkAt(0),
+		run.Loss{Reason: run.LossRestart}, expected.UpdatedAt().Add(time.Minute), run.MessageMarkAt(0),
 	))
 }
 
@@ -116,17 +116,8 @@ func finishedRunFromDraft(draft run.Draft, outcome run.Outcome) run.Run {
 	if err != nil {
 		panic(err)
 	}
-	var failure *run.Failure
-	switch outcome {
-	case run.OutcomeFailed:
-		failure = &run.Failure{Kind: run.FailureInternal}
-	case run.OutcomeTimedOut:
-		failure = &run.Failure{Kind: run.FailureTimeout}
-	case run.OutcomeLost:
-		failure = &run.Failure{Kind: run.FailureLost}
-	}
 	value, err = value.Terminate(run.Termination{
-		Outcome: outcome, Failure: failure, FinishedAt: finishedAt, MessageMark: run.MessageMarkAt(0),
+		Ending: testsupport.EndingFor(outcome), FinishedAt: finishedAt, MessageMark: run.MessageMarkAt(0),
 	})
 	if err != nil {
 		panic(err)
@@ -393,7 +384,7 @@ func TestRunProgressFootprintSurvivesTerminalRead(t *testing.T) {
 		t.Fatalf("read running Run: found=%v err=%v", found, err)
 	}
 	terminal, err := current.Terminate(run.Termination{
-		Outcome: run.OutcomeCompleted, FinishedAt: updatedAt.Add(time.Second), MessageMark: run.MessageMarkAt(1),
+		Ending: run.Completed{}, FinishedAt: updatedAt.Add(time.Second), MessageMark: run.MessageMarkAt(1),
 	})
 	if err != nil {
 		t.Fatalf("Terminate: %v", err)
@@ -611,7 +602,7 @@ func TestRecoverLostRequiresExactExpectedRun(t *testing.T) {
 	foreign := testsupport.MustRestoreRun(foreignSnapshot)
 	finishedAt := runCreatedAt.Add(time.Minute)
 	foreignLost, err := foreign.Replace().RecoverLost(
-		run.Failure{Kind: run.FailureLost},
+		run.Loss{Reason: run.LossRestart},
 		finishedAt,
 		run.MessageMarkAt(0),
 	)
@@ -627,7 +618,7 @@ func TestRecoverLostRequiresExactExpectedRun(t *testing.T) {
 	}
 
 	lost, err := actual.Replace().RecoverLost(
-		run.Failure{Kind: run.FailureLost},
+		run.Loss{Reason: run.LossRestart},
 		finishedAt,
 		run.MessageMarkAt(0),
 	)
@@ -656,7 +647,7 @@ func TestTerminalizeParkedRunOnlyByCancellation(t *testing.T) {
 	// A parked run cannot complete/error/cap out without resuming — no
 	// replacement can be derived for that transition.
 	finishedAt := parked.UpdatedAt().Add(time.Second)
-	if _, err := parked.Terminate(run.Termination{Outcome: run.OutcomeCompleted, FinishedAt: finishedAt}); err == nil {
+	if _, err := parked.Terminate(run.Termination{Ending: run.Completed{}, FinishedAt: finishedAt}); err == nil {
 		t.Fatal("a parked run must not derive a completed replacement")
 	}
 	if err := store.Admit(ctx, runDraft("run_2", "ses_A")); !errors.Is(err, run.ErrSessionBusy) {
@@ -816,14 +807,9 @@ func TestDeleteForSessionFreesSlot(t *testing.T) {
 	}
 }
 
-func TestRunRestoreRejectsUnknownOutcome(t *testing.T) {
-	outcome := run.Outcome("invalid")
-	if _, err := run.Restore(run.Snapshot{
-		ID: "run_1", SessionID: "ses_1", State: run.Finished, Outcome: &outcome,
-		ModelSelection: testsupport.DefaultModelSelection(),
-		CreatedAt:      runCreatedAt, FinishedAt: time.Unix(9, 0).UTC(), UpdatedAt: time.Unix(9, 0).UTC(),
-	}); err == nil {
-		t.Fatal("Run restore accepted an unknown outcome")
+func TestRunReadRejectsUnknownOutcome(t *testing.T) {
+	if _, err := decodeRunEnding("invalid", ""); err == nil {
+		t.Fatal("Run decode accepted an unknown outcome")
 	}
 }
 

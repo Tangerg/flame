@@ -12,24 +12,11 @@ import (
 )
 
 func (r *reducer) segmentEnd(e SegmentEnded) ([]ProjectionEvent, error) {
-	if e.Reason != run.OutcomeFailed && e.Reason != run.OutcomeTimedOut && e.Reason != run.OutcomeLost && e.failure != nil {
-		return nil, errors.New("outcome does not allow a failure")
+	if e.Ending == nil {
+		return nil, errors.New("segment end has no ending")
 	}
 	r.segmentDuration = e.Duration
-	var failure *run.Failure
-	detail := ""
-	switch e.Reason {
-	case run.OutcomeFailed, run.OutcomeTimedOut, run.OutcomeLost:
-		if e.failure == nil {
-			return nil, errors.New("failure outcome is missing a failure")
-		}
-		failure = e.failure
-	case run.OutcomeCanceled:
-		if r.cfg.CancelReason != nil {
-			detail = r.cfg.CancelReason()
-		}
-	}
-	terminal, err := r.finishedRun(e.Reason, failure, detail, e.unresolvedEffects)
+	terminal, err := r.finishedRun(r.cancelDetail(e.Ending), e.unresolvedEffects)
 	if err != nil {
 		return nil, err
 	}
@@ -89,16 +76,24 @@ func (r *reducer) metrics() (run.Metrics, error) {
 	return run.NewMetrics(usageRef, r.step, activeDuration+r.segmentDuration)
 }
 
-func (r *reducer) finishedRun(outcome run.Outcome, failure *run.Failure, detail string, effects []run.UnresolvedEffect) (SegmentFinished, error) {
-	if _, ok := run.Running.Terminate(outcome); !ok {
-		return SegmentFinished{}, fmt.Errorf("outcome %q does not terminate a running run", outcome)
+// cancelDetail gives a Canceled ending the reason its cancel request stated.
+func (r *reducer) cancelDetail(ending run.Ending) run.Ending {
+	if _, canceled := ending.(run.Canceled); canceled && r.cfg.CancelReason != nil {
+		return run.Canceled{Detail: r.cfg.CancelReason()}
+	}
+	return ending
+}
+
+func (r *reducer) finishedRun(ending run.Ending, effects []run.UnresolvedEffect) (SegmentFinished, error) {
+	if _, ok := run.Running.Terminate(ending.Outcome()); !ok {
+		return SegmentFinished{}, fmt.Errorf("outcome %q does not terminate a running run", ending.Outcome())
 	}
 	current, err := r.runRecord(run.Running)
 	if err != nil {
 		return SegmentFinished{}, err
 	}
 	terminal, err := current.Terminate(run.Termination{
-		Outcome: outcome, Detail: detail, Failure: failure, UnresolvedEffects: effects,
+		Ending: ending, UnresolvedEffects: effects,
 		FinishedAt: r.now().UTC(), MessageMark: run.UnknownMessageMark(),
 	})
 	if err != nil {

@@ -85,8 +85,7 @@ func TestItemPageKeepsOneSnapshotAcrossHistoryReplacement(t *testing.T) {
 						}
 						snapshot := root.Snapshot()
 						snapshot.State = run.Finished
-						outcome := run.OutcomeCanceled
-						snapshot.Outcome = &outcome
+						snapshot.Ending = run.Canceled{}
 						if err := newRunStore(writer).Restore(ctx, testsupport.MustRestoreRun(snapshot)); err != nil {
 							return err
 						}

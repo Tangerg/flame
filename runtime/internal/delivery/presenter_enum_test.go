@@ -66,16 +66,16 @@ func TestRunOutcomeProjectionIsExhaustive(t *testing.T) {
 	for _, test := range tests {
 		t.Run(string(test.domain), func(t *testing.T) {
 			outcome := test.domain
-			if got := presentOutcome(testsupport.MustRestoreRun(run.Snapshot{Outcome: &outcome})); got.Type != test.wire {
+			if got := presentOutcome(testsupport.MustRestoreRun(run.Snapshot{Ending: testsupport.EndingFor(outcome)})); got.Type != test.wire {
 				t.Fatalf("presentOutcome type = %q, want %q", got.Type, test.wire)
 			}
-			encoded, err := artifactOutcomeType(test.domain)
-			if err != nil || encoded != test.artifact {
-				t.Fatalf("artifactOutcomeType = (%q, %v), want (%q, nil)", encoded, err, test.artifact)
+			encoded, err := artifactOutcomeFromEnding(testsupport.EndingFor(outcome))
+			if err != nil || encoded.Type != test.artifact {
+				t.Fatalf("artifactOutcomeFromEnding = (%+v, %v), want type %q", encoded, err, test.artifact)
 			}
-			decoded, err := portableOutcomeFromArtifact("outcome.type", encoded)
-			if err != nil || decoded != test.domain {
-				t.Fatalf("portableOutcomeFromArtifact = (%s, %v), want (%s, nil)", decoded, err, test.domain)
+			decoded, err := portableEndingFromArtifact("outcome", encoded)
+			if err != nil || decoded.Outcome() != test.domain {
+				t.Fatalf("portableEndingFromArtifact = (%+v, %v), want %s", decoded, err, test.domain)
 			}
 		})
 	}
@@ -85,7 +85,7 @@ func TestRunOutcomeProjectionIsExhaustive(t *testing.T) {
 // domain taxonomies and the durable artifact vocabulary must be the same set.
 func TestFailureKindsShareTheArtifactProblemVocabulary(t *testing.T) {
 	artifact := []protocol.ArtifactProblemType{
-		protocol.ArtifactProblemInternalError, protocol.ArtifactProblemRunLost, protocol.ArtifactProblemAgentStuck,
+		protocol.ArtifactProblemInternalError, protocol.ArtifactProblemAgentStuck,
 		protocol.ArtifactProblemRateLimited, protocol.ArtifactProblemInvalidCredentials, protocol.ArtifactProblemTimeout,
 		protocol.ArtifactProblemProviderUnavailable, protocol.ArtifactProblemProviderRejected,
 		protocol.ArtifactProblemDeniedByUser, protocol.ArtifactProblemToolFailed,
@@ -97,7 +97,7 @@ func TestFailureKindsShareTheArtifactProblemVocabulary(t *testing.T) {
 		}
 	}
 	for _, kind := range []run.FailureKind{
-		run.FailureInternal, run.FailureLost, run.FailureAgentStuck, run.FailureRateLimited,
+		run.FailureInternal, run.FailureAgentStuck, run.FailureRateLimited,
 		run.FailureInvalidCredentials, run.FailureTimeout, run.FailureProviderUnavailable, run.FailureProviderRejected,
 	} {
 		if !slices.Contains(artifact, protocol.ArtifactProblemType(kind)) {

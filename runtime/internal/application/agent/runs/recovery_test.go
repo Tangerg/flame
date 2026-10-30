@@ -309,7 +309,7 @@ func (w waitingExecutionResumabilityFunc) CanResumeWaitingExecution(
 	if err != nil || resumable {
 		return ResumableWaiting(), err
 	}
-	return UnresumableWaiting(LossWaitingStateUnavailable), nil
+	return UnresumableWaiting(rundomain.LossWaitingStateUnavailable), nil
 }
 
 type selectiveRecoveryAdmissions struct {
@@ -806,8 +806,7 @@ func TestRecoveryMarksAbandonedRunTreeLostInPostorder(t *testing.T) {
 	}
 	for _, replacement := range lostRuns {
 		lost := replacement.State()
-		if !testsupport.RunFailed(lost) || !runHasOutcome(lost, rundomain.OutcomeLost) ||
-			!runHasFailureKind(lost, rundomain.FailureLost) ||
+		if loss, isLost := lost.Loss(); !isLost || loss.Reason != rundomain.LossRestart ||
 			lost.MessageMark() != lost.Lineage().MessageMark(7) || !lost.FinishedAt().Equal(finishedAt) {
 			t.Fatalf("lost Run = %+v", lost)
 		}
@@ -1453,11 +1452,11 @@ func TestRecoveredLossCarriesTheProbedReason(t *testing.T) {
 		name     string
 		isolated bool
 		verdict  WaitingResumption
-		want     string
+		want     rundomain.LossReason
 	}{
-		{name: "another build", verdict: UnresumableWaiting(LossOtherBuild), want: "another Runtime build"},
-		{name: "configuration change", verdict: UnresumableWaiting(LossConfigurationChanged), want: "configuration changed"},
-		{name: "isolated workspace", isolated: true, verdict: ResumableWaiting(), want: "isolated workspace"},
+		{name: "another build", verdict: UnresumableWaiting(rundomain.LossOtherBuild), want: rundomain.LossOtherBuild},
+		{name: "configuration change", verdict: UnresumableWaiting(rundomain.LossConfigurationChanged), want: rundomain.LossConfigurationChanged},
+		{name: "isolated workspace", isolated: true, verdict: ResumableWaiting(), want: rundomain.LossIsolatedWorkspace},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			run, pending, item := coherentRecoveryPark(t)
@@ -1485,9 +1484,9 @@ func TestRecoveredLossCarriesTheProbedReason(t *testing.T) {
 			if len(lost) != 1 {
 				t.Fatalf("lost Runs = %d, want 1", len(lost))
 			}
-			failure := lost[0].State().Snapshot().Failure
-			if failure == nil || failure.Kind != rundomain.FailureLost || !strings.Contains(failure.Detail, test.want) {
-				t.Fatalf("lost Run failure = %+v, want a loss naming %q", failure, test.want)
+			loss, isLost := lost[0].State().Loss()
+			if !isLost || loss.Reason != test.want {
+				t.Fatalf("lost Run loss = %+v, want %q", loss, test.want)
 			}
 		})
 	}

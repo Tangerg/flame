@@ -12,6 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func goalTestCost(t *testing.T, usd float64) accounting.Cost {
@@ -476,7 +477,7 @@ func goalTestRun(t *testing.T, runID, incarnationID string, outcome run.Outcome,
 	createdAt := time.Unix(1, 0).UTC()
 	value, err := run.Restore(run.Snapshot{
 		SessionID: "ses_1", ID: runID, ModelSelection: testSelection(t),
-		GoalIncarnationID: incarnationID, State: run.Finished, Outcome: &outcome,
+		GoalIncarnationID: incarnationID, State: run.Finished, Ending: testsupport.EndingFor(outcome),
 		Metrics: metrics, CreatedAt: createdAt, FinishedAt: finishedAt, UpdatedAt: finishedAt,
 	})
 	if err != nil {

@@ -34,12 +34,12 @@ func TestUnresolvedEffectConstructionAndTerminalOwnership(t *testing.T) {
 		t.Fatal("open Run accepted terminal evidence")
 	}
 	for _, effects := range [][]UnresolvedEffect{{{}}, {effect, effect}} {
-		if _, err := active.Terminate(Termination{Outcome: OutcomeCanceled, FinishedAt: time.Unix(2, 0), UnresolvedEffects: effects}); err == nil {
+		if _, err := active.Terminate(Termination{Ending: Canceled{}, FinishedAt: time.Unix(2, 0), UnresolvedEffects: effects}); err == nil {
 			t.Fatal("invalid terminal evidence accepted")
 		}
 	}
 	evidence := []UnresolvedEffect{effect}
-	terminal, err := active.Terminate(Termination{Outcome: OutcomeCanceled, FinishedAt: time.Unix(2, 0), UnresolvedEffects: evidence})
+	terminal, err := active.Terminate(Termination{Ending: Canceled{}, FinishedAt: time.Unix(2, 0), UnresolvedEffects: evidence})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -509,6 +509,15 @@ export const en: Record<string, string> = {
   "session.identity.copyId": "Copy session ID",
   "session.identity.copiedId": "Session ID copied",
   "session.status.waiting": "Needs input",
+  "agent.loss.restart":
+    "The runtime stopped while this run was active, so its result was not saved.",
+  "agent.loss.isolatedWorkspace": "This run's isolated workspace does not survive a restart.",
+  "agent.loss.workspaceUnavailable": "This run's workspace is no longer available.",
+  "agent.loss.otherBuild": "This run was waiting in state written by a different runtime version.",
+  "agent.loss.waitingStateUnavailable": "This run's waiting state could not be restored.",
+  "agent.loss.configurationChanged": "This run's configuration changed while it was waiting.",
+  "agent.loss.unresolvedEffects": "External operations from this run have no confirmed result.",
+  "agent.loss.unresolvedModelCall": "A model call in this run ended without a confirmed result.",
   "agent.activity.callingModel": "Calling the model",
   "agent.activity.modelCallFailed": "Model call failed",
   "agent.activity.applyingUserInput": "Applying your input",
@@ -682,8 +691,6 @@ export const en: Record<string, string> = {
     "The command outcome is not yet known. Check the session before sending again; a new request could repeat an action that already completed.",
   "rpcError.internal_error":
     "Something broke inside the runtime — retry, and check diagnostics if it keeps happening.",
-  "rpcError.run_lost":
-    "The run's process is gone — it ended before a result was saved. Start it again.",
   "rpcError.mcp_authorization_attempt_not_found": "This sign-in attempt expired. Start again.",
   "rpcError.skill_not_found": "That skill is no longer in the library.",
   "rpcError.skill_unavailable":

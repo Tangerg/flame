@@ -41,7 +41,7 @@ describe("Run presentation facts", () => {
     [{ type: "completed" } as const, "finished"],
     [{ type: "failed", error: { message: "Provider failed" } } as const, "error"],
     [{ type: "timedOut", error: { message: "Provider timed out" } } as const, "error"],
-    [{ type: "lost", error: { message: "Runtime restarted" } } as const, "error"],
+    [{ type: "lost", loss: { reason: "restart" } } as const, "error"],
     [{ type: "canceled", detail: "Stopped by user" } as const, "canceled"],
   ])("projects terminal outcome %o as %s", (outcome, expected) => {
     const finished = run({
@@ -56,9 +56,11 @@ describe("Run presentation facts", () => {
     expect(agentRunDetail(t, finished)).toBe(
       outcome.type === "completed"
         ? null
-        : outcome.type === "failed" || outcome.type === "timedOut" || outcome.type === "lost"
-          ? outcome.error.message
-          : outcome.detail,
+        : outcome.type === "lost"
+          ? t("agent.loss.restart")
+          : outcome.type === "failed" || outcome.type === "timedOut"
+            ? outcome.error.message
+            : outcome.detail,
     );
   });
 });

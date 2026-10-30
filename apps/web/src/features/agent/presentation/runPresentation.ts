@@ -37,6 +37,7 @@ export function agentRunDetail(t: Translate, run: AgentRunView): string | null {
     const activity = run.progress?.activity;
     return activity ? agentRunActivityLabel(t, activity) : null;
   }
+  if (run.outcome?.type === "lost") return t(`agent.loss.${run.outcome.loss.reason}`);
   if (isAgentRunFailure(run.outcome)) return run.outcome.error.message ?? null;
   switch (run.outcome?.type) {
     case "canceled":

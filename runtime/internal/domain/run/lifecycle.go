@@ -82,8 +82,8 @@ const (
 	OutcomeTimedOut Outcome = "timedOut"
 	// OutcomeFailed — the run aborted on an error.
 	OutcomeFailed Outcome = "failed"
-	// OutcomeLost — recovery proved that no live executor or valid checkpoint
-	// can continue the Run. It is produced by recovery, never by an executor.
+	// OutcomeLost — the Run's real outcome cannot be established: recovery
+	// found nothing that can continue it, or its effects have no provable result.
 	OutcomeLost Outcome = "lost"
 )
 

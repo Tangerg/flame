@@ -146,6 +146,7 @@ export type WireTypeName =
   | "ListSessionsRequest"
   | "LivenessState"
   | "LivenessStatus"
+  | "LossReason"
   | "MCPAuthorizationAttempt"
   | "MCPAuthorizationAttemptLimits"
   | "MCPAuthorizationAttemptRequest"
@@ -315,6 +316,7 @@ export type WireTypeName =
   | "RunAcceptanceType"
   | "RunCommandOperation"
   | "RunEvent"
+  | "RunLoss"
   | "RunMetrics"
   | "RunOutcome"
   | "RunOutcomeType"
@@ -679,6 +681,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     object({
       detail: text(),
       error: ref(() => CHECKS.ArtifactProblem),
+      loss: ref(() => CHECKS.RunLoss),
       type: ref(() => CHECKS.ArtifactOutcomeType),
       unresolvedEffects: array(ref(() => CHECKS.UnresolvedEffect)),
     }, []),
@@ -686,6 +689,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       fields({
         detail: absent(),
         error: absent(),
+        loss: absent(),
         type: literal("completed"),
       }, ["type"]),
       fields({
@@ -693,6 +697,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         error: fields({
           type: enumOf(["timeout"]),
         }, []),
+        loss: absent(),
         type: literal("timedOut"),
       }, ["error", "type"]),
       fields({
@@ -700,19 +705,19 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         error: fields({
           type: enumOf(["internal_error", "agent_stuck", "rate_limited", "invalid_credentials", "timeout", "provider_unavailable", "provider_rejected"]),
         }, []),
+        loss: absent(),
         type: literal("failed"),
       }, ["error", "type"]),
       fields({
         error: absent(),
+        loss: absent(),
         type: literal("canceled"),
       }, ["type"]),
       fields({
         detail: absent(),
-        error: fields({
-          type: enumOf(["run_lost"]),
-        }, []),
+        error: absent(),
         type: literal("lost"),
-      }, ["error", "type"]),
+      }, ["loss", "type"]),
     ]),
   ]),
   ArtifactOutcomeType: enumOf(["completed", "timedOut", "failed", "canceled", "lost"]),
@@ -726,14 +731,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ifThen(
       fields({
         type: literal("internal_error"),
-      }, ["type"]),
-      fields({
-        retryAfterSeconds: absent(),
-      }, []),
-    ),
-    ifThen(
-      fields({
-        type: literal("run_lost"),
       }, ["type"]),
       fields({
         retryAfterSeconds: absent(),
@@ -796,7 +793,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       }, []),
     ),
   ]),
-  ArtifactProblemType: enumOf(["internal_error", "run_lost", "agent_stuck", "rate_limited", "invalid_credentials", "timeout", "provider_unavailable", "provider_rejected", "denied_by_user", "tool_failed", "child_run_canceled", "tool_canceled"]),
+  ArtifactProblemType: enumOf(["internal_error", "agent_stuck", "rate_limited", "invalid_credentials", "timeout", "provider_unavailable", "provider_rejected", "denied_by_user", "tool_failed", "child_run_canceled", "tool_canceled"]),
   ArtifactRun: allOf([
     object({
       contextTokens: allOf([integer(), minimum("0")]),
@@ -1849,6 +1846,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     instanceId: text(),
     status: ref(() => CHECKS.LivenessState),
   }, ["instanceId", "status"]),
+  LossReason: enumOf(["restart", "isolatedWorkspace", "workspaceUnavailable", "otherBuild", "waitingStateUnavailable", "configurationChanged", "unresolvedEffects", "unresolvedModelCall"]),
   MCPAuthorizationAttempt: allOf([
     object({
       createdAt: text(),
@@ -3158,13 +3156,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         errors: absent(),
         requiredCapabilities: absent(),
         retryAfterSeconds: absent(),
-        type: literal("run_lost"),
-      }, ["type"]),
-      fields({
-        activeRun: absent(),
-        errors: absent(),
-        requiredCapabilities: absent(),
-        retryAfterSeconds: absent(),
         type: literal("run_not_found"),
       }, ["type"]),
       fields({
@@ -3479,6 +3470,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     segmentId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     timestamp: text(),
   }, ["event", "eventId", "runId", "segmentId", "timestamp"]),
+  RunLoss: object({
+    detail: text(),
+    reason: ref(() => CHECKS.LossReason),
+  }, ["reason"]),
   RunMetrics: object({
     activeDurationMillis: allOf([integer(), minimum("0"), maximum("9223372036854")]),
     steps: allOf([integer(), minimum("0")]),
@@ -3488,6 +3483,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     object({
       detail: text(),
       error: ref(() => CHECKS.ProblemData),
+      loss: ref(() => CHECKS.RunLoss),
       type: ref(() => CHECKS.RunOutcomeType),
       unresolvedEffects: array(ref(() => CHECKS.UnresolvedEffect)),
     }, []),
@@ -3495,24 +3491,29 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       fields({
         detail: absent(),
         error: absent(),
+        loss: absent(),
         type: literal("completed"),
       }, ["type"]),
       fields({
         detail: absent(),
+        loss: absent(),
         type: literal("timedOut"),
       }, ["error", "type"]),
       fields({
         detail: absent(),
+        loss: absent(),
         type: literal("failed"),
       }, ["error", "type"]),
       fields({
         error: absent(),
+        loss: absent(),
         type: literal("canceled"),
       }, ["type"]),
       fields({
         detail: absent(),
+        error: absent(),
         type: literal("lost"),
-      }, ["error", "type"]),
+      }, ["loss", "type"]),
     ]),
   ]),
   RunOutcomeType: enumOf(["completed", "timedOut", "failed", "canceled", "lost"]),

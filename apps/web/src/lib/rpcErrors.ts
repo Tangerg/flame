@@ -25,7 +25,6 @@ export const MAPPED_TYPES: readonly string[] = [
   "child_run_canceled",
   "idempotency_in_progress",
   "internal_error",
-  "run_lost",
   "mcp_authorization_attempt_not_found",
   "skill_not_found",
   "skill_unavailable",

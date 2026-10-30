@@ -98,7 +98,7 @@ func TestInteractionExecutorProjectsAuthoritativeModelToolLifecycleAndAccounting
 		t.Fatalf("hook calls = before %d after %d", hooks.before, hooks.after)
 	}
 	ended := payloadsOf[runs.SegmentEnded](events)
-	if len(ended) != 1 || ended[0].Reason != run.OutcomeCompleted {
+	if len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeCompleted {
 		t.Fatalf("segment termination = %#v", ended)
 	}
 
@@ -412,9 +412,9 @@ func TestInteractionExecutorCancellationStopsCooperativeInflightTool(t *testing.
 	}
 
 	ended := payloadsOf[runs.SegmentEnded](events)
-	if len(ended) != 1 || ended[0].Reason != run.OutcomeCanceled {
+	if len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeCanceled {
 		for _, end := range ended {
-			t.Logf("terminal reason=%s failure=%+v", end.Reason, end.Failure())
+			t.Logf("terminal reason=%s failure=%+v", end.Ending.Outcome(), segmentFailure(end))
 		}
 		t.Fatalf("segment end = %#v, want canceled", ended)
 	}
@@ -486,7 +486,7 @@ func TestInteractionExecutorCancellationStopsCooperativeInflightModel(t *testing
 				t.Fatalf("canceled call latency = %v, streaming = %v", failed[0].FirstOutputLatencyMillis, streaming)
 			}
 			ended := payloadsOf[runs.SegmentEnded](events)
-			if len(ended) != 1 || ended[0].Reason != run.OutcomeCanceled {
+			if len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeCanceled {
 				t.Fatalf("segment end = %#v, want canceled", ended)
 			}
 		})
@@ -554,7 +554,7 @@ func TestInteractionExecutorCancellationWinsWhileModelStartCommitIsSettling(t *t
 			t.Fatalf("model calls = %d, want 0 before a settled start boundary", modelCalls)
 		}
 		ended := payloadsOf[runs.SegmentEnded](events)
-		if len(ended) != 1 || ended[0].Reason != run.OutcomeCanceled {
+		if len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeCanceled {
 			t.Fatalf("segment end = %#v, want canceled", ended)
 		}
 	})
@@ -659,7 +659,7 @@ func TestInteractionExecutorChunkDropPreservesFinalAndUsage(t *testing.T) {
 		t.Fatalf("authoritative model completion = %#v", completed)
 	}
 	ended := payloadsOf[runs.SegmentEnded](events)
-	if len(ended) != 1 || ended[0].Reason != run.OutcomeCompleted {
+	if len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeCompleted {
 		t.Fatalf("terminal = %#v", ended)
 	}
 }
@@ -755,7 +755,7 @@ func TestInteractionExecutorKeepsRefetchableProjectionAndPostHookObservational(t
 		t.Fatalf("refetchable projection or observational hook made Effect unknown: %#v", events)
 	}
 	ended := payloadsOf[runs.SegmentEnded](events)
-	if len(ended) != 1 || ended[0].Reason != run.OutcomeCompleted {
+	if len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeCompleted {
 		t.Fatalf("terminal = %#v, want completed", ended)
 	}
 	for _, detail := range []string{"projection unavailable", "post-Tool hook unavailable", "session.id=session_1", "tool.name=fixture_observe"} {
@@ -881,7 +881,7 @@ func assertUnrecordedToolCallTerminal(t *testing.T, events []runs.ExecutorEvent)
 	if unknown := unresolvedTerminals(events); len(unknown) != 1 {
 		t.Fatalf("unrecorded Tool call observations = %#v, want one unknown Effect", unknown)
 	}
-	if ended := payloadsOf[runs.SegmentEnded](events); len(ended) != 1 || ended[0].Reason != run.OutcomeLost {
+	if ended := payloadsOf[runs.SegmentEnded](events); len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeLost {
 		t.Fatalf("unknown Tool Effect did not retain its lost terminal: %#v", ended)
 	}
 }
@@ -889,8 +889,8 @@ func assertUnrecordedToolCallTerminal(t *testing.T, events []runs.ExecutorEvent)
 func assertInternalProjectionTerminal(t *testing.T, events []runs.ExecutorEvent) {
 	t.Helper()
 	ended := payloadsOf[runs.SegmentEnded](events)
-	if len(ended) != 1 || ended[0].Reason != run.OutcomeFailed ||
-		ended[0].Failure() == nil || ended[0].Failure().Kind != run.FailureInternal {
+	if len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeFailed ||
+		segmentFailure(ended[0]) == nil || segmentFailure(ended[0]).Kind != run.FailureInternal {
 		t.Fatalf("projection terminal = %#v, want one internal failure", ended)
 	}
 }
@@ -915,7 +915,7 @@ func TestInteractionExecutorReconcilesModelFinalCommitFailureAsUnknown(t *testin
 	if len(unknown) != 1 {
 		t.Fatalf("unknown observations = %#v, want one Effect", unknown)
 	}
-	if ends := payloadsOf[runs.SegmentEnded](events); len(ends) != 1 || ends[0].Reason != run.OutcomeLost {
+	if ends := payloadsOf[runs.SegmentEnded](events); len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeLost {
 		t.Fatalf("unknown Effect did not retain its lost terminal: %#v", events)
 	}
 }
@@ -1142,7 +1142,7 @@ func TestInteractionExecutorKeepsPublicationUnknownWhenResultWriteFails(t *testi
 	if len(evidence) == 0 || len(evidence) > 2 || evidence[0].EffectID() == "" || !strings.Contains(evidence[0].Detail(), projectionFailure.Error()) {
 		t.Fatalf("publication lost diagnostic: %+v", evidence)
 	}
-	if ends := payloadsOf[runs.SegmentEnded](events); len(ends) != 1 || ends[0].Reason != run.OutcomeLost {
+	if ends := payloadsOf[runs.SegmentEnded](events); len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeLost {
 		t.Fatalf("unknown publication did not retain its lost terminal: %#v", events)
 	}
 }
@@ -1238,7 +1238,7 @@ func TestInteractionExecutorKeepsPublicationUnknownWhenDeniedSiblingProjectionFa
 	if len(evidence) == 0 || len(evidence) > 2 || evidence[0].EffectID() == "" || !strings.Contains(evidence[0].Detail(), projectionFailure.Error()) {
 		t.Fatalf("publication lost diagnostic: %+v", evidence)
 	}
-	if ended := payloadsOf[runs.SegmentEnded](events); len(ended) != 1 || ended[0].Reason != run.OutcomeLost {
+	if ended := payloadsOf[runs.SegmentEnded](events); len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeLost {
 		t.Fatalf("external Effect did not retain its lost terminal: %#v", ended)
 	}
 }

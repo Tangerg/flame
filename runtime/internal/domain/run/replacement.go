@@ -38,8 +38,8 @@ func (r Replacement) CancelWaiting(detail string, finishedAt time.Time, messageM
 	return r.advance(r.state.CancelWaiting(detail, finishedAt, messageMark))
 }
 
-func (r Replacement) RecoverLost(failure Failure, finishedAt time.Time, messageMark MessageMark) (Replacement, error) {
-	return r.advance(r.state.RecoverLost(failure, finishedAt, messageMark))
+func (r Replacement) RecoverLost(loss Loss, finishedAt time.Time, messageMark MessageMark) (Replacement, error) {
+	return r.advance(r.state.RecoverLost(loss, finishedAt, messageMark))
 }
 
 func (r Replacement) WithMessageMark(messageMark int) (Replacement, error) {

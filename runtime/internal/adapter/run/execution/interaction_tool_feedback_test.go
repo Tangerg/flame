@@ -74,7 +74,7 @@ func TestInteractionToolFailureFeedbackMatchesDurableResult(t *testing.T) {
 			})
 			ends := payloadsOf[runs.SegmentEnded](events)
 			if committed == nil || !committed.IsError || len(payloadsOf[runs.ModelCallCompleted](events)) != 2 ||
-				len(ends) != 1 || ends[0].Reason != run.OutcomeCompleted {
+				len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeCompleted {
 				t.Fatalf("failed Tool feedback did not continue after commit: result=%+v events=%#v", committed, events)
 			}
 			if !reflect.DeepEqual(committed.Output, test.failure.Output()) {
@@ -195,7 +195,7 @@ func TestInteractionRejectedToolFeedbackMatchesDurableResult(t *testing.T) {
 			})
 			ends := payloadsOf[runs.SegmentEnded](events)
 			if committed == nil || !committed.IsError || len(payloadsOf[runs.ModelCallCompleted](events)) != 2 ||
-				len(ends) != 1 || ends[0].Reason != run.OutcomeCompleted {
+				len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeCompleted {
 				t.Fatalf("rejected Tool feedback did not continue after commit: result=%+v", committed)
 			}
 		})

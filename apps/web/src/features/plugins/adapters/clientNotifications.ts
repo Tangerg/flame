@@ -9,6 +9,7 @@ import { trackContributionIO } from "@/extensions/contributionIO";
 import { reportPluginError } from "@/extensions/errors";
 import { type AgentAccess } from "@/features/agent/public/agent";
 import { type NotificationAccess } from "@/features/notifications/public/notifier";
+import { t } from "@/lib/i18n/index";
 
 function ownSubscription(
   signal: AbortSignal,
@@ -82,7 +83,16 @@ export function createComponentSettlementSubscription(
         if (!active()) return;
         const work = trackContributionIO(lifetime, async () => {
           signal.throwIfAborted();
-          await listener(Object.freeze({ ...settlement }), signal);
+          await listener(
+            Object.freeze({
+              sessionId: settlement.sessionId,
+              status: settlement.status,
+              errorMessage: settlement.lossReason
+                ? t(`agent.loss.${settlement.lossReason}`)
+                : settlement.errorMessage,
+            }),
+            signal,
+          );
         });
         void work.catch((error: unknown) => {
           if (!signal.aborted)

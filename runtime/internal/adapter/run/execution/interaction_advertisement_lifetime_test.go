@@ -50,7 +50,7 @@ func TestInteractionExecutorDoesNotAdvertiseToolsWithoutTheCapability(t *testing
 	})
 	events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
 	ended := payloadsOf[runs.SegmentEnded](events)
-	if len(ended) != 1 || ended[0].Reason != run.OutcomeCompleted || calls != 2 {
+	if len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeCompleted || calls != 2 {
 		t.Fatalf("Tool did not complete: %+v", ended)
 	}
 }

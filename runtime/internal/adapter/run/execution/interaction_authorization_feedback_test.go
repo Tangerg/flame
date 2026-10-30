@@ -82,7 +82,7 @@ func TestInteractionPolicyRefusalPublishesItsExactReasonBeforeModelContinuation(
 			}
 			ends := payloadsOf[runs.SegmentEnded](events)
 			if toolCalls != 0 || hooks.after != 0 || modelCalls != 2 || len(payloadsOf[runs.ModelCallCompleted](events)) != 2 ||
-				len(ends) != 1 || ends[0].Reason != run.OutcomeCompleted {
+				len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeCompleted {
 				t.Fatalf("refusal lifecycle: tool=%d after=%d model=%d", toolCalls, hooks.after, modelCalls)
 			}
 		})

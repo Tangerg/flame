@@ -559,7 +559,7 @@ func (r *recoveryPlanner) planTree(rootRunID string) error {
 		return err
 	}
 	open, hasInterrupt := r.pendingByRoot[rootRunID]
-	loss := lossRestart
+	loss := rundomain.LossRestart
 	if tree.root.State() == rundomain.Waiting && hasInterrupt {
 		sess, sessionErr := r.session(tree.root.SessionID())
 		if sessionErr != nil {
@@ -687,14 +687,10 @@ func recoverLostTree(
 	items []transcript.Item,
 	messageMark int,
 	finishedAt time.Time,
-	loss Loss,
+	loss rundomain.LossReason,
 	models []ModelInvocationRecovery,
 	independent []modelref.EndpointObservation,
 ) ([]rundomain.Replacement, []transcript.Replacement, error) {
-	failure, err := loss.failure()
-	if err != nil {
-		return nil, nil, err
-	}
 	lostRuns := make([]rundomain.Replacement, 0, len(tree.postorder))
 	var replacements []transcript.Replacement
 	for _, runID := range tree.postorder {
@@ -714,7 +710,7 @@ func recoverLostTree(
 			replacements = append(replacements, itemReplacement)
 		}
 
-		replacement, err := recoverLostRun(active, models, independent, failure, finishedAt, messageMark)
+		replacement, err := recoverLostRun(active, models, independent, rundomain.Loss{Reason: loss}, finishedAt, messageMark)
 		if err != nil {
 			return nil, nil, fmt.Errorf("runs: recover lost Run %q: %w", active.ID(), err)
 		}
@@ -729,7 +725,7 @@ func recoverLostRun(
 	active rundomain.Run,
 	models []ModelInvocationRecovery,
 	independent []modelref.EndpointObservation,
-	failure rundomain.Failure,
+	loss rundomain.Loss,
 	finishedAt time.Time,
 	messageMark int,
 ) (rundomain.Replacement, error) {
@@ -767,5 +763,5 @@ func recoverLostRun(
 			return rundomain.Replacement{}, err
 		}
 	}
-	return replacement.RecoverLost(failure, finishedAt, active.Lineage().MessageMark(messageMark))
+	return replacement.RecoverLost(loss, finishedAt, active.Lineage().MessageMark(messageMark))
 }

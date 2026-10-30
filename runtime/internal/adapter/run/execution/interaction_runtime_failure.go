@@ -53,12 +53,11 @@ func (i *interactionSession) publishRuntimeFailure(cause error) error {
 				effects = append(effects, effect)
 			}
 		}
-		reason, kind := run.OutcomeFailed, run.FailureInternal
+		var ending run.Ending = run.Failed{Failure: run.Failure{Kind: run.FailureInternal, Detail: executorDiagnostic(cause)}}
 		if len(effects) > 0 {
-			reason, kind = run.OutcomeLost, run.FailureLost
+			ending = run.Lost{Loss: run.Loss{Reason: run.LossUnresolvedEffects, Detail: executorDiagnostic(cause)}}
 		}
-		failure := run.Failure{Kind: kind, Detail: executorDiagnostic(cause)}
-		if err := i.commitFact(ctx, member, runs.NewSegmentEnded(reason, &failure, 0).WithUnresolvedEffects(effects)); err != nil {
+		if err := i.commitFact(ctx, member, runs.NewSegmentEnded(ending, 0).WithUnresolvedEffects(effects)); err != nil {
 			return err
 		}
 	}

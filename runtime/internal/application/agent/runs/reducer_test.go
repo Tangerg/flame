@@ -60,7 +60,7 @@ func TestReducerTerminalChargesTheGoalOfAGoalOwnedRun(t *testing.T) {
 	mustReduce(t, reducer, ToolCallStarted{CallID: "call_1", ToolName: "inspect", Arguments: `{}`})
 	mustFinishTool(t, reducer, ToolCallFinished{CallID: "call_1", Result: testToolResult(t, "ok")})
 	reductions := mustReduce(t, reducer, SegmentEnded{
-		Reason: run.OutcomeCompleted,
+		Ending: run.Completed{},
 	})
 	commit := reductions[len(reductions)-1].Commit
 	if commit == nil || !commit.ChargesGoal() || commit.Run.GoalIncarnationID() != "goal_lease" {
@@ -90,7 +90,7 @@ func TestReducerStepsCountModelCallsRatherThanParallelTools(t *testing.T) {
 	mustFinishTool(t, reducer, ToolCallFinished{CallID: "call_2", Result: testToolResult(t, "two")})
 	mustFinishTool(t, reducer, ToolCallFinished{CallID: "call_1", Result: testToolResult(t, "one")})
 	finished := mustReduce(t, reducer, SegmentEnded{
-		Reason: run.OutcomeCompleted,
+		Ending: run.Completed{},
 	})
 	record := finished[len(finished)-1].Event.(SegmentFinished).Run
 	if record.Metrics().Steps() != 1 {
@@ -160,9 +160,9 @@ func TestReducerAccountsModelResponseWithoutMessage(t *testing.T) {
 	if late := mustReduce(t, reducer, MessageDelta{Text: "late"}); len(late) != 0 {
 		t.Fatalf("completed model boundary reopened: %+v", late)
 	}
-	terminal := mustReduce(t, reducer, NewSegmentEnded(run.OutcomeFailed, &run.Failure{
+	terminal := mustReduce(t, reducer, NewSegmentEnded(run.Failed{Failure: run.Failure{
 		Kind: run.FailureProviderRejected, Detail: "model response has no finished assistant message",
-	}, 0))
+	}}, 0))
 	record := terminal[len(terminal)-1].Event.(SegmentFinished).Run
 	accounted, available := record.Metrics().Usage()
 	if record.Metrics().Steps() != 1 || !available ||
@@ -282,7 +282,7 @@ func TestReducerTerminalDoesNotDuplicateCommittedModelResponse(t *testing.T) {
 	if len(conversation) != 1 || conversation[0].Text() != "authoritative answer" {
 		t.Fatalf("model conversation projection = %#v", conversation)
 	}
-	terminal := mustReduce(t, reducer, NewSegmentEnded(run.OutcomeCompleted, nil, 0))
+	terminal := mustReduce(t, reducer, NewSegmentEnded(run.Completed{}, 0))
 	if items := completedItems(terminal); len(items) != 0 {
 		t.Fatalf("terminal duplicated committed model Items: %#v", items)
 	}
@@ -419,7 +419,7 @@ func TestTerminalConversationClosesProviderToolCallCanceledBeforeRuntimeStart(t 
 	})
 	settlement.ModelResults = nil
 	toolBatch := mustReduce(t, reducer, settlement)
-	terminalBatch := mustReduce(t, reducer, SegmentEnded{Reason: run.OutcomeCanceled})
+	terminalBatch := mustReduce(t, reducer, SegmentEnded{Ending: run.Canceled{}})
 	if messages := committedConversationMessages(terminalBatch); len(messages) != 0 {
 		t.Fatalf("reducer duplicated terminal conversation ownership: %#v", messages)
 	}
@@ -486,8 +486,7 @@ func TestReducerSynthesizesUnsettledModelCallAsAtomicRunLost(t *testing.T) {
 	}
 	reductions := batch.events
 	finished, ok := reductions[len(reductions)-1].Event.(SegmentFinished)
-	if !ok || !runHasOutcome(finished.Run, run.OutcomeLost) ||
-		!runHasFailureKind(finished.Run, run.FailureLost) {
+	if loss, lost := finished.Run.Loss(); !ok || !lost || loss.Reason != run.LossUnresolvedModelCall {
 		t.Fatalf("terminal = %#v, want RunLost", reductions[len(reductions)-1].Event)
 	}
 	commit := reductions[len(reductions)-1].Commit
@@ -512,7 +511,7 @@ func TestReducerAccruesPerCallAccountingAcrossResume(t *testing.T) {
 	mustReduce(t, reducer, ModelCallCompleted{Model: "claude", CallID: "model_call_3",
 		ReportedUsage: &corechat.Usage{InputTokens: 5}})
 	finished := mustReduce(t, reducer, SegmentEnded{
-		Reason:   run.OutcomeCompleted,
+		Ending:   run.Completed{},
 		Duration: 2 * time.Second,
 	})
 	record := finished[len(finished)-1].Event.(SegmentFinished).Run
@@ -549,7 +548,7 @@ func TestReducerPreservesUsageWhenCumulativePricingBecomesUnavailable(t *testing
 	}
 
 	finished := mustReduce(t, reducer, SegmentEnded{
-		Reason: run.OutcomeCompleted,
+		Ending: run.Completed{},
 	})
 	record := finished[len(finished)-1].Event.(SegmentFinished).Run
 	usage, reported := record.Metrics().Usage()
@@ -982,7 +981,7 @@ func TestReducerCanonicalProgressSnapshotsAndOutcomes(t *testing.T) {
 	// segment finishes, so whoever receives the finish has received the final value
 	// — see reducer.fenceFinalPlan.
 	terminal := mustReduce(t, reducer, SegmentEnded{
-		Reason: run.OutcomeCanceled, Duration: 1500 * time.Millisecond,
+		Ending: run.Canceled{}, Duration: 1500 * time.Millisecond,
 	})
 	finished := terminal[len(terminal)-1].Event.(SegmentFinished)
 	terminalUsage, terminalReported := finished.Run.Metrics().Usage()
@@ -1012,7 +1011,7 @@ func TestReducerClassifiesErrorsWithoutLeakingProviderDetails(t *testing.T) {
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
 			reducer := newReducer(testReducerConfig())
-			terminal := mustReduce(t, reducer, SegmentEnded{Reason: run.OutcomeFailed, failure: &test.failure})
+			terminal := mustReduce(t, reducer, SegmentEnded{Ending: run.Failed{Failure: test.failure}})
 			finished := terminal[len(terminal)-1].Event.(SegmentFinished)
 			failure, failed := finished.Run.Failure()
 			if !failed || failure != test.failure || strings.Contains(failure.Detail, "api.example") {
@@ -1027,8 +1026,7 @@ func TestReducerRejectsIncoherentTerminalProblems(t *testing.T) {
 		name  string
 		event SegmentEnded
 	}{
-		{name: "error without problem", event: SegmentEnded{Reason: run.OutcomeFailed}},
-		{name: "completed with failure", event: SegmentEnded{Reason: run.OutcomeCompleted, failure: &run.Failure{Kind: run.FailureInternal}}},
+		{name: "error without problem", event: SegmentEnded{Ending: run.Failed{}}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -1269,7 +1267,7 @@ func TestReducerRejectsExecutorProtocolViolations(t *testing.T) {
 		event ExecutionFact
 	}{
 		{name: "unknown event", event: unsupportedEngineEvent{}},
-		{name: "invalid terminal outcome", event: SegmentEnded{Reason: run.Outcome("invalid")}},
+		{name: "invalid terminal outcome", event: SegmentEnded{Ending: nil}},
 	}
 
 	for _, test := range tests {
@@ -1403,7 +1401,7 @@ func TestReducerTerminalizationClosesUnrestartedResumeTool(t *testing.T) {
 			var batch reductionBatch
 			var err error
 			if reported {
-				batch, err = reducer.reduce(SegmentEnded{Reason: run.OutcomeCanceled})
+				batch, err = reducer.reduce(SegmentEnded{Ending: run.Canceled{}})
 			} else {
 				batch, err = reducer.synthesizeTerminal()
 			}
@@ -1481,7 +1479,7 @@ func TestValidateReductionBatchRejectsMalformedBoundaries(t *testing.T) {
 	}
 	terminalCommit := func() *EventCommit {
 		outcome := run.OutcomeCompleted
-		run := testsupport.MustRestoreRun(run.Snapshot{State: run.Finished, Outcome: &outcome})
+		run := testsupport.MustRestoreRun(run.Snapshot{State: run.Finished, Ending: testsupport.EndingFor(outcome)})
 		return &EventCommit{SegmentID: "segment_1", State: StateTerminalize, Run: &run}
 	}
 	invalidTerminalCommit := terminalCommit()
@@ -1719,7 +1717,7 @@ func TestSegmentFencesItsFinalPlanBeforeFinishing(t *testing.T) {
 		Revision: 4, UpdatedAt: time.Unix(11, 0).UTC(),
 	})})
 
-	terminal := mustReduce(t, reducer, SegmentEnded{Reason: run.OutcomeCompleted})
+	terminal := mustReduce(t, reducer, SegmentEnded{Ending: run.Completed{}})
 	if len(terminal) < 2 {
 		t.Fatalf("terminal batch = %d events, want the fence and the finish", len(terminal))
 	}
@@ -1735,7 +1733,7 @@ func TestSegmentFencesItsFinalPlanBeforeFinishing(t *testing.T) {
 	}
 
 	untouched := newReducer(testReducerConfig())
-	quiet := mustReduce(t, untouched, SegmentEnded{Reason: run.OutcomeCompleted})
+	quiet := mustReduce(t, untouched, SegmentEnded{Ending: run.Completed{}})
 	for _, reduced := range quiet {
 		if snapshot, ok := reduced.Event.(PlanSnapshot); ok {
 			t.Fatalf("a segment that changed no state published %+v", snapshot)
@@ -1931,7 +1929,7 @@ func TestReducerResumeContinuesTheCommittedToolItem(t *testing.T) {
 			if test.finish {
 				events = mustFinishTool(t, reducer, ToolCallFinished{CallID: "call_approval", Result: testToolResult(t, "ok")})
 			} else {
-				events = mustReduce(t, reducer, SegmentEnded{Reason: run.OutcomeCanceled})
+				events = mustReduce(t, reducer, SegmentEnded{Ending: run.Canceled{}})
 			}
 			settled := completedItem(t, events)
 			if settled.ID() != item.ID() || !settled.OccurredAt().Equal(item.OccurredAt()) ||
@@ -1962,7 +1960,7 @@ func TestReducerAccruesInterleavedModelCallsOnceWithoutChangingPrimaryContext(t 
 	if _, err := reducer.reduce(ModelCallCompleted{Model: "claude", CallID: "independent", ReportedUsage: &corechat.Usage{InputTokens: 7}}); !errors.Is(err, errExecutorContract) {
 		t.Fatalf("repeated completion = %v", err)
 	}
-	finished := mustReduce(t, reducer, NewSegmentEnded(run.OutcomeCompleted, nil, 0))
+	finished := mustReduce(t, reducer, NewSegmentEnded(run.Completed{}, 0))
 	record := finished[len(finished)-1].Event.(SegmentFinished).Run
 	usage, reported := record.Metrics().Usage()
 	if !reported || record.Metrics().Steps() != 2 || usage.Total.InputTokens != 12 || usage.Total.OutputTokens != 3 || usage.Total.CostUSD == nil || *usage.Total.CostUSD != .75 || record.ContextTokens() != 5 || usage.ByModel["second-model"].InputTokens != 7 {
@@ -1986,7 +1984,7 @@ func TestIndependentModelFactsPreservePrimaryStreamingAndUnknownConsumption(t *t
 	}
 	primary := corechat.NewAssistantMessage(corechat.NewTextPart("prefix suffix"))
 	mustReduce(t, reducer, ModelCallCompleted{CallID: "primary_live", Model: "primary-model", Message: &primary, ReportedUsage: &corechat.Usage{InputTokens: 5, OutputTokens: 2}, Cost: mustReducerCost(t, .5), ContextTokens: 5})
-	finished := mustReduce(t, reducer, NewSegmentEnded(run.OutcomeCompleted, nil, 0))
+	finished := mustReduce(t, reducer, NewSegmentEnded(run.Completed{}, 0))
 	record := finished[len(finished)-1].Event.(SegmentFinished).Run
 	usage, reported := record.Metrics().Usage()
 	if !reported || record.Metrics().Steps() != 2 || usage.Total.InputTokens != 5 || usage.Total.CostUSD != nil || record.ContextTokens() != 5 {
@@ -2012,7 +2010,7 @@ func TestFailedModelConsumptionDependsOnDispatchEvidence(t *testing.T) {
 				}
 				mustReduce(t, reducer, ModelCallStarted{CallID: "later"})
 				mustReduce(t, reducer, ModelCallCompleted{CallID: "later", Model: "model", ReportedUsage: &corechat.Usage{InputTokens: 3, OutputTokens: 1}, Cost: mustReducerCost(t, .25)})
-				finished := mustReduce(t, reducer, NewSegmentEnded(run.OutcomeCompleted, nil, 0))
+				finished := mustReduce(t, reducer, NewSegmentEnded(run.Completed{}, 0))
 				record := finished[len(finished)-1].Event.(SegmentFinished).Run
 				usage, reported := record.Metrics().Usage()
 				steps := 2

@@ -1,4 +1,6 @@
 import {
+  type ActivityType,
+  type LossReason,
   type RecoveryAction,
   type MessagePhase as AgentMessagePhase,
   type ToolCategory,
@@ -64,6 +66,8 @@ export interface RunUsage {
 export interface AgentProblem {
   message?: string;
   code?: string;
+  /** Present when the problem is a lost Run; the client words it. */
+  lossReason?: LossReason;
   recovery?: RecoveryAction;
   retryAfterSeconds?: number;
   activeRun?: { runId: string; status: string };
@@ -78,11 +82,19 @@ export interface AgentUnresolvedEffect {
   output?: string;
 }
 
-export type AgentRunFailureOutcome = {
-  type: "timedOut" | "failed" | "lost";
-  error: AgentProblem;
-  unresolvedEffects?: AgentUnresolvedEffect[];
-};
+export type AgentRunFailureOutcome =
+  | {
+      type: "timedOut" | "failed";
+      error: AgentProblem;
+      unresolvedEffects?: AgentUnresolvedEffect[];
+    }
+  | { type: "lost"; loss: AgentRunLoss; unresolvedEffects?: AgentUnresolvedEffect[] };
+
+interface AgentRunLoss {
+  reason: LossReason;
+  /** An operator diagnostic, never shown as the explanation. */
+  detail?: string;
+}
 
 export type AgentRunOutcome =
   | { type: "completed"; unresolvedEffects?: AgentUnresolvedEffect[] }
@@ -98,10 +110,7 @@ export interface AgentRunMetrics {
 
 /** What a running segment is doing; the client words it. */
 export type AgentRunActivity =
-  | { type: "callingModel" }
-  | { type: "modelCallFailed" }
-  | { type: "applyingUserInput" }
-  | { type: "toolCall"; itemId: string; tool: string };
+  { type: Exclude<ActivityType, "toolCall"> } | { type: "toolCall"; itemId: string; tool: string };
 
 export interface AgentRunProgress {
   step?: number;

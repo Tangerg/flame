@@ -41,9 +41,9 @@ func TestRunTransitionsRefuseUnrepresentableInstants(t *testing.T) {
 		{"suspend", func() (Run, error) { return current.Suspend(at) }},
 		{"resume", func() (Run, error) { return waiting.Resume("seg_next", at) }},
 		{"terminal", func() (Run, error) {
-			return current.Terminate(Termination{Outcome: OutcomeCompleted, FinishedAt: at, MessageMark: MessageMarkAt(0)})
+			return current.Terminate(Termination{Ending: Completed{}, FinishedAt: at, MessageMark: MessageMarkAt(0)})
 		}},
-		{"lost", func() (Run, error) { return waiting.RecoverLost(Failure{Kind: FailureLost}, at, MessageMarkAt(0)) }},
+		{"lost", func() (Run, error) { return waiting.RecoverLost(Loss{Reason: LossRestart}, at, MessageMarkAt(0)) }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if _, err := test.advance(); err == nil || !strings.Contains(err.Error(), "outside the exact Unix nanosecond range") {
@@ -192,7 +192,7 @@ func TestRunProgressPreservesLatestPromptFootprintAcrossLifecycle(t *testing.T) 
 		t.Fatalf("AdvanceProgress after compaction: %v", err)
 	}
 	value, err = value.Terminate(Termination{
-		Outcome: OutcomeCompleted, FinishedAt: createdAt.Add(3 * time.Second), MessageMark: MessageMarkAt(1),
+		Ending: Completed{}, FinishedAt: createdAt.Add(3 * time.Second), MessageMark: MessageMarkAt(1),
 	})
 	if err != nil {
 		t.Fatalf("Terminate: %v", err)
@@ -205,23 +205,18 @@ func TestRunProgressPreservesLatestPromptFootprintAcrossLifecycle(t *testing.T) 
 func TestRunTerminalFactsRemainCoherent(t *testing.T) {
 	tests := []struct {
 		name    string
-		outcome Outcome
-		failure *Failure
-		detail  string
+		ending  Ending
 		wantErr bool
 	}{
-		{name: "completed", outcome: OutcomeCompleted},
-		{name: "completed with detail", outcome: OutcomeCompleted, detail: "unexpected", wantErr: true},
-		{name: "failed", outcome: OutcomeFailed, failure: &Failure{Kind: FailureProviderRejected}},
-		{name: "generic failure classified as lost", outcome: OutcomeFailed, failure: &Failure{Kind: FailureLost}, wantErr: true},
-		{name: "failed with duplicate detail", outcome: OutcomeFailed, failure: &Failure{Kind: FailureProviderRejected}, detail: "duplicate", wantErr: true},
-		{name: "failure missing", outcome: OutcomeFailed, wantErr: true},
-		{name: "timeout classified", outcome: OutcomeTimedOut, failure: &Failure{Kind: FailureTimeout}},
-		{name: "timeout misclassified", outcome: OutcomeTimedOut, failure: &Failure{Kind: FailureInternal}, wantErr: true},
-		{name: "lost classified", outcome: OutcomeLost, failure: &Failure{Kind: FailureLost}},
-		{name: "cancellation carries detail", outcome: OutcomeCanceled, detail: "stopped by user"},
-		{name: "cancellation carries detail", outcome: OutcomeCanceled, detail: "user stopped"},
-		{name: "success carries failure", outcome: OutcomeCompleted, failure: &Failure{Kind: FailureInternal}, wantErr: true},
+		{name: "completed", ending: Completed{}},
+		{name: "failed", ending: Failed{Failure: Failure{Kind: FailureProviderRejected}}},
+		{name: "failure unclassified", ending: Failed{}, wantErr: true},
+		{name: "timed out", ending: TimedOut{Detail: "deadline reached"}},
+		{name: "lost", ending: Lost{Loss: Loss{Reason: LossUnresolvedEffects}}},
+		{name: "loss unexplained", ending: Lost{}, wantErr: true},
+		{name: "cancellation carries detail", ending: Canceled{Detail: "stopped by user"}},
+		{name: "cancellation detail not canonical", ending: Canceled{Detail: " stopped "}, wantErr: true},
+		{name: "no ending", wantErr: true},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -233,8 +228,7 @@ func TestRunTerminalFactsRemainCoherent(t *testing.T) {
 				t.Fatalf("Admit: %v", err)
 			}
 			terminal, err := value.Terminate(Termination{
-				Outcome: test.outcome, Failure: test.failure, Detail: test.detail,
-				FinishedAt: time.Unix(2, 0).UTC(), MessageMark: MessageMarkAt(0),
+				Ending: test.ending, FinishedAt: time.Unix(2, 0).UTC(), MessageMark: MessageMarkAt(0),
 			})
 			if test.wantErr {
 				if err == nil {
@@ -245,7 +239,7 @@ func TestRunTerminalFactsRemainCoherent(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Terminate: %v", err)
 			}
-			if outcome, ok := terminal.Outcome(); !ok || outcome != test.outcome ||
+			if outcome, ok := terminal.Outcome(); !ok || outcome != test.ending.Outcome() ||
 				!terminal.FinishedAt().Equal(time.Unix(2, 0).UTC()) || terminal.MessageMark() != MessageMarkAt(0) {
 				t.Fatalf("terminal Run = %+v", terminal.Snapshot())
 			}
@@ -263,7 +257,7 @@ func TestForkReidentifiesTerminalHistoryAndClearsGoalAttribution(t *testing.T) {
 		t.Fatalf("Admit: %v", err)
 	}
 	source, err = source.Terminate(Termination{
-		Outcome: OutcomeCompleted, FinishedAt: createdAt.Add(time.Second), MessageMark: MessageMarkAt(2),
+		Ending: Completed{}, FinishedAt: createdAt.Add(time.Second), MessageMark: MessageMarkAt(2),
 	})
 	if err != nil {
 		t.Fatalf("Terminate: %v", err)
@@ -302,7 +296,7 @@ func TestForkKeepsTheLineageKindItWasDerivedFrom(t *testing.T) {
 		t.Fatalf("Admit root: %v", err)
 	}
 	root, err = root.Terminate(Termination{
-		Outcome: OutcomeCompleted, FinishedAt: createdAt.Add(time.Second), MessageMark: MessageMarkAt(1),
+		Ending: Completed{}, FinishedAt: createdAt.Add(time.Second), MessageMark: MessageMarkAt(1),
 	})
 	if err != nil {
 		t.Fatalf("Terminate root: %v", err)
@@ -395,7 +389,7 @@ func TestRunRejectsIllegalTransitionsAndRegressingFacts(t *testing.T) {
 		t.Fatal("Run accepted regressing metrics")
 	}
 	terminal, err := value.Terminate(Termination{
-		Outcome: OutcomeCompleted, FinishedAt: createdAt.Add(2 * time.Second), MessageMark: UnknownMessageMark(),
+		Ending: Completed{}, FinishedAt: createdAt.Add(2 * time.Second), MessageMark: UnknownMessageMark(),
 	})
 	if err != nil {
 		t.Fatalf("Terminate: %v", err)
@@ -465,15 +459,12 @@ func TestMetricsRejectsDurationOverflow(t *testing.T) {
 // outcome, so it cannot produce a mismatched pair; a durable row can. These are
 // the invariants outer layers rely on instead of re-checking a restored Run.
 func TestRestoreRejectsSnapshotsThatBreakRunInvariants(t *testing.T) {
-	completed := OutcomeCompleted
-	lost := OutcomeLost
-	failed := OutcomeFailed
 	createdAt := time.Unix(1, 0).UTC()
 	finishedAt := time.Unix(2, 0).UTC()
 	valid := func() Snapshot {
 		return Snapshot{
 			SessionID: "session_1", ID: "run_1", ModelSelection: mustRunSelection(t),
-			State: Finished, Outcome: &completed,
+			State: Finished, Ending: Completed{},
 			CreatedAt: createdAt, FinishedAt: finishedAt, UpdatedAt: finishedAt,
 		}
 	}
@@ -481,8 +472,7 @@ func TestRestoreRejectsSnapshotsThatBreakRunInvariants(t *testing.T) {
 		name   string
 		break_ func(*Snapshot)
 	}{
-		{name: "unknown outcome", break_: func(s *Snapshot) { s.Outcome = new(Outcome("error")) }},
-		{name: "terminal without an outcome", break_: func(s *Snapshot) { s.Outcome = nil }},
+		{name: "terminal without an ending", break_: func(s *Snapshot) { s.Ending = nil }},
 		{name: "terminal without a finish time", break_: func(s *Snapshot) { s.FinishedAt = time.Time{} }},
 		{name: "terminal carries an active segment", break_: func(s *Snapshot) { s.ActiveSegmentID = "segment_1" }},
 		{name: "running without an active segment", break_: func(s *Snapshot) {
@@ -492,11 +482,9 @@ func TestRestoreRejectsSnapshotsThatBreakRunInvariants(t *testing.T) {
 				MessageMark: UnknownMessageMark(),
 			}
 		}},
-		{name: "lost without a lost failure", break_: func(s *Snapshot) {
-			s.Outcome = &lost
-		}},
-		{name: "completed carries a failure", break_: func(s *Snapshot) {
-			s.Failure = &Failure{Kind: FailureInternal}
+		{name: "lost without a reason", break_: func(s *Snapshot) { s.Ending = Lost{} }},
+		{name: "open Run carries an ending", break_: func(s *Snapshot) {
+			s.State, s.ActiveSegmentID, s.FinishedAt = Running, "segment_1", time.Time{}
 		}},
 		{name: "negative prompt footprint", break_: func(s *Snapshot) { s.ContextTokens = -1 }},
 		{name: "malformed active segment", break_: func(s *Snapshot) {
@@ -507,8 +495,7 @@ func TestRestoreRejectsSnapshotsThatBreakRunInvariants(t *testing.T) {
 			}
 		}},
 		{name: "failure the Failure value rejects", break_: func(s *Snapshot) {
-			s.Outcome = &failed
-			s.Failure = &Failure{Kind: FailureProviderRejected, RetryAfter: -1}
+			s.Ending = Failed{Failure: Failure{Kind: FailureProviderRejected, RetryAfter: -1}}
 		}},
 		{name: "child carries a Goal incarnation", break_: func(s *Snapshot) {
 			s.Lineage = Lineage{

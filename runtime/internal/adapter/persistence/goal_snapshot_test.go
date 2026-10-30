@@ -47,7 +47,7 @@ func TestGoalReadsKeepLifecycleAndUsageInOneSnapshot(t *testing.T) {
 			change := goalReplacement(t, paused, initial.Version())
 			terminal := testsupport.MustRestoreRun(run.Snapshot{
 				SessionID: initial.SessionID(), ID: "run_goal_snapshot", GoalIncarnationID: initial.IncarnationID(),
-				Outcome: new(run.OutcomeCompleted), CreatedAt: now, FinishedAt: now.Add(time.Minute), UpdatedAt: now.Add(time.Minute),
+				Ending: run.Completed{}, CreatedAt: now, FinishedAt: now.Add(time.Minute), UpdatedAt: now.Add(time.Minute),
 				Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{
 					Steps: 3, Usage: &accounting.Usage{Total: accounting.Totals{CostUSD: new(0.25)}},
 				}),

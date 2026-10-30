@@ -82,7 +82,7 @@ func TestSemanticRefusalCrossesRealInterpreterAndTreeCommitter(t *testing.T) {
 				return nil
 			})
 			ends := payloadsOf[runs.SegmentEnded](events)
-			if executions != 0 || modelCalls != 2 || publications != 1 || committed == nil || !committed.IsError || committed.ID != "refused" || len(ends) != 1 || ends[0].Reason != run.OutcomeCompleted {
+			if executions != 0 || modelCalls != 2 || publications != 1 || committed == nil || !committed.IsError || committed.ID != "refused" || len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeCompleted {
 				t.Fatalf("executions=%d model=%d publications=%d result=%+v terminal=%+v", executions, modelCalls, publications, committed, ends)
 			}
 		})
@@ -106,7 +106,7 @@ func TestCompleteModelResponseSurvivesScopeCancellation(t *testing.T) {
 			if len(completed) != 1 || completed[0].Message.Text() != "observed" || completed[0].ReportedUsage == nil || completed[0].ReportedUsage.InputTokens != 2 || len(payloadsOf[runs.ModelCallFailed](events)) != 0 {
 				t.Fatalf("known response lost: completed=%+v events=%+v", completed, events)
 			}
-			if len(ended) != 1 || ended[0].Reason != run.OutcomeCanceled {
+			if len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeCanceled {
 				t.Fatalf("Scope terminal changed: %+v", ended)
 			}
 		})
@@ -146,7 +146,7 @@ func TestCanceledStreamPublishesIncompleteObservationBeforeTerminal(t *testing.T
 	if len(failed) != 1 || failed[0].Observation.Text != "prefix" || failed[0].Observation.Reasoning != "thinking" || len(payloadsOf[runs.ModelCallCompleted](events)) != 0 {
 		t.Fatalf("incomplete observation lost or promoted: %+v", events)
 	}
-	if len(ended) != 1 || ended[0].Reason != run.OutcomeCanceled {
+	if len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeCanceled {
 		t.Fatalf("Scope terminal changed: %+v", ended)
 	}
 	seenFailure := false

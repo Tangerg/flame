@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -28,14 +30,7 @@ func TestTerminalEffectsSurviveDatabaseReopen(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			var failure *run.Failure
-			if outcome == run.OutcomeTimedOut {
-				failure = &run.Failure{Kind: run.FailureTimeout}
-			}
-			if outcome == run.OutcomeLost {
-				failure = &run.Failure{Kind: run.FailureLost}
-			}
-			terminal, err := value.Terminate(run.Termination{Outcome: outcome, Failure: failure, FinishedAt: time.Unix(9, 0), MessageMark: run.MessageMarkAt(0), UnresolvedEffects: []run.UnresolvedEffect{evidence}})
+			terminal, err := value.Terminate(run.Termination{Ending: testsupport.EndingFor(outcome), FinishedAt: time.Unix(9, 0), MessageMark: run.MessageMarkAt(0), UnresolvedEffects: []run.UnresolvedEffect{evidence}})
 			if err != nil {
 				t.Fatal(err)
 			}

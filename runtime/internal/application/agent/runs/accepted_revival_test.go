@@ -77,7 +77,7 @@ func TestAcceptedRevivalPreservesOwnershipAndInconclusiveFailures(t *testing.T) 
 				}
 				coordinator.runs.(*fakeRunProjection).runs["run_1"] = value
 			case "terminal":
-				value, err := resumed.State().Terminate(run.Termination{Outcome: run.OutcomeCanceled, FinishedAt: at.Add(3 * time.Second)})
+				value, err := resumed.State().Terminate(run.Termination{Ending: run.Canceled{}, FinishedAt: at.Add(3 * time.Second)})
 				if err != nil {
 					t.Fatal(err)
 				}

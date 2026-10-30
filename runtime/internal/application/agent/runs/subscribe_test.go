@@ -322,7 +322,7 @@ func TestSubscribeAfterOrphanRecoveryUsesFinishedStateBeforeOldCursor(t *testing
 	outcome := run.OutcomeLost
 	recovered := testsupport.MustRestoreRun(run.Snapshot{
 		ID: testRunID, SessionID: "ses_1", State: run.Finished,
-		Outcome: &outcome, Failure: &run.Failure{Kind: run.FailureLost},
+		Ending: testsupport.EndingFor(outcome),
 	})
 	projection := &fakeRunProjection{runs: map[string]run.Run{testRunID: recovered}}
 	restarted := mustNewCoordinator(Dependencies{Runs: projection})
@@ -333,8 +333,7 @@ func TestSubscribeAfterOrphanRecoveryUsesFinishedStateBeforeOldCursor(t *testing
 		t.Fatalf("Subscribe after orphan recovery = %v, want ErrRunFinished", err)
 	}
 	cold, found, queryErr := projection.Run(t.Context(), testRunID)
-	if failure, failed := cold.Failure(); queryErr != nil || !found ||
-		!failed || failure.Kind != run.FailureLost {
+	if _, lost := cold.Loss(); queryErr != nil || !found || !lost {
 		t.Fatalf(
 			"cold recovery = found:%t Run:%+v err:%v, want terminal run_lost",
 			found,

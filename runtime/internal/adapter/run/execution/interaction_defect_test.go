@@ -39,7 +39,7 @@ func TestExecutionDefectFailsTheRunAndFinishesTheSession(t *testing.T) {
 	if terminal == nil {
 		t.Fatal("a defect published no terminal for its own Run")
 	}
-	if terminal.Reason != run.OutcomeFailed {
-		t.Fatalf("terminal reason = %q, want failed", terminal.Reason)
+	if terminal.Ending.Outcome() != run.OutcomeFailed {
+		t.Fatalf("terminal reason = %q, want failed", terminal.Ending.Outcome())
 	}
 }

@@ -213,7 +213,6 @@ export const RUN_PROBLEM_RECOVERY = {
   "provider_rejected": "stop",
   "provider_unavailable": "waitRetryAfter",
   "rate_limited": "waitRetryAfter",
-  "run_lost": "promptUser",
   "timeout": "promptUser",
   "tool_canceled": "stop",
   "tool_failed": "promptUser",
@@ -321,7 +320,7 @@ export type ArtifactOutcome =
   | { type: "timedOut"; error: { detail?: string; docUrl?: string; retryAfterSeconds?: number; type: "timeout" }; unresolvedEffects?: UnresolvedEffect[] }
   | { type: "failed"; error: { detail?: string; docUrl?: string; retryAfterSeconds?: number; type: "internal_error" | "agent_stuck" | "rate_limited" | "invalid_credentials" | "timeout" | "provider_unavailable" | "provider_rejected" }; unresolvedEffects?: UnresolvedEffect[] }
   | { type: "canceled"; detail?: string; unresolvedEffects?: UnresolvedEffect[] }
-  | { type: "lost"; error: { detail?: string; docUrl?: string; retryAfterSeconds?: number; type: "run_lost" }; unresolvedEffects?: UnresolvedEffect[] };
+  | { type: "lost"; loss: RunLoss; unresolvedEffects?: UnresolvedEffect[] };
 
 export type ArtifactOutcomeType = "completed" | "timedOut" | "failed" | "canceled" | "lost";
 
@@ -332,7 +331,7 @@ export interface ArtifactProblem {
   type: ArtifactProblemType;
 }
 
-export type ArtifactProblemType = "internal_error" | "run_lost" | "agent_stuck" | "rate_limited" | "invalid_credentials" | "timeout" | "provider_unavailable" | "provider_rejected" | "denied_by_user" | "tool_failed" | "child_run_canceled" | "tool_canceled";
+export type ArtifactProblemType = "internal_error" | "agent_stuck" | "rate_limited" | "invalid_credentials" | "timeout" | "provider_unavailable" | "provider_rejected" | "denied_by_user" | "tool_failed" | "child_run_canceled" | "tool_canceled";
 
 export interface ArtifactRun {
   contextTokens?: number;
@@ -876,6 +875,8 @@ export interface LivenessStatus {
   instanceId: string;
   status: LivenessState;
 }
+
+export type LossReason = "restart" | "isolatedWorkspace" | "workspaceUnavailable" | "otherBuild" | "waitingStateUnavailable" | "configurationChanged" | "unresolvedEffects" | "unresolvedModelCall";
 
 export interface MCPAuthorizationAttempt {
   createdAt: string;
@@ -1548,7 +1549,6 @@ export type ProblemData =
   | { type: "replay_unavailable"; detail?: string; docUrl?: string }
   | { type: "revision_conflict"; detail?: string; docUrl?: string }
   | { type: "run_finished"; detail?: string; docUrl?: string }
-  | { type: "run_lost"; detail?: string; docUrl?: string }
   | { type: "run_not_found"; detail?: string; docUrl?: string }
   | { type: "run_not_root"; detail?: string; docUrl?: string }
   | { type: "run_waiting"; detail?: string; docUrl?: string }
@@ -1728,6 +1728,11 @@ export interface RunEvent {
   timestamp: string;
 }
 
+export interface RunLoss {
+  detail?: string;
+  reason: LossReason;
+}
+
 export interface RunMetrics {
   activeDurationMillis: number;
   steps: number;
@@ -1739,7 +1744,7 @@ export type RunOutcome =
   | { type: "timedOut"; error: ProblemData; unresolvedEffects?: UnresolvedEffect[] }
   | { type: "failed"; error: ProblemData; unresolvedEffects?: UnresolvedEffect[] }
   | { type: "canceled"; detail?: string; unresolvedEffects?: UnresolvedEffect[] }
-  | { type: "lost"; error: ProblemData; unresolvedEffects?: UnresolvedEffect[] };
+  | { type: "lost"; loss: RunLoss; unresolvedEffects?: UnresolvedEffect[] };
 
 export type RunOutcomeType = "completed" | "timedOut" | "failed" | "canceled" | "lost";
 
@@ -2344,7 +2349,7 @@ export const WIRE_ENUMS = {
   ApprovalRuleScope: ["session", "project", "global"],
   ApprovalSubjectType: ["all", "exact", "glob"],
   ArtifactOutcomeType: ["completed", "timedOut", "failed", "canceled", "lost"],
-  ArtifactProblemType: ["internal_error", "run_lost", "agent_stuck", "rate_limited", "invalid_credentials", "timeout", "provider_unavailable", "provider_rejected", "denied_by_user", "tool_failed", "child_run_canceled", "tool_canceled"],
+  ArtifactProblemType: ["internal_error", "agent_stuck", "rate_limited", "invalid_credentials", "timeout", "provider_unavailable", "provider_rejected", "denied_by_user", "tool_failed", "child_run_canceled", "tool_canceled"],
   CancelRunResponseType: ["root", "child"],
   CapabilityRequirementType: ["feature", "interruptType", "runtimeTopic"],
   ChangeStatus: ["added", "deleted", "modified", "moved"],
@@ -2372,6 +2377,7 @@ export const WIRE_ENUMS = {
   ItemStatus: ["running", "completed", "incomplete"],
   ItemType: ["userMessage", "agentMessage", "reasoning", "question", "toolCall", "compaction"],
   LivenessState: ["ok"],
+  LossReason: ["restart", "isolatedWorkspace", "workspaceUnavailable", "otherBuild", "waitingStateUnavailable", "configurationChanged", "unresolvedEffects", "unresolvedModelCall"],
   MCPAuthorizationAttemptStatusType: ["pending", "succeeded", "failed", "canceled"],
   MCPHandshakeTimeoutType: ["unbounded", "bounded"],
   MCPOriginType: ["user", "installation"],

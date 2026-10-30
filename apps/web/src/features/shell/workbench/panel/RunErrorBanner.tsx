@@ -112,6 +112,7 @@ export function RunErrorBanner() {
             </div>
             <div {...stylex.props(sh.bannerBody, typeStep.uiMd)}>
               {describeActiveRunRefusal(error) ??
+                (error.lossReason ? t(`agent.loss.${error.lossReason}`) : undefined) ??
                 error.message ??
                 describeErrorType(error.code) ??
                 t("runError.unknown")}

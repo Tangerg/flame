@@ -46,7 +46,7 @@ func TestSnapshotSubscriptionHandsOffBeforeItemAndRootCompletion(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 	defer cancel()
 	executor := &snapshotExecutor{fakeExecutor: fakeExecutor{events: []executorPayload{
-		MessageDelta{Text: "review complete"}, SegmentEnded{Reason: run.OutcomeCompleted},
+		MessageDelta{Text: "review complete"}, SegmentEnded{Ending: run.Completed{}},
 	}}, publish: make(chan struct{}), attempted: make(chan struct{})}
 	effects := &snapshotEffects{committed: make(chan struct{}, 1)}
 	coordinator := testCoordinator(executor, effects)
@@ -117,9 +117,9 @@ func TestSnapshotSubscriptionIncludesChildOpeningAndCompletion(t *testing.T) {
 		{Member: root, Payload: ToolCallStarted{CallID: "delegate", ModelCallSequence: 1, SourceCallID: child.SpawnCallID, ToolName: "delegate_task", Arguments: `{}`}},
 		{Member: child, Payload: request},
 		{Member: child, Payload: MessageDelta{Text: "child review"}},
-		{Member: child, Payload: SegmentEnded{Reason: run.OutcomeCompleted}},
+		{Member: child, Payload: SegmentEnded{Ending: run.Completed{}}},
 		{Member: root, Payload: testDelegatePublication(child.SpawnCallID, ToolCallFinished{CallID: "delegate", OutputText: "child review"})},
-		{Member: root, Payload: SegmentEnded{Reason: run.OutcomeCompleted}},
+		{Member: root, Payload: SegmentEnded{Ending: run.Completed{}}},
 	}}, publish: make(chan struct{}), attempted: make(chan struct{})}
 	coordinator := testCoordinator(executor, &fakeEffects{})
 	coordinator.newRunID = func() string { return "run_child" }

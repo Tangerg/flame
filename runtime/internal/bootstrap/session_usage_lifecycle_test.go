@@ -47,7 +47,7 @@ func TestProtocolSessionUsageKeepsCompleteProviderModelIdentities(t *testing.T) 
 		}
 		value := testsupport.MustRestoreRun(run.Snapshot{
 			ID: fmt.Sprintf("run_usage_%d", index), SessionID: sessionID, ModelSelection: selection,
-			Outcome: new(run.OutcomeCompleted), CreatedAt: now, FinishedAt: now, UpdatedAt: now,
+			Ending: run.Completed{}, CreatedAt: now, FinishedAt: now, UpdatedAt: now,
 			Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Usage: &accounting.Usage{
 				Total:   accounting.Totals{InputTokens: 10},
 				ByModel: map[string]accounting.Totals{model: {InputTokens: 10}},

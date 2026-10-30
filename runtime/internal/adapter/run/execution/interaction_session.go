@@ -717,7 +717,7 @@ func (i *interactionSession) publishResult(result agent.Result) error {
 		ctx, cancel := context.WithTimeout(ctx, auxiliaryOperationTimeout)
 		defer cancel()
 		if err := i.lifecycleHooks.NotifyStopped(
-			ctx, i.start.SessionID, i.start.WorkspaceCWD, string(end.Reason),
+			ctx, i.start.SessionID, i.start.WorkspaceCWD, string(end.Ending.Outcome()),
 		); err != nil {
 			slog.ErrorContext(i.lifetime.execution, "execution: notify stopped",
 				"session.id", i.start.SessionID, "error", err,
@@ -751,7 +751,7 @@ func (i *interactionSession) publishProjectionFailure(cause error) {
 	}
 	i.lifetime.send(runs.ExecutorEvent{
 		Member:  member,
-		Payload: runs.NewSegmentEnded(run.OutcomeFailed, &failure, 0),
+		Payload: runs.NewSegmentEnded(run.Failed{Failure: failure}, 0),
 	})
 }
 
@@ -822,8 +822,7 @@ func (i *interactionSession) segmentEnd(result agent.Result) (runs.SegmentEnded,
 	if termination.Cause() == agent.TerminationCauseExternalFailure ||
 		termination.Cause() == agent.TerminationCauseHostCancellation && termination.Reason() == modelProcessStopReason {
 		if classified, found := i.modelFailures.lookup(result.ProcessID()); found {
-			end.reason = run.OutcomeFailed
-			end.failure = &classified
+			end.ending = run.Failed{Failure: classified}
 		}
 	}
 	ctx, cancel := i.lifetime.publicationContext(i.lifetime.execution)
@@ -832,81 +831,53 @@ func (i *interactionSession) segmentEnd(result agent.Result) (runs.SegmentEnded,
 	if err != nil {
 		return runs.SegmentEnded{}, err
 	}
-	return runs.NewSegmentEnded(end.reason, end.failure, end.duration).WithUnresolvedEffects(effects), nil
+	return runs.NewSegmentEnded(end.ending, end.duration).WithUnresolvedEffects(effects), nil
 }
 
 type segmentEndDraft struct {
-	reason   run.Outcome
-	failure  *run.Failure
+	ending   run.Ending
 	duration time.Duration
 }
 
 func segmentEndFromTermination(termination agent.Termination, duration time.Duration) segmentEndDraft {
-	end := segmentEndDraft{duration: duration}
+	return segmentEndDraft{ending: terminationEnding(termination), duration: duration}
+}
+
+func terminationEnding(termination agent.Termination) run.Ending {
+	failed := func(kind run.FailureKind, detail string) run.Ending {
+		return run.Failed{Failure: run.Failure{Kind: kind, Detail: detail}}
+	}
 	switch termination.Cause() {
 	case agent.TerminationCauseCompletion:
-		end.reason = run.OutcomeCompleted
-	case agent.TerminationCauseParentDeadline,
-		agent.TerminationCauseHostDeadline:
-		end.reason = run.OutcomeTimedOut
-		failure := run.Failure{
-			Kind:   run.FailureTimeout,
-			Detail: "executor deadline reached",
-		}
-		end.failure = &failure
+		return run.Completed{}
+	case agent.TerminationCauseParentDeadline, agent.TerminationCauseHostDeadline:
+		return run.TimedOut{Detail: "executor deadline reached"}
 	case agent.TerminationCauseParentCancellation, agent.TerminationCauseHostCancellation:
-		end.reason = run.OutcomeCanceled
 		if termination.Cause() == agent.TerminationCauseHostCancellation && termination.Reason() == unresolvedEffectsStopReason {
-			end.reason = run.OutcomeLost
-			end.failure = &run.Failure{Kind: run.FailureLost, Detail: "external operations have no provable durable result"}
+			return run.Lost{Loss: run.Loss{Reason: run.LossUnresolvedEffects}}
 		}
+		return run.Canceled{}
 	case agent.TerminationCauseExecutionFailure:
 		failure, _ := termination.Failure()
-		end.reason = run.OutcomeFailed
-		problem := run.Failure{
-			Kind:   run.FailureAgentStuck,
-			Detail: executorDiagnostic(errors.New(failure.Message())),
-		}
-		end.failure = &problem
+		return failed(run.FailureAgentStuck, executorDiagnostic(errors.New(failure.Message())))
 	case agent.TerminationCauseExternalFailure:
-		end.reason = run.OutcomeFailed
 		failure, _ := termination.Failure()
-		problem := run.Failure{
-			Kind:   run.FailureInternal,
-			Detail: executorDiagnostic(errors.New(failure.Message())),
-		}
+		detail := executorDiagnostic(errors.New(failure.Message()))
 		switch failure.Code() {
 		case failureInvalidModelResponse, failureToolCallsNotCompleted:
-			problem.Kind = run.FailureProviderRejected
+			return failed(run.FailureProviderRejected, detail)
 		case failureUnresolvedDelegateEffects:
-			end.reason = run.OutcomeLost
-			problem.Kind = run.FailureLost
+			return run.Lost{Loss: run.Loss{Reason: run.LossUnresolvedEffects, Detail: detail}}
 		}
-		end.failure = &problem
+		return failed(run.FailureInternal, detail)
 	case agent.TerminationCauseContractFailure, agent.TerminationCausePanic:
-		end.reason = run.OutcomeFailed
 		failure, _ := termination.Failure()
-		problem := run.Failure{
-			Kind:   run.FailureInternal,
-			Detail: executorDiagnostic(errors.New(failure.Message())),
-		}
-		end.failure = &problem
+		return failed(run.FailureInternal, executorDiagnostic(errors.New(failure.Message())))
 	case agent.TerminationCauseEngineKill:
-		end.reason = run.OutcomeFailed
-		problem := run.Failure{
-			Kind:   run.FailureInternal,
-			Detail: termination.Reason(),
-		}
-		end.failure = &problem
+		return failed(run.FailureInternal, termination.Reason())
 	default:
-		end.reason = run.OutcomeFailed
-		problem := run.Failure{
-			Kind:   run.FailureInternal,
-			Detail: "executor returned an unknown terminal cause",
-		}
-		end.failure = &problem
+		return failed(run.FailureInternal, "executor returned an unknown terminal cause")
 	}
-	return end
 }
 
 const unresolvedEffectsStopReason = "runtime unresolved external effects"

@@ -21,17 +21,9 @@ func TestPortableSnapshotPreservesUnresolvedEffectsAsTerminalHistory(t *testing.
 		t.Run(string(outcome), func(t *testing.T) {
 			source := portableSnapshot()
 			value := source.Runs[0].Snapshot()
-			value.State, _ = run.Running.Terminate(outcome)
-			value.Outcome = &outcome
+			value.State = run.Finished
+			value.Ending = testsupport.EndingFor(outcome)
 			value.UnresolvedEffects = []run.UnresolvedEffect{effect}
-			switch outcome {
-			case run.OutcomeTimedOut:
-				value.Failure = &run.Failure{Kind: run.FailureTimeout}
-			case run.OutcomeFailed:
-				value.Failure = &run.Failure{Kind: run.FailureProviderUnavailable}
-			case run.OutcomeLost:
-				value.Failure = &run.Failure{Kind: run.FailureLost}
-			}
 			source.Runs[0] = testsupport.MustRestoreRun(value)
 
 			portable, err := source.PortableSnapshot()

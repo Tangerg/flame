@@ -148,7 +148,7 @@ func TestUnknownEffectsRespectScopeCancellationOrderAndDrainSiblings(t *testing.
 				if unknownFirst {
 					wantOutcome, wantReason = run.OutcomeLost, unresolvedEffectsStopReason
 				}
-				if len(ends) != 1 || ends[0].Reason != wantOutcome {
+				if len(ends) != 1 || ends[0].Ending.Outcome() != wantOutcome {
 					t.Fatalf("terminal = %+v, want exactly one %s", ends, wantOutcome)
 				}
 				result, err := session.state.processHandle().Await(t.Context())
@@ -199,7 +199,7 @@ func TestUserCancellationCannotImpersonateInternalStops(t *testing.T) {
 				}
 			})
 			ends := payloadsOf[runs.SegmentEnded](events)
-			if len(ends) != 1 || ends[0].Reason != run.OutcomeCanceled || ends[0].Failure() != nil {
+			if len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeCanceled || segmentFailure(ends[0]) != nil {
 				t.Fatalf("user note changed cancellation semantics: %+v", ends)
 			}
 		})

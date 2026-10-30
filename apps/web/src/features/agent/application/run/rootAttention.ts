@@ -1,3 +1,4 @@
+import { type LossReason } from "@/foundation/protocolValues.generated";
 import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
 import { type AgentRunView, type AgentSessionView } from "@/features/agent/public/sessionView";
 import { type AgentSessionViewEntry } from "@/features/agent/application/session/sessionAccess";
@@ -12,6 +13,8 @@ export interface RootRunSettlement {
   segmentId: string | null;
   status: "needsInput" | "finished" | "error" | "canceled";
   errorMessage: string | null;
+  /** Present when the Run was lost; the client words it. */
+  lossReason?: LossReason;
 }
 
 function currentRootRunning(view: AgentSessionView): boolean {
@@ -69,11 +72,13 @@ export function projectRootRunSettlement(
     run.status === "running"
   )
     return null;
+  const problem = run.status === "finished" ? selectRunProblem(run) : null;
   return {
     sessionId: run.sessionId,
     runId,
     segmentId,
     status: run.status === "waiting" ? "needsInput" : terminalSettlementStatus(run.outcome),
-    errorMessage: run.status === "finished" ? (selectRunProblem(run)?.message ?? null) : null,
+    errorMessage: problem?.message ?? null,
+    ...(problem?.lossReason ? { lossReason: problem.lossReason } : {}),
   };
 }

@@ -236,9 +236,7 @@ func registerRunUnions(s *Shapes) {
 	})
 
 	// A terminal says only why the run stopped; what it consumed is published
-	// beside it as metrics. `detail` is the human-readable note the non-error
-	// terminals may add — the error terminal's note stays on
-	// error.detail, never duplicated here.
+	// beside it as metrics. Each terminal carries only its own explanation.
 	s.union(UnionSpec{
 		GoType:        typeOf[protocol.RunOutcome](),
 		Discriminator: "type",
@@ -252,7 +250,7 @@ func runOutcomeVariants() []VariantSpec {
 		{Tag: string(protocol.OutcomeTimedOut), Required: []string{"error"}},
 		{Tag: string(protocol.OutcomeFailed), Required: []string{"error"}},
 		{Tag: string(protocol.OutcomeCanceled), Optional: []string{"detail"}},
-		{Tag: string(protocol.OutcomeLost), Required: []string{"error"}},
+		{Tag: string(protocol.OutcomeLost), Required: []string{"loss"}},
 	}
 	for index := range variants {
 		variants[index].Optional = append(variants[index].Optional, "unresolvedEffects")
@@ -452,10 +450,7 @@ func registerArtifactUnions(s *Shapes) {
 				),
 			},
 			{Tag: string(protocol.ArtifactOutcomeCanceled), Optional: []string{"detail", "unresolvedEffects"}},
-			{
-				Tag: string(protocol.ArtifactOutcomeLost), Required: []string{"error"}, Optional: []string{"unresolvedEffects"},
-				AllowedValues: allowedArtifactProblemTypes("error.type", protocol.ArtifactProblemRunLost),
-			},
+			{Tag: string(protocol.ArtifactOutcomeLost), Required: []string{"loss"}, Optional: []string{"unresolvedEffects"}},
 		},
 	})
 
@@ -965,7 +960,7 @@ func registerObjectConstraints(s *Shapes) {
 }
 
 func artifactProblemRetryRules() []ConditionalRule {
-	withoutRetry := []protocol.ArtifactProblemType{protocol.ArtifactProblemInternalError, protocol.ArtifactProblemRunLost, protocol.ArtifactProblemAgentStuck, protocol.ArtifactProblemInvalidCredentials, protocol.ArtifactProblemProviderRejected, protocol.ArtifactProblemDeniedByUser, protocol.ArtifactProblemToolFailed, protocol.ArtifactProblemChildRunCanceled, protocol.ArtifactProblemToolCanceled}
+	withoutRetry := []protocol.ArtifactProblemType{protocol.ArtifactProblemInternalError, protocol.ArtifactProblemAgentStuck, protocol.ArtifactProblemInvalidCredentials, protocol.ArtifactProblemProviderRejected, protocol.ArtifactProblemDeniedByUser, protocol.ArtifactProblemToolFailed, protocol.ArtifactProblemChildRunCanceled, protocol.ArtifactProblemToolCanceled}
 	rules := make([]ConditionalRule, 0, len(withoutRetry))
 	for _, kind := range withoutRetry {
 		rules = append(rules, ConditionalRule{

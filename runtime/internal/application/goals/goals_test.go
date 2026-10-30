@@ -503,9 +503,9 @@ func (f *fakeRuns) emitScriptedRun(
 		}
 		if !script.park {
 			cost := script.cost
-			var outcome *run.Outcome
+			var outcome run.Ending
 			if !script.missingOutcome && !script.waiting {
-				outcome = &script.outcome
+				outcome = testsupport.EndingFor(script.outcome)
 			}
 			boundaryRunID := runID
 			if script.boundaryRunID != "" {
@@ -518,11 +518,11 @@ func (f *fakeRuns) emitScriptedRun(
 			finishedRun := testsupport.MustRestoreRun(run.Snapshot{SessionID: cmd.SessionID,
 				ID:      boundaryRunID,
 				State:   boundaryState,
-				Outcome: outcome,
+				Ending:  outcome,
 				Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: script.steps, Usage: &accounting.Usage{Total: accounting.Totals{CostUSD: &cost}}})})
 
 			if outcome != nil && cmd.GoalIncarnationID != "" {
-				if err := f.store.RecordRun(context.WithoutCancel(ctx), goalOwnedRun(cmd, runID, *outcome, &cost, script.steps)); err != nil {
+				if err := f.store.RecordRun(context.WithoutCancel(ctx), goalOwnedRun(cmd, runID, script.outcome, &cost, script.steps)); err != nil {
 					f.t.Errorf("record terminal Goal Run: %v", err)
 				}
 			}
@@ -586,7 +586,7 @@ func (f *fakeRuns) Cancel(_ context.Context, cmd runs.CancelCommand) (runs.Cance
 		}
 	}
 	outcome := run.OutcomeCanceled
-	return runs.CancelResult{Run: testsupport.MustRestoreRun(run.Snapshot{ID: cmd.RunID, State: run.Finished, Outcome: &outcome})}, nil
+	return runs.CancelResult{Run: testsupport.MustRestoreRun(run.Snapshot{ID: cmd.RunID, State: run.Finished, Ending: testsupport.EndingFor(outcome)})}, nil
 }
 
 // fakeSessions is the driver's session-existence check; sessions exist unless
@@ -1977,7 +1977,7 @@ func goalOwnedRun(cmd runs.StartCommand, runID string, outcome run.Outcome, cost
 	finishedAt := time.Now().UTC()
 	return testsupport.MustRestoreRun(run.Snapshot{
 		SessionID: cmd.SessionID, ID: runID, GoalIncarnationID: cmd.GoalIncarnationID,
-		Outcome: &outcome,
+		Ending: testsupport.EndingFor(outcome),
 		Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{
 			Steps: steps, Usage: &accounting.Usage{Total: accounting.Totals{CostUSD: costUSD}},
 		}),

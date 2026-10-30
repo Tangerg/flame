@@ -34,7 +34,7 @@ func TestRunWritesCannotRegressCommittedProgress(t *testing.T) {
 				}
 				err = store.Suspend(t.Context(), parked, draft.SegmentID, runs.CommitID{})
 			case "terminal event", "terminal replacement":
-				terminal, terminalErr := stale.Terminate(run.Termination{Outcome: run.OutcomeCompleted, FinishedAt: at, MessageMark: run.MessageMarkAt(0)})
+				terminal, terminalErr := stale.Terminate(run.Termination{Ending: run.Completed{}, FinishedAt: at, MessageMark: run.MessageMarkAt(0)})
 				if terminalErr != nil {
 					t.Fatal(terminalErr)
 				}
@@ -44,7 +44,7 @@ func TestRunWritesCannotRegressCommittedProgress(t *testing.T) {
 					err = store.Terminalize(t.Context(), lostRunReplacement(stale))
 				}
 			case "lost replacement":
-				lost, lostErr := stale.Replace().RecoverLost(run.Failure{Kind: run.FailureLost}, at, run.MessageMarkAt(0))
+				lost, lostErr := stale.Replace().RecoverLost(run.Loss{Reason: run.LossRestart}, at, run.MessageMarkAt(0))
 				if lostErr != nil {
 					t.Fatal(lostErr)
 				}

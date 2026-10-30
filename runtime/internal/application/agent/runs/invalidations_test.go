@@ -27,7 +27,7 @@ func (g gatedTerminalExecutor) Observe(
 		case <-g.release:
 			yield(ExecutorEvent{
 				Member:  ExecutorMember{MemberID: "member_root"},
-				Payload: SegmentEnded{Reason: run.OutcomeCompleted},
+				Payload: SegmentEnded{Ending: run.Completed{}},
 			})
 		case <-ctx.Done():
 		}

@@ -60,7 +60,7 @@ func TestWaitingContributionProbeUsesTheOriginalRestorationConclusion(t *testing
 			continuation := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_restoration", run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}})
 			verdict, err := executor.CanResumeWaitingExecution(t.Context(), continuation)
 			if definite {
-				if err != nil || verdict.Resumable() || verdict.Deferred() || verdict.Loss() != runs.LossConfigurationChanged {
+				if err != nil || verdict.Resumable() || verdict.Deferred() || verdict.Loss() != run.LossConfigurationChanged {
 					t.Fatalf("original failed restoration did not lose waiting state: %+v, %v", verdict, err)
 				}
 			} else if !errors.Is(err, cause) || verdict.Resumable() || verdict.Deferred() || verdict.Loss() != "" {
@@ -86,7 +86,7 @@ func TestWaitingContributionProbeDistinguishesWithdrawalFromInconclusiveRead(t *
 			continuation := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_unavailable", run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}})
 			verdict, err := executor.CanResumeWaitingExecution(t.Context(), continuation)
 			if cause == plugin.ErrUnavailable || cause == plugin.ErrStale {
-				if err != nil || verdict.Resumable() || verdict.Deferred() || verdict.Loss() != runs.LossConfigurationChanged {
+				if err != nil || verdict.Resumable() || verdict.Deferred() || verdict.Loss() != run.LossConfigurationChanged {
 					t.Fatalf("definite withdrawal blocked startup or changed capture: %+v, %v", verdict, err)
 				}
 			} else if !errors.Is(err, cause) || verdict.Resumable() || verdict.Deferred() || verdict.Loss() != "" {

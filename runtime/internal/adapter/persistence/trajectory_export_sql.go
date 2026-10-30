@@ -24,7 +24,7 @@ func (s *SessionStore) TrajectoryExportSize(ctx context.Context, sessionID strin
 		UNION ALL SELECT COUNT(*), SUM(length(CAST(message AS BLOB))) FROM messages WHERE conversation_id = ?
 		UNION ALL SELECT COUNT(*), SUM(length(CAST(payload AS BLOB)) + length(CAST(item_id AS BLOB))
 			+ length(CAST(run_id AS BLOB)) + length(CAST(session_id AS BLOB))) FROM history_items WHERE session_id = ?
-		UNION ALL SELECT COUNT(*), SUM(length(CAST(detail AS BLOB)) + length(CAST(problem AS BLOB))
+		UNION ALL SELECT COUNT(*), SUM(length(CAST(ending AS BLOB))
 			+ length(CAST(unresolved_effects AS BLOB)) + length(CAST(usage AS BLOB)) + length(CAST(capabilities AS BLOB))
 			+ length(CAST(run_id AS BLOB)) + length(CAST(session_id AS BLOB)) + length(CAST(spawned_by_item_id AS BLOB))
 			+ length(CAST(parent_run_id AS BLOB)) + length(CAST(root_run_id AS BLOB)) + length(CAST(reasoning_effort AS BLOB))

@@ -2449,10 +2449,6 @@
         "recoveryAction": "waitRetryAfter"
       },
       {
-        "type": "run_lost",
-        "recoveryAction": "promptUser"
-      },
-      {
         "type": "timeout",
         "recoveryAction": "promptUser"
       },
@@ -3582,13 +3578,6 @@
           ]
         },
         {
-          "tag": "run_lost",
-          "optional": [
-            "detail",
-            "docUrl"
-          ]
-        },
-        {
           "tag": "run_not_found",
           "optional": [
             "detail",
@@ -3803,7 +3792,7 @@
         {
           "tag": "lost",
           "required": [
-            "error"
+            "loss"
           ],
           "optional": [
             "unresolvedEffects"
@@ -4835,18 +4824,10 @@
         {
           "tag": "lost",
           "required": [
-            "error"
+            "loss"
           ],
           "optional": [
             "unresolvedEffects"
-          ],
-          "allowedValues": [
-            {
-              "field": "error.type",
-              "values": [
-                "run_lost"
-              ]
-            }
           ]
         }
       ]
@@ -6742,18 +6723,6 @@
               "field": "type",
               "operator": "equals",
               "value": "internal_error"
-            }
-          ],
-          "forbidden": [
-            "retryAfterSeconds"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "type",
-              "operator": "equals",
-              "value": "run_lost"
             }
           ],
           "forbidden": [

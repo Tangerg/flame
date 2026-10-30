@@ -174,7 +174,7 @@ func TestWaitingRecoveryKeepsMCPManifestsPerGroup(t *testing.T) {
 	}
 	observed := <-events
 	ended := payloadsOf[runs.SegmentEnded](observed)
-	if len(ended) != 1 || ended[0].Reason != run.OutcomeCompleted || len(payloadsOf[runs.ModelCallCompleted](observed)) != 1 {
+	if len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeCompleted || len(payloadsOf[runs.ModelCallCompleted](observed)) != 1 {
 		t.Fatalf("restored waiting lifecycle = %#v", observed)
 	}
 	if err := executor.Release(t.Context(), ref); err != nil {

@@ -676,13 +676,12 @@ func testRunHistory(sessionID string, ids ...string) []run.Run {
 	out := make([]run.Run, 0, len(ids))
 	for i, id := range ids {
 		state := states[i%len(states)]
-		var outcome *run.Outcome
+		var outcome run.Ending
 		if state.IsTerminal() {
-			value := run.OutcomeCompleted
-			outcome = &value
+			outcome = run.Completed{}
 		}
 		record := testsupport.MustRestoreRun(run.Snapshot{ID: id, SessionID: sessionID, State: state,
-			Outcome: outcome, CreatedAt: time.Unix(0, int64(len(ids)-i)).UTC()})
+			Ending: outcome, CreatedAt: time.Unix(0, int64(len(ids)-i)).UTC()})
 		out = append(out, record)
 	}
 	return out

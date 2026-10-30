@@ -76,7 +76,7 @@ func TestLateCancellationPreservesScopeFailure(t *testing.T) {
 			executor := newTestInteractionExecutorWithLifetime(t, owner, model)
 			events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
 			ends := payloadsOf[runs.SegmentEnded](events)
-			if len(ends) != 1 || ends[0].Reason != run.OutcomeFailed {
+			if len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeFailed {
 				t.Fatalf("initial failure = %+v", ends)
 			}
 			for _, session := range executor.sessions.snapshot() {

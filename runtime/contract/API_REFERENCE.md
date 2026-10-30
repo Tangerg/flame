@@ -206,7 +206,6 @@ publish one namespaced pattern branch without weakening first-party tags.
 | `replay_unavailable` | — | `detail`, `docUrl` |
 | `revision_conflict` | — | `detail`, `docUrl` |
 | `run_finished` | — | `detail`, `docUrl` |
-| `run_lost` | — | `detail`, `docUrl` |
 | `run_not_found` | — | `detail`, `docUrl` |
 | `run_not_root` | — | `detail`, `docUrl` |
 | `run_waiting` | — | `detail`, `docUrl` |
@@ -247,7 +246,7 @@ publish one namespaced pattern branch without weakening first-party tags.
 | `timedOut` | `error` | `unresolvedEffects` |
 | `failed` | `error` | `unresolvedEffects` |
 | `canceled` | — | `detail`, `unresolvedEffects` |
-| `lost` | `error` | `unresolvedEffects` |
+| `lost` | `loss` | `unresolvedEffects` |
 
 ### `TrajectoryEntry`
 
@@ -504,7 +503,7 @@ Forbidden on every variant: `durable`.
 | `timedOut` | `error` | `unresolvedEffects` |
 | `failed` | `error` | `unresolvedEffects` |
 | `canceled` | — | `detail`, `unresolvedEffects` |
-| `lost` | `error` | `unresolvedEffects` |
+| `lost` | `loss` | `unresolvedEffects` |
 
 ### `ArtifactItem`
 

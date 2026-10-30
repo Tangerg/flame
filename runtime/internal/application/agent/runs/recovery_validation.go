@@ -41,7 +41,7 @@ func validateRecoveryParkedTree(
 	// never snapshotted. A host restart therefore destroys the world this tree
 	// was parked in even when its executor payload remains decodable.
 	if sess.Isolated() {
-		return UnresumableWaiting(LossIsolatedWorkspace), nil
+		return UnresumableWaiting(run.LossIsolatedWorkspace), nil
 	}
 	checkpoint, err := store.LoadExecutorCheckpoint(ctx, rootContinuation.MemberID)
 	if errors.Is(err, ErrExecutorCheckpointNotFound) || errors.Is(err, ErrInvalidExecutorCheckpoint) {
@@ -84,8 +84,8 @@ func unresumableRecoveredTree(ctx context.Context, tree recoveryRunTree, memberI
 		"session.id", tree.root.SessionID(),
 		"run.id", tree.root.ID(),
 		"executor.member.id", memberID,
-		"loss", string(LossWaitingStateUnavailable),
+		"loss", string(run.LossWaitingStateUnavailable),
 		"error", cause,
 	)
-	return UnresumableWaiting(LossWaitingStateUnavailable)
+	return UnresumableWaiting(run.LossWaitingStateUnavailable)
 }

@@ -17,7 +17,6 @@ type FailureKind string
 
 const (
 	FailureInternal            FailureKind = "internal_error"
-	FailureLost                FailureKind = "run_lost"
 	FailureAgentStuck          FailureKind = "agent_stuck"
 	FailureRateLimited         FailureKind = "rate_limited"
 	FailureInvalidCredentials  FailureKind = "invalid_credentials"
@@ -29,7 +28,7 @@ const (
 // Valid reports whether f is part of the durable provider-neutral taxonomy.
 func (f FailureKind) Valid() bool {
 	switch f {
-	case FailureInternal, FailureLost, FailureAgentStuck, FailureRateLimited,
+	case FailureInternal, FailureAgentStuck, FailureRateLimited,
 		FailureInvalidCredentials, FailureTimeout, FailureProviderUnavailable,
 		FailureProviderRejected:
 		return true

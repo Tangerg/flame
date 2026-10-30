@@ -163,8 +163,9 @@ type UnresolvedEffect struct {
 // beside it, so neither has to be read through the other.
 //
 //	completed                → nothing further
-//	error                    → Error
+//	failed, timedOut         → Error
 //	canceled                 → optional Detail
+//	lost                     → Loss
 //
 // An interrupt is deliberately not a member: parking is a status, not a terminal
 // reason, and a parked run is resumable. The segment.finished that parked it
@@ -176,9 +177,33 @@ type RunOutcome struct {
 	// carries the human-readable note, which is why Detail below stays
 	// absent here rather than repeating it.
 	Error *ProblemData `json:"error,omitzero"`
-	// Detail is a human-readable note for the non-error terminals
-	// canceled outcome. The runs.cancel reason flows here.
+	// Detail is the canceled outcome's note. The runs.cancel reason flows here.
 	Detail string `json:"detail,omitempty"`
+	// Loss explains the lost outcome; clients word its reason.
+	Loss *RunLoss `json:"loss,omitzero"`
+}
+
+// LossReason names why a lost Run's real outcome cannot be established.
+//
+//flame:enum
+type LossReason string
+
+const (
+	LossRestart                 LossReason = "restart"
+	LossIsolatedWorkspace       LossReason = "isolatedWorkspace"
+	LossWorkspaceUnavailable    LossReason = "workspaceUnavailable"
+	LossOtherBuild              LossReason = "otherBuild"
+	LossWaitingStateUnavailable LossReason = "waitingStateUnavailable"
+	LossConfigurationChanged    LossReason = "configurationChanged"
+	LossUnresolvedEffects       LossReason = "unresolvedEffects"
+	LossUnresolvedModelCall     LossReason = "unresolvedModelCall"
+)
+
+// RunLoss explains a lost Run. Detail is an operator diagnostic, not prose
+// for the person; clients word Reason.
+type RunLoss struct {
+	Reason LossReason `json:"reason"`
+	Detail string     `json:"detail,omitempty"`
 }
 
 // RunSessionOpening captures a Session and Run created in one keyed acceptance.

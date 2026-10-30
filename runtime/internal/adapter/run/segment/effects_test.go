@@ -813,7 +813,7 @@ func (f *fakeStores) Generate(ctx context.Context, _ string) (string, error) {
 // resolving that is the committer's job.
 func finishedRunRecord(runID, sessionID string, outcome run.Outcome) *run.Run {
 	state, _ := run.Running.Terminate(outcome)
-	record := testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: runID, State: state, Outcome: &outcome,
+	record := testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: runID, State: state, Ending: testsupport.EndingFor(outcome),
 		CreatedAt:   time.Unix(1, 0).UTC(),
 		FinishedAt:  time.Unix(2, 0).UTC(),
 		MessageMark: run.UnknownMessageMark()})

@@ -58,7 +58,7 @@ func TestResumeRejectsAHandoffConsumedBeforeAdmission(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			finished, err := continued.Terminate(run.Termination{Outcome: run.OutcomeCompleted, FinishedAt: pending.CreatedAt.Add(2 * time.Second)})
+			finished, err := continued.Terminate(run.Termination{Ending: run.Completed{}, FinishedAt: pending.CreatedAt.Add(2 * time.Second)})
 			if err != nil {
 				t.Fatal(err)
 			}

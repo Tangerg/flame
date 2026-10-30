@@ -99,7 +99,7 @@ func TestFailedOuterModelRetainsKnownResponseAndAccounting(t *testing.T) {
 		t.Fatalf("known inner evidence discarded or promoted: %+v", failed)
 	}
 	ends := payloadsOf[runs.SegmentEnded](events)
-	if len(ends) != 1 || ends[0].Reason != run.OutcomeFailed {
+	if len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeFailed {
 		t.Fatalf("outer failure became success: %+v", ends)
 	}
 }
@@ -257,7 +257,7 @@ func TestOuterStreamFailureWaitsForPhysicalSettlement(t *testing.T) {
 				t.Fatalf("logical failure lost the settled price: known=%v cost=%v", known, cost)
 			}
 			ends := payloadsOf[runs.SegmentEnded](events)
-			if len(payloadsOf[runs.ModelCallCompleted](events)) != 0 || len(ends) != 1 || ends[0].Reason != run.OutcomeFailed {
+			if len(payloadsOf[runs.ModelCallCompleted](events)) != 0 || len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeFailed {
 				t.Fatalf("known evidence changed the failed outer outcome: %+v", ends)
 			}
 		})
@@ -293,8 +293,8 @@ func TestUnavailableModelStreamClosesAttemptWithoutInventingResponse(t *testing.
 				t.Fatalf("unavailable stream failed to close its model attempt: %+v", failed)
 			}
 			ends := payloadsOf[runs.SegmentEnded](events)
-			if len(ends) != 1 || ends[0].Reason != run.OutcomeFailed || ends[0].Failure() == nil ||
-				ends[0].Failure().Kind != run.FailureProviderUnavailable || len(ends[0].UnresolvedEffects()) != 1 {
+			if len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeFailed || segmentFailure(ends[0]) == nil ||
+				segmentFailure(ends[0]).Kind != run.FailureProviderUnavailable || len(ends[0].UnresolvedEffects()) != 1 {
 				t.Fatalf("stream failure lost its provider classification or unknown Effect: %+v", ends)
 			}
 		})

@@ -488,14 +488,14 @@ func (r *reducer) finishToolCall(finished ToolCallFinished) (factReduction, erro
 }
 
 func (r *reducer) endSegment(ended SegmentEnded) (factReduction, error) {
-	if len(r.modelCalls) > 0 && ended.Reason != run.OutcomeLost {
+	if _, lost := ended.Ending.(run.Lost); len(r.modelCalls) > 0 && !lost {
 		return factReduction{}, fmt.Errorf(
 			"%w: segment ended with %d unsettled model calls",
 			errExecutorContract,
 			len(r.modelCalls),
 		)
 	}
-	modelInvocations, err := r.closeLostModelCalls(ended.Reason)
+	modelInvocations, err := r.closeLostModelCalls(ended.Ending)
 	if err != nil {
 		return factReduction{}, err
 	}
@@ -511,8 +511,8 @@ func (r *reducer) endSegment(ended SegmentEnded) (factReduction, error) {
 	}, nil
 }
 
-func (r *reducer) closeLostModelCalls(outcome run.Outcome) ([]ModelInvocationCommit, error) {
-	if outcome != run.OutcomeLost {
+func (r *reducer) closeLostModelCalls(ending run.Ending) ([]ModelInvocationCommit, error) {
+	if _, lost := ending.(run.Lost); !lost {
 		return nil, nil
 	}
 	finishedAt := r.now()
@@ -575,15 +575,10 @@ func (r *reducer) synthesizeTerminal() (reductionBatch, error) {
 	out = append(out, drained...)
 	// No SegmentEnded arrived, so nothing fresh was reported: the Segment's accrual
 	// stands as last reported and is committed as-is.
-	var failure *run.Failure
 	var modelInvocations []ModelInvocationCommit
-	outcome := run.OutcomeCanceled
+	var ending run.Ending = run.Canceled{}
 	if len(r.modelCalls) > 0 {
-		outcome = run.OutcomeLost
-		failure = &run.Failure{
-			Kind:   run.FailureLost,
-			Detail: "a model invocation ended without a provable durable result",
-		}
+		ending = run.Lost{Loss: run.Loss{Reason: run.LossUnresolvedModelCall}}
 		finishedAt := r.now()
 		callIDs := slices.Sorted(maps.Keys(r.modelCalls))
 		modelInvocations = make([]ModelInvocationCommit, 0, len(callIDs))
@@ -600,14 +595,9 @@ func (r *reducer) synthesizeTerminal() (reductionBatch, error) {
 		}
 		clear(r.modelCalls)
 	} else if r.errFailure != nil {
-		outcome = run.OutcomeFailed
-		failure = r.errFailure
+		ending = run.Failed{Failure: *r.errFailure}
 	}
-	detail := ""
-	if outcome == run.OutcomeCanceled && r.cfg.CancelReason != nil {
-		detail = r.cfg.CancelReason()
-	}
-	terminal, err := r.finishedRun(outcome, failure, detail, nil)
+	terminal, err := r.finishedRun(r.cancelDetail(ending), nil)
 	if err != nil {
 		return reductionBatch{}, fmt.Errorf("%w: synthesize terminal: %w", errReducerInvariant, err)
 	}

@@ -586,31 +586,26 @@ func (r *RunStore) finish(
 	if err != nil {
 		return fmt.Errorf("sqlite: %s run %q: %w", op, value.ID(), err)
 	}
-	failure, hasFailure := value.Failure()
-	var failureRef *rundomain.Failure
-	if hasFailure {
-		failureRef = &failure
-	}
 	encodedEffects, err := encodeUnresolvedEffects(value.UnresolvedEffects())
 	if err != nil {
 		return err
 	}
-	encodedFailure, err := encodeRunFailure(failureRef)
+	ending, _ := value.Ending()
+	outcome, encodedEnding, err := encodeRunEnding(ending)
 	if err != nil {
 		return fmt.Errorf("sqlite: %s run %q: %w", op, value.ID(), err)
 	}
-	outcome, _ := value.Outcome()
 	commitSegmentID, commitID := marker.databaseValues()
 	query :=
 		`UPDATE runs SET
 		   state = ?, active_segment_id = '', commit_segment_id = ?, commit_id = ?,
-		   outcome = ?, detail = ?, steps = ?, active_duration_ns = ?,
-		   usage = ?, context_tokens = ?, problem = ?, unresolved_effects = ?, message_mark = ?, finished_at = ?, updated_at = ?
+		   outcome = ?, ending = ?, steps = ?, active_duration_ns = ?,
+		   usage = ?, context_tokens = ?, unresolved_effects = ?, message_mark = ?, finished_at = ?, updated_at = ?
 		 WHERE session_id = ? AND run_id = ? AND ` + fence
 	args := []any{
 		string(value.State()), commitSegmentID, commitID,
-		string(outcome), value.Detail(), metrics.steps, metrics.durationNs,
-		metrics.usage, value.ContextTokens(), encodedFailure, encodedEffects,
+		outcome, encodedEnding, metrics.steps, metrics.durationNs,
+		metrics.usage, value.ContextTokens(), encodedEffects,
 		messageMarkValue(value.MessageMark()), value.FinishedAt().UTC().UnixNano(),
 		value.UpdatedAt().UTC().UnixNano(), value.SessionID(), value.ID(),
 	}
@@ -668,16 +663,12 @@ func (r *RunStore) Restore(ctx context.Context, value rundomain.Run) error {
 	if err != nil {
 		return fmt.Errorf("sqlite: restore run %q: %w", value.ID(), err)
 	}
-	failure, hasFailure := value.Failure()
-	var failureRef *rundomain.Failure
-	if hasFailure {
-		failureRef = &failure
-	}
 	encodedEffects, err := encodeUnresolvedEffects(value.UnresolvedEffects())
 	if err != nil {
 		return err
 	}
-	encodedFailure, err := encodeRunFailure(failureRef)
+	ending, _ := value.Ending()
+	outcome, encodedEnding, err := encodeRunEnding(ending)
 	if err != nil {
 		return fmt.Errorf("sqlite: restore run %q: %w", value.ID(), err)
 	}
@@ -685,21 +676,20 @@ func (r *RunStore) Restore(ctx context.Context, value rundomain.Run) error {
 	if err != nil {
 		return fmt.Errorf("sqlite: restore run %q: %w", value.ID(), err)
 	}
-	outcome, _ := value.Outcome()
 	selection := value.ModelSelection()
 	_, err = sqlite.Connection(ctx, r.db).ExecContext(ctx,
 		`INSERT INTO runs(
 		   run_id, session_id, spawned_by_item_id, parent_run_id, root_run_id,
 		   state, outcome, provider, model, reasoning_effort, goal_incarnation_id,
-		   detail, steps, active_duration_ns, usage, context_tokens, problem, unresolved_effects,
+		   ending, steps, active_duration_ns, usage, context_tokens, unresolved_effects,
 		   capabilities, message_mark, created_at, finished_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		value.ID(), value.SessionID(),
 		lineage.SpawnedByItemID, lineage.ParentRunID, lineage.RootRunID,
-		string(value.State()), string(outcome),
+		string(value.State()), outcome,
 		selection.Provider(), selection.Model(), selection.ReasoningEffort(),
 		value.GoalIncarnationID(),
-		value.Detail(), metrics.steps, metrics.durationNs, metrics.usage, value.ContextTokens(), encodedFailure, encodedEffects,
+		encodedEnding, metrics.steps, metrics.durationNs, metrics.usage, value.ContextTokens(), encodedEffects,
 		capabilities, messageMarkValue(value.MessageMark()),
 		value.CreatedAt().UTC().UnixNano(), value.FinishedAt().UTC().UnixNano(), value.UpdatedAt().UTC().UnixNano())
 	if isPrimaryKeyViolation(err) {

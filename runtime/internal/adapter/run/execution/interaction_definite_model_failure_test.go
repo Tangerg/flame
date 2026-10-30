@@ -78,7 +78,7 @@ func TestScopeDefiniteModelFailureSettlesWithoutHostCancellation(t *testing.T) {
 				start.WorkingContext = []chat.Message{chat.NewUserMessage(chat.NewTextPart(input))}
 				events := runInteractionHarness(t.Context(), t, executor, start, nil)
 				ends := payloadsOf[runs.SegmentEnded](events)
-				if len(ends) != 1 || ends[0].Reason != run.OutcomeFailed || len(ends[0].UnresolvedEffects()) != 0 {
+				if len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeFailed || len(ends[0].UnresolvedEffects()) != 0 {
 					t.Fatalf("definite failure became unknown: %+v", ends)
 				}
 				failed := payloadsOf[runs.ModelCallFailed](events)
@@ -130,7 +130,7 @@ func TestScopeInvocationFailureDoesNotInheritNestedNonExecution(t *testing.T) {
 					t.Fatalf("nested non-execution replaced dispatched evidence: calls=%d, failures=%+v", calls, failed)
 				}
 				ends := payloadsOf[runs.SegmentEnded](events)
-				if len(ends) != 1 || ends[0].Reason != run.OutcomeFailed {
+				if len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeFailed {
 					t.Fatalf("invocation failure became success: %+v", ends)
 				}
 				if unresolved := len(ends[0].UnresolvedEffects()); (unresolved > 0) != (kind == chat.CallFailureUnknown) {

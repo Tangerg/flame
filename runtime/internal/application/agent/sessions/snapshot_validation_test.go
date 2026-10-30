@@ -219,7 +219,7 @@ func TestPortableSnapshotRefusesABrokenRunLineage(t *testing.T) {
 	selection := testsupport.MustModelSelection("provider", "model")
 	root := func() PortableRun {
 		return PortableRun{
-			SessionID: "ses_1", ID: "run_root", Outcome: run.OutcomeCompleted,
+			SessionID: "ses_1", ID: "run_root", Ending: run.Completed{},
 			Selection: selection, Capabilities: &capabilities,
 		}
 	}
@@ -227,23 +227,23 @@ func TestPortableSnapshotRefusesABrokenRunLineage(t *testing.T) {
 		// A root with no capabilities is an archive that lost an admitted fact.
 		// Defaulting it to empty would import a different Run.
 		"root without capabilities": {
-			{SessionID: "ses_1", ID: "run_root", Outcome: run.OutcomeCompleted},
+			{SessionID: "ses_1", ID: "run_root", Ending: run.Completed{}},
 		},
 		// A child reads its root's contract; one of its own is a second statement of
 		// something the archive already says once.
 		"child with its own capabilities": {root(), {
-			SessionID: "ses_1", ID: "run_child", Outcome: run.OutcomeCompleted,
+			SessionID: "ses_1", ID: "run_child", Ending: run.Completed{},
 			SpawnedByItemID: "item_1", ParentRunID: "run_root", RootRunID: "run_root",
 			Capabilities: &capabilities,
 		}},
 		"child naming itself as its own root": {root(), {
-			SessionID: "ses_1", ID: "run_child", Outcome: run.OutcomeCompleted,
+			SessionID: "ses_1", ID: "run_child", Ending: run.Completed{},
 			SpawnedByItemID: "item_1", ParentRunID: "run_root", RootRunID: "run_child",
 		}},
 		// A child whose root is not in the archive imports a tree that cannot be
 		// walked — and a contract that cannot be read.
 		"child whose root is absent": {{
-			SessionID: "ses_1", ID: "run_child", Outcome: run.OutcomeCompleted,
+			SessionID: "ses_1", ID: "run_child", Ending: run.Completed{},
 			SpawnedByItemID: "item_1", ParentRunID: "run_gone", RootRunID: "run_gone",
 		}},
 	} {
@@ -269,7 +269,7 @@ func TestPortableSnapshotDelegatesModelIdentityToRun(t *testing.T) {
 			CreatedAt: at, UpdatedAt: at,
 		},
 		Runs: []PortableRun{{
-			SessionID: "ses_1", ID: "run_1", Outcome: run.OutcomeCompleted,
+			SessionID: "ses_1", ID: "run_1", Ending: run.Completed{},
 			Capabilities: &capabilities, CreatedAt: at, FinishedAt: at, UpdatedAt: at,
 			MessageMark: run.MessageMarkAt(0),
 		}},
@@ -305,12 +305,12 @@ func TestPortableSnapshotKeepsCapabilitiesOnTheRoot(t *testing.T) {
 		})},
 		Runs: []PortableRun{
 			{
-				SessionID: "ses_1", ID: "run_root", Outcome: run.OutcomeCompleted,
+				SessionID: "ses_1", ID: "run_root", Ending: run.Completed{},
 				Selection: selection, Capabilities: &capabilities,
 				CreatedAt: at, FinishedAt: at, UpdatedAt: at, MessageMark: run.MessageMarkAt(0),
 			},
 			{
-				SessionID: "ses_1", ID: "run_child", Outcome: run.OutcomeCompleted,
+				SessionID: "ses_1", ID: "run_child", Ending: run.Completed{},
 				SpawnedByItemID: "item_1", ParentRunID: "run_root", RootRunID: "run_root",
 				Selection: selection, CreatedAt: at, FinishedAt: at, UpdatedAt: at,
 				MessageMark: run.UnknownMessageMark(),

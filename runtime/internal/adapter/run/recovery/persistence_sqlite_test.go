@@ -70,9 +70,7 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 		t.Fatalf("Admit stored Run: %v", err)
 	}
 	finishedAt := createdAt.Add(time.Second)
-	lost, err := active.Replace().RecoverLost(run.Failure{
-		Kind: run.FailureLost, Detail: "run lost on restart",
-	}, finishedAt, run.MessageMarkAt(0))
+	lost, err := active.Replace().RecoverLost(run.Loss{Reason: run.LossRestart}, finishedAt, run.MessageMarkAt(0))
 	if err != nil {
 		t.Fatalf("RecoverLost: %v", err)
 	}
@@ -171,7 +169,7 @@ func (w waitingExecutionResumabilityFunc) CanResumeWaitingExecution(
 	if err != nil || resumable {
 		return runs.ResumableWaiting(), err
 	}
-	return runs.UnresumableWaiting(runs.LossWaitingStateUnavailable), nil
+	return runs.UnresumableWaiting(run.LossWaitingStateUnavailable), nil
 }
 
 // TestRecoveryRepairsWholeDurableLifecycle proves
@@ -351,9 +349,8 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 		t.Fatalf("recovered Runs = %d, want 1", recovered)
 	}
 	stored, found, err := runStore.Run(ctx, "run_lost")
-	failure, failed := stored.Failure()
-	if err != nil || !found || !testsupport.RunFailed(stored) ||
-		!failed || failure.Kind != run.FailureLost || stored.MessageMark() != run.MessageMarkAt(3) {
+	loss, lost := stored.Loss()
+	if err != nil || !found || !lost || loss.Reason != run.LossRestart || stored.MessageMark() != run.MessageMarkAt(3) {
 		t.Fatalf("recovered Run = found:%t value:%+v err:%v", found, stored, err)
 	}
 	recoveredMessages, err := messageStore.Read(ctx, "session")

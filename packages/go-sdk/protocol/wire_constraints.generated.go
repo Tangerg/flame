@@ -627,7 +627,7 @@ func (p ProblemData) validateWire() error {
 		maximumNumber("retryAfterSeconds", p.RetryAfterSeconds, 9223372036),
 		nonEmptyItems("requiredCapabilities", p.RequiredCapabilities),
 		uniqueItems("requiredCapabilities", p.RequiredCapabilities),
-		unionTag("type", string(p.Type), []string{"agent_stuck", "capability_not_negotiated", "checkpoint_conflict", "checkpoint_unavailable", "child_run_canceled", "denied_by_user", "export_too_large", "idempotency_conflict", "idempotency_in_progress", "idempotency_store_mismatch", "internal_error", "interrupt_not_open", "invalid_credentials", "invalid_params", "invalid_protocol_version", "invalid_request", "item_not_found", "mcp_authorization_attempt_not_found", "mcp_owned_by_installation", "mcp_server_already_exists", "mcp_server_disabled", "mcp_server_not_found", "method_not_found", "path_outside_root", "plugin_changed", "plugin_command_retired", "plugin_disabled", "plugin_in_use", "plugin_not_found", "plugin_stale", "plugin_unavailable", "prompt_source_too_large", "provider_error", "provider_rejected", "provider_unavailable", "rate_limited", "replay_cursor_invalid", "replay_unavailable", "revision_conflict", "run_finished", "run_lost", "run_not_found", "run_not_root", "run_waiting", "session_busy", "session_has_active_run", "session_not_found", "skill_not_found", "skill_unavailable", "stale_segment", "timeout", "tool_canceled", "tool_failed", "unsupported_mime", "vcs_unavailable", "workspace_unavailable"}, "^plugin:[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$"),
+		unionTag("type", string(p.Type), []string{"agent_stuck", "capability_not_negotiated", "checkpoint_conflict", "checkpoint_unavailable", "child_run_canceled", "denied_by_user", "export_too_large", "idempotency_conflict", "idempotency_in_progress", "idempotency_store_mismatch", "internal_error", "interrupt_not_open", "invalid_credentials", "invalid_params", "invalid_protocol_version", "invalid_request", "item_not_found", "mcp_authorization_attempt_not_found", "mcp_owned_by_installation", "mcp_server_already_exists", "mcp_server_disabled", "mcp_server_not_found", "method_not_found", "path_outside_root", "plugin_changed", "plugin_command_retired", "plugin_disabled", "plugin_in_use", "plugin_not_found", "plugin_stale", "plugin_unavailable", "prompt_source_too_large", "provider_error", "provider_rejected", "provider_unavailable", "rate_limited", "replay_cursor_invalid", "replay_unavailable", "revision_conflict", "run_finished", "run_not_found", "run_not_root", "run_waiting", "session_busy", "session_has_active_run", "session_not_found", "skill_not_found", "skill_unavailable", "stale_segment", "timeout", "tool_canceled", "tool_failed", "unsupported_mime", "vcs_unavailable", "workspace_unavailable"}, "^plugin:[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$"),
 		forbiddenWhen(wireFieldEquals(p, "type", "agent_stuck"), "requiredCapabilities", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "agent_stuck"), "retryAfterSeconds", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "agent_stuck"), "errors", p),
@@ -785,10 +785,6 @@ func (p ProblemData) validateWire() error {
 		forbiddenWhen(wireFieldEquals(p, "type", "run_finished"), "retryAfterSeconds", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "run_finished"), "errors", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "run_finished"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "run_lost"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "run_lost"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "run_lost"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "run_lost"), "activeRun", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "run_not_found"), "requiredCapabilities", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "run_not_found"), "retryAfterSeconds", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "run_not_found"), "errors", p),
@@ -903,12 +899,17 @@ func (r RunOutcome) validateWire() error {
 		closedEnum("type", string(r.Type), []string{"completed", "timedOut", "failed", "canceled", "lost"}, false),
 		forbiddenWhen(wireFieldEquals(r, "type", "completed"), "error", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "completed"), "detail", r),
+		forbiddenWhen(wireFieldEquals(r, "type", "completed"), "loss", r),
 		requiredWhen(wireFieldEquals(r, "type", "timedOut"), "error", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "timedOut"), "detail", r),
+		forbiddenWhen(wireFieldEquals(r, "type", "timedOut"), "loss", r),
 		requiredWhen(wireFieldEquals(r, "type", "failed"), "error", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "failed"), "detail", r),
+		forbiddenWhen(wireFieldEquals(r, "type", "failed"), "loss", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "canceled"), "error", r),
-		requiredWhen(wireFieldEquals(r, "type", "lost"), "error", r),
+		forbiddenWhen(wireFieldEquals(r, "type", "canceled"), "loss", r),
+		requiredWhen(wireFieldEquals(r, "type", "lost"), "loss", r),
+		forbiddenWhen(wireFieldEquals(r, "type", "lost"), "error", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "lost"), "detail", r),
 	)
 }
@@ -1623,16 +1624,20 @@ func (a ArtifactOutcome) validateWire() error {
 		closedEnum("type", string(a.Type), []string{"completed", "timedOut", "failed", "canceled", "lost"}, false),
 		forbiddenWhen(wireFieldEquals(a, "type", "completed"), "error", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "completed"), "detail", a),
+		forbiddenWhen(wireFieldEquals(a, "type", "completed"), "loss", a),
 		requiredWhen(wireFieldEquals(a, "type", "timedOut"), "error", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "timedOut"), "detail", a),
+		forbiddenWhen(wireFieldEquals(a, "type", "timedOut"), "loss", a),
 		allowedValuesWhen(wireFieldEquals(a, "type", "timedOut"), "error.type", a, []string{"timeout"}),
 		requiredWhen(wireFieldEquals(a, "type", "failed"), "error", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "failed"), "detail", a),
+		forbiddenWhen(wireFieldEquals(a, "type", "failed"), "loss", a),
 		allowedValuesWhen(wireFieldEquals(a, "type", "failed"), "error.type", a, []string{"internal_error", "agent_stuck", "rate_limited", "invalid_credentials", "timeout", "provider_unavailable", "provider_rejected"}),
 		forbiddenWhen(wireFieldEquals(a, "type", "canceled"), "error", a),
-		requiredWhen(wireFieldEquals(a, "type", "lost"), "error", a),
+		forbiddenWhen(wireFieldEquals(a, "type", "canceled"), "loss", a),
+		requiredWhen(wireFieldEquals(a, "type", "lost"), "loss", a),
+		forbiddenWhen(wireFieldEquals(a, "type", "lost"), "error", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "lost"), "detail", a),
-		allowedValuesWhen(wireFieldEquals(a, "type", "lost"), "error.type", a, []string{"run_lost"}),
 	)
 }
 
@@ -2278,9 +2283,8 @@ func (a ArtifactProblem) validateWire() error {
 	return collectWireViolations("ArtifactProblem",
 		optionalPositiveScalarNumber("retryAfterSeconds", a.RetryAfterSeconds),
 		maximumNumber("retryAfterSeconds", a.RetryAfterSeconds, 9223372036),
-		closedEnum("type", string(a.Type), []string{"internal_error", "run_lost", "agent_stuck", "rate_limited", "invalid_credentials", "timeout", "provider_unavailable", "provider_rejected", "denied_by_user", "tool_failed", "child_run_canceled", "tool_canceled"}, false),
+		closedEnum("type", string(a.Type), []string{"internal_error", "agent_stuck", "rate_limited", "invalid_credentials", "timeout", "provider_unavailable", "provider_rejected", "denied_by_user", "tool_failed", "child_run_canceled", "tool_canceled"}, false),
 		forbiddenWhen(wireFieldEquals(a, "type", "internal_error"), "retryAfterSeconds", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "run_lost"), "retryAfterSeconds", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "agent_stuck"), "retryAfterSeconds", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "invalid_credentials"), "retryAfterSeconds", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "provider_rejected"), "retryAfterSeconds", a),
@@ -3022,6 +3026,12 @@ func (p ProviderTestResult) validateWire() error {
 func (r RememberScope) validateWire() error {
 	return collectWireViolations("RememberScope",
 		closedEnum("scope", string(r.Scope), []string{"session", "project", "global"}, false),
+	)
+}
+
+func (r RunLoss) validateWire() error {
+	return collectWireViolations("RunLoss",
+		closedEnum("reason", string(r.Reason), []string{"restart", "isolatedWorkspace", "workspaceUnavailable", "otherBuild", "waitingStateUnavailable", "configurationChanged", "unresolvedEffects", "unresolvedModelCall"}, false),
 	)
 }
 

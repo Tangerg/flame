@@ -101,7 +101,7 @@ func TestExportPreservesRunTreeLineage(t *testing.T) {
 	}
 	outcome := run.OutcomeCompleted
 	if restoreErr := rt.runs.Restore(ctx, testsupport.MustRestoreRun(run.Snapshot{SessionID: ses.ID(), ID: "run_root", State: run.Finished,
-		Outcome:      &outcome,
+		Ending:       testsupport.EndingFor(outcome),
 		Capabilities: run.Capabilities{ChildRuns: true},
 		CreatedAt:    time.Unix(1, 0).UTC(),
 		FinishedAt:   time.Unix(1, 0).UTC(),
@@ -120,7 +120,7 @@ func TestExportPreservesRunTreeLineage(t *testing.T) {
 	}
 	if restoreErr := rt.runs.Restore(ctx, testsupport.MustRestoreRun(run.Snapshot{SessionID: ses.ID(), ID: "run_child",
 
-		State: run.Finished, Outcome: &outcome,
+		State: run.Finished, Ending: testsupport.EndingFor(outcome),
 		CreatedAt: time.Unix(2, 0).UTC(), FinishedAt: time.Unix(2, 0).UTC(),
 		UpdatedAt: time.Unix(2, 0).UTC(), Lineage: run.Lineage{SpawnedByItemID: "item_spawn",
 			ParentRunID: "run_root", RootRunID: "run_root"}}),
@@ -372,6 +372,7 @@ func seedMaximalSession(t *testing.T, rt *stubRuntime) string {
 
 	seedCanceledRun(t, rt, sessionID)
 	seedFailedRun(t, rt, sessionID)
+	seedLostRun(t, rt, sessionID)
 	seedEveryItemKind(t, rt, sessionID)
 	seedChildRun(t, rt, sessionID)
 	seedOffloadedToolResult(t, rt, sessionID)
@@ -387,7 +388,6 @@ func seedMaximalSession(t *testing.T, rt *stubRuntime) string {
 func seedCanceledRun(t *testing.T, rt *stubRuntime, sessionID string) {
 	t.Helper()
 	cost := 1.25
-	outcome := run.OutcomeCanceled
 	selection, err := modelchoice.NewWithReasoningEffort("anthropic", "claude-opus-5", "high")
 	if err != nil {
 		t.Fatalf("model selection: %v", err)
@@ -398,8 +398,7 @@ func seedCanceledRun(t *testing.T, rt *stubRuntime, sessionID string) {
 		t.Fatalf("unresolved effect: %v", err)
 	}
 	if err := rt.runs.Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: "run_done", State: run.Finished,
-		ModelSelection: selection, Outcome: &outcome,
-		Detail:            "user stopped execution",
+		ModelSelection: selection, Ending: run.Canceled{Detail: "user stopped execution"},
 		UnresolvedEffects: []run.UnresolvedEffect{effect},
 		Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Usage: &accounting.Usage{
 			Total: accounting.Totals{
@@ -438,7 +437,7 @@ func seedChildRun(t *testing.T, rt *stubRuntime, sessionID string) {
 	if err := rt.runs.Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: "run_child", State: run.Finished,
 
 		ModelSelection: selection,
-		Outcome:        &outcome,
+		Ending:         testsupport.EndingFor(outcome),
 		CreatedAt:      time.Unix(7, 0).UTC(),
 		FinishedAt:     time.Unix(8, 0).UTC(),
 		UpdatedAt:      time.Unix(8, 0).UTC(),
@@ -450,14 +449,12 @@ func seedChildRun(t *testing.T, rt *stubRuntime, sessionID string) {
 
 func seedFailedRun(t *testing.T, rt *stubRuntime, sessionID string) {
 	t.Helper()
-	outcome := run.OutcomeFailed
 	if err := rt.runs.Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: "run_failed", State: run.Finished,
-		Outcome: &outcome,
-		Failure: &run.Failure{
+		Ending: run.Failed{Failure: run.Failure{
 			Kind:   run.FailureRateLimited,
 			Detail: "slow down", DocURL: "https://example.invalid/rate-limits",
 			RetryAfter: 30 * time.Second,
-		}, Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 1, ActiveDuration: 500 * time.Millisecond}),
+		}}, Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 1, ActiveDuration: 500 * time.Millisecond}),
 		Capabilities: run.Capabilities{
 			InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
 		},
@@ -465,6 +462,21 @@ func seedFailedRun(t *testing.T, rt *stubRuntime, sessionID string) {
 		UpdatedAt: time.Unix(5, 0).UTC(), MessageMark: run.MessageMarkAt(2)}),
 	); err != nil {
 		t.Fatalf("seed failed run: %v", err)
+	}
+}
+
+func seedLostRun(t *testing.T, rt *stubRuntime, sessionID string) {
+	t.Helper()
+	if err := rt.runs.Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: "run_lost", State: run.Finished,
+		Ending: run.Lost{Loss: run.Loss{Reason: run.LossOtherBuild, Detail: "checkpoint belongs to another build"}},
+		Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 1}),
+		Capabilities: run.Capabilities{
+			InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
+		},
+		CreatedAt: time.Unix(5, 0).UTC(), FinishedAt: time.Unix(6, 0).UTC(),
+		UpdatedAt: time.Unix(6, 0).UTC(), MessageMark: run.MessageMarkAt(2)}),
+	); err != nil {
+		t.Fatalf("seed lost run: %v", err)
 	}
 }
 

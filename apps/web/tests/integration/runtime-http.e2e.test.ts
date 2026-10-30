@@ -5035,7 +5035,7 @@ for await (const line of lines) {
       await awaitManagedOwners();
       await expect(client.runs.get(runId)).resolves.toMatchObject({
         status: "finished",
-        outcome: { type: "lost", error: expect.objectContaining({ type: "run_lost" }) },
+        outcome: { type: "lost", loss: expect.objectContaining({ reason: expect.any(String) }) },
       });
 
       recoveryCall = createProviderGate(compactionRecoveryMarker);
@@ -5191,7 +5191,7 @@ for await (const line of lines) {
       });
       await expect(client.runs.get(activeGoalRunId)).resolves.toMatchObject({
         status: "finished",
-        outcome: { type: "lost", error: expect.objectContaining({ type: "run_lost" }) },
+        outcome: { type: "lost", loss: expect.objectContaining({ reason: expect.any(String) }) },
       });
       await expect(client.goals.get(activeGoalSessionId)).resolves.toMatchObject({
         status: "paused",
@@ -5330,7 +5330,7 @@ for await (const line of lines) {
       await awaitManagedOwners();
       await expect(client.runs.get(runId)).resolves.toMatchObject({
         status: "finished",
-        outcome: { type: "lost", error: expect.objectContaining({ type: "run_lost" }) },
+        outcome: { type: "lost", loss: expect.objectContaining({ reason: expect.any(String) }) },
       });
       await expect(client.items.list({ scope: { type: "run", runId } })).resolves.toMatchObject({
         data: expect.arrayContaining([

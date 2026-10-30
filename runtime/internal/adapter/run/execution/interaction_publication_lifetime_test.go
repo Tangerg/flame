@@ -73,7 +73,7 @@ func TestExecutionWaitsForSlowDurableReceipts(t *testing.T) {
 				event.Payload = commit.Fact()
 			}
 			if end, ok := event.Payload.(runs.SegmentEnded); ok {
-				if end.Reason != run.OutcomeCompleted {
+				if end.Ending.Outcome() != run.OutcomeCompleted {
 					t.Fatalf("slow persistence changed terminal: %+v", end)
 				}
 				completed = true

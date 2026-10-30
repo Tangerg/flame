@@ -246,7 +246,7 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 				rootModels++
 			}
 		case runs.SegmentEnded:
-			if payload.Reason != run.OutcomeCompleted {
+			if payload.Ending.Outcome() != run.OutcomeCompleted {
 				t.Fatalf("restored member failed: %+v", payload)
 			}
 			if event.Member.Child() {

@@ -4906,11 +4906,6 @@
           "value": "\"rate_limited\""
         },
         {
-          "name": "ArtifactProblemRunLost",
-          "type": "ArtifactProblemType",
-          "value": "\"run_lost\""
-        },
-        {
           "name": "ArtifactProblemTimeout",
           "type": "ArtifactProblemType",
           "value": "\"timeout\""
@@ -5344,6 +5339,46 @@
           "name": "ItemTypeUserMessage",
           "type": "ItemType",
           "value": "\"userMessage\""
+        },
+        {
+          "name": "LossConfigurationChanged",
+          "type": "LossReason",
+          "value": "\"configurationChanged\""
+        },
+        {
+          "name": "LossIsolatedWorkspace",
+          "type": "LossReason",
+          "value": "\"isolatedWorkspace\""
+        },
+        {
+          "name": "LossOtherBuild",
+          "type": "LossReason",
+          "value": "\"otherBuild\""
+        },
+        {
+          "name": "LossRestart",
+          "type": "LossReason",
+          "value": "\"restart\""
+        },
+        {
+          "name": "LossUnresolvedEffects",
+          "type": "LossReason",
+          "value": "\"unresolvedEffects\""
+        },
+        {
+          "name": "LossUnresolvedModelCall",
+          "type": "LossReason",
+          "value": "\"unresolvedModelCall\""
+        },
+        {
+          "name": "LossWaitingStateUnavailable",
+          "type": "LossReason",
+          "value": "\"waitingStateUnavailable\""
+        },
+        {
+          "name": "LossWorkspaceUnavailable",
+          "type": "LossReason",
+          "value": "\"workspaceUnavailable\""
         },
         {
           "name": "MCPAuthorizationAttemptCanceled",
@@ -5859,11 +5894,6 @@
           "name": "ProblemRateLimited",
           "type": "untyped string",
           "value": "\"rate_limited\""
-        },
-        {
-          "name": "ProblemRunLost",
-          "type": "untyped string",
-          "value": "\"run_lost\""
         },
         {
           "name": "ProblemTimeout",
@@ -7063,6 +7093,11 @@
               "name": "Detail",
               "type": "string",
               "tag": "json:\"detail,omitempty\""
+            },
+            {
+              "name": "Loss",
+              "type": "*RunLoss",
+              "tag": "json:\"loss,omitzero\""
             },
             {
               "name": "UnresolvedEffects",
@@ -9082,6 +9117,11 @@
               "tag": "json:\"workspace,omitzero\""
             }
           ]
+        },
+        {
+          "name": "LossReason",
+          "kind": "defined",
+          "underlying": "string"
         },
         {
           "name": "MCPAuthorizationAttempt",
@@ -11903,6 +11943,22 @@
           ]
         },
         {
+          "name": "RunLoss",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Reason",
+              "type": "LossReason",
+              "tag": "json:\"reason\""
+            },
+            {
+              "name": "Detail",
+              "type": "string",
+              "tag": "json:\"detail,omitempty\""
+            }
+          ]
+        },
+        {
           "name": "RunMetrics",
           "kind": "struct",
           "fields": [
@@ -11946,6 +12002,11 @@
               "name": "Detail",
               "type": "string",
               "tag": "json:\"detail,omitempty\""
+            },
+            {
+              "name": "Loss",
+              "type": "*RunLoss",
+              "tag": "json:\"loss,omitzero\""
             }
           ]
         },

@@ -212,7 +212,7 @@ func TestToolOffloadPreservesScopeOutputContract(t *testing.T) {
 					t.Errorf("invalid result continued the model: %d calls", calls)
 				}
 			}
-			if len(ends) != 1 || ends[0].Reason != want || store.calls != 0 {
+			if len(ends) != 1 || ends[0].Ending.Outcome() != want || store.calls != 0 {
 				t.Fatalf("tool output contract: ends=%+v offloads=%d", ends, store.calls)
 			}
 			if !test.invalid {

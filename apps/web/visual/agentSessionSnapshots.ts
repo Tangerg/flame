@@ -1659,10 +1659,7 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
         finishedAt: "2026-07-31T08:00:12.000Z",
         outcome: {
           type: "lost",
-          error: {
-            type: "run_lost",
-            detail: "The Runtime restarted before this Run reached a terminal event.",
-          },
+          loss: { reason: "restart" },
         },
       }),
     ],

@@ -281,6 +281,7 @@ type ArtifactOutcome struct {
 	Type              ArtifactOutcomeType `json:"type"`
 	Error             *ArtifactProblem    `json:"error,omitzero"`
 	Detail            string              `json:"detail,omitempty"`
+	Loss              *RunLoss            `json:"loss,omitzero"`
 	UnresolvedEffects []UnresolvedEffect  `json:"unresolvedEffects,omitempty"`
 }
 
@@ -348,7 +349,6 @@ type ArtifactProblemType string
 
 const (
 	ArtifactProblemInternalError       ArtifactProblemType = ProblemInternalError
-	ArtifactProblemRunLost             ArtifactProblemType = ProblemRunLost
 	ArtifactProblemAgentStuck          ArtifactProblemType = ProblemAgentStuck
 	ArtifactProblemRateLimited         ArtifactProblemType = ProblemRateLimited
 	ArtifactProblemInvalidCredentials  ArtifactProblemType = ProblemInvalidCredentials

@@ -314,9 +314,8 @@ func assertRunningDelegateCancellationEvents(t *testing.T, events []runs.Event) 
 				finished.Run.Detail() == "caller canceled delegated work"
 		}
 		if event.RunID == "run_root" {
-			failure, failed := finished.Run.Failure()
-			rootFinished = runHasOutcome(finished.Run, run.OutcomeLost) && failed &&
-				failure.Kind == run.FailureLost && strings.Contains(failure.Detail, "unresolved Effects")
+			loss, lost := finished.Run.Loss()
+			rootFinished = lost && loss.Reason == run.LossUnresolvedEffects && strings.Contains(loss.Detail, "unresolved Effects")
 		}
 	}
 	if !childFinished || !rootFinished {
@@ -627,7 +626,7 @@ func (d delegateTreeResult) assertAllRunsCompleted(t *testing.T) {
 		if testsupport.RunOutcome(finished.Run) != run.OutcomeCompleted {
 			t.Fatalf(
 				"Run %q finished as %s outcome=%v detail=%q error=%+v",
-				finished.Run.ID(), finished.Run.State(), finished.Run.Snapshot().Outcome, finished.Run.Detail(), finished.Run.Snapshot().Failure,
+				finished.Run.ID(), finished.Run.State(), finished.Run.Snapshot().Ending, finished.Run.Detail(), finished.Run.Snapshot().Ending,
 			)
 		}
 		completed[finished.Run.ID()]++

@@ -10,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	agent "github.com/Tangerg/scope/agent"
 )
 
@@ -19,7 +20,7 @@ import (
 func unresumable(
 	ctx context.Context,
 	continuation runs.ExecutionContinuation,
-	loss runs.Loss,
+	loss run.LossReason,
 	reason string,
 	cause error,
 ) (runs.WaitingResumption, error) {
@@ -51,35 +52,35 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 	defer finishAssembly()
 	continuation = continuation.Clone()
 	if err := continuation.Validate(); err != nil {
-		return unresumable(ctx, continuation, runs.LossWaitingStateUnavailable, "continuation is malformed", err)
+		return unresumable(ctx, continuation, run.LossWaitingStateUnavailable, "continuation is malformed", err)
 	}
 	checkpoint := continuation.Checkpoint
 	if !i.acceptsBuild(checkpoint.BuildID) {
-		return unresumable(ctx, continuation, runs.LossOtherBuild, "checkpoint belongs to another build", nil)
+		return unresumable(ctx, continuation, run.LossOtherBuild, "checkpoint belongs to another build", nil)
 	}
 	if continuation.Isolated {
-		return unresumable(ctx, continuation, runs.LossIsolatedWorkspace, "isolated workspace does not survive executor loss", nil)
+		return unresumable(ctx, continuation, run.LossIsolatedWorkspace, "isolated workspace does not survive executor loss", nil)
 	}
 	if err := validateRestoreWorkspace(continuation); err != nil {
 		if errors.Is(err, runs.ErrExecutorStateLost) {
-			return unresumable(ctx, continuation, runs.LossWorkspaceUnavailable, "restore workspace is unavailable", err)
+			return unresumable(ctx, continuation, run.LossWorkspaceUnavailable, "restore workspace is unavailable", err)
 		}
 		return runs.WaitingResumption{}, err
 	}
 	state, err := decodeExecutorCheckpoint(checkpoint)
 	if err != nil {
-		return unresumable(ctx, continuation, runs.LossWaitingStateUnavailable, "checkpoint payload cannot be decoded", err)
+		return unresumable(ctx, continuation, run.LossWaitingStateUnavailable, "checkpoint payload cannot be decoded", err)
 	}
 	rootID, err := agent.ParseProcessID(checkpoint.RootMemberID)
 	if err != nil || state.handoff.rootID != rootID {
-		return unresumable(ctx, continuation, runs.LossWaitingStateUnavailable, "checkpoint root member does not own its tree", err)
+		return unresumable(ctx, continuation, run.LossWaitingStateUnavailable, "checkpoint root member does not own its tree", err)
 	}
 	head, found, err := i.config.ExecutionTrees.LoadExecutionTree(ctx, continuation.SessionID, rootID.String())
 	if err != nil {
 		return runs.WaitingResumption{}, err
 	}
 	if !found {
-		return unresumable(ctx, continuation, runs.LossWaitingStateUnavailable, "execution tree head is missing", nil)
+		return unresumable(ctx, continuation, run.LossWaitingStateUnavailable, "execution tree head is missing", nil)
 	}
 	state.tree, err = decodeExecutionTree(head, rootID)
 	if err != nil {
@@ -88,7 +89,7 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 	snapshots := state.tree.ProcessSnapshots()
 	if len(snapshots) == 0 || snapshots[0].Relation().ProcessID() != rootID ||
 		!isInteractionWaitingBoundary(snapshots[0].Status()) {
-		return unresumable(ctx, continuation, runs.LossWaitingStateUnavailable, "checkpoint tree is not at a waiting boundary", nil)
+		return unresumable(ctx, continuation, run.LossWaitingStateUnavailable, "checkpoint tree is not at a waiting boundary", nil)
 	}
 	start := state.restoredStart(continuation)
 	if i.config.CallComposition != nil {
@@ -110,13 +111,13 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 		// withdrawal loses the captured tree; an inconclusive read changes no facts.
 		if _, err := i.config.CallComposition.Activations(ctx, bindings); err != nil {
 			if errors.Is(err, plugin.ErrUnavailable) || errors.Is(err, plugin.ErrStale) {
-				return unresumable(ctx, continuation, runs.LossConfigurationChanged, "captured contribution is unavailable", err)
+				return unresumable(ctx, continuation, run.LossConfigurationChanged, "captured contribution is unavailable", err)
 			}
 			return runs.WaitingResumption{}, err
 		}
 		if definite, err := i.config.CallComposition.RestorationFailure(bindings); err != nil {
 			if definite {
-				return unresumable(ctx, continuation, runs.LossConfigurationChanged, "captured contribution restoration failed", err)
+				return unresumable(ctx, continuation, run.LossConfigurationChanged, "captured contribution restoration failed", err)
 			}
 			return runs.WaitingResumption{}, err
 		}
@@ -137,7 +138,7 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 	}
 	if err := assembled.validateWaitingTree(ctx, continuation, state, false); err != nil {
 		if errors.Is(err, runs.ErrExecutorStateLost) {
-			return unresumable(ctx, continuation, runs.LossConfigurationChanged, "waiting tree validation failed", err)
+			return unresumable(ctx, continuation, run.LossConfigurationChanged, "waiting tree validation failed", err)
 		}
 		return runs.WaitingResumption{}, err
 	}

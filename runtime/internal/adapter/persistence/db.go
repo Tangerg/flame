@@ -122,9 +122,9 @@ func currentSchema() []string {
 		// guarantee. Descendants share that tree's admission and therefore do not
 		// compete for a second Session slot.
 		//
-		// detail / problem explain WHY a Run stopped and are written by the
+		// outcome / ending explain WHY a Run stopped and are written by the
 		// lifecycle transition that makes them true: a terminal state and the
-		// failure explaining it land in one statement, so no row can claim one
+		// facts explaining it land in one statement, so no row can claim one
 		// without the other. steps / active_duration_ns / usage are a different
 		// kind of fact — how much the Run has consumed — and are written by every
 		// commit from the first segment on, because a running Run costs money and
@@ -166,12 +166,11 @@ func currentSchema() []string {
 			model              TEXT    NOT NULL DEFAULT '',
 			reasoning_effort   TEXT    NOT NULL DEFAULT '',
 			goal_incarnation_id      TEXT    NOT NULL DEFAULT '',
-			detail             TEXT    NOT NULL DEFAULT '',
+			ending             TEXT    NOT NULL DEFAULT '',
 			steps              INTEGER NOT NULL DEFAULT 0,
 			active_duration_ns INTEGER NOT NULL DEFAULT 0,
 			usage              TEXT    NOT NULL DEFAULT '',
 			context_tokens     INTEGER NOT NULL DEFAULT 0 CHECK (context_tokens >= 0),
-			problem            TEXT    NOT NULL DEFAULT '',
 			unresolved_effects TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(unresolved_effects) AND json_type(unresolved_effects) = 'array'),
 			capabilities       TEXT    NOT NULL DEFAULT '',
 			message_mark       INTEGER CHECK (message_mark IS NULL OR message_mark >= 0),

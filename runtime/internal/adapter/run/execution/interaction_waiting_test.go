@@ -189,8 +189,8 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 	events := <-resumedEvents
 	if toolCalls != 1 {
 		var failure run.Failure
-		if terminal := payloadsOf[runs.SegmentEnded](events); len(terminal) == 1 && terminal[0].Failure() != nil {
-			failure = *terminal[0].Failure()
+		if terminal := payloadsOf[runs.SegmentEnded](events); len(terminal) == 1 && segmentFailure(terminal[0]) != nil {
+			failure = *segmentFailure(terminal[0])
 		}
 		t.Fatalf("Tool calls after answer = %d, want 1; failure=%+v events=%#v", toolCalls, failure, events)
 	}
@@ -215,7 +215,7 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 		t.Fatalf("completion = %#v", completed)
 	}
 	ended := payloadsOf[runs.SegmentEnded](events)
-	if len(ended) != 1 || ended[0].Reason != run.OutcomeCompleted {
+	if len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeCompleted {
 		t.Fatalf("terminal = %#v", ended)
 	}
 	mu.Lock()
@@ -331,7 +331,7 @@ func TestInteractionExecutorRestoresRuntimeAskUserTool(t *testing.T) {
 	if len(resumed) != 1 || resumed[0].CallID != starts[0].CallID ||
 		len(finished) != 1 || finished[0].CallID != starts[0].CallID ||
 		len(payloadsOf[runs.ModelCallCompleted](observed)) != 1 ||
-		len(ends) != 1 || ends[0].Reason != run.OutcomeCompleted {
+		len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeCompleted {
 		t.Fatalf("restored ask_user lifecycle = %#v", observed)
 	}
 	if err := executor.Release(t.Context(), ref); err != nil {
@@ -480,7 +480,7 @@ func TestInteractionExecutorCancellationStopsApprovedInflightTool(t *testing.T) 
 	}
 	observed := <-events
 	ended := payloadsOf[runs.SegmentEnded](observed)
-	if len(ended) != 1 || ended[0].Reason != run.OutcomeCanceled {
+	if len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeCanceled {
 		t.Fatalf("segment end = %#v, want canceled", ended)
 	}
 	if err := executor.Release(t.Context(), ref); err != nil {
@@ -556,7 +556,7 @@ func TestInteractionExecutorCancellationStopsApprovedForegroundShell(t *testing.
 	}
 	observed := <-events
 	ended := payloadsOf[runs.SegmentEnded](observed)
-	if len(ended) != 1 || ended[0].Reason != run.OutcomeCanceled {
+	if len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeCanceled {
 		t.Fatalf("segment end = %#v, want canceled", ended)
 	}
 	if running := shells.RetainedForSession(start.SessionID); len(running) != 0 {
@@ -631,7 +631,7 @@ func TestInteractionExecutorPreservesDeferredAdvertisementAcrossWaitingRestore(t
 	}
 	observed := <-events
 	ended := payloadsOf[runs.SegmentEnded](observed)
-	if len(ended) != 1 || ended[0].Reason != run.OutcomeCompleted {
+	if len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeCompleted {
 		t.Fatalf("terminal = %#v", ended)
 	}
 	if !model.restoredManifestIncludedHidden {
@@ -852,7 +852,7 @@ func TestInteractionExecutorProbesWaitingCheckpointThroughExactRestorePath(t *te
 	foreign.Members[0].MemberID = "interaction:foreign-member"
 	resumption, err = executor.CanResumeWaitingExecution(t.Context(), foreign)
 	resumable = resumption.Resumable()
-	if err != nil || resumable || resumption.Loss() != runs.LossWaitingStateUnavailable {
+	if err != nil || resumable || resumption.Loss() != run.LossWaitingStateUnavailable {
 		t.Fatalf("foreign CanResumeWaitingExecution = %+v, %v, want lost waiting state", resumption, err)
 	}
 	after, found, err := executor.config.ExecutionTrees.LoadExecutionTree(t.Context(), continuation.SessionID, checkpoint.RootMemberID)
@@ -1012,7 +1012,7 @@ func TestInteractionExecutorAppliesSteerAtNextModelBoundary(t *testing.T) {
 			if failed := payloadsOf[runs.ModelCallFailed](observed); len(failed) != 0 {
 				t.Fatalf("successful steer produced model failures: %#v", failed)
 			}
-			if ended := payloadsOf[runs.SegmentEnded](observed); len(ended) != 1 || ended[0].Reason != run.OutcomeCompleted {
+			if ended := payloadsOf[runs.SegmentEnded](observed); len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeCompleted {
 				t.Fatalf("steer terminal = %#v, want one completed outcome", ended)
 			}
 		})
@@ -1181,7 +1181,7 @@ func observeInteractionUntilWaiting(
 	value := <-ready
 	if len(value.barrier.Interruptions()) != 1 {
 		for _, terminal := range payloadsOf[runs.SegmentEnded](value.events) {
-			t.Logf("terminal reason=%s failure=%+v effects=%+v", terminal.Reason, terminal.Failure(), terminal.UnresolvedEffects())
+			t.Logf("terminal reason=%s failure=%+v effects=%+v", terminal.Ending.Outcome(), segmentFailure(terminal), terminal.UnresolvedEffects())
 		}
 		t.Fatalf("waiting barrier = %#v", value.barrier)
 	}

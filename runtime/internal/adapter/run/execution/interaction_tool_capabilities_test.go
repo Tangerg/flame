@@ -44,7 +44,7 @@ func TestInteractionToolUsesScopeAdmittedArguments(t *testing.T) {
 			})
 			events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
 			ends := payloadsOf[runs.SegmentEnded](events)
-			if len(ends) != 1 || ends[0].Reason != run.OutcomeCompleted || executions != 1 || modelCalls != 2 {
+			if len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeCompleted || executions != 1 || modelCalls != 2 {
 				t.Fatalf("admitted arguments failed: ends=%+v executions=%d model=%d", ends, executions, modelCalls)
 			}
 			starts := payloadsOf[runs.ToolCallStarted](events)
@@ -94,7 +94,7 @@ func TestTransformedToolProposalIsAdmittedBeforeApprovalAndExecution(t *testing.
 			events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
 			ends := payloadsOf[runs.SegmentEnded](events)
 			results := payloadsOf[runs.ToolCallFinished](events)
-			if len(ends) != 1 || ends[0].Reason != run.OutcomeCompleted || len(results) != 1 || results[0].ModelResult == nil {
+			if len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeCompleted || len(results) != 1 || results[0].ModelResult == nil {
 				t.Fatalf("final proposal did not settle through the Tool boundary: ends=%+v results=%+v", ends, results)
 			}
 			if final == `{"resource":17}` {
@@ -171,7 +171,7 @@ func TestInteractionToolSchedulingUsesSafeArguments(t *testing.T) {
 				close(release)
 				events := <-finished
 				ends := payloadsOf[runs.SegmentEnded](events)
-				if len(ends) != 1 || ends[0].Reason != run.OutcomeCompleted || executions.Load() != 2 || maximum.Load() != wantConcurrency {
+				if len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeCompleted || executions.Load() != 2 || maximum.Load() != wantConcurrency {
 					t.Fatalf("end=%+v executions=%d concurrency=%d", ends, executions.Load(), maximum.Load())
 				}
 				for _, result := range payloadsOf[runs.ToolCallFinished](events) {
@@ -253,7 +253,7 @@ func TestInteractionDirectToolCompletionUsesCommittedResults(t *testing.T) {
 		return nil
 	})
 	ends := payloadsOf[runs.SegmentEnded](events)
-	if len(ends) != 1 || ends[0].Reason != run.OutcomeCompleted || modelCalls.Load() != 1 || executions.Load() != 2 {
+	if len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeCompleted || modelCalls.Load() != 1 || executions.Load() != 2 {
 		t.Fatalf("direct completion: ends=%+v model=%d tools=%d", ends, modelCalls.Load(), executions.Load())
 	}
 	completed := payloadsOf[runs.ModelCallCompleted](events)

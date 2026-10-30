@@ -197,7 +197,7 @@ func TestScheduleInvestigationRespectsCancellationTimeoutAndLaterUnknown(t *test
 				if mode == "publication" || mode == "non-schedule tool" || mode == "known refusal" {
 					want = run.OutcomeCompleted
 				}
-				if len(ends) != 1 || ends[0].Reason != want {
+				if len(ends) != 1 || ends[0].Ending.Outcome() != want {
 					t.Fatalf("terminal=%+v, want %s", ends, want)
 				}
 				queries := int32(1)

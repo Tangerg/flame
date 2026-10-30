@@ -14,7 +14,6 @@ import (
 	"github.com/Tangerg/scope/core/media"
 )
 
-
 // openText owns the identity and accumulated content of one live streaming
 // item. Reducer clones are speculative, so cloning must also detach the
 // mutable builder before a persistence batch can be attempted.

@@ -115,9 +115,7 @@ func (r RecoveryCommit) Validate() error {
 			return fmt.Errorf("runs: recovery commit lost Run[%d]: %w", index, err)
 		}
 		run := recovery.State()
-		outcome, terminal := run.Outcome()
-		failure, failed := run.Failure()
-		if !terminal || outcome != rundomain.OutcomeLost || !failed || failure.Kind != rundomain.FailureLost {
+		if _, lost := run.Loss(); !lost {
 			return fmt.Errorf("runs: recovery commit Run %q is not a run-lost terminal", run.ID())
 		}
 		if _, duplicate := lostByID[run.ID()]; duplicate {
@@ -239,8 +237,10 @@ func validateLostRunReplacement(recovery rundomain.Replacement) error {
 	if err := recovery.Validate(); err != nil {
 		return err
 	}
-	_, err := recovery.State().LostFailure()
-	return err
+	if _, lost := recovery.State().Loss(); !lost {
+		return errors.New("runs: recovered Run is not lost")
+	}
+	return nil
 }
 
 func validateRecoveryModelInvocations(

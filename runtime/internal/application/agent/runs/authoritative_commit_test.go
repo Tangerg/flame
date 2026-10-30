@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"iter"
 	"slices"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -62,12 +63,12 @@ func (c *concurrentToolExecutor) Observe(
 		commitErr := receipt.Await(ctx)
 		if commitErr != nil {
 			c.failures <- commitErr
-			yield(ExecutorEvent{Member: member, Payload: NewSegmentEnded(run.OutcomeLost, &run.Failure{Kind: run.FailureLost, Detail: "effect:test: " + commitErr.Error()}, 0)})
+			yield(ExecutorEvent{Member: member, Payload: NewSegmentEnded(run.Lost{Loss: run.Loss{Reason: run.LossUnresolvedEffects, Detail: "effect:test: " + commitErr.Error()}}, 0)})
 			return
 		}
 
 		c.failures <- nil
-		yield(ExecutorEvent{Member: member, Payload: SegmentEnded{Reason: run.OutcomeCompleted}})
+		yield(ExecutorEvent{Member: member, Payload: SegmentEnded{Ending: run.Completed{}}})
 	}, nil
 }
 
@@ -106,7 +107,7 @@ func (a *authoritativeFailureExecutor) Observe(
 		a.receipts <- completionReceipt.Await(ctx)
 		yield(ExecutorEvent{
 			Member:  member,
-			Payload: NewSegmentEnded(run.OutcomeLost, &run.Failure{Kind: run.FailureLost}, 0),
+			Payload: NewSegmentEnded(run.Lost{Loss: run.Loss{Reason: run.LossUnresolvedEffects}}, 0),
 		})
 	}, nil
 }
@@ -194,12 +195,12 @@ func TestUnknownEffectsCloseUnfinishedTreeAsLostInPostorder(t *testing.T) {
 		{Member: child, Payload: childStart},
 		{Member: sibling, Payload: siblingStart},
 		{Member: completed, Payload: completedStart},
-		{Member: completed, Payload: NewSegmentEnded(run.OutcomeCompleted, nil, 0)},
+		{Member: completed, Payload: NewSegmentEnded(run.Completed{}, 0)},
 		{Member: sibling, Payload: ModelCallStarted{CallID: "in_flight_model"}},
 		{Member: child, Payload: ToolCallStarted{CallID: "unknown_tool", SourceCallID: "provider_tool", ToolName: "write", Arguments: `{}`}},
-		{Member: child, Payload: NewSegmentEnded(run.OutcomeLost, &run.Failure{Kind: run.FailureLost, Detail: "effect:unknown_tool: publication unavailable"}, 0)},
-		{Member: sibling, Payload: NewSegmentEnded(run.OutcomeLost, &run.Failure{Kind: run.FailureLost, Detail: "effect:unknown_tool: publication unavailable"}, 0)},
-		{Member: root, Payload: NewSegmentEnded(run.OutcomeLost, &run.Failure{Kind: run.FailureLost, Detail: "effect:unknown_tool: publication unavailable"}, 0)},
+		{Member: child, Payload: NewSegmentEnded(run.Lost{Loss: run.Loss{Reason: run.LossUnresolvedEffects, Detail: "effect:unknown_tool: publication unavailable"}}, 0)},
+		{Member: sibling, Payload: NewSegmentEnded(run.Lost{Loss: run.Loss{Reason: run.LossUnresolvedEffects, Detail: "effect:unknown_tool: publication unavailable"}}, 0)},
+		{Member: root, Payload: NewSegmentEnded(run.Lost{Loss: run.Loss{Reason: run.LossUnresolvedEffects, Detail: "effect:unknown_tool: publication unavailable"}}, 0)},
 	}}
 	effects := &fakeEffects{}
 	coordinator := testCoordinator(executor, effects)
@@ -242,9 +243,9 @@ func TestUnknownEffectsCloseUnfinishedTreeAsLostInPostorder(t *testing.T) {
 		if commit.Run == nil || !runHasOutcome(*commit.Run, run.OutcomeLost) {
 			t.Fatalf("unknown tree terminal = %#v, want lost", commit)
 		}
-		failure, present := commit.Run.Failure()
-		if !present || failure.Kind != run.FailureLost || !strings.Contains(failure.Detail, "effect:unknown_tool: publication unavailable") {
-			t.Fatalf("lost diagnostic = %+v/%t", failure, present)
+		loss, present := commit.Run.Loss()
+		if !present || loss.Reason != run.LossUnresolvedEffects || !strings.Contains(loss.Detail, "effect:unknown_tool: publication unavailable") {
+			t.Fatalf("lost diagnostic = %+v/%t", loss, present)
 		}
 		terminalIDs = append(terminalIDs, commit.Run.ID())
 		for _, invocation := range commit.ModelInvocations {
@@ -397,9 +398,9 @@ func TestConcurrentToolBatchFailurePublishesOnlyIncompleteRunLost(t *testing.T) 
 	if lost.Run == nil {
 		t.Fatal("RunLost has no Run record")
 	}
-	failure, failed := lost.Run.Failure()
-	if !failed || !strings.Contains(failure.Detail, "effect:test") || !strings.Contains(failure.Detail, writeFailure.Error()) {
-		t.Fatalf("lost root cause: %+v", failure)
+	loss, isLost := lost.Run.Loss()
+	if !isLost || !strings.Contains(loss.Detail, "effect:test") || !strings.Contains(loss.Detail, writeFailure.Error()) {
+		t.Fatalf("lost root cause: %+v", loss)
 	}
 	if lost.State != StateTerminalize || lost.Run == nil || !runHasOutcome(*lost.Run, run.OutcomeLost) {
 		t.Fatalf("terminal commit = %#v, want RunLost", lost)
@@ -427,7 +428,7 @@ func TestTerminalTransactionFailurePreservesRunningToolsForAtomicRecovery(t *tes
 			CallID: "tool_second", SourceCallID: "provider_second",
 			ModelCallSequence: 1, ToolCallIndex: 1, ToolName: "second", Arguments: `{}`,
 		}},
-		{Member: member, Payload: SegmentEnded{Reason: run.OutcomeCompleted}},
+		{Member: member, Payload: SegmentEnded{Ending: run.Completed{}}},
 	}}
 	writeFailure := errors.New("terminal transaction unavailable")
 	effects := &fakeEffects{commitErr: writeFailure, commitErrAt: 3}
@@ -550,7 +551,7 @@ func TestSparseToolResultSurvivesSiblingCancellation(t *testing.T) {
 	}}, ToolCallFinished{CallID: "tool_second", ModelResult: &result})
 	settlement.ModelResults = nil
 	completed := mustReduce(t, reducer, settlement)
-	terminal := mustReduce(t, reducer, SegmentEnded{Reason: run.OutcomeCanceled})
+	terminal := mustReduce(t, reducer, SegmentEnded{Ending: run.Canceled{}})
 	messages := committedConversationMessages(model)
 	messages = append(messages, committedConversationMessages(completed)...)
 	if terminalMessages := committedConversationMessages(terminal); len(terminalMessages) != 0 {

@@ -168,11 +168,8 @@ func validateTerminalRunReplacement(replacement rundomain.Replacement) error {
 	state := replacement.State()
 	outcome, _ := state.Outcome()
 	switch outcome {
-	case rundomain.OutcomeCanceled:
+	case rundomain.OutcomeCanceled, rundomain.OutcomeLost:
 		return nil
-	case rundomain.OutcomeLost:
-		_, err := state.LostFailure()
-		return err
 	default:
 		return fmt.Errorf("terminal Run replacement has unsupported outcome %q", outcome)
 	}

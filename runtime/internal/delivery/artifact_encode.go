@@ -66,14 +66,11 @@ func artifactSessionFromPortable(value sessions.PortableSession) protocol.Artifa
 }
 
 func artifactRunFromPortable(run sessions.PortableRun) (protocol.ArtifactRun, error) {
-	outcome, err := artifactOutcomeType(run.Outcome)
+	outcome, err := artifactOutcomeFromEnding(run.Ending)
 	if err != nil {
 		return protocol.ArtifactRun{}, fmt.Errorf("run %q outcome: %w", run.ID, err)
 	}
-	problem, err := artifactRunFailureFromDomain(run.Failure)
-	if err != nil {
-		return protocol.ArtifactRun{}, fmt.Errorf("run %q failure: %w", run.ID, err)
-	}
+	outcome.UnresolvedEffects = presentUnresolvedEffects(run.UnresolvedEffects)
 	return protocol.ArtifactRun{
 		ID: run.ID, SessionID: run.SessionID, SpawnedByItemID: run.SpawnedByItemID,
 		Provider: run.Selection.Provider(), Model: run.Selection.Model(),
@@ -83,11 +80,8 @@ func artifactRunFromPortable(run sessions.PortableRun) (protocol.ArtifactRun, er
 		Metrics:         presentMetrics(run.Metrics),
 		ContextTokens:   run.ContextTokens,
 		ProtocolProfile: presentArtifactProtocolProfile(run.Capabilities),
-		Outcome: protocol.ArtifactOutcome{
-			Type: outcome, Error: problem, Detail: run.Detail,
-			UnresolvedEffects: presentUnresolvedEffects(run.UnresolvedEffects),
-		},
-		CreatedAt: run.CreatedAt, FinishedAt: run.FinishedAt,
+		Outcome:         outcome,
+		CreatedAt:       run.CreatedAt, FinishedAt: run.FinishedAt,
 		UpdatedAt: run.UpdatedAt, MessageMark: artifactMessageMark(run.MessageMark),
 	}, nil
 }
@@ -104,34 +98,30 @@ func presentArtifactProtocolProfile(capabilities *run.Capabilities) *protocol.Ru
 	return &presented
 }
 
-func artifactOutcomeType(outcome run.Outcome) (protocol.ArtifactOutcomeType, error) {
-	switch outcome {
-	case run.OutcomeCompleted:
-		return protocol.ArtifactOutcomeCompleted, nil
-	case run.OutcomeCanceled:
-		return protocol.ArtifactOutcomeCanceled, nil
-	case run.OutcomeTimedOut:
-		return protocol.ArtifactOutcomeTimedOut, nil
-	case run.OutcomeFailed:
-		return protocol.ArtifactOutcomeFailed, nil
-	case run.OutcomeLost:
-		return protocol.ArtifactOutcomeLost, nil
+func artifactOutcomeFromEnding(ending run.Ending) (protocol.ArtifactOutcome, error) {
+	switch ending := ending.(type) {
+	case run.Completed:
+		return protocol.ArtifactOutcome{Type: protocol.ArtifactOutcomeCompleted}, nil
+	case run.Canceled:
+		return protocol.ArtifactOutcome{Type: protocol.ArtifactOutcomeCanceled, Detail: ending.Detail}, nil
+	case run.TimedOut:
+		return protocol.ArtifactOutcome{
+			Type:  protocol.ArtifactOutcomeTimedOut,
+			Error: &protocol.ArtifactProblem{Type: protocol.ArtifactProblemTimeout, Detail: ending.Detail},
+		}, nil
+	case run.Failed:
+		if err := ending.Failure.Validate(); err != nil {
+			return protocol.ArtifactOutcome{}, err
+		}
+		return protocol.ArtifactOutcome{Type: protocol.ArtifactOutcomeFailed, Error: &protocol.ArtifactProblem{
+			Type: protocol.ArtifactProblemType(ending.Failure.Kind), Detail: ending.Failure.Detail, DocURL: ending.Failure.DocURL,
+			RetryAfterSeconds: ending.Failure.RetryAfterSeconds(),
+		}}, nil
+	case run.Lost:
+		return protocol.ArtifactOutcome{Type: protocol.ArtifactOutcomeLost, Loss: presentLoss(ending.Loss)}, nil
 	default:
-		return "", fmt.Errorf("unknown value %q", outcome)
+		return protocol.ArtifactOutcome{}, fmt.Errorf("unknown ending %T", ending)
 	}
-}
-
-func artifactRunFailureFromDomain(failure *run.Failure) (*protocol.ArtifactProblem, error) {
-	if failure == nil {
-		return nil, nil
-	}
-	if err := failure.Validate(); err != nil {
-		return nil, err
-	}
-	return &protocol.ArtifactProblem{
-		Type: protocol.ArtifactProblemType(failure.Kind), Detail: failure.Detail, DocURL: failure.DocURL,
-		RetryAfterSeconds: failure.RetryAfterSeconds(),
-	}, nil
 }
 
 func artifactToolFailureFromDomain(failure *tool.Failure) (*protocol.ArtifactProblem, error) {

@@ -757,6 +757,9 @@
         "error": {
           "$ref": "#/$defs/ArtifactProblem"
         },
+        "loss": {
+          "$ref": "#/$defs/RunLoss"
+        },
         "type": {
           "$ref": "#/$defs/ArtifactOutcomeType"
         },
@@ -772,6 +775,7 @@
           "properties": {
             "detail": false,
             "error": false,
+            "loss": false,
             "type": {
               "const": "completed"
             }
@@ -792,6 +796,7 @@
                 }
               }
             },
+            "loss": false,
             "type": {
               "const": "timedOut"
             }
@@ -819,6 +824,7 @@
                 }
               }
             },
+            "loss": false,
             "type": {
               "const": "failed"
             }
@@ -831,6 +837,7 @@
         {
           "properties": {
             "error": false,
+            "loss": false,
             "type": {
               "const": "canceled"
             }
@@ -842,21 +849,13 @@
         {
           "properties": {
             "detail": false,
-            "error": {
-              "properties": {
-                "type": {
-                  "enum": [
-                    "run_lost"
-                  ]
-                }
-              }
-            },
+            "error": false,
             "type": {
               "const": "lost"
             }
           },
           "required": [
-            "error",
+            "loss",
             "type"
           ]
         }
@@ -899,23 +898,6 @@
             "properties": {
               "type": {
                 "const": "internal_error"
-              }
-            },
-            "required": [
-              "type"
-            ]
-          },
-          "then": {
-            "properties": {
-              "retryAfterSeconds": false
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "type": {
-                "const": "run_lost"
               }
             },
             "required": [
@@ -1053,7 +1035,6 @@
       "type": "string",
       "enum": [
         "internal_error",
-        "run_lost",
         "agent_stuck",
         "rate_limited",
         "invalid_credentials",
@@ -4440,6 +4421,19 @@
       "required": [
         "instanceId",
         "status"
+      ]
+    },
+    "LossReason": {
+      "type": "string",
+      "enum": [
+        "restart",
+        "isolatedWorkspace",
+        "workspaceUnavailable",
+        "otherBuild",
+        "waitingStateUnavailable",
+        "configurationChanged",
+        "unresolvedEffects",
+        "unresolvedModelCall"
       ]
     },
     "MCPAuthorizationAttempt": {
@@ -8566,20 +8560,6 @@
             "requiredCapabilities": false,
             "retryAfterSeconds": false,
             "type": {
-              "const": "run_lost"
-            }
-          },
-          "required": [
-            "type"
-          ]
-        },
-        {
-          "properties": {
-            "activeRun": false,
-            "errors": false,
-            "requiredCapabilities": false,
-            "retryAfterSeconds": false,
-            "type": {
               "const": "run_not_found"
             }
           },
@@ -9564,6 +9544,20 @@
         "timestamp"
       ]
     },
+    "RunLoss": {
+      "type": "object",
+      "properties": {
+        "detail": {
+          "type": "string"
+        },
+        "reason": {
+          "$ref": "#/$defs/LossReason"
+        }
+      },
+      "required": [
+        "reason"
+      ]
+    },
     "RunMetrics": {
       "type": "object",
       "properties": {
@@ -9594,6 +9588,9 @@
         "error": {
           "$ref": "#/$defs/ProblemData"
         },
+        "loss": {
+          "$ref": "#/$defs/RunLoss"
+        },
         "type": {
           "$ref": "#/$defs/RunOutcomeType"
         },
@@ -9609,6 +9606,7 @@
           "properties": {
             "detail": false,
             "error": false,
+            "loss": false,
             "type": {
               "const": "completed"
             }
@@ -9620,6 +9618,7 @@
         {
           "properties": {
             "detail": false,
+            "loss": false,
             "type": {
               "const": "timedOut"
             }
@@ -9632,6 +9631,7 @@
         {
           "properties": {
             "detail": false,
+            "loss": false,
             "type": {
               "const": "failed"
             }
@@ -9644,6 +9644,7 @@
         {
           "properties": {
             "error": false,
+            "loss": false,
             "type": {
               "const": "canceled"
             }
@@ -9655,12 +9656,13 @@
         {
           "properties": {
             "detail": false,
+            "error": false,
             "type": {
               "const": "lost"
             }
           },
           "required": [
-            "error",
+            "loss",
             "type"
           ]
         }

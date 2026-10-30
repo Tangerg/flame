@@ -136,7 +136,6 @@ const (
 	// never the wire.
 	ProblemInternalError = "internal_error"
 	// Execution failures.
-	ProblemRunLost             = "run_lost"             // Runtime instance exited before the run reached a durable terminal
 	ProblemAgentStuck          = "agent_stuck"          // the loop's no-forward-progress guard tripped
 	ProblemRateLimited         = "rate_limited"         // provider 429 / quota — retryable
 	ProblemInvalidCredentials  = "invalid_credentials"  // provider 401 / 403 — not retryable

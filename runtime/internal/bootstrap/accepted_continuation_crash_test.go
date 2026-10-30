@@ -381,7 +381,7 @@ func TestAcceptedRevivalRejectsUnsafeBoundaries(t *testing.T) {
 					outcome = run.OutcomeCompleted
 					expected = protocol.OutcomeCompleted
 				}
-				terminal, err := value.Terminate(run.Termination{Outcome: outcome, FinishedAt: time.Now().UTC()})
+				terminal, err := value.Terminate(run.Termination{Ending: testsupport.EndingFor(outcome), FinishedAt: time.Now().UTC()})
 				if err != nil {
 					t.Fatal(err)
 				}

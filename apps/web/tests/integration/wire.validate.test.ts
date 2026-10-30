@@ -784,7 +784,7 @@ describe("the generated wire checks", () => {
       detail: "expected no repeated items",
     });
 
-    expect(validateWire("ProblemData", { type: "run_lost" })).toEqual([]);
+    expect(validateWire("ProblemData", { type: "agent_stuck" })).toEqual([]);
     expect(
       validateWire("ProblemData", { type: "mcp_dial_failed", detail: "connection failed" }),
     ).toContainEqual({
@@ -807,7 +807,7 @@ describe("the generated wire checks", () => {
     });
     expect(
       validateWire("ProblemData", {
-        type: "run_lost",
+        type: "agent_stuck",
         activeRun: { runId: "run_1", status: "running" },
       }),
     ).toContainEqual({

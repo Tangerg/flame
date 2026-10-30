@@ -326,23 +326,32 @@ type Outcome struct {
 	// Problem is the single source of failure classification, display text, and
 	// recovery metadata for failed, timed-out, and lost outcomes.
 	Problem *protocol.ProblemData
-	// Detail carries the Runtime-provided explanation for the outcome.
+	// Detail carries the canceled outcome's stated reason.
 	Detail string
+	// Loss explains a lost outcome.
+	Loss *protocol.RunLoss
 }
 
 func (o Outcome) Clone() Outcome {
 	o.Problem = failure.Clone(o.Problem)
+	if o.Loss != nil {
+		o.Loss = new(*o.Loss)
+	}
 	return o
 }
 
 func (o Outcome) Equal(other Outcome) bool {
-	return o.Status == other.Status && o.Detail == other.Detail && failure.Equal(o.Problem, other.Problem)
+	return o.Status == other.Status && o.Detail == other.Detail && failure.Equal(o.Problem, other.Problem) &&
+		(o.Loss == nil) == (other.Loss == nil) && (o.Loss == nil || *o.Loss == *other.Loss)
 }
 
 // Description returns the concise explanation appropriate for status lines.
 func (o Outcome) Description() string {
 	if o.Problem != nil {
 		return failure.Message(o.Problem, "")
+	}
+	if o.Loss != nil {
+		return lossExplanation(o.Loss.Reason)
 	}
 	return strings.TrimSpace(o.Detail)
 }
@@ -353,7 +362,33 @@ func (o Outcome) Explanation() string {
 	if o.Problem != nil {
 		return failure.String(o.Problem)
 	}
+	if o.Loss != nil {
+		return lossExplanation(o.Loss.Reason)
+	}
 	return strings.TrimSpace(o.Detail)
+}
+
+func lossExplanation(reason protocol.LossReason) string {
+	switch reason {
+	case protocol.LossRestart:
+		return "the Runtime stopped while the run was active"
+	case protocol.LossIsolatedWorkspace:
+		return "its isolated workspace does not survive a restart"
+	case protocol.LossWorkspaceUnavailable:
+		return "its workspace is unavailable"
+	case protocol.LossOtherBuild:
+		return "its waiting state was written by another Runtime build"
+	case protocol.LossWaitingStateUnavailable:
+		return "its waiting state could not be restored"
+	case protocol.LossConfigurationChanged:
+		return "its configuration changed while it was waiting"
+	case protocol.LossUnresolvedEffects:
+		return "external operations have no provable result"
+	case protocol.LossUnresolvedModelCall:
+		return "a model call ended without a provable result"
+	default:
+		return string(reason)
+	}
 }
 
 func ApprovalSubject(subject protocol.ApprovalSubject) string {

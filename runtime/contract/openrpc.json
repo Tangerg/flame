@@ -8493,6 +8493,9 @@
           "error": {
             "$ref": "#/components/schemas/ArtifactProblem"
           },
+          "loss": {
+            "$ref": "#/components/schemas/RunLoss"
+          },
           "type": {},
           "unresolvedEffects": {
             "items": {
@@ -8985,6 +8988,18 @@
         "allOf": [
           {
             "$ref": "schema.json#/$defs/RequestMeta"
+          }
+        ]
+      },
+      "RunLoss": {
+        "properties": {
+          "detail": {},
+          "reason": {}
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/RunLoss"
           }
         ]
       },

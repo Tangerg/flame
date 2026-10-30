@@ -128,7 +128,9 @@ describe("Runtime → Agent fact adapter", () => {
       ];
       const outcome = {
         type,
-        error: { type: "run_lost", detail: "unknown" },
+        ...(type === "lost"
+          ? { loss: { reason: "unresolvedEffects" } }
+          : { error: { type: "internal_error", detail: "unknown" } }),
         unresolvedEffects,
       } as RunOutcome;
       const run = runningRoot({
@@ -257,7 +259,7 @@ describe("Runtime → Agent fact adapter", () => {
       spawnedByItemId: "item_spawn",
       outcome: {
         type: "lost",
-        error: { type: "run_lost", detail: "runtime restarted" },
+        loss: { reason: "restart", detail: "runtime restarted" },
       },
       metrics: {
         steps: 4,
@@ -277,7 +279,7 @@ describe("Runtime → Agent fact adapter", () => {
       activeSegmentId: null,
       outcome: {
         type: "lost",
-        error: { code: "run_lost", message: "runtime restarted" },
+        loss: { reason: "restart", detail: "runtime restarted" },
       },
       metrics: { usage: { cacheReadTokens: 3, costUsd: 0.01 } },
     });

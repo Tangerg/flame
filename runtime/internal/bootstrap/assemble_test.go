@@ -496,11 +496,11 @@ func TestAssemblyRecoversParkedRunWithIncompatibleDeployment(t *testing.T) {
 		t.Fatalf("executor checkpoint after assemble = %v, want not found", loadCheckpointErr)
 	}
 	runs, err := cfg.stores.Runs.ListRuns(ctx, sessionID)
-	failure, failed := run.Failure{}, false
+	lost := false
 	if len(runs) == 1 {
-		failure, failed = runs[0].Failure()
+		_, lost = runs[0].Loss()
 	}
-	if err != nil || len(runs) != 1 || !failed || failure.Kind != run.FailureLost {
+	if err != nil || len(runs) != 1 || !lost {
 		t.Fatalf("runs after assemble = (%+v, %v), want run_lost", runs, err)
 	}
 }

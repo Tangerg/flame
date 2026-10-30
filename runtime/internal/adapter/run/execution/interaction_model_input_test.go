@@ -278,7 +278,7 @@ func TestPrimaryMediaAdmissionUsesFinalTransformedInputForCallAndStream(t *testi
 						want = 1
 						reason = run.OutcomeCompleted
 					}
-					if model.calls != want || len(ends) != 1 || ends[0].Reason != reason {
+					if model.calls != want || len(ends) != 1 || ends[0].Ending.Outcome() != reason {
 						t.Fatalf("final media admission: generation=%d ends=%+v", model.calls, ends)
 					}
 					if mode != "absent" && !owner.received {

@@ -35,8 +35,8 @@ func retainedBytes(event Event) int {
 		event.Payload.retainedBytes()
 }
 
-func retainedRunBytes(run run.Run) int {
-	snapshot := run.Snapshot()
+func retainedRunBytes(value run.Run) int {
+	snapshot := value.Snapshot()
 	bytes := retainedRunHeaderBytes + stringsBytes(
 		snapshot.SessionID,
 		snapshot.ID,
@@ -45,13 +45,19 @@ func retainedRunBytes(run run.Run) int {
 		snapshot.Lineage.RootRunID,
 		snapshot.GoalIncarnationID,
 		snapshot.ActiveSegmentID,
-		snapshot.Detail,
 		snapshot.ModelSelection.Provider(),
 		snapshot.ModelSelection.Model(),
 		snapshot.ModelSelection.ReasoningEffort(),
 	)
-	if snapshot.Failure != nil {
-		bytes += len(snapshot.Failure.Detail) + len(snapshot.Failure.DocURL)
+	switch ending := snapshot.Ending.(type) {
+	case run.Canceled:
+		bytes += len(ending.Detail)
+	case run.TimedOut:
+		bytes += len(ending.Detail)
+	case run.Failed:
+		bytes += len(ending.Failure.Detail) + len(ending.Failure.DocURL)
+	case run.Lost:
+		bytes += len(ending.Loss.Detail)
 	}
 	bytes += cap(snapshot.UnresolvedEffects) * retainedEffectHeaderBytes
 	for _, effect := range snapshot.UnresolvedEffects {

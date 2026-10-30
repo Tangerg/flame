@@ -256,7 +256,7 @@ func putChildRun(t *testing.T, rt *stubRuntime, sessionID, runID string, atUnix 
 	outcome := run.OutcomeCompleted
 	if err := rt.runs.Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: runID,
 
-		State: run.Finished, Outcome: &outcome,
+		State: run.Finished, Ending: testsupport.EndingFor(outcome),
 		CreatedAt: time.Unix(atUnix, 0).UTC(), FinishedAt: time.Unix(atUnix, 0).UTC(),
 		UpdatedAt: time.Unix(atUnix, 0).UTC(), MessageMark: run.MessageMarkAt(mark), Lineage: run.Lineage{SpawnedByItemID: "item_spawn",
 			ParentRunID: "run_root", RootRunID: "run_root"}}),

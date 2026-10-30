@@ -54,7 +54,7 @@ type PortableSession struct {
 }
 
 // PortableRun is one terminal run in a portable snapshot. State is not carried
-// because it is derived from Outcome by the execution state machine.
+// because every portable Run has ended.
 type PortableRun struct {
 	SessionID       string
 	ID              string
@@ -64,8 +64,7 @@ type PortableRun struct {
 	ParentRunID string
 	RootRunID   string
 	Selection   modelchoice.Selection
-	Outcome     run.Outcome
-	Failure     *run.Failure
+	Ending      run.Ending
 	// UnresolvedEffects retains source execution identities as historical evidence.
 	// A portable Run has no checkpoint or continuation that could execute them.
 	UnresolvedEffects []run.UnresolvedEffect
@@ -75,7 +74,6 @@ type PortableRun struct {
 	// nil means the archive omitted the root-owned fact. A root must carry it; a
 	// child must not and inherits its root's value.
 	Capabilities *run.Capabilities
-	Detail       string
 	CreatedAt    time.Time
 	FinishedAt   time.Time
 	UpdatedAt    time.Time
@@ -153,11 +151,6 @@ func (p PortableSnapshot) CanonicalSnapshot() (Snapshot, error) {
 			return Snapshot{}, fmt.Errorf("%w: run %q names root %q, which this archive does not contain",
 				ErrInvalidPortableSnapshot, portable.ID, portable.rootID())
 		}
-		state, ok := run.Running.Terminate(portable.Outcome)
-		if !ok {
-			return Snapshot{}, fmt.Errorf("%w: run %q has invalid outcome %s", ErrInvalidPortableSnapshot, portable.ID, portable.Outcome)
-		}
-		outcome := portable.Outcome
 		restored, err := run.Restore(run.Snapshot{
 			SessionID: portable.SessionID,
 			ID:        portable.ID,
@@ -167,14 +160,12 @@ func (p PortableSnapshot) CanonicalSnapshot() (Snapshot, error) {
 				RootRunID:       portable.RootRunID,
 			},
 			ModelSelection:    portable.Selection,
-			State:             state,
-			Outcome:           &outcome,
-			Failure:           portable.Failure,
+			State:             run.Finished,
+			Ending:            portable.Ending,
 			UnresolvedEffects: portable.UnresolvedEffects,
 			Metrics:           portable.Metrics,
 			ContextTokens:     portable.ContextTokens,
 			Capabilities:      capabilitySets[portable.ID],
-			Detail:            portable.Detail,
 			CreatedAt:         portable.CreatedAt,
 			FinishedAt:        portable.FinishedAt,
 			UpdatedAt:         portable.UpdatedAt,
@@ -272,11 +263,10 @@ func (s Snapshot) PortableSnapshot() (PortableSnapshot, error) {
 		}
 	}
 	for _, run := range s.Runs {
-		outcome, terminal := run.Outcome()
+		ending, terminal := run.Ending()
 		if !terminal {
 			return PortableSnapshot{}, fmt.Errorf("sessions: terminal run %q has no outcome", run.ID())
 		}
-		failure, failed := run.Failure()
 		portableRun := PortableRun{
 			SessionID:         run.SessionID(),
 			ID:                run.ID(),
@@ -284,18 +274,14 @@ func (s Snapshot) PortableSnapshot() (PortableSnapshot, error) {
 			ParentRunID:       run.Lineage().ParentRunID,
 			RootRunID:         run.Lineage().RootRunID,
 			Selection:         run.ModelSelection(),
-			Outcome:           outcome,
+			Ending:            ending,
 			UnresolvedEffects: run.UnresolvedEffects(),
 			Metrics:           run.Metrics(),
 			ContextTokens:     run.ContextTokens(),
-			Detail:            run.Detail(),
 			CreatedAt:         run.CreatedAt(),
 			FinishedAt:        run.FinishedAt(),
 			UpdatedAt:         run.UpdatedAt(),
 			MessageMark:       run.MessageMark(),
-		}
-		if failed {
-			portableRun.Failure = &failure
 		}
 		if run.Lineage().IsRoot() {
 			capabilities := run.Capabilities()

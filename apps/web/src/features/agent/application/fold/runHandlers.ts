@@ -57,7 +57,15 @@ function sameRunOutcome(left: AgentRunOutcome | null, right: AgentRunOutcome): b
   )
     return false;
   if (left.type === "completed") return true;
-  if (isAgentRunFailure(left) && isAgentRunFailure(right)) {
+  if (left.type === "lost" && right.type === "lost") {
+    return left.loss.reason === right.loss.reason && left.loss.detail === right.loss.detail;
+  }
+  if (
+    isAgentRunFailure(left) &&
+    isAgentRunFailure(right) &&
+    left.type !== "lost" &&
+    right.type !== "lost"
+  ) {
     return (
       left.error.code === right.error.code &&
       left.error.message === right.error.message &&

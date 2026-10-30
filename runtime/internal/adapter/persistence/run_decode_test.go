@@ -16,8 +16,8 @@ func TestRunReadsRefuseOpenRowsWithTerminalFacts(t *testing.T) {
 			value  any
 			want   string
 		}{
-			{"outcome", "outcome", "completed", "carries an outcome"},
-			{"failure", "problem", `{"kind":"internal_error"}`, "carries a failure"},
+			{"outcome", "outcome", "completed", "carries an ending"},
+			{"ending facts", "ending", `{"detail":"stopped"}`, "stores ending facts"},
 			{"finish time", "finished_at", runCreatedAt.Add(time.Second).UnixNano(), "carries finish time"},
 		} {
 			t.Run(string(state)+"/"+fact.name, func(t *testing.T) {
@@ -61,7 +61,7 @@ func TestRunCodecPreservesEpochFinishTime(t *testing.T) {
 	}
 	opened := admittedRunFromDraft(draft)
 	terminal, err := opened.Terminate(run.Termination{
-		Outcome: run.OutcomeCompleted, FinishedAt: time.Unix(0, 0).UTC(), MessageMark: run.MessageMarkAt(0),
+		Ending: run.Completed{}, FinishedAt: time.Unix(0, 0).UTC(), MessageMark: run.MessageMarkAt(0),
 	})
 	if err != nil {
 		t.Fatal(err)

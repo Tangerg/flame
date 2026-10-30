@@ -85,7 +85,7 @@ func TestInteractionSearchFailureCommitsFeedbackAndAllowsCorrection(t *testing.T
 		t.Fatalf("search produced unknown Effects: %+v", unknown)
 	}
 	ended := payloadsOf[runs.SegmentEnded](events)
-	if len(ended) != 1 || ended[0].Reason != run.OutcomeCompleted {
+	if len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeCompleted {
 		t.Fatalf("search Run termination = %+v", ended)
 	}
 }

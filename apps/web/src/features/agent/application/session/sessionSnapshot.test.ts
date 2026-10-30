@@ -121,10 +121,7 @@ describe("projectAgentSessionSnapshot", () => {
           finishedAt: "2026-07-30T00:59:30.000Z",
           outcome: {
             type: "lost",
-            error: {
-              code: "run_lost",
-              message: "runtime restarted before the run settled",
-            },
+            loss: { reason: "restart" },
           },
           metrics: { steps: 3, activeDurationMillis: 30, usage },
         },
@@ -231,10 +228,7 @@ describe("projectAgentSessionSnapshot", () => {
       status: "finished",
       outcome: {
         type: "lost",
-        error: {
-          code: "run_lost",
-          message: "runtime restarted before the run settled",
-        },
+        loss: { reason: "restart" },
       },
     });
     expect(view.messages.map(({ id, runId }) => ({ id, runId }))).toEqual([

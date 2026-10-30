@@ -317,10 +317,9 @@ func TestApplyRunLostProjectsTerminalTranscript(t *testing.T) {
 	// with an unrestorable snapshot, so it is the one that has to say so. Leaving
 	// the detail empty pushed the sentence out to the presenter, which could only
 	// see the kind and wrote one default for every way a run can be lost.
-	failure, failed := appliedRoot.Failure()
-	if !failed || failure.Kind != run.FailureLost ||
-		failure.Detail != "the parked Run tree's executor checkpoint could not be restored" {
-		t.Fatalf("terminal failure = %+v, want run_lost naming its cause", failure)
+	loss, lost := appliedRoot.Loss()
+	if !lost || loss.Reason != run.LossWaitingStateUnavailable {
+		t.Fatalf("terminal loss = %+v, want the unrestorable waiting state", loss)
 	}
 	items := applied.Items()
 	if len(items) != 1 {
@@ -404,9 +403,8 @@ func TestApplyRunLostTerminalizesWholeParkedTreeInPostorder(t *testing.T) {
 	for _, replacement := range terminalRuns {
 		record := replacement.State()
 		outcome, terminalized := record.Outcome()
-		failure, failed := record.Failure()
-		if !testsupport.RunFailed(record) || !terminalized || outcome != run.OutcomeLost ||
-			!failed || failure.Kind != run.FailureLost || !record.FinishedAt().Equal(finishedAt) {
+		_, lost := record.Loss()
+		if !terminalized || outcome != run.OutcomeLost || !lost || !record.FinishedAt().Equal(finishedAt) {
 			t.Fatalf("terminal Run = %+v", record)
 		}
 	}

@@ -645,7 +645,7 @@ func TestProblemDataWireUnion(t *testing.T) {
 		problem ProblemData
 		field   string
 	}{
-		{name: "ordinary first party problem", problem: ProblemData{Type: ProblemRunLost}},
+		{name: "ordinary first party problem", problem: ProblemData{Type: ProblemAgentStuck}},
 		{
 			name: "capability problem carries its gaps",
 			problem: ProblemData{
@@ -659,13 +659,13 @@ func TestProblemDataWireUnion(t *testing.T) {
 		},
 		{
 			name:    "structured fields belong to their variant",
-			problem: ProblemData{Type: ProblemRunLost, RequiredCapabilities: validCapability},
+			problem: ProblemData{Type: ProblemAgentStuck, RequiredCapabilities: validCapability},
 			field:   "requiredCapabilities",
 		},
 		{
 			name: "active run belongs only to the conflict",
 			problem: ProblemData{
-				Type:      ProblemRunLost,
+				Type:      ProblemAgentStuck,
 				ActiveRun: &ActiveRunRef{RunID: "run_1", Status: RunStatusRunning},
 			},
 			field: "activeRun",
@@ -1758,7 +1758,7 @@ func TestSessionArtifactFailureTaxonomiesAreContextual(t *testing.T) {
 
 	incompleteTool := completedTool
 	incompleteTool.Status = ItemStatusIncomplete
-	incompleteTool.Error = &ArtifactProblem{Type: ArtifactProblemRunLost}
+	incompleteTool.Error = &ArtifactProblem{Type: ArtifactProblemAgentStuck}
 	assertConstraintField(t, incompleteTool.validateWire(), "ArtifactItem", "error.type")
 
 	timedOut := ArtifactOutcome{

@@ -24,9 +24,8 @@ func (c *cancelRunUseCaseStub) Cancel(_ context.Context, command runs.CancelComm
 }
 
 func TestCancelRunPresentsCommittedRootSnapshot(t *testing.T) {
-	outcome := run.OutcomeCanceled
 	useCases := &cancelRunUseCaseStub{result: runs.CancelResult{Run: testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", SessionID: "ses_1", State: run.Finished,
-		Outcome: &outcome, Detail: "user stopped"}),
+		Ending: run.Canceled{Detail: "user stopped"}}),
 	}}
 	server := &Handler{runs: useCases}
 
@@ -49,8 +48,7 @@ func TestCancelRunPresentsCommittedRootSnapshot(t *testing.T) {
 }
 
 func TestCancelRunPassesNegotiatedChildAuthorityWithoutBlockingARoot(t *testing.T) {
-	outcome := run.OutcomeCanceled
-	useCases := &cancelRunUseCaseStub{result: runs.CancelResult{Run: testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", SessionID: "ses_1", State: run.Finished, Outcome: &outcome})}}
+	useCases := &cancelRunUseCaseStub{result: runs.CancelResult{Run: testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", SessionID: "ses_1", State: run.Finished, Ending: run.Canceled{}})}}
 	server := &Handler{runs: useCases}
 	ctx := withClientCapabilities(protocol.ClientCapabilities{
 		Features: map[string]protocol.FeaturePreference{protocol.FeatureSubagents: {Enabled: true}},

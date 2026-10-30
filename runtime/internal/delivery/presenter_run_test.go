@@ -18,16 +18,16 @@ import (
 // English no translator could see.
 func TestPresentationDoesNotAuthorOutcomeOrFailureDetail(t *testing.T) {
 	canceled := run.OutcomeCanceled
-	if outcome := presentOutcome(testsupport.MustRestoreRun(run.Snapshot{Outcome: &canceled})); outcome.Detail != "" {
+	if outcome := presentOutcome(testsupport.MustRestoreRun(run.Snapshot{Ending: testsupport.EndingFor(canceled)})); outcome.Detail != "" {
 		t.Fatalf("canceled outcome detail = %q, want the domain's silence preserved", outcome.Detail)
 	}
 
-	problem := presentRunFailure(&run.Failure{Kind: run.FailureLost})
-	if problem == nil || problem.Type != protocol.ProblemRunLost || problem.Detail != "" {
-		t.Fatalf("run-lost problem = %+v, want the type alone", problem)
+	lost := presentOutcome(testsupport.MustRestoreRun(run.Snapshot{Ending: run.Lost{Loss: run.Loss{Reason: run.LossRestart}}}))
+	if lost.Loss == nil || lost.Loss.Reason != protocol.LossRestart || lost.Loss.Detail != "" || lost.Error != nil {
+		t.Fatalf("lost outcome = %+v, want the reason alone", lost)
 	}
 
-	spoken := presentOutcome(testsupport.MustRestoreRun(run.Snapshot{Outcome: &canceled, Detail: "user asked to stop"}))
+	spoken := presentOutcome(testsupport.MustRestoreRun(run.Snapshot{Ending: run.Canceled{Detail: "user asked to stop"}}))
 	if spoken.Detail != "user asked to stop" {
 		t.Fatalf("canceled outcome detail = %q, want it verbatim", spoken.Detail)
 	}
@@ -53,7 +53,7 @@ func TestPresentSegmentFinishedCarriesDurablePromptFootprint(t *testing.T) {
 	completed := run.OutcomeCompleted
 	value := testsupport.MustRestoreRun(run.Snapshot{
 		ContextTokens: 87_900,
-		Outcome:       &completed,
+		Ending:        testsupport.EndingFor(completed),
 	})
 	event := presentRunEvent(runs.SegmentFinished{Run: value})
 	if event.Run == nil || event.Run.ContextTokens != 87_900 {

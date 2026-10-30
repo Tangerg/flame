@@ -261,7 +261,7 @@ func TestUnadmittedSteerSurvivesUncertainExecutionRecovery(t *testing.T) {
 			t.Fatalf("restored command did not apply its original input once: %+v", applied)
 		}
 		ends := payloadsOf[runs.SegmentEnded](observed)
-		if len(ends) != 1 || ends[0].Reason != run.OutcomeCompleted || toolCalls.Load() != 1 || modelCalls.Load() != 2 {
+		if len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeCompleted || toolCalls.Load() != 1 || modelCalls.Load() != 2 {
 			t.Fatalf("recovery redispatched or failed: ends=%+v, Tool calls=%d, model calls=%d", ends, toolCalls.Load(), modelCalls.Load())
 		}
 	})

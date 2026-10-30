@@ -38,7 +38,7 @@ type ProblemContract struct {
 }
 
 // executionRecovery owns the default next move for every execution problem.
-var executionRecovery = map[string]protocol.RecoveryAction{protocol.ProblemInternalError: protocol.RecoveryPromptUser, protocol.ProblemRunLost: protocol.RecoveryPromptUser, protocol.ProblemAgentStuck: protocol.RecoveryPromptUser, protocol.ProblemRateLimited: protocol.RecoveryWaitRetryAfter, protocol.ProblemInvalidCredentials: protocol.RecoveryReauthenticate, protocol.ProblemTimeout: protocol.RecoveryPromptUser, protocol.ProblemProviderUnavailable: protocol.RecoveryWaitRetryAfter, protocol.ProblemProviderRejected: protocol.RecoveryStop, protocol.ProblemDeniedByUser: protocol.RecoveryStop, protocol.ProblemToolFailed: protocol.RecoveryPromptUser, protocol.ProblemToolCanceled: protocol.RecoveryStop, protocol.ProblemChildRunCanceled: protocol.RecoveryStop}
+var executionRecovery = map[string]protocol.RecoveryAction{protocol.ProblemInternalError: protocol.RecoveryPromptUser, protocol.ProblemAgentStuck: protocol.RecoveryPromptUser, protocol.ProblemRateLimited: protocol.RecoveryWaitRetryAfter, protocol.ProblemInvalidCredentials: protocol.RecoveryReauthenticate, protocol.ProblemTimeout: protocol.RecoveryPromptUser, protocol.ProblemProviderUnavailable: protocol.RecoveryWaitRetryAfter, protocol.ProblemProviderRejected: protocol.RecoveryStop, protocol.ProblemDeniedByUser: protocol.RecoveryStop, protocol.ProblemToolFailed: protocol.RecoveryPromptUser, protocol.ProblemToolCanceled: protocol.RecoveryStop, protocol.ProblemChildRunCanceled: protocol.RecoveryStop}
 
 var problemContracts = mustProblemContracts()
 

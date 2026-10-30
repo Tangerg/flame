@@ -32,7 +32,7 @@ func TestTerminalMaintenanceDefectStillSettlesTheRunBoundary(t *testing.T) {
 		}),
 	}
 	c := newUseCaseCoordinator(
-		&fakeExecutor{events: []executorPayload{SegmentEnded{Reason: run.OutcomeCompleted}}},
+		&fakeExecutor{events: []executorPayload{SegmentEnded{Ending: run.Completed{}}}},
 		&fakeExecutionPorts{startRef: ExecutorRef{SessionID: "ses_1", ExecutorID: "turn_1"}},
 		sessions,
 		panickingFinalizerEffects{fakeEffects: &fakeEffects{}},

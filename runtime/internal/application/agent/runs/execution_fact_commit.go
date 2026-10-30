@@ -117,7 +117,7 @@ func cloneExecutionFact(fact ExecutionFact) (ExecutionFact, bool) {
 	case CompactionBoundary:
 		return value, true
 	case SegmentEnded:
-		return NewSegmentEnded(value.Reason, value.failure, value.Duration).WithUnresolvedEffects(value.unresolvedEffects), true
+		return NewSegmentEnded(value.Ending, value.Duration).WithUnresolvedEffects(value.unresolvedEffects), true
 	case PlanUpdated:
 		return value, true
 	case SteerMessagesApplied:

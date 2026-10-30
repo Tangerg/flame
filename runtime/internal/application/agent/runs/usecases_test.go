@@ -109,9 +109,8 @@ func (f *fakeRunSessions) ApplyRunCancel(_ context.Context, sessionID, runID, re
 	f.cancelReason = reason
 	f.canceledAt = finishedAt
 	delete(f.pending, runID)
-	outcome := run.OutcomeCanceled
 	return testsupport.MustRestoreRun(run.Snapshot{ID: runID, SessionID: sessionID, State: run.Finished,
-		Outcome: &outcome, Detail: reason, FinishedAt: finishedAt}), nil
+		Ending: run.Canceled{Detail: reason}, FinishedAt: finishedAt}), nil
 }
 
 func (f *fakeRunSessions) ApplyRunLost(_ context.Context, _ string, runID string, finishedAt time.Time) error {
@@ -614,7 +613,7 @@ func TestStartSettlesAfterOpeningWithoutWaitingForExecutorActivation(t *testing.
 		activateRelease: releaseActivation,
 	}
 	coordinator := newUseCaseCoordinator(
-		&fakeExecutor{events: []executorPayload{SegmentEnded{Reason: run.OutcomeCompleted}}},
+		&fakeExecutor{events: []executorPayload{SegmentEnded{Ending: run.Completed{}}}},
 		control,
 		sessions,
 		effects,
@@ -1050,7 +1049,7 @@ func TestFastStartReleaseCannotCrossTerminalMaintenance(t *testing.T) {
 	}
 	effects := &fakeEffects{finishStarted: finishStarted, finishRelease: releaseFinish}
 	c := newUseCaseCoordinator(
-		&fakeExecutor{events: []executorPayload{SegmentEnded{Reason: run.OutcomeCompleted}}},
+		&fakeExecutor{events: []executorPayload{SegmentEnded{Ending: run.Completed{}}}},
 		&fakeExecutionPorts{startRef: ExecutorRef{SessionID: "ses_1", ExecutorID: "turn_1"}},
 		sessions,
 		effects,
@@ -1149,7 +1148,7 @@ func TestResumeSettlesAfterOpeningWithoutWaitingForExecutorActivation(t *testing
 		resumeRelease: releaseActivation,
 	}
 	coordinator := newUseCaseCoordinator(
-		&fakeExecutor{events: []executorPayload{SegmentEnded{Reason: run.OutcomeCompleted}}},
+		&fakeExecutor{events: []executorPayload{SegmentEnded{Ending: run.Completed{}}}},
 		control,
 		sessions,
 		effects,
@@ -2065,7 +2064,7 @@ func TestCancelLosesToACommittedNaturalTerminal(t *testing.T) {
 	terminalStarted := make(chan struct{}, 1)
 	releaseTerminal := make(chan struct{})
 	executor := &fakeExecutor{events: []executorPayload{SegmentEnded{
-		Reason: run.OutcomeCompleted,
+		Ending: run.Completed{},
 	}}}
 	effects := &fakeEffects{terminalStarted: terminalStarted, terminalRelease: releaseTerminal}
 	control := &fakeExecutionPorts{}

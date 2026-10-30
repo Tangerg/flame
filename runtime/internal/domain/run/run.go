@@ -53,9 +53,7 @@ type Run struct {
 	goalIncarnationID goalref.IncarnationID
 	state             State
 	activeSegmentID   string
-	outcome           *Outcome
-	detail            string
-	failure           *Failure
+	ending            Ending
 	unresolvedEffects []UnresolvedEffect
 	metrics           Metrics
 	contextTokens     int64
@@ -76,9 +74,8 @@ type Snapshot struct {
 	GoalIncarnationID string
 	State             State
 	ActiveSegmentID   string
-	Outcome           *Outcome
-	Detail            string
-	Failure           *Failure
+	// Ending is present exactly when State is Finished.
+	Ending            Ending
 	UnresolvedEffects []UnresolvedEffect
 	Metrics           Metrics
 	// ContextTokens is the latest completed model request's prompt footprint.
@@ -111,20 +108,11 @@ func Restore(snapshot Snapshot) (Run, error) {
 	if err != nil {
 		return Run{}, fmt.Errorf("run: %w", err)
 	}
-	clonedOutcome := snapshot.Outcome
-	if clonedOutcome != nil {
-		clonedOutcome = new(*clonedOutcome)
-	}
-	clonedFailure := snapshot.Failure
-	if clonedFailure != nil {
-		clonedFailure = new(*clonedFailure)
-	}
 	run := Run{
 		sessionID: snapshot.SessionID, id: snapshot.ID, lineage: snapshot.Lineage,
 		modelSelection: snapshot.ModelSelection, goalIncarnationID: goalIncarnationID,
 		state: snapshot.State, activeSegmentID: snapshot.ActiveSegmentID,
-		outcome: clonedOutcome, detail: snapshot.Detail,
-		failure: clonedFailure, unresolvedEffects: slices.Clone(snapshot.UnresolvedEffects), metrics: snapshot.Metrics,
+		ending: snapshot.Ending, unresolvedEffects: slices.Clone(snapshot.UnresolvedEffects), metrics: snapshot.Metrics,
 		contextTokens: snapshot.ContextTokens,
 		capabilities:  snapshot.Capabilities.Clone(),
 		createdAt:     snapshot.CreatedAt.UTC(), finishedAt: snapshot.FinishedAt.UTC(),
@@ -138,20 +126,11 @@ func Restore(snapshot Snapshot) (Run, error) {
 
 // Snapshot returns a complete ownership-isolated value.
 func (r Run) Snapshot() Snapshot {
-	clonedOutcome := r.outcome
-	if clonedOutcome != nil {
-		clonedOutcome = new(*clonedOutcome)
-	}
-	clonedFailure := r.failure
-	if clonedFailure != nil {
-		clonedFailure = new(*clonedFailure)
-	}
 	return Snapshot{
 		SessionID: r.sessionID, ID: r.id, Lineage: r.lineage,
 		ModelSelection: r.modelSelection, GoalIncarnationID: r.goalIncarnationID.String(),
 		State: r.state, ActiveSegmentID: r.activeSegmentID,
-		Outcome: clonedOutcome, Detail: r.detail,
-		Failure: clonedFailure, UnresolvedEffects: slices.Clone(r.unresolvedEffects), Metrics: r.metrics,
+		Ending: r.ending, UnresolvedEffects: slices.Clone(r.unresolvedEffects), Metrics: r.metrics,
 		ContextTokens: r.contextTokens,
 		Capabilities:  r.capabilities.Clone(),
 		CreatedAt:     r.createdAt, FinishedAt: r.finishedAt,
@@ -185,24 +164,14 @@ func (r Run) Equal(other Run) bool {
 	if r.sessionID != other.sessionID || r.id != other.id || r.lineage != other.lineage ||
 		!r.modelSelection.Equal(other.modelSelection) || r.goalIncarnationID != other.goalIncarnationID ||
 		r.state != other.state || r.activeSegmentID != other.activeSegmentID ||
-		r.detail != other.detail || !r.metrics.Equal(other.metrics) ||
+		r.ending != other.ending || !r.metrics.Equal(other.metrics) ||
 		r.contextTokens != other.contextTokens ||
 		!r.capabilities.Equal(other.capabilities) || !r.createdAt.Equal(other.createdAt) ||
 		!r.finishedAt.Equal(other.finishedAt) || !r.updatedAt.Equal(other.updatedAt) ||
 		r.messageMark != other.messageMark || !slices.Equal(r.unresolvedEffects, other.unresolvedEffects) {
 		return false
 	}
-	if r.outcome == nil || other.outcome == nil {
-		if r.outcome != nil || other.outcome != nil {
-			return false
-		}
-	} else if *r.outcome != *other.outcome {
-		return false
-	}
-	if r.failure == nil || other.failure == nil {
-		return r.failure == nil && other.failure == nil
-	}
-	return *r.failure == *other.failure
+	return true
 }
 
 func (r Run) validate() error {
@@ -276,12 +245,8 @@ func (r Run) validate() error {
 
 func (r Run) validateOpen() error {
 	switch {
-	case r.outcome != nil:
-		return fmt.Errorf("run: %s Run carries an outcome", r.state)
-	case r.failure != nil:
-		return fmt.Errorf("run: %s Run carries a failure", r.state)
-	case r.detail != "":
-		return fmt.Errorf("run: %s Run carries terminal detail", r.state)
+	case r.ending != nil:
+		return fmt.Errorf("run: %s Run carries an ending", r.state)
 	case !r.finishedAt.IsZero():
 		return fmt.Errorf("run: %s Run carries finish time", r.state)
 	case r.messageMark != UnknownMessageMark():
@@ -291,44 +256,8 @@ func (r Run) validateOpen() error {
 }
 
 func (r Run) validateTerminal() error {
-	if r.outcome == nil {
-		return errors.New("run: terminal Run has no outcome")
-	}
-	if !r.outcome.valid() {
-		return fmt.Errorf("run: unknown outcome %q", *r.outcome)
-	}
-	switch *r.outcome {
-	case OutcomeFailed:
-		if r.failure == nil {
-			return errors.New("run: failed Run has no failure")
-		}
-		if r.failure.Kind == FailureLost {
-			return fmt.Errorf("run: failed Run uses failure kind %s with a dedicated outcome", r.failure.Kind)
-		}
-	case OutcomeTimedOut:
-		if r.failure == nil || r.failure.Kind != FailureTimeout {
-			return errors.New("run: timed-out Run has no timeout failure")
-		}
-	case OutcomeLost:
-		if r.failure == nil || r.failure.Kind != FailureLost {
-			return errors.New("run: lost Run has no lost failure")
-		}
-	default:
-		if r.failure != nil {
-			return fmt.Errorf("run: outcome %s carries a failure", *r.outcome)
-		}
-	}
-	if r.failure != nil {
-		if err := r.failure.Validate(); err != nil {
-			return err
-		}
-	}
-	if r.detail != "" {
-		switch *r.outcome {
-		case OutcomeCanceled:
-		default:
-			return fmt.Errorf("run: outcome %s cannot carry terminal detail", *r.outcome)
-		}
+	if err := validateEnding(r.ending); err != nil {
+		return err
 	}
 	switch {
 	case r.finishedAt.IsZero():
@@ -399,19 +328,20 @@ func (r Run) Resume(segmentID string, resumedAt time.Time) (Run, error) {
 
 // Termination is the complete fact set required to finish a Run.
 type Termination struct {
-	Outcome           Outcome
+	Ending            Ending
 	UnresolvedEffects []UnresolvedEffect
-	Detail            string
-	Failure           *Failure
 	FinishedAt        time.Time
 	MessageMark       MessageMark
 }
 
 // Terminate finishes a Running Run with one coherent terminal fact set.
 func (r Run) Terminate(termination Termination) (Run, error) {
-	next, ok := r.state.Terminate(termination.Outcome)
+	if err := validateEnding(termination.Ending); err != nil {
+		return Run{}, err
+	}
+	next, ok := r.state.Terminate(termination.Ending.Outcome())
 	if !ok {
-		return Run{}, fmt.Errorf("run: outcome %s cannot terminate %s Run", termination.Outcome, r.state)
+		return Run{}, fmt.Errorf("run: outcome %s cannot terminate %s Run", termination.Ending.Outcome(), r.state)
 	}
 	return r.finish(next, termination)
 }
@@ -421,27 +351,16 @@ func (r Run) CancelWaiting(detail string, finishedAt time.Time, messageMark Mess
 	if r.state != Waiting {
 		return Run{}, fmt.Errorf("run: cannot cancel %s Run as waiting", r.state)
 	}
-	return r.finish(Finished, Termination{Outcome: OutcomeCanceled, Detail: detail, FinishedAt: finishedAt, MessageMark: messageMark})
-}
-
-// LostFailure returns the failure a Run that ended lost must carry. Recovery
-// and replacement both need it by value, and nothing can stand in for it, so a
-// lost Run without one is a broken record rather than a recoverable state.
-func (r Run) LostFailure() (Failure, error) {
-	failure, failed := r.Failure()
-	if !failed {
-		return Failure{}, errors.New("run: lost Run carries no failure")
-	}
-	return failure, nil
+	return r.finish(Finished, Termination{Ending: Canceled{Detail: detail}, FinishedAt: finishedAt, MessageMark: messageMark})
 }
 
 // RecoverLost finishes a non-terminal Run whose executor state cannot be recovered.
-func (r Run) RecoverLost(failure Failure, finishedAt time.Time, messageMark MessageMark) (Run, error) {
+func (r Run) RecoverLost(loss Loss, finishedAt time.Time, messageMark MessageMark) (Run, error) {
 	next, ok := r.state.RecoverLost()
 	if !ok {
 		return Run{}, fmt.Errorf("run: cannot recover terminal %s Run as lost", r.state)
 	}
-	return r.finish(next, Termination{Outcome: OutcomeLost, Failure: &failure, FinishedAt: finishedAt, MessageMark: messageMark})
+	return r.finish(next, Termination{Ending: Lost{Loss: loss}, FinishedAt: finishedAt, MessageMark: messageMark})
 }
 
 func (r Run) finish(state State, termination Termination) (Run, error) {
@@ -449,12 +368,7 @@ func (r Run) finish(state State, termination Termination) (Run, error) {
 		return Run{}, err
 	}
 	r.state, r.activeSegmentID = state, ""
-	r.outcome = new(termination.Outcome)
-	clonedFailure := termination.Failure
-	if clonedFailure != nil {
-		clonedFailure = new(*clonedFailure)
-	}
-	r.detail, r.failure = termination.Detail, clonedFailure
+	r.ending = termination.Ending
 	r.finishedAt, r.updatedAt = termination.FinishedAt.UTC(), termination.FinishedAt.UTC()
 	r.messageMark = termination.MessageMark
 	r.unresolvedEffects = slices.Clone(termination.UnresolvedEffects)
@@ -507,21 +421,39 @@ func (r Run) GoalIncarnationID() string             { return r.goalIncarnationID
 func (r Run) State() State                          { return r.state }
 func (r Run) ActiveSegmentID() string               { return r.activeSegmentID }
 func (r Run) Outcome() (Outcome, bool) {
-	if r.outcome == nil {
+	if r.ending == nil {
 		return "", false
 	}
-	return *r.outcome, true
+	return r.ending.Outcome(), true
 }
-func (r Run) Detail() string { return r.detail }
+
+// Ending returns how a finished Run ended.
+func (r Run) Ending() (Ending, bool) { return r.ending, r.ending != nil }
+
+// Detail returns a canceled Run's stated reason.
+func (r Run) Detail() string {
+	canceled, _ := r.ending.(Canceled)
+	return canceled.Detail
+}
 
 // Canceled reports whether the Run finished because it was canceled.
-func (r Run) Canceled() bool { return r.outcome != nil && *r.outcome == OutcomeCanceled }
-func (r Run) Failure() (Failure, bool) {
-	if r.failure == nil {
-		return Failure{}, false
-	}
-	return *r.failure, true
+func (r Run) Canceled() bool {
+	_, canceled := r.ending.(Canceled)
+	return canceled
 }
+
+// Failure returns a failed Run's classified failure.
+func (r Run) Failure() (Failure, bool) {
+	failed, ok := r.ending.(Failed)
+	return failed.Failure, ok
+}
+
+// Loss returns why a lost Run's outcome cannot be established.
+func (r Run) Loss() (Loss, bool) {
+	lost, ok := r.ending.(Lost)
+	return lost.Loss, ok
+}
+
 func (r Run) Metrics() Metrics     { return r.metrics }
 func (r Run) ContextTokens() int64 { return r.contextTokens }
 

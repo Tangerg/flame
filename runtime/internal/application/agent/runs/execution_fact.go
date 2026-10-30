@@ -306,38 +306,18 @@ func (t TreeInterrupted) validateFor(rootMemberID, sessionID string) error {
 
 type SegmentEnded struct {
 	executionFactBase
-	Reason            run.Outcome
+	// Ending is how the executor saw the Segment end. A Canceled ending's
+	// detail belongs to the cancel request, so the reducer supplies it.
+	Ending            run.Ending
 	unresolvedEffects []run.UnresolvedEffect
-	// Failure is present exactly when Reason is Failed, TimedOut, or Lost. It is
-	// already a stable, client-safe classification; executor diagnostics
-	// never enter the event stream.
-	failure  *run.Failure
-	Duration time.Duration
+	Duration          time.Duration
 }
 
 // NewSegmentEnded captures an ownership-independent terminal observation.
 // Contextual outcome checks remain with the reducer,
 // which owns the active Segment state needed to decide them.
-func NewSegmentEnded(
-	reason run.Outcome,
-	failure *run.Failure,
-	duration time.Duration,
-) SegmentEnded {
-	end := SegmentEnded{Reason: reason, Duration: duration}
-	end.failure = failure
-	if end.failure != nil {
-		end.failure = new(*end.failure)
-	}
-	return end
-}
-
-// Failure returns an ownership-independent terminal failure, when present.
-func (s SegmentEnded) Failure() *run.Failure {
-	if s.failure == nil {
-		return nil
-	}
-	failure := *s.failure
-	return &failure
+func NewSegmentEnded(ending run.Ending, duration time.Duration) SegmentEnded {
+	return SegmentEnded{Ending: ending, Duration: duration}
 }
 
 // PlanUpdated reports the committed Plan after a replacement — read back

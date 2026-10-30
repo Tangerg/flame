@@ -76,13 +76,11 @@ func MustRestoreRun(snapshot run.Snapshot) run.Run {
 	if snapshot.State == "" {
 		snapshot.State = run.Running
 	}
-	if snapshot.Outcome != nil && snapshot.State == run.Running {
-		if terminal, ok := run.Running.Terminate(*snapshot.Outcome); ok {
-			snapshot.State = terminal
-		}
+	if snapshot.Ending != nil && snapshot.State == run.Running {
+		snapshot.State = run.Finished
 	}
-	if snapshot.State.IsTerminal() && snapshot.Outcome == nil {
-		snapshot.Outcome = new(run.OutcomeCompleted)
+	if snapshot.State.IsTerminal() && snapshot.Ending == nil {
+		snapshot.Ending = run.Completed{}
 	}
 	if snapshot.State == run.Running && snapshot.ActiveSegmentID == "" {
 		snapshot.ActiveSegmentID = "segment_fixture"
@@ -93,16 +91,6 @@ func MustRestoreRun(snapshot run.Snapshot) run.Run {
 	if snapshot.State.IsTerminal() {
 		if snapshot.FinishedAt.IsZero() {
 			snapshot.FinishedAt = snapshot.CreatedAt
-		}
-		if snapshot.Failure == nil {
-			switch *snapshot.Outcome {
-			case run.OutcomeFailed:
-				snapshot.Failure = &run.Failure{Kind: run.FailureInternal}
-			case run.OutcomeTimedOut:
-				snapshot.Failure = &run.Failure{Kind: run.FailureTimeout}
-			case run.OutcomeLost:
-				snapshot.Failure = &run.Failure{Kind: run.FailureLost}
-			}
 		}
 	}
 	if !snapshot.State.IsTerminal() || snapshot.Lineage.IsChild() {
@@ -176,5 +164,22 @@ func RunFailed(value run.Run) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+// EndingFor returns a representative ending for outcome, for fixtures that
+// only care which way a Run ended.
+func EndingFor(outcome run.Outcome) run.Ending {
+	switch outcome {
+	case run.OutcomeCanceled:
+		return run.Canceled{}
+	case run.OutcomeFailed:
+		return run.Failed{Failure: run.Failure{Kind: run.FailureInternal}}
+	case run.OutcomeTimedOut:
+		return run.TimedOut{}
+	case run.OutcomeLost:
+		return run.Lost{Loss: run.Loss{Reason: run.LossRestart}}
+	default:
+		return run.Completed{}
 	}
 }

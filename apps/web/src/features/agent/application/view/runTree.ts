@@ -88,5 +88,9 @@ export function selectDelegatedRunNarratives(
 }
 
 export function selectRunProblem(run: AgentRunView | null): AgentProblem | null {
-  return isAgentRunFailure(run?.outcome) ? run.outcome.error : null;
+  const outcome = run?.outcome;
+  if (!isAgentRunFailure(outcome)) return null;
+  return outcome.type === "lost"
+    ? { lossReason: outcome.loss.reason, recovery: "promptUser" }
+    : outcome.error;
 }

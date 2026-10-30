@@ -111,17 +111,17 @@ func TestExecutionFactCommitOwnsMutableFacts(t *testing.T) {
 	}
 
 	runFailure := run.Failure{Kind: run.FailureInternal, Detail: "original"}
-	ended := NewSegmentEnded(run.OutcomeFailed, &runFailure, 0)
+	ended := NewSegmentEnded(run.Failed{Failure: runFailure}, 0)
 	runFailure.Detail = "changed"
 	endedCommit, _, err := NewExecutionFactCommit(ended)
 	if err != nil {
 		t.Fatalf("new segment-end fact commit: %v", err)
 	}
 	projectedEnd := endedCommit.Fact().(SegmentEnded)
-	projectedFailure := projectedEnd.Failure()
+	projectedFailure := segmentFailure(projectedEnd)
 	projectedFailure.Detail = "projected"
 	ownedEnd := endedCommit.Fact().(SegmentEnded)
-	ownedFailure := ownedEnd.Failure()
+	ownedFailure := segmentFailure(ownedEnd)
 	if ownedFailure.Detail != "original" {
 		t.Fatalf("owned segment-end fact = %+v", ownedEnd)
 	}
@@ -281,7 +281,7 @@ func TestTerminalCommitOwnsUnresolvedEvidence(t *testing.T) {
 		t.Fatal(err)
 	}
 	values := []run.UnresolvedEffect{effect}
-	end := NewSegmentEnded(run.OutcomeCanceled, nil, 0).WithUnresolvedEffects(values)
+	end := NewSegmentEnded(run.Canceled{}, 0).WithUnresolvedEffects(values)
 	values[0] = run.UnresolvedEffect{}
 	commit, _, err := NewExecutionFactCommit(end)
 	if err != nil {

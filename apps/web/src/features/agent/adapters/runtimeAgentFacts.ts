@@ -90,8 +90,16 @@ function runtimeRunOutcome(outcome: RunOutcome): AgentRunOutcome {
       return { type: "completed", ...evidence };
     case "timedOut":
     case "failed":
-    case "lost":
       return { type: outcome.type, error: runProblem(outcome.error), ...evidence };
+    case "lost":
+      return {
+        type: outcome.type,
+        loss: {
+          reason: outcome.loss.reason,
+          ...(outcome.loss.detail !== undefined ? { detail: outcome.loss.detail } : {}),
+        },
+        ...evidence,
+      };
     case "canceled":
       return {
         type: outcome.type,

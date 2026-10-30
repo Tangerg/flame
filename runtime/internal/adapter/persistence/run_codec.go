@@ -159,23 +159,91 @@ func runUsageRowOf(usage *accounting.Usage) *runUsageRow {
 	return row
 }
 
-func encodeRunFailure(failure *rundomain.Failure) (string, error) {
-	if failure == nil {
-		return "", nil
+// runEndingRow is the stored ending. The outcome column names the variant;
+// this record holds only that variant's facts.
+type runEndingRow struct {
+	Detail  string         `json:"detail,omitempty"`
+	Failure *runProblemRow `json:"failure,omitzero"`
+	Loss    *runLossRow    `json:"loss,omitzero"`
+}
+
+type runLossRow struct {
+	Reason rundomain.LossReason `json:"reason"`
+	Detail string               `json:"detail,omitempty"`
+}
+
+func encodeRunEnding(ending rundomain.Ending) (outcome, encoded string, err error) {
+	var row runEndingRow
+	switch ending := ending.(type) {
+	case nil:
+		return "", "", nil
+	case rundomain.Completed:
+		return string(rundomain.OutcomeCompleted), "", nil
+	case rundomain.Canceled:
+		row.Detail = ending.Detail
+	case rundomain.TimedOut:
+		row.Detail = ending.Detail
+	case rundomain.Failed:
+		row.Failure = &runProblemRow{
+			Kind: ending.Failure.Kind, Detail: ending.Failure.Detail, DocURL: ending.Failure.DocURL,
+			RetryAfterSeconds: ending.Failure.RetryAfterSeconds(),
+		}
+	case rundomain.Lost:
+		row.Loss = &runLossRow{Reason: ending.Loss.Reason, Detail: ending.Loss.Detail}
+	default:
+		return "", "", fmt.Errorf("encode run ending: unknown ending %T", ending)
 	}
-	if err := failure.Validate(); err != nil {
-		return "", fmt.Errorf("encode run failure: %w", err)
-	}
-	encoded, err := encodeStoredJSON(runProblemRow{
-		Kind:              failure.Kind,
-		Detail:            failure.Detail,
-		DocURL:            failure.DocURL,
-		RetryAfterSeconds: failure.RetryAfterSeconds(),
-	})
+	data, err := encodeStoredJSON(row)
 	if err != nil {
-		return "", fmt.Errorf("encode run failure: %w", err)
+		return "", "", fmt.Errorf("encode run ending: %w", err)
 	}
-	return string(encoded), nil
+	return string(ending.Outcome()), string(data), nil
+}
+
+func decodeRunEnding(outcome, encoded string) (rundomain.Ending, error) {
+	if outcome == "" {
+		if encoded != "" {
+			return nil, errors.New("an open Run stores ending facts")
+		}
+		return nil, nil
+	}
+	reason, ok := rundomain.ParseOutcome(outcome)
+	if !ok {
+		return nil, fmt.Errorf("unknown outcome %q", outcome)
+	}
+	var row runEndingRow
+	if reason != rundomain.OutcomeCompleted {
+		if err := decodeStoredJSON([]byte(encoded), &row); err != nil {
+			return nil, err
+		}
+	}
+	switch reason {
+	case rundomain.OutcomeCompleted:
+		if encoded != "" {
+			return nil, errors.New("a completed Run stores ending facts")
+		}
+		return rundomain.Completed{}, nil
+	case rundomain.OutcomeCanceled:
+		return rundomain.Canceled{Detail: row.Detail}, nil
+	case rundomain.OutcomeTimedOut:
+		return rundomain.TimedOut{Detail: row.Detail}, nil
+	case rundomain.OutcomeFailed:
+		if row.Failure == nil {
+			return nil, errors.New("a failed Run stores no failure")
+		}
+		failure, err := row.Failure.failure()
+		if err != nil {
+			return nil, err
+		}
+		return rundomain.Failed{Failure: failure}, nil
+	case rundomain.OutcomeLost:
+		if row.Loss == nil {
+			return nil, errors.New("a lost Run stores no loss")
+		}
+		return rundomain.Lost{Loss: rundomain.Loss{Reason: row.Loss.Reason, Detail: row.Loss.Detail}}, nil
+	default:
+		return nil, fmt.Errorf("unknown outcome %q", outcome)
+	}
 }
 
 // pendingReadPolicy says whether an Waiting Run must have its root-owned
@@ -221,11 +289,10 @@ func scanRunRow(row scanRow, pendingPolicy pendingReadPolicy) (rundomain.Run, er
 		model             string
 		reasoningEffort   string
 		goalIncarnationID string
-		detail            string
+		ending            string
 		steps             int
 		usage             string
 		contextTokens     int64
-		problem           string
 		unresolvedEffects string
 
 		messageMark         sql.NullInt64
@@ -240,8 +307,8 @@ func scanRunRow(row scanRow, pendingPolicy pendingReadPolicy) (rundomain.Run, er
 		&id, &sessionID,
 		&spawnedByItemID, &parentRunID, &rootRunID,
 		&coarse, &activeSegmentID, &outcome,
-		&provider, &model, &reasoningEffort, &goalIncarnationID, &detail,
-		&steps, &durationNs, &usage, &contextTokens, &problem, &unresolvedEffects,
+		&provider, &model, &reasoningEffort, &goalIncarnationID, &ending,
+		&steps, &durationNs, &usage, &contextTokens, &unresolvedEffects,
 		&capabilities,
 		&messageMark, &createdAt, &finishedAt, &updatedAt, &interruptsSuspended,
 	); err != nil {
@@ -270,7 +337,7 @@ func scanRunRow(row scanRow, pendingPolicy pendingReadPolicy) (rundomain.Run, er
 	}
 	snapshot := rundomain.Snapshot{
 		SessionID: sessionID, ID: id, Lineage: lineage, ModelSelection: selection,
-		GoalIncarnationID: goalIncarnationID, ActiveSegmentID: activeSegmentID, Detail: detail,
+		GoalIncarnationID: goalIncarnationID, ActiveSegmentID: activeSegmentID,
 		Metrics: metrics, ContextTokens: contextTokens,
 		Capabilities: capabilitiesValue,
 		CreatedAt:    time.Unix(0, createdAt).UTC(), UpdatedAt: time.Unix(0, updatedAt).UTC(),
@@ -281,15 +348,8 @@ func scanRunRow(row scanRow, pendingPolicy pendingReadPolicy) (rundomain.Run, er
 	if err != nil {
 		return rundomain.Run{}, fmt.Errorf("decode run effects: %w", err)
 	}
-	if outcome != "" {
-		reason, ok := rundomain.ParseOutcome(outcome)
-		if !ok {
-			return rundomain.Run{}, fmt.Errorf("run %q has unknown outcome %q", id, outcome)
-		}
-		snapshot.Outcome = &reason
-	}
-	if snapshot.Failure, err = decodeRunFailure(problem); err != nil {
-		return rundomain.Run{}, fmt.Errorf("decode run %q failure: %w", id, err)
+	if snapshot.Ending, err = decodeRunEnding(outcome, ending); err != nil {
+		return rundomain.Run{}, fmt.Errorf("decode run %q ending: %w", id, err)
 	}
 	// Zero encodes absence on open rows and the Unix epoch on terminal rows.
 	// Retain nonzero finish times on open rows so the Domain rejects them.
@@ -316,14 +376,7 @@ func scanRunRow(row scanRow, pendingPolicy pendingReadPolicy) (rundomain.Run, er
 			return rundomain.Run{}, fmt.Errorf("decode run %q interrupts: %w", id, decodeErr)
 		}
 	case rundomain.Finished:
-		if snapshot.Outcome == nil {
-			return rundomain.Run{}, fmt.Errorf("run %q has no terminal outcome", id)
-		}
-		state, ok := rundomain.Running.Terminate(*snapshot.Outcome)
-		if !ok {
-			return rundomain.Run{}, fmt.Errorf("run %q outcome %s reaches no terminal state", id, *snapshot.Outcome)
-		}
-		snapshot.State = state
+		snapshot.State = rundomain.Finished
 	}
 	value, err := rundomain.Restore(snapshot)
 	if err != nil {
@@ -371,27 +424,15 @@ func (r runUsageRow) usage() *accounting.Usage {
 	return usage
 }
 
-func decodeRunFailure(encoded string) (*rundomain.Failure, error) {
-	if encoded == "" {
-		return nil, nil
-	}
-	var row runProblemRow
-	if err := decodeStoredJSON([]byte(encoded), &row); err != nil {
-		return nil, err
-	}
+func (row runProblemRow) failure() (rundomain.Failure, error) {
 	if !row.Kind.Valid() {
-		return nil, fmt.Errorf("unknown run failure kind %q", row.Kind)
+		return rundomain.Failure{}, fmt.Errorf("unknown run failure kind %q", row.Kind)
 	}
 	retryAfter, err := rundomain.RetryAfterFromSeconds(row.RetryAfterSeconds)
 	if err != nil {
-		return nil, fmt.Errorf("decode run failure: %w", err)
+		return rundomain.Failure{}, fmt.Errorf("decode run failure: %w", err)
 	}
-	return &rundomain.Failure{
-		Kind:       row.Kind,
-		Detail:     row.Detail,
-		DocURL:     row.DocURL,
-		RetryAfter: retryAfter,
-	}, nil
+	return rundomain.Failure{Kind: row.Kind, Detail: row.Detail, DocURL: row.DocURL, RetryAfter: retryAfter}, nil
 }
 
 // messageMarkValue stores an unknown watermark as NULL.

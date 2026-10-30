@@ -105,7 +105,12 @@ function pipeline() {
   return { store, batcher, frame, onSettled, onFailure };
 }
 
-const outcomeCases: Array<{ outcome: RunOutcome; status: string; errorMessage: string | null }> = [
+const outcomeCases: Array<{
+  outcome: RunOutcome;
+  status: string;
+  errorMessage: string | null;
+  lossReason?: string;
+}> = [
   { outcome: { type: "completed" }, status: "finished", errorMessage: null },
   { outcome: { type: "canceled" }, status: "canceled", errorMessage: null },
   {
@@ -119,16 +124,17 @@ const outcomeCases: Array<{ outcome: RunOutcome; status: string; errorMessage: s
     errorMessage: "deadline reached",
   },
   {
-    outcome: { type: "lost", error: { type: "provider_error", detail: "runtime restarted" } },
+    outcome: { type: "lost", loss: { reason: "restart" } },
     status: "error",
-    errorMessage: "runtime restarted",
+    errorMessage: null,
+    lossReason: "restart",
   },
 ];
 
 describe("committed root Run settlements", () => {
   it.each(outcomeCases)(
     "publishes $outcome.type once when start and end share one frame",
-    ({ outcome, status, errorMessage }) => {
+    ({ outcome, status, errorMessage, lossReason }) => {
       const { store, batcher, frame, onSettled } = pipeline();
       const onProjection = vi.fn();
       onTestFinished(store.subscribe(onProjection));
@@ -143,6 +149,7 @@ describe("committed root Run settlements", () => {
         segmentId,
         status,
         errorMessage,
+        ...(lossReason ? { lossReason } : {}),
       });
       batcher.enqueue(finish);
       frame();

@@ -327,7 +327,7 @@ func (s *segmentPump) projectFact(route *executorRoute, executionFact ExecutionF
 	}
 	var publication reductionPublication
 	if terminalFact {
-		if end, ok := executionFact.(SegmentEnded); ok && (len(end.unresolvedEffects) > 0 || end.Reason == run.OutcomeLost) {
+		if end, ok := executionFact.(SegmentEnded); ok && (len(end.unresolvedEffects) > 0 || end.Ending.Outcome() == run.OutcomeLost) {
 			publication, err = s.publishTerminal(route, reductions)
 		} else {
 			publication, err = s.publisher.publishTerminalAtomically(s.ownerCtx, route, reductions)

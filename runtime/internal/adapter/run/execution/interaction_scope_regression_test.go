@@ -45,8 +45,8 @@ func TestModelResponseWithoutMessageRetainsAccountingAndScopeFailure(t *testing.
 				t.Fatalf("valid response invented a failed invocation or message: %+v", events)
 			}
 			ends := payloadsOf[runs.SegmentEnded](events)
-			if len(ends) != 1 || ends[0].Reason != run.OutcomeFailed || ends[0].Failure() == nil ||
-				ends[0].Failure().Kind != run.FailureProviderRejected || len(ends[0].UnresolvedEffects()) != 0 {
+			if len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeFailed || segmentFailure(ends[0]) == nil ||
+				segmentFailure(ends[0]).Kind != run.FailureProviderRejected || len(ends[0].UnresolvedEffects()) != 0 {
 				t.Fatalf("Scope rejection = %+v", ends)
 			}
 
@@ -96,7 +96,7 @@ func TestCanceledToolRetainsEvidenceAfterRootAwait(t *testing.T) {
 		close(release)
 	})
 	ends := payloadsOf[runs.SegmentEnded](events)
-	if len(ends) != 1 || ends[0].Reason != run.OutcomeCanceled {
+	if len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeCanceled {
 		t.Fatalf("terminal = %+v", ends)
 	}
 	effects := ends[0].UnresolvedEffects()
@@ -137,7 +137,7 @@ func TestInvalidToolCallErrorHasNoObservedOutput(t *testing.T) {
 			executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "observe")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}}, ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{}})
 			events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
 			ends := payloadsOf[runs.SegmentEnded](events)
-			if len(ends) != 1 || ends[0].Reason != run.OutcomeLost || len(ends[0].UnresolvedEffects()) == 0 {
+			if len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeLost || len(ends[0].UnresolvedEffects()) == 0 {
 				t.Fatalf("invalid error did not retain its unresolved outcome: %+v", ends)
 			}
 			for _, effect := range ends[0].UnresolvedEffects() {
@@ -215,7 +215,7 @@ func TestModelResponseBudgetPreservesExternalBoundary(t *testing.T) {
 			}
 			events := <-ready
 			ends := payloadsOf[runs.SegmentEnded](events)
-			if len(ends) != 1 || ends[0].Reason != test.outcome {
+			if len(ends) != 1 || ends[0].Ending.Outcome() != test.outcome {
 				t.Fatalf("resource rejection = %+v", ends)
 			}
 			effects := ends[0].UnresolvedEffects()
@@ -223,7 +223,7 @@ func TestModelResponseBudgetPreservesExternalBoundary(t *testing.T) {
 				if len(effects) != 0 || len(payloadsOf[runs.ModelCallStarted](events)) != 0 {
 					t.Fatalf("pre-call rejection recorded external work: effects=%+v events=%+v", effects, events)
 				}
-				if ends[0].Failure() == nil || !strings.Contains(ends[0].Failure().Detail, interaction.ErrModelResponseTooLarge.Error()) {
+				if segmentFailure(ends[0]) == nil || !strings.Contains(segmentFailure(ends[0]).Detail, interaction.ErrModelResponseTooLarge.Error()) {
 					t.Fatalf("pre-call rejection lost its cause: %+v", ends[0])
 				}
 				select {
@@ -530,7 +530,7 @@ func TestTerminalReceiptFollowsPublicationLifetime(t *testing.T) {
 			session.lifetime.stopExecution()
 			finished := make(chan error, 1)
 			go func() {
-				finished <- session.commitFact(context.WithoutCancel(t.Context()), runs.ExecutorMember{MemberID: "root"}, runs.NewSegmentEnded(run.OutcomeCanceled, nil, 0))
+				finished <- session.commitFact(context.WithoutCancel(t.Context()), runs.ExecutorMember{MemberID: "root"}, runs.NewSegmentEnded(run.Canceled{}, 0))
 			}()
 			event := <-session.lifetime.events
 			commit := event.Payload.(runs.ExecutionFactCommit)
@@ -606,7 +606,7 @@ func TestCancellationPreservesSettledPrefixAndDoesNotStartTail(t *testing.T) {
 		t.Fatalf("settled output = %q, %t", output, ok)
 	}
 	ends := payloadsOf[runs.SegmentEnded](events)
-	if len(ends) != 1 || ends[0].Reason != run.OutcomeCanceled {
+	if len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeCanceled {
 		t.Fatalf("terminal = %+v", ends)
 	}
 	effects := ends[0].UnresolvedEffects()

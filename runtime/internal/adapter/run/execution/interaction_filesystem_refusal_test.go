@@ -84,7 +84,7 @@ func TestFilesystemGuardsPublishRefusalWithoutPostExecutionHooks(t *testing.T) {
 				t.Errorf("refusal = %q, want %q", text, test.reason)
 			}
 			ends := payloadsOf[runs.SegmentEnded](events)
-			if hooks.after != 0 || len(ends) != 1 || ends[0].Reason != run.OutcomeCompleted || len(unresolvedTerminals(events)) != 0 {
+			if hooks.after != 0 || len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeCompleted || len(unresolvedTerminals(events)) != 0 {
 				t.Errorf("refusal lifecycle: hooks=%d ends=%+v", hooks.after, ends)
 			}
 			if content, err := os.ReadFile(path); err != nil || string(content) != "original\n" {

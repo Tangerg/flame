@@ -334,7 +334,7 @@ func TestWaitingChildCancellationAndResumeHaveOneApplicationOwner(t *testing.T) 
 func TestLiveChildCancellationAndNaturalTerminalHaveOneTreeOwner(t *testing.T) {
 	plan := runningChildCancellationPlan()
 	completed, err := plan.target.run.Terminate(run.Termination{
-		Outcome: run.OutcomeCompleted, FinishedAt: plan.target.run.UpdatedAt(), MessageMark: run.UnknownMessageMark(),
+		Ending: run.Completed{}, FinishedAt: plan.target.run.UpdatedAt(), MessageMark: run.UnknownMessageMark(),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -347,7 +347,7 @@ func TestLiveChildCancellationAndNaturalTerminalHaveOneTreeOwner(t *testing.T) {
 			t.Fatalf("begin child cancellation: %v", err)
 		}
 		canceled, err := plan.target.run.Terminate(run.Termination{
-			Outcome: run.OutcomeCanceled, FinishedAt: plan.target.run.UpdatedAt(), MessageMark: run.UnknownMessageMark(),
+			Ending: run.Canceled{}, FinishedAt: plan.target.run.UpdatedAt(), MessageMark: run.UnknownMessageMark(),
 		})
 		if err != nil {
 			t.Fatal(err)

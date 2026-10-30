@@ -84,10 +84,14 @@ func cloneUsageByModel(values map[string]protocol.ModelUsage) map[string]protoco
 }
 
 // projectRunOutcome folds a terminal Run outcome into the CLI's flat
-// presentation value. The wire contract already keeps Error and Detail on
+// presentation value. The wire contract keeps Error, Detail and Loss on
 // disjoint terminals, so each tag carries at most one of them.
 func projectRunOutcome(value protocol.RunOutcome) conversation.Outcome {
-	return conversation.Outcome{Status: value.Type, Detail: value.Detail, Problem: failure.Clone(value.Error)}
+	outcome := conversation.Outcome{Status: value.Type, Detail: value.Detail, Problem: failure.Clone(value.Error)}
+	if value.Loss != nil {
+		outcome.Loss = new(*value.Loss)
+	}
+	return outcome
 }
 
 func projectPlan(plan *protocol.Plan) (*protocol.Plan, error) {

@@ -61,7 +61,7 @@ func TestInteractionExecutorReportsBestEffortFailuresWithoutChangingCompletion(t
 			executor := newObservedTestInteractionExecutor(t, model, test.config)
 			events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
 			ended := payloadsOf[runs.SegmentEnded](events)
-			if len(ended) != 1 || ended[0].Reason != run.OutcomeCompleted || ended[0].Failure() != nil {
+			if len(ended) != 1 || ended[0].Ending.Outcome() != run.OutcomeCompleted || segmentFailure(ended[0]) != nil {
 				t.Fatalf("best-effort failure changed completion: %#v", ended)
 			}
 			if output := diagnostics.String(); !strings.Contains(output, wantErr.Error()) ||

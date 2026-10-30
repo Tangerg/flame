@@ -95,31 +95,31 @@ func presentRunProtocolProfile(capabilities rundomain.Capabilities) protocol.Run
 }
 
 func presentOutcome(run rundomain.Run) protocol.RunOutcome {
-	outcome, terminal := run.Outcome()
+	ending, terminal := run.Ending()
 	if !terminal {
 		panic("delivery: terminal run has no outcome")
 	}
-	var kind protocol.RunOutcomeType
-	switch outcome {
-	case rundomain.OutcomeCompleted:
-		kind = protocol.OutcomeCompleted
-	case rundomain.OutcomeCanceled:
-		kind = protocol.OutcomeCanceled
-	case rundomain.OutcomeTimedOut:
-		kind = protocol.OutcomeTimedOut
-	case rundomain.OutcomeFailed:
-		kind = protocol.OutcomeFailed
-	case rundomain.OutcomeLost:
-		kind = protocol.OutcomeLost
+	outcome := protocol.RunOutcome{UnresolvedEffects: presentUnresolvedEffects(run.UnresolvedEffects())}
+	switch ending := ending.(type) {
+	case rundomain.Completed:
+		outcome.Type = protocol.OutcomeCompleted
+	case rundomain.Canceled:
+		outcome.Type, outcome.Detail = protocol.OutcomeCanceled, ending.Detail
+	case rundomain.TimedOut:
+		outcome.Type = protocol.OutcomeTimedOut
+		outcome.Error = &protocol.ProblemData{Type: protocol.ProblemTimeout, Detail: ending.Detail}
+	case rundomain.Failed:
+		outcome.Type, outcome.Error = protocol.OutcomeFailed, presentRunFailure(&ending.Failure)
+	case rundomain.Lost:
+		outcome.Type, outcome.Loss = protocol.OutcomeLost, presentLoss(ending.Loss)
 	default:
-		panic("delivery: unknown run outcome")
+		panic("delivery: unknown run ending")
 	}
-	failure, failed := run.Failure()
-	var problem *protocol.ProblemData
-	if failed {
-		problem = presentRunFailure(&failure)
-	}
-	return protocol.RunOutcome{Type: kind, Error: problem, Detail: run.Detail(), UnresolvedEffects: presentUnresolvedEffects(run.UnresolvedEffects())}
+	return outcome
+}
+
+func presentLoss(loss rundomain.Loss) *protocol.RunLoss {
+	return &protocol.RunLoss{Reason: protocol.LossReason(loss.Reason), Detail: loss.Detail}
 }
 
 func presentUnresolvedEffects(effects []rundomain.UnresolvedEffect) []protocol.UnresolvedEffect {

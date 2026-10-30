@@ -256,7 +256,7 @@ func restoredRun(sessionID, runID string, at time.Time) run.Run {
 	outcome := run.OutcomeCompleted
 	return testsupport.MustRestoreRun(run.Snapshot{
 		SessionID: sessionID, ID: runID, State: run.Finished,
-		Outcome:   &outcome,
+		Ending:    testsupport.EndingFor(outcome),
 		CreatedAt: at, FinishedAt: at, UpdatedAt: at, MessageMark: run.MessageMarkAt(0),
 	})
 }
@@ -388,7 +388,7 @@ func TestApplyTerminalRecoversLostParkAtomically(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("read parked Run: found=%t err=%v", found, err)
 	}
-	terminal, err := parked.Replace().RecoverLost(run.Failure{Kind: run.FailureLost}, finishedAt, run.MessageMarkAt(0))
+	terminal, err := parked.Replace().RecoverLost(run.Loss{Reason: run.LossRestart}, finishedAt, run.MessageMarkAt(0))
 	if err != nil {
 		t.Fatalf("recover parked Run: %v", err)
 	}
@@ -411,11 +411,11 @@ func TestApplyTerminalRecoversLostParkAtomically(t *testing.T) {
 		t.Fatalf("admit after run_lost = %v, want the slot freed", admitErr)
 	}
 	storedRuns, err := runs.ListRuns(ctx, "ses_A")
-	failure, failed := run.Failure{}, false
+	lost := false
 	if len(storedRuns) > 0 {
-		failure, failed = storedRuns[0].Failure()
+		_, lost = storedRuns[0].Loss()
 	}
-	if err != nil || len(storedRuns) != 2 || !failed || failure.Kind != run.FailureLost {
+	if err != nil || len(storedRuns) != 2 || !lost {
 		t.Fatalf("terminal runs = %+v (err %v), want run_lost", storedRuns, err)
 	}
 }
@@ -467,7 +467,7 @@ func TestApplyTerminalChargesGoalOwnedParkAtomically(t *testing.T) {
 	if err != nil {
 		t.Fatalf("advance parked Goal Run metrics: %v", err)
 	}
-	terminal, err := progressed.RecoverLost(run.Failure{Kind: run.FailureLost}, finishedAt, run.MessageMarkAt(0))
+	terminal, err := progressed.RecoverLost(run.Loss{Reason: run.LossRestart}, finishedAt, run.MessageMarkAt(0))
 	if err != nil {
 		t.Fatalf("recover parked Goal Run: %v", err)
 	}

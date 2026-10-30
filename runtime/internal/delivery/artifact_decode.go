@@ -159,11 +159,7 @@ func planStatusFromWire(status protocol.PlanStatus) (plan.Status, bool) {
 }
 
 func portableRunFromArtifact(path string, artifact protocol.ArtifactRun) (sessions.PortableRun, error) {
-	outcome, err := portableOutcomeFromArtifact(path+".outcome.type", artifact.Outcome.Type)
-	if err != nil {
-		return sessions.PortableRun{}, err
-	}
-	failure, err := portableRunFailureFromArtifact(path+".outcome.error", artifact.Outcome.Error)
+	ending, err := portableEndingFromArtifact(path+".outcome", artifact.Outcome)
 	if err != nil {
 		return sessions.PortableRun{}, err
 	}
@@ -186,13 +182,11 @@ func portableRunFromArtifact(path string, artifact protocol.ArtifactRun) (sessio
 	return sessions.PortableRun{
 		SessionID: artifact.SessionID, ID: artifact.ID, SpawnedByItemID: artifact.SpawnedByItemID,
 		ParentRunID: artifact.ParentRunID, RootRunID: artifact.RootRunID,
-		Selection: selection, Outcome: outcome,
-		Failure:           failure,
+		Selection: selection, Ending: ending,
 		UnresolvedEffects: effects,
 		Metrics:           metrics,
 		ContextTokens:     artifact.ContextTokens,
 		Capabilities:      capabilities,
-		Detail:            artifact.Outcome.Detail,
 		CreatedAt:         artifact.CreatedAt, FinishedAt: artifact.FinishedAt,
 		UpdatedAt: artifact.UpdatedAt, MessageMark: portableMessageMark(artifact.MessageMark),
 	}, nil
@@ -248,20 +242,33 @@ func portableCapabilitiesFromArtifact(path string, profile *protocol.RunProtocol
 	return &normalized, nil
 }
 
-func portableOutcomeFromArtifact(path string, value protocol.ArtifactOutcomeType) (run.Outcome, error) {
-	switch value {
+func portableEndingFromArtifact(path string, outcome protocol.ArtifactOutcome) (run.Ending, error) {
+	switch outcome.Type {
 	case protocol.ArtifactOutcomeCompleted:
-		return run.OutcomeCompleted, nil
+		return run.Completed{}, nil
 	case protocol.ArtifactOutcomeCanceled:
-		return run.OutcomeCanceled, nil
+		return run.Canceled{Detail: outcome.Detail}, nil
 	case protocol.ArtifactOutcomeTimedOut:
-		return run.OutcomeTimedOut, nil
+		if outcome.Error == nil {
+			return nil, invalidArtifact(path+".error", "is required")
+		}
+		return run.TimedOut{Detail: outcome.Error.Detail}, nil
 	case protocol.ArtifactOutcomeFailed:
-		return run.OutcomeFailed, nil
+		failure, err := portableRunFailureFromArtifact(path+".error", outcome.Error)
+		if err != nil {
+			return nil, err
+		}
+		if failure == nil {
+			return nil, invalidArtifact(path+".error", "is required")
+		}
+		return run.Failed{Failure: *failure}, nil
 	case protocol.ArtifactOutcomeLost:
-		return run.OutcomeLost, nil
+		if outcome.Loss == nil {
+			return nil, invalidArtifact(path+".loss", "is required")
+		}
+		return run.Lost{Loss: run.Loss{Reason: run.LossReason(outcome.Loss.Reason), Detail: outcome.Loss.Detail}}, nil
 	default:
-		return "", invalidArtifact(path, "unknown value %q", value)
+		return nil, invalidArtifact(path+".type", "unknown value %q", outcome.Type)
 	}
 }
 
