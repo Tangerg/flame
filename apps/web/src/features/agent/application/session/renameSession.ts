@@ -5,13 +5,14 @@ import {
   writeAgentSessionSummary,
 } from "@/features/agent/application/session/sessionQueries";
 
+import { rpcErrorText } from "@/lib/rpcErrors";
 import { reportSessionError } from "@/features/agent/application/session/reportSessionError";
 
 export function useRenameSession(): (
   id: string,
   expectedRevision: number,
   title: string,
-) => Promise<void> {
+) => Promise<boolean> {
   const agentAccess = useAgentDependencies();
 
   return useCallback(
@@ -19,13 +20,15 @@ export function useRenameSession(): (
       const owner = agentAccess.commands.current();
       const runtime = agentAccess.runtime;
       try {
-        await writeAgentSessionSummary(owner, id, expectedRevision, (revision) =>
-          runtime.updateSession({ sessionId: id, expectedRevision: revision, title }),
+        await writeAgentSessionSummary(owner, id, () =>
+          runtime.updateSession({ sessionId: id, expectedRevision, title }),
         );
+        return true;
       } catch (err) {
-        if (!owner.isCurrent()) return;
+        if (!owner.isCurrent()) return false;
         void invalidateAgentSessions();
-        reportSessionError("rename", err);
+        reportSessionError("rename", err, rpcErrorText(err));
+        return false;
       }
     },
     [agentAccess],

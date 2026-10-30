@@ -19,8 +19,8 @@ export function useToggleFavorite(): (
       const owner = agentAccess.commands.current();
       const runtime = agentAccess.runtime;
       try {
-        await writeAgentSessionSummary(owner, id, expectedRevision, (revision) =>
-          runtime.updateSession({ sessionId: id, expectedRevision: revision, favorite }),
+        await writeAgentSessionSummary(owner, id, () =>
+          runtime.updateSession({ sessionId: id, expectedRevision, favorite }),
         );
       } catch (err) {
         if (!owner.isCurrent()) return;

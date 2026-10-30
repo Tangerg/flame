@@ -20,8 +20,8 @@ export function useRelocateSession(): (
       const owner = agentAccess.commands.current();
       const runtime = agentAccess.runtime;
       try {
-        await writeAgentSessionSummary(owner, id, expectedRevision, (revision) =>
-          runtime.updateSession({ sessionId: id, expectedRevision: revision, cwd }),
+        await writeAgentSessionSummary(owner, id, () =>
+          runtime.updateSession({ sessionId: id, expectedRevision, cwd }),
         );
         owner.assertCurrent();
         return true;

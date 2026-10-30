@@ -297,6 +297,13 @@ with the same inspected revision and original command identity as canonical Sess
 editing. Public plugin components call that same `sessions.update` owner. The former
 `plugins rename-session` wrapper is removed without an alias; do not translate an
 unresolved old request into another method or identity.
+
+Terminal Rename captures the selected Session's revision when its form opens.
+Neither a catalog refresh nor a cold read can replace that precondition. Admission
+keeps a busy form intact; a refused write restores the original form and draft with
+its error. Cancel and reopen Sessions, then Rename, to inspect a fresh title and revision.
+Favorite actions and `/rename` also submit their explicitly captured revision.
+
 Runtime rejects a stale digest without applying inputs or component enablement changes;
 do not replace the digest in an unresolved request with a newly selected release.
 Authored JSON uses Runtime's strict request decoder. Explicit typed nulls cannot become

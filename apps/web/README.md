@@ -76,6 +76,14 @@ Segment. Duplicate event folds, rejected batches and retired projection generati
 cannot publish another settlement. Cold reads and history refreshes stay quiet.
 Accepted cancellation receipts use the same committed transition projection.
 
+Session title editing captures the Session ID, revision, original title and command
+port when Rename opens. List refreshes cannot retarget that edit. Summary writes
+preserve the captured revision even when queued behind another write; Runtime owns
+conflict admission. A refused edit retains its draft and feedback. Cancel and reopen
+Rename to capture a newer target. Enter and blur share one pending submission.
+Missing-workspace edits capture the same Session precondition. A Session switch
+cannot rebind a path draft, and a late result cannot clear another edit.
+
 Accepted Composer Stop returns to the captured input without consuming its draft
 or moving its selection. Refused Stop keeps its action context; later focus and
 input replacement remain with the existing captured-focus owner. Send, Steer and

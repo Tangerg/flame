@@ -6,7 +6,7 @@ prepareTestClient(() => {
   testClient = owned;
   finishTestClient(() => owned.dispose());
 });
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { type ReactNode } from "react";
 import { type WorkSession } from "@/features/navigation/public/workIndex";
@@ -24,7 +24,7 @@ vi.mock("@/ui/index", async (original) => ({
 }));
 
 function edit(title = "Original") {
-  const onRename = vi.fn();
+  const onRename = vi.fn().mockResolvedValue(true);
   const onSelect = vi.fn();
   testClient.render(
     <SessionRow
@@ -49,11 +49,150 @@ function edit(title = "Original") {
 }
 
 describe("session title editing", () => {
+  it("admits Enter and blur once while a title is saving and keeps a refused draft editable", async () => {
+    const pending = Promise.withResolvers<boolean>();
+    const onRename = vi.fn(() => pending.promise);
+    testClient.render(
+      <SessionRow
+        session={{
+          id: "s",
+          revision: 1,
+          title: "Original",
+          time: new Date().toISOString(),
+          attention: "none",
+          favorite: false,
+        }}
+        active
+        onRename={onRename}
+        onSelect={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Rename" }));
+    const input = screen.getByRole<HTMLInputElement>("textbox");
+    fireEvent.change(input, { target: { value: "Draft while saving" } });
+    await act(async () => {
+      fireEvent.keyDown(input, { key: "Enter" });
+      fireEvent.blur(input);
+      fireEvent.keyDown(input, { key: "Enter" });
+    });
+    expect(onRename).toHaveBeenCalledExactlyOnceWith("s", 1, "Draft while saving");
+    expect(input.readOnly).toBe(true);
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(screen.getByRole("textbox")).toBe(input);
+    await act(async () => {
+      pending.resolve(false);
+    });
+    expect(input.readOnly).toBe(false);
+    expect(input.value).toBe("Draft while saving");
+    expect(input.getAttribute("aria-invalid")).toBe("true");
+    expect(
+      document.getElementById(input.getAttribute("aria-describedby")!)?.getAttribute("role"),
+    ).toBe("alert");
+    fireEvent.blur(input);
+    expect(onRename).toHaveBeenCalledOnce();
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(screen.queryByRole("textbox")).toBeNull();
+  });
+
+  it("keeps the opened target when the row receives a newer revision", async () => {
+    const onRename = vi.fn().mockResolvedValue(true);
+    const row = (revision: number, title: string) => (
+      <SessionRow
+        session={{
+          id: "s",
+          revision,
+          title,
+          time: new Date().toISOString(),
+          attention: "none",
+          favorite: false,
+        }}
+        active
+        onRename={onRename}
+        onSelect={vi.fn()}
+      />
+    );
+    const view = testClient.render(row(1, "Original"));
+    fireEvent.click(screen.getByRole("button", { name: "Rename" }));
+    const input = screen.getByRole<HTMLInputElement>("textbox");
+    fireEvent.change(input, { target: { value: "Local draft" } });
+    view.rerender(row(2, "Remote title"));
+    await act(async () => {
+      fireEvent.keyDown(input, { key: "Enter" });
+    });
+    expect(onRename).toHaveBeenCalledExactlyOnceWith("s", 1, "Local draft");
+  });
+
+  it("does not submit an untouched original title over a remote update on blur", () => {
+    const onRename = vi.fn().mockResolvedValue(true);
+    const row = (revision: number, title: string) => (
+      <SessionRow
+        session={{
+          id: "s",
+          revision,
+          title,
+          time: new Date().toISOString(),
+          attention: "none",
+          favorite: false,
+        }}
+        active
+        onRename={onRename}
+        onSelect={vi.fn()}
+      />
+    );
+    const view = testClient.render(row(1, "Original"));
+    fireEvent.click(screen.getByRole("button", { name: "Rename" }));
+    const input = screen.getByRole<HTMLInputElement>("textbox");
+    view.rerender(row(2, "Remote title"));
+    fireEvent.blur(input);
+    expect(onRename).not.toHaveBeenCalled();
+  });
+
+  it("keeps a refused draft until the user explicitly cancels and opens a new edit", async () => {
+    const onRename = vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    const row = (revision: number, title: string) => (
+      <SessionRow
+        session={{
+          id: "s",
+          revision,
+          title,
+          time: new Date().toISOString(),
+          attention: "none",
+          favorite: false,
+        }}
+        active
+        onRename={onRename}
+        onSelect={vi.fn()}
+      />
+    );
+    const view = testClient.render(row(1, "Original"));
+    fireEvent.click(screen.getByRole("button", { name: "Rename" }));
+    const input = screen.getByRole<HTMLInputElement>("textbox");
+    fireEvent.change(input, { target: { value: "Local draft" } });
+    view.rerender(row(2, "Remote title"));
+    await act(async () => {
+      fireEvent.keyDown(input, { key: "Enter" });
+    });
+    await screen.findByRole("alert");
+    expect(screen.getByRole<HTMLInputElement>("textbox").value).toBe("Local draft");
+    expect(onRename).toHaveBeenCalledExactlyOnceWith("s", 1, "Local draft");
+    fireEvent.keyDown(input, { key: "Escape" });
+    fireEvent.click(screen.getByRole("button", { name: "Rename" }));
+    const next = screen.getByRole<HTMLInputElement>("textbox");
+    expect(next.value).toBe("Remote title");
+    fireEvent.change(next, { target: { value: "New intent" } });
+    await act(async () => {
+      fireEvent.keyDown(next, { key: "Enter" });
+    });
+    await waitFor(() => expect(onRename).toHaveBeenLastCalledWith("s", 2, "New intent"));
+  });
+
   it("edits outside activation buttons and submits once with an explicit focus destination", async () => {
     const { input, onRename, onSelect } = edit();
     expect(input.closest("button")).toBeNull();
-    fireEvent.keyDown(input, { key: "Enter" });
-    fireEvent.blur(input);
+    await act(async () => {
+      fireEvent.keyDown(input, { key: "Enter" });
+      fireEvent.blur(input);
+    });
     expect(onRename).toHaveBeenCalledExactlyOnceWith("s", 1, "新的标题");
     expect(onSelect).not.toHaveBeenCalled();
     await waitFor(() => expect(document.activeElement?.getAttribute("aria-current")).toBe("page"));
@@ -64,13 +203,15 @@ describe("session title editing", () => {
     fireEvent.blur(input);
     expect(onRename).not.toHaveBeenCalled();
   });
-  it("leaves IME confirmation inside the field", () => {
+  it("leaves IME confirmation inside the field", async () => {
     const { input, onRename } = edit();
     fireEvent.keyDown(input, { key: "Enter", isComposing: true });
     fireEvent.keyDown(input, { key: "Enter", keyCode: 229 });
     expect(onRename).not.toHaveBeenCalled();
     expect(screen.getByRole("textbox")).toBe(input);
-    fireEvent.blur(input);
+    await act(async () => {
+      fireEvent.blur(input);
+    });
     expect(onRename).toHaveBeenCalledExactlyOnceWith("s", 1, "新的标题");
   });
   it("opens an untitled Session's editor empty instead of with its display fallback", () => {

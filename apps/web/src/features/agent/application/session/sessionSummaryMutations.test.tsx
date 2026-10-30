@@ -17,7 +17,7 @@ import {
   AGENT_SESSIONS_KEY,
   type AgentSessionSummary,
 } from "@/features/agent/application/session/sessionQueries";
-import { type FlameClient, type Session } from "@flame/runtime-client";
+import { RpcError, type FlameClient, type Session } from "@flame/runtime-client";
 let runtimeClient: () => FlameClient = () => {
   throw new Error("Runtime test client is not configured");
 };
@@ -47,6 +47,37 @@ afterEach(() => {
 });
 
 describe("Session summary mutations", () => {
+  it("preserves the captured revision when the cache has advanced before rename submission", async () => {
+    queryClient.setQueryData(
+      [AGENT_SESSIONS_KEY],
+      [{ ...session(), revision: 4, title: "Remote title" }],
+    );
+    vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const updateSession = vi
+      .fn()
+      .mockRejectedValue(
+        new RpcError({ message: "revision conflict", data: { type: "revision_conflict" } }),
+      );
+    restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
+      updateSession,
+    } as unknown as AgentRuntimeGateway);
+    const { result } = testClient.renderHook(() => useRenameSession());
+    let saved: boolean | undefined;
+    await act(async () => {
+      saved = await result.current("ses_deleted", 3, "Local draft");
+    });
+    expect(saved).toBe(false);
+    expect(updateSession).toHaveBeenCalledExactlyOnceWith({
+      sessionId: "ses_deleted",
+      expectedRevision: 3,
+      title: "Local draft",
+    });
+    expect(queryClient.getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY])).toEqual([
+      { ...session(), revision: 4, title: "Remote title" },
+    ]);
+  });
+
   it.each([
     {
       name: "rename",
@@ -75,22 +106,21 @@ describe("Session summary mutations", () => {
     expect(invalidate).toHaveBeenCalledWith({ queryKey: [AGENT_SESSIONS_KEY] });
   });
 
-  it("serializes conditional writes and projects only what the Runtime saved", async () => {
+  it("serializes captured preconditions without rebasing a later command", async () => {
     queryClient.setQueryData([AGENT_SESSIONS_KEY], [session()]);
     vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
     const rename = Promise.withResolvers<AgentSessionSummary>();
-    const favorite = Promise.withResolvers<AgentSessionSummary>();
     const updateSession = vi
       .fn()
       .mockImplementationOnce(() => rename.promise)
-      .mockImplementationOnce(() => favorite.promise);
+      .mockRejectedValueOnce(new Error("revision conflict"));
     restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
       updateSession,
     } as unknown as AgentRuntimeGateway);
     const renameHook = testClient.renderHook(() => useRenameSession());
     const favoriteHook = testClient.renderHook(() => useToggleFavorite());
-
-    let renaming!: Promise<void>;
+    let renaming!: Promise<boolean>;
     let favoriting!: Promise<void>;
     await act(async () => {
       renaming = renameHook.result.current("ses_deleted", 3, "after");
@@ -105,18 +135,30 @@ describe("Session summary mutations", () => {
     expect(queryClient.getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY])).toEqual([
       session(),
     ]);
-
-    rename.resolve({ ...session(), title: "after (normalized)", revision: 4 });
-    await vi.waitFor(() => expect(updateSession).toHaveBeenCalledTimes(2));
+    const normalized = { ...session(), title: "after (normalized)", revision: 4 };
+    await act(async () => {
+      rename.resolve(normalized);
+      await Promise.all([renaming, favoriting]);
+    });
     expect(updateSession).toHaveBeenNthCalledWith(2, {
       sessionId: "ses_deleted",
-      expectedRevision: 4,
+      expectedRevision: 3,
       favorite: true,
     });
-    const saved = { ...session(), title: "after (normalized)", favorite: true, revision: 5 };
-    favorite.resolve(saved);
-    await act(async () => Promise.all([renaming, favoriting]));
-
+    expect(queryClient.getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY])).toEqual([
+      normalized,
+    ]);
+    expect(await renaming).toBe(true);
+    const saved = { ...normalized, favorite: true, revision: 5 };
+    updateSession.mockResolvedValueOnce(saved);
+    await act(async () => {
+      await favoriteHook.result.current("ses_deleted", normalized.revision, true);
+    });
+    expect(updateSession).toHaveBeenNthCalledWith(3, {
+      sessionId: "ses_deleted",
+      expectedRevision: normalized.revision,
+      favorite: true,
+    });
     expect(queryClient.getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY])).toEqual([saved]);
   });
 

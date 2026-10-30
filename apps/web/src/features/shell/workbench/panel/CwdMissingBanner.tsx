@@ -21,24 +21,33 @@ export function CwdMissingBanner() {
   const session = useActiveSession();
   const relocateEnabled = useRuntimeCapability("relocate");
   const relocate = useRelocateSession();
-  const [editing, setEditing] = useState(false);
-  const [path, setPath] = useState("");
+  const [edit, setEdit] = useState<{
+    target: Readonly<{ id: string; revision: number; relocate: typeof relocate }>;
+    path: string;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
   const submitting = useRef(false);
 
   if (session?.workspace.availability !== "missing") return null;
+  const editing = edit?.target.id === session.id ? edit : null;
 
+  const cancelEdit = () =>
+    setEdit((current) => (current?.target === editing?.target ? null : current));
   const submit = async (): Promise<void> => {
-    const next = path.trim();
-    if (!next || submitting.current) return;
+    const submitted = editing;
+    const next = submitted?.path.trim();
+    if (!submitted || !next || submitting.current) return;
     submitting.current = true;
     setBusy(true);
-    const ok = await relocate(session.id, session.revision, next);
+    const ok = await submitted.target.relocate(
+      submitted.target.id,
+      submitted.target.revision,
+      next,
+    );
     submitting.current = false;
     setBusy(false);
     if (ok) {
-      setEditing(false);
-      setPath("");
+      setEdit((current) => (current === submitted ? null : current));
     }
   };
 
@@ -58,12 +67,17 @@ export function CwdMissingBanner() {
                   font="mono"
                   type="text"
                   size="sm"
-                  value={path}
-                  onChange={(e) => setPath(e.target.value)}
+                  value={editing.path}
+                  onChange={(e) => {
+                    const path = e.target.value;
+                    setEdit((current) =>
+                      current?.target === editing.target ? { ...current, path } : current,
+                    );
+                  }}
                   onKeyDown={(e) => {
                     if (isImeKey(e.nativeEvent)) return;
                     if (e.key === "Enter") void submit();
-                    if (e.key === "Escape") setEditing(false);
+                    if (e.key === "Escape") cancelEdit();
                   }}
                   placeholder={t("cwdMissing.placeholder")}
                   aria-label={t("cwdMissing.placeholder")}
@@ -82,7 +96,7 @@ export function CwdMissingBanner() {
                 />
                 <BannerAction
                   label={t("cwdMissing.action.cancel")}
-                  onClick={() => setEditing(false)}
+                  onClick={cancelEdit}
                   pending={busy}
                 />
               </div>
@@ -90,8 +104,10 @@ export function CwdMissingBanner() {
               <BannerAction
                 label={t("cwdMissing.action.relocate")}
                 onClick={() => {
-                  setPath(session.workspace.path);
-                  setEditing(true);
+                  setEdit({
+                    target: Object.freeze({ id: session.id, revision: session.revision, relocate }),
+                    path: session.workspace.path,
+                  });
                 }}
                 primary
                 tone="warning"
