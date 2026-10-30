@@ -41,42 +41,17 @@ jobs:
           brew update
           brew install poppler
           brew install --cask libreoffice
-          /Applications/LibreOffice.app/Contents/MacOS/soffice --headless --version
           echo "FLAME_DELIVERABLES_OFFICE=/Applications/LibreOffice.app/Contents/MacOS/soffice" >> "$GITHUB_ENV"
           echo "FLAME_DELIVERABLES_PDFINFO=$(brew --prefix poppler)/bin/pdfinfo" >> "$GITHUB_ENV"
           echo "FLAME_DELIVERABLES_PDFTOPPM=$(brew --prefix poppler)/bin/pdftoppm" >> "$GITHUB_ENV"
           echo "FLAME_DELIVERABLES_PDFTOTEXT=$(brew --prefix poppler)/bin/pdftotext" >> "$GITHUB_ENV"
-          echo "FLAME_DELIVERABLES_TOOL_ROOTS=[\"/Applications/LibreOffice.app\",\"$(brew --cellar)\"]" >> "$GITHUB_ENV"
+          echo "FLAME_DELIVERABLES_TOOL_ROOTS=[\"/Applications/LibreOffice.app\",\"$(brew --cellar)\",\"$(brew --prefix)/opt\"]" >> "$GITHUB_ENV"
       - run: make setup
       - name: Qualify native deliverables
-        run: |
-          if [ "$RUNNER_OS" = "macOS" ]; then
-            cat > "$RUNNER_TEMP/native-process-probe.mjs" <<'NODE'
-          import childProcess from "node:child_process";
-          import { syncBuiltinESMExports } from "node:module";
-          const original = childProcess.spawn;
-          childProcess.spawn = function (command, args, options) {
-            const child = original.call(this, command, args, options);
-            if (command === "/usr/bin/sandbox-exec" && args?.some((arg) => /\/(soffice|pdfinfo|pdftoppm|pdftotext)$/.test(arg))) {
-              let bytes = 0;
-              console.error("NATIVE_PROBE", JSON.stringify({ args: args.slice(-3), cwd: options.cwd }));
-              for (const [name, stream] of [["stdout", child.stdout], ["stderr", child.stderr]]) {
-                stream.on("data", (chunk) => {
-                  if (bytes < 65536) console.error("NATIVE_" + name, chunk.toString("utf8"));
-                  bytes += chunk.byteLength;
-                });
-              }
-              child.on("close", (status, signal) => console.error("NATIVE_CLOSE", JSON.stringify({ status, signal })));
-            }
-            return child;
-          };
-          syncBuiltinESMExports();
-          NODE
-            export NODE_OPTIONS="--import=$RUNNER_TEMP/native-process-probe.mjs"
-          fi
-          node plugins/scripts/test-backends.mjs
+        run: node plugins/scripts/test-backends.mjs
         env:
           FLAME_DELIVERABLES_NATIVE_TESTS: "1"
+          TMPDIR: /tmp
       - run: make check
         env:
           FLAME_DELIVERABLES_NATIVE_TESTS: "1"

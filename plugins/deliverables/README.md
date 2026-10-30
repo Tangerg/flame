@@ -150,9 +150,14 @@ workspace and root directories, or paths overlapping plugin data, are refused.
 Private plugin data must also remain outside every fixed system read root.
 On Linux, configure the distribution's `libreoffice` entry point, whose startup
 wrapper owns profile initialization and restart within the private PID namespace.
+Homebrew Poppler on macOS requires both its `Cellar` and `opt` directories as
+installation roots because its dynamic libraries use `opt` symlink paths.
 Fonts in user homes are not exposed. macOS requires actual executable binaries
 that can run with `process-fork` denied; launchers requiring helper processes are
-refused. A successful version probe is not a claim that every document or platform
+refused. LibreOffice must also work without desktop IPC or GUI services. The
+`--headless` argument on a desktop build does not establish this compatibility;
+the Homebrew LibreOffice 26.8.2 build fails the native qualification under this
+policy. A successful version probe is not a claim that every document or platform
 installation has been qualified.
 
 The private LibreOffice profile disables macros, active content and external-link
