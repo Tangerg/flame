@@ -26,6 +26,27 @@ function moduleSpecifier(node) {
     return node.moduleReference.expression;
 }
 
+function hasInstanceScope(node) {
+  for (let owner = node.parent; owner; owner = owner.parent) {
+    if (
+      ts.isFunctionDeclaration(owner) ||
+      ts.isFunctionExpression(owner) ||
+      ts.isArrowFunction(owner) ||
+      ts.isMethodDeclaration(owner) ||
+      owner.kind === ts.SyntaxKind.Constructor ||
+      owner.kind === ts.SyntaxKind.GetAccessor ||
+      owner.kind === ts.SyntaxKind.SetAccessor
+    )
+      return true;
+    if (
+      ts.isPropertyDeclaration(owner) &&
+      !owner.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword)
+    )
+      return true;
+  }
+  return false;
+}
+
 export function inspectPortSurface(root = process.cwd()) {
   return withSourceProject(root, (project, paths) => {
     const { program, checker } = project;
@@ -36,6 +57,7 @@ export function inspectPortSurface(root = process.cwd()) {
     const clauses = new Map();
     const used = new Set();
     const retired = new Set();
+    const ambient = new Set();
     const key = (node) => `${node.getSourceFile().fileName}:${node.getStart()}`;
     const declarations = (symbol) => {
       if (symbol?.flags & SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
@@ -44,12 +66,39 @@ export function inspectPortSurface(root = process.cwd()) {
     const record = (symbol, target) => {
       for (const declaration of declarations(symbol)) target.add(key(declaration));
     };
+    const isPublicationFactory = (expression, seen = new Set()) => {
+      const symbol = checker.getSymbolAtLocation(
+        ts.isPropertyAccessExpression(expression) ? expression.name : expression,
+      );
+      if (!symbol || seen.has(symbol)) return false;
+      seen.add(symbol);
+      return declarations(symbol).some((declaration) => {
+        if (
+          ts.isFunctionDeclaration(declaration) &&
+          declaration.name?.text === "createPublicationSlot"
+        )
+          return true;
+        return (
+          ts.isVariableDeclaration(declaration) &&
+          declaration.initializer &&
+          isPublicationFactory(declaration.initializer, seen)
+        );
+      });
+    };
 
     for (const source of sources) {
       const path = relative(src, source.fileName);
       visit(source, (node) => {
         if (ts.isIdentifier(node) && retiredAPIs.has(node.text)) {
           retired.add(`${path}  ${node.text}`);
+        }
+        if (
+          ts.isCallExpression(node) &&
+          !hasInstanceScope(node) &&
+          isPublicationFactory(node.expression)
+        ) {
+          const { line } = source.getLineAndCharacterOfPosition(node.getStart());
+          ambient.add(`${path}:${line + 1}  ${node.expression.getText()}()`);
         }
         const specifier = moduleSpecifier(node);
         if (
@@ -99,20 +148,23 @@ export function inspectPortSurface(root = process.cwd()) {
       files: paths.length,
       dead: [...clauses].filter(([id]) => !used.has(id)).map(([, label]) => label),
       retired: [...retired],
+      ambient: [...ambient],
     };
   });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  const { files, dead, retired } = inspectPortSurface();
-  if (dead.length || retired.length) {
+  const { files, dead, retired, ambient } = inspectPortSurface();
+  if (dead.length || retired.length || ambient.length) {
     console.error("check-port-surface: invalid application contracts:");
     for (const entry of dead) console.error(`  port clause: ${entry}`);
     for (const entry of retired)
       console.error(`  retired singleton API: ${entry}; capture an explicit feature instance`);
+    for (const entry of ambient)
+      console.error(`  ambient publication: ${entry}; construct it inside its owning instance`);
     process.exit(1);
   }
   console.log(
-    `check-port-surface: ${files} sources covered; every port clause has a production consumer; no retired singleton APIs`,
+    `check-port-surface: ${files} sources covered; every port clause has a production consumer; no retired singleton APIs or ambient publications`,
   );
 }

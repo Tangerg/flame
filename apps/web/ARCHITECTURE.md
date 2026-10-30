@@ -540,6 +540,9 @@ runtime cycles use the frontend's TypeScript erasure rather than matching
 filenames or guessing from import text. Flat features receive the same boundary
 as layered ones. Port usage is attributed through TypeScript symbols, so an
 unrelated method with the same name cannot satisfy an unused interface clause.
+Publication slots must be created within a feature instance or its factory.
+The port guard resolves factory aliases and re-exports and rejects module-level
+and global static publication, while allowing per-instance publication.
 Source coverage is checked against actual files, not minimum file or edge counts.
 
 Guard regression tests cover unresolved imports, omitted source files, module
