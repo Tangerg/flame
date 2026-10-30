@@ -159,7 +159,7 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 	if err != nil {
 		t.Fatalf("prepare Plan replacement: %v", err)
 	}
-	updatedGoal, err := originalGoal.Pause(goal.ReasonRuntimeRestarted, "", createdAt.Add(time.Second))
+	updatedGoal, err := originalGoal.Pause(goal.ReasonRuntimeRestarted, createdAt.Add(time.Second))
 	if err != nil {
 		t.Fatal(err)
 	}

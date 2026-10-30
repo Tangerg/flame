@@ -31,7 +31,7 @@ func TestReplacementOwnsOneExactGoalVersionAdvance(t *testing.T) {
 		t.Fatal("Replacement lost its exact unwritten version")
 	}
 
-	next, err := state.Pause(ReasonStoppedByUser, "", state.UpdatedAt().Add(time.Second))
+	next, err := state.Pause(ReasonStoppedByUser, state.UpdatedAt().Add(time.Second))
 	if err != nil {
 		t.Fatal(err)
 	}

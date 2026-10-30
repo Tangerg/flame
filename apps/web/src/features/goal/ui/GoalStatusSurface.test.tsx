@@ -311,7 +311,7 @@ describe("Goal status surface", () => {
       status: "blocked",
       reason: {
         code: "blockedByModel",
-        detail: "Provide the release target.\nThen I can continue.",
+        explanation: "Provide the release target.\nThen I can continue.",
       },
     };
     testClient.render(<GoalStatusSurface />);
@@ -353,7 +353,7 @@ describe("Goal status surface", () => {
     model.goal = {
       ...model.goal,
       status: "blocked",
-      reason: { code: "blockedByModel", detail },
+      reason: { code: "blockedByModel", explanation: detail },
     };
     const { rerender } = testClient.render(<GoalStatusSurface />);
     fireEvent.click(
@@ -369,35 +369,39 @@ describe("Goal status surface", () => {
     model.goal = {
       ...model.goal,
       reason: {
-        code: "runStartFailed",
-        detail: "The captured target was unavailable.\nFinal detail.",
+        code: "blockedByModel",
+        explanation: "The captured target was unavailable.\nFinal detail.",
       },
     };
     rerender(<GoalStatusSurface />);
 
-    const currentReader = screen.getByRole("region", { name: "A new run could not be started." });
+    const currentReader = screen.getByRole("region", {
+      name: "The agent reported that it cannot continue.",
+    });
     expect(currentReader).toBe(reader);
     expect(currentReader.textContent).toBe("The captured target was unavailable.\nFinal detail.");
     expect(document.activeElement).toBe(currentReader);
     expect(model.resumeGoal).not.toHaveBeenCalled();
 
-    const explanation = screen.getByRole("button", { name: "A new run could not be started." });
+    const explanation = screen.getByRole("button", {
+      name: "The agent reported that it cannot continue.",
+    });
     fireEvent.click(explanation);
     expect(currentReader.isConnected).toBe(true);
     fireEvent.click(explanation);
-    expect(screen.getByRole("region", { name: "A new run could not be started." })).toBe(
-      currentReader,
-    );
+    expect(
+      screen.getByRole("region", { name: "The agent reported that it cannot continue." }),
+    ).toBe(currentReader);
   });
 
   it("keeps an old Goal explanation out of a replacement Session", () => {
     model.goal = {
       ...model.goal,
       status: "paused",
-      reason: { code: "runNotCompleted", detail: "canceled" },
+      reason: { code: "runNotCompleted", runOutcome: "canceled" },
     };
     const { rerender } = testClient.render(<GoalStatusSurface />);
-    expect(screen.getByText("The previous run did not finish successfully.")).toBeTruthy();
+    expect(screen.getByText("The previous run was stopped.")).toBeTruthy();
     model.goal = {
       sessionId: "session-b",
       objective: "Ship beta",
@@ -406,7 +410,7 @@ describe("Goal status surface", () => {
       createdAt: "2026-10-14T00:00:00Z",
     };
     rerender(<GoalStatusSurface />);
-    expect(screen.queryByText("The previous run did not finish successfully.")).toBeNull();
+    expect(screen.queryByText("The previous run was stopped.")).toBeNull();
     expect(screen.getByText("Ship beta")).toBeTruthy();
   });
 

@@ -444,7 +444,7 @@ func (f *fakeRuns) applyScriptedGoalStatus(
 		case goal.StatusComplete:
 			replacement, err = g.Complete(time.Now())
 		case goal.StatusBlocked:
-			replacement, err = g.Block(goal.ReasonBlockedByModel, script.reason, time.Now())
+			replacement, err = g.Block(script.reason, time.Now())
 		}
 		if err == nil {
 			change, replacementErr := goal.NewReplacement(expected, replacement)
@@ -869,7 +869,7 @@ func TestDriverResumeRequiresTheFrozenGoalCapabilities(t *testing.T) {
 	}
 	g = seedStoredGoal(t, store, g)
 	expected := g.Version()
-	g, err = g.Pause(goal.ReasonAwaitingInput, "", time.Unix(0, 0))
+	g, err = g.Pause(goal.ReasonAwaitingInput, time.Unix(0, 0))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -954,7 +954,7 @@ func TestDriverAccountsModelBlockedTerminalRun(t *testing.T) {
 	})
 
 	g, _, _ := loadStoredGoal(t.Context(), store, "s1")
-	if g.Reason().Code() != goal.ReasonBlockedByModel || g.Reason().Detail() != "needs credentials" {
+	if g.Reason().Code() != goal.ReasonBlockedByModel || !explainedAs(g.Reason(), "needs credentials") {
 		t.Fatalf("blocked goal reason = %+v", g.Reason())
 	}
 }
@@ -983,7 +983,7 @@ func TestDriverReportsRunStartFailureBeforePausing(t *testing.T) {
 	}
 	waitTestSessionGoal(t, store, func(g goal.Goal, ok bool) bool { return ok && g.Status() == goal.StatusPaused })
 	g, _, err := loadStoredGoal(t.Context(), store, "s1")
-	if err != nil || g.Reason().Code() != goal.ReasonRunStartFailed || g.Reason().Detail() != "" || g.Used().Runs != 0 {
+	if err != nil || g.Reason().Code() != goal.ReasonRunStartFailed || g.Used().Runs != 0 {
 		t.Fatalf("paused Goal = %+v, %v, want stable start-failure reason and no consumed Run", g, err)
 	}
 	if _, err := d.Resume(t.Context(), "s1", run.Capabilities{}); err != nil {
@@ -1053,7 +1053,7 @@ func TestResumeKeepsOutstandingGoalRunInSameIncarnation(t *testing.T) {
 	}
 	g = seedStoredGoal(t, store, g)
 	expected := g.Version()
-	g, err = g.Pause(goal.ReasonAwaitingInput, "", now)
+	g, err = g.Pause(goal.ReasonAwaitingInput, now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1125,7 +1125,7 @@ func TestResumeObservesOutstandingGoalRunTerminalReport(t *testing.T) {
 	}
 	g = seedStoredGoal(t, store, g)
 	expected := g.Version()
-	g, err = g.Pause(goal.ReasonAwaitingInput, "", now)
+	g, err = g.Pause(goal.ReasonAwaitingInput, now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1746,7 +1746,7 @@ func TestReconcileDegradesActiveAndClearsComplete(t *testing.T) {
 	doneReplacement, _ := done.Complete(now)
 	_ = replaceStoredGoal(t, store, doneReplacement, done.Version())
 	_ = seedStoredGoal(t, store, paused)
-	pausedReplacement, _ := paused.Pause(goal.ReasonAwaitingInput, "", now)
+	pausedReplacement, _ := paused.Pause(goal.ReasonAwaitingInput, now)
 	_ = replaceStoredGoal(t, store, pausedReplacement, paused.Version())
 
 	d := newDriver(t, store)
@@ -1880,7 +1880,7 @@ func TestReconcileSweepsOrphanGoal(t *testing.T) {
 	kept, _ := goal.New("live", "obj", testGoalModelSelection(), run.Capabilities{}, "lease-live", now)
 	kept = seedStoredGoal(t, store, kept)
 	expected := kept.Version()
-	kept, _ = kept.Pause(goal.ReasonAwaitingInput, "", now)
+	kept, _ = kept.Pause(goal.ReasonAwaitingInput, now)
 	_ = replaceStoredGoal(t, store, kept, expected)
 
 	d := mustDriver(t, store, &fakeRuns{t: t, store: store}, &fakeSessions{deleted: map[string]bool{"gone": true}}, goals.NewSessionMutations(), testPrompt)
@@ -1949,7 +1949,7 @@ func TestStopResumeRaceNeverWedgesActive(t *testing.T) {
 		g, _ := goal.New("s1", "obj", testGoalModelSelection(), run.Capabilities{}, "lease-seed", time.Unix(0, 0))
 		g = seedStoredGoal(t, store, g)
 		expected := g.Version()
-		g, _ = g.Pause(goal.ReasonAwaitingInput, "", time.Unix(0, 0))
+		g, _ = g.Pause(goal.ReasonAwaitingInput, time.Unix(0, 0))
 		_ = replaceStoredGoal(t, store, g, expected)
 		fake := &fakeRuns{t: t, store: store, script: []scriptedRun{{outcome: run.OutcomeCompleted, setStatus: goal.StatusBlocked, reason: "needs input"}}}
 		d := mustDriver(t, store, fake, &fakeSessions{}, goals.NewSessionMutations(), testPrompt)
@@ -1991,4 +1991,9 @@ func accountedGoalCost(value float64) accounting.Cost {
 		panic(err)
 	}
 	return cost
+}
+
+func explainedAs(reason goal.Reason, want string) bool {
+	explanation, ok := reason.Explanation()
+	return ok && explanation == want
 }

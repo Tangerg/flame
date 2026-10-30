@@ -373,7 +373,7 @@ func TestGoalStore_CompareAndSwap(t *testing.T) {
 	}
 	// A lifecycle transition preserves the objective incarnation and arrives
 	// with its domain-decided next revision.
-	paused, err := initial.Pause(goal.ReasonStoppedByUser, "", now)
+	paused, err := initial.Pause(goal.ReasonStoppedByUser, now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -417,7 +417,7 @@ func TestGoalStoreReplacesIncarnationWithoutRewritingRevision(t *testing.T) {
 		t.Fatalf("insert first goal: applied=%v err=%v", applied, err)
 	}
 	firstVersion := first.Version()
-	first, err = first.Pause(goal.ReasonStoppedByUser, "", now.Add(time.Second))
+	first, err = first.Pause(goal.ReasonStoppedByUser, now.Add(time.Second))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -456,7 +456,7 @@ func TestGoalStore_ClearThenRecreateRejectsStaleIncarnation(t *testing.T) {
 		t.Fatalf("seed fresh goal: applied=%v err=%v", applied, err)
 	}
 
-	stale, _ = stale.Pause(goal.ReasonRunNotCompleted, "error", now)
+	stale, _ = stale.Pause(goal.ReasonStoppedByUser, now)
 	if applied, err := store.Save(t.Context(), goalReplacement(t, stale, staleVersion)); err != nil || applied {
 		t.Fatalf("stale Save: applied=%v err=%v, want false/nil", applied, err)
 	}
@@ -520,7 +520,7 @@ func TestGoalStoreExecutesDomainDecidedRevision(t *testing.T) {
 		t.Fatalf("Save(zero replacement) = applied=%v err=%v, want false/non-nil", applied, err)
 	}
 
-	updated, err := g.Pause(goal.ReasonStoppedByUser, "", time.Unix(2, 0))
+	updated, err := g.Pause(goal.ReasonStoppedByUser, time.Unix(2, 0))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -648,7 +648,8 @@ export interface Goal {
 
 export interface GoalReason {
   code: GoalReasonCode;
-  detail?: string;
+  explanation?: string;
+  runOutcome?: RunOutcomeType;
 }
 
 export type GoalReasonCode = "stoppedByUser" | "runtimeRestarted" | "runStartFailed" | "awaitingInput" | "terminalOutcomeMissing" | "runNotCompleted" | "blockedByModel";

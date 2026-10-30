@@ -143,7 +143,7 @@ func TestReportGoalOutcomeBlockedRequiresReason(t *testing.T) {
 	if !strings.Contains(out, "blocked") {
 		t.Fatalf("output = %q", out)
 	}
-	if got := store.goals["s1"]; got.Status() != goalstate.StatusBlocked || got.Reason().Code() != goalstate.ReasonBlockedByModel || got.Reason().Detail() != "needs a key" {
+	if got := store.goals["s1"]; got.Status() != goalstate.StatusBlocked || got.Reason().Code() != goalstate.ReasonBlockedByModel || !blockedExplanation(got.Reason(), "needs a key") {
 		t.Fatalf("stored = (%q, %+v)", got.Status(), got.Reason())
 	}
 }
@@ -178,7 +178,7 @@ func TestReportGoalOutcomeNoActiveGoal(t *testing.T) {
 func TestReportGoalOutcomeDoesNotTouchPausedGoal(t *testing.T) {
 	store := newMemStore()
 	g := testSessionActiveGoal()
-	g, _ = g.Pause(goalstate.ReasonStoppedByUser, "", time.Unix(0, 0))
+	g, _ = g.Pause(goalstate.ReasonStoppedByUser, time.Unix(0, 0))
 	store.put(g)
 
 	out, _ := newReporter(t, store).report(testGoalRunContext(), reportArgs{Outcome: "completed"})
@@ -382,4 +382,9 @@ func TestGoalToolsTreatATypedNilServiceAsAbsent(t *testing.T) {
 	if built != nil {
 		t.Fatal("get_goal was offered to the model with a service that is nil")
 	}
+}
+
+func blockedExplanation(reason goalstate.Reason, want string) bool {
+	explanation, ok := reason.Explanation()
+	return ok && explanation == want
 }

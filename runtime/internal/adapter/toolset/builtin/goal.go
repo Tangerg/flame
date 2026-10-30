@@ -270,15 +270,11 @@ func reasonText(reason goalstate.Reason) string {
 	case goalstate.ReasonTerminalOutcomeMissing:
 		return "the Run ended without a terminal outcome"
 	case goalstate.ReasonRunNotCompleted:
-		if reason.Detail() == "" {
-			return "the Run ended before completing the Goal"
-		}
-		return "the Run ended: " + reason.Detail()
+		outcome, _ := reason.RunOutcome()
+		return "the Run ended: " + string(outcome)
 	case goalstate.ReasonBlockedByModel:
-		if reason.Detail() != "" {
-			return reason.Detail()
-		}
-		return "the model reported that it is blocked"
+		explanation, _ := reason.Explanation()
+		return explanation
 	default:
 		return "the Goal stopped"
 	}

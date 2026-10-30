@@ -745,17 +745,22 @@ func registerObjectConstraints(s *Shapes) {
 	})
 	goalReasonRules := []ConditionalRule{
 		{
-			When:     []delivery.FieldCondition{{Field: "code", Operator: delivery.OperatorEquals, Value: string(protocol.GoalReasonRunNotCompleted)}},
-			Required: []string{"detail"},
+			When:      []delivery.FieldCondition{{Field: "code", Operator: delivery.OperatorEquals, Value: string(protocol.GoalReasonRunNotCompleted)}},
+			Required:  []string{"runOutcome"},
+			Forbidden: []string{"explanation"},
+			AllowedValues: []AllowedValueSet{{Field: "runOutcome", Values: []string{
+				string(protocol.OutcomeTimedOut), string(protocol.OutcomeFailed), string(protocol.OutcomeCanceled), string(protocol.OutcomeLost),
+			}}},
 		}, {
-			When:     []delivery.FieldCondition{{Field: "code", Operator: delivery.OperatorEquals, Value: string(protocol.GoalReasonBlockedByModel)}},
-			Required: []string{"detail"},
+			When:      []delivery.FieldCondition{{Field: "code", Operator: delivery.OperatorEquals, Value: string(protocol.GoalReasonBlockedByModel)}},
+			Required:  []string{"explanation"},
+			Forbidden: []string{"runOutcome"},
 		},
 	}
 	for _, code := range []protocol.GoalReasonCode{protocol.GoalReasonStoppedByUser, protocol.GoalReasonRuntimeRestarted, protocol.GoalReasonRunStartFailed, protocol.GoalReasonAwaitingInput, protocol.GoalReasonTerminalOutcomeMissing} {
 		goalReasonRules = append(goalReasonRules, ConditionalRule{
 			When:      []delivery.FieldCondition{{Field: "code", Operator: delivery.OperatorEquals, Value: string(code)}},
-			Forbidden: []string{"detail"},
+			Forbidden: []string{"runOutcome", "explanation"},
 		})
 	}
 	s.constraint(ObjectConstraintSpec{GoType: typeOf[protocol.GoalReason](), Rules: goalReasonRules})

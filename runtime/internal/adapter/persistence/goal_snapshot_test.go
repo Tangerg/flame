@@ -40,7 +40,7 @@ func TestGoalReadsKeepLifecycleAndUsageInOneSnapshot(t *testing.T) {
 			if applied, err := goals.Save(t.Context(), goalReplacement(t, initial, unwrittenVersion(t, initial.SessionID()))); err != nil || !applied {
 				t.Fatalf("save initial Goal = %t, %v", applied, err)
 			}
-			paused, err := initial.Pause(goal.ReasonStoppedByUser, "", now.Add(time.Minute))
+			paused, err := initial.Pause(goal.ReasonStoppedByUser, now.Add(time.Minute))
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -51,8 +51,11 @@ func goalDocument(current protocol.Goal, exists bool) readerDocument {
 	lines = append(lines, "model      "+model)
 	if current.Reason != nil {
 		reason := string(current.Reason.Code)
-		if current.Reason.Detail != "" {
-			reason += " · " + current.Reason.Detail
+		if current.Reason.RunOutcome != "" {
+			reason += " · run " + string(current.Reason.RunOutcome)
+		}
+		if current.Reason.Explanation != "" {
+			reason += " · " + current.Reason.Explanation
 		}
 		lines = append(lines, "reason     "+reason)
 	}

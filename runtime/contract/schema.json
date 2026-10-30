@@ -2792,8 +2792,11 @@
         "code": {
           "$ref": "#/$defs/GoalReasonCode"
         },
-        "detail": {
+        "explanation": {
           "type": "string"
+        },
+        "runOutcome": {
+          "$ref": "#/$defs/RunOutcomeType"
         }
       },
       "required": [
@@ -2812,8 +2815,19 @@
             ]
           },
           "then": {
+            "properties": {
+              "explanation": false,
+              "runOutcome": {
+                "enum": [
+                  "timedOut",
+                  "failed",
+                  "canceled",
+                  "lost"
+                ]
+              }
+            },
             "required": [
-              "detail"
+              "runOutcome"
             ]
           }
         },
@@ -2829,8 +2843,11 @@
             ]
           },
           "then": {
+            "properties": {
+              "runOutcome": false
+            },
             "required": [
-              "detail"
+              "explanation"
             ]
           }
         },
@@ -2847,7 +2864,8 @@
           },
           "then": {
             "properties": {
-              "detail": false
+              "explanation": false,
+              "runOutcome": false
             }
           }
         },
@@ -2864,7 +2882,8 @@
           },
           "then": {
             "properties": {
-              "detail": false
+              "explanation": false,
+              "runOutcome": false
             }
           }
         },
@@ -2881,7 +2900,8 @@
           },
           "then": {
             "properties": {
-              "detail": false
+              "explanation": false,
+              "runOutcome": false
             }
           }
         },
@@ -2898,7 +2918,8 @@
           },
           "then": {
             "properties": {
-              "detail": false
+              "explanation": false,
+              "runOutcome": false
             }
           }
         },
@@ -2915,7 +2936,8 @@
           },
           "then": {
             "properties": {
-              "detail": false
+              "explanation": false,
+              "runOutcome": false
             }
           }
         }

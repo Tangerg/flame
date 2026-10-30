@@ -1217,9 +1217,11 @@ func TestGoalWireConstraintsCloseLifecycleState(t *testing.T) {
 		field string
 		value GoalReason
 	}{
-		{name: "fixed reason with detail", field: "detail", value: GoalReason{Code: GoalReasonStoppedByUser, Detail: "extra"}},
-		{name: "run outcome without detail", field: "detail", value: GoalReason{Code: GoalReasonRunNotCompleted}},
-		{name: "model block without detail", field: "detail", value: GoalReason{Code: GoalReasonBlockedByModel}},
+		{name: "fixed reason with explanation", field: "explanation", value: GoalReason{Code: GoalReasonStoppedByUser, Explanation: "extra"}},
+		{name: "fixed reason with run outcome", field: "runOutcome", value: GoalReason{Code: GoalReasonStoppedByUser, RunOutcome: OutcomeFailed}},
+		{name: "unfinished run without outcome", field: "runOutcome", value: GoalReason{Code: GoalReasonRunNotCompleted}},
+		{name: "unfinished run that completed", field: "runOutcome", value: GoalReason{Code: GoalReasonRunNotCompleted, RunOutcome: OutcomeCompleted}},
+		{name: "model block without explanation", field: "explanation", value: GoalReason{Code: GoalReasonBlockedByModel}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
@@ -1228,12 +1230,12 @@ func TestGoalWireConstraintsCloseLifecycleState(t *testing.T) {
 	}
 
 	if err := ValidateWireTree(valid(GoalPaused, &GoalReason{
-		Code: GoalReasonRunNotCompleted, Detail: "failed",
+		Code: GoalReasonRunNotCompleted, RunOutcome: OutcomeFailed,
 	})); err != nil {
 		t.Fatalf("valid paused Goal: %v", err)
 	}
 	if err := ValidateWireTree(valid(GoalBlocked, &GoalReason{
-		Code: GoalReasonBlockedByModel, Detail: "needs user input",
+		Code: GoalReasonBlockedByModel, Explanation: "needs user input",
 	})); err != nil {
 		t.Fatalf("valid blocked Goal: %v", err)
 	}

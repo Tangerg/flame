@@ -8285,9 +8285,14 @@
               "tag": "json:\"code\""
             },
             {
-              "name": "Detail",
+              "name": "RunOutcome",
+              "type": "RunOutcomeType",
+              "tag": "json:\"runOutcome,omitempty\""
+            },
+            {
+              "name": "Explanation",
               "type": "string",
-              "tag": "json:\"detail,omitempty\""
+              "tag": "json:\"explanation,omitempty\""
             }
           ]
         },

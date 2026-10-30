@@ -96,7 +96,7 @@ func (g Goal) RecordRun(value run.Run) (Goal, bool, error) {
 		return Goal{}, false, err
 	}
 	next.status = StatusPaused
-	next.reason, err = newReason(StatusPaused, ReasonRunNotCompleted, string(outcome))
+	next.reason, err = newReason(StatusPaused, ReasonRunNotCompleted, outcome, "")
 	if err != nil {
 		return Goal{}, false, err
 	}

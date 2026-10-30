@@ -180,5 +180,12 @@ func presentGoalReason(reason goal.Reason) (*protocol.GoalReason, error) {
 	default:
 		return nil, fmt.Errorf("goals: unsupported reason code %q", reason.Code())
 	}
-	return &protocol.GoalReason{Code: code, Detail: reason.Detail()}, nil
+	presented := &protocol.GoalReason{Code: code}
+	if outcome, ok := reason.RunOutcome(); ok {
+		presented.RunOutcome = protocol.RunOutcomeType(outcome)
+	}
+	if explanation, ok := reason.Explanation(); ok {
+		presented.Explanation = explanation
+	}
+	return presented, nil
 }

@@ -6044,7 +6044,21 @@
             }
           ],
           "required": [
-            "detail"
+            "runOutcome"
+          ],
+          "forbidden": [
+            "explanation"
+          ],
+          "allowedValues": [
+            {
+              "field": "runOutcome",
+              "values": [
+                "timedOut",
+                "failed",
+                "canceled",
+                "lost"
+              ]
+            }
           ]
         },
         {
@@ -6056,7 +6070,10 @@
             }
           ],
           "required": [
-            "detail"
+            "explanation"
+          ],
+          "forbidden": [
+            "runOutcome"
           ]
         },
         {
@@ -6068,7 +6085,8 @@
             }
           ],
           "forbidden": [
-            "detail"
+            "runOutcome",
+            "explanation"
           ]
         },
         {
@@ -6080,7 +6098,8 @@
             }
           ],
           "forbidden": [
-            "detail"
+            "runOutcome",
+            "explanation"
           ]
         },
         {
@@ -6092,7 +6111,8 @@
             }
           ],
           "forbidden": [
-            "detail"
+            "runOutcome",
+            "explanation"
           ]
         },
         {
@@ -6104,7 +6124,8 @@
             }
           ],
           "forbidden": [
-            "detail"
+            "runOutcome",
+            "explanation"
           ]
         },
         {
@@ -6116,7 +6137,8 @@
             }
           ],
           "forbidden": [
-            "detail"
+            "runOutcome",
+            "explanation"
           ]
         }
       ]

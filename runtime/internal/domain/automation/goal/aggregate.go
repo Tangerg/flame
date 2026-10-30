@@ -42,18 +42,21 @@ func (s Status) Valid() bool {
 
 // Snapshot is the technical reconstruction boundary, not a mutation surface.
 type Snapshot struct {
-	SessionID      string
-	Objective      string
-	Status         Status
-	ReasonCode     ReasonCode
-	ReasonDetail   string
-	ModelSelection modelchoice.Selection
-	Capabilities   run.Capabilities
-	Used           Usage
-	IncarnationID  string
-	Revision       int64
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	SessionID  string
+	Objective  string
+	Status     Status
+	ReasonCode ReasonCode
+	// ReasonRunOutcome belongs to runNotCompleted and ReasonExplanation to
+	// blockedByModel; both are empty for every other reason.
+	ReasonRunOutcome  run.Outcome
+	ReasonExplanation string
+	ModelSelection    modelchoice.Selection
+	Capabilities      run.Capabilities
+	Used              Usage
+	IncarnationID     string
+	Revision          int64
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 // Goal is one committed autonomous objective. Private fields make every next
@@ -162,9 +165,9 @@ func Restore(snapshot Snapshot) (Goal, error) {
 		return Goal{}, fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
 	reason := Reason{}
-	if snapshot.ReasonCode != ReasonNone || snapshot.ReasonDetail != "" {
+	if snapshot.ReasonCode != ReasonNone || snapshot.ReasonRunOutcome != "" || snapshot.ReasonExplanation != "" {
 		var err error
-		reason, err = newReason(snapshot.Status, snapshot.ReasonCode, snapshot.ReasonDetail)
+		reason, err = newReason(snapshot.Status, snapshot.ReasonCode, snapshot.ReasonRunOutcome, snapshot.ReasonExplanation)
 		if err != nil {
 			return Goal{}, err
 		}
@@ -229,11 +232,11 @@ func (g Goal) validate() error {
 	}
 	switch g.status {
 	case StatusActive, StatusComplete:
-		if !g.reason.IsNone() || g.reason.detail != "" {
+		if g.reason != (Reason{}) {
 			return fmt.Errorf("%w: %s Goal must not carry a stop reason", ErrInvalid, g.status)
 		}
 	case StatusPaused, StatusBlocked:
-		validated, err := newReason(g.status, g.reason.code, g.reason.detail)
+		validated, err := newReason(g.status, g.reason.code, g.reason.runOutcome, g.reason.explanation)
 		if err != nil || validated != g.reason {
 			return fmt.Errorf("%w: invalid %s reason: %v", ErrInvalid, g.status, err)
 		}
@@ -244,7 +247,7 @@ func (g Goal) validate() error {
 func (g Goal) Snapshot() Snapshot {
 	return Snapshot{
 		SessionID: g.sessionID, Objective: g.objective, Status: g.status,
-		ReasonCode: g.reason.code, ReasonDetail: g.reason.detail,
+		ReasonCode: g.reason.code, ReasonRunOutcome: g.reason.runOutcome, ReasonExplanation: g.reason.explanation,
 		ModelSelection: g.selection, Capabilities: g.capabilities.Clone(),
 		Used: g.used, IncarnationID: g.incarnationID.String(),
 		Revision: g.revision, CreatedAt: g.createdAt, UpdatedAt: g.updatedAt,
@@ -346,11 +349,11 @@ func (g Goal) Complete(now time.Time) (Goal, error) {
 	return next, next.validate()
 }
 
-func (g Goal) Pause(code ReasonCode, detail string, now time.Time) (Goal, error) {
+func (g Goal) Pause(code ReasonCode, now time.Time) (Goal, error) {
 	if g.status != StatusActive {
 		return Goal{}, fmt.Errorf("%w: cannot pause %s Goal", errInvalidTransition, g.status)
 	}
-	reason, err := newReason(StatusPaused, code, detail)
+	reason, err := newReason(StatusPaused, code, "", "")
 	if err != nil {
 		return Goal{}, err
 	}
@@ -372,18 +375,19 @@ func (g Goal) Stop(now time.Time) (Goal, error) {
 		return Goal{}, err
 	}
 	next.status = StatusPaused
-	next.reason, err = newReason(StatusPaused, ReasonStoppedByUser, "")
+	next.reason, err = newReason(StatusPaused, ReasonStoppedByUser, "", "")
 	if err != nil {
 		return Goal{}, err
 	}
 	return next, next.validate()
 }
 
-func (g Goal) Block(code ReasonCode, detail string, now time.Time) (Goal, error) {
+// Block records the model's explanation for why it cannot continue.
+func (g Goal) Block(explanation string, now time.Time) (Goal, error) {
 	if g.status != StatusActive {
 		return Goal{}, fmt.Errorf("%w: cannot block %s Goal", errInvalidTransition, g.status)
 	}
-	reason, err := newReason(StatusBlocked, code, detail)
+	reason, err := newReason(StatusBlocked, ReasonBlockedByModel, "", explanation)
 	if err != nil {
 		return Goal{}, err
 	}

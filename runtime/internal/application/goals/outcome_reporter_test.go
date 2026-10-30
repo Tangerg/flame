@@ -100,7 +100,7 @@ func TestOutcomeReporterOwnsTerminalGoalTransition(t *testing.T) {
 		t.Fatalf("blocked Report = %v, %v, want applied, nil", result, err)
 	}
 	if store.goal.Status() != goal.StatusBlocked || store.goal.Reason().Code() != goal.ReasonBlockedByModel ||
-		store.goal.Reason().Detail() != "needs credentials" || !store.goal.UpdatedAt().Equal(now) {
+		!blockedWith(store.goal.Reason(), "needs credentials") || !store.goal.UpdatedAt().Equal(now) {
 		t.Fatalf("stored goal = %+v, want blocked state at %s", store.goal, now)
 	}
 }
@@ -115,4 +115,9 @@ func TestGoalStateUseCasesRequireStorage(t *testing.T) {
 			t.Fatalf("NewOutcomeReporter = (%v, %v), want construction failure", reporter, err)
 		}
 	}
+}
+
+func blockedWith(reason goal.Reason, want string) bool {
+	explanation, ok := reason.Explanation()
+	return ok && explanation == want
 }

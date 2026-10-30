@@ -99,7 +99,7 @@ func (o *OutcomeReporter) Report(ctx context.Context, cmd ReportCommand) (Report
 	if cmd.Outcome == OutcomeCompleted {
 		replacement, err = g.Complete(o.now())
 	} else {
-		replacement, err = g.Block(goal.ReasonBlockedByModel, reason, o.now())
+		replacement, err = g.Block(reason, o.now())
 		if errors.Is(err, goal.ErrBlockExplanationRequired) {
 			return ReportReasonRequired, nil
 		}

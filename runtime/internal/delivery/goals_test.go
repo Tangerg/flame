@@ -25,16 +25,16 @@ func TestGoalProjectsEveryMachineReadableReason(t *testing.T) {
 		domain goal.ReasonCode
 		status goal.Status
 		detail string
-		wire   protocol.GoalReasonCode
+		wire   protocol.GoalReason
 	}{
-		{goal.ReasonStoppedByUser, goal.StatusPaused, "", protocol.GoalReasonStoppedByUser},
-		{goal.ReasonRuntimeRestarted, goal.StatusPaused, "", protocol.GoalReasonRuntimeRestarted},
-		{goal.ReasonRunStartFailed, goal.StatusPaused, "", protocol.GoalReasonRunStartFailed},
-		{goal.ReasonAwaitingInput, goal.StatusPaused, "", protocol.GoalReasonAwaitingInput},
-		{goal.ReasonTerminalOutcomeMissing, goal.StatusPaused, "", protocol.GoalReasonTerminalOutcomeMissing},
-		{goal.ReasonRunNotCompleted, goal.StatusPaused, "failed", protocol.GoalReasonRunNotCompleted},
+		{goal.ReasonStoppedByUser, goal.StatusPaused, "", protocol.GoalReason{Code: protocol.GoalReasonStoppedByUser}},
+		{goal.ReasonRuntimeRestarted, goal.StatusPaused, "", protocol.GoalReason{Code: protocol.GoalReasonRuntimeRestarted}},
+		{goal.ReasonRunStartFailed, goal.StatusPaused, "", protocol.GoalReason{Code: protocol.GoalReasonRunStartFailed}},
+		{goal.ReasonAwaitingInput, goal.StatusPaused, "", protocol.GoalReason{Code: protocol.GoalReasonAwaitingInput}},
+		{goal.ReasonTerminalOutcomeMissing, goal.StatusPaused, "", protocol.GoalReason{Code: protocol.GoalReasonTerminalOutcomeMissing}},
+		{goal.ReasonRunNotCompleted, goal.StatusPaused, "failed", protocol.GoalReason{Code: protocol.GoalReasonRunNotCompleted, RunOutcome: protocol.OutcomeFailed}},
 
-		{goal.ReasonBlockedByModel, goal.StatusBlocked, "safe context", protocol.GoalReasonBlockedByModel},
+		{goal.ReasonBlockedByModel, goal.StatusBlocked, "safe context", protocol.GoalReason{Code: protocol.GoalReasonBlockedByModel, Explanation: "safe context"}},
 	}
 
 	for _, test := range tests {
@@ -45,8 +45,8 @@ func TestGoalProjectsEveryMachineReadableReason(t *testing.T) {
 			if err != nil {
 				t.Fatalf("presentGoal: %v", err)
 			}
-			if presented.Reason == nil || presented.Reason.Code != test.wire || presented.Reason.Detail != test.detail {
-				t.Fatalf("reason = %+v, want code %q detail %q", presented.Reason, test.wire, test.detail)
+			if presented.Reason == nil || *presented.Reason != test.wire {
+				t.Fatalf("reason = %+v, want %+v", presented.Reason, test.wire)
 			}
 		})
 	}
@@ -82,9 +82,18 @@ func serverGoalWithState(t *testing.T, status goal.Status, reason goal.ReasonCod
 	if err != nil {
 		t.Fatal(err)
 	}
+	var outcome run.Outcome
+	var explanation string
+	switch reason {
+	case goal.ReasonRunNotCompleted:
+		outcome = run.Outcome(detail)
+	case goal.ReasonBlockedByModel:
+		explanation = detail
+	}
 	value, err := goal.Restore(goal.Snapshot{
+		ReasonRunOutcome: outcome, ReasonExplanation: explanation,
 		SessionID: "session-1", Objective: "finish the migration", Status: status,
-		ReasonCode: reason, ReasonDetail: detail, ModelSelection: selection,
+		ReasonCode: reason, ModelSelection: selection,
 		Capabilities: run.Capabilities{}, IncarnationID: "incarnation-1", Revision: 1,
 		CreatedAt: time.Unix(1, 0).UTC(), UpdatedAt: time.Unix(2, 0).UTC(),
 	})

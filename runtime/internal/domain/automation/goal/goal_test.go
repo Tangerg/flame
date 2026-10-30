@@ -128,7 +128,7 @@ func TestRestoreRejectsImpossibleCommittedState(t *testing.T) {
 		{name: "paused without reason", mutate: func(s *Snapshot) { s.Status = StatusPaused }},
 		{name: "paused with blocked reason", mutate: func(s *Snapshot) {
 			s.Status, s.ReasonCode = StatusPaused, ReasonBlockedByModel
-			s.ReasonDetail = "blocked"
+			s.ReasonExplanation = "blocked"
 		}},
 		{name: "blocked without model detail", mutate: func(s *Snapshot) { s.Status, s.ReasonCode = StatusBlocked, ReasonBlockedByModel }},
 		{name: "noncanonical capabilities", mutate: func(s *Snapshot) {
@@ -170,7 +170,7 @@ func TestCurrentAndVersionDistinguishAbsenceFromCommittedState(t *testing.T) {
 	if err := unwritten.Version().AdvancesTo(fresh); err != nil {
 		t.Fatalf("unwritten advance: %v", err)
 	}
-	paused, err := value.Pause(ReasonStoppedByUser, "", value.UpdatedAt())
+	paused, err := value.Pause(ReasonStoppedByUser, value.UpdatedAt())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -200,7 +200,7 @@ func TestCurrentConstructionOwnsSessionIdentity(t *testing.T) {
 func TestLifecycleTransitionsAreImmutableAndMonotonic(t *testing.T) {
 	now := time.Unix(10, 0).UTC()
 	active := testGoalAt(t, run.Capabilities{}, now)
-	paused, err := active.Pause(ReasonStoppedByUser, "", now.Add(time.Second))
+	paused, err := active.Pause(ReasonStoppedByUser, now.Add(time.Second))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -232,23 +232,23 @@ func TestLifecycleTransitionsAreImmutableAndMonotonic(t *testing.T) {
 func TestTransitionRejectsInvalidReasonTimeAndState(t *testing.T) {
 	now := time.Unix(10, 0).UTC()
 	active := testGoalAt(t, run.Capabilities{}, now)
-	if _, err := active.Pause(ReasonNone, "", now); !errors.Is(err, ErrInvalid) {
+	if _, err := active.Pause(ReasonNone, now); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("Pause no reason = %v", err)
 	}
-	if _, err := active.Pause(ReasonBlockedByModel, "blocked", now); !errors.Is(err, ErrInvalid) {
+	if _, err := active.Pause(ReasonBlockedByModel, now); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("Pause blocked reason = %v", err)
 	}
-	if _, err := active.Block(ReasonBlockedByModel, "", now); !errors.Is(err, ErrInvalid) {
+	if _, err := active.Block("", now); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("Block no detail = %v", err)
 	}
 	if _, err := active.Complete(now.Add(-time.Nanosecond)); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("time travel = %v", err)
 	}
-	paused, err := active.Pause(ReasonStoppedByUser, "", now)
+	paused, err := active.Pause(ReasonStoppedByUser, now)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := paused.Pause(ReasonStoppedByUser, "", now); !errors.Is(err, errInvalidTransition) {
+	if _, err := paused.Pause(ReasonStoppedByUser, now); !errors.Is(err, errInvalidTransition) {
 		t.Fatalf("double Pause = %v", err)
 	}
 }
@@ -271,7 +271,7 @@ func TestRecordRunPausesAnActiveGoalAfterAnUnfinishedRun(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !changed || paused.Status() != StatusPaused || paused.Reason().Code() != ReasonRunNotCompleted ||
-		paused.Reason().Detail() != string(run.OutcomeCanceled) || paused.Revision() != active.Revision()+1 {
+		!pausedByOutcome(paused.Reason(), run.OutcomeCanceled) || paused.Revision() != active.Revision()+1 {
 		t.Fatalf("failed Run state = %+v", paused.Snapshot())
 	}
 }
@@ -279,7 +279,7 @@ func TestRecordRunPausesAnActiveGoalAfterAnUnfinishedRun(t *testing.T) {
 func TestRecordRunPreservesPriorModelReport(t *testing.T) {
 	now := time.Unix(10, 0).UTC()
 	active := testGoalAt(t, run.Capabilities{}, now)
-	blocked, err := active.Block(ReasonBlockedByModel, "need a credential", now.Add(time.Second))
+	blocked, err := active.Block("need a credential", now.Add(time.Second))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -385,7 +385,7 @@ func TestUsageOfChargesDescendantsWithoutCountingAnotherGoalRun(t *testing.T) {
 func TestReviseObjectiveStartsFreshVersionAndPreservesFacts(t *testing.T) {
 	now := time.Unix(10, 0).UTC()
 	active := testGoalAt(t, run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}, now)
-	paused, err := active.Pause(ReasonStoppedByUser, "", now.Add(time.Second))
+	paused, err := active.Pause(ReasonStoppedByUser, now.Add(time.Second))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -498,4 +498,9 @@ func goalTestRunningRun(t *testing.T, incarnationID string, now time.Time) run.R
 		t.Fatal(err)
 	}
 	return value
+}
+
+func pausedByOutcome(reason Reason, want run.Outcome) bool {
+	outcome, ok := reason.RunOutcome()
+	return ok && outcome == want
 }

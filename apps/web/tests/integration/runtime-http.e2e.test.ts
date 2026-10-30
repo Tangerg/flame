@@ -5195,13 +5195,13 @@ for await (const line of lines) {
       });
       await expect(client.goals.get(activeGoalSessionId)).resolves.toMatchObject({
         status: "paused",
-        reason: { code: "runNotCompleted", detail: "lost" },
+        reason: { code: "runNotCompleted", runOutcome: "lost" },
         used: { runs: 1 },
       });
       await expect(client.sessions.snapshot(activeGoalSessionId)).resolves.toMatchObject({
         goal: {
           status: "paused",
-          reason: { code: "runNotCompleted", detail: "lost" },
+          reason: { code: "runNotCompleted", runOutcome: "lost" },
           used: { runs: 1 },
         },
         runs: expect.arrayContaining([

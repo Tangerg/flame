@@ -17,7 +17,7 @@ import { useCommandAction } from "@/features/command/public/commandAction";
 import { useGoalCommands } from "@/features/goal/public/goals";
 import {
   GOAL_STATUS_I18N,
-  GOAL_REASON_I18N,
+  goalReasonLabel,
   goalCanChangeStatus,
   goalCanEdit,
   goalCreatedAtMillis,
@@ -252,18 +252,18 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
       </div>
       {goal.reason && (
         <div data-slot="goal-stop-reason" {...stylex.props(gs.reason, vocab.muted)}>
-          {goal.reason.detail ? (
-            <Disclosure title={t(GOAL_REASON_I18N[goal.reason.code].label)} keepMounted>
+          {goal.reason.explanation ? (
+            <Disclosure title={t(goalReasonLabel(goal.reason))} keepMounted>
               <ScrollRegion
-                label={t(GOAL_REASON_I18N[goal.reason.code].label)}
+                label={t(goalReasonLabel(goal.reason))}
                 styles={gs.reasonDetail}
                 data-focus-inset=""
               >
-                {goal.reason.detail}
+                {goal.reason.explanation}
               </ScrollRegion>
             </Disclosure>
           ) : (
-            <span>{t(GOAL_REASON_I18N[goal.reason.code].label)}</span>
+            <span>{t(goalReasonLabel(goal.reason))}</span>
           )}
         </div>
       )}

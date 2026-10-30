@@ -107,9 +107,9 @@ func TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser(t *testing
 	}
 	if recovered.Status() != goal.StatusPaused ||
 		recovered.Reason().Code() != goal.ReasonRunNotCompleted ||
-		recovered.Reason().Detail() != string(run.OutcomeLost) {
-		t.Fatalf("Goal after recovery = %s/%s(%q), want paused/runNotCompleted naming the lost outcome",
-			recovered.Status(), recovered.Reason().Code(), recovered.Reason().Detail())
+		!lostRunReason(recovered.Reason()) {
+		t.Fatalf("Goal after recovery = %s/%+v, want paused/runNotCompleted naming the lost outcome",
+			recovered.Status(), recovered.Reason())
 	}
 
 	// Repeated recovery must not count the same Run twice. A second startup
@@ -222,4 +222,9 @@ func TestActiveGoalWithNoRunInFlightPausesAsRestarted(t *testing.T) {
 		t.Fatalf("Goal after restart = %s/%s, want paused/runtimeRestarted",
 			recovered.Status(), recovered.Reason().Code())
 	}
+}
+
+func lostRunReason(reason goal.Reason) bool {
+	outcome, ok := reason.RunOutcome()
+	return ok && outcome == run.OutcomeLost
 }

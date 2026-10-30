@@ -39,10 +39,13 @@ const (
 )
 
 // GoalReason is machine-readable stopping context. Code determines client
-// presentation and behavior; detail carries only safe domain/model context.
+// presentation and behavior.
 type GoalReason struct {
-	Code   GoalReasonCode `json:"code"`
-	Detail string         `json:"detail,omitempty"`
+	Code GoalReasonCode `json:"code"`
+	// RunOutcome is how the Run that paused a runNotCompleted Goal ended.
+	RunOutcome RunOutcomeType `json:"runOutcome,omitempty"`
+	// Explanation is the model's own account of a blockedByModel Goal.
+	Explanation string `json:"explanation,omitempty"`
 }
 
 // GoalReasonCode is the closed vocabulary for paused and blocked goals.

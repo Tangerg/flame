@@ -1303,26 +1303,33 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   GoalReason: allOf([
     object({
       code: ref(() => CHECKS.GoalReasonCode),
-      detail: text(),
+      explanation: text(),
+      runOutcome: ref(() => CHECKS.RunOutcomeType),
     }, ["code"]),
     ifThen(
       fields({
         code: literal("runNotCompleted"),
       }, ["code"]),
-      fields({}, ["detail"]),
+      fields({
+        explanation: absent(),
+        runOutcome: enumOf(["timedOut", "failed", "canceled", "lost"]),
+      }, ["runOutcome"]),
     ),
     ifThen(
       fields({
         code: literal("blockedByModel"),
       }, ["code"]),
-      fields({}, ["detail"]),
+      fields({
+        runOutcome: absent(),
+      }, ["explanation"]),
     ),
     ifThen(
       fields({
         code: literal("stoppedByUser"),
       }, ["code"]),
       fields({
-        detail: absent(),
+        explanation: absent(),
+        runOutcome: absent(),
       }, []),
     ),
     ifThen(
@@ -1330,7 +1337,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         code: literal("runtimeRestarted"),
       }, ["code"]),
       fields({
-        detail: absent(),
+        explanation: absent(),
+        runOutcome: absent(),
       }, []),
     ),
     ifThen(
@@ -1338,7 +1346,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         code: literal("runStartFailed"),
       }, ["code"]),
       fields({
-        detail: absent(),
+        explanation: absent(),
+        runOutcome: absent(),
       }, []),
     ),
     ifThen(
@@ -1346,7 +1355,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         code: literal("awaitingInput"),
       }, ["code"]),
       fields({
-        detail: absent(),
+        explanation: absent(),
+        runOutcome: absent(),
       }, []),
     ),
     ifThen(
@@ -1354,7 +1364,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         code: literal("terminalOutcomeMissing"),
       }, ["code"]),
       fields({
-        detail: absent(),
+        explanation: absent(),
+        runOutcome: absent(),
       }, []),
     ),
   ]),

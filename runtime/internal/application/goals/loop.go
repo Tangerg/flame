@@ -443,7 +443,7 @@ func (d *Driver) pauseOwned(
 ) (runDisposition, error) {
 	for current.Status() == goal.StatusActive {
 		expected := current.Version()
-		candidate, transitionErr := current.Pause(code, "", d.now())
+		candidate, transitionErr := current.Pause(code, d.now())
 		if transitionErr != nil {
 			return "", transitionErr
 		}

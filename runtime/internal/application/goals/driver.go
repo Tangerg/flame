@@ -555,7 +555,7 @@ func (d *Driver) reconcileGoal(ctx context.Context, g goal.Goal) error {
 	if !exists || g.Status() == goal.StatusComplete {
 		applied, err = d.goals.ClearIf(ctx, g.SessionID(), g.Version())
 	} else if g.Status() == goal.StatusActive {
-		replacement, transitionErr := g.Pause(goal.ReasonRuntimeRestarted, "", d.now())
+		replacement, transitionErr := g.Pause(goal.ReasonRuntimeRestarted, d.now())
 		if transitionErr != nil {
 			return transitionErr
 		}

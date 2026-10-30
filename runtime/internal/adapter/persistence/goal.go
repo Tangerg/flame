@@ -78,7 +78,7 @@ func (g *GoalStore) Save(ctx context.Context, replacement goal.Replacement) (boo
 			`INSERT INTO goals(session_id, objective, status, reason_code, reason_detail, provider, model, reasoning_effort, capabilities, incarnation_id, revision, created_at, updated_at)
 			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			 ON CONFLICT(session_id) DO NOTHING`,
-			snapshot.SessionID, snapshot.Objective, string(snapshot.Status), string(snapshot.ReasonCode), snapshot.ReasonDetail, snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(),
+			snapshot.SessionID, snapshot.Objective, string(snapshot.Status), string(snapshot.ReasonCode), storedGoalReasonDetail(snapshot), snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(),
 			capabilities, snapshot.IncarnationID, snapshot.Revision, snapshot.CreatedAt.UnixNano(), snapshot.UpdatedAt.UnixNano())
 		if execContextErr != nil {
 			return false, fmt.Errorf("sqlite: insert goal: %w", execContextErr)
@@ -97,7 +97,7 @@ func (g *GoalStore) Save(ctx context.Context, replacement goal.Replacement) (boo
 	res, err := sqlite.Connection(ctx, g.db).ExecContext(ctx,
 		`UPDATE goals SET objective = ?, status = ?, reason_code = ?, reason_detail = ?, provider = ?, model = ?, reasoning_effort = ?, capabilities = ?, incarnation_id = ?, revision = ?, created_at = ?, updated_at = ?
 		 WHERE session_id = ? AND incarnation_id = ? AND revision = ?`,
-		snapshot.Objective, string(snapshot.Status), string(snapshot.ReasonCode), snapshot.ReasonDetail, snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(),
+		snapshot.Objective, string(snapshot.Status), string(snapshot.ReasonCode), storedGoalReasonDetail(snapshot), snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(),
 		capabilities, snapshot.IncarnationID, snapshot.Revision, snapshot.CreatedAt.UnixNano(), snapshot.UpdatedAt.UnixNano(),
 		snapshot.SessionID, expectedIncarnation, expectedRevision)
 	if err != nil {
@@ -215,13 +215,33 @@ func scanGoal(row scanRow) (goal.Snapshot, error) {
 	if err != nil {
 		return goal.Snapshot{}, fmt.Errorf("sqlite: decode goal capabilities: %w", err)
 	}
-	return goal.Snapshot{
+	snapshot := goal.Snapshot{
 		SessionID: sessionID, Objective: objective, Status: goal.Status(status),
-		ReasonCode: goal.ReasonCode(reasonCode), ReasonDetail: reasonDetail,
+		ReasonCode: goal.ReasonCode(reasonCode),
 		ModelSelection: selection, Capabilities: capabilities,
 		IncarnationID: incarnationID, Revision: revision,
 		CreatedAt: time.Unix(0, createdAt).UTC(), UpdatedAt: time.Unix(0, updatedAt).UTC(),
-	}, nil
+	}
+	switch snapshot.ReasonCode {
+	case goal.ReasonRunNotCompleted:
+		snapshot.ReasonRunOutcome = run.Outcome(reasonDetail)
+	case goal.ReasonBlockedByModel:
+		snapshot.ReasonExplanation = reasonDetail
+	default:
+		if reasonDetail != "" {
+			return goal.Snapshot{}, fmt.Errorf("sqlite: goal reason %q carries detail", reasonCode)
+		}
+	}
+	return snapshot, nil
+}
+
+// storedGoalReasonDetail keeps a reason's one payload in the reason_detail
+// column; the reason code says which payload it is.
+func storedGoalReasonDetail(snapshot goal.Snapshot) string {
+	if snapshot.ReasonExplanation != "" {
+		return snapshot.ReasonExplanation
+	}
+	return string(snapshot.ReasonRunOutcome)
 }
 
 func (g *GoalStore) restore(ctx context.Context, snapshot goal.Snapshot) (goal.Goal, error) {

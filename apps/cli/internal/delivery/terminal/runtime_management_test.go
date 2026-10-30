@@ -614,7 +614,7 @@ func TestGoalLifecycleAndInvalidationRefreshTheOpenGoalReader(t *testing.T) {
 	}
 	goals.set(reviseGoal(t, current, func(snapshot *protocol.Goal) {
 		snapshot.Status = protocol.GoalBlocked
-		snapshot.Reason = &protocol.GoalReason{Code: protocol.GoalReasonBlockedByModel, Detail: "needs clarification"}
+		snapshot.Reason = &protocol.GoalReason{Code: protocol.GoalReasonBlockedByModel, Explanation: "needs clarification"}
 	}))
 	baseline := goals.reads.Load()
 	source.events <- changefeed.Event{
