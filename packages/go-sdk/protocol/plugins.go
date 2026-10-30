@@ -157,6 +157,7 @@ type PluginRelease struct {
 	Servers       []PluginServerDeclaration `json:"servers"`
 	Inputs        []PluginInput             `json:"inputs"`
 	Themes        []PluginTheme             `json:"themes"`
+	Locales       []PluginLocale            `json:"locales"`
 	Skills        []PluginSkill             `json:"skills"`
 	Diagnostics   []PluginDiagnostic        `json:"diagnostics"`
 }
@@ -215,6 +216,20 @@ type PluginTheme struct {
 	Title  string            `json:"title"`
 	Scheme PluginThemeScheme `json:"scheme"`
 	Colors PluginThemeColors `json:"colors"`
+}
+
+type PluginLocale struct {
+	Tag   string `json:"tag"`
+	Title string `json:"title"`
+}
+
+type ReadPluginLocaleRequest struct {
+	PluginReleaseRequest
+	Tag string `json:"tag"`
+}
+
+type PluginLocaleCatalog struct {
+	Messages map[string]string `json:"messages"`
 }
 
 // PluginThemeColors is the closed set of colors a theme may override; an
