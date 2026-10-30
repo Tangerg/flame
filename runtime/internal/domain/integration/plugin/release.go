@@ -3,13 +3,12 @@ package plugin
 import (
 	"fmt"
 	"maps"
-	"net/netip"
-	"net/url"
 	"regexp"
 	"slices"
 	"strings"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -519,26 +518,15 @@ func validatePackageCommand(s Server) error {
 // bytes are public content: other static values, such as headers, are never
 // treated as secrets, and a credential reaches a server only through an input.
 func validatePackageEndpoint(raw string) error {
-	u, err := url.Parse(raw)
+	endpoint, err := httporigin.ParseEndpoint(raw)
 	if err != nil {
 		return fmt.Errorf("%w: package server URL: %w", ErrInvalid, err)
 	}
-	if u.User != nil || u.Fragment != "" {
-		return fmt.Errorf("%w: package server URL carries credentials or a fragment", ErrInvalid)
+	if endpoint.HasFragment() {
+		return fmt.Errorf("%w: package server URL carries a fragment", ErrInvalid)
 	}
-	if u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
-		return fmt.Errorf("%w: package server URL must be an absolute HTTP(S) endpoint", ErrInvalid)
-	}
-	if u.Scheme != "https" && !loopbackHost(u.Hostname()) {
+	if !endpoint.Secure() && !endpoint.Loopback() {
 		return fmt.Errorf("%w: package server requires HTTPS outside loopback", ErrInvalid)
 	}
 	return nil
-}
-
-func loopbackHost(host string) bool {
-	if host == "localhost" {
-		return true
-	}
-	ip, err := netip.ParseAddr(host)
-	return err == nil && ip.IsLoopback()
 }

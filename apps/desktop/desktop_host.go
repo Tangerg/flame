@@ -3,16 +3,13 @@ package main
 import (
 	"errors"
 	"fmt"
-	"net"
-	"net/url"
 	"os"
 	"path/filepath"
-	"strconv"
-	"strings"
 	"sync/atomic"
 	"unsafe"
 
 	"github.com/Tangerg/flame/apps/desktop/internal/bridge"
+	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 )
 
@@ -75,27 +72,20 @@ func newDesktopHost(productRoot, localRuntimeEndpoint string) (*DesktopHost, err
 // loopback IP literal qualifies; host names are never resolved. Errors omit the input
 // because it may carry credentials.
 func loopbackRuntimeOrigin(raw string) (string, error) {
-	endpoint, err := url.Parse(raw)
+	endpoint, err := httporigin.ParseEndpoint(raw)
 	if err != nil {
-		return "", errors.New("is not a valid URL")
+		return "", errors.New("must be an absolute http or https URL without credentials")
 	}
-	if endpoint.Scheme != "http" && endpoint.Scheme != "https" {
-		return "", errors.New("must use http or https")
-	}
-	if endpoint.User != nil {
-		return "", errors.New("must not contain credentials")
-	}
-	path := endpoint.EscapedPath()
-	if endpoint.Opaque != "" || (path != "" && path != "/") || strings.ContainsAny(raw, "?#") {
+	if !endpoint.IsOrigin() {
 		return "", errors.New("must be an origin without path, query, or fragment")
 	}
-	if ip := net.ParseIP(endpoint.Hostname()); ip == nil || !ip.IsLoopback() {
+	if !endpoint.LoopbackIP() {
 		return "", errors.New("host must be a loopback IP address")
 	}
-	if port, err := strconv.ParseUint(endpoint.Port(), 10, 16); err != nil || port == 0 {
-		return "", errors.New("port must be between 1 and 65535")
+	if endpoint.URL().Port() == "" {
+		return "", errors.New("port must be explicit")
 	}
-	return endpoint.Scheme + "://" + endpoint.Host, nil
+	return endpoint.Origin().String(), nil
 }
 
 func (d *DesktopHost) useWindow(window nativeWindow) {

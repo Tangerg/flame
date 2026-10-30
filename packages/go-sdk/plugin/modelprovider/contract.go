@@ -9,13 +9,13 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"net/url"
 	"regexp"
 	"slices"
 	"strings"
 	"unicode"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -124,8 +124,7 @@ func (c Connection) Validate() error {
 	if c.BaseURL == "" {
 		return nil
 	}
-	endpoint, err := url.Parse(c.BaseURL)
-	if err != nil || endpoint.Hostname() == "" || endpoint.User != nil || endpoint.Fragment != "" || (endpoint.Scheme != "http" && endpoint.Scheme != "https") {
+	if endpoint, err := httporigin.ParseEndpoint(c.BaseURL); err != nil || endpoint.HasFragment() {
 		return errors.New("model provider: endpoint must be an absolute HTTP(S) URL without userinfo or fragment")
 	}
 	return nil

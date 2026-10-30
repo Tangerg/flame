@@ -5,11 +5,11 @@ import (
 	"errors"
 	"net"
 	"net/http"
-	"net/url"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 )
 
@@ -55,12 +55,11 @@ func Connect(ctx context.Context, cfg RemoteConfig) (*Client, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	base, err := url.Parse(cfg.Endpoint)
-	if err != nil || base == nil || base.Host == "" || base.Hostname() == "" ||
-		(base.Scheme != "http" && base.Scheme != "https") || base.User != nil ||
-		base.RawQuery != "" || base.ForceQuery || base.Fragment != "" || base.Opaque != "" {
+	endpoint, err := httporigin.ParseEndpoint(cfg.Endpoint)
+	if err != nil || endpoint.HasQuery() || endpoint.HasFragment() {
 		return nil, errors.New("runtime: endpoint must be an absolute http or https base url without credentials, query, or fragment")
 	}
+	base := endpoint.URL()
 	if strings.ContainsAny(cfg.Token, "\r\n") {
 		return nil, errors.New("runtime: token must not contain line breaks")
 	}

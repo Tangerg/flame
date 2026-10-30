@@ -5,9 +5,10 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"net/url"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 )
 
 const (
@@ -86,8 +87,10 @@ func Restore(snapshot Snapshot) (Document, error) {
 }
 
 func ValidateURL(raw string) error {
-	parsed, err := url.Parse(raw)
-	if err != nil || !utf8.ValidString(raw) || len(raw) > 4096 || strings.TrimSpace(raw) != raw || parsed.Hostname() == "" || parsed.User != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+	if !utf8.ValidString(raw) || len(raw) > 4096 || strings.TrimSpace(raw) != raw {
+		return ErrDocument
+	}
+	if _, err := httporigin.ParseEndpoint(raw); err != nil {
 		return ErrDocument
 	}
 	return nil

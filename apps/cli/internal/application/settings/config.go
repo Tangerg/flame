@@ -7,11 +7,11 @@ import (
 	"errors"
 	"fmt"
 	"maps"
-	"net/url"
 	"slices"
 	"strings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
+	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 )
 
@@ -78,9 +78,8 @@ func (r Runtime) Validate() error {
 	if r.Mode != RuntimeRemote {
 		return errors.New("runtime.mode must be remote or embedded")
 	}
-	endpoint, err := url.Parse(r.Endpoint)
-	if err != nil || endpoint.Host == "" || (endpoint.Scheme != "http" && endpoint.Scheme != "https") ||
-		endpoint.User != nil || endpoint.RawQuery != "" || endpoint.Fragment != "" {
+	endpoint, err := httporigin.ParseEndpoint(r.Endpoint)
+	if err != nil || endpoint.HasQuery() || endpoint.HasFragment() {
 		return errors.New("runtime.endpoint must be an HTTP or HTTPS URL without credentials, query, or fragment")
 	}
 	return nil

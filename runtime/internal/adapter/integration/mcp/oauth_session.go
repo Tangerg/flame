@@ -6,11 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"slices"
 	"sync"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/go-sdk/auth"
 	"golang.org/x/oauth2"
@@ -139,9 +139,7 @@ func (s storedOAuthToken) validate() error {
 }
 
 func validateStoredOAuthURL(field, raw string) error {
-	parsed, err := url.Parse(raw)
-	if err != nil || parsed.Scheme == "" || parsed.Host == "" ||
-		(parsed.Scheme != "http" && parsed.Scheme != "https") {
+	if _, err := httporigin.ParseEndpoint(raw); err != nil {
 		return fmt.Errorf("mcp oauth: stored %s is not an absolute HTTP(S) URL", field)
 	}
 	return nil

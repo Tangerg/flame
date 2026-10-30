@@ -6,11 +6,10 @@ package provider
 import (
 	"errors"
 	"fmt"
-	"net/url"
-	"strconv"
 	"strings"
 	"unicode"
 
+	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 )
 
@@ -59,49 +58,18 @@ type BaseURL struct {
 }
 
 func NewBaseURL(value string) (BaseURL, error) {
-	if strings.TrimSpace(value) != value || value == "" || strings.ContainsAny(value, "?#\\") ||
+	if strings.ContainsRune(value, '\\') ||
 		strings.IndexFunc(value, func(r rune) bool { return unicode.IsControl(r) || unicode.IsSpace(r) }) >= 0 {
 		return BaseURL{}, errBaseURLInvalid
 	}
-	parsed, err := url.Parse(value)
-	if err != nil {
+	endpoint, err := httporigin.ParseEndpoint(value)
+	if err != nil || endpoint.HasQuery() || endpoint.HasFragment() {
 		return BaseURL{}, errBaseURLInvalid
 	}
-	scheme := strings.ToLower(parsed.Scheme)
-	if (scheme != "http" && scheme != "https") || parsed.Host == "" || parsed.User != nil || parsed.Opaque != "" ||
-		!validHTTPAuthority(parsed.Host) {
-		return BaseURL{}, errBaseURLInvalid
-	}
-	parsed.Scheme = scheme
+	parsed := endpoint.URL()
 	parsed.Host = strings.ToLower(parsed.Host)
 	normalized := parsed.String()
 	return BaseURL{value: strings.TrimRight(normalized, "/")}, nil
-}
-
-const maximumTCPPort = 65_535
-
-func validHTTPAuthority(authority string) bool {
-	if authority == "" || strings.Contains(authority, "@") {
-		return false
-	}
-	if strings.HasPrefix(authority, "[") {
-		closingBracket := strings.IndexByte(authority, ']')
-		if closingBracket <= 1 || !strings.Contains(authority[1:closingBracket], ":") {
-			return false
-		}
-		suffix := authority[closingBracket+1:]
-		return suffix == "" || (strings.HasPrefix(suffix, ":") && validPort(suffix[1:]))
-	}
-	host, port, hasPort := strings.Cut(authority, ":")
-	if host == "" || strings.ContainsAny(host, "[]") || strings.Contains(port, ":") {
-		return false
-	}
-	return !hasPort || validPort(port)
-}
-
-func validPort(raw string) bool {
-	port, err := strconv.Atoi(raw)
-	return err == nil && port > 0 && port <= maximumTCPPort
 }
 
 func (u BaseURL) Present() bool  { return u.value != "" }

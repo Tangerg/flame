@@ -46,3 +46,26 @@ func TestParseFailureKeepsItsCauseWithoutTheCredentialBearingURL(t *testing.T) {
 		t.Fatalf("URL parse failure lost its syntax cause: %v", err)
 	}
 }
+
+func TestParseEndpointOwnsTheSharedAdmissionRule(t *testing.T) {
+	for _, raw := range []string{
+		"ftp://example.com", "https://user@example.com", "https:opaque", "https://", "https://example.com:0",
+		"https://example.com:65536", "https://example.com:http", "not a URL",
+	} {
+		if _, err := ParseEndpoint(raw); err == nil {
+			t.Errorf("ParseEndpoint(%q) admitted an invalid endpoint", raw)
+		}
+	}
+	endpoint, err := ParseEndpoint("HTTP://LocalHost:8080/v1/?#")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if endpoint.Secure() || !endpoint.Loopback() || endpoint.LoopbackIP() || !endpoint.HasQuery() || !endpoint.HasFragment() || endpoint.IsOrigin() {
+		t.Fatalf("endpoint queries = secure %t loopback %t ip %t query %t fragment %t origin %t",
+			endpoint.Secure(), endpoint.Loopback(), endpoint.LoopbackIP(), endpoint.HasQuery(), endpoint.HasFragment(), endpoint.IsOrigin())
+	}
+	origin, err := ParseEndpoint("https://[::1]:8443/")
+	if err != nil || !origin.Secure() || !origin.LoopbackIP() || !origin.IsOrigin() || origin.Origin().String() != "https://[::1]:8443" {
+		t.Fatalf("IPv6 loopback origin = %v, %v", origin.Origin(), err)
+	}
+}

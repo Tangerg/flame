@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/qimu/control"
 	controlhost "github.com/Tangerg/flame/qimu/control/host"
@@ -33,8 +34,7 @@ func New(config Config) (*Service, error) {
 	if config.Bridge == nil || config.Registry == nil || config.MaximumMessageBytes < 1 || config.ProofCapacity < 1 || config.PollInterval < time.Millisecond {
 		return nil, errors.New("plugin browser: bridge, registry and explicit transport budgets are required")
 	}
-	endpoint, err := url.Parse(config.ControlEndpoint)
-	if err != nil || endpoint == nil || endpoint.User != nil || endpoint.Fragment != "" || endpoint.RawQuery != "" || endpoint.Path == "" || (endpoint.IsAbs() && (endpoint.Host == "" || (endpoint.Scheme != "http" && endpoint.Scheme != "https"))) || (!endpoint.IsAbs() && (!strings.HasPrefix(endpoint.Path, "/") || endpoint.Host != "")) {
+	if !validControlEndpoint(config.ControlEndpoint) {
 		return nil, errors.New("plugin browser: control endpoint must be an HTTP URL or an absolute same-origin path")
 	}
 	contract, err := plugins.ComponentContract()
@@ -42,6 +42,20 @@ func New(config Config) (*Service, error) {
 		return nil, err
 	}
 	return &Service{config: config, contract: contract.Ref()}, nil
+}
+
+// The browser reaches the control service either at an absolute HTTP(S)
+// endpoint or at a path on the page's own origin.
+func validControlEndpoint(raw string) bool {
+	if strings.ContainsAny(raw, "?#") {
+		return false
+	}
+	if strings.HasPrefix(raw, "/") && !strings.HasPrefix(raw, "//") {
+		_, err := url.Parse(raw)
+		return err == nil
+	}
+	endpoint, err := httporigin.ParseEndpoint(raw)
+	return err == nil && endpoint.URL().Path != ""
 }
 
 func (s *Service) Open(ctx context.Context, request app.OpenRequest) (app.Session, error) {

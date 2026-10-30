@@ -1767,11 +1767,57 @@
           "signature": "func(raw string) (Origin, error)"
         },
         {
+          "name": "ParseEndpoint",
+          "signature": "func(raw string) (Endpoint, error)"
+        },
+        {
           "name": "Same",
           "signature": "func(left string, right string) bool"
         }
       ],
       "types": [
+        {
+          "name": "Endpoint",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "HasFragment",
+              "signature": "func() bool"
+            },
+            {
+              "name": "HasQuery",
+              "signature": "func() bool"
+            },
+            {
+              "name": "IsOrigin",
+              "signature": "func() bool"
+            },
+            {
+              "name": "Loopback",
+              "signature": "func() bool"
+            },
+            {
+              "name": "LoopbackIP",
+              "signature": "func() bool"
+            },
+            {
+              "name": "Origin",
+              "signature": "func() Origin"
+            },
+            {
+              "name": "Secure",
+              "signature": "func() bool"
+            },
+            {
+              "name": "String",
+              "signature": "func() string"
+            },
+            {
+              "name": "URL",
+              "signature": "func() *url.URL"
+            }
+          ]
+        },
         {
           "name": "Origin",
           "kind": "struct",
