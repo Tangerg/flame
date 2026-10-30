@@ -1,5 +1,5 @@
 import { type ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { startKernel, stopKernel } from "@/extensions/bootstrap";
 import { type AnyPlugin, type Host } from "dougong";
 interface Props {
@@ -8,6 +8,8 @@ interface Props {
 }
 
 export function PluginProvider({ children, plugins }: Props) {
+  // Successive kernels share renderer-owned features and must not overlap their lifetimes.
+  const predecessor = useRef<Promise<void>>(Promise.resolve());
   const installation = useMemo(() => ({ plugins }), [plugins]);
   const [outcome, setOutcome] = useState<
     | { installation: object; status: "ready" }
@@ -17,42 +19,37 @@ export function PluginProvider({ children, plugins }: Props) {
 
   useEffect(() => {
     const controller = new AbortController();
-    let retired = false;
-    let host: Host | undefined;
-    let disposal: Promise<void> | undefined;
-
-    const disposeOwnedResources = () => {
-      if (!host || disposal) return disposal;
-      const ownedHost = host;
-      disposal = stopKernel(ownedHost).catch((error: unknown) => {
-        console.error("[plugin] kernel teardown failed:", error);
-      });
-      return disposal;
-    };
-
-    void (async () => {
+    const retirement = new Promise<void>((resolve) => {
+      controller.signal.addEventListener("abort", () => resolve(), { once: true });
+    });
+    const previous = predecessor.current;
+    const lifetime = (async () => {
+      await previous;
+      if (controller.signal.aborted) return;
+      let host: Host;
       try {
         host = await startKernel(installation.plugins, controller.signal);
-        if (retired) {
-          void disposeOwnedResources();
-          return;
-        }
-        setOutcome({ installation, status: "ready" });
       } catch (error) {
-        if (!retired) {
-          setOutcome({
-            installation,
-            status: "failed",
-            error: new Error("plugin kernel startup failed", { cause: error }),
-          });
-        }
+        if (controller.signal.aborted && error === controller.signal.reason) return;
+        throw error;
       }
+      if (!controller.signal.aborted) setOutcome({ installation, status: "ready" });
+      await retirement;
+      await stopKernel(host);
     })();
+    predecessor.current = lifetime;
+    void lifetime.catch((error: unknown) => {
+      if (controller.signal.aborted) console.error("[plugin] kernel retirement failed:", error);
+      else
+        setOutcome({
+          installation,
+          status: "failed",
+          error: new Error("plugin kernel lifecycle failed", { cause: error }),
+        });
+    });
 
     return () => {
-      retired = true;
       controller.abort();
-      void disposeOwnedResources();
     };
   }, [installation]);
 

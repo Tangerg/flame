@@ -225,6 +225,11 @@ constructs their owners, plugins bind and retire Runtime generations, and render
 shutdown disposes the owners. UI commands capture the admitted generation rather
 than resolving a mutable current service when a deferred callback runs.
 
+`PluginProvider` serializes kernel installations that share those renderer-owned
+features. A successor waits for the predecessor's startup and retirement to join;
+superseded queued installations never start. Failed retirement prevents successor
+installation and remains visible through lifecycle failure reporting.
+
 The Agent owns session/view state, command and usage generations, shared material,
 opening retries, and interruption coordination. Composer owns draft persistence,
 image staging, and focus/presentation leases. Workspace owns Dock persistence,
