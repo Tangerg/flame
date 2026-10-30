@@ -4,7 +4,7 @@ go 1.27.3
 
 require (
 	github.com/Tangerg/flame/packages/local-runtime v0.1.0-quality.20261029.1
-	github.com/Tangerg/flame/qimu v0.1.0-quality.20261029.3
+	github.com/Tangerg/flame/qimu v0.1.0-quality.20261030.1
 	github.com/wailsapp/wails/v3 v3.0.0
 	golang.org/x/tools v0.52.0
 )
