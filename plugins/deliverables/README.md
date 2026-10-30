@@ -135,7 +135,9 @@ private PID namespace. Dynamic loaders use `/proc/self/exe` to resolve libraries
 relative to their executable; an empty procfs cannot satisfy that dependency.
 A host that prohibits the private mount is refused. The sandbox applies address-space, CPU,
 single-file and diagnostic-output limits before executing any renderer, including
-version probes. macOS applies CPU, single-file and open-file limits before execution
+version probes. Debian-family packages also require read-only access to the shared
+LibreOffice configuration in `/etc/libreoffice`. macOS applies CPU, single-file and
+open-file limits before execution
 and samples resident memory every 25 ms, terminating the process on excess or
 measurement failure. This sampled threshold allows brief overshoot; it is not a
 kernel address-space limit. All bounds are published by `contracts/limits.ts`. Optional
@@ -143,6 +145,8 @@ kernel address-space limit. All bounds are published by `contracts/limits.ts`. O
 directories needed by tools outside the system directories. General home,
 workspace and root directories, or paths overlapping plugin data, are refused.
 Private plugin data must also remain outside every fixed system read root.
+On Linux, configure the distribution's `libreoffice` entry point, whose startup
+wrapper owns profile initialization and restart within the private PID namespace.
 Fonts in user homes are not exposed. macOS requires actual executable binaries
 that can run with `process-fork` denied; launchers requiring helper processes are
 refused. A successful version probe is not a claim that every document or platform

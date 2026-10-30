@@ -35,6 +35,8 @@ export const SYSTEM_ROOTS = {
 
 export const SYSTEM_FILES = [
   "/etc/fonts",
+  // Debian-family packages keep shared Office configuration outside /usr.
+  "/etc/libreoffice",
   "/etc/ld.so.cache",
   "/etc/localtime",
   "/var/cache/fontconfig",

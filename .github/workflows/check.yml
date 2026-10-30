@@ -28,12 +28,13 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes bubblewrap util-linux libreoffice poppler-utils
-          echo "FLAME_DELIVERABLES_OFFICE=/usr/lib/libreoffice/program/soffice.bin" >> "$GITHUB_ENV"
+          echo "FLAME_DELIVERABLES_OFFICE=/usr/bin/libreoffice" >> "$GITHUB_ENV"
           echo "FLAME_DELIVERABLES_PDFINFO=/usr/bin/pdfinfo" >> "$GITHUB_ENV"
           echo "FLAME_DELIVERABLES_PDFTOPPM=/usr/bin/pdftoppm" >> "$GITHUB_ENV"
           echo "FLAME_DELIVERABLES_PDFTOTEXT=/usr/bin/pdftotext" >> "$GITHUB_ENV"
       - if: runner.os == 'macOS'
         run: |
+          brew update
           brew install poppler
           brew install --cask libreoffice
           echo "FLAME_DELIVERABLES_OFFICE=/Applications/LibreOffice.app/Contents/MacOS/soffice" >> "$GITHUB_ENV"
