@@ -1,0 +1,85 @@
+# Functions accepted above the complexity threshold, written by tooling/complexity.mjs --write.
+# This list may only shrink: reduce a function, then lower or remove its line.
+48 apps/web/src/features/agent/adapters/agentRunPump.ts:pump
+37 apps/web/src/features/agent/adapters/agentRuntimeGateway.ts:loadSessionSnapshot
+34 apps/web/src/features/agent/adapters/runtimeAgentFacts.ts:assertRunFacts
+24 apps/web/src/features/agent/application/conversation/transcriptRows.ts:readTurnFacts
+23 apps/web/src/features/agent/application/fold/itemHandlers.ts:assertItemProjectionIdentity
+33 apps/web/src/features/agent/application/fold/projections.ts:categoryFields
+24 apps/web/src/features/agent/application/fold/projections.ts:nameLabel
+22 apps/web/src/features/agent/application/fold/projections.ts:rawLabelSource
+23 apps/web/src/features/chat/message/ui/MessageBlock.tsx:MessageBlockInner
+34 apps/web/src/features/composer/quote-selection/SelectionQuote.tsx:<anonymous 1>
+21 apps/web/src/features/goal/application/goalComposerSubmitMode.ts:submitGoalComposerMode
+26 apps/web/src/features/plugins/contributions.tsx:<anonymous 1>
+23 apps/web/src/features/plugins/ui/PackageManager.tsx:PackageManager
+24 apps/web/src/features/plugins/ui/PendingCommands.tsx:PendingCommands
+74 apps/web/src/features/shell/workbench/panel/ChatPanel.tsx:ChatPanel
+21 apps/web/src/features/shell/workbench/panel/RunErrorBanner.tsx:RunErrorBanner
+25 apps/web/src/features/sidebar/ui/SessionRow.tsx:SessionRow
+23 apps/web/src/features/workspace/domain/eventInvalidation.ts:workspaceQueryAffected
+44 apps/web/src/features/workspace/ui/files/FileTree.tsx:TreeNode
+43 apps/web/src/features/workspace/ui/files/FileWorkspace.tsx:FilePreview
+30 apps/web/src/ui/agent/activity-disclosure.tsx:AgentActivityDisclosure
+27 apps/web/src/ui/agent/navigation-row.tsx:AgentRow
+24 apps/web/src/ui/agent/readingFollow.ts:prepareDisclosureReading
+34 packages/runtime-client/src/client.ts:dispatchMessage
+24 packages/runtime-client/src/client.ts:request
+31 packages/runtime-client/src/durableMutationJournal.ts:validEntry
+24 packages/runtime-client/src/transports/http.ts:drainStream
+33 packages/runtime-client/src/transports/http.ts:sendRequest
+30 packages/ui/src/button.tsx:dress
+22 packages/ui/src/disclosure.tsx:<anonymous 1>
+26 plugins/computer/backend/browser.ts:validateBrowser
+23 plugins/computer/backend/engineOwnership.ts:readRecord
+21 plugins/computer/backend/engineProcess.ts:environment
+32 plugins/computer/backend/fixtures/engine.mjs:<anonymous 1>
+21 plugins/computer/backend/installation.ts:appMetadata
+22 plugins/computer/backend/installation.ts:inspect
+33 plugins/computer/backend/tool-result.ts:projectContent
+65 plugins/computer/component/component.tsx:Computer
+25 plugins/computer/component/result.tsx:Content
+21 plugins/computer/component/useComputer.ts:useComputer
+27 plugins/computer/contracts/elicitation.ts:constructor
+45 plugins/computer/contracts/elicitation.ts:fieldSchema
+37 plugins/deliverables/backend/application.ts:prepare
+25 plugins/deliverables/backend/engine.ts:tools
+52 plugins/deliverables/backend/formats/archive.ts:decodeArchive
+66 plugins/deliverables/backend/formats/archive.ts:validate
+29 plugins/deliverables/backend/formats/document.ts:createDocument
+27 plugins/deliverables/backend/formats/images.ts:imageBytes
+35 plugins/deliverables/backend/formats/pdf.ts:<anonymous 1>
+30 plugins/deliverables/backend/formats/pdf.ts:editPDF
+37 plugins/deliverables/backend/formats/pdf.ts:preflightPDF
+34 plugins/deliverables/backend/formats/presentation.ts:createPresentation
+26 plugins/deliverables/backend/formats/workbook-cells.ts:cellValue
+40 plugins/deliverables/backend/formats/workbook.ts:createWorkbook
+46 plugins/deliverables/backend/formats/workbook.ts:editWorkbook
+22 plugins/deliverables/backend/process.ts:runProcess
+29 plugins/deliverables/component/authoring.tsx:RevisionEditor
+90 plugins/deliverables/component/component.tsx:Workspace
+24 plugins/deliverables/component/evidence.tsx:EvidencePanel
+23 plugins/deliverables/component/useDeliverables.ts:<anonymous 1>
+23 plugins/deliverables/component/useDeliverables.ts:<anonymous 2>
+23 plugins/deliverables/component/useDeliverables.ts:useDeliverables
+21 plugins/diff/component/component.tsx:<anonymous 1>
+69 plugins/diff/component/component.tsx:WorkspaceDiff
+38 plugins/genui/contracts/catalog.ts:validateResolvedProps
+26 plugins/genui/contracts/document.ts:<anonymous 1>
+30 plugins/genui/contracts/document.ts:<anonymous 2>
+28 plugins/genui/contracts/document.ts:checkState
+23 plugins/genui/contracts/expression.ts:expressionReferences
+42 plugins/genui/contracts/validation.ts:validateField
+37 plugins/mcp/component/serverForm.tsx:ServerForm
+27 plugins/mcp/component/serverRow.tsx:ServerRow
+43 plugins/memory/component/component.tsx:Memory
+37 plugins/providers/component/providerRow.tsx:ProviderRow
+33 plugins/providers/component/roles.tsx:RoleSection
+58 plugins/schedules/component/component.tsx:Schedules
+24 plugins/scripts/build.mjs:buildPlugin
+43 plugins/skills/component/component.tsx:Skills
+27 plugins/tool-results/component/component.tsx:<anonymous 1>
+41 plugins/tool-results/component/component.tsx:resultContent
+23 plugins/tool-results/component/component.tsx:webPage
+46 plugins/trajectory/component/report.tsx:Observation
+31 plugins/trajectory/component/report.tsx:statusTone

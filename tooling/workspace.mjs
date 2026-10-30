@@ -768,6 +768,7 @@ async function main(command) {
         join(root, "tooling"),
         { ...process.env, GOWORK: "off" },
       );
+      run("node", ["tooling/complexity.mjs"]);
       for (const p of ordered(await workspaces())) {
         const script = p.scripts?.check
           ? "check"
