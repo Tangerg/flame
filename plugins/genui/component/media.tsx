@@ -1,5 +1,7 @@
 import {
+  createContext,
   isValidElement,
+  useContext,
   useEffect,
   useId,
   useMemo,
@@ -24,7 +26,7 @@ import {
   ScrollRegion,
   Toolbar,
 } from "@flame/ui";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { renderToString } from "katex";
 import type { DisplayProps } from "../contracts/catalog";
@@ -125,72 +127,89 @@ export function CodeView({
   );
 }
 
+const MarkdownTranslation = createContext<Translate | null>(null);
+
+function useMarkdownT() {
+  const t = useContext(MarkdownTranslation);
+  if (!t) throw new Error("genui: markdown labels require their reading owner");
+  return t;
+}
+
+// ReactMarkdown treats these renderers as component types; labels must not replace them.
+const markdownComponents: Components = {
+  a: ({ href, children }) =>
+    href ? (
+      <a href={href} target="_blank" rel="noreferrer noopener">
+        {children}
+      </a>
+    ) : (
+      <span>{children}</span>
+    ),
+  img: function MarkdownImage({ src, alt }) {
+    const t = useMarkdownT();
+    return typeof src === "string" && src ? (
+      <ImageResource key={src} src={src} alt={alt ?? ""} inline t={t} />
+    ) : (
+      <ImageNotice label={alt} detail={t("image.unavailable")} />
+    );
+  },
+  pre: function MarkdownCode({ children }) {
+    const t = useMarkdownT();
+    const code = isValidElement<{
+      children?: ReactNode;
+      className?: string;
+    }>(children)
+      ? children.props
+      : undefined;
+    const source =
+      typeof code?.children === "string"
+        ? code.children
+        : String(children ?? "");
+    const language = code?.className?.match(/(?:^|\s)language-([^\s]+)/)?.[1];
+    return (
+      <CodeBlock
+        label={t("code.label")}
+        language={language}
+        labels={codeLabels(t)}
+      >
+        {source}
+      </CodeBlock>
+    );
+  },
+  table: function MarkdownTable({ children }) {
+    const t = useMarkdownT();
+    return (
+      <ScrollRegion label={t("markdown.table")}>
+        <table>
+          <caption style={{ textAlign: "start" }}>
+            {t("markdown.table")}
+          </caption>
+          {children}
+        </table>
+      </ScrollRegion>
+    );
+  },
+};
+
 export function MarkdownView({
   props,
   t,
 }: ComponentRenderProps<DisplayProps["Markdown"]> & { t: Translate }) {
   return (
-    <DocumentBody>
-      <ReactMarkdown
-        skipHtml
-        remarkPlugins={[remarkGfm]}
-        urlTransform={(url, key) =>
-          isSafeURL(url, key === "src" ? "image" : "link") ? url : ""
-        }
-        components={{
-          a: ({ href, children }) =>
-            href ? (
-              <a href={href} target="_blank" rel="noreferrer noopener">
-                {children}
-              </a>
-            ) : (
-              <span>{children}</span>
-            ),
-          img: ({ src, alt }) =>
-            typeof src === "string" && src ? (
-              <ImageResource key={src} src={src} alt={alt ?? ""} inline t={t} />
-            ) : (
-              <ImageNotice label={alt} detail={t("image.unavailable")} />
-            ),
-          pre: ({ children }) => {
-            const code = isValidElement<{
-              children?: ReactNode;
-              className?: string;
-            }>(children)
-              ? children.props
-              : undefined;
-            const source =
-              typeof code?.children === "string"
-                ? code.children
-                : String(children ?? "");
-            const language = code?.className?.match(
-              /(?:^|\s)language-([^\s]+)/,
-            )?.[1];
-            return (
-              <CodeBlock
-                label={t("code.label")}
-                language={language}
-                labels={codeLabels(t)}
-              >
-                {source}
-              </CodeBlock>
-            );
-          },
-          table: ({ children }) => (
-            <ScrollRegion label={t("markdown.table")}>
-              <table>
-                <caption style={{ textAlign: "start" }}>
-                  {t("markdown.table")}
-                </caption>
-                {children}
-              </table>
-            </ScrollRegion>
-          ),
-        }}
-      >
-        {props.text}
-      </ReactMarkdown>
-    </DocumentBody>
+    <MarkdownTranslation value={t}>
+      <DocumentBody>
+        <ReactMarkdown
+          skipHtml
+          remarkPlugins={[remarkGfm]}
+          urlTransform={(url, key) =>
+            isSafeURL(url, key === "src" ? "image" : "link") ? url : ""
+          }
+          components={markdownComponents}
+        >
+          {props.text}
+        </ReactMarkdown>
+      </DocumentBody>
+    </MarkdownTranslation>
   );
 }
 

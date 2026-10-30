@@ -92,6 +92,12 @@ Explicit retry hands its own focus to the surviving, named image container
 before replacing the action. Loading, decoding and failure do not reclaim later
 editing focus. Independent images and Markdown images share that same resource
 boundary, without adding another natural Tab stop.
+Markdown's tag renderers retain their component identities through independent
+local updates. A private translation context supplies current labels through
+the Markdown renderer's fixed DOM/AST prop contract, so images, source readers,
+links and tables are not replaced to obtain translated copy. Decoding failures,
+open previews and native reading positions keep their existing owners. Changing
+an image's actual source still ends its old preview.
 
 ## Local computation
 

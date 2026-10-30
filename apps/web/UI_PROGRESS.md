@@ -132,6 +132,9 @@ input remains unqualified under **Native reverse-Tab attribution**.
 Generated Image and Markdown-image retries now retain their local reading context;
 see **Generated-image retry context** for the native failure/recovery and source-return
 qualification.
+Markdown images, source readers, links and tables now retain their identities
+through independent local updates. See **Markdown reading across independent updates**
+for the original native comparison, continuous reading, translated labels and cleanup.
 The user resumed the paused goal.
 Completed batches are verified, explicitly committed and pushed to main under the
 goal publication policy. Preserve parallel work in the primary checkout. Do not
@@ -10651,10 +10654,118 @@ The exact root `/private/tmp/flame-image-recovery-bSOGus` is absent. The memory-
 archive round-trips **65 UTF-8 records**, **2,564,370 raw bytes** and **685,419 gzip
 bytes**, SHA-256 `049032481615913af9490c15fee24bded4d8f2ef83575ed14e3ae15e90114e76`.
 The interval fetch finds zero incoming main commits at `531a002cf`.
-Next compare actual Markdown-image identity through an independent local-field
-update: native AX replaced that failed image group while the note was edited,
-which alone does not prove a resource or open-reader lifetime defect. The native
-reverse-Tab finding and broader UI goal remain open.
+The observed Markdown-image replacement during a local-field edit led to the
+separate lifetime comparison below. This earlier AX observation alone did not
+establish a resource or open-reader lifetime defect. The native reverse-Tab
+finding and broader UI goal remain open.
+
+### Markdown reading across independent updates
+
+Actual original Wails at `92faa04b3` replaces the same decoded Markdown image,
+Code reader and table when an independent local note changes. Its private
+observer records image identity **13 -> 20**, Code **15 -> 22**, and table
+**16 -> 23**; the public HTTPS test image remains decoded at **72 x 48**. Two
+native coordinate activations during an existing countdown leave document focus
+and no retained preview. Pausing that countdown allows the same image action to
+open its preview. No opened-then-closed dialog is observed in those running
+activation attempts, and image HTTP request counts are not measured.
+
+`MarkdownView` previously supplied new React component functions on each render.
+`plugins/genui/component/media.tsx` now supplies module-level tag renderers. A
+private, read-only translation context passes current labels through
+ReactMarkdown's fixed DOM/AST prop contract. Images, Code, tables and links keep
+their existing reading owners; this context neither stores locale transitions
+nor duplicates reader state. It does not depend on a memo cache. An actual image
+source change still retires the old preview through its existing source key.
+Code wrapping already belongs to the shared preference owner and was not a lost
+preference. URL admission, Markdown parsing, native decoder feedback, source
+capture, local OpenUI values, Runtime and command semantics are unchanged.
+
+Flame's existing `markdownComponents.tsx` uses stable shared tag components.
+[React's state-identity guidance](https://react.dev/learn/preserving-and-resetting-state)
+and the React skill's `rerender-no-inline-components.md` explain why a new
+component type replaces its subtree. Existing read-only ChatGPT and ZCode image
+reader research supplies the preview/return reference; it is not evidence for
+their timer behavior. The better-series review covers the complete reading,
+related-file return and continued-authoring task with Flame's shared components.
+
+| Severity         | Location                                | Before                                                                         | After                                                                                                              | Why                                                            |
+| ---------------- | --------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- |
+| MEDIUM, resolved | `plugins/genui/component/media.tsx:130` | Independent updates replace Markdown readers and can retire an active preview. | Stable readers retain decoder feedback, previews, focus and native reading context while translated labels update. | Updating another field must not replace the object being read. |
+
+Accessibility and interaction retain native focus entry, selection, Escape and
+trigger return. Typography, hierarchy and whitespace keep the current source,
+caption and control structure at 14/18px. Orange/blue semantic colors remain in
+their light/dark roles; no new contrast measurement is claimed. Full-motion and
+motion-off scenes add no animation. Responsive qualification includes compact
+200% reading and native window resize. Originality and branding introduce no
+asset or decorative treatment. **Approve** this bounded continuity repair;
+whole-product and award-level acceptance remain unproven.
+
+- The original focused baseline passes **54 tests**. Four added regressions
+  expose **3 failures / 55 passes**: decoder failure, reader identity and an open
+  preview are lost; actual source replacement already retires its old preview.
+  The repair passes all 58, then a separate translator-update regression verifies
+  current Chinese labels without replacing readers or an open, zoomed image.
+  Final related Frontend verification passes **6 files / 124 tests**, including
+  all **59 GenUI presentation tests**. Assertions and deadlines are not weakened.
+- Plugin type/lint/format/i18n/resource checks, Web type/lint/format,
+  layers/design-system/token/style/class/shorthand/chrome/locale checks, bundle
+  and installed-module checks pass. Normal **make check-native passes in
+  16.516 s**, including Desktop test/vet/build and the supported Wails build.
+  Existing linker warnings are non-failing. Shared UI and backend implementations
+  are unchanged; their standalone suites are not rerun. One initial runner
+  dispatch used a nonexistent private root and exited before starting a stage;
+  the corrected dispatch uses the original owned root.
+- Actual EN/light/14px/Orange/full-motion Wails keeps the same image, failed-image
+  Retry, Code and table through note editing and the existing running countdown.
+  The open image retains **400%** zoom as the countdown moves **9:54 -> 9:08**;
+  Escape returns to its original trigger. Code retains focus and an exact
+  **4,830-character** native selection across **7:12 -> 6:52**. EN End and two
+  horizontal-scroll probes produce no nonzero source offset and are excluded
+  from a source-panning claim. Pause, README reading/back and continued drafting
+  retain the note and the original draft.
+- Actual ZH/dark/18px/blue/motion-off Wails qualifies **200%**, **560 x 475**
+  reading and native window zoom to **756 x 475**. The running countdown retains
+  the image preview at 400%; window resize uses the existing fit reset to 100%
+  while keeping that capture and its focused zoom action. Escape returns to the
+  original trigger. Explicit Code entry and End reach **scrollTop 514** at
+  **8:47**; fresh native AX/screenshot at **8:19** still shows Code focus and its
+  last line. The initial four-Tab burst lands in the table and is excluded from
+  Code qualification. Pause, full-width README, Close and continued drafting
+  succeed. Actual Size is restored; no 514-offset claim spans that geometry change.
+- A separate ordinary ZH/18px/200% launch repeats running preview/400% zoom,
+  Escape, explicit Code entry/End, Pause, full-width file reading/Close and
+  continued drafting. Its **345 assets** differ from the observed build only in
+  the two HTML entries and removal of `markdown-observer.js`; the native binary
+  is unchanged. Collector event and request deltas are zero. This is CUA task
+  evidence, without clean-launch DOM identity or numeric source-offset claims.
+
+The private report uses existing canonical fixture reads, production components,
+the installed GenUI ESM/lifecycle and an ordinary user-controlled Timer. Its
+test-only [W3C HTTPS icon](https://www.w3.org/Icons/w3c_home.png) decodes natively;
+reserved `.invalid` media produces a real browser failure. The optional observer
+only records; it assigns no focus, changes no state and injects no failure or
+keyboard event. Dynamic translation and actual source replacement are composed
+regressions, not native fault injection. Live provider/Runtime writes, release
+acquisition/Realm admission, Send, VoiceOver, OS IME and other platforms remain
+unqualified. No browser suite, benchmark, Claude CLI or subagent is used.
+
+All four native launches exit, the bundle is unregistered and the listener is
+closed. Cleanup removes seven new checkout outputs and three private profiles,
+restoring the changed native-check binary from preserved bytes. Normal generation
+changes only GenUI's `component.js` among **34** resources; the other 33 retain
+their hashes. Preservation passes before and after retirement for **6,386**
+qualified non-Markdown inputs, 34 resources, 55 read-only references, three
+instructions, 21 output baselines, four original files/modes and five profile
+absences. The primary parallel checkout and installed toolchain remain untouched.
+The exact root `/private/tmp/flame-markdown-lifetime-97sKLY` is absent. The
+memory-only archive round-trips **69 UTF-8 records**, **6,030,738 raw bytes** and
+**744,698 gzip bytes**, SHA-256
+`b163384da7fa32b8c24b11ea08854dc136ec9f13b7c2235bce373a8764b41570`.
+Native screenshots and AX task evidence remain in CUA. The interval fetch finds
+zero incoming main commits at `92faa04b3`. Continue from new content/Dock task
+evidence; the native reverse-Tab finding and continuous UI goal remain open.
 
 ### Recorded-image decoder feedback
 
