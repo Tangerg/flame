@@ -37,7 +37,6 @@ require (
 	github.com/Tangerg/scope/otel v0.58.0 // indirect
 	github.com/Tangerg/scope/otel/agent v0.58.0 // indirect
 	github.com/Tangerg/scope/skills v0.58.0 // indirect
-	github.com/Tangerg/scope/tools v0.58.0 // indirect
 	github.com/Tangerg/scope/tools/skills v0.58.0 // indirect
 	github.com/Tangerg/sse v0.0.6 // indirect
 	github.com/a2aproject/a2a-go/v2 v2.7.0 // indirect
@@ -128,10 +127,10 @@ require (
 )
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.4
+	github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.5
 	github.com/Tangerg/flame/packages/local-runtime v0.1.0-quality.20261029.1
 	github.com/Tangerg/flame/qimu v0.1.0-quality.20261030.2
-	github.com/Tangerg/flame/runtime v0.1.0-quality.20261030.5
+	github.com/Tangerg/flame/runtime v0.1.0-quality.20261030.6
 	github.com/Tangerg/oolong/components v0.25.0
 	github.com/Tangerg/oolong/core v0.25.0
 	github.com/Tangerg/oolong/highlight v0.25.0
@@ -139,6 +138,7 @@ require (
 	github.com/Tangerg/oolong/markdown v0.25.0
 	github.com/Tangerg/oolong/mermaid v0.25.0
 	github.com/Tangerg/oolong/ptytest v0.25.0
+	github.com/Tangerg/scope/tools v0.58.0
 	github.com/mattn/go-shellwords v1.0.16
 	github.com/muesli/cancelreader v0.2.2
 	github.com/spf13/cobra v1.10.2
