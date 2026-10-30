@@ -1,3 +1,5 @@
+import { createProviders } from "@/features/providers/adapters/providers";
+import { ProvidersProvider } from "@/features/providers/public/providers";
 import { IMAGE_FILENAME_STEM } from "@/app/product";
 import { ApplicationCalloutLabels } from "@/app/calloutLabels";
 import { createImageExport } from "@/foundation/imageExport";
@@ -45,6 +47,7 @@ export function createVisualClient(runtimeClient: () => FlameClient) {
   const host = createBrowserHost();
   const saveImage = createImageExport(IMAGE_FILENAME_STEM, host.saveFile);
   const theme = createTheme(document, window);
+  const providers = createProviders();
   const navigation = createMemoryNavigator();
   const projection = createRuntimeConnectionProjection();
   projection.store.setState({ connectionGeneration: VISUAL_RUNTIME_GENERATION });
@@ -131,30 +134,33 @@ export function createVisualClient(runtimeClient: () => FlameClient) {
   );
   function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <ThemeProvider value={theme.access}>
-        <RuntimeProvider value={runtime}>
-          <agent.Provider>
-            <ComposerProvider value={composer.access}>
-              <WorkspaceProvider value={workspace.access}>
-                <WorkingDirectoryProvider value={directory.access}>
-                  <ImageSaveProvider saveImage={saveImage}>
-                    <NotificationProvider value={notifications.access}>
-                      <InstalledPluginsProvider value={installedPlugins.access}>
-                        <ApplicationCalloutLabels>{children}</ApplicationCalloutLabels>
-                      </InstalledPluginsProvider>
-                    </NotificationProvider>
-                  </ImageSaveProvider>
-                </WorkingDirectoryProvider>
-              </WorkspaceProvider>
-            </ComposerProvider>
-          </agent.Provider>
-        </RuntimeProvider>
-      </ThemeProvider>
+      <ProvidersProvider value={providers.access}>
+        <ThemeProvider value={theme.access}>
+          <RuntimeProvider value={runtime}>
+            <agent.Provider>
+              <ComposerProvider value={composer.access}>
+                <WorkspaceProvider value={workspace.access}>
+                  <WorkingDirectoryProvider value={directory.access}>
+                    <ImageSaveProvider saveImage={saveImage}>
+                      <NotificationProvider value={notifications.access}>
+                        <InstalledPluginsProvider value={installedPlugins.access}>
+                          <ApplicationCalloutLabels>{children}</ApplicationCalloutLabels>
+                        </InstalledPluginsProvider>
+                      </NotificationProvider>
+                    </ImageSaveProvider>
+                  </WorkingDirectoryProvider>
+                </WorkspaceProvider>
+              </ComposerProvider>
+            </agent.Provider>
+          </RuntimeProvider>
+        </ThemeProvider>
+      </ProvidersProvider>
     );
   }
   return {
     host,
     theme,
+    providers,
     navigation,
     projection,
     runtime,
@@ -171,6 +177,7 @@ export function createVisualClient(runtimeClient: () => FlameClient) {
       configuration = next;
     },
     async dispose() {
+      providers.dispose();
       notifications.dispose();
       composer.dispose();
       directory.dispose();

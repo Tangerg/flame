@@ -514,7 +514,7 @@ export async function installVisualWorkspaceFixture(
     workbenchSettings(visual.workspace.access),
     appearanceSettings,
     createBrandPlugin(createImageExport(IMAGE_FILENAME_STEM, createBrowserHost().saveFile)),
-    createProvidersPlugin(runtimeClient),
+    createProvidersPlugin(runtimeClient, visual.providers.mutations),
     shortcutsSettings(visual.workspace.access),
     approvalsSettings,
     connectionSettings,

@@ -19,16 +19,31 @@ afterEach(() => {
 });
 
 describe("ProviderMutationOwner", () => {
-  it("publishes one material generation for install, Runtime replacement, and final disposal", () => {
-    const start = ProviderMutationOwner.materialGeneration();
-    owner = ProviderMutationOwner.install({} as ProviderGateway);
-    expect(ProviderMutationOwner.materialGeneration()).toBe(start + 1n);
+  it("rejects a captured command instead of retargeting it to a successor", async () => {
+    const first = vi.fn(async () => provider());
+    const successor = vi.fn(async () => provider());
+    owner = new ProviderMutationOwner({ updateProvider: first } as unknown as ProviderGateway);
+    const commands = owner.capture()!;
+    const captured = commands.updateProvider.bind(commands);
+    owner.replaceRuntimeGeneration(
+      () => ({ updateProvider: successor }) as unknown as ProviderGateway,
+    );
+    await expect(captured({ provider: "openai" })).rejects.toMatchObject({
+      message: "provider_mutation_generation_retired",
+    });
+    expect(first).not.toHaveBeenCalled();
+    expect(successor).not.toHaveBeenCalled();
+  });
 
+  it("publishes one instance's material generation for connection, replacement and disposal", () => {
+    owner = new ProviderMutationOwner(null);
+    const start = owner.materialGeneration();
     owner.replaceRuntimeGeneration(() => ({}) as ProviderGateway);
-    expect(ProviderMutationOwner.materialGeneration()).toBe(start + 2n);
-
+    expect(owner.materialGeneration()).toBe(start + 1n);
+    owner.replaceRuntimeGeneration(() => ({}) as ProviderGateway);
+    expect(owner.materialGeneration()).toBe(start + 2n);
     owner.dispose();
-    expect(ProviderMutationOwner.materialGeneration()).toBe(start + 3n);
+    expect(owner.materialGeneration()).toBe(start + 3n);
     owner = undefined;
   });
 
@@ -38,14 +53,14 @@ describe("ProviderMutationOwner", () => {
       .fn()
       .mockReturnValueOnce(retired.promise)
       .mockResolvedValueOnce(provider({ baseUrl: "https://successor.example.test/v1" }));
-    owner = ProviderMutationOwner.install({ updateProvider } as unknown as ProviderGateway);
+    owner = new ProviderMutationOwner({ updateProvider } as unknown as ProviderGateway);
     queryClient.setQueryData([PROVIDERS_KEY], [provider()]);
 
-    const inFlight = owner.updateProvider({
+    const inFlight = owner.capture()!.updateProvider({
       provider: "openai-compatible",
       baseUrl: { type: "set", value: "https://retired.example.test/v1" },
     });
-    const queued = owner.updateProvider({
+    const queued = owner.capture()!.updateProvider({
       provider: "openai-compatible",
       baseUrl: { type: "set", value: "https://queued.example.test/v1" },
     });
@@ -67,7 +82,7 @@ describe("ProviderMutationOwner", () => {
     expect(queryClient.getQueryData([PROVIDERS_KEY])).toEqual([provider()]);
 
     await expect(
-      owner.updateProvider({
+      owner.capture()!.updateProvider({
         provider: "openai-compatible",
         baseUrl: { type: "set", value: "https://successor.example.test/v1" },
       }),
@@ -82,13 +97,13 @@ describe("ProviderMutationOwner", () => {
         ? first.promise
         : Promise.resolve(provider({ id: input.provider, baseUrl: "https://independent.test" })),
     );
-    owner = ProviderMutationOwner.install({ updateProvider } as unknown as ProviderGateway);
+    owner = new ProviderMutationOwner({ updateProvider } as unknown as ProviderGateway);
 
-    const blocked = owner.updateProvider({
+    const blocked = owner.capture()!.updateProvider({
       provider: "openai",
       baseUrl: { type: "set", value: "https://blocked.test" },
     });
-    const independent = owner.updateProvider({
+    const independent = owner.capture()!.updateProvider({
       provider: "deepseek",
       baseUrl: { type: "set", value: "https://independent.test" },
     });
@@ -101,14 +116,14 @@ describe("ProviderMutationOwner", () => {
 
   it("does not turn failed cache repair into an accepted provider command failure", async () => {
     const saved = provider({ baseUrl: "https://saved.example.test/v1" });
-    owner = ProviderMutationOwner.install({
+    owner = new ProviderMutationOwner({
       updateProvider: vi.fn().mockResolvedValue(saved),
     } as unknown as ProviderGateway);
     queryClient.setQueryData([PROVIDERS_KEY], [provider()]);
     vi.spyOn(queryClient, "invalidateQueries").mockRejectedValue(new Error("read unavailable"));
 
     await expect(
-      owner.updateProvider({
+      owner.capture()!.updateProvider({
         provider: saved.id,
         baseUrl: { type: "set", value: saved.baseUrl! },
       }),
@@ -118,11 +133,11 @@ describe("ProviderMutationOwner", () => {
 
   it("retires a live provider probe without publishing its late result", async () => {
     const probe = Promise.withResolvers<{ ok: boolean }>();
-    owner = ProviderMutationOwner.install({
+    owner = new ProviderMutationOwner({
       testProvider: vi.fn(() => probe.promise),
     } as unknown as ProviderGateway);
 
-    const result = rejected(owner.testProvider("openai"));
+    const result = rejected(owner.capture()!.testProvider("openai"));
     owner.replaceRuntimeGeneration(() => ({}) as ProviderGateway);
     await expect(result).resolves.toMatchObject({
       message: "provider_mutation_generation_retired",

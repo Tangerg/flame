@@ -1,37 +1,35 @@
 import { lazy } from "react";
-import { observeProviderDraftLifetime } from "@/features/providers/application/providerDrafts";
 import { type FlameClient } from "@flame/runtime-client";
 import { registerProviderDataProviders } from "@/features/providers/adapters/runtimeDataProviders";
 import { definePlugin } from "@/extensions/definePlugin";
 import { registerSettingsPane } from "@/features/settings/public/registerSettingsPane";
 import { PROVIDERS_PANE } from "@/features/settings/public/paneIDs";
-import { installProviderGateway } from "@/features/providers/adapters/runtimeProviderGateway";
+import { createRuntimeProviderGateway } from "@/features/providers/adapters/runtimeProviderGateway";
 import { RUNTIME_STREAM, followRuntimeGeneration } from "@/features/connection/public/services";
+import { type ProviderMutationOwner } from "@/features/providers/application/providerMutationOwner";
 const ProvidersPane = lazy(() =>
   import("@/features/providers/ui/ProvidersPane").then(({ ProvidersPane }) => ({
     default: ProvidersPane,
   })),
 );
 
-export function createProvidersPlugin(runtimeClient: () => FlameClient) {
+export function createProvidersPlugin(
+  runtimeClient: () => FlameClient,
+  mutations: ProviderMutationOwner,
+) {
   return definePlugin({
     name: "flame.builtin.providers",
     requires: { runtime: RUNTIME_STREAM },
     setup(ctx) {
-      let gateway =
-        ctx.runtime.connectionGeneration() === null
-          ? undefined
-          : installProviderGateway(runtimeClient);
-      ctx.cleanup(() => gateway?.dispose());
-      ctx.cleanup(observeProviderDraftLifetime());
+      ctx.cleanup(() => mutations.retireRuntimeGeneration());
+      const replace = () =>
+        mutations.replaceRuntimeGeneration(() => createRuntimeProviderGateway(runtimeClient()));
+      if (ctx.runtime.connectionGeneration() !== null) replace();
       registerProviderDataProviders(ctx, runtimeClient);
       ctx.cleanup(
         followRuntimeGeneration(ctx.runtime, (next) => {
-          if (next === null) {
-            gateway?.dispose();
-            gateway = undefined;
-          } else if (gateway) gateway.replaceRuntimeGeneration();
-          else gateway = installProviderGateway(runtimeClient);
+          if (next === null) mutations.retireRuntimeGeneration();
+          else replace();
         }),
       );
       registerSettingsPane(ctx, {

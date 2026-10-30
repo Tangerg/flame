@@ -18,8 +18,8 @@ const provider = vi.hoisted(() => ({
 }));
 
 vi.mock("@/features/providers/application/providerConfig", () => ({
-  setEmbeddingRole: provider.setEmbeddingRole,
-  setUtilityRole: provider.setUtilityRole,
+  useSetEmbeddingRole: () => provider.setEmbeddingRole,
+  useSetUtilityRole: () => provider.setUtilityRole,
   useEmbeddingModelConfig: () => ({
     role: undefined,
     capableProviders: [],

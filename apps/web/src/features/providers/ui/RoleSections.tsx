@@ -9,8 +9,8 @@ import { SystemMessage } from "@/ui/index";
 import { Button, gap, vocab } from "@flame/ui";
 import {
   type RoleConfigState,
-  setEmbeddingRole,
-  setUtilityRole,
+  useSetEmbeddingRole,
+  useSetUtilityRole,
   useEmbeddingModelConfig,
   useProviderMutationMaterialGeneration,
   useUtilityModelConfig,
@@ -195,6 +195,7 @@ function RoleSectionShell({
 }
 
 export function UtilityModelSection() {
+  const setUtilityRole = useSetUtilityRole();
   const t = useT();
   const { role, modelOptions, isSet, isAvailable, isError, state } = useUtilityModelConfig();
   const materialGeneration = useProviderMutationMaterialGeneration();
@@ -230,6 +231,7 @@ export function UtilityModelSection() {
 }
 
 export function EmbeddingModelSection() {
+  const setEmbeddingRole = useSetEmbeddingRole();
   const t = useT();
   const { role, capableProviders, isSet, isAvailable, state } = useEmbeddingModelConfig();
   const materialGeneration = useProviderMutationMaterialGeneration();

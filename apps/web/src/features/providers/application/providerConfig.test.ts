@@ -5,21 +5,22 @@ import {
   PROVIDERS_KEY,
   UTILITY_ROLE_KEY,
 } from "@/features/providers/application/providerQueries";
-import {
-  setEmbeddingRole,
-  setUtilityRole,
-  updateProvider,
-} from "@/features/providers/application/providerConfig";
+import { setEmbeddingRole, setUtilityRole } from "@/features/providers/application/providerConfig";
 import { type ProviderGateway } from "@/features/providers/application/ports/providerGateway";
 import {
   ProviderConfiguration,
   type ProviderRole,
 } from "@/features/providers/application/providerModels";
-import { ProviderMutationOwner } from "@/features/providers/application/providerMutationOwner";
+import {
+  ProviderMutationOwner,
+  type ProviderCommands,
+} from "@/features/providers/application/providerMutationOwner";
+let commands: ProviderCommands;
 let uninstall: (() => void) | undefined;
 
 function installGateway(gateway: ProviderGateway): void {
-  const owner = ProviderMutationOwner.install(gateway);
+  const owner = new ProviderMutationOwner(gateway);
+  commands = owner.capture()!;
   uninstall = () => owner.dispose();
 }
 
@@ -60,7 +61,7 @@ describe("provider configuration", () => {
     } as unknown as ProviderGateway);
 
     await expect(
-      updateProvider({
+      commands.updateProvider({
         provider: "openai",
         baseUrl: { type: "set", value: saved.baseUrl! },
       }),
@@ -87,8 +88,8 @@ describe("provider configuration", () => {
       errorMessage: () => undefined,
     } as unknown as ProviderGateway);
 
-    const rejected = setUtilityRole({ provider: "openai", model: "first" });
-    const accepted = setUtilityRole({ provider: "openai", model: "second" });
+    const rejected = setUtilityRole(commands, { provider: "openai", model: "first" });
+    const accepted = setUtilityRole(commands, { provider: "openai", model: "second" });
     await vi.waitFor(() => expect(setUtilityRoleGateway).toHaveBeenCalledTimes(1));
 
     first.reject(new Error("invalid first role"));
@@ -118,8 +119,8 @@ describe("provider configuration", () => {
       setEmbeddingRole: setEmbeddingRoleGateway,
     } as unknown as ProviderGateway);
 
-    const utilityResult = setUtilityRole({ provider: "openai", model: "chat-1" });
-    const embeddingResult = setEmbeddingRole({ provider: "openai", model: "embed-1" });
+    const utilityResult = setUtilityRole(commands, { provider: "openai", model: "chat-1" });
+    const embeddingResult = setEmbeddingRole(commands, { provider: "openai", model: "embed-1" });
     await vi.waitFor(() => {
       expect(setUtilityRoleGateway).toHaveBeenCalledTimes(1);
       expect(setEmbeddingRoleGateway).toHaveBeenCalledTimes(1);
@@ -147,11 +148,11 @@ describe("provider configuration", () => {
       updateProvider: updateProviderGateway,
     } as unknown as ProviderGateway);
 
-    const rejected = updateProvider({
+    const rejected = commands.updateProvider({
       provider: "openai",
       baseUrl: { type: "set", value: "https://invalid.test" },
     });
-    const accepted = updateProvider({
+    const accepted = commands.updateProvider({
       provider: "deepseek",
       baseUrl: { type: "set", value: saved.baseUrl! },
     });

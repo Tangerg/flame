@@ -10,15 +10,11 @@ import { act } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { type ProviderGateway } from "@/features/providers/application/ports/providerGateway";
-import { ProviderMutationOwner } from "@/features/providers/application/providerMutationOwner";
 import {
   useUpdateProvider,
   useTestProvider,
 } from "@/features/providers/application/providerConfig";
-import {
-  observeProviderDraftLifetime,
-  useProviderDraft,
-} from "@/features/providers/application/providerDrafts";
+import { useProviderDraft } from "@/features/providers/public/providers";
 function gateway(): ProviderGateway {
   return {
     updateProvider: vi.fn<ProviderGateway["updateProvider"]>(),
@@ -33,8 +29,8 @@ describe("provider draft ownership", () => {
   it("retires sensitive drafts and every stale submission when Runtime changes", async () => {
     const first = gateway();
     const second = gateway();
-    const owner = ProviderMutationOwner.install(first);
-    const stop = observeProviderDraftLifetime();
+    const owner = testClient.providers.mutations;
+    owner.replaceRuntimeGeneration(() => first);
     const provider = { id: "same-provider", baseUrl: "https://provider.example" };
     const hook = testClient.renderHook(() => ({
       draft: useProviderDraft(provider),
@@ -59,7 +55,6 @@ describe("provider draft ownership", () => {
     } finally {
       hook.unmount();
       owner.dispose();
-      stop();
     }
   });
 });

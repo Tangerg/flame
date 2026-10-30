@@ -1,3 +1,4 @@
+import { type Providers } from "@/features/providers/adapters/providers";
 import { type Theme } from "@/features/theme/adapters/theme";
 import { type NotificationOwner } from "@/features/notifications/adapters/notifications";
 import { type InstalledPluginsOwner } from "@/features/plugins/adapters/installedPlugins";
@@ -92,6 +93,7 @@ export function createBuiltinPlugins(
   notifications: NotificationOwner,
   installedPlugins: InstalledPluginsOwner,
   theme: Theme,
+  providers: Providers,
 ): AnyPlugin[] {
   const agentAccess = agent.access;
   const composerAccess = composerOwner.access;
@@ -142,7 +144,7 @@ export function createBuiltinPlugins(
     personalization,
     connectionSettings,
     createPluginsPlugin(installedPlugins),
-    createProvidersPlugin(runtimeClient),
+    createProvidersPlugin(runtimeClient, providers.mutations),
     createMCPServersPlugin(runtimeClient),
     createHooksPlugin(runtimeClient),
     fileView,

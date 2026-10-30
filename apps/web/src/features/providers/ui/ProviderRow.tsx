@@ -23,7 +23,7 @@ import {
   useTestProvider,
 } from "@/features/providers/application/providerConfig";
 import { type ProviderCredentialsDraft } from "@/features/providers/application/providerDraft";
-import { useProviderDraft } from "@/features/providers/application/providerDrafts";
+import { useProviderDraft } from "@/features/providers/public/providers";
 import { useT } from "@/lib/i18n/index";
 import { useAsyncFeedback } from "@/lib/useAsyncFeedback";
 import { layout, type as typeStep } from "@flame/ui/tokens.stylex";

@@ -1,4 +1,4 @@
-import { wasGenerationRetired } from "@/lib/asyncOwnership";
+import { GenerationRetiredError, wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useCallback, useSyncExternalStore } from "react";
 import { type ProviderTestOutcome } from "@/features/providers/application/ports/providerGateway";
 import { t } from "@/lib/i18n/index";
@@ -12,7 +12,8 @@ import {
 } from "@/features/providers/application/providerQueries";
 import { type ProviderRole } from "@/features/providers/application/providerModels";
 import { type ProviderUpdate } from "@/features/providers/application/ports/providerGateway";
-import { ProviderMutationOwner } from "@/features/providers/application/providerMutationOwner";
+import { type ProviderCommands } from "@/features/providers/application/providerMutationOwner";
+import { useProviderAccess } from "@/features/providers/public/providers";
 export type { ProviderConfiguration };
 
 export function useProviderConfigs() {
@@ -20,11 +21,23 @@ export function useProviderConfigs() {
 }
 
 export function useProviderMutationMaterialGeneration(): bigint {
+  const { mutations } = useProviderAccess();
   return useSyncExternalStore(
-    ProviderMutationOwner.subscribeMaterialGeneration,
-    ProviderMutationOwner.materialGeneration,
-    ProviderMutationOwner.materialGeneration,
+    mutations.subscribeMaterialGeneration,
+    mutations.materialGeneration,
+    mutations.materialGeneration,
   );
+}
+
+function useProviderCommandBinding() {
+  const { mutations } = useProviderAccess();
+  const generation = useProviderMutationMaterialGeneration();
+  const captured = mutations.capture();
+  return useCallback(() => {
+    mutations.assertMaterialGeneration(generation);
+    if (!captured) throw new GenerationRetiredError("provider_mutation_generation");
+    return captured;
+  }, [mutations, generation, captured]);
 }
 
 export type RoleConfigState =
@@ -85,23 +98,15 @@ export function useEmbeddingModelConfig() {
   };
 }
 
-export async function updateProvider(input: ProviderUpdate): Promise<ProviderConfiguration> {
-  return ProviderMutationOwner.current().updateProvider(input);
-}
-
 export function useUpdateProvider(): (input: ProviderUpdate) => Promise<ProviderConfiguration> {
-  const generation = useProviderMutationMaterialGeneration();
-  return useCallback(
-    (input) => {
-      ProviderMutationOwner.assertMaterialGeneration(generation);
-      return updateProvider(input);
-    },
-    [generation],
-  );
+  const commands = useProviderCommandBinding();
+  return useCallback((input) => commands().updateProvider(input), [commands]);
 }
 
-export async function setUtilityRole(role: ProviderRole): Promise<ProviderTestOutcome> {
-  const owner = ProviderMutationOwner.current();
+export async function setUtilityRole(
+  owner: ProviderCommands,
+  role: ProviderRole,
+): Promise<ProviderTestOutcome> {
   try {
     await owner.setUtilityRole(role);
     return { ok: true };
@@ -115,8 +120,10 @@ export async function setUtilityRole(role: ProviderRole): Promise<ProviderTestOu
   }
 }
 
-export async function setEmbeddingRole(role: ProviderRole): Promise<ProviderTestOutcome> {
-  const owner = ProviderMutationOwner.current();
+export async function setEmbeddingRole(
+  owner: ProviderCommands,
+  role: ProviderRole,
+): Promise<ProviderTestOutcome> {
   try {
     await owner.setEmbeddingRole(role);
     return { ok: true };
@@ -131,16 +138,25 @@ export async function setEmbeddingRole(role: ProviderRole): Promise<ProviderTest
 }
 
 export function useTestProvider(): (provider: string) => Promise<ProviderTestOutcome> {
-  const generation = useProviderMutationMaterialGeneration();
+  const commands = useProviderCommandBinding();
   return useCallback(
     async (provider) => {
-      ProviderMutationOwner.assertMaterialGeneration(generation);
-      const res = await ProviderMutationOwner.current().testProvider(provider);
+      const res = await commands().testProvider(provider);
       return {
         ok: res.ok,
         error: res.ok ? undefined : (res.error ?? t("providers.error.test")),
       };
     },
-    [generation],
+    [commands],
   );
+}
+
+export function useSetUtilityRole() {
+  const commands = useProviderCommandBinding();
+  return useCallback((role: ProviderRole) => setUtilityRole(commands(), role), [commands]);
+}
+
+export function useSetEmbeddingRole() {
+  const commands = useProviderCommandBinding();
+  return useCallback((role: ProviderRole) => setEmbeddingRole(commands(), role), [commands]);
 }

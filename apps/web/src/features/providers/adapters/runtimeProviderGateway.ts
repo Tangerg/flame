@@ -8,8 +8,7 @@ import {
   type ProviderTestOutcome,
 } from "@/features/providers/application/ports/providerGateway";
 import { ProviderConfiguration } from "@/features/providers/application/providerModels";
-import { ProviderMutationOwner } from "@/features/providers/application/providerMutationOwner";
-function runtimeProviderGateway(client: FlameClient): ProviderGateway {
+export function createRuntimeProviderGateway(client: FlameClient): ProviderGateway {
   return {
     async updateProvider(input) {
       const saved = await client.providers.update({
@@ -70,14 +69,4 @@ function providerConfiguration(provider: Provider): ProviderConfiguration {
 function toWireChange(change: ProviderSettingChange | undefined): ProviderConfigChange | undefined {
   if (change === undefined) return undefined;
   return change.type === "clear" ? { type: "clear" } : { type: "set", value: change.value };
-}
-
-export function installProviderGateway(runtimeClient: () => FlameClient) {
-  const gateway = runtimeProviderGateway(runtimeClient());
-  const mutationOwner = ProviderMutationOwner.install(gateway);
-  return {
-    replaceRuntimeGeneration: () =>
-      mutationOwner.replaceRuntimeGeneration(() => runtimeProviderGateway(runtimeClient())),
-    dispose: () => mutationOwner.dispose(),
-  };
 }

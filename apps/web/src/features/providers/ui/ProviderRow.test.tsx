@@ -13,7 +13,6 @@ import {
   ProviderConfiguration,
   type ProviderConfigurationSnapshot,
 } from "@/features/providers/application/providerModels";
-import { resetProviderDraftsForTest } from "@/features/providers/application/providerDrafts";
 import { ProviderRow } from "@/features/providers/ui/ProviderRow";
 const hooks = vi.hoisted(() => ({
   update: vi.fn(),
@@ -49,7 +48,6 @@ describe("ProviderRow", () => {
     hooks.update.mockReset();
     hooks.test.mockReset();
     hooks.generation = 1;
-    resetProviderDraftsForTest();
   });
 
   it("rebuilds its draft from the authoritative saved resource", async () => {

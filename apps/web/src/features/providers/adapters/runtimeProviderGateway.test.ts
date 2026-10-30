@@ -1,10 +1,9 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { type FlameClient } from "@flame/runtime-client";
 import { queryClient } from "@/lib/queryClient";
 import {
   setEmbeddingRole as saveEmbeddingRole,
   setUtilityRole as saveUtilityRole,
-  updateProvider,
 } from "@/features/providers/application/providerConfig";
 import {
   EMBEDDING_ROLE_KEY,
@@ -15,14 +14,16 @@ import {
   ProviderConfiguration,
   type ProviderConfigurationSnapshot,
 } from "@/features/providers/application/providerModels";
-import { installProviderGateway } from "@/features/providers/adapters/runtimeProviderGateway";
+import { createRuntimeProviderGateway } from "@/features/providers/adapters/runtimeProviderGateway";
 import { ProviderMutationOwner } from "@/features/providers/application/providerMutationOwner";
 import { rejected } from "@/test/rejected";
-let uninstall: (() => void) | undefined;
+function commandsFor(client: FlameClient) {
+  const owner = new ProviderMutationOwner(createRuntimeProviderGateway(client));
+  onTestFinished(() => owner.dispose());
+  return owner.capture()!;
+}
 
 afterEach(() => {
-  uninstall?.();
-  uninstall = undefined;
   queryClient.removeQueries({ queryKey: [PROVIDERS_KEY] });
   queryClient.removeQueries({ queryKey: [UTILITY_ROLE_KEY] });
   queryClient.removeQueries({ queryKey: [EMBEDDING_ROLE_KEY] });
@@ -49,20 +50,14 @@ describe("runtimeProviderGateway", () => {
     ],
   ])("renders the closed %s test outcome locally", async (outcome, expected) => {
     const test = vi.fn().mockResolvedValue({ outcome });
-    uninstall = installProviderGateway(
-      () => ({ providers: { test } }) as unknown as FlameClient,
-    ).dispose;
-    await expect(ProviderMutationOwner.current().testProvider("openai")).resolves.toEqual(expected);
+    const commands = commandsFor({ providers: { test } } as unknown as FlameClient);
+    await expect(commands.testProvider("openai")).resolves.toEqual(expected);
   });
 
   it("rejects a test outcome outside the closed set as a contract violation", async () => {
     const test = vi.fn().mockResolvedValue({ outcome: "provider_test_failed" });
-    uninstall = installProviderGateway(
-      () => ({ providers: { test } }) as unknown as FlameClient,
-    ).dispose;
-    await expect(ProviderMutationOwner.current().testProvider("openai")).rejects.toThrow(
-      "runtime contract violation",
-    );
+    const commands = commandsFor({ providers: { test } } as unknown as FlameClient);
+    await expect(commands.testProvider("openai")).rejects.toThrow("runtime contract violation");
   });
 
   it("maps the authoritative provider returned by Runtime", async () => {
@@ -76,12 +71,10 @@ describe("runtimeProviderGateway", () => {
       embeddingCapable: true,
       defaultEmbeddingModel: "embed-1",
     });
-    uninstall = installProviderGateway(
-      () => ({ providers: { update } }) as unknown as FlameClient,
-    ).dispose;
+    const commands = commandsFor({ providers: { update } } as unknown as FlameClient);
 
     await expect(
-      updateProvider({
+      commands.updateProvider({
         provider: "openai-compatible",
         apiKey: { type: "set", value: "sk-test" },
         baseUrl: { type: "set", value: "https://models.example.test/v1" },
@@ -102,14 +95,18 @@ describe("runtimeProviderGateway", () => {
   it("preserves the stored utility and embedding roles", async () => {
     const setUtilityRole = vi.fn().mockResolvedValue({ provider: "openai", model: "chat-1" });
     const setEmbeddingRole = vi.fn().mockResolvedValue({ provider: "openai", model: "embed-1" });
-    uninstall = installProviderGateway(
-      () => ({ models: { setUtilityRole, setEmbeddingRole } }) as unknown as FlameClient,
-    ).dispose;
+    const commands = commandsFor({
+      models: { setUtilityRole, setEmbeddingRole },
+    } as unknown as FlameClient);
 
-    await expect(saveUtilityRole({ provider: "openai", model: "chat-1" })).resolves.toEqual({
+    await expect(
+      saveUtilityRole(commands, { provider: "openai", model: "chat-1" }),
+    ).resolves.toEqual({
       ok: true,
     });
-    await expect(saveEmbeddingRole({ provider: "openai", model: "embed-1" })).resolves.toEqual({
+    await expect(
+      saveEmbeddingRole(commands, { provider: "openai", model: "embed-1" }),
+    ).resolves.toEqual({
       ok: true,
     });
     expect(queryClient.getQueryData([UTILITY_ROLE_KEY])).toEqual({
@@ -122,7 +119,7 @@ describe("runtimeProviderGateway", () => {
     });
   });
 
-  it("retires in-flight and queued provider commands before installing a successor", async () => {
+  it("retires in-flight and queued commands before explicitly constructing a successor", async () => {
     const retiredUpdate = Promise.withResolvers<ProviderConfiguration>();
     const updateRetired = vi.fn(() => retiredUpdate.promise);
     const updateSuccessor = vi.fn().mockResolvedValue({
@@ -138,14 +135,16 @@ describe("runtimeProviderGateway", () => {
     const retiredClient = vi.fn(
       () => ({ providers: { update: updateRetired } }) as unknown as FlameClient,
     );
-    const retiredInstallation = installProviderGateway(retiredClient);
+    const retiredOwner = new ProviderMutationOwner(createRuntimeProviderGateway(retiredClient()));
+    onTestFinished(() => retiredOwner.dispose());
+    const commands = retiredOwner.capture()!;
     queryClient.setQueryData([PROVIDERS_KEY], [provider()]);
 
-    const inFlight = updateProvider({
+    const inFlight = commands.updateProvider({
       provider: "openai-compatible",
       baseUrl: { type: "set", value: "https://retired.example.test/v1" },
     });
-    const queued = updateProvider({
+    const queued = commands.updateProvider({
       provider: "openai-compatible",
       baseUrl: { type: "set", value: "https://queued.example.test/v1" },
     });
@@ -153,13 +152,10 @@ describe("runtimeProviderGateway", () => {
     const queuedSettlement = rejected(queued);
     await vi.waitFor(() => expect(updateRetired).toHaveBeenCalledOnce());
 
-    const successorInstallation = installProviderGateway(
-      () => ({ providers: { update: updateSuccessor } }) as unknown as FlameClient,
-    );
-    uninstall = () => {
-      successorInstallation.dispose();
-      retiredInstallation.dispose();
-    };
+    retiredOwner.dispose();
+    const successor = commandsFor({
+      providers: { update: updateSuccessor },
+    } as unknown as FlameClient);
     queryClient.setQueryData(
       [PROVIDERS_KEY],
       [
@@ -190,11 +186,11 @@ describe("runtimeProviderGateway", () => {
       }),
     ]);
 
-    const successorCommand = updateProvider({
+    const successorCommand = successor.updateProvider({
       provider: "openai-compatible",
       baseUrl: { type: "set", value: "https://successor.example.test/v1" },
     });
-    retiredInstallation.replaceRuntimeGeneration();
+    retiredOwner.replaceRuntimeGeneration(() => createRuntimeProviderGateway(retiredClient()));
     expect(retiredClient).toHaveBeenCalledOnce();
     await expect(successorCommand).resolves.toMatchObject({
       baseUrl: "https://successor.example.test/v1",

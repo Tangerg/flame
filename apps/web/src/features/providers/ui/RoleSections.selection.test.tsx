@@ -76,7 +76,8 @@ async function installRoles() {
     }),
     errorMessage: (error: unknown) => (error instanceof Error ? error.message : undefined),
   } satisfies ProviderGateway;
-  owner = ProviderMutationOwner.install(gateway);
+  owner = testClient.providers.mutations;
+  owner.replaceRuntimeGeneration(() => gateway);
   return { state, gateway };
 }
 

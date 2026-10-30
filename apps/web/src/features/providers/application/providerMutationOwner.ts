@@ -1,5 +1,4 @@
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
-import { createPublicationSlot } from "@/lib/publicationSlot";
 import { queryClient, repairCachedProjection } from "@/lib/queryClient";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
 import { tupleKey } from "@/lib/tupleKey";
@@ -61,6 +60,10 @@ class ProviderMutationGeneration {
     return this.#cohort.run(() => this.#gateway.testProvider(provider));
   }
 
+  errorMessage(error: unknown): string | undefined {
+    return this.#gateway.errorMessage(error);
+  }
+
   retire(): void {
     this.#cohort.retire();
   }
@@ -76,93 +79,72 @@ class ProviderMutationGeneration {
   }
 }
 
-export class ProviderMutationOwner {
-  static #materialGeneration = 0n;
-  static readonly #materialListeners = new Set<() => void>();
+export type ProviderCommands = Pick<
+  ProviderMutationGeneration,
+  "updateProvider" | "setUtilityRole" | "setEmbeddingRole" | "testProvider" | "errorMessage"
+>;
 
-  #gateway: ProviderGateway;
-  #generation: ProviderMutationGeneration;
+export type ProviderMutationAccess = Pick<
+  ProviderMutationOwner,
+  "capture" | "materialGeneration" | "assertMaterialGeneration" | "subscribeMaterialGeneration"
+>;
+
+export class ProviderMutationOwner {
+  #materialGeneration = 0n;
+  readonly #materialListeners = new Set<() => void>();
+  #generation: ProviderMutationGeneration | null;
   #disposed = false;
 
-  private constructor(gateway: ProviderGateway) {
-    this.#gateway = gateway;
-    this.#generation = new ProviderMutationGeneration(gateway);
+  constructor(gateway: ProviderGateway | null) {
+    this.#generation = gateway ? new ProviderMutationGeneration(gateway) : null;
   }
 
-  static install(gateway: ProviderGateway): ProviderMutationOwner {
-    const owner = new ProviderMutationOwner(gateway);
-    providerMutationPublication.publish(owner, (predecessor) => predecessor.dispose());
-    ProviderMutationOwner.#advanceMaterialGeneration();
-    return owner;
-  }
+  readonly capture = (): ProviderCommands | null => this.#generation;
 
-  static current(): ProviderMutationOwner {
-    const owner = providerMutationPublication.current();
-    if (!owner || owner.#disposed) throw new Error("Provider mutation owner is not installed");
-    return owner;
-  }
+  readonly materialGeneration = (): bigint => this.#materialGeneration;
 
-  static materialGeneration(): bigint {
-    return ProviderMutationOwner.#materialGeneration;
-  }
-
-  static assertMaterialGeneration(generation: bigint): void {
-    if (generation !== ProviderMutationOwner.#materialGeneration) {
+  readonly assertMaterialGeneration = (generation: bigint): void => {
+    if (this.#disposed || generation !== this.#materialGeneration) {
       throw new GenerationRetiredError("provider_mutation_generation");
     }
-  }
+  };
 
-  static subscribeMaterialGeneration(listener: () => void): () => void {
-    ProviderMutationOwner.#materialListeners.add(listener);
-    return () => ProviderMutationOwner.#materialListeners.delete(listener);
-  }
-
-  updateProvider(input: ProviderUpdate): Promise<ProviderConfiguration> {
-    return this.#generation.updateProvider(input);
-  }
-
-  setUtilityRole(role: ProviderRole): Promise<ProviderRole> {
-    return this.#generation.setUtilityRole(role);
-  }
-
-  setEmbeddingRole(role: ProviderRole): Promise<ProviderRole> {
-    return this.#generation.setEmbeddingRole(role);
-  }
-
-  testProvider(provider: string): Promise<ProviderTestOutcome> {
-    return this.#generation.testProvider(provider);
-  }
-
-  errorMessage(error: unknown): string | undefined {
-    return this.#gateway.errorMessage(error);
-  }
+  readonly subscribeMaterialGeneration = (listener: () => void): (() => void) => {
+    this.#materialListeners.add(listener);
+    return () => this.#materialListeners.delete(listener);
+  };
 
   replaceRuntimeGeneration(createGateway: () => ProviderGateway): void {
-    if (this.#disposed || !providerMutationPublication.owns(this)) return;
-    const gateway = createGateway();
+    if (this.#disposed) return;
+    const successor = new ProviderMutationGeneration(createGateway());
     const predecessor = this.#generation;
-    this.#gateway = gateway;
-    this.#generation = new ProviderMutationGeneration(gateway);
+    this.#generation = successor;
+    predecessor?.retire();
+    this.#advanceMaterialGeneration();
+  }
+
+  retireRuntimeGeneration(): void {
+    if (!this.#generation) return;
+    const predecessor = this.#generation;
+    this.#generation = null;
     predecessor.retire();
-    ProviderMutationOwner.#advanceMaterialGeneration();
+    this.#advanceMaterialGeneration();
   }
 
   dispose(): void {
     if (this.#disposed) return;
     this.#disposed = true;
-    this.#generation.retire();
-    if (providerMutationPublication.withdraw(this)) {
-      ProviderMutationOwner.#advanceMaterialGeneration();
-    }
+    this.#generation?.retire();
+    this.#generation = null;
+    this.#advanceMaterialGeneration();
+    this.#materialListeners.clear();
   }
 
-  static #advanceMaterialGeneration(): void {
-    ProviderMutationOwner.#materialGeneration += 1n;
-    for (const listener of ProviderMutationOwner.#materialListeners) listener();
+  #advanceMaterialGeneration(): void {
+    this.#materialGeneration += 1n;
+    for (const listener of this.#materialListeners) listener();
   }
 }
-
-const providerMutationPublication = createPublicationSlot<ProviderMutationOwner>();
 
 function commitProviderSaved(saved: ProviderConfiguration): void {
   queryClient.setQueryData<ProviderConfiguration[]>([PROVIDERS_KEY], (current) =>

@@ -1,3 +1,5 @@
+import { createProviders } from "@/features/providers/adapters/providers";
+import { ProvidersProvider } from "@/features/providers/public/providers";
 import { IMAGE_FILENAME_STEM } from "@/app/product";
 import { ApplicationCalloutLabels } from "@/app/calloutLabels";
 import { type createRuntimeConnection } from "@/features/connection/adapters/runtimeConnection";
@@ -45,6 +47,7 @@ export function createTestClient(
   } = {},
 ) {
   const theme = createTheme(document, window);
+  const providers = createProviders();
   const navigation = createMemoryNavigator();
   const projection = createRuntimeConnectionProjection();
   const replacements = new Set<() => void>();
@@ -126,25 +129,27 @@ export function createTestClient(
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider value={theme.access}>
-          <RuntimeProvider value={runtime}>
-            <agent.Provider>
-              <ComposerProvider value={composer.access}>
-                <WorkspaceProvider value={workspace.access}>
-                  <WorkingDirectoryProvider value={directory.access}>
-                    <ImageSaveProvider saveImage={saveImage}>
-                      <NotificationProvider value={notifications.access}>
-                        <InstalledPluginsProvider value={installedPlugins.access}>
-                          <ApplicationCalloutLabels>{children}</ApplicationCalloutLabels>
-                        </InstalledPluginsProvider>
-                      </NotificationProvider>
-                    </ImageSaveProvider>
-                  </WorkingDirectoryProvider>
-                </WorkspaceProvider>
-              </ComposerProvider>
-            </agent.Provider>
-          </RuntimeProvider>
-        </ThemeProvider>
+        <ProvidersProvider value={providers.access}>
+          <ThemeProvider value={theme.access}>
+            <RuntimeProvider value={runtime}>
+              <agent.Provider>
+                <ComposerProvider value={composer.access}>
+                  <WorkspaceProvider value={workspace.access}>
+                    <WorkingDirectoryProvider value={directory.access}>
+                      <ImageSaveProvider saveImage={saveImage}>
+                        <NotificationProvider value={notifications.access}>
+                          <InstalledPluginsProvider value={installedPlugins.access}>
+                            <ApplicationCalloutLabels>{children}</ApplicationCalloutLabels>
+                          </InstalledPluginsProvider>
+                        </NotificationProvider>
+                      </ImageSaveProvider>
+                    </WorkingDirectoryProvider>
+                  </WorkspaceProvider>
+                </ComposerProvider>
+              </agent.Provider>
+            </RuntimeProvider>
+          </ThemeProvider>
+        </ProvidersProvider>
       </QueryClientProvider>
     );
   }
@@ -159,6 +164,7 @@ export function createTestClient(
   }
   return {
     theme,
+    providers,
     navigation,
     runtime,
     projection,
@@ -193,6 +199,7 @@ export function createTestClient(
       });
     },
     async dispose() {
+      providers.dispose();
       notifications.dispose();
       theme.dispose();
       composer.dispose();

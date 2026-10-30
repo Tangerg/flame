@@ -1,11 +1,10 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { queryClient } from "@/lib/queryClient";
 import { type FlameClient } from "@flame/runtime-client";
 import { definePlugin } from "@/extensions/definePlugin";
 import { lookupDataProvider } from "@/extensions/dataProvider";
 import { loadPluginsForTest, resetKernelForTest } from "@/test/kernel";
 import { RuntimeConnectionGeneration, RUNTIME_STREAM } from "@/features/connection/public/services";
-import { updateProvider } from "@/features/providers/application/providerConfig";
 import { PROVIDERS_KEY } from "@/features/providers/application/providerQueries";
 import {
   ProviderConfiguration,
@@ -15,7 +14,13 @@ import { createProvidersPlugin } from "@/features/providers/index";
 import { rejected } from "@/test/rejected";
 import { startKernel, stopKernel } from "@/extensions/bootstrap";
 import { ProviderMutationOwner } from "@/features/providers/application/providerMutationOwner";
+let owner: ProviderMutationOwner;
+beforeEach(() => {
+  owner = new ProviderMutationOwner(null);
+});
+
 afterEach(async () => {
+  owner.dispose();
   await resetKernelForTest();
   queryClient.removeQueries({ queryKey: [PROVIDERS_KEY] });
 });
@@ -37,10 +42,10 @@ describe("providers plugin Runtime generation wiring", () => {
     });
 
     await expect(
-      startKernel([runtime, createProvidersPlugin(() => ({}) as FlameClient)]),
+      startKernel([runtime, createProvidersPlugin(() => ({}) as FlameClient, owner)]),
     ).rejects.toThrow("subscription failed");
 
-    expect(() => ProviderMutationOwner.current()).toThrow("not installed");
+    expect(owner.capture()).toBeNull();
   });
 
   it("withdraws its gateway even when the subscription teardown fails", async () => {
@@ -58,12 +63,15 @@ describe("providers plugin Runtime generation wiring", () => {
         },
       }),
     });
-    const host = await startKernel([runtime, createProvidersPlugin(() => ({}) as FlameClient)]);
+    const host = await startKernel([
+      runtime,
+      createProvidersPlugin(() => ({}) as FlameClient, owner),
+    ]);
 
     await expect(stopKernel(host)).rejects.toThrow(/dispos|stop|teardown/i);
 
     expect(unsubscribe).toHaveBeenCalledOnce();
-    expect(() => ProviderMutationOwner.current()).toThrow("not installed");
+    expect(owner.capture()).toBeNull();
   });
 
   it("retires an admitted command when the Runtime process generation changes", async () => {
@@ -95,15 +103,15 @@ describe("providers plugin Runtime generation wiring", () => {
         };
       },
     });
-    await loadPluginsForTest(runtime, createProvidersPlugin(runtimeClient));
-    expect(() => ProviderMutationOwner.current()).toThrow("not installed");
+    await loadPluginsForTest(runtime, createProvidersPlugin(runtimeClient, owner));
+    expect(owner.capture()).toBeNull();
     generation = RuntimeConnectionGeneration.forProcess("runtime_1");
     for (const subscriber of subscribers) subscriber();
     expect(lookupDataProvider(PROVIDERS_KEY)).toBeDefined();
     queryClient.setQueryData([PROVIDERS_KEY], [provider()]);
 
     const command = rejected(
-      updateProvider({
+      owner.capture()!.updateProvider({
         provider: "openai-compatible",
         baseUrl: { type: "set", value: "https://retired.example.test/v1" },
       }),
@@ -113,7 +121,7 @@ describe("providers plugin Runtime generation wiring", () => {
     activeClient = { providers: { update: updateSuccessor } } as unknown as FlameClient;
     generation = null;
     for (const subscriber of subscribers) subscriber();
-    expect(() => ProviderMutationOwner.current()).toThrow("not installed");
+    expect(owner.capture()).toBeNull();
     generation = RuntimeConnectionGeneration.forProcess("runtime_2");
     for (const subscriber of subscribers) subscriber();
     await expect(command).resolves.toMatchObject({
@@ -129,7 +137,7 @@ describe("providers plugin Runtime generation wiring", () => {
     expect(queryClient.getQueryData([PROVIDERS_KEY])).toEqual([provider()]);
 
     await expect(
-      updateProvider({
+      owner.capture()!.updateProvider({
         provider: "openai-compatible",
         baseUrl: { type: "set", value: "https://successor.example.test/v1" },
       }),

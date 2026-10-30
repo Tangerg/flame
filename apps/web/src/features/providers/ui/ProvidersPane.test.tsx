@@ -52,7 +52,8 @@ async function mount(providers: ProviderConfiguration[]) {
     setEmbeddingRole: vi.fn<ProviderGateway["setEmbeddingRole"]>(),
     errorMessage: () => undefined,
   } satisfies ProviderGateway;
-  owner = ProviderMutationOwner.install(gateway);
+  owner = testClient.providers.mutations;
+  owner.replaceRuntimeGeneration(() => gateway);
   testClient.render(
     <>
       <ProvidersPane />
