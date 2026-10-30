@@ -101,7 +101,8 @@
     "v0.1.0-quality.20261030.plugin-boundaries.8": "036c18ca5757abcd167609dd004ebf326796e99e",
     "v0.1.0-quality.20261030.plugin-boundaries.9": "84d9c410a313b7afbbf781d9099827592ca635d3",
     "v0.1.0-quality.20261030.plugin-boundaries.10": "6091f9e52e1a13d8660e3d706e8d70bb00651eb7",
-    "v0.1.0-quality.20261030.plugin-boundaries.11": "a7400846151034f31d0a1c586f674d5dcd8cc592"
+    "v0.1.0-quality.20261030.plugin-boundaries.11": "a7400846151034f31d0a1c586f674d5dcd8cc592",
+    "v0.1.0-quality.20261030.plugin-boundaries.12": "4fe6b8685c935d290640ddac62cc419438f49a4f"
   },
   "github.com/Tangerg/flame/apps/cli": {
     "v0.1.0-architecture.20261026.2": "2a8d0965feab1910047347f87d486331110c9ced",
