@@ -38,7 +38,11 @@ func (i *interactionSession) compositionBindings() []plugins.ContributionBinding
 	bindings := append([]plugins.ContributionBinding{}, i.modelObservers...)
 	bindings = append(bindings, i.modelContexts...)
 	bindings = append(bindings, i.modelInputs...)
-	return append(bindings, i.toolProposals...)
+	bindings = append(bindings, i.toolProposals...)
+	if capture, found := i.selectedChat.Capture(); found {
+		bindings = append(bindings, capture.Binding)
+	}
+	return bindings
 }
 
 type contributionBindingWire struct {

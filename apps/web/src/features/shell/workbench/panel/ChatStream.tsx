@@ -1,6 +1,6 @@
 import { useComposer } from "@/features/composer/public/composer";
 import * as stylex from "@stylexjs/stylex";
-import { brandAssets } from "@/lib/brand";
+import { companion } from "@flame/brand-assets";
 import { tupleKey } from "@/lib/tupleKey";
 import { useT } from "@/lib/i18n/index";
 import { type AgentInput } from "@/features/agent/public/input";
@@ -285,7 +285,7 @@ export function ChatStream({ onSend }: Props) {
             <div ref={emptyHeadingRef} {...stylex.props(rc.box, rc.gutter)}>
               <div {...stylex.props(cst.identity)}>
                 <img
-                  src={brandAssets.companion}
+                  src={companion}
                   alt=""
                   width={1024}
                   height={1024}

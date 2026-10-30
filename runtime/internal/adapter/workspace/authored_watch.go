@@ -7,9 +7,9 @@ import (
 	"slices"
 	"strings"
 
+	hookdata "github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileobservation"
 	skillspec "github.com/Tangerg/scope/skills"
@@ -58,7 +58,7 @@ func (a AuthoredWatcher) Watch(
 	if slices.Contains(resources, workspaceapp.AuthoredHooks) {
 		targets = append(targets, fileobservation.Target{
 			Key: authoredHooksKey, Path: filepath.Join(a.hooksHome, ".flame", "hooks.json"),
-			MaxBytes: domainhooks.MaxConfigurationFileBytes,
+			MaxBytes: hookdata.MaxConfigurationFileBytes,
 		})
 		for _, scope := range scopes {
 			directories, err := directoriesRootToLeaf(scope.ProjectRoot, scope.Workspace)
@@ -68,7 +68,7 @@ func (a AuthoredWatcher) Watch(
 			for _, directory := range directories {
 				targets = append(targets, fileobservation.Target{
 					Key: authoredHooksKey, Path: filepath.Join(directory, ".flame", "hooks.json"),
-					MaxBytes: domainhooks.MaxConfigurationFileBytes,
+					MaxBytes: hookdata.MaxConfigurationFileBytes,
 				})
 			}
 		}

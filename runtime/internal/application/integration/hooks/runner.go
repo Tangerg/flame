@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	hookdata "github.com/Tangerg/flame/packages/go-sdk/hook"
 	domain "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/samber/lo"
 )
@@ -30,55 +31,31 @@ const blockExitCode = 2
 // CommandRequest is the shell-command work a [CommandRunner] executes. The
 // domain prepares stdin and timeout; the runner owns how the command runs.
 type CommandRequest struct {
+	Ordinal int
 	Command string
 	CWD     string
-	Input   domain.Input
+	Input   hookdata.Input
 	Timeout time.Duration
 }
 
 // CommandResult is the process-level outcome returned by [CommandRunner].
 type CommandResult struct {
-	Decision CommandDecision
+	Decision hookdata.CommandDecision
 	Stderr   string
 	ExitCode int
 	Err      error
 	TimedOut bool
 }
 
-// CommandVerdict is the closed control vocabulary returned by a hook command.
-type CommandVerdict string
-
-const (
-	// CommandAllow lets a hook inject or rewrite while
-	// allowing the operation to continue.
-	CommandAllow CommandVerdict = "allow"
-	commandDeny  CommandVerdict = "deny"
-	commandAsk   CommandVerdict = "ask"
-)
-
-// Valid reports whether c is one supported hook command decision.
-func (c CommandVerdict) Valid() bool {
-	return c == CommandAllow || c == commandDeny || c == commandAsk
-}
-
-func (c CommandVerdict) domain() domain.Verdict {
+func domainVerdict(c hookdata.CommandVerdict) domain.Verdict {
 	switch c {
-	case commandDeny:
+	case hookdata.CommandDeny:
 		return domain.VerdictBlock
-	case commandAsk:
+	case hookdata.CommandAsk:
 		return domain.VerdictAsk
 	default:
 		return domain.VerdictAllow
 	}
-}
-
-// CommandDecision is the typed control information returned by a hook command.
-// Its process encoding belongs to the command runner, never this domain.
-type CommandDecision struct {
-	Verdict          CommandVerdict
-	Reason           string
-	InjectContext    string
-	RewriteArguments string
 }
 
 // CommandRunner executes hook commands with borrowed request data. It neither
@@ -113,12 +90,12 @@ func NewRunner(commands commandRunner, onError func(ctx context.Context, source 
 // as JSON on stdin. Hooks run in list order (loader order: global before
 // project), so the combine rules (first-block-wins, first-rewrite-wins) are
 // deterministic. Hooks and input are borrowed until the call returns.
-func (r *Runner) Run(ctx context.Context, hooks []domain.Hook, in domain.Input) domain.Decision {
+func (r *Runner) Run(ctx context.Context, hooks []hookdata.Hook, in hookdata.Input) domain.Decision {
 	var dec domain.Decision
-	var commandInput domain.Input
+	var commandInput hookdata.Input
 	var commandInputErr error
 	commandInputReady := false
-	for _, h := range hooks {
+	for ordinal, h := range hooks {
 		if !h.Matches(in) {
 			continue
 		}
@@ -135,13 +112,13 @@ func (r *Runner) Run(ctx context.Context, hooks []domain.Hook, in domain.Input) 
 			r.fail(ctx, h.Source, commandInputErr)
 			continue
 		}
-		r.runOne(ctx, h, commandInput, &dec)
+		r.runOne(ctx, ordinal, h, commandInput, &dec)
 	}
 	return dec
 }
 
 // runOne execs a single command hook and folds its outcome.
-func (r *Runner) runOne(ctx context.Context, h domain.Hook, in domain.Input, dec *domain.Decision) {
+func (r *Runner) runOne(ctx context.Context, ordinal int, h hookdata.Hook, in hookdata.Input, dec *domain.Decision) {
 	if r.commands == nil {
 		r.fail(ctx, h.Source, errors.New("hook command runner is not configured"))
 		return
@@ -151,7 +128,7 @@ func (r *Runner) runOne(ctx context.Context, h domain.Hook, in domain.Input, dec
 		timeout = time.Duration(h.TimeoutMillis) * time.Millisecond
 	}
 	result := r.commands.RunHookCommand(ctx, CommandRequest{
-		Command: h.Command,
+		Ordinal: ordinal, Command: h.Command,
 		CWD:     in.CWD,
 		Input:   in,
 		Timeout: timeout,
@@ -178,7 +155,7 @@ func (r *Runner) runOne(ctx context.Context, h domain.Hook, in domain.Input, dec
 			r.fail(ctx, h.Source, errors.New("hook returned an invalid command verdict"))
 			return
 		}
-		verdict := out.Verdict.domain()
+		verdict := domainVerdict(out.Verdict)
 		reason := out.Reason
 		if verdict == domain.VerdictBlock && reason == "" {
 			reason = strings.TrimSpace(result.Stderr)
@@ -210,19 +187,20 @@ func hookError(exit int, stderr string, runErr error) error {
 
 // Bound is the resolved hook set for one cwd, ready to fire events.
 type Bound struct {
-	hooks  []domain.Hook
+	hooks  []hookdata.Hook
 	runner *Runner
+	close  func() error
 }
 
 // NewBound owns a snapshot of the hook configuration retained for later events.
-func NewBound(hooks []domain.Hook, runner *Runner) *Bound {
-	return &Bound{hooks: slices.Clone(hooks), runner: runner}
+func NewBound(hooks []hookdata.Hook, runner *Runner, close func() error) *Bound {
+	return &Bound{hooks: slices.Clone(hooks), runner: runner, close: close}
 }
 
 // Run fires the bound hooks for in's event and returns the combined Decision.
 // Nil-safe: a nil Bound returns the zero Decision, so every seam can call
 // st.hooks.Run(...) unguarded.
-func (b *Bound) Run(ctx context.Context, in domain.Input) domain.Decision {
+func (b *Bound) Run(ctx context.Context, in hookdata.Input) domain.Decision {
 	if b == nil || b.runner == nil || len(b.hooks) == 0 {
 		return domain.Decision{}
 	}
@@ -235,5 +213,12 @@ func (b *Bound) Run(ctx context.Context, in domain.Input) domain.Decision {
 type Inspection struct {
 	ProjectRoot    string
 	ProjectTrusted bool
-	Hooks          []domain.Hook
+	Hooks          []hookdata.Hook
+}
+
+func (b *Bound) Close() error {
+	if b != nil && b.close != nil {
+		return b.close()
+	}
+	return nil
 }

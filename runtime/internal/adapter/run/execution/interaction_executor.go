@@ -43,6 +43,7 @@ const (
 // a Run. Resolution happens during staging and must not invoke the model.
 type InteractionChatResolver interface {
 	ResolveChat(ctx context.Context, selection modelchoice.Selection) (modeladapter.ResolvedChat, error)
+	RestoreChat(context.Context, modelchoice.Selection, *modeladapter.ProviderCapture) (modeladapter.ResolvedChat, error)
 }
 
 type interactionModelEvidence interface {
@@ -175,24 +176,14 @@ func (i *InteractionExecutor) ValidateRootStart(start runs.RootExecutionStart) e
 	if err := start.Validate(); err != nil {
 		return err
 	}
-	if err := validateModelOutputReservation(start.ModelSelection, start.Options); err != nil {
-		return err
-	}
 	return nil
 }
 
 func validateModelOutputReservation(
-	selection modelchoice.Selection,
+	limits modelref.TokenLimits,
 	options *corechat.Options,
 ) error {
 	if options == nil || options.MaxOutputTokens == nil {
-		return nil
-	}
-	limits, found, err := modeladapter.LookupTokenLimits(selection)
-	if err != nil {
-		return fmt.Errorf("%w: %w", runs.ErrInvalidRunOptions, err)
-	}
-	if !found {
 		return nil
 	}
 	reservation, err := modelref.NewOutputReservation(*options.MaxOutputTokens)
@@ -259,10 +250,21 @@ func (i *InteractionExecutor) assembleInteraction(
 	start runs.RootExecutionStart,
 	checkpoint *interactionCheckpointState,
 ) (_ *interactionSession, err error) {
-	resolved, err := i.resolveChat(ctx, start.ModelSelection)
+	var resolved modeladapter.ResolvedChat
+	if checkpoint != nil {
+		resolved, err = i.config.ChatResolver.RestoreChat(ctx, start.ModelSelection, checkpoint.modelProvider)
+	} else {
+		resolved, err = i.resolveChat(ctx, start.ModelSelection)
+	}
 	if err != nil {
 		return nil, err
 	}
+	transferred := false
+	defer func() {
+		if !transferred {
+			err = errors.Join(err, resolved.Close(context.WithoutCancel(ctx)))
+		}
+	}()
 	model := resolved.Model()
 	streamer, _ := resolved.Streamer()
 	counter, _ := resolved.InputTokenCounter()
@@ -274,8 +276,12 @@ func (i *InteractionExecutor) assembleInteraction(
 	if err != nil {
 		return nil, err
 	}
+	if err := validateModelOutputReservation(selected.TokenLimits(), start.Options); err != nil {
+		return nil, err
+	}
 	session := newInteractionSession(i.lifetime, ref, start, i.config, i.buildID, i.policy, telemetry)
 	session.selectedChat = selected
+	transferred = true
 	i.sessions.own(session)
 	defer func() {
 		if err != nil {

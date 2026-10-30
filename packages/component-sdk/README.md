@@ -7,6 +7,64 @@ without its own callable contribution; `bindOperations` refuses such a context.
 Static content uses ordinary Hooks and shared UI controls without a backend. The
 SDK exposes no application alias, private state store or ambient service lookup.
 
+Components with `settingsPane` placement contribute optional settings entries in
+the host's Extensions group. Client, workspace and installation contexts use the
+same captured identity, resource lease and command lifetime as workspace views.
+Disabling the installation removes its entry. Locale changes update the display
+projection while preserving accepted work and its original cancellation signal.
+The optional `settingsIntent` declaration identifies `modelProviders` for model
+configuration navigation and `mcpServers` for the tools shortcut. The host opens a unique
+available entry; absence or ambiguity opens plugin management.
+
+State that must survive a view close uses `defineComponent(source => View)`. The
+host constructs that source once after native component acquisition and retains
+its returned React component across mounts. `source` supplies an opaque Runtime
+identity, the component identity and a signal bound to the contribution, resource and browser
+Host lifetimes. Construction is synchronous and performs no I/O. The source clears
+sensitive drafts and retained command observations when its signal ends; it never
+publishes a module-global feature instance or port installer.
+The Providers and MCP settings components consume this boundary.
+Ordinary stateless exports remain React components.
+
+`context.signal` belongs to the mounted component. New I/O still enters that component's
+`context.track` boundary; source construction grants no additional execution path.
+Rebuild components and their graphical Host together when changing this SDK.
+
+`clientEffect` placement requires client scope and has no navigation material or
+renderer selector. The Host mounts it for the admitted release independently of
+Session navigation. It receives no implied active Session or workspace snapshot.
+The Trajectory package uses this lifetime for its export commands.
+
+Only `clientEffect` components use `context.registerCommand({id, label, combo?, run})`.
+It contributes an actual command
+and optional shortcut through the Host's existing command catalog. IDs are local
+to the installed component; the Host namespaces their persistent shortcut identity
+by installation and component, rejects duplicate local registrations, and returns
+an unregister function. Labels are already localized display text. Dispatch
+captures the current `sessionId` before asynchronous work and passes it with the
+component's signal. Accepted work is joined; withdrawal refuses new dispatches and
+ends the captured signal. Failures retain their cause and appear in the command's
+notification and plugin diagnostics while its source remains current.
+
+`clientEffect` components also use `context.subscribeRootRunSettlements(listener)`.
+The Host supplies detached readonly `{sessionId, status, errorMessage}` facts from
+its existing root-run attention owner. The callback receives the captured signal
+and is joined by that lifetime. Unsubscription refuses late producer callbacks;
+observer failures appear in plugin diagnostics without advancing Run state.
+
+`context.notifications` is the Host's system notification channel. It supplies the
+application name, cached permission snapshot and subscription, explicit refresh
+and authorization requests, and `send({id, sessionId, title, body})`. Permission
+remains Host-owned; components project it with `useSyncExternalStore`. Requests
+and sends enter the component's existing I/O lifetime, and retired contexts
+refuse further effects. IDs are local to the installed component. The Host owns
+actual delivery, window reveal and opening the captured Session. The Notifications
+package consumes this boundary for its optional policy and settings.
+
+PNG imports are embedded as data URLs by the component build. Components can
+display those images and transfer their original decoded bytes through
+`context.saveFile` without opening an additional resource request.
+
 ## Consumer-owned component composition
 
 An installed component can call `context.compose({ contract, target, attributes,

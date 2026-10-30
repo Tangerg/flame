@@ -116,9 +116,9 @@ func TestStreamFailureRetiresTheObsoleteInterruptProjection(t *testing.T) {
 			for _, obsolete := range test.obsolete {
 				host.Hides(t, obsolete)
 			}
-			host.Type("/plugins")
+			host.Type("/extensions")
 			host.Press(input.Enter)
-			host.Shows(t, "No command plugins installed")
+			host.Shows(t, "No local command extensions installed")
 			snapshot, err := backend.GetSession(t.Context(), <-started)
 			active, found := snapshot.ActiveRun()
 			if err != nil || !found || active.Status != protocol.RunStatusWaiting {

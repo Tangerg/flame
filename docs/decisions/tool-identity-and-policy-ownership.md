@@ -1,7 +1,7 @@
 # Tool identity and policy ownership
 
 Runtime owns durable Tool identity and approval policy. A typed source reference
-identifies a built-in, MCP installation/user server, or A2A endpoint. Model-visible
+identifies a built-in or MCP installation/user server. Model-visible
 names, transcript labels and UI strings are projections; none can replace that
 identity or grant authority.
 

@@ -4,6 +4,7 @@ import { createFlameClient, type FlameClient } from "@flame/runtime-client";
 import { VISUAL_CAPABILITIES } from "./agentFixtureFacts";
 import { type ServerCapabilities, type Diff } from "@flame/runtime-client/wire";
 import { createVisualRuntimeTransport } from "./createVisualRuntimeTransport";
+import { LONG_MODEL_FACTS } from "./runtimeSnapshots";
 import { definePlugin } from "@/extensions/definePlugin";
 import { createRoot } from "react-dom/client";
 import { type ReactNode } from "react";
@@ -206,7 +207,34 @@ async function installVisualRuntimeClient(
   acceptSkillProposals = false,
 ): Promise<FlameClient> {
   const client = createFlameClient(
-    createVisualRuntimeTransport(snapshot, capabilities, readDiff, acceptSkillProposals),
+    createVisualRuntimeTransport(snapshot, capabilities, readDiff, {
+      acceptSkillProposals,
+      modelFacts: query.has("long-models") ? LONG_MODEL_FACTS : undefined,
+      mcpServers: query.has("mcp-transport")
+        ? [
+            {
+              id: {
+                origin: { type: "user" },
+                name: query.has("long-mcp")
+                  ? "workspace-permissions-toolserver"
+                  : "workspace-tools",
+              },
+              connection:
+                query.get("mcp-transport") === "streamableHttp"
+                  ? {
+                      type: "streamableHttp",
+                      url: "https://example.invalid/mcp",
+                      authorizationMasked: "synthetic-mask",
+                    }
+                  : { type: "stdio", command: "npx", args: [] },
+              handshakeTimeout: { type: "bounded", seconds: 30 },
+              status: query.has("long-mcp")
+                ? { type: "failed", error: { type: "mcp_configuration_failed" } }
+                : { type: "connected", toolCount: 1 },
+            },
+          ]
+        : undefined,
+    }),
     { capabilities: () => capabilities },
   );
   await loadPluginsForTest(
@@ -358,9 +386,10 @@ async function fixtureNode(): Promise<ReactNode> {
   return <VisualAgentStateFixture state={state} view={view} />;
 }
 
-const { localePlugins } = await import("@/features/i18n/index");
+const { i18nPlugin } = await import("@/features/i18n/index");
+const { visualLocalePackages } = await import("./localePackages");
 
-await loadPluginsForTest(...localePlugins);
+await loadPluginsForTest(i18nPlugin, visualLocalePackages);
 
 const locale = lookupExtensionByKey(LOCALE, requestedLocale);
 

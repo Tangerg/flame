@@ -24,9 +24,8 @@ func TestSemanticsSafetyClassFailsClosed(t *testing.T) {
 		{ref: testsupport.BuiltInTool(t, tool.ReadShellOutput), want: tool.SafetyClassSafe},
 		{ref: testsupport.BuiltInTool(t, tool.StopShell), want: tool.SafetyClassExec},
 		{ref: testsupport.BuiltInTool(t, tool.WebFetch), want: tool.SafetyClassExec},
-		{ref: testsupport.BuiltInTool(t, tool.HTTPRequest), want: tool.SafetyClassNetwork},
 		{ref: tool.Ref{}, want: tool.SafetyClassExec},
-		{ref: testsupport.A2ATool(t, "shell"), want: tool.SafetyClassExec},
+		{ref: testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "shell"), want: tool.SafetyClassExec},
 	} {
 		if got := interpreter.SafetyClass(test.ref); got != test.want {
 			t.Errorf("SafetyClass(%q) = %q, want %q", test.ref, got, test.want)
@@ -81,7 +80,7 @@ func TestSemanticsDelegationUsesChildLifecyclePolicy(t *testing.T) {
 	if interpreter.UsesStandardPolicy(testsupport.BuiltInTool(t, tool.DelegateTask)) {
 		t.Fatal("delegation entered ordinary tool-call policy")
 	}
-	for _, ref := range []tool.Ref{testsupport.BuiltInTool(t, tool.Read), testsupport.A2ATool(t, "extension_tool")} {
+	for _, ref := range []tool.Ref{testsupport.BuiltInTool(t, tool.Read), testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "extension_tool")} {
 		if !interpreter.UsesStandardPolicy(ref) {
 			t.Errorf("ordinary tool %q bypassed standard policy", ref)
 		}

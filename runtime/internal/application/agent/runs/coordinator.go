@@ -80,8 +80,11 @@ type Coordinator struct {
 
 // AdmitSelection exposes the same model policy Start applies before any Goal
 // can freeze that selection durably.
-func (c *Coordinator) AdmitSelection(selection modelchoice.Selection) error {
-	if err := c.models.AdmitSelection(selection); err != nil {
+func (c *Coordinator) AdmitSelection(ctx context.Context, selection modelchoice.Selection) error {
+	if err := c.models.AdmitSelection(ctx, selection); err != nil {
+		if !errors.Is(err, modelchoice.ErrUnsupported) {
+			return err
+		}
 		return fmt.Errorf("%w: %w", ErrUnsupportedModelSelection, err)
 	}
 	return nil

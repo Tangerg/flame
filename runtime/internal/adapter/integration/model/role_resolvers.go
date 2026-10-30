@@ -24,6 +24,7 @@ type roleSource interface {
 // behavior, not on ChatResolver's registry implementation.
 type ChatModelResolver interface {
 	ResolveChat(context.Context, modelchoice.Selection) (ResolvedChat, error)
+	RestoreChat(context.Context, modelchoice.Selection, *ProviderCapture) (ResolvedChat, error)
 }
 
 // LiveUtilityModel resolves the optional specialized role on every use. An
@@ -47,7 +48,7 @@ func LiveUtilityModel(
 	if selector != nil && lo.IsNil(selector) {
 		return nil, errors.New("model: utility selector is typed nil")
 	}
-	return func(ctx context.Context, budget AuxiliaryBudget) (SelectedChat, func(), error) {
+	return func(ctx context.Context, budget AuxiliaryBudget) (SelectedChat, func() error, error) {
 		if err := budget.Validate(); err != nil {
 			return SelectedChat{}, nil, err
 		}
@@ -85,9 +86,9 @@ func LiveUtilityModel(
 		}
 		capture, err := NewSelectedChat(selection, resolved)
 		if err != nil {
-			return SelectedChat{}, nil, err
+			return SelectedChat{}, nil, errors.Join(err, resolved.Close(context.WithoutCancel(ctx)))
 		}
-		return capture, func() {}, nil
+		return capture, func() error { return resolved.Close(context.WithoutCancel(ctx)) }, nil
 	}, nil
 }
 

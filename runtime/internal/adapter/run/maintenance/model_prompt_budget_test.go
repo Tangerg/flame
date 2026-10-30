@@ -3,6 +3,7 @@ package maintenance
 import (
 	"context"
 	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"strings"
 	"testing"
 
@@ -300,4 +301,23 @@ func mustBudgetImage(t *testing.T, data []byte) *media.Media {
 		t.Fatal(err)
 	}
 	return value
+}
+
+func TestModelContextBudgetChecksWireCapacityBeforeProviderCounting(t *testing.T) {
+	counter := &budgetInputCounter{count: 1}
+	budget := newModelContextBudget(1000000, []chat.Message{chat.NewSystemMessage("instructions")}, []chat.Message{chat.NewUserMessage(chat.NewTextPart("protected tail"))}, nil, chat.Options{}, 0, counter)
+	budget.fits = func(_ context.Context, request *chat.Request) (bool, error) {
+		encoded, err := json.Marshal(request)
+		return len(encoded) <= 1024, err
+	}
+	large := []chat.Message{chat.NewUserMessage(chat.NewTextPart(strings.Repeat("large input ", 1024)))}
+	for _, check := range []func(context.Context, []chat.Message) (bool, int, error){budget.triggered, budget.exceeded} {
+		over, _, err := check(t.Context(), large)
+		if err != nil || !over || counter.calls != 0 {
+			t.Fatalf("wire capacity did not precede provider count: over=%t counts=%d %v", over, counter.calls, err)
+		}
+	}
+	if over, _, err := budget.exceeded(t.Context(), []chat.Message{chat.NewUserMessage(chat.NewTextPart("summary"))}); err != nil || over || counter.calls != 1 {
+		t.Fatalf("reduced request not counted: over=%t counts=%d %v", over, counter.calls, err)
+	}
 }

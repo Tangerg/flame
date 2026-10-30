@@ -11,7 +11,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -30,7 +29,7 @@ import (
 // execution groups. The working-directory-independent tools (online
 // providers, MCP servers, the `delegate_task` tool) are built once at
 // engine construction and captured here; filesystem and skill tools are
-// rebuilt per resolution, while shell and LSP tools read the resolving Run's
+// rebuilt per resolution, while shell tools read the resolving Run's
 // application context per call. Both paths fall back to the configured default
 // CWD. That is
 // what lets a single engine serve many sessions —
@@ -41,10 +40,7 @@ type Resolver struct {
 	packageSkills promptsource.PackageSkills
 	skillsUserDir string                     // user-scope skills dir; merged under each Run's project skills
 	skillUsage    builtin.SkillUsageRecorder // records skill loads for the idle-lifecycle curator; nil → off
-	online        []toolcontract.Tool        // working-directory-independent network tools
-	a2a           []toolcontract.Tool        // working-directory-independent remote A2A agents
-	lsp           []toolcontract.Tool        // code-intelligence tools; cwd read per-call (analyzer keys servers by root)
-	codeIntel     *codeintel.Analyzer        // backs post-patch diagnostics (rebuilt per resolution with the Run's cwd)
+	codeIntel     CodeIntelligence           // backs post-patch diagnostics (rebuilt per resolution with the Run's cwd)
 	readTracker   *readTracker               // backs the read-before-patch and stale-read guards
 	pathLocker    *keylock.Set               // serializes same-path fs calls across every concurrent Run resolution
 	shell         []toolcontract.Tool        // shell tools (shell / read_shell_output / stop_shell) over the exec.Shells; cwd read per-call
@@ -102,15 +98,11 @@ type staticSpec struct {
 
 // resolverDeps bundles the working-directory-independent inputs the resolver captures
 // at construction. Filesystem and skill tools are rebuilt per resolution;
-// shell and LSP tools are built once but read the Run's cwd per call. Online,
-// A2A, and code-intelligence capabilities are also built once and held.
+// shell tools are built once but read the Run's cwd per call. Selected code intelligence is borrowed only while a file mutation executes.
 type resolverDeps struct {
 	PackageSkills promptsource.PackageSkills
 	SkillsUserDir string
 	SkillUsage    builtin.SkillUsageRecorder
-	Online        []toolcontract.Tool // network tools (web/httpreq)
-	A2A           []toolcontract.Tool // remote A2A delegation tools
-	LSP           []toolcontract.Tool // code-intelligence tools
 	Shell         []toolcontract.Tool // shell tools (shell / read_shell_output / stop_shell); nil means omitted
 	AskUser       toolcontract.Tool   // ask_user HITL tool (both groups)
 	EnterPlan     toolcontract.Tool   // enter_plan_mode (root group only); nil → omitted
@@ -120,7 +112,7 @@ type resolverDeps struct {
 	GoalGet       toolcontract.Tool   // get_goal state reader (root group only); nil → omitted
 	GoalReport    toolcontract.Tool   // report_goal_outcome loop signal (Goal-owned root Runs only); nil → omitted
 	ProposeSkill  toolcontract.Tool   // propose_skill pending submission (root group only); nil → omitted
-	CodeIntel     *codeintel.Analyzer // backs post-mutation diagnostics
+	CodeIntel     CodeIntelligence    // backs post-mutation diagnostics
 	ReadTracker   *readTracker        // backs the read-before-patch and stale-read guards
 	// MCPToolDisabled reports whether an identified MCP tool is hidden.
 	MCPToolDisabled func(domaintool.Ref) bool
@@ -132,9 +124,6 @@ type resolverDeps struct {
 // through an explicit seam after its cyclic application owner exists; the MCP
 // Tool set is seeded and hot-swapped via [Resolver.SetMCPTools].
 func newResolver(d resolverDeps) (*Resolver, error) {
-	if d.CodeIntel == nil {
-		return nil, errors.New("toolset: resolver code intelligence is nil")
-	}
 	if d.ReadTracker == nil {
 		return nil, errors.New("toolset: resolver read tracker is nil")
 	}
@@ -146,9 +135,6 @@ func newResolver(d resolverDeps) (*Resolver, error) {
 		telemetry:     telemetry,
 		skillsUserDir: d.SkillsUserDir, packageSkills: d.PackageSkills,
 		skillUsage: d.SkillUsage,
-		online:     slices.Clone(d.Online),
-		a2a:        slices.Clone(d.A2A),
-		lsp:        slices.Clone(d.LSP),
 		shell:      slices.Clone(d.Shell),
 		staticSpecs: []staticSpec{
 			{tool: d.AskUser, audience: audienceBoth, placement: interactionTail},
@@ -422,7 +408,6 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group, retained
 	tools.direct(localTools.readSearch...)
 	tools.direct(localTools.edit)
 	tools.direct(localTools.applyPatch)
-	tools.deferTools(r.online...)
 	mcpTools, pending, closeMCP, err := r.mcpTools(ctx, retained)
 	if err != nil {
 		return manifestBuilder{}, err
@@ -433,8 +418,6 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group, retained
 	}
 	tools.deferred = append(tools.deferred, mcpTools...)
 	tools.pendingMCP = pending
-	tools.deferred = append(tools.deferred, r.a2a...)
-	tools.deferTools(r.lsp...)
 	tools.direct(r.shell...)
 	// Skill tools are working-directory scoped (project skills live under the
 	// Run's cwd), so they are built per resolution like filesystem tools and are

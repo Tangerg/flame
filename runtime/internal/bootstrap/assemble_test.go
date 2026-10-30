@@ -14,7 +14,7 @@ import (
 	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/qimu/distribution"
 	"github.com/Tangerg/flame/qimu/runner"
-	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -100,16 +100,9 @@ func TestNewRequiresRuntimeDependencies(t *testing.T) {
 			want: "runtime: CheckpointDir must be absolute when set",
 		},
 		{
-			name: "chat resolver",
-			edit: func(cfg *assemblyConfig) {
-				cfg.chatResolver = nil
-			},
-			want: "runtime: ChatResolver is required",
-		},
-		{
 			name: "typed nil chat resolver",
-			edit: func(cfg *assemblyConfig) { cfg.chatResolver = (*modeladapter.ChatResolver)(nil) },
-			want: "runtime: ChatResolver is required",
+			edit: func(cfg *assemblyConfig) { cfg.modelProviders = (*staticTestChatResolver)(nil) },
+			want: "runtime: model providers are typed nil",
 		},
 		{
 			name: "provider registry",
@@ -186,7 +179,7 @@ func TestAssemblyRejectsInvalidConstructionBeforeStartupReconciliation(t *testin
 		edit func(*assemblyConfig)
 	}{
 		{name: "default model", edit: func(cfg *assemblyConfig) { cfg.provider = "" }},
-		{name: "typed nil chat resolver", edit: func(cfg *assemblyConfig) { cfg.chatResolver = (*modeladapter.ChatResolver)(nil) }},
+		{name: "typed nil chat resolver", edit: func(cfg *assemblyConfig) { cfg.modelProviders = (*staticTestChatResolver)(nil) }},
 		{name: "typed nil provider registry", edit: func(cfg *assemblyConfig) { cfg.providerRegistry = (*persistence.ProviderStore)(nil) }},
 		{name: "session-only approval mode", edit: func(cfg *assemblyConfig) { cfg.approvalMode = approval.ModePlan }},
 		{name: "invalid offload policy", edit: func(cfg *assemblyConfig) { cfg.toolResultOffloadEnabled = true }},
@@ -420,7 +413,7 @@ func runtimeConfigWithRequiredDeps(t *testing.T) assemblyConfig {
 		approvalMode: approval.ModeSafe,
 		userHome:     t.TempDir(), defaultWorkspacePath: workspace,
 		skillsUserDir:    t.TempDir(),
-		chatResolver:     testChatResolver(client),
+		modelProviders:   testChatResolver(client),
 		buildID:          "sha256:0000000000000000000000000000000000000000000000000000000000000000",
 		providerRegistry: stores.Providers,
 	}

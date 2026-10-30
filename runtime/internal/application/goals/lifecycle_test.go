@@ -13,8 +13,8 @@ import (
 
 type alreadyTerminalRuns struct{}
 
-func (alreadyTerminalRuns) WaitSessionStartable(context.Context, string) error { return nil }
-func (alreadyTerminalRuns) AdmitSelection(modelchoice.Selection) error         { return nil }
+func (alreadyTerminalRuns) WaitSessionStartable(context.Context, string) error          { return nil }
+func (alreadyTerminalRuns) AdmitSelection(context.Context, modelchoice.Selection) error { return nil }
 func (alreadyTerminalRuns) Start(context.Context, runs.StartCommand) (runs.StartResult, error) {
 	return runs.StartResult{}, nil
 }

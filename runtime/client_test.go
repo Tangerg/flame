@@ -402,7 +402,17 @@ func TestClientCancellationClosesAnUnconsumedStream(t *testing.T) {
 }
 
 func TestClientRecognizesDefinitiveTransportRefusal(t *testing.T) {
-	_, server, _ := remoteRuntime(t)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if got := request.Header.Get("Authorization"); got != "Bearer wrong-token" {
+			t.Errorf("authorization = %q, want the rejected bearer", got)
+		}
+		w.Header().Set("Content-Type", "application/problem+json")
+		w.WriteHeader(http.StatusUnauthorized)
+		if _, err := io.WriteString(w, `{"type":"urn:flame:transport:unauthorized","title":"Unauthorized","status":401,"detail":"a valid local bearer token is required"}`); err != nil {
+			t.Error(err)
+		}
+	}))
+	t.Cleanup(server.Close)
 	client, err := runtimeclient.Connect(t.Context(), runtimeclient.RemoteConfig{Endpoint: server.URL, Token: "wrong-token"})
 	if err != nil {
 		t.Fatal(err)
@@ -453,7 +463,7 @@ func TestConnectValidatesWithoutContactingOrOwningRuntime(t *testing.T) {
 
 func remoteRuntime(t *testing.T) (*Runtime, *httptest.Server, *protocol.DiscoverResponse) {
 	t.Helper()
-	for _, name := range []string{"FLAME_APIKEY", "FLAME_MODEL", "FLAME_BASEURL", "FLAME_A2A_AGENTS", "FLAME_A2A_RPC_ORIGINS"} {
+	for _, name := range []string{"FLAME_APIKEY", "FLAME_MODEL", "FLAME_BASEURL"} {
 		t.Setenv(name, "")
 	}
 	t.Setenv("FLAME_PROVIDER", "anthropic")

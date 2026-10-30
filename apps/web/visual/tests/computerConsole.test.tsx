@@ -1,3 +1,4 @@
+import { unavailableComponentNotifications } from "@/test/unavailableNotifications";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, onTestFinished, vi } from "vitest";
 import type { ComponentContext } from "@flame/component-sdk";
@@ -421,6 +422,13 @@ function rig(server = fixture()) {
         telemetry: { read: () => ({ spans: [], metrics: [], logs: [] }), clear: () => undefined },
         track: (operation) => operation(controller.signal),
         saveFile: async () => "requested",
+        notifications: unavailableComponentNotifications,
+        subscribeRootRunSettlements() {
+          throw new Error("This fixture must not observe run settlements");
+        },
+        registerCommand() {
+          throw new Error("This fixture must not register client commands");
+        },
         compose: () => {
           throw new Error("computer console must not compose other plugins");
         },
@@ -1559,7 +1567,7 @@ it("renders the operator boundary and controls in Chinese", async () => {
   const setup = rig(fixture({ ...initial, session: undefined }));
   setup.mount("zh");
   const panel = await screen.findByRole("region", { name: "电脑控制" });
-  expect(within(panel).getByText(/操作员控制台必须位于被控桌面/)).not.toBeNull();
+  expect(await within(panel).findByText(/操作员控制台必须位于被控桌面/)).not.toBeNull();
   expect(
     within(panel).getByRole("button", { name: "授权并打开控制" }).hasAttribute("disabled"),
   ).toBe(false);

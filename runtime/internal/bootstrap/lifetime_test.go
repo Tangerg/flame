@@ -151,7 +151,7 @@ func TestInstanceShutdownAdvancesPastCompletedCloserError(t *testing.T) {
 	host := Instance{lifetime: &runtimeLifetime{
 		context: t.Context(), delivery: testEndpoint(t),
 		shutdownWait: defaultShutdownWaitPolicy(),
-		// A2A, LSP, Shells and SQLite all use this one-shot close shape: the
+		// Shells and SQLite all use this one-shot close shape: the
 		// resource reaches its terminal state on the first call even when that
 		// call reports a diagnostic. Replaying the same cached error can never
 		// make more cleanup progress.

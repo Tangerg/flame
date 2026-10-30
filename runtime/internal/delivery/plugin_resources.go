@@ -94,6 +94,21 @@ func (s *Handler) ReadPluginResource(ctx context.Context, in protocol.ReadPlugin
 	return &protocol.PluginResource{Body: base64.StdEncoding.EncodeToString(body), MediaType: mediaType}, nil
 }
 
+func (s *Handler) ReadPluginLocale(ctx context.Context, in protocol.ReadPluginLocaleRequest) (*protocol.PluginLocaleCatalog, error) {
+	if s.plugins == nil {
+		return nil, protocol.ErrPluginUnavailable
+	}
+	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
+	if err != nil {
+		return nil, err
+	}
+	messages, err := s.plugins.Locale(ctx, id, digest, in.Tag)
+	if err != nil {
+		return nil, wirePluginError(err)
+	}
+	return &protocol.PluginLocaleCatalog{Messages: messages}, nil
+}
+
 // LeasedPluginResource translates an asset request into the same public Core
 // query with its captured caller and subscription lifetime.
 func (e *Endpoint) LeasedPluginResource(ctx context.Context, token, resource string) (*protocol.PluginResource, error) {

@@ -42,15 +42,16 @@ type wirePointValue struct {
 }
 
 type wireComponent struct {
-	Selector     *wireRendererSelector        `json:"selector,omitzero"`
-	ID           plugin.ContributionID        `json:"id"`
-	Title        string                       `json:"title"`
-	Scope        extension.ComponentScope     `json:"scope"`
-	Placement    extension.ComponentPlacement `json:"placement"`
-	Entry        string                       `json:"entry"`
-	Export       string                       `json:"export"`
-	Contribution *plugin.ContributionID       `json:"contribution,omitzero"`
-	Material     *string                      `json:"material,omitzero"`
+	Selector       *wireRendererSelector        `json:"selector,omitzero"`
+	ID             plugin.ContributionID        `json:"id"`
+	Title          string                       `json:"title"`
+	Scope          extension.ComponentScope     `json:"scope"`
+	Placement      extension.ComponentPlacement `json:"placement"`
+	Entry          string                       `json:"entry"`
+	Export         string                       `json:"export"`
+	Contribution   *plugin.ContributionID       `json:"contribution,omitzero"`
+	Material       *string                      `json:"material,omitzero"`
+	SettingsIntent *extension.SettingsIntent    `json:"settingsIntent,omitzero"`
 }
 
 type wireInput struct {
@@ -66,6 +67,11 @@ type wireTheme struct {
 	Title  string          `json:"title"`
 	Scheme string          `json:"scheme"`
 	Colors wireThemeColors `json:"colors"`
+}
+type wireLocale struct {
+	Tag   string `json:"tag"`
+	Title string `json:"title"`
+	Entry string `json:"entry"`
 }
 type wireRendererSelector struct {
 	Type extension.RendererSelectorKind `json:"type"`
@@ -109,4 +115,4 @@ func (v wireTheme) domain() (plugin.Theme, error) {
 }
 
 var declarationFields = []string{"protocol", "managedBackends", "inputs", "contributions", "contributes", "points", "pointValues", "components"}
-var presentationFields = []string{"themes"}
+var presentationFields = []string{"themes", "locales"}

@@ -70,6 +70,7 @@ var methodMetadata = map[string]methodMeta{
 	"plugins.notifyChange":             {Name: "plugins.notifyChange", Kind: "unary", Operation: "command", Result: reflect.TypeFor[struct{}](), Event: nil, ResultNullable: false},
 	"plugins.openResources":            {Name: "plugins.openResources", Kind: "stream", Operation: "subscription", Result: reflect.TypeFor[*protocol.PluginResourceLease](), Event: reflect.TypeFor[protocol.PluginResourceEvent](), ResultNullable: false},
 	"plugins.readResource":             {Name: "plugins.readResource", Kind: "unary", Operation: "query", Result: reflect.TypeFor[*protocol.PluginResource](), Event: nil, ResultNullable: false},
+	"plugins.readLocale":               {Name: "plugins.readLocale", Kind: "unary", Operation: "query", Result: reflect.TypeFor[*protocol.PluginLocaleCatalog](), Event: nil, ResultNullable: false},
 	"plugins.resolvePoint":             {Name: "plugins.resolvePoint", Kind: "unary", Operation: "query", Result: reflect.TypeFor[*protocol.Page[protocol.PluginPointBinding]](), Event: nil, ResultNullable: false},
 	"plugins.resolveRequirements":      {Name: "plugins.resolveRequirements", Kind: "unary", Operation: "query", Result: reflect.TypeFor[*protocol.Page[protocol.PluginCollaborator]](), Event: nil, ResultNullable: false},
 	"plugins.call":                     {Name: "plugins.call", Kind: "unary", Operation: "extension", Result: reflect.TypeFor[*protocol.CallPluginResponse](), Event: nil, ResultNullable: false},

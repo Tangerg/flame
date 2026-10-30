@@ -34,7 +34,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
-	"github.com/Tangerg/flame/runtime/internal/infra/process/procgroup"
+	"github.com/Tangerg/flame/packages/go-sdk/procgroup"
 )
 
 // maxBuffer caps a background shell's retained output; once exceeded the

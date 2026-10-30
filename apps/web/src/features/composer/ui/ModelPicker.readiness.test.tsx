@@ -14,6 +14,7 @@ import { contributeForTest } from "@/test/kernel";
 import { queryClient } from "@/lib/queryClient";
 import { AGENT_SESSIONS_KEY } from "@/features/agent/public/session";
 import { MODELS_KEY, SelectableModel } from "@/features/providers/public/queries";
+import { SETTINGS_PANE } from "@/features/settings/public/panes";
 import { useSetComposerModelPreference } from "@/features/composer/public/modelPreference";
 import { useRecentModelsStore } from "@/features/composer/adapters/recentModels";
 import { ModelPicker } from "@/features/composer/ui/ModelPicker";
@@ -40,6 +41,12 @@ async function mount(read: () => Promise<SelectableModel[]>, explicit = true) {
   await contributeForTest((ctx) => {
     ctx.contribute(DATA_PROVIDER, { key: MODELS_KEY, fetcher: read });
     ctx.contribute(DATA_PROVIDER, { key: AGENT_SESSIONS_KEY, fetcher: async () => [] });
+    ctx.contribute(SETTINGS_PANE, {
+      id: "package:chosen:models",
+      label: "Model settings",
+      intent: "modelProviders",
+      component: () => null,
+    });
   });
   if (explicit) {
     const { result } = testClient.renderHook(useSetComposerModelPreference);
@@ -171,7 +178,7 @@ it("offers provider configuration after an accepted empty read without choosing 
   fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
   await screen.findByText("No models found");
   fireEvent.click(screen.getByRole("button", { name: "Configure a provider" }));
-  expect(testClient.navigation.get().settings).toBe("providers");
+  expect(testClient.navigation.get().settings).toBe("package:chosen:models");
   expect(testClient.composer.access.getModelPreference().kind).toBe("session");
   expect(useRecentModelsStore.getState().recent).toEqual([]);
 });

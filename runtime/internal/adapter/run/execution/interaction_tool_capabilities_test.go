@@ -23,7 +23,7 @@ func TestInteractionToolUsesScopeAdmittedArguments(t *testing.T) {
 		t.Run(fmt.Sprintf("arguments=%q", arguments), func(t *testing.T) {
 			var executions, modelCalls int
 			executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-				Name: "inspect", Description: "Inspect without additional arguments.",
+				Name: "fixture_inspect", Description: "Inspect without additional arguments.",
 			}, func(context.Context, struct{}) (string, error) {
 				executions++
 				return "inspected", nil
@@ -36,10 +36,10 @@ func TestInteractionToolUsesScopeAdmittedArguments(t *testing.T) {
 				if hasToolMessage(request.Messages) {
 					return interactionTextResponse("done"), nil
 				}
-				return interactionToolResponse(chat.ToolCall{ID: "inspect_call", Name: "inspect", Arguments: arguments}, 1, 1), nil
+				return interactionToolResponse(chat.ToolCall{ID: "inspect_call", Name: "fixture_inspect", Arguments: arguments}, 1, 1), nil
 			})
 			executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-				ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "inspect")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+				ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "inspect")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 				ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 			})
 			events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
@@ -65,7 +65,7 @@ func TestTransformedToolProposalIsAdmittedBeforeApprovalAndExecution(t *testing.
 			var authorized ToolAuthorizationRequest
 			var executed string
 			executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-				Name: "resource", Description: "Operate on a named resource.",
+				Name: "fixture_resource", Description: "Operate on a named resource.",
 			}, func(_ context.Context, input resourceInput) (string, error) {
 				executed = input.Resource
 				return executed, nil
@@ -77,18 +77,18 @@ func TestTransformedToolProposalIsAdmittedBeforeApprovalAndExecution(t *testing.
 				if hasToolMessage(request.Messages) {
 					return interactionTextResponse("done"), nil
 				}
-				return interactionToolResponse(chat.ToolCall{ID: "proposal", Name: "resource", Arguments: `{"resource":"original"}`}, 1, 1), nil
+				return interactionToolResponse(chat.ToolCall{ID: "proposal", Name: "fixture_resource", Arguments: `{"resource":"original"}`}, 1, 1), nil
 			})
 			decorated := chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
 				response, err := provider.Call(ctx, request)
 				if err == nil && !hasToolMessage(request.Messages) {
 					response = response.Clone()
-					response.Output.Message.Parts[0] = chat.NewToolCallPart(chat.ToolCall{ID: "proposal", Name: "resource", Arguments: final})
+					response.Output.Message.Parts[0] = chat.NewToolCallPart(chat.ToolCall{ID: "proposal", Name: "fixture_resource", Arguments: final})
 				}
 				return response, err
 			})
 			executor := newObservedTestInteractionExecutor(t, decorated, InteractionExecutorConfig{
-				ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "resource")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+				ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "resource")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 				ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: capturingToolAuthorizer{request: &authorized},
 			})
 			events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
@@ -118,7 +118,7 @@ func TestInteractionToolSchedulingUsesSafeArguments(t *testing.T) {
 				var active, maximum, executions atomic.Int32
 				release := make(chan struct{})
 				executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-					Name: "resource", Description: "Operate on a named resource.",
+					Name: "fixture_resource", Description: "Operate on a named resource.",
 				}, func(_ context.Context, input resourceInput) (string, error) {
 					executions.Add(1)
 					current := active.Add(1)
@@ -139,12 +139,12 @@ func TestInteractionToolSchedulingUsesSafeArguments(t *testing.T) {
 						return interactionTextResponse("done"), nil
 					}
 					return interactionToolBatchResponse([]chat.ToolCall{
-						{ID: "a", Name: "resource", Arguments: `{"resource":"A"}`},
-						{ID: "b", Name: "resource", Arguments: `{"resource":"B"}`},
+						{ID: "a", Name: "fixture_resource", Arguments: `{"resource":"A"}`},
+						{ID: "b", Name: "fixture_resource", Arguments: `{"resource":"B"}`},
 					}, 1, 1), nil
 				})
 				config := InteractionExecutorConfig{
-					ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "resource")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{resourceScheduledTool{executable}}}},
+					ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "resource")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{resourceScheduledTool{executable}}}},
 					ToolInterpreter: immutableToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 					MaxConcurrentToolCalls: intPointer(2),
 				}
@@ -224,7 +224,7 @@ func (rewriteResourceAuthorizer) AuthorizeTool(context.Context, ToolAuthorizatio
 func TestInteractionDirectToolCompletionUsesCommittedResults(t *testing.T) {
 	var modelCalls, executions atomic.Int32
 	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "answer", Description: "Return the answer directly.",
+		Name: "fixture_answer", Description: "Return the answer directly.",
 	}, func(_ context.Context, input resourceInput) (string, error) {
 		executions.Add(1)
 		return input.Resource, nil
@@ -235,12 +235,12 @@ func TestInteractionDirectToolCompletionUsesCommittedResults(t *testing.T) {
 	model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 		modelCalls.Add(1)
 		return interactionToolBatchResponse([]chat.ToolCall{
-			{ID: "first", Name: "answer", Arguments: `{"resource":"first answer"}`},
-			{ID: "second", Name: "answer", Arguments: `{"resource":"second answer"}`},
+			{ID: "first", Name: "fixture_answer", Arguments: `{"resource":"first answer"}`},
+			{ID: "second", Name: "fixture_answer", Arguments: `{"resource":"second answer"}`},
 		}, 1, 1), nil
 	})
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "answer")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{directResultTool{executable}}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "answer")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{directResultTool{executable}}}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 	})
 	var committed []chat.ToolResult
@@ -266,8 +266,8 @@ func TestInteractionDirectToolCompletionUsesCommittedResults(t *testing.T) {
 		}
 	}
 	want := []chat.ToolResult{
-		{ID: "first", Name: "answer", Output: chat.NewTextToolOutput("first answer")},
-		{ID: "second", Name: "answer", Output: chat.NewTextToolOutput("second answer")},
+		{ID: "first", Name: "fixture_answer", Output: chat.NewTextToolOutput("first answer")},
+		{ID: "second", Name: "fixture_answer", Output: chat.NewTextToolOutput("second answer")},
 	}
 	if !reflect.DeepEqual(committed, want) {
 		t.Fatalf("direct results = %+v, want %+v", committed, want)

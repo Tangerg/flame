@@ -19,9 +19,9 @@ func TestInteractionToolDeploymentBindsItsFrozenManifest(t *testing.T) {
 	binding := func(t *testing.T, description, schema string, fingerprint identity.Digest, deferred bool) (agent.DeploymentRef, agent.DeploymentRef) {
 		t.Helper()
 		executable := &scopeDefinitionTool{definition: chat.ToolDefinition{
-			Name: "echo", Description: description, InputSchema: []byte(schema),
+			Name: "fixture_echo", Description: description, InputSchema: []byte(schema),
 		}}
-		identified, err := toolset.WithIdentity(executable, testsupport.A2ATool(t, "echo"), fingerprint)
+		identified, err := toolset.WithIdentity(executable, testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "echo"), fingerprint)
 		if err != nil {
 			t.Fatal(err)
 		}

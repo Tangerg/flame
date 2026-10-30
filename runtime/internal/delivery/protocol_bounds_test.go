@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	hookdata "github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -189,7 +189,7 @@ func TestRuntimeOutputNumbersPreserveDomainBounds(t *testing.T) {
 		{shape: "UsageSummary", field: "sessions", value: protocol.UsageSummary{Sessions: -1}},
 		{shape: "UsageSummary", field: "runs", value: protocol.UsageSummary{Runs: -1}},
 		{shape: "HookInfo", field: "timeoutMillis", value: protocol.HookInfo{TimeoutMillis: -1}},
-		{shape: "HookInfo", field: "timeoutMillis", value: protocol.HookInfo{TimeoutMillis: hooks.MaxTimeoutMillis + 1}},
+		{shape: "HookInfo", field: "timeoutMillis", value: protocol.HookInfo{TimeoutMillis: hookdata.MaxTimeoutMillis + 1}},
 		{shape: "MCPServerState", field: "toolCount", value: protocol.MCPServerState{ToolCount: &negative}},
 		{shape: "MCPServerState", field: "toolCount", value: protocol.MCPServerState{ToolCount: &tooManyTools}},
 		{shape: "ModelPricing", field: "inputUsdPerMillionTokens", value: protocol.ModelPricing{InputUSDPerMillionTokens: negativeCost}},
@@ -207,7 +207,7 @@ func TestRuntimeOutputNumberBoundariesRemainRepresentable(t *testing.T) {
 
 	zero, maximumTools := 0, mcpserver.MaxRemoteToolsPerServer
 	zeroBytes := int64(0)
-	for _, value := range []any{protocol.WorkspaceSummary{Name: "workspace", Workspace: protocol.WorkspaceInfo{Ref: protocol.WorkspaceRef{Path: "/workspace"}, ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable}}, protocol.FileContent{TotalLines: 1, StartLine: 1, EndLine: 1}, protocol.FileEntry{Path: "main.go", Name: "main.go", Type: protocol.FileEntryFile, SizeBytes: &zeroBytes}, protocol.GrepResult{}, protocol.GrepMatch{Path: "main.go", LineNumber: 1}, protocol.FileDiff{Path: "main.go", Status: protocol.FileStatusModified, Added: &zero, Removed: &zero}, protocol.WorkspaceFileChange{Path: "main.go", Status: protocol.FileStatusModified, Added: &zero, Removed: &zero}, protocol.DiffRow{Type: protocol.DiffRowContext, LeftLine: 1, RightLine: 1, Code: new("line")}, protocol.UsageBucket{Key: "deepseek"}, protocol.UsageSummary{}, protocol.HookInfo{Event: protocol.HookEventPreToolUse, Command: "true", TimeoutMillis: hooks.MaxTimeoutMillis, Scope: protocol.HookScopeGlobal, Source: "/hooks.json"}, protocol.MCPServerState{Type: protocol.MCPServerConnected, ToolCount: &maximumTools}, protocol.ModelPricing{}} {
+	for _, value := range []any{protocol.WorkspaceSummary{Name: "workspace", Workspace: protocol.WorkspaceInfo{Ref: protocol.WorkspaceRef{Path: "/workspace"}, ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable}}, protocol.FileContent{TotalLines: 1, StartLine: 1, EndLine: 1}, protocol.FileEntry{Path: "main.go", Name: "main.go", Type: protocol.FileEntryFile, SizeBytes: &zeroBytes}, protocol.GrepResult{}, protocol.GrepMatch{Path: "main.go", LineNumber: 1}, protocol.FileDiff{Path: "main.go", Status: protocol.FileStatusModified, Added: &zero, Removed: &zero}, protocol.WorkspaceFileChange{Path: "main.go", Status: protocol.FileStatusModified, Added: &zero, Removed: &zero}, protocol.DiffRow{Type: protocol.DiffRowContext, LeftLine: 1, RightLine: 1, Code: new("line")}, protocol.UsageBucket{Key: "deepseek"}, protocol.UsageSummary{}, protocol.HookInfo{Event: protocol.HookEventPreToolUse, Command: "true", TimeoutMillis: hookdata.MaxTimeoutMillis, Scope: protocol.HookScopeGlobal, Source: "/hooks.json"}, protocol.MCPServerState{Type: protocol.MCPServerConnected, ToolCount: &maximumTools}, protocol.ModelPricing{}} {
 		if err := protocol.ValidateWireTree(value); err != nil {
 			t.Errorf("ValidateWire rejected valid %T numeric boundaries: %v", value, err)
 		}

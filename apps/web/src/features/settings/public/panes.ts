@@ -1,8 +1,11 @@
 import { type ComponentType } from "react";
+import { type SettingsIntent } from "@/foundation/protocolValues.generated";
 import { defineExtensionPoint } from "@/extensions/contracts";
 import { useExtensionPoint } from "@/extensions/selectors/extensions";
 export interface SettingsPaneSpec {
   id: string;
+  material?: string;
+  intent?: SettingsIntent;
   label: string;
   description?: string;
   icon?: string;

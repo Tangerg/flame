@@ -38,7 +38,6 @@ beforeEach(async () => {
   finishTestClient(() => owned.dispose());
   builtinPlugins = createBuiltinPlugins(
     connection,
-    host,
     testClient.navigation,
     testClient.agent,
     testClient.composer,

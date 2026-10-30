@@ -72,7 +72,7 @@ func presentPluginRelease(release plugin.Release) (protocol.PluginRelease, error
 		if value.Selector != nil {
 			selector = &protocol.PluginRendererSelector{Type: value.Selector.Kind, Name: value.Selector.Name}
 		}
-		result.Components = append(result.Components, protocol.PluginClientComponent{Selector: selector, ID: value.ID.String(), Title: value.Title, Scope: value.Scope, Placement: value.Placement, Entry: value.Entry, Export: value.Export, Contribution: value.Contribution.String(), Material: value.Material})
+		result.Components = append(result.Components, protocol.PluginClientComponent{Selector: selector, ID: value.ID.String(), Title: value.Title, Scope: value.Scope, Placement: value.Placement, Entry: value.Entry, Export: value.Export, Contribution: value.Contribution.String(), Material: value.Material, SettingsIntent: value.SettingsIntent})
 	}
 	result.Points = make([]protocol.PluginPoint, 0, len(v.Points))
 	for _, value := range v.Points {
@@ -109,6 +109,10 @@ func presentPluginRelease(release plugin.Release) (protocol.PluginRelease, error
 	result.Themes = make([]protocol.PluginTheme, 0, len(v.Themes))
 	for _, item := range v.Themes {
 		result.Themes = append(result.Themes, presentPluginTheme(item))
+	}
+	result.Locales = make([]protocol.PluginLocale, 0, len(v.Locales))
+	for _, item := range v.Locales {
+		result.Locales = append(result.Locales, protocol.PluginLocale{Tag: item.Tag, Title: item.Title})
 	}
 	result.Skills = make([]protocol.PluginSkill, 0, len(v.Skills))
 

@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-24.1";
+export const PROTOCOL_VERSION = "2026-10-30.2";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -419,7 +419,7 @@ export interface CommandResult {
   output: string;
 }
 
-export type ComponentPlacement = "export" | "workspaceView" | "sessionAction" | "fileRenderer" | "toolResultRenderer";
+export type ComponentPlacement = "export" | "workspaceView" | "settingsPane" | "clientEffect" | "sessionAction" | "fileRenderer" | "toolResultRenderer";
 
 export type ComponentScope = "installation" | "workspace" | "session" | "client" | "file" | "toolResult";
 
@@ -1268,6 +1268,7 @@ export interface PluginClientComponent {
   placement: ComponentPlacement;
   scope: ComponentScope;
   selector?: PluginRendererSelector;
+  settingsIntent?: SettingsIntent;
   title: string;
 }
 
@@ -1352,6 +1353,15 @@ export interface PluginInstallation {
   staged?: PluginRelease;
 }
 
+export interface PluginLocale {
+  tag: string;
+  title: string;
+}
+
+export interface PluginLocaleCatalog {
+  messages: Record<string, string>;
+}
+
 export interface PluginOperationBinding {
   contract: string;
   contribution: string;
@@ -1403,6 +1413,7 @@ export interface PluginRelease {
   diagnostics: PluginDiagnostic[];
   digest: string;
   inputs: PluginInput[];
+  locales: PluginLocale[];
   name: string;
   pointValues: PluginPointValue[];
   points: PluginPoint[];
@@ -1602,6 +1613,12 @@ export interface ReadFileRequest {
   path: string;
   startLine?: number;
   workspace: WorkspaceRef;
+}
+
+export interface ReadPluginLocaleRequest {
+  digest: string;
+  installationId: string;
+  tag: string;
 }
 
 export interface ReadPluginResourceRequest {
@@ -1971,6 +1988,8 @@ export interface SetPluginEnablementRequest {
   installationId: string;
 }
 
+export type SettingsIntent = "modelProviders" | "mcpServers";
+
 export interface Skill {
   description?: string;
   installation?: SkillInstallation;
@@ -2150,11 +2169,10 @@ export interface ToolInvocation {
 }
 
 export type ToolRef =
-  | { type: "builtIn"; name: "apply_patch" | "ask_user" | "create_goal" | "delegate_task" | "edit" | "enter_plan_mode" | "exit_plan_mode" | "get_goal" | "glob" | "grep" | "http_request" | "list_skills" | "load_skill" | "lsp" | "propose_skill" | "read" | "read_shell_output" | "read_skill_resource" | "read_tool_result" | "report_goal_outcome" | "search_tools" | "set_plan" | "shell" | "stop_shell" | "web_fetch" | "web_search" }
-  | { type: "mcp"; name: string; server: MCPServerID }
-  | { type: "a2a"; endpoint: string };
+  | { type: "builtIn"; name: "apply_patch" | "ask_user" | "create_goal" | "delegate_task" | "edit" | "enter_plan_mode" | "exit_plan_mode" | "get_goal" | "glob" | "grep" | "list_skills" | "load_skill" | "propose_skill" | "read" | "read_shell_output" | "read_skill_resource" | "read_tool_result" | "report_goal_outcome" | "search_tools" | "set_plan" | "shell" | "stop_shell" | "web_fetch" | "web_search" }
+  | { type: "mcp"; name: string; server: MCPServerID };
 
-export type ToolRefType = "builtIn" | "mcp" | "a2a";
+export type ToolRefType = "builtIn" | "mcp";
 
 export interface ToolSpec {
   description?: string;
@@ -2328,7 +2346,7 @@ export const WIRE_ENUMS = {
   CancelRunResponseType: ["root", "child"],
   CapabilityRequirementType: ["feature", "interruptType", "runtimeTopic"],
   ChangeStatus: ["added", "deleted", "modified", "moved"],
-  ComponentPlacement: ["export", "workspaceView", "sessionAction", "fileRenderer", "toolResultRenderer"],
+  ComponentPlacement: ["export", "workspaceView", "settingsPane", "clientEffect", "sessionAction", "fileRenderer", "toolResultRenderer"],
   ComponentScope: ["installation", "workspace", "session", "client", "file", "toolResult"],
   ContentBlockType: ["text", "image"],
   DiffBaselineType: ["head", "mergeBase", "emptyTree"],
@@ -2396,6 +2414,7 @@ export const WIRE_ENUMS = {
   RuntimeTopic: ["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed"],
   SafetyClass: ["safe", "write", "exec", "network"],
   SessionStatus: ["running", "waiting", "idle"],
+  SettingsIntent: ["modelProviders", "mcpServers"],
   SkillLifecycle: ["active", "archived"],
   SkillProposalOrigin: ["requested", "mined"],
   SkillProposalScope: ["project", "user"],
@@ -2404,7 +2423,7 @@ export const WIRE_ENUMS = {
   SuppressibleRunEventType: ["segment.progress", "item.delta"],
   ToolAttemptState: ["started", "completed", "incomplete"],
   ToolCategory: ["shell", "edit", "read", "search", "web", "task", "unknown"],
-  ToolRefType: ["builtIn", "mcp", "a2a"],
+  ToolRefType: ["builtIn", "mcp"],
   TrajectoryEntryType: ["run", "model", "endpoint", "item"],
   TransportKind: ["http"],
   WorkspaceAvailability: ["available", "missing"],

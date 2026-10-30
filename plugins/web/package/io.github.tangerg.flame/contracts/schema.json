@@ -13,6 +13,12 @@
     "Method_flame_2eweb_2ffetch_2ev1Output": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL2RvbWFpbg_5fPage"
     },
+    "Method_flame_2eweb_2frequest_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL2h0dHByZXE_5fRequest"
+    },
+    "Method_flame_2eweb_2frequest_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPResponse"
+    },
     "Method_flame_2eweb_2fsearch_2ev1Input": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL3dlYg_5fSearchRequest"
     },
@@ -115,6 +121,132 @@
         "snapshotId",
         "offset",
         "limit"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPContent": {
+      "additionalProperties": false,
+      "properties": {
+        "data": {
+          "type": "string"
+        },
+        "encoding": {
+          "enum": [
+            "utf8",
+            "base64"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "encoding",
+        "data"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPContent"
+        },
+        "duration": {
+          "type": "string"
+        },
+        "headers": {
+          "additionalProperties": {
+            "items": {
+              "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_5fHTTPContent"
+            },
+            "type": "array"
+          },
+          "type": "object"
+        },
+        "status": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "status",
+        "body",
+        "duration"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL2h0dHByZXE_5fRequest": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "timeout_ms": {
+              "maximum": 120000,
+              "minimum": 1
+            }
+          }
+        }
+      ],
+      "properties": {
+        "body": {
+          "description": "Optional request body for POST, PUT, PATCH, or DELETE; GET and HEAD carry none. For JSON, pass a JSON-encoded string and set Content-Type via Headers.",
+          "type": "string"
+        },
+        "headers": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Optional request headers. Values here override this tool's configured default headers. Host overrides are prohibited; authority comes from the URL.",
+          "type": "object"
+        },
+        "method": {
+          "allOf": [
+            {
+              "enum": [
+                "GET",
+                "HEAD",
+                "POST",
+                "PUT",
+                "PATCH",
+                "DELETE"
+              ]
+            }
+          ],
+          "description": "HTTP method: GET (default), HEAD, POST, PUT, PATCH, or DELETE. Must be in the configured method allowlist.",
+          "type": "string"
+        },
+        "query": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Optional query parameters appended to the URL; a name must not also appear in the URL's own query.",
+          "type": "object"
+        },
+        "timeout_ms": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "description": "Per-call timeout in milliseconds, within the supported request limit. Omit to use the configured default.",
+          "type": "integer"
+        },
+        "url": {
+          "description": "Absolute http(s) URL. Host must match the configured allowlist.",
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "url"
       ],
       "type": "object"
     },

@@ -6,8 +6,6 @@ import (
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/maintenance"
-	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
-	"github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
 )
 
@@ -15,8 +13,7 @@ func buildRunMaintenance(
 	cfg assemblyConfig,
 	conversationServices conversationEnvironment,
 	shells *exec.Shells,
-	skills *workspace.Skills,
-	skillMaintenance *workspace.SkillMaintenance,
+	skills maintenance.SkillsMaintenance,
 	memory maintenance.MemoryMaintenance,
 	resolveUtility modeladapter.AuxiliaryResolver,
 ) (executionadapter.RunMaintenance, executionadapter.ModelContextCompactor, error) {
@@ -32,25 +29,7 @@ func buildRunMaintenance(
 	if cfg.maintenance != nil {
 		return cfg.maintenance, compactor, nil
 	}
-	skillSource, err := promptsource.NewSkillSource(cfg.skillsUserDir, cfg.skillsUserDir)
-	if err != nil {
-		return nil, nil, fmt.Errorf("runtime: build user skill source: %w", err)
-	}
-	skillMiner, err := maintenance.NewSkillProposalMiner(
-		conversationServices.store,
-		skills,
-		skillSource,
-		resolveUtility,
-		maintenance.SkillMiningPolicyValues{},
-	)
-	if err != nil {
-		return nil, nil, fmt.Errorf("runtime: build skill proposal miner: %w", err)
-	}
-	skillArchiver, err := maintenance.NewIdleSkillArchiver(skillMaintenance, maintenance.SkillArchivePolicyValues{})
-	if err != nil {
-		return nil, nil, fmt.Errorf("runtime: build idle skill archiver: %w", err)
-	}
-	pipeline, err := maintenance.NewPipeline(memory, skillMiner, skillArchiver)
+	pipeline, err := maintenance.NewPipeline(memory, skills)
 	if err != nil {
 		return nil, nil, fmt.Errorf("runtime: build maintenance pipeline: %w", err)
 	}

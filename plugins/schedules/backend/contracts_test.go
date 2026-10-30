@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	models "github.com/Tangerg/flame/packages/go-sdk/model/catalog"
+
 	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
 	"github.com/Tangerg/flame/plugins/schedules/internal/sqlite"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
@@ -23,7 +23,7 @@ func TestGeneratedSchedulesContractMatchesLiveMethods(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	server := sdk.NewServer(&sdk.Implementation{Name: "schedules-contract"}, nil)
-	registered, err := registerServer(server, db, sqlite.NewScheduleStore(db), filesystem.DirectoryResolver{}, models.Selections{}, func(context.Context, qimumcp.CallbackRef) (runHost, func() error, error) {
+	registered, err := registerServer(server, db, sqlite.NewScheduleStore(db), filesystem.DirectoryResolver{}, func(context.Context, qimumcp.CallbackRef) (runHost, func() error, error) {
 		return &observedRunHost{db: db, namespace: "contract-store"}, func() error { return nil }, nil
 	})
 	if err != nil {

@@ -127,6 +127,22 @@ func requireGoalMutationLifecycle(t *testing.T, runtime *Connection, sessionID s
 		SessionID: sessionID, Objective: "verify embedded goal lifecycle",
 		Provider: "missing", Model: "missing",
 	}
+	if _, err := runtime.StartGoal(t.Context(), start); !errors.Is(err, protocol.ErrInvalidParams) {
+		t.Fatalf("StartGoal with an uninstalled provider = %v, want selection refusal", err)
+	}
+	if _, exists, err := runtime.GetGoal(t.Context(), sessionID); err != nil || exists {
+		t.Fatalf("refused selection created a Goal: exists=%t, err=%v", exists, err)
+	}
+	endpoint := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "goal provider unavailable", http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(endpoint.Close)
+	key := models.ValueChange{Kind: protocol.ProviderConfigSet, Value: "goal-test-key"}
+	baseURL := models.ValueChange{Kind: protocol.ProviderConfigSet, Value: endpoint.URL}
+	if _, err := runtime.UpdateProvider(t.Context(), models.UpdateProvider{Provider: "openai-compatible", APIKey: &key, BaseURL: &baseURL}); err != nil {
+		t.Fatal(err)
+	}
+	start.Provider, start.Model = "openai-compatible", "goal-fixture"
 	started, err := runtime.StartGoal(t.Context(), start)
 	if err != nil {
 		t.Fatalf("StartGoal: %v", err)
@@ -452,10 +468,8 @@ func requireWorkspaceInspection(t *testing.T, runtime *Connection, path string) 
 func configureIntegrationRuntime(t *testing.T) {
 	t.Helper()
 	t.Setenv("FLAME_PROVIDER", "anthropic")
-	t.Setenv("ANTHROPIC_API_KEY", "test-key")
-	t.Setenv("DEEPSEEK_API_KEY", "integration-env-key")
-	t.Setenv("FLAME_A2A_AGENTS", "")
-	t.Setenv("FLAME_A2A_RPC_ORIGINS", "")
+	t.Setenv("FLAME_APIKEY", "test-key")
+
 }
 
 func requireProviderMutationLifecycle(t *testing.T, runtime *Connection) {
@@ -463,7 +477,7 @@ func requireProviderMutationLifecycle(t *testing.T, runtime *Connection) {
 	setBaseURL := models.ValueChange{Kind: protocol.ProviderConfigSet, Value: "https://provider.integration.test"}
 	setAPIKey := models.ValueChange{Kind: protocol.ProviderConfigSet, Value: "integration-stored-key"}
 	configured, err := runtime.UpdateProvider(t.Context(), models.UpdateProvider{
-		Provider: "deepseek", BaseURL: &setBaseURL, APIKey: &setAPIKey,
+		Provider: "anthropic", BaseURL: &setBaseURL, APIKey: &setAPIKey,
 	})
 	if err != nil {
 		t.Fatalf("configure provider: %v", err)
@@ -476,7 +490,7 @@ func requireProviderMutationLifecycle(t *testing.T, runtime *Connection) {
 
 	clear := models.ValueChange{Kind: protocol.ProviderConfigClear}
 	fallback, err := runtime.UpdateProvider(t.Context(), models.UpdateProvider{
-		Provider: "deepseek", BaseURL: &clear, APIKey: &clear,
+		Provider: "anthropic", BaseURL: &clear, APIKey: &clear,
 	})
 	if err != nil {
 		t.Fatalf("clear provider: %v", err)

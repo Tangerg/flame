@@ -64,7 +64,7 @@ func TestScopeDefiniteModelFailureSettlesWithoutHostCancellation(t *testing.T) {
 						return modeladapter.ResolvedChat{}, err
 					}
 					stream, _ := resolved.Streamer()
-					return modeladapter.NewResolvedChat(safeguardedTestModel{Model: guard.Call(resolved.Model()), Streamer: guard.Stream(stream)}, nil)
+					return modeladapter.NewResolvedChat(safeguardedTestModel{Model: guard.Call(resolved.Model()), Streamer: guard.Stream(stream)}, nil, nil)
 				})
 				executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{Lifetime: t.Context(), BuildID: interactionTestBuildID, ChatResolver: resolver, ModelEvidence: journal, StreamModelResponses: streaming})
 				if err != nil {

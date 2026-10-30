@@ -16,7 +16,7 @@ func TestListPagePreservesScheduleMillisecondCoordinates(t *testing.T) {
 				mustStoredSchedule(t, schedule.Snapshot{ID: "sch_first", Instructions: "first", CreatedAt: at}),
 				mustStoredSchedule(t, schedule.Snapshot{ID: "sch_second", Instructions: "second", CreatedAt: at.Add(-time.Millisecond)}),
 			}}
-			coordinator := mustCoordinator(t, Dependencies{Store: store, Models: allowModels{}})
+			coordinator := mustCoordinator(t, Dependencies{Store: store})
 			first, err := coordinator.ListPage(t.Context(), "", explicitPageLimit(t, 1))
 			if err != nil || len(first.Rows) != 1 || first.Rows[0].ID() != "sch_first" || first.NextCursor == "" {
 				t.Fatalf("first page = %+v, %v", first, err)
@@ -31,7 +31,7 @@ func TestListPagePreservesScheduleMillisecondCoordinates(t *testing.T) {
 
 func TestListPageRefusesFormerNanosecondCoordinates(t *testing.T) {
 	store := &pagedStore{runNowStore: &runNowStore{}, rows: scheduleRows(t, "sch_first", "sch_second")}
-	coordinator := mustCoordinator(t, Dependencies{Store: store, Models: allowModels{}})
+	coordinator := mustCoordinator(t, Dependencies{Store: store})
 	cursor, err := pagination.Encode("schedules", nil, []string{"1000000", "sch_first"})
 	if err != nil {
 		t.Fatal(err)

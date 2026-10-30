@@ -62,6 +62,7 @@ const pluginThemeSchemas = [
             components: [],
             servers: [],
             inputs: [],
+            locales: [],
             themes: [theme],
 
             skills: [],

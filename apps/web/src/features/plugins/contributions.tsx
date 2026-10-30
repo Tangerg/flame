@@ -3,6 +3,7 @@ import { lazy, Suspense, type ReactNode } from "react";
 import { ComponentModules } from "@/features/plugins/adapters/componentModules";
 import {
   InstalledComponent,
+  RenderingComponent,
   InstalledFileComponent,
   InstalledToolResultComponent,
   InstalledSessionActionComponent,
@@ -18,6 +19,7 @@ import { DATA_PROVIDER } from "@/extensions/dataProvider";
 import { WORKSPACE_VIEW, WORKSPACE_FILE_RENDERER } from "@/features/workspace/public/views";
 import { TOOL_RESULT_RENDERER } from "@/features/chat/public/tools/types";
 import { SESSION_ACTION } from "@/features/navigation/public/sessionActions";
+import { SETTINGS_PANE } from "@/features/settings/public/panes";
 import { ComponentCompositions } from "@/features/plugins/ui/ComponentCompositions";
 import { RecordedFileComponent } from "@/features/plugins/ui/RecordedFileComponent";
 import { RecordedToolComponent } from "@/features/plugins/ui/RecordedToolComponent";
@@ -32,6 +34,9 @@ import { failureMessage } from "@/lib/diagnostics";
 import { contributePaletteTheme } from "@/features/theme/public/appearance";
 import { retainThemeSelection } from "@/features/theme/public/appearance";
 import { trackContributionIO } from "@/extensions/contributionIO";
+import { reportPluginError } from "@/extensions/errors";
+import { contributeLayout } from "@/extensions/contributeHelpers";
+import { createLocaleReconciler } from "@/features/i18n/public/locales";
 import { type RuntimeConnectionGeneration } from "@/features/connection/public/services";
 import {
   type InstalledPackageState,
@@ -64,8 +69,29 @@ function createPackageReconciler(
     moduleScope,
   );
   const resources = new Map<string, { signature: string; lifetime: ContributionLifetime }>();
+  const reconcileLocales = createLocaleReconciler(scope, (error) =>
+    reportPluginError("flame.builtin.plugins-pane", "setup", error),
+  );
   return async (installations: PluginInstallation[]) => {
     const admitted = installations.filter((item) => item.presentation === "admitted");
+    await reconcileLocales(
+      admitted.flatMap((installation) =>
+        installation.selected.locales.map((locale) => {
+          const request = {
+            installationId: installation.id,
+            digest: installation.selected.digest,
+            tag: locale.tag,
+          };
+          return {
+            key: JSON.stringify([request.installationId, request.digest, request.tag]),
+            tag: locale.tag,
+            title: locale.title,
+            load: async (signal: AbortSignal) =>
+              (await client.plugins.readLocale(request, signal)).messages,
+          };
+        }),
+      ),
+    );
     retainThemeSelection(
       themeAccess.preference,
       admitted.flatMap((item) =>
@@ -94,7 +120,8 @@ function createPackageReconciler(
       const lifetime = scope.lifetime(installation.id);
       resources.set(installation.id, { signature, lifetime });
       for (const entry of release.components) {
-        if (entry.placement === "export") continue;
+        const { placement, scope: contextScope } = entry;
+        if (placement === "export") continue;
         const component = {
           installationId: installation.id,
           digest: release.digest,
@@ -113,7 +140,7 @@ function createPackageReconciler(
             }
           : undefined;
 
-        if (entry.placement === "fileRenderer") {
+        if (placement === "fileRenderer") {
           if (!entry.selector || entry.selector.type !== "fileExtension")
             throw new Error("File component requires an extension selector");
           const File = lazy(async () => {
@@ -167,7 +194,7 @@ function createPackageReconciler(
           );
           continue;
         }
-        if (entry.placement === "toolResultRenderer") {
+        if (placement === "toolResultRenderer") {
           if (!entry.selector || entry.selector.type === "fileExtension")
             throw new Error("Tool result component requires a result selector");
           const Result = lazy(async () => {
@@ -227,7 +254,7 @@ function createPackageReconciler(
           );
           continue;
         }
-        if (entry.placement === "sessionAction") {
+        if (placement === "sessionAction") {
           const Action = lazy(async () => {
             const loaded = await modules.component(
               moduleScope,
@@ -276,42 +303,66 @@ function createPackageReconciler(
             installation,
             entry,
           );
+          const rendering = {
+            placement,
+            entry: loaded.component,
+            reload: loaded.reload,
+            component,
+            generation,
+            compose,
+            saveFile,
+            resources: loaded.signal,
+            runtime: client,
+            binding,
+            lifetime,
+          };
           return {
-            default: () => (
-              <InstalledComponent
-                entry={loaded.component}
-                reload={loaded.reload}
-                component={component}
-                generation={generation}
-                compose={compose}
-                saveFile={saveFile}
-                scope={entry.scope}
-                resources={loaded.signal}
-                runtime={client}
-                binding={binding}
-                lifetime={lifetime}
-              />
-            ),
+            default: () =>
+              placement === "clientEffect" ? (
+                <RenderingComponent {...rendering} />
+              ) : (
+                <InstalledComponent {...rendering} scope={contextScope} />
+              ),
           };
         });
         const id = packageScopedId(installation.id, entry.id);
+        const PlacedComponent = () => (
+          <ComponentBoundary
+            scope={componentFailureScope(component, generation)}
+            reload={() => modules.reload()}
+          >
+            <Suspense fallback={placement === "clientEffect" ? null : <ComponentLoading />}>
+              <View />
+            </Suspense>
+          </ComponentBoundary>
+        );
+        if (placement === "clientEffect") {
+          contributeLayout(lifetime, "app.overlay", { id, component: PlacedComponent });
+          continue;
+        }
+        if (placement === "settingsPane") {
+          lifetime.contribute(
+            SETTINGS_PANE,
+            {
+              id,
+              label: entry.title,
+              material: entry.material,
+              intent: entry.settingsIntent,
+              group: "extensions",
+              component: PlacedComponent,
+            },
+            { key: id },
+          );
+          continue;
+        }
         lifetime.contribute(
           WORKSPACE_VIEW,
           {
             id,
             title: `${release.name} · ${entry.title}`,
             material: entry.material,
-            dock: entry.scope === "session" ? "session" : undefined,
-            component: () => (
-              <ComponentBoundary
-                scope={componentFailureScope(component, generation)}
-                reload={() => modules.reload()}
-              >
-                <Suspense fallback={<ComponentLoading />}>
-                  <View />
-                </Suspense>
-              </ComponentBoundary>
-            ),
+            dock: contextScope === "session" ? "session" : undefined,
+            component: PlacedComponent,
           },
           { key: id },
         );

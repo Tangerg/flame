@@ -58,6 +58,7 @@ async function setup() {
       servers: [],
       inputs: [],
       skills: [],
+      locales: [],
       themes: [],
       diagnostics: [],
     },

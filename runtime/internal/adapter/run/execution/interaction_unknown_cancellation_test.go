@@ -39,7 +39,7 @@ func TestUnknownEffectsRespectScopeCancellationOrderAndDrainSiblings(t *testing.
 				releaseWork := sync.OnceFunc(func() { close(workRelease) })
 				defer releaseWork()
 				inner, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-					Name: "parallel", Description: "Run an external operation.",
+					Name: "fixture_parallel", Description: "Run an external operation.",
 				}, func(ctx context.Context, input struct {
 					Operation string `json:"operation"`
 				}) (string, error) {
@@ -65,9 +65,9 @@ func TestUnknownEffectsRespectScopeCancellationOrderAndDrainSiblings(t *testing.
 				}
 				model := &observationScriptModel{responses: []*chat.Response{
 					interactionToolBatchResponse([]chat.ToolCall{
-						{ID: "write", Name: "parallel", Arguments: `{"operation":"unknown"}`},
-						{ID: "settle", Name: "parallel", Arguments: `{"operation":"settle"}`},
-						{ID: "work", Name: "parallel", Arguments: `{"operation":"work"}`},
+						{ID: "write", Name: "fixture_parallel", Arguments: `{"operation":"unknown"}`},
+						{ID: "settle", Name: "fixture_parallel", Arguments: `{"operation":"settle"}`},
+						{ID: "work", Name: "fixture_parallel", Arguments: `{"operation":"work"}`},
 					}, 1, 1),
 				}}
 				store := &gatedExecutionTrees{
@@ -77,7 +77,7 @@ func TestUnknownEffectsRespectScopeCancellationOrderAndDrainSiblings(t *testing.
 				defer releaseCommit()
 				executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
 					ExecutionTrees: store,
-					ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "parallel")}, manifest: toolset.Manifest{
+					ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "parallel")}, manifest: toolset.Manifest{
 						Visible: []toolcontract.Tool{concurrentInteractionTool{Tool: inner}},
 					}},
 					ToolInterpreter: immutableToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},

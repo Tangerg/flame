@@ -1,7 +1,7 @@
 import { useWorkspace } from "@/features/workspace/public/workspace";
 import * as stylex from "@stylexjs/stylex";
 import { ariaKeyShortcuts, comboGlyph } from "@/lib/combo";
-import { MCP_SERVERS_PANE } from "@/features/settings/public/paneIDs";
+import { useSettingsPaneForIntent } from "@/features/settings/public/intent";
 import {
   SESSION_SEARCH_COMMAND,
   openSessionSearch,
@@ -25,6 +25,7 @@ export function SidebarActions() {
 
   const t = useT();
   const actions = useWorkIndexActions();
+  const toolsPane = useSettingsPaneForIntent("mcpServers");
   const combo = useCommandCombo(SESSION_SEARCH_COMMAND);
 
   return (
@@ -49,7 +50,7 @@ export function SidebarActions() {
         </AgentRow>
         <AgentRow
           icon="server"
-          onClick={() => openWorkspaceSettingsPane(workspaceAccess, MCP_SERVERS_PANE)}
+          onClick={() => openWorkspaceSettingsPane(workspaceAccess, toolsPane)}
         >
           {t("sidebar.action.tools")}
         </AgentRow>

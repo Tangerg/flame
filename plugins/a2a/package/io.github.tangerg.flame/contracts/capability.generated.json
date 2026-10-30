@@ -1,0 +1,407 @@
+{
+  "protocol": "io.github.tangerg.qimu/portable/1",
+  "reference": "flame.a2a.v1",
+  "composition": "collection",
+  "scope": "installation",
+  "methods": [
+    {
+      "name": "flame.a2a/agents.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "List configured remote agents without contacting them.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU_Agent": {
+            "additionalProperties": false,
+            "properties": {
+              "description": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "description"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU_Agents": {
+            "additionalProperties": false,
+            "properties": {
+              "agents": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU_Agent"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "agents"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "agents": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU_Agent"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "agents"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.a2a/cancel.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Request cancellation of the remote task bound to the original requestId. Only the returned remote state confirms cancellation; local interruption or transport failure does not. An unconfirmed cancel must never be resubmitted.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU_TaskRequest": {
+            "additionalProperties": false,
+            "properties": {
+              "requestId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "requestId"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "requestId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requestId"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU_Result": {
+            "additionalProperties": false,
+            "properties": {
+              "agent": {
+                "type": "string"
+              },
+              "contextId": {
+                "type": "string"
+              },
+              "kind": {
+                "enum": [
+                  "task",
+                  "message"
+                ],
+                "type": "string"
+              },
+              "requestId": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "taskId": {
+                "type": "string"
+              },
+              "valueJSON": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "requestId",
+              "agent",
+              "kind",
+              "valueJSON"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "contextId": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "task",
+              "message"
+            ],
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "taskId": {
+            "type": "string"
+          },
+          "valueJSON": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requestId",
+          "agent",
+          "kind",
+          "valueJSON"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.a2a/send.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Send one message up to 64 KiB to a configured remote agent. Return the remote task or message and the original requestId. A response is bounded to 2 MiB. Preserve the command identity: an unconfirmed send must never be resubmitted.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU_SendRequest": {
+            "additionalProperties": false,
+            "properties": {
+              "agent": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "agent",
+              "message"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent",
+          "message"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU_Result": {
+            "additionalProperties": false,
+            "properties": {
+              "agent": {
+                "type": "string"
+              },
+              "contextId": {
+                "type": "string"
+              },
+              "kind": {
+                "enum": [
+                  "task",
+                  "message"
+                ],
+                "type": "string"
+              },
+              "requestId": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "taskId": {
+                "type": "string"
+              },
+              "valueJSON": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "requestId",
+              "agent",
+              "kind",
+              "valueJSON"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "contextId": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "task",
+              "message"
+            ],
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "taskId": {
+            "type": "string"
+          },
+          "valueJSON": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requestId",
+          "agent",
+          "kind",
+          "valueJSON"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.a2a/status.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Read the remote task bound to the original requestId, using its captured endpoint and task identity. This does not replay a send or advance local task state.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU_TaskRequest": {
+            "additionalProperties": false,
+            "properties": {
+              "requestId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "requestId"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "requestId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requestId"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvYTJhL2ludGVybmFsL3dpcmU_Result": {
+            "additionalProperties": false,
+            "properties": {
+              "agent": {
+                "type": "string"
+              },
+              "contextId": {
+                "type": "string"
+              },
+              "kind": {
+                "enum": [
+                  "task",
+                  "message"
+                ],
+                "type": "string"
+              },
+              "requestId": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "taskId": {
+                "type": "string"
+              },
+              "valueJSON": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "requestId",
+              "agent",
+              "kind",
+              "valueJSON"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "contextId": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "task",
+              "message"
+            ],
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "taskId": {
+            "type": "string"
+          },
+          "valueJSON": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requestId",
+          "agent",
+          "kind",
+          "valueJSON"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

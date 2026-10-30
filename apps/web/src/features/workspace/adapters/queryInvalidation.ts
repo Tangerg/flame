@@ -3,18 +3,7 @@ import { queryClient, replaceCachedRead } from "@/lib/queryClient";
 import { AGENT_SESSIONS_KEY } from "@/features/agent/public/session";
 
 import { APPROVAL_MODE_KEY, APPROVAL_RULES_KEY } from "@/features/agent/public/approvalPolicy";
-import { HOOKS_KEY } from "@/features/hooks/public/queries";
-import {
-  EMBEDDING_ROLE_KEY,
-  MODELS_KEY,
-  PROVIDERS_KEY,
-  UTILITY_ROLE_KEY,
-} from "@/features/providers/public/queries";
-import {
-  MCP_SERVERS_KEY,
-  MCP_TOOLS_KEY,
-  MCP_EXPOSURE_KEY,
-} from "@/features/mcp/public/serverCatalog";
+import { MODELS_KEY, PROVIDERS_KEY } from "@/features/providers/public/queries";
 import {
   WORKSPACE_FILES_CHANGED_KEY,
   WORKSPACE_LIST_FILES_KEY,
@@ -35,15 +24,9 @@ const QUERY_KEYS: Record<
   fileList: WORKSPACE_LIST_FILES_KEY,
   fileRead: WORKSPACE_READ_FILE_KEY,
   filesChanged: WORKSPACE_FILES_CHANGED_KEY,
-  hooks: HOOKS_KEY,
   models: MODELS_KEY,
-  mcpServers: MCP_SERVERS_KEY,
-  mcpTools: MCP_TOOLS_KEY,
-  mcpExposure: MCP_EXPOSURE_KEY,
   providers: PROVIDERS_KEY,
   sessions: AGENT_SESSIONS_KEY,
-  utilityRole: UTILITY_ROLE_KEY,
-  embeddingRole: EMBEDDING_ROLE_KEY,
 };
 
 function invalidateWorkspaceTargets(

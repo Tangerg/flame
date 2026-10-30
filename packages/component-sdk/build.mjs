@@ -12,6 +12,7 @@ export async function buildComponent({ input, directory, compiler }) {
   const bundle = await compiler({
     input,
     platform: "browser",
+    moduleTypes: { ".png": "dataurl" },
     external: (id) => HOST_MODULES.includes(id),
     transform: {
       jsx: { runtime: "automatic", development: false },
@@ -21,7 +22,12 @@ export async function buildComponent({ input, directory, compiler }) {
       {
         name: "flame-component-import-graph",
         moduleParsed(info) {
-          if (info.code === null || info.id.endsWith(".json")) return;
+          if (
+            info.code === null ||
+            info.id.endsWith(".json") ||
+            info.id.endsWith(".png")
+          )
+            return;
           const ast = this.parse(info.code, {
             lang: info.id.endsWith(".tsx")
               ? "tsx"

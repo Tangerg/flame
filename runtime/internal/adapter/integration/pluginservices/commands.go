@@ -73,7 +73,7 @@ func invokeCommand[P, R any](ctx context.Context, c *CommandCalls, required *por
 		return binding, nil
 	}, nil)
 }
-func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, method string, input P, validate func(R) error, resolve func(context.Context) (plugins.ContributionBinding, error), collaborators func(context.Context, plugins.ContributionBinding, *sdk.ClientSession) (sdk.ParamsBase, func(), error)) (commandReply[R], error) {
+func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, method string, input P, validate func(R) error, resolve func(context.Context) (plugins.ContributionBinding, error), collaborators func(context.Context, plugins.ContributionBinding, *sdk.ClientSession) (sdk.ParamsBase, func() error, error)) (commandReply[R], error) {
 	admitted, err := jsonvalue.Encode(input)
 	if err != nil {
 		return commandReply[R]{}, err
@@ -97,7 +97,7 @@ func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, metho
 	return commandReply[R]{value: value, binding: reply.binding}, err
 }
 
-func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admitted jsonvalue.Value, validate func(jsonvalue.Value) error, accepts func(plugin.CommandBinding) error, resolve func(context.Context) (plugins.ContributionBinding, error), collaborators func(context.Context, plugins.ContributionBinding, *sdk.ClientSession) (sdk.ParamsBase, func(), error), target func(plugins.ContributionBinding) portable.Target) (commandReply[jsonvalue.Value], error) {
+func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admitted jsonvalue.Value, validate func(jsonvalue.Value) error, accepts func(plugin.CommandBinding) error, resolve func(context.Context) (plugins.ContributionBinding, error), collaborators func(context.Context, plugins.ContributionBinding, *sdk.ClientSession) (sdk.ParamsBase, func() error, error), target func(plugins.ContributionBinding) portable.Target) (_ commandReply[jsonvalue.Value], returned error) {
 	var zero commandReply[jsonvalue.Value]
 	record, err := c.admitCommandRoute(ctx, method, admitted, accepts, resolve, target, false)
 	if err != nil {
@@ -141,12 +141,12 @@ func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admit
 	if record.Phase == plugin.CommandPrepared {
 		metadata := sdk.ParamsBase{}
 		if collaborators != nil {
-			var release func()
+			var release func() error
 			metadata, release, err = collaborators(ctx, binding, session)
 			if err != nil {
 				return zero, err
 			}
-			defer release()
+			defer func() { returned = errors.Join(returned, release()) }()
 		}
 		err = c.routing.Dispatch(ctx, id, c.admitDispatch)
 		if err != nil {

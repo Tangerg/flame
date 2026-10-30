@@ -16,6 +16,14 @@
     "output": "schema.json#/$defs/Method_flame_2eweb_2ffetch_2ev1Output"
   },
   {
+    "name": "flame.web/request.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Execute one HTTP request within the installed host allowlist. GET and HEAD are allowed; other methods are refused. Responses are bounded to 256 KiB. Preserve the command identity: an unconfirmed request must never be resubmitted.",
+    "input": "schema.json#/$defs/Method_flame_2eweb_2frequest_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2eweb_2frequest_2ev1Output"
+  },
+  {
     "name": "flame.web/search.v1",
     "kind": "query",
     "target": "installation",

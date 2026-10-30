@@ -4,8 +4,10 @@ import (
 	"errors"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
@@ -18,13 +20,20 @@ func TestSessionActionUsesCanonicalSessionRevisionAndDurableReplay(t *testing.T)
 		t.Fatal(err)
 	}
 	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install").(*protocol.PluginInstallation)
-	if len(installed.Selected.Components) != 2 || len(installed.Selected.Diagnostics) != 0 {
+	index := slices.IndexFunc(installed.Selected.Components, func(component protocol.PluginClientComponent) bool {
+		return component.ID == "rename-session"
+	})
+	if index < 0 || len(installed.Selected.Diagnostics) != 0 {
 		t.Fatalf("action admission: %+v", installed.Selected)
+	}
+	component := installed.Selected.Components[index]
+	if component.Scope != "session" || component.Placement != extension.ComponentPlacementSessionAction || component.Export != "RenameSession" {
+		t.Fatalf("session action: %+v", component)
 	}
 	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Original"}, "session").(*protocol.Session)
 	title := "Renamed"
 	request := protocol.UpdateSessionRequest{SessionID: session.ID, ExpectedRevision: session.Revision, Title: &title}
-	resource := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: "rename-session"}, Path: "io.github.tangerg.flame/components/component.js"}
+	resource := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: component.ID}, Path: component.Entry}
 	resourceRefused := func() {
 		t.Helper()
 		result := r.endpoint.Invoke(t.Context(), delivery.PluginsReadResource, resource, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})

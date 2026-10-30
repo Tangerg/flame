@@ -71,6 +71,7 @@ type readerPane struct {
 	current          int
 	query            string
 	problem          string
+	refreshFailure   string
 	title            string
 	detail           string
 
@@ -114,6 +115,7 @@ func (r *readerPane) Open(target readerTarget) {
 }
 
 func (r *readerPane) replace(document readerDocument, preserveScroll, follow bool) {
+	r.refreshFailure = ""
 	r.title = strings.TrimSpace(document.Title)
 	if r.title == "" {
 		r.title = "Transcript entry"
@@ -176,6 +178,9 @@ func (r *readerPane) Draw(frame headless.Frame) {
 }
 
 func (r *readerPane) footer(window int) string {
+	if r.refreshFailure != "" {
+		return r.refreshFailure
+	}
 	if r.problem != "" {
 		return r.problem
 	}
@@ -191,6 +196,10 @@ func (r *readerPane) footer(window int) string {
 		search = fmt.Sprintf(" · %d matches", len(r.matches))
 	}
 	return fmt.Sprintf("rows %d-%d/%d · %d%%%s · ctrl+f search · alt+c copy · esc close", first, last, total, percent, search)
+}
+
+func (r *readerPane) RefreshFailed(message string) {
+	r.refreshFailure = message
 }
 
 func (r *readerPane) Handle(event input.Event) bool {

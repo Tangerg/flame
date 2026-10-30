@@ -204,9 +204,9 @@ func TestInstallationChangeDoesNotWaitForAssembly(t *testing.T) {
 func TestWaitingCheckpointCarriesTheDependencyProjection(t *testing.T) {
 	workspace := t.TempDir()
 	executor := newObservedTestInteractionExecutor(t, &observationScriptModel{responses: []*chat.Response{
-		interactionToolResponse(chat.ToolCall{ID: "ask_call", Name: "ask", Arguments: `{}`}, 1, 1),
+		interactionToolResponse(chat.ToolCall{ID: "ask_call", Name: "fixture_ask", Arguments: `{}`}, 1, 1),
 	}}, InteractionExecutorConfig{
-		ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "ask")}, manifest: toolset.Manifest{
+		ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "ask")}, manifest: toolset.Manifest{
 			Installations: dependedRelease(), Resources: dependedRelease(), Visible: []toolcontract.Tool{newQuestionCheckpointTool(t)},
 		}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},

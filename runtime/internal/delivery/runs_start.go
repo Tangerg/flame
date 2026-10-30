@@ -165,7 +165,7 @@ func wireRunStartErr(err error) error {
 	case errors.Is(err, session.ErrNotFound):
 		return protocol.ErrSessionNotFound
 	default:
-		return err
+		return mapModelError(err)
 	}
 }
 

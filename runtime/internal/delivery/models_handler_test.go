@@ -25,18 +25,8 @@ func (m *modelProviderFake) Get(_ context.Context, id string) (provider.Provider
 func (m *modelProviderFake) Update(context.Context, string, provider.Patch) (provider.Provider, error) {
 	return provider.Provider{}, nil
 }
-func (m *modelProviderFake) Supported() []models.ProviderMetadata {
-	return []models.ProviderMetadata{serverProviderMetadata("anthropic", models.ProviderEndpointOptional, models.ProviderModelsBundled, models.NoEmbeddingCapability())}
-}
-func (m *modelProviderFake) Metadata(id string) (models.ProviderMetadata, bool) {
-	if id == "anthropic" {
-		return serverProviderMetadata(id, models.ProviderEndpointOptional, models.ProviderModelsBundled, models.NoEmbeddingCapability()), true
-	}
-	return models.ProviderMetadata{}, false
-}
-func (*modelProviderFake) Models(string) []models.Model { return nil }
-func (*modelProviderFake) LookupModel(string, string) (models.Model, bool) {
-	return models.Model{}, false
+func (*modelProviderFake) Profiles(context.Context) ([]models.ProviderProfile, error) {
+	return []models.ProviderProfile{{Metadata: serverProviderMetadata("anthropic", models.ProviderEndpointOptional, models.ProviderModelsBundled, models.NoEmbeddingCapability())}}, nil
 }
 
 // okChatModelValidator always accepts the utility model.

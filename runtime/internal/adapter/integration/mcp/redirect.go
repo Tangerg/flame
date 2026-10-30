@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/httporigin"
+	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 )
 
 const maximumRedirects = 10

@@ -141,6 +141,15 @@ this command contract without importing terminal delivery. Built-in transcript
 and tool rendering belong directly to terminal delivery; presentation does not
 participate in plugin discovery or activation.
 
+The terminal's `/plugins` consumes the public Runtime installation catalog through
+a read-only port, including exact release identity, enablement, admission and
+observed realization. Runtime change events refresh the open reader. It shares
+the command-line `plugins list` authority and never discovers another business
+plugin directory. `/extensions`, `/reload` and `/unload` address the local command
+extension host. Generic installed operations remain available through
+`flame plugins call`; specialized Memory and Schedules forms keep their existing
+installed contracts and Workbench command-intent lifetime.
+
 Remote authoring persistence is partitioned by the configured endpoint; embedded state keeps its existing directory. The terminal and command-side session deletion workflow use the same partition. Endpoint identity scopes local drafts and journals, while Runtime's advertised idempotency namespace and retention independently decide whether an exact command may replay. Neither a new process instance ID nor an endpoint spelling change authorizes migration of a pending mutation.
 
 Start and Resume acceptance belongs to Runtime's durable command receipt. Before delivery or redelivery, the Run workflow reads `runs.getAcceptance` using the original namespace, key, and operation. `accepted` settles the local submission using the original Run, Segment, and optional input Item references; observation then restores current material through the existing coherent snapshot boundary. A later active Segment never replaces the opening Segment in the receipt. `retired` settles historical acceptance without subscribing to or canceling replacement material. `notRecorded` proves only the absence of a receipt at that read: it permits a same-key attempt only while the original replay guard still admits delivery. Expiry, a changed waiting set, a finished snapshot, and another command's receipt never authorize a new key or local settlement. Lookup errors preserve the unresolved outbox. Workbench settlement and local write retries name the acknowledged command explicitly; Run lifecycle frames advance only their projection and cannot acknowledge the FIFO head. Missing prepared content blocks redelivery, while acceptance lookup itself requires no attachment or payload reads.

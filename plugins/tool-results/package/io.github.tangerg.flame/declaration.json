@@ -80,7 +80,7 @@
       "placement": "toolResultRenderer",
       "selector": {
         "type": "toolName",
-        "name": "lsp"
+        "name": "codeintel_lsp"
       },
       "entry": "io.github.tangerg.flame/components/component.js",
       "export": "RecordedResult"
@@ -176,7 +176,7 @@
       "placement": "toolResultRenderer",
       "selector": {
         "type": "toolName",
-        "name": "http_request"
+        "name": "web_http_request"
       },
       "entry": "io.github.tangerg.flame/components/component.js",
       "export": "RecordedResult"

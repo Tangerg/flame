@@ -68,7 +68,7 @@ func TestAuxiliaryInstalledInputTransformationRetainsOriginalOrderLifetimeAndFin
 			counter := &transformedInputCounter{t: t}
 			base := auxiliaryFixture(provider)
 			if mode == "token-budget" {
-				resolved, err := models.NewResolvedChat(provider, counter)
+				resolved, err := models.NewResolvedChat(provider, counter, testsupport.ModelFacts(testsupport.MustModelSelection("openai", "gpt-5-pro")))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -77,8 +77,8 @@ func TestAuxiliaryInstalledInputTransformationRetainsOriginalOrderLifetimeAndFin
 					t.Fatal(err)
 				}
 			}
-			resolver := composition.Auxiliary(func(context.Context, models.AuxiliaryBudget) (models.SelectedChat, func(), error) {
-				return base, func() {}, nil
+			resolver := composition.Auxiliary(func(context.Context, models.AuxiliaryBudget) (models.SelectedChat, func() error, error) {
+				return base, func() error { return nil }, nil
 			})
 			capture, release, err := resolver(t.Context(), models.AuxiliaryBudget{MaxInputBytes: 128, MaxOutputTokens: 64})
 			if err != nil {

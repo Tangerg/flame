@@ -730,9 +730,8 @@ func TestExecutionAdapterDelegatesManagedExecution(t *testing.T) {
 }
 
 // TestCapabilityAdaptersDoNotImportLowLevelTransportSDKs keeps raw MCP/A2A
-// protocol clients out of tool assembly. The released Scope A2A ToolSet is
-// deliberately consumed here because it already owns endpoint translation,
-// partial-open cleanup, immutable tool publication, and idempotent shutdown.
+// protocol clients out of tool assembly. Installed connectors own their
+// transport translation and lifecycle.
 func TestCapabilityAdaptersDoNotImportLowLevelTransportSDKs(t *testing.T) {
 	root := moduleRoot(t)
 	forbidExternalImports(t, filepath.Join(root, "internal", "adapter", "toolset"), []string{

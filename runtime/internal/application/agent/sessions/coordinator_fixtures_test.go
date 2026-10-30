@@ -342,7 +342,7 @@ func (inertExecutionReleaser) Release(context.Context, runs.ExecutorRef) error {
 
 type testModelAdmitter struct{}
 
-func (testModelAdmitter) AdmitSelection(modelchoice.Selection) error { return nil }
+func (testModelAdmitter) AdmitSelection(context.Context, modelchoice.Selection) error { return nil }
 
 type emptyMaterialSnapshotReader struct{}
 

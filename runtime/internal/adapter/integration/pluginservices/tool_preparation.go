@@ -37,7 +37,7 @@ func NewToolPreparation(config ToolPreparationConfig) (mcp.ToolPreparation, erro
 	if lo.IsNil(config.Installations) || config.Callbacks == nil || config.Embeddings == nil {
 		return nil, errors.New("plugin tools: installations, callbacks and embedding resolver are required")
 	}
-	return func(ctx context.Context, executable mcp.Executable, host mcp.ToolHost) (mcp.ToolCall, func(), error) {
+	return func(ctx context.Context, executable mcp.Executable, host mcp.ToolHost) (mcp.ToolCall, func() error, error) {
 		source := executable.SourceConfig().Server
 		snapshot, installed, err := admitInstalledSource(ctx, config.Installations, source)
 		if err != nil {
@@ -46,7 +46,7 @@ func NewToolPreparation(config ToolPreparationConfig) (mcp.ToolPreparation, erro
 		if !installed {
 			return func(invocation toolcontract.Invocation) (toolcontract.Result, error) {
 				return executable.Call(ctx, invocation)
-			}, func() {}, nil
+			}, func() error { return nil }, nil
 		}
 		if snapshot.Selected.HasImplementation(source.Name, memoryContract) {
 			return prepareMemoryTool(ctx, executable, config.Callbacks, config.Embeddings, config.Invalidations)
@@ -79,7 +79,7 @@ func admitInstalledSource(ctx context.Context, store plugins.Store, source mcpse
 	return snapshot, true, nil
 }
 
-func prepareInstalledTool(ctx context.Context, executable mcp.Executable, host mcp.ToolHost, invalidations invalidation.Publish) (mcp.ToolCall, func(), error) {
+func prepareInstalledTool(ctx context.Context, executable mcp.Executable, host mcp.ToolHost, invalidations invalidation.Publish) (mcp.ToolCall, func() error, error) {
 	metadata, release, err := host(ctx)
 	if err != nil {
 		return nil, nil, err
@@ -105,7 +105,7 @@ func scopeCallbacks(ctx context.Context, metadata sdk.ParamsBase) context.Contex
 }
 
 // Only the publisher's search Tool receives Memory's narrow embedding grant.
-func prepareMemoryTool(ctx context.Context, source mcp.Executable, callbacks *qimumcp.Callbacks, embeddings func(context.Context) (models.TextEmbedder, error), invalidations invalidation.Publish) (mcp.ToolCall, func(), error) {
+func prepareMemoryTool(ctx context.Context, source mcp.Executable, callbacks *qimumcp.Callbacks, embeddings func(context.Context) (models.TextEmbedder, error), invalidations invalidation.Publish) (mcp.ToolCall, func() error, error) {
 	cwd, attached := executionctx.WorkspaceCWD(ctx)
 	if !attached {
 		return nil, nil, errors.New("memory: Run workspace is required")
@@ -128,35 +128,39 @@ func prepareMemoryTool(ctx context.Context, source mcp.Executable, callbacks *qi
 		metadata := scopemcp.RequestMetaFromContext(scoped)
 		delete(metadata, qimumcp.CallbackMetadataKey)
 		scoped = scopemcp.WithRequestMeta(scoped, metadata)
-		return installedToolCall(scoped, source, invalidations), func() {}, nil
+		return installedToolCall(scoped, source, invalidations), func() error { return nil }, nil
 	}
 	embedder, err := embeddings(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
+	closeEmbedder := func() error {
+		if embedder != nil {
+			return embedder.Close(context.WithoutCancel(ctx))
+		}
+		return nil
+	}
 	borrowed, err := source.BorrowSession(ctx)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Join(err, closeEmbedder())
 	}
 	ctx = borrowed.Context()
 	grant, revoke, err := GrantMemoryModels(ctx, callbacks, borrowed.Session(), nil, embedder)
 	if err != nil {
-		return nil, nil, errors.Join(err, borrowed.Close())
+		return nil, nil, errors.Join(err, borrowed.Close(), closeEmbedder())
 	}
-	release := func() { revoke(); _ = borrowed.Close() }
+	release := func() error { revoke(); return errors.Join(borrowed.Close(), closeEmbedder()) }
 	space := ""
 	if embedder != nil {
 		space = embedder.ID()
 	}
 	metadata, err := qimumcp.CallbackMetadata(grant)
 	if err != nil {
-		release()
-		return nil, nil, err
+		return nil, nil, errors.Join(err, release())
 	}
 	scoped, err := pluginsdk.WithToolContext(scopeCallbacks(ctx, metadata), pluginsdk.ToolContext{CWD: cwd, EmbeddingSpace: space})
 	if err != nil {
-		release()
-		return nil, nil, err
+		return nil, nil, errors.Join(err, release())
 	}
 	return installedToolCall(scoped, source, invalidations), release, nil
 }

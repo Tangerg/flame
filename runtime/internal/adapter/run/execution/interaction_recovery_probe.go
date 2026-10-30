@@ -96,6 +96,9 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 		bindings = append(bindings, state.modelContexts...)
 		bindings = append(bindings, state.modelInputs...)
 		bindings = append(bindings, state.toolProposals...)
+		if state.modelProvider != nil {
+			bindings = append(bindings, state.modelProvider.Binding)
+		}
 		if i.config.CallComposition.Pending(bindings) {
 			return runs.DeferredWaiting(), nil
 		}

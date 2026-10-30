@@ -6,6 +6,7 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
+	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	capture "github.com/Tangerg/flame/plugins/web/internal/domain"
 	"github.com/Tangerg/flame/qimu/sqlite"
 )
@@ -15,7 +16,7 @@ type store struct{ db *sql.DB }
 var errStoredSnapshot = errors.New("web: invalid stored snapshot")
 
 func openStore(ctx context.Context, path string) (*store, error) {
-	db, err := sqlite.OpenSchema(ctx, path, []string{`CREATE TABLE IF NOT EXISTS snapshots (id TEXT PRIMARY KEY, snapshot TEXT NOT NULL CHECK(json_valid(snapshot)))`})
+	db, err := sqlite.OpenSchema(ctx, path, []string{`CREATE TABLE IF NOT EXISTS snapshots (id TEXT PRIMARY KEY, snapshot TEXT NOT NULL CHECK(json_valid(snapshot)))`, pluginstorage.CommandsSchema})
 	if err != nil {
 		return nil, err
 	}

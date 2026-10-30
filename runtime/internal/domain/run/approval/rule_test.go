@@ -10,15 +10,12 @@ import (
 )
 
 func TestStandingRuleDoesNotFollowTheModelName(t *testing.T) {
-	remote, err := tool.A2A("shell")
-	if err != nil {
-		t.Fatal(err)
-	}
-	builtin := testsupport.BuiltInTool(t, "shell")
+	remote := testsupport.MCPTool(testsupport.UserMCPServer("read"), "shell_output")
+	builtin := testsupport.BuiltInTool(t, "read_shell_output")
 	if remote.ModelName() != builtin.ModelName() {
 		t.Fatal("fixture does not collide")
 	}
-	rule := mustRule(t, approval.ScopeGlobal, "", "shell", approval.InvocationSubject(""), approval.Allow)
+	rule := mustRule(t, approval.ScopeGlobal, "", "read_shell_output", approval.InvocationSubject(""), approval.Allow)
 	if _, matched, err := approval.Decide([]approval.Rule{rule}, approval.Query{Tool: remote, SourceFingerprint: testsupport.ToolFingerprint(remote)}); err != nil || matched {
 		t.Fatalf("remote identity inherited built-in approval: matched=%t, err=%v", matched, err)
 	}

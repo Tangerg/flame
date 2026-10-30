@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-24.1",
+  "protocolVersion": "2026-10-30.2",
   "serverInfo": {
     "instanceId": "runtime_019c765b-2f8f-7e36-a2b4-31cb11f48d10",
     "name": "flame",
@@ -63,11 +63,6 @@
         "requiredByRunProtocol": false
       },
       "checkpoints": {
-        "enabled": true,
-        "clientOptIn": false,
-        "requiredByRunProtocol": false
-      },
-      "lsp": {
         "enabled": true,
         "clientOptIn": false,
         "requiredByRunProtocol": false

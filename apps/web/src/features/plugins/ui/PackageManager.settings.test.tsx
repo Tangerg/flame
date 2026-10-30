@@ -47,6 +47,7 @@ const installation: PluginInstallation = {
     servers: [],
     inputs: [],
     skills: [],
+    locales: [],
     themes: [],
     diagnostics: [],
   },

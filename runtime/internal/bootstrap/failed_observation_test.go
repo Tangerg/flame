@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	"iter"
 	"strings"
 	"testing"
@@ -22,7 +23,7 @@ func TestFailedStreamObservationSurvivesRuntimeRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg := protocolRuntimeConfig(t, stores, incompleteObservationModel{})
-	cfg.chatResolver = observationResolver{chatResolver: cfg.chatResolver}
+	cfg.modelProviders = observationResolver{modelProviderAdapters: cfg.modelProviders}
 	host, api := buildProtocolRuntime(t, cfg, home)
 	t.Cleanup(func() {
 		if err := host.Close(); err != nil {
@@ -114,8 +115,12 @@ func (incompleteObservationModel) Stream(context.Context, *chat.Request) iter.Se
 	}
 }
 
-type observationResolver struct{ chatResolver }
+type observationResolver struct{ modelProviderAdapters }
 
-func (observationResolver) ResolveChat(context.Context, modelchoice.Selection) (modeladapter.ResolvedChat, error) {
-	return modeladapter.NewResolvedChat(incompleteObservationModel{}, nil)
+func (observationResolver) OpenChat(context.Context, modelchoice.Selection, modelprovider.Connection) (modeladapter.ResolvedChat, error) {
+	return modeladapter.NewResolvedChat(incompleteObservationModel{}, nil, nil)
+}
+
+func (r observationResolver) RestoreChat(ctx context.Context, selection modelchoice.Selection, _ *modeladapter.ProviderCapture) (modeladapter.ResolvedChat, error) {
+	return r.OpenChat(ctx, selection, modelprovider.Connection{})
 }

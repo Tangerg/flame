@@ -1,6 +1,5 @@
 import { cloneJSON } from "@qimu/sdk/json";
 import type { RuntimeAgentDriver } from "./runtimeDriver";
-import { type MCPServerID } from "@flame/runtime-client/wire";
 import { type FlameClient } from "@flame/runtime-client";
 import {
   asRunId,
@@ -301,15 +300,6 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
 
   async setApprovalMode(mode: Parameters<AgentRuntimeGateway["setApprovalMode"]>[0]) {
     return this.runtimeClient().approval.setMode(mode);
-  }
-
-  async allowMCPTool(server: MCPServerID, name: string) {
-    await this.runtimeClient().approval.setRule({
-      tool: { type: "mcp", server, name },
-      scope: "global",
-      subject: { type: "all" },
-      decision: "allow",
-    });
   }
 
   async forgetApprovalRule(id: string) {

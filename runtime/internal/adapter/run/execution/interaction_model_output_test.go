@@ -52,7 +52,7 @@ func TestInteractionBillsPersistedEndpointWhenOuterResultIsMissingOrChanged(t *t
 					changed := response.Clone()
 					changed.Metadata.Usage = &chat.Usage{InputTokens: 999, OutputTokens: 999}
 					return changed, nil
-				}), nil)
+				}), nil, nil)
 			})
 			executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{Lifetime: t.Context(), BuildID: interactionTestBuildID, ChatResolver: outer, ModelEvidence: journal})
 			if err != nil {
@@ -132,7 +132,7 @@ func TestModelFailureAccountsOnlyDispatchedEndpoints(t *testing.T) {
 						return nil, errors.New("preparation failed before dispatch")
 					}
 					return resolved.Model().Call(ctx, request)
-				}), nil)
+				}), nil, nil)
 			})
 			executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{Lifetime: t.Context(), BuildID: interactionTestBuildID, ChatResolver: outer, ModelEvidence: journal})
 			if err != nil {
@@ -232,7 +232,7 @@ func TestOuterStreamFailureWaitsForPhysicalSettlement(t *testing.T) {
 							}
 						}
 					}),
-				}, nil)
+				}, nil, nil)
 			})
 			executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{
 				Lifetime: t.Context(), BuildID: interactionTestBuildID, ChatResolver: outer, ModelEvidence: journal, StreamModelResponses: true,

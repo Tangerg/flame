@@ -8,6 +8,7 @@ import discovery from "@flame/runtime-client/testing/samples/method.discover.res
 import type { Page, TrajectoryEntry } from "@flame/runtime-client/wire";
 import { cloneJSON, parseJSON, stringifyJSON } from "@qimu/sdk/json";
 import { createTestClient } from "@/test/renderClient";
+import { unavailableComponentNotifications } from "@/test/unavailableNotifications";
 import { Trajectory } from "../../../plugins/trajectory/component/component";
 import { RUNTIME_AGENT_SESSION_SNAPSHOTS, VISUAL_SESSION_ID } from "./agentSessionSnapshots";
 import { VISUAL_CAPABILITIES } from "./agentFixtureFacts";
@@ -80,6 +81,13 @@ it.each([
       throw new Error("Recorded evidence must not save files");
     },
     compose: () => null,
+    registerCommand() {
+      throw new Error("Recorded evidence must not register commands");
+    },
+    subscribeRootRunSettlements() {
+      throw new Error("Recorded evidence must not observe run settlements");
+    },
+    notifications: unavailableComponentNotifications,
   };
   const failures: unknown[] = [];
   try {

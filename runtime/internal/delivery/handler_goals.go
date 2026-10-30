@@ -114,7 +114,7 @@ func mapGoalErr(err error) error {
 		errors.Is(err, modelchoice.ErrUnsupported):
 		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	default:
-		return err
+		return mapModelError(err)
 	}
 }
 

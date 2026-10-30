@@ -166,7 +166,7 @@ func newSessionStateE2ERuntime(
 	model sessionStateE2EModel,
 ) (*persistence.Bundle, *delivery.Handler, context.Context, string) {
 	t.Helper()
-	home := t.TempDir()
+	home := testsupport.TempDirectory(t)
 	t.Setenv("FLAME_HOME", home)
 	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
 	if err != nil {

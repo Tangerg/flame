@@ -96,7 +96,7 @@ describe("visual Runtime transport", () => {
         structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
         VISUAL_CAPABILITIES,
         async () => REVIEW_DIFF,
-        true,
+        { acceptSkillProposals: true },
       );
       const send = vi.spyOn(transport, "send");
       const client = createFlameClient(transport, { capabilities: () => VISUAL_CAPABILITIES });
@@ -105,7 +105,7 @@ describe("visual Runtime transport", () => {
           structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
           VISUAL_CAPABILITIES,
           async () => REVIEW_DIFF,
-          true,
+          { acceptSkillProposals: true },
         ),
         { capabilities: () => VISUAL_CAPABILITIES },
       );
@@ -165,7 +165,7 @@ describe("visual Runtime transport", () => {
         structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
         VISUAL_CAPABILITIES,
         async () => REVIEW_DIFF,
-        true,
+        { acceptSkillProposals: true },
       ),
       { capabilities: () => VISUAL_CAPABILITIES },
     );
@@ -214,9 +214,7 @@ describe("visual Runtime transport", () => {
         model: VISUAL_MODELS[0]!.id,
       });
       expect(await client.models.getEmbeddingRole()).toEqual({});
-      await expect(client.mcp.list()).rejects.toMatchObject({
-        data: { type: "capability_not_negotiated" },
-      });
+      expect(await client.mcp.list()).toEqual({ data: [] });
       expect((await client.plugins.list()).data).toEqual(VISUAL_PACKAGES);
       expect((await client.plugins.listProviders()).data).toEqual(VISUAL_PLUGIN_PROVIDERS);
       expect(await client.approval.listRules()).toEqual({ rules: [] });
@@ -264,9 +262,13 @@ describe("visual Runtime transport", () => {
       { capabilities: () => VISUAL_CAPABILITIES },
     );
     try {
-      await expect(client.models.setUtilityRole({})).rejects.toThrow(
-        'Visual Runtime has no response for "models.setUtilityRole"',
-      );
+      await expect(client.models.setUtilityRole({})).rejects.toMatchObject({
+        name: "RpcError",
+        data: {
+          type: "method_not_found",
+          detail: 'Visual Runtime has no response for "models.setUtilityRole"',
+        },
+      });
     } finally {
       await client.close();
     }

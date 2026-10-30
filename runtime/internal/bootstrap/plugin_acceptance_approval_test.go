@@ -82,7 +82,7 @@ func TestPluginAcceptanceApprovalStaleAfterReleaseChange(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg := runtimeConfigWithRequiredDeps(t)
-	cfg.chatResolver = testChatResolver(client)
+	cfg.modelProviders = testChatResolver(client)
 	t.Cleanup(func() {
 		_ = filepath.WalkDir(filepath.Join(cfg.stores.DataDirectory, "plugins"), func(path string, entry os.DirEntry, err error) error {
 			if err == nil && entry.IsDir() {

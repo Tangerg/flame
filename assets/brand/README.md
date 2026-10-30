@@ -23,8 +23,13 @@ surfaces. Keep the rounded silhouette and both eyes intact.
 | A soft, dimensional expression for product introductions and larger illustrations. | A warm, tactile expression for welcoming moments and brand storytelling. |
 | [Download PNG](flame-companion.png)                                                | [Download PNG](flame-plush.png)                                          |
 
-All three assets have transparent backgrounds. These files are shared by the
-repository documentation and **Settings → Brand identity** in the application.
+All three assets have transparent backgrounds. The public `@flame/brand-assets`
+package owns these originals and the brand color. The graphical client and the
+optional Brand identity settings component consume that same package.
+
+Browser bundlers load the named `mark`, `companion` and `plush` PNG exports. Code
+that needs only the color imports `@flame/brand-assets/color`. Installed component
+builds embed the exact PNG bytes in their immutable module graph.
 
 ## Brand color
 

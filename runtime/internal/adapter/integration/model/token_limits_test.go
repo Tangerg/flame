@@ -1,45 +1,23 @@
 package model
 
 import (
+	"github.com/Tangerg/scope/models/catalog"
 	"testing"
-
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 )
 
-func TestLookupTokenLimitsPreservesIndependentCatalogFacts(t *testing.T) {
-	selection, err := modelchoice.New("openai", "gpt-5-pro")
+func TestCatalogTokenLimitsPreserveIndependentFacts(t *testing.T) {
+	limits, err := catalogTokenLimits(catalog.Model{Limits: catalog.Limits{ContextWindow: 400000, MaxInputTokens: 272000, MaxOutputTokens: 272000}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	limits, found, err := LookupTokenLimits(selection)
-	if err != nil {
-		t.Fatal(err)
+	c, ck := limits.ContextWindow()
+	i, ik := limits.MaxInputTokens()
+	o, ok := limits.MaxOutputTokens()
+	if c != 400000 || !ck || i != 272000 || !ik || o != 272000 || !ok {
+		t.Fatalf("captured limits changed: %+v", limits)
 	}
-	if !found {
-		t.Fatal("LookupTokenLimits() missed openai/gpt-5-pro")
-	}
-	contextWindow, contextKnown := limits.ContextWindow()
-	maxInput, inputKnown := limits.MaxInputTokens()
-	maxOutput, outputKnown := limits.MaxOutputTokens()
-	if contextWindow != 400_000 || !contextKnown ||
-		maxInput != 272_000 || !inputKnown ||
-		maxOutput != 272_000 || !outputKnown {
-		t.Fatalf(
-			"limits = context:(%d,%t) input:(%d,%t) output:(%d,%t)",
-			contextWindow, contextKnown,
-			maxInput, inputKnown,
-			maxOutput, outputKnown,
-		)
-	}
-}
-
-func TestLookupTokenLimitsAllowsPrivateCatalogMiss(t *testing.T) {
-	selection, err := modelchoice.New("openai-compatible", "private-model")
-	if err != nil {
-		t.Fatal(err)
-	}
-	limits, found, err := LookupTokenLimits(selection)
-	if err != nil || found || !limits.Unknown() {
-		t.Fatalf("LookupTokenLimits() = (%+v,%t,%v), want unknown,false,nil", limits, found, err)
+	unknown, err := catalogTokenLimits(catalog.Model{})
+	if err != nil || !unknown.Unknown() {
+		t.Fatalf("unknown=%+v err=%v", unknown, err)
 	}
 }

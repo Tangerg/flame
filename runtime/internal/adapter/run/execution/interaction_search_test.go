@@ -20,7 +20,7 @@ func TestInteractionSearchFailureCommitsFeedbackAndAllowsCorrection(t *testing.T
 	if err := os.WriteFile(filepath.Join(root, "selected.go"), []byte("package selected\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	built, err := toolset.Build(t.Context(), toolset.BuildConfig{
+	built, err := toolset.Build(toolset.BuildConfig{
 		Lifetime: t.Context(), UserHome: t.TempDir(),
 	})
 	if err != nil {

@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"testing"
 
+	hookdata "github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
-	domain "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 )
 
 func TestNewCatalogRequiresCompleteDependencies(t *testing.T) {
@@ -52,10 +52,10 @@ func TestCatalogInspectUsesInspectionPort(t *testing.T) {
 		inspection: Inspection{
 			ProjectRoot:    "/repo",
 			ProjectTrusted: true,
-			Hooks: []domain.Hook{{
-				Event:   domain.UserPromptSubmit,
+			Hooks: []hookdata.Hook{{
+				Event:   hookdata.UserPromptSubmit,
 				Command: "make test",
-				Scope:   domain.ScopeGlobal,
+				Scope:   hookdata.ScopeGlobal,
 				Source:  "/home/.flame/hooks.json",
 			}},
 		},

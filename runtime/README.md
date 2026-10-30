@@ -1,5 +1,24 @@
 # Flame Runtime
 
+Core `2026-10-30.2` admits client-scoped `clientEffect` components. Rebuild the
+graphical Host and public component SDK together, then select the current
+Trajectory package bytes to receive its installed export commands. Effects have
+no view navigation metadata; installation and resource admission remain Runtime-owned.
+
+Core `2026-10-30.1` exposes installed locale metadata and `plugins.readLocale`.
+Rebuild Go, TypeScript, CLI and Desktop consumers together. Locale catalogs are
+bounded static JSON resources of the exact selected, enabled release, independent
+of executable components. Workbench translation packages are independently
+installable; existing installations do not gain them through a compatibility
+registration. Language preference and English fallback remain client-owned.
+
+Core `2026-10-29.1` removes the built-in HTTP Tool and its `online` configuration.
+The installed Web package owns HTTP execution, network grants and original request
+receipts. Configure its `http-allowed-hosts` input explicitly; no former environment
+overlay or built-in Tool identity is accepted. Rebuild protocol consumers and select
+the new Web release together. Retain the old data directory and finish unresolved
+work with its original executable; the new Web command schema requires fresh data.
+
 Flame Runtime is the local product backend for Flame. It owns durable agent semantics and exposes the same behavior through an in-process Go binding and the Runtime Protocol.
 
 Atomic Session/Run openings admit an omitted workspace and use the same default
@@ -52,7 +71,14 @@ Model failures use `chat.CallFailure` and `chat.ClassifyFailure` for the complet
 invocation. Nested failures cannot replace that classification, and known
 generation remains available when later publication fails. Custom JSON codecs
 describe their wire model with `JSONSchemaModel`.
-Endpoint model discovery calls the same Scope binding's `ListModels` API;
+The installed [model adapter](../plugins/providers/README.md) owns SDK clients,
+provider profiles, native streaming, counting, embeddings and endpoint discovery.
+Runtime captures its exact installation, original construction receipt and model
+facts before staging a Run. Restart reopens that receipt without consulting current
+credentials or provider selection. Request admission includes the full installed
+process frame; compaction receives those same captured limits.
+
+Endpoint model discovery in that backend calls the same Scope binding's `ListModels` API;
 Scope owns authentication, HTTP admission and pagination, while Flame supplies
 its resource budgets and product identity rules. Connection configuration contains
 no model identity; chat and embedding construction receive the selected model,
@@ -207,8 +233,9 @@ consumers are regenerated from that owner; arbitrary string maps are not accepte
 
 [`model`](../packages/go-sdk/model/README.md) owns that immutable public choice for Runtime and
 independent authors. [`model/catalog`](../packages/go-sdk/model/catalog/README.md) applies the shared
-released Scope catalog's effort and modality facts without provider I/O or model
-inference. Former private selection/catalog implementations are removed. Moving
+model owner's captured effort and modality facts without a static vendor lookup
+or model inference. An unreported reasoning default remains unknown. Schedules
+retain exact choices; Runtime performs model admission when creating their Run. Former private selection/catalog implementations are removed. Moving
 the schema owner changes generated reference identities; rebuild Schedules
 contracts, typed consumers and component bytes together.
 
@@ -1087,7 +1114,7 @@ not reclassified by inference. Explicit review can retain an existing pending co
 
 ## Auxiliary model observation
 
-Compaction, memory extraction and curation, skill mining, and title generation emit an `auxiliary model` OpenTelemetry span through the existing Runtime exporter. `auxiliary.operation` identifies the caller's purpose. Auxiliary calls follow their caller's cancellation and deadline; the adapter adds no wall-clock timeout. Input and output envelopes remain bounded. The span covers selection resolution, the model request, and response acceptance; its duration is not isolated provider latency. The live resolver records the exact provider/model selection, and a valid response contributes its finish reason and reported token usage. Optional cache and reasoning counts remain absent when unreported, including the distinction between absence and an explicit zero. A valid but incomplete response retains its reported usage even though its text is rejected.
+Compaction and title generation emit an `auxiliary model` OpenTelemetry span through the existing Runtime exporter. Optional Memory and Skill learning backends call captured models through bounded callbacks; those model calls retain the original plugin invocation ancestry and ordinary model telemetry. `auxiliary.operation` identifies the caller's purpose. Auxiliary calls follow their caller's cancellation and deadline; the adapter adds no wall-clock timeout. Input and output envelopes remain bounded. The span covers selection resolution, the model request, and response acceptance; its duration is not isolated provider latency. The live resolver records the exact provider/model selection, and a valid response contributes its finish reason and reported token usage. Optional cache and reasoning counts remain absent when unreported, including the distinction between absence and an explicit zero. A valid but incomplete response retains its reported usage even though its text is rejected.
 
 Failed attempts record the `resolve`, `call`, or `response` stage and distinguish cancellation from deadline expiry. These spans do not record prompt text, output text, or raw provider errors. They are diagnostic telemetry, not durable `modelInvocations.list` records or additional Run accounting. Telemetry retention depends on the configured exporter. Physical requests and known outcomes are separately recorded by the same endpoint observer used for Interaction, in the existing invocation journal. Session-associated records participate in trajectory/export and Session deletion; calls without that association are accessible by their original caller ancestry. Physical evidence includes auxiliary consumption in public usage summaries; Run-linked calls accrue through the existing Run accounting owner, while unattached evidence is retained without automatic expiry.
 
@@ -1255,13 +1282,18 @@ when its actual input did not fail; buffered text cannot conceal a pending read
 failure. Read, version verification, capacity and close failures survive together,
 and no matches enter the result until the file passes that complete admission.
 
-Filesystem tool manifests require an explicit absolute workspace and share one pinned directory authority with Scope. Tool paths are absolute or workspace-relative; home shorthand (`~` or `~/...`) is rejected rather than consulting ambient process state. Read stamps, mutation protection, edits, patches, and in-process formatting continue to address that directory after a rename or pathname replacement. Path-based search and external formatter configuration require the original named workspace; detached searches fail explicitly, and unavailable formatting or LSP diagnostics are reported with the successful mutation. Multi-file patches are not transactions: their failed results and mutation metadata retain Scope's acknowledged partial effects.
+Filesystem tool manifests require an explicit absolute workspace and share one pinned directory authority with Scope. Tool paths are absolute or workspace-relative; home shorthand (`~` or `~/...`) is rejected rather than consulting ambient process state. Read stamps, mutation protection, edits, and patches continue to address that directory after a rename or pathname replacement. Path-based search and installed code intelligence require the original named workspace; detached searches fail explicitly, and unavailable formatting or LSP diagnostics are reported with the successful mutation. Multi-file patches are not transactions: their failed results and mutation metadata retain Scope's acknowledged partial effects.
 
-Formatting admits complete output up to the existing 8 MiB file bound. An external
-formatter owns its process group through cleanup, including after a successful root
-exit. Its failure retains process, capacity, cleanup and cancellation evidence;
-formatting diagnostics never replace an acknowledged file mutation. An absent
-optional formatter is skipped; other executable lookup failures remain explicit.
+The selected `flame.code-intelligence.v1` provider receives source snapshots up to
+2 MiB and returns version-bound transformations and diagnostic reports. Runtime
+borrows one exact activation across baseline capture, formatting and diagnostics,
+checks source identity before applying results, and commits through Scope's
+filesystem executor. The installed Code intelligence package owns formatter
+selection, language servers and process cleanup. Missing optional formatters are
+unsupported; other failures remain explicit alongside the acknowledged edit.
+The former built-in `lsp` Tool identity and `lsp.servers` configuration are removed.
+Move server settings to the package's `lsp-servers` installation input and rebuild
+all protocol consumers. See [`plugins/codeintel`](../plugins/codeintel/README.md).
 
 Only the model's successful stable `read` creates read evidence. An admitted
 `edit` or `apply_patch` consumes its targets' evidence before execution, even
@@ -1386,6 +1418,25 @@ entries; the resolved configuration consumes the same values that were validated
 | Skill archive/restore | Subsequent resolution; existing conversation context is not erased                                            |
 
 An unset utility role uses the Runtime composition's default model selection. It does not follow each Run's explicit main-model override. Changing the utility role does not replace the main-model deployment of a live or waiting Run. Saving configuration is not a universal live-reload guarantee. Restart recovery validates the retained model and tool deployment; it does not silently reinterpret an existing execution using arbitrary current settings.
+
+## Automatic Skill learning
+
+The selected `flame.skill-learning.v1` provider runs after successful root Run
+completion. The first-party `flame.skills` backend owns mining prompts, the
+per-session complex-Run cadence, revision generation and archive-check timing.
+Runtime grants one committed-history read, one admitted current user-Skill read,
+and at most two bounded utility-model calls for each mining attempt. A revision
+must name the source actually read through that grant. Cancellation and plugin
+retirement revoke and join these callbacks.
+
+The backend returns advice and retains immutable command receipts. It has no
+proposal library and cannot publish an active Skill. Runtime validates and submits
+mined proposals with forced user scope and source-Session provenance; the existing
+human approval command remains the publication boundary. Archive advice enters
+the existing library lease, provenance and usage checks. Mining failure does not
+skip archive advice or Memory maintenance. Disabling the selected provider stops
+new learning while discovery, proposal review and library operations remain
+available. See [`../plugins/skills/README.md`](../plugins/skills/README.md).
 
 ## Discovered Skill inspection
 
@@ -1689,7 +1740,7 @@ together; a partial read can establish size but never document text validity.
 
 ## Tool authority
 
-Tool identity is a closed built-in, MCP source/tool, or A2A endpoint reference.
+Tool identity is a closed built-in or MCP source/tool reference.
 Model names remain presentation labels. The closed set of built-in names is owned by the
 tool domain (`tool.BuiltInName`); the built-in behavior catalog is keyed by that type and a
 test holds it to exactly that set, so startup performs no comparison between them.
@@ -1707,7 +1758,7 @@ source authority fingerprint. Endpoint changes make existing rules stale;
 credential rotation does not. MCP exposure is configured separately through
 `mcp.tools.setExposure`; `approval.setRule` owns remembered decisions.
 A rule is keyed by scope, scope key, source reference, subject type, and subject value. A
-source reference is a closed union: built-in name, A2A endpoint, or MCP server identity
+source reference is a closed union: built-in name or MCP server identity
 plus remote tool name; each variant's data is reachable only through that variant. Remembering the
 same key replaces both its decision and source fingerprint. Equally specific
 distinct patterns still resolve to deny when they conflict.
@@ -1761,7 +1812,7 @@ not resumed, under the existing build-identity rule.
 ## Deferred tool catalog
 
 A Run's tool declarations open the provider prompt-cache prefix, so they do not depend on
-which tools are deferred. Built-in, Skill, MCP (user and installation origin) and A2A
+which tools are deferred. Built-in, Skill and MCP (user and installation origin)
 tools withheld from the initial manifest form the Run's frozen deferred set, which the
 Run's `search_tools` owns. Its declaration is static text; plugin activation, MCP
 reconnects and catalog changes reach later Runs only through that set.
@@ -1820,3 +1871,15 @@ cancellation, join and held-dependency ownership. Scope's exact provider instanc
 decides whether streaming/counting capabilities exist. No unavailable capability
 is fabricated, and an endpoint's accounting total does not invent a universal
 Run/Goal budget. Evidence deletion follows the retention rules above.
+
+## Installed lifecycle rules
+
+The installed [Hooks backend](../plugins/hooks/README.md) owns configuration
+sources and bounded command execution. Runtime passes its captured project root
+and trust decision before discovery, retains the exact source through each event
+set, and owns final authorization, approval and argument admission. Disabled
+sources contribute no new rules; there is no direct Runtime shell fallback.
+Existing installations explicitly select `flame.hooks.v1`; fresh catalogs select
+the shipped backend. The `hooks.json` document format and Runtime trust store are
+unchanged. Commands use the installed process environment rather than inheriting
+ambient Runtime variables.

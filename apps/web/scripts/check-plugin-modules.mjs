@@ -110,7 +110,7 @@ const runtimeResult = await build({
         return `
           import { MutationLookupError, OperationFailure } from "@flame/runtime-client";
           import { ExactNumber, isJSONNumber, parseJSON, stringifyJSON } from "@qimu/sdk/json";
-          import { mutationSettlementIsUnknown, OperationFailure as SharedFailure } from "@flame/component-sdk";
+          import { defineComponent, isComponentDefinition, mutationSettlementIsUnknown, OperationFailure as SharedFailure } from "@flame/component-sdk";
           export function inspectHostValues() {
             const value = new ExactNumber("1.00");
             const source = stringifyJSON({ value });
@@ -120,6 +120,7 @@ const runtimeResult = await build({
               exact: isJSONNumber(value),
               source,
               decoded: parseJSON(source).value instanceof ExactNumber,
+              sourceFactory: isComponentDefinition(defineComponent(() => () => null)),
             };
           }
         `;
@@ -147,5 +148,6 @@ assert.deepEqual(consumer.inspectHostValues(), {
   exact: true,
   source: '{"value":1.00}',
   decoded: true,
+  sourceFactory: true,
 });
 console.log("[check-plugin-modules] production Runtime errors and exact JSON retain Host identity");

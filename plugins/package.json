@@ -9,11 +9,12 @@
     "format:check": "prettier --check */component */backend */contracts scripts package.json tsconfig.json backend.tsconfig.json",
     "check:resources": "node scripts/build-components.mjs --check",
     "check:i18n": "node scripts/check-i18n.mjs",
-    "test": "node --test scripts/*.test.mjs && node scripts/test-backends.mjs",
+    "test": "node --test scripts/*.test.mjs && node scripts/test-sources.mjs",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run check:i18n && npm run check:resources",
     "generate": "node scripts/generate-contracts.mjs && npm run build"
   },
   "dependencies": {
+    "@flame/brand-assets": "*",
     "@flame/backend-sdk": "^0.1.0",
     "@flame/component-sdk": "*",
     "@flame/icons": "*",

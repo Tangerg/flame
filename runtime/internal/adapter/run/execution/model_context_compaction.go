@@ -9,6 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	corechat "github.com/Tangerg/scope/core/chat"
 	"github.com/samber/lo"
@@ -89,6 +90,7 @@ type ModelContextCompaction struct {
 	persistence   modelContextPersistence
 	sessionID     string
 	selection     modelchoice.Selection
+	limits        modelref.TokenLimits
 	instructions  []corechat.Message
 	candidate     []corechat.Message
 	trailer       []corechat.Message
@@ -96,6 +98,7 @@ type ModelContextCompaction struct {
 	options       corechat.Options
 	calibration   ModelContextTokenCalibration
 	counter       modelContextInputTokenCounter
+	fits          func(context.Context, *corechat.Request) (bool, error)
 	protectedTail int
 	preCompact    func(context.Context) (bool, error)
 }
@@ -106,6 +109,7 @@ type ModelContextCompaction struct {
 type ModelContextCompactionInput struct {
 	SessionID    string
 	Selection    modelchoice.Selection
+	Limits       modelref.TokenLimits
 	Instructions []corechat.Message
 	Candidate    []corechat.Message
 	// Trailer is Runtime context the model boundary appends after the reduced
@@ -116,6 +120,7 @@ type ModelContextCompactionInput struct {
 	Options     corechat.Options
 	Calibration ModelContextTokenCalibration
 	Counter     modelContextInputTokenCounter
+	RequestFits func(context.Context, *corechat.Request) (bool, error)
 	// ProtectedTail is how many trailing Candidate messages must survive verbatim.
 	// It is counted against Candidate, not against whatever the compactor ends up
 	// folding: a durable compaction folds the Session's stored history and
@@ -227,7 +232,7 @@ func newModelContextCompaction(
 			err,
 		)
 	}
-	if err := validateModelOutputReservation(input.Selection, &input.Options); err != nil {
+	if err := validateModelOutputReservation(input.Limits, &input.Options); err != nil {
 		return ModelContextCompaction{}, fmt.Errorf(
 			"%w: model output reservation: %w",
 			errInvalidModelContextCompaction,
@@ -248,9 +253,9 @@ func newModelContextCompaction(
 		frozenTools[index] = input.Tools[index].Clone()
 	}
 	return ModelContextCompaction{
-		persistence:   persistence,
-		sessionID:     input.SessionID,
-		selection:     input.Selection,
+		persistence: persistence,
+		sessionID:   input.SessionID,
+		limits:      input.Limits, selection: input.Selection,
 		instructions:  cloneChatMessages(input.Instructions),
 		candidate:     cloneChatMessages(input.Candidate),
 		trailer:       cloneChatMessages(input.Trailer),
@@ -258,6 +263,7 @@ func newModelContextCompaction(
 		options:       input.Options.Clone(),
 		calibration:   input.Calibration,
 		counter:       input.Counter,
+		fits:          input.RequestFits,
 		protectedTail: input.ProtectedTail,
 		preCompact:    input.PreCompact,
 	}, nil
@@ -274,6 +280,13 @@ func (m ModelContextCompaction) SessionID() string { return m.sessionID }
 
 // ModelSelection returns the model whose actual context limit governs this call.
 func (m ModelContextCompaction) ModelSelection() modelchoice.Selection { return m.selection }
+func (m ModelContextCompaction) TokenLimits() modelref.TokenLimits     { return m.limits }
+func (m ModelContextCompaction) RequestFits(ctx context.Context, request *corechat.Request) (bool, error) {
+	if m.fits == nil {
+		return true, nil
+	}
+	return m.fits(ctx, request)
+}
 
 // Instructions returns an independently owned immutable prompt prefix.
 func (m ModelContextCompaction) Instructions() []corechat.Message {

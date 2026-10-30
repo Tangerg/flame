@@ -12,7 +12,6 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/config"
@@ -89,10 +88,6 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	if err != nil {
 		return nil, config.Settings{}, err
 	}
-	chatResolver, err := modeladapter.NewChatResolver(providers)
-	if err != nil {
-		return nil, config.Settings{}, err
-	}
 	if err = seedUtilityRole(ctx, stores.UtilityRole, settings); err != nil {
 		return nil, config.Settings{}, err
 	}
@@ -100,7 +95,7 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	if err != nil {
 		return nil, config.Settings{}, err
 	}
-	assemblyConfig := composeConfig(settings, stores, chatResolver, providers, buildID)
+	assemblyConfig := composeConfig(settings, stores, nil, providers, buildID)
 	assemblyConfig.processRunner = processRunner
 	assemblyConfig.firstPartyDirectory = cfg.FirstPartyDirectory
 	// Resources close in reverse acquisition order. The directory must remain

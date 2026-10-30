@@ -1,0 +1,14 @@
+{
+  "protocol": "io.github.tangerg.flame/plugin/1",
+  "components": [
+    {
+      "id": "settings",
+      "title": "MCP servers",
+      "scope": "client",
+      "placement": "settingsPane",
+      "settingsIntent": "mcpServers",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "MCPServers"
+    }
+  ]
+}

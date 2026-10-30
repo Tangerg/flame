@@ -51,20 +51,20 @@ func TestWebInstalledSecretsBelongToInstallationAndModelReadsHaveDefiniteRefusal
 		t.Fatal(err)
 	}
 	cfg := poMCPConfig(t)
-	cfg.chatResolver = testChatResolver(client)
+	cfg.modelProviders = testChatResolver(client)
 	cfg.approvalMode = approval.ModeYolo
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "web"))
-	if len(installed.Selected.Inputs) != 2 {
+	if len(installed.Selected.Inputs) != 3 {
 		t.Fatal("web credential inputs are missing")
 	}
 	for _, input := range installed.Selected.Inputs {
-		if !input.Secret || input.Required {
+		if (input.ID != "http-allowed-hosts" && !input.Secret) || input.Required {
 			t.Fatal("web credentials do not use optional private inputs")
 		}
 	}
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "web"}
-	tools := r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
+	tools := r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 4 })
 	for _, tool := range tools {
 		if tool.Name == "web_search" {
 			name.Store(tool.ModelName)

@@ -43,7 +43,7 @@ func (r *routedCallResolver) ResolveChat(_ context.Context, selection modelchoic
 	r.mu.Lock()
 	r.selections = append(r.selections, selection)
 	r.mu.Unlock()
-	return models.NewResolvedChat(r.model, nil)
+	return models.NewResolvedChat(r.model, nil, nil)
 }
 func selectedCallInput(model string) pluginsdk.ModelCallRequest {
 	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original input")))
@@ -93,7 +93,8 @@ func TestSelectedModelCallsHaveIndependentRoutesBudgetsAndDurableEvidence(t *tes
 			endpoint := chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
 				physical.Add(1)
 				inv, err := qimumcp.InvocationFromContext(ctx)
-				if err != nil || inv.Parent != "original-plugin-operation" || inv.Origin != extension.Model || inv.ID != inv.Target.Reference || len(request.Tools) != 1 {
+				row, found, evidenceErr := db.ModelInvocations.EndpointForCaller(ctx, inv.Parent)
+				if err != nil || evidenceErr != nil || !found || row.Invocation.ID != inv.ID || row.Invocation.Caller.Parent != "original-plugin-operation" || inv.Origin != extension.Model || inv.ID != inv.Target.Reference || len(request.Tools) != 1 {
 					return nil, errors.New("independent model lost original caller or complete request")
 				}
 				message := chat.NewAssistantMessage(chat.NewTextPart("known " + request.Options.Model))
@@ -355,7 +356,7 @@ func TestIndependentModelCallbackRetainsExecutingOwnerBeforeProviderDispatch(t *
 	var calls atomic.Int32
 	observed, err := models.NewObservedResolver(&routedCallResolver{model: chat.ModelFunc(func(ctx context.Context, _ *chat.Request) (*chat.Response, error) {
 		inv, _ := qimumcp.InvocationFromContext(ctx)
-		row, found, err := journal.EndpointForCaller(ctx, inv.ID)
+		row, found, err := journal.EndpointForCaller(ctx, inv.Parent)
 		if err != nil || !found || row.RunID != draft.RunID || row.SegmentID != draft.SegmentID {
 			return nil, errors.New("provider started without its actual execution association")
 		}
@@ -415,8 +416,8 @@ func TestIndependentModelCallbackRetainsExecutingOwnerBeforeProviderDispatch(t *
 	if err != nil {
 		t.Fatal(err)
 	}
-	auxiliary, closeAux, err := composition.Auxiliary(func(context.Context, models.AuxiliaryBudget) (models.SelectedChat, func(), error) {
-		return selected, func() {}, nil
+	auxiliary, closeAux, err := composition.Auxiliary(func(context.Context, models.AuxiliaryBudget) (models.SelectedChat, func() error, error) {
+		return selected, func() error { return nil }, nil
 	})(ctx, models.AuxiliaryBudget{MaxInputBytes: 4096, MaxOutputTokens: 64})
 	if err != nil {
 		t.Fatal(err)
@@ -474,4 +475,8 @@ func (p sourceAdmissionPublisher) Start(ctx context.Context, id string, selectio
 		return nil, err
 	}
 	return func(context.Context, error) error { return nil }, nil
+}
+
+func (r *routedCallResolver) RestoreChat(ctx context.Context, selection modelchoice.Selection, _ *models.ProviderCapture) (models.ResolvedChat, error) {
+	return r.ResolveChat(ctx, selection)
 }

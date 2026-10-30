@@ -18,7 +18,6 @@ var rejectedArguments = map[string]string{
 	string(domaintool.Edit):              `{"path":"seed.txt","old_string":"absent from the file","new_string":"x"}`,
 	string(domaintool.Glob):              `{"pattern":"["}`,
 	string(domaintool.Grep):              `{"pattern":"("}`,
-	string(domaintool.LSP):               `{"operation":"definition"}`,
 	string(domaintool.Read):              `{"path":"no/such/file.txt"}`,
 	string(domaintool.ReadShellOutput):   `{"shell_id":"shell_x","timeout_millis":10}`,
 	string(domaintool.SearchTools):       `{"query":"   "}`,
@@ -43,7 +42,7 @@ func TestRejectedCallsDoNotCostTheRun(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "seed.txt"), []byte("seed\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	built, err := Build(t.Context(), BuildConfig{
+	built, err := Build(BuildConfig{
 		Lifetime: t.Context(), UserHome: t.TempDir(),
 		SkillsUserDir: t.TempDir(),
 	})

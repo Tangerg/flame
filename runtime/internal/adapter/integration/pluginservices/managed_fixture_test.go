@@ -214,7 +214,7 @@ func (f *managedFixture) open(t *testing.T, connect bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.Pool, err = mcp.Open(t.Context(), context.Background(), servers, nil, registry, f.callbacks, f.prepare, nil, callers, installed)
+	f.Pool, err = mcp.Open(t.Context(), context.Background(), servers, nil, registry, f.callbacks, nil, callers, installed)
 	if err != nil {
 		t.Fatal(err)
 	}

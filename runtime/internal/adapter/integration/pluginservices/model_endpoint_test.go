@@ -22,7 +22,7 @@ import (
 type endpointResolver struct{ model chat.Model }
 
 func (r endpointResolver) ResolveChat(context.Context, modelchoice.Selection) (models.ResolvedChat, error) {
-	return models.NewResolvedChat(r.model, nil)
+	return models.NewResolvedChat(r.model, nil, nil)
 }
 
 func TestEndpointEvidenceSurvivesOuterObserverFailureAndHostRestart(t *testing.T) {
@@ -98,4 +98,8 @@ func TestEndpointEvidenceSurvivesOuterObserverFailureAndHostRestart(t *testing.T
 	if row.State != "completed" || row.Failure != "" || storedResponse != expectedResponse || storedRequest != expectedRequest || row.Invocation.Provider != "anthropic" || row.Invocation.Model != "configured-model" || row.Invocation.Caller.Parent != "original-effect" || row.Invocation.ID == row.Invocation.Caller.ID {
 		t.Fatalf("outer failure changed physical endpoint evidence: %+v", row)
 	}
+}
+
+func (r endpointResolver) RestoreChat(ctx context.Context, selection modelchoice.Selection, _ *models.ProviderCapture) (models.ResolvedChat, error) {
+	return r.ResolveChat(ctx, selection)
 }

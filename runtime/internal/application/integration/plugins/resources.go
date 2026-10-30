@@ -42,3 +42,24 @@ func (c *Coordinator) Resource(ctx context.Context, id identity.InstallationID, 
 	}
 	return c.packages.ReadResource(ctx, installation, resource)
 }
+
+func (c *Coordinator) Locale(ctx context.Context, id identity.InstallationID, digest identity.Digest, tag string) (map[string]string, error) {
+	var installation *plugin.Installation
+	var locale plugin.Locale
+	err := c.framework.Admission().Admit(ctx, func(ctx context.Context) error {
+		snapshot, err := c.installationSnapshot(ctx, id)
+		if err != nil {
+			return err
+		}
+		locale, err = snapshot.Installation.AuthorizeLocale(snapshot.Selected, digest, tag)
+		if err != nil {
+			return err
+		}
+		installation = snapshot.Installation
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return c.packages.ReadLocale(ctx, installation, locale)
+}

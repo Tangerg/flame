@@ -31,10 +31,6 @@ func TestPresenterActivity(t *testing.T) {
 		{name: "load Skill", ref: testsupport.BuiltInTool(t, tool.LoadSkill), arguments: `{"name":"go-review"}`, want: "Loading Skill: go-review"},
 		{name: "propose named Skill", ref: testsupport.BuiltInTool(t, tool.ProposeSkill), arguments: `{"name":"review-go-api"}`, want: "Proposing Skill: review-go-api"},
 		{name: "propose unnamed Skill", ref: testsupport.BuiltInTool(t, tool.ProposeSkill), arguments: `{}`, want: "Proposing a Skill"},
-		{name: "LSP references", ref: testsupport.BuiltInTool(t, tool.LSP), arguments: `{"operation":"references"}`, want: "Finding symbol references"},
-		{name: "unknown LSP operation", ref: testsupport.BuiltInTool(t, tool.LSP), arguments: `{"operation":"rename"}`, want: "Querying the language server"},
-		{name: "HTTP default method", ref: testsupport.BuiltInTool(t, tool.HTTPRequest), arguments: `{"url":"https://example.com"}`, want: "Sending GET request"},
-		{name: "HTTP explicit method", ref: testsupport.BuiltInTool(t, tool.HTTPRequest), arguments: `{"url":"https://example.com","method":"POST"}`, want: "Sending POST request"},
 		{name: "unknown tool", ref: tool.Ref{}, arguments: `{}`, want: ""},
 	}
 	for _, test := range tests {
@@ -160,7 +156,7 @@ func TestPublishedResultContractsDecodePresenterOutput(t *testing.T) {
 
 func TestPresenterKeepsUnknownToolResult(t *testing.T) {
 	original := mustToolResult(t, map[string]any{"custom": true})
-	presented, outputText := Presenter{}.Present(testsupport.A2ATool(t, "external_tool"), tool.Arguments{}, original)
+	presented, outputText := Presenter{}.Present(testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "external_tool"), tool.Arguments{}, original)
 	if !reflect.DeepEqual(presented.Any(), original.Any()) || outputText != "" {
 		t.Fatalf("unknown presentation = %#v, %q", presented.Any(), outputText)
 	}

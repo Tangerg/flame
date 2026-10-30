@@ -1,4 +1,4 @@
-import { createElement, type ReactNode } from "react";
+import { createElement, type ComponentProps, type ComponentType, type ReactNode } from "react";
 import { Lifetime, Service, QimuError, defineUnit, sameContract } from "@qimu/sdk";
 import { parseJSON } from "@qimu/sdk/json";
 import { ControlPump, HTTPControl, RealmModules, Runtime, type Use } from "@qimu/browser";
@@ -10,7 +10,11 @@ import {
   type PluginClientComponent,
   type PluginInstallation,
 } from "@flame/runtime-client/wire";
-import { type PluginComponent } from "@flame/component-sdk";
+import {
+  isComponentDefinition,
+  type ComponentDefinition,
+  type PluginComponent,
+} from "@flame/component-sdk";
 import {
   componentExport,
   hostModuleProfile,
@@ -29,9 +33,15 @@ export interface LoadedComponent {
 export interface ComponentAcquisition {
   readonly use: Use;
   readonly reference: ObjectRef;
-  readonly contract: Service<PluginComponent>;
+  readonly contract: Service<SourceComponent>;
   flush(): Promise<void>;
 }
+
+export type SourceComponent = ComponentType<
+  ComponentProps<PluginComponent> & {
+    instantiate(definition: ComponentDefinition, resources: AbortSignal): PluginComponent;
+  }
+>;
 
 interface ControlChannel {
   readonly lifetime: Lifetime;
@@ -111,7 +121,7 @@ export class ComponentModules {
         this.#channel = { lifetime, pump: pumpOwner, control };
         if (this.#runtime) await this.#runtime.reconnect(control);
         else {
-          const contract = new Service<PluginComponent>(session.componentContract);
+          const contract = new Service<SourceComponent>(session.componentContract);
           this.#runtime = new Runtime({
             authority: session.authority,
             realm: session.realm,
@@ -170,11 +180,17 @@ export class ComponentModules {
                   "contract_mismatch",
                   "declared React component export is unavailable",
                 );
+              const view: SourceComponent = ({ instantiate, ...props }) => {
+                const Entry = isComponentDefinition(component)
+                  ? instantiate(component, owner.signal)
+                  : (component as PluginComponent);
+                return createElement(Entry, props);
+              };
               return defineUnit({
                 id: unit.instance.source.unitId,
                 imports: {},
                 exports: { [componentExport]: contract },
-                setup: () => ({ [componentExport]: component as PluginComponent }),
+                setup: () => ({ [componentExport]: view }),
               });
             },
             remote: () => {
@@ -291,7 +307,7 @@ export class ComponentModules {
       const use = await runtime.accept(grant);
       try {
         if (parent) use.lifetime.dependsOn(parent.lifetime);
-        const contract = new Service<PluginComponent>(session.componentContract);
+        const contract = new Service<SourceComponent>(session.componentContract);
         const objects = use.objects.filter(
           (reference) =>
             reference.export.name === componentExport &&
@@ -308,12 +324,65 @@ export class ComponentModules {
         throw error;
       }
     };
+    let constructed:
+      | { definition: ComponentDefinition; component: PluginComponent; resources: AbortSignal }
+      | undefined;
+    const instantiate = (
+      definition: ComponentDefinition,
+      resources: AbortSignal,
+    ): PluginComponent => {
+      scope.signal.throwIfAborted();
+      this.#bootstrap.signal.throwIfAborted();
+      resources.throwIfAborted();
+      if (!constructed) {
+        const controller = new AbortController();
+        const signal = AbortSignal.any([
+          scope.signal,
+          this.#bootstrap.signal,
+          resources,
+          controller.signal,
+        ]);
+        try {
+          const component = definition.create(
+            Object.freeze({ runtimeIdentity: client, component: request, signal }),
+          );
+          if (
+            !component ||
+            (typeof component !== "function" && typeof component !== "object") ||
+            isComponentDefinition(component)
+          )
+            throw new QimuError(
+              "contract_mismatch",
+              "component source must construct a React component",
+            );
+          const accepted = { definition, component, resources };
+          constructed = accepted;
+          signal.addEventListener(
+            "abort",
+            () => {
+              if (constructed === accepted) constructed = undefined;
+            },
+            { once: true },
+          );
+        } catch (error) {
+          controller.abort(error);
+          throw error;
+        }
+      }
+      if (constructed.definition !== definition || constructed.resources !== resources)
+        throw new QimuError(
+          "contract_mismatch",
+          "component factory changed within its admitted source",
+        );
+      return constructed.component;
+    };
     const component: PluginComponent = (props) =>
       createElement(NativeComponentMount, {
+        ...props,
         acquire,
+        instantiate,
         wrap: this.#wrap,
         report: this.report,
-        ...props,
       });
     return { component, signal: scope.signal, reload: () => this.reload() };
   }

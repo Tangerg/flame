@@ -29,6 +29,12 @@ retaining the former callback Host, request context or native handler objects.
 Callback references contain ephemeral credentials; never log or persist them,
 put them in a release, or reuse them for another operation.
 
+Installed process connections use `NewProcessClient`, which fixes their SDK client
+metadata and capabilities. `ProcessRequestFrameBytes` measures the complete
+capability request with that profile, an int64 JSON-RPC request ID bound and the
+stream callback grant bound. Consumers compare it with the actual transport
+capacity before dispatch; payload bytes alone omit protocol metadata and grants.
+
 Run `go test -race ./mcp` from the Qimu module. The tests use owned loopback
 listeners, real MCP sessions and actual HTTP requests, including nested callbacks,
 capacity refusal, cancellation, joined release and terminal-handle collection.

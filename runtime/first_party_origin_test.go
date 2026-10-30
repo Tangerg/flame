@@ -12,8 +12,7 @@ import (
 
 func TestBundledUsageKeepsItsContractAtAnIndependentInstallationSource(t *testing.T) {
 	t.Setenv("FLAME_PROVIDER", "anthropic")
-	t.Setenv("FLAME_A2A_AGENTS", "")
-	t.Setenv("FLAME_A2A_RPC_ORIGINS", "")
+
 	cfg := Config{
 		DataDirectory: testsupport.TempDirectory(t), UserHomePath: testsupport.TempDirectory(t),
 		ConfigDirectories: []string{testsupport.TempDirectory(t)},

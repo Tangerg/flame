@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, it, vi, onTestFinished } from "vitest";
 import { createTranslator, type ComponentContext } from "@flame/component-sdk";
 import { CodeBlock } from "@flame/ui";
 import { createTestClient, type TestClient } from "@/test/renderClient";
+import { unavailableComponentNotifications } from "@/test/unavailableNotifications";
 import { Markdown } from "../../../plugins/file-renderers/component/component";
 import { Diagnostics } from "../../../plugins/diagnostics/component/component";
 import { TrajectoryReport } from "../../../plugins/trajectory/component/report";
@@ -88,6 +89,13 @@ function context(locale: string): ComponentContext {
     compose() {
       throw Error("Captured readers must not compose another component");
     },
+    registerCommand() {
+      throw Error("Captured readers must not register commands");
+    },
+    subscribeRootRunSettlements() {
+      throw Error("Captured readers must not observe run settlements");
+    },
+    notifications: unavailableComponentNotifications,
   };
 }
 

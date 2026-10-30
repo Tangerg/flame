@@ -34,7 +34,7 @@ const kernelPoints = {
   ...agentRunPoints,
   ...i18nPoints,
 };
-import { publishedKernel } from "@/extensions/kernel";
+import { contributionsTo, publishedKernel } from "@/extensions/kernel";
 import { startKernel, stopKernel } from "@/extensions/bootstrap";
 import { type Host } from "dougong";
 let running: Host | undefined;
@@ -62,7 +62,6 @@ beforeEach(async () => {
   finishTestClient(() => owned.dispose());
   builtinPlugins = createBuiltinPlugins(
     connection,
-    host,
     testClient.navigation,
     testClient.agent,
     testClient.composer,
@@ -110,7 +109,6 @@ describe("built-in contributions", () => {
     expect(host, "the test kernel published nothing").toBeDefined();
 
     const shadowed: string[] = [];
-    let contributions = 0;
     for (const [name, candidate] of Object.entries(kernelPoints)) {
       const point = candidate as { id?: string; token?: unknown; keying?: string };
       if (!point.token || !point.id || point.keying === "multi") continue;
@@ -123,7 +121,6 @@ describe("built-in contributions", () => {
           plugin: string;
         }>),
       ];
-      contributions += raw.length;
       const owners = new Map<string, string[]>();
       for (const entry of raw)
         owners.set(entry.key, [...(owners.get(entry.key) ?? []), entry.plugin]);
@@ -131,7 +128,7 @@ describe("built-in contributions", () => {
         if (plugins.length > 1) shadowed.push(`${name}[${key}] <- ${plugins.join(", ")}`);
     }
 
-    expect(contributions).toBeGreaterThan(100);
+    expect(contributionsTo(i18nPoints.LOCALE).some((entry) => entry.item.id === "en")).toBe(true);
     expect(shadowed).toEqual([]);
   });
 
@@ -144,7 +141,6 @@ describe("built-in contributions", () => {
     });
     builtinPlugins = createBuiltinPlugins(
       connection,
-      host,
       testClient.navigation,
       testClient.agent,
       testClient.composer,

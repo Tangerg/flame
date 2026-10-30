@@ -119,6 +119,43 @@ export interface SaveFileRequest {
 /** Browser download dispatch is distinct from a completed native write. */
 export type FileSaveResult = "requested" | "saved" | "cancelled";
 
+export interface ClientCommandInvocation {
+  readonly sessionId?: string;
+  readonly signal: AbortSignal;
+}
+
+export interface ClientCommand {
+  readonly id: string;
+  readonly label: string;
+  readonly combo?: string;
+  run(invocation: ClientCommandInvocation): void | Promise<void>;
+}
+
+export interface RootRunSettlement {
+  readonly sessionId: string;
+  readonly status: "needsInput" | "finished" | "error" | "canceled";
+  readonly errorMessage: string | null;
+}
+
+export type NotificationAuthorization =
+  "unsupported" | "default" | "granted" | "denied";
+
+export interface ComponentNotification {
+  readonly id: string;
+  readonly sessionId: string;
+  readonly title: string;
+  readonly body: string;
+}
+
+export interface SystemNotificationChannel {
+  readonly applicationName: string;
+  authorization(): NotificationAuthorization;
+  subscribe(listener: () => void): () => void;
+  refreshAuthorization(): Promise<NotificationAuthorization>;
+  requestAuthorization(): Promise<NotificationAuthorization>;
+  send(notification: ComponentNotification): Promise<boolean>;
+}
+
 export interface ComponentContext {
   readonly component: Readonly<ComponentReference>;
   readonly file?: Readonly<CapturedFile>;
@@ -131,6 +168,19 @@ export interface ComponentContext {
   readonly sessionTarget?: CapturedSession;
   readonly binding?: Readonly<PluginOperationBinding>;
   readonly openSession?: (sessionId: string) => void;
+  // Only clientEffect placements register global commands. IDs belong to the
+  // installed component. Dispatch captures the current
+  // Session before asynchronous work; withdrawal refuses new dispatches.
+  registerCommand(command: ClientCommand): () => void;
+  // Client effects observe the Host's settled root-run facts. The captured
+  // lifetime joins callbacks and refuses new observations after withdrawal.
+  subscribeRootRunSettlements(
+    listener: (
+      settlement: RootRunSettlement,
+      signal: AbortSignal,
+    ) => void | Promise<void>,
+  ): () => void;
+  readonly notifications: SystemNotificationChannel;
   // Accepted saves are joined by this captured lifetime. They do not change any
   // plugin delivery, revision or approval fact; the host only owns file transfer.
   saveFile(request: SaveFileRequest): Promise<FileSaveResult>;
@@ -171,6 +221,36 @@ export type PluginComponent<Input = unknown, Props = unknown> = ComponentType<{
   contribution?: Props;
   children?: ReactNode;
 }>;
+
+export interface ComponentSource {
+  readonly runtimeIdentity: object;
+  readonly component: Readonly<ComponentReference>;
+  readonly signal: AbortSignal;
+}
+
+export interface ComponentDefinition {
+  readonly kind: "flame.component.source";
+  create(source: ComponentSource): PluginComponent;
+}
+
+export function defineComponent(
+  create: ComponentDefinition["create"],
+): ComponentDefinition {
+  return Object.freeze({ kind: "flame.component.source", create });
+}
+
+export function isComponentDefinition(
+  value: unknown,
+): value is ComponentDefinition {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "kind" in value &&
+    value.kind === "flame.component.source" &&
+    "create" in value &&
+    typeof value.create === "function"
+  );
+}
 
 export type Catalog = Readonly<Record<string, string>>;
 

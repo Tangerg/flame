@@ -251,7 +251,9 @@ func (passthroughRunWorkingContext) AdmitInput(modelchoice.Selection, []chat.Mes
 	return nil
 }
 
-func (passthroughRunWorkingContext) AdmitSelection(modelchoice.Selection) error { return nil }
+func (passthroughRunWorkingContext) AdmitSelection(context.Context, modelchoice.Selection) error {
+	return nil
+}
 
 type inertRunControl struct{}
 
@@ -1053,7 +1055,7 @@ func (s *stubRuntime) sessionsCoordinatorWithRestorer(checkpoints sessions.Works
 
 type allowModelSelections struct{}
 
-func (allowModelSelections) AdmitSelection(modelchoice.Selection) error { return nil }
+func (allowModelSelections) AdmitSelection(context.Context, modelchoice.Selection) error { return nil }
 
 func fixtureDefaultModelSelection() modelchoice.Selection {
 	return testsupport.MustModelSelection("test-provider", "test-model")

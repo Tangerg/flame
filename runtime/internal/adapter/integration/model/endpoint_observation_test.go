@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/scope/models/catalog"
 )
 
 func TestEndpointRecordsOneFailureForInvalidResponse(t *testing.T) {
@@ -69,7 +70,7 @@ func TestEndpointRetainsGenerationWhenCatalogCannotPriceUsage(t *testing.T) {
 			calls++
 			return response, nil
 		}),
-		journal: db.ModelInvocations, selection: testsupport.MustModelSelection("anthropic", "claude-opus-5"), pricing: Pricing(),
+		journal: db.ModelInvocations, selection: testsupport.MustModelSelection("anthropic", "claude-opus-5"), pricing: Pricing("anthropic", catalog.Default.Models("anthropic")),
 	}
 	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "pricing-failure", Origin: extension.Automatic, Target: portable.Target{Scope: extension.ScopeCall, Reference: "pricing-failure"}})
 	if err != nil {
@@ -112,7 +113,7 @@ func TestEndpointStreamRecordsCompletionAndConsumerStopWithoutPromotion(t *testi
 	t.Cleanup(func() { _ = db.Close() })
 	store := db.ModelInvocations
 	resolve, err := NewObservedResolver(recordingChatResolver{resolve: func(_ modelchoice.Selection) (ResolvedChat, error) {
-		return NewResolvedChat(endpointStreamFixture{}, nil)
+		return NewResolvedChat(endpointStreamFixture{}, nil, nil)
 	}}, store, nil)
 	if err != nil {
 		t.Fatal(err)

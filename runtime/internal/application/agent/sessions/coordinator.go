@@ -41,7 +41,7 @@ type Store interface {
 // ModelAdmitter validates an exact model choice before it becomes durable
 // Session policy.
 type modelAdmitter interface {
-	AdmitSelection(selection modelchoice.Selection) error
+	AdmitSelection(ctx context.Context, selection modelchoice.Selection) error
 }
 
 // InterruptStore is the lifecycle coordinator's read view of open HITL
@@ -361,9 +361,6 @@ func New(deps Dependencies) (*Coordinator, error) {
 	}
 	if err := deps.DefaultModelSelection.ValidateExact(); err != nil {
 		return nil, fmt.Errorf("sessions: default model selection: %w", err)
-	}
-	if err := deps.Models.AdmitSelection(deps.DefaultModelSelection); err != nil {
-		return nil, fmt.Errorf("sessions: default model selection is not admitted: %w", err)
 	}
 	return &Coordinator{
 		sessions:              deps.Sessions,

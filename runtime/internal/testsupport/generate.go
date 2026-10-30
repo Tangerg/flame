@@ -1,5 +1,7 @@
 package testsupport
 
+//go:generate go run github.com/Tangerg/flame/qimu/cmd/qimu contract --feature ../../../plugins/a2a/package/io.github.tangerg.flame/contracts/capability.generated.json --out "" --go-out a2a_contract.generated.go --go-package testsupport --go-prefix A2A
+
 //go:generate go run github.com/Tangerg/flame/qimu/cmd/qimu contract --feature ../../../plugins/schedules/package/io.github.tangerg.flame/contracts/capability.generated.json --out "" --go-out schedules_contract.generated.go --go-package testsupport --go-prefix Schedules
 //go:generate go run github.com/Tangerg/flame/qimu/cmd/qimu contract --feature ../../../plugins/filewatch/package/io.github.tangerg.flame/contracts/capability.generated.json --out "" --go-out filewatch_contract.generated.go --go-package testsupport --go-prefix Filewatch
 //go:generate go run github.com/Tangerg/flame/qimu/cmd/qimu contract --feature ../../../plugins/guardrails/package/io.github.tangerg.flame/contracts/capability.generated.json --out "" --go-out guardrails_contract.generated.go --go-package testsupport --go-prefix Guardrails

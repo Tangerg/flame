@@ -105,6 +105,10 @@ type Skills interface {
 	Reject(context.Context, workspace.SkillProposalReference) error
 }
 
+type Plugins interface {
+	ListPlugins(context.Context) ([]protocol.PluginInstallation, error)
+}
+
 // Schedules borrows mutation inputs until return and transfers owned results.
 // A form hands its fresh request to the operation that invokes this port.
 type Schedules interface {

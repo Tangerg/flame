@@ -71,10 +71,14 @@ func (c *Coordinator) ListProviders(ctx context.Context) ([]ProviderSummary, err
 	for _, entry := range entries {
 		byID[entry.ID()] = entry
 	}
-	metadata := c.supportedProviders()
+	metadata, err := c.catalog.Profiles(ctx)
+	if err != nil {
+		return nil, err
+	}
+	slices.SortFunc(metadata, func(first, second ProviderProfile) int { return cmp.Compare(first.Metadata.ID(), second.Metadata.ID()) })
 	out := make([]ProviderSummary, 0, len(metadata))
 	for _, meta := range metadata {
-		out = append(out, providerSummary(meta, byID[meta.ID()]))
+		out = append(out, providerSummary(meta.Metadata, byID[meta.Metadata.ID()]))
 	}
 	return out, nil
 }
@@ -82,7 +86,7 @@ func (c *Coordinator) ListProviders(ctx context.Context) ([]ProviderSummary, err
 // UpdateProvider validates and persists one supported provider, returning
 // its redacted stored result.
 func (c *Coordinator) UpdateProvider(ctx context.Context, cmd UpdateProviderCommand) (ProviderSummary, error) {
-	meta, err := c.supportedProvider(cmd.ID)
+	meta, err := c.supportedProvider(ctx, cmd.ID)
 	if err != nil {
 		return ProviderSummary{}, err
 	}
@@ -162,14 +166,14 @@ func (c *Coordinator) ListModels(ctx context.Context, providerID string) ([]Mode
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	meta, err := c.supportedProvider(providerID)
+	profile, err := c.supportedProfile(ctx, providerID)
 	if err != nil {
 		return nil, err
 	}
-	if !meta.DiscoversModelsAtEndpoint() {
-		return c.catalogModels(providerID)
+	if !profile.Metadata.DiscoversModelsAtEndpoint() {
+		return orderedModels(providerID, profile.Models)
 	}
-	entry, err := c.modelDiscoveryProvider(ctx, providerID)
+	entry, err := c.modelDiscoveryProvider(ctx, profile.Metadata)
 	if err != nil {
 		return nil, err
 	}
@@ -193,7 +197,9 @@ func (c *Coordinator) ListModels(ctx context.Context, providerID string) ([]Mode
 		return nil, fmt.Errorf("%w: %w", ErrModelDiscoveryFailed, err)
 	}
 	for i, model := range out {
-		if known, ok := c.catalog.LookupModel(providerID, model.ID()); ok {
+		index := slices.IndexFunc(profile.Models, func(known Model) bool { return known.ID() == model.ID() })
+		if index >= 0 {
+			known := profile.Models[index]
 			if known.Provider() != providerID || known.ID() != model.ID() {
 				return nil, errors.New("models: catalog enrichment changed model identity")
 			}
@@ -203,24 +209,26 @@ func (c *Coordinator) ListModels(ctx context.Context, providerID string) ([]Mode
 	return out, nil
 }
 
-func (c *Coordinator) supportedProviders() []ProviderMetadata {
-	metadata := c.catalog.Supported()
-	slices.SortFunc(metadata, func(first, second ProviderMetadata) int {
-		return cmp.Compare(first.ID(), second.ID())
-	})
-	return metadata
+func (c *Coordinator) supportedProfile(ctx context.Context, id string) (ProviderProfile, error) {
+	profiles, err := c.catalog.Profiles(ctx)
+	if err != nil {
+		return ProviderProfile{}, err
+	}
+	for _, profile := range profiles {
+		if profile.Metadata.ID() == id {
+			return profile, nil
+		}
+	}
+	return ProviderProfile{}, fmt.Errorf("%w: provider %q", ErrProviderUnsupported, id)
 }
 
-func (c *Coordinator) supportedProvider(id string) (ProviderMetadata, error) {
-	meta, ok := c.catalog.Metadata(id)
-	if !ok {
-		return ProviderMetadata{}, fmt.Errorf("%w: provider %q", ErrProviderUnsupported, id)
-	}
-	return meta, nil
+func (c *Coordinator) supportedProvider(ctx context.Context, id string) (ProviderMetadata, error) {
+	profile, err := c.supportedProfile(ctx, id)
+	return profile.Metadata, err
 }
 
 func (c *Coordinator) configuredProvider(ctx context.Context, id string) (ProviderMetadata, provider.Provider, error) {
-	meta, err := c.supportedProvider(id)
+	meta, err := c.supportedProvider(ctx, id)
 	if err != nil {
 		return ProviderMetadata{}, provider.Provider{}, err
 	}
@@ -240,7 +248,8 @@ func (c *Coordinator) configuredProvider(ctx context.Context, id string) (Provid
 	return meta, entry, nil
 }
 
-func (c *Coordinator) modelDiscoveryProvider(ctx context.Context, providerID string) (provider.Provider, error) {
+func (c *Coordinator) modelDiscoveryProvider(ctx context.Context, metadata ProviderMetadata) (provider.Provider, error) {
+	providerID := metadata.ID()
 	entry, err := provider.New(providerID)
 	if err != nil {
 		return provider.Provider{}, err
@@ -252,12 +261,11 @@ func (c *Coordinator) modelDiscoveryProvider(ctx context.Context, providerID str
 	if ok {
 		entry = configured
 	}
+	if !metadata.ConfigurationSatisfied(entry) {
+		return provider.Provider{}, fmt.Errorf("%w: provider %q", ErrProviderUnconfigured, providerID)
+	}
 
 	return entry, nil
-}
-
-func (c *Coordinator) catalogModels(providerID string) ([]Model, error) {
-	return orderedModels(providerID, c.catalog.Models(providerID))
 }
 
 func orderedModels(providerID string, models []Model) ([]Model, error) {

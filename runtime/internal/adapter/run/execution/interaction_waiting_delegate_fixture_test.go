@@ -35,7 +35,7 @@ func newWaitingDelegateFixture(t *testing.T, identity string) *waitingDelegateFi
 		Lifetime:     t.Context(),
 		ChatResolver: staticInteractionChatResolver(model),
 		BuildID:      interactionTestBuildID,
-		ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "ask")}, manifest: toolset.Manifest{
+		ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "ask")}, manifest: toolset.Manifest{
 			Visible: []toolcontract.Tool{question},
 		}},
 		ToolInterpreter: testInteractionToolInterpreter{},
@@ -74,7 +74,7 @@ func newWaitingDelegateFixture(t *testing.T, identity string) *waitingDelegateFi
 }
 
 func newDelegateQuestionTool(t *testing.T, description string) toolcontract.Tool {
-	return newQuestionTool(t, "ask", description, "delegate.required-value",
+	return newQuestionTool(t, "fixture_ask", description, "delegate.required-value",
 		[]runs.QuestionFieldSpec{{Prompt: "Which value should the delegate use?"}},
 		delegateQuestionAnswer)
 }

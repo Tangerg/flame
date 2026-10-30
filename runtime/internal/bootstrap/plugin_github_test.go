@@ -57,7 +57,7 @@ func TestGitHubInstalledSecretLifecycleAndModelWritesShareThePublishedOwner(t *t
 	}
 	cfg := poMCPConfig(t)
 	cfg.approvalMode = approval.ModeYolo
-	cfg.chatResolver = testChatResolver(client)
+	cfg.modelProviders = testChatResolver(client)
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "github"))
 	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Inputs) != 1 || !installed.Selected.Inputs[0].Secret || installed.Selected.Inputs[0].Required {

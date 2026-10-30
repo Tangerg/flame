@@ -79,14 +79,14 @@ func TestInteractionExecutorRequiresChatResolver(t *testing.T) {
 
 func TestInteractionToolManifestRequiresPolicyOwners(t *testing.T) {
 	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "echo", Description: "Return a fixed response.",
+		Name: "fixture_echo", Description: "Return a fixed response.",
 	}, func(context.Context, struct{}) (string, error) {
 		return "ok", nil
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	manifest, err := identifyTestManifest(toolset.Manifest{Visible: []toolcontract.Tool{executable}}, testsupport.A2ATool(t, "echo"))
+	manifest, err := identifyTestManifest(toolset.Manifest{Visible: []toolcontract.Tool{executable}}, testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "echo"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,9 +141,9 @@ func TestInteractionExecutorRejectsOutputAboveSelectedModelLimit(t *testing.T) {
 	start.ModelSelection = selection
 	start.Options = &chat.Options{MaxOutputTokens: &maxTokens}
 
-	err = executor.ValidateRootStart(start)
+	_, err = executor.StageRoot(t.Context(), start)
 	if !errors.Is(err, runs.ErrInvalidRunOptions) {
-		t.Fatalf("ValidateRootStart() error = %v, want ErrInvalidRunOptions", err)
+		t.Fatalf("StageRoot() error = %v, want ErrInvalidRunOptions", err)
 	}
 }
 
@@ -219,7 +219,7 @@ func TestInteractionExecutorResolvesDefaultThroughResolverWithoutImplicitSelecti
 		Lifetime: t.Context(),
 		ChatResolver: interactionChatResolverFunc(func(_ context.Context, selection modelchoice.Selection) (modeladapter.ResolvedChat, error) {
 			resolved = append(resolved, selection)
-			return modeladapter.NewResolvedChat(model, nil)
+			return modeladapter.NewResolvedChat(model, nil, nil)
 		}),
 		BuildID: interactionTestBuildID,
 	})
@@ -262,8 +262,8 @@ func interactionChatResolver(
 	model chat.Model,
 	counter modeladapter.InputTokenCounter,
 ) InteractionChatResolver {
-	return interactionChatResolverFunc(func(context.Context, modelchoice.Selection) (modeladapter.ResolvedChat, error) {
-		return modeladapter.NewResolvedChat(model, counter)
+	return interactionChatResolverFunc(func(_ context.Context, selection modelchoice.Selection) (modeladapter.ResolvedChat, error) {
+		return modeladapter.NewResolvedChat(model, counter, testsupport.ModelFacts(selection))
 	})
 }
 
@@ -733,4 +733,8 @@ func unresolvedTerminals(events []runs.ExecutorEvent) []runs.SegmentEnded {
 		}
 	}
 	return ends
+}
+
+func (r interactionChatResolverFunc) RestoreChat(ctx context.Context, selection modelchoice.Selection, _ *modeladapter.ProviderCapture) (modeladapter.ResolvedChat, error) {
+	return r.ResolveChat(ctx, selection)
 }

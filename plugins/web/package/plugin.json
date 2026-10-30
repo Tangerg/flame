@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "flame.web",
-  "version": "1.0.0",
-  "description": "Search and fetch through configured Scope clients, then browse private immutable page snapshots.",
+  "version": "2.0.0",
+  "description": "Search, fetch and browse private page snapshots, and execute allowlisted HTTP requests with durable original outcomes.",
   "extensions": {
     "io.github.tangerg.flame": {
       "declaration": "io.github.tangerg.flame/declaration.json"

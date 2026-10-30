@@ -11,10 +11,6 @@ import (
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 )
 
-type allowModels struct{}
-
-func (allowModels) AdmitSelection(modelchoice.Selection) error { return nil }
-
 func fixedSessionID() string  { return "ses_schedule" }
 func fixedRunID() string      { return "run_schedule" }
 func fixedScheduleID() string { return "sch_test" }
@@ -48,17 +44,16 @@ func TestScheduleConstructorsRejectPartialAndTypedNilDependencies(t *testing.T) 
 		name string
 		deps Dependencies
 	}{
-		{name: "missing store", deps: Dependencies{Paths: identityCWDResolver{}, Models: allowModels{}, NewScheduleID: fixedScheduleID}},
-		{name: "missing paths", deps: Dependencies{Store: store, Models: allowModels{}, NewScheduleID: fixedScheduleID}},
-		{name: "missing models", deps: Dependencies{Store: store, Paths: identityCWDResolver{}, NewScheduleID: fixedScheduleID}},
-		{name: "missing identity", deps: Dependencies{Store: store, Paths: identityCWDResolver{}, Models: allowModels{}}},
+		{name: "missing store", deps: Dependencies{Paths: identityCWDResolver{}, NewScheduleID: fixedScheduleID}},
+		{name: "missing paths", deps: Dependencies{Store: store, NewScheduleID: fixedScheduleID}},
+		{name: "missing identity", deps: Dependencies{Store: store, Paths: identityCWDResolver{}}},
 	}
 	var typedNilStore *runNowStore
 	coordinatorCases = append(coordinatorCases, struct {
 		name string
 		deps Dependencies
 	}{name: "typed nil store", deps: Dependencies{
-		Store: typedNilStore, Paths: identityCWDResolver{}, Models: allowModels{}, NewScheduleID: fixedScheduleID,
+		Store: typedNilStore, Paths: identityCWDResolver{}, NewScheduleID: fixedScheduleID,
 	}})
 	for _, test := range coordinatorCases {
 		t.Run("coordinator "+test.name, func(t *testing.T) {
@@ -80,7 +75,6 @@ func TestCreateOwnsScheduleAdmission(t *testing.T) {
 	store := &runNowStore{}
 	c := mustCoordinator(t, Dependencies{
 		Store:         store,
-		Models:        allowModels{},
 		NewScheduleID: fixedIdentity("sch_created"),
 		Paths: cwdResolverFunc(func(path string) (string, error) {
 			if path != "workspace" {
@@ -123,8 +117,7 @@ func TestUpdatePreservesAcceptedScheduleAfterCallerReuse(t *testing.T) {
 		NextRunAt:    lastRun.Add(time.Hour),
 	})}
 	c := mustCoordinator(t, Dependencies{
-		Store:  store,
-		Models: allowModels{},
+		Store: store,
 		Paths: cwdResolverFunc(func(string) (string, error) {
 			return "/canonical/after", nil
 		}),
@@ -173,7 +166,7 @@ func TestUpdatePreservesAcceptedScheduleAfterCallerReuse(t *testing.T) {
 }
 
 func TestUpdateRequiresAnExplicitRevision(t *testing.T) {
-	c := mustCoordinator(t, Dependencies{Store: &runNowStore{schedule: mustStoredSchedule(t, schedule.Snapshot{ID: "sch_1", Instructions: "review"})}, Models: allowModels{}})
+	c := mustCoordinator(t, Dependencies{Store: &runNowStore{schedule: mustStoredSchedule(t, schedule.Snapshot{ID: "sch_1", Instructions: "review"})}})
 	_, err := c.Update(t.Context(), UpdateCommand{ID: "sch_1"})
 	if !errors.Is(err, schedule.ErrRevisionRequired) {
 		t.Fatalf("Update error = %v, want ErrRevisionRequired", err)
@@ -184,7 +177,6 @@ func TestCreateValidatesBeforeResolvingCWD(t *testing.T) {
 	resolved := false
 	c := mustCoordinator(t, Dependencies{
 		Store:         &runNowStore{},
-		Models:        allowModels{},
 		NewScheduleID: fixedIdentity("sch_created"),
 		Paths: cwdResolverFunc(func(string) (string, error) {
 			resolved = true
@@ -267,7 +259,7 @@ func scheduleRows(t testing.TB, ids ...string) []schedule.Schedule {
 
 func TestListPagePagesNewestFirstAndRefusesAForeignCursor(t *testing.T) {
 	store := &pagedStore{runNowStore: &runNowStore{}, rows: scheduleRows(t, "sch_1", "sch_2", "sch_3")}
-	c := mustCoordinator(t, Dependencies{Store: store, Models: allowModels{}})
+	c := mustCoordinator(t, Dependencies{Store: store})
 	ctx := t.Context()
 
 	first, err := c.ListPage(ctx, "", explicitPageLimit(t, 2))

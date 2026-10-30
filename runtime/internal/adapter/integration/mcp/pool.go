@@ -31,7 +31,6 @@ type Pool struct {
 	commands  invocationRestorer
 	registry  sourceRegistry
 	inner     *connections
-	prepare   ToolPreparation
 	publish   invalidation.Publish
 	lifetime  context.Context
 	callbacks *qimumcp.Callbacks
@@ -51,7 +50,6 @@ func Open(
 	servers []mcpserver.Server,
 	oauthSessions oauthSessionStore, registry sourceRegistry,
 	callbacks *qimumcp.Callbacks,
-	prepare ToolPreparation,
 	publish invalidation.Publish,
 	commands invocationRestorer, installed *Installed,
 ) (*Pool, error) {
@@ -62,7 +60,7 @@ func Open(
 	for index, server := range servers {
 		configs[index] = ServerConfig{Server: server.Clone()}
 	}
-	pool := &Pool{commands: commands, registry: registry, prepare: prepare, publish: publish, lifetime: lifetime, callbacks: callbacks, installed: installed}
+	pool := &Pool{commands: commands, registry: registry, publish: publish, lifetime: lifetime, callbacks: callbacks, installed: installed}
 	client := newClient()
 	if err := qimumcp.RegisterClient(client); err != nil {
 		return nil, err
@@ -167,9 +165,9 @@ func (p *Pool) Detach(name mcpserver.ID) error {
 
 // setToolSink publishes the initial catalog and live connection changes to the
 // resolver through the connection owner's publication boundary.
-func (p *Pool) SetToolSink(sink func([]toolcontract.Tool, []mcpserver.ID)) {
+func (p *Pool) SetToolSink(sink func([]toolcontract.Tool, []mcpserver.ID), prepare ToolPreparation) {
 	p.inner.setToolSink(func(catalog []Executable, pending, changed []mcpserver.ID) {
-		sink(p.authorizedTools(catalog), pending)
+		sink(p.authorizedTools(catalog, prepare), pending)
 		if len(changed) > 0 {
 			p.publish.Notify(invalidation.ForMCP(changed...))
 		}
@@ -220,6 +218,25 @@ func (p *Pool) InstallationActivation(ctx context.Context, id mcpserver.ID) (_ p
 	// Capturing a graph is a read of the catalog's original observation. Its
 	// new business owner validates and retains it under the shared admission;
 	// this projection must not acquire a nested execution Use.
+	return p.inner.activation(session)
+}
+
+// AwaitInstallationActivation joins the source's already owned connection
+// attempt. Callers wait outside Host admission, then retain and validate this
+// exact projection under admission; waiting never starts a replacement attempt.
+func (p *Pool) AwaitInstallationActivation(ctx context.Context, id mcpserver.ID) (_ plugin.Activation, err error) {
+	defer func() { err = connectionError(id, err) }()
+	descriptor, found, err := p.registry.Definition(ctx, id)
+	if err != nil {
+		return plugin.Activation{}, errors.Join(plugin.ErrUnavailable, err)
+	}
+	if !found || !descriptor.Enabled {
+		return plugin.Activation{}, ErrUnavailable
+	}
+	session, err := p.inner.waitSession(ctx, descriptor)
+	if err != nil {
+		return plugin.Activation{}, err
+	}
 	return p.inner.activation(session)
 }
 
@@ -280,7 +297,7 @@ func (p *Pool) OpenRPC(ctx context.Context, id mcpserver.ID, session *sdk.Client
 // toolHost grants through the session that admitted the tool, so a replaced
 // connection generation is refused rather than handed a stale backend's authority.
 func (p *Pool) toolHost(executable Executable) ToolHost {
-	return func(ctx context.Context) (sdk.ParamsBase, func(), error) {
+	return func(ctx context.Context) (sdk.ParamsBase, func() error, error) {
 		borrowed, err := executable.BorrowSession(ctx)
 		if err != nil {
 			return sdk.ParamsBase{}, nil, err
@@ -289,7 +306,7 @@ func (p *Pool) toolHost(executable Executable) ToolHost {
 		if err != nil {
 			return sdk.ParamsBase{}, nil, errors.Join(err, borrowed.Close())
 		}
-		return metadata, func() { release(); _ = borrowed.Close() }, nil
+		return metadata, func() error { release(); return borrowed.Close() }, nil
 	}
 }
 
@@ -312,11 +329,11 @@ type ToolCall func(toolcontract.Invocation) (toolcontract.Result, error)
 // ToolHost opens one installed tool call's canonical host grant through Pool.OpenRPC,
 // its single owner, so a model Tool reaches the same host capability and frozen
 // dependency authority as the backend's plugins.call entry. The caller owns release.
-type ToolHost func(context.Context) (sdk.ParamsBase, func(), error)
+type ToolHost func(context.Context) (sdk.ParamsBase, func() error, error)
 
 // ToolPreparation captures call collaborators for this exact executable. On
 // success the caller owns release, even if final authority admission refuses
 // dispatch. The prepared call owns work and any dispatch-dependent observation.
 // On failure preparation must release any resources it acquired. host opens the
 // canonical installed grant when the preparation wants it.
-type ToolPreparation func(context.Context, Executable, ToolHost) (ToolCall, func(), error)
+type ToolPreparation func(context.Context, Executable, ToolHost) (ToolCall, func() error, error)

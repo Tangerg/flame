@@ -1,9 +1,10 @@
+import { de as mcpDe } from "../../../plugins/mcp/component/locales/de";
 import { expect, test } from "./test";
 const SERVER_NAME = "workspace-tools-with-missing-configuration-".repeat(10);
 
 const INPUT = JSON.stringify({ mcpServers: { [SERVER_NAME]: {} } });
 
-const FAILURE = `Server "${SERVER_NAME}" has neither a command (stdio) nor a url (streamableHttp)`;
+const FAILURE = mcpDe["mcp.import.missingTransport"]!.replace("{{server}}", SERVER_NAME);
 
 for (const [width, height] of [
   [1120, 720],

@@ -211,7 +211,7 @@ func TestReviewBackendUsesInstallationRunApprovalAndRecoveryOwners(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg.chatResolver = testChatResolver(client)
+	cfg.modelProviders = testChatResolver(client)
 	r := poMCPOpen(t, cfg)
 	source := reviewExamplePackage(t)
 	installed := poMCPActivate(r, source)

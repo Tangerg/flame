@@ -135,6 +135,36 @@ test("bundles private static and dynamic modules into an executable browser grap
   }
 });
 
+test("embeds a PNG as exact bytes without a separate unleased asset request", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "flame-component-image-"));
+  try {
+    const png = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lDQAAAAASUVORK5CYII=",
+      "base64",
+    );
+    await writeFile(join(directory, "pixel.png"), png);
+    await writeFile(join(directory, "package.json"), '{"type":"module"}');
+    const input = join(directory, "entry.js");
+    await writeFile(input, 'export { default as image } from "./pixel.png";');
+    const output = join(directory, "output");
+    const result = await buildComponent({
+      input,
+      directory: output,
+      compiler: rolldown,
+    });
+    const component = await import(pathToFileURL(join(output, "component.js")));
+    assert.match(component.image, /^data:image\/png;base64,/);
+    assert.deepEqual(
+      Buffer.from(await (await fetch(component.image)).arrayBuffer()),
+      png,
+    );
+    assert.equal(result.graph.modules.length, 1);
+    assert.deepEqual(result.graph.sharedSpecifiers, []);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("refuses a computed dynamic import before publishing an incomplete module graph", async () => {
   const directory = await mkdtemp(join(tmpdir(), "flame-computed-import-"));
   try {

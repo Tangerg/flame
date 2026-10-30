@@ -190,7 +190,7 @@ func TestBuiltinCommandsOwnTheirCategoryAndAvailabilityPolicy(t *testing.T) {
 		commandCategoryContext:     {"agent-docs", "memory", "memory-add", "memory-edit", "memory-pin", "memory-unpin", "memory-approve", "memory-reject", "memory-delete", "skills", "skill-library", "skill-proposals", "skill-archive", "skill-restore", "skill-approve", "skill-reject"},
 		commandCategoryConnections: {"mcp-tool", "mcp", "mcp-tools", "mcp-create", "mcp-edit", "mcp-probe", "mcp-delete", "mcp-reconnect", "mcp-auth"},
 		commandCategoryWorkspace:   {"workspaces", "changes", "diff", "preview", "grep", "browse", "read"},
-		commandCategoryExtensions:  {"plugins", "reload", "unload"},
+		commandCategoryExtensions:  {"plugins", "extensions", "reload", "unload"},
 	}
 	wantGuard := map[string]bool{
 		"clear": true, "view": true, "export": true,
@@ -207,6 +207,7 @@ func TestBuiltinCommandsOwnTheirCategoryAndAvailabilityPolicy(t *testing.T) {
 		"agent-docs": true,
 		"hooks":      true, "hooks-trust": true, "hooks-revoke": true,
 		"feedback": true,
+		"plugins":  true,
 	}
 
 	seen := make(map[string]struct{})

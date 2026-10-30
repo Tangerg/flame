@@ -23,16 +23,6 @@ func TestArgumentEnumsMatchTheirVocabulary(t *testing.T) {
 		declared []string
 	}{
 		{
-			name:  "lsp operation",
-			args:  lspInput{},
-			field: "Operation",
-			declared: []string{
-				string(LSPDefinition), string(LSPReferences), string(LSPImplementation),
-				string(LSPHover), string(LSPIncomingCalls), string(LSPOutgoingCalls),
-				string(LSPDocumentSymbols), string(LSPWorkspaceSymbols), string(LSPDiagnostics),
-			},
-		},
-		{
 			name:     "goal report outcome",
 			args:     reportArgs{},
 			field:    "Outcome",

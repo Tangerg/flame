@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	hookdata "github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
@@ -164,32 +165,33 @@ func (p promptHookResult) applyTo(message *corechat.Message) error {
 func (w *WorkingContextComposer) evaluatePromptHooks(
 	ctx context.Context,
 	input runs.WorkingContextInput,
-) (promptHookResult, error) {
+) (_ promptHookResult, returned error) {
 	bound, err := w.config.Hooks.For(ctx, input.WorkspaceCWD)
 	if err != nil {
 		return promptHookResult{}, fmt.Errorf("execution: resolve prompt lifecycle hooks: %w", err)
 	}
+	defer func() { returned = errors.Join(returned, bound.Close()) }()
 
 	result := promptHookResult{}
 	if w.claimSessionStart(input.SessionID) {
-		result.decision = bound.Run(ctx, domainhooks.Input{
-			Event: domainhooks.SessionStart, SessionID: input.SessionID, CWD: input.CWD,
+		result.decision = bound.Run(ctx, hookdata.Input{
+			Event: hookdata.SessionStart, SessionID: input.SessionID, CWD: input.CWD,
 		})
 		if strings.TrimSpace(result.decision.InjectContext) != "" {
 			result.sources = append(
 				result.sources,
-				contextSourceLifecycleHook.source(string(domainhooks.SessionStart)),
+				contextSourceLifecycleHook.source(string(hookdata.SessionStart)),
 			)
 		}
 	}
-	submitted := bound.Run(ctx, domainhooks.Input{
-		Event: domainhooks.UserPromptSubmit, SessionID: input.SessionID,
+	submitted := bound.Run(ctx, hookdata.Input{
+		Event: hookdata.UserPromptSubmit, SessionID: input.SessionID,
 		CWD: input.CWD, Prompt: input.PromptText,
 	})
 	if strings.TrimSpace(submitted.InjectContext) != "" {
 		result.sources = append(
 			result.sources,
-			contextSourceLifecycleHook.source(string(domainhooks.UserPromptSubmit)),
+			contextSourceLifecycleHook.source(string(hookdata.UserPromptSubmit)),
 		)
 	}
 	result.decision.Fold(
@@ -225,16 +227,17 @@ func (w *WorkingContextComposer) ForgetSession(sessionID string) {
 func (w *WorkingContextComposer) BeforeToolUse(
 	ctx context.Context,
 	input InteractionToolHookInput,
-) (InteractionToolHookDecision, error) {
+) (_ InteractionToolHookDecision, returned error) {
 	bound, err := w.config.Hooks.For(ctx, input.WorkspaceCWD)
 	if err != nil {
 		return InteractionToolHookDecision{}, fmt.Errorf("execution: resolve pre-Tool hooks: %w", err)
 	}
-	decision := bound.Run(ctx, domainhooks.Input{
-		Event:     domainhooks.PreToolUse,
+	defer func() { returned = errors.Join(returned, bound.Close()) }()
+	decision := bound.Run(ctx, hookdata.Input{
+		Event:     hookdata.PreToolUse,
 		SessionID: input.SessionID,
 		CWD:       input.CWD,
-		Tool: &domainhooks.ToolInput{
+		Tool: &hookdata.ToolInput{
 			Name:      input.ToolName,
 			Arguments: input.Arguments.Canonical(),
 		},
@@ -258,20 +261,21 @@ func (w *WorkingContextComposer) BeforeToolUse(
 func (w *WorkingContextComposer) AfterToolUse(
 	ctx context.Context,
 	input InteractionToolHookInput,
-) error {
+) (returned error) {
 	bound, err := w.config.Hooks.For(ctx, input.WorkspaceCWD)
 	if err != nil {
 		return fmt.Errorf("execution: resolve post-Tool hooks: %w", err)
 	}
+	defer func() { returned = errors.Join(returned, bound.Close()) }()
 	reason := ""
 	if input.CallError != nil {
 		reason = input.CallError.Error()
 	}
-	_ = bound.Run(ctx, domainhooks.Input{
-		Event:     domainhooks.PostToolUse,
+	_ = bound.Run(ctx, hookdata.Input{
+		Event:     hookdata.PostToolUse,
 		SessionID: input.SessionID,
 		CWD:       input.CWD,
-		Tool: &domainhooks.ToolInput{
+		Tool: &hookdata.ToolInput{
 			Name:      input.ToolName,
 			Arguments: input.Arguments.Canonical(),
 			Result:    input.Result,
@@ -286,13 +290,14 @@ func (w *WorkingContextComposer) AfterToolUse(
 func (w *WorkingContextComposer) BeforeCompaction(
 	ctx context.Context,
 	sessionID, cwd string,
-) (bool, error) {
+) (_ bool, returned error) {
 	bound, err := w.config.Hooks.For(ctx, cwd)
 	if err != nil {
 		return false, fmt.Errorf("execution: resolve pre-compaction hooks: %w", err)
 	}
-	decision := bound.Run(ctx, domainhooks.Input{
-		Event: domainhooks.PreCompact, SessionID: sessionID, CWD: cwd,
+	defer func() { returned = errors.Join(returned, bound.Close()) }()
+	decision := bound.Run(ctx, hookdata.Input{
+		Event: hookdata.PreCompact, SessionID: sessionID, CWD: cwd,
 	})
 	return decision.Verdict != domainhooks.VerdictBlock, nil
 }
@@ -303,7 +308,7 @@ func (w *WorkingContextComposer) NotifyWaiting(
 	ctx context.Context,
 	sessionID, cwd string,
 ) error {
-	return w.runObserveOnlyHook(ctx, domainhooks.Notification, sessionID, cwd, "interrupt")
+	return w.runObserveOnlyHook(ctx, hookdata.Notification, sessionID, cwd, "interrupt")
 }
 
 // NotifyStopped runs the observe-only terminal hook.
@@ -311,19 +316,20 @@ func (w *WorkingContextComposer) NotifyStopped(
 	ctx context.Context,
 	sessionID, cwd, reason string,
 ) error {
-	return w.runObserveOnlyHook(ctx, domainhooks.Stop, sessionID, cwd, reason)
+	return w.runObserveOnlyHook(ctx, hookdata.Stop, sessionID, cwd, reason)
 }
 
 func (w *WorkingContextComposer) runObserveOnlyHook(
 	ctx context.Context,
-	event domainhooks.Event,
+	event hookdata.Event,
 	sessionID, cwd, reason string,
-) error {
+) (returned error) {
 	bound, err := w.config.Hooks.For(ctx, cwd)
 	if err != nil {
 		return fmt.Errorf("execution: resolve lifecycle notification hooks: %w", err)
 	}
-	_ = bound.Run(ctx, domainhooks.Input{
+	defer func() { returned = errors.Join(returned, bound.Close()) }()
+	_ = bound.Run(ctx, hookdata.Input{
 		Event: event, SessionID: sessionID, CWD: cwd, Reason: reason,
 	})
 	return nil

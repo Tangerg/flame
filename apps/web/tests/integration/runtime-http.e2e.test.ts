@@ -74,6 +74,8 @@ const compactionContextPressure = "context ".repeat(4_200);
 
 const defaultTestDeadlineMilliseconds = 5_000;
 
+const runnerStartupDeadlineMilliseconds = 20_000;
+
 const compactionCutpointDeadlineMilliseconds = 15_000;
 
 async function unusedLoopbackPort(): Promise<number> {
@@ -764,7 +766,10 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
     Awaited<ReturnType<FlameClient["plugins"]["install"]>>
   >();
 
-  const activateManagedOwner = async (feature: "memory" | "schedules") => {
+  const activateManagedOwner = async (
+    feature: "memory" | "schedules",
+    timeoutMilliseconds = defaultTestDeadlineMilliseconds,
+  ) => {
     if (!client) throw new Error("runtime client was not initialized");
     let installation = (await client.plugins.list()).data.find(
       (item) => item.selected.name === `flame.${feature}`,
@@ -790,10 +795,13 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
       origin: { type: "installation" as const, installationId: installation.id },
       name: feature,
     };
-    await awaitMCPTools(server, (tools) =>
-      tools.some(
-        (tool) => tool.name === (feature === "memory" ? "search_memory" : "list_schedules"),
-      ),
+    await awaitMCPTools(
+      server,
+      (tools) =>
+        tools.some(
+          (tool) => tool.name === (feature === "memory" ? "search_memory" : "list_schedules"),
+        ),
+      timeoutMilliseconds,
     );
     return installation;
   };
@@ -801,14 +809,21 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
   const awaitMCPTools = async (
     server: Parameters<FlameClient["mcp"]["listTools"]>[0],
     ready: (tools: MCPTool[]) => boolean,
+    timeoutMilliseconds = defaultTestDeadlineMilliseconds,
   ) => {
     if (!client) throw new Error("runtime client was not initialized");
-    const deadline = Date.now() + defaultTestDeadlineMilliseconds;
+    const deadline = Date.now() + timeoutMilliseconds;
     while (!ready((await client.mcp.listTools(server)).data)) {
-      if (Date.now() >= deadline)
+      if (Date.now() >= deadline) {
+        const states = (await client.mcp.list()).data.map(({ id, status, handshakeTimeout }) => ({
+          id,
+          status,
+          handshakeTimeout,
+        }));
         throw new Error(
-          `MCP source did not become ready: ${JSON.stringify(server)}; ${processOutput}`,
+          `MCP source did not become ready: ${JSON.stringify(server)}; states=${JSON.stringify(states)}; runner=${runnerOutput}; ${processOutput}`,
         );
+      }
       await new Promise((resolve) => setTimeout(resolve, 25));
     }
   };
@@ -838,7 +853,6 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
     OPENAI_API_KEY: "",
     FLAME_SERVER_LISTEN: `127.0.0.1:${runtimePort}`,
     FLAME_SERVER_NOLOCALTOKEN: "true",
-    FLAME_A2A_AGENTS: "",
     OTEL_SDK_DISABLED: "true",
   });
 
@@ -868,7 +882,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
         `runner exited before fixture shutdown (${code}, ${signal}): ${runnerOutput}`,
       );
     });
-    const deadline = Date.now() + defaultTestDeadlineMilliseconds;
+    const deadline = Date.now() + runnerStartupDeadlineMilliseconds;
     // The fixture owns this process across deliberate Host crashes. This probe
     // only orders startup; Runtime still performs the original identity handshake.
     while (Date.now() < deadline) {
@@ -1193,7 +1207,9 @@ for await (const line of lines) {
     await startRuntimeProcess();
     client = createRuntimeClient();
     negotiated = (await client.runtime.discover()).capabilities;
-    await awaitManagedOwners();
+    // Initial package startup belongs to fixture setup; tests consume admitted sources.
+    for (const feature of ["memory", "schedules"] as const)
+      await activateManagedOwner(feature, 30_000);
   }, 60_000);
 
   beforeEach(async () => {
@@ -1243,13 +1259,20 @@ for await (const line of lines) {
       expect(installed.selected.themes).toHaveLength(1);
       expect(installed.selected.skills).toHaveLength(1);
       await client.plugins.setEnablement({ installationId: installed.id, enabled: true });
-      const component = installed.selected.components[0]!;
+      const component = installed.selected.components.find((value) => value.id === "trajectory")!;
       expect(component.scope).toBe("session");
+      const effect = installed.selected.components.find(
+        (value) => value.placement === "clientEffect",
+      )!;
+      expect(effect).toMatchObject({ scope: "client", export: "SessionExports" });
       const resourceRequest = { ...target, componentId: component.id, path: component.entry };
       const resource = await client.plugins.readResource(resourceRequest);
       expect(Buffer.from(resource.body, "base64")).toEqual(
         await readFile(join(environmentRoot, "plugins", "trajectory", component.entry)),
       );
+      await expect(
+        client.plugins.readResource({ ...target, componentId: effect.id, path: effect.entry }),
+      ).resolves.toEqual(resource);
       const session = await client.sessions.create({
         workspace: { path: root },
         title: "Package evidence",
@@ -1283,6 +1306,47 @@ for await (const line of lines) {
       await client.plugins.setEnablement({ installationId: defaultTrajectory.id, enabled: true });
     }
   });
+
+  it("reads only the exact enabled installed locale catalog without executable contributions", async () => {
+    if (!client) throw new Error("runtime client was not initialized");
+    const installation = (await client.plugins.list()).data.find(
+      (value) => value.selected.name === "flame.locale.ja",
+    );
+    if (!installation) throw new Error("the shipped Japanese locale is unavailable");
+    expect(installation.selected.locales).toEqual([{ tag: "ja", title: "日本語" }]);
+    expect(installation.selected.components).toEqual([]);
+    expect(installation.selected.servers).toEqual([]);
+    expect(installation.selected.contributions).toEqual([]);
+    const request = {
+      installationId: installation.id,
+      digest: installation.selected.digest,
+      tag: "ja",
+    };
+    const messages = JSON.parse(
+      await readFile(
+        join(environmentRoot, "plugins", "locale-ja", "io.github.tangerg.flame/messages.json"),
+        "utf8",
+      ),
+    );
+    await expect(client.plugins.readLocale(request)).resolves.toEqual({ messages });
+    await expect(
+      client.plugins.readLocale({ ...request, digest: "f".repeat(64) }),
+    ).rejects.toMatchObject({
+      data: { type: "plugin_stale" },
+    });
+    await expect(client.plugins.readLocale({ ...request, tag: "ko" })).rejects.toMatchObject({
+      data: { type: "plugin_not_found" },
+    });
+    await client.plugins.setEnablement({ installationId: installation.id, enabled: false });
+    try {
+      await expect(client.plugins.readLocale(request)).rejects.toMatchObject({
+        data: { type: "plugin_disabled" },
+      });
+    } finally {
+      await client.plugins.setEnablement({ installationId: installation.id, enabled: true });
+    }
+    await expect(client.plugins.readLocale(request)).resolves.toEqual({ messages });
+  }, 30_000);
 
   it("reads the shipped Memory backend page and resumes private facts after withdrawal", async () => {
     if (!client) throw new Error("runtime client was not initialized");
@@ -1629,7 +1693,7 @@ for await (const line of lines) {
     await events.return?.();
   }, 30_000);
 
-  it("rejects an impossible model output reservation before durable Run admission", async () => {
+  it("rejects unconfigured providers and impossible output reservations before durable Run admission", async () => {
     if (!client) throw new Error("runtime client was not initialized");
 
     const session = await client.sessions.create({
@@ -1638,23 +1702,48 @@ for await (const line of lines) {
     });
     const sessionId = asSessionId(session.id);
 
-    await expect(
-      client.runs.start({
-        sessionId,
-        input: [{ type: "text", text: "This Run must never become durable." }],
+    await client.providers.update({
+      provider: "openai",
+      baseUrl: { type: "set", value: providerBaseUrl },
+    });
+    try {
+      await expect(
+        client.runs.start({
+          sessionId,
+          input: [{ type: "text", text: "This Run requires configured credentials." }],
+          provider: "openai",
+          model: "gpt-5-pro",
+        }),
+      ).rejects.toSatisfy(
+        (error: unknown) => error instanceof RpcError && error.data.type === "invalid_params",
+      );
+      await client.providers.update({
         provider: "openai",
-        model: "gpt-5-pro",
-        params: { maxTokens: 272_001 },
-      }),
-    ).rejects.toSatisfy(
-      (error: unknown) => error instanceof RpcError && error.data.type === "invalid_params",
-    );
-    await expect(client.runs.list({ sessionId })).resolves.toMatchObject({ data: [] });
-    await expect(
-      client.items.list({ scope: { type: "session", sessionId } }),
-    ).resolves.toMatchObject({ data: [] });
-
-    await client.sessions.delete(sessionId);
+        apiKey: { type: "set", value: "e2e-placeholder-key" },
+      });
+      await expect(
+        client.runs.start({
+          sessionId,
+          input: [{ type: "text", text: "This Run must never become durable." }],
+          provider: "openai",
+          model: "gpt-5-pro",
+          params: { maxTokens: 272_001 },
+        }),
+      ).rejects.toSatisfy(
+        (error: unknown) => error instanceof RpcError && error.data.type === "invalid_params",
+      );
+      await expect(client.runs.list({ sessionId })).resolves.toMatchObject({ data: [] });
+      await expect(
+        client.items.list({ scope: { type: "session", sessionId } }),
+      ).resolves.toMatchObject({ data: [] });
+    } finally {
+      await client.providers.update({
+        provider: "openai",
+        apiKey: { type: "clear" },
+        baseUrl: { type: "clear" },
+      });
+      await client.sessions.delete(sessionId);
+    }
   }, 30_000);
 
   it("converges unary mutations across pre-admission and post-commit disconnects", async () => {
@@ -3050,7 +3139,7 @@ for await (const line of lines) {
       type: "segment.finished",
       run: { status: "finished", outcome: { type: "completed" } },
     });
-  });
+  }, 30_000);
 
   it("parks and resumes the same run through durable HITL identity", async () => {
     if (!client) throw new Error("runtime client was not initialized");

@@ -13,7 +13,7 @@ for (const theme of ["light", "dark"]) {
       const panel = page.getByRole("tabpanel");
       for (const name of ["Utility model", "Embedding model"]) {
         const label = (await panel.getByText(name, { exact: true }).boundingBox())!;
-        const control = (await panel.getByRole("button", { name, exact: true }).boundingBox())!;
+        const control = (await panel.getByRole("combobox", { name, exact: true }).boundingBox())!;
         if (width === 1120) expect(control.x).toBeGreaterThanOrEqual(label.x + label.width);
         else expect(control.y).toBeGreaterThanOrEqual(label.y + label.height);
       }
@@ -85,30 +85,13 @@ for (const transport of ["stdio", "streamableHttp"] as const) {
   test(`MCP editing focuses its first editable field and returns to its opener ${transport}`, async ({
     page,
   }) => {
-    await page.goto("/visual/?fixture=workspace&state=settings&pane=mcp-servers&theme=dark");
+    await page.goto(
+      `/visual/?fixture=workspace&state=settings&pane=mcp-servers&theme=dark&mcp-transport=${transport}`,
+    );
     await page.locator("html[data-visual-ready]").waitFor();
     const panel = page.getByRole("tabpanel");
     await expect(panel.locator("[aria-busy=true]")).toHaveCount(0);
-    await page.evaluate(async (type) => {
-      const moduleUrl = "/src/lib/queryClient.ts";
-      const { queryClient }: typeof import("@/lib/queryClient") = await import(moduleUrl);
-      queryClient.setQueryData(
-        ["mcp-servers"],
-        [
-          {
-            id: { origin: { type: "user" }, name: "workspace-tools" },
-            status: "connected",
-            type,
-            enabled: true,
-            command: "npx",
-            args: [],
-            url: "https://example.invalid/mcp",
-            handshakeTimeout: { type: "bounded", seconds: 30 },
-            toolCount: 0,
-          },
-        ],
-      );
-    }, transport);
+
     const trigger = panel.getByRole("button", { name: "Edit workspace-tools", exact: true });
     await trigger.click();
     const field = panel.getByRole("textbox", {
@@ -319,50 +302,15 @@ for (const width of [1120, 320]) {
   }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(
-      "/visual/?fixture=workspace&state=settings&pane=mcp-servers&theme=light&font-size=18",
+      "/visual/?fixture=workspace&state=settings&pane=mcp-servers&theme=light&font-size=18&mcp-transport=stdio",
     );
     await page.locator("html[data-visual-ready]").waitFor();
-    await page.evaluate(async () => {
-      const moduleUrl = "/src/lib/queryClient.ts";
-      const { queryClient }: typeof import("@/lib/queryClient") = await import(moduleUrl);
-      queryClient.setQueryData(
-        ["mcp-servers"],
-        [
-          {
-            id: { origin: { type: "user" }, name: "workspace-tools" },
-            status: "connected",
-            type: "stdio",
-            enabled: true,
-            command: "npx",
-            args: [],
-            handshakeTimeout: { type: "bounded", seconds: 30 },
-            toolCount: 1,
-          },
-        ],
-      );
-    });
-    await page.getByRole("button", { name: "Edit workspace-tools", exact: true }).click();
-    await page.getByText("Manage tools", { exact: true }).waitFor();
-    await page.evaluate(async () => {
-      const moduleUrl = "/src/lib/queryClient.ts";
-      const { queryClient }: typeof import("@/lib/queryClient") = await import(moduleUrl);
-      await queryClient.cancelQueries({ queryKey: ["mcp-tools"] });
-      await queryClient.cancelQueries({ queryKey: ["mcp-tool-exposure"] });
-      queryClient.setQueriesData({ queryKey: ["mcp-tools"] }, [
-        {
-          name: "read_workspace_files",
-          description: "Read files from the current workspace without changing them.",
-          modelName: "read_workspace_files",
-          nameConflicts: [],
-        },
-      ]);
-      queryClient.setQueriesData({ queryKey: ["mcp-tool-exposure"] }, []);
-    });
+    await page.getByRole("button", { name: "Tools for workspace-tools", exact: true }).click();
     for (const name of ["Enable read_workspace_files", "Auto-approve read_workspace_files"]) {
       const control = page.getByRole("switch", { name, exact: true });
       await expect(control).toBeVisible();
       const label = control.locator("..");
-      expect(await label.evaluate((node) => node.tagName)).toBe("LABEL");
+      await expect(label).toContainText(name.startsWith("Enable") ? "Enabled" : "Auto-approve");
       expect(await label.evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
     }
     expect(await page.locator("html").evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(
@@ -380,26 +328,24 @@ for (const width of [1120, 320]) {
     await page.locator("html[data-visual-ready]").waitFor();
     const command = "./scripts/review-permissions --workspace /Users/visual/a-long-workspace-name";
     await page.evaluate(async (command) => {
-      const moduleUrl = "/src/lib/queryClient.ts";
-      const { queryClient }: typeof import("@/lib/queryClient") = await import(moduleUrl);
-      queryClient.setQueriesData(
-        { queryKey: ["hooks"] },
-        {
-          projectRoot: "/Users/visual/scope",
-          projectTrusted: false,
-          hooks: [
-            {
-              event: "PreToolUse",
-              matcher: "shell",
-              command,
-              scope: "project",
-              source: "/Users/visual/scope/.flame/hooks.json",
-              active: false,
-            },
-          ],
-        },
-      );
+      const moduleUrl = "/visual/hookSnapshot.ts";
+      const { VISUAL_HOOKS }: typeof import("./hookSnapshot") = await import(moduleUrl);
+      Object.assign(VISUAL_HOOKS, {
+        projectRoot: "/Users/visual/scope",
+        projectTrusted: false,
+        hooks: [
+          {
+            event: "PreToolUse",
+            matcher: "shell",
+            command,
+            scope: "project",
+            source: "/Users/visual/scope/.flame/hooks.json",
+            active: false,
+          },
+        ],
+      });
     }, command);
+    await page.getByRole("button", { name: "Refresh", exact: true }).click();
     const toggle = page.getByRole("switch", { name: "Trust this project's hooks", exact: true });
     await expect(toggle).toBeVisible();
     const identity = page.getByText("Trust this project's hooks", { exact: true });
@@ -418,3 +364,25 @@ for (const width of [1120, 320]) {
     );
   });
 }
+
+test("MCP changed HTTP origins require one explicit credential disposition", async ({ page }) => {
+  await page.goto(
+    "/visual/?fixture=workspace&state=settings&pane=mcp-servers&theme=light&mcp-transport=streamableHttp",
+  );
+  await page.locator("html[data-visual-ready]").waitFor();
+  await page.getByRole("button", { name: "Edit workspace-tools", exact: true }).click();
+  await page
+    .getByRole("textbox", { name: "Server URL", exact: true })
+    .fill("https://changed.example.test/mcp");
+  const save = page.getByRole("button", { name: "Save", exact: true });
+  const clear = page.getByRole("switch", { name: "Remove stored authorization", exact: true });
+  await expect(save).toBeDisabled();
+  await clear.click();
+  await expect(clear).toBeChecked();
+  await expect(save).toBeEnabled();
+  await clear.click();
+  await expect(clear).not.toBeChecked();
+  await expect(save).toBeDisabled();
+  await page.getByLabel("Authorization token", { exact: true }).fill("synthetic-replacement");
+  await expect(save).toBeEnabled();
+});

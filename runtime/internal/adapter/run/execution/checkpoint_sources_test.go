@@ -71,7 +71,7 @@ func TestWaitingRecoveryDefersOnlyCapturedPendingSources(t *testing.T) {
 	if err := json.Unmarshal(checkpoint.Payload, &wire); err != nil {
 		t.Fatal(err)
 	}
-	wire.MCPManifests = new(map[domaintool.Group][]string{domaintool.GroupRoot: {testsupport.MCPTool(source, "read").String()}})
+	(*wire.MCPManifests)[domaintool.GroupRoot] = append((*wire.MCPManifests)[domaintool.GroupRoot], testsupport.MCPTool(source, "read").String())
 	var err error
 	checkpoint.Payload, err = json.Marshal(wire)
 	if err != nil {
@@ -85,7 +85,7 @@ func TestWaitingRecoveryDefersOnlyCapturedPendingSources(t *testing.T) {
 				return nil, errors.New("recovery must not call model")
 			}), InteractionExecutorConfig{
 				ExecutionTrees:  trees,
-				ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "ask")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{newQuestionCheckpointTool(t)}, PendingMCP: []mcpserver.ID{pending}}},
+				ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "ask")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{newQuestionCheckpointTool(t)}, PendingMCP: []mcpserver.ID{pending}}},
 				ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 			})
 			verdict, err := executor.CanResumeWaitingExecution(t.Context(), continuation)
@@ -131,12 +131,12 @@ func TestWaitingRecoveryKeepsMCPManifestsPerGroup(t *testing.T) {
 		return identified
 	}
 	memoryTool, schedulesTool := makeTool(memory), makeTool(schedules)
-	catalog := &reconnectingGroupTools{questionRef: testsupport.A2ATool(t, "ask"), byGroup: map[domaintool.Group]toolset.Manifest{
+	catalog := &reconnectingGroupTools{questionRef: testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "ask"), byGroup: map[domaintool.Group]toolset.Manifest{
 		domaintool.GroupRoot:      {Visible: []toolcontract.Tool{question}},
 		domaintool.GroupDelegated: {Visible: []toolcontract.Tool{question}, Deferred: []toolcontract.Tool{memoryTool}},
 	}}
 	model := &observationScriptModel{responses: []*chat.Response{
-		interactionToolResponse(chat.ToolCall{ID: "ask_call", Name: "ask", Arguments: `{}`}, 1, 1),
+		interactionToolResponse(chat.ToolCall{ID: "ask_call", Name: "fixture_ask", Arguments: `{}`}, 1, 1),
 		interactionUsageTextResponse("continued after reconnect", 1, 1),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{ToolResolver: catalog, ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{}})
@@ -205,5 +205,24 @@ func TestCheckpointRejectsUncapturedMCPManifests(t *testing.T) {
 				t.Fatal("uncaptured or malformed authority was admitted")
 			}
 		})
+	}
+}
+
+func TestCheckpointRequiresExplicitModelProviderProjection(t *testing.T) {
+	checkpoint := captureInteractionQuestionCheckpoint(t, t.TempDir())
+	var document map[string]jsontext.Value
+	if err := json.Unmarshal(checkpoint.Payload, &document); err != nil {
+		t.Fatal(err)
+	}
+	if _, present := document["model_provider"]; !present {
+		t.Fatal("model provider projection was omitted")
+	}
+	delete(document, "model_provider")
+	payload, err := json.Marshal(document)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := decodeInteractionCheckpointPayload(payload); err == nil {
+		t.Fatal("missing model construction was restored as a fresh choice")
 	}
 }

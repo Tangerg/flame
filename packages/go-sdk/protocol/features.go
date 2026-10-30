@@ -25,7 +25,6 @@ const (
 	FeatureGit           = "git"
 	FeatureCheckpoints   = "checkpoints"
 	FeatureFileWatch     = "fileWatch"
-	FeatureLSP           = "lsp"
 	FeatureSessionExport = "sessionExport"
 	FeatureRelocate      = "relocate"
 	FeatureIsolation     = "isolation"
@@ -73,7 +72,6 @@ var features = mustFeatures([]Feature{
 	{Key: FeatureGit},
 	{Key: FeatureCheckpoints},
 	{Key: FeatureFileWatch},
-	{Key: FeatureLSP},
 	{Key: FeatureSessionExport},
 	{Key: FeatureRelocate},
 	{Key: FeatureIsolation},

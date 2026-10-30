@@ -40,6 +40,7 @@ type Config struct {
 	Goals            Goals
 	Skills           Skills
 	MCP              MCPManagement
+	Plugins          Plugins
 	Schedules        Schedules
 	AgentMemory      AgentMemory
 	DiagnosticTools  DiagnosticTools
@@ -93,7 +94,7 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 				context: ctx, runtime: cfg.Runtime, runtimeProfile: prepared.runtimeProfile, replayPolicy: prepared.replayPolicy,
 				workspaces: cfg.Workspaces, changes: cfg.Changes, transfers: cfg.Transfers,
 				usage: cfg.Usage, modelConfig: cfg.ModelConfig, goals: cfg.Goals, skills: cfg.Skills,
-				mcp: cfg.MCP, schedules: cfg.Schedules, agentMemory: cfg.AgentMemory,
+				mcp: cfg.MCP, plugins: cfg.Plugins, schedules: cfg.Schedules, agentMemory: cfg.AgentMemory,
 				diagnosticTools: cfg.DiagnosticTools, authoringContext: cfg.AuthoringContext,
 				hooks: cfg.Hooks, feedback: cfg.Feedback,
 				snapshot: prepared.opened, clientVersion: cfg.ClientVersion,

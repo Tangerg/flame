@@ -91,7 +91,7 @@ func TestColdToolRestorationUsesTheOriginalGraphWithoutCurrentCatalog(t *testing
 	store := &toolInstallationStore{snapshot: plugin.Snapshot{Installation: installation, Selected: release}}
 	managed := newManagedFixture(t, store, mcpserver.Server{Source: source, Name: name, Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: endpoint.URL}, callbacks, nil)
 	var current []toolcontract.Tool
-	managed.Pool.SetToolSink(func(tools []toolcontract.Tool, _ []mcpserver.ID) { current = tools })
+	managed.Pool.SetToolSink(func(tools []toolcontract.Tool, _ []mcpserver.ID) { current = tools }, managed.prepare)
 	if len(current) != 1 {
 		t.Fatalf("original catalog = %d tools", len(current))
 	}
@@ -145,7 +145,9 @@ func TestColdToolRestorationUsesTheOriginalGraphWithoutCurrentCatalog(t *testing
 	if text, valid := output.Text(); !valid || text != "original committed result" {
 		t.Fatalf("original receipt text changed: %q, %t", text, valid)
 	}
-	built, err := toolset.Build(t.Context(), toolset.BuildConfig{Lifetime: t.Context(), UserHome: t.TempDir(), RestoreMCP: managed.Pool.RestoreTools})
+	built, err := toolset.Build(toolset.BuildConfig{Lifetime: t.Context(), UserHome: t.TempDir(), RestoreMCP: func(ctx context.Context, refs []domaintool.Ref, activations []plugin.Activation) ([]toolcontract.Tool, func() error, error) {
+		return managed.Pool.RestoreTools(ctx, refs, activations, managed.prepare)
+	}})
 	if err != nil {
 		t.Fatal(err)
 	}

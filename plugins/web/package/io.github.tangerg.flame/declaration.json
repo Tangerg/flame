@@ -16,6 +16,14 @@
       "key": "TAVILY_API_KEY",
       "secret": true,
       "required": false
+    },
+    {
+      "id": "http-allowed-hosts",
+      "server": "web",
+      "target": "env",
+      "key": "HTTP_ALLOWED_HOSTS",
+      "secret": false,
+      "required": false
     }
   ],
   "contributions": [

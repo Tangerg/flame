@@ -6,16 +6,10 @@ export type WorkspaceInvalidationTarget =
   | "fileList"
   | "fileRead"
   | "filesChanged"
-  | "hooks"
   | "models"
-  | "mcpServers"
-  | "mcpTools"
-  | "mcpExposure"
   | "providers"
   | "sessionUsage"
-  | "sessions"
-  | "utilityRole"
-  | "embeddingRole";
+  | "sessions";
 
 type WorkspaceEventType =
   | "files.changed"
@@ -58,12 +52,7 @@ interface WorkspaceQueryScope {
   path?: string;
 }
 
-const FILE_TARGETS = new Set<WorkspaceInvalidationTarget>([
-  "filesChanged",
-  "fileList",
-  "fileRead",
-  "hooks",
-]);
+const FILE_TARGETS = new Set<WorkspaceInvalidationTarget>(["filesChanged", "fileList", "fileRead"]);
 
 export function workspaceQueryAffected(
   target: WorkspaceInvalidationTarget,
@@ -72,11 +61,6 @@ export function workspaceQueryAffected(
 ): boolean {
   if (!FILE_TARGETS.has(target)) return true;
   if (event.type !== "files.changed" && event.type !== "resync") return true;
-  // Resync's watch IDs narrow only files.changed. Authored resources can be
-  // global, including a user Skill used in several workspaces.
-  if (event.type === "resync") {
-    if (target === "hooks" && event.topics?.includes("hooks.changed")) return true;
-  }
   const roots = affectedWorkspaces(event);
   if (roots && params?.cwd === undefined) {
     const defaultWorkspace = event.watchScopes?.find((scope) => scope.cwd === undefined);
@@ -135,13 +119,13 @@ function atOrBelow(path: string, parent: string): boolean {
 export function workspaceInvalidations(ev: WorkspaceEventLike): WorkspaceInvalidationTarget[] {
   switch (ev.type) {
     case "files.changed":
-      return ["filesChanged", "fileList", "fileRead", "hooks"];
+      return ["filesChanged", "fileList", "fileRead"];
     case "skills.changed":
       return [];
     case "plugins.changed":
-      return ["mcpServers", "mcpTools", "mcpExposure", "approvalRules"];
+      return ["approvalRules"];
     case "mcp.changed":
-      return ["mcpServers", "mcpTools", "mcpExposure", "approvalRules"];
+      return ["approvalRules"];
     case "sessions.changed":
       return ["sessions"];
     case "runs.changed":
@@ -153,9 +137,9 @@ export function workspaceInvalidations(ev: WorkspaceEventLike): WorkspaceInvalid
     case "plan.changed":
       return ["agentSessionProjection"];
     case "hooks.changed":
-      return ["hooks"];
+      return [];
     case "models.changed":
-      return ["providers", "models", "utilityRole", "embeddingRole"];
+      return ["providers", "models"];
     case "approvals.changed":
       return ["approvalMode", "approvalRules"];
     case "plugins.dataChanged":

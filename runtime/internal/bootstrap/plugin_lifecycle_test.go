@@ -59,7 +59,7 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg.chatResolver = testChatResolver(client)
+	cfg.modelProviders = testChatResolver(client)
 
 	host, api := buildPluginProtocolRuntime(t, cfg)
 	t.Cleanup(func() {

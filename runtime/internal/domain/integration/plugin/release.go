@@ -115,6 +115,7 @@ type Declaration struct {
 	Components    []ClientComponent
 	Inputs        []Input
 	Themes        []Theme
+	Locales       []Locale
 	Skills        []Skill
 	Diagnostics   []Diagnostic
 }
@@ -139,6 +140,7 @@ func (d Declaration) clone() Declaration {
 	}
 	d.Inputs = slices.Clone(d.Inputs)
 	d.Themes = slices.Clone(d.Themes)
+	d.Locales = slices.Clone(d.Locales)
 	d.Skills = slices.Clone(d.Skills)
 	d.Diagnostics = slices.Clone(d.Diagnostics)
 	return d
@@ -201,6 +203,11 @@ func NewRelease(digest identity.Digest, declaration Declaration) (Release, error
 	}
 	for _, theme := range declaration.Themes {
 		if err := builder.AdmitTheme(theme); err != nil {
+			return Release{}, err
+		}
+	}
+	for _, locale := range declaration.Locales {
+		if err := builder.AdmitLocale(locale); err != nil {
 			return Release{}, err
 		}
 	}
@@ -335,7 +342,7 @@ func (b *Builder) AdmitTheme(theme Theme) error {
 	if duplicate || !identity.ValidDeclarationID(theme.ID) {
 		return refuse(DiagnosticInvalidDeclaration, "theme identity %q", theme.ID)
 	}
-	if theme.Title == "" || len(theme.Title) > maxPresentationTitleBytes || !utf8.ValidString(theme.Title) {
+	if theme.Title == "" || len(theme.Title) > MaxPresentationTitleBytes || !utf8.ValidString(theme.Title) {
 		return refuse(DiagnosticInvalidDeclaration, "theme %q title", theme.ID)
 	}
 	if theme.Scheme != dark && theme.Scheme != light {

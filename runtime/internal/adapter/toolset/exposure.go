@@ -196,8 +196,8 @@ func (m *manifestBuilder) excludeCollisions(ctx context.Context) error {
 // MCPTools projects the live MCP catalog from the single snapshot each Run
 // manifest freezes: every advertised tool, exposure-disabled ones included so
 // a client can enable them again, scoped to server when non-nil, and the
-// name conflicts the manifest exclusion rule derives from the exposed tools
-// and A2A sources. One atomic load supplies both, so the read model can never
+// name conflicts the manifest exclusion rule derives from the exposed tools.
+// One atomic load supplies both, so the read model can never
 // pair one catalog's tools with another catalog's conflicts.
 func (r *Resolver) MCPTools(server *mcpserver.ID) ([]mcpserver.AdvertisedTool, map[tool.Ref][]tool.Ref, error) {
 	snapshot := r.mcpSnapshot()
@@ -205,8 +205,8 @@ func (r *Resolver) MCPTools(server *mcpserver.ID) ([]mcpserver.AdvertisedTool, m
 	if err != nil {
 		return nil, nil, err
 	}
-	refs := make([]tool.Ref, 0, len(exposed)+len(r.a2a))
-	for _, executable := range append(slices.Clone(exposed), r.a2a...) {
+	refs := make([]tool.Ref, 0, len(exposed))
+	for _, executable := range exposed {
 		ref, err := Identify(executable)
 		if err != nil {
 			return nil, nil, err

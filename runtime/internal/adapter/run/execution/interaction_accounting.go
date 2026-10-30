@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -218,6 +219,10 @@ func (i *interactionSession) interactionCheckpointPayload(
 	if err != nil {
 		return nil, err
 	}
+	var provider *modeladapter.ProviderCapture
+	if capture, found := i.selectedChat.Capture(); found {
+		provider = &capture
+	}
 	return encodeInteractionCheckpointPayload(
 		tree,
 		usageByProcess,
@@ -233,6 +238,7 @@ func (i *interactionSession) interactionCheckpointPayload(
 		i.modelContexts,
 		i.modelInputs,
 		i.toolProposals,
+		provider,
 	)
 }
 

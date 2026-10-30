@@ -73,6 +73,21 @@ Independent implementations import that pinned contract instead of regenerating
 it from their own module names. Go definition names inside Schema are opaque
 contract data; structural similarity never substitutes for exact identity.
 
+`modelprovider` publishes `flame.model-provider.v1` for an installed model
+adapter. Provider profiles own authentication, endpoint and catalog facts. Open
+captures one immutable client shared by ordinary chat, its actual optional
+streaming and complete-request counter, or embedding execution. Handles and
+original command receipts survive backend restart. Closing fences future work
+and joins accepted exchanges. Reopening constructs a fresh handle from the
+original confirmed open receipt; it never reads current credentials or grants
+permission to repeat generation. Unknown receipts never authorize redispatch.
+Runtime retains exact selection, credentials, admission, endpoint evidence,
+accounting and recovery. Connection snapshots are private backend inputs, with
+credential-safe formatting. Chat uses complete native Scope values. Embedding
+retains Scope's complete encoded envelopes and its strict native codec, which
+does not publish a derivable JSON schema; it is never reduced to vectors or
+reconstructed from usage projections.
+
 `qimumcp.Binding.ValidateInput(ctx, input)` checks the exact backend's complete structural
 contract without a command identity or business dispatch. Schema cannot express
 every Go decoder constraint, including integer token spelling and custom JSON
@@ -818,3 +833,17 @@ and atomic patch rules shared with Runtime. [`model/catalog`](../model/catalog/R
 admits known effort levels and input modalities from the released Scope catalog.
 Authors use these public packages directly; role configuration, endpoint evidence
 and execution budgets retain their respective owners.
+
+## Lifecycle hook sources
+
+`plugin/hookprovider` publishes `flame.hooks.v1`. An installed source discovers
+ordered `hook.Hook` values and executes trusted commands with private original
+receipts. `Discovery.IncludeProject` is the Runtime's trust decision: an
+untrusted project must not be read or parsed during execution discovery.
+Inspection may request the complete cascade without authorizing its commands.
+
+`hook` owns portable rules, bounded event material and command advice. Runtime
+owns project trust, event ordering, decision folding, final Tool admission and
+approval. A command's `allow` advice cannot override those owners. Cancellation
+must stop and join the command's process group; an admitted command without a
+known original receipt cannot run again under that identity.

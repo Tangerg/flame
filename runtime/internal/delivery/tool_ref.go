@@ -12,8 +12,6 @@ func toolRefFromWire(ref protocol.ToolRef) (tool.Ref, error) {
 	switch ref.Type {
 	case protocol.ToolRefBuiltIn:
 		return tool.BuiltIn(tool.BuiltInName(ref.Name))
-	case protocol.ToolRefA2A:
-		return tool.A2A(ref.Endpoint)
 	case protocol.ToolRefMCP:
 		if ref.Server == nil {
 			return tool.Ref{}, fmt.Errorf("delivery: MCP tool source requires a server")
@@ -40,9 +38,6 @@ func presentToolRef(ref tool.Ref) (protocol.ToolRef, error) {
 	case tool.BuiltInKind:
 		name, _ := ref.BuiltIn()
 		return protocol.ToolRef{Type: protocol.ToolRefBuiltIn, Name: string(name)}, nil
-	case tool.A2AKind:
-		endpoint, _ := ref.A2A()
-		return protocol.ToolRef{Type: protocol.ToolRefA2A, Endpoint: endpoint}, nil
 	case tool.MCPKind:
 		server, remote, _ := ref.MCP()
 		id := presentMCPServerID(server)

@@ -22,10 +22,10 @@ func guardedPatchTools(t testing.TB, dir string, format bool) (toolcontract.Tool
 	read := withReadTracking(mustRuntimeReadTool(t, executor), tracker, mustRoot(t, dir))
 	mutation := toolcontract.Tool(mustApplyPatchTool(t, recordingExecutor{LocalExecutor: executor}))
 	if format {
-		mutation = withAutoFormat(mutation, mustRoot(t, dir), executor)
+		mutation = withCodeIntelligence(mutation, &testCodeIntelligence{}, mustRoot(t, dir), executor)
 	}
 	return read, withMutationGuard(
-		withMutationDiagnostics(mutation, nil, mustRoot(t, dir)),
+		mutation,
 		tracker, mustRoot(t, dir),
 	)
 }

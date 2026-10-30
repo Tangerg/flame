@@ -1,0 +1,13 @@
+{
+  "protocol": "io.github.tangerg.flame/plugin/1",
+  "components": [
+    {
+      "id": "brand",
+      "title": "Brand identity",
+      "scope": "client",
+      "placement": "settingsPane",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "Brand"
+    }
+  ]
+}

@@ -1,11 +1,45 @@
 # First-party portable packages
 
 Memory, Schedules, Knowledge base, GitHub, Model router, Guardrails, Web research,
-Saved usage reports, Generated interfaces, Computer use, Native sandbox and File watch are complete
-optional backends. Memory, Schedules, Saved usage reports, Generated interfaces and Computer use expose
-ordinary public components; the remaining packages are backend-only.
+Saved usage reports, Generated interfaces, Deliverables, Computer use, Native sandbox,
+File watch, Code intelligence, Remote agents, Skill learning, Model providers and Hooks have optional
+backends. Memory, Schedules, Saved usage reports, Generated interfaces, Deliverables,
+Computer use, Skills, Model providers and Hooks expose ordinary public components.
+Brand, icon gallery, MCP settings, Notifications and the presentation packages are client-only.
+The `locale-*` content packages supply optional workbench translations without
+executing component or backend code. English remains the Host's base language.
 MCP model Tools and human Runtime commands
 enter the same existing backend owners. A component does not create a second store.
+
+Code intelligence (`codeintel`) owns language-server queries and version-bound
+formatting and diagnostics. Runtime retains the only file mutation path; the
+provider computes against supplied snapshots and never commits those transformations.
+See [`codeintel/README.md`](codeintel/README.md).
+
+Model providers (`providers`) owns Scope vendor clients, provider catalogs,
+token counting and Embedding execution. Runtime retains credentials, exact
+selection, call evidence, accounting and recovery. Its installed settings page
+owns graphical drafts and command observation through those public operations. See
+[`providers/README.md`](providers/README.md).
+
+MCP settings (`mcp`) owns client configuration drafts, import progress and original
+command observation. Runtime retains its server registry, connections, OAuth
+attempts and tool policy. See [`mcp/README.md`](mcp/README.md).
+
+Hooks (`hooks`) owns authored rule discovery and bounded command execution.
+Runtime supplies project identity and trust, retains each captured source and
+owns final event decisions and Tool authorization. See
+[`hooks/README.md`](hooks/README.md).
+
+Remote agents (`a2a`) owns A2A discovery, remote requests and durable task
+bindings. Runtime retains Tool admission and internal delegation. See
+[`a2a/README.md`](a2a/README.md).
+
+Skill learning (`skills`) owns optional mining prompts, learning cadence and
+archive advice. Runtime grants bounded call-scoped history, source-document and
+model access, and retains proposals, human approval, active documents and archive
+commits. The Skills component consumes those same Runtime operations. See
+[`skills/README.md`](skills/README.md).
 
 Generated interfaces (`genui`) accepts a bounded interactive document through
 `genui_ui_present`. Its immutable presentation owner supplies the component,
@@ -105,9 +139,10 @@ is for replacing an owned build output after the new distribution has been built
 
 See [Memory](memory/README.md) and [Schedules](schedules/README.md) for fact owners
 and lifecycle contracts, [Knowledge base](knowledgebase/README.md) for document
-publication/retrieval, and [GitHub](github/README.md) for the read-only connector and
+publication/retrieval, and [GitHub](github/README.md) for repository read/write operations and
 credential/cache boundaries. [Model router](modelrouter/README.md) owns role and
-captured-envelope routing policy while core constructs and prices the model.
+captured-envelope routing policy. The installed [model adapter](providers/README.md)
+owns actual Scope construction; Runtime retains captured facts, admission and accounting.
 [Guardrails](guardrails/README.md) owns protected phrases and refuses matching
 model-visible inputs before provider dispatch.
 [Web research](web/README.md) owns Jina/Tavily calls and captured-page browsing;
@@ -253,8 +288,8 @@ with captured revisions and original uncertain-command handles. It consumes the
 existing public Runtime change subscription; no private Host forms remain.
 Icon gallery bundles the icon owner's canonical exports.
 Diagnostics uses the public SDK client-telemetry collaborator for detached local
-reads and owner-directed clearing. These packages require no own callable contribution
-or backend process.
+reads and owner-directed clearing. These page resources use public Runtime or client capabilities. The Skills
+backend separately contributes optional automatic learning advice.
 
 Build `icons` and `ui` first, then run:
 
@@ -272,6 +307,20 @@ reproducibility. The graphical loader supplies the actual shared host modules.
 
 The retired HTML view and renderer sources, resources, channels and build paths are removed. Reinstall changed packages and
 explicitly select their new digests.
+
+## Installed settings
+
+`settingsPane` components use the same installed resources and captured lifetimes
+as workspace views. The host lists them in its Extensions settings group and
+withdraws them when the installation becomes unavailable. Brand identity and
+Hooks management are ordinary installed components; they have no compiled host
+page or second settings registry. Hooks changes use canonical Runtime trust
+commands and retain the original mutation for explicit reconciliation.
+
+The Brand component consumes the canonical `@flame/brand-assets` package. Its
+module embeds the original PNGs; `saveFile` transfers those same bytes through
+the host's destination owner. The author kit packs this asset package whenever
+the selected component imports it.
 
 ## Contextual Session actions
 

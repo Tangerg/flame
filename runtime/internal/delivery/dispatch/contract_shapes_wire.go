@@ -1045,7 +1045,6 @@ func registerToolRefUnion(s *Shapes) {
 	s.union(UnionSpec{GoType: typeOf[protocol.ToolRef](), Discriminator: "type", Variants: []VariantSpec{
 		{Tag: string(protocol.ToolRefBuiltIn), Required: []string{"name"}, AllowedValues: []AllowedValueSet{{Field: "name", Values: builtInNames()}}},
 		{Tag: string(protocol.ToolRefMCP), Required: []string{"server", "name"}},
-		{Tag: string(protocol.ToolRefA2A), Required: []string{"endpoint"}},
 	}})
 	s.constraint(ObjectConstraintSpec{GoType: typeOf[protocol.SetApprovalRuleRequest](), Rules: []ConditionalRule{
 		{When: []delivery.FieldCondition{{Field: "scope", Operator: delivery.OperatorEquals, Value: "global"}}, Forbidden: []string{"sessionId"}},
