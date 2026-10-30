@@ -13,8 +13,8 @@ github.com/Azure/azure-sdk-for-go/sdk/internal v1.12.0/go.mod h1:7dCRMLwisfRH3dB
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/toml v1.6.0 h1:dRaEfpa2VI55EwlIW72hMRHdWouJeRF7TPYhI+AUQjk=
 github.com/BurntSushi/toml v1.6.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
-github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.4 h1:41jWh5xf4NsyeJ2wwuhrW69n1iQXaCG99w/GC+z8N/U=
-github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.4/go.mod h1:R1AdHIGbMCJnSiv0WHWm9PuH9A1e1TXQRT+gCaZaGIg=
+github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.5 h1:3CGsF0dfE0h2G+fNl9mhTnLsK8GiGDWRNZhhGmxKq7c=
+github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.5/go.mod h1:R1AdHIGbMCJnSiv0WHWm9PuH9A1e1TXQRT+gCaZaGIg=
 github.com/Tangerg/flame/packages/local-runtime v0.1.0-quality.20261029.1 h1:K4hHeTNDtsjyprD65V6+auhC6bAS1EmGeYw0l/FLc90=
 github.com/Tangerg/flame/packages/local-runtime v0.1.0-quality.20261029.1/go.mod h1:k7GImwPntRgT/FNYEO+2Bx351W/ULxJUH2cU0y3zKRg=
 github.com/Tangerg/flame/qimu v0.1.0-quality.20261030.2 h1:o3cR91WJLxNEPs+gnVOkFNMH4/8dv4cz0vVg9AOZIXs=
