@@ -10,6 +10,7 @@ import (
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
@@ -192,6 +193,22 @@ func TestWireRunStartErrPreservesInvalidModelIdentity(t *testing.T) {
 	err := wireRunStartErr(modelchoice.ErrProviderIdentity)
 	if !errors.Is(err, protocol.ErrInvalidParams) || !errors.Is(err, modelchoice.ErrProviderIdentity) {
 		t.Fatalf("err = %v, want ErrInvalidParams and ErrProviderIdentity", err)
+	}
+}
+
+func TestModelConfigurationRefusalsSurviveRunAndGoalAdmission(t *testing.T) {
+	for _, project := range []struct {
+		name string
+		wire func(error) error
+	}{{"run", wireRunStartErr}, {"goal", mapGoalErr}} {
+		for _, cause := range []error{modelapp.ErrProviderUnconfigured, modelapp.ErrProviderBaseURLRequired, modelapp.ErrProviderUnsupported} {
+			t.Run(project.name+"/"+cause.Error(), func(t *testing.T) {
+				err := project.wire(cause)
+				if !errors.Is(err, protocol.ErrInvalidParams) || !errors.Is(err, cause) {
+					t.Fatalf("model admission refusal lost its category or cause: %v", err)
+				}
+			})
+		}
 	}
 }
 

@@ -19,7 +19,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/google/uuid"
 	"github.com/samber/lo"
@@ -192,7 +191,7 @@ func (p *ModelProviders) openUse(ctx context.Context, connection modelprovider.C
 		return nil, modelprovider.Profile{}, err
 	}
 	if profile.Authentication == modelprovider.KeyRequired && connection.APIKey == "" {
-		return nil, modelprovider.Profile{}, &run.FailureError{Kind: run.FailureInvalidCredentials, Err: errors.New("model provider: an API key is required")}
+		return nil, modelprovider.Profile{}, modelapp.ErrProviderUnconfigured
 	}
 	if profile.EndpointRequired && connection.BaseURL == "" {
 		return nil, modelprovider.Profile{}, modelapp.ErrProviderBaseURLRequired

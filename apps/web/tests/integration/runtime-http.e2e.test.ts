@@ -764,7 +764,10 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
     Awaited<ReturnType<FlameClient["plugins"]["install"]>>
   >();
 
-  const activateManagedOwner = async (feature: "memory" | "schedules") => {
+  const activateManagedOwner = async (
+    feature: "memory" | "schedules",
+    timeoutMilliseconds = defaultTestDeadlineMilliseconds,
+  ) => {
     if (!client) throw new Error("runtime client was not initialized");
     let installation = (await client.plugins.list()).data.find(
       (item) => item.selected.name === `flame.${feature}`,
@@ -790,10 +793,13 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
       origin: { type: "installation" as const, installationId: installation.id },
       name: feature,
     };
-    await awaitMCPTools(server, (tools) =>
-      tools.some(
-        (tool) => tool.name === (feature === "memory" ? "search_memory" : "list_schedules"),
-      ),
+    await awaitMCPTools(
+      server,
+      (tools) =>
+        tools.some(
+          (tool) => tool.name === (feature === "memory" ? "search_memory" : "list_schedules"),
+        ),
+      timeoutMilliseconds,
     );
     return installation;
   };
@@ -801,9 +807,10 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
   const awaitMCPTools = async (
     server: Parameters<FlameClient["mcp"]["listTools"]>[0],
     ready: (tools: MCPTool[]) => boolean,
+    timeoutMilliseconds = defaultTestDeadlineMilliseconds,
   ) => {
     if (!client) throw new Error("runtime client was not initialized");
-    const deadline = Date.now() + defaultTestDeadlineMilliseconds;
+    const deadline = Date.now() + timeoutMilliseconds;
     while (!ready((await client.mcp.listTools(server)).data)) {
       if (Date.now() >= deadline) {
         const states = (await client.mcp.list()).data.map(({ id, status, handshakeTimeout }) => ({
@@ -1198,7 +1205,9 @@ for await (const line of lines) {
     await startRuntimeProcess();
     client = createRuntimeClient();
     negotiated = (await client.runtime.discover()).capabilities;
-    await awaitManagedOwners();
+    // Initial package startup belongs to fixture setup; tests consume admitted sources.
+    for (const feature of ["memory", "schedules"] as const)
+      await activateManagedOwner(feature, 30_000);
   }, 60_000);
 
   beforeEach(async () => {
@@ -1634,7 +1643,7 @@ for await (const line of lines) {
     await events.return?.();
   }, 30_000);
 
-  it("rejects an impossible model output reservation before durable Run admission", async () => {
+  it("rejects unconfigured providers and impossible output reservations before durable Run admission", async () => {
     if (!client) throw new Error("runtime client was not initialized");
 
     const session = await client.sessions.create({
@@ -1643,23 +1652,48 @@ for await (const line of lines) {
     });
     const sessionId = asSessionId(session.id);
 
-    await expect(
-      client.runs.start({
-        sessionId,
-        input: [{ type: "text", text: "This Run must never become durable." }],
+    await client.providers.update({
+      provider: "openai",
+      baseUrl: { type: "set", value: providerBaseUrl },
+    });
+    try {
+      await expect(
+        client.runs.start({
+          sessionId,
+          input: [{ type: "text", text: "This Run requires configured credentials." }],
+          provider: "openai",
+          model: "gpt-5-pro",
+        }),
+      ).rejects.toSatisfy(
+        (error: unknown) => error instanceof RpcError && error.data.type === "invalid_params",
+      );
+      await client.providers.update({
         provider: "openai",
-        model: "gpt-5-pro",
-        params: { maxTokens: 272_001 },
-      }),
-    ).rejects.toSatisfy(
-      (error: unknown) => error instanceof RpcError && error.data.type === "invalid_params",
-    );
-    await expect(client.runs.list({ sessionId })).resolves.toMatchObject({ data: [] });
-    await expect(
-      client.items.list({ scope: { type: "session", sessionId } }),
-    ).resolves.toMatchObject({ data: [] });
-
-    await client.sessions.delete(sessionId);
+        apiKey: { type: "set", value: "e2e-placeholder-key" },
+      });
+      await expect(
+        client.runs.start({
+          sessionId,
+          input: [{ type: "text", text: "This Run must never become durable." }],
+          provider: "openai",
+          model: "gpt-5-pro",
+          params: { maxTokens: 272_001 },
+        }),
+      ).rejects.toSatisfy(
+        (error: unknown) => error instanceof RpcError && error.data.type === "invalid_params",
+      );
+      await expect(client.runs.list({ sessionId })).resolves.toMatchObject({ data: [] });
+      await expect(
+        client.items.list({ scope: { type: "session", sessionId } }),
+      ).resolves.toMatchObject({ data: [] });
+    } finally {
+      await client.providers.update({
+        provider: "openai",
+        apiKey: { type: "clear" },
+        baseUrl: { type: "clear" },
+      });
+      await client.sessions.delete(sessionId);
+    }
   }, 30_000);
 
   it("converges unary mutations across pre-admission and post-commit disconnects", async () => {
