@@ -98,6 +98,7 @@ type runtimeResourceObservation struct {
 	goals       bool
 	skills      bool
 	mcp         bool
+	plugins     bool
 	schedules   bool
 	hooks       bool
 	models      bool
@@ -115,6 +116,7 @@ func (a *app) observedRuntimeResources() runtimeResourceObservation {
 		goals:       a.goals != nil && a.runtimeSupports(protocol.FeatureGoals),
 		skills:      a.skills != nil && a.runtimeSupports(protocol.FeatureSkills),
 		mcp:         a.mcp != nil && a.runtimeSupports(protocol.FeatureMCP),
+		plugins:     a.plugins != nil && a.runtimeSupports(protocol.FeaturePlugins),
 		schedules:   a.schedules != nil && a.runtimeSupports(protocol.FeaturePlugins),
 		hooks:       a.hooks != nil,
 		models:      true,
@@ -360,6 +362,9 @@ func (r runtimeChangeMonitor) supportedTopics() []protocol.RuntimeTopic {
 	}
 	if r.resources.mcp || r.resources.approvals {
 		candidates = append(candidates, protocol.TopicMCPChanged)
+	}
+	if r.resources.plugins {
+		candidates = append(candidates, protocol.TopicPluginsChanged)
 	}
 	if r.resources.schedules || r.resources.agentMemory {
 		candidates = append(candidates, protocol.TopicPluginDataChanged)

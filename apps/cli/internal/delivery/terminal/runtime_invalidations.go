@@ -28,6 +28,7 @@ func (a *app) applyRuntimeInvalidation(event changefeed.Event) {
 	a.refreshGoalReader(goalInvalidationAffectsSession(event, a.session.current.ID))
 	a.refreshSkillReader(event.Type == protocol.RuntimeSkillsChanged)
 	a.refreshMCPReader(event.Type == protocol.RuntimeMCPChanged)
+	a.refreshPluginsReader(event.Type == protocol.RuntimePluginsChanged)
 	a.refreshScheduleReader(event.Type == protocol.RuntimePluginDataChanged)
 	a.refreshHooksReader(event.Type == protocol.RuntimeHooksChanged)
 	a.refreshModelReader(event.Type == protocol.RuntimeModelsChanged)
@@ -43,6 +44,7 @@ func (a *app) applyRuntimeResync(topics []protocol.RuntimeTopic) {
 	a.refreshGoalReader(slices.Contains(topics, protocol.TopicGoalsChanged))
 	a.refreshSkillReader(slices.Contains(topics, protocol.TopicSkillsChanged))
 	a.refreshMCPReader(slices.Contains(topics, protocol.TopicMCPChanged))
+	a.refreshPluginsReader(slices.Contains(topics, protocol.TopicPluginsChanged))
 	a.refreshScheduleReader(slices.Contains(topics, protocol.TopicPluginDataChanged))
 	a.refreshHooksReader(slices.Contains(topics, protocol.TopicHooksChanged))
 	a.refreshModelReader(slices.Contains(topics, protocol.TopicModelsChanged))
@@ -52,6 +54,12 @@ func (a *app) applyRuntimeResync(topics []protocol.RuntimeTopic) {
 		invalidatesSessionCatalog(changefeed.Event{Type: protocol.RuntimeResync, Topics: topics}),
 		resyncAffectsSession(topics),
 	)
+}
+
+func (a *app) refreshPluginsReader(affected bool) {
+	if affected && a.plugins != nil && a.dialogs.runtimeReader == runtimeReaderPlugins && a.dialogs.readerDialog.Open() {
+		a.refreshRuntimeReader(a.pluginsReaderQuery())
+	}
 }
 
 func (a *app) refreshHooksReader(affected bool) {

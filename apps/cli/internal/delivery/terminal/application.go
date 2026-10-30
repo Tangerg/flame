@@ -65,6 +65,7 @@ type app struct {
 	goals            Goals
 	skills           Skills
 	mcp              MCPManagement
+	plugins          Plugins
 	schedules        Schedules
 	agentMemory      AgentMemory
 	diagnosticTools  DiagnosticTools
@@ -138,6 +139,7 @@ type appConfig struct {
 	goals            Goals
 	skills           Skills
 	mcp              MCPManagement
+	plugins          Plugins
 	schedules        Schedules
 	agentMemory      AgentMemory
 	diagnosticTools  DiagnosticTools
@@ -198,7 +200,7 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 		ctx: cfg.context, loop: loop, runtime: cfg.runtime, workspaces: cfg.workspaces,
 		runtimeProfile: cfg.runtimeProfile, replayPolicy: cfg.replayPolicy,
 		changes: cfg.changes, transfers: cfg.transfers, usage: cfg.usage, modelConfig: cfg.modelConfig,
-		goals: cfg.goals, skills: cfg.skills, mcp: cfg.mcp, schedules: cfg.schedules,
+		goals: cfg.goals, skills: cfg.skills, mcp: cfg.mcp, plugins: cfg.plugins, schedules: cfg.schedules,
 		agentMemory:      cfg.agentMemory,
 		diagnosticTools:  cfg.diagnosticTools,
 		authoringContext: cfg.authoringContext, hooks: cfg.hooks, feedback: cfg.feedback,

@@ -28,6 +28,7 @@ const (
 	runtimeReaderDiagnosticTools
 	runtimeReaderAgentDocuments
 	runtimeReaderHooks
+	runtimeReaderPlugins
 )
 
 // runtimeReaderQuery describes one authoritative runtime projection read.
@@ -71,7 +72,11 @@ func (a *app) executeRuntimeReaderQuery(query runtimeReaderQuery) {
 	a.status.note(query.status)
 	a.runOperation(readerDocumentOperation, true, query.read, func(document readerDocument, err error) {
 		if err != nil {
-			a.message(query.status + " failed: " + err.Error())
+			message := query.status + " failed: " + err.Error()
+			if a.dialogs.readerDialog.Open() && a.dialogs.runtimeReader == query.mode {
+				a.dialogs.reader.RefreshFailed(message)
+			}
+			a.message(message)
 			return
 		}
 		a.setRuntimeReader(query.mode)

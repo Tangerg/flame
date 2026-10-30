@@ -137,9 +137,10 @@ func builtinCommands() []localCommand {
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "read", Title: "read a file; supports --start, --end, and --max-bytes", Arguments: extensions.RequiredArguments}, Available: availableWithWorkspaceService, Run: func(a *app, argument string) error { return a.ReadWorkspaceFile(argument) }},
 		),
 		commandGroup(commandCategoryExtensions,
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "plugins", Title: "show discovered plugins and lifecycle state"}, Run: func(a *app, _ string) error { a.ShowPlugins(); return nil }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "reload", Title: "reload a plugin and its dependents", Arguments: extensions.RequiredArguments}, Run: func(a *app, id string) error { a.ReloadPlugin(id); return nil }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "unload", Title: "unload a sideloaded plugin and its dependents", Arguments: extensions.RequiredArguments}, Run: func(a *app, id string) error { a.UnloadPlugin(id); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "plugins", Title: "inspect Runtime-installed plugins and release state"}, Available: availableWithPlugins, Run: func(a *app, _ string) error { a.ShowPlugins(); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "extensions", Title: "show local command extensions and lifecycle state"}, Run: func(a *app, _ string) error { a.ShowExtensions(); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "reload", Title: "reload a local command extension and its dependents", Arguments: extensions.RequiredArguments}, Run: func(a *app, id string) error { a.ReloadPlugin(id); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "unload", Title: "unload a local command extension and its dependents", Arguments: extensions.RequiredArguments}, Run: func(a *app, id string) error { a.UnloadPlugin(id); return nil }},
 		),
 	)
 }
@@ -201,6 +202,13 @@ func availableWithMCP(a *app) extensions.CommandAvailability {
 		return extensions.CommandUnavailable("this runtime composition has no MCP service")
 	}
 	return availableWithRuntimeFeature(a, protocol.FeatureMCP)
+}
+
+func availableWithPlugins(a *app) extensions.CommandAvailability {
+	if a.plugins == nil {
+		return extensions.CommandUnavailable("this runtime composition has no plugin catalog")
+	}
+	return availableWithRuntimeFeature(a, protocol.FeaturePlugins)
 }
 
 func availableWithSchedules(a *app) extensions.CommandAvailability {

@@ -230,6 +230,18 @@ approval databases require a fresh data directory rather than data migration.
 
 ## Runtime plugin commands
 
+The terminal's `/plugins` reads the same Runtime installation catalog as
+`flame plugins list`: exact installation and selected digest, desired enablement,
+admitted presentation, observed realization and admission diagnostics. An open
+reader refreshes after `plugins.changed` and Runtime resynchronization. Local
+sideloaded command extensions use `/extensions`; `/reload` and `/unload` operate
+on that local extension host. They do not change Runtime installations.
+
+`flame plugins call --request '<JSON>'` remains the generic entry for an installed
+operation, using its exact installation, digest, contribution, required contract
+and target. Memory and Schedules terminal forms consume those same installed
+business contracts; their local interaction does not create another installation.
+
 `flame plugins providers` reads explicit provider choices. Use
 `flame plugins select-provider --request '{"role":"memory","installationId":"…","contribution":"memory"}'`
 to select a declared installation/contribution for future calls. Enablement does
