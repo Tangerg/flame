@@ -125,6 +125,14 @@ const (
 	interactionBoundarySubtreeRecovery
 )
 
+// Scope's Interaction strategy reports these external failures only by code
+// string; Scope does not export them, so this is Flame's single copy.
+const (
+	failureInvalidModelResponse      = "interaction.model.invalid_response"
+	failureToolCallsNotCompleted     = "interaction.model.tool_calls_not_completed"
+	failureUnresolvedDelegateEffects = "interaction.delegate.unresolved_effects"
+)
+
 func newInteractionSession(
 	lifetime context.Context,
 	ref runs.ExecutorRef,
@@ -868,9 +876,9 @@ func segmentEndFromTermination(termination agent.Termination, duration time.Dura
 			Detail: executorDiagnostic(errors.New(failure.Message())),
 		}
 		switch failure.Code() {
-		case "interaction.model.invalid_response", "interaction.model.tool_calls_not_completed":
+		case failureInvalidModelResponse, failureToolCallsNotCompleted:
 			problem.Kind = run.FailureProviderRejected
-		case "interaction.delegate.unresolved_effects":
+		case failureUnresolvedDelegateEffects:
 			end.reason = run.OutcomeLost
 			problem.Kind = run.FailureLost
 		}
