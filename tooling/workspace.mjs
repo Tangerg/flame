@@ -664,6 +664,14 @@ async function goMembers(native) {
       requiresNative && !native
         ? ["./cmd/bridgegen", "./internal/bridge"]
         : ["./..."];
+    const unformatted = run("gofmt", ["-l", "."], directory, env, true)
+      .toString()
+      .trim();
+    if (unformatted) {
+      throw new Error(
+        `gofmt: unformatted Go files in ${directory}:\n${unformatted}`,
+      );
+    }
     for (const operation of ["test", "vet", "build"]) {
       const args = [operation, "-mod=readonly"];
       if (operation === "test") args.push("-p=1");

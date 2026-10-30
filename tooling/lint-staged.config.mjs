@@ -3,6 +3,8 @@ import { getFileInfo } from "prettier";
 const ignorePath = new URL("../.prettierignore", import.meta.url);
 
 export default {
+  "*.go": (files) =>
+    `gofmt -w ${files.map((file) => JSON.stringify(file)).join(" ")}`,
   "*.{ts,tsx,mjs,js,json,md,css,html,yml,yaml}": async (files) => {
     const ignored = await Promise.all(
       files.map(
