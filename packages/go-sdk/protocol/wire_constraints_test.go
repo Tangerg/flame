@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 )
 
@@ -1972,4 +1973,30 @@ func TestToolRefRejectsRetiredBuiltInsAndPreservesMCPWebIdentity(t *testing.T) {
 			t.Fatalf("current MCP identity refused: %v", err)
 		}
 	}
+}
+
+func TestRendererSelectorRefusesResultShapesInTheFreeNameField(t *testing.T) {
+	for _, name := range []string{"arbitrary", "search"} {
+		assertConstraintField(t, ValidateWireTree(PluginRendererSelector{Type: "resultShape", Name: name}), "PluginRendererSelector", "name")
+	}
+}
+
+func TestRendererSelectorsUseNamedShapesAndIndependentFreeNames(t *testing.T) {
+	for _, word := range extension.ResultShape("").Values() {
+		if err := ValidateWireTree(PluginRendererSelector{Type: extension.RendererResultShape, Shape: extension.ResultShape(word)}); err != nil {
+			t.Fatalf("owner shape %q refused: %v", word, err)
+		}
+	}
+	for _, selector := range []PluginRendererSelector{
+		{Type: extension.RendererToolName, Name: "custom.scan_results"},
+		{Type: extension.RendererFileExtension, Name: "custom_ext-1"},
+	} {
+		if err := ValidateWireTree(selector); err != nil {
+			t.Fatalf("free selector refused: %v", err)
+		}
+		selector.Shape = extension.ResultShapeSearch
+		assertConstraintField(t, ValidateWireTree(selector), "PluginRendererSelector", "shape")
+	}
+	assertConstraintField(t, ValidateWireTree(PluginRendererSelector{Type: extension.RendererResultShape, Shape: "arbitrary"}), "PluginRendererSelector", "shape")
+	assertConstraintField(t, ValidateWireTree(PluginRendererSelector{Type: extension.RendererResultShape}), "PluginRendererSelector", "shape")
 }

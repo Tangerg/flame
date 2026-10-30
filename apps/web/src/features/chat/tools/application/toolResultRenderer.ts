@@ -13,7 +13,7 @@ export function selectToolResultRenderer(
   const shape = toolResultShape(tool.result);
   if (!shape) return undefined;
   const shaped = renderers.filter(
-    ({ selector }) => selector.type === "resultShape" && selector.name === shape,
+    ({ selector }) => selector.type === "resultShape" && selector.shape === shape,
   );
   return shaped.length === 1 ? shaped[0] : undefined;
 }

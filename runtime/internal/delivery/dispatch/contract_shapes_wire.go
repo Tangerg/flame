@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -1063,6 +1064,11 @@ func registerApprovalSubjectUnion(s *Shapes) {
 }
 
 func registerPluginUnions(s *Shapes) {
+	s.union(UnionSpec{GoType: typeOf[protocol.PluginRendererSelector](), Discriminator: "type", Variants: []VariantSpec{
+		{Tag: string(extension.RendererToolName), Required: []string{"name"}},
+		{Tag: string(extension.RendererResultShape), Required: []string{"shape"}},
+		{Tag: string(extension.RendererFileExtension), Required: []string{"name"}},
+	}})
 	s.union(UnionSpec{GoType: typeOf[protocol.PluginValueChange](), Discriminator: "type", Variants: []VariantSpec{{Tag: string(protocol.PluginValueSet), Required: []string{"value"}}, {Tag: string(protocol.PluginValueClear)}}})
 	s.union(UnionSpec{GoType: typeOf[protocol.PluginRealization](), Discriminator: "type", Variants: []VariantSpec{
 		{Tag: string(protocol.PluginRealizationAvailable), Optional: []string{"unavailableBackends"}},

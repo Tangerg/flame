@@ -24,7 +24,17 @@ func TestToolComponentUsesSelectedImmutableBytes(t *testing.T) {
 	}
 	var component protocol.PluginClientComponent
 	webBrowse := false
+	shaped := false
 	for _, value := range installed.Selected.Components {
+		if value.Selector != nil && value.Selector.Type == extension.RendererResultShape {
+			if value.Selector.Name != "" || !value.Selector.Shape.Valid() {
+				t.Fatalf("published result selector: %+v", value.Selector)
+			}
+			if err := protocol.ValidateWireTree(value); err != nil {
+				t.Fatalf("published result component: %v", err)
+			}
+			shaped = true
+		}
 		if value.ID == "web-browse" && value.Selector != nil && value.Selector.Type == extension.RendererToolName && value.Selector.Name == "web_browse" {
 			webBrowse = true
 		}
@@ -34,6 +44,9 @@ func TestToolComponentUsesSelectedImmutableBytes(t *testing.T) {
 	}
 	if !webBrowse {
 		t.Fatal("captured web page continuation has no installed result renderer")
+	}
+	if !shaped {
+		t.Fatal("installed package has no structural result selector")
 	}
 	if component.Selector == nil || component.Selector.Type != extension.RendererToolName || component.Selector.Name != "grep" || component.Scope != extension.ComponentScopeToolResult || component.Placement != extension.ComponentPlacementToolResultRenderer {
 		t.Fatalf("selector: %+v", component)

@@ -1252,6 +1252,20 @@ func (m MCPAuthorizationAttemptStatus) validateWire() error {
 	)
 }
 
+func (p PluginRendererSelector) validateWire() error {
+	return collectWireViolations("PluginRendererSelector",
+		maxLength("name", p.Name, 256),
+		closedEnum("type", string(p.Type), []string{"toolName", "resultShape", "fileExtension"}, false),
+		closedEnum("shape", string(p.Shape), []string{"search", "patch", "command", "webSearch"}, true),
+		requiredWhen(wireFieldEquals(p, "type", "toolName"), "name", p),
+		forbiddenWhen(wireFieldEquals(p, "type", "toolName"), "shape", p),
+		requiredWhen(wireFieldEquals(p, "type", "resultShape"), "shape", p),
+		forbiddenWhen(wireFieldEquals(p, "type", "resultShape"), "name", p),
+		requiredWhen(wireFieldEquals(p, "type", "fileExtension"), "name", p),
+		forbiddenWhen(wireFieldEquals(p, "type", "fileExtension"), "shape", p),
+	)
+}
+
 func (p PluginValueChange) validateWire() error {
 	return collectWireViolations("PluginValueChange",
 		optionalMaxLength("value", p.Value, 8192),
@@ -2704,14 +2718,6 @@ func (p PluginContribution) validateWire() error {
 		requiredTextPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
 		requiredTextPattern("export", p.Export, "^[a-z][a-z0-9._-]{0,63}$"),
 		requiredText("contract", p.Contract),
-	)
-}
-
-func (p PluginRendererSelector) validateWire() error {
-	return collectWireViolations("PluginRendererSelector",
-		requiredText("name", p.Name),
-		maxLength("name", p.Name, 256),
-		closedEnum("type", string(p.Type), []string{"toolName", "resultShape", "fileExtension"}, false),
 	)
 }
 

@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
-  TOOL_RESULT_SHAPES,
   toolResultShape,
   patchToolResult,
   commandToolResult,
 } from "@/features/chat/public/tools/toolResult";
-const PAYLOAD: Record<(typeof TOOL_RESULT_SHAPES)[number], unknown> = {
+import { RESULT_SHAPES, type ResultShape } from "@/foundation/protocolValues.generated";
+const PAYLOAD: Record<ResultShape, unknown> = {
   search: { hits: [{ path: "one.ts", line: 1, text: "match" }] },
   patch: { changes: [{ path: "one.ts", status: "modified" }] },
   webSearch: { results: [{ title: "Flame", url: "https://example.test" }] },
@@ -14,7 +14,7 @@ const PAYLOAD: Record<(typeof TOOL_RESULT_SHAPES)[number], unknown> = {
 
 describe("toolResultShape", () => {
   it("names every declared shape, decoded or still a string", () => {
-    for (const shape of TOOL_RESULT_SHAPES) {
+    for (const shape of RESULT_SHAPES) {
       expect(toolResultShape(PAYLOAD[shape])).toBe(shape);
       expect(toolResultShape(JSON.stringify(PAYLOAD[shape]))).toBe(shape);
     }
@@ -57,4 +57,15 @@ it("projects numeric result fields only when their values remain exact", () => {
 it("retains an exit receipt when command output arrived through the stream", () => {
   expect(commandToolResult({ exitCode: 0 })).toEqual({ exitCode: 0 });
   expect(commandToolResult({ output: 7, exitCode: "0" })).toBeUndefined();
+});
+
+it("keeps recognition priority in the client adapter", () => {
+  const value: Record<string, unknown> = { hits: [], changes: [], results: [], output: "ok" };
+  expect(toolResultShape(value)).toBe("search");
+  delete value.hits;
+  expect(toolResultShape(value)).toBe("patch");
+  delete value.changes;
+  expect(toolResultShape(value)).toBe("webSearch");
+  delete value.results;
+  expect(toolResultShape(value)).toBe("command");
 });

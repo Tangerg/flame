@@ -260,7 +260,7 @@
       "placement": "toolResultRenderer",
       "selector": {
         "type": "resultShape",
-        "name": "command"
+        "shape": "command"
       },
       "entry": "io.github.tangerg.flame/components/component.js",
       "export": "RecordedResult"
@@ -272,7 +272,7 @@
       "placement": "toolResultRenderer",
       "selector": {
         "type": "resultShape",
-        "name": "search"
+        "shape": "search"
       },
       "entry": "io.github.tangerg.flame/components/component.js",
       "export": "RecordedResult"
@@ -284,7 +284,7 @@
       "placement": "toolResultRenderer",
       "selector": {
         "type": "resultShape",
-        "name": "patch"
+        "shape": "patch"
       },
       "entry": "io.github.tangerg.flame/components/component.js",
       "export": "RecordedResult"
@@ -296,7 +296,7 @@
       "placement": "toolResultRenderer",
       "selector": {
         "type": "resultShape",
-        "name": "webSearch"
+        "shape": "webSearch"
       },
       "entry": "io.github.tangerg.flame/components/component.js",
       "export": "RecordedResult"

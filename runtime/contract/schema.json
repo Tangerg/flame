@@ -7433,13 +7433,50 @@
           "minLength": 1,
           "maxLength": 256
         },
+        "shape": {
+          "$ref": "#/$defs/ResultShape"
+        },
         "type": {
           "$ref": "#/$defs/RendererSelectorKind"
         }
       },
-      "required": [
-        "name",
-        "type"
+      "oneOf": [
+        {
+          "properties": {
+            "shape": false,
+            "type": {
+              "const": "toolName"
+            }
+          },
+          "required": [
+            "name",
+            "type"
+          ]
+        },
+        {
+          "properties": {
+            "name": false,
+            "type": {
+              "const": "resultShape"
+            }
+          },
+          "required": [
+            "shape",
+            "type"
+          ]
+        },
+        {
+          "properties": {
+            "shape": false,
+            "type": {
+              "const": "fileExtension"
+            }
+          },
+          "required": [
+            "name",
+            "type"
+          ]
+        }
       ]
     },
     "PluginRequest": {
@@ -9090,6 +9127,15 @@
         "history",
         "files",
         "both"
+      ]
+    },
+    "ResultShape": {
+      "type": "string",
+      "enum": [
+        "search",
+        "patch",
+        "command",
+        "webSearch"
       ]
     },
     "ResumeRunRequest": {

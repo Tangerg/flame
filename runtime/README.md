@@ -375,6 +375,14 @@ inspect historical results without evaluating historical producer code. Loading,
 withdrawal and ambiguity retain generic inspection and existing source access.
 See [Web component ownership](../apps/web/ARCHITECTURE.md).
 
+The extension protocol's `extension.ResultShape` owns result-selector membership.
+`resultShape` selectors carry `shape`; `toolName` and `fileExtension` carry `name`.
+Generated wire and client value unions preserve that distinction. Web owns an
+exhaustive recognition adapter for each shape, including matching priority.
+Rebuild declarations and clients together and use a fresh pre-release Runtime
+data directory when stored releases contain the former result-shape `name` field.
+Those declarations are rejected without conversion.
+
 ## Run commands and strict request identity
 
 Public Start, Resume and Steer require caller-retained idempotency keys. Preserve

@@ -68,8 +68,9 @@ type wireTheme struct {
 	Colors wireThemeColors `json:"colors"`
 }
 type wireRendererSelector struct {
-	Type extension.RendererSelectorKind `json:"type"`
-	Name string                         `json:"name"`
+	Type  extension.RendererSelectorKind `json:"type"`
+	Name  string                         `json:"name,omitempty"`
+	Shape extension.ResultShape          `json:"shape,omitempty"`
 }
 type wireThemeColors struct {
 	Background *string `json:"background,omitempty"`

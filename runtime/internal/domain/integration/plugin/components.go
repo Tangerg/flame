@@ -53,20 +53,20 @@ func (b *Builder) AdmitComponent(value ClientComponent) error {
 			return refuse(DiagnosticInvalidDeclaration, "session action requires session context")
 		}
 	case extension.ComponentPlacementFileRenderer:
-		if value.Scope != extension.ComponentScopeFile || value.Material != "" || value.Selector == nil || value.Selector.Kind != extension.RendererFileExtension || len(value.Selector.Name) > MaxRendererSelectorNameBytes || !fileExtensionPattern.MatchString(value.Selector.Name) {
+		if value.Scope != extension.ComponentScopeFile || value.Material != "" || value.Selector == nil || value.Selector.Kind != extension.RendererFileExtension || value.Selector.Shape != "" || len(value.Selector.Name) > MaxRendererSelectorNameBytes || !fileExtensionPattern.MatchString(value.Selector.Name) {
 			return refuse(DiagnosticInvalidDeclaration, "file component requires an exact extension selector")
 		}
 	case extension.ComponentPlacementToolResultRenderer:
-		if value.Scope != extension.ComponentScopeToolResult || value.Material != "" || value.Selector == nil || value.Selector.Name == "" || len(value.Selector.Name) > MaxRendererSelectorNameBytes || !utf8.ValidString(value.Selector.Name) {
+		if value.Scope != extension.ComponentScopeToolResult || value.Material != "" || value.Selector == nil {
 			return refuse(DiagnosticInvalidDeclaration, "tool result component requires an exact selector")
 		}
 		switch value.Selector.Kind {
 		case extension.RendererToolName:
-			if strings.ContainsAny(value.Selector.Name, " \t\r\n") {
+			if value.Selector.Shape != "" || value.Selector.Name == "" || len(value.Selector.Name) > MaxRendererSelectorNameBytes || !utf8.ValidString(value.Selector.Name) || strings.ContainsAny(value.Selector.Name, " \t\r\n") {
 				return refuse(DiagnosticInvalidDeclaration, "invalid tool result name")
 			}
 		case extension.RendererResultShape:
-			if !slices.Contains([]string{"command", "search", "patch", "webSearch"}, value.Selector.Name) {
+			if value.Selector.Name != "" || !value.Selector.Shape.Valid() {
 				return refuse(DiagnosticInvalidDeclaration, "invalid tool result shape")
 			}
 		default:

@@ -5,6 +5,13 @@ It consumes the independent Qimu module. It has no dependency on Runtime,
 products, first-party plugins or repository tooling,
 including in tests and development commands.
 
+`extension.ResultShape` owns the closed result-selector vocabulary and its
+admission. A `resultShape` selector carries a typed `shape`; `toolName` and
+`fileExtension` carry independent free `name` values. Runtime contract generation
+projects this value union into Go validation, schema and TypeScript. Rebuild
+plugin declarations and clients together; the former result-shape `name` field
+is refused without conversion.
+
 | Package                                                     | Owner                                                                 |
 | ----------------------------------------------------------- | --------------------------------------------------------------------- |
 | `client`                                                    | Remote HTTP/SSE lifecycle and generated typed operations              |

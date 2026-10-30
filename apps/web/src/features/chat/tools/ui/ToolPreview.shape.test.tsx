@@ -27,13 +27,12 @@ const tool: ToolCall = {
 
 function renderer(
   id: string,
-  type: "toolName" | "resultShape",
-  name: string,
+  selector: ToolResultRendererSpec["selector"],
 ): ToolResultRendererSpec {
   return {
     id,
     title: id,
-    selector: { type, name },
+    selector,
     component: ({ fallback }) => (
       <div>
         <p>{id} rendered</p>
@@ -51,34 +50,47 @@ describe("optional result rendering", () => {
     expect(screen.getByText(/needle here/)).toBeTruthy();
   });
   it("selects a unique named contribution before a shape contribution regardless of order", () => {
-    const named = renderer("named", "toolName", "grep");
-    const shaped = renderer("shaped", "resultShape", "search");
+    const named = renderer("named", { type: "toolName", name: "grep" });
+    const shaped = renderer("shaped", { type: "resultShape", shape: "search" });
     expect(selectToolResultRenderer([shaped, named], tool)).toBe(named);
     expect(selectToolResultRenderer([named, shaped], tool)).toBe(named);
     expect(selectToolResultRenderer([shaped], tool)).toBe(shaped);
   });
   it("uses generic content for competing names or competing shapes", () => {
-    const shaped = renderer("shape", "resultShape", "search");
+    const shaped = renderer("shape", { type: "resultShape", shape: "search" });
     expect(
       selectToolResultRenderer(
-        [renderer("a", "toolName", "grep"), renderer("b", "toolName", "grep"), shaped],
+        [
+          renderer("a", { type: "toolName", name: "grep" }),
+          renderer("b", { type: "toolName", name: "grep" }),
+          shaped,
+        ],
         tool,
       ),
     ).toBeUndefined();
     expect(
-      selectToolResultRenderer([shaped, renderer("b", "resultShape", "search")], tool),
+      selectToolResultRenderer(
+        [shaped, renderer("b", { type: "resultShape", shape: "search" })],
+        tool,
+      ),
     ).toBeUndefined();
   });
   it("never opens a package for provisional output", () => {
     expect(
-      selectToolResultRenderer([renderer("a", "toolName", "grep")], { ...tool, status: "running" }),
+      selectToolResultRenderer([renderer("a", { type: "toolName", name: "grep" })], {
+        ...tool,
+        status: "running",
+      }),
     ).toBeUndefined();
     expect(
-      selectToolResultRenderer([renderer("a", "toolName", "grep")], { ...tool, result: undefined }),
+      selectToolResultRenderer([renderer("a", { type: "toolName", name: "grep" })], {
+        ...tool,
+        result: undefined,
+      }),
     ).toBeUndefined();
   });
   it("withdraws enhanced presentation while retaining the recorded result", async () => {
-    const spec = renderer("enhanced", "toolName", "grep");
+    const spec = renderer("enhanced", { type: "toolName", name: "grep" });
     await loadPluginsForTest(
       definePlugin({
         name: "test.result-package",

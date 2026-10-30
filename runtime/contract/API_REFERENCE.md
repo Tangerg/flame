@@ -382,6 +382,14 @@ publish one namespaced pattern branch without weakening first-party tags.
 | `failed` | `error` | — |
 | `canceled` | — | — |
 
+### `PluginRendererSelector`
+
+| tag | required | optional |
+| --- | --- | --- |
+| `toolName` | `name` | — |
+| `resultShape` | `shape` | — |
+| `fileExtension` | `name` | — |
+
 ### `PluginValueChange`
 
 | tag | required | optional |

@@ -4,7 +4,10 @@ An optional first-party package for recorded Tool-result presentation. Install a
 enable it through the plugin manager or CLI. It has no backend and executes no Tools.
 
 Ordinary components declare `toolResult` scope, `toolResultRenderer` placement and an
-exact display-name or known result-shape selector. One exact-name match precedes one
+exact display-name or known result-shape selector. Result-shape declarations use
+`{ "type": "resultShape", "shape": "search" }`; their vocabulary belongs to
+`extension.ResultShape` in the Go SDK and is generated for clients. Tool-name and
+file-extension selectors retain their independent `name` values. One exact-name match precedes one
 shape match; equally ranked candidates remain ambiguous and use the generic inspector.
 Running and absent results stay generic. The declarations share one prebuilt ESM export.
 

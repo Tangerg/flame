@@ -4233,6 +4233,30 @@
       ]
     },
     {
+      "type": "PluginRendererSelector",
+      "discriminator": "type",
+      "variants": [
+        {
+          "tag": "toolName",
+          "required": [
+            "name"
+          ]
+        },
+        {
+          "tag": "resultShape",
+          "required": [
+            "shape"
+          ]
+        },
+        {
+          "tag": "fileExtension",
+          "required": [
+            "name"
+          ]
+        }
+      ]
+    },
+    {
       "type": "PluginValueChange",
       "discriminator": "type",
       "variants": [

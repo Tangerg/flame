@@ -1,10 +1,6 @@
 import { type ComponentType, type ReactNode } from "react";
 import { type ToolCall } from "@/features/agent/public/sessionView";
-import { type RendererSelectorKind } from "@/foundation/protocolValues.generated";
-export interface PluginRendererSelector {
-  name: string;
-  type: RendererSelectorKind;
-}
+import { type PluginRendererSelector } from "@/foundation/protocolValues.generated";
 
 import { defineExtensionPoint } from "@/extensions/contracts";
 import { lookupExtensionOwner } from "@/extensions/selectors/extensions";

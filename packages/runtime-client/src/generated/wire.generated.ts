@@ -1417,10 +1417,10 @@ export interface PluginReleaseRequest {
   installationId: string;
 }
 
-export interface PluginRendererSelector {
-  name: string;
-  type: RendererSelectorKind;
-}
+export type PluginRendererSelector =
+  | { type: "toolName"; name: string }
+  | { type: "resultShape"; shape: ResultShape }
+  | { type: "fileExtension"; name: string };
 
 export interface PluginRequest {
   installationId: string;
@@ -1659,6 +1659,8 @@ export interface ResolveWorkspaceRequest {
 }
 
 export type RestoreType = "history" | "files" | "both";
+
+export type ResultShape = "search" | "patch" | "command" | "webSearch";
 
 export interface ResumeRunRequest {
   input?: ContentBlock[];
@@ -2375,6 +2377,7 @@ export const WIRE_ENUMS = {
   RememberScopeKind: ["session", "project", "global"],
   RendererSelectorKind: ["toolName", "resultShape", "fileExtension"],
   RestoreType: ["history", "files", "both"],
+  ResultShape: ["search", "patch", "command", "webSearch"],
   RunAcceptanceType: ["notRecorded", "accepted", "retired"],
   RunCommandOperation: ["start", "resume", "steer"],
   RunOutcomeType: ["completed", "timedOut", "failed", "canceled", "lost"],

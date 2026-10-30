@@ -828,6 +828,26 @@
           "value": "\"toolName\""
         },
         {
+          "name": "ResultShapeCommand",
+          "type": "ResultShape",
+          "value": "\"command\""
+        },
+        {
+          "name": "ResultShapePatch",
+          "type": "ResultShape",
+          "value": "\"patch\""
+        },
+        {
+          "name": "ResultShapeSearch",
+          "type": "ResultShape",
+          "value": "\"search\""
+        },
+        {
+          "name": "ResultShapeWebSearch",
+          "type": "ResultShape",
+          "value": "\"webSearch\""
+        },
+        {
           "name": "ScopeCall",
           "type": "untyped string",
           "value": "\"call\""
@@ -876,6 +896,21 @@
           "kind": "defined",
           "underlying": "string",
           "methods": [
+            {
+              "name": "Values",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "ResultShape",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "Valid",
+              "signature": "func() bool"
+            },
             {
               "name": "Values",
               "signature": "func() []string"
@@ -9127,7 +9162,12 @@
             {
               "name": "Name",
               "type": "string",
-              "tag": "json:\"name\""
+              "tag": "json:\"name,omitempty\""
+            },
+            {
+              "name": "Shape",
+              "type": "extension.ResultShape",
+              "tag": "json:\"shape,omitempty\""
             }
           ]
         },
