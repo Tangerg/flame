@@ -880,7 +880,7 @@ func TestDriverResumeRequiresTheFrozenGoalCapabilities(t *testing.T) {
 	}
 	d := mustDriver(t, store, runUseCases, &fakeSessions{}, goals.NewSessionMutations(), testPrompt)
 	cleanupDriver(t, d)
-	if _, err := d.Resume(t.Context(), "s1", run.Capabilities{}); !errors.Is(err, goals.ErrInsufficientCapabilities) {
+	if _, err := d.Resume(t.Context(), "s1", run.Capabilities{}); !errors.Is(err, run.ErrInsufficientCapabilities) {
 		t.Fatalf("Resume without Question capability = %v", err)
 	}
 	stillPaused, _, _ := loadStoredGoal(t.Context(), store, "s1")

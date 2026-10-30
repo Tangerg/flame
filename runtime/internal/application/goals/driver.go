@@ -15,6 +15,7 @@ package goals
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
@@ -42,24 +43,7 @@ var (
 	// work. A caller must never be told an active Goal was accepted when no drive
 	// can be attached to drive it.
 	ErrClosed = errors.New("goals: driver closed")
-	// ErrInsufficientCapabilities reports a caller that cannot observe every
-	// optional behavior already frozen on the Goal incarnation.
-	ErrInsufficientCapabilities = errors.New("goals: caller capabilities are insufficient")
 )
-
-// InsufficientCapabilitiesError names the complete frozen capability gap.
-type InsufficientCapabilitiesError struct {
-	SessionID string
-	Missing   run.Capabilities
-}
-
-func (i *InsufficientCapabilitiesError) Error() string {
-	return i.SessionID + ": " + ErrInsufficientCapabilities.Error() + ": " + i.Missing.String()
-}
-
-func (i *InsufficientCapabilitiesError) Is(target error) bool {
-	return target == ErrInsufficientCapabilities
-}
 
 // AutonomousRuns is the Goal driver's narrow view of the Run entry point.
 type AutonomousRuns interface {
@@ -251,7 +235,7 @@ func (d *Driver) Resume(ctx context.Context, sessionID string, caller run.Capabi
 		return goal.Goal{}, ErrNoGoal
 	}
 	if missing := g.Capabilities().MissingFrom(caller); !missing.IsEmpty() {
-		return goal.Goal{}, &InsufficientCapabilitiesError{SessionID: sessionID, Missing: missing}
+		return goal.Goal{}, fmt.Errorf("goals: session %q: %w", sessionID, &run.InsufficientCapabilitiesError{Missing: missing})
 	}
 	if g.Status() == goal.StatusActive {
 		if ensureDriveLockedErr := d.ensureDriveLocked(ctx, sessionID, g.IncarnationID()); ensureDriveLockedErr != nil {
@@ -270,7 +254,7 @@ func (d *Driver) Resume(ctx context.Context, sessionID string, caller run.Capabi
 		return goal.Goal{}, ErrNoGoal
 	}
 	if missing := g.Capabilities().MissingFrom(caller); !missing.IsEmpty() {
-		return goal.Goal{}, &InsufficientCapabilitiesError{SessionID: sessionID, Missing: missing}
+		return goal.Goal{}, fmt.Errorf("goals: session %q: %w", sessionID, &run.InsufficientCapabilitiesError{Missing: missing})
 	}
 	if g.Status() == goal.StatusActive {
 		if ensureDriveLockedErr := d.ensureDriveLocked(ctx, sessionID, g.IncarnationID()); ensureDriveLockedErr != nil {
@@ -380,7 +364,7 @@ func (d *Driver) UpdateObjective(
 	wasActive := initial.Status() == goal.StatusActive
 	if wasActive {
 		if missing := initial.Capabilities().MissingFrom(caller); !missing.IsEmpty() {
-			return goal.Goal{}, &InsufficientCapabilitiesError{SessionID: sessionID, Missing: missing}
+			return goal.Goal{}, fmt.Errorf("goals: session %q: %w", sessionID, &run.InsufficientCapabilitiesError{Missing: missing})
 		}
 	}
 

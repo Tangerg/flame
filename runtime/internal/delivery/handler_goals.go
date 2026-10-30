@@ -31,7 +31,7 @@ func (s *Handler) UpdateGoal(ctx context.Context, in protocol.UpdateGoalRequest)
 		return nil, err
 	}
 	g, err := s.goals.UpdateObjective(ctx, in.SessionID, in.Objective, caller)
-	if uncovered, ok := errors.AsType[*goals.InsufficientCapabilitiesError](err); ok {
+	if uncovered, ok := errors.AsType[*run.InsufficientCapabilitiesError](err); ok {
 		return nil, capabilityGap(uncovered.Missing)
 	}
 	if err != nil {
@@ -90,7 +90,7 @@ func (s *Handler) ResumeGoal(ctx context.Context, in protocol.GoalRequest) (*pro
 		return nil, err
 	}
 	g, err := s.goals.Resume(ctx, in.SessionID, caller)
-	if uncovered, ok := errors.AsType[*goals.InsufficientCapabilitiesError](err); ok {
+	if uncovered, ok := errors.AsType[*run.InsufficientCapabilitiesError](err); ok {
 		return nil, capabilityGap(uncovered.Missing)
 	}
 	if err != nil {

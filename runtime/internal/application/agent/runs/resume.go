@@ -82,7 +82,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (StartResul
 		return StartResult{}, errors.New("runs: pending interrupt set has no parked root Run")
 	}
 	if gap := root.Capabilities().MissingFrom(cmd.CallerCapabilities); !gap.IsEmpty() {
-		return StartResult{}, &run.InsufficientCapabilitiesError{RunID: cmd.RunID, Missing: gap}
+		return StartResult{}, fmt.Errorf("runs: run %q: %w", cmd.RunID, &run.InsufficientCapabilitiesError{Missing: gap})
 	}
 	if len(cmd.Input) > 0 {
 		if _, err := MaterializeUserMessage(cmd.Input); err != nil {

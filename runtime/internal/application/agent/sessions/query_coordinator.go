@@ -536,7 +536,7 @@ func (c *QueryCoordinator) ListPendingInterruptPage(ctx context.Context, session
 				return fmt.Errorf("sessions: pending set %q has no root Run", pending.RootRunID)
 			}
 			if gap := root.Capabilities().MissingFrom(caller); !gap.IsEmpty() {
-				return &run.InsufficientCapabilitiesError{RunID: pending.RootRunID, Missing: gap}
+				return fmt.Errorf("sessions: run %q: %w", pending.RootRunID, &run.InsufficientCapabilitiesError{Missing: gap})
 			}
 			set, err := c.interruptSet(ctx, pending)
 			if err != nil {

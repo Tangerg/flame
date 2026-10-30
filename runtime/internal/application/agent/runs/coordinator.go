@@ -685,7 +685,7 @@ func (c *Coordinator) addressSubscription(ctx context.Context, req SubscribeRequ
 		return liveSegment{}, err
 	}
 	if gap := durable.Capabilities().MissingFrom(req.CallerCapabilities); !gap.IsEmpty() {
-		return liveSegment{}, &rundomain.InsufficientCapabilitiesError{RunID: req.RunID, Missing: gap}
+		return liveSegment{}, fmt.Errorf("runs: run %q: %w", req.RunID, &rundomain.InsufficientCapabilitiesError{Missing: gap})
 	}
 	return live, nil
 }

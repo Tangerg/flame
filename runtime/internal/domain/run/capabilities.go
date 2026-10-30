@@ -13,15 +13,15 @@ import (
 // the Run's behavior.
 var ErrInsufficientCapabilities = errors.New("run: caller capabilities are insufficient")
 
-// InsufficientCapabilitiesError identifies the Run and the complete capability set
-// the caller is missing.
+// InsufficientCapabilitiesError names the complete capability set a caller is
+// missing to follow work frozen with more, whether a Run or a Goal incarnation.
+// Callers wrap it with the owner they refused.
 type InsufficientCapabilitiesError struct {
-	RunID   string
 	Missing Capabilities
 }
 
 func (i *InsufficientCapabilitiesError) Error() string {
-	return fmt.Sprintf("%s: run %q requires %s", ErrInsufficientCapabilities, i.RunID, i.Missing)
+	return fmt.Sprintf("%s: requires %s", ErrInsufficientCapabilities, i.Missing)
 }
 
 // Is lets callers branch on the category without discarding the missing set.
