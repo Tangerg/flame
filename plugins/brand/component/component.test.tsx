@@ -27,7 +27,7 @@ function fixture() {
   const context = {
     locale: "en",
     signal: controller.signal,
-    sourceSignal: controller.signal,
+
     saveFile,
   } as unknown as ComponentContext;
   return { controller, saveFile, context };

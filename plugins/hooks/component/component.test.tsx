@@ -47,7 +47,7 @@ function fixture(
     },
     locale: "en",
     signal: controller.signal,
-    sourceSignal: controller.signal,
+
     workspace: { ref: { path: "/repo" } },
     track: <P extends Promise<unknown>>(operation: () => P): P => operation(),
   } as unknown as ComponentContext;

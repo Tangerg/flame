@@ -1,6 +1,8 @@
 import { expect, test, type Locator, type Page } from "./test";
 import { de } from "@/lib/i18n/locales/de";
 import { en } from "@/lib/i18n/locales/en";
+import providersDeclaration from "../../../plugins/providers/package/io.github.tangerg.flame/declaration.json" with { type: "json" };
+const providerTitle = providersDeclaration.components[0]!.title;
 async function openSettings(
   page: Page,
   { width = 1120, height = 720, theme = "light", locale = "en" } = {},
@@ -32,7 +34,7 @@ async function geometry(list: Locator) {
   return list.evaluate((node) => {
     const rail = node.parentElement!.getBoundingClientRect();
     const frame = node.parentElement!.parentElement!.getBoundingClientRect();
-    const panel = document.querySelector('[role="tabpanel"]')!.parentElement!;
+    const panel = document.querySelector('[role="tabpanel"]:not([aria-hidden="true"])')!;
     const content = panel.getBoundingClientRect();
     return {
       railHeight: rail.height,
@@ -59,7 +61,7 @@ for (const theme of ["light", "dark"]) {
       });
       const before = await geometry(list);
       const tabs = await list.getByRole("tab").count();
-      for (const query of [catalog["settings.pane.providers"]!, "ZZZ-unmatched"]) {
+      for (const query of [providerTitle, "ZZZ-unmatched"]) {
         await search.fill(query);
         expect(await list.getByRole("tab").count()).toBeLessThan(tabs);
         const after = await geometry(list);
@@ -80,7 +82,7 @@ for (const theme of ["light", "dark"]) {
   }) => {
     const { catalog, list, search } = await openSettings(page, { theme, locale: "de" });
     const before = await geometry(list);
-    await search.fill(catalog["settings.pane.providers"]!);
+    await search.fill(providerTitle);
     const after = await geometry(list);
     expect(after.railRight).toBeLessThanOrEqual(after.contentLeft);
     expect(after.railHeight).toBe(before.railHeight);
@@ -107,7 +109,7 @@ test("a short zoomed viewport scrolls the rail with keyboard navigation and keep
   await expect(last).toBeFocused();
   await expect(last).toHaveAttribute("aria-selected", "true");
   await expect(
-    page.getByRole("tabpanel", { name: catalog["settings.pane.plugins"]!, exact: true }),
+    page.getByRole("tabpanel", { name: await last.innerText(), exact: true }),
   ).toBeVisible();
   const position = await last.evaluate((node) => {
     const tab = node.getBoundingClientRect();
@@ -136,7 +138,7 @@ test("both clear actions return focus to search without changing the open pane",
   const tabs = await list.getByRole("tab").count();
   await search.fill("Providers");
   await search.press("Tab");
-  const clear = page.getByRole("button", { name: catalog["settings.search.clear"]!, exact: true });
+  const clear = page.getByRole("button", { name: catalog["common.clearSearch"]!, exact: true });
   await expect(clear).toBeFocused();
   await clear.press("Enter");
   await expect(search).toBeFocused();
@@ -145,7 +147,7 @@ test("both clear actions return focus to search without changing the open pane",
 
   await search.fill("ZZZ-unmatched");
   const emptyClear = page.getByRole("status").getByRole("button", {
-    name: catalog["settings.search.clear"]!,
+    name: catalog["common.clearSearch"]!,
     exact: true,
   });
   await emptyClear.click();
@@ -160,19 +162,18 @@ test("both clear actions return focus to search without changing the open pane",
 test("Enter opens a search result and Escape clears the filter while preserving that selection", async ({
   page,
 }) => {
-  const { catalog, list, search } = await openSettings(page);
+  const { list, search } = await openSettings(page);
   await search.fill("Providers");
   await search.press("Enter");
-  await expect(
-    page.getByRole("tabpanel", { name: catalog["settings.pane.providers"]!, exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole("tabpanel", { name: providerTitle, exact: true })).toBeVisible();
   await expect(search).toBeFocused();
   await search.press("Escape");
   await expect(search).toHaveValue("");
   await expect(search).toBeFocused();
-  await expect(
-    list.getByRole("tab", { name: catalog["settings.pane.providers"]!, exact: true }),
-  ).toHaveAttribute("aria-selected", "true");
+  await expect(list.getByRole("tab", { name: providerTitle, exact: true })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
   await expect(page.getByTestId("active-main-view")).toHaveText("settings");
 });
 
@@ -198,15 +199,11 @@ test("opening Settings without a pane keeps its default content until a result i
     exact: true,
   });
   await expect(appearance).toBeVisible();
-  await search.fill(en["settings.pane.providers"]!);
+  await search.fill(providerTitle);
   await expect(appearance).toBeVisible();
   await search.press("Enter");
-  await expect(
-    page.getByRole("tabpanel", { name: en["settings.pane.providers"]!, exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole("tabpanel", { name: providerTitle, exact: true })).toBeVisible();
   await search.press("Escape");
   await expect(search).toHaveValue("");
-  await expect(
-    page.getByRole("tabpanel", { name: en["settings.pane.providers"]!, exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole("tabpanel", { name: providerTitle, exact: true })).toBeVisible();
 });

@@ -408,9 +408,6 @@ function rig(server = fixture()) {
       const controller = new AbortController();
       controllers.push(controller);
       const context: ComponentContext = {
-        get sourceSignal() {
-          return this.signal;
-        },
         component: { installationId, digest, componentId: "computer" },
         binding: {
           installationId,

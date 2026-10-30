@@ -322,7 +322,6 @@ export const en: Record<string, string> = {
   "settings.pane.plugins": "Plugins",
   "settings.pane.shortcuts": "Keyboard shortcuts",
   "settings.pane.personalization": "Personalization",
-  "settings.pane.providers": "Providers",
   "settings.pane.approvals": "Approvals",
   "settings.pane.mcpServers": "MCP servers",
   "settings.appearance.colors": "Theme and color",
@@ -371,44 +370,6 @@ export const en: Record<string, string> = {
   "approvals.error.loadMode": "Couldn't load approval mode",
   "approvals.error.mode": "Couldn't change the approval mode.",
   "approvals.error.forget": "Couldn't clear the decision.",
-
-  "providers.apiKey.replace": "Replace API key…",
-  "providers.apiKey.clear": "Remove stored key",
-  "providers.apiKey.clear.title": "Remove the stored key?",
-  "providers.apiKey.clear.body":
-    "{{provider}} loses its saved API key. You'll need to paste it again to reconnect.",
-  "providers.apiKey.placeholder": "API key",
-  "providers.apiKey.envPlaceholder": "Using environment key — type to override",
-  "providers.apiKey.aria": "{{provider}} API key",
-  "providers.baseUrl.placeholder": "Base URL",
-  "providers.baseUrl.aria": "{{provider}} base URL",
-  "providers.key": "key {{masked}}",
-  "providers.ready": "ready",
-  "providers.fromEnv": "from env",
-  "providers.notConfigured": "not configured",
-  "providers.save": "Save",
-  "providers.saving": "Saving…",
-  "providers.test": "Test",
-  "providers.testing": "Testing…",
-  "providers.connectionOk": "Connection OK",
-  "providers.error.save": "Save failed",
-  "providers.error.test": "Test failed",
-  "providers.models.error": "Couldn't load models.",
-  "providers.models.refresh": "Refresh models",
-  "providers.empty": "No providers",
-  "providers.empty.sub": "The runtime reports no supported LLM providers.",
-  "providers.utility.title": "Utility model",
-  "providers.utility.desc":
-    "Model for summaries, titles, and fact extraction. Uses the Runtime default when unset. Changes apply to the next utility call, including in an existing run.",
-  "providers.utility.main": "Use Runtime default",
-  "providers.utility.error": "Couldn't set the utility model.",
-  "providers.embedding.title": "Embedding model",
-  "providers.embedding.desc":
-    "Optionally improves Agent Memory ranking. Pick an embedding-capable provider; when Off, Memory continues with keyword matching. Applies to subsequent searches.",
-  "providers.embedding.off": "Off",
-  "providers.embedding.none":
-    "No embedding-capable provider configured yet — add one (e.g. OpenAI) above.",
-  "providers.embedding.error": "Couldn't set the embedding model.",
 
   "mcp.add": "Add server",
   "mcp.save": "Save",
@@ -888,9 +849,6 @@ export const en: Record<string, string> = {
   "mcpStatus.mcp_configuration_failed":
     "This server's configuration or saved credentials couldn't be used. Review its settings and retry.",
   "mcpStatus.mcp_dial_failed": "Couldn't reach this server — check the command or URL and retry.",
-  "providers.testOutcome.notConfigured": "Finish configuring the provider first.",
-  "providers.testOutcome.failed":
-    "The provider couldn't be reached, or it rejected the test request.",
   "rpcError.skill_not_found": "That skill is no longer in the library.",
   "rpcError.skill_unavailable":
     "That skill's document can't be read — check the file it resolves to.",
@@ -1055,19 +1013,6 @@ export const en: Record<string, string> = {
   "composer.mention.status.empty": "No matching files",
   "composer.mention.status.error": "Couldn’t list project files",
   "composer.mention.status.no-workspace": "Choose a project to reference its files",
-  "providers.apiKey.label": "API key",
-  "providers.baseUrl.label": "Base URL",
-  "providers.baseUrl.labelRequired": "Base URL · required",
-  "providers.baseUrl.required": "This provider needs a base URL before it can be saved.",
-  "providers.saveAndTest": "Save & test",
-  "providers.saved": "Saved",
-  "providers.role.loadError": "Couldn’t load this setting, so its current value is unknown.",
-  "providers.role.stale": "Showing the last known value — refreshing it failed.",
-  "providers.setup.steps":
-    "Pick one provider, paste its API key, then Save & test. That is all you need to start.",
-  "providers.setup.done":
-    "A provider is ready. Close Settings to return — your draft is still there.",
-  "providers.roles.heading": "Model roles",
   "settings.search.empty": "No settings match “{{query}}”.",
   "startup.failed.title": "Flame couldn’t start",
   "startup.failed.body":
@@ -1209,4 +1154,6 @@ export const en: Record<string, string> = {
   "packages.realizationFailed": "Package themes could not load in this window: {{reason}}",
   "packages.reviewedField":
     "“{{field}}” belongs to the reviewed release and can’t be changed here.",
+  "composer.models.error": "Couldn't load models.",
+  "composer.models.refresh": "Refresh models",
 };

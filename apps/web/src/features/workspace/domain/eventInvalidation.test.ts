@@ -20,8 +20,6 @@ describe("workspaceInvalidations", () => {
     expect(workspaceInvalidations({ type: "models.changed", sequence: 8 })).toEqual([
       "providers",
       "models",
-      "utilityRole",
-      "embeddingRole",
     ]);
     expect(workspaceInvalidations({ type: "approvals.changed", sequence: 9 })).toEqual([
       "approvalMode",

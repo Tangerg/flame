@@ -244,9 +244,6 @@ function controller(
   const writes: Array<{ id: string; value: unknown }> = [];
   const copy = vi.fn(async (_text: string) => {});
   const context: ComponentContext = {
-    get sourceSignal() {
-      return this.signal;
-    },
     component: {
       installationId: "renderer-installation",
       digest: componentDigest,

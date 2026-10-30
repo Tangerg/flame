@@ -40,9 +40,6 @@ function mountRename() {
   const owner = new AbortController();
   const tracked: Promise<unknown>[] = [];
   const context: ComponentContext = {
-    get sourceSignal() {
-      return this.signal;
-    },
     component: { installationId: "trajectory", digest: "c".repeat(64), componentId: "rename" },
     runtime: client,
     sessionId: "ses_1",

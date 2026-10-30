@@ -35,9 +35,6 @@ function capturedContext(
   recorded: Partial<CapturedToolResult> = {},
 ): ComponentContext {
   return Object.freeze({
-    get sourceSignal(): AbortSignal {
-      return this.signal;
-    },
     component: Object.freeze({
       installationId: "captured-genui",
       digest: "a".repeat(64),

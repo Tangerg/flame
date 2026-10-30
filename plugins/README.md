@@ -3,8 +3,9 @@
 Memory, Schedules, Knowledge base, GitHub, Model router, Guardrails, Web research,
 Saved usage reports, Generated interfaces, Deliverables, Computer use, Native sandbox,
 File watch, Code intelligence, Remote agents, Skill learning, Model providers and Hooks have optional
-backends. Memory, Schedules, Saved usage reports, Generated interfaces, Deliverables, Computer use and Skills expose
-ordinary public components; the remaining packages are backend-only.
+backends. Memory, Schedules, Saved usage reports, Generated interfaces, Deliverables,
+Computer use, Skills, Model providers and Hooks expose ordinary public components;
+the remaining packages are backend-only.
 MCP model Tools and human Runtime commands
 enter the same existing backend owners. A component does not create a second store.
 
@@ -15,7 +16,8 @@ See [`codeintel/README.md`](codeintel/README.md).
 
 Model providers (`providers`) owns Scope vendor clients, provider catalogs,
 token counting and Embedding execution. Runtime retains credentials, exact
-selection, call evidence, accounting and recovery. See
+selection, call evidence, accounting and recovery. Its installed settings page
+owns graphical drafts and command observation through those public operations. See
 [`providers/README.md`](providers/README.md).
 
 Hooks (`hooks`) owns authored rule discovery and bounded command execution.

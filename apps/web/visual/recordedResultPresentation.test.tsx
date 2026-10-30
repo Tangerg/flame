@@ -25,9 +25,6 @@ function capturedContext(
   range?: CapturedToolResult["range"],
 ): ComponentContext {
   return Object.freeze({
-    get sourceSignal(): AbortSignal {
-      return this.signal;
-    },
     component: Object.freeze({
       installationId: "captured-tool-results",
       digest: "a".repeat(64),

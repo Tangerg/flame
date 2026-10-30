@@ -13,7 +13,7 @@ for (const theme of ["light", "dark"]) {
       const panel = page.getByRole("tabpanel");
       for (const name of ["Utility model", "Embedding model"]) {
         const label = (await panel.getByText(name, { exact: true }).boundingBox())!;
-        const control = (await panel.getByRole("button", { name, exact: true }).boundingBox())!;
+        const control = (await panel.getByRole("combobox", { name, exact: true }).boundingBox())!;
         if (width === 1120) expect(control.x).toBeGreaterThanOrEqual(label.x + label.width);
         else expect(control.y).toBeGreaterThanOrEqual(label.y + label.height);
       }
@@ -341,8 +341,7 @@ for (const width of [1120, 320]) {
         ],
       );
     });
-    await page.getByRole("button", { name: "Edit workspace-tools", exact: true }).click();
-    await page.getByText("Manage tools", { exact: true }).waitFor();
+    await page.getByRole("button", { name: "Tools for workspace-tools", exact: true }).click();
     await page.evaluate(async () => {
       const moduleUrl = "/src/lib/queryClient.ts";
       const { queryClient }: typeof import("@/lib/queryClient") = await import(moduleUrl);

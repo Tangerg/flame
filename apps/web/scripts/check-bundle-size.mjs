@@ -95,16 +95,14 @@ const BUDGETS = {
 const LAZY_FEATURES = [
   {
     label: "settings panes",
+    // Installed settings are verified as package resources, outside the Host bundle.
     prefixes: [
       "AppearancePane-",
-      "BrandPane-",
       "ApprovalsPane-",
       "ConnectionPane-",
-      "HooksPane-",
       "McpServersPane-",
       "PersonalizationPane-",
       "PluginsPane-",
-      "ProvidersPane-",
     ],
     ceiling: 200_000,
   },

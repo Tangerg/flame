@@ -122,9 +122,6 @@ async function mountTrajectory() {
   };
   const initial = hold();
   const context: ComponentContext = {
-    get sourceSignal() {
-      return this.signal;
-    },
     component: { installationId: "trajectory", digest: "c".repeat(64), componentId: "trajectory" },
     runtime,
     sessionId: VISUAL_SESSION_ID,

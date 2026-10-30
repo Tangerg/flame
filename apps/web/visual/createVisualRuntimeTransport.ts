@@ -10,6 +10,7 @@ import {
   type SetApprovalModeRequest,
   type SkillDetailRequest,
   type SkillProposalRef,
+  PROBLEM_CODES,
 } from "@flame/runtime-client/wire";
 import {
   VISUAL_MEMORY_PAGE,
@@ -18,7 +19,7 @@ import {
   VISUAL_PACKAGES,
   VISUAL_PLUGIN_PROVIDERS,
 } from "./componentSnapshots";
-import { VISUAL_MODELS, VISUAL_PROVIDERS } from "./runtimeSnapshots";
+import { VISUAL_MODEL_FACTS, type VisualModelFacts } from "./runtimeSnapshots";
 import { VISUAL_WORKSPACE_PATH } from "./agentFixtureFacts";
 import discovery from "@flame/runtime-client/testing/samples/method.discover.resp.json";
 import { visualTrajectory } from "./trajectorySnapshot";
@@ -35,6 +36,7 @@ function resultFor(
   snapshot: RuntimeAgentSessionSnapshot,
   capabilities: ServerCapabilities,
   approval: ApprovalModeResult,
+  models: VisualModelFacts,
   readDiff: (signal?: AbortSignal, request?: GetDiffRequest) => Promise<Diff>,
   signal?: AbortSignal,
 ): unknown {
@@ -58,15 +60,15 @@ function resultFor(
     case "skills.library.list":
       return VISUAL_SKILL_LIBRARY;
     case "providers.list":
-      return { data: VISUAL_PROVIDERS };
+      return { data: models.providers };
     case "models.list": {
       const { provider } = request.params as ListModelsRequest;
-      return { data: VISUAL_MODELS.filter((model) => model.provider === provider) };
+      return { data: models.models.filter((model) => model.provider === provider) };
     }
     case "models.getUtilityRole":
-      return { provider: VISUAL_MODELS[0]!.provider, model: VISUAL_MODELS[0]!.id };
+      return models.utility;
     case "models.getEmbeddingRole":
-      return {};
+      return models.embedding;
     case "mcp.servers.list":
       return { data: [] };
     case "plugins.list":
@@ -103,10 +105,11 @@ export function createVisualRuntimeTransport(
   snapshot: RuntimeAgentSessionSnapshot,
   capabilities: ServerCapabilities,
   readDiff: (signal?: AbortSignal, request?: GetDiffRequest) => Promise<Diff>,
-  acceptSkillProposals = false,
+  configuration: { acceptSkillProposals?: boolean; modelFacts?: VisualModelFacts } = {},
 ): Transport {
   const transport = createMemoryTransport();
   const skillProposals = structuredClone(VISUAL_SKILL_PROPOSALS);
+  const models = structuredClone(configuration.modelFacts ?? VISUAL_MODEL_FACTS);
   const approval: ApprovalModeResult = {
     mode: "balanced",
     modes: [
@@ -120,11 +123,30 @@ export function createVisualRuntimeTransport(
     close: transport.close,
     async send(request, signal, options) {
       signal?.throwIfAborted();
+      if (
+        request.method === "models.setUtilityRole" ||
+        request.method === "models.setEmbeddingRole"
+      ) {
+        await transport.send(request, signal, options);
+        transport.inject({
+          jsonrpc: "2.0",
+          id: request.id,
+          error: {
+            code: PROBLEM_CODES.method_not_found,
+            message: "method_not_found",
+            data: {
+              type: "method_not_found",
+              detail: `Visual Runtime has no response for "${request.method}"`,
+            },
+          },
+        });
+        return;
+      }
       let result: unknown;
       if (request.method === "skills.proposals.list") {
         result = structuredClone(skillProposals);
       } else if (
-        acceptSkillProposals &&
+        configuration.acceptSkillProposals &&
         (request.method === "skills.proposals.approve" ||
           request.method === "skills.proposals.reject")
       ) {
@@ -142,7 +164,15 @@ export function createVisualRuntimeTransport(
         skillProposals.data.splice(index, 1);
         result = {};
       } else {
-        result = await resultFor(request, snapshot, capabilities, approval, readDiff, signal);
+        result = await resultFor(
+          request,
+          snapshot,
+          capabilities,
+          approval,
+          models,
+          readDiff,
+          signal,
+        );
       }
       await transport.send(request, signal, options);
       transport.inject({ jsonrpc: "2.0", id: request.id, result });

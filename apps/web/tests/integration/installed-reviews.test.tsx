@@ -52,7 +52,7 @@ beforeEach(() => {
     runtime: client,
     locale: "en",
     signal: owner.signal,
-    sourceSignal: owner.signal,
+
     binding: {
       installationId: "e4407303-68e3-495d-86d6-9c3f575a51ed",
       digest: "a".repeat(64),

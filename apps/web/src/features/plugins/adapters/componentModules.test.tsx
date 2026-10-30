@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
-import { createElement, useEffect, type ComponentProps } from "react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { createElement, useEffect, useState } from "react";
 import { type Host } from "dougong";
 import { type FlameClient, type MutationPromise } from "@flame/runtime-client";
 import {
@@ -8,7 +8,13 @@ import {
   type PluginClientComponent,
   type PluginInstallation,
 } from "@flame/runtime-client/wire";
-import { type ComponentContext, type PluginComponent } from "@flame/component-sdk";
+import {
+  defineComponent,
+  type ComponentContext,
+  type ComponentSource,
+  type ComponentDefinition,
+  type PluginComponent,
+} from "@flame/component-sdk";
 import { componentExport } from "@flame/component-sdk/runtime-profile";
 import {
   PROTOCOL,
@@ -88,9 +94,8 @@ afterEach(async () => {
 });
 
 function fixture(
-  renderComponent: (
-    props: ComponentProps<PluginComponent>,
-  ) => ReturnType<typeof createElement> = () => createElement("p", null, "Native panel"),
+  renderComponent: PluginComponent | ComponentDefinition = () =>
+    createElement("p", null, "Native panel"),
   resourcesReady: Promise<void> = Promise.resolve(),
 ) {
   const modules = new ComponentModules();
@@ -98,7 +103,7 @@ function fixture(
   const globalName = `qimuModule${crypto.randomUUID().replaceAll("-", "")}`;
   const source = { evaluations: 0, render: renderComponent };
   vi.stubGlobal(globalName, source);
-  const endpoint = `data:text/javascript,${encodeURIComponent(`globalThis["${globalName}"].evaluations++; export function Panel(props) { return globalThis["${globalName}"].render(props); }`)}#`;
+  const endpoint = `data:text/javascript,${encodeURIComponent(`globalThis["${globalName}"].evaluations++; export const Panel = globalThis["${globalName}"].render;`)}#`;
   const session: PluginBrowserSession = {
     authority: { id: "authority", epoch: "1" },
     realm: { id: "window", epoch: "1" },
@@ -283,9 +288,6 @@ function fixture(
   });
   vi.stubGlobal("fetch", fetchControl);
   const context: ComponentContext = {
-    get sourceSignal() {
-      return this.signal;
-    },
     component: {
       installationId: installation.id,
       digest: installation.selected.digest,
@@ -347,6 +349,59 @@ it("uses one approved execution and evaluation for two independently owned compo
   await f.modules.close();
   expect(f.closeResources).toHaveBeenCalledOnce();
   expect(f.proofs.some((proof) => proof.scopeKind === "execution")).toBe(true);
+});
+
+it("constructs one explicit source owner across view closes and clears it when its resources close", async () => {
+  let source!: ComponentSource;
+  let retained = "";
+  const signals: AbortSignal[] = [];
+  const create = vi.fn((captured: ComponentSource): PluginComponent => {
+    source = captured;
+    source.signal.addEventListener(
+      "abort",
+      () => {
+        retained = "";
+      },
+      { once: true },
+    );
+    return function DraftView({ context }) {
+      const [draft, setDraft] = useState(retained);
+      useEffect(() => {
+        signals.push(context.signal);
+      }, [context.signal]);
+      return createElement("input", {
+        "aria-label": "Source draft",
+        value: draft,
+        onChange: (event) => {
+          retained = event.currentTarget.value;
+          setDraft(retained);
+        },
+      });
+    };
+  });
+  const f = fixture(defineComponent(create));
+  const Native = (await f.load()).component;
+  expect(create).not.toHaveBeenCalled();
+  const first = render(<Native context={f.context} />);
+  const draft = await screen.findByRole("textbox", { name: "Source draft" });
+  fireEvent.change(draft, { target: { value: "private-source-draft" } });
+  first.unmount();
+  await waitFor(() => expect(signals[0]?.aborted).toBe(true));
+  expect(source.signal.aborted).toBe(false);
+  expect(retained).toBe("private-source-draft");
+  const reopened = render(<Native context={{ ...f.context, locale: "zh" }} />);
+  expect(await screen.findByRole("textbox", { name: "Source draft" })).toHaveProperty(
+    "value",
+    "private-source-draft",
+  );
+  expect(create).toHaveBeenCalledOnce();
+  expect(source.runtimeIdentity).toBe(f.context.runtime);
+  expect(source.component).toEqual(f.context.component);
+  reopened.unmount();
+  await f.closeResources();
+  await waitFor(() => expect(source.signal.aborted).toBe(true));
+  expect(scope.signal.aborted).toBe(false);
+  expect(retained).toBe("");
 });
 
 it("unmounts the native root but keeps tracked component work owned until it settles", async () => {

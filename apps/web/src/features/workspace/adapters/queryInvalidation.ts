@@ -3,12 +3,7 @@ import { queryClient, replaceCachedRead } from "@/lib/queryClient";
 import { AGENT_SESSIONS_KEY } from "@/features/agent/public/session";
 
 import { APPROVAL_MODE_KEY, APPROVAL_RULES_KEY } from "@/features/agent/public/approvalPolicy";
-import {
-  EMBEDDING_ROLE_KEY,
-  MODELS_KEY,
-  PROVIDERS_KEY,
-  UTILITY_ROLE_KEY,
-} from "@/features/providers/public/queries";
+import { MODELS_KEY, PROVIDERS_KEY } from "@/features/providers/public/queries";
 import {
   MCP_SERVERS_KEY,
   MCP_TOOLS_KEY,
@@ -40,8 +35,6 @@ const QUERY_KEYS: Record<
   mcpExposure: MCP_EXPOSURE_KEY,
   providers: PROVIDERS_KEY,
   sessions: AGENT_SESSIONS_KEY,
-  utilityRole: UTILITY_ROLE_KEY,
-  embeddingRole: EMBEDDING_ROLE_KEY,
 };
 
 function invalidateWorkspaceTargets(

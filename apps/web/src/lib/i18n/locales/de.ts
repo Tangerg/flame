@@ -308,7 +308,6 @@ export const de: Record<string, string> = {
   "settings.pane.plugins": "Plugins",
   "settings.pane.shortcuts": "Tastenkürzel",
   "settings.pane.personalization": "Personalisierung",
-  "settings.pane.providers": "Anbieter",
   "settings.pane.approvals": "Freigaben",
   "approvals.mode": "Modus",
   "approvals.mode.sub": "Wie viel der Agent ohne Nachfrage tun darf.",
@@ -343,29 +342,6 @@ export const de: Record<string, string> = {
   "approvals.error.mode": "Freigabemodus konnte nicht geändert werden.",
   "approvals.error.forget": "Entscheidung konnte nicht gelöscht werden.",
 
-  "providers.apiKey.replace": "API-Schlüssel ersetzen…",
-  "providers.apiKey.clear": "Gespeicherten Schlüssel entfernen",
-  "providers.apiKey.clear.title": "Gespeicherten Schlüssel entfernen?",
-  "providers.apiKey.clear.body":
-    "{{provider}} verliert seinen gespeicherten API-Schlüssel. Zum erneuten Verbinden musst du ihn wieder einfügen.",
-  "providers.apiKey.placeholder": "API-Schlüssel",
-  "providers.apiKey.aria": "{{provider}} API-Schlüssel",
-  "providers.baseUrl.placeholder": "Basis-URL",
-  "providers.baseUrl.aria": "{{provider}} Basis-URL",
-  "providers.key": "Schlüssel {{masked}}",
-  "providers.ready": "bereit",
-  "providers.notConfigured": "nicht konfiguriert",
-  "providers.save": "Speichern",
-  "providers.saving": "Speichern…",
-  "providers.test": "Testen",
-  "providers.testing": "Test läuft…",
-  "providers.connectionOk": "Verbindung OK",
-  "providers.error.save": "Speichern fehlgeschlagen",
-  "providers.error.test": "Test fehlgeschlagen",
-  "providers.models.error": "Modelle konnten nicht geladen werden.",
-  "providers.models.refresh": "Modelle aktualisieren",
-  "providers.empty": "Keine Anbieter",
-  "providers.empty.sub": "Die Runtime meldet keine unterstützten LLM-Anbieter.",
   "plugins.errorDetail.show": "Fehlerdetails anzeigen",
   "plugins.errorDetail.hide": "Fehlerdetails ausblenden",
   "plugins.errors_one": "{{count}} Fehler",
@@ -710,20 +686,6 @@ export const de: Record<string, string> = {
   "approvals.gate.prompt": "fragt vorher",
   "approvals.gate.deny": "abgelehnt",
   "approvals.gate.entry": "{{toolClass}}: {{gate}}",
-  "providers.apiKey.envPlaceholder": "Umgebungsschlüssel wird verwendet — tippen zum Überschreiben",
-  "providers.fromEnv": "aus Umgebung",
-  "providers.utility.title": "Hilfsmodell",
-  "providers.utility.desc":
-    "Modell für Zusammenfassungen, Titel und Faktenextraktion. Ohne Auswahl gilt der Runtime-Standard. Änderungen gelten ab dem nächsten Hilfsaufruf, auch innerhalb einer laufenden Ausführung.",
-  "providers.utility.main": "Runtime-Standard verwenden",
-  "providers.utility.error": "Hilfsmodell konnte nicht gesetzt werden.",
-  "providers.embedding.title": "Embedding-Modell",
-  "providers.embedding.desc":
-    "Verbessert optional das Ranking des Agent Memory. Bei Aus arbeitet Memory weiterhin mit Stichwortabgleich. Gilt für nachfolgende Suchen.",
-  "providers.embedding.off": "Aus",
-  "providers.embedding.none":
-    "Noch kein Anbieter mit Embedding-Unterstützung konfiguriert — füge oben einen hinzu (z. B. OpenAI).",
-  "providers.embedding.error": "Embedding-Modell konnte nicht gesetzt werden.",
   "toolAction.failed": "„{{action}}“ konnte nicht abgeschlossen werden.",
   "mcp.add": "Server hinzufügen",
   "mcp.save": "Speichern",
@@ -908,9 +870,6 @@ export const de: Record<string, string> = {
     "Die Konfiguration oder die gespeicherten Anmeldedaten dieses Servers konnten nicht verwendet werden. Prüfe die Einstellungen und versuche es erneut.",
   "mcpStatus.mcp_dial_failed":
     "Dieser Server ist nicht erreichbar — prüfe Befehl oder URL und versuche es erneut.",
-  "providers.testOutcome.notConfigured": "Schließe zuerst die Provider-Konfiguration ab.",
-  "providers.testOutcome.failed":
-    "Der Anbieter war nicht erreichbar oder hat die Testanfrage abgelehnt.",
   "rpcError.skill_not_found": "Dieser Skill ist nicht mehr in der Bibliothek.",
   "rpcError.skill_unavailable":
     "Das Dokument dieses Skills ist nicht lesbar — prüfe die Datei, auf die es verweist.",
@@ -1078,22 +1037,6 @@ export const de: Record<string, string> = {
   "composer.mention.status.empty": "Keine passenden Dateien",
   "composer.mention.status.error": "Projektdateien konnten nicht aufgelistet werden",
   "composer.mention.status.no-workspace": "Wähle ein Projekt, um seine Dateien zu referenzieren",
-  "providers.apiKey.label": "API-Schlüssel",
-  "providers.baseUrl.label": "Basis-URL",
-  "providers.baseUrl.labelRequired": "Basis-URL · erforderlich",
-  "providers.baseUrl.required":
-    "Dieser Anbieter braucht eine Basis-URL, bevor er gespeichert werden kann.",
-  "providers.saveAndTest": "Speichern & testen",
-  "providers.saved": "Gespeichert",
-  "providers.role.loadError":
-    "Diese Einstellung konnte nicht geladen werden, ihr aktueller Wert ist unbekannt.",
-  "providers.role.stale":
-    "Zeigt den zuletzt bekannten Wert – die Aktualisierung ist fehlgeschlagen.",
-  "providers.setup.steps":
-    "Wähle einen Anbieter, füge seinen API-Schlüssel ein und klicke auf „Speichern & testen“. Mehr brauchst du zum Starten nicht.",
-  "providers.setup.done":
-    "Ein Anbieter ist bereit. Schließe die Einstellungen, um zurückzukehren – dein Entwurf ist noch da.",
-  "providers.roles.heading": "Modellrollen",
   "settings.search.empty": "Keine Einstellung passt zu „{{query}}“.",
   "startup.failed.title": "Flame konnte nicht starten",
   "startup.failed.body":
@@ -1241,4 +1184,6 @@ export const de: Record<string, string> = {
     "Paket-Themes konnten in diesem Fenster nicht geladen werden: {{reason}}",
   "packages.reviewedField":
     "„{{field}}“ gehört zum geprüften Release und kann hier nicht geändert werden.",
+  "composer.models.error": "Modelle konnten nicht geladen werden.",
+  "composer.models.refresh": "Modelle aktualisieren",
 };

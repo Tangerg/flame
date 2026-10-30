@@ -42,10 +42,8 @@ vi.mock("@/features/agent/public/approvalPolicy", () => ({
 }));
 
 vi.mock("@/features/providers/public/queries", () => ({
-  EMBEDDING_ROLE_KEY: "embedding-role",
   MODELS_KEY: "models",
   PROVIDERS_KEY: "providers",
-  UTILITY_ROLE_KEY: "utility-role",
 }));
 
 beforeEach(() => {
@@ -140,8 +138,6 @@ describe("workspace session projection invalidation", () => {
     expect(invalidateQueries.mock.calls.map(([options]) => options.queryKey[0])).toEqual([
       "providers",
       "models",
-      "utility-role",
-      "embedding-role",
       "approval-mode",
       "approval-rules",
     ]);

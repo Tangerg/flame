@@ -5,6 +5,22 @@ SDKs. Its provider profiles own vendor endpoints, catalog facts and exact
 construction of chat, native streaming, complete-request counting and embeddings.
 No provider is inferred from a model name.
 
+The installed settings component manages credentials, connection probes and the
+utility and embedding roles through the same public Runtime operations used by
+other consumers. It declares the `modelProviders` settings intent so setup and
+Composer navigation find its actual installation entry. The graphical client
+retains only its ordinary model and provider catalogs for basic composition.
+
+One explicitly constructed component source owns unsubmitted credential drafts,
+read projections and original command observations across view closes. Source or
+Runtime retirement clears that state and fences stale submissions. Known command
+responses update the accepted projection before refreshing it; a refresh failure
+cannot turn that command into a failure. An unconfirmed command blocks another
+write to the same resource and retains its original promise for reconciliation.
+Later edits survive settlement and cannot receive feedback from an older probe.
+No plugin-owned credential registry, role state machine or module-global presenter
+is introduced.
+
 Runtime supplies an immutable credential snapshot when opening a model. One
 private handle retains the actual client and its supported capabilities. A
 restart reconstructs that same snapshot; changing current credentials cannot

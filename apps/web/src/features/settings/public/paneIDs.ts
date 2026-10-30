@@ -2,8 +2,6 @@ export const APPEARANCE_PANE = "appearance";
 
 export const PERSONALIZATION_PANE = "personalization";
 
-export const PROVIDERS_PANE = "providers";
-
 export const APPROVALS_PANE = "approvals";
 
 export const MCP_SERVERS_PANE = "mcp-servers";

@@ -4,7 +4,8 @@ import { notifyFrom } from "@/features/notifications/public/notifications";
 import { InstalledComponent } from "@/features/plugins/ui/InstalledComponent";
 import { Schedules } from "../../../plugins/schedules/component/component";
 import { Hooks } from "../../../plugins/hooks/component/component";
-import { type PluginComponent } from "@flame/component-sdk";
+import { type ComponentDefinition, type PluginComponent } from "@flame/component-sdk";
+import providersDeclaration from "../../../plugins/providers/package/io.github.tangerg.flame/declaration.json";
 import { visualComponentProps } from "./installedComponentProps";
 import { visualFileRenderers } from "./visualFileRenderers";
 import { Gallery } from "../../../plugins/icon-gallery/component/component";
@@ -21,7 +22,7 @@ import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
 import shortcutsSettings from "@/features/command/shortcuts/index";
 import { workbenchSettings } from "@/features/shell/workbench/index";
 import appearanceSettings from "@/features/settings/appearance";
-import { createProvidersPlugin } from "@/features/providers/index";
+import { createProviderCatalogPlugin } from "@/features/providers/index";
 import approvalsSettings from "@/features/approvals/index";
 import connectionSettings from "@/features/connection/settings/index";
 import { createMCPServersPlugin } from "@/features/mcp/index";
@@ -73,6 +74,12 @@ const Brand = Object.values(
     { eager: true },
   ),
 )[0]!.Brand;
+const Providers = Object.values(
+  import.meta.glob<{ Providers: ComponentDefinition }>(
+    "../../../plugins/providers/package/io.github.tangerg.flame/components/component.js",
+    { eager: true },
+  ),
+)[0]!.Providers;
 const RESIZER_SOURCE: WorkspaceFileContent = {
   startLine: 1,
   totalLines: 8,
@@ -166,6 +173,30 @@ function workspaceDataPlugin(
             scope: "client",
             entry: Brand,
             saveFile: saveBrandFile,
+          }),
+      });
+      const providersLifetime = ctx.lifetime("visual-providers");
+      const providersSources = visualComponentProps(
+        runtimeClient(),
+        providersLifetime,
+        "providers",
+      );
+      const ProviderSettings = Providers.create({
+        runtimeIdentity: providersSources.runtime,
+        component: providersSources.component,
+        signal: providersLifetime.signal,
+      });
+      providersLifetime.contribute(SETTINGS_PANE, {
+        id: "providers",
+        label: providersDeclaration.components[0]!.title,
+        material: "providers",
+        intent: "modelProviders",
+        group: "extensions",
+        component: () =>
+          createElement(InstalledComponent, {
+            ...providersSources,
+            scope: "client",
+            entry: ProviderSettings,
           }),
       });
       const hooksLifetime = ctx.lifetime("visual-hooks");
@@ -538,7 +569,7 @@ export async function installVisualWorkspaceFixture(
     fileView,
     workbenchSettings(visual.workspace.access),
     appearanceSettings,
-    createProvidersPlugin(runtimeClient),
+    createProviderCatalogPlugin(runtimeClient),
     shortcutsSettings(visual.workspace.access),
     approvalsSettings,
     connectionSettings,

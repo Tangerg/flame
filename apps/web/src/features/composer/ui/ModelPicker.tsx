@@ -9,7 +9,7 @@ import { SystemMessage } from "@/ui/index";
 import { Button, FormActions } from "@flame/ui";
 import { useWorkspace } from "@/features/workspace/public/workspace";
 import { openWorkspaceSettingsPane } from "@/features/workspace/public/navigation";
-import { PROVIDERS_PANE } from "@/features/settings/public/paneIDs";
+import { useProviderSettingsPane } from "@/features/providers/public/settings";
 import { type SelectableModel } from "@/features/providers/public/queries";
 import { useModels } from "@/features/providers/public/queries";
 import { useRecentModelsStore, type RecentModel } from "@/features/composer/adapters/recentModels";
@@ -113,6 +113,7 @@ function modelCapabilities(model: SelectableModel, t: Translate): string {
 }
 
 export function ModelPicker() {
+  const providersPane = useProviderSettingsPane();
   const t = useT();
   const workspace = useWorkspace();
   const { data, isPending, isError, isFetching, refetch } = useModels();
@@ -151,7 +152,7 @@ export function ModelPicker() {
       }
       feedback={
         isError ? (
-          <SystemMessage variant="warning">{t("providers.models.error")}</SystemMessage>
+          <SystemMessage variant="warning">{t("composer.models.error")}</SystemMessage>
         ) : undefined
       }
       footer={
@@ -160,14 +161,14 @@ export function ModelPicker() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => openWorkspaceSettingsPane(workspace, PROVIDERS_PANE)}
+              onClick={() => openWorkspaceSettingsPane(workspace, providersPane)}
             >
               {t("providers.setup.action")}
             </Button>
           )}
           <Button variant="ghost" size="sm" pending={isFetching} onClick={() => void refetch()}>
             <Icon name="loop" size="sm" />
-            {t("providers.models.refresh")}
+            {t("composer.models.refresh")}
           </Button>
         </FormActions>
       }

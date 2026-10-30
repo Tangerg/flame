@@ -313,6 +313,7 @@ function createPackageReconciler(
               id,
               label: entry.title,
               material: entry.material,
+              intent: entry.settingsIntent,
               group: "extensions",
               component: PlacedComponent,
             },

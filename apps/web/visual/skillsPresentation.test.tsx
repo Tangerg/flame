@@ -42,7 +42,7 @@ async function mountSkills() {
     structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
     VISUAL_CAPABILITIES,
     async () => REVIEW_DIFF,
-    true,
+    { acceptSkillProposals: true },
   );
   const sendRequest = transport.send.bind(transport);
   const send = vi.spyOn(transport, "send");
@@ -52,9 +52,6 @@ async function mountSkills() {
   const getDiscovered = vi.spyOn(workspace.skills, "getDiscovered");
   vi.spyOn(runtime, "workspace").mockReturnValue(workspace);
   const context: ComponentContext = {
-    get sourceSignal() {
-      return this.signal;
-    },
     component: { installationId: "skills", digest: "b".repeat(64), componentId: "skills" },
     runtime,
     workspace: { ref: { path: VISUAL_WORKSPACE_PATH } },

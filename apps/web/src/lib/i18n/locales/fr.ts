@@ -315,7 +315,6 @@ export const fr: Record<string, string> = {
   "settings.pane.plugins": "Plugins",
   "settings.pane.shortcuts": "Raccourcis clavier",
   "settings.pane.personalization": "Personnalisation",
-  "settings.pane.providers": "Fournisseurs",
   "settings.pane.approvals": "Approbations",
   "approvals.mode": "Mode",
   "approvals.mode.sub": "Ce que l'agent peut faire sans demander à chaque fois.",
@@ -350,29 +349,6 @@ export const fr: Record<string, string> = {
   "approvals.error.mode": "Impossible de changer le mode d'approbation.",
   "approvals.error.forget": "Impossible d'effacer la décision.",
 
-  "providers.apiKey.replace": "Remplacer la clé API…",
-  "providers.apiKey.clear": "Supprimer la clé enregistrée",
-  "providers.apiKey.clear.title": "Supprimer la clé enregistrée ?",
-  "providers.apiKey.clear.body":
-    "{{provider}} perd sa clé API enregistrée. Vous devrez la recoller pour vous reconnecter.",
-  "providers.apiKey.placeholder": "Clé API",
-  "providers.apiKey.aria": "Clé API {{provider}}",
-  "providers.baseUrl.placeholder": "URL de base",
-  "providers.baseUrl.aria": "URL de base {{provider}}",
-  "providers.key": "clé {{masked}}",
-  "providers.ready": "prêt",
-  "providers.notConfigured": "non configuré",
-  "providers.save": "Enregistrer",
-  "providers.saving": "Enregistrement…",
-  "providers.test": "Tester",
-  "providers.testing": "Test…",
-  "providers.connectionOk": "Connexion OK",
-  "providers.error.save": "Échec de l'enregistrement",
-  "providers.error.test": "Échec du test",
-  "providers.models.error": "Impossible de charger les modèles.",
-  "providers.models.refresh": "Actualiser les modèles",
-  "providers.empty": "Aucun fournisseur",
-  "providers.empty.sub": "Le runtime ne signale aucun fournisseur LLM pris en charge.",
   "plugins.errorDetail.show": "Afficher le détail de l'erreur",
   "plugins.errorDetail.hide": "Masquer le détail de l'erreur",
   "plugins.errors_one": "{{count}} erreur",
@@ -725,20 +701,6 @@ export const fr: Record<string, string> = {
   "approvals.gate.prompt": "demande d'abord",
   "approvals.gate.deny": "refusé",
   "approvals.gate.entry": "{{toolClass}} : {{gate}}",
-  "providers.apiKey.envPlaceholder": "Clé d'environnement utilisée — saisissez pour la remplacer",
-  "providers.fromEnv": "depuis l'environnement",
-  "providers.utility.title": "Modèle utilitaire",
-  "providers.utility.desc":
-    "Modèle pour les résumés, titres et extractions de faits. Sans sélection, le modèle par défaut de Runtime est utilisé. Les changements prennent effet au prochain appel auxiliaire, même pendant une exécution en cours.",
-  "providers.utility.main": "Utiliser le modèle par défaut de Runtime",
-  "providers.utility.error": "Impossible de définir le modèle utilitaire.",
-  "providers.embedding.title": "Modèle d'embedding",
-  "providers.embedding.desc":
-    "Améliore facultativement le classement d'Agent Memory. Désactivé, Memory continue avec la recherche par mots-clés. S’applique aux recherches suivantes.",
-  "providers.embedding.off": "Désactivé",
-  "providers.embedding.none":
-    "Aucun fournisseur compatible embedding pour l'instant — ajoutez-en un ci-dessus (par ex. OpenAI).",
-  "providers.embedding.error": "Impossible de définir le modèle d'embedding.",
   "toolAction.failed": "Impossible de terminer « {{action}} ».",
   "mcp.add": "Ajouter un serveur",
   "mcp.save": "Enregistrer",
@@ -918,9 +880,6 @@ export const fr: Record<string, string> = {
     "La configuration ou les identifiants enregistrés de ce serveur n'ont pas pu être utilisés. Vérifiez ses réglages et réessayez.",
   "mcpStatus.mcp_dial_failed":
     "Impossible de joindre ce serveur — vérifie la commande ou l'URL et réessaie.",
-  "providers.testOutcome.notConfigured": "Terminez d'abord la configuration du fournisseur.",
-  "providers.testOutcome.failed":
-    "Le fournisseur était injoignable, ou il a refusé la requête de test.",
   "rpcError.skill_not_found": "Cette compétence n'est plus dans la bibliothèque.",
   "rpcError.skill_unavailable":
     "Le document de cette compétence est illisible — vérifiez le fichier visé.",
@@ -1092,19 +1051,6 @@ export const fr: Record<string, string> = {
   "composer.mention.status.empty": "Aucun fichier correspondant",
   "composer.mention.status.error": "Impossible de lister les fichiers du projet",
   "composer.mention.status.no-workspace": "Choisissez un projet pour citer ses fichiers",
-  "providers.apiKey.label": "Clé API",
-  "providers.baseUrl.label": "URL de base",
-  "providers.baseUrl.labelRequired": "URL de base · requise",
-  "providers.baseUrl.required": "Ce fournisseur a besoin d’une URL de base pour être enregistré.",
-  "providers.saveAndTest": "Enregistrer et tester",
-  "providers.saved": "Enregistré",
-  "providers.role.loadError": "Impossible de charger ce réglage : sa valeur actuelle est inconnue.",
-  "providers.role.stale": "Dernière valeur connue affichée — l’actualisation a échoué.",
-  "providers.setup.steps":
-    "Choisissez un fournisseur, collez sa clé API puis « Enregistrer et tester ». C’est tout ce qu’il faut pour commencer.",
-  "providers.setup.done":
-    "Un fournisseur est prêt. Fermez les paramètres pour revenir : votre brouillon est toujours là.",
-  "providers.roles.heading": "Rôles des modèles",
   "settings.search.empty": "Aucun réglage ne correspond à « {{query}} ».",
   "startup.failed.title": "Flame n’a pas pu démarrer",
   "startup.failed.body":
@@ -1254,4 +1200,6 @@ export const fr: Record<string, string> = {
     "Impossible de charger les thèmes des paquets dans cette fenêtre : {{reason}}",
   "packages.reviewedField":
     "« {{field}} » appartient à la version examinée et ne peut pas être modifié ici.",
+  "composer.models.error": "Impossible de charger les modèles.",
+  "composer.models.refresh": "Actualiser les modèles",
 };

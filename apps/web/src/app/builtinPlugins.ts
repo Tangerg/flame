@@ -56,7 +56,7 @@ import { createGoalPlugin } from "@/features/goal/index";
 import narrativeRails from "@/features/chat/narrative-rails/index";
 import planProgress from "@/features/chat/plan-progress/index";
 import { createPluginsPlugin } from "@/features/plugins/index";
-import { createProvidersPlugin } from "@/features/providers/index";
+import { createProviderCatalogPlugin } from "@/features/providers/index";
 import contextUsage from "@/features/chat/context-usage/index";
 import shortcuts from "@/features/command/shortcuts/index";
 import { sidebarActions } from "@/features/sidebar/index";
@@ -137,7 +137,7 @@ export function createBuiltinPlugins(
     personalization,
     connectionSettings,
     createPluginsPlugin(installedPlugins),
-    createProvidersPlugin(runtimeClient),
+    createProviderCatalogPlugin(runtimeClient),
     createMCPServersPlugin(runtimeClient),
     fileView,
     subagentsView,

@@ -4,6 +4,7 @@ import { createFlameClient, type FlameClient } from "@flame/runtime-client";
 import { VISUAL_CAPABILITIES } from "./agentFixtureFacts";
 import { type ServerCapabilities, type Diff } from "@flame/runtime-client/wire";
 import { createVisualRuntimeTransport } from "./createVisualRuntimeTransport";
+import { LONG_MODEL_FACTS } from "./runtimeSnapshots";
 import { definePlugin } from "@/extensions/definePlugin";
 import { createRoot } from "react-dom/client";
 import { type ReactNode } from "react";
@@ -206,7 +207,10 @@ async function installVisualRuntimeClient(
   acceptSkillProposals = false,
 ): Promise<FlameClient> {
   const client = createFlameClient(
-    createVisualRuntimeTransport(snapshot, capabilities, readDiff, acceptSkillProposals),
+    createVisualRuntimeTransport(snapshot, capabilities, readDiff, {
+      acceptSkillProposals,
+      modelFacts: query.has("long-models") ? LONG_MODEL_FACTS : undefined,
+    }),
     { capabilities: () => capabilities },
   );
   await loadPluginsForTest(

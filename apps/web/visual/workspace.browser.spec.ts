@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from "./test";
 import AxeBuilder from "@axe-core/playwright";
 import { type VisualAgentState } from "./agentSessionSnapshots";
 import { en } from "@/lib/i18n/locales/en";
+import { en as providersEnglish } from "../../../plugins/providers/component/locales/en";
 import { en as hooksEnglish } from "../../../plugins/hooks/component/locales/en";
 import { solidFill } from "@/features/theme/kit/scale";
 import {
@@ -626,9 +627,9 @@ test("settings filtering and menu dismissal stay inside production semantics", a
 
   const theme = page.getByRole("button", { name: "Theme" });
   await theme.click();
-  await expect(page.getByRole("menuitem", { name: "Light" })).toBeVisible();
+  await expect(page.getByRole("menuitemradio", { name: "Light" })).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("menuitem", { name: "Light" })).toHaveCount(0);
+  await expect(page.getByRole("menuitemradio", { name: "Light" })).toHaveCount(0);
   await expect(theme).toBeFocused();
   await page
     .locator('[data-slot="workspace-window-header"]')
@@ -716,9 +717,9 @@ test("provider and model settings keep validation local to their form", async ({
   await expect(page.getByText("Utility model", { exact: true })).toBeVisible();
   await expect(page.getByText("Embedding model", { exact: true })).toBeVisible();
 
-  const utilityModel = page.getByRole("button", { name: "Utility model" });
+  const utilityModel = page.getByRole("combobox", { name: "Utility model" });
   await utilityModel.click();
-  await expect(page.getByRole("menuitemradio", { name: /GPT-5.6/ })).toBeVisible();
+  await expect(page.getByRole("option", { name: /GPT-5.6/ })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(utilityModel).toBeFocused();
 
@@ -838,12 +839,12 @@ for (const pane of VISUAL_SETTINGS_PANES) {
     await openWorkspace(page, { state: "settings", pane });
     await waitForWorkspaceState(page, "settings");
     if (pane === "providers") {
-      await expect(page.getByRole("button", { name: en["providers.utility.title"]! })).toHaveText(
-        "GPT-5.6 Sol openai / gpt-5.6-sol",
-      );
-      await expect(page.getByRole("button", { name: en["providers.embedding.title"]! })).toHaveText(
-        en["providers.embedding.off"]!,
-      );
+      await expect(
+        page.getByRole("combobox", { name: providersEnglish["providers.utility.title"]! }),
+      ).toHaveText("GPT-5.6 Sol · openai / gpt-5.6-sol");
+      await expect(
+        page.getByRole("combobox", { name: providersEnglish["providers.embedding.title"]! }),
+      ).toHaveText(providersEnglish["providers.embedding.off"]!);
     }
     const emptyLabel = {
       "mcp-servers": en["mcp.empty"],

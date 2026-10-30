@@ -70,9 +70,6 @@ async function openMemory() {
     return mutationResult((key) => settle(request, key), key);
   });
   const context: ComponentContext = {
-    get sourceSignal() {
-      return this.signal;
-    },
     component: { ...VISUAL_MEMORY_BINDING, componentId: "memory" },
     binding: VISUAL_MEMORY_BINDING,
     runtime,

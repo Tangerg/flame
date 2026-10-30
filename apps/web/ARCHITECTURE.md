@@ -63,7 +63,7 @@ without overriding the meaning of a global size token.
 | `agent/`                    | Session and Run projections, streaming fold, input submission, interruption responses, recovery, and consumer-facing command/read ports |
 | `composer/`                 | Drafts, local attachments, authoring history, explicit Run overrides, and submission intent                                             |
 | Other `chat/` features      | Conversation rendering, tool previews, message actions, Goal/Plan presentation, search, and related contributions                       |
-| `providers/`                | Provider/model catalog, exact model identity, configuration drafts, role selection, and configuration mutations                         |
+| `providers/`                | Provider/model catalog, exact model identity and navigation to an installed model settings entry                                        |
 | `connection/`               | Endpoint configuration, capability negotiation, connection generation, server scope, and mutation-journal storage                       |
 | `navigation/`               | Work Index projections and working-directory selection                                                                                  |
 | `workspace/`                | Workspace materials, view navigation, file and review reads, conversation export, and subscription invalidation                         |
@@ -152,9 +152,16 @@ registration. The former compiled Diff view and guest carrier are removed.
 
 Optional settings pages use installed `settingsPane` components in the Extensions
 group. They share the ordinary package resource lease, error boundary and captured
-command lifetime. Brand artwork and Hooks management live in `plugins/brand` and
-`plugins/hooks`; Runtime retains project trust and final Hook decisions. Changing
-the display locale preserves each accepted operation's captured signal and owner.
+command lifetime. Brand artwork, Hooks management and model configuration live in
+`plugins/brand`, `plugins/hooks` and `plugins/providers`; Runtime retains credentials,
+model roles, project trust and final Hook decisions. A declared settings intent
+connects basic setup and Composer navigation to the exact installed model settings
+entry. Missing or ambiguous entries route to plugin management.
+Changing the display locale preserves each accepted operation's captured signal
+and owner. A component source factory retains private drafts across mounts under
+the actual contribution, native resource and Host lifetime. The factory constructs
+without I/O; mounted contexts retain execution tracking and cancellation. The
+Host retains this source explicitly rather than publishing a global presenter.
 
 ## Dependencies and public surfaces
 

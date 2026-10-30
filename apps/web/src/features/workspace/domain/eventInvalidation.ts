@@ -12,9 +12,7 @@ export type WorkspaceInvalidationTarget =
   | "mcpExposure"
   | "providers"
   | "sessionUsage"
-  | "sessions"
-  | "utilityRole"
-  | "embeddingRole";
+  | "sessions";
 
 type WorkspaceEventType =
   | "files.changed"
@@ -144,7 +142,7 @@ export function workspaceInvalidations(ev: WorkspaceEventLike): WorkspaceInvalid
     case "hooks.changed":
       return [];
     case "models.changed":
-      return ["providers", "models", "utilityRole", "embeddingRole"];
+      return ["providers", "models"];
     case "approvals.changed":
       return ["approvalMode", "approvalRules"];
     case "plugins.dataChanged":

@@ -31,7 +31,13 @@ const styles = stylex.create({
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
+    gap: space.s3,
+    minWidth: 0,
+    whiteSpace: "normal",
+    overflowWrap: "anywhere",
   },
+  value: { minWidth: 0, flex: "1 1 auto", overflowWrap: "anywhere" },
+  indicator: { flexShrink: 0 },
   trigger: {
     justifySelf: "stretch",
     width: "auto",
@@ -58,7 +64,7 @@ export function Select({
 }: {
   value: string | null;
   onValueChange: (value: string) => void;
-  options: readonly { value: string; label: string }[];
+  options: readonly { value: string; label: string; disabled?: boolean }[];
   label: string;
   id?: string;
   disabled?: boolean;
@@ -104,6 +110,7 @@ export function Select({
       >
         <SelectPrimitive.Value
           placeholder={value === null ? label : undefined}
+          {...stylex.props(styles.value)}
         />
         <SelectPrimitive.Icon>
           <Icon glyph={ChevronDown} size="xs" />
@@ -166,12 +173,15 @@ export function Select({
               <SelectPrimitive.Item
                 key={option.value}
                 value={option.value}
+                disabled={option.disabled}
                 {...stylex.props(MENU_SURFACE.item, styles.item)}
               >
-                <SelectPrimitive.ItemText>
+                <SelectPrimitive.ItemText {...stylex.props(styles.value)}>
                   {option.label}
                 </SelectPrimitive.ItemText>
-                <SelectPrimitive.ItemIndicator>
+                <SelectPrimitive.ItemIndicator
+                  {...stylex.props(styles.indicator)}
+                >
                   <Icon glyph={Check} size="xs" />
                 </SelectPrimitive.ItemIndicator>
               </SelectPrimitive.Item>

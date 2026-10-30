@@ -535,6 +535,7 @@ it("presents and retains only the contributions Runtime admits", async () => {
       title: "Provider settings",
       scope: "client",
       placement: "settingsPane",
+      settingsIntent: "modelProviders",
       material: "providers",
       entry: "io.github.tangerg.flame/components/component.js",
       export: "Settings",
@@ -593,12 +594,18 @@ it("presents and retains only the contributions Runtime admits", async () => {
   expect(
     contributionsTo(SETTINGS_PANE)
       .filter((entry) => entry.item.material === "providers")
-      .map((entry) => ({ id: entry.item.id, label: entry.item.label, group: entry.item.group })),
+      .map((entry) => ({
+        id: entry.item.id,
+        label: entry.item.label,
+        group: entry.item.group,
+        intent: entry.item.intent,
+      })),
   ).toEqual([
     {
       id: "package:d3cbafab-ef30-4e20-9583-42f5316dc865:settings",
       label: "Provider settings",
       group: "extensions",
+      intent: "modelProviders",
     },
   ]);
   expect(retainThemeSelection).toHaveBeenLastCalledWith(
