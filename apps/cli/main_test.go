@@ -1079,25 +1079,13 @@ func (s *scriptedRuntimeOwner) Close() error {
 	return s.closeErrors[index]
 }
 
-func TestRuntimeOwnerCloseResumesIncompleteTeardown(t *testing.T) {
+func TestRuntimeOwnerCloseReportsTheFirstTeardownFailure(t *testing.T) {
 	t.Parallel()
-	transient := errors.New("teardown still draining")
-	owner := &scriptedRuntimeOwner{closeErrors: []error{transient, transient, nil}}
-	if err := closeRuntimeOwner(owner); err != nil {
-		t.Fatalf("closeRuntimeOwner: %v", err)
-	}
-	if owner.closes != 3 {
-		t.Fatalf("close attempts = %d, want 3", owner.closes)
-	}
-}
-
-func TestRuntimeOwnerCloseBoundsPermanentFailure(t *testing.T) {
-	t.Parallel()
-	want := errors.New("permanent teardown failure")
-	owner := &scriptedRuntimeOwner{closeErrors: []error{want, want, want, nil}}
+	want := errors.New("teardown failure")
+	owner := &scriptedRuntimeOwner{closeErrors: []error{want, nil}}
 	err := closeRuntimeOwner(owner)
-	if !errors.Is(err, want) || owner.closes != runtimeCloseAttempts {
-		t.Fatalf("close result = (%v, %d attempts)", err, owner.closes)
+	if !errors.Is(err, want) || owner.closes != 1 {
+		t.Fatalf("close result = (%v, %d closes), want the failure after one close", err, owner.closes)
 	}
 }
 

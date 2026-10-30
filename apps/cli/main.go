@@ -14,8 +14,6 @@ import (
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 )
 
-const runtimeCloseAttempts = 3
-
 func main() {
 	os.Exit(run())
 }
@@ -62,15 +60,10 @@ func closeRuntimeOwner(owner runtimeCloser) error {
 	if owner == nil {
 		return nil
 	}
-	errorsByAttempt := make([]error, 0, runtimeCloseAttempts)
-	for range runtimeCloseAttempts {
-		err := owner.Close()
-		if err == nil {
-			return nil
-		}
-		errorsByAttempt = append(errorsByAttempt, err)
+	if err := owner.Close(); err != nil {
+		return fmt.Errorf("close runtime: %w", err)
 	}
-	return fmt.Errorf("close runtime after %d attempts: %w", runtimeCloseAttempts, errors.Join(errorsByAttempt...))
+	return nil
 }
 
 func flameHomeDirectory() (string, error) {
