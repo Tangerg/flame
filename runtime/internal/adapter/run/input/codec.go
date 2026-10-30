@@ -32,11 +32,14 @@ func EncodePrompt(prompt runs.Interrupt) (jsontext.Value, error) {
 func DecodePrompt(raw []byte) (runs.Interrupt, error) {
 	wire, err := decode[interruptWire](raw)
 	if err != nil {
-		return runs.Interrupt{}, fmt.Errorf("run input codec: decode interrupt: %w", err)
+		return nil, fmt.Errorf("run input codec: decode interrupt: %w", err)
 	}
-	interrupt := wire.interrupt()
+	interrupt, err := wire.interrupt()
+	if err != nil {
+		return nil, fmt.Errorf("run input codec: decode interrupt: %w", err)
+	}
 	if err := interrupt.Validate(); err != nil {
-		return runs.Interrupt{}, err
+		return nil, err
 	}
 	return interrupt, nil
 }
@@ -118,14 +121,14 @@ type questionOptionWire struct {
 }
 
 func promptWireFrom(interrupt runs.Interrupt) interruptWire {
-	result := interruptWire{Kind: interrupt.Kind}
-	if prompt := interrupt.Approval; prompt != nil {
+	result := interruptWire{Kind: interrupt.Kind()}
+	switch prompt := interrupt.(type) {
+	case runs.ApprovalPrompt:
 		result.Approval = &approvalPromptWire{
 			Tool: prompt.Tool, SourceFingerprint: prompt.SourceFingerprint, CallID: prompt.CallID, Arguments: prompt.Arguments,
 			SafetyClass: prompt.SafetyClass, Risk: prompt.Risk, Reason: prompt.Reason, Rememberable: prompt.Rememberable,
 		}
-	}
-	if prompt := interrupt.Question; prompt != nil {
+	case runs.QuestionPrompt:
 		result.Question = &questionPromptWire{
 			ToolName: prompt.ToolName, Arguments: prompt.Arguments,
 			Fields: questionFieldWiresFrom(prompt.Fields),
@@ -134,21 +137,24 @@ func promptWireFrom(interrupt runs.Interrupt) interruptWire {
 	return result
 }
 
-func (i interruptWire) interrupt() runs.Interrupt {
-	result := runs.Interrupt{Kind: i.Kind}
-	if prompt := i.Approval; prompt != nil {
-		result.Approval = &runs.ApprovalPrompt{
+// interrupt translates the persisted envelope, whose kind must name the one
+// prompt it carries.
+func (i interruptWire) interrupt() (runs.Interrupt, error) {
+	switch {
+	case i.Kind == run.InterruptApproval && i.Approval != nil && i.Question == nil:
+		prompt := i.Approval
+		return runs.ApprovalPrompt{
 			Tool: prompt.Tool, SourceFingerprint: prompt.SourceFingerprint, CallID: prompt.CallID, Arguments: prompt.Arguments,
 			SafetyClass: prompt.SafetyClass, Risk: prompt.Risk, Reason: prompt.Reason, Rememberable: prompt.Rememberable,
-		}
-	}
-	if prompt := i.Question; prompt != nil {
-		result.Question = &runs.QuestionPrompt{
-			ToolName: prompt.ToolName, Arguments: prompt.Arguments,
+		}, nil
+	case i.Kind == run.InterruptQuestion && i.Question != nil && i.Approval == nil:
+		return runs.QuestionPrompt{
+			ToolName: i.Question.ToolName, Arguments: i.Question.Arguments,
 			Fields: questionFieldSpecsFrom(i.Question.Fields),
-		}
+		}, nil
+	default:
+		return nil, fmt.Errorf("interrupt kind %q does not name its one prompt", i.Kind)
 	}
-	return result
 }
 
 func questionFieldWiresFrom(specs []runs.QuestionFieldSpec) []questionFieldSpecWire {

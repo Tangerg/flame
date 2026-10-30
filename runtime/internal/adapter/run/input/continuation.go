@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"strings"
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -90,7 +89,7 @@ func Restore(invocation toolcontract.Invocation) (Continuation, bool, error) {
 	if err != nil {
 		return Continuation{}, true, err
 	}
-	if resolution.Kind() != prompt.Kind {
+	if resolution.Kind() != prompt.Kind() {
 		return Continuation{}, true, errors.New("run input: answer kind differs from the persisted prompt")
 	}
 	return Continuation{Key: state.Key, Interrupt: prompt, Resolution: resolution}, true, nil
@@ -99,8 +98,10 @@ func Restore(invocation toolcontract.Invocation) (Continuation, bool, error) {
 // Require returns a restored decision for an already-answered request, or a
 // Scope InputRequest the Tool returns as tool.Result{InputRequest} to park on
 // new input. Scope owns the suspension, wait identity, and re-entry.
-func Require(ctx context.Context, invocation toolcontract.Invocation, key string, prompt runs.Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
-	promptJSON, err := admitRequirement(ctx, key, prompt)
+func Require(ctx context.Context, invocation toolcontract.Invocation, prompt runs.Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
+	toolName, arguments := prompt.ToolCall()
+	key := run.InterruptKey(prompt.Kind(), toolName, arguments)
+	promptJSON, err := admitRequirement(ctx, prompt)
 	if err != nil {
 		return run.InterruptResolution{}, nil, err
 	}
@@ -131,22 +132,19 @@ func Require(ctx context.Context, invocation toolcontract.Invocation, key string
 	return run.InterruptResolution{}, &request, nil
 }
 
-func admitRequirement(ctx context.Context, key string, prompt runs.Interrupt) (jsontext.Value, error) {
+func admitRequirement(ctx context.Context, prompt runs.Interrupt) (jsontext.Value, error) {
 	promptJSON, err := EncodePrompt(prompt)
 	if err != nil {
 		return nil, err
-	}
-	if strings.TrimSpace(key) == "" {
-		return nil, errors.New("run input: request key is required")
 	}
 	policy, ok := capabilityPolicyFrom(ctx)
 	if !ok {
 		return nil, errors.New("run input: Run capabilities are unavailable")
 	}
-	if !slices.Contains(policy.allowed, prompt.Kind) {
+	if !slices.Contains(policy.allowed, prompt.Kind()) {
 		return nil, fmt.Errorf(
 			"run input: %s is outside the Run capability set",
-			prompt.Kind,
+			prompt.Kind(),
 		)
 	}
 	return promptJSON, nil

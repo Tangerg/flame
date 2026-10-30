@@ -206,23 +206,17 @@ func presentInterrupts(interrupts []transcript.Interrupt) []protocol.Interrupt {
 	out := make([]protocol.Interrupt, 0, len(interrupts))
 	for _, request := range interrupts {
 		entry := protocol.Interrupt{ItemID: request.ItemID, RunID: request.RunID}
-		entry.Type = presentInterruptType(request.Kind)
-		switch request.Kind {
-		case rundomain.InterruptApproval:
-			if request.Approval == nil {
-				panic("delivery: approval interrupt has no approval payload")
-			}
+		entry.Type = presentInterruptType(request.Kind())
+		switch prompt := request.Prompt.(type) {
+		case transcript.Approval:
 			entry.Payload = &protocol.InterruptPayload{
-				Tool:         new(presentTool(request.Approval.Tool)),
-				Risk:         presentApprovalRisk(request.Approval.Risk),
-				Reason:       request.Approval.Reason,
-				Rememberable: request.Approval.Rememberable,
+				Tool:         new(presentTool(prompt.Tool)),
+				Risk:         presentApprovalRisk(prompt.Risk),
+				Reason:       prompt.Reason,
+				Rememberable: prompt.Rememberable,
 			}
-		case rundomain.InterruptQuestion:
-			if request.Question == nil {
-				panic("delivery: question interrupt has no question payload")
-			}
-			entry.Payload = &protocol.InterruptPayload{Question: new(presentQuestion(*request.Question))}
+		case transcript.Question:
+			entry.Payload = &protocol.InterruptPayload{Question: new(presentQuestion(prompt))}
 		}
 		out = append(out, entry)
 	}

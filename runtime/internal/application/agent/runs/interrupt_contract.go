@@ -21,11 +21,11 @@ import (
 // request it returns a Scope InputRequest the tool returns as
 // tool.Result{InputRequest}. Tool packages depend only on this contract and
 // never on execution internals.
-type InterruptFunc func(context.Context, toolcontract.Invocation, string, Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error)
+type InterruptFunc func(context.Context, toolcontract.Invocation, Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error)
 
 // InterruptUnavailable is the fail-closed default for a tool environment that
 // has no execution interrupt provider.
-func InterruptUnavailable(context.Context, toolcontract.Invocation, string, Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
+func InterruptUnavailable(context.Context, toolcontract.Invocation, Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
 	return run.InterruptResolution{}, nil, errors.New("runs: execution interrupts are unavailable")
 }
 
@@ -72,65 +72,43 @@ type QuestionOptionSpec struct {
 	Description string
 }
 
-// Interrupt is the durable product request for external input. Exactly
-// one payload must be present and must match Kind. Executor continuation data is
-// deliberately absent.
-type Interrupt struct {
-	Kind     run.InterruptKind
-	Approval *ApprovalPrompt
-	Question *QuestionPrompt
+// Interrupt is the durable product request for external input: an
+// ApprovalPrompt or a QuestionPrompt, and the prompt alone decides its Kind.
+// Executor continuation data is deliberately absent.
+type Interrupt interface {
+	Kind() run.InterruptKind
+	// ToolCall returns the logical tool call that owns this interrupt.
+	ToolCall() (name, arguments string)
+	// Validate rejects a malformed prompt before it becomes a durable Pending
+	// aggregate or application event.
+	Validate() error
+	clone() Interrupt
 }
 
-func cloneInterrupt(value Interrupt) Interrupt {
-	if value.Approval != nil {
-		value.Approval = new(*value.Approval)
+func validateInterrupt(interrupt Interrupt) error {
+	if interrupt == nil {
+		return errors.New("runs: interrupt has no prompt")
 	}
-	if value.Question != nil {
-		question := *value.Question
-		question.Fields = slices.Clone(question.Fields)
-		for index := range question.Fields {
-			question.Fields[index].Options = slices.Clone(question.Fields[index].Options)
-		}
-		value.Question = &question
-	}
-	return value
+	return interrupt.Validate()
 }
 
-// Tool returns the logical tool call that owns this interrupt.
-func (i Interrupt) Tool() (name, arguments string) {
-	switch i.Kind {
-	case run.InterruptApproval:
-		if i.Approval != nil {
-			return i.Approval.Tool.ModelName(), i.Approval.Arguments
-		}
-	case run.InterruptQuestion:
-		if i.Question != nil {
-			return i.Question.ToolName, i.Question.Arguments
-		}
+func (ApprovalPrompt) Kind() run.InterruptKind { return run.InterruptApproval }
+func (QuestionPrompt) Kind() run.InterruptKind { return run.InterruptQuestion }
+
+func (a ApprovalPrompt) ToolCall() (name, arguments string) { return a.Tool.ModelName(), a.Arguments }
+func (q QuestionPrompt) ToolCall() (name, arguments string) { return q.ToolName, q.Arguments }
+
+func (a ApprovalPrompt) clone() Interrupt { return a }
+
+func (q QuestionPrompt) clone() Interrupt {
+	q.Fields = slices.Clone(q.Fields)
+	for index := range q.Fields {
+		q.Fields[index].Options = slices.Clone(q.Fields[index].Options)
 	}
-	return "", ""
+	return q
 }
 
-// Validate rejects malformed or ambiguous envelopes before they become
-// a durable Pending aggregate or application events.
-func (i Interrupt) Validate() error {
-	switch i.Kind {
-	case run.InterruptApproval:
-		if i.Approval == nil || i.Question != nil {
-			return errors.New("runs: malformed approval interrupt")
-		}
-		return i.Approval.validate()
-	case run.InterruptQuestion:
-		if i.Question == nil || i.Approval != nil {
-			return errors.New("runs: malformed question interrupt")
-		}
-		return i.Question.validate()
-	default:
-		return fmt.Errorf("runs: unknown interrupt kind %q", i.Kind)
-	}
-}
-
-func (a ApprovalPrompt) validate() error {
+func (a ApprovalPrompt) Validate() error {
 	if err := a.Tool.ValidateFingerprint(a.SourceFingerprint); err != nil {
 		return err
 	}
@@ -149,7 +127,7 @@ func (a ApprovalPrompt) validate() error {
 	return nil
 }
 
-func (q QuestionPrompt) validate() error {
+func (q QuestionPrompt) Validate() error {
 	if strings.TrimSpace(q.ToolName) == "" {
 		return errors.New("runs: question tool name is required")
 	}

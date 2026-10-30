@@ -85,10 +85,11 @@ func (i *InteractionExecutor) PrepareContinuation(ctx context.Context, continuat
 			if err != nil {
 				return nil, err
 			}
-			if prompt.Approval == nil || prompt.Approval.CallID != candidate.CallID {
+			waiting, ok := prompt.(runs.ApprovalPrompt)
+			if !ok || waiting.CallID != candidate.CallID {
 				continue
 			}
-			if prompt.Approval.Tool != candidate.Request.Tool || prompt.Approval.SourceFingerprint != candidate.Request.SourceFingerprint {
+			if waiting.Tool != candidate.Request.Tool || waiting.SourceFingerprint != candidate.Request.SourceFingerprint {
 				return nil, fmt.Errorf("%w: remembered invocation authority differs from its wait", runs.ErrExecutorStateLost)
 			}
 			contract := checkpoint.handoff.inputs[input.WaitID()].approvalInputSchema

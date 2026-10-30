@@ -38,8 +38,7 @@ func TestResumeRun_KeepsInterruptOpenWhenStartFails(t *testing.T) {
 		"member_parked",
 		[]transcript.Interrupt{{
 			ItemID: "item_1",
-			Kind:   run.InterruptApproval,
-			Approval: &transcript.Approval{
+			Prompt: transcript.Approval{
 				Tool: transcript.ToolInvocation{Name: "shell"}, Risk: "medium",
 			},
 		}},
@@ -93,8 +92,7 @@ func TestResumeRunRejectsMissingAndUnknownItemCoverage(t *testing.T) {
 		"member_parked",
 		[]transcript.Interrupt{{
 			ItemID: "item_open",
-			Kind:   run.InterruptApproval,
-			Approval: &transcript.Approval{
+			Prompt: transcript.Approval{
 				Tool: transcript.ToolInvocation{Name: "shell"}, Risk: "medium",
 			},
 		}},

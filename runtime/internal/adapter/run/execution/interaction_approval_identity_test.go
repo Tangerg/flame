@@ -8,7 +8,6 @@ import (
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -50,7 +49,7 @@ func TestRestoredToolApprovalRejectsIdentityAndAuthorityDrift(t *testing.T) {
 	if !found {
 		t.Fatal("expected pending approval")
 	}
-	encoded, err := runinput.EncodePrompt(runs.Interrupt{Kind: run.InterruptApproval, Approval: &prompt})
+	encoded, err := runinput.EncodePrompt(prompt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +83,7 @@ func TestRestoredToolApprovalRejectsIdentityAndAuthorityDrift(t *testing.T) {
 		t.Run(change.name, func(t *testing.T) {
 			current := request
 			change.mutate(&current)
-			if _, err := authorizer.ResolveToolApproval(t.Context(), current, *restored.Approval, answer); err == nil {
+			if _, err := authorizer.ResolveToolApproval(t.Context(), current, restored.(runs.ApprovalPrompt), answer); err == nil {
 				t.Fatal("restored response authorized a different invocation")
 			}
 			observed := observedInteractionTool{
@@ -93,7 +92,7 @@ func TestRestoredToolApprovalRejectsIdentityAndAuthorityDrift(t *testing.T) {
 			value := *answer.Approval()
 			value.EditedArguments = `{"unexpected":true}`
 			invalidAnswer := testsupport.ApprovalAnswer(t, value)
-			_, _, _, err := observed.resolveToolApproval(t.Context(), current, *restored.Approval, invalidAnswer)
+			_, _, _, err := observed.resolveToolApproval(t.Context(), current, restored.(runs.ApprovalPrompt), invalidAnswer)
 			if _, known := errors.AsType[*toolcontract.Failure](err); err == nil || known {
 				t.Fatalf("identity mismatch became an ordinary argument failure: %v", err)
 			}
@@ -101,7 +100,7 @@ func TestRestoredToolApprovalRejectsIdentityAndAuthorityDrift(t *testing.T) {
 	}
 	// The matching invocation still resolves without error; persisting a standing
 	// rule for it is the acceptance owner's responsibility, not the Tool boundary's.
-	if _, err := authorizer.ResolveToolApproval(t.Context(), request, *restored.Approval, answer); err != nil {
+	if _, err := authorizer.ResolveToolApproval(t.Context(), request, restored.(runs.ApprovalPrompt), answer); err != nil {
 		t.Fatal(err)
 	}
 }

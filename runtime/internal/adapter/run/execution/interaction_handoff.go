@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 	"github.com/Tangerg/scope/core/jsonschema"
@@ -81,9 +81,9 @@ func (i *interactionSession) encodeInteractionHandoff(tree agent.TreeSnapshot) (
 		if err != nil {
 			return nil, err
 		}
-		if prompt.Kind == run.InterruptApproval {
+		if approval, ok := prompt.(runs.ApprovalPrompt); ok {
 			i.state.mu.Lock()
-			contract, found := i.state.deployments.toolContracts[target.DeploymentRef()][prompt.Approval.Tool]
+			contract, found := i.state.deployments.toolContracts[target.DeploymentRef()][approval.Tool]
 			i.state.mu.Unlock()
 			if !found {
 				return nil, errors.New("execution: approval Tool contract is unavailable")

@@ -275,16 +275,14 @@ func validTreePending() Pending {
 			{
 				ItemID: "item_grandchild", ItemOccurredAt: createdAt,
 				RunID: "run_grandchild",
-				Kind:  run.InterruptApproval,
-				Approval: &transcript.Approval{
+				Prompt: transcript.Approval{
 					Tool: transcript.ToolInvocation{Name: "shell"}, Risk: "medium",
 				},
 			},
 			{
 				ItemID: "item_b", ItemOccurredAt: createdAt,
 				RunID: "run_b",
-				Kind:  run.InterruptApproval,
-				Approval: &transcript.Approval{
+				Prompt: transcript.Approval{
 					Tool: transcript.ToolInvocation{Name: "write"}, Risk: "medium",
 				},
 			},
@@ -332,8 +330,8 @@ func TestAcceptedAnswersHaveOneFreshAndRecoveryProjection(t *testing.T) {
 			}
 			responses := make([]ResumeResponse, len(open))
 			for index, request := range open {
-				responses[index] = ResumeResponse{ItemID: request.ItemID, Kind: request.Kind}
-				if request.Kind == run.InterruptQuestion {
+				responses[index] = ResumeResponse{ItemID: request.ItemID, Kind: request.Kind()}
+				if request.Kind() == run.InterruptQuestion {
 					responses[index].Question = &QuestionResponse{Answers: [][]string{{"chosen"}}}
 				} else {
 					responses[index].Approval = &ApprovalResponse{Approved: index == 0}

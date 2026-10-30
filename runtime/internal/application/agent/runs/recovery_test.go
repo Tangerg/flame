@@ -1384,7 +1384,7 @@ func coherentRecoveryPark(t *testing.T) (rundomain.Run, Pending, transcript.Item
 	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}}
 	interrupt := transcript.Interrupt{
 		ItemID: "item_question", ItemOccurredAt: createdAt,
-		RunID: "run_root", Kind: rundomain.InterruptQuestion, Question: question,
+		RunID: "run_root", Prompt: *question,
 	}
 	run := testsupport.MustRestoreRun(rundomain.Snapshot{ID: "run_root", SessionID: "session", State: rundomain.Waiting,
 		ModelSelection: selection,

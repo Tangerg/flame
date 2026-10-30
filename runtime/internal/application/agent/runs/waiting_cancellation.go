@@ -110,7 +110,7 @@ func (p PreparedWaitingSubtreeCancellation) validate() error {
 				interruption.MemberID,
 			)
 		}
-		if err := interruption.Interrupt.Validate(); err != nil {
+		if err := validateInterrupt(interruption.Interrupt); err != nil {
 			return fmt.Errorf("runs: prepared waiting subtree interruption[%d]: %w", index, err)
 		}
 		identity := inputRequestIdentity(interruption.MemberID, interruption.RequestID)
@@ -359,7 +359,7 @@ func (w waitingCancellationBuilder) remainingInterruptions(
 	remainingBindings := make([]InterruptBinding, 0, len(pendingInterruptions))
 	keptBindings := make(map[int]struct{}, len(pendingInterruptions))
 	for _, boundary := range pendingInterruptions {
-		if err := boundary.Interrupt.Validate(); err != nil {
+		if err := validateInterrupt(boundary.Interrupt); err != nil {
 			return nil, nil, fmt.Errorf(
 				"runs: prepared member %q input request %q: %w",
 				boundary.MemberID,
@@ -392,12 +392,12 @@ func (w waitingCancellationBuilder) remainingInterruptions(
 				binding.MemberID,
 			)
 		}
-		if interrupt.Kind != boundary.Interrupt.Kind {
+		if interrupt.Kind() != boundary.Interrupt.Kind() {
 			return nil, nil, fmt.Errorf(
 				"runs: prepared input request %q changed interrupt kind from %s to %s",
 				binding.RequestID,
-				interrupt.Kind,
-				boundary.Interrupt.Kind,
+				interrupt.Kind(),
+				boundary.Interrupt.Kind(),
 			)
 		}
 		keptBindings[index] = struct{}{}

@@ -256,7 +256,9 @@ func (t TreeInterrupted) Interruptions() []MemberInterruption {
 func cloneMemberInterruptions(values []MemberInterruption) []MemberInterruption {
 	interruptions := make([]MemberInterruption, len(values))
 	for index, value := range values {
-		value.Interrupt = cloneInterrupt(value.Interrupt)
+		if value.Interrupt != nil {
+			value.Interrupt = value.Interrupt.clone()
+		}
 		interruptions[index] = value
 	}
 	return interruptions
@@ -277,7 +279,7 @@ func (t TreeInterrupted) validate() error {
 		if err := validateRequest(request.RequestID); err != nil {
 			return fmt.Errorf("runs: tree interrupt request[%d]: %w", index, err)
 		}
-		if err := request.Interrupt.Validate(); err != nil {
+		if err := validateInterrupt(request.Interrupt); err != nil {
 			return fmt.Errorf("runs: tree interrupt request[%d]: %w", index, err)
 		}
 		key := inputRequestIdentity(request.MemberID, request.RequestID)

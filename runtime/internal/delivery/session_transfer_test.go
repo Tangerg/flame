@@ -394,9 +394,8 @@ func TestCancelParkedRunProducesPortableTerminalSnapshot(t *testing.T) {
 		"exec_parked",
 		"member_parked",
 		[]transcript.Interrupt{{
-			ItemID:   "item_question",
-			Kind:     run.InterruptQuestion,
-			Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}},
+			ItemID: "item_question",
+			Prompt: transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}},
 		}},
 		parkedAt,
 	)); openErr != nil {

@@ -74,7 +74,7 @@ func newWaitingDelegateFixture(t *testing.T, identity string) *waitingDelegateFi
 }
 
 func newDelegateQuestionTool(t *testing.T, description string) toolcontract.Tool {
-	return newQuestionTool(t, "fixture_ask", description, "delegate.required-value",
+	return newQuestionTool(t, "fixture_ask", description,
 		[]runs.QuestionFieldSpec{{Prompt: "Which value should the delegate use?"}},
 		delegateQuestionAnswer)
 }

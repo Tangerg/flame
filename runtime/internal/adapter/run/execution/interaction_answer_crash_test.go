@@ -63,7 +63,7 @@ func (s answerCrashTrees) SaveExecutionTree(ctx context.Context, update runs.Exe
 
 func answerCrashExecutor(t *testing.T, trees runs.ExecutionTreeStore, workspace string) *InteractionExecutor {
 	t.Helper()
-	question := newQuestionTool(t, "fixture_ask", "Ask for a value.", "crash.question",
+	question := newQuestionTool(t, "fixture_ask", "Ask for a value.",
 		[]runs.QuestionFieldSpec{{Prompt: "Which value?"}},
 		func(resolution run.InterruptResolution) (string, error) {
 			file, err := os.OpenFile(filepath.Join(workspace, "effects.txt"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)

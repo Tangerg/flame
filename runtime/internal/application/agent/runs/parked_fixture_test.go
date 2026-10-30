@@ -154,11 +154,12 @@ func testTreeContinuationOf(pending Pending, interrupts []transcript.Interrupt) 
 		input := testsupport.ItemInput{
 			ID: projected.ItemID, SessionID: fixtureSessionID, RunID: projected.RunID, OccurredAt: projected.ItemOccurredAt,
 		}
-		if projected.Approval != nil {
+		switch prompt := projected.Prompt.(type) {
+		case transcript.Approval:
 			input.Kind, input.Status = transcript.ToolCall, transcript.ItemRunning
-			input.Tool = &projected.Approval.Tool
-		} else {
-			input.Kind, input.Question = transcript.QuestionItem, projected.Question
+			input.Tool = &prompt.Tool
+		case transcript.Question:
+			input.Kind, input.Question = transcript.QuestionItem, &prompt
 		}
 		continuation.items[projected.ItemID] = testsupport.MustRestoreItem(input)
 	}

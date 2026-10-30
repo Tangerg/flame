@@ -784,8 +784,7 @@ func assertOpeningResumeCommit(t *testing.T, fixture openingResumeFixture, commi
 func treeQuestion(itemID, runID string) transcript.Interrupt {
 	return transcript.Interrupt{
 		ItemID: itemID, ItemOccurredAt: time.Unix(1, 0).UTC(),
-		RunID: runID, Kind: run.InterruptQuestion,
-		Question: &transcript.Question{
+		RunID: runID, Prompt: transcript.Question{
 			Fields: []transcript.QuestionField{{
 				Prompt: "Continue?", Kind: questioncontract.Text,
 			}},
@@ -1749,7 +1748,7 @@ func newWaitingCancellationSQLiteFixtureAt(
 		Status:     transcript.ItemRunning,
 		OccurredAt: createdAt,
 		Kind:       transcript.QuestionItem,
-		Question:   grandchildQuestion.Question,
+		Question:   new(grandchildQuestion.Prompt.(transcript.Question)),
 	})
 	childQuestionItem := testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID:  rootRun.SessionID(),
@@ -1758,7 +1757,7 @@ func newWaitingCancellationSQLiteFixtureAt(
 		Status:     transcript.ItemRunning,
 		OccurredAt: createdAt,
 		Kind:       transcript.QuestionItem,
-		Question:   childQuestion.Question,
+		Question:   new(childQuestion.Prompt.(transcript.Question)),
 	})
 	originalItems := []transcript.Item{
 		parentItem,
@@ -1773,7 +1772,7 @@ func newWaitingCancellationSQLiteFixtureAt(
 			Status:     transcript.ItemRunning,
 			OccurredAt: createdAt,
 			Kind:       transcript.QuestionItem,
-			Question:   siblingQuestion.Question,
+			Question:   new(siblingQuestion.Prompt.(transcript.Question)),
 		}))
 	}
 	for _, item := range originalItems[1:] {

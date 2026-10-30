@@ -36,12 +36,11 @@ import (
 // substitute. render projects the restored answer into the model-visible result.
 type questionTool struct {
 	definition chat.ToolDefinition
-	key        string
 	prompt     runs.Interrupt
 	render     func(run.InterruptResolution) (string, error)
 }
 
-func newQuestionTool(t *testing.T, name, description, key string, fields []runs.QuestionFieldSpec, render func(run.InterruptResolution) (string, error)) toolcontract.Tool {
+func newQuestionTool(t *testing.T, name, description string, fields []runs.QuestionFieldSpec, render func(run.InterruptResolution) (string, error)) toolcontract.Tool {
 	t.Helper()
 	schema, err := jsonschema.For[struct{}]()
 	if err != nil {
@@ -53,8 +52,7 @@ func newQuestionTool(t *testing.T, name, description, key string, fields []runs.
 	}
 	return &questionTool{
 		definition: definition,
-		key:        key,
-		prompt:     runs.Interrupt{Kind: run.InterruptQuestion, Question: &runs.QuestionPrompt{ToolName: name, Arguments: `{}`, Fields: fields}},
+		prompt:     runs.QuestionPrompt{ToolName: name, Arguments: `{}`, Fields: fields},
 		render:     render,
 	}
 }
@@ -62,7 +60,7 @@ func newQuestionTool(t *testing.T, name, description, key string, fields []runs.
 func (q *questionTool) Definition() chat.ToolDefinition { return q.definition }
 
 func (q *questionTool) Call(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
-	resolution, request, err := runinput.Require(ctx, invocation, q.key, q.prompt)
+	resolution, request, err := runinput.Require(ctx, invocation, q.prompt)
 	if err != nil {
 		return toolcontract.Result{}, err
 	}
@@ -89,7 +87,7 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 		requests  [][]chat.Message
 		mu        sync.Mutex
 	)
-	question := newQuestionTool(t, "fixture_ask", "Ask for one value before completing.", "question.ask",
+	question := newQuestionTool(t, "fixture_ask", "Ask for one value before completing.",
 		[]runs.QuestionFieldSpec{{Prompt: "Which value?"}},
 		func(resolution run.InterruptResolution) (string, error) {
 			toolCalls++
@@ -294,8 +292,8 @@ func TestInteractionExecutorRestoresRuntimeAskUserTool(t *testing.T) {
 	})
 	starts := payloadsOf[runs.ToolCallStarted](beforeAnswer)
 	interruptions := barrier.Interruptions()
-	if len(interruptions) != 1 || interruptions[0].Interrupt.Question == nil ||
-		interruptions[0].Interrupt.Question.ToolName != string(builtincontract.AskUser) ||
+	question, isQuestion := interruptions[0].Interrupt.(runs.QuestionPrompt)
+	if len(interruptions) != 1 || !isQuestion || question.ToolName != string(builtincontract.AskUser) ||
 		len(starts) != 1 {
 		t.Fatalf("ask_user interruption = %#v", interruptions)
 	}
@@ -585,7 +583,7 @@ func TestInteractionExecutorPreservesDeferredAdvertisementAcrossWaitingRestore(t
 	if err != nil {
 		t.Fatal(err)
 	}
-	question := newQuestionTool(t, "fixture_ask", "Ask before continuing.", "question.after-search",
+	question := newQuestionTool(t, "fixture_ask", "Ask before continuing.",
 		[]runs.QuestionFieldSpec{{Prompt: "Continue?"}},
 		func(resolution run.InterruptResolution) (string, error) {
 			return resolution.Question().Answers()[0][0], nil
@@ -1139,7 +1137,7 @@ func captureInteractionQuestionCheckpoint(t *testing.T, workspace string) runs.E
 
 func newQuestionCheckpointTool(t *testing.T) toolcontract.Tool {
 	t.Helper()
-	return newQuestionTool(t, "fixture_ask", "Ask before completing.", "question.ask",
+	return newQuestionTool(t, "fixture_ask", "Ask before completing.",
 		[]runs.QuestionFieldSpec{{Prompt: "Which value?"}},
 		func(run.InterruptResolution) (string, error) { return "", nil })
 }

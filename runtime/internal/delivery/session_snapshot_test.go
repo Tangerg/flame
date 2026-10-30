@@ -56,7 +56,7 @@ func TestGetSessionSnapshotProjectsOneLiveMaterialRead(t *testing.T) {
 	if err := rt.openPending(t.Context(), t, "ses_1", serverPending(
 		"run_waiting", "ses_1", "exec_waiting", "member_waiting",
 		[]transcript.Interrupt{{
-			ItemID: "item_question", Kind: run.InterruptQuestion, Question: &question,
+			ItemID: "item_question", Prompt: question,
 		}},
 		createdAt,
 	)); err != nil {

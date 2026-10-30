@@ -4,7 +4,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -41,13 +40,10 @@ func TestTreeInterruptedRejectsCheckpointBoundToDifferentApplicationFacts(t *tes
 			barrier := mustTreeInterrupted(t, testExecutorCheckpoint(), []MemberInterruption{{
 				MemberID:  "member_root",
 				RequestID: "request_root",
-				Interrupt: Interrupt{
-					Kind: run.InterruptQuestion,
-					Question: &QuestionPrompt{
-						ToolName:  "ask_user",
-						Arguments: `{}`,
-						Fields:    []QuestionFieldSpec{{Prompt: "Continue?", Header: "Continue"}},
-					},
+				Interrupt: QuestionPrompt{
+					ToolName:  "ask_user",
+					Arguments: `{}`,
+					Fields:    []QuestionFieldSpec{{Prompt: "Continue?", Header: "Continue"}},
 				},
 			}})
 			if err := barrier.validateFor(test.root, test.session); !errors.Is(err, ErrInvalidExecutorCheckpoint) {
@@ -60,7 +56,7 @@ func TestTreeInterruptedRejectsCheckpointBoundToDifferentApplicationFacts(t *tes
 func TestTreeInterruptedRejectsMalformedRequests(t *testing.T) {
 	for _, requests := range [][]MemberInterruption{
 		nil,
-		{{MemberID: "member_root", RequestID: "request_root", Interrupt: Interrupt{Kind: run.InterruptKind("invalid")}}},
+		{{MemberID: "member_root", RequestID: "request_root"}},
 	} {
 		if _, err := NewTreeInterrupted(testExecutorCheckpoint(), requests); err == nil {
 			t.Fatalf("malformed tree requests were admitted: %+v", requests)
@@ -73,30 +69,27 @@ func TestTreeInterruptedOwnsCheckpointAndInterruptions(t *testing.T) {
 	interruptions := []MemberInterruption{{
 		MemberID:  "member_root",
 		RequestID: "request_root",
-		Interrupt: Interrupt{
-			Kind: run.InterruptQuestion,
-			Question: &QuestionPrompt{
-				ToolName: "ask_user", Arguments: `{}`,
-				Fields: []QuestionFieldSpec{{
-					Prompt: "Continue?", Header: "Continue",
-					Options: []QuestionOptionSpec{
-						{Label: "Yes", Description: "Proceed"},
-						{Label: "No", Description: "Stop"},
-					},
-				}},
-			},
+		Interrupt: QuestionPrompt{
+			ToolName: "ask_user", Arguments: `{}`,
+			Fields: []QuestionFieldSpec{{
+				Prompt: "Continue?", Header: "Continue",
+				Options: []QuestionOptionSpec{
+					{Label: "Yes", Description: "Proceed"},
+					{Label: "No", Description: "Stop"},
+				},
+			}},
 		},
 	}}
 	barrier := mustTreeInterrupted(t, checkpoint, interruptions)
 
 	checkpoint.Payload[0] = 'x'
 	interruptions[0].MemberID = "member_changed"
-	interruptions[0].Interrupt.Question.Fields[0].Options[0].Label = "Changed"
+	interruptions[0].Interrupt.(QuestionPrompt).Fields[0].Options[0].Label = "Changed"
 	projectedCheckpoint := barrier.Checkpoint()
 	projectedCheckpoint.Payload[0] = 'y'
 	projectedInterruptions := barrier.Interruptions()
 	projectedInterruptions[0].MemberID = "member_projected"
-	projectedInterruptions[0].Interrupt.Question.Fields[0].Options[0].Label = "Projected"
+	projectedInterruptions[0].Interrupt.(QuestionPrompt).Fields[0].Options[0].Label = "Projected"
 
 	ownedCheckpoint := barrier.Checkpoint()
 	ownedInterruptions := barrier.Interruptions()
@@ -104,7 +97,7 @@ func TestTreeInterruptedOwnsCheckpointAndInterruptions(t *testing.T) {
 		t.Fatalf("owned checkpoint payload = %q", ownedCheckpoint.Payload)
 	}
 	if ownedInterruptions[0].MemberID != "member_root" ||
-		ownedInterruptions[0].Interrupt.Question.Fields[0].Options[0].Label != "Yes" {
+		ownedInterruptions[0].Interrupt.(QuestionPrompt).Fields[0].Options[0].Label != "Yes" {
 		t.Fatalf("owned interruptions = %+v", ownedInterruptions)
 	}
 	if err := barrier.validateFor("member_root", "ses_1"); err != nil {

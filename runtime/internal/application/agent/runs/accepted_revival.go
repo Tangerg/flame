@@ -146,15 +146,15 @@ func (a AcceptedContinuation) treeContinuation(values []run.Run, items map[strin
 	for index, binding := range a.Pending.Bindings {
 		item := items[binding.InterruptItemID]
 		open := a.Pending.Interrupts[index]
-		value := transcript.Interrupt{ItemID: item.ID(), RunID: item.RunID(), ItemOccurredAt: item.OccurredAt(), Kind: open.Kind()}
+		value := transcript.Interrupt{ItemID: item.ID(), RunID: item.RunID(), ItemOccurredAt: item.OccurredAt()}
 		if question, ok := item.Question(); ok {
-			value.Question = &question
+			value.Prompt = question
 		} else {
 			call, ok := item.ToolCall()
 			if !ok || open.Approval == nil {
 				return nil, errors.New("runs: accepted approval has no Tool invocation")
 			}
-			value.Approval = &transcript.Approval{Tool: call.Invocation, Risk: open.Approval.Risk, Reason: open.Approval.Reason, Rememberable: open.Approval.Rememberable}
+			value.Prompt = transcript.Approval{Tool: call.Invocation, Risk: open.Approval.Risk, Reason: open.Approval.Reason, Rememberable: open.Approval.Rememberable}
 			continuation.approvalCalls[item.ID()] = binding.ToolCallID
 		}
 		continuation.interrupts = append(continuation.interrupts, value)

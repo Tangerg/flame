@@ -111,7 +111,7 @@ func TestRootResolverIncludesConfiguredConditionalTools(t *testing.T) {
 		Plan:         rolePlanStore{},
 		GoalReader:   activeGoalStub{},
 		GoalReporter: activeGoalStub{},
-		Interrupt: func(context.Context, toolcontract.Invocation, string, runs.Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
+		Interrupt: func(context.Context, toolcontract.Invocation, runs.Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
 			return run.InterruptResolution{}, nil, nil
 		},
 	})
@@ -164,7 +164,7 @@ func TestDescriptorCatalogMatchesBuiltInTools(t *testing.T) {
 		GoalReporter:   activeGoalStub{},
 		ToolResults:    allWiredToolResults{}, // backs read_tool_result
 		SkillProposals: allWiredSkillProposals{},
-		Interrupt: func(context.Context, toolcontract.Invocation, string, runs.Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
+		Interrupt: func(context.Context, toolcontract.Invocation, runs.Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
 			return run.InterruptResolution{}, nil, nil
 		},
 	})

@@ -3,7 +3,6 @@ package runs
 import (
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
@@ -42,9 +41,9 @@ func (r *resumeBindingBuilder) addInterrupts(continuation treeContinuation, runI
 		if pending.RunID != runID || pending.ItemID == "" {
 			continue
 		}
-		switch pending.Kind {
-		case run.InterruptApproval:
-			if pending.Approval != nil && pending.Approval.Tool.Name != "" {
+		switch prompt := pending.Prompt.(type) {
+		case transcript.Approval:
+			if prompt.Tool.Name != "" {
 				callID, found := continuation.approvalCalls[pending.ItemID]
 				item := continuation.items[pending.ItemID]
 				call, _ := item.ToolCall()
@@ -58,7 +57,7 @@ func (r *resumeBindingBuilder) addInterrupts(continuation treeContinuation, runI
 				})
 				r.binding.callItems[callID] = item
 			}
-		case run.InterruptQuestion:
+		case transcript.Question:
 			// Question Items are complete prompt facts when the tree parks. Pending
 			// owns whether an answer is still outstanding, so resume has no Item
 			// lifecycle to settle.

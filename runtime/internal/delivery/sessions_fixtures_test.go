@@ -130,9 +130,8 @@ func serverPending(
 	if len(open) == 0 {
 		open = []transcript.Interrupt{{
 			ItemID: "interrupt_" + runID, ItemOccurredAt: createdAt,
-			RunID:    runID,
-			Kind:     run.InterruptQuestion,
-			Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}},
+			RunID:  runID,
+			Prompt: transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}},
 		}}
 	} else {
 		open = append([]transcript.Interrupt(nil), open...)
@@ -152,7 +151,7 @@ func serverPending(
 			MemberID:        memberID,
 			RequestID:       fmt.Sprintf("request_%s_%d", memberID, index),
 		}
-		if request.Kind == run.InterruptApproval {
+		if request.Kind() == run.InterruptApproval {
 			bindings[index].ToolCallID = fmt.Sprintf("call_%s_%d", memberID, index)
 		}
 	}

@@ -9,7 +9,6 @@ import (
 
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/qimu/sqlite"
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -78,9 +77,8 @@ func TestRunInTx_AtomicAcrossStores(t *testing.T) {
 		"s2",
 		"member_1",
 		[]transcript.Interrupt{{
-			ItemID:   "item_1",
-			Kind:     run.InterruptQuestion,
-			Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}},
+			ItemID: "item_1",
+			Prompt: transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}},
 		}},
 		time.Unix(2, 0).UTC(),
 	)

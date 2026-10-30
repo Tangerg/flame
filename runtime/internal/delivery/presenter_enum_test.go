@@ -25,7 +25,7 @@ func TestPresentersRejectUnknownDomainEnums(t *testing.T) {
 	mustPanic(t, func() { presentOutcome(running) })
 	mustPanic(t, func() { presentRunFailure(&run.Failure{Kind: run.FailureKind("invalid")}) })
 	mustPanic(t, func() { presentToolFailure(&tool.Failure{Kind: tool.FailureKind("invalid")}) })
-	mustPanic(t, func() { presentInterrupts([]transcript.Interrupt{{Kind: run.InterruptKind("invalid")}}) })
+	mustPanic(t, func() { presentInterrupts([]transcript.Interrupt{{}}) })
 }
 
 func TestPresentRunProjectsEveryValidLifecyclePosition(t *testing.T) {

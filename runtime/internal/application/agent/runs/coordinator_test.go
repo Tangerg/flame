@@ -857,13 +857,10 @@ func collectEvents(events iter.Seq[Event]) []Event {
 }
 
 func treeBarrierQuestion(prompt string) Interrupt {
-	return Interrupt{
-		Kind: run.InterruptQuestion,
-		Question: &QuestionPrompt{
-			ToolName:  "ask_user",
-			Arguments: `{}`,
-			Fields:    []QuestionFieldSpec{{Prompt: prompt, Header: "Decision"}},
-		},
+	return QuestionPrompt{
+		ToolName:  "ask_user",
+		Arguments: `{}`,
+		Fields:    []QuestionFieldSpec{{Prompt: prompt, Header: "Decision"}},
 	}
 }
 
@@ -1246,8 +1243,7 @@ func resumedTreePending(createdAt time.Time) Pending {
 	question := func(itemID, runID string) transcript.Interrupt {
 		return transcript.Interrupt{
 			ItemID: itemID, ItemOccurredAt: createdAt,
-			RunID: runID, Kind: run.InterruptQuestion,
-			Question: &transcript.Question{
+			RunID: runID, Prompt: transcript.Question{
 				Fields: []transcript.QuestionField{{
 					Prompt: "Continue?", Kind: questioncontract.Text,
 				}},
@@ -2573,10 +2569,10 @@ func TestCoordinatorPersistsExactApprovalCallIdentityInTreeBarrier(t *testing.T)
 		}},
 		{Member: root, Payload: mustTreeInterrupted(t, testExecutorCheckpoint(), []MemberInterruption{{
 			MemberID: root.MemberID, RequestID: "request_approval",
-			Interrupt: Interrupt{Kind: run.InterruptApproval, Approval: &ApprovalPrompt{
+			Interrupt: ApprovalPrompt{
 				CallID: "call_approval", Arguments: `{"command":"pwd"}`,
 				SafetyClass: tool.SafetyClassExec, Risk: tool.RiskMedium, Tool: testsupport.BuiltInTool(t, "shell"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")),
-			}},
+			},
 		}})},
 	}}
 	effects := &fakeEffects{}

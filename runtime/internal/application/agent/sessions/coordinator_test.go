@@ -108,7 +108,7 @@ func TestApplyRunCancelProjectsTerminalTranscript(t *testing.T) {
 				RootRunID: "run_1", ExecutorID: "turn_1",
 				Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 					ItemID: "item_1", ItemOccurredAt: createdAt,
-					RunID: "run_1", Kind: run.InterruptQuestion, Question: question,
+					RunID: "run_1", Prompt: *question,
 				}}),
 				Bindings: []runs.InterruptBinding{{
 					InterruptItemID: "item_1", MemberID: "member_1", RequestID: "request_1",
@@ -180,7 +180,7 @@ func TestApplyRunCancelSettlesQuestionToolAndClosesModelContext(t *testing.T) {
 				RootRunID: "run_1", ExecutorID: "turn_1",
 				Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 					ItemID: "item_question", ItemOccurredAt: createdAt,
-					RunID: "run_1", Kind: run.InterruptQuestion, Question: question,
+					RunID: "run_1", Prompt: *question,
 				}}),
 				Bindings: []runs.InterruptBinding{{
 					InterruptItemID: "item_question", MemberID: "member_1", RequestID: "request_1",
@@ -267,7 +267,7 @@ func TestApplyRunLostProjectsTerminalTranscript(t *testing.T) {
 				RootRunID: "run_1", ExecutorID: "turn_1",
 				Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 					ItemID: "item_1", ItemOccurredAt: createdAt,
-					RunID: "run_1", Kind: run.InterruptApproval, Approval: approval,
+					RunID: "run_1", Prompt: *approval,
 				}}),
 				Bindings: []runs.InterruptBinding{{
 					InterruptItemID: "item_1", MemberID: "member_1", RequestID: "request_1",
@@ -354,7 +354,7 @@ func TestApplyRunLostTerminalizesWholeParkedTreeInPostorder(t *testing.T) {
 		RootRunID: "run_root", ExecutorID: "turn_1",
 		Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 			ItemID: "item_question", ItemOccurredAt: createdAt,
-			RunID: "run_child", Kind: run.InterruptQuestion, Question: question,
+			RunID: "run_child", Prompt: *question,
 		}}),
 		Bindings: []runs.InterruptBinding{{
 			InterruptItemID: "item_question", MemberID: "member_child", RequestID: "request_child",

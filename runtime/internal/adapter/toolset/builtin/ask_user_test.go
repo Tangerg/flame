@@ -44,7 +44,7 @@ func TestAskUser_Validation(t *testing.T) {
 // The schema admits questions the interrupt contract refuses. Nothing has parked
 // when that refusal happens, so it must fail the call rather than lose the Run tree.
 func TestAskUserQuestionRejectionFailsTheCallNotTheRun(t *testing.T) {
-	tool, err := NewAskUser(func(context.Context, toolcontract.Invocation, string, runs.Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
+	tool, err := NewAskUser(func(context.Context, toolcontract.Invocation, runs.Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
 		t.Fatal("a refused question must not park")
 		return run.InterruptResolution{}, nil, nil
 	})
@@ -63,7 +63,7 @@ func TestAskUserQuestionRejectionFailsTheCallNotTheRun(t *testing.T) {
 
 func TestAskUserKeepsOptionsOpenToARealUserAnswer(t *testing.T) {
 	var captured runs.Interrupt
-	tool, err := NewAskUser(func(_ context.Context, _ toolcontract.Invocation, _ string, request runs.Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
+	tool, err := NewAskUser(func(_ context.Context, _ toolcontract.Invocation, request runs.Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
 		captured = request
 		return testsupport.QuestionAnswer(t, [][]string{{"another database"}}), nil, nil
 	})
@@ -83,9 +83,8 @@ func TestAskUserKeepsOptionsOpenToARealUserAnswer(t *testing.T) {
 	if result != "another database" {
 		t.Fatalf("result = %q", result)
 	}
-	if captured.Question == nil || len(captured.Question.Fields) != 1 ||
-		!captured.Question.Fields[0].AllowCustom {
-		t.Fatalf("question interrupt = %#v, want custom answer enabled", captured.Question)
+	if question, ok := captured.(runs.QuestionPrompt); !ok || len(question.Fields) != 1 || !question.Fields[0].AllowCustom {
+		t.Fatalf("question interrupt = %#v, want custom answer enabled", captured)
 	}
 }
 
@@ -145,7 +144,7 @@ func TestAskUserSchemaProjectsTheTranscriptLimits(t *testing.T) {
 				t.Fatal(err)
 			}
 			schemaErr := schema.Validate(raw)
-			_, _, ownerErr := askUserPlan(t.Context(), args)
+			_, ownerErr := askUserPlan(t.Context(), args)
 			if test.valid {
 				if schemaErr != nil || ownerErr != nil {
 					t.Fatalf("valid question refused: schema=%v owner=%v", schemaErr, ownerErr)

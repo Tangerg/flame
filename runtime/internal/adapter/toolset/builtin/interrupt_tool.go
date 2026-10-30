@@ -21,14 +21,14 @@ import (
 type interruptTool[Args any] struct {
 	definition chat.ToolDefinition
 	interrupt  runs.InterruptFunc
-	plan       func(context.Context, Args) (runs.Interrupt, string, error)
+	plan       func(context.Context, Args) (runs.Interrupt, error)
 	resolve    func(context.Context, Args, run.InterruptResolution) (string, error)
 }
 
 func newInterruptTool[Args any](
 	config toolcontract.FuncConfig,
 	interrupt runs.InterruptFunc,
-	plan func(context.Context, Args) (runs.Interrupt, string, error),
+	plan func(context.Context, Args) (runs.Interrupt, error),
 	resolve func(context.Context, Args, run.InterruptResolution) (string, error),
 ) (toolcontract.Tool, error) {
 	schema, err := corejsonschema.For[Args]()
@@ -67,11 +67,11 @@ func (t *interruptTool[Args]) Call(ctx context.Context, invocation toolcontract.
 	if err := jsonv2.Unmarshal(invocation.Arguments(), &args, jsonv2.RejectUnknownMembers(true)); err != nil {
 		return toolcontract.Result{}, fmt.Errorf("%s: decode arguments: %w", t.definition.Name, err)
 	}
-	prompt, key, err := t.plan(ctx, args)
+	prompt, err := t.plan(ctx, args)
 	if err != nil {
 		return toolcontract.Result{}, err
 	}
-	resolution, request, err := t.interrupt(ctx, invocation, key, prompt)
+	resolution, request, err := t.interrupt(ctx, invocation, prompt)
 	if err != nil {
 		return toolcontract.Result{}, err
 	}

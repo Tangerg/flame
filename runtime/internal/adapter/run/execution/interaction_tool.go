@@ -449,14 +449,10 @@ func (o *observedInteractionTool) requestToolApproval(
 	if !slices.Contains(o.start.InterruptKinds, run.InterruptApproval) {
 		return request.Arguments, true, "approval input is unavailable for this Run", nil, nil
 	}
-	pending := runs.Interrupt{Kind: run.InterruptApproval, Approval: &prompt}
 	if err := validateToolApprovalPrompt(request, prompt); err != nil {
 		return tool.Arguments{}, false, "", nil, fmt.Errorf("execution: invalid Tool approval prompt: %w", err)
 	}
-	resolution, inputRequest, err := runinput.Require(
-		ctx,
-		bound, run.InterruptKey(string(run.InterruptApproval), request.Tool.ModelName(), request.Arguments.Canonical()), pending,
-	)
+	resolution, inputRequest, err := runinput.Require(ctx, bound, prompt)
 	if err != nil {
 		return tool.Arguments{}, false, "", nil, err
 	}
@@ -473,7 +469,7 @@ func (o *observedInteractionTool) resumePreparedTool(
 	name string,
 	continued runinput.Continuation,
 ) (tool.Arguments, bool, string, error) {
-	storedName, storedArguments := continued.Interrupt.Tool()
+	storedName, storedArguments := continued.Interrupt.ToolCall()
 	if storedName != name {
 		return tool.Arguments{}, false, "", errors.New("execution: continued Tool input belongs to another Tool")
 	}
@@ -481,13 +477,15 @@ func (o *observedInteractionTool) resumePreparedTool(
 	if err != nil {
 		return tool.Arguments{}, false, "", fmt.Errorf("execution: parse continued Tool arguments: %w", err)
 	}
-	if continued.Interrupt.Kind == run.InterruptQuestion {
+	var prompt runs.ApprovalPrompt
+	switch interrupt := continued.Interrupt.(type) {
+	case runs.QuestionPrompt:
 		return arguments, false, "", nil
-	}
-	if continued.Interrupt.Kind != run.InterruptApproval || continued.Interrupt.Approval == nil {
+	case runs.ApprovalPrompt:
+		prompt = interrupt
+	default:
 		return tool.Arguments{}, false, "", errors.New("execution: continued Tool input has an unsupported kind")
 	}
-	prompt := *continued.Interrupt.Approval
 	if prompt.CallID != callID {
 		return tool.Arguments{}, false, "", errors.New("execution: continued Tool approval call identity changed")
 	}

@@ -386,8 +386,7 @@ func TestListInterruptsProjectsToWire(t *testing.T) {
 			RootRunID: "run_waiting", ExecutorID: "turn_1",
 			Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 				ItemID: "item_1", ItemOccurredAt: created.Add(-time.Second),
-				RunID: "run_child", Kind: run.InterruptApproval,
-				Approval: &transcript.Approval{
+				RunID: "run_child", Prompt: transcript.Approval{
 					Tool: transcript.ToolInvocation{Name: "shell", Arguments: arguments},
 					Risk: tool.RiskHigh, Reason: "Runs commands in the workspace.", Rememberable: true,
 				},

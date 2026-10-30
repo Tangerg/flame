@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/scope/agent"
 )
 
@@ -15,11 +14,8 @@ func TestRuntimeExecutorIdentityPolicyMatchesAgentFrameworkPort(t *testing.T) {
 		RootMemberID: "process:root_1", SessionID: "ses_1", Payload: []byte("opaque checkpoint"),
 		BuildID: runs.BuildFromSHA256(sha256.Sum256([]byte(t.Name()))).String(),
 	}
-	interrupt := runs.Interrupt{
-		Kind: run.InterruptQuestion,
-		Question: &runs.QuestionPrompt{
-			ToolName: "ask_user", Arguments: "{}", Fields: []runs.QuestionFieldSpec{{Prompt: "Continue?"}},
-		},
+	interrupt := runs.QuestionPrompt{
+		ToolName: "ask_user", Arguments: "{}", Fields: []runs.QuestionFieldSpec{{Prompt: "Continue?"}},
 	}
 	values := []string{
 		"process:root_1",

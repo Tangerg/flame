@@ -123,9 +123,8 @@ func bootstrapPending(
 		ExecutorID: "turn_" + runID,
 		Interrupts: runsapp.OpenInterruptsOf([]transcript.Interrupt{{
 			ItemID: itemID, ItemOccurredAt: itemOccurredAt,
-			RunID:    runID,
-			Kind:     run.InterruptQuestion,
-			Question: question,
+			RunID:  runID,
+			Prompt: *question,
 		}}),
 		Bindings: []runsapp.InterruptBinding{{
 			InterruptItemID: itemID,

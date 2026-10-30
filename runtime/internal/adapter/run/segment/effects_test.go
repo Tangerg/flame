@@ -56,9 +56,8 @@ func singleRunPending(
 		ExecutorID: "turn_" + runID,
 		Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 			ItemID: itemID, ItemOccurredAt: barrierCreatedAt,
-			RunID:    runID,
-			Kind:     run.InterruptQuestion,
-			Question: question,
+			RunID:  runID,
+			Prompt: *question,
 		}}),
 		Bindings: []runs.InterruptBinding{{
 			InterruptItemID: itemID,

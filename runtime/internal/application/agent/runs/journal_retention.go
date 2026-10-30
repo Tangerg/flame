@@ -117,11 +117,13 @@ func retainedPlanSnapshotBytes(snapshot PlanSnapshot) int {
 
 func retainedInterruptPayloadBytes(interrupt transcript.Interrupt) int {
 	bytes := len(interrupt.ItemID) + len(interrupt.RunID)
-	if interrupt.Approval != nil {
-		bytes += retainedToolInvocationBytes(&interrupt.Approval.Tool)
-		bytes += len(interrupt.Approval.Risk) + len(interrupt.Approval.Reason)
+	switch prompt := interrupt.Prompt.(type) {
+	case transcript.Approval:
+		bytes += retainedToolInvocationBytes(&prompt.Tool)
+		bytes += len(prompt.Risk) + len(prompt.Reason)
+	case transcript.Question:
+		bytes += retainedQuestionBytes(&prompt)
 	}
-	bytes += retainedQuestionBytes(interrupt.Question)
 	return bytes
 }
 

@@ -472,7 +472,7 @@ func (t treePublisher) reduceInterruptedRoute(
 			MemberID:        interruption.MemberID,
 			RequestID:       interruption.RequestID,
 		}
-		if approval := interruption.Interrupt.Approval; approval != nil {
+		if approval, ok := interruption.Interrupt.(ApprovalPrompt); ok {
 			bindings[index].ToolCallID = approval.CallID
 			bindings[index].ToolRef = approval.Tool
 			bindings[index].SourceFingerprint = approval.SourceFingerprint

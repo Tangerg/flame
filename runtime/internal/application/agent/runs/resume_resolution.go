@@ -48,13 +48,13 @@ func resolveResumeResponses(interrupts []transcript.Interrupt, bindings []Interr
 			itemResolution run.InterruptResolution
 			err            error
 		)
-		switch request.Kind {
+		switch request.Kind() {
 		case run.InterruptApproval:
 			itemResolution, err = resolveApprovalResponse(request, response)
 		case run.InterruptQuestion:
 			itemResolution, err = resolveQuestionResponse(request, response)
 		default:
-			err = fmt.Errorf("unknown open interrupt kind %q", request.Kind)
+			err = fmt.Errorf("unknown open interrupt kind %q", request.Kind())
 		}
 		if err != nil {
 			return nil, fmt.Errorf("%w: item %q: %w", ErrInvalidInterruptResponse, response.ItemID, err)
@@ -118,7 +118,7 @@ func resolveQuestionResponse(request transcript.Interrupt, response ResumeRespon
 	if response.Kind != run.InterruptQuestion || response.Question == nil || response.Approval != nil {
 		return run.InterruptResolution{}, errors.New("question response is required")
 	}
-	if request.Question == nil || len(request.Question.Fields) == 0 {
+	if question, ok := request.Prompt.(transcript.Question); !ok || len(question.Fields) == 0 {
 		return run.InterruptResolution{}, errors.New("open question has no fields")
 	}
 	resolution, err := run.NewQuestionAnswer(response.Question.Answers)
@@ -135,23 +135,20 @@ func resolveQuestionResponse(request transcript.Interrupt, response ResumeRespon
 // validateResolution checks the closed answer against its exact open request.
 // Rememberability and question fields belong to that request.
 func (a InterruptAnswer) validateResolution(request transcript.Interrupt) error {
-	if a.Resolution.Kind() != request.Kind {
+	if a.Resolution.Kind() != request.Kind() {
 		return errors.New("answer kind differs from its interrupt")
 	}
-	switch request.Kind {
-	case run.InterruptApproval:
-		return a.validateApprovalResolution(request.Approval)
-	case run.InterruptQuestion:
-		return a.validateQuestionResolution(request.Question)
+	switch prompt := request.Prompt.(type) {
+	case transcript.Approval:
+		return a.validateApprovalResolution(prompt)
+	case transcript.Question:
+		return a.validateQuestionResolution(prompt)
 	default:
-		return fmt.Errorf("unknown interrupt kind %q", request.Kind)
+		return fmt.Errorf("unknown interrupt kind %q", request.Kind())
 	}
 }
 
-func (a InterruptAnswer) validateApprovalResolution(request *transcript.Approval) error {
-	if request == nil {
-		return errors.New("approval request has no prompt")
-	}
+func (a InterruptAnswer) validateApprovalResolution(request transcript.Approval) error {
 	resolution := a.Resolution.Approval()
 	if resolution.RememberScope != "" && !request.Rememberable {
 		return errors.New("approval cannot be remembered")
@@ -159,10 +156,7 @@ func (a InterruptAnswer) validateApprovalResolution(request *transcript.Approval
 	return nil
 }
 
-func (a InterruptAnswer) validateQuestionResolution(request *transcript.Question) error {
-	if request == nil {
-		return errors.New("question request has no prompt")
-	}
+func (a InterruptAnswer) validateQuestionResolution(request transcript.Question) error {
 	answers := a.Resolution.Question().Answers()
 	contract, err := request.AnswerContract()
 	if err != nil {

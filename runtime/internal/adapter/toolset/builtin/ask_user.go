@@ -88,23 +88,22 @@ func NewAskUser(interrupt runs.InterruptFunc) (toolcontract.Tool, error) {
 	)
 }
 
-func askUserPlan(_ context.Context, args askUserArgs) (runs.Interrupt, string, error) {
+func askUserPlan(_ context.Context, args askUserArgs) (runs.Interrupt, error) {
 	arguments, err := args.arguments()
 	if err != nil {
-		return runs.Interrupt{}, "", err
+		return nil, err
 	}
-	in := runs.QuestionPrompt{
+	pending := runs.QuestionPrompt{
 		ToolName:  string(builtincontract.AskUser),
 		Arguments: arguments,
 		Fields:    args.toFields(),
 	}
-	pending := runs.Interrupt{Kind: run.InterruptQuestion, Question: &in}
 	// The interrupt contract owns the question rules; the schema only approximates
 	// them, so a refusal here is the model's argument rejected before anything parks.
 	if err := pending.Validate(); err != nil {
-		return runs.Interrupt{}, "", pluginsdk.DefiniteToolFailure(fmt.Errorf("ask_user: %w", err))
+		return nil, pluginsdk.DefiniteToolFailure(fmt.Errorf("ask_user: %w", err))
 	}
-	return pending, run.InterruptKey(string(run.InterruptQuestion), string(builtincontract.AskUser), arguments), nil
+	return pending, nil
 }
 
 func askUserResolve(_ context.Context, args askUserArgs, resolution run.InterruptResolution) (string, error) {

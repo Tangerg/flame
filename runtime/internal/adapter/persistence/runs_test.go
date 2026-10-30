@@ -156,8 +156,7 @@ func parkedRunFromDraft(draft run.Draft) run.Run {
 
 func approvalInterrupts() []transcript.Interrupt {
 	return []transcript.Interrupt{{
-		ItemID: "item_approval", Kind: run.InterruptApproval,
-		Approval: &transcript.Approval{Tool: transcript.ToolInvocation{Name: "shell"}, Risk: tool.RiskMedium},
+		ItemID: "item_approval", Prompt: transcript.Approval{Tool: transcript.ToolInvocation{Name: "shell"}, Risk: tool.RiskMedium},
 	}}
 }
 
@@ -180,7 +179,7 @@ func pendingForRun(
 			MemberID:        memberID,
 			RequestID:       "request_" + copied[index].ItemID,
 		}
-		if copied[index].Kind == run.InterruptApproval {
+		if copied[index].Kind() == run.InterruptApproval {
 			bindings[index].ToolCallID = "call_" + copied[index].ItemID
 		}
 	}
@@ -199,7 +198,7 @@ func pendingForRun(
 func capabilitiesForInterrupts(values []transcript.Interrupt) run.Capabilities {
 	capabilities := run.Capabilities{}
 	for _, value := range values {
-		capabilities.InterruptKinds = append(capabilities.InterruptKinds, value.Kind)
+		capabilities.InterruptKinds = append(capabilities.InterruptKinds, value.Kind())
 	}
 	return capabilities.Normalized()
 }

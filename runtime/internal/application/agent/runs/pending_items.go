@@ -39,7 +39,7 @@ func (p Pending) ProjectInterrupts(itemsByID map[string]transcript.Item) ([]tran
 func (o OpenInterrupt) project(item transcript.Item) (transcript.Interrupt, error) {
 	projected := transcript.Interrupt{
 		ItemID: item.ID(), ItemOccurredAt: item.OccurredAt(),
-		RunID: item.RunID(), Kind: o.Kind(),
+		RunID: item.RunID(),
 	}
 	switch o.Kind() {
 	case run.InterruptApproval:
@@ -47,7 +47,7 @@ func (o OpenInterrupt) project(item transcript.Item) (transcript.Interrupt, erro
 		if !present || item.Status() != transcript.ItemRunning || call.Approval != nil {
 			return transcript.Interrupt{}, fmt.Errorf("is not a ToolCall awaiting a verdict")
 		}
-		projected.Approval = &transcript.Approval{
+		projected.Prompt = transcript.Approval{
 			Tool: call.Invocation, Risk: o.Approval.Risk,
 			Reason: o.Approval.Reason, Rememberable: o.Approval.Rememberable,
 		}
@@ -56,7 +56,7 @@ func (o OpenInterrupt) project(item transcript.Item) (transcript.Interrupt, erro
 		if !present || question.Answered() {
 			return transcript.Interrupt{}, fmt.Errorf("is not a Question awaiting answers")
 		}
-		projected.Question = &question
+		projected.Prompt = question
 	}
 	return projected, nil
 }
@@ -67,10 +67,9 @@ func OpenInterruptsOf(projected []transcript.Interrupt) []OpenInterrupt {
 	open := make([]OpenInterrupt, len(projected))
 	for index, value := range projected {
 		open[index] = OpenInterrupt{ItemID: value.ItemID}
-		if value.Approval != nil {
+		if prompt, ok := value.Prompt.(transcript.Approval); ok {
 			open[index].Approval = &ApprovalReview{
-				Risk: value.Approval.Risk, Reason: value.Approval.Reason,
-				Rememberable: value.Approval.Rememberable,
+				Risk: prompt.Risk, Reason: prompt.Reason, Rememberable: prompt.Rememberable,
 			}
 		}
 	}

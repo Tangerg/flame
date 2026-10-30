@@ -66,7 +66,7 @@ func (r *reducer) projectInterruptedTools(
 ) error {
 	for _, ref := range open {
 		if index, ok := matched[ref]; ok {
-			if err := r.projectToolApproval(projection, ref, index, *interrupts[index].Approval); err != nil {
+			if err := r.projectToolApproval(projection, ref, index, interrupts[index].(ApprovalPrompt)); err != nil {
 				return err
 			}
 			continue
@@ -112,10 +112,10 @@ func (r *reducer) projectPendingInterrupt(
 	index int,
 	pending Interrupt,
 ) (transcript.Interrupt, error) {
-	switch pending.Kind {
-	case run.InterruptApproval:
+	switch pending := pending.(type) {
+	case ApprovalPrompt:
 		if item, ok := projection.approvalItems[index]; ok {
-			return approvalTranscriptInterrupt(item, *pending.Approval), nil
+			return approvalTranscriptInterrupt(item, pending), nil
 		}
 		item, projected, publishStart, err := r.approvalInterrupt(pending)
 		if err != nil {
@@ -125,7 +125,7 @@ func (r *reducer) projectPendingInterrupt(
 			return transcript.Interrupt{}, err
 		}
 		return projected, nil
-	case run.InterruptQuestion:
+	case QuestionPrompt:
 		item, projected, err := r.questionInterrupt(pending)
 		if err != nil {
 			return transcript.Interrupt{}, err
@@ -134,7 +134,7 @@ func (r *reducer) projectPendingInterrupt(
 		projection.items = append(projection.items, item)
 		return projected, nil
 	default:
-		return transcript.Interrupt{}, fmt.Errorf("interrupt kind %q is invalid", pending.Kind)
+		return transcript.Interrupt{}, fmt.Errorf("interrupt %T is invalid", pending)
 	}
 }
 
@@ -191,15 +191,12 @@ func completedEventItems(items []transcript.Item, events []ProjectionEvent) []tr
 	return items
 }
 
-func (r *reducer) approvalInterrupt(in Interrupt) (transcript.Item, transcript.Interrupt, bool, error) {
-	if in.Approval == nil {
-		return transcript.Item{}, transcript.Interrupt{}, false, nil
-	}
-	item, publishStart, err := r.approvalItem(*in.Approval, nil)
+func (r *reducer) approvalInterrupt(prompt ApprovalPrompt) (transcript.Item, transcript.Interrupt, bool, error) {
+	item, publishStart, err := r.approvalItem(prompt, nil)
 	if err != nil {
 		return transcript.Item{}, transcript.Interrupt{}, false, err
 	}
-	return item, approvalTranscriptInterrupt(item, *in.Approval), publishStart, nil
+	return item, approvalTranscriptInterrupt(item, prompt), publishStart, nil
 }
 
 func (r *reducer) approvalItem(prompt ApprovalPrompt, ref *openTool) (transcript.Item, bool, error) {
@@ -230,8 +227,7 @@ func approvalTranscriptInterrupt(item transcript.Item, prompt ApprovalPrompt) tr
 		ItemID:         item.ID(),
 		ItemOccurredAt: item.OccurredAt(),
 		RunID:          item.RunID(),
-		Kind:           run.InterruptApproval,
-		Approval: &transcript.Approval{
+		Prompt: transcript.Approval{
 			Tool: call.Invocation, Risk: prompt.Risk, Reason: prompt.Reason, Rememberable: prompt.Rememberable,
 		},
 	}
@@ -242,11 +238,12 @@ func approvalTranscriptInterrupt(item transcript.Item, prompt ApprovalPrompt) tr
 func matchToolApprovals(open []*openTool, values []Interrupt) map[*openTool]int {
 	matched := make(map[*openTool]int)
 	for index, value := range values {
-		if value.Kind != run.InterruptApproval {
+		approval, ok := value.(ApprovalPrompt)
+		if !ok {
 			continue
 		}
 		for _, ref := range open {
-			if ref.callID != value.Approval.CallID {
+			if ref.callID != approval.CallID {
 				continue
 			}
 			if _, used := matched[ref]; used {
@@ -326,11 +323,8 @@ func (r *reducer) endToolAttempt(ref *openTool) {
 	ref.finishedAt = r.now()
 }
 
-func (r *reducer) questionInterrupt(in Interrupt) (transcript.Item, transcript.Interrupt, error) {
-	if in.Question == nil {
-		return transcript.Item{}, transcript.Interrupt{}, nil
-	}
-	question := in.Question.question()
+func (r *reducer) questionInterrupt(prompt QuestionPrompt) (transcript.Item, transcript.Interrupt, error) {
+	question := prompt.question()
 	id, err := r.nextItemID()
 	if err != nil {
 		return transcript.Item{}, transcript.Interrupt{}, err
@@ -341,7 +335,7 @@ func (r *reducer) questionInterrupt(in Interrupt) (transcript.Item, transcript.I
 	}
 	return item, transcript.Interrupt{
 		ItemID: id, ItemOccurredAt: item.OccurredAt(),
-		RunID: r.cfg.Opened.ID(), Kind: run.InterruptQuestion, Question: &question,
+		RunID: r.cfg.Opened.ID(), Prompt: question,
 	}, nil
 }
 

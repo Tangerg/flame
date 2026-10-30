@@ -48,50 +48,47 @@ func newExit(modes planExitPolicy, plan planStateReader, interrupt runs.Interrup
 	)
 }
 
-func (e *exiter) request(ctx context.Context, _ exitArgs) (runs.Interrupt, string, error) {
+func (e *exiter) request(ctx context.Context, _ exitArgs) (runs.Interrupt, error) {
 	sessionID := executionctx.SessionID(ctx)
 	if sessionID == "" {
-		return runs.Interrupt{}, "", errors.New("exit_plan_mode: no active session")
+		return nil, errors.New("exit_plan_mode: no active session")
 	}
 	mode, err := e.modes.Mode(ctx, sessionID)
 	if err != nil {
-		return runs.Interrupt{}, "", pluginsdk.DefiniteToolFailure(fmt.Errorf("exit_plan_mode: %w", err))
+		return nil, pluginsdk.DefiniteToolFailure(fmt.Errorf("exit_plan_mode: %w", err))
 	}
 	// Calling this outside Plan mode, or with nothing planned, is the model
 	// mis-sequencing its own tools. Both messages are written for it, so they have
 	// to arrive as this call's outcome rather than end the Run.
 	if mode != approval.ModePlan {
-		return runs.Interrupt{}, "", pluginsdk.DefiniteToolFailure(errors.New("exit_plan_mode: current session is not in Plan mode"))
+		return nil, pluginsdk.DefiniteToolFailure(errors.New("exit_plan_mode: current session is not in Plan mode"))
 	}
 	state, err := e.plan.State(ctx, sessionID)
 	if err != nil {
-		return runs.Interrupt{}, "", pluginsdk.DefiniteToolFailure(fmt.Errorf("exit_plan_mode: %w", err))
+		return nil, pluginsdk.DefiniteToolFailure(fmt.Errorf("exit_plan_mode: %w", err))
 	}
 	steps := state.Steps()
 	if len(steps) == 0 {
-		return runs.Interrupt{}, "", pluginsdk.DefiniteToolFailure(errors.New("exit_plan_mode: current Plan is empty; call set_plan before requesting approval"))
+		return nil, pluginsdk.DefiniteToolFailure(errors.New("exit_plan_mode: current Plan is empty; call set_plan before requesting approval"))
 	}
 
 	arguments := `{}`
-	pending := runs.Interrupt{
-		Kind: run.InterruptQuestion,
-		Question: &runs.QuestionPrompt{
-			ToolName:  string(builtincontract.ExitPlanMode),
-			Arguments: arguments,
-			Fields: []runs.QuestionFieldSpec{{
-				Prompt: planpresentation.Render(steps),
-				Header: "Plan",
-				Options: []runs.QuestionOptionSpec{
-					{Label: approveLabel, Description: "Approve this Plan and allow execution"},
-					{Label: rejectLabel, Description: "Keep Plan mode and revise the Plan"},
-				},
-			}},
-		},
+	pending := runs.QuestionPrompt{
+		ToolName:  string(builtincontract.ExitPlanMode),
+		Arguments: arguments,
+		Fields: []runs.QuestionFieldSpec{{
+			Prompt: planpresentation.Render(steps),
+			Header: "Plan",
+			Options: []runs.QuestionOptionSpec{
+				{Label: approveLabel, Description: "Approve this Plan and allow execution"},
+				{Label: rejectLabel, Description: "Keep Plan mode and revise the Plan"},
+			},
+		}},
 	}
 	if validateErr := pending.Validate(); validateErr != nil {
-		return runs.Interrupt{}, "", fmt.Errorf("exit_plan_mode: %w", validateErr)
+		return nil, fmt.Errorf("exit_plan_mode: %w", validateErr)
 	}
-	return pending, run.InterruptKey(string(run.InterruptQuestion), string(builtincontract.ExitPlanMode), arguments), nil
+	return pending, nil
 }
 
 func (e *exiter) render(ctx context.Context, _ exitArgs, resolution run.InterruptResolution) (string, error) {

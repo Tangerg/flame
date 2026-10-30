@@ -1614,8 +1614,7 @@ func TestResumeRefusesIsolatedRunAfterRuntimeRestart(t *testing.T) {
 func approvalInterrupt(itemID string, occurredAt time.Time) []transcript.Interrupt {
 	return []transcript.Interrupt{{
 		ItemID: itemID, ItemOccurredAt: occurredAt,
-		RunID: "run_1", Kind: run.InterruptApproval,
-		Approval: &transcript.Approval{
+		RunID: "run_1", Prompt: transcript.Approval{
 			Tool: transcript.ToolInvocation{Name: "shell"}, Risk: "medium",
 		},
 	}}
@@ -2128,12 +2127,9 @@ func TestCancelLetsCommittedInterruptOwnDurableFirstTeardown(t *testing.T) {
 		},
 		mustTreeInterrupted(t, testExecutorCheckpoint(), []MemberInterruption{{
 			MemberID: "member_root", RequestID: "request_1",
-			Interrupt: Interrupt{
-				Kind: run.InterruptApproval,
-				Approval: &ApprovalPrompt{
-					CallID: "call_1", Arguments: `{"command":"pwd","description":"Print the working directory"}`,
-					SafetyClass: "write", Risk: "medium", Tool: testsupport.BuiltInTool(t, "shell"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")),
-				},
+			Interrupt: ApprovalPrompt{
+				CallID: "call_1", Arguments: `{"command":"pwd","description":"Print the working directory"}`,
+				SafetyClass: "write", Risk: "medium", Tool: testsupport.BuiltInTool(t, "shell"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")),
 			},
 		}}),
 	}}

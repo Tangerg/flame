@@ -169,7 +169,7 @@ func TestPreparedWaitingSubtreeCancellationOwnsProjections(t *testing.T) {
 
 	canceled[0] = "member_changed"
 	interruptions[0].MemberID = "member_changed"
-	interruptions[0].Interrupt.Question.Fields[0].Prompt = "Changed?"
+	interruptions[0].Interrupt.(QuestionPrompt).Fields[0].Prompt = "Changed?"
 	checkpoint.Payload[0] = 'x'
 
 	projectedCanceled := prepared.CanceledMemberIDs()
@@ -177,7 +177,7 @@ func TestPreparedWaitingSubtreeCancellationOwnsProjections(t *testing.T) {
 	projectedCheckpoint := prepared.Checkpoint()
 	projectedCanceled[0] = "member_projected"
 	projectedInterruptions[0].MemberID = "member_projected"
-	projectedInterruptions[0].Interrupt.Question.Fields[0].Prompt = "Projected?"
+	projectedInterruptions[0].Interrupt.(QuestionPrompt).Fields[0].Prompt = "Projected?"
 	projectedCheckpoint.Payload[0] = 'y'
 
 	ownedInterruptions := prepared.PendingInterruptions()
@@ -186,7 +186,7 @@ func TestPreparedWaitingSubtreeCancellationOwnsProjections(t *testing.T) {
 	}
 	if len(ownedInterruptions) != 1 ||
 		ownedInterruptions[0].MemberID != "member_b" ||
-		ownedInterruptions[0].Interrupt.Question.Fields[0].Prompt != "Continue?" {
+		ownedInterruptions[0].Interrupt.(QuestionPrompt).Fields[0].Prompt != "Continue?" {
 		t.Fatalf("pending interruptions = %+v, want owned input", ownedInterruptions)
 	}
 	if got := prepared.Checkpoint().Payload[0]; got != testExecutorCheckpoint().Payload[0] {
@@ -1093,13 +1093,10 @@ func mustResumeWaitingRun(t *testing.T, record run.Run, segmentID string) run.Ru
 }
 
 func waitingQuestionPrompt() Interrupt {
-	return Interrupt{
-		Kind: run.InterruptQuestion,
-		Question: &QuestionPrompt{
-			ToolName:  "ask_user",
-			Arguments: "{}",
-			Fields:    []QuestionFieldSpec{{Prompt: "Continue?", Header: "Continue"}},
-		},
+	return QuestionPrompt{
+		ToolName:  "ask_user",
+		Arguments: "{}",
+		Fields:    []QuestionFieldSpec{{Prompt: "Continue?", Header: "Continue"}},
 	}
 }
 

@@ -15,16 +15,13 @@ import (
 )
 
 func TestDecodePromptDiscriminatesAndRejectsGuesses(t *testing.T) {
-	question := runs.Interrupt{
-		Kind: run.InterruptQuestion,
-		Question: &runs.QuestionPrompt{
-			ToolName:  "ask_user",
-			Arguments: `{"questions":[{"question":"Continue?"}]}`,
-			Fields: []runs.QuestionFieldSpec{{
-				Prompt: "Continue?", AllowCustom: true,
-				Options: []runs.QuestionOptionSpec{{Label: "Yes"}, {Label: "No"}},
-			}},
-		},
+	question := runs.QuestionPrompt{
+		ToolName:  "ask_user",
+		Arguments: `{"questions":[{"question":"Continue?"}]}`,
+		Fields: []runs.QuestionFieldSpec{{
+			Prompt: "Continue?", AllowCustom: true,
+			Options: []runs.QuestionOptionSpec{{Label: "Yes"}, {Label: "No"}},
+		}},
 	}
 	raw, err := json.Marshal(promptWireFrom(question))
 	if err != nil {
@@ -39,19 +36,14 @@ func TestDecodePromptDiscriminatesAndRejectsGuesses(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DecodePrompt: %v", err)
 	}
-	if got.Kind != run.InterruptQuestion || got.Question == nil ||
-		got.Question.ToolName != "ask_user" ||
-		!got.Question.Fields[0].AllowCustom {
+	if question, ok := got.(runs.QuestionPrompt); !ok || question.ToolName != "ask_user" || !question.Fields[0].AllowCustom {
 		t.Fatalf("decoded = %#v", got)
 	}
 
 	web := testsupport.MCPTool(testsupport.UserMCPServer("web"), "web_fetch")
-	approval := runs.Interrupt{
-		Kind: run.InterruptApproval,
-		Approval: &runs.ApprovalPrompt{
-			CallID: "tool_approval_1", Arguments: `{"url":"https://example.com"}`,
-			SafetyClass: tool.SafetyClassNetwork, Risk: tool.RiskHigh, Tool: web, SourceFingerprint: testsupport.ToolFingerprint(web),
-		},
+	approval := runs.ApprovalPrompt{
+		CallID: "tool_approval_1", Arguments: `{"url":"https://example.com"}`,
+		SafetyClass: tool.SafetyClassNetwork, Risk: tool.RiskHigh, Tool: web, SourceFingerprint: testsupport.ToolFingerprint(web),
 	}
 	raw, err = json.Marshal(promptWireFrom(approval))
 	if err != nil {
@@ -61,8 +53,8 @@ func TestDecodePromptDiscriminatesAndRejectsGuesses(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DecodePrompt approval: %v", err)
 	}
-	if got.Approval == nil || got.Approval.Tool != web || got.Approval.SafetyClass != tool.SafetyClassNetwork || got.Approval.Risk != tool.RiskHigh {
-		t.Fatalf("decoded approval = %#v", got.Approval)
+	if decoded, ok := got.(runs.ApprovalPrompt); !ok || decoded.Tool != web || decoded.SafetyClass != tool.SafetyClassNetwork || decoded.Risk != tool.RiskHigh {
+		t.Fatalf("decoded approval = %#v", got)
 	}
 
 	for _, name := range []string{"web_fetch", "web_search"} {
@@ -94,13 +86,10 @@ func TestDecodePromptDiscriminatesAndRejectsGuesses(t *testing.T) {
 func TestApprovalPromptRequiresIdentityRegardlessOfRememberability(t *testing.T) {
 	for _, rememberable := range []bool{false, true} {
 		for _, fingerprint := range []integrity.Digest{{}, testsupport.Digest("source")} {
-			prompt := runs.Interrupt{
-				Kind: run.InterruptApproval,
-				Approval: &runs.ApprovalPrompt{
-					CallID: "call_approval", Arguments: `{}`,
-					SafetyClass: tool.SafetyClassExec, Risk: tool.RiskHigh,
-					Rememberable: rememberable, SourceFingerprint: fingerprint,
-				},
+			prompt := runs.ApprovalPrompt{
+				CallID: "call_approval", Arguments: `{}`,
+				SafetyClass: tool.SafetyClassExec, Risk: tool.RiskHigh,
+				Rememberable: rememberable, SourceFingerprint: fingerprint,
 			}
 			if _, err := EncodePrompt(prompt); err == nil {
 				t.Errorf("encoded an approval without a tool reference: rememberable=%v fingerprint=%q", rememberable, fingerprint)

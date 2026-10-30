@@ -425,7 +425,7 @@ func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
 	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}}
 	pendingInterrupt := transcript.Interrupt{
 		ItemID: "item_missing", ItemOccurredAt: createdAt.Add(time.Second),
-		RunID: "run_partial", Kind: run.InterruptQuestion, Question: question,
+		RunID: "run_partial", Prompt: *question,
 	}
 	if suspendErr := runStore.Suspend(ctx, testsupport.MustRestoreRun(run.Snapshot{ID: "run_partial", SessionID: "session", State: run.Waiting,
 		Capabilities: run.Capabilities{

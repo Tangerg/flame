@@ -728,8 +728,7 @@ func testPending(rootRunID string, createdAt time.Time) runs.Pending {
 	return runs.Pending{
 		RootRunID: rootRunID, ExecutorID: "turn_" + suffix,
 		Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
-			ItemID: itemID, ItemOccurredAt: runCreatedAt, RunID: rootRunID, Kind: run.InterruptApproval,
-			Approval: &transcript.Approval{
+			ItemID: itemID, ItemOccurredAt: runCreatedAt, RunID: rootRunID, Prompt: transcript.Approval{
 				Tool: transcript.ToolInvocation{Name: "shell"}, Risk: "medium",
 			},
 		}}),

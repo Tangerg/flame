@@ -43,7 +43,7 @@ func TestPlanModeToolsAreRootOnly(t *testing.T) {
 		UserHome: t.TempDir(),
 		PlanMode: policy,
 		Plan:     rolePlanStore{},
-		Interrupt: func(context.Context, toolcontract.Invocation, string, runs.Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
+		Interrupt: func(context.Context, toolcontract.Invocation, runs.Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
 			return run.InterruptResolution{}, nil, nil
 		},
 	})

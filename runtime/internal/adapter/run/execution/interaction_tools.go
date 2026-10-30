@@ -88,7 +88,7 @@ func denyTool(reason string) ToolAuthorizationDecision {
 
 // AskToolApproval waits for a durable human answer to prompt.
 func askToolApproval(prompt runs.ApprovalPrompt) (ToolAuthorizationDecision, error) {
-	if err := (runs.Interrupt{Kind: run.InterruptApproval, Approval: &prompt}).Validate(); err != nil {
+	if err := prompt.Validate(); err != nil {
 		return ToolAuthorizationDecision{}, fmt.Errorf("execution: invalid Tool approval plan: %w", err)
 	}
 	return ToolAuthorizationDecision{approval: &prompt}, nil
@@ -98,7 +98,7 @@ func validateToolApprovalPrompt(request ToolAuthorizationRequest, prompt runs.Ap
 	if err := validateToolAuthorizationRequest(request); err != nil {
 		return err
 	}
-	if err := (runs.Interrupt{Kind: run.InterruptApproval, Approval: &prompt}).Validate(); err != nil {
+	if err := prompt.Validate(); err != nil {
 		return err
 	}
 	if prompt.CallID != request.CallID || prompt.Tool != request.Tool || prompt.SourceFingerprint != request.SourceFingerprint ||

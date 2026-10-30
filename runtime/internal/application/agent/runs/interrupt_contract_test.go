@@ -15,8 +15,7 @@ import (
 func TestResolveResumeResponsesValidatesExactTypedCoverage(t *testing.T) {
 	approvalPending := resolutionFixture{interrupts: ([]transcript.Interrupt{{
 		ItemID: "item_approval",
-		Kind:   run.InterruptApproval,
-		Approval: &transcript.Approval{
+		Prompt: transcript.Approval{
 			Tool: transcript.ToolInvocation{Name: "shell"}, Risk: "medium", Rememberable: true,
 		},
 	}}), bindings: []InterruptBinding{{
@@ -56,8 +55,7 @@ func TestResolveResumeResponsesValidatesExactTypedCoverage(t *testing.T) {
 
 	questionPending := resolutionFixture{interrupts: ([]transcript.Interrupt{{
 		ItemID: "item_question",
-		Kind:   run.InterruptQuestion,
-		Question: &transcript.Question{Fields: []transcript.QuestionField{{
+		Prompt: transcript.Question{Fields: []transcript.QuestionField{{
 			Prompt: "Choose", Kind: questioncontract.Choice,
 			Options: []transcript.QuestionOption{{Label: "Go"}, {Label: "Stop"}},
 		}}},
@@ -102,8 +100,7 @@ func TestResolveResumeResponsesValidatesExactTypedCoverage(t *testing.T) {
 		}}, want: ErrInvalidInterruptResponse},
 		{name: "one-off approval cannot be remembered", pending: resolutionFixture{
 			interrupts: ([]transcript.Interrupt{{
-				ItemID: "item_one_off", Kind: run.InterruptApproval,
-				Approval: &transcript.Approval{Tool: transcript.ToolInvocation{Name: "shell"}, Risk: "medium"},
+				ItemID: "item_one_off", Prompt: transcript.Approval{Tool: transcript.ToolInvocation{Name: "shell"}, Risk: "medium"},
 			}}),
 			bindings: []InterruptBinding{{
 				InterruptItemID: "item_one_off", MemberID: "member_one_off", RequestID: "request_one_off", ToolCallID: "call_one_off",
@@ -127,15 +124,13 @@ func TestResolveResumeResponsesPreservesCompleteBarrierInCanonicalOrder(t *testi
 		interrupts: ([]transcript.Interrupt{
 			{
 				ItemID: "item_a",
-				Kind:   run.InterruptApproval,
-				Approval: &transcript.Approval{
+				Prompt: transcript.Approval{
 					Tool: transcript.ToolInvocation{Name: "shell"}, Risk: "medium",
 				},
 			},
 			{
 				ItemID: "item_b",
-				Kind:   run.InterruptApproval,
-				Approval: &transcript.Approval{
+				Prompt: transcript.Approval{
 					Tool: transcript.ToolInvocation{Name: "write"}, Risk: "medium",
 				},
 			},
@@ -185,7 +180,7 @@ func TestResolveQuestionResponseUsesOrderedExactAnswers(t *testing.T) {
 			Options: []transcript.QuestionOption{{Label: "A"}, {Label: "B"}},
 		},
 	}}
-	pending := transcript.Interrupt{ItemID: "item_question", Kind: run.InterruptQuestion, Question: question}
+	pending := transcript.Interrupt{ItemID: "item_question", Prompt: *question}
 	response := func(answers [][]string) ResumeResponse {
 		return ResumeResponse{
 			ItemID: "item_question", Kind: run.InterruptQuestion,
@@ -241,11 +236,11 @@ func TestResolveQuestionResponseUsesOrderedExactAnswers(t *testing.T) {
 
 func TestInterruptAnswerRefusesAnAnswerForAnotherKind(t *testing.T) {
 	for _, request := range []transcript.Interrupt{
-		{Kind: run.InterruptApproval, Approval: &transcript.Approval{}},
-		{Kind: run.InterruptQuestion, Question: &transcript.Question{}},
+		{Prompt: transcript.Approval{}},
+		{Prompt: transcript.Question{}},
 	} {
 		answer := testsupport.QuestionAnswer(t, [][]string{{"name"}})
-		if request.Kind == run.InterruptQuestion {
+		if request.Kind() == run.InterruptQuestion {
 			answer = testsupport.ApprovalAnswer(t, approval.Resolution{Decision: approval.Allow})
 		}
 		if err := (InterruptAnswer{Resolution: answer}).validateResolution(request); err == nil {

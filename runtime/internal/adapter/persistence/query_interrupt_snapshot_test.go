@@ -109,7 +109,7 @@ func TestInterruptPageReadsTheHandoffAndItemsFromOneSnapshot(t *testing.T) {
 	go func() {
 		page, err := queries.ListPendingInterruptPage(t.Context(), sess.ID(), root.ID(), capabilities, "", pagination.DefaultLimit())
 		if err == nil {
-			if len(page.Rows) != 1 || len(page.Rows[0].Interrupts) != 1 || page.Rows[0].Interrupts[0].Question.Answered() {
+			if len(page.Rows) != 1 || len(page.Rows[0].Interrupts) != 1 || page.Rows[0].Interrupts[0].Prompt.(transcript.Question).Answered() {
 				err = fmt.Errorf("interrupt page did not preserve its unanswered snapshot: %+v", page)
 			}
 		}

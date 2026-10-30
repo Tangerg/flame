@@ -140,9 +140,9 @@ func TestRejectionKeepsPlanMode(t *testing.T) {
 	if _, err := policy.EnterPlanMode(t.Context(), sessionID); err != nil {
 		t.Fatal(err)
 	}
-	interrupt := func(_ context.Context, _ toolcontract.Invocation, _ string, pending runs.Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
-		if pending.Question == nil || !strings.Contains(pending.Question.Fields[0].Prompt, "inspect") {
-			t.Fatalf("prompt does not present the canonical Plan: %+v", pending.Question)
+	interrupt := func(_ context.Context, _ toolcontract.Invocation, pending runs.Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
+		if question, ok := pending.(runs.QuestionPrompt); !ok || !strings.Contains(question.Fields[0].Prompt, "inspect") {
+			t.Fatalf("prompt does not present the canonical Plan: %+v", pending)
 		}
 		return testsupport.QuestionAnswer(t, [][]string{{rejectLabel}}), nil, nil
 	}
@@ -168,8 +168,8 @@ func TestApprovalReturnsTheSessionToTheCurrentDefault(t *testing.T) {
 	if err := policy.SetDefaultMode(t.Context(), approval.ModeYolo); err != nil {
 		t.Fatal(err)
 	}
-	interrupt := func(_ context.Context, _ toolcontract.Invocation, _ string, pending runs.Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
-		if got := pending.Question.Arguments; got != `{}` {
+	interrupt := func(_ context.Context, _ toolcontract.Invocation, pending runs.Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
+		if got := pending.(runs.QuestionPrompt).Arguments; got != `{}` {
 			t.Fatalf("interrupt arguments = %q", got)
 		}
 		return testsupport.QuestionAnswer(t, [][]string{{approveLabel}}), nil, nil

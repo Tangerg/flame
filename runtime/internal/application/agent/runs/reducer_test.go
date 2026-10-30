@@ -833,11 +833,8 @@ func TestReducerCarriesLaterPausedCallIdentityAcrossSequentialResumes(t *testing
 	secondID := startedItemID(t, mustReduce(t, first, ToolCallStarted{
 		CallID: "call-2", ToolName: ref.ModelName(), Arguments: `{"path":"b"}`, SafetyClass: "write",
 	}))
-	firstPark := mustInterrupt(t, first, []Interrupt{{
-		Kind: run.InterruptApproval,
-		Approval: &ApprovalPrompt{
-			CallID: "call-1", Arguments: `{"path":"a"}`, SafetyClass: "write", Risk: "medium", Tool: ref, SourceFingerprint: testsupport.ToolFingerprint(ref),
-		},
+	firstPark := mustInterrupt(t, first, []Interrupt{ApprovalPrompt{
+		CallID: "call-1", Arguments: `{"path":"a"}`, SafetyClass: "write", Risk: "medium", Tool: ref, SourceFingerprint: testsupport.ToolFingerprint(ref),
 	}}, 0)
 	firstCommit := firstPark.parkCommit
 	firstInterrupted := firstPark.events[len(firstPark.events)-1].Event.(SegmentFinished)
@@ -878,11 +875,8 @@ func TestReducerCarriesLaterPausedCallIdentityAcrossSequentialResumes(t *testing
 	}
 	mustFinishTool(t, resumed, ToolCallFinished{CallID: "call-1", Result: testToolResult(t, "approved")})
 
-	secondPark := mustInterrupt(t, resumed, []Interrupt{{
-		Kind: run.InterruptApproval,
-		Approval: &ApprovalPrompt{
-			CallID: "call-2", Arguments: `{"path":"b"}`, SafetyClass: "write", Risk: "medium", Tool: ref, SourceFingerprint: testsupport.ToolFingerprint(ref),
-		},
+	secondPark := mustInterrupt(t, resumed, []Interrupt{ApprovalPrompt{
+		CallID: "call-2", Arguments: `{"path":"b"}`, SafetyClass: "write", Risk: "medium", Tool: ref, SourceFingerprint: testsupport.ToolFingerprint(ref),
 	}}, 0)
 	secondInterrupted := secondPark.events[len(secondPark.events)-1].Event.(SegmentFinished)
 	if got := secondInterrupted.Interrupts[0].ItemID; got != secondID {
@@ -904,8 +898,7 @@ func TestReducerResumeKeepsEditedApprovalIdentityBesideSameNameDrainedTool(t *te
 		RootRunID: "run_1", CreatedAt: approvalAt.Add(time.Second),
 		Interrupts: OpenInterruptsOf([]transcript.Interrupt{{
 			ItemID: "item_approval", ItemOccurredAt: approvalAt,
-			RunID: "run_1", Kind: run.InterruptApproval,
-			Approval: &transcript.Approval{Tool: reviewed},
+			RunID: "run_1", Prompt: transcript.Approval{Tool: reviewed},
 		}}),
 		Continuations: []Continuation{{
 			RunID: "run_1",
@@ -1059,8 +1052,8 @@ func TestReducerResumeReusesInterruptedItems(t *testing.T) {
 	}
 	config := testReducerConfig()
 	interrupts := []transcript.Interrupt{
-		{ItemID: "item_approval", ItemOccurredAt: approvalAt, RunID: "run_1", Kind: run.InterruptApproval, Approval: &transcript.Approval{Tool: reviewed, Risk: "medium"}},
-		{ItemID: "item_question", ItemOccurredAt: questionAt, RunID: "run_1", Kind: run.InterruptQuestion, Question: question},
+		{ItemID: "item_approval", ItemOccurredAt: approvalAt, RunID: "run_1", Prompt: transcript.Approval{Tool: reviewed, Risk: "medium"}},
+		{ItemID: "item_question", ItemOccurredAt: questionAt, RunID: "run_1", Prompt: *question},
 	}
 	config.Continuation = testTreeContinuationOf(Pending{
 		CreatedAt:  questionAt.Add(time.Second),
@@ -1105,13 +1098,13 @@ func TestReducerResumeReusesInterruptedItems(t *testing.T) {
 func TestReducerProjectsParkAsOneAtomicWriteSetBeforeFirstInterruptEvent(t *testing.T) {
 	reducer := newReducer(testReducerConfig())
 	batch := mustInterrupt(t, reducer, []Interrupt{
-		{Kind: run.InterruptApproval, Approval: &ApprovalPrompt{
+		ApprovalPrompt{
 			CallID: "call_approval", Arguments: `{}`, SafetyClass: "exec", Risk: "high", Tool: testsupport.BuiltInTool(t, "shell"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")),
-		}},
-		{Kind: run.InterruptQuestion, Question: &QuestionPrompt{
+		},
+		QuestionPrompt{
 			ToolName: "ask_user", Arguments: `{"questions":[{"question":"Continue?"}]}`,
 			Fields: []QuestionFieldSpec{{Prompt: "Continue?"}},
-		}},
+		},
 	}, 0)
 
 	if batch.parkCommit == nil {
@@ -1148,12 +1141,9 @@ func TestReducerPublishesOneStartForToolThatBecomesAnApproval(t *testing.T) {
 		CallID: "call_1", SourceCallID: "provider_1", ModelCallSequence: 1,
 		ToolName: "shell", Arguments: `{}`,
 	})
-	parked := mustInterrupt(t, reducer, []Interrupt{{
-		Kind: run.InterruptApproval,
-		Approval: &ApprovalPrompt{
-			CallID: "call_1", Arguments: `{}`,
-			SafetyClass: tool.SafetyClassExec, Risk: "high", Tool: testsupport.BuiltInTool(t, "shell"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")),
-		},
+	parked := mustInterrupt(t, reducer, []Interrupt{ApprovalPrompt{
+		CallID: "call_1", Arguments: `{}`,
+		SafetyClass: tool.SafetyClassExec, Risk: "high", Tool: testsupport.BuiltInTool(t, "shell"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")),
 	}}, 0)
 
 	starts := 0
@@ -1185,16 +1175,13 @@ func TestReducerKeepsQuestionToolLifecycleOpenAcrossHITLResume(t *testing.T) {
 		ModelCallSequence: 1, ToolName: "ask_user", Arguments: providerArgs,
 		SafetyClass: tool.SafetyClassSafe,
 	}))
-	parked := mustInterrupt(t, first, []Interrupt{{
-		Kind: run.InterruptQuestion,
-		Question: &QuestionPrompt{
-			ToolName: "ask_user", Arguments: arguments,
-			Fields: []QuestionFieldSpec{{
-				Prompt: "Choose", Header: "Color",
-				Options:     []QuestionOptionSpec{{Label: "Blue"}, {Label: "Green"}},
-				AllowCustom: true,
-			}},
-		},
+	parked := mustInterrupt(t, first, []Interrupt{QuestionPrompt{
+		ToolName: "ask_user", Arguments: arguments,
+		Fields: []QuestionFieldSpec{{
+			Prompt: "Choose", Header: "Color",
+			Options:     []QuestionOptionSpec{{Label: "Blue"}, {Label: "Green"}},
+			AllowCustom: true,
+		}},
 	}}, 0)
 
 	for _, reduced := range parked.events {
@@ -1695,9 +1682,9 @@ func TestReducerReportsFrozenRunCapabilitiesOnEverySegment(t *testing.T) {
 	assertFrozenCapabilities(t, started.Run.Capabilities(), frozen, "segment.started")
 
 	batch := mustInterrupt(t, reducer, []Interrupt{
-		{Kind: run.InterruptApproval, Approval: &ApprovalPrompt{
+		ApprovalPrompt{
 			CallID: "call_approval", Arguments: `{}`, SafetyClass: "exec", Risk: "high", Tool: testsupport.BuiltInTool(t, "shell"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")),
-		}},
+		},
 	}, 0)
 	if batch.parkCommit.Run == nil {
 		t.Fatal("park commit carries no run record")
@@ -1886,8 +1873,8 @@ func TestReducerOpeningPublishesTheAnswersItsResumeCommitted(t *testing.T) {
 	config.Continuation = testTreeContinuation(Pending{RootRunID: config.Opened.ID()})
 	config.Continuation.items = map[string]transcript.Item{"item_mine": mine, "item_other": answered("run_other", "item_other")}
 	config.Continuation.interrupts = []transcript.Interrupt{
-		{ItemID: "item_mine", RunID: config.Opened.ID(), Kind: run.InterruptQuestion},
-		{ItemID: "item_other", RunID: "run_other", Kind: run.InterruptQuestion},
+		{ItemID: "item_mine", RunID: config.Opened.ID()},
+		{ItemID: "item_other", RunID: "run_other"},
 	}
 
 	opened := mustOpen(t, newReducer(config))
@@ -1927,8 +1914,7 @@ func TestReducerResumeContinuesTheCommittedToolItem(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			projected := transcript.Interrupt{ItemID: item.ID(), RunID: item.RunID(), Kind: run.InterruptApproval,
-				ItemOccurredAt: item.OccurredAt(), Approval: &transcript.Approval{Tool: original}}
+			projected := transcript.Interrupt{ItemID: item.ID(), RunID: item.RunID(), ItemOccurredAt: item.OccurredAt(), Prompt: transcript.Approval{Tool: original}}
 			config.Continuation = testTreeContinuationOf(Pending{
 				RootRunID: item.RunID(), CreatedAt: item.OccurredAt(), Interrupts: OpenInterruptsOf([]transcript.Interrupt{projected}),
 			}, []transcript.Interrupt{projected})

@@ -212,15 +212,30 @@ type Interrupt struct {
 	//
 	// It is recorded rather than derived, because the derivation stops working
 	// exactly when it starts to matter.
-	RunID    string
-	Kind     run.InterruptKind
-	Approval *Approval
-	Question *Question
+	RunID string
+	// Prompt is the Approval or Question a person must answer; it alone
+	// decides the interrupt's Kind.
+	Prompt Prompt
 }
 
-// Validate reports whether an interrupt carries exactly the one payload its Kind
-// names, with a valid item and run identity. An open question that already holds
-// an accepted answer is no longer open, so it is rejected here rather than resumed.
+// Prompt is the closed set of things an interrupt can ask.
+type Prompt interface {
+	Kind() run.InterruptKind
+	prompt()
+}
+
+func (Approval) Kind() run.InterruptKind { return run.InterruptApproval }
+func (Question) Kind() run.InterruptKind { return run.InterruptQuestion }
+
+func (Approval) prompt() {}
+func (Question) prompt() {}
+
+// Kind reports what the interrupt asks.
+func (i Interrupt) Kind() run.InterruptKind { return i.Prompt.Kind() }
+
+// Validate reports whether an interrupt carries one valid prompt with a valid
+// item and run identity. An open question that already holds an accepted
+// answer is no longer open, so it is rejected here rather than resumed.
 func (i Interrupt) Validate() error {
 	if err := identity.ValidateItem(i.ItemID); err != nil {
 		return fmt.Errorf("pending interrupt: %w", err)
@@ -231,25 +246,19 @@ func (i Interrupt) Validate() error {
 	if err := identity.ValidateRun(i.RunID); err != nil {
 		return fmt.Errorf("pending interrupt: %w", err)
 	}
-	switch i.Kind {
-	case run.InterruptApproval:
-		if i.Approval == nil || i.Question != nil {
-			return errors.New("approval interrupt requires only an approval payload")
-		}
-		return i.Approval.Validate()
-	case run.InterruptQuestion:
-		if i.Question == nil || i.Approval != nil {
-			return errors.New("question interrupt requires only a question payload")
-		}
-		if err := i.Question.Validate(); err != nil {
+	switch prompt := i.Prompt.(type) {
+	case Approval:
+		return prompt.Validate()
+	case Question:
+		if err := prompt.Validate(); err != nil {
 			return err
 		}
-		if i.Question.Answered() {
+		if prompt.Answered() {
 			return errors.New("open question interrupt already carries an accepted answer")
 		}
 		return nil
 	default:
-		return fmt.Errorf("unknown interrupt kind %q", i.Kind)
+		return errors.New("interrupt has no prompt")
 	}
 }
 
