@@ -12,6 +12,8 @@ import { inspectOfficeText, officeReport } from "./inspection";
 import { assertPermutation, replaceText } from "./text-edits";
 import { attribute, namespaces, openTag, patchXML } from "./xml";
 
+const CHART_COLORS = ["245B78", "39A597", "DF9D3A", "8B6FB3"];
+
 function position(element: SlideElement) {
   return { x: element.x, y: element.y, w: element.width, h: element.height };
 }
@@ -170,15 +172,6 @@ export async function createPresentation(json: string): Promise<Uint8Array> {
             throw new Error(
               "pie and doughnut charts require exactly one series",
             );
-          if (
-            element.chart === "scatter" &&
-            element.series.some((series) =>
-              series.labels.some((label) => !Number.isFinite(Number(label))),
-            )
-          )
-            throw new Error(
-              "scatter chart labels must contain numeric x values",
-            );
           const values = element.series.flatMap((series) => series.values);
           slide.addChart(
             presentation.ChartType[element.chart],
@@ -191,7 +184,7 @@ export async function createPresentation(json: string): Promise<Uint8Array> {
               showLegend: true,
               legendPos: "b",
               showValue: false,
-              chartColors: ["245B78", "39A597", "DF9D3A", "8B6FB3"],
+              chartColors: CHART_COLORS,
               catAxisLabelFontFace: font,
               valAxisLabelFontFace: font,
               valAxisMinVal:
@@ -202,6 +195,32 @@ export async function createPresentation(json: string): Promise<Uint8Array> {
                 element.chart === "bar" && values.every((value) => value <= 0)
                   ? 0
                   : undefined,
+            },
+          );
+          break;
+        }
+        case "scatter": {
+          if (
+            element.series.some(
+              (series) => series.values.length !== element.xValues.length,
+            )
+          )
+            throw new Error(
+              "every scatter series needs one y value for each shared x value",
+            );
+          slide.addChart(
+            presentation.ChartType.scatter,
+            [{ name: "x", values: element.xValues }, ...element.series],
+            {
+              ...position(element),
+              lang: content.language,
+              showTitle: !!element.title,
+              title: element.title,
+              showLegend: true,
+              legendPos: "b",
+              chartColors: CHART_COLORS,
+              catAxisLabelFontFace: font,
+              valAxisLabelFontFace: font,
             },
           );
           break;

@@ -277,13 +277,30 @@ const slideElementSchema = z.discriminatedUnion("type", [
   z.strictObject({
     type: z.literal("chart"),
     ...position,
-    chart: z.enum(["bar", "line", "pie", "doughnut", "area", "scatter"]),
+    chart: z.enum(["bar", "line", "pie", "doughnut", "area"]),
     title: shortText.optional(),
     series: z
       .array(
         z.strictObject({
           name: shortText,
           labels: z.array(shortText).min(1).max(1000),
+          values: z.array(z.number().finite()).min(1).max(1000),
+        }),
+      )
+      .min(1)
+      .max(20),
+  }),
+  // A scatter chart's x coordinates are one fact shared by every series, the
+  // shape a native PowerPoint scatter chart stores.
+  z.strictObject({
+    type: z.literal("scatter"),
+    ...position,
+    title: shortText.optional(),
+    xValues: z.array(z.number().finite()).min(1).max(1000),
+    series: z
+      .array(
+        z.strictObject({
+          name: shortText,
           values: z.array(z.number().finite()).min(1).max(1000),
         }),
       )

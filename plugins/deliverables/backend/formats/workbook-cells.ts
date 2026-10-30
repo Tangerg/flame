@@ -1,4 +1,4 @@
-import { attribute, namespaces, nodeText, type XmlNode } from "./xml";
+import { attribute, namespaces, type XmlNode } from "./xml";
 import { OfficePackage, relationshipTarget } from "./archive";
 import type { CellValue } from "../../contracts/content";
 import { parseJSON, projectNumber } from "@qimu/sdk/json";
@@ -48,6 +48,22 @@ export function rangeAddresses(value: string, maximum = 50_000): string[] {
       result.push(addressName(column, row));
   return result;
 }
+// SpreadsheetML string items (CT_Rst) keep body text in direct <t> elements or
+// rich-text runs; <rPh> phonetic hints and <phoneticPr> are metadata, never text.
+function stringItemText(item: XmlNode): string {
+  return item.children
+    .map((child) => {
+      if (child.uri !== namespaces.sheet) return "";
+      if (child.local === "t") return child.text;
+      if (child.local !== "r") return "";
+      return child.children
+        .filter((run) => run.uri === namespaces.sheet && run.local === "t")
+        .map((run) => run.text)
+        .join("");
+    })
+    .join("");
+}
+
 export function sharedStrings(archive: OfficePackage): string[] {
   if (!archive.parts.has("xl/sharedStrings.xml")) return [];
   return archive
@@ -55,7 +71,7 @@ export function sharedStrings(archive: OfficePackage): string[] {
     .root.children.filter(
       (node) => node.uri === namespaces.sheet && node.local === "si",
     )
-    .map(nodeText);
+    .map(stringItemText);
 }
 export function cellDescription(
   cell: XmlNode | undefined,
@@ -89,7 +105,7 @@ export function cellValue(cell: XmlNode, strings: string[]): CellProjection {
         (node) => node.local === "is" && node.uri === namespaces.sheet,
       );
       if (!inline) throw new Error("inline string cell has no string content");
-      projected = { type: "string", value: nodeText(inline) };
+      projected = { type: "string", value: stringItemText(inline) };
       break;
     }
     case "s": {

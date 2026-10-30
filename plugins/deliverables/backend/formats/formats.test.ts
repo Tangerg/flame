@@ -98,6 +98,75 @@ describe("native deliverable formats", () => {
     expect((await inspectFile("xlsx", bytes)).facts.charts).toBe(1);
   });
 
+  it.each([1, 2])(
+    "keeps the authored shared x coordinates for %i native PPTX scatter series",
+    async (count) => {
+      const series = [
+        { name: "Latency", values: [3, 5] },
+        { name: "Throughput", values: [7, 11] },
+      ].slice(0, count);
+      const bytes = await createFile(
+        "pptx",
+        JSON.stringify({
+          title: "Scatter",
+          slides: [
+            {
+              elements: [
+                {
+                  type: "scatter",
+                  x: 0.5,
+                  y: 0.5,
+                  width: 8,
+                  height: 4,
+                  title: "Load",
+                  xValues: [10, 20],
+                  series,
+                },
+              ],
+            },
+          ],
+        }),
+      );
+      const archive = OfficePackage.open("pptx", bytes);
+      const part = [...archive.parts.keys()].find((name) =>
+        /^ppt\/charts\/chart\d+\.xml$/.test(name),
+      )!;
+      const chart = archive.xml(part).source;
+      expect(chart.match(/<c:ser>/g)?.length).toBe(count);
+      for (const value of [10, 20])
+        expect(chart).toContain(`<c:v>${value}</c:v>`);
+      for (const entry of series)
+        for (const value of entry.values)
+          expect(chart).toContain(`<c:v>${value}</c:v>`);
+    },
+  );
+
+  it("refuses a scatter series whose y values do not match the shared x values", async () => {
+    await expect(
+      createFile(
+        "pptx",
+        JSON.stringify({
+          title: "Scatter",
+          slides: [
+            {
+              elements: [
+                {
+                  type: "scatter",
+                  x: 0.5,
+                  y: 0.5,
+                  width: 8,
+                  height: 4,
+                  xValues: [1, 2],
+                  series: [{ name: "Short", values: [1] }],
+                },
+              ],
+            },
+          ],
+        }),
+      ),
+    ).rejects.toThrow();
+  });
+
   it("preserves styles and chart relationships while invalidating every formula cache", async () => {
     const bytes = await createFile("xlsx", specification("xlsx"));
     const original = OfficePackage.open("xlsx", bytes);
@@ -249,6 +318,48 @@ describe("native deliverable formats", () => {
     expect(() => exportCSV(formula, "xl/worksheets/sheet1.xml")).toThrow(
       "calculated",
     );
+  });
+
+  it("reads SpreadsheetML body text without phonetic hints in inspection and CSV", async () => {
+    const bytes = await createFile(
+      "xlsx",
+      JSON.stringify({
+        title: "Phonetic",
+        sheets: [
+          {
+            name: "Data",
+            cells: [
+              { address: "A1", value: { type: "string", value: "東京" } },
+              { address: "B1", value: { type: "string", value: "inline" } },
+            ],
+          },
+        ],
+      }),
+    );
+    const archive = OfficePackage.open("xlsx", bytes);
+    const sheet = "xl/worksheets/sheet1.xml";
+    const shared = archive.xml("xl/sharedStrings.xml").source;
+    expect(shared).toContain("<t>東京</t>");
+    archive.setXML(
+      "xl/sharedStrings.xml",
+      shared.replace(
+        "<t>東京</t>",
+        '<r><t>東</t></r><r><t xml:space="preserve">京</t></r><rPh sb="0" eb="2"><t>とうきょう</t></rPh><phoneticPr fontId="1"/>',
+      ),
+    );
+    const cells = archive.xml(sheet).source;
+    const inline = cells.replace(
+      /<c r="B1"([^>]*) t="s"([^>]*)><v>\d+<\/v><\/c>/u,
+      '<c r="B1"$1 t="inlineStr"$2><is><t>大阪</t><rPh sb="0" eb="2"><t>おおさか</t></rPh></is></c>',
+    );
+    expect(inline).not.toBe(cells);
+    archive.setXML(sheet, inline);
+    const revised = archive.save();
+    const csv = Buffer.from(exportCSV(revised, sheet)).toString();
+    expect(csv).toBe('"東京","大阪"\r\n');
+    const text = JSON.stringify((await inspectFile("xlsx", revised)).items);
+    expect(text).not.toContain("とうきょう");
+    expect(text).not.toContain("おおさか");
   });
 
   it("preserves native numeric precision in inspection, editing preconditions and CSV", async () => {
