@@ -303,6 +303,7 @@ export function useSchedules(context: ComponentContext) {
         Title: template ? t(`template.${template.id}.title`) : "",
         Instructions: template ? t(`template.${template.id}.instructions`) : "",
         Cron: template?.cron ?? "",
+        TimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         CWD: context.workspace?.ref.path ?? "",
         ModelSelection: selection(),
         Enabled: true,
@@ -324,6 +325,7 @@ export function useSchedules(context: ComponentContext) {
       Title: edit.draft.Title.trim(),
       Instructions: edit.draft.Instructions.trim(),
       Cron: edit.draft.Cron.trim(),
+      TimeZone: edit.draft.TimeZone.trim(),
       CWD: edit.draft.CWD.trim(),
     };
     if (edit.basis)
@@ -335,6 +337,7 @@ export function useSchedules(context: ComponentContext) {
           Title: draft.Title,
           Instructions: draft.Instructions,
           Cron: draft.Cron,
+          TimeZone: draft.TimeZone,
           CWD: draft.CWD,
           Enabled: draft.Enabled,
           ModelSelection: {
@@ -375,7 +378,10 @@ export function useSchedules(context: ComponentContext) {
   );
   const busy = Boolean(command);
   const canSave = Boolean(
-    !busy && edit?.draft.Instructions.trim() && edit.draft.Cron.trim(),
+    !busy &&
+    edit?.draft.Instructions.trim() &&
+    edit.draft.Cron.trim() &&
+    edit.draft.TimeZone.trim(),
   );
   const editorOpen = Boolean(edit || deleting);
   const actionsDisabled = busy || editorOpen;

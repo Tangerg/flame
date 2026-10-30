@@ -27,7 +27,7 @@ func TestScheduleEditPreservesCursorWithoutTimingTransition(t *testing.T) {
 			} {
 				t.Run(cron+"/"+after.Format(time.TimeOnly)+"/"+tc.name, func(t *testing.T) {
 					original := mustSchedule(t, Snapshot{
-						ID: "sch_cursor", Instructions: "review", Cron: cron,
+						ID: "sch_cursor", Instructions: "review", Cron: cron, TimeZone: "UTC",
 						CreatedAt: created, LastRunAt: created.Add(time.Minute),
 						NextRunAt: created.Add(time.Hour), Revision: 2,
 					})
@@ -63,7 +63,7 @@ func TestScheduleEditChangesCursorOnlyForTimingTransition(t *testing.T) {
 		{"disabled cron", false, Patch{Cron: &cron}, time.Time{}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			original, err := New("sch_timing", Draft{Instructions: "review", Cron: "@every 1h", Enabled: tc.enabled}, created)
+			original, err := New("sch_timing", Draft{Instructions: "review", Cron: "@every 1h", TimeZone: "UTC", Enabled: tc.enabled}, created)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -79,7 +79,7 @@ func TestScheduleEditChangesCursorOnlyForTimingTransition(t *testing.T) {
 }
 
 func TestScheduleRetainedCursorStillValidatesEdits(t *testing.T) {
-	original, err := New("sch_validation", Draft{Instructions: "review", Cron: "@daily", Enabled: true}, time.Unix(1, 0))
+	original, err := New("sch_validation", Draft{Instructions: "review", Cron: "@daily", TimeZone: "UTC", Enabled: true}, time.Unix(1, 0))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -22,7 +22,7 @@ func NewScheduleStore(db *sql.DB) *ScheduleStore {
 	return &ScheduleStore{db: db}
 }
 
-const scheduleColumns = `id, title, instructions, cwd, provider, model, reasoning_effort, cron, last_run_at, next_run_at, created_at, revision`
+const scheduleColumns = `id, title, instructions, cwd, provider, model, reasoning_effort, cron, time_zone, last_run_at, next_run_at, created_at, revision`
 
 func (s *ScheduleStore) Insert(ctx context.Context, scheduled schedule.Schedule) error {
 	if err := scheduled.Validate(); err != nil {
@@ -33,10 +33,10 @@ func (s *ScheduleStore) Insert(ctx context.Context, scheduled schedule.Schedule)
 	}
 	snapshot := scheduled.Snapshot()
 	_, err := sqlite.Connection(ctx, s.db).ExecContext(ctx,
-		`INSERT INTO schedules (id, title, instructions, cwd, provider, model, reasoning_effort, cron, last_run_at, next_run_at, created_at, revision)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO schedules (id, title, instructions, cwd, provider, model, reasoning_effort, cron, time_zone, last_run_at, next_run_at, created_at, revision)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		snapshot.ID, snapshot.Title, snapshot.Instructions, snapshot.CWD,
-		snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(), snapshot.Cron,
+		snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(), snapshot.Cron, snapshot.TimeZone,
 		nullableMillis(snapshot.LastRunAt), nullableMillis(snapshot.NextRunAt), snapshot.CreatedAt.UnixMilli(), snapshot.Revision)
 	if err != nil {
 		return fmt.Errorf("sqlite: create schedule: %w", err)
@@ -50,10 +50,10 @@ func (s *ScheduleStore) Update(ctx context.Context, replacement schedule.Replace
 	snapshot := sc.Snapshot()
 	res, err := sqlite.Connection(ctx, s.db).ExecContext(ctx,
 		`UPDATE schedules
-		 SET title = ?, instructions = ?, cwd = ?, provider = ?, model = ?, reasoning_effort = ?, cron = ?, next_run_at = ?, revision = ?
+		 SET title = ?, instructions = ?, cwd = ?, provider = ?, model = ?, reasoning_effort = ?, cron = ?, time_zone = ?, next_run_at = ?, revision = ?
 		 WHERE id = ? AND revision = ?`,
 		snapshot.Title, snapshot.Instructions, snapshot.CWD,
-		snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(), snapshot.Cron,
+		snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(), snapshot.Cron, snapshot.TimeZone,
 		nullableMillis(snapshot.NextRunAt), snapshot.Revision, snapshot.ID, expectedRevision)
 	if err != nil {
 		return fmt.Errorf("sqlite: update schedule: %w", err)
@@ -339,7 +339,7 @@ func scanSchedule(scan func(...any) error) (schedule.Schedule, error) {
 	var provider, model, reasoningEffort string
 	var lastMillis, nextMillis sql.NullInt64
 	var createdMillis int64
-	if err := scan(&snapshot.ID, &snapshot.Title, &snapshot.Instructions, &snapshot.CWD, &provider, &model, &reasoningEffort, &snapshot.Cron,
+	if err := scan(&snapshot.ID, &snapshot.Title, &snapshot.Instructions, &snapshot.CWD, &provider, &model, &reasoningEffort, &snapshot.Cron, &snapshot.TimeZone,
 		&lastMillis, &nextMillis, &createdMillis, &snapshot.Revision); err != nil {
 		return schedule.Schedule{}, err
 	}

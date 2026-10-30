@@ -80,7 +80,7 @@ func TestScheduleToolsEditObservedRevisionWithoutReplacingIdentity(t *testing.T)
 		t.Fatal(err)
 	}
 	byName := scheduleByName(tools)
-	created, err := callTextTool(t.Context(), byName[createScheduleTool], `{"title":"daily","instructions":"inspect","cron":"CRON_TZ=Asia/Shanghai 0 9 * * *"}`)
+	created, err := callTextTool(t.Context(), byName[createScheduleTool], `{"title":"daily","instructions":"inspect","cron":"0 9 * * *","time_zone":"Asia/Shanghai"}`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +129,7 @@ func TestSchedulesListIsBoundedAndContinuable(t *testing.T) {
 	for index := range 101 {
 		id := fmt.Sprintf("sch_%03d", index)
 		scheduled, err := scheduledomain.Restore(scheduledomain.Snapshot{
-			ID: id, Instructions: "review", Cron: "@daily",
+			ID: id, Instructions: "review", Cron: "@daily", TimeZone: "UTC",
 			CreatedAt: createdAt.Add(time.Duration(index) * time.Second), Revision: 1,
 		})
 		if err != nil {
@@ -278,7 +278,7 @@ func (s *scheduleOperationsFixture) ListPage(ctx context.Context, cursor string,
 }
 
 func (s *scheduleOperationsFixture) Create(ctx context.Context, input createScheduleArgs) (scheduledomain.Schedule, error) {
-	draft, err := input.draft()
+	draft, err := input.draft(func() (string, error) { return "UTC", nil })
 	if err != nil {
 		return scheduledomain.Schedule{}, err
 	}

@@ -15,12 +15,12 @@ import (
 func TestScheduleNewOwnsInitialLifecycle(t *testing.T) {
 	createdAt := time.Date(2026, 8, 29, 8, 30, 0, 123, time.FixedZone("test", 8*60*60))
 	scheduled, err := New("sch_daily", Draft{
-		Instructions: "review", Cron: "0 9 * * *", Enabled: true,
+		Instructions: "review", Cron: "0 9 * * *", TimeZone: "UTC", Enabled: true,
 	}, createdAt)
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
-	wantNext, err := nextRun(scheduled.Cron(), createdAt.UTC())
+	wantNext, err := scheduled.Recurrence().next(createdAt.UTC())
 	if err != nil {
 		t.Fatalf("NextRun: %v", err)
 	}
@@ -35,7 +35,7 @@ func TestScheduleNewOwnsInitialLifecycle(t *testing.T) {
 
 func TestScheduleRecordRunOwnsDurableTime(t *testing.T) {
 	createdAt := time.Date(2026, 8, 29, 8, 0, 0, 987654321, time.UTC)
-	scheduled, err := New("sch_record", Draft{Instructions: "review", Cron: "@daily"}, createdAt)
+	scheduled, err := New("sch_record", Draft{Instructions: "review", Cron: "@daily", TimeZone: "UTC"}, createdAt)
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -57,7 +57,7 @@ func TestScheduleAcceptRunOwnsOperationalTransition(t *testing.T) {
 		t.Run(strconv.FormatBool(enabled), func(t *testing.T) {
 			createdAt := time.Date(2026, 8, 29, 8, 0, 0, 0, time.UTC)
 			scheduled, err := New("sch_accepted", Draft{
-				Instructions: "review", Cron: "0 * * * *", Enabled: enabled,
+				Instructions: "review", Cron: "0 * * * *", TimeZone: "UTC", Enabled: enabled,
 			}, createdAt)
 			if err != nil {
 				t.Fatal(err)
@@ -100,7 +100,7 @@ func TestScheduleRestoreRejectsContradictoryLifecycle(t *testing.T) {
 
 	createdAt := time.Date(2026, 8, 29, 8, 0, 0, 0, time.UTC)
 	base := Snapshot{
-		ID: "sch_restore", Instructions: "review", Cron: "@daily",
+		ID: "sch_restore", Instructions: "review", Cron: "@daily", TimeZone: "UTC",
 		CreatedAt: createdAt, Revision: 1,
 	}
 	tests := []struct {
@@ -132,7 +132,7 @@ func TestScheduleRestoreRejectsContradictoryLifecycle(t *testing.T) {
 func TestScheduleClaimRejectsExhaustedRevision(t *testing.T) {
 	createdAt := time.Date(2026, 8, 29, 8, 0, 0, 0, time.UTC)
 	scheduled, err := Restore(Snapshot{
-		ID: "sch_exhausted", Instructions: "review", Cron: "0 * * * *",
+		ID: "sch_exhausted", Instructions: "review", Cron: "0 * * * *", TimeZone: "UTC",
 		CreatedAt: createdAt, NextRunAt: createdAt.Add(time.Hour), Revision: exactint.Maximum,
 	})
 	if err != nil {
@@ -163,7 +163,7 @@ func TestScheduleClaimRejectsExhaustedRevision(t *testing.T) {
 func TestOccurrenceCapturesExecutionAndRejectsEarlyFiring(t *testing.T) {
 	createdAt := time.Date(2026, 8, 29, 8, 0, 0, 0, time.UTC)
 	scheduled, err := New("sch_hourly", Draft{
-		Instructions: "before", Cron: "0 * * * *", Enabled: true,
+		Instructions: "before", Cron: "0 * * * *", TimeZone: "UTC", Enabled: true,
 	}, createdAt)
 	if err != nil {
 		t.Fatalf("New: %v", err)
@@ -260,7 +260,7 @@ func TestOccurrenceCapturesExecutionAndRejectsEarlyFiring(t *testing.T) {
 }
 
 func TestScheduleValidate(t *testing.T) {
-	base := Draft{Instructions: "do it", Cron: "0 9 * * 1-5", Enabled: true}
+	base := Draft{Instructions: "do it", Cron: "0 9 * * 1-5", TimeZone: "UTC", Enabled: true}
 	tests := []struct {
 		name string
 		mut  func(Draft) Draft
@@ -300,10 +300,10 @@ func TestScheduleApplyPatch(t *testing.T) {
 		Title:        "old",
 		Instructions: "summarize",
 		CWD:          "/work",
-		Cron:         "@daily",
-		NextRunAt:    time.Unix(60, 0),
-		CreatedAt:    time.Unix(1, 0),
-		Revision:     1,
+		Cron:         "@daily", TimeZone: "UTC",
+		NextRunAt: time.Unix(60, 0),
+		CreatedAt: time.Unix(1, 0),
+		Revision:  1,
 	})
 
 	got, err := sc.Edit(Patch{
@@ -314,7 +314,7 @@ func TestScheduleApplyPatch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Edit: %v", err)
 	}
-	if got.Title() != title || got.CWD() != "" || got.Instructions() != sc.Instructions() || got.Cron() != sc.Cron() || got.Enabled() || got.Revision() != 2 {
+	if got.Title() != title || got.CWD() != "" || got.Instructions() != sc.Instructions() || got.Recurrence().Cron() != sc.Recurrence().Cron() || got.Enabled() || got.Revision() != 2 {
 		t.Fatalf("patched schedule = %+v", got)
 	}
 
@@ -337,7 +337,7 @@ func TestScheduleApplyPatch(t *testing.T) {
 func TestScheduleScheduledAfter(t *testing.T) {
 	after := time.Date(2026, 6, 17, 10, 0, 0, 0, time.UTC)
 	sc := mustSchedule(t, Snapshot{
-		ID: "sch_1", Instructions: "do it", Cron: "0 9 * * 1-5",
+		ID: "sch_1", Instructions: "do it", Cron: "0 9 * * 1-5", TimeZone: "UTC",
 		NextRunAt: after.Add(time.Hour), CreatedAt: after.Add(-time.Hour), Revision: 1,
 	})
 	got, err := sc.scheduledAfter(true, after)
@@ -350,7 +350,7 @@ func TestScheduleScheduledAfter(t *testing.T) {
 	}
 
 	disabled := mustSchedule(t, Snapshot{
-		ID: "sch_2", Instructions: "do it", Cron: "@daily",
+		ID: "sch_2", Instructions: "do it", Cron: "@daily", TimeZone: "UTC",
 		NextRunAt: want, CreatedAt: after.Add(-time.Hour), Revision: 1,
 	})
 	disabledFlag := false
@@ -376,24 +376,23 @@ func mustSchedule(t testing.TB, snapshot Snapshot) Schedule {
 	return value
 }
 
-func TestValidateCron(t *testing.T) {
-	if err := validateCron("0 9 * * 1-5"); err != nil {
-		t.Errorf("valid 5-field cron rejected: %v", err)
+func TestRecurrenceAcceptsStandardCron(t *testing.T) {
+	for _, spec := range []string{"0 9 * * 1-5", "@daily"} {
+		if _, err := NewRecurrence(spec, "UTC"); err != nil {
+			t.Errorf("valid cron %q rejected: %v", spec, err)
+		}
 	}
-	if err := validateCron("@daily"); err != nil {
-		t.Errorf("@daily descriptor rejected: %v", err)
-	}
-	if err := validateCron("not a cron"); !errors.Is(err, ErrInvalidCron) {
+	if _, err := NewRecurrence("not a cron", "UTC"); !errors.Is(err, ErrInvalidCron) {
 		t.Errorf("garbage cron error = %v, want ErrInvalidCron", err)
 	}
-	if err := validateCron(""); !errors.Is(err, ErrInvalidCron) {
-		t.Errorf("empty cron error = %v, want ErrInvalidCron", err)
+	if _, err := NewRecurrence("", "UTC"); !errors.Is(err, errCronRequired) {
+		t.Errorf("empty cron error = %v, want errCronRequired", err)
 	}
 }
 
 func TestNextRun(t *testing.T) {
 	after := time.Date(2026, 6, 17, 10, 0, 0, 0, time.UTC)
-	next, err := nextRun("0 9 * * 1-5", after)
+	next, err := mustRecurrence(t, "0 9 * * 1-5", "UTC").next(after)
 	if err != nil {
 		t.Fatalf("NextRun: %v", err)
 	}
@@ -406,15 +405,32 @@ func TestNextRun(t *testing.T) {
 	}
 }
 
-func TestNextRunInvalid(t *testing.T) {
-	if _, err := nextRun("nonsense", time.Now()); !errors.Is(err, ErrInvalidCron) {
-		t.Errorf("NextRun error = %v, want ErrInvalidCron", err)
+func TestRecurrenceRejectsInvalidCronAndZone(t *testing.T) {
+	if _, err := NewRecurrence("nonsense", "UTC"); !errors.Is(err, ErrInvalidCron) {
+		t.Errorf("invalid cron error = %v, want ErrInvalidCron", err)
 	}
+	if _, err := NewRecurrence("CRON_TZ=Asia/Shanghai 0 9 * * *", "UTC"); !errors.Is(err, ErrInvalidCron) {
+		t.Errorf("zoned cron error = %v, want ErrInvalidCron", err)
+	}
+	for _, zone := range []string{"", "Local", "Mars/Olympus"} {
+		if _, err := NewRecurrence("0 9 * * *", zone); !errors.Is(err, ErrInvalidTimeZone) {
+			t.Errorf("zone %q error = %v, want ErrInvalidTimeZone", zone, err)
+		}
+	}
+}
+
+func mustRecurrence(t *testing.T, cron, timeZone string) Recurrence {
+	t.Helper()
+	recurrence, err := NewRecurrence(cron, timeZone)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return recurrence
 }
 
 func TestNextRunUsesDurableTimezoneAcrossLifecycle(t *testing.T) {
 	local := time.Date(2026, 9, 28, 8, 0, 0, 0, time.FixedZone("UTC+8", 8*60*60))
-	scheduled, err := New("sch_timezone", Draft{Instructions: "review", Cron: "0 9 * * *", Enabled: true}, local)
+	scheduled, err := New("sch_timezone", Draft{Instructions: "review", Cron: "0 9 * * *", TimeZone: "UTC", Enabled: true}, local)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -426,19 +442,19 @@ func TestNextRunUsesDurableTimezoneAcrossLifecycle(t *testing.T) {
 		t.Fatalf("editing changed cron timezone: created=%v edited=%v", scheduled.NextRunAt(), edited.NextRunAt())
 	}
 	for _, after := range []time.Time{local, local.UTC()} {
-		next, err := nextRun("CRON_TZ=Asia/Shanghai 0 9 * * *", after)
+		next, err := mustRecurrence(t, "0 9 * * *", "Asia/Shanghai").next(after)
 		if err != nil {
 			t.Fatal(err)
 		}
 		want := time.Date(2026, 9, 28, 1, 0, 0, 0, time.UTC)
 		if !next.Equal(want) || next.Location() != time.UTC {
-			t.Fatalf("explicit cron timezone = %v, want %v", next, want)
+			t.Fatalf("schedule time zone = %v, want %v", next, want)
 		}
 	}
 }
 
 func TestNextRunRejectsUnreachableCron(t *testing.T) {
-	if _, err := nextRun("0 0 30 2 *", time.Date(2026, 9, 28, 0, 0, 0, 0, time.UTC)); !errors.Is(err, ErrInvalidCron) {
+	if _, err := mustRecurrence(t, "0 0 30 2 *", "UTC").next(time.Date(2026, 9, 28, 0, 0, 0, 0, time.UTC)); !errors.Is(err, ErrInvalidCron) {
 		t.Fatalf("unreachable cron error = %v, want ErrInvalidCron", err)
 	}
 }

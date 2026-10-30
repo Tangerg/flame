@@ -89,7 +89,7 @@ func registerServer(server *sdk.Server, db *sql.DB, store store, paths app.CWDRe
 			return value.Snapshot(), err
 		}),
 		pluginstorage.RegisterCommand(backend, db, contracts.Update, classify, func(ctx context.Context, _ *sdk.ServerSession, input wire.UpdateInput) (schedule.Snapshot, error) {
-			value, err := coordinator.Update(ctx, app.UpdateCommand{ID: input.ID, ExpectedRevision: input.ExpectedRevision, Patch: app.Patch{Title: input.Title, Instructions: input.Instructions, CWD: input.CWD, Cron: input.Cron, Enabled: input.Enabled, ModelSelection: input.ModelSelection.Patch()}})
+			value, err := coordinator.Update(ctx, app.UpdateCommand{ID: input.ID, ExpectedRevision: input.ExpectedRevision, Patch: app.Patch{Title: input.Title, Instructions: input.Instructions, CWD: input.CWD, Cron: input.Cron, TimeZone: input.TimeZone, Enabled: input.Enabled, ModelSelection: input.ModelSelection.Patch()}})
 			return value.Snapshot(), err
 		}),
 		pluginstorage.RegisterCommand(backend, db, contracts.Delete, classify, func(ctx context.Context, _ *sdk.ServerSession, input wire.ItemInput) (wire.Ack, error) {
@@ -160,7 +160,7 @@ func (t toolCommands) Create(ctx context.Context, _ createScheduleArgs) (schedul
 		return schedule.Schedule{}, decodeError(err)
 	}
 	value, err := pluginstorage.Command(ctx, t.db, wire.Create, id, admitted, classify, func(ctx context.Context, input createScheduleArgs) (schedule.Snapshot, error) {
-		draft, err := input.draft()
+		draft, err := input.draft(hostTimeZone)
 		if err != nil {
 			return schedule.Snapshot{}, err
 		}

@@ -59,6 +59,7 @@ type Patch struct {
 	CWD            *string
 	ModelSelection modelchoice.Patch
 	Cron           *string
+	TimeZone       *string
 	Enabled        *bool
 }
 
@@ -167,7 +168,7 @@ func (c *Coordinator) Update(ctx context.Context, cmd UpdateCommand) (schedule.S
 	}
 	patch := schedule.Patch{
 		Title: cmd.Patch.Title, Instructions: cmd.Patch.Instructions, CWD: cmd.Patch.CWD,
-		Cron: cmd.Patch.Cron, Enabled: cmd.Patch.Enabled,
+		Cron: cmd.Patch.Cron, TimeZone: cmd.Patch.TimeZone, Enabled: cmd.Patch.Enabled,
 	}
 	if !cmd.Patch.ModelSelection.Empty() {
 		selection, selectionErr := cmd.Patch.ModelSelection.Apply(existing.ModelSelection())

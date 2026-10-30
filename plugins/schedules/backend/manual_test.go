@@ -29,7 +29,7 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 	}
 	defer db.Close()
 	store := sqlite.NewScheduleStore(db)
-	definition, err := schedule.New("sch_manual", schedule.Draft{Title: "Captured", Instructions: "original instructions", Cron: "@hourly"}, time.Now())
+	definition, err := schedule.New("sch_manual", schedule.Draft{Title: "Captured", Instructions: "original instructions", Cron: "@hourly", TimeZone: "UTC"}, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}

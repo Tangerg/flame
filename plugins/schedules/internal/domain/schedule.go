@@ -30,6 +30,7 @@ type Draft struct {
 	CWD            string
 	ModelSelection modelchoice.Selection
 	Cron           string
+	TimeZone       string
 	Enabled        bool
 }
 
@@ -37,10 +38,8 @@ func (d Draft) Validate() error {
 	if err := validateInstructions(d.Instructions); err != nil {
 		return err
 	}
-	if d.Cron == "" {
-		return errCronRequired
-	}
-	return validateCron(d.Cron)
+	_, err := NewRecurrence(d.Cron, d.TimeZone)
+	return err
 }
 
 type Snapshot struct {
@@ -50,6 +49,7 @@ type Snapshot struct {
 	CWD            string
 	ModelSelection modelchoice.Selection
 	Cron           string
+	TimeZone       string
 	LastRunAt      time.Time
 	NextRunAt      time.Time
 	CreatedAt      time.Time
@@ -62,7 +62,7 @@ type Schedule struct {
 	instructions   string
 	cwd            string
 	modelSelection modelchoice.Selection
-	cron           string
+	recurrence     Recurrence
 	lastRunAt      time.Time
 	// The cursor also determines enablement so a second enabled flag cannot drift from scheduling.
 	nextRunAt time.Time
@@ -76,6 +76,7 @@ type Patch struct {
 	CWD          *string
 	Selection    *modelchoice.Selection
 	Cron         *string
+	TimeZone     *string
 	Enabled      *bool
 }
 
@@ -84,13 +85,17 @@ func New(id string, draft Draft, createdAt time.Time) (Schedule, error) {
 	if err != nil {
 		return Schedule{}, err
 	}
-	if err := draft.Validate(); err != nil {
+	if err := validateInstructions(draft.Instructions); err != nil {
+		return Schedule{}, err
+	}
+	recurrence, err := NewRecurrence(draft.Cron, draft.TimeZone)
+	if err != nil {
 		return Schedule{}, err
 	}
 	createdAt = canonicalTime(createdAt)
 	value := Schedule{
 		id: parsedID, title: draft.Title, instructions: draft.Instructions, cwd: draft.CWD,
-		modelSelection: draft.ModelSelection, cron: draft.Cron,
+		modelSelection: draft.ModelSelection, recurrence: recurrence,
 		createdAt: createdAt, revision: exactint.First(),
 	}
 	return value.scheduledAfter(draft.Enabled, createdAt)
@@ -105,9 +110,13 @@ func Restore(snapshot Snapshot) (Schedule, error) {
 	if err != nil {
 		return Schedule{}, errRevisionExhausted
 	}
+	recurrence, err := NewRecurrence(snapshot.Cron, snapshot.TimeZone)
+	if err != nil {
+		return Schedule{}, err
+	}
 	value := Schedule{
 		id: parsedID, title: snapshot.Title, instructions: snapshot.Instructions,
-		cwd: snapshot.CWD, modelSelection: snapshot.ModelSelection, cron: snapshot.Cron,
+		cwd: snapshot.CWD, modelSelection: snapshot.ModelSelection, recurrence: recurrence,
 		lastRunAt: canonicalTime(snapshot.LastRunAt),
 		nextRunAt: canonicalTime(snapshot.NextRunAt), createdAt: canonicalTime(snapshot.CreatedAt),
 		revision: revision,
@@ -128,7 +137,8 @@ func (s Schedule) Edit(p Patch, expectedRevision uint64, after time.Time) (Sched
 	if expectedRevision != s.revision.Value() {
 		return Schedule{}, ErrRevisionConflict
 	}
-	cronChanged := p.Cron != nil && *p.Cron != s.cron
+	recurrenceChanged := (p.Cron != nil && *p.Cron != s.recurrence.Cron()) ||
+		(p.TimeZone != nil && *p.TimeZone != s.recurrence.TimeZone())
 	if p.Title != nil {
 		s.title = *p.Title
 	}
@@ -141,8 +151,19 @@ func (s Schedule) Edit(p Patch, expectedRevision uint64, after time.Time) (Sched
 	if p.Selection != nil {
 		s.modelSelection = *p.Selection
 	}
-	if p.Cron != nil {
-		s.cron = *p.Cron
+	if recurrenceChanged {
+		cron, timeZone := s.recurrence.Cron(), s.recurrence.TimeZone()
+		if p.Cron != nil {
+			cron = *p.Cron
+		}
+		if p.TimeZone != nil {
+			timeZone = *p.TimeZone
+		}
+		recurrence, err := NewRecurrence(cron, timeZone)
+		if err != nil {
+			return Schedule{}, err
+		}
+		s.recurrence = recurrence
 	}
 	enabled := s.Enabled()
 	if p.Enabled != nil {
@@ -152,7 +173,7 @@ func (s Schedule) Edit(p Patch, expectedRevision uint64, after time.Time) (Sched
 	if err != nil {
 		return Schedule{}, err
 	}
-	if enabled != s.Enabled() || (enabled && cronChanged) {
+	if enabled != s.Enabled() || (enabled && recurrenceChanged) {
 		return next.scheduledAfter(enabled, after)
 	}
 	return next, next.Validate()
@@ -193,11 +214,8 @@ func (s Schedule) validateProduct() error {
 	if err := validateInstructions(s.instructions); err != nil {
 		return err
 	}
-	if s.cron == "" {
+	if s.recurrence.zone == nil {
 		return errCronRequired
-	}
-	if err := validateCron(s.cron); err != nil {
-		return err
 	}
 	return nil
 }
@@ -217,7 +235,7 @@ func (s Schedule) scheduledAfter(enabled bool, after time.Time) (Schedule, error
 		s.nextRunAt = time.Time{}
 		return s, s.Validate()
 	}
-	next, err := nextRun(s.cron, after)
+	next, err := s.recurrence.next(after)
 	if err != nil {
 		return Schedule{}, err
 	}
@@ -228,7 +246,7 @@ func (s Schedule) scheduledAfter(enabled bool, after time.Time) (Schedule, error
 func (s Schedule) Snapshot() Snapshot {
 	return Snapshot{
 		ID: s.id.String(), Title: s.title, Instructions: s.instructions, CWD: s.cwd,
-		ModelSelection: s.modelSelection, Cron: s.cron,
+		ModelSelection: s.modelSelection, Cron: s.recurrence.Cron(), TimeZone: s.recurrence.TimeZone(),
 		LastRunAt: s.lastRunAt, NextRunAt: s.nextRunAt, CreatedAt: s.createdAt,
 		Revision: s.revision.Value(),
 	}
@@ -239,7 +257,7 @@ func (s Schedule) Title() string                         { return s.title }
 func (s Schedule) Instructions() string                  { return s.instructions }
 func (s Schedule) CWD() string                           { return s.cwd }
 func (s Schedule) ModelSelection() modelchoice.Selection { return s.modelSelection }
-func (s Schedule) Cron() string                          { return s.cron }
+func (s Schedule) Recurrence() Recurrence                { return s.recurrence }
 func (s Schedule) Enabled() bool                         { return !s.nextRunAt.IsZero() }
 func (s Schedule) LastRunAt() time.Time                  { return s.lastRunAt }
 func (s Schedule) NextRunAt() time.Time                  { return s.nextRunAt }

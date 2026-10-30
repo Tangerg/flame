@@ -284,6 +284,15 @@ export function Schedules({ context }: { context: ComponentContext }) {
                   onChange={(event) => patch("Cron", event.target.value)}
                 />
               </FormField>
+              <FormField label={t("field.timeZone")}>
+                <TextField
+                  size="lg"
+                  aria-label={t("field.timeZone")}
+                  value={edit.draft.TimeZone}
+                  disabled={busy}
+                  onChange={(event) => patch("TimeZone", event.target.value)}
+                />
+              </FormField>
               <FormField label={t("field.workspace")}>
                 <TextField
                   size="lg"
@@ -519,6 +528,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
                               Title: item.Title,
                               Instructions: item.Instructions,
                               Cron: item.Cron,
+                              TimeZone: item.TimeZone,
                               CWD: item.CWD,
                               ModelSelection: structuredClone(
                                 item.ModelSelection,
@@ -581,6 +591,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
                 <Facts
                   values={[
                     [t("fact.cron"), item.Cron],
+                    [t("fact.timeZone"), item.TimeZone],
                     [t("fact.schedule"), item.ID],
                     [t("fact.revision"), String(item.Revision)],
                     [t("fact.workspace"), item.CWD || t("runtimeDefault")],

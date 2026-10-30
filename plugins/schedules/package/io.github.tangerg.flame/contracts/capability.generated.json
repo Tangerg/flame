@@ -52,6 +52,9 @@
               "ModelSelection": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_Selection"
               },
+              "TimeZone": {
+                "type": "string"
+              },
               "Title": {
                 "type": "string"
               }
@@ -62,6 +65,7 @@
               "CWD",
               "ModelSelection",
               "Cron",
+              "TimeZone",
               "Enabled"
             ],
             "type": "object"
@@ -85,6 +89,9 @@
           "ModelSelection": {
             "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_Selection"
           },
+          "TimeZone": {
+            "type": "string"
+          },
           "Title": {
             "type": "string"
           }
@@ -95,6 +102,7 @@
           "CWD",
           "ModelSelection",
           "Cron",
+          "TimeZone",
           "Enabled"
         ],
         "type": "object"
@@ -163,6 +171,9 @@
                 ],
                 "type": "integer"
               },
+              "TimeZone": {
+                "type": "string"
+              },
               "Title": {
                 "type": "string"
               }
@@ -174,6 +185,7 @@
               "CWD",
               "ModelSelection",
               "Cron",
+              "TimeZone",
               "LastRunAt",
               "NextRunAt",
               "CreatedAt",
@@ -221,6 +233,9 @@
             ],
             "type": "integer"
           },
+          "TimeZone": {
+            "type": "string"
+          },
           "Title": {
             "type": "string"
           }
@@ -232,6 +247,7 @@
           "CWD",
           "ModelSelection",
           "Cron",
+          "TimeZone",
           "LastRunAt",
           "NextRunAt",
           "CreatedAt",
@@ -400,6 +416,9 @@
                 ],
                 "type": "integer"
               },
+              "TimeZone": {
+                "type": "string"
+              },
               "Title": {
                 "type": "string"
               }
@@ -411,6 +430,7 @@
               "CWD",
               "ModelSelection",
               "Cron",
+              "TimeZone",
               "LastRunAt",
               "NextRunAt",
               "CreatedAt",
@@ -578,6 +598,9 @@
               "ModelSelection": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_ModelPatch"
               },
+              "TimeZone": {
+                "type": "string"
+              },
               "Title": {
                 "type": "string"
               }
@@ -619,6 +642,9 @@
           },
           "ModelSelection": {
             "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_ModelPatch"
+          },
+          "TimeZone": {
+            "type": "string"
           },
           "Title": {
             "type": "string"
@@ -695,6 +721,9 @@
                 ],
                 "type": "integer"
               },
+              "TimeZone": {
+                "type": "string"
+              },
               "Title": {
                 "type": "string"
               }
@@ -706,6 +735,7 @@
               "CWD",
               "ModelSelection",
               "Cron",
+              "TimeZone",
               "LastRunAt",
               "NextRunAt",
               "CreatedAt",
@@ -753,6 +783,9 @@
             ],
             "type": "integer"
           },
+          "TimeZone": {
+            "type": "string"
+          },
           "Title": {
             "type": "string"
           }
@@ -764,6 +797,7 @@
           "CWD",
           "ModelSelection",
           "Cron",
+          "TimeZone",
           "LastRunAt",
           "NextRunAt",
           "CreatedAt",

@@ -24,6 +24,7 @@ func Open(ctx context.Context, path string) (*sql.DB, error) {
 			model       TEXT    NOT NULL DEFAULT '',
 			reasoning_effort TEXT NOT NULL DEFAULT '',
 			cron        TEXT    NOT NULL,
+			time_zone   TEXT    NOT NULL,
 			last_run_at INTEGER,
 			next_run_at INTEGER,
 			created_at  INTEGER NOT NULL,

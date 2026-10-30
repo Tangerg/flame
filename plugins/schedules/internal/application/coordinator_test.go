@@ -88,8 +88,8 @@ func TestCreateOwnsScheduleAdmission(t *testing.T) {
 	created, err := c.Create(t.Context(), schedule.Draft{
 		Instructions: "review",
 		CWD:          "workspace",
-		Cron:         "0 13 * * *",
-		Enabled:      true,
+		Cron:         "0 13 * * *", TimeZone: "UTC",
+		Enabled: true,
 	})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
@@ -111,10 +111,10 @@ func TestUpdatePreservesAcceptedScheduleAfterCallerReuse(t *testing.T) {
 		Revision:     3,
 		Instructions: "before",
 		CWD:          "/before",
-		Cron:         "0 9 * * *",
-		LastRunAt:    lastRun,
-		CreatedAt:    createdAt,
-		NextRunAt:    lastRun.Add(time.Hour),
+		Cron:         "0 9 * * *", TimeZone: "UTC",
+		LastRunAt: lastRun,
+		CreatedAt: createdAt,
+		NextRunAt: lastRun.Add(time.Hour),
 	})}
 	c := mustCoordinator(t, Dependencies{
 		Store: store,
@@ -143,7 +143,7 @@ func TestUpdatePreservesAcceptedScheduleAfterCallerReuse(t *testing.T) {
 		t.Fatalf("Update: %v", err)
 	}
 	if updated.ID() != "sch_1" || updated.Title() != title || updated.Instructions() != instructions ||
-		updated.CWD() != "/canonical/after" || updated.Cron() != cron || updated.Enabled() || updated.Revision() != 4 {
+		updated.CWD() != "/canonical/after" || updated.Recurrence().Cron() != cron || updated.Enabled() || updated.Revision() != 4 {
 		t.Fatalf("updated = %+v", updated)
 	}
 	if selection := updated.ModelSelection(); selection.Provider() != provider || selection.Model() != model ||
@@ -183,7 +183,7 @@ func TestCreateValidatesBeforeResolvingCWD(t *testing.T) {
 			return "", errors.New("unexpected resolution")
 		}),
 	})
-	_, err := c.Create(t.Context(), schedule.Draft{CWD: "missing", Cron: "@daily", Enabled: true})
+	_, err := c.Create(t.Context(), schedule.Draft{CWD: "missing", Cron: "@daily", TimeZone: "UTC", Enabled: true})
 	if !errors.Is(err, schedule.ErrInstructionsRequired) {
 		t.Fatalf("Create error = %v, want ErrInstructionsRequired", err)
 	}
@@ -300,6 +300,9 @@ func mustStoredSchedule(t testing.TB, snapshot schedule.Snapshot) schedule.Sched
 	t.Helper()
 	if snapshot.Cron == "" {
 		snapshot.Cron = "@daily"
+	}
+	if snapshot.TimeZone == "" {
+		snapshot.TimeZone = "UTC"
 	}
 	if snapshot.CreatedAt.IsZero() {
 		snapshot.CreatedAt = time.Unix(1, 0).UTC()

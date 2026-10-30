@@ -134,15 +134,17 @@ cron claims without deleting identity or rewriting captured/accepted work. A
 revision conflict requires a fresh read and a new edit decision.
 
 Metadata edits retain `NextRunAt` and `LastRunAt`, including an already-due
-occurrence. Only a changed cron while enabled or a disable/re-enable transition
-recomputes the scheduling cursor. A disabled cron edit retains its zero cursor.
+occurrence. Only a changed cron or time zone while enabled, or a
+disable/re-enable transition, recomputes the scheduling cursor. A disabled cron edit retains its zero cursor.
 Every accepted edit, including an empty or same-value patch, advances the revision
 once under the same compare-and-swap contract; a stale scanner must reread without
 losing the original due occurrence.
 
-Cron uses UTC unless the expression includes a `CRON_TZ=Area/City` prefix, such as
-`CRON_TZ=Asia/Shanghai 0 9 * * *`. The existing Domain parser owns this meaning,
-including supported standard descriptors. There is no separate timezone setting.
+Every schedule stores the IANA time zone its cron is read in, so `0 9 * * *`
+fires at nine in that zone whatever the host later becomes. The workbench sends
+the person's browser zone; `create_schedule` without `time_zone` uses the
+host's zone and fails when the host cannot name one. A `CRON_TZ=` prefix is
+refused because the zone is its own field.
 
 `run_schedule` takes the same `ID` input as the public manual operation; use the
 exact `schedule_id` from a list result. It returns accepted `SessionID`/`RunID`,

@@ -11,7 +11,7 @@ import (
 
 func TestCapturedRunRequestRestoresOneExecutionOwner(t *testing.T) {
 	now := time.Date(2026, 10, 12, 0, 0, 0, 0, time.UTC)
-	scheduled, err := New("sch_capture", Draft{Instructions: "captured", Cron: "* * * * *", Enabled: true}, now)
+	scheduled, err := New("sch_capture", Draft{Instructions: "captured", Cron: "* * * * *", TimeZone: "UTC", Enabled: true}, now)
 	if err != nil {
 		t.Fatal(err)
 	}

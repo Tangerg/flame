@@ -96,7 +96,7 @@ func TestScheduleCRUD(t *testing.T) {
 	}
 	created, err := insertSchedule(ctx, s, schedule.Snapshot{
 		Title: "standup", Instructions: "summarize the diff", CWD: "/proj",
-		ModelSelection: selection, Cron: "0 9 * * 1-5", NextRunAt: past,
+		ModelSelection: selection, Cron: "0 9 * * 1-5", TimeZone: "UTC", NextRunAt: past,
 	})
 	if err != nil {
 		t.Fatalf("create: %v", err)
@@ -112,7 +112,7 @@ func TestScheduleCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get: %v", err)
 	}
-	if got.Instructions() != "summarize the diff" || got.Cron() != "0 9 * * 1-5" || !got.Enabled() {
+	if got.Instructions() != "summarize the diff" || got.Recurrence().Cron() != "0 9 * * 1-5" || !got.Enabled() {
 		t.Errorf("get round-trip mismatch: %+v", got)
 	}
 	if got.ModelSelection() != selection {
@@ -185,7 +185,7 @@ func TestScheduleRecordRunLeavesCursor(t *testing.T) {
 
 	past := time.Now().Add(-time.Hour).UTC().Truncate(time.Millisecond)
 	created, err := insertSchedule(ctx, s, schedule.Snapshot{
-		Instructions: "p", Cron: "@daily", NextRunAt: past,
+		Instructions: "p", Cron: "@daily", TimeZone: "UTC", NextRunAt: past,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -237,7 +237,7 @@ func TestScheduleRevisionExhaustionIsAtomicAcrossOperationalMutations(t *testing
 	store := NewScheduleStore(db)
 	dueAt := time.Date(2026, 8, 29, 9, 0, 0, 0, time.UTC)
 	created, err := insertSchedule(ctx, store, schedule.Snapshot{
-		Instructions: "review", Cron: "0 * * * *", NextRunAt: dueAt,
+		Instructions: "review", Cron: "0 * * * *", TimeZone: "UTC", NextRunAt: dueAt,
 	})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
@@ -292,7 +292,7 @@ func TestScheduleClaimRejectsStaleRevisionWithUnchangedCursor(t *testing.T) {
 	store := newScheduleStore(t)
 	dueAt := time.Date(2026, 7, 26, 9, 0, 0, 0, time.UTC)
 	created, err := insertSchedule(ctx, store, schedule.Snapshot{
-		Instructions: "old instructions", Cron: "0 * * * *", NextRunAt: dueAt,
+		Instructions: "old instructions", Cron: "0 * * * *", TimeZone: "UTC", NextRunAt: dueAt,
 	})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
@@ -354,7 +354,7 @@ func TestPendingOccurrenceAcceptsAfterScheduleDeletionAndReopen(t *testing.T) {
 	store := NewScheduleStore(db)
 	dueAt := time.Date(2026, 9, 14, 9, 0, 0, 0, time.UTC)
 	created, err := insertSchedule(ctx, store, schedule.Snapshot{
-		Title: "review", Instructions: "review", Cron: "0 * * * *",
+		Title: "review", Instructions: "review", Cron: "0 * * * *", TimeZone: "UTC",
 		NextRunAt: dueAt, ModelSelection: defaultModelSelection(),
 	})
 	if err != nil {
@@ -400,7 +400,7 @@ func TestScheduleOccurrenceSurvivesDispatchAndAcceptsOnce(t *testing.T) {
 		t.Fatalf("model selection: %v", selectionErr)
 	}
 	created, err := insertSchedule(ctx, store, schedule.Snapshot{
-		Title: "hourly", Instructions: "review", Cron: "0 * * * *", NextRunAt: dueAt,
+		Title: "hourly", Instructions: "review", Cron: "0 * * * *", TimeZone: "UTC", NextRunAt: dueAt,
 		ModelSelection: selection,
 	})
 	if err != nil {
@@ -442,7 +442,7 @@ func TestScheduleOccurrenceSurvivesDispatchAndAcceptsOnce(t *testing.T) {
 func TestAcknowledgedOccurrenceRetainsReplayEvidence(t *testing.T) {
 	store, database := newScheduleStores(t)
 	dueAt := time.Date(2026, 9, 1, 9, 0, 0, 0, time.UTC)
-	value, err := insertSchedule(t.Context(), store, schedule.Snapshot{Instructions: "review", Cron: "@hourly", NextRunAt: dueAt})
+	value, err := insertSchedule(t.Context(), store, schedule.Snapshot{Instructions: "review", Cron: "@hourly", TimeZone: "UTC", NextRunAt: dueAt})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -473,7 +473,7 @@ func TestScheduleClaimKeepsOnlyOnePendingOccurrencePerSchedule(t *testing.T) {
 	firstDueAt := time.Date(2026, 7, 26, 9, 0, 0, 0, time.UTC)
 	secondDueAt := firstDueAt.Add(time.Hour)
 	created, err := insertSchedule(ctx, store, schedule.Snapshot{
-		Title: "hourly", Instructions: "review", Cron: "0 * * * *", NextRunAt: firstDueAt,
+		Title: "hourly", Instructions: "review", Cron: "0 * * * *", TimeZone: "UTC", NextRunAt: firstDueAt,
 	})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
@@ -524,7 +524,7 @@ func TestScheduleStoreRejectsDuplicatePendingRows(t *testing.T) {
 	store := NewScheduleStore(db)
 	dueAt := time.Date(2026, 7, 26, 9, 0, 0, 0, time.UTC)
 	created, err := insertSchedule(ctx, store, schedule.Snapshot{
-		Instructions: "review", Cron: "@hourly", NextRunAt: dueAt,
+		Instructions: "review", Cron: "@hourly", TimeZone: "UTC", NextRunAt: dueAt,
 	})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
@@ -555,14 +555,14 @@ func TestScheduleStoreRejectsDuplicatePendingRows(t *testing.T) {
 func TestScheduleUpdateNotFound(t *testing.T) {
 	s := newScheduleStore(t)
 	expected, restoreErr := schedule.Restore(schedule.Snapshot{
-		ID: "sch_nope", Instructions: "x", Cron: "@daily",
+		ID: "sch_nope", Instructions: "x", Cron: "@daily", TimeZone: "UTC",
 		CreatedAt: time.Unix(1, 0), Revision: 1,
 	})
 	if restoreErr != nil {
 		t.Fatalf("Restore unknown expected: %v", restoreErr)
 	}
 	unknown, restoreErr := schedule.Restore(schedule.Snapshot{
-		ID: "sch_nope", Instructions: "x", Cron: "@daily",
+		ID: "sch_nope", Instructions: "x", Cron: "@daily", TimeZone: "UTC",
 		CreatedAt: time.Unix(1, 0), Revision: 2,
 	})
 	if restoreErr != nil {
@@ -581,7 +581,7 @@ func TestScheduleUpdateNotFound(t *testing.T) {
 func TestScheduleDueSkipsDisabled(t *testing.T) {
 	ctx := context.Background()
 	s := newScheduleStore(t)
-	if _, err := insertSchedule(ctx, s, schedule.Snapshot{Instructions: "p", Cron: "@daily"}); err != nil {
+	if _, err := insertSchedule(ctx, s, schedule.Snapshot{Instructions: "p", Cron: "@daily", TimeZone: "UTC"}); err != nil {
 		t.Fatal(err)
 	}
 	due, err := s.Due(ctx, time.Now(), 100)
@@ -627,7 +627,7 @@ func TestScheduleUnacknowledgedOccurrenceSurvivesStoreReopen(t *testing.T) {
 	store := NewScheduleStore(db)
 	past := time.Now().Add(-time.Hour).UTC().Truncate(time.Millisecond)
 	created, err := insertSchedule(ctx, store, schedule.Snapshot{
-		Instructions: "p", Cron: "@daily", NextRunAt: past,
+		Instructions: "p", Cron: "@daily", TimeZone: "UTC", NextRunAt: past,
 	})
 	if err != nil {
 		t.Fatalf("create: %v", err)
@@ -661,9 +661,9 @@ func TestScheduleQueriesUseIDAsStableTieBreaker(t *testing.T) {
 	nextRunAt := time.Date(2026, 7, 19, 11, 0, 0, 0, time.UTC).UnixMilli()
 	for _, id := range []string{"sch_a", "sch_c", "sch_b"} {
 		_, execContextErr := db.ExecContext(t.Context(), `INSERT INTO schedules(
-			id, title, instructions, cwd, provider, model, cron,
+			id, title, instructions, cwd, provider, model, cron, time_zone,
 			last_run_at, next_run_at, created_at, revision
-		) VALUES (?, '', 'review', '', '', '', '0 9 * * *', NULL, ?, ?, 1)`,
+		) VALUES (?, '', 'review', '', '', '', '0 9 * * *', 'UTC', NULL, ?, ?, 1)`,
 			id, nextRunAt, createdAt)
 		if execContextErr != nil {
 			t.Fatalf("insert %s: %v", id, execContextErr)
@@ -720,9 +720,9 @@ func TestScheduleDuePrioritizesOldestBacklog(t *testing.T) {
 	insert := func(id string, dueAt time.Time) {
 		t.Helper()
 		_, execContextErr := db.ExecContext(ctx, `INSERT INTO schedules(
-			id, title, instructions, cwd, provider, model, cron,
+			id, title, instructions, cwd, provider, model, cron, time_zone,
 			last_run_at, next_run_at, created_at, revision
-		) VALUES (?, '', 'review', '', '', '', '0 9 * * *', NULL, ?, ?, 1)`,
+		) VALUES (?, '', 'review', '', '', '', '0 9 * * *', 'UTC', NULL, ?, ?, 1)`,
 			id, dueAt.UnixMilli(), dueAt.UnixMilli())
 		if execContextErr != nil {
 			t.Fatalf("insert %s: %v", id, execContextErr)

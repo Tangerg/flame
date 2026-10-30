@@ -11,7 +11,7 @@ import (
 	"github.com/Tangerg/flame/qimu/portable"
 )
 
-var errorCodes = map[string]error{"workspace": app.ErrWorkspaceUnavailable, "command_conflict": portable.ErrInvocationConflict, "not_found": schedule.ErrNotFound, "revision": schedule.ErrRevisionConflict, "cursor": pagination.ErrInvalidCursor, "limit": pagination.ErrInvalidLimit, "invalid_cron": schedule.ErrInvalidCron, "model": modelchoice.ErrUnsupported, "instructions": schedule.ErrInstructionsRequired, "revision_required": schedule.ErrRevisionRequired}
+var errorCodes = map[string]error{"workspace": app.ErrWorkspaceUnavailable, "command_conflict": portable.ErrInvocationConflict, "not_found": schedule.ErrNotFound, "revision": schedule.ErrRevisionConflict, "cursor": pagination.ErrInvalidCursor, "limit": pagination.ErrInvalidLimit, "invalid_cron": schedule.ErrInvalidCron, "invalid_time_zone": schedule.ErrInvalidTimeZone, "model": modelchoice.ErrUnsupported, "instructions": schedule.ErrInstructionsRequired, "revision_required": schedule.ErrRevisionRequired}
 
 func classify(err error) string {
 	if modelchoice.IsInvalid(err) {

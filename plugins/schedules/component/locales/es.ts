@@ -42,6 +42,7 @@ export const es: Record<string, string> = {
   "field.title": "Título",
   "field.instructions": "Instrucciones",
   "field.cron": "Expresión cron",
+  "field.timeZone": "Zona horaria",
   "field.workspace": "Ruta del espacio de trabajo",
   "field.workspace.placeholder":
     "Vacío usa el valor predeterminado del Runtime",
@@ -79,6 +80,7 @@ export const es: Record<string, string> = {
   "nextFiring.none": "Sin programar",
   "details.title": "Detalles de la programación",
   "fact.cron": "Cron",
+  "fact.timeZone": "Zona horaria",
   "fact.schedule": "Programación",
   "fact.revision": "Revisión",
   "fact.workspace": "Espacio de trabajo",

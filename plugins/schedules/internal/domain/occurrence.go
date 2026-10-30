@@ -54,7 +54,7 @@ func (s Schedule) Claim(sessionID, runID string, firedAt time.Time, invocation p
 	if firedAt.IsZero() {
 		return Claim{}, errors.New("schedule: occurrence firing time is required")
 	}
-	nextRunAt, err := nextRun(s.cron, firedAt)
+	nextRunAt, err := s.recurrence.next(firedAt)
 	if err != nil {
 		return Claim{}, err
 	}

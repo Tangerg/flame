@@ -24,7 +24,7 @@ func TestScheduleRevisionRequiresExactPositiveInteger(t *testing.T) {
 			dueAt := time.Date(2026, 8, 29, 9, 0, 0, 0, time.UTC)
 			created, err := insertSchedule(t.Context(), store, schedule.Snapshot{
 				ID:           schedule.IDPrefix + "00000000-0000-4000-8000-000000000001",
-				Instructions: "review", Cron: "0 * * * *", CreatedAt: dueAt.Add(-time.Hour), NextRunAt: dueAt,
+				Instructions: "review", Cron: "0 * * * *", TimeZone: "UTC", CreatedAt: dueAt.Add(-time.Hour), NextRunAt: dueAt,
 			})
 			if err != nil {
 				t.Fatalf("seed valid Schedule: %v", err)

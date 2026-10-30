@@ -8,7 +8,7 @@ import (
 
 func TestReplacementProtectsManagementEditIdentityAndLifecycle(t *testing.T) {
 	createdAt := time.Unix(1, 0).UTC()
-	expected, err := New("sch_1", Draft{Instructions: "before", Cron: "@daily"}, createdAt)
+	expected, err := New("sch_1", Draft{Instructions: "before", Cron: "@daily", TimeZone: "UTC"}, createdAt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -25,7 +25,7 @@ func TestReplacementProtectsManagementEditIdentityAndLifecycle(t *testing.T) {
 		t.Fatalf("replacement = %+v", replacement)
 	}
 
-	other, err := New("sch_2", Draft{Instructions: "other", Cron: "@daily"}, createdAt)
+	other, err := New("sch_2", Draft{Instructions: "other", Cron: "@daily", TimeZone: "UTC"}, createdAt)
 	if err != nil {
 		t.Fatal(err)
 	}

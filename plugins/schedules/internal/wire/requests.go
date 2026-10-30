@@ -20,6 +20,7 @@ type UpdateInput struct {
 	Instructions     *string `json:"Instructions,omitzero"`
 	CWD              *string `json:"CWD,omitzero"`
 	Cron             *string `json:"Cron,omitzero"`
+	TimeZone         *string `json:"TimeZone,omitzero"`
 	Enabled          *bool   `json:"Enabled,omitzero"`
 	ModelSelection   ModelPatch
 }

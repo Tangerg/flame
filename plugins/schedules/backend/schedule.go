@@ -24,7 +24,8 @@ type createScheduleArgs struct {
 	Provider        string `json:"provider,omitempty" jsonschema_description:"Model provider id. Set together with model only when the user explicitly chose both; otherwise omit both."`
 	Model           string `json:"model,omitempty" jsonschema_description:"Model id. Set together with provider only when the user explicitly chose both; otherwise omit both."`
 	ReasoningEffort string `json:"reasoning_effort,omitempty" jsonschema_description:"Optional reasoning intensity supported by the selected model. Omit to use the provider default."`
-	Cron            string `json:"cron" jsonschema:"minLength=1" jsonschema_description:"Five-field cron (minute hour day-of-month month day-of-week), evaluated in UTC unless prefixed with CRON_TZ=Area/City, for example CRON_TZ=Asia/Shanghai 0 9 * * *."`
+	Cron            string `json:"cron" jsonschema:"minLength=1" jsonschema_description:"Five-field cron (minute hour day-of-month month day-of-week) read in time_zone, for example 0 9 * * *."`
+	TimeZone        string `json:"time_zone,omitempty" jsonschema_description:"IANA time zone the cron is read in, for example Asia/Shanghai. Omit to use the user's local time zone."`
 }
 
 type updateScheduleArgs struct {
@@ -36,7 +37,8 @@ type updateScheduleArgs struct {
 	Provider         *string `json:"provider,omitzero" jsonschema_description:"Set with model only when the user chooses an exact pair; set both to empty strings to restore Runtime defaults."`
 	Model            *string `json:"model,omitzero"`
 	ReasoningEffort  *string `json:"reasoning_effort,omitzero"`
-	Cron             *string `json:"cron,omitzero" jsonschema_description:"Five-field cron evaluated in UTC unless prefixed with CRON_TZ=Area/City."`
+	Cron             *string `json:"cron,omitzero" jsonschema_description:"Five-field cron read in the schedule's time zone."`
+	TimeZone         *string `json:"time_zone,omitzero" jsonschema_description:"IANA time zone the cron is read in."`
 	Enabled          *bool   `json:"enabled,omitzero" jsonschema_description:"False pauses future cron occurrences; already captured or accepted work is retained."`
 }
 
@@ -71,6 +73,7 @@ type scheduleView struct {
 	Model           string `json:"model,omitempty"`
 	ReasoningEffort string `json:"reasoning_effort,omitempty"`
 	Cron            string `json:"cron"`
+	TimeZone        string `json:"time_zone"`
 	Enabled         bool   `json:"enabled"`
 	LastRunAt       string `json:"last_run_at,omitempty"`
 	NextRunAt       string `json:"next_run_at,omitempty"`
@@ -101,7 +104,7 @@ func buildSchedules(operations scheduleOperations, manual func(context.Context, 
 	list, err := toolcontract.NewFunc[listScheduleArgs, scheduleListResponse](
 		toolcontract.FuncConfig{
 			Name:        "list_schedules",
-			Description: "List recurring Agent Run schedules and their ids, revisions, instructions, cron expressions, model choices, and next-run state. Cron uses UTC unless it has a CRON_TZ=Area/City prefix. Read the current revision before editing.",
+			Description: "List recurring Agent Run schedules and their ids, revisions, instructions, cron expressions, model choices, and next-run state. Each cron is read in the schedule's time zone. Read the current revision before editing.",
 		},
 		t.list,
 	)
@@ -166,10 +169,17 @@ func (s *scheduleManagementTools) create(ctx context.Context, in createScheduleA
 	return scheduleResponse{Schedule: viewSchedule(created)}, nil
 }
 
-func (in createScheduleArgs) draft() (scheduledomain.Draft, error) {
+// draft reads an omitted zone from the host, whose zone is the person's own.
+func (in createScheduleArgs) draft(hostTimeZone func() (string, error)) (scheduledomain.Draft, error) {
 	selection, err := modelchoice.NewWithReasoningEffort(in.Provider, in.Model, in.ReasoningEffort)
 	if err != nil {
 		return scheduledomain.Draft{}, fmt.Errorf("create_schedule: %w", err)
+	}
+	timeZone := in.TimeZone
+	if timeZone == "" {
+		if timeZone, err = hostTimeZone(); err != nil {
+			return scheduledomain.Draft{}, fmt.Errorf("create_schedule: %w: %w", scheduledomain.ErrInvalidTimeZone, err)
+		}
 	}
 	return scheduledomain.Draft{
 		Title:          in.Title,
@@ -177,6 +187,7 @@ func (in createScheduleArgs) draft() (scheduledomain.Draft, error) {
 		CWD:            in.WorkspacePath,
 		ModelSelection: selection,
 		Cron:           in.Cron,
+		TimeZone:       timeZone,
 		Enabled:        true,
 	}, nil
 }
@@ -190,7 +201,7 @@ func (s *scheduleManagementTools) update(ctx context.Context, in updateScheduleA
 }
 
 func (in updateScheduleArgs) command() scheduleapp.UpdateCommand {
-	return scheduleapp.UpdateCommand{ID: in.ScheduleID, ExpectedRevision: in.ExpectedRevision, Patch: scheduleapp.Patch{Title: in.Title, Instructions: in.Instructions, CWD: in.WorkspacePath, Cron: in.Cron, Enabled: in.Enabled, ModelSelection: modelchoice.Patch{Provider: in.Provider, Model: in.Model, ReasoningEffort: in.ReasoningEffort}}}
+	return scheduleapp.UpdateCommand{ID: in.ScheduleID, ExpectedRevision: in.ExpectedRevision, Patch: scheduleapp.Patch{Title: in.Title, Instructions: in.Instructions, CWD: in.WorkspacePath, Cron: in.Cron, TimeZone: in.TimeZone, Enabled: in.Enabled, ModelSelection: modelchoice.Patch{Provider: in.Provider, Model: in.Model, ReasoningEffort: in.ReasoningEffort}}}
 }
 
 func (s *scheduleManagementTools) run(ctx context.Context, in wire.ItemInput) (scheduleapp.RunReference, error) {
@@ -235,7 +246,8 @@ func viewSchedule(sc scheduledomain.Schedule) scheduleView {
 		Provider:        sc.ModelSelection().Provider(),
 		Model:           sc.ModelSelection().Model(),
 		ReasoningEffort: sc.ModelSelection().ReasoningEffort(),
-		Cron:            sc.Cron(),
+		Cron:            sc.Recurrence().Cron(),
+		TimeZone:        sc.Recurrence().TimeZone(),
 		Enabled:         sc.Enabled(),
 		LastRunAt:       formatScheduleTime(sc.LastRunAt()),
 		NextRunAt:       formatScheduleTime(sc.NextRunAt()),
