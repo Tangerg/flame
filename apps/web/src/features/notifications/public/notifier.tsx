@@ -1,11 +1,8 @@
 import { createContext, useContext, type ReactNode } from "react";
 import { type SystemNotifier } from "@/features/notifications/systemNotifier";
-import { type createCompletionSoundStore } from "@/features/notifications/completionSound";
-import { type createSystemNotificationsStore } from "@/features/notifications/systemNotifications";
 export interface NotificationAccess {
   readonly notifier: SystemNotifier;
-  readonly completionSound: ReturnType<typeof createCompletionSoundStore>;
-  readonly systemNotifications: ReturnType<typeof createSystemNotificationsStore>;
+  readonly productName: string;
 }
 const NotificationContext = createContext<NotificationAccess | null>(null);
 export function NotificationProvider({

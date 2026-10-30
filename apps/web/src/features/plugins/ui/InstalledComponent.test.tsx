@@ -64,6 +64,7 @@ it("refuses global command registration from an ordinary mounted view", async ()
   expect(() => captured.registerCommand({ id: "export", label: "Export", run: vi.fn() })).toThrow(
     "clientEffect placement",
   );
+  expect(() => captured.subscribeRootRunSettlements(vi.fn())).toThrow("clientEffect placement");
   expect(contributionsTo(COMMAND)).toEqual([]);
 });
 

@@ -88,6 +88,27 @@ function fixture() {
         commands.delete(command.id);
       };
     },
+    subscribeRootRunSettlements() {
+      throw new Error("Exports must not observe runs");
+    },
+    notifications: {
+      applicationName: "Test application",
+      authorization() {
+        throw new Error("Exports must not request notifications");
+      },
+      subscribe() {
+        throw new Error("Exports must not request notifications");
+      },
+      refreshAuthorization() {
+        throw new Error("Exports must not request notifications");
+      },
+      requestAuthorization() {
+        throw new Error("Exports must not request notifications");
+      },
+      send() {
+        throw new Error("Exports must not request notifications");
+      },
+    },
   };
   return {
     context,

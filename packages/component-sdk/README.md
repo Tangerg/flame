@@ -46,6 +46,21 @@ component's signal. Accepted work is joined; withdrawal refuses new dispatches a
 ends the captured signal. Failures retain their cause and appear in the command's
 notification and plugin diagnostics while its source remains current.
 
+`clientEffect` components also use `context.subscribeRootRunSettlements(listener)`.
+The Host supplies detached readonly `{sessionId, status, errorMessage}` facts from
+its existing root-run attention owner. The callback receives the captured signal
+and is joined by that lifetime. Unsubscription refuses late producer callbacks;
+observer failures appear in plugin diagnostics without advancing Run state.
+
+`context.notifications` is the Host's system notification channel. It supplies the
+application name, cached permission snapshot and subscription, explicit refresh
+and authorization requests, and `send({id, sessionId, title, body})`. Permission
+remains Host-owned; components project it with `useSyncExternalStore`. Requests
+and sends enter the component's existing I/O lifetime, and retired contexts
+refuse further effects. IDs are local to the installed component. The Host owns
+actual delivery, window reveal and opening the captured Session. The Notifications
+package consumes this boundary for its optional policy and settings.
+
 PNG imports are embedded as data URLs by the component build. Components can
 display those images and transfer their original decoded bytes through
 `context.saveFile` without opening an additional resource request.

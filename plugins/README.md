@@ -5,7 +5,7 @@ Saved usage reports, Generated interfaces, Deliverables, Computer use, Native sa
 File watch, Code intelligence, Remote agents, Skill learning, Model providers and Hooks have optional
 backends. Memory, Schedules, Saved usage reports, Generated interfaces, Deliverables,
 Computer use, Skills, Model providers and Hooks expose ordinary public components.
-Brand, icon gallery, MCP settings and the presentation packages are client-only.
+Brand, icon gallery, MCP settings, Notifications and the presentation packages are client-only.
 The `locale-*` content packages supply optional workbench translations without
 executing component or backend code. English remains the Host's base language.
 MCP model Tools and human Runtime commands

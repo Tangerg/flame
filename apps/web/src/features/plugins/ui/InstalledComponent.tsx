@@ -31,7 +31,11 @@ import {
 } from "@/features/agent/public/session";
 import { tupleKey } from "@/lib/tupleKey";
 import { useWorkspaceFileFocus } from "@/features/workspace/public/navigation";
-import { useAgent } from "@/features/agent/public/agent";
+import { useAgent, type AgentAccess } from "@/features/agent/public/agent";
+import {
+  useNotifications,
+  type NotificationAccess,
+} from "@/features/notifications/public/notifier";
 import { type FlameClient } from "@flame/runtime-client";
 import {
   type PluginClientComponent,
@@ -46,6 +50,10 @@ import {
   type SubmitCapturedAgentInput,
 } from "@/features/plugins/adapters/toolInteraction";
 import { createClientCommandRegistration } from "@/features/plugins/adapters/clientCommands";
+import {
+  createComponentNotifications,
+  createComponentSettlementSubscription,
+} from "@/features/plugins/adapters/clientNotifications";
 export function componentFailureScope(
   component: ComponentReference,
   generation: RuntimeConnectionGeneration,
@@ -165,9 +173,10 @@ class ComponentInstance {
     const track: ComponentContext["track"] = (operation) =>
       trackContributionIO(this.sources.lifetime, () => operation(signal));
     const openSession = this.sources.openSession;
+    const component = Object.freeze({ ...this.sources.component });
     return Object.freeze({
       runtime: this.sources.runtime,
-      component: Object.freeze({ ...this.sources.component }),
+      component,
       sessionId: this.sources.sessionTarget?.id ?? this.sources.sessionId,
       sessionTarget: this.sources.sessionTarget
         ? Object.freeze({ ...this.sources.sessionTarget })
@@ -211,12 +220,29 @@ class ComponentInstance {
           ? createClientCommandRegistration(
               this.sources.lifetime,
               signal,
-              this.sources.component,
+              component,
               this.sources.captureSessionId,
             )
           : () => {
               throw new Error("Client command registration requires clientEffect placement.");
             },
+      subscribeRootRunSettlements:
+        this.sources.placement === "clientEffect"
+          ? createComponentSettlementSubscription(
+              this.sources.lifetime,
+              signal,
+              component,
+              this.sources.subscribeRootRunSettlements,
+            )
+          : () => {
+              throw new Error("Root run observation requires clientEffect placement.");
+            },
+      notifications: createComponentNotifications(
+        this.sources.lifetime,
+        signal,
+        component,
+        this.sources.notificationAccess,
+      ),
       saveFile: (request: SaveFileRequest) => {
         signal.throwIfAborted();
         return track(() => this.sources.saveFile(request));
@@ -281,10 +307,19 @@ function RenderingInstance({
 }
 
 export function RenderingComponent(
-  props: ComponentProps & Omit<ComponentSources, "captureSessionId">,
+  props: ComponentProps &
+    Omit<
+      ComponentSources,
+      "captureSessionId" | "notificationAccess" | "subscribeRootRunSettlements"
+    >,
 ) {
   const locale = useLocale();
-  const { selectAgentSession: openSession, getActiveSessionId: captureSessionId } = useAgent();
+  const {
+    selectAgentSession: openSession,
+    getActiveSessionId: captureSessionId,
+    subscribeRootRunSettlements,
+  } = useAgent();
+  const notificationAccess = useNotifications();
   const {
     runtime,
     binding,
@@ -320,6 +355,8 @@ export function RenderingComponent(
         openSession,
         captureSessionId,
         placement,
+        notificationAccess,
+        subscribeRootRunSettlements,
       }),
     [
       runtime,
@@ -338,6 +375,8 @@ export function RenderingComponent(
       openSession,
       captureSessionId,
       placement,
+      notificationAccess,
+      subscribeRootRunSettlements,
     ],
   );
   return (
@@ -392,6 +431,8 @@ type ComponentSources = Pick<
   sessionTarget?: CapturedSession;
   openSession?: (sessionId: string) => void;
   captureSessionId: () => string | undefined;
+  notificationAccess: NotificationAccess;
+  subscribeRootRunSettlements: AgentAccess["subscribeRootRunSettlements"];
 };
 
 function WorkspaceComponent(props: ComponentProps) {

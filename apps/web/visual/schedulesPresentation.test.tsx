@@ -1,3 +1,4 @@
+import { unavailableComponentNotifications } from "@/test/unavailableNotifications";
 import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
 import { createTestClient, type TestClient } from "@/test/renderClient";
 import { mockSelectLayout, mockSelectViewport } from "@/test/selectLayout";
@@ -47,6 +48,10 @@ async function mountSchedules() {
     signal: owner.signal,
     track: (operation) => operation(owner.signal),
     saveFile: async () => "requested",
+    notifications: unavailableComponentNotifications,
+    subscribeRootRunSettlements() {
+      throw new Error("This fixture must not observe run settlements");
+    },
     registerCommand() {
       throw new Error("This fixture must not register client commands");
     },

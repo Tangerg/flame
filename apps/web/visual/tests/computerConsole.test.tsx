@@ -1,3 +1,4 @@
+import { unavailableComponentNotifications } from "@/test/unavailableNotifications";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, onTestFinished, vi } from "vitest";
 import type { ComponentContext } from "@flame/component-sdk";
@@ -421,6 +422,10 @@ function rig(server = fixture()) {
         telemetry: { read: () => ({ spans: [], metrics: [], logs: [] }), clear: () => undefined },
         track: (operation) => operation(controller.signal),
         saveFile: async () => "requested",
+        notifications: unavailableComponentNotifications,
+        subscribeRootRunSettlements() {
+          throw new Error("This fixture must not observe run settlements");
+        },
         registerCommand() {
           throw new Error("This fixture must not register client commands");
         },

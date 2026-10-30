@@ -1,3 +1,4 @@
+import { unavailableComponentNotifications } from "@/test/unavailableNotifications";
 import { mutationResult } from "@/test/runtimeClient";
 import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
 import { createTestClient, type TestClient } from "@/test/renderClient";
@@ -128,6 +129,10 @@ function mount(
     signal: owner.signal,
     track: (operation) => operation(owner.signal),
     saveFile: async () => "requested",
+    notifications: unavailableComponentNotifications,
+    subscribeRootRunSettlements() {
+      throw new Error("This fixture must not observe run settlements");
+    },
     registerCommand() {
       throw new Error("This fixture must not register client commands");
     },
@@ -216,6 +221,10 @@ it("recovers the original capture and preserves exact numbers, zero prices and m
     signal: owner.signal,
     track: (operation) => operation(owner.signal),
     saveFile: async () => "requested",
+    notifications: unavailableComponentNotifications,
+    subscribeRootRunSettlements() {
+      throw new Error("This fixture must not observe run settlements");
+    },
     registerCommand() {
       throw new Error("This fixture must not register client commands");
     },

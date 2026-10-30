@@ -1,3 +1,4 @@
+import { unavailableComponentNotifications } from "@/test/unavailableNotifications";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createElement, useEffect, useState } from "react";
@@ -300,6 +301,10 @@ function fixture(
     signal: scope.signal,
     track: (operation) => operation(scope.signal),
     saveFile: async () => "requested",
+    notifications: unavailableComponentNotifications,
+    subscribeRootRunSettlements() {
+      throw new Error("This fixture must not observe run settlements");
+    },
     registerCommand() {
       throw new Error("This fixture must not register client commands");
     },

@@ -1,3 +1,4 @@
+import { unavailableComponentNotifications } from "@/test/unavailableNotifications";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, expect, it, onTestFinished, vi } from "vitest";
@@ -66,6 +67,10 @@ function capturedContext(
     },
     saveFile(): never {
       throw new Error("local genui must not save files");
+    },
+    notifications: unavailableComponentNotifications,
+    subscribeRootRunSettlements() {
+      throw new Error("This fixture must not observe run settlements");
     },
     registerCommand() {
       throw new Error("This fixture must not register client commands");

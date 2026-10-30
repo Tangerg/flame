@@ -1,3 +1,4 @@
+import { unavailableComponentNotifications } from "@/test/unavailableNotifications";
 import discovery from "@flame/runtime-client/testing/samples/method.discover.resp.json";
 import type { ServerCapabilities } from "@flame/runtime-client/wire";
 import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
@@ -45,6 +46,10 @@ beforeEach(() => {
     },
     saveFile() {
       throw new Error("This fixture must not save files");
+    },
+    notifications: unavailableComponentNotifications,
+    subscribeRootRunSettlements() {
+      throw new Error("This fixture must not observe run settlements");
     },
     registerCommand() {
       throw new Error("This fixture must not register client commands");

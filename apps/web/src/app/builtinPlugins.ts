@@ -63,7 +63,7 @@ import { sidebarFooter } from "@/features/sidebar/index";
 import { sidebarProjects } from "@/features/sidebar/index";
 import { sidebarRecents } from "@/features/sidebar/index";
 import slashHints from "@/features/composer/slash-hints/index";
-import { createCompletionNotifyPlugin } from "@/features/notifications/index";
+import { createSystemNotificationsPlugin } from "@/features/notifications/index";
 import { statusNotifications } from "@/features/notifications/index";
 import { windowTitle } from "@/features/shell/windowTitle";
 import { tasksPill } from "@/features/workspace/tasks";
@@ -164,7 +164,7 @@ export function createBuiltinPlugins(
     ),
     tasksPill,
     statusNotifications,
-    createCompletionNotifyPlugin(notifications),
+    createSystemNotificationsPlugin(notifications),
     windowTitle(agentAccess),
     shortcuts(workspaceAccess),
     sessionSearch,

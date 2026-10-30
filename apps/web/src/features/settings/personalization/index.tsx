@@ -14,7 +14,7 @@ export default definePlugin({
     registerSettingsPane(ctx, {
       id: PERSONALIZATION_PANE,
       label: "settings.pane.personalization",
-      keywords: ["settings.notifications", "settings.completionSound", "settings.streamReveal"],
+      keywords: ["settings.streamReveal"],
       group: "general",
       icon: "user",
       order: 1,

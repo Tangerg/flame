@@ -131,6 +131,31 @@ export interface ClientCommand {
   run(invocation: ClientCommandInvocation): void | Promise<void>;
 }
 
+export interface RootRunSettlement {
+  readonly sessionId: string;
+  readonly status: "needsInput" | "finished" | "error" | "canceled";
+  readonly errorMessage: string | null;
+}
+
+export type NotificationAuthorization =
+  "unsupported" | "default" | "granted" | "denied";
+
+export interface ComponentNotification {
+  readonly id: string;
+  readonly sessionId: string;
+  readonly title: string;
+  readonly body: string;
+}
+
+export interface SystemNotificationChannel {
+  readonly applicationName: string;
+  authorization(): NotificationAuthorization;
+  subscribe(listener: () => void): () => void;
+  refreshAuthorization(): Promise<NotificationAuthorization>;
+  requestAuthorization(): Promise<NotificationAuthorization>;
+  send(notification: ComponentNotification): Promise<boolean>;
+}
+
 export interface ComponentContext {
   readonly component: Readonly<ComponentReference>;
   readonly file?: Readonly<CapturedFile>;
@@ -147,6 +172,15 @@ export interface ComponentContext {
   // installed component. Dispatch captures the current
   // Session before asynchronous work; withdrawal refuses new dispatches.
   registerCommand(command: ClientCommand): () => void;
+  // Client effects observe the Host's settled root-run facts. The captured
+  // lifetime joins callbacks and refuses new observations after withdrawal.
+  subscribeRootRunSettlements(
+    listener: (
+      settlement: RootRunSettlement,
+      signal: AbortSignal,
+    ) => void | Promise<void>,
+  ): () => void;
+  readonly notifications: SystemNotificationChannel;
   // Accepted saves are joined by this captured lifetime. They do not change any
   // plugin delivery, revision or approval fact; the host only owns file transfer.
   saveFile(request: SaveFileRequest): Promise<FileSaveResult>;

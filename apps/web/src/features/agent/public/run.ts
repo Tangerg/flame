@@ -5,5 +5,3 @@ export {
   useIsCurrentRootRunning,
 } from "@/features/agent/application/run/runReadModel";
 export { CurrentRootMaterial } from "@/features/agent/application/run/runReadModel";
-
-export type { RootRunSettlement } from "@/features/agent/application/run/rootAttention";

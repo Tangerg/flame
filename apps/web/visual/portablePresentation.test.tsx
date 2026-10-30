@@ -1,3 +1,4 @@
+import { unavailableComponentNotifications } from "@/test/unavailableNotifications";
 import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
 import { createTestClient, type TestClient } from "@/test/renderClient";
 let testClient: TestClient;
@@ -41,6 +42,10 @@ function renderCapturedMarkdown(content: string) {
     },
     saveFile() {
       throw new Error("This captured read must not save files");
+    },
+    notifications: unavailableComponentNotifications,
+    subscribeRootRunSettlements() {
+      throw new Error("This fixture must not observe run settlements");
     },
     registerCommand() {
       throw new Error("This fixture must not register client commands");

@@ -205,6 +205,13 @@ registrations before accepting further work. The Trajectory package owns the
 optional export commands and file presentation; the Host retains the canonical
 import flow, Runtime generation retirement and native file transfer.
 
+The installed Notifications package owns completion policy, sound and its two
+client preferences. The graphical Host keeps the root-run settlement projection,
+OS authorization and notification-click routing. Public component callbacks and
+notification requests use the captured I/O lifetime, so withdrawal refuses late
+sends while joining accepted platform work. The existing preference records
+remain readable by their new package owner; their former Core writers are removed.
+
 `SettingRow` marks the label and controls as one shared focus unit. `Panel` owns
 revealing that complete unit inside the clipped host when it fits; taller rows
 retain the focused control as the reading target.
