@@ -50,7 +50,8 @@
     "v0.1.0-quality.20261030.plugin-boundaries.11": "c65ef60dec40154d6ada988d3df4f71124454529",
     "v0.1.0-quality.20261030.plugin-boundaries.12": "4a57e9e2740e10e2f482b16800ac9faa1d964c5c",
     "v0.1.0-quality.20261030.plugin-boundaries.13": "d3f5aff3af24e80271215959182f34a99d82b3f9",
-    "v0.1.0-quality.20261030.plugin-boundaries.14": "0e50e2a2b41ede6d6b9fa059274681cfab406d5d"
+    "v0.1.0-quality.20261030.plugin-boundaries.14": "0e50e2a2b41ede6d6b9fa059274681cfab406d5d",
+    "v0.1.0-quality.20261030.toolchain.1": "8663b27c2865354ccd71becea6f6e15cf8e7b750"
   },
   "github.com/Tangerg/flame/plugins": {
     "v0.1.0-architecture.20261026.3": "16d3bfa89e76615a92d01a140e677c23d353bfc5",
@@ -104,7 +105,8 @@
     "v0.1.0-quality.20261030.plugin-boundaries.9": "84d9c410a313b7afbbf781d9099827592ca635d3",
     "v0.1.0-quality.20261030.plugin-boundaries.10": "6091f9e52e1a13d8660e3d706e8d70bb00651eb7",
     "v0.1.0-quality.20261030.plugin-boundaries.11": "a7400846151034f31d0a1c586f674d5dcd8cc592",
-    "v0.1.0-quality.20261030.plugin-boundaries.12": "4fe6b8685c935d290640ddac62cc419438f49a4f"
+    "v0.1.0-quality.20261030.plugin-boundaries.12": "4fe6b8685c935d290640ddac62cc419438f49a4f",
+    "v0.1.0-quality.20261030.toolchain.1": "8663b27c2865354ccd71becea6f6e15cf8e7b750"
   },
   "github.com/Tangerg/flame/apps/cli": {
     "v0.1.0-architecture.20261026.2": "2a8d0965feab1910047347f87d486331110c9ced",
@@ -126,6 +128,7 @@
     "v0.1.0-quality.20261029.2": "2b98f7795d3b8f269208efb51c0ae4037bf262c8",
     "v0.1.0-quality.20261029.3": "05743b0180259de49ab167482974bdeb47d143d2",
     "v0.1.0-quality.20261030.1": "c31702de85fc6ab61735553705e9a1217b193dbb",
-    "v0.1.0-quality.20261030.plugin-boundaries.1": "9552fd9af24a7bd34a3e512bd45deded25d4d589"
+    "v0.1.0-quality.20261030.plugin-boundaries.1": "9552fd9af24a7bd34a3e512bd45deded25d4d589",
+    "v0.1.0-quality.20261030.toolchain.1": "8663b27c2865354ccd71becea6f6e15cf8e7b750"
   }
 }
