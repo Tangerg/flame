@@ -8,23 +8,22 @@ import {
 } from "react";
 import { mount, useCurrentUse, type Mounted } from "@qimu/react";
 import { type Use } from "@qimu/browser";
+import { type ComponentContext, type SaveFileRequest } from "@flame/component-sdk";
 import {
-  type ComponentContext,
-  type PluginComponent,
-  type SaveFileRequest,
-} from "@flame/component-sdk";
-import { type ComponentAcquisition } from "@/features/plugins/adapters/componentModules";
+  type ComponentAcquisition,
+  type SourceComponent,
+} from "@/features/plugins/adapters/componentModules";
 import * as stylex from "@stylexjs/stylex";
 import { useContentVisible } from "@flame/ui";
 
 const styles = stylex.create({ container: { display: "contents" } });
 
-type Props = ComponentProps<PluginComponent> & {
+type Props = ComponentProps<SourceComponent> & {
   acquire(parent?: Use): Promise<ComponentAcquisition>;
   wrap(children: ReactNode): ReactNode;
   report(error: unknown): void;
 };
-type ComponentInput = ComponentProps<PluginComponent>;
+type ComponentInput = ComponentProps<SourceComponent>;
 interface ContextProjection {
   source?: ComponentContext;
   value?: ComponentContext;

@@ -18,6 +18,14 @@
   },
   "components": [
     {
+      "id": "session-exports",
+      "title": "Session exports",
+      "scope": "client",
+      "placement": "clientEffect",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "SessionExports"
+    },
+    {
       "id": "trajectory",
       "title": "Session trajectory",
       "scope": "session",

@@ -7,11 +7,9 @@ import { type WorkspaceOwner } from "@/features/workspace/adapters/workspace";
 import { type createWorkingDirectoryPicker } from "@/features/navigation/adapters/workingDirectorySelection";
 import { type Navigator } from "@/lib/navigation";
 import { shellServices } from "./shellServices";
-import { type ClientHost } from "@/platform/host";
 import { type createRuntimeConnection } from "@/features/connection/adapters/runtimeConnection";
 import { type AnyPlugin } from "dougong";
 import appearance from "@/features/settings/appearance";
-import { createBrandPlugin } from "@/features/settings/brand/index";
 import approvalsPane from "@/features/approvals/index";
 import personalization from "@/features/settings/personalization/index";
 import chatSearch from "@/features/chat/search/index";
@@ -26,7 +24,7 @@ import { createAgentBootstrapPlugin } from "@/features/agent/bootstrap/index";
 import { createObservabilityPlugin } from "@/features/observability/index";
 import { PRODUCT_SLUG, CLIENT_VERSION } from "@/app/product";
 import { createRuntimePlugin } from "@/features/connection/index";
-import conversationExport from "@/features/workspace/conversationExport";
+import conversationImport from "@/features/workspace/conversationImport";
 import { defaultAccents } from "@/features/theme/defaultAccents";
 import { defaultCommands } from "@/features/command/defaultCommands";
 import { defaultRoles } from "@/features/chat/defaultRoles";
@@ -38,8 +36,6 @@ import { workspaceSessionNavigation } from "@/features/workspace/sessionNavigati
 import { workspaceKeymap } from "@/features/workspace/keymap";
 import sessionSearch from "@/features/navigation/session-search/index";
 import commandMenu from "@/features/command/menu/index";
-import { createHooksPlugin } from "@/features/hooks/index";
-import { createMCPServersPlugin } from "@/features/mcp/index";
 import { createRpcAgentPlugin } from "@/features/agent/rpcAgent";
 import {
   workbenchChat,
@@ -48,7 +44,7 @@ import {
 } from "@/features/shell/workbench/index";
 import nativeShell from "@/features/shell/native/index";
 import providerSetup from "@/features/providers/setup/index";
-import { localePlugins } from "@/features/i18n/index";
+import { i18nPlugin } from "@/features/i18n/index";
 import mainRoute from "@/app/routes";
 import { createNavigationBootstrapPlugin } from "@/features/navigation/bootstrap";
 import { messageCopy } from "@/features/chat/message-actions/index";
@@ -59,7 +55,7 @@ import { createGoalPlugin } from "@/features/goal/index";
 import narrativeRails from "@/features/chat/narrative-rails/index";
 import planProgress from "@/features/chat/plan-progress/index";
 import { createPluginsPlugin } from "@/features/plugins/index";
-import { createProvidersPlugin } from "@/features/providers/index";
+import { createProviderCatalogPlugin } from "@/features/providers/index";
 import contextUsage from "@/features/chat/context-usage/index";
 import shortcuts from "@/features/command/shortcuts/index";
 import { sidebarActions } from "@/features/sidebar/index";
@@ -67,7 +63,7 @@ import { sidebarFooter } from "@/features/sidebar/index";
 import { sidebarProjects } from "@/features/sidebar/index";
 import { sidebarRecents } from "@/features/sidebar/index";
 import slashHints from "@/features/composer/slash-hints/index";
-import { createCompletionNotifyPlugin } from "@/features/notifications/index";
+import { createSystemNotificationsPlugin } from "@/features/notifications/index";
 import { statusNotifications } from "@/features/notifications/index";
 import { windowTitle } from "@/features/shell/windowTitle";
 import { tasksPill } from "@/features/workspace/tasks";
@@ -83,7 +79,6 @@ export function createToolRenderingPlugins(workspace: WorkspaceOwner["access"]):
 
 export function createBuiltinPlugins(
   connection: ReturnType<typeof createRuntimeConnection>,
-  host: ClientHost,
   navigation: Navigator,
   agent: AgentOwner,
   composerOwner: ComposerOwner,
@@ -114,7 +109,7 @@ export function createBuiltinPlugins(
     defaultTitle,
     defaultAccents,
     ...createAppearancePlugins(theme),
-    ...localePlugins,
+    i18nPlugin,
     mainRoute,
   ];
 
@@ -137,14 +132,11 @@ export function createBuiltinPlugins(
 
   const panes: AnyPlugin[] = [
     appearance,
-    createBrandPlugin((source) => host.saveImage(source)),
     approvalsPane,
     personalization,
     connectionSettings,
     createPluginsPlugin(installedPlugins),
-    createProvidersPlugin(runtimeClient),
-    createMCPServersPlugin(runtimeClient),
-    createHooksPlugin(runtimeClient),
+    createProviderCatalogPlugin(runtimeClient),
     fileView,
     subagentsView,
   ];
@@ -172,7 +164,7 @@ export function createBuiltinPlugins(
     ),
     tasksPill,
     statusNotifications,
-    createCompletionNotifyPlugin(notifications),
+    createSystemNotificationsPlugin(notifications),
     windowTitle(agentAccess),
     shortcuts(workspaceAccess),
     sessionSearch,
@@ -182,7 +174,7 @@ export function createBuiltinPlugins(
     planProgress,
     providerSetup,
     contextUsage,
-    conversationExport(workspaceAccess),
+    conversationImport(workspaceAccess),
   ];
 
   return [

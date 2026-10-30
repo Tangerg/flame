@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createFileTransfer } from "@/features/workspace/adapters/fileTransfer";
+import { pickTextFile } from "@/features/workspace/adapters/fileTransfer";
 afterEach(() => vi.restoreAllMocks());
 
 describe("fileTransfer", () => {
   it("settles native picker cancellation as an empty selection", async () => {
     const click = vi.spyOn(HTMLInputElement.prototype, "click").mockImplementation(() => {});
 
-    const selection = createFileTransfer({ saveFile: vi.fn() }).pickText("application/json,.json");
+    const selection = pickTextFile("application/json,.json");
     const observed = observe(selection);
     const picker = click.mock.instances[0] as HTMLInputElement;
     expect(picker).toBeDefined();
@@ -24,7 +24,7 @@ describe("fileTransfer", () => {
   it("settles a change without a selected file as an empty selection", async () => {
     const click = vi.spyOn(HTMLInputElement.prototype, "click").mockImplementation(() => {});
 
-    const selection = createFileTransfer({ saveFile: vi.fn() }).pickText(".json");
+    const selection = pickTextFile(".json");
     choose(click.mock.instances[0] as HTMLInputElement, null);
 
     await expect(selection).resolves.toBeNull();
@@ -36,7 +36,7 @@ describe("fileTransfer", () => {
   ])("resolves the exact %s text of the selected file", async (_kind, content) => {
     const click = vi.spyOn(HTMLInputElement.prototype, "click").mockImplementation(() => {});
 
-    const selection = createFileTransfer({ saveFile: vi.fn() }).pickText(".json");
+    const selection = pickTextFile(".json");
     choose(click.mock.instances[0] as HTMLInputElement, new File([content], "chosen.json"));
 
     await expect(selection).resolves.toBe(content);
@@ -47,9 +47,8 @@ describe("fileTransfer", () => {
     const failure = new DOMException("The I/O read operation failed.", "NotReadableError");
     const unreadable = new File(["{}"], "unreadable.json");
     const read = vi.spyOn(unreadable, "text").mockRejectedValue(failure);
-    const files = createFileTransfer({ saveFile: vi.fn() });
 
-    const failed = files.pickText(".json");
+    const failed = pickTextFile(".json");
     const picker = click.mock.instances[0] as HTMLInputElement;
     choose(picker, unreadable);
     await expect(failed).rejects.toBe(failure);
@@ -59,7 +58,7 @@ describe("fileTransfer", () => {
     await drainMicrotasks();
     expect(read).toHaveBeenCalledOnce();
 
-    const next = files.pickText(".json");
+    const next = pickTextFile(".json");
     const nextPicker = click.mock.instances[1] as HTMLInputElement;
     expect(nextPicker).toBeDefined();
     expect(nextPicker).not.toBe(picker);
@@ -76,7 +75,7 @@ describe("fileTransfer", () => {
     const file = new File(["{}"], "slow.json");
     vi.spyOn(file, "text").mockReturnValue(read.promise);
 
-    const selection = createFileTransfer({ saveFile: vi.fn() }).pickText(".json");
+    const selection = pickTextFile(".json");
     const observed = observe(selection);
     const picker = click.mock.instances[0] as HTMLInputElement;
     choose(picker, file);
@@ -89,39 +88,6 @@ describe("fileTransfer", () => {
 
     expect(settledAtCancel).toBe(true);
     await expect(selection).resolves.toBeNull();
-  });
-
-  it("hands the exact text to the composed host and waits for the user's choice", async () => {
-    const choice = Promise.withResolvers<"saved" | "cancelled">();
-    const saveFile = vi.fn(() => choice.promise);
-
-    const saving = createFileTransfer({ saveFile }).saveText(
-      "flame-session-trajectory.json",
-      '{"title":"Résumé 🔥"}',
-      "application/json;charset=utf-8",
-    );
-    const observed = observe(saving);
-    await drainMicrotasks();
-
-    expect(saveFile).toHaveBeenCalledExactlyOnceWith({
-      filename: "flame-session-trajectory.json",
-      bytes: new TextEncoder().encode('{"title":"Résumé 🔥"}'),
-      mime: "application/json;charset=utf-8",
-    });
-    expect(observed.settled()).toBe(false);
-    choice.resolve("saved");
-    await expect(saving).resolves.toBeUndefined();
-  });
-
-  it("treats a cancelled save as an ordinary outcome", async () => {
-    const files = createFileTransfer({ saveFile: vi.fn().mockResolvedValue("cancelled") });
-    await expect(files.saveText("flame.md", "# Title", "text/markdown")).resolves.toBeUndefined();
-  });
-
-  it("surfaces a failed save to its caller", async () => {
-    const failure = new Error("desktop host text file save failed: disk full");
-    const files = createFileTransfer({ saveFile: vi.fn().mockRejectedValue(failure) });
-    await expect(files.saveText("flame.md", "# Title", "text/markdown")).rejects.toBe(failure);
   });
 });
 

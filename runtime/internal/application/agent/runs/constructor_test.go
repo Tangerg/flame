@@ -42,7 +42,7 @@ func (passthroughWorkingContext) ComposeWorkingContext(
 
 type acceptAllModelInputs struct{}
 
-func (acceptAllModelInputs) AdmitSelection(modelchoice.Selection) error { return nil }
+func (acceptAllModelInputs) AdmitSelection(context.Context, modelchoice.Selection) error { return nil }
 
 // mustNewCoordinator completes dependencies unrelated to a focused test. The
 // production constructor remains strict; tests opt into explicit inert doubles

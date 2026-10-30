@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	json "encoding/json/v2"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -21,7 +22,7 @@ import (
 func TestModelRouterInstalledPolicyBindsNewRunWithoutRewritingSessionOrAcceptedRetry(t *testing.T) {
 	var physicalCalls sync.Map
 	cfg := poMCPConfig(t)
-	cfg.chatResolver = routerTestResolver{chatResolver: cfg.chatResolver, calls: &physicalCalls}
+	cfg.modelProviders = routerTestResolver{modelProviderAdapters: cfg.modelProviders, calls: &physicalCalls}
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "modelrouter"))
 	waitCallContributorState(t, r, installed.ID, protocol.MCPServerConnected)
@@ -80,14 +81,18 @@ func TestModelRouterInstalledPolicyBindsNewRunWithoutRewritingSessionOrAcceptedR
 
 // The provider binds identity during construction; request options may omit it.
 type routerTestResolver struct {
-	chatResolver
+	modelProviderAdapters
 	calls *sync.Map
 }
 
-func (r routerTestResolver) ResolveChat(_ context.Context, selection model.Selection) (modeladapter.ResolvedChat, error) {
+func (r routerTestResolver) OpenChat(_ context.Context, selection model.Selection, _ modelprovider.Connection) (modeladapter.ResolvedChat, error) {
 	provider := delegateRestartModel{chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 		r.calls.Store(selection, true)
 		return completedTextResponse("routed"), nil
 	})}
-	return modeladapter.NewResolvedChat(provider, nil)
+	return modeladapter.NewResolvedChat(provider, nil, nil)
+}
+
+func (r routerTestResolver) RestoreChat(ctx context.Context, selection model.Selection, _ *modeladapter.ProviderCapture) (modeladapter.ResolvedChat, error) {
+	return r.OpenChat(ctx, selection, modelprovider.Connection{})
 }

@@ -39,10 +39,10 @@ func (*pointerRoleSource) Role() modelref.Role { return modelref.Role{} }
 
 func TestModelResolversRejectMissingCredentialLookup(t *testing.T) {
 	var lookup *pointerCredentialLookup
-	if resolver, err := NewChatResolver(lookup); err == nil || resolver != nil {
+	if resolver, err := NewChatResolver(lookup, &fixtureModelFactory{}); err == nil || resolver != nil {
 		t.Fatalf("NewChatResolver typed-nil lookup = (%v, %v)", resolver, err)
 	}
-	if resolver, err := NewEmbeddingResolver(lookup, fakeEndpointJournal{}, nil); err == nil || resolver != nil {
+	if resolver, err := NewEmbeddingResolver(lookup, &fixtureModelFactory{}, fakeEndpointJournal{}, nil); err == nil || resolver != nil {
 		t.Fatalf("NewEmbeddingResolver typed-nil lookup = (%v, %v)", resolver, err)
 	}
 }
@@ -67,7 +67,7 @@ func TestLiveRoleResolversRejectIncompleteConstruction(t *testing.T) {
 		t.Fatalf("NewRoleEmbedder nil resolver error = %v", err)
 	}
 
-	embeddingResolver, err := NewEmbeddingResolver(&pointerCredentialLookup{}, fakeEndpointJournal{}, nil)
+	embeddingResolver, err := NewEmbeddingResolver(&pointerCredentialLookup{}, &fixtureModelFactory{}, fakeEndpointJournal{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func TestLiveRoleResolversRejectIncompleteConstruction(t *testing.T) {
 }
 
 func TestUnconfiguredEmbeddingRoleIsTheOnlyKeywordOnlyState(t *testing.T) {
-	resolver, err := NewEmbeddingResolver(&pointerCredentialLookup{}, fakeEndpointJournal{}, nil)
+	resolver, err := NewEmbeddingResolver(&pointerCredentialLookup{}, &fixtureModelFactory{}, fakeEndpointJournal{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,4 +89,8 @@ func TestUnconfiguredEmbeddingRoleIsTheOnlyKeywordOnlyState(t *testing.T) {
 	if err != nil || embedder != nil {
 		t.Fatalf("Resolve unconfigured role = (%v, %v), want keyword-only", embedder, err)
 	}
+}
+
+func (r *pointerChatResolver) RestoreChat(ctx context.Context, selection modelchoice.Selection, _ *ProviderCapture) (ResolvedChat, error) {
+	return r.ResolveChat(ctx, selection)
 }

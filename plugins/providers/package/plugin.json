@@ -1,0 +1,11 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "flame.providers",
+  "version": "1.0.0",
+  "description": "Installed Scope model adapters and provider, credential and model role settings.",
+  "extensions": {
+    "io.github.tangerg.flame": {
+      "declaration": "io.github.tangerg.flame/declaration.json"
+    }
+  }
+}

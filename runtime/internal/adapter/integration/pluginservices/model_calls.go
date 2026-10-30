@@ -21,7 +21,7 @@ func (o *CallComposition) ModelCallbacks(resolve models.ChatModelResolver) ([]qi
 	if lo.IsNil(resolve) {
 		return nil, errors.New("model composition: selected model resolver is required")
 	}
-	capture := func(ctx context.Context, input pluginsdk.ModelCallRequest) (models.SelectedChat, *chat.Request, func(), error) {
+	capture := func(ctx context.Context, input pluginsdk.ModelCallRequest) (models.SelectedChat, *chat.Request, func() error, error) {
 		if err := input.Validate(); err != nil {
 			return models.SelectedChat{}, nil, nil, err
 		}
@@ -53,9 +53,9 @@ func (o *CallComposition) ModelCallbacks(resolve models.ChatModelResolver) ([]qi
 		}
 		selected, err := models.NewSelectedChat(selection, resolved)
 		if err != nil {
-			return models.SelectedChat{}, nil, nil, err
+			return models.SelectedChat{}, nil, nil, errors.Join(err, resolved.Close(context.WithoutCancel(ctx)))
 		}
-		captured, release, err := o.capture(ctx, selected, func() {}, input.Budget.Admit)
+		captured, release, err := o.capture(ctx, selected, func() error { return resolved.Close(context.WithoutCancel(ctx)) }, input.Budget.Admit)
 		if err != nil {
 			return models.SelectedChat{}, nil, nil, err
 		}
@@ -64,12 +64,12 @@ func (o *CallComposition) ModelCallbacks(resolve models.ChatModelResolver) ([]qi
 		request.Options.ReasoningEffort = chat.ReasoningEffort(selection.ReasoningEffort())
 		return captured, request, release, nil
 	}
-	call, err := pluginsdk.NewSelectedModelCallback(func(ctx context.Context, command qimumcp.Command[pluginsdk.ModelCallRequest]) (*chat.Response, error) {
+	call, err := pluginsdk.NewSelectedModelCallback(func(ctx context.Context, command qimumcp.Command[pluginsdk.ModelCallRequest]) (response *chat.Response, returned error) {
 		selected, request, release, err := capture(ctx, command.Input)
 		if err != nil {
 			return nil, err
 		}
-		defer release()
+		defer func() { returned = errors.Join(returned, release()) }()
 		return selected.Model().Call(ctx, request)
 	})
 	if err != nil {
@@ -82,13 +82,18 @@ func (o *CallComposition) ModelCallbacks(resolve models.ChatModelResolver) ([]qi
 				yield(nil, err)
 				return
 			}
-			defer release()
+			continuing := true
+			defer func() {
+				if err := release(); err != nil && continuing {
+					yield(nil, err)
+				}
+			}()
 			streamer, ok := selected.Model().(chat.Streamer)
 			if !ok {
 				yield(nil, errors.New("model call: selected provider does not support streaming"))
 				return
 			}
-			streamer.Stream(ctx, request)(yield)
+			streamer.Stream(ctx, request)(func(delta *chat.ResponseDelta, err error) bool { continuing = yield(delta, err); return continuing })
 		}
 	})
 	if err != nil {

@@ -1,5 +1,9 @@
 github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.1 h1:Ug+iVdalgyT3UuYYYs/KJtDSepyXkbhoL+iQ2JWeVhk=
 github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.1/go.mod h1:3zTa2w9DQTaJ8Q36CmrQpXLqYWzbHENlhyZFjZqNjgQ=
+github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.plugin-boundaries.14 h1:Q8x/dh5VT8wzNfKmq+B4f1GlAlkc7Xz2S3f843hltrU=
+github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.plugin-boundaries.14/go.mod h1:GQoc5/3kmoI9Mwmzp5IfQ3hyl/iISxuuhkdtCrdEKGA=
+github.com/Tangerg/flame/qimu v0.1.0-quality.20261029.3 h1:oAdu4c8rUVN9YiWku362AisKap56baJgQw8ccEIHic8=
+github.com/Tangerg/flame/qimu v0.1.0-quality.20261029.3/go.mod h1:uGlLRUYXDfFZvsuAv+I88PHtYeIX+w2sK5CJLGXu/qA=
 github.com/Tangerg/flame/qimu v0.1.0-quality.20261030.1 h1:cQTLeWD4Z5DU3vacqSz0xhIegCWaR4tEfh6YoD0C6HQ=
 github.com/Tangerg/flame/qimu v0.1.0-quality.20261030.1/go.mod h1:uGlLRUYXDfFZvsuAv+I88PHtYeIX+w2sK5CJLGXu/qA=
 github.com/Tangerg/go-sdk v1.8.1-scope.3 h1:hMC4qrvwu38L4/bLwnPiCYi9BTRFQxGb6Cs97pa/CzQ=

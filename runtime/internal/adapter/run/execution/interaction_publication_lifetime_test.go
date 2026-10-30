@@ -18,16 +18,16 @@ import (
 
 func TestExecutionWaitsForSlowDurableReceipts(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "echo", Description: "Return text."}, func(context.Context, struct{}) (string, error) { return "echoed", nil })
+		executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "fixture_echo", Description: "Return text."}, func(context.Context, struct{}) (string, error) { return "echoed", nil })
 		if err != nil {
 			t.Fatal(err)
 		}
 		model := &observationScriptModel{responses: []*chat.Response{
-			interactionToolResponse(chat.ToolCall{ID: "echo_call", Name: "echo", Arguments: `{}`}, 1, 1),
+			interactionToolResponse(chat.ToolCall{ID: "echo_call", Name: "fixture_echo", Arguments: `{}`}, 1, 1),
 			interactionTextResponse("done"),
 		}}
 		executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-			ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "echo")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+			ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "echo")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 			ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 		})
 		ref, err := executor.StageRoot(t.Context(), interactionTestStart())

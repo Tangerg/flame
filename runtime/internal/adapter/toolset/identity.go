@@ -46,7 +46,7 @@ func SourceFingerprint(executable toolcontract.Tool, ref tool.Ref) (flameidentit
 	return source, ref.ValidateFingerprint(source)
 }
 
-// WithIdentity binds a local or configured A2A source at construction. MCP
+// WithIdentity binds a local source at construction. Connected MCP
 // identity and authority stay on Scope's connection-backed executable.
 func WithIdentity(executable toolcontract.Tool, ref tool.Ref, source flameidentity.Digest) (toolcontract.Tool, error) {
 	if err := ref.ValidateFingerprint(source); err != nil {

@@ -401,7 +401,7 @@ type modelInputAdmissionProbe struct {
 	selected       []modelchoice.Selection
 }
 
-func (m *modelInputAdmissionProbe) AdmitSelection(selection modelchoice.Selection) error {
+func (m *modelInputAdmissionProbe) AdmitSelection(ctx context.Context, selection modelchoice.Selection) error {
 	m.selectionCalls++
 	m.selected = append(m.selected, selection)
 	return m.selectionErr
@@ -2298,7 +2298,7 @@ func TestStartRejectsUnsupportedReasoningSelectionBeforeAnyOpeningSideEffect(t *
 	control := &fakeExecutionPorts{startRef: ExecutorRef{SessionID: "ses_1", ExecutorID: "turn_1"}}
 	effects := &fakeEffects{}
 	c := newUseCaseCoordinator(&fakeExecutor{}, control, sessions, effects)
-	unsupported := errors.New("reasoning effort is not advertised by the selected model")
+	unsupported := fmt.Errorf("%w: reasoning effort is not advertised by the selected model", modelchoice.ErrUnsupported)
 	probe := &modelInputAdmissionProbe{selectionErr: unsupported}
 	c.models = probe
 	selection, err := modelchoice.NewWithReasoningEffort("openai", "gpt-5.6-sol", "impossible")

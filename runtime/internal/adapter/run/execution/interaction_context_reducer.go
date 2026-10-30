@@ -190,6 +190,8 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 	input := ModelContextCompactionInput{
 		SessionID:    i.start.SessionID,
 		Selection:    i.start.ModelSelection,
+		Limits:       i.session.selectedChat.TokenLimits(),
+		RequestFits:  i.session.selectedChat.RequestFits,
 		Instructions: fixedContext,
 		Candidate:    candidate,
 		Trailer:      tail,

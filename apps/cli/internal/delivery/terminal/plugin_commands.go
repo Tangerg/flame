@@ -9,7 +9,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/extensions"
 )
 
-func (a *app) ShowPlugins() {
+func (a *app) ShowExtensions() {
 	if a.pluginHost == nil {
 		a.message("plugin host is unavailable")
 		return
@@ -23,9 +23,9 @@ func (a *app) ShowPlugins() {
 		lines = append(lines, fmt.Sprintf("failed   source:%s · %v", issue.Source, issue.Err))
 	}
 	if len(lines) == 0 {
-		lines = append(lines, "No command plugins installed")
+		lines = append(lines, "No local command extensions installed")
 	}
-	a.transcript.Append(&kit.Entry{Theme: a.transcript.theme, Label: "plugins", Body: strings.Join(lines, "\n")})
+	a.transcript.Append(&kit.Entry{Theme: a.transcript.theme, Label: "local command extensions", Body: strings.Join(lines, "\n")})
 }
 
 // unloadedPluginsNotice says at startup that something did not load. A plugin
@@ -42,9 +42,9 @@ func unloadedPluginsNotice(results []extensions.LifecycleResult, issues []extens
 	case 0:
 		return ""
 	case 1:
-		return "1 plugin did not load · /plugins for details"
+		return "1 plugin did not load · /extensions for details"
 	default:
-		return fmt.Sprintf("%d plugins did not load · /plugins for details", unloaded)
+		return fmt.Sprintf("%d plugins did not load · /extensions for details", unloaded)
 	}
 }
 
@@ -97,7 +97,7 @@ func (a *app) ReloadPlugin(id string) {
 			failed = append(failed, result)
 		}
 	}
-	// The status row holds one message, so several failures point at /plugins
+	// The status row holds one message, so several failures point at /extensions
 	// rather than letting the last one overwrite the rest.
 	switch len(failed) {
 	case 0:
@@ -105,7 +105,7 @@ func (a *app) ReloadPlugin(id string) {
 	case 1:
 		a.message(fmt.Sprintf("plugin %s · %s · %v", failed[0].PluginID, failed[0].Phase, failed[0].Err))
 	default:
-		a.message(fmt.Sprintf("%d plugins did not reload · /plugins for details", len(failed)))
+		a.message(fmt.Sprintf("%d plugins did not reload · /extensions for details", len(failed)))
 	}
 }
 

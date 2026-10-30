@@ -1,11 +1,16 @@
 import { type ApprovalRuleDecision } from "@/foundation/protocolValues.generated";
-import { type MCPServerID } from "@/features/mcp/public/serverIdentity";
 type ApprovalSubject =
   { type: "all" } | { type: "exact"; value: string } | { type: "glob"; value: string };
 type ToolRef =
   | { type: "builtIn"; name: string }
-  | { type: "mcp"; name: string; server: MCPServerID }
-  | { type: "a2a"; endpoint: string };
+  | {
+      type: "mcp";
+      name: string;
+      server: {
+        name: string;
+        origin: { type: "user" } | { type: "installation"; installationId: string };
+      };
+    };
 
 import { createDataQuery, createParameterizedDataQuery } from "@/extensions/dataQuery";
 import { type ApprovalModeResult, type RememberScope } from "@/features/agent/domain/hitl";

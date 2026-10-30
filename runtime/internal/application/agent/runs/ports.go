@@ -76,7 +76,7 @@ type WorkingContextComposer interface {
 // Authored input is structurally validated here; model-media admission belongs
 // to the complete transformed request at the physical execution boundary.
 type modelAdmitter interface {
-	AdmitSelection(selection modelchoice.Selection) error
+	AdmitSelection(ctx context.Context, selection modelchoice.Selection) error
 }
 
 // WorkingContextInput is the exact fresh-root context composition input. Seed

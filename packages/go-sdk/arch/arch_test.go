@@ -70,7 +70,7 @@ func TestSharedValuesStayFreeOfExternalCapabilities(t *testing.T) {
 	root := moduleRoot(t)
 	values := map[string]bool{
 		"extension": true, "exactint": true, "identity": true, "instant": true,
-		"model": true, "pagination": true,
+		"model": true, "hook": true, "pagination": true,
 	}
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {

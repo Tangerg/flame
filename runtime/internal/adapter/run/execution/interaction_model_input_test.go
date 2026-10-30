@@ -83,15 +83,15 @@ func TestPrimaryInputTransformationIsFinalRequestOnlyAcrossSuccessiveCalls(t *te
 					t.Errorf("provider did not receive complete transformed request: %+v", request)
 				}
 				if calls == 1 {
-					return interactionToolResponse(chat.ToolCall{ID: "echo-call", Name: "echo", Arguments: `{}`}, 5, 1), nil
+					return interactionToolResponse(chat.ToolCall{ID: "echo-call", Name: "fixture_echo", Arguments: `{}`}, 5, 1), nil
 				}
 				return interactionUsageTextResponse("done", 7, 1), nil
 			})
-			echo, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "echo", Description: "Echo."}, func(context.Context, struct{}) (string, error) { return "echo", nil })
+			echo, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "fixture_echo", Description: "Echo."}, func(context.Context, struct{}) (string, error) { return "echo", nil })
 			if err != nil {
 				t.Fatal(err)
 			}
-			cfg := InteractionExecutorConfig{CallComposition: owner, ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "echo")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{echo}}}, ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{}}
+			cfg := InteractionExecutorConfig{CallComposition: owner, ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "echo")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{echo}}}, ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{}}
 			if compact {
 				cfg.ModelContextCompactor = &calibrationCaptureCompactor{estimatedTokens: 100}
 				cfg.ModelContextState = emptyInteractionModelContextState{}

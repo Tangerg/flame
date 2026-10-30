@@ -3,26 +3,13 @@ package model
 import (
 	"context"
 	"errors"
-	"net/http"
-	"net/http/httptest"
-	"testing"
-
-	modelsapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/models/catalog"
+	"reflect"
+	"testing"
 )
-
-func TestCatalogContainsProviderDefaults(t *testing.T) {
-	for _, provider := range supportedProviders() {
-		model, hasDefault := provider.DefaultChatModel()
-		if !hasDefault {
-			continue
-		}
-		if _, ok := catalog.Default.Lookup(string(provider.ID()), model); !ok {
-			t.Errorf("catalog has no default model %q for provider %q", model, provider.ID())
-		}
-	}
-}
 
 func TestCatalogPricesPreserveInputDefaultsAndFreeCache(t *testing.T) {
 	for _, test := range []struct {
@@ -35,9 +22,12 @@ func TestCatalogPricesPreserveInputDefaultsAndFreeCache(t *testing.T) {
 		{name: "explicit rates", read: new(0.3), write: new(3.75), wantRead: 0.3, wantWrite: 3.75},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			model := catalogModel("provider", catalog.Model{ID: "model", Pricing: catalog.PricingSchedule{{
+			model, err := catalogModel("provider", catalog.Model{ID: "model", Pricing: catalog.PricingSchedule{{
 				InputPer1M: 3, OutputPer1M: 15, CacheReadPer1M: test.read, CacheWritePer1M: test.write,
 			}}})
+			if err != nil {
+				t.Fatal(err)
+			}
 			pricing := model.Details().Pricing
 			if pricing == nil || pricing.CacheReadPerMillion != test.wantRead || pricing.CacheWritePerMillion != test.wantWrite {
 				t.Fatalf("catalog cache price changed meaning: %+v", pricing)
@@ -46,217 +36,52 @@ func TestCatalogPricesPreserveInputDefaultsAndFreeCache(t *testing.T) {
 	}
 }
 
-func TestListModelsPreservesMissingCredentialCause(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
-		t.Error("model discovery reached the endpoint without a required credential")
-		response.Header().Set("Content-Type", "application/json")
-		_, _ = response.Write([]byte(`{"data":[]}`))
-	}))
-	t.Cleanup(server.Close)
-
-	for _, providerID := range []string{"openai-compatible", "anthropic-compatible", "azureopenai", "perplexity"} {
-		t.Run(providerID, func(t *testing.T) {
-			entry := catalogProvider(t, providerID, "test-key", server.URL)
-			entry, err := entry.Apply(provider.Patch{APIKey: provider.Clear[provider.APIKey]()})
-			if err != nil {
-				t.Fatal(err)
-			}
-			models, err := (Capabilities{}).ListModels(t.Context(), entry)
-			if models != nil || !errors.Is(err, modelsapp.ErrProviderUnconfigured) || !errors.Is(err, errCredentialUnavailable) {
-				t.Fatalf("listModels = (%v, %v), want configuration error preserving its credential cause", models, err)
-			}
-		})
-	}
+type capabilityAdapters struct {
+	profiles []modelprovider.Profile
+	err      error
 }
 
-func TestListModelsClassifiesRemoteFailures(t *testing.T) {
-	for _, status := range []int{http.StatusUnauthorized, http.StatusInternalServerError, http.StatusOK} {
-		t.Run(http.StatusText(status), func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(status)
-				_, _ = w.Write([]byte(`not-json secret-token`))
-			}))
-			t.Cleanup(server.Close)
-			models, err := (Capabilities{}).ListModels(t.Context(), catalogProvider(t, "openai-compatible", "test-key", server.URL))
-			if models != nil || !errors.Is(err, modelsapp.ErrModelDiscoveryFailed) {
-				t.Fatalf("listModels = (%v, %v), want discovery failure", models, err)
-			}
-		})
-	}
+func (f capabilityAdapters) Profiles(context.Context) ([]modelprovider.Profile, error) {
+	return f.profiles, f.err
 }
-
-func TestProbeUsesRemoteModelsForProviderWithoutCatalogDefault(t *testing.T) {
-	var requests int
-	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		requests++
-		if request.Method != http.MethodGet || request.URL.Path != "/models" {
-			t.Errorf("request = %s %s, want GET /models", request.Method, request.URL.Path)
-		}
-		if got := request.Header.Get("Authorization"); got != "Bearer test-key" {
-			t.Errorf("authorization = %q, want bearer key", got)
-		}
-		response.Header().Set("Content-Type", "application/json")
-		_, _ = response.Write([]byte(`{"data":[{"id":"served-model"}]}`))
-	}))
-	t.Cleanup(server.Close)
-
-	err := (Capabilities{}).Probe(t.Context(), catalogProvider(t, "openai-compatible", "test-key", server.URL))
-	if err != nil {
-		t.Fatalf("Probe: %v", err)
-	}
-	if requests != 1 {
-		t.Fatalf("requests = %d, want one endpoint-owned model probe", requests)
-	}
+func (f capabilityAdapters) RemoteModels(context.Context, modelprovider.Connection) ([]string, error) {
+	return nil, f.err
 }
-
-func TestProbeUsesAnthropicProtocolForCompatibleProvider(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		if request.Method != http.MethodGet || request.URL.Path != "/v1/models" {
-			t.Errorf("request = %s %s, want GET /v1/models", request.Method, request.URL.Path)
-		}
-		if got := request.URL.Query().Get("limit"); got != "1000" {
-			t.Errorf("limit = %q, want 1000", got)
-		}
-		if got := request.Header.Get("x-api-key"); got != "test-key" {
-			t.Errorf("x-api-key = %q, want configured key", got)
-		}
-		if got := request.Header.Get("anthropic-version"); got != "2023-06-01" {
-			t.Errorf("anthropic-version = %q, want 2023-06-01", got)
-		}
-		if got := request.Header.Get("Authorization"); got != "" {
-			t.Errorf("authorization = %q, want absent", got)
-		}
-		response.Header().Set("Content-Type", "application/json")
-		_, _ = response.Write([]byte(`{"data":[{"id":"claude-compatible"}],"has_more":false}`))
-	}))
-	t.Cleanup(server.Close)
-
-	err := (Capabilities{}).Probe(t.Context(), catalogProvider(t, "anthropic-compatible", "test-key", server.URL))
-	if err != nil {
-		t.Fatalf("Probe: %v", err)
-	}
+func (f capabilityAdapters) OpenChat(context.Context, modelchoice.Selection, modelprovider.Connection) (ResolvedChat, error) {
+	return ResolvedChat{}, f.err
 }
-
-func TestProbeRejectsPartialAnthropicModelCatalog(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
-		response.Header().Set("Content-Type", "application/json")
-		_, _ = response.Write([]byte(`{"data":[{"id":"first-page-model"}],"has_more":true,"last_id":"first-page-model"}`))
-	}))
-	t.Cleanup(server.Close)
-
-	err := (Capabilities{}).Probe(t.Context(), catalogProvider(t, "anthropic-compatible", "test-key", server.URL))
-	if err == nil {
-		t.Fatal("Probe accepted a partial Anthropic model catalog")
-	}
-}
-
-func TestModelDiscoveryUsesScopePaginationBeforePublishingCatalog(t *testing.T) {
-	requests := 0
-	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		requests++
-		if request.URL.Path != "/v1/models" {
-			t.Errorf("model discovery used %q", request.URL.Path)
-		}
-		response.Header().Set("Content-Type", "application/json")
-		if requests == 1 {
-			_, _ = response.Write([]byte(`{"data":[{"id":"claude-z"}],"has_more":true,"last_id":"claude-z"}`))
-			return
-		}
-		if cursor := request.URL.Query().Get("after_id"); cursor != "claude-z" {
-			t.Errorf("model discovery cursor = %q", cursor)
-		}
-		_, _ = response.Write([]byte(`{"data":[{"id":"claude-a"}],"has_more":false}`))
-	}))
-	t.Cleanup(server.Close)
-	models, err := (Capabilities{}).ListModels(t.Context(), catalogProvider(t, "anthropic-compatible", "test-key", server.URL))
-	if err != nil || requests != 2 || len(models) != 2 || models[0] != "claude-a" || models[1] != "claude-z" {
-		t.Fatalf("complete endpoint catalog = %v, %v; requests=%d", models, err, requests)
-	}
-}
-
-func TestPerplexityModelDiscoveryUsesItsScopeBinding(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		if request.Method != http.MethodGet || request.URL.Path != "/models" || request.Header.Get("Authorization") != "Bearer test-key" {
-			t.Errorf("unexpected Perplexity catalog request: %s %s", request.Method, request.URL.Path)
-		}
-		response.Header().Set("Content-Type", "application/json")
-		_, _ = response.Write([]byte(`{"data":[{"id":"openai/gpt-6-sol"}]}`))
-	}))
-	t.Cleanup(server.Close)
-	models, err := (Capabilities{}).ListModels(t.Context(), catalogProvider(t, "perplexity", "test-key", server.URL))
-	if err != nil || len(models) != 1 || models[0] != "openai/gpt-6-sol" {
-		t.Fatalf("Perplexity endpoint catalog = %v, %v", models, err)
-	}
-}
-
-func TestProbeRejectsEndpointConfigurationChatAdapterCannotBuild(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
-		response.Header().Set("Content-Type", "application/json")
-		_, _ = response.Write([]byte(`{"data":[{"id":"deployment"}]}`))
-	}))
-	t.Cleanup(server.Close)
-
-	err := (Capabilities{}).Probe(t.Context(), catalogProvider(t, "azureopenai", "test-key", server.URL))
-	if err == nil {
-		t.Fatal("Probe accepted an Azure endpoint the chat adapter cannot build")
-	}
-}
-
-func TestProbeRejectsProviderWithoutCatalogOrAdvertisedModels(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
-		response.Header().Set("Content-Type", "application/json")
-		_, _ = response.Write([]byte(`{"data":[]}`))
-	}))
-	t.Cleanup(server.Close)
-
-	err := (Capabilities{}).Probe(t.Context(), catalogProvider(t, "openai-compatible", "test-key", server.URL))
-	if err == nil {
-		t.Fatal("Probe accepted an endpoint that advertised no usable model")
-	}
-}
-
-func catalogProvider(t *testing.T, id, rawKey, rawBaseURL string) provider.Provider {
-	t.Helper()
-	entry, err := provider.New(id)
+func TestCapabilitiesAdmitOnlyInstalledProviderFacts(t *testing.T) {
+	entry := catalog.Model{ID: "model", Reasoning: catalog.Reasoning{Supported: true, Levels: []string{"custom"}, DefaultLevel: "custom"}}
+	adapters := capabilityAdapters{profiles: []modelprovider.Profile{{ID: "installed", Authentication: modelprovider.KeyOptional, ModelSource: modelprovider.BundledModels, DefaultModel: "model", Models: []catalog.Model{entry}}}}
+	c, err := NewCapabilities(adapters, fakeEndpointJournal{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	key, err := provider.NewAPIKey(rawKey)
-	if err != nil {
+	selection := testsupport.MustModelSelection("installed", "model")
+	if err := c.AdmitSelection(t.Context(), selection); err != nil {
 		t.Fatal(err)
 	}
-	baseURL, err := provider.NewBaseURL(rawBaseURL)
-	if err != nil {
-		t.Fatal(err)
+	profiles, err := c.Profiles(t.Context())
+	if err != nil || len(profiles) != 1 || profiles[0].Metadata.ID() != "installed" || len(profiles[0].Models) != 1 {
+		t.Fatalf("profiles=%+v err=%v", profiles, err)
 	}
-	entry, err = entry.Apply(provider.Patch{APIKey: provider.Set(key), BaseURL: provider.Set(baseURL)})
-	if err != nil {
-		t.Fatal(err)
+	if !reflect.DeepEqual(profiles[0].Models[0].Details().ReasoningLevels, []string{"custom"}) {
+		t.Fatal("installed reasoning facts changed")
 	}
-	return entry
+	if err := c.AdmitSelection(t.Context(), testsupport.MustModelSelection("anthropic", "claude-opus-5")); !errors.Is(err, modelchoice.ErrUnsupported) {
+		t.Fatalf("uninstalled provider=%v", err)
+	}
 }
-
-func TestProbeClassifiesRemoteRejections(t *testing.T) {
-	for _, tt := range []struct {
-		status int
-		want   error
-	}{
-		{http.StatusUnauthorized, modelsapp.ErrProviderCredentialsRejected},
-		{http.StatusForbidden, modelsapp.ErrProviderCredentialsRejected},
-		{http.StatusGatewayTimeout, context.DeadlineExceeded},
-	} {
-		t.Run(http.StatusText(tt.status), func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(tt.status)
-				_, _ = w.Write([]byte(`{"error":{"message":"secret-token","type":"probe_error"}}`))
-			}))
-			t.Cleanup(server.Close)
-			err := (Capabilities{}).Probe(t.Context(), catalogProvider(t, "openai-compatible", "test-key", server.URL))
-			if !errors.Is(err, tt.want) {
-				t.Fatalf("probe error = %v; want %v", err, tt.want)
-			}
-		})
+func TestCapabilitiesPreserveUnavailableAdapterFailure(t *testing.T) {
+	cause := errors.New("selected adapter unavailable")
+	c, err := NewCapabilities(capabilityAdapters{err: cause}, fakeEndpointJournal{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.AdmitSelection(t.Context(), testsupport.MustModelSelection("installed", "model")); !errors.Is(err, cause) || errors.Is(err, modelchoice.ErrUnsupported) {
+		t.Fatalf("admission=%v", err)
+	}
+	if _, err := c.Profiles(t.Context()); !errors.Is(err, cause) {
+		t.Fatalf("profiles=%v", err)
 	}
 }

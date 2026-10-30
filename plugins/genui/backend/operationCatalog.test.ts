@@ -44,6 +44,7 @@ function installation(): PluginInstallation {
       components: [],
       diagnostics: [],
       inputs: [],
+      locales: [],
       points: [],
       pointValues: [],
       servers: [],

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	hookdata "github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 )
 
 // ListHooks reports the lifecycle hooks discovered for a cwd — global
@@ -46,32 +46,32 @@ func (s *Handler) ListHooks(ctx context.Context, in protocol.ListHooksRequest) (
 	return out, nil
 }
 
-func presentHookEvent(event hooks.Event) (protocol.HookEvent, bool) {
+func presentHookEvent(event hookdata.Event) (protocol.HookEvent, bool) {
 	switch event {
-	case hooks.PreToolUse:
+	case hookdata.PreToolUse:
 		return protocol.HookEventPreToolUse, true
-	case hooks.PostToolUse:
+	case hookdata.PostToolUse:
 		return protocol.HookEventPostToolUse, true
-	case hooks.UserPromptSubmit:
+	case hookdata.UserPromptSubmit:
 		return protocol.HookEventUserPromptSubmit, true
-	case hooks.SessionStart:
+	case hookdata.SessionStart:
 		return protocol.HookEventSessionStart, true
-	case hooks.PreCompact:
+	case hookdata.PreCompact:
 		return protocol.HookEventPreCompact, true
-	case hooks.Stop:
+	case hookdata.Stop:
 		return protocol.HookEventStop, true
-	case hooks.Notification:
+	case hookdata.Notification:
 		return protocol.HookEventNotification, true
 	default:
 		return "", false
 	}
 }
 
-func presentHookScope(scope hooks.Scope) (protocol.HookScope, bool) {
+func presentHookScope(scope hookdata.Scope) (protocol.HookScope, bool) {
 	switch scope {
-	case hooks.ScopeGlobal:
+	case hookdata.ScopeGlobal:
 		return protocol.HookScopeGlobal, true
-	case hooks.ScopeProject:
+	case hookdata.ScopeProject:
 		return protocol.HookScopeProject, true
 	default:
 		return "", false

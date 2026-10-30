@@ -36,7 +36,6 @@ type ManagementStore interface {
 type Coordinator struct {
 	store         ManagementStore
 	paths         CWDResolver
-	models        ModelAdmitter
 	newScheduleID func() string
 	now           func() time.Time
 	onChange      func()
@@ -46,14 +45,9 @@ type CWDResolver interface {
 	ResolveExistingDir(path string) (string, error)
 }
 
-type ModelAdmitter interface {
-	AdmitSelection(selection modelchoice.Selection) error
-}
-
 type Dependencies struct {
 	Store         ManagementStore
 	Paths         CWDResolver
-	Models        ModelAdmitter
 	NewScheduleID func() string
 	OnChange      func()
 }
@@ -81,7 +75,6 @@ func New(deps Dependencies) (*Coordinator, error) {
 	}{
 		{name: "store", value: deps.Store},
 		{name: "cwd resolver", value: deps.Paths},
-		{name: "model admitter", value: deps.Models},
 		{name: "schedule identity factory", value: deps.NewScheduleID},
 	} {
 		if lo.IsNil(required.value) {
@@ -91,7 +84,6 @@ func New(deps Dependencies) (*Coordinator, error) {
 	return &Coordinator{
 		store:         deps.Store,
 		paths:         deps.Paths,
-		models:        deps.Models,
 		newScheduleID: deps.NewScheduleID,
 		now:           time.Now,
 		onChange:      deps.OnChange,
@@ -151,9 +143,6 @@ func (c *Coordinator) Create(ctx context.Context, draft schedule.Draft) (schedul
 }
 
 func (c *Coordinator) admit(draft schedule.Draft) (schedule.Schedule, error) {
-	if err := c.models.AdmitSelection(draft.ModelSelection); err != nil {
-		return schedule.Schedule{}, fmt.Errorf("schedules: model selection is not admitted: %w", err)
-	}
 	if err := draft.Validate(); err != nil {
 		return schedule.Schedule{}, err
 	}
@@ -186,11 +175,6 @@ func (c *Coordinator) Update(ctx context.Context, cmd UpdateCommand) (schedule.S
 			return schedule.Schedule{}, selectionErr
 		}
 		patch.Selection = &selection
-	}
-	if patch.Selection != nil {
-		if err := c.models.AdmitSelection(*patch.Selection); err != nil {
-			return schedule.Schedule{}, fmt.Errorf("schedules: model selection is not admitted: %w", err)
-		}
 	}
 	return c.updateExisting(ctx, existing, patch, cmd.ExpectedRevision)
 }

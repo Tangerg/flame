@@ -76,7 +76,7 @@ func (c *Coordinator) InspectWorkspace(cwd string) (workspaceapp.Resolved, error
 
 // Create starts and persists a fresh root Session in an admitted workspace.
 func (c *Coordinator) Create(ctx context.Context, title, cwd string) (session.Session, error) {
-	created, _, err := c.prepareInitial(c.newID(), title, cwd, modelchoice.Selection{})
+	created, _, err := c.prepareInitial(ctx, c.newID(), title, cwd, modelchoice.Selection{})
 	if err != nil {
 		return session.Session{}, err
 	}
@@ -101,7 +101,7 @@ func (c *Coordinator) PrepareOpening(
 	if !errors.Is(err, session.ErrNotFound) {
 		return session.Session{}, nil, err
 	}
-	return c.prepareInitial(id, title, cwd, selection)
+	return c.prepareInitial(ctx, id, title, cwd, selection)
 }
 
 // DefaultModelSelection is the selection a Session created without one runs
@@ -111,6 +111,7 @@ func (c *Coordinator) DefaultModelSelection() modelchoice.Selection {
 }
 
 func (c *Coordinator) prepareInitial(
+	ctx context.Context,
 	id, title, cwd string,
 	selection modelchoice.Selection,
 ) (session.Session, *session.Session, error) {
@@ -124,7 +125,7 @@ func (c *Coordinator) prepareInitial(
 	if validateErr := selection.ValidateExact(); validateErr != nil {
 		return session.Session{}, nil, fmt.Errorf("sessions: initial model selection: %w", validateErr)
 	}
-	if admitErr := c.models.AdmitSelection(selection); admitErr != nil {
+	if admitErr := c.models.AdmitSelection(ctx, selection); admitErr != nil {
 		return session.Session{}, nil, fmt.Errorf("sessions: initial model selection is not admitted: %w", admitErr)
 	}
 	created, err := session.New(session.Draft{
@@ -168,7 +169,7 @@ func (c *Coordinator) Update(ctx context.Context, id string, patch Patch) (sessi
 		if selectionErr != nil {
 			return session.Session{}, selectionErr
 		}
-		if selectionErr = c.models.AdmitSelection(resolved); selectionErr != nil {
+		if selectionErr = c.models.AdmitSelection(ctx, resolved); selectionErr != nil {
 			return session.Session{}, fmt.Errorf("sessions: model selection is not admitted: %w", selectionErr)
 		}
 		selection = &resolved

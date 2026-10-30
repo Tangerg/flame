@@ -243,7 +243,7 @@ func runtimeFeatureConsumptionByName() map[string]runtimeFeatureConsumption {
 	runtimeExecuted := func(area, entry string) runtimeFeatureConsumption {
 		return runtimeFeatureConsumption{Area: area, Mode: featureExecutedByRuntime, Entry: entry}
 	}
-	return map[string]runtimeFeatureConsumption{protocol.FeatureReasoning: projected("run projection", "reasoning items, token usage, and model catalog"), protocol.FeatureMultimodal: gated("composer", "image attachment submission"), protocol.FeatureCompaction: projected("run projection", "compaction items and restored transcript occupancy"), protocol.FeaturePlan: projected("run projection", "feature-gated plan snapshot, stream events, and activity view"), protocol.FeatureGoals: gated("runtime commands", "goal lifecycle surfaces"), protocol.FeatureSkills: gated("context commands", "skill discovery and governance surfaces"), protocol.FeaturePlugins: gated("portable plugins", "plugins commands and generic actions"), protocol.FeatureMCP: gated("connection commands", "MCP configuration, tools, reconnect, and authorization surfaces"), protocol.FeatureGit: gated("workspace", "change monitor, change list, and diff surfaces"), protocol.FeatureCheckpoints: gated("sessions", "file and combined rollback scopes"), protocol.FeatureFileWatch: gated("runtime side channel", "workspace file-change subscriptions"), protocol.FeatureIsolation: runtimeExecuted("run execution", "runtime-owned workspace isolation"), protocol.FeatureLSP: runtimeExecuted("run projection", "runtime-owned LSP tools projected as ordinary tool activity"), protocol.FeatureSessionExport: gated("transcript and sessions", "session import and export surfaces"), protocol.FeatureRelocate: gated("sessions", "workspace relocation surface"), protocol.FeatureSubagents: negotiated("run protocol", "child-run lineage, suspension, and subtree projection")}
+	return map[string]runtimeFeatureConsumption{protocol.FeatureReasoning: projected("run projection", "reasoning items, token usage, and model catalog"), protocol.FeatureMultimodal: gated("composer", "image attachment submission"), protocol.FeatureCompaction: projected("run projection", "compaction items and restored transcript occupancy"), protocol.FeaturePlan: projected("run projection", "feature-gated plan snapshot, stream events, and activity view"), protocol.FeatureGoals: gated("runtime commands", "goal lifecycle surfaces"), protocol.FeatureSkills: gated("context commands", "skill discovery and governance surfaces"), protocol.FeaturePlugins: gated("portable plugins", "plugins commands and generic actions"), protocol.FeatureMCP: gated("connection commands", "MCP configuration, tools, reconnect, and authorization surfaces"), protocol.FeatureGit: gated("workspace", "change monitor, change list, and diff surfaces"), protocol.FeatureCheckpoints: gated("sessions", "file and combined rollback scopes"), protocol.FeatureFileWatch: gated("runtime side channel", "workspace file-change subscriptions"), protocol.FeatureIsolation: runtimeExecuted("run execution", "runtime-owned workspace isolation"), protocol.FeatureSessionExport: gated("transcript and sessions", "session import and export surfaces"), protocol.FeatureRelocate: gated("sessions", "workspace relocation surface"), protocol.FeatureSubagents: negotiated("run protocol", "child-run lineage, suspension, and subtree projection")}
 }
 
 func runtimeAPIConsumptionByMethod() map[string]runtimeAPIConsumption {
@@ -267,12 +267,13 @@ func runtimeAPIConsumptionByMethod() map[string]runtimeAPIConsumption {
 		"AcquirePluginComponent":   {Area: "browser execution", Mode: externalReconciliation, Entry: "browser component mount acquires the original Host-approved Use"},
 		"ClosePluginBrowserRealm":  {Area: "browser execution", Mode: externalReconciliation, Entry: "browser controlled reload seals its original Realm before local cleanup"},
 		"ListModelEndpoints":       {Area: "physical model evidence", Mode: externalReconciliation, Entry: "public Go/TS endpoint evidence query; CLI Run metrics remain aggregate projections"},
-		"ListPluginCompositions":   {Area: "installed composition", Mode: externalReconciliation, Entry: "shared Go/TS composition management; no dedicated CLI editor"},
-		"ResolvePluginComposition": {Area: "installed composition", Mode: externalReconciliation, Entry: "shared Go/TS concrete ordered-binding query for consumer-owned composition"},
-		"SetPluginComposition":     {Area: "installed composition", Mode: externalReconciliation, Entry: "shared Go/TS command for explicit consumer member order; no implicit CLI selection"},
+		"ListPluginCompositions":   command("installed composition", "plugins compositions"),
+		"ResolvePluginComposition": command("installed composition", "plugins resolve-composition"),
+		"SetPluginComposition":     command("installed composition", "plugins set-composition"),
 		"StreamPlugin":             {Area: "installed streams", Mode: externalReconciliation, Entry: "typed Go streams and shared TS/component stream bindings; CLI call remains unary"},
 		"OpenPluginResources":      {Area: "plugin components", Mode: desktopDiagnostics, Entry: "Desktop owns a resource subscription for exact-release ESM loading"},
 		"ReadPluginResource":       {Area: "plugin components", Mode: desktopDiagnostics, Entry: "Core projects the admitted resource query through the leased HTTP module/asset URL"},
+		"ReadPluginLocale":         {Area: "plugin locale content", Mode: externalReconciliation, Entry: "graphical Host loads exact installed workbench catalogs; CLI has no translated interface catalogs"},
 		"ListModelInvocations":     {Area: "model-call diagnostics", Mode: desktopDiagnostics, Entry: "Desktop exposes paged attempt history; CLI exposes Run aggregate metrics"},
 		"ListSessionTrajectory":    {Area: "trajectory diagnostics", Mode: desktopDiagnostics, Entry: "Desktop browses durable Run, model, and Item observations; CLI retains its terminal timeline"},
 		"ExportTrajectory":         {Area: "evaluation evidence", Mode: desktopDiagnostics, Entry: "Desktop exports retained trajectory evidence; CLI Session exports remain importable artifacts"},
@@ -341,7 +342,7 @@ func runtimeAPIConsumptionByMethod() map[string]runtimeAPIConsumption {
 		"ConfigurePlugin":               command("plugins", "plugins configure"),
 		"SetPluginEnablement":           command("plugins", "plugins set-enablement"),
 		"UninstallPlugin":               command("plugins", "plugins uninstall"),
-		"ListPlugins":                   command("plugins", "plugins list"),
+		"ListPlugins":                   command("plugins", "plugins list and TUI /plugins"),
 		"ListPluginProviders":           command("plugins", "plugins providers"),
 		"SelectPluginProvider":          command("plugins", "plugins select-provider"),
 		"ListApprovalRules":             command("approvals", "approvals ls/completion and TUI /rules"),

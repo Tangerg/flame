@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	hookdata "github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
-	domain "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/samber/lo"
 )
 
@@ -41,7 +41,7 @@ type CatalogView struct {
 }
 
 type Resolved struct {
-	Hook   domain.Hook
+	Hook   hookdata.Hook
 	Active bool
 }
 
@@ -80,7 +80,7 @@ func (h *Catalog) Inspect(ctx context.Context, cwd string) (CatalogView, error) 
 	}
 	for _, hook := range inspection.Hooks {
 		resolved.Hooks = append(resolved.Hooks, Resolved{
-			Hook: hook, Active: hook.Scope == domain.ScopeGlobal || inspection.ProjectTrusted,
+			Hook: hook, Active: hook.Scope == hookdata.ScopeGlobal || inspection.ProjectTrusted,
 		})
 	}
 	return resolved, nil

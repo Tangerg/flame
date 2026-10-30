@@ -3,9 +3,7 @@ import { type AgentAccess } from "@/features/agent/public/agent";
 import { type WorkspaceAccess } from "@/features/workspace/public/workspace";
 import { createNotificationCentre } from "@/features/notifications/adapters/systemNotifier";
 import { createSystemNotifier } from "@/features/notifications/systemNotifier";
-import { createCompletionSoundStore } from "@/features/notifications/completionSound";
-import { createSystemNotificationsStore } from "@/features/notifications/systemNotifications";
-import { startCompletionNotifications } from "@/features/notifications/completionNotify";
+import { startSystemNotificationRouting } from "@/features/notifications/systemNotificationRouting";
 import { type NotificationAccess } from "@/features/notifications/public/notifier";
 export function createNotifications(
   host: Pick<
@@ -23,8 +21,7 @@ export function createNotifications(
   const notifier = createSystemNotifier(createNotificationCentre(host));
   const access: NotificationAccess = {
     notifier,
-    completionSound: createCompletionSoundStore(),
-    systemNotifications: createSystemNotificationsStore(),
+    productName,
   };
   let stop: (() => void) | null = null;
   let disposed = false;
@@ -33,12 +30,8 @@ export function createNotifications(
     start() {
       if (disposed) throw new Error("Notifications are disposed");
       if (!stop)
-        stop = startCompletionNotifications(
-          access,
-          agent,
-          workspace,
-          () => host.revealWindow(),
-          productName,
+        stop = startSystemNotificationRouting(notifier, agent, workspace, () =>
+          host.revealWindow(),
         );
     },
     dispose() {

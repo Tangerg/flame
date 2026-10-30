@@ -34,7 +34,7 @@ func TestInteractionExecutorProjectsAuthoritativeModelToolLifecycleAndAccounting
 	}
 	var toolCalls int
 	echo, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "echo", Description: "Return the supplied value.",
+		Name: "fixture_echo", Description: "Return the supplied value.",
 	}, func(_ context.Context, input echoInput) (string, error) {
 		toolCalls++
 		return input.Value, nil
@@ -43,12 +43,12 @@ func TestInteractionExecutorProjectsAuthoritativeModelToolLifecycleAndAccounting
 		t.Fatal(err)
 	}
 	model := &observationScriptModel{responses: []*chat.Response{
-		interactionToolResponse(chat.ToolCall{ID: providerCallID, Name: "echo", Arguments: `{"value":"hello"}`}, 7, 2),
+		interactionToolResponse(chat.ToolCall{ID: providerCallID, Name: "fixture_echo", Arguments: `{"value":"hello"}`}, 7, 2),
 		interactionUsageTextResponse("done", 11, 3),
 	}}
 	hooks := &recordingInteractionHooks{}
 	executor := newPricedObservedTestInteractionExecutor(t, model, fixedInteractionPricing(0.25), InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "echo")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{echo}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "echo")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{echo}}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolPresenter: testInteractionToolPresenter{},
 		ToolAuthorizer: allowInteractionTools{}, ToolHooks: hooks,
 	})
@@ -90,7 +90,7 @@ func TestInteractionExecutorProjectsAuthoritativeModelToolLifecycleAndAccounting
 	if len(starts) != 1 || len(finishes) != 1 || starts[0].SourceCallID != providerCallID ||
 		starts[0].Activity != "Echoing value" || starts[0].SafetyClass != domaintool.SafetyClassSafe ||
 		finishes[0].Result == nil || finishes[0].ModelResult == nil ||
-		finishes[0].ModelResult.ID != providerCallID || finishes[0].ModelResult.Name != "echo" ||
+		finishes[0].ModelResult.ID != providerCallID || finishes[0].ModelResult.Name != "fixture_echo" ||
 		!modelResultTextual || modelResultText != "hello" || finishes[0].Failure != nil {
 		t.Fatalf("Tool lifecycle = starts %#v; finishes %#v", starts, finishes)
 	}
@@ -109,7 +109,7 @@ func TestInteractionExecutorCalibratesNextModelContextFromProviderUsage(t *testi
 		Value string `json:"value"`
 	}
 	echo, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "echo", Description: "Return the supplied value.",
+		Name: "fixture_echo", Description: "Return the supplied value.",
 	}, func(_ context.Context, input echoInput) (string, error) {
 		return input.Value, nil
 	})
@@ -119,12 +119,12 @@ func TestInteractionExecutorCalibratesNextModelContextFromProviderUsage(t *testi
 	compactor := &calibrationCaptureCompactor{estimatedTokens: 100}
 	model := &observationScriptModel{responses: []*chat.Response{
 		interactionToolResponse(chat.ToolCall{
-			ID: "provider_call", Name: "echo", Arguments: `{"value":"hello"}`,
+			ID: "provider_call", Name: "fixture_echo", Arguments: `{"value":"hello"}`,
 		}, 7, 2),
 		interactionUsageTextResponse("done", 11, 3),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "echo")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{echo}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "echo")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{echo}}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 		ModelContextCompactor: compactor, ModelContextState: emptyInteractionModelContextState{},
 	})
@@ -140,7 +140,7 @@ func TestInteractionExecutorDoesNotInventCalibrationWhenProviderUsageIsMissing(t
 		Value string `json:"value"`
 	}
 	echo, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "echo", Description: "Return the supplied value.",
+		Name: "fixture_echo", Description: "Return the supplied value.",
 	}, func(_ context.Context, input echoInput) (string, error) {
 		return input.Value, nil
 	})
@@ -150,13 +150,13 @@ func TestInteractionExecutorDoesNotInventCalibrationWhenProviderUsageIsMissing(t
 	compactor := &calibrationCaptureCompactor{estimatedTokens: 100}
 	model := &observationScriptModel{responses: []*chat.Response{
 		interactionToolResponse(chat.ToolCall{
-			ID: "provider_call", Name: "echo", Arguments: `{"value":"hello"}`,
+			ID: "provider_call", Name: "fixture_echo", Arguments: `{"value":"hello"}`,
 		}, 0, 0),
 		interactionUsageTextResponse("done", 11, 3),
 	}}
 	model.responses[0].Metadata.Usage = nil
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "echo")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{echo}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "echo")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{echo}}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 		ModelContextCompactor: compactor, ModelContextState: emptyInteractionModelContextState{},
 	})
@@ -338,7 +338,7 @@ func TestInteractionExecutorCancellationStopsCooperativeInflightTool(t *testing.
 	toolStarted := make(chan struct{})
 	toolReturned := make(chan struct{})
 	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "block", Description: "Block until canceled.",
+		Name: "fixture_block", Description: "Block until canceled.",
 	}, func(ctx context.Context, _ struct{}) (string, error) {
 		close(toolStarted)
 		<-ctx.Done()
@@ -349,10 +349,10 @@ func TestInteractionExecutorCancellationStopsCooperativeInflightTool(t *testing.
 		t.Fatal(err)
 	}
 	model := &observationScriptModel{responses: []*chat.Response{
-		interactionToolResponse(chat.ToolCall{ID: "provider_call", Name: "block", Arguments: `{}`}, 1, 1),
+		interactionToolResponse(chat.ToolCall{ID: "provider_call", Name: "fixture_block", Arguments: `{}`}, 1, 1),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "block")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "block")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 		ToolInterpreter: testInteractionToolInterpreter{},
 		ToolAuthorizer:  allowInteractionTools{},
 	})
@@ -569,7 +569,7 @@ func TestInteractionExecutorBindsResolvedRunScopeToManifestAndToolCalls(t *testi
 	want := rootExecutionScope(start)
 	var toolScope runs.ExecutionScope
 	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "scope", Description: "Return the current execution scope.",
+		Name: "fixture_scope", Description: "Return the current execution scope.",
 	}, func(ctx context.Context, _ struct{}) (string, error) {
 		toolScope, _ = executionctx.Scope(ctx)
 		return "ok", nil
@@ -577,11 +577,11 @@ func TestInteractionExecutorBindsResolvedRunScopeToManifestAndToolCalls(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	resolver := &scopeRecordingInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "scope")}, manifest: toolset.Manifest{
+	resolver := &scopeRecordingInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "scope")}, manifest: toolset.Manifest{
 		Visible: []toolcontract.Tool{executable},
 	}}
 	model := &observationScriptModel{responses: []*chat.Response{
-		interactionToolResponse(chat.ToolCall{ID: "scope_call", Name: "scope", Arguments: `{}`}, 1, 1),
+		interactionToolResponse(chat.ToolCall{ID: "scope_call", Name: "fixture_scope", Arguments: `{}`}, 1, 1),
 		interactionUsageTextResponse("done", 1, 1),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
@@ -683,12 +683,12 @@ func TestInteractionExecutorStreamsProviderRefusalAsVisibleText(t *testing.T) {
 
 func TestInteractionExecutorCommitsDeferredAdvertisementThroughAgentFramework(t *testing.T) {
 	hidden, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "hidden_lookup", Description: "Read a hidden value.",
+		Name: "fixture_hidden_lookup", Description: "Read a hidden value.",
 	}, func(context.Context, struct{}) (string, error) { return "found", nil })
 	if err != nil {
 		t.Fatal(err)
 	}
-	identifiedHidden, err := toolset.WithIdentity(hidden, testsupport.A2ATool(t, "hidden_lookup"), testsupport.ToolFingerprint(testsupport.A2ATool(t, "hidden_lookup")))
+	identifiedHidden, err := toolset.WithIdentity(hidden, testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "hidden_lookup"), testsupport.ToolFingerprint(testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "hidden_lookup")))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -705,11 +705,11 @@ func TestInteractionExecutorCommitsDeferredAdvertisementThroughAgentFramework(t 
 		ToolAuthorizer:  allowInteractionTools{},
 	})
 	events := runInteractionHarness(context.Background(), t, executor, interactionTestStart(), nil)
-	if want := [][]string{{"search_tools"}, {"search_tools", "hidden_lookup"}, {"search_tools", "hidden_lookup"}}; !slices.EqualFunc(model.manifests, want, slices.Equal[[]string]) {
+	if want := [][]string{{"search_tools"}, {"search_tools", "fixture_hidden_lookup"}, {"search_tools", "fixture_hidden_lookup"}}; !slices.EqualFunc(model.manifests, want, slices.Equal[[]string]) {
 		t.Fatalf("model manifests = %v, want %v", model.manifests, want)
 	}
 	starts := payloadsOf[runs.ToolCallStarted](events)
-	if len(starts) != 2 || starts[0].ToolName != "search_tools" || starts[1].ToolName != "hidden_lookup" {
+	if len(starts) != 2 || starts[0].ToolName != "search_tools" || starts[1].ToolName != "fixture_hidden_lookup" {
 		t.Fatalf("Tool starts = %#v", starts)
 	}
 }
@@ -720,19 +720,19 @@ func TestInteractionExecutorKeepsRefetchableProjectionAndPostHookObservational(t
 	slog.SetDefault(slog.New(slog.NewTextHandler(&diagnostics, nil)))
 	t.Cleanup(func() { slog.SetDefault(previousLogger) })
 	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "observe", Description: "Return a value.",
+		Name: "fixture_observe", Description: "Return a value.",
 	}, func(context.Context, struct{}) (string, error) { return "value", nil })
 	if err != nil {
 		t.Fatal(err)
 	}
 	model := &observationScriptModel{responses: []*chat.Response{
-		interactionToolResponse(chat.ToolCall{ID: "observe_call", Name: "observe", Arguments: `{}`}, 1, 1),
+		interactionToolResponse(chat.ToolCall{ID: "observe_call", Name: "fixture_observe", Arguments: `{}`}, 1, 1),
 		interactionUsageTextResponse("done", 1, 1),
 	}}
 	hooks := &failingAfterInteractionHooks{}
 	interpreter := &failingOutcomeInteractionInterpreter{}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "observe")}, manifest: toolset.Manifest{
+		ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "observe")}, manifest: toolset.Manifest{
 			Visible: []toolcontract.Tool{executable},
 		}},
 		ToolInterpreter: interpreter,
@@ -758,7 +758,7 @@ func TestInteractionExecutorKeepsRefetchableProjectionAndPostHookObservational(t
 	if len(ended) != 1 || ended[0].Reason != run.OutcomeCompleted {
 		t.Fatalf("terminal = %#v, want completed", ended)
 	}
-	for _, detail := range []string{"projection unavailable", "post-Tool hook unavailable", "session.id=session_1", "tool.name=observe"} {
+	for _, detail := range []string{"projection unavailable", "post-Tool hook unavailable", "session.id=session_1", "tool.name=fixture_observe"} {
 		if output := diagnostics.String(); !strings.Contains(output, detail) {
 			t.Fatalf("observational failure lost diagnostic %q: %s", detail, output)
 		}
@@ -790,7 +790,7 @@ func TestInteractionExecutorDoesNotCallProviderWhenModelStartCommitFails(t *test
 func TestInteractionExecutorDoesNotCallToolWhenToolStartCommitFails(t *testing.T) {
 	var toolCalls int
 	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "echo", Description: "Return a value.",
+		Name: "fixture_echo", Description: "Return a value.",
 	}, func(context.Context, struct{}) (string, error) {
 		toolCalls++
 		return "unexpected", nil
@@ -799,11 +799,11 @@ func TestInteractionExecutorDoesNotCallToolWhenToolStartCommitFails(t *testing.T
 		t.Fatal(err)
 	}
 	model := &observationScriptModel{responses: []*chat.Response{
-		interactionToolResponse(chat.ToolCall{ID: "provider_call", Name: "echo", Arguments: `{}`}, 1, 1),
+		interactionToolResponse(chat.ToolCall{ID: "provider_call", Name: "fixture_echo", Arguments: `{}`}, 1, 1),
 		interactionUsageTextResponse("recovered", 1, 1),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "echo")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "echo")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 		ToolInterpreter: testInteractionToolInterpreter{},
 		ToolAuthorizer:  allowInteractionTools{},
 	})
@@ -828,7 +828,7 @@ func TestInteractionExecutorDoesNotCallToolWhenToolStartCommitFails(t *testing.T
 func TestInteractionExecutorStopsWhenPreparationFailureCannotCommit(t *testing.T) {
 	var toolCalls int
 	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "echo", Description: "Return a value.",
+		Name: "fixture_echo", Description: "Return a value.",
 	}, func(context.Context, struct{}) (string, error) {
 		toolCalls++
 		return "unexpected", nil
@@ -837,11 +837,11 @@ func TestInteractionExecutorStopsWhenPreparationFailureCannotCommit(t *testing.T
 		t.Fatal(err)
 	}
 	model := &observationScriptModel{responses: []*chat.Response{
-		interactionToolResponse(chat.ToolCall{ID: "provider_call", Name: "echo", Arguments: `{}`}, 1, 1),
+		interactionToolResponse(chat.ToolCall{ID: "provider_call", Name: "fixture_echo", Arguments: `{}`}, 1, 1),
 		interactionUsageTextResponse("must not run", 1, 1),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "echo")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "echo")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 		ToolInterpreter: testInteractionToolInterpreter{},
 		ToolAuthorizer:  allowInteractionTools{},
 		ToolHooks:       failingPreparationHooks{},
@@ -982,7 +982,7 @@ func TestInteractionExecutorPollingFindsUnknownWhenDirectWakeIsLost(t *testing.T
 func TestInteractionExecutorReconcilesToolResultCommitFailureAsUnknown(t *testing.T) {
 	var toolCalls int
 	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "echo", Description: "Return a value.",
+		Name: "fixture_echo", Description: "Return a value.",
 	}, func(context.Context, struct{}) (string, error) {
 		toolCalls++
 		return "done", nil
@@ -991,10 +991,10 @@ func TestInteractionExecutorReconcilesToolResultCommitFailureAsUnknown(t *testin
 		t.Fatal(err)
 	}
 	model := &observationScriptModel{responses: []*chat.Response{
-		interactionToolResponse(chat.ToolCall{ID: "provider_call", Name: "echo", Arguments: `{}`}, 1, 1),
+		interactionToolResponse(chat.ToolCall{ID: "provider_call", Name: "fixture_echo", Arguments: `{}`}, 1, 1),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "echo")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "echo")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 		ToolInterpreter: testInteractionToolInterpreter{},
 		ToolAuthorizer:  allowInteractionTools{},
 	})
@@ -1023,7 +1023,7 @@ func TestInteractionExecutorPreservesConcurrentToolAttributionWhenCompletionIsOu
 	var mu sync.Mutex
 	calls := make(map[string]int)
 	inner, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "parallel_echo", Description: "Return the supplied value.",
+		Name: "fixture_parallel_echo", Description: "Return the supplied value.",
 	}, func(_ context.Context, value input) (string, error) {
 		mu.Lock()
 		calls[value.Value]++
@@ -1041,13 +1041,13 @@ func TestInteractionExecutorPreservesConcurrentToolAttributionWhenCompletionIsOu
 	executable := concurrentInteractionTool{Tool: inner}
 	model := &observationScriptModel{responses: []*chat.Response{
 		interactionToolBatchResponse([]chat.ToolCall{
-			{ID: "provider_first", Name: "parallel_echo", Arguments: `{"value":"first"}`},
-			{ID: "provider_second", Name: "parallel_echo", Arguments: `{"value":"second"}`},
+			{ID: "provider_first", Name: "fixture_parallel_echo", Arguments: `{"value":"first"}`},
+			{ID: "provider_second", Name: "fixture_parallel_echo", Arguments: `{"value":"second"}`},
 		}, 1, 1),
 		interactionUsageTextResponse("done", 1, 1),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:           staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "parallel_echo")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolResolver:           staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "parallel_echo")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 		ToolInterpreter:        immutableToolInterpreter{},
 		ToolAuthorizer:         allowInteractionTools{},
 		MaxConcurrentToolCalls: intPointer(2),
@@ -1087,7 +1087,7 @@ func TestInteractionExecutorKeepsPublicationUnknownWhenResultWriteFails(t *testi
 	var calls int
 	var mu sync.Mutex
 	inner, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "parallel_write", Description: "Perform one independently safe write.",
+		Name: "fixture_parallel_write", Description: "Perform one independently safe write.",
 	}, func(_ context.Context, value input) (string, error) {
 		mu.Lock()
 		calls++
@@ -1109,12 +1109,12 @@ func TestInteractionExecutorKeepsPublicationUnknownWhenResultWriteFails(t *testi
 	}
 	model := &observationScriptModel{responses: []*chat.Response{
 		interactionToolBatchResponse([]chat.ToolCall{
-			{ID: "write_first", Name: "parallel_write", Arguments: `{"value":"first"}`},
-			{ID: "write_second", Name: "parallel_write", Arguments: `{"value":"second"}`},
+			{ID: "write_first", Name: "fixture_parallel_write", Arguments: `{"value":"first"}`},
+			{ID: "write_second", Name: "fixture_parallel_write", Arguments: `{"value":"second"}`},
 		}, 1, 1),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "parallel_write")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{
+		ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "parallel_write")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{
 			concurrentInteractionTool{Tool: inner},
 		}}},
 		ToolInterpreter:        immutableToolInterpreter{},
@@ -1149,7 +1149,7 @@ func TestInteractionExecutorKeepsPublicationUnknownWhenResultWriteFails(t *testi
 
 func TestInteractionExecutorKeepsPublicationUnknownWhenDeniedSiblingProjectionFails(t *testing.T) {
 	deniedInner, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "denied_write", Description: "A write rejected by policy.",
+		Name: "fixture_denied_write", Description: "A write rejected by policy.",
 	}, func(context.Context, struct{}) (string, error) {
 		return "unexpected", nil
 	})
@@ -1158,7 +1158,7 @@ func TestInteractionExecutorKeepsPublicationUnknownWhenDeniedSiblingProjectionFa
 	}
 	var externalCalls int
 	externalInner, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "external_write", Description: "An external write before a policy denial.",
+		Name: "fixture_external_write", Description: "An external write before a policy denial.",
 	}, func(context.Context, struct{}) (string, error) {
 		externalCalls++
 		return "written", nil
@@ -1168,12 +1168,12 @@ func TestInteractionExecutorKeepsPublicationUnknownWhenDeniedSiblingProjectionFa
 	}
 	model := &observationScriptModel{responses: []*chat.Response{
 		interactionToolBatchResponse([]chat.ToolCall{
-			{ID: "provider_external", Name: "external_write", Arguments: `{}`},
-			{ID: "provider_denied", Name: "denied_write", Arguments: `{}`},
+			{ID: "provider_external", Name: "fixture_external_write", Arguments: `{}`},
+			{ID: "provider_denied", Name: "fixture_denied_write", Arguments: `{}`},
 		}, 1, 1),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "denied_write"), testsupport.A2ATool(t, "external_write")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{
+		ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "denied_write"), testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "external_write")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{
 			concurrentInteractionTool{Tool: deniedInner},
 			concurrentInteractionTool{Tool: externalInner},
 		}}},
@@ -1246,7 +1246,7 @@ func TestInteractionExecutorKeepsPublicationUnknownWhenDeniedSiblingProjectionFa
 func TestInteractionExecutorCommitsAutomaticDenialWithoutCallingTool(t *testing.T) {
 	var toolCalls int
 	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "write", Description: "Write a value.",
+		Name: "fixture_write", Description: "Write a value.",
 	}, func(context.Context, struct{}) (string, error) {
 		toolCalls++
 		return "unexpected", nil
@@ -1255,11 +1255,11 @@ func TestInteractionExecutorCommitsAutomaticDenialWithoutCallingTool(t *testing.
 		t.Fatal(err)
 	}
 	model := &observationScriptModel{responses: []*chat.Response{
-		interactionToolResponse(chat.ToolCall{ID: "provider_call", Name: "write", Arguments: `{}`}, 1, 1),
+		interactionToolResponse(chat.ToolCall{ID: "provider_call", Name: "fixture_write", Arguments: `{}`}, 1, 1),
 		interactionUsageTextResponse("done", 1, 1),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "write")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "write")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 		ToolInterpreter: testInteractionToolInterpreter{},
 		ToolAuthorizer:  denyingInteractionTools{reason: "blocked by automatic policy"},
 	})
@@ -1277,7 +1277,7 @@ func TestInteractionExecutorCommitsAutomaticDenialWithoutCallingTool(t *testing.
 func TestInteractionExecutorTerminatesWhenAutomaticDenialCommitFails(t *testing.T) {
 	var toolCalls int
 	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "write", Description: "Write a value.",
+		Name: "fixture_write", Description: "Write a value.",
 	}, func(context.Context, struct{}) (string, error) {
 		toolCalls++
 		return "unexpected", nil
@@ -1286,11 +1286,11 @@ func TestInteractionExecutorTerminatesWhenAutomaticDenialCommitFails(t *testing.
 		t.Fatal(err)
 	}
 	model := &observationScriptModel{responses: []*chat.Response{
-		interactionToolResponse(chat.ToolCall{ID: "provider_call", Name: "write", Arguments: `{}`}, 1, 1),
+		interactionToolResponse(chat.ToolCall{ID: "provider_call", Name: "fixture_write", Arguments: `{}`}, 1, 1),
 		interactionUsageTextResponse("must not run", 1, 1),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "write")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "write")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 		ToolInterpreter: testInteractionToolInterpreter{},
 		ToolAuthorizer:  denyingInteractionTools{reason: "blocked by automatic policy"},
 	})
@@ -1315,7 +1315,7 @@ func TestInteractionExecutorTerminatesWhenAutomaticDenialCommitFails(t *testing.
 func TestInteractionExecutorAllowsRepeatedPolling(t *testing.T) {
 	var toolCalls int
 	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "lookup", Description: "Return an unchanged value.",
+		Name: "fixture_lookup", Description: "Return an unchanged value.",
 	}, func(context.Context, struct{}) (string, error) {
 		toolCalls++
 		return "unchanged", nil
@@ -1325,7 +1325,7 @@ func TestInteractionExecutorAllowsRepeatedPolling(t *testing.T) {
 	}
 	model := &pollingScriptModel{}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "lookup")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "lookup")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 		ToolInterpreter: testInteractionToolInterpreter{},
 		ToolAuthorizer:  allowInteractionTools{},
 	})
@@ -1343,17 +1343,17 @@ func TestInteractionExecutorPreservesToolResultOffload(t *testing.T) {
 	store := &fakeOffloader{}
 	body := strings.Repeat("large result ", 100)
 	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "large", Description: "Return a large value.",
+		Name: "fixture_large", Description: "Return a large value.",
 	}, func(context.Context, struct{}) (string, error) { return body, nil })
 	if err != nil {
 		t.Fatal(err)
 	}
 	model := &observationScriptModel{responses: []*chat.Response{
-		interactionToolResponse(chat.ToolCall{ID: "provider_call", Name: "large", Arguments: `{}`}, 1, 1),
+		interactionToolResponse(chat.ToolCall{ID: "provider_call", Name: "fixture_large", Arguments: `{}`}, 1, 1),
 		interactionUsageTextResponse("done", 1, 1),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "large")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "large")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 		ToolInterpreter: testInteractionToolInterpreter{},
 		ToolAuthorizer:  allowInteractionTools{},
 		ToolResultStore: store,
@@ -1616,7 +1616,7 @@ func (d *pollingScriptModel) Call(context.Context, *chat.Request) (*chat.Respons
 	d.call++
 	if d.call <= 8 {
 		return interactionToolResponse(chat.ToolCall{
-			ID: "lookup_" + strconv.Itoa(d.call), Name: "lookup", Arguments: `{}`,
+			ID: "lookup_" + strconv.Itoa(d.call), Name: "fixture_lookup", Arguments: `{}`,
 		}, 1, 1), nil
 	}
 	return interactionUsageTextResponse("polling complete", 1, 1), nil
@@ -1634,11 +1634,11 @@ func (m *manifestScriptModel) Call(_ context.Context, request *chat.Request) (*c
 	switch m.call {
 	case 1:
 		return interactionToolResponse(chat.ToolCall{
-			ID: "discover", Name: "search_tools", Arguments: `{"query":"select:hidden_lookup"}`,
+			ID: "discover", Name: "search_tools", Arguments: `{"query":"select:fixture_hidden_lookup"}`,
 		}, 1, 1), nil
 	case 2:
 		return interactionToolResponse(chat.ToolCall{
-			ID: "lookup", Name: "hidden_lookup", Arguments: `{}`,
+			ID: "lookup", Name: "fixture_hidden_lookup", Arguments: `{}`,
 		}, 1, 1), nil
 	default:
 		return interactionUsageTextResponse("done", 1, 1), nil

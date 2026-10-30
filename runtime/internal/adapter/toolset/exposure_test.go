@@ -6,29 +6,17 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
-
-func newTestCodeIntel(t *testing.T) *codeintel.Analyzer {
-	t.Helper()
-	analyzer, err := codeintel.New(t.Context(), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = analyzer.Close() })
-	return analyzer
-}
 
 // The Runtime exposes two ways to change a file and no more. They are one
 // vocabulary: same guard stack, same read-before-write stamp, and a path the
 // guards can always name. edit carries that path as an argument; apply_patch
 // declares it from the patch text and batches several at once.
 func TestResolverRegistersTheMutationVocabulary(t *testing.T) {
-	built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(), UserHome: t.TempDir()})
+	built, err := Build(BuildConfig{Lifetime: t.Context(), UserHome: t.TempDir()})
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
@@ -63,24 +51,9 @@ func TestResolverInitialManifestSeparatesDirectAndDeferredCapabilities(t *testin
 		if err != nil {
 			t.Fatalf("build %s: %v", name, err)
 		}
-		if name == "remote_agent" {
-			ref, err := domaintool.A2A(name)
-			if err != nil {
-				t.Fatal(err)
-			}
-			identified, err := WithIdentity(candidate, ref, testsupport.ToolFingerprint(ref))
-			if err != nil {
-				t.Fatal(err)
-			}
-			return identified
-		}
 		return candidate
 	}
-	analyzer := newTestCodeIntel(t)
 	resolver, err := newResolver(resolverDeps{
-		Online:       []toolcontract.Tool{named(string(domaintool.HTTPRequest))},
-		A2A:          []toolcontract.Tool{named("remote_agent")},
-		LSP:          []toolcontract.Tool{named(string(domaintool.LSP))},
 		Shell:        []toolcontract.Tool{named(string(domaintool.Shell))},
 		AskUser:      named(string(domaintool.AskUser)),
 		EnterPlan:    named(string(domaintool.EnterPlanMode)),
@@ -89,7 +62,6 @@ func TestResolverInitialManifestSeparatesDirectAndDeferredCapabilities(t *testin
 		ToolResult:   named(string(domaintool.ReadToolResult)),
 		GoalGet:      named(string(domaintool.GetGoal)),
 		ProposeSkill: named(string(domaintool.ProposeSkill)),
-		CodeIntel:    analyzer,
 		ReadTracker:  newReadTracker(),
 	})
 	if err != nil {
@@ -119,7 +91,7 @@ func TestResolverInitialManifestSeparatesDirectAndDeferredCapabilities(t *testin
 		}
 	}
 	for _, name := range []string{
-		"http_request", "remote_agent", "lsp", "linear_create_issue",
+		"linear_create_issue",
 		"propose_skill",
 	} {
 		if !registered[name] {
@@ -137,18 +109,14 @@ func manifestTools(manifest Manifest) []toolcontract.Tool {
 
 func TestBuildRequiresExplicitProcessPaths(t *testing.T) {
 	validPaths := BuildConfig{Lifetime: t.Context(), UserHome: t.TempDir()}
-	var missingContext context.Context
-	if _, err := Build(missingContext, validPaths); err == nil {
-		t.Fatal("Build accepted a nil startup context")
-	}
 	validPaths.Lifetime = nil
-	if _, err := Build(t.Context(), validPaths); err == nil {
+	if _, err := Build(validPaths); err == nil {
 		t.Fatal("Build accepted a nil process lifetime")
 	}
-	if _, err := Build(t.Context(), BuildConfig{Lifetime: t.Context()}); err == nil {
+	if _, err := Build(BuildConfig{Lifetime: t.Context()}); err == nil {
 		t.Fatal("Build accepted an empty user home")
 	}
-	if _, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(), UserHome: "relative"}); err == nil {
+	if _, err := Build(BuildConfig{Lifetime: t.Context(), UserHome: "relative"}); err == nil {
 		t.Fatal("Build accepted a relative user home")
 	}
 }
@@ -166,7 +134,7 @@ func TestBuildKeepsTheConfinerCauseForIsolatedShells(t *testing.T) {
 	if cause == nil {
 		t.Fatal("NewConfiner accepted a relative read-only path")
 	}
-	built, err := Build(t.Context(), config)
+	built, err := Build(config)
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}

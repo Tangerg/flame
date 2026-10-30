@@ -6,12 +6,45 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
+
+func TestSettingsIntentReachesPublicAndNativeProjections(t *testing.T) {
+	release := testsupport.Release(t, "settings", plugin.Declaration{Name: "settings", Components: []plugin.ClientComponent{{
+		ID: "models", Title: "Model settings", Scope: "client", Placement: "settingsPane", SettingsIntent: extension.SettingsIntentModelProviders,
+		Entry: plugin.Namespace + "/components/settings.js", Export: "Settings",
+	}}})
+	wire, err := presentPluginRelease(release)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(wire.Components) != 1 || wire.Components[0].SettingsIntent != extension.SettingsIntentModelProviders {
+		t.Fatalf("public component intent: %+v", wire.Components)
+	}
+	if err := protocol.ValidateWireTree(wire); err != nil {
+		t.Fatal(err)
+	}
+	metadata, err := plugins.PublicComponentConfiguration(release, "models")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var native plugins.ComponentConfiguration
+	if err := json.Unmarshal(metadata, &native); err != nil {
+		t.Fatal(err)
+	}
+	if native.Component.SettingsIntent != extension.SettingsIntentModelProviders {
+		t.Fatalf("native component intent: %+v", native.Component)
+	}
+	wire.Components[0].SettingsIntent = "invented"
+	if err := protocol.ValidateWireTree(wire); err == nil {
+		t.Fatal("wire accepted an unknown settings intent")
+	}
+}
 
 func TestSecretInputProjectionCarriesStateNeverText(t *testing.T) {
 	const credential = "credential-text-that-must-not-leave"

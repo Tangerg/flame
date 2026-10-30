@@ -327,7 +327,7 @@ func capabilitiesFor(
 		// the run protocol), which come from protocol's registry. Advertising them
 		// here by hand would let discovery promise a negotiation the runtime does
 		// not perform.
-		Features: advertisedFeatures(map[string]bool{protocol.FeatureReasoning: true, protocol.FeatureMCP: true, protocol.FeaturePlugins: features.plugins, protocol.FeatureSkills: true, protocol.FeatureGit: features.git, protocol.FeatureFileWatch: true, protocol.FeatureLSP: true, protocol.FeatureSessionExport: true, protocol.FeatureCheckpoints: // File checkpoints (restoreType on rollback) ride the shadow-git
+		Features: advertisedFeatures(map[string]bool{protocol.FeatureReasoning: true, protocol.FeatureMCP: true, protocol.FeaturePlugins: features.plugins, protocol.FeatureSkills: true, protocol.FeatureGit: features.git, protocol.FeatureFileWatch: true, protocol.FeatureSessionExport: true, protocol.FeatureCheckpoints: // File checkpoints (restoreType on rollback) ride the shadow-git
 		// store, which needs the git binary — same gate as the git feature.
 		features.git, protocol.FeatureMultimodal: true, protocol.FeatureRelocate: true, protocol.FeatureIsolation: // An isolated Session jails its shells; without a backend for that
 		// jail the policy cannot be honored, so the surface is not offered.

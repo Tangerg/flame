@@ -1,5 +1,4 @@
 import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
-import { type MCPServerID } from "@/features/mcp/public/serverIdentity";
 import { type ApprovalRuleSummary } from "@/features/agent/application/approvalPolicyQueries";
 import {
   APPROVAL_MODE_KEY,
@@ -68,22 +67,4 @@ async function repairProjection(owner: AgentCommandOwner, queryKey: string): Pro
   } catch (error) {
     if (!owner.isCurrent()) throw error;
   }
-}
-
-export function allowMCPTool(
-  agentAccess: AgentDependencies,
-  server: MCPServerID,
-  name: string,
-): Promise<void> {
-  const owner = agentAccess.commands.current();
-  const runtime = agentAccess.runtime;
-  return owner.serializeApprovalRules(async () => {
-    try {
-      await owner.settle(runtime.allowMCPTool(server, name));
-      owner.assertCurrent();
-    } finally {
-      if (owner.isCurrent()) await repairProjection(owner, APPROVAL_RULES_KEY);
-    }
-    owner.assertCurrent();
-  });
 }

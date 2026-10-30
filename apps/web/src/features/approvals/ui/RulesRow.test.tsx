@@ -45,7 +45,7 @@ const rules: ApprovalRuleSummary[] = [
     id: "rule/project:2",
     scope: "project",
     decision: "deny",
-    tool: { type: "a2a", endpoint: "reviewer" },
+    tool: { type: "mcp", name: "review", server: { origin: { type: "user" }, name: "reviewer" } },
     subject: { type: "exact", value: "rm -rf build" },
     dir: "/work/flame",
   },
@@ -73,7 +73,7 @@ const descriptions = new Map([
   ["rule/global:1", /^Global\s*allow\s*shell\s*Built-in\s*All arguments$/],
   [
     "rule/project:2",
-    /^Project\s*deny\s*shell\s*a2a\/reviewer\s*Exact: rm -rf build\s*\/work\/flame$/,
+    /^Project\s*deny\s*shell\s*mcp\/reviewer\/review\s*Exact: rm -rf build\s*\/work\/flame$/,
   ],
   ["rule/session:3", /^Session\s*allow\s*shell\s*Source changed\s*Built-in\s*Glob: git \*$/],
   ["rule/project:4", /^Project\s*allow\s*shell\s*Built-in\s*Glob: git \*\s*\/work\/other$/],

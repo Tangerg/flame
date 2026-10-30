@@ -78,7 +78,7 @@ func TestManagedNodeInstalledOperationAndOrdinaryToolUseTheirCallingHost(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg.chatResolver = testChatResolver(client)
+	cfg.modelProviders = testChatResolver(client)
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, source)
 	if len(installed.Selected.Servers) != 1 {

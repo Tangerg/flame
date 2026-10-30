@@ -119,8 +119,8 @@ func TestMemoryMaintenanceCapturesBusinessInputAndRecoversBackendReceipts(t *tes
 	})
 	history := capturedConversation{chat.NewUserMessage(chat.NewTextPart("captured conversation")), chat.NewAssistantMessage(chat.NewTextPart("retained response")), chat.NewUserMessage(chat.NewTextPart("continued")), chat.NewAssistantMessage(chat.NewTextPart("complete"))}
 	resolutionFailure := errors.New("configured embedding role is unavailable")
-	utility := observers.Auxiliary(models.AuxiliaryResolver(func(context.Context, models.AuxiliaryBudget) (models.SelectedChat, func(), error) {
-		return auxiliaryFixture(model), func() { releases.Add(1) }, nil
+	utility := observers.Auxiliary(models.AuxiliaryResolver(func(context.Context, models.AuxiliaryBudget) (models.SelectedChat, func() error, error) {
+		return auxiliaryFixture(model), func() error { releases.Add(1); return nil }, nil
 	}))
 	owner, err := NewMemory(MemoryConfig{Installations: store, Connections: pool, Callbacks: callbacks, Commands: calls, Conversation: history, Utility: utility, Embeddings: func(context.Context) (models.TextEmbedder, error) { return nil, resolutionFailure }})
 	if err != nil {
@@ -296,3 +296,5 @@ func TestMemoryMaintenanceCapturesBusinessInputAndRecoversBackendReceipts(t *tes
 		t.Fatalf("optional absence failed: %+v, %v", items, err)
 	}
 }
+
+func (*ownedMemoryEmbedder) Close(context.Context) error { return nil }

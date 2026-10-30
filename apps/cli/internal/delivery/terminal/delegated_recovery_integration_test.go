@@ -30,10 +30,9 @@ func TestTerminalResumesAColdDelegatedApprovalThroughTheWorkbench(t *testing.T) 
 			t.Cleanup(provider.Close)
 			t.Setenv("FLAME_PROVIDER", "deepseek")
 			t.Setenv("FLAME_MODEL", "deepseek-chat")
-			t.Setenv("DEEPSEEK_API_KEY", "integration-key")
+			t.Setenv("FLAME_APIKEY", "integration-key")
 			t.Setenv("FLAME_BASEURL", provider.URL)
-			t.Setenv("FLAME_A2A_AGENTS", "")
-			t.Setenv("FLAME_A2A_RPC_ORIGINS", "")
+
 			workspace := t.TempDir()
 			owner := runtimebinding.NewOwner(runtimebinding.Config{
 				ProductRoot: runtimefixture.TempDirectory(t), DefaultWorkspacePath: workspace,

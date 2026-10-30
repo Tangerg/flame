@@ -20,6 +20,16 @@ manifest. A package cannot add a hidden Unit, change an import, relabel a contra
 substitute a managed runtime or change a Point contribution through metadata.
 An inert metadata or content package can have no executable Units.
 
+`contributes.locales` declares `{tag, title, entry}` for static workbench catalogs.
+Tags use their canonical BCP-47 spelling and identify an actual language; `en` is
+reserved for the Host. Entries stay in the Flame namespace, end in `.json` and
+share the 4 MiB metadata resource limit. Admission validates a nonempty flat object
+of string messages, rejecting duplicate keys, nulls and malformed Unicode. The
+public catalog query accepts the exact installation, release and tag, and exposes
+messages without arbitrary resource paths. It reuses the immutable content lease
+and integrity checks, without evaluating package code or constructing a browser
+component.
+
 The `runtime/cmd/pluginpack` command is distributed as a prebuilt author tool.
 Repository builds and independent author projects invoke that same command;
 plugin implementation source never imports Runtime. The command refuses an

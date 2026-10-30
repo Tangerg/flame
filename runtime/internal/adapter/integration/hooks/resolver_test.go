@@ -5,147 +5,187 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
-	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
+	"github.com/Tangerg/flame/packages/go-sdk/hook"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
+	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 )
 
-func TestResolver_ForRechecksTrust(t *testing.T) {
-	home := t.TempDir()
-	cwd := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(cwd, ".git"), 0o755); err != nil {
+type sourceFixture struct {
+	rules      []hook.Hook
+	absent     bool
+	failure    error
+	closeError error
+	closed     int
+	queries    []hookprovider.Discovery
+	read       func(context.Context, hookprovider.Discovery) ([]hook.Hook, error)
+}
+
+func (s *sourceFixture) AcquireHooks(context.Context) (Use, error) {
+	if s.absent {
+		return nil, nil
+	}
+	return &sourceUseFixture{source: s}, nil
+}
+
+type sourceUseFixture struct {
+	source *sourceFixture
+	closed bool
+}
+
+func (u *sourceUseFixture) Discover(ctx context.Context, q hookprovider.Discovery) ([]hook.Hook, error) {
+	s := u.source
+	s.queries = append(s.queries, q)
+	if s.read != nil {
+		return s.read(ctx, q)
+	}
+	result := slices.Clone(s.rules)
+	if !q.IncludeProject {
+		result = slices.DeleteFunc(result, func(h hook.Hook) bool { return h.Scope == hook.ScopeProject })
+	}
+	return result, s.failure
+}
+func (*sourceUseFixture) RunHookCommand(context.Context, apphooks.CommandRequest) apphooks.CommandResult {
+	return apphooks.CommandResult{Decision: hook.CommandDecision{Verdict: hook.CommandAllow}}
+}
+func (u *sourceUseFixture) Close() error {
+	if !u.closed {
+		u.closed = true
+		u.source.closed++
+	}
+	return u.source.closeError
+}
+
+func TestResolverRechecksTrustAndRetainsOneSourceForItsEvents(t *testing.T) {
+	home, root := t.TempDir(), t.TempDir()
+	if err := os.Mkdir(filepath.Join(root, ".git"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	writeHooks(t, home, `{"hooks":[{"event":"SessionStart","inject":"global"}]}`)
-	writeHooks(t, cwd, `{"hooks":[{"event":"SessionStart","inject":"project"}]}`)
-
+	cwd := filepath.Join(root, "nested")
+	if err := os.Mkdir(cwd, 0700); err != nil {
+		t.Fatal(err)
+	}
+	source := &sourceFixture{rules: []hook.Hook{
+		{Event: hook.SessionStart, Inject: "global", Scope: hook.ScopeGlobal, Source: filepath.Join(home, ".flame", "hooks.json")},
+		{Event: hook.SessionStart, Inject: "project", Scope: hook.ScopeProject, Source: filepath.Join(root, ".flame", "hooks.json")},
+	}}
 	trusted := false
-	resolver := NewResolver(home, func(_ context.Context, projectRoot string) (bool, error) {
-		return projectRoot == cwd && trusted, nil
-	}, nil)
-
-	beforeHooks, err := resolver.For(context.Background(), cwd)
+	resolver, err := NewResolver(home, func(_ context.Context, project string) (bool, error) { return project == root && trusted, nil }, source, nil)
 	if err != nil {
-		t.Fatalf("For before trust: %v", err)
-	}
-	before := beforeHooks.Run(context.Background(), domainhooks.Input{Event: domainhooks.SessionStart})
-	if before.InjectContext != "global" {
-		t.Fatalf("InjectContext before trust = %q, want global only", before.InjectContext)
-	}
-
-	trusted = true
-	afterHooks, err := resolver.For(context.Background(), cwd)
-	if err != nil {
-		t.Fatalf("For after trust: %v", err)
-	}
-	after := afterHooks.Run(context.Background(), domainhooks.Input{Event: domainhooks.SessionStart})
-	if after.InjectContext != "global\nproject" {
-		t.Fatalf("InjectContext after trust = %q, want global and project", after.InjectContext)
-	}
-}
-
-func TestResolver_TrustUsesCallContext(t *testing.T) {
-	home := t.TempDir()
-	cwd := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(cwd, ".git"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	writeHooks(t, cwd, `{"hooks":[{"event":"SessionStart","inject":"project"}]}`)
+	before, err := resolver.For(t.Context(), cwd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	trusted = true
+	after, err := resolver.For(t.Context(), cwd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	source.rules[0].Inject = "changed"
+	if got := before.Run(t.Context(), hook.Input{Event: hook.SessionStart}).InjectContext; got != "global" {
+		t.Fatalf("original rules=%q", got)
+	}
+	if got := after.Run(t.Context(), hook.Input{Event: hook.SessionStart}).InjectContext; got != "global\nproject" {
+		t.Fatalf("trusted rules=%q", got)
+	}
+	if source.closed != 0 || len(source.queries) != 2 || source.queries[0].IncludeProject || !source.queries[1].IncludeProject || source.queries[0].ProjectRoot != root {
+		t.Fatalf("source lifetime and trust=%+v", source)
+	}
+	if err := errors.Join(before.Close(), after.Close()); err != nil {
+		t.Fatal(err)
+	}
+	if source.closed != 2 {
+		t.Fatal("event sources were not released")
+	}
+}
 
+func TestResolverInspectionClosesAndTransfersTheSourceSnapshot(t *testing.T) {
+	cwd := t.TempDir()
+	source := &sourceFixture{rules: []hook.Hook{{Event: hook.Stop, Inject: "original", Scope: hook.ScopeProject, Source: filepath.Join(cwd, ".flame", "hooks.json")}}}
+	resolver, err := NewResolver("", nil, source, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, err := resolver.Inspect(t.Context(), cwd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first.Hooks[0].Inject = "caller mutation"
+	second, err := resolver.Inspect(t.Context(), cwd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Hooks[0].Inject != "original" || source.closed != 2 || !source.queries[0].IncludeProject || second.ProjectTrusted {
+		t.Fatalf("inspection=%+v, source=%+v", second, source)
+	}
+}
+
+func TestResolverPreservesTrustAndSourceFailures(t *testing.T) {
+	cwd := t.TempDir()
+	trustFailure := errors.New("trust unavailable")
+	source := &sourceFixture{}
+	resolver, err := NewResolver("", func(context.Context, string) (bool, error) { return false, trustFailure }, source, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := resolver.For(t.Context(), cwd); !errors.Is(err, trustFailure) || len(source.queries) != 0 {
+		t.Fatalf("trust failure=%v", err)
+	}
+	readFailure, closeFailure := errors.New("source unavailable"), errors.New("source close failed")
+	source.failure, source.closeError = readFailure, closeFailure
+	resolver, err = NewResolver("", nil, source, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := resolver.For(t.Context(), cwd); !errors.Is(err, readFailure) || !errors.Is(err, closeFailure) || source.closed != 1 {
+		t.Fatalf("source failure=%v", err)
+	}
+}
+
+func TestResolverPassesCallerContextAndRefusesUntrustedProjectContributions(t *testing.T) {
 	type key struct{}
-	ctx := context.WithValue(context.Background(), key{}, "turn")
-	resolver := NewResolver(home, func(ctx context.Context, projectRoot string) (bool, error) {
-		return projectRoot == cwd && ctx.Value(key{}) == "turn", nil
-	}, nil)
-
-	bound, err := resolver.For(ctx, cwd)
-	if err != nil {
-		t.Fatalf("For: %v", err)
-	}
-	got := bound.Run(context.Background(), domainhooks.Input{Event: domainhooks.SessionStart})
-	if got.InjectContext != "project" {
-		t.Fatalf("InjectContext = %q, want project hook trusted by call context", got.InjectContext)
-	}
-}
-
-func TestResolver_InspectReturnsSnapshot(t *testing.T) {
-	home := t.TempDir()
+	ctx := context.WithValue(t.Context(), key{}, "original")
 	cwd := t.TempDir()
-	writeHooks(t, cwd, `{"hooks":[{"event":"SessionStart","inject":"original"}]}`)
-	resolver := NewResolver(home, func(context.Context, string) (bool, error) {
-		return true, nil
-	}, nil)
-
-	first, err := resolver.Inspect(context.Background(), cwd)
+	source := &sourceFixture{read: func(got context.Context, q hookprovider.Discovery) ([]hook.Hook, error) {
+		if got.Value(key{}) != "original" || q.IncludeProject {
+			t.Error("discovery lost the caller's trust input")
+		}
+		return []hook.Hook{{Event: hook.Stop, Inject: "untrusted", Scope: hook.ScopeProject, Source: filepath.Join(cwd, ".flame", "hooks.json")}}, nil
+	}}
+	resolver, err := NewResolver("", nil, source, nil)
 	if err != nil {
-		t.Fatalf("Inspect first: %v", err)
+		t.Fatal(err)
 	}
-	if len(first.Hooks) != 1 {
-		t.Fatalf("hooks = %v, want one", first.Hooks)
-	}
-	first.Hooks[0].Inject = "mutated"
-	second, err := resolver.Inspect(context.Background(), cwd)
-	if err != nil {
-		t.Fatalf("Inspect second: %v", err)
-	}
-	if second.Hooks[0].Inject != "original" {
-		t.Fatalf("resolved hook was mutated through prior inspection: %+v", second.Hooks[0])
+	if _, err := resolver.For(ctx, cwd); err == nil || source.closed != 1 {
+		t.Fatalf("untrusted contribution=%v", err)
 	}
 }
 
-func TestResolverReloadsEditedHooks(t *testing.T) {
-	home := t.TempDir()
+func TestResolverAbsenceLeavesTrustManagementAvailable(t *testing.T) {
 	cwd := t.TempDir()
-	writeHooks(t, cwd, `{"hooks":[{"event":"SessionStart","inject":"before"}]}`)
-	resolver := NewResolver(home, func(context.Context, string) (bool, error) {
-		return true, nil
-	}, nil)
-
-	before, err := resolver.For(context.Background(), cwd)
+	source := &sourceFixture{absent: true}
+	resolver, err := NewResolver("", func(context.Context, string) (bool, error) { return true, nil }, source, nil)
 	if err != nil {
-		t.Fatalf("For before edit: %v", err)
+		t.Fatal(err)
 	}
-	writeHooks(t, cwd, `{"hooks":[{"event":"SessionStart","inject":"after"}]}`)
-	after, err := resolver.For(context.Background(), cwd)
-	if err != nil {
-		t.Fatalf("For after edit: %v", err)
+	bound, err := resolver.For(t.Context(), cwd)
+	if err != nil || bound != nil {
+		t.Fatalf("absent source=%v, %v", bound, err)
 	}
-	if got := before.Run(context.Background(), domainhooks.Input{Event: domainhooks.SessionStart}).InjectContext; got != "before" {
-		t.Fatalf("before edit hook = %q", got)
-	}
-	if got := after.Run(context.Background(), domainhooks.Input{Event: domainhooks.SessionStart}).InjectContext; got != "after" {
-		t.Fatalf("after edit hook = %q, want after", got)
+	inspected, err := resolver.Inspect(t.Context(), cwd)
+	if err != nil || inspected.ProjectRoot != cwd || !inspected.ProjectTrusted || len(inspected.Hooks) != 0 {
+		t.Fatalf("trust management=%+v, %v", inspected, err)
 	}
 }
 
-func TestResolverPreservesTrustFailure(t *testing.T) {
-	wantErr := errors.New("trust store unavailable")
-	resolver := NewResolver(t.TempDir(), func(context.Context, string) (bool, error) {
-		return false, wantErr
-	}, nil)
-
-	if _, err := resolver.For(context.Background(), t.TempDir()); !errors.Is(err, wantErr) {
-		t.Fatalf("For error = %v, want %v", err, wantErr)
-	}
-}
-
-func TestResolverIgnoresInvalidUntrustedProjectHooks(t *testing.T) {
-	home := t.TempDir()
-	cwd := t.TempDir()
-	writeHooks(t, home, `{"hooks":[{"event":"SessionStart","inject":"global"}]}`)
-	writeHooks(t, cwd, `{ invalid project config `)
-	resolver := NewResolver(home, func(context.Context, string) (bool, error) {
-		return false, nil
-	}, nil)
-
-	bound, err := resolver.For(context.Background(), cwd)
-	if err != nil {
-		t.Fatalf("For: %v", err)
-	}
-	if got := bound.Run(context.Background(), domainhooks.Input{Event: domainhooks.SessionStart}).InjectContext; got != "global" {
-		t.Fatalf("InjectContext = %q, want global", got)
-	}
-	if _, err := resolver.Inspect(context.Background(), cwd); err == nil {
-		t.Fatal("Inspect invalid project config error = nil")
+func TestResolverRequiresAnExplicitSource(t *testing.T) {
+	for _, source := range []Source{nil, (*sourceFixture)(nil)} {
+		if _, err := NewResolver("", nil, source, nil); err == nil {
+			t.Fatal("missing source was accepted")
+		}
 	}
 }

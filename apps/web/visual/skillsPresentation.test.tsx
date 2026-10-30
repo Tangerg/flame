@@ -1,3 +1,4 @@
+import { unavailableComponentNotifications } from "@/test/unavailableNotifications";
 import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
 import { createTestClient, type TestClient } from "@/test/renderClient";
 let testClient: TestClient;
@@ -42,7 +43,7 @@ async function mountSkills() {
     structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS.idle),
     VISUAL_CAPABILITIES,
     async () => REVIEW_DIFF,
-    true,
+    { acceptSkillProposals: true },
   );
   const sendRequest = transport.send.bind(transport);
   const send = vi.spyOn(transport, "send");
@@ -60,6 +61,13 @@ async function mountSkills() {
     signal: owner.signal,
     track: (operation) => operation(owner.signal),
     saveFile: async () => "requested",
+    notifications: unavailableComponentNotifications,
+    subscribeRootRunSettlements() {
+      throw new Error("This fixture must not observe run settlements");
+    },
+    registerCommand() {
+      throw new Error("This fixture must not register client commands");
+    },
     compose: () => null,
   };
   const outsideEscape = vi.fn();

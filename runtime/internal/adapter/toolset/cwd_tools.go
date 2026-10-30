@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
 	"github.com/Tangerg/flame/runtime/internal/keylock"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/fs"
@@ -35,7 +34,7 @@ type cwdTools struct {
 	close      func() error
 }
 
-func openCWDTools(cwd string, ci *codeintel.Analyzer, tracker *readTracker, locker *keylock.Set) (_ cwdTools, err error) {
+func openCWDTools(cwd string, ci CodeIntelligence, tracker *readTracker, locker *keylock.Set) (_ cwdTools, err error) {
 	root, fsExec, close, err := openFilesystem(cwd)
 	if err != nil {
 		return cwdTools{}, fmt.Errorf("toolset: construct filesystem executor: %w", err)
@@ -82,11 +81,11 @@ func openCWDTools(cwd string, ci *codeintel.Analyzer, tracker *readTracker, lock
 	return families, nil
 }
 
-func guardedMutation(tool toolcontract.Tool, ci *codeintel.Analyzer, tracker *readTracker, locker *keylock.Set, root *filesystemRoot, executor *fs.LocalExecutor) toolcontract.Tool {
+func guardedMutation(tool toolcontract.Tool, ci CodeIntelligence, tracker *readTracker, locker *keylock.Set, root *filesystemRoot, executor *fs.LocalExecutor) toolcontract.Tool {
 	return withPathGuard(
 		withPathLock(
 			withMutationGuard(
-				withMutationDiagnostics(withAutoFormat(tool, root, executor), ci, root),
+				withCodeIntelligence(tool, ci, root, executor),
 				tracker, root,
 			), locker, root,
 		), root,

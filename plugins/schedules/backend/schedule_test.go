@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	scheduleapp "github.com/Tangerg/flame/plugins/schedules/internal/application"
 	scheduledomain "github.com/Tangerg/flame/plugins/schedules/internal/domain"
@@ -263,7 +263,6 @@ func newTestScheduleOperations(reg scheduleapp.ManagementStore) *scheduleOperati
 	value, err := scheduleapp.New(scheduleapp.Dependencies{
 		Store:         reg,
 		Paths:         filesystem.DirectoryResolver{},
-		Models:        scheduleModelAdmitter{},
 		NewScheduleID: func() string { return "sch_test_1" },
 	})
 	if err != nil {
@@ -293,10 +292,6 @@ func (s *scheduleOperationsFixture) Update(ctx context.Context, input updateSche
 func (s *scheduleOperationsFixture) Delete(ctx context.Context, input deleteScheduleArgs) error {
 	return s.coordinator.Delete(ctx, input.ScheduleID)
 }
-
-type scheduleModelAdmitter struct{}
-
-func (scheduleModelAdmitter) AdmitSelection(modelchoice.Selection) error { return nil }
 
 func (m *memoryScheduleRegistry) ListPage(_ context.Context, afterCreatedAt time.Time, afterID string, limit int) ([]scheduledomain.Schedule, error) {
 	out := make([]scheduledomain.Schedule, 0, len(m.items))

@@ -34,6 +34,7 @@ const GROUPS: { id: string; labelKey: string }[] = [
   { id: "models", labelKey: "settings.group.models" },
   { id: "agent", labelKey: "settings.group.agent" },
   { id: "integrations", labelKey: "settings.group.integrations" },
+  { id: "extensions", labelKey: "settings.group.extensions" },
   { id: "advanced", labelKey: "settings.group.advanced" },
 ];
 

@@ -148,10 +148,6 @@ func approvalRuleArgs(r approval.Rule) []any {
 		name, _ := r.Tool.BuiltIn()
 		args = append(args, string(name))
 		source = noMCPSource()
-	case tool.A2AKind:
-		endpoint, _ := r.Tool.A2A()
-		args = append(args, endpoint)
-		source = noMCPSource()
 	case tool.MCPKind:
 		server, remote, _ := r.Tool.MCP()
 		args = append(args, remote.String())
@@ -165,8 +161,6 @@ func decodeRuleTool(kind, name string, source storedMCPSource) (tool.Ref, error)
 	switch tool.RefKind(kind) {
 	case tool.BuiltInKind:
 		return tool.BuiltIn(tool.BuiltInName(name))
-	case tool.A2AKind:
-		return tool.A2A(name)
 	case tool.MCPKind:
 		server, err := source.id()
 		if err != nil {

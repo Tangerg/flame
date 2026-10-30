@@ -24,7 +24,7 @@ export const TOOL_FAMILIES = [
     tools: [
       { name: "grep", icon: "text-search" },
       { name: "glob", icon: "folder-search" },
-      { name: "lsp", icon: "code" },
+      { name: "codeintel_lsp", icon: "code" },
     ],
   },
   {
@@ -32,7 +32,7 @@ export const TOOL_FAMILIES = [
     tools: [
       { name: "web_search", icon: "web-search" },
       { name: "web_fetch", icon: "cloud-download" },
-      { name: "http_request", icon: "network" },
+      { name: "web_http_request", icon: "network" },
     ],
   },
   {

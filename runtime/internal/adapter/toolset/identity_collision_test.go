@@ -18,7 +18,7 @@ func TestResolverExcludesCollidingRemoteIdentities(t *testing.T) {
 		{"remote pair", []toolcontract.Tool{mcpToolStub{name: "a_b_c", server: "a_b", remote: "c"}, mcpToolStub{name: "a_b_c", server: "a", remote: "b_c"}}, "a_b_c"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(), UserHome: t.TempDir()})
+			built, err := Build(BuildConfig{Lifetime: t.Context(), UserHome: t.TempDir()})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -599,7 +599,6 @@ func TestSetApprovalRuleBindsSourceAndScope(t *testing.T) {
 		func(r *SetApprovalRuleRequest) { r.Scope = ApprovalRuleScopeProject },
 		func(r *SetApprovalRuleRequest) { r.Tool.Server = nil },
 		func(r *SetApprovalRuleRequest) { r.Tool = ToolRef{Type: ToolRefBuiltIn, Name: "shell", Server: &files} },
-		func(r *SetApprovalRuleRequest) { r.Tool.Endpoint = "extra" },
 		func(r *SetApprovalRuleRequest) { r.Tool = ToolRef{Type: ToolRefBuiltIn, Name: "unknown"} },
 	} {
 		request := global

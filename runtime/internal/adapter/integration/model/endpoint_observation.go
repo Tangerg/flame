@@ -6,8 +6,10 @@ import (
 	"iter"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
@@ -43,16 +45,31 @@ func (r *ObservedResolver) ResolveChat(ctx context.Context, selection modelchoic
 	if err != nil {
 		return ResolvedChat{}, err
 	}
+	return r.observe(selection, resolved)
+}
+
+func (r *ObservedResolver) RestoreChat(ctx context.Context, selection modelchoice.Selection, capture *ProviderCapture) (ResolvedChat, error) {
+	resolved, err := r.resolver.RestoreChat(ctx, selection, capture)
+	if err != nil {
+		return ResolvedChat{}, err
+	}
+	return r.observe(selection, resolved)
+}
+
+func (r *ObservedResolver) observe(selection modelchoice.Selection, resolved ResolvedChat) (ResolvedChat, error) {
 	if lo.IsNil(resolved.Model()) {
 		return ResolvedChat{}, errors.New("model: resolver returned no endpoint model")
 	}
-	model := &observedEndpoint{inner: resolved.Model(), journal: r.journal, selection: selection, pricing: r.pricing}
+	pricing := resolved.pricing
+	if r.pricing != nil {
+		pricing = r.pricing
+	}
+	model := &observedEndpoint{inner: resolved.Model(), journal: r.journal, selection: selection, pricing: pricing}
 	var bound chat.Model = model
 	if stream, ok := resolved.Streamer(); ok {
 		bound = &streamedEndpoint{observedEndpoint: model, stream: stream}
 	}
-	counter, _ := resolved.InputTokenCounter()
-	return NewResolvedChat(bound, counter)
+	return resolved.WithModel(bound)
 }
 
 func (r *ObservedResolver) ValidateChatModel(ctx context.Context, provider, model string) error {
@@ -60,8 +77,11 @@ func (r *ObservedResolver) ValidateChatModel(ctx context.Context, provider, mode
 	if err != nil {
 		return err
 	}
-	_, err = r.ResolveChat(ctx, selection)
-	return err
+	resolved, err := r.ResolveChat(ctx, selection)
+	if err != nil {
+		return err
+	}
+	return resolved.Close(ctx)
 }
 
 type observedEndpoint struct {
@@ -114,7 +134,13 @@ func (m *observedEndpoint) Call(ctx context.Context, request *chat.Request) (*ch
 	if err != nil {
 		return nil, &chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err}
 	}
-	response, err := m.inner.Call(ctx, invocation.Request.Clone())
+	calling, err := endpointContext(ctx, invocation)
+	var response *chat.Response
+	if err == nil {
+		response, err = m.inner.Call(calling, invocation.Request.Clone())
+	} else {
+		err = &chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err}
+	}
 	var admitted *chat.Response
 	if response != nil {
 		validationErr := response.Validate()
@@ -154,7 +180,13 @@ func (m *streamedEndpoint) Stream(ctx context.Context, request *chat.Request) it
 				}
 			}
 		}()
-		sequence := m.stream.Stream(ctx, invocation.Request.Clone())
+		calling, err := endpointContext(ctx, invocation)
+		if err != nil {
+			yield(nil, errors.Join(&chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err}, m.finish(ctx, invocation, nil, err)))
+			settled = true
+			return
+		}
+		sequence := m.stream.Stream(calling, invocation.Request.Clone())
 		if sequence == nil {
 			err = errors.New("model: endpoint returned no stream")
 		} else {
@@ -185,4 +217,8 @@ func (m *streamedEndpoint) Stream(ctx context.Context, request *chat.Request) it
 			yield(nil, err)
 		}
 	}
+}
+
+func endpointContext(ctx context.Context, invocation modelref.EndpointInvocation) (context.Context, error) {
+	return qimumcp.WithInvocation(ctx, portable.Invocation{ID: invocation.ID, Origin: invocation.Caller.Origin, Parent: invocation.Caller.ID, Target: portable.Target{Scope: extension.ScopeCall, Reference: invocation.ID}})
 }

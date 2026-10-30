@@ -16,13 +16,12 @@ type RefKind string
 const (
 	BuiltInKind           RefKind = "builtIn"
 	MCPKind               RefKind = "mcp"
-	A2AKind               RefKind = "a2a"
 	maximumModelNameBytes         = 64
 )
 
 // RefKinds is the closed variant set. Every boundary that encodes a reference
 // covers exactly these kinds.
-func RefKinds() []RefKind { return []RefKind{BuiltInKind, MCPKind, A2AKind} }
+func RefKinds() []RefKind { return []RefKind{BuiltInKind, MCPKind} }
 
 var ErrInvalidRef = errors.New("tool: invalid reference")
 var modelNameExpression = regexp.MustCompile(fmt.Sprintf(`^[A-Za-z0-9_-]{1,%d}$`, maximumModelNameBytes))
@@ -57,13 +56,6 @@ func MCP(server mcpserver.ID, remote mcpserver.RemoteToolName) (Ref, error) {
 	return Ref{kind: MCPKind, server: server, remote: remote}, nil
 }
 
-func A2A(endpoint string) (Ref, error) {
-	if !modelNameExpression.MatchString(endpoint) {
-		return Ref{}, fmt.Errorf("%w: invalid A2A endpoint name", ErrInvalidRef)
-	}
-	return Ref{kind: A2AKind, name: endpoint}, nil
-}
-
 func (r Ref) Kind() RefKind { return r.kind }
 
 func (r Ref) BuiltIn() (name BuiltInName, ok bool) {
@@ -75,10 +67,6 @@ func (r Ref) BuiltIn() (name BuiltInName, ok bool) {
 
 func (r Ref) MCP() (server mcpserver.ID, remote mcpserver.RemoteToolName, ok bool) {
 	return r.server, r.remote, r.kind == MCPKind
-}
-
-func (r Ref) A2A() (endpoint string, ok bool) {
-	return r.name, r.kind == A2AKind
 }
 
 func (r Ref) Validate() error {
@@ -116,7 +104,7 @@ func modelNameByte(c byte) bool {
 // admits ':', so the fields need no escaping and the spelling is unique.
 func (r Ref) String() string {
 	switch r.kind {
-	case BuiltInKind, A2AKind:
+	case BuiltInKind:
 		return string(r.kind) + ":" + r.name
 	case MCPKind:
 		fields := []string{string(MCPKind), string(r.server.Origin().Kind())}
@@ -136,8 +124,6 @@ func ParseRef(text string) (Ref, error) {
 	switch {
 	case len(parts) == 2 && RefKind(parts[0]) == BuiltInKind:
 		r, err = BuiltIn(BuiltInName(parts[1]))
-	case len(parts) == 2 && RefKind(parts[0]) == A2AKind:
-		r, err = A2A(parts[1])
 	case len(parts) >= 4 && RefKind(parts[0]) == MCPKind:
 		r, err = parseMCPRef(parts[1:])
 	default:

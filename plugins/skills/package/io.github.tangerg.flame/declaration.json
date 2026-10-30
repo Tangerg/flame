@@ -10,5 +10,13 @@
       "export": "Skills",
       "material": "skills"
     }
+  ],
+  "contributions": [
+    {
+      "id": "skill-learning",
+      "server": "skills",
+      "export": "skill-learning",
+      "contract": "io.github.tangerg.flame/contracts/capability.generated.json"
+    }
   ]
 }

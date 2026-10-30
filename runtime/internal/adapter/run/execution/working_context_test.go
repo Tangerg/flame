@@ -31,7 +31,7 @@ func testWorkingContextConfig(t *testing.T, config WorkingContextConfig) Working
 		config.Goal = emptyContextGoal{}
 	}
 	if config.Hooks == nil {
-		config.Hooks = provenanceHookResolver{bound: apphooks.NewBound(nil, nil)}
+		config.Hooks = provenanceHookResolver{bound: apphooks.NewBound(nil, nil, nil)}
 	}
 	return config
 }

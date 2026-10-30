@@ -8,6 +8,7 @@ import (
 	"github.com/Tangerg/flame/plugins/web/internal/wire"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/scope/tools/httpreq"
 	"github.com/Tangerg/scope/tools/web"
 )
 
@@ -16,6 +17,7 @@ type Contracts struct {
 	Search     *qimumcp.Method[web.SearchRequest, web.SearchResponse]
 	Fetch      *qimumcp.Method[web.FetchRequest, capture.Page]
 	Browse     *qimumcp.Method[wire.BrowseInput, capture.Page]
+	Request    *qimumcp.Method[httpreq.Request, wire.HTTPResponse]
 }
 
 func NewContracts() (Contracts, error) {
@@ -34,6 +36,10 @@ func NewContracts() (Contracts, error) {
 		return Contracts{}, err
 	}
 	c.Browse, err = qimumcp.ImplementMethod[wire.BrowseInput, capture.Page](c.Capability, contracts.BrowseV1Method)
+	if err != nil {
+		return Contracts{}, err
+	}
+	c.Request, err = qimumcp.ImplementMethod[httpreq.Request, wire.HTTPResponse](c.Capability, contracts.RequestV1Method)
 	if err != nil {
 		return Contracts{}, err
 	}

@@ -10,7 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	models "github.com/Tangerg/flame/packages/go-sdk/model/catalog"
+
 	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	"github.com/Tangerg/flame/plugins/schedules/internal/sqlite"
@@ -39,7 +39,7 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 	host := &observedRunHost{db: db, namespace: "original-runtime"}
 	host.lost.Store(true)
 	server := sdk.NewServer(&sdk.Implementation{Name: "schedules-test"}, nil)
-	registered, err := registerServer(server, db, store, filesystem.DirectoryResolver{}, models.Selections{}, func(context.Context, qimumcp.CallbackRef) (runHost, func() error, error) {
+	registered, err := registerServer(server, db, store, filesystem.DirectoryResolver{}, func(context.Context, qimumcp.CallbackRef) (runHost, func() error, error) {
 		return host, func() error { return nil }, nil
 	})
 	if err != nil {

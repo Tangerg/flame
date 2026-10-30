@@ -108,7 +108,7 @@ for (const plugin of plugins) {
 
   const compDir = join(root, plugin, "component");
   for (const f of readdirSync(compDir).filter(
-    (n) => /\.(ts|tsx)$/.test(n) && !/\.(generated|d)\./.test(n),
+    (n) => /\.(ts|tsx)$/.test(n) && !/\.(test|spec|generated|d)\./.test(n),
   )) {
     const code = withoutComments(readFileSync(join(compDir, f), "utf8"));
     for (const m of code.matchAll(LITERAL_KEY_PATTERN)) {

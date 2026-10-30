@@ -18,7 +18,7 @@ func TestEmptyDeferredSetSendsNoCatalogMessage(t *testing.T) {
 	if trailer := deferredCatalogMessage(toolset.Manifest{}); trailer != nil {
 		t.Fatalf("empty deferred set projected %d catalog messages", len(trailer))
 	}
-	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "write"}, func(context.Context, struct{}) (string, error) {
+	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "fixture_write"}, func(context.Context, struct{}) (string, error) {
 		return "written", nil
 	})
 	if err != nil {
@@ -39,7 +39,7 @@ func TestEmptyDeferredSetSendsNoCatalogMessage(t *testing.T) {
 		return interactionUsageTextResponse("done", 1, 1), nil
 	})
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "write")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "write")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 	})
 	runInteractionHarnessWithCommit(t, executor, interactionTestStart(), func(runs.ExecutionFact) error { return nil })

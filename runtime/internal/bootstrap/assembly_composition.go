@@ -6,7 +6,7 @@ import (
 	"time"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	adapterhooks "github.com/Tangerg/flame/runtime/internal/adapter/integration/hooks"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
@@ -41,7 +41,7 @@ type policyComposition struct {
 	mcp           mcpEnvironment
 }
 
-func buildPolicyComposition(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLifetime, models modelEnvironment) (policyComposition, error) {
+func buildPolicyComposition(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLifetime, callbacks *qimumcp.Callbacks) (policyComposition, error) {
 	invalidations := newNotificationRelay[invalidation.Notice]()
 	packages, err := buildPluginPackages(cfg, lifetime)
 	if err != nil {
@@ -51,7 +51,7 @@ func buildPolicyComposition(ctx context.Context, cfg assemblyConfig, lifetime *r
 	if err != nil {
 		return policyComposition{}, fmt.Errorf("runtime: construct package skills: %w", err)
 	}
-	framework, err := buildFramework(ctx, cfg, lifetime, packages, models.callbacks)
+	framework, err := buildFramework(ctx, cfg, lifetime, packages, callbacks)
 	if err != nil {
 		return policyComposition{}, err
 	}
@@ -60,7 +60,7 @@ func buildPolicyComposition(ctx context.Context, cfg assemblyConfig, lifetime *r
 		cfg.approvalMode,
 		cfg.stores.ApprovalRules,
 		cfg.stores.ApprovalModes,
-		toolset.NewAuthorities(registry.Definition, cfg.a2aAgents),
+		toolset.NewAuthorities(registry.Definition),
 		invalidations.publish,
 	)
 	if err != nil {
@@ -101,8 +101,6 @@ func buildPolicyComposition(ctx context.Context, cfg assemblyConfig, lifetime *r
 // members share one resolved scope and one authored-resource observer.
 type workspaceComposition struct {
 	scope            *workspace.Scope
-	hookResolver     *adapterhooks.Resolver
-	hooks            *apphooks.Catalog
 	authoredWatch    *workspace.AuthoredWatch
 	skills           *workspace.Skills
 	skillMaintenance *workspace.SkillMaintenance
@@ -118,14 +116,6 @@ func buildWorkspaceComposition(
 	scope, err := workspace.NewScope(cfg.defaultWorkspacePath, cfg.userHome, workspaceadapter.Resolver{})
 	if err != nil {
 		return workspaceComposition{}, fmt.Errorf("runtime: build workspace scope: %w", err)
-	}
-	hookResolver, err := newHookResolver(cfg.userHome, cfg.stores.Trust)
-	if err != nil {
-		return workspaceComposition{}, fmt.Errorf("runtime: build hook resolver: %w", err)
-	}
-	hooks, err := apphooks.NewCatalog(scope, hookResolver, cfg.stores.Trust, publish)
-	if err != nil {
-		return workspaceComposition{}, fmt.Errorf("runtime: build hook management: %w", err)
 	}
 	authoredWatcher, err := workspaceadapter.NewAuthoredWatcher(cfg.userHome, cfg.skillsUserDir)
 	if err != nil {
@@ -160,8 +150,6 @@ func buildWorkspaceComposition(
 	}
 	return workspaceComposition{
 		scope:            scope,
-		hookResolver:     hookResolver,
-		hooks:            hooks,
 		authoredWatch:    authoredWatch,
 		skills:           workspaceSkills,
 		skillMaintenance: skillMaintenance,
@@ -173,6 +161,7 @@ func buildWorkspaceComposition(
 // executionComposition owns the model/tool execution graph. Every acquired
 // closer is transferred to runtimeLifetime before an error can escape.
 type executionComposition struct {
+	hooks             *apphooks.Catalog
 	conversation      conversationEnvironment
 	models            modelEnvironment
 	tools             toolEnvironment
@@ -186,7 +175,8 @@ type executionComposition struct {
 func buildExecutionComposition(
 	ctx context.Context,
 	cfg assemblyConfig,
-	modelServices modelEnvironment,
+	defaultSelection modelchoice.Selection,
+	callbacks *qimumcp.Callbacks,
 	lifetime *runtimeLifetime,
 	buildTools toolEnvironmentBuilder,
 	policy policyComposition,
@@ -223,32 +213,42 @@ func buildExecutionComposition(
 	}
 	toolRuntime, err := buildTools(ctx, toolEnvironmentDependencies{
 		framework: policy.framework, registry: policy.registry, packageSkills: policy.packageSkills,
-		lifetime:       lifetime.context,
-		config:         cfg,
-		approvalPolicy: policy.approvals,
-		mcp:            policy.mcp,
-		modelServices:  modelServices,
-		workspaceScope: workspaceServices.scope,
-		conversation:   conversation.store,
-		publish:        policy.invalidations.publish,
-		goalReader:     policy.goalReader,
-		goalReporter:   policy.goalReporter,
-		plan:           policy.plans,
-		skillStore:     workspaceServices.skillStore,
-		skillProposals: workspaceServices.skills,
+		lifetime:         lifetime.context,
+		config:           cfg,
+		approvalPolicy:   policy.approvals,
+		mcp:              policy.mcp,
+		defaultSelection: defaultSelection,
+		callbacks:        callbacks,
+		workspaceScope:   workspaceServices.scope,
+		conversation:     conversation.store,
+		publish:          policy.invalidations.publish,
+		goalReader:       policy.goalReader,
+		goalReporter:     policy.goalReporter,
+		plan:             policy.plans,
+		skillStore:       workspaceServices.skillStore,
+		skillProposals:   workspaceServices.skills,
+		skillArchives:    workspaceServices.skillMaintenance,
 	})
 	lifetime.toolResources = append(lifetime.toolResources, toolRuntime.closers...)
 	if err != nil {
 		return executionComposition{}, err
 	}
-	modelServices.utilityModel = toolRuntime.utilityModel
+	hookResolver, err := newHookResolver(cfg.userHome, cfg.stores.Trust, toolRuntime.pluginCalls)
+	if err != nil {
+		return executionComposition{}, fmt.Errorf("runtime: build hook resolver: %w", err)
+	}
+	hooks, err := apphooks.NewCatalog(workspaceServices.scope, hookResolver, cfg.stores.Trust, policy.invalidations.publish)
+	if err != nil {
+		return executionComposition{}, fmt.Errorf("runtime: build hook management: %w", err)
+	}
+	modelServices := toolRuntime.models
 	workingContexts, err := executionadapter.NewWorkingContextComposer(executionadapter.WorkingContextConfig{
 		UserHome:          cfg.userHome,
 		AgentMemory:       toolRuntime.memory,
 		AgentMemorySearch: toolRuntime.memory,
 		Plan:              cfg.stores.Plan,
 		Goal:              policy.goalReader,
-		Hooks:             workspaceServices.hookResolver,
+		Hooks:             hookResolver,
 	})
 	if err != nil {
 		return executionComposition{}, fmt.Errorf("runtime: build working context: %w", err)
@@ -270,8 +270,7 @@ func buildExecutionComposition(
 		cfg,
 		conversation,
 		toolRuntime.tools.Shells,
-		workspaceServices.skills,
-		workspaceServices.skillMaintenance,
+		toolRuntime.skillLearning,
 		toolRuntime.memory,
 		modelServices.utilityModel,
 	)
@@ -323,6 +322,7 @@ func buildExecutionComposition(
 		return executionComposition{}, err
 	}
 	return executionComposition{
+		hooks:             hooks,
 		conversation:      conversation,
 		models:            modelServices,
 		tools:             toolRuntime,

@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 // stubCatalog declares the model source of one provider.
@@ -18,16 +19,8 @@ type stubCatalog struct {
 	meta models.ProviderMetadata
 }
 
-func (s stubCatalog) Supported() []models.ProviderMetadata { return []models.ProviderMetadata{s.meta} }
-func (s stubCatalog) Metadata(id string) (models.ProviderMetadata, bool) {
-	if s.meta.ID() == id {
-		return s.meta, true
-	}
-	return models.ProviderMetadata{}, false
-}
-func (stubCatalog) Models(string) []models.Model { return nil }
-func (stubCatalog) LookupModel(string, string) (models.Model, bool) {
-	return models.Model{}, false
+func (s stubCatalog) Profiles(context.Context) ([]models.ProviderProfile, error) {
+	return []models.ProviderProfile{{Metadata: s.meta}}, nil
 }
 
 // stubLister records whether the probe ran and returns canned ids/err.
@@ -67,7 +60,23 @@ func (f failingModelRegistry) Update(context.Context, string, provider.Patch) (p
 }
 
 func probeHandler(meta models.ProviderMetadata, lister models.ProviderModelLister) *Handler {
-	return handlerWithModels(models.Config{Providers: stubRegistry{}, Catalog: stubCatalog{meta: meta}, Lister: lister})
+	registry := &providerFake{entries: map[string]provider.Provider{
+		meta.ID(): testsupport.MustProvider(meta.ID(), "test-key", "https://models.example.invalid"),
+	}}
+	return handlerWithModels(models.Config{Providers: registry, Catalog: stubCatalog{meta: meta}, Lister: lister})
+}
+
+func TestListModelsRejectsUnconfiguredEndpointBeforeDiscovery(t *testing.T) {
+	lister := &stubLister{ids: []string{"must-not-be-probed"}}
+	handler := handlerWithModels(models.Config{
+		Providers: stubRegistry{},
+		Catalog:   stubCatalog{meta: serverProviderMetadata("testprov", models.ProviderEndpointRequired, models.ProviderModelsEndpoint, models.NoEmbeddingCapability())},
+		Lister:    lister,
+	})
+	page, err := handler.ListModels(t.Context(), protocol.ListModelsRequest{Provider: "testprov"})
+	if page != nil || !errors.Is(err, protocol.ErrInvalidParams) || !errors.Is(err, models.ErrProviderUnconfigured) || lister.calls != 0 {
+		t.Fatalf("unconfigured discovery = %+v %v calls=%d", page, err, lister.calls)
+	}
 }
 
 func listTestProviderModels(t *testing.T, s *Handler) []protocol.Model {

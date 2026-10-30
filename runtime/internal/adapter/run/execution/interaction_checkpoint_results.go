@@ -35,5 +35,15 @@ func decodeExecutorCheckpoint(checkpoint runs.ExecutorCheckpoint) (interactionCh
 		}
 		state.bindings = append(state.bindings, activation.Clone())
 	}
+	if state.modelProvider != nil {
+		values, err := plugins.BindActivations([]plugins.ContributionBinding{state.modelProvider.Binding}, state.bindings)
+		if err != nil {
+			return interactionCheckpointState{}, err
+		}
+		state.modelProvider.Binding = values[0]
+		if err := state.modelProvider.Validate(); err != nil {
+			return interactionCheckpointState{}, err
+		}
+	}
 	return state, nil
 }

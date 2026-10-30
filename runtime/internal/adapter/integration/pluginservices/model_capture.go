@@ -21,13 +21,12 @@ import (
 
 // capture retains the exact contributions until all provider work has joined.
 // Admission policy belongs to the calling use case, not to this lifetime owner.
-func (o *CallComposition) capture(ctx context.Context, resolved models.SelectedChat, release func(), admit func(*chat.Request) error) (models.SelectedChat, func(), error) {
+func (o *CallComposition) capture(ctx context.Context, resolved models.SelectedChat, release func() error, admit func(*chat.Request) error) (models.SelectedChat, func() error, error) {
 	if release == nil {
 		return models.SelectedChat{}, nil, errors.New("model composition: model release is required")
 	}
 	if lo.IsNil(resolved.Model()) || admit == nil {
-		release()
-		return models.SelectedChat{}, nil, errors.New("model composition: model and admission owner are required")
+		return models.SelectedChat{}, nil, errors.Join(errors.New("model composition: model and admission owner are required"), release())
 	}
 	var capture *modelCapture
 	err := o.admission.Admit(ctx, func(ctx context.Context) error {
@@ -43,7 +42,7 @@ func (o *CallComposition) capture(ctx context.Context, resolved models.SelectedC
 		if err != nil {
 			return err
 		}
-		activations, err := o.activationsUnder(ctx, append(append(slices.Clone(bindings), contexts...), inputs...))
+		activations, err := o.activationsUnder(ctx, modelCompositionBindings(resolved, bindings, contexts, inputs))
 		if err != nil {
 			return err
 		}
@@ -69,8 +68,7 @@ func (o *CallComposition) capture(ctx context.Context, resolved models.SelectedC
 		return nil
 	})
 	if err != nil {
-		release()
-		return models.SelectedChat{}, nil, err
+		return models.SelectedChat{}, nil, errors.Join(err, release())
 	}
 	var model chat.Model = capture
 	if capture.stream != nil {
@@ -78,8 +76,7 @@ func (o *CallComposition) capture(ctx context.Context, resolved models.SelectedC
 	}
 	result, err := resolved.WithModel(model)
 	if err != nil {
-		capture.close()
-		return models.SelectedChat{}, nil, err
+		return models.SelectedChat{}, nil, errors.Join(err, capture.close())
 	}
 	return result, capture.close, nil
 }
@@ -160,11 +157,12 @@ type modelCapture struct {
 	stream      chat.Streamer
 	lifetime    context.Context
 	cancel      context.CancelCauseFunc
-	release     func()
+	release     func() error
 	mu          sync.Mutex
 	closed      bool
 	active      sync.WaitGroup
 	done        chan struct{}
+	err         error
 }
 
 func (c *modelCapture) enter(ctx context.Context) (context.Context, func(), error) {
@@ -184,7 +182,7 @@ func (c *modelCapture) enter(ctx context.Context) (context.Context, func(), erro
 	return calling, func() { stop(); cancel(nil); c.active.Done() }, nil
 }
 func (c *modelCapture) prepare(ctx context.Context, request *chat.Request) (*chat.Request, error) {
-	activations, err := c.owner.Activations(ctx, append(append(slices.Clone(c.bindings), c.contexts...), c.inputs...))
+	activations, err := c.owner.Activations(ctx, modelCompositionBindings(c.resolved, c.bindings, c.contexts, c.inputs))
 	if err != nil {
 		return nil, err
 	}
@@ -283,23 +281,24 @@ func (c *streamedModelCapture) Stream(ctx context.Context, request *chat.Request
 	}
 }
 
-func (c *modelCapture) close() {
+func (c *modelCapture) close() error {
 	c.mu.Lock()
 	if c.closed {
 		c.mu.Unlock()
 		<-c.done
-		return
+		return c.err
 	}
 	c.closed = true
 	c.mu.Unlock()
 	c.cancel(qimumcp.ErrStaleCall)
 	c.active.Wait()
-	c.release()
+	c.err = c.release()
 	o := c.owner
 	o.mu.Lock()
 	delete(o.captures, c)
 	o.mu.Unlock()
 	close(c.done)
+	return c.err
 }
 
 func beginCapturedModelCall(ctx context.Context, selection modelchoice.Selection) (context.Context, func(context.Context, error) error, error) {
@@ -322,4 +321,12 @@ func beginCapturedModelCall(ctx context.Context, selection modelchoice.Selection
 		return nil, nil, err
 	}
 	return executionctx.WithInvocationOwner(ctx, invocation.ID), finish, nil
+}
+
+func modelCompositionBindings(resolved models.SelectedChat, observers, contexts, inputs []plugins.ContributionBinding) []plugins.ContributionBinding {
+	bindings := slices.Concat(observers, contexts, inputs)
+	if capture, found := resolved.Capture(); found {
+		bindings = append(bindings, capture.Binding)
+	}
+	return bindings
 }

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"slices"
 
-	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/scope/core/chat"
@@ -70,10 +69,7 @@ func (c *Compactor) CompactModelContext(
 		}
 	}
 
-	limits, _, err := modeladapter.LookupTokenLimits(request.ModelSelection())
-	if err != nil {
-		return executionadapter.ModelContextCompactionResult{}, err
-	}
+	limits := request.TokenLimits()
 	options := request.Options()
 	trigger, err := c.policy.tokenTrigger(limits, options)
 	if err != nil {
@@ -91,6 +87,7 @@ func (c *Compactor) CompactModelContext(
 		request.TokenEstimateAdjustment(),
 		newModelContextCounter(request),
 	)
+	budget.fits = request.RequestFits
 	plan, err := c.planCompactionWithProtectedTail(ctx, history, budget, protectedTail)
 	if err != nil {
 		return executionadapter.ModelContextCompactionResult{}, err

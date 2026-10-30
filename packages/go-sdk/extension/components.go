@@ -24,14 +24,29 @@ type ComponentPlacement string
 const (
 	ComponentPlacementExport             ComponentPlacement = "export"
 	ComponentPlacementWorkspaceView      ComponentPlacement = "workspaceView"
+	ComponentPlacementSettingsPane       ComponentPlacement = "settingsPane"
+	ComponentPlacementClientEffect       ComponentPlacement = "clientEffect"
 	ComponentPlacementSessionAction      ComponentPlacement = "sessionAction"
 	ComponentPlacementFileRenderer       ComponentPlacement = "fileRenderer"
 	ComponentPlacementToolResultRenderer ComponentPlacement = "toolResultRenderer"
 )
 
 func (ComponentPlacement) Values() []string {
-	return []string{string(ComponentPlacementExport), string(ComponentPlacementWorkspaceView), string(ComponentPlacementSessionAction), string(ComponentPlacementFileRenderer), string(ComponentPlacementToolResultRenderer)}
+	return []string{string(ComponentPlacementExport), string(ComponentPlacementWorkspaceView), string(ComponentPlacementSettingsPane), string(ComponentPlacementClientEffect), string(ComponentPlacementSessionAction), string(ComponentPlacementFileRenderer), string(ComponentPlacementToolResultRenderer)}
 }
+
+type SettingsIntent string
+
+const (
+	SettingsIntentModelProviders SettingsIntent = "modelProviders"
+	SettingsIntentMCPServers     SettingsIntent = "mcpServers"
+)
+
+func (SettingsIntent) Values() []string {
+	return []string{string(SettingsIntentModelProviders), string(SettingsIntentMCPServers)}
+}
+
+func (s SettingsIntent) Valid() bool { return slices.Contains(s.Values(), string(s)) }
 
 type RendererSelectorKind string
 

@@ -112,3 +112,5 @@ func TestOrdinaryCallbackPublishesEmbeddingRoleWithoutFeaturePolicy(t *testing.T
 		})
 	}
 }
+
+func (*roleCallbackEmbedder) Close(context.Context) error { return nil }

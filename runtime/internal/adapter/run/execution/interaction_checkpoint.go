@@ -8,9 +8,11 @@ import (
 	"slices"
 	"strings"
 
+	"encoding/json/jsontext"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -29,6 +31,7 @@ type installationDependencyWire struct {
 }
 
 type interactionCheckpointPayloadWire struct {
+	ModelProvider       jsontext.Value                      `json:"model_provider"`
 	ToolProposals       *[]contributionBindingWire          `json:"tool_proposals"`
 	ModelInputs         *[]contributionBindingWire          `json:"model_inputs"`
 	ModelContexts       *[]contributionBindingWire          `json:"model_contexts"`
@@ -89,6 +92,7 @@ type interactionContentBlockWire struct {
 }
 
 type interactionCheckpointState struct {
+	modelProvider       *modeladapter.ProviderCapture
 	bindings            []plugin.Activation
 	resources           []plugin.Dependency
 	toolProposals       []plugins.ContributionBinding
@@ -162,6 +166,7 @@ func encodeInteractionCheckpointPayload(
 	contexts []plugins.ContributionBinding,
 	inputs []plugins.ContributionBinding,
 	toolProposals []plugins.ContributionBinding,
+	provider *modeladapter.ProviderCapture,
 ) ([]byte, error) {
 	if !tree.Valid() {
 		return nil, errors.New("execution: encode invalid Interaction tree checkpoint")
@@ -179,11 +184,15 @@ func encodeInteractionCheckpointPayload(
 		ToolMetadata:   toolMetadata, Options: new(options.Clone()),
 		Instructions: new(frozenInstructions),
 	}
+	providerJSON, err := encodeModelProvider(provider)
+	if err != nil {
+		return nil, err
+	}
+	wire.ModelProvider = providerJSON
 	wire.Handoff = handoff
 	if _, err := interactionInstructionContext(*wire.Instructions); err != nil {
 		return nil, err
 	}
-	var err error
 	accounted := make(map[agent.ProcessID]struct{}, len(usageByProcess))
 	for processID, byModel := range usageByProcess {
 		models, err := interactionCallCounts(byModel)
@@ -391,6 +400,10 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	if err != nil {
 		return interactionCheckpointState{}, err
 	}
+	provider, err := decodeModelProvider(wire.ModelProvider)
+	if err != nil {
+		return interactionCheckpointState{}, err
+	}
 	if wire.ToolProposals == nil {
 		return interactionCheckpointState{}, errors.New("execution: checkpoint Tool proposal bindings are required")
 	}
@@ -479,6 +492,7 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 		return interactionCheckpointState{}, err
 	}
 	return interactionCheckpointState{
+		modelProvider:  provider,
 		toolProposals:  proposals,
 		modelObservers: observers,
 		modelContexts:  contexts,

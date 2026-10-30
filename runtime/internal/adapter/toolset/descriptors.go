@@ -37,7 +37,6 @@ var builtInDescriptors = map[tool.BuiltInName]builtInDescriptor{
 	tool.Read:              builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Reading file"},
 	tool.Glob:              builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Finding files", result: searchResultContract()},
 	tool.Grep:              builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Searching", result: searchResultContract()},
-	tool.LSP:               builtInDescriptor{safety: tool.SafetyClassSafe, activity: lspActivity},
 	tool.ReadShellOutput:   builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Reading command output"},
 	tool.ListSkills:        builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Listing Skills"},
 	tool.LoadSkill:         builtInDescriptor{safety: tool.SafetyClassSafe, activity: loadSkillActivity},
@@ -57,7 +56,6 @@ var builtInDescriptors = map[tool.BuiltInName]builtInDescriptor{
 	tool.ApplyPatch:        builtInDescriptor{safety: tool.SafetyClassWrite, activityText: "Applying a patch", result: patchResultContract()},
 	tool.Shell:             builtInDescriptor{safety: tool.SafetyClassExec, activity: shellActivity, result: commandResultContract()},
 	tool.StopShell:         builtInDescriptor{safety: tool.SafetyClassExec, activityText: "Stopping command"},
-	tool.HTTPRequest:       builtInDescriptor{safety: tool.SafetyClassNetwork, activity: httpActivity},
 }
 
 func descriptors() iter.Seq2[tool.BuiltInName, builtInDescriptor] {

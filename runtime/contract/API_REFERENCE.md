@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-24.1` · 104 methods
+Protocol `2026-10-30.2` · 105 methods
 
 ## Methods
 
@@ -17,16 +17,16 @@ Protocol `2026-10-24.1` · 104 methods
 | `sessions.list` | query | unary | none | none | cursor | — | — | — |
 | `sessions.get` | query | unary | none | none | none | — | — | `session_not_found` |
 | `sessions.snapshot` | query | unary | none | none | none | `items.list`, `runs.list`, `interrupts.list`, `plan.get`, `goals.get` | `subagents` | `session_not_found`, `capability_not_negotiated` |
-| `sessions.create` | command | unary | replayResponse | none | none | — | — | `workspace_unavailable` |
-| `sessions.update` | command | unary | replayResponse | none | none | — | `relocate`, `isolation` | `session_not_found`, `revision_conflict`, `workspace_unavailable`, `capability_not_negotiated` |
+| `sessions.create` | command | unary | replayResponse | none | none | — | — | `plugin_unavailable`, `plugin_stale`, `workspace_unavailable` |
+| `sessions.update` | command | unary | replayResponse | none | none | — | `relocate`, `isolation` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `revision_conflict`, `workspace_unavailable`, `capability_not_negotiated` |
 | `sessions.delete` | command | unary | replayResponse | none | none | — | — | `session_not_found` |
-| `sessions.fork` | command | unary | replayResponse | none | none | — | — | `session_not_found`, `run_not_found` |
+| `sessions.fork` | command | unary | replayResponse | none | none | — | — | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `run_not_found` |
 | `sessions.rollback` | command | unary | replayResponse | none | none | — | `checkpoints` | `session_not_found`, `run_not_found`, `session_busy`, `checkpoint_unavailable`, `checkpoint_conflict`, `capability_not_negotiated` |
 | `sessions.export` | query | unary | none | none | none | — | `sessionExport` | `session_not_found`, `capability_not_negotiated` |
 | `sessions.import` | command | unary | replayResponse | none | none | — | `sessionExport` | `capability_not_negotiated` |
 | `modelInvocations.endpoints` | query | unary | none | none | cursor | — | — | `capability_not_negotiated` |
 | `modelInvocations.list` | query | unary | none | none | cursor | — | — | `run_not_found`, `capability_not_negotiated` |
-| `runs.start` | command | stream | ownerRun | run | none | — | — | `session_not_found`, `session_busy`, `session_has_active_run`, `prompt_source_too_large`, `unsupported_mime`, `capability_not_negotiated`, `plugin_changed` |
+| `runs.start` | command | stream | ownerRun | run | none | — | — | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `session_busy`, `session_has_active_run`, `prompt_source_too_large`, `unsupported_mime`, `capability_not_negotiated`, `plugin_changed` |
 | `runs.resume` | command | stream | ownerRun | run | none | — | — | `run_not_found`, `interrupt_not_open`, `capability_not_negotiated`, `plugin_changed` |
 | `runs.subscribe` | subscription | stream | none | run | none | — | — | `run_not_found`, `run_not_root`, `run_waiting`, `run_finished`, `stale_segment`, `replay_cursor_invalid`, `replay_unavailable`, `capability_not_negotiated` |
 | `runs.cancel` | command | unary | replayResponse | none | none | — | — | `run_not_found`, `run_finished`, `session_busy`, `capability_not_negotiated` |
@@ -74,6 +74,7 @@ Protocol `2026-10-24.1` · 104 methods
 | `plugins.notifyChange` | command | unary | replayResponse | none | none | — | `plugins` | `capability_not_negotiated` |
 | `plugins.openResources` | subscription | stream | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
 | `plugins.readResource` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
+| `plugins.readLocale` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
 | `plugins.resolvePoint` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
 | `plugins.resolveRequirements` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
 | `plugins.call` | extension | unary | ownerResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
@@ -89,27 +90,27 @@ Protocol `2026-10-24.1` · 104 methods
 | `plugins.configure` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
 | `plugins.setEnablement` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
 | `plugins.uninstall` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
-| `hooks.list` | query | unary | none | none | none | — | — | `workspace_unavailable` |
+| `hooks.list` | query | unary | none | none | none | — | — | `plugin_unavailable`, `plugin_stale`, `workspace_unavailable` |
 | `hooks.setTrust` | command | unary | replayResponse | none | none | — | — | `workspace_unavailable` |
 | `approval.setRule` | command | unary | replayResponse | none | none | — | — | — |
 | `approval.getMode` | query | unary | none | none | none | — | — | — |
 | `approval.setMode` | command | unary | replayResponse | none | none | — | — | — |
 | `approval.listRules` | query | unary | none | none | none | — | — | — |
 | `approval.forgetRule` | command | unary | replayResponse | none | none | — | — | — |
-| `goals.start` | command | unary | replayResponse | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
+| `goals.start` | command | unary | replayResponse | none | none | — | `goals` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `capability_not_negotiated` |
 | `goals.update` | command | unary | replayResponse | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
 | `goals.clear` | command | unary | replayResponse | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
 | `goals.get` | query | unary | none | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
 | `goals.stop` | command | unary | replayResponse | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
 | `goals.resume` | command | unary | replayResponse | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
-| `providers.list` | query | unary | none | none | none | — | — | — |
-| `providers.update` | command | unary | replayResponse | none | none | — | — | — |
-| `providers.test` | query | unary | none | none | none | — | — | — |
-| `models.list` | query | unary | none | none | none | — | — | `provider_error` |
+| `providers.list` | query | unary | none | none | none | — | — | `plugin_unavailable`, `plugin_stale` |
+| `providers.update` | command | unary | replayResponse | none | none | — | — | `plugin_unavailable`, `plugin_stale` |
+| `providers.test` | query | unary | none | none | none | — | — | `plugin_unavailable`, `plugin_stale` |
+| `models.list` | query | unary | none | none | none | — | — | `plugin_unavailable`, `plugin_stale`, `provider_error` |
 | `models.getUtilityRole` | query | unary | none | none | none | — | — | — |
-| `models.setUtilityRole` | command | unary | replayResponse | none | none | — | — | — |
+| `models.setUtilityRole` | command | unary | replayResponse | none | none | — | — | `plugin_unavailable`, `plugin_stale` |
 | `models.getEmbeddingRole` | query | unary | none | none | none | — | — | — |
-| `models.setEmbeddingRole` | command | unary | replayResponse | none | none | — | — | — |
+| `models.setEmbeddingRole` | command | unary | replayResponse | none | none | — | — | `plugin_unavailable`, `plugin_stale` |
 | `tools.list` | query | unary | none | none | none | — | — | — |
 | `tools.invoke` | command | unary | replayResponse | none | none | — | — | `workspace_unavailable`, `path_outside_root` |
 | `usage.session` | query | unary | none | none | none | — | — | `session_not_found` |
@@ -431,7 +432,6 @@ publish one namespaced pattern branch without weakening first-party tags.
 | --- | --- | --- |
 | `builtIn` | `name` | — |
 | `mcp` | `server`, `name` | — |
-| `a2a` | `endpoint` | — |
 
 ### `ApprovalSubject`
 
@@ -951,7 +951,6 @@ TypeScript validator from this single registry projection.
 | `HookInfo` | `timeoutMillis` | `maximum(300000)` |
 | `SetHookTrustRequest` | `projectRoot` | `nonEmpty` |
 | `ToolRef` | `name` | `pattern("^[A-Za-z0-9_.-]{1,128}$")` |
-| `ToolRef` | `endpoint` | `pattern("^[A-Za-z0-9_-]{1,64}$")` |
 | `SetApprovalRuleRequest` | `sessionId` | `identity` |
 | `SetApprovalRuleRequest` | `sessionId` | `maxLength(256)` |
 | `ApprovalRule` | `id` | `nonEmpty` |
@@ -997,6 +996,12 @@ TypeScript validator from this single registry projection.
 | `PluginClientComponent` | `contribution` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginClientComponent` | `material` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `OpenPluginResourcesRequest` | `componentId` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
+| `ReadPluginLocaleRequest` | `tag` | `nonEmpty` |
+| `ReadPluginLocaleRequest` | `tag` | `maxLength(128)` |
+| `PluginLocale` | `tag` | `nonEmpty` |
+| `PluginLocale` | `tag` | `maxLength(128)` |
+| `PluginLocale` | `title` | `nonEmpty` |
+| `PluginLocale` | `title` | `maxLength(128)` |
 | `PluginPoint` | `contract` | `nonEmpty` |
 | `PluginPoint` | `id` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginPointValue` | `contract` | `nonEmpty` |
@@ -1273,6 +1278,7 @@ available. Refusal is `capability_not_negotiated` — never a silent downgrade.
 | `plugins.notifyChange` | always | `plugins` |
 | `plugins.openResources` | always | `plugins` |
 | `plugins.readResource` | always | `plugins` |
+| `plugins.readLocale` | always | `plugins` |
 | `plugins.resolvePoint` | always | `plugins` |
 | `plugins.resolveRequirements` | always | `plugins` |
 | `plugins.call` | always | `plugins` |

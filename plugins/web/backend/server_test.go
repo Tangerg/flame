@@ -4,11 +4,14 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
+	"io"
+	"net/http"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 
 	rpc "github.com/Tangerg/flame/plugins/web/internal/contract"
 	capture "github.com/Tangerg/flame/plugins/web/internal/domain"
@@ -17,6 +20,7 @@ import (
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/scope/tools/httpreq"
 	"github.com/Tangerg/scope/tools/web"
 )
 
@@ -38,7 +42,15 @@ func TestTypedAndModelToolsShareSearchFetchBrowseAndDefiniteReadFailure(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	server, err := newServer(research)
+	requestCount := 0
+	requests, err := newRequests(store.db, httpreq.ClientConfig{AllowedHosts: []string{"api.test"}, HTTPClient: &http.Client{Transport: httpTransport(func(*http.Request) (*http.Response, error) {
+		requestCount++
+		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader("original HTTP response"))}, nil
+	})}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	server, err := newServer(research, requests)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,6 +120,44 @@ func TestTypedAndModelToolsShareSearchFetchBrowseAndDefiniteReadFailure(t *testi
 		t.Fatal(err)
 	}
 	compare(contracts.Browse.Name(), "web_browse", wire.BrowseInput{SnapshotID: page.SnapshotID, Limit: 8192})
+	httpInput := httpreq.Request{URL: "https://api.test/resource"}
+	httpRequest, err := jsonvalue.Encode(httpInput)
+	if err != nil {
+		t.Fatal(err)
+	}
+	httpMethod, err := exported.Method(contracts.Request.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	typedHTTP, err := httpMethod.Invoke(ctx, "http-command", httpRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	modelHTTP, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "http_request", Arguments: httpInput, Meta: meta})
+	if err != nil || modelHTTP.IsError {
+		t.Fatalf("HTTP tool: %+v %v", modelHTTP, err)
+	}
+	var typedResponse, modelResponse wire.HTTPResponse
+	if err := json.Unmarshal(typedHTTP.JSON(), &typedResponse); err != nil {
+		t.Fatal(err)
+	}
+	encodedHTTP, err := json.Marshal(modelHTTP.StructuredContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(encodedHTTP, &modelResponse); err != nil {
+		t.Fatal(err)
+	}
+	if typedResponse.Status != modelResponse.Status || typedResponse.Body != modelResponse.Body || requestCount != 2 {
+		t.Fatalf("HTTP result parity: %+v %+v calls=%d", typedResponse, modelResponse, requestCount)
+	}
+	if _, err := httpMethod.Invoke(ctx, "http-command", httpRequest); err != nil || requestCount != 2 {
+		t.Fatalf("typed HTTP replay: %v calls=%d", err, requestCount)
+	}
+	receipt, err := pluginsdk.ReadToolReceipt(ctx, session, "model-web-entry", "http_request", httpRequest)
+	if err != nil || receipt == nil || requestCount != 2 {
+		t.Fatalf("HTTP Tool recovery: %+v %v calls=%d", receipt, err, requestCount)
+	}
 	fail = true
 	failed, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "web_fetch", Arguments: web.FetchRequest{URL: "https://example.test"}, Meta: meta})
 	if err != nil || !failed.IsError {

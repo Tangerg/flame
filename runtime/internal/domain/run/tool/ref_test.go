@@ -85,7 +85,7 @@ func TestRefPreservesSourceAcrossModelNameCollisions(t *testing.T) {
 	for _, raw := range []string{
 		"mcp:user:files:read:extra", "mcp:files:read", "mcp:installation:files:read",
 		"mcp:installation:00000000-0000-0000-0000-000000000000:files:read", "mcp:user:installation:" + testInstallation + ":read",
-		"builtIn:%73hell", "shell", "a2a:with space", "builtIn:shell:extra",
+		"builtIn:%73hell", "shell", "unknown:tool", "a2a:planner", "builtIn:shell:extra",
 	} {
 		if _, err := ParseRef(raw); err == nil {
 			t.Errorf("accepted noncanonical reference %q", raw)
@@ -98,12 +98,8 @@ func TestRefVariantsAreReachableOnlyThroughTheirKind(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	a2a, err := A2A("planner")
-	if err != nil {
-		t.Fatal(err)
-	}
 	mcp := testMCPRef(t, testInstallationOrigin(t), "files", "read")
-	refs := map[RefKind]Ref{BuiltInKind: builtIn, MCPKind: mcp, A2AKind: a2a}
+	refs := map[RefKind]Ref{BuiltInKind: builtIn, MCPKind: mcp}
 	kinds := make([]RefKind, 0, len(refs))
 	for kind := range refs {
 		kinds = append(kinds, kind)
@@ -117,9 +113,8 @@ func TestRefVariantsAreReachableOnlyThroughTheirKind(t *testing.T) {
 	for kind, ref := range refs {
 		_, isBuiltIn := ref.BuiltIn()
 		_, _, isMCP := ref.MCP()
-		_, isA2A := ref.A2A()
-		if ref.Kind() != kind || isBuiltIn != (kind == BuiltInKind) || isMCP != (kind == MCPKind) || isA2A != (kind == A2AKind) {
-			t.Errorf("%s accessors = builtIn %t, mcp %t, a2a %t", kind, isBuiltIn, isMCP, isA2A)
+		if ref.Kind() != kind || isBuiltIn != (kind == BuiltInKind) || isMCP != (kind == MCPKind) {
+			t.Errorf("%s accessors = builtIn %t, mcp %t", kind, isBuiltIn, isMCP)
 		}
 		parsed, err := ParseRef(ref.String())
 		if err != nil || parsed != ref {

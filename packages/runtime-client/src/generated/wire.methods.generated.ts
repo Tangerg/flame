@@ -97,6 +97,7 @@ import type {
   PluginCommandRequest,
   PluginComposition,
   PluginInstallation,
+  PluginLocaleCatalog,
   PluginProviderSelection,
   PluginReleaseRequest,
   PluginRequest,
@@ -105,6 +106,7 @@ import type {
   Provider,
   ProviderTestResult,
   ReadFileRequest,
+  ReadPluginLocaleRequest,
   ReadPluginResourceRequest,
   ResolvePluginCompositionRequest,
   ResolvePluginPointRequest,
@@ -168,7 +170,6 @@ const FEATURES = [
   "git",
   "checkpoints",
   "fileWatch",
-  "lsp",
   "sessionExport",
   "relocate",
   "isolation",
@@ -243,6 +244,7 @@ const METHOD_NAMES = [
   "plugins.notifyChange",
   "plugins.openResources",
   "plugins.readResource",
+  "plugins.readLocale",
   "plugins.resolvePoint",
   "plugins.resolveRequirements",
   "plugins.call",
@@ -361,6 +363,7 @@ const VALUE_METHOD_NAMES = [
   "plugins.stream",
   "plugins.openResources",
   "plugins.readResource",
+  "plugins.readLocale",
   "plugins.resolvePoint",
   "plugins.resolveRequirements",
   "plugins.call",
@@ -862,6 +865,13 @@ export const WIRE_METHOD_POLICY = {
     replayCursor: "none",
     pagination: "none",
   },
+  "plugins.readLocale": {
+    operation: "query",
+    response: "unary",
+    idempotency: "none",
+    replayCursor: "none",
+    pagination: "none",
+  },
   "plugins.resolvePoint": {
     operation: "query",
     response: "unary",
@@ -1332,6 +1342,9 @@ export const WIRE_CAPABILITY_POLICY: {
   "plugins.readResource": [
     { requires: ["plugins"] },
   ],
+  "plugins.readLocale": [
+    { requires: ["plugins"] },
+  ],
   "plugins.resolvePoint": [
     { requires: ["plugins"] },
   ],
@@ -1462,6 +1475,7 @@ export interface WireShapes {
   "plugins.notifyChange": { params: PluginChangeNotice };
   "plugins.openResources": { params: OpenPluginResourcesRequest; result: PluginResourceLease };
   "plugins.readResource": { params: ReadPluginResourceRequest; result: PluginResource };
+  "plugins.readLocale": { params: ReadPluginLocaleRequest; result: PluginLocaleCatalog };
   "plugins.resolvePoint": { params: ResolvePluginPointRequest; result: PageOfPluginPointBinding };
   "plugins.resolveRequirements": { params: ResolvePluginRequirementsRequest; result: PageOfPluginCollaborator };
   "plugins.call": { params: CallPluginRequest; result: CallPluginResponse };

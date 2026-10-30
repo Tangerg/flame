@@ -6,6 +6,7 @@
       "path": "component.js",
       "imports": [
         "@flame/component-sdk",
+        "@flame/runtime-client",
         "@flame/ui",
         "@qimu/sdk/json",
         "react",
@@ -14,12 +15,14 @@
       "dynamicImports": [],
       "exports": [
         "RenameSession",
+        "SessionExports",
         "Trajectory"
       ]
     }
   ],
   "sharedSpecifiers": [
     "@flame/component-sdk",
+    "@flame/runtime-client",
     "@flame/ui",
     "@qimu/sdk/json",
     "react",

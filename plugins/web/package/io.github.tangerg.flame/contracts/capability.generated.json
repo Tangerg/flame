@@ -405,6 +405,250 @@
       }
     },
     {
+      "name": "flame.web/request.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Execute one HTTP request within the installed host allowlist. GET and HEAD are allowed; other methods are refused. Responses are bounded to 256 KiB. Preserve the command identity: an unconfirmed request must never be resubmitted.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL3Rvb2xzL2h0dHByZXE_Request": {
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "properties": {
+                  "timeout_ms": {
+                    "maximum": 120000,
+                    "minimum": 1
+                  }
+                }
+              }
+            ],
+            "properties": {
+              "body": {
+                "description": "Optional request body for POST, PUT, PATCH, or DELETE; GET and HEAD carry none. For JSON, pass a JSON-encoded string and set Content-Type via Headers.",
+                "type": "string"
+              },
+              "headers": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "description": "Optional request headers. Values here override this tool's configured default headers. Host overrides are prohibited; authority comes from the URL.",
+                "type": "object"
+              },
+              "method": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "GET",
+                      "HEAD",
+                      "POST",
+                      "PUT",
+                      "PATCH",
+                      "DELETE"
+                    ]
+                  }
+                ],
+                "description": "HTTP method: GET (default), HEAD, POST, PUT, PATCH, or DELETE. Must be in the configured method allowlist.",
+                "type": "string"
+              },
+              "query": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "description": "Optional query parameters appended to the URL; a name must not also appear in the URL's own query.",
+                "type": "object"
+              },
+              "timeout_ms": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "description": "Per-call timeout in milliseconds, within the supported request limit. Omit to use the configured default.",
+                "type": "integer"
+              },
+              "url": {
+                "description": "Absolute http(s) URL. Host must match the configured allowlist.",
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "url"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "properties": {
+              "timeout_ms": {
+                "maximum": 120000,
+                "minimum": 1
+              }
+            }
+          }
+        ],
+        "properties": {
+          "body": {
+            "description": "Optional request body for POST, PUT, PATCH, or DELETE; GET and HEAD carry none. For JSON, pass a JSON-encoded string and set Content-Type via Headers.",
+            "type": "string"
+          },
+          "headers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Optional request headers. Values here override this tool's configured default headers. Host overrides are prohibited; authority comes from the URL.",
+            "type": "object"
+          },
+          "method": {
+            "allOf": [
+              {
+                "enum": [
+                  "GET",
+                  "HEAD",
+                  "POST",
+                  "PUT",
+                  "PATCH",
+                  "DELETE"
+                ]
+              }
+            ],
+            "description": "HTTP method: GET (default), HEAD, POST, PUT, PATCH, or DELETE. Must be in the configured method allowlist.",
+            "type": "string"
+          },
+          "query": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Optional query parameters appended to the URL; a name must not also appear in the URL's own query.",
+            "type": "object"
+          },
+          "timeout_ms": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "description": "Per-call timeout in milliseconds, within the supported request limit. Omit to use the configured default.",
+            "type": "integer"
+          },
+          "url": {
+            "description": "Absolute http(s) URL. Host must match the configured allowlist.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_HTTPContent": {
+            "additionalProperties": false,
+            "properties": {
+              "data": {
+                "type": "string"
+              },
+              "encoding": {
+                "enum": [
+                  "utf8",
+                  "base64"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "encoding",
+              "data"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_HTTPResponse": {
+            "additionalProperties": false,
+            "properties": {
+              "body": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_HTTPContent"
+              },
+              "duration": {
+                "type": "string"
+              },
+              "headers": {
+                "additionalProperties": {
+                  "items": {
+                    "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_HTTPContent"
+                  },
+                  "type": "array"
+                },
+                "type": "object"
+              },
+              "status": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "truncated": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "status",
+              "body",
+              "duration"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_HTTPContent"
+          },
+          "duration": {
+            "type": "string"
+          },
+          "headers": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_HTTPContent"
+              },
+              "type": "array"
+            },
+            "type": "object"
+          },
+          "status": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "status",
+          "body",
+          "duration"
+        ],
+        "type": "object"
+      }
+    },
+    {
       "name": "flame.web/search.v1",
       "kind": "query",
       "target": "installation",

@@ -71,6 +71,7 @@ test("author production imports select their locked packages and JSX runtime", (
         packages: [],
         required: [],
       });
+      assert.equal(result.hasTests, true);
       assert.deepEqual(result.dependencies, {
         "@openuidev/lang-core": "1.0.1",
         "@openuidev/react-lang": "1.0.1",

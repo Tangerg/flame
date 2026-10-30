@@ -13,6 +13,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -81,7 +82,7 @@ func TestPlanToolAcceptsScopeNormalizedArguments(t *testing.T) {
 }
 
 func TestProtocolPreservesToolPreparationFailuresAcrossRestart(t *testing.T) {
-	home := t.TempDir()
+	home := testsupport.TempDirectory(t)
 	t.Setenv("FLAME_HOME", home)
 	if err := os.MkdirAll(filepath.Join(home, ".flame"), 0o700); err != nil {
 		t.Fatal(err)
@@ -134,6 +135,7 @@ func TestProtocolPreservesToolPreparationFailuresAcrossRestart(t *testing.T) {
 		}
 	})
 	ctx := delivery.WithRequestMeta(t.Context(), protocol.RequestMeta{ProtocolVersion: protocol.Version})
+	activateHookProvider(t, api)
 	session, err := api.CreateSession(ctx, protocol.CreateSessionRequest{
 		Workspace: &protocol.WorkspaceRef{Path: home}, Title: "tool preparation failure",
 	})

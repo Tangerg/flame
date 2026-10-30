@@ -1,3 +1,4 @@
+import { unavailableComponentNotifications } from "@/test/unavailableNotifications";
 import type { PluginComponent, ComponentContext } from "@flame/component-sdk";
 import * as stylex from "@stylexjs/stylex";
 import { ScrollArea } from "@/ui/index";
@@ -411,6 +412,13 @@ export async function createComputerConsoleFixture(locale: string) {
     telemetry: { read: () => ({ spans: [], logs: [], metrics: [] }), clear: () => undefined },
     track: (operation) => operation(owner.signal),
     saveFile: async () => "requested",
+    notifications: unavailableComponentNotifications,
+    subscribeRootRunSettlements() {
+      throw new Error("This fixture must not observe run settlements");
+    },
+    registerCommand() {
+      throw new Error("This fixture must not register client commands");
+    },
     compose: () => {
       throw new Error("computer fixture has no composition");
     },

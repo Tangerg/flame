@@ -245,7 +245,7 @@ func TestPluginAcceptanceMCPSameNameAcrossOriginsExcludesBoth(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg.chatResolver = testChatResolver(client)
+	cfg.modelProviders = testChatResolver(client)
 	runtime := poMCPOpen(t, cfg)
 	runtime.must(delivery.MCPServersCreate, protocol.MCPServerCandidate{
 		Name: "reviews", Enabled: true,

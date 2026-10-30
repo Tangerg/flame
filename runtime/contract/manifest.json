@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-24.1",
+  "protocolVersion": "2026-10-30.2",
   "features": [
     "reasoning",
     "multimodal",
@@ -12,7 +12,6 @@
     "git",
     "checkpoints",
     "fileWatch",
-    "lsp",
     "sessionExport",
     "relocate",
     "isolation",
@@ -128,6 +127,8 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
+        "plugin_stale",
         "workspace_unavailable"
       ]
     },
@@ -140,6 +141,8 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
+        "plugin_stale",
         "session_not_found",
         "revision_conflict",
         "workspace_unavailable",
@@ -171,6 +174,8 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
+        "plugin_stale",
         "session_not_found",
         "run_not_found"
       ]
@@ -260,6 +265,8 @@
       "replayCursor": "run",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
+        "plugin_stale",
         "session_not_found",
         "session_busy",
         "session_has_active_run",
@@ -1029,6 +1036,27 @@
       ]
     },
     {
+      "goName": "ReadPluginLocale",
+      "name": "plugins.readLocale",
+      "kind": "unary",
+      "operation": "query",
+      "idempotency": "none",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_not_found",
+        "plugin_in_use",
+        "plugin_disabled",
+        "plugin_stale",
+        "plugin_command_retired",
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "plugins"
+      ]
+    },
+    {
       "goName": "ResolvePluginPoint",
       "name": "plugins.resolvePoint",
       "kind": "unary",
@@ -1352,6 +1380,8 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
+        "plugin_stale",
         "workspace_unavailable"
       ]
     },
@@ -1421,6 +1451,8 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
+        "plugin_stale",
         "session_not_found",
         "capability_not_negotiated"
       ],
@@ -1515,7 +1547,11 @@
       "operation": "query",
       "idempotency": "none",
       "replayCursor": "none",
-      "pagination": "none"
+      "pagination": "none",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_stale"
+      ]
     },
     {
       "goName": "UpdateProvider",
@@ -1524,7 +1560,11 @@
       "operation": "command",
       "idempotency": "replayResponse",
       "replayCursor": "none",
-      "pagination": "none"
+      "pagination": "none",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_stale"
+      ]
     },
     {
       "goName": "TestProvider",
@@ -1533,7 +1573,11 @@
       "operation": "query",
       "idempotency": "none",
       "replayCursor": "none",
-      "pagination": "none"
+      "pagination": "none",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_stale"
+      ]
     },
     {
       "goName": "ListModels",
@@ -1544,6 +1588,8 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
+        "plugin_stale",
         "provider_error"
       ]
     },
@@ -1563,7 +1609,11 @@
       "operation": "command",
       "idempotency": "replayResponse",
       "replayCursor": "none",
-      "pagination": "none"
+      "pagination": "none",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_stale"
+      ]
     },
     {
       "goName": "GetEmbeddingRole",
@@ -1581,7 +1631,11 @@
       "operation": "command",
       "idempotency": "replayResponse",
       "replayCursor": "none",
-      "pagination": "none"
+      "pagination": "none",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_stale"
+      ]
     },
     {
       "goName": "ListTools",
@@ -1769,6 +1823,7 @@
           "plugins.notifyChange",
           "plugins.openBrowserRealm",
           "plugins.openResources",
+          "plugins.readLocale",
           "plugins.readResource",
           "plugins.resolveComposition",
           "plugins.resolvePoint",
@@ -1963,6 +2018,7 @@
           "plugins.listProviders",
           "plugins.openBrowserRealm",
           "plugins.openResources",
+          "plugins.readLocale",
           "plugins.readResource",
           "plugins.resolveComposition",
           "plugins.resolvePoint",
@@ -1993,6 +2049,7 @@
           "plugins.listProviders",
           "plugins.openBrowserRealm",
           "plugins.openResources",
+          "plugins.readLocale",
           "plugins.readResource",
           "plugins.resolveComposition",
           "plugins.resolvePoint",
@@ -2023,6 +2080,7 @@
           "plugins.listProviders",
           "plugins.openBrowserRealm",
           "plugins.openResources",
+          "plugins.readLocale",
           "plugins.readResource",
           "plugins.resolveComposition",
           "plugins.resolvePoint",
@@ -2053,6 +2111,7 @@
           "plugins.listProviders",
           "plugins.openBrowserRealm",
           "plugins.openResources",
+          "plugins.readLocale",
           "plugins.readResource",
           "plugins.resolveComposition",
           "plugins.resolvePoint",
@@ -2072,6 +2131,11 @@
         "code": -32043,
         "recoveryAction": "promptUser",
         "methods": [
+          "goals.start",
+          "hooks.list",
+          "models.list",
+          "models.setEmbeddingRole",
+          "models.setUtilityRole",
           "plugins.acquireComponent",
           "plugins.call",
           "plugins.closeBrowserRealm",
@@ -2083,6 +2147,7 @@
           "plugins.listProviders",
           "plugins.openBrowserRealm",
           "plugins.openResources",
+          "plugins.readLocale",
           "plugins.readResource",
           "plugins.resolveComposition",
           "plugins.resolvePoint",
@@ -2094,7 +2159,14 @@
           "plugins.setEnablement",
           "plugins.stage",
           "plugins.stream",
-          "plugins.uninstall"
+          "plugins.uninstall",
+          "providers.list",
+          "providers.test",
+          "providers.update",
+          "runs.start",
+          "sessions.create",
+          "sessions.fork",
+          "sessions.update"
         ]
       },
       {
@@ -2102,6 +2174,11 @@
         "code": -32045,
         "recoveryAction": "promptUser",
         "methods": [
+          "goals.start",
+          "hooks.list",
+          "models.list",
+          "models.setEmbeddingRole",
+          "models.setUtilityRole",
           "plugins.acquireComponent",
           "plugins.call",
           "plugins.closeBrowserRealm",
@@ -2113,6 +2190,7 @@
           "plugins.listProviders",
           "plugins.openBrowserRealm",
           "plugins.openResources",
+          "plugins.readLocale",
           "plugins.readResource",
           "plugins.resolveComposition",
           "plugins.resolvePoint",
@@ -2124,7 +2202,14 @@
           "plugins.setEnablement",
           "plugins.stage",
           "plugins.stream",
-          "plugins.uninstall"
+          "plugins.uninstall",
+          "providers.list",
+          "providers.test",
+          "providers.update",
+          "runs.start",
+          "sessions.create",
+          "sessions.fork",
+          "sessions.update"
         ]
       },
       {
@@ -2857,6 +2942,16 @@
     },
     {
       "method": "plugins.readResource",
+      "rules": [
+        {
+          "requires": [
+            "plugins"
+          ]
+        }
+      ]
+    },
+    {
+      "method": "plugins.readLocale",
       "rules": [
         {
           "requires": [
@@ -4389,10 +4484,8 @@
                 "get_goal",
                 "glob",
                 "grep",
-                "http_request",
                 "list_skills",
                 "load_skill",
-                "lsp",
                 "propose_skill",
                 "read",
                 "read_shell_output",
@@ -4414,12 +4507,6 @@
           "required": [
             "server",
             "name"
-          ]
-        },
-        {
-          "tag": "a2a",
-          "required": [
-            "endpoint"
           ]
         }
       ]
@@ -8950,10 +9037,6 @@
         {
           "field": "name",
           "constraint": "pattern(\"^[A-Za-z0-9_.-]{1,128}$\")"
-        },
-        {
-          "field": "endpoint",
-          "constraint": "pattern(\"^[A-Za-z0-9_-]{1,64}$\")"
         }
       ]
     },
@@ -9259,6 +9342,40 @@
         {
           "field": "componentId",
           "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
+        }
+      ]
+    },
+    {
+      "type": "ReadPluginLocaleRequest",
+      "rules": [
+        {
+          "field": "tag",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "tag",
+          "constraint": "maxLength(128)"
+        }
+      ]
+    },
+    {
+      "type": "PluginLocale",
+      "rules": [
+        {
+          "field": "tag",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "tag",
+          "constraint": "maxLength(128)"
+        },
+        {
+          "field": "title",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "title",
+          "constraint": "maxLength(128)"
         }
       ]
     },

@@ -10,7 +10,7 @@ import (
 	"github.com/Tangerg/scope/core/media"
 )
 
-func TestSelectionsAdmitInputUsesExactCatalogModel(t *testing.T) {
+func TestAdmissionUsesExactCatalogModel(t *testing.T) {
 	image, err := media.NewBytes("image/png", []byte("image"))
 	if err != nil {
 		t.Fatal(err)
@@ -22,7 +22,7 @@ func TestSelectionsAdmitInputUsesExactCatalogModel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if admitErr := (Selections{}).AdmitInput(textOnly, messages); !errors.Is(admitErr, ErrUnsupportedInputModality) {
+	if admitErr := referenceAdmission(t, textOnly).AdmitInput(messages); !errors.Is(admitErr, ErrUnsupportedInputModality) {
 		t.Fatalf("text-only model error = %v, want ErrUnsupportedInputModality", admitErr)
 	}
 
@@ -30,13 +30,13 @@ func TestSelectionsAdmitInputUsesExactCatalogModel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if admitErr := (Selections{}).AdmitInput(imageCapable, messages); admitErr != nil {
+	if admitErr := referenceAdmission(t, imageCapable).AdmitInput(messages); admitErr != nil {
 		t.Fatalf("image-capable model error = %v", admitErr)
 	}
 }
 
-func TestSelectionsAdmitInputRejectsMissingModelSelection(t *testing.T) {
-	err := (Selections{}).AdmitInput(modelchoice.Selection{}, []chat.Message{
+func TestAdmissionRejectsMissingModelSelection(t *testing.T) {
+	err := (Admission{}).AdmitInput([]chat.Message{
 		chat.NewUserMessage(chat.NewTextPart("inspect")),
 	})
 	if err == nil || !strings.Contains(err.Error(), "model selection is required") {
@@ -44,7 +44,7 @@ func TestSelectionsAdmitInputRejectsMissingModelSelection(t *testing.T) {
 	}
 }
 
-func TestSelectionsAdmitInputIncludesToolResultMedia(t *testing.T) {
+func TestAdmissionIncludesToolResultMedia(t *testing.T) {
 	image, err := media.NewBytes("image/png", []byte("image"))
 	if err != nil {
 		t.Fatal(err)
@@ -67,7 +67,7 @@ func TestSelectionsAdmitInputIncludesToolResultMedia(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = (Selections{}).AdmitInput(selection, messages)
+		err = referenceAdmission(t, selection).AdmitInput(messages)
 		if test.accepts && err != nil {
 			t.Fatalf("image-capable model rejected Tool content: %v", err)
 		}
@@ -77,7 +77,7 @@ func TestSelectionsAdmitInputIncludesToolResultMedia(t *testing.T) {
 	}
 }
 
-func TestSelectionsAdmitInputAllowsPrivateCatalogMiss(t *testing.T) {
+func TestAdmissionAllowsPrivateCatalogMiss(t *testing.T) {
 	image, err := media.NewBytes("image/png", []byte("image"))
 	if err != nil {
 		t.Fatal(err)
@@ -86,7 +86,7 @@ func TestSelectionsAdmitInputAllowsPrivateCatalogMiss(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := (Selections{}).AdmitInput(selection, []chat.Message{
+	if err := referenceAdmission(t, selection).AdmitInput([]chat.Message{
 		chat.NewUserMessage(chat.NewMediaPart(image)),
 	}); err != nil {
 		t.Fatalf("private model error = %v", err)

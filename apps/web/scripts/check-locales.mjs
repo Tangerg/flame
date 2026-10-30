@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Locale-catalog guard — every locale carries every key, exactly once.
 //
-// Why this exists: the catalogs are typed `Record<string, string>`, so a locale
+// Why this exists: optional catalogs are string maps, so a locale
 // that never learned a key is not a compile error — it is a silent fall back to
 // English at runtime. Nothing was watching, and the gap had grown to 253 of 765
 // keys for five languages (a third of the app in English for a German user), 235
@@ -124,8 +124,10 @@
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { parseTree } from "jsonc-parser";
 
 const LOCALES_DIR = new URL("../src/lib/i18n/locales", import.meta.url).pathname;
+const PLUGINS_DIR = new URL("../../../plugins", import.meta.url).pathname;
 const SRC_DIR = new URL("../src", import.meta.url).pathname;
 const KEY_PATTERN = /^\s*"([^"]+)":/gm;
 // key → value, both quote styles (a value holding a double quote is single-quoted)
@@ -320,17 +322,34 @@ function pluralFamilies(keys) {
 const duplicates = [];
 
 function keysOf(file) {
-  const source = readFileSync(join(LOCALES_DIR, file), "utf8");
+  const source = readFileSync(file, "utf8");
   const seen = new Set();
-  for (const match of source.matchAll(KEY_PATTERN)) {
-    if (seen.has(match[1])) duplicates.push(`${file}: "${match[1]}" declared twice`);
-    seen.add(match[1]);
+  let keys;
+  if (file.endsWith(".json")) {
+    const errors = [];
+    const tree = parseTree(source, errors, { disallowComments: true, allowTrailingComma: false });
+    if (
+      errors.length ||
+      tree?.type !== "object" ||
+      !tree.children?.length ||
+      tree.children.some((property) => property.children?.[1]?.type !== "string")
+    ) {
+      throw new Error(`${file}: locale must be a nonempty JSON object of strings`);
+    }
+    keys = tree.children.map((property) => property.children[0].value);
+  } else {
+    keys = [...source.matchAll(KEY_PATTERN)].map((match) => match[1]);
+  }
+  for (const key of keys) {
+    if (seen.has(key)) duplicates.push(`${file}: "${key}" declared twice`);
+    seen.add(key);
   }
   return seen;
 }
 
 function valuesOf(file) {
-  const source = readFileSync(join(LOCALES_DIR, file), "utf8");
+  const source = readFileSync(file, "utf8");
+  if (file.endsWith(".json")) return new Map(Object.entries(JSON.parse(source)));
   const out = new Map();
   for (const match of source.matchAll(PAIR_PATTERN)) {
     out.set(match[1], match[2] ?? match[3] ?? "");
@@ -342,8 +361,26 @@ function placeholders(value) {
   return [...value.matchAll(PLACEHOLDER_PATTERN)].map((match) => match[1]).sort();
 }
 
-const files = readdirSync(LOCALES_DIR).filter((name) => name.endsWith(".ts"));
-const catalogs = new Map(files.map((file) => [file.replace(/\.ts$/, ""), keysOf(file)]));
+const catalogFiles = new Map([["en", join(LOCALES_DIR, "en.ts")]]);
+for (const directory of readdirSync(PLUGINS_DIR, { withFileTypes: true })) {
+  if (!directory.isDirectory()) continue;
+  const root = join(PLUGINS_DIR, directory.name, "package");
+  let manifest;
+  try {
+    manifest = JSON.parse(readFileSync(join(root, "plugin.json"), "utf8"));
+  } catch (error) {
+    if (error.code === "ENOENT") continue;
+    throw error;
+  }
+  const reference = manifest.extensions?.["io.github.tangerg.flame"]?.declaration;
+  if (!reference) continue;
+  const declaration = JSON.parse(readFileSync(join(root, reference), "utf8"));
+  for (const locale of declaration.contributes?.locales ?? []) {
+    if (catalogFiles.has(locale.tag)) throw new Error(`duplicate first-party locale ${locale.tag}`);
+    catalogFiles.set(locale.tag, join(root, locale.entry));
+  }
+}
+const catalogs = new Map([...catalogFiles].map(([tag, file]) => [tag, keysOf(file)]));
 
 const en = catalogs.get("en");
 if (!en) {
@@ -411,7 +448,7 @@ const HOST_LOCALE_CALL = /\.(toLocale(?:Date|Time)?String)\(/g;
 // but is indistinguishable from a path, a ratio, or honest either/or copy.
 const PLURAL_HACK = /[A-Za-zÀ-ÿ]\([a-z]{1,3}\)/;
 for (const [locale] of catalogs) {
-  for (const [key, value] of valuesOf(`${locale}.ts`)) {
+  for (const [key, value] of valuesOf(catalogFiles.get(locale))) {
     if (value.includes("...")) failures.push(`${locale}: "${key}" writes "..." — use "…"`);
     if (PLURAL_HACK.test(value)) {
       failures.push(
@@ -421,10 +458,10 @@ for (const [locale] of catalogs) {
   }
 }
 
-const enValues = valuesOf("en.ts");
+const enValues = valuesOf(catalogFiles.get("en"));
 for (const [locale] of catalogs) {
   if (locale === "en") continue;
-  const values = valuesOf(`${locale}.ts`);
+  const values = valuesOf(catalogFiles.get(locale));
   for (const [key, english] of enValues) {
     const translated = values.get(key);
     if (translated === undefined) continue; // rule 3 already reports the gap
@@ -654,8 +691,7 @@ for (const path of sourceFiles(SRC_DIR)) {
   for (const match of views.matchAll(/id:\s*"([^"]+)",\s*\n\s*title:\s*"([^"]+)"/g)) {
     const [, id, tabKey] = match;
     const headerKey = `${id.replace(/-([a-z])/g, (_, c) => c.toUpperCase())}.title`;
-    for (const file of files) {
-      const locale = file.replace(/\.ts$/, "");
+    for (const [locale, file] of catalogFiles) {
       const values = valuesOf(file);
       const tab = values.get(tabKey);
       const header = values.get(headerKey);

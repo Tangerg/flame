@@ -9,7 +9,7 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/httporigin"
+	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 )
 
 // Transport names an MCP server connection mode using the standard

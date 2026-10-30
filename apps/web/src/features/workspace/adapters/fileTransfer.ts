@@ -1,7 +1,5 @@
-import { type ClientHost } from "@/platform/host";
-import { type FileTransferPort } from "@/features/workspace/application/ports/fileTransfer";
 // Cancellation and an empty selection resolve null; a failed read of a selected file rejects.
-function pickTextFile(accept: string): Promise<string | null> {
+export function pickTextFile(accept: string): Promise<string | null> {
   return new Promise((resolve, reject) => {
     const input = document.createElement("input");
     let pending = true;
@@ -26,14 +24,4 @@ function pickTextFile(accept: string): Promise<string | null> {
     };
     input.click();
   });
-}
-
-// Saving belongs to the composed host; cancellation is an ordinary outcome, not a failure.
-export function createFileTransfer(host: Pick<ClientHost, "saveFile">): FileTransferPort {
-  return {
-    async saveText(filename, content, mime) {
-      await host.saveFile({ filename, mime, bytes: new TextEncoder().encode(content) });
-    },
-    pickText: pickTextFile,
-  };
 }

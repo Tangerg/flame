@@ -102,7 +102,7 @@ func TestPluginAcceptanceDiscoveryMidSessionActivationKeepsPrefix(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg.chatResolver = testChatResolver(client)
+	cfg.modelProviders = testChatResolver(client)
 
 	host, api := buildPluginProtocolRuntime(t, cfg)
 	t.Cleanup(func() {
@@ -336,7 +336,7 @@ func TestPluginAcceptanceDiscoveryMCPReconnectKeepsDeclarations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg.chatResolver = testChatResolver(client)
+	cfg.modelProviders = testChatResolver(client)
 	runtime := poMCPOpen(t, cfg)
 	runtime.must(delivery.MCPServersCreate, protocol.MCPServerCandidate{
 		Name: "reviews", Enabled: true,

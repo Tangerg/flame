@@ -360,6 +360,10 @@
               "signature": "func(ctx context.Context, request protocol.OpenPluginResourcesRequest, options protocol.SubscriptionOptions) (*protocol.PluginResourceLease, iter.Seq2[protocol.PluginResourceEvent, error], error)"
             },
             {
+              "name": "ReadPluginLocale",
+              "signature": "func(ctx context.Context, request protocol.ReadPluginLocaleRequest, options protocol.CallOptions) (*protocol.PluginLocaleCatalog, error)"
+            },
+            {
               "name": "ReadPluginResource",
               "signature": "func(ctx context.Context, request protocol.ReadPluginResourceRequest, options protocol.CallOptions) (*protocol.PluginResource, error)"
             },
@@ -748,6 +752,11 @@
           "value": "\"component\""
         },
         {
+          "name": "ComponentPlacementClientEffect",
+          "type": "ComponentPlacement",
+          "value": "\"clientEffect\""
+        },
+        {
           "name": "ComponentPlacementExport",
           "type": "ComponentPlacement",
           "value": "\"export\""
@@ -761,6 +770,11 @@
           "name": "ComponentPlacementSessionAction",
           "type": "ComponentPlacement",
           "value": "\"sessionAction\""
+        },
+        {
+          "name": "ComponentPlacementSettingsPane",
+          "type": "ComponentPlacement",
+          "value": "\"settingsPane\""
         },
         {
           "name": "ComponentPlacementToolResultRenderer",
@@ -836,6 +850,16 @@
           "name": "ScopeInstallation",
           "type": "untyped string",
           "value": "\"installation\""
+        },
+        {
+          "name": "SettingsIntentMCPServers",
+          "type": "SettingsIntent",
+          "value": "\"mcpServers\""
+        },
+        {
+          "name": "SettingsIntentModelProviders",
+          "type": "SettingsIntent",
+          "value": "\"modelProviders\""
         }
       ],
       "functions": [
@@ -876,6 +900,21 @@
           "kind": "defined",
           "underlying": "string",
           "methods": [
+            {
+              "name": "Values",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "SettingsIntent",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "Valid",
+              "signature": "func() bool"
+            },
             {
               "name": "Values",
               "signature": "func() []string"
@@ -1024,6 +1063,345 @@
             {
               "name": "Unwrap",
               "signature": "func() error"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/hook",
+      "constants": [
+        {
+          "name": "CommandAllow",
+          "type": "CommandVerdict",
+          "value": "\"allow\""
+        },
+        {
+          "name": "CommandAsk",
+          "type": "CommandVerdict",
+          "value": "\"ask\""
+        },
+        {
+          "name": "CommandDeny",
+          "type": "CommandVerdict",
+          "value": "\"deny\""
+        },
+        {
+          "name": "MaxArgumentsBytes",
+          "type": "untyped int",
+          "value": "262144"
+        },
+        {
+          "name": "MaxConfigurationFileBytes",
+          "type": "int64",
+          "value": "262144"
+        },
+        {
+          "name": "MaxHooksPerCascade",
+          "type": "untyped int",
+          "value": "256"
+        },
+        {
+          "name": "MaxPromptBytes",
+          "type": "untyped int",
+          "value": "262144"
+        },
+        {
+          "name": "MaxTimeoutMillis",
+          "type": "untyped int",
+          "value": "300000"
+        },
+        {
+          "name": "Notification",
+          "type": "Event",
+          "value": "\"Notification\""
+        },
+        {
+          "name": "PostToolUse",
+          "type": "Event",
+          "value": "\"PostToolUse\""
+        },
+        {
+          "name": "PreCompact",
+          "type": "Event",
+          "value": "\"PreCompact\""
+        },
+        {
+          "name": "PreToolUse",
+          "type": "Event",
+          "value": "\"PreToolUse\""
+        },
+        {
+          "name": "ScopeGlobal",
+          "type": "Scope",
+          "value": "\"global\""
+        },
+        {
+          "name": "ScopeProject",
+          "type": "Scope",
+          "value": "\"project\""
+        },
+        {
+          "name": "SessionStart",
+          "type": "Event",
+          "value": "\"SessionStart\""
+        },
+        {
+          "name": "Stop",
+          "type": "Event",
+          "value": "\"Stop\""
+        },
+        {
+          "name": "UserPromptSubmit",
+          "type": "Event",
+          "value": "\"UserPromptSubmit\""
+        }
+      ],
+      "variables": [
+        {
+          "name": "ErrConfigurationTooLarge",
+          "type": "error"
+        },
+        {
+          "name": "ErrInvalidHook",
+          "type": "error"
+        }
+      ],
+      "functions": [
+        {
+          "name": "ValidateConfigurationFileSize",
+          "signature": "func(size int64) error"
+        },
+        {
+          "name": "ValidateHookCascade",
+          "signature": "func(count int) error"
+        },
+        {
+          "name": "ValidateHooksPerFile",
+          "signature": "func(count int) error"
+        }
+      ],
+      "types": [
+        {
+          "name": "CommandDecision",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Verdict",
+              "type": "CommandVerdict",
+              "tag": "json:\"verdict\""
+            },
+            {
+              "name": "Reason",
+              "type": "string",
+              "tag": "json:\"reason,omitempty\""
+            },
+            {
+              "name": "InjectContext",
+              "type": "string",
+              "tag": "json:\"injectContext,omitempty\""
+            },
+            {
+              "name": "RewriteArguments",
+              "type": "string",
+              "tag": "json:\"rewriteArguments,omitempty\""
+            }
+          ]
+        },
+        {
+          "name": "CommandVerdict",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            },
+            {
+              "name": "Valid",
+              "signature": "func() bool"
+            }
+          ]
+        },
+        {
+          "name": "Event",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "Hook",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Event",
+              "type": "Event",
+              "tag": "json:\"event\""
+            },
+            {
+              "name": "Matcher",
+              "type": "string",
+              "tag": "json:\"matcher,omitempty\""
+            },
+            {
+              "name": "Command",
+              "type": "string",
+              "tag": "json:\"command,omitempty\""
+            },
+            {
+              "name": "Inject",
+              "type": "string",
+              "tag": "json:\"inject,omitempty\""
+            },
+            {
+              "name": "TimeoutMillis",
+              "type": "int",
+              "tag": "json:\"timeoutMillis,omitzero\""
+            },
+            {
+              "name": "Scope",
+              "type": "Scope",
+              "tag": "json:\"scope\""
+            },
+            {
+              "name": "Source",
+              "type": "string",
+              "tag": "json:\"source\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Matches",
+              "signature": "func(in Input) bool"
+            },
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Input",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Event",
+              "type": "Event",
+              "tag": "json:\"event\""
+            },
+            {
+              "name": "SessionID",
+              "type": "string",
+              "tag": "json:\"sessionId,omitempty\""
+            },
+            {
+              "name": "CWD",
+              "type": "string",
+              "tag": "json:\"cwd,omitempty\""
+            },
+            {
+              "name": "Tool",
+              "type": "*ToolInput",
+              "tag": "json:\"tool,omitzero\""
+            },
+            {
+              "name": "Prompt",
+              "type": "string",
+              "tag": "json:\"prompt,omitempty\""
+            },
+            {
+              "name": "PromptTruncated",
+              "type": "bool",
+              "tag": "json:\"promptTruncated,omitzero\""
+            },
+            {
+              "name": "Reason",
+              "type": "string",
+              "tag": "json:\"reason,omitempty\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "CommandProjection",
+              "signature": "func() (Input, error)"
+            },
+            {
+              "name": "ValidateCommandMaterial",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Scope",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "ToolInput",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Name",
+              "type": "string",
+              "tag": "json:\"name\""
+            },
+            {
+              "name": "Arguments",
+              "type": "string",
+              "tag": "json:\"arguments,omitempty\""
+            },
+            {
+              "name": "Result",
+              "type": "string",
+              "tag": "json:\"result,omitempty\""
+            },
+            {
+              "name": "ResultTruncated",
+              "type": "bool",
+              "tag": "json:\"resultTruncated,omitzero\""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/httporigin",
+      "imports": [
+        "net/url"
+      ],
+      "functions": [
+        {
+          "name": "FromURL",
+          "signature": "func(u *url.URL) (Origin, error)"
+        },
+        {
+          "name": "Parse",
+          "signature": "func(raw string) (Origin, error)"
+        },
+        {
+          "name": "Same",
+          "signature": "func(left string, right string) bool"
+        }
+      ],
+      "types": [
+        {
+          "name": "Origin",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "String",
+              "signature": "func() string"
             }
           ]
         }
@@ -1594,7 +1972,8 @@
       "path": "github.com/Tangerg/flame/packages/go-sdk/model/catalog",
       "imports": [
         "github.com/Tangerg/flame/packages/go-sdk/model",
-        "github.com/Tangerg/scope/core/chat"
+        "github.com/Tangerg/scope/core/chat",
+        "github.com/Tangerg/scope/models/catalog"
       ],
       "variables": [
         {
@@ -1606,18 +1985,24 @@
           "type": "error"
         }
       ],
+      "functions": [
+        {
+          "name": "NewAdmission",
+          "signature": "func(selection model.Selection, metadata *catalog.Model) (Admission, error)"
+        }
+      ],
       "types": [
         {
-          "name": "Selections",
+          "name": "Admission",
           "kind": "struct",
           "methods": [
             {
               "name": "AdmitInput",
-              "signature": "func(selection model.Selection, messages []chat.Message) error"
+              "signature": "func(messages []chat.Message) error"
             },
             {
-              "name": "AdmitSelection",
-              "signature": "func(selection model.Selection) error"
+              "name": "Selection",
+              "signature": "func() model.Selection"
             }
           ]
         }
@@ -2193,6 +2578,327 @@
       ]
     },
     {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/codeintel",
+      "imports": [
+        "github.com/Tangerg/flame/qimu/mcp",
+        "github.com/Tangerg/flame/qimu/portable"
+      ],
+      "constants": [
+        {
+          "name": "MaxDocumentBytes",
+          "type": "untyped int",
+          "value": "2097152"
+        },
+        {
+          "name": "MaxProblems",
+          "type": "untyped int",
+          "value": "4096"
+        },
+        {
+          "name": "MaxSummaryBytes",
+          "type": "untyped int",
+          "value": "65536"
+        }
+      ],
+      "functions": [
+        {
+          "name": "Contract",
+          "signature": "func() (*portable.Capability, error)"
+        },
+        {
+          "name": "FormatMethod",
+          "signature": "func() (*mcp.Method[Document, Transformation], error)"
+        },
+        {
+          "name": "InspectMethod",
+          "signature": "func() (*mcp.Method[Inspection, Report], error)"
+        },
+        {
+          "name": "NewDocument",
+          "signature": "func(workspace string, path string, content string) (Document, error)"
+        }
+      ],
+      "types": [
+        {
+          "name": "Document",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Workspace",
+              "type": "string",
+              "tag": "json:\"workspace\""
+            },
+            {
+              "name": "Path",
+              "type": "string",
+              "tag": "json:\"path\""
+            },
+            {
+              "name": "Version",
+              "type": "string",
+              "tag": "json:\"version\" jsonschema:\"pattern=^[a-f0-9]{64}$\""
+            },
+            {
+              "name": "Content",
+              "type": "string",
+              "tag": "json:\"content\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Inspection",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Document",
+              "type": "Document",
+              "tag": "json:\"document\""
+            },
+            {
+              "name": "Baseline",
+              "type": "[]string",
+              "tag": "json:\"baseline\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Report",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Version",
+              "type": "string",
+              "tag": "json:\"version\" jsonschema:\"pattern=^[a-f0-9]{64}$\""
+            },
+            {
+              "name": "Problems",
+              "type": "[]string",
+              "tag": "json:\"problems\""
+            },
+            {
+              "name": "Summary",
+              "type": "string",
+              "tag": "json:\"summary\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func(source Document) error"
+            }
+          ]
+        },
+        {
+          "name": "Transformation",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Version",
+              "type": "string",
+              "tag": "json:\"version\" jsonschema:\"pattern=^[a-f0-9]{64}$\""
+            },
+            {
+              "name": "Content",
+              "type": "*string",
+              "tag": "json:\"content,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func(source Document) error"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider",
+      "imports": [
+        "github.com/Tangerg/flame/packages/go-sdk/hook",
+        "github.com/Tangerg/flame/qimu/mcp",
+        "github.com/Tangerg/flame/qimu/portable"
+      ],
+      "constants": [
+        {
+          "name": "Canceled",
+          "type": "FailureKind",
+          "value": "\"canceled\""
+        },
+        {
+          "name": "Failed",
+          "type": "FailureKind",
+          "value": "\"failed\""
+        },
+        {
+          "name": "MaxCommandInputBytes",
+          "type": "untyped int",
+          "value": "524288"
+        },
+        {
+          "name": "MaxCommandOutputBytes",
+          "type": "untyped int",
+          "value": "65536"
+        },
+        {
+          "name": "TimedOut",
+          "type": "FailureKind",
+          "value": "\"timedOut\""
+        }
+      ],
+      "functions": [
+        {
+          "name": "Contract",
+          "signature": "func() (*portable.Capability, error)"
+        },
+        {
+          "name": "DiscoverMethod",
+          "signature": "func() (*mcp.Method[Discovery, []hook.Hook], error)"
+        },
+        {
+          "name": "ExecuteMethod",
+          "signature": "func() (*mcp.Method[Command, Result], error)"
+        }
+      ],
+      "types": [
+        {
+          "name": "Command",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Command",
+              "type": "string",
+              "tag": "json:\"command\""
+            },
+            {
+              "name": "CWD",
+              "type": "string",
+              "tag": "json:\"cwd\""
+            },
+            {
+              "name": "Input",
+              "type": "hook.Input",
+              "tag": "json:\"input\""
+            },
+            {
+              "name": "TimeoutMillis",
+              "type": "int64",
+              "tag": "json:\"timeoutMillis\" jsonschema:\"minimum=1\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Discovery",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "CWD",
+              "type": "string",
+              "tag": "json:\"cwd\""
+            },
+            {
+              "name": "ProjectRoot",
+              "type": "string",
+              "tag": "json:\"projectRoot\""
+            },
+            {
+              "name": "Home",
+              "type": "string",
+              "tag": "json:\"home,omitempty\""
+            },
+            {
+              "name": "IncludeProject",
+              "type": "bool",
+              "tag": "json:\"includeProject\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Failure",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Kind",
+              "type": "FailureKind",
+              "tag": "json:\"kind\""
+            },
+            {
+              "name": "Message",
+              "type": "string",
+              "tag": "json:\"message\""
+            }
+          ]
+        },
+        {
+          "name": "FailureKind",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "Result",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Decision",
+              "type": "*hook.CommandDecision",
+              "tag": "json:\"decision,omitzero\""
+            },
+            {
+              "name": "Stderr",
+              "type": "string",
+              "tag": "json:\"stderr,omitempty\""
+            },
+            {
+              "name": "ExitCode",
+              "type": "int",
+              "tag": "json:\"exitCode\""
+            },
+            {
+              "name": "Failure",
+              "type": "*Failure",
+              "tag": "json:\"failure,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/memory",
       "imports": [
         "time"
@@ -2739,6 +3445,719 @@
       ]
     },
     {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider",
+      "imports": [
+        "encoding/json/jsontext",
+        "fmt",
+        "github.com/Tangerg/flame/qimu/mcp",
+        "github.com/Tangerg/flame/qimu/portable",
+        "github.com/Tangerg/scope/core/chat",
+        "github.com/Tangerg/scope/core/embedding",
+        "github.com/Tangerg/scope/models/catalog"
+      ],
+      "constants": [
+        {
+          "name": "BundledModels",
+          "type": "ModelSource",
+          "value": "\"bundled\""
+        },
+        {
+          "name": "Canceled",
+          "type": "FailureKind",
+          "value": "\"canceled\""
+        },
+        {
+          "name": "EndpointModels",
+          "type": "ModelSource",
+          "value": "\"endpoint\""
+        },
+        {
+          "name": "Internal",
+          "type": "FailureKind",
+          "value": "\"internal\""
+        },
+        {
+          "name": "InvalidCredentials",
+          "type": "FailureKind",
+          "value": "\"invalid_credentials\""
+        },
+        {
+          "name": "KeyOptional",
+          "type": "Authentication",
+          "value": "\"keyOptional\""
+        },
+        {
+          "name": "KeyRequired",
+          "type": "Authentication",
+          "value": "\"keyRequired\""
+        },
+        {
+          "name": "ProviderRejected",
+          "type": "FailureKind",
+          "value": "\"provider_rejected\""
+        },
+        {
+          "name": "ProviderUnavailable",
+          "type": "FailureKind",
+          "value": "\"provider_unavailable\""
+        },
+        {
+          "name": "RateLimited",
+          "type": "FailureKind",
+          "value": "\"rate_limited\""
+        },
+        {
+          "name": "Reference",
+          "type": "untyped string",
+          "value": "\"flame.model-provider.v1\""
+        },
+        {
+          "name": "Timeout",
+          "type": "FailureKind",
+          "value": "\"timeout\""
+        }
+      ],
+      "functions": [
+        {
+          "name": "CallMethod",
+          "signature": "func() (*mcp.Method[ChatRequest, ChatResult], error)"
+        },
+        {
+          "name": "CloseMethod",
+          "signature": "func() (*mcp.Method[Handle, struct{}], error)"
+        },
+        {
+          "name": "Contract",
+          "signature": "func() (*portable.Capability, error)"
+        },
+        {
+          "name": "CountMethod",
+          "signature": "func() (*mcp.Method[ChatRequest, TokenCount], error)"
+        },
+        {
+          "name": "EmbedMethod",
+          "signature": "func() (*mcp.Method[EmbeddingRequest, EmbeddingResult], error)"
+        },
+        {
+          "name": "OpenChatMethod",
+          "signature": "func() (*mcp.Method[Open, Chat], error)"
+        },
+        {
+          "name": "OpenEmbeddingMethod",
+          "signature": "func() (*mcp.Method[Open, Embedder], error)"
+        },
+        {
+          "name": "ProfilesMethod",
+          "signature": "func() (*mcp.Method[struct{}, []Profile], error)"
+        },
+        {
+          "name": "RemoteModelsMethod",
+          "signature": "func() (*mcp.Method[Connection, []string], error)"
+        },
+        {
+          "name": "ReopenChatMethod",
+          "signature": "func() (*mcp.Method[Reopen, Chat], error)"
+        },
+        {
+          "name": "StreamMethod",
+          "signature": "func() (*mcp.StreamingMethod[ChatRequest, chat.ResponseDelta, ChatResult], error)"
+        }
+      ],
+      "types": [
+        {
+          "name": "Authentication",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "Chat",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Handle",
+              "type": "Handle"
+            },
+            {
+              "name": "Original",
+              "type": "string",
+              "tag": "json:\"original\" jsonschema:\"pattern=\\\\S,maxLength=256\""
+            },
+            {
+              "name": "Provider",
+              "type": "string",
+              "tag": "json:\"provider\""
+            },
+            {
+              "name": "Model",
+              "type": "string",
+              "tag": "json:\"model\""
+            },
+            {
+              "name": "Streaming",
+              "type": "bool",
+              "tag": "json:\"streaming\""
+            },
+            {
+              "name": "TokenCounting",
+              "type": "bool",
+              "tag": "json:\"tokenCounting\""
+            },
+            {
+              "name": "Metadata",
+              "type": "*catalog.Model",
+              "tag": "json:\"metadata,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "ChatRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Handle",
+              "type": "Handle",
+              "tag": "json:\"handle\""
+            },
+            {
+              "name": "Request",
+              "type": "chat.Request",
+              "tag": "json:\"request\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "ChatResult",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Response",
+              "type": "*chat.Response",
+              "tag": "json:\"response,omitzero\""
+            },
+            {
+              "name": "Failure",
+              "type": "*Failure",
+              "tag": "json:\"failure,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Connection",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Provider",
+              "type": "string",
+              "tag": "json:\"provider\""
+            },
+            {
+              "name": "APIKey",
+              "type": "string",
+              "tag": "json:\"apiKey,omitempty\""
+            },
+            {
+              "name": "BaseURL",
+              "type": "string",
+              "tag": "json:\"baseURL,omitempty\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Format",
+              "signature": "func(state fmt.State, _ rune)"
+            },
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Embedder",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Handle",
+              "type": "Handle"
+            },
+            {
+              "name": "Provider",
+              "type": "string",
+              "tag": "json:\"provider\""
+            },
+            {
+              "name": "Model",
+              "type": "string",
+              "tag": "json:\"model\""
+            },
+            {
+              "name": "Space",
+              "type": "string",
+              "tag": "json:\"space\" jsonschema:\"pattern=\\\\S\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "EmbeddingProfile",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "DefaultModel",
+              "type": "string",
+              "tag": "json:\"defaultModel,omitempty\""
+            }
+          ]
+        },
+        {
+          "name": "EmbeddingRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Handle",
+              "type": "Handle",
+              "tag": "json:\"handle\""
+            },
+            {
+              "name": "Request",
+              "type": "jsontext.Value",
+              "tag": "json:\"request\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Native",
+              "signature": "func() (*embedding.Request, error)"
+            }
+          ]
+        },
+        {
+          "name": "EmbeddingResult",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Response",
+              "type": "jsontext.Value",
+              "tag": "json:\"response,omitzero\""
+            },
+            {
+              "name": "Failure",
+              "type": "*Failure",
+              "tag": "json:\"failure,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Native",
+              "signature": "func() (*embedding.Response, error)"
+            },
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Failure",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Kind",
+              "type": "FailureKind",
+              "tag": "json:\"kind\""
+            },
+            {
+              "name": "Execution",
+              "type": "chat.CallFailureKind",
+              "tag": "json:\"execution\""
+            },
+            {
+              "name": "RetryAfterMillis",
+              "type": "int64",
+              "tag": "json:\"retryAfterMillis,omitzero\" jsonschema:\"minimum=0\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "FailureKind",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "Handle",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\" jsonschema:\"pattern=^[a-f0-9]{64}$\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "ModelSource",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "Open",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Connection",
+              "type": "Connection",
+              "tag": "json:\"connection\""
+            },
+            {
+              "name": "Model",
+              "type": "string",
+              "tag": "json:\"model\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Profile",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Authentication",
+              "type": "Authentication",
+              "tag": "json:\"authentication\""
+            },
+            {
+              "name": "EndpointRequired",
+              "type": "bool",
+              "tag": "json:\"endpointRequired\""
+            },
+            {
+              "name": "ModelSource",
+              "type": "ModelSource",
+              "tag": "json:\"modelSource\""
+            },
+            {
+              "name": "DefaultModel",
+              "type": "string",
+              "tag": "json:\"defaultModel,omitempty\""
+            },
+            {
+              "name": "Embedding",
+              "type": "*EmbeddingProfile",
+              "tag": "json:\"embedding,omitzero\""
+            },
+            {
+              "name": "Models",
+              "type": "[]catalog.Model",
+              "tag": "json:\"models\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Reopen",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Original",
+              "type": "string",
+              "tag": "json:\"original\" jsonschema:\"pattern=\\\\S,maxLength=256\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "TokenCount",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Count",
+              "type": "*int64",
+              "tag": "json:\"count,omitzero\" jsonschema:\"minimum=0\""
+            },
+            {
+              "name": "Failure",
+              "type": "*Failure",
+              "tag": "json:\"failure,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning",
+      "imports": [
+        "github.com/Tangerg/flame/qimu/mcp",
+        "github.com/Tangerg/flame/qimu/portable",
+        "time"
+      ],
+      "constants": [
+        {
+          "name": "MaxCallbackBytes",
+          "type": "int64",
+          "value": "16777216"
+        },
+        {
+          "name": "MaxModelCalls",
+          "type": "untyped int",
+          "value": "2"
+        },
+        {
+          "name": "MaxModelInputBytes",
+          "type": "untyped int",
+          "value": "524288"
+        },
+        {
+          "name": "MaxModelOutputTokens",
+          "type": "int64",
+          "value": "4096"
+        },
+        {
+          "name": "MaxTranscriptBytes",
+          "type": "untyped int",
+          "value": "2097152"
+        }
+      ],
+      "functions": [
+        {
+          "name": "ArchiveMethod",
+          "signature": "func() (*mcp.Method[ArchiveRequest, ArchiveAdvice], error)"
+        },
+        {
+          "name": "Contract",
+          "signature": "func() (*portable.Capability, error)"
+        },
+        {
+          "name": "ConversationMethod",
+          "signature": "func() (*mcp.Method[struct{}, Conversation], error)"
+        },
+        {
+          "name": "MineMethod",
+          "signature": "func() (*mcp.Method[Run, MineResult], error)"
+        },
+        {
+          "name": "ReadSkillMethod",
+          "signature": "func() (*mcp.Method[ReadSkill, ReadResult], error)"
+        }
+      ],
+      "types": [
+        {
+          "name": "ArchiveAdvice",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "AfterMillis",
+              "type": "*int64",
+              "tag": "json:\"afterMillis,omitzero\" jsonschema:\"minimum=1\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Duration",
+              "signature": "func() (time.Duration, error)"
+            }
+          ]
+        },
+        {
+          "name": "ArchiveRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Now",
+              "type": "time.Time",
+              "tag": "json:\"now\""
+            }
+          ]
+        },
+        {
+          "name": "Conversation",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "MessageCount",
+              "type": "int64",
+              "tag": "json:\"messageCount\" jsonschema:\"minimum=0\""
+            },
+            {
+              "name": "Transcript",
+              "type": "string",
+              "tag": "json:\"transcript\""
+            }
+          ]
+        },
+        {
+          "name": "MineResult",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Proposal",
+              "type": "*Proposal",
+              "tag": "json:\"proposal,omitzero\""
+            }
+          ]
+        },
+        {
+          "name": "Proposal",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Skill",
+              "type": "Skill",
+              "tag": "json:\"skill\""
+            },
+            {
+              "name": "Revises",
+              "type": "bool",
+              "tag": "json:\"revises\""
+            }
+          ]
+        },
+        {
+          "name": "ReadResult",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Skill",
+              "type": "*Skill",
+              "tag": "json:\"skill,omitzero\""
+            }
+          ]
+        },
+        {
+          "name": "ReadSkill",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Name",
+              "type": "string",
+              "tag": "json:\"name\""
+            }
+          ]
+        },
+        {
+          "name": "Run",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "SessionID",
+              "type": "string",
+              "tag": "json:\"sessionId\""
+            },
+            {
+              "name": "ToolCalls",
+              "type": "int64",
+              "tag": "json:\"toolCalls\" jsonschema:\"minimum=0\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Skill",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Name",
+              "type": "string",
+              "tag": "json:\"name\""
+            },
+            {
+              "name": "Description",
+              "type": "string",
+              "tag": "json:\"description\""
+            },
+            {
+              "name": "Instructions",
+              "type": "string",
+              "tag": "json:\"instructions\""
+            }
+          ]
+        }
+      ]
+    },
+    {
       "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite",
       "imports": [
         "context",
@@ -2817,6 +4236,22 @@
               "signature": "func() bool"
             }
           ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/procgroup",
+      "imports": [
+        "os/exec"
+      ],
+      "functions": [
+        {
+          "name": "Prepare",
+          "signature": "func(command *exec.Cmd)"
+        },
+        {
+          "name": "Stop",
+          "signature": "func(command *exec.Cmd) error"
         }
       ]
     },
@@ -3159,11 +4594,6 @@
           "name": "FeatureIsolation",
           "type": "untyped string",
           "value": "\"isolation\""
-        },
-        {
-          "name": "FeatureLSP",
-          "type": "untyped string",
-          "value": "\"lsp\""
         },
         {
           "name": "FeatureMCP",
@@ -4441,11 +5871,6 @@
           "value": "\"web\""
         },
         {
-          "name": "ToolRefA2A",
-          "type": "ToolRefType",
-          "value": "\"a2a\""
-        },
-        {
           "name": "ToolRefBuiltIn",
           "type": "ToolRefType",
           "value": "\"builtIn\""
@@ -4543,7 +5968,7 @@
         {
           "name": "Version",
           "type": "untyped string",
-          "value": "\"2026-10-24.1\""
+          "value": "\"2026-10-30.2\""
         },
         {
           "name": "WorkspaceAvailable",
@@ -8552,6 +9977,11 @@
               "name": "Material",
               "type": "string",
               "tag": "json:\"material,omitzero\""
+            },
+            {
+              "name": "SettingsIntent",
+              "type": "extension.SettingsIntent",
+              "tag": "json:\"settingsIntent,omitzero\""
             }
           ]
         },
@@ -8821,6 +10251,33 @@
           ]
         },
         {
+          "name": "PluginLocale",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Tag",
+              "type": "string",
+              "tag": "json:\"tag\""
+            },
+            {
+              "name": "Title",
+              "type": "string",
+              "tag": "json:\"title\""
+            }
+          ]
+        },
+        {
+          "name": "PluginLocaleCatalog",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Messages",
+              "type": "map[string]string",
+              "tag": "json:\"messages\""
+            }
+          ]
+        },
+        {
           "name": "PluginOperationBinding",
           "kind": "struct",
           "fields": [
@@ -9030,6 +10487,11 @@
               "name": "Themes",
               "type": "[]PluginTheme",
               "tag": "json:\"themes\""
+            },
+            {
+              "name": "Locales",
+              "type": "[]PluginLocale",
+              "tag": "json:\"locales\""
             },
             {
               "name": "Skills",
@@ -9594,6 +11056,21 @@
               "name": "MaxBytes",
               "type": "*int",
               "tag": "json:\"maxBytes,omitzero\""
+            }
+          ]
+        },
+        {
+          "name": "ReadPluginLocaleRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "PluginReleaseRequest",
+              "type": "PluginReleaseRequest"
+            },
+            {
+              "name": "Tag",
+              "type": "string",
+              "tag": "json:\"tag\""
             }
           ]
         },
@@ -11443,11 +12920,6 @@
               "tag": "json:\"name,omitempty\""
             },
             {
-              "name": "Endpoint",
-              "type": "string",
-              "tag": "json:\"endpoint,omitempty\""
-            },
-            {
               "name": "Server",
               "type": "*MCPServerID",
               "tag": "json:\"server,omitzero\""
@@ -12528,6 +14000,10 @@
             {
               "name": "OpenPluginResources",
               "signature": "func(ctx context.Context, request protocol.OpenPluginResourcesRequest, options protocol.SubscriptionOptions) (*protocol.PluginResourceLease, iter.Seq2[protocol.PluginResourceEvent, error], error)"
+            },
+            {
+              "name": "ReadPluginLocale",
+              "signature": "func(ctx context.Context, request protocol.ReadPluginLocaleRequest, options protocol.CallOptions) (*protocol.PluginLocaleCatalog, error)"
             },
             {
               "name": "ReadPluginResource",

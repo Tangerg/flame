@@ -1,0 +1,23 @@
+{
+  "protocol": "io.github.tangerg.flame/plugin/1",
+  "components": [
+    {
+      "id": "settings",
+      "title": "Providers",
+      "scope": "client",
+      "placement": "settingsPane",
+      "settingsIntent": "modelProviders",
+      "material": "providers",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "Providers"
+    }
+  ],
+  "contributions": [
+    {
+      "id": "model-provider",
+      "server": "providers",
+      "export": "model-provider",
+      "contract": "io.github.tangerg.flame/contracts/capability.generated.json"
+    }
+  ]
+}

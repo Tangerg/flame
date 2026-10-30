@@ -30,6 +30,7 @@ type packages interface {
 	Prepare(context.Context, *plugin.Installation, plugin.Release) error
 	Realize(context.Context, *plugin.Installation, plugin.Release) (Realization, error)
 	ReadResource(context.Context, *plugin.Installation, string) ([]byte, error)
+	ReadLocale(context.Context, *plugin.Installation, plugin.Locale) (map[string]string, error)
 }
 
 // Candidate is one package's admitted bytes awaiting publication. Only an

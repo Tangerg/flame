@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
+	"github.com/samber/lo"
 )
 
 // MemoryMaintenance runs after successful Scope Interaction completion, before
@@ -14,22 +15,20 @@ type MemoryMaintenance interface {
 	MaintainMemory(context.Context, executionadapter.RunMaintenanceInput) error
 }
 
-type Pipeline struct {
-	consolidator  MemoryMaintenance
-	skillMiner    *SkillProposalMiner
-	skillArchiver *IdleSkillArchiver
+type SkillsMaintenance interface {
+	MaintainSkills(context.Context, executionadapter.RunMaintenanceInput) error
 }
 
-// NewPipeline composes maintenance workers for successful Scope Interaction completion.
-func NewPipeline(consolidator MemoryMaintenance, skillMiner *SkillProposalMiner, skillArchiver *IdleSkillArchiver) (*Pipeline, error) {
-	if consolidator == nil || skillMiner == nil || skillArchiver == nil {
+type Pipeline struct {
+	memory MemoryMaintenance
+	skills SkillsMaintenance
+}
+
+func NewPipeline(memory MemoryMaintenance, skills SkillsMaintenance) (*Pipeline, error) {
+	if lo.IsNil(memory) || lo.IsNil(skills) {
 		return nil, errors.New("maintenance: all pipeline workers are required")
 	}
-	return &Pipeline{
-		consolidator:  consolidator,
-		skillMiner:    skillMiner,
-		skillArchiver: skillArchiver,
-	}, nil
+	return &Pipeline{memory: memory, skills: skills}, nil
 }
 
 // Maintain completes one best-effort maintenance pass. Memory consolidation is
@@ -38,13 +37,10 @@ func NewPipeline(consolidator MemoryMaintenance, skillMiner *SkillProposalMiner,
 // reduction decision from a partial request projection.
 func (p *Pipeline) Maintain(ctx context.Context, input executionadapter.RunMaintenanceInput) executionadapter.RunMaintenanceResult {
 	result := executionadapter.RunMaintenanceResult{}
-	if err := p.skillMiner.MineIfDue(ctx, input.SessionID, input.WorkspaceCWD, input.ToolCalls); err != nil {
+	if err := p.skills.MaintainSkills(ctx, input); err != nil {
 		result.Errors = append(result.Errors, err)
 	}
-	if err := p.skillArchiver.ArchiveIfDue(ctx); err != nil {
-		result.Errors = append(result.Errors, err)
-	}
-	if err := p.consolidator.MaintainMemory(ctx, input); err != nil {
+	if err := p.memory.MaintainMemory(ctx, input); err != nil {
 		result.Errors = append(result.Errors, err)
 	}
 	return result

@@ -1,3 +1,4 @@
+import { unavailableComponentNotifications } from "@/test/unavailableNotifications";
 import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
 import { createTestClient, type TestClient } from "@/test/renderClient";
 import { mockSelectLayout } from "@/test/selectLayout";
@@ -45,12 +46,20 @@ beforeEach(() => {
     saveFile() {
       throw new Error("This fixture must not save files");
     },
+    notifications: unavailableComponentNotifications,
+    subscribeRootRunSettlements() {
+      throw new Error("This fixture must not observe run settlements");
+    },
+    registerCommand() {
+      throw new Error("This fixture must not register client commands");
+    },
     compose() {
       throw new Error("Composition is not used by this fixture");
     },
     runtime: client,
     locale: "en",
     signal: owner.signal,
+
     binding: {
       installationId: "e4407303-68e3-495d-86d6-9c3f575a51ed",
       digest: "a".repeat(64),

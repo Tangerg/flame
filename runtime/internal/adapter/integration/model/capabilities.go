@@ -1,5 +1,3 @@
-// Package model adapts provider configuration, static catalogs, chat clients,
-// and embedding clients to Runtime application ports.
 package model
 
 import (
@@ -8,90 +6,137 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	modelcatalog "github.com/Tangerg/flame/packages/go-sdk/model/catalog"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	modelsapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/scope/core/chat"
 	catalog "github.com/Tangerg/scope/models/catalog"
+	"github.com/google/uuid"
 	"github.com/samber/lo"
 )
 
-// Capabilities implements the three model-configuration ports consumed by
-// model use cases: static catalog lookup, credential probing, and remote listing.
-// Keeping them together is justified because they share one provider
-// integration boundary.
-type Capabilities struct{}
-
-const (
-	providerProbePrompt      = "ping"
-	minimumProbeOutputTokens = int64(1)
-)
-
-func (Capabilities) Supported() []modelsapp.ProviderMetadata {
-	supported := supportedProviders()
-	out := make([]modelsapp.ProviderMetadata, 0, len(supported))
-	for _, value := range supported {
-		out = append(out, providerMetadata(value))
-	}
-	return out
+type providerCapabilities interface {
+	Profiles(context.Context) ([]modelprovider.Profile, error)
+	RemoteModels(context.Context, modelprovider.Connection) ([]string, error)
+	OpenChat(context.Context, modelchoice.Selection, modelprovider.Connection) (ResolvedChat, error)
 }
 
-func (Capabilities) Metadata(id string) (modelsapp.ProviderMetadata, bool) {
-	profile, found := LookupProvider(Provider(id))
-	if !found {
-		return modelsapp.ProviderMetadata{}, false
-	}
-	return providerMetadata(profile), true
+type Capabilities struct {
+	adapters providerCapabilities
+	journal  endpointJournal
 }
 
-func (Capabilities) Models(providerID string) []modelsapp.Model {
-	entries := catalog.Default.Models(providerID)
-	out := make([]modelsapp.Model, 0, len(entries))
-	for _, entry := range entries {
-		out = append(out, catalogModel(providerID, entry))
+func NewCapabilities(adapters providerCapabilities, journal endpointJournal) (*Capabilities, error) {
+	if lo.IsNil(adapters) || lo.IsNil(journal) {
+		return nil, errors.New("model: installed provider adapters and endpoint evidence are required")
 	}
-	return out
+	return &Capabilities{adapters: adapters, journal: journal}, nil
 }
 
-func (Capabilities) LookupModel(providerID, modelID string) (modelsapp.Model, bool) {
-	entry, ok := catalog.Default.Lookup(providerID, modelID)
-	if !ok {
-		return modelsapp.Model{}, false
+func (c *Capabilities) Profiles(ctx context.Context) ([]modelsapp.ProviderProfile, error) {
+	profiles, err := c.adapters.Profiles(ctx)
+	if err != nil {
+		return nil, err
 	}
-	return catalogModel(providerID, entry), true
+	result := make([]modelsapp.ProviderProfile, 0, len(profiles))
+	for _, profile := range profiles {
+		if err := profile.Validate(); err != nil {
+			return nil, err
+		}
+		meta, err := providerMetadata(profile)
+		if err != nil {
+			return nil, err
+		}
+		models := make([]modelsapp.Model, 0, len(profile.Models))
+		for _, entry := range profile.Models {
+			model, err := catalogModel(profile.ID, entry)
+			if err != nil {
+				return nil, fmt.Errorf("model: catalog facts for %s/%s: %w", profile.ID, entry.ID, err)
+			}
+			models = append(models, model)
+		}
+		result = append(result, modelsapp.ProviderProfile{Metadata: meta, Models: models})
+	}
+	return result, nil
 }
 
-func (Capabilities) Probe(ctx context.Context, entry provider.Provider) error {
-	inputs, err := resolveProviderClientInputs(entry.ID(), entry)
+func (c *Capabilities) AdmitSelection(ctx context.Context, selection modelchoice.Selection) error {
+	if err := selection.ValidateExact(); err != nil {
+		return err
+	}
+	profiles, err := c.adapters.Profiles(ctx)
 	if err != nil {
 		return err
 	}
-	if inputs.profile.DiscoversModelsAtEndpoint() {
-		models, err := remoteModelIDs(ctx, inputs)
+	for _, profile := range profiles {
+		if profile.ID != selection.Provider() {
+			continue
+		}
+		if err := profile.Validate(); err != nil {
+			return err
+		}
+		var metadata *catalog.Model
+		for _, entry := range profile.Models {
+			if entry.ID == selection.Model() {
+				owned := entry.Clone()
+				metadata = &owned
+				break
+			}
+		}
+		_, err := modelcatalog.NewAdmission(selection, metadata)
+		return err
+	}
+	return fmt.Errorf("%w: %w: %s", modelchoice.ErrUnsupported, modelsapp.ErrProviderUnsupported, selection.Provider())
+}
+
+func (c *Capabilities) Probe(ctx context.Context, entry provider.Provider) (returned error) {
+	profiles, err := c.adapters.Profiles(ctx)
+	if err != nil {
+		return err
+	}
+	index := slices.IndexFunc(profiles, func(profile modelprovider.Profile) bool { return profile.ID == entry.ID() })
+	if index < 0 {
+		return modelsapp.ErrProviderUnsupported
+	}
+	profile := profiles[index]
+	connection, err := connectionFromProvider(entry.ID(), entry)
+	if err != nil {
+		return err
+	}
+	if profile.ModelSource == modelprovider.EndpointModels {
+		ids, err := c.adapters.RemoteModels(ctx, connection)
 		if err != nil {
 			return probeFailure(err)
 		}
-		if len(models) == 0 {
-			return fmt.Errorf("model: provider %q advertised no models", entry.ID())
+		if len(ids) == 0 {
+			return errors.New("model: provider advertised no models")
 		}
 		return nil
 	}
-	defaultModel, hasDefault := inputs.profile.DefaultChatModel()
-	if !hasDefault {
-		return fmt.Errorf("model: provider %q has no probe model", entry.ID())
-	}
-	spec, err := inputs.clientSpec()
+	selection, err := modelchoice.New(profile.ID, profile.DefaultModel)
 	if err != nil {
 		return err
 	}
-	client, _, err := buildChat(ctx, spec, defaultModel)
+	resolved, err := c.adapters.OpenChat(ctx, selection, connection)
 	if err != nil {
 		return err
 	}
-	maxTokens := minimumProbeOutputTokens
-	_, err = client.Call(ctx, &chat.Request{
-		Messages: []chat.Message{chat.NewUserMessage(chat.NewTextPart(providerProbePrompt))}, Options: chat.Options{MaxOutputTokens: &maxTokens},
-	})
+	defer func() { returned = errors.Join(returned, resolved.Close(ctx)) }()
+	id := uuid.NewString()
+	ctx, err = qimumcp.WithInvocation(ctx, portable.Invocation{ID: id, Origin: extension.Human, Parent: operation.Identity(ctx), Target: portable.Target{Scope: extension.ScopeCall, Reference: id}})
+	if err != nil {
+		return err
+	}
+	observed := &observedEndpoint{inner: resolved.Model(), journal: c.journal, selection: selection, pricing: resolved.pricing}
+	maxTokens := int64(1)
+	_, err = observed.Call(ctx, &chat.Request{Messages: []chat.Message{chat.NewUserMessage(chat.NewTextPart("ping"))}, Options: chat.Options{MaxOutputTokens: &maxTokens}})
 	return probeFailure(err)
 }
 
@@ -104,70 +149,67 @@ func probeFailure(err error) error {
 			return errors.Join(context.DeadlineExceeded, err)
 		}
 	}
+	if refusal, ok := errors.AsType[*portable.Refusal](err); ok {
+		switch modelprovider.FailureKind(refusal.Code) {
+		case modelprovider.InvalidCredentials:
+			return errors.Join(modelsapp.ErrProviderCredentialsRejected, err)
+		case modelprovider.Timeout:
+			return errors.Join(context.DeadlineExceeded, err)
+		}
+	}
 	return err
 }
 
-func (Capabilities) ListModels(ctx context.Context, entry provider.Provider) ([]string, error) {
-	inputs, err := resolveProviderClientInputs(entry.ID(), entry)
+func (c *Capabilities) ListModels(ctx context.Context, entry provider.Provider) ([]string, error) {
+	connection, err := connectionFromProvider(entry.ID(), entry)
 	if err != nil {
 		return nil, err
 	}
-	return remoteModelIDs(ctx, inputs)
-}
-
-func remoteModelIDs(ctx context.Context, inputs providerClientInputs) ([]string, error) {
-	if _, hasBaseURL := inputs.endpoint(); !hasBaseURL && inputs.profile.RequiresConfiguredEndpoint() {
-		return nil, fmt.Errorf("%w: provider %q", modelsapp.ErrProviderBaseURLRequired, inputs.entry.ID())
-	}
-	spec, err := inputs.clientSpec()
+	ids, err := c.adapters.RemoteModels(ctx, connection)
 	if err != nil {
-		if errors.Is(err, errCredentialUnavailable) {
-			return nil, fmt.Errorf("%w: provider %q: %w", modelsapp.ErrProviderUnconfigured, inputs.entry.ID(), err)
-		}
-		return nil, err
-	}
-	ids, err := listModels(ctx, spec)
-	if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
 		return nil, fmt.Errorf("%w: %w", modelsapp.ErrModelDiscoveryFailed, err)
 	}
-	return ids, err
+	for _, id := range ids {
+		if _, err := modelchoice.NewModelIdentity(id); err != nil {
+			return nil, err
+		}
+	}
+	slices.Sort(ids)
+	return slices.Compact(ids), nil
 }
 
-func providerMetadata(value ProviderProfile) modelsapp.ProviderMetadata {
+func providerMetadata(value modelprovider.Profile) (modelsapp.ProviderMetadata, error) {
+	authentication := modelsapp.ProviderAPIKeyRequired
+	if value.Authentication == modelprovider.KeyOptional {
+		authentication = modelsapp.ProviderAPIKeyOptional
+	}
 	endpoint := modelsapp.ProviderEndpointOptional
-	if value.RequiresConfiguredEndpoint() {
+	if value.EndpointRequired {
 		endpoint = modelsapp.ProviderEndpointRequired
 	}
-	modelSource := modelsapp.ProviderModelsBundled
-	if value.DiscoversModelsAtEndpoint() {
-		modelSource = modelsapp.ProviderModelsEndpoint
+	source := modelsapp.ProviderModelsBundled
+	if value.ModelSource == modelprovider.EndpointModels {
+		source = modelsapp.ProviderModelsEndpoint
 	}
 	embedding := modelsapp.NoEmbeddingCapability()
-	if value.SupportsEmbeddings() {
-		if defaultModel, present := value.DefaultEmbeddingModel(); present {
+	if value.Embedding != nil {
+		if value.Embedding.DefaultModel != "" {
 			var err error
-			embedding, err = modelsapp.EmbeddingCapabilityWithDefault(defaultModel)
+			embedding, err = modelsapp.EmbeddingCapabilityWithDefault(value.Embedding.DefaultModel)
 			if err != nil {
-				panic(fmt.Sprintf("model: invalid embedding default for %q: %v", value.ID(), err))
+				return modelsapp.ProviderMetadata{}, err
 			}
 		} else {
 			embedding = modelsapp.EmbeddingCapabilityWithoutDefault()
 		}
 	}
-	metadata, err := modelsapp.NewProviderMetadata(string(value.ID()), modelsapp.ProviderAPIKeyRequired, endpoint, modelSource, embedding)
-	if err != nil {
-		panic(fmt.Sprintf("model: invalid provider metadata for %q: %v", value.ID(), err))
-	}
-	return metadata
+	return modelsapp.NewProviderMetadata(value.ID, authentication, endpoint, source, embedding)
 }
 
-func catalogModel(providerID string, entry catalog.Model) modelsapp.Model {
+func catalogModel(providerID string, entry catalog.Model) (modelsapp.Model, error) {
 	tokenLimits, err := catalogTokenLimits(entry)
 	if err != nil {
-		// The bundled catalog is static reference data, not user input. An invalid
-		// envelope is a broken application dependency and must fail loudly instead
-		// of publishing invented or partially discarded capability facts.
-		panic(fmt.Sprintf("model: invalid bundled limits for %q/%q: %v", providerID, entry.ID, err))
+		return modelsapp.Model{}, err
 	}
 	details := &modelsapp.Details{
 		DisplayName: entry.DisplayName, TokenLimits: tokenLimits, KnowledgeCutoff: entry.KnowledgeCutoff, Deprecated: entry.Deprecated,
@@ -177,26 +219,15 @@ func catalogModel(providerID string, entry catalog.Model) modelsapp.Model {
 	}
 	if len(entry.Pricing) > 0 {
 		primary := entry.Pricing[0]
-		details.Pricing = &modelsapp.Pricing{
-			InputPerMillion: primary.InputPer1M, OutputPerMillion: primary.OutputPer1M,
-			CacheReadPerMillion:  lo.FromPtrOr(primary.CacheReadPer1M, primary.InputPer1M),
-			CacheWritePerMillion: lo.FromPtrOr(primary.CacheWritePer1M, primary.InputPer1M),
-		}
+		details.Pricing = &modelsapp.Pricing{InputPerMillion: primary.InputPer1M, OutputPerMillion: primary.OutputPer1M, CacheReadPerMillion: lo.FromPtrOr(primary.CacheReadPer1M, primary.InputPer1M), CacheWritePerMillion: lo.FromPtrOr(primary.CacheWritePer1M, primary.InputPer1M)}
 	}
-	model, err := modelsapp.NewModel(providerID, entry.ID, details)
-	if err != nil {
-		panic(fmt.Sprintf("model: invalid bundled model %q/%q: %v", providerID, entry.ID, err))
-	}
-	return model
+	return modelsapp.NewModel(providerID, entry.ID, details)
 }
 
 func catalogModalities(values []catalog.Modality) []string {
-	if len(values) == 0 {
-		return nil
-	}
-	out := make([]string, len(values))
+	result := make([]string, len(values))
 	for index, value := range values {
-		out[index] = string(value)
+		result[index] = string(value)
 	}
-	return out
+	return result
 }

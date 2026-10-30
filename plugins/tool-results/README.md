@@ -7,6 +7,10 @@ Ordinary components declare `toolResult` scope, `toolResultRenderer` placement a
 exact display-name or known result-shape selector. One exact-name match precedes one
 shape match; equally ranked candidates remain ambiguous and use the generic inspector.
 Running and absent results stay generic. The declarations share one prebuilt ESM export.
+Installed code intelligence and HTTP calls use their model-visible names,
+`codeintel_lsp` and `web_http_request`. HTTP presentation preserves UTF-8 text
+and labels base64 bytes without decoding them; unknown response members or
+malformed content keep the complete recorded source.
 
 The public SDK supplies `context.toolResult`, a detached frozen settled transcript
 projection containing the original call/Run IDs, arguments, result, status, ranges and

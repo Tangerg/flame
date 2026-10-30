@@ -169,7 +169,7 @@ func TestInteractionWaitingRecoveryPreservesCancellation(t *testing.T) {
 			executor := newObservedTestInteractionExecutor(t, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 				return nil, errors.New("waiting recovery must not call the model")
 			}), InteractionExecutorConfig{
-				ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "ask")}, manifest: toolset.Manifest{
+				ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "ask")}, manifest: toolset.Manifest{
 					Visible: []toolcontract.Tool{newQuestionCheckpointTool(t)},
 				}},
 				ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
@@ -210,7 +210,7 @@ func TestInteractionWaitingRecoveryPreservesActivationFailure(t *testing.T) {
 		return nil, errors.New("waiting recovery must not call the model")
 	}), InteractionExecutorConfig{
 		ExecutionTrees: store,
-		ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "ask")}, manifest: toolset.Manifest{
+		ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "ask")}, manifest: toolset.Manifest{
 			Visible: []toolcontract.Tool{newQuestionCheckpointTool(t)},
 		}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
@@ -255,7 +255,7 @@ func TestInteractionWaitingRecoveryPreservesCancellationAfterActivation(t *testi
 		return nil, errors.New("waiting recovery must not call the model")
 	}), InteractionExecutorConfig{
 		ExecutionTrees: store,
-		ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "ask")}, manifest: toolset.Manifest{
+		ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "ask")}, manifest: toolset.Manifest{
 			Visible: []toolcontract.Tool{newQuestionCheckpointTool(t)},
 		}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},

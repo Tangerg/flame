@@ -225,7 +225,7 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 			managed := newManagedFixture(t, store, server, callbacks, prepare)
 			pool := managed.Pool
 			var tools []toolcontract.Tool
-			pool.SetToolSink(func(current []toolcontract.Tool, _ []mcpserver.ID) { tools = current })
+			pool.SetToolSink(func(current []toolcontract.Tool, _ []mcpserver.ID) { tools = current }, prepare)
 			if len(tools) != 1 {
 				t.Fatal("source did not publish its tool")
 			}
@@ -287,3 +287,5 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 		})
 	}
 }
+
+func (*preparedEmbedder) Close(context.Context) error { return nil }

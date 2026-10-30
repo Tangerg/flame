@@ -29,7 +29,7 @@ for (const pane of ["providers", "mcp-servers"] as const) {
       await expect(alert).toHaveText(
         pane === "providers"
           ? 'Visual Runtime has no response for "providers.test"'
-          : "Die verbundene Runtime bietet diese Funktion nicht an.",
+          : 'Visual Runtime has no response for "mcp.servers.test"',
       );
       await alert.scrollIntoViewIfNeeded();
       const icon = alert.locator("svg");

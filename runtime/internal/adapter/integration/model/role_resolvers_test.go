@@ -44,7 +44,7 @@ func TestResolvedChatRejectsTypedNilInputTokenCounter(t *testing.T) {
 	model := newTestChatModel(t)
 	var counter *pointerInputTokenCounter
 
-	resolved, err := NewResolvedChat(model, counter)
+	resolved, err := NewResolvedChat(model, counter, nil)
 
 	if err == nil || !lo.IsNil(resolved.Model()) {
 		t.Fatalf("NewResolvedChat typed-nil counter = (%v, %v), want invalid construction", resolved, err)
@@ -130,7 +130,7 @@ func newTestChatModel(t testing.TB) chat.Model {
 
 func mustResolvedChat(t testing.TB, model chat.Model, counter InputTokenCounter) ResolvedChat {
 	t.Helper()
-	resolved, err := NewResolvedChat(model, counter)
+	resolved, err := NewResolvedChat(model, counter, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -185,4 +185,8 @@ func TestUtilitySelectionPrecedesExactProviderConstructionAndNeverFallsBack(t *t
 			}
 		})
 	}
+}
+
+func (r recordingChatResolver) RestoreChat(ctx context.Context, selection modelchoice.Selection, _ *ProviderCapture) (ResolvedChat, error) {
+	return r.ResolveChat(ctx, selection)
 }

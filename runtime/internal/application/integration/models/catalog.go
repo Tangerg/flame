@@ -98,8 +98,8 @@ func (c EmbeddingCapability) DefaultModel() (string, bool) {
 	return c.defaultModel.String(), true
 }
 
-// ProviderMetadata is immutable static reference data used by provider/model
-// use cases. Closed endpoint, discovery, and embedding policies prevent the
+// ProviderMetadata is immutable policy captured from an installed catalog.
+// Closed endpoint, discovery, and embedding policies prevent the
 // contradictory combinations possible in the former public field bag.
 type ProviderMetadata struct {
 	id             modelchoice.ProviderIdentity
@@ -145,7 +145,7 @@ func (p ProviderMetadata) DiscoversModelsAtEndpoint() bool {
 
 func (p ProviderMetadata) Embedding() EmbeddingCapability { return p.embedding }
 
-// ConfigurationSatisfied applies static provider policy to one registry entry.
+// ConfigurationSatisfied applies captured provider policy to one registry entry.
 // A provider with optional authentication and a built-in endpoint is usable
 // without manufacturing a credential row.
 func (p ProviderMetadata) ConfigurationSatisfied(entry provider.Provider) bool {
@@ -248,9 +248,6 @@ func validateDetails(details *Details) error {
 			return fmt.Errorf("models: reasoning level %q is duplicated", canonical)
 		}
 		levels[canonical] = struct{}{}
-	}
-	if len(levels) > 0 && details.ReasoningDefault == "" {
-		return errors.New("models: reasoning levels have no default level")
 	}
 	if details.ReasoningDefault != "" {
 		identity, err := modelchoice.NewReasoningEffortIdentity(details.ReasoningDefault)

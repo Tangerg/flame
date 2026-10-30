@@ -96,8 +96,12 @@ func (c *installedCall) accepts(record plugin.CommandBinding) error {
 
 func (c *installedCall) Invoke(ctx context.Context) (jsonvalue.Value, error) {
 	if c.Kind() == portable.Mutation {
-		reply, err := invokeRawCommand(ctx, c.calls, c.request.Method, c.request.Input, nil, c.accepts, c.resolve, func(ctx context.Context, binding plugins.ContributionBinding, session *sdk.ClientSession) (sdk.ParamsBase, func(), error) {
-			return c.calls.pool.OpenRPC(ctx, binding.ServerID, session)
+		reply, err := invokeRawCommand(ctx, c.calls, c.request.Method, c.request.Input, nil, c.accepts, c.resolve, func(ctx context.Context, binding plugins.ContributionBinding, session *sdk.ClientSession) (sdk.ParamsBase, func() error, error) {
+			metadata, release, err := c.calls.pool.OpenRPC(ctx, binding.ServerID, session)
+			if err != nil {
+				return metadata, nil, err
+			}
+			return metadata, func() error { release(); return nil }, nil
 		}, func(plugins.ContributionBinding) portable.Target { return c.request.Target })
 		return reply.value, err
 	}

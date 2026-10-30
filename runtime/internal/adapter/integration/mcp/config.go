@@ -12,11 +12,11 @@ import (
 	"slices"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 	"github.com/Tangerg/flame/packages/go-sdk/httpresponse"
+	"github.com/Tangerg/flame/packages/go-sdk/procgroup"
 	"github.com/Tangerg/flame/qimu/cancellation"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/httporigin"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/flame/runtime/internal/infra/process/procgroup"
 	"github.com/Tangerg/go-sdk/auth"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 	"golang.org/x/oauth2"

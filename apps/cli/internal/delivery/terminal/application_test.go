@@ -2438,8 +2438,8 @@ func TestReloadReportsEveryPluginItCouldNotRestore(t *testing.T) {
 	host.Shows(t, "Ask flame")
 	host.Type("/reload test.base")
 	host.Press(input.Enter)
-	host.Shows(t, "2 plugins did not reload · /plugins for details")
-	host.Type("/plugins")
+	host.Shows(t, "2 plugins did not reload · /extensions for details")
+	host.Type("/extensions")
 	host.Press(input.Enter)
 	host.Shows(t, "base setup broke")
 	host.Shows(t, "requires inactive plugin")
@@ -2482,7 +2482,7 @@ func TestAPluginCanAddACommandWithoutChangingTheShell(t *testing.T) {
 	host.Type("/hello")
 	host.Press(input.Enter)
 	host.Shows(t, "hello from plugin load 1")
-	host.Type("/plugins")
+	host.Type("/extensions")
 	host.Press(input.Enter)
 	host.Shows(t, "loaded   test.greeting@1.0.0")
 	host.Type("/reload test.greeting")
@@ -2549,8 +2549,8 @@ func TestAPluginThatFailsSetupIsReportedAtStartup(t *testing.T) {
 		Setup: func(*extensions.Scope) error { return errors.New("broken setup") },
 	}
 	host, stop := runUI(t, plugin)
-	host.Shows(t, "1 plugin did not load · /plugins for details")
-	host.Type("/plugins")
+	host.Shows(t, "1 plugin did not load · /extensions for details")
+	host.Type("/extensions")
 	host.Press(input.Enter)
 	host.Shows(t, "broken setup")
 	stop()
@@ -2581,7 +2581,7 @@ func TestAsynchronousPluginCommandKeepsTheTerminalResponsive(t *testing.T) {
 	host.Type("/slow")
 	host.Press(input.Enter)
 	host.Shows(t, "running /slow")
-	host.Type("/plugins")
+	host.Type("/extensions")
 	host.Press(input.Enter)
 	host.Shows(t, "test.async@1.0.0")
 	close(release)
@@ -4801,9 +4801,9 @@ func TestTerminalSurvivesExtremeResizeAndRemainsInteractive(t *testing.T) {
 	host.Shows(t, "resize draft")
 	host.Send(input.Key{Code: input.Character, Rune: 'c', Mods: input.Ctrl})
 	host.Hides(t, "resize draft")
-	host.Type("/plugins")
+	host.Type("/extensions")
 	host.Press(input.Enter)
-	host.Shows(t, "No command plugins installed")
+	host.Shows(t, "No local command extensions installed")
 	host.Send(input.Key{Code: input.Character, Rune: 'c', Mods: input.Ctrl})
 	stop()
 }
@@ -4881,9 +4881,9 @@ func TestStreamingRemainsResponsiveThroughAResizeStorm(t *testing.T) {
 	}
 	host.Shows(t, "RESIZE_STREAM_COMPLETE")
 	host.Shows(t, "complete")
-	host.Type("/plugins")
+	host.Type("/extensions")
 	host.Press(input.Enter)
-	host.Shows(t, "No command plugins installed")
+	host.Shows(t, "No local command extensions installed")
 	stop()
 }
 

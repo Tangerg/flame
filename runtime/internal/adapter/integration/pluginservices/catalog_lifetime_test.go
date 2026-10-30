@@ -68,7 +68,7 @@ func TestManagedCatalogProtectsCallsWithoutRetainingAnIdleUse(t *testing.T) {
 	store := &toolInstallationStore{snapshot: plugin.Snapshot{Installation: installation, Selected: release}}
 	managed := newManagedFixture(t, store, mcpserver.Server{Source: source, Name: name, Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: endpoint.URL}, callbacks, nil)
 	var tools []toolcontract.Tool
-	managed.Pool.SetToolSink(func(current []toolcontract.Tool, _ []mcpserver.ID) { tools = current })
+	managed.Pool.SetToolSink(func(current []toolcontract.Tool, _ []mcpserver.ID) { tools = current }, managed.prepare)
 	if len(tools) != 1 {
 		t.Fatalf("catalog = %d tools", len(tools))
 	}

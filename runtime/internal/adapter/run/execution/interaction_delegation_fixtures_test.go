@@ -124,12 +124,12 @@ func (w *waitingDelegateModel) Call(
 	w.calls++
 	w.mu.Unlock()
 	switch {
-	case toolResult(request.Messages, "ask") != "":
+	case toolResult(request.Messages, "fixture_ask") != "":
 		return interactionUsageTextResponse("child: restored value accepted", 2, 1), nil
 	case toolResult(request.Messages, "delegate_task") != "":
 		return interactionUsageTextResponse("root: delegated work complete", 2, 1), nil
 	case userMessagesContain(request.Messages, "child needs input"):
-		return interactionToolResponse(chat.ToolCall{ID: "ask_child", Name: "ask", Arguments: `{}`}, 2, 1), nil
+		return interactionToolResponse(chat.ToolCall{ID: "ask_child", Name: "fixture_ask", Arguments: `{}`}, 2, 1), nil
 	case userMessagesContain(request.Messages, "delegate waiting work"):
 		return interactionToolResponse(chat.ToolCall{
 			ID: w.delegateCallID, Name: "delegate_task",

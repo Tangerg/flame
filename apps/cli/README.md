@@ -212,7 +212,7 @@ Read [`../AGENTS.md`](../../AGENTS.md), [`../DEVELOPMENT.md`](../../DEVELOPMENT.
 Tool policies use Runtime's source references. MCP commands address a server as
 `<name>` for a user server or `<installation-id>/<name>` for an installation server; the
 CLI parses that argument once into Runtime's structured `MCPServerID` and renders server
-identities back in the same form; a tool source reads `builtIn/<name>`, `a2a/<endpoint>`
+identities back in the same form; a tool source reads `builtIn/<name>`
 or `mcp/<server>/<tool>` with the server in that form. `/mcp-tool <server> <tool>
 <enable|disable|allow|deny>` changes exposure or creates a global standing rule.
 `/rules` shows source identity, explicit subject match type, and stale authority; `/rule-delete` forgets a
@@ -229,6 +229,18 @@ than printed as raw text. Runtime and clients must use the same protocol revisio
 approval databases require a fresh data directory rather than data migration.
 
 ## Runtime plugin commands
+
+The terminal's `/plugins` reads the same Runtime installation catalog as
+`flame plugins list`: exact installation and selected digest, desired enablement,
+admitted presentation, observed realization and admission diagnostics. An open
+reader refreshes after `plugins.changed` and Runtime resynchronization. Local
+sideloaded command extensions use `/extensions`; `/reload` and `/unload` operate
+on that local extension host. They do not change Runtime installations.
+
+`flame plugins call --request '<JSON>'` remains the generic entry for an installed
+operation, using its exact installation, digest, contribution, required contract
+and target. Memory and Schedules terminal forms consume those same installed
+business contracts; their local interaction does not create another installation.
 
 `flame plugins providers` reads explicit provider choices. Use
 `flame plugins select-provider --request '{"role":"memory","installationId":"…","contribution":"memory"}'`

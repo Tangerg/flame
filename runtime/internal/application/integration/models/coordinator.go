@@ -1,8 +1,6 @@
-// Package models is the application coordinator for provider + model
-// configuration: the runtime-mutable provider registry (credentials), the static
-// provider catalog + credential prober, and the utility / embedding model roles.
-// It is a thin use-case layer over the domain provider registry and focused
-// ports for model validation, catalog lookup, and credential probing.
+// Package models owns provider configuration, model admission and utility and
+// embedding roles. Installed adapters supply capability facts and execute probes;
+// Runtime retains configuration precedence and role persistence.
 package models
 
 import (
@@ -20,14 +18,16 @@ import (
 
 const defaultProviderProbeTimeout = 10 * time.Second
 
-// ProviderCatalog supplies static provider and model reference data. The
+// ProviderCatalog supplies one captured provider and model catalog. The
 // coordinator owns visible identity, public order, and the use-case policy that
 // consumes the projection. Slice results transfer ownership to the caller.
 type providerCatalog interface {
-	Supported() []ProviderMetadata
-	Metadata(id string) (ProviderMetadata, bool)
-	Models(providerID string) []Model
-	LookupModel(providerID, modelID string) (Model, bool)
+	Profiles(context.Context) ([]ProviderProfile, error)
+}
+
+type ProviderProfile struct {
+	Metadata ProviderMetadata
+	Models   []Model
 }
 
 var (

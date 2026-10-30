@@ -43,10 +43,8 @@ const (
 	GetGoal           BuiltInName = "get_goal"
 	Glob              BuiltInName = "glob"
 	Grep              BuiltInName = "grep"
-	HTTPRequest       BuiltInName = "http_request"
 	ListSkills        BuiltInName = "list_skills"
 	LoadSkill         BuiltInName = "load_skill"
-	LSP               BuiltInName = "lsp"
 	ProposeSkill      BuiltInName = "propose_skill"
 	Read              BuiltInName = "read"
 	ReadShellOutput   BuiltInName = "read_shell_output"
@@ -65,8 +63,8 @@ const (
 // builtInNames is the set's only enumeration.
 var builtInNames = []BuiltInName{
 	ApplyPatch, AskUser, CreateGoal, DelegateTask, Edit,
-	EnterPlanMode, ExitPlanMode, GetGoal, Glob, Grep, HTTPRequest, ListSkills,
-	LoadSkill, LSP, ProposeSkill, Read, ReadShellOutput, ReadSkillResource, ReadToolResult,
+	EnterPlanMode, ExitPlanMode, GetGoal, Glob, Grep, ListSkills,
+	LoadSkill, ProposeSkill, Read, ReadShellOutput, ReadSkillResource, ReadToolResult,
 	ReportGoalOutcome, SearchTools, SetPlan, Shell, StopShell, WebFetch, WebSearch,
 }
 

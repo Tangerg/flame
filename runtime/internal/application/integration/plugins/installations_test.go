@@ -97,6 +97,10 @@ func (installationPackages) ReadResource(context.Context, *plugin.Installation, 
 	return nil, errors.New("unexpected component resource read")
 }
 
+func (installationPackages) ReadLocale(context.Context, *plugin.Installation, plugin.Locale) (map[string]string, error) {
+	return nil, errors.New("unexpected locale read")
+}
+
 type candidateRelease struct{ release plugin.Release }
 
 func (c candidateRelease) Release() plugin.Release                         { return c.release }

@@ -96,7 +96,7 @@ function fileDependencies(code, filename, lang, test = false) {
 }
 
 async function sourceDependencies(source) {
-  const found = { production: new Set(), tests: new Set() };
+  const found = { production: new Set(), tests: new Set(), hasTests: false };
   async function visit(directory) {
     let entries;
     try {
@@ -120,6 +120,7 @@ async function sourceDependencies(source) {
       const selected = /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(entry.name)
         ? found.tests
         : found.production;
+      if (selected === found.tests) found.hasTests = true;
       const suffix = extname(path);
       const lang = suffix.endsWith("tsx")
         ? "tsx"
@@ -211,5 +212,10 @@ export async function authorDependencies({
   }
   for (const name of [...roots.production].sort()) select(name, false);
   for (const name of [...roots.tests].sort()) select(name, true);
-  return { dependencies, devDependencies, packages: selected };
+  return {
+    dependencies,
+    devDependencies,
+    packages: selected,
+    hasTests: roots.hasTests,
+  };
 }

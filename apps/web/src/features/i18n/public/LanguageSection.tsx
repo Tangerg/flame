@@ -49,7 +49,15 @@ export function LanguageSection() {
             }}
           >
             {locales.map((l) => (
-              <DropdownMenu.RadioItem key={l.id} value={l.id} label={l.label} layout="pickPlain">
+              <DropdownMenu.RadioItem
+                key={l.id}
+                value={l.id}
+                label={l.label}
+                layout="pickPlain"
+                onClick={() => {
+                  if (l.id === locale) choose(l);
+                }}
+              >
                 <span {...stylex.props(vocab.truncate)}>{l.label}</span>
                 <DropdownMenu.RadioItemIndicator>
                   <Icon name="check" size="xs" className={stylex.props(vocab.accent).className} />

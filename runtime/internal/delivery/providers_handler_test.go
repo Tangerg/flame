@@ -22,20 +22,16 @@ type providerFake struct {
 	probed    []provider.Provider
 }
 
-func (p *providerFake) Supported() []models.ProviderMetadata {
-	if p.supported != nil {
-		return p.supported
+func (p *providerFake) Profiles(context.Context) ([]models.ProviderProfile, error) {
+	metadata := p.supported
+	if metadata == nil {
+		metadata = []models.ProviderMetadata{serverProviderMetadata("anthropic", models.ProviderEndpointOptional, models.ProviderModelsBundled, models.NoEmbeddingCapability())}
 	}
-	return []models.ProviderMetadata{serverProviderMetadata("anthropic", models.ProviderEndpointOptional, models.ProviderModelsBundled, models.NoEmbeddingCapability())}
-}
-
-func (p *providerFake) Metadata(id string) (models.ProviderMetadata, bool) {
-	for _, meta := range p.Supported() {
-		if meta.ID() == id {
-			return meta, true
-		}
+	values := make([]models.ProviderProfile, len(metadata))
+	for i, entry := range metadata {
+		values[i] = models.ProviderProfile{Metadata: entry}
 	}
-	return models.ProviderMetadata{}, false
+	return values, nil
 }
 
 func serverProviderMetadata(id string, endpoint models.ProviderEndpointPolicy, source models.ProviderModelSource, embedding models.EmbeddingCapability) models.ProviderMetadata {
@@ -53,11 +49,6 @@ func serverOptionalAPIKeyProviderMetadata(id string, endpoint models.ProviderEnd
 	}
 	return metadata
 }
-func (*providerFake) Models(string) []models.Model { return nil }
-func (*providerFake) LookupModel(string, string) (models.Model, bool) {
-	return models.Model{}, false
-}
-
 func (p *providerFake) List(context.Context) ([]provider.Provider, error) {
 	out := make([]provider.Provider, 0, len(p.entries))
 	for _, entry := range p.entries {

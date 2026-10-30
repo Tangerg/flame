@@ -151,6 +151,7 @@ function reviewedInstallation(): PluginInstallation {
       servers: [],
       inputs: [],
       skills: [],
+      locales: [],
       themes: [],
 
       diagnostics: [],

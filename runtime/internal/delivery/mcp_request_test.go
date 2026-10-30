@@ -46,11 +46,7 @@ func TestToolReferenceRoundTripsEveryVariant(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	a2a, err := tool.A2A("planner")
-	if err != nil {
-		t.Fatal(err)
-	}
-	refs := []tool.Ref{builtIn, a2a}
+	refs := []tool.Ref{builtIn}
 	for _, server := range []mcpserver.ID{testsupport.UserMCPServer("files"), installed} {
 		ref, err := tool.MCP(server, testsupport.RemoteToolName("read"))
 		if err != nil {

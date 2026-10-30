@@ -596,6 +596,7 @@ func TestObservedRuntimeResourcesRequireTheirPublishedFeature(t *testing.T) {
 		goals:          new(goalServiceStub),
 		skills:         newSkillServiceStub(),
 		mcp:            newMCPServiceStub(),
+		plugins:        &installedPluginCatalog{},
 		schedules:      newScheduleServiceStub(),
 		hooks:          &hookServiceStub{},
 	}
@@ -609,7 +610,7 @@ func TestObservedRuntimeResourcesRequireTheirPublishedFeature(t *testing.T) {
 	}
 	profile = terminalProfileWithFeatures(t, features)
 	want := runtimeResourceObservation{
-		plan: true, goals: true, skills: true, mcp: true, schedules: true, hooks: true,
+		plan: true, goals: true, skills: true, mcp: true, plugins: true, schedules: true, hooks: true,
 		models: true, approvals: true,
 	}
 	if got := application.observedRuntimeResources(); got != want {

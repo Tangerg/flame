@@ -24,7 +24,7 @@ func TestInteractionPolicyRefusalPublishesItsExactReasonBeforeModelContinuation(
 		}
 		t.Run(name, func(t *testing.T) {
 			toolCalls, modelCalls, publications := 0, 0, 0
-			executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "write"}, func(context.Context, struct{}) (string, error) {
+			executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "fixture_write"}, func(context.Context, struct{}) (string, error) {
 				toolCalls++
 				return "unexpected", nil
 			})
@@ -35,7 +35,7 @@ func TestInteractionPolicyRefusalPublishesItsExactReasonBeforeModelContinuation(
 			model := chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
 				modelCalls++
 				if modelCalls == 1 {
-					return interactionToolResponse(chat.ToolCall{ID: "refused", Name: "write", Arguments: `{}`}, 1, 1), nil
+					return interactionToolResponse(chat.ToolCall{ID: "refused", Name: "fixture_write", Arguments: `{}`}, 1, 1), nil
 				}
 				matches := 0
 				for _, message := range request.Messages {
@@ -60,7 +60,7 @@ func TestInteractionPolicyRefusalPublishesItsExactReasonBeforeModelContinuation(
 				hooks.decision = denyToolHook(reason)
 			}
 			executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-				ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "write")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+				ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "write")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 				ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: policy, ToolHooks: hooks,
 			})
 			events := runInteractionHarnessWithCommit(t, executor, interactionTestStart(), func(fact runs.ExecutionFact) error {
@@ -103,7 +103,7 @@ func TestInteractionAuthorizationErrorsDoNotPublishNestedOutcomes(t *testing.T) 
 		}
 		t.Run(name, func(t *testing.T) {
 			toolCalls, modelCalls, publications := 0, 0, 0
-			executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "write"}, func(context.Context, struct{}) (string, error) {
+			executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "fixture_write"}, func(context.Context, struct{}) (string, error) {
 				toolCalls++
 				return "unexpected", nil
 			})
@@ -117,10 +117,10 @@ func TestInteractionAuthorizationErrorsDoNotPublishNestedOutcomes(t *testing.T) 
 			}
 			model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 				modelCalls++
-				return interactionToolResponse(chat.ToolCall{ID: "unresolved", Name: "write", Arguments: `{}`}, 1, 1), nil
+				return interactionToolResponse(chat.ToolCall{ID: "unresolved", Name: "fixture_write", Arguments: `{}`}, 1, 1), nil
 			})
 			executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-				ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "write")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+				ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "write")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 				ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: policy, ToolHooks: hooks,
 			})
 			events := runInteractionHarnessWithCommit(t, executor, interactionTestStart(), func(fact runs.ExecutionFact) error {

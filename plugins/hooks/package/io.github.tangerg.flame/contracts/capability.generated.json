@@ -1,0 +1,378 @@
+{
+  "protocol": "io.github.tangerg.qimu/portable/1",
+  "reference": "flame.hooks.v1",
+  "composition": "selection",
+  "scope": "installation",
+  "methods": [
+    {
+      "name": "flame.hooks/discover.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Read ordered lifecycle rules. Exclude all project configuration when the Runtime has not admitted its trust.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy_Discovery": {
+            "additionalProperties": false,
+            "properties": {
+              "cwd": {
+                "type": "string"
+              },
+              "home": {
+                "type": "string"
+              },
+              "includeProject": {
+                "type": "boolean"
+              },
+              "projectRoot": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "cwd",
+              "projectRoot",
+              "includeProject"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "cwd": {
+            "type": "string"
+          },
+          "home": {
+            "type": "string"
+          },
+          "includeProject": {
+            "type": "boolean"
+          },
+          "projectRoot": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cwd",
+          "projectRoot",
+          "includeProject"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_Hook": {
+            "additionalProperties": false,
+            "properties": {
+              "command": {
+                "type": "string"
+              },
+              "event": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "PreToolUse",
+                      "PostToolUse",
+                      "UserPromptSubmit",
+                      "SessionStart",
+                      "PreCompact",
+                      "Stop",
+                      "Notification"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
+              "inject": {
+                "type": "string"
+              },
+              "matcher": {
+                "type": "string"
+              },
+              "scope": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "global",
+                      "project"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              },
+              "timeoutMillis": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              }
+            },
+            "required": [
+              "event",
+              "scope",
+              "source"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "items": {
+          "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_Hook"
+        },
+        "type": "array"
+      }
+    },
+    {
+      "name": "flame.hooks/execute.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Execute one trusted lifecycle command under its original receipt, bounded input, output and process lifetime. Return advice; never grant Runtime authorization.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_Input": {
+            "additionalProperties": false,
+            "properties": {
+              "cwd": {
+                "type": "string"
+              },
+              "event": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "PreToolUse",
+                      "PostToolUse",
+                      "UserPromptSubmit",
+                      "SessionStart",
+                      "PreCompact",
+                      "Stop",
+                      "Notification"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "promptTruncated": {
+                "type": "boolean"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "sessionId": {
+                "type": "string"
+              },
+              "tool": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_ToolInput"
+              }
+            },
+            "required": [
+              "event"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_ToolInput": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "result": {
+                "type": "string"
+              },
+              "resultTruncated": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy_Command": {
+            "additionalProperties": false,
+            "properties": {
+              "command": {
+                "type": "string"
+              },
+              "cwd": {
+                "type": "string"
+              },
+              "input": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_Input"
+              },
+              "timeoutMillis": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "command",
+              "cwd",
+              "input",
+              "timeoutMillis"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "type": "string"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "input": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_Input"
+          },
+          "timeoutMillis": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "command",
+          "cwd",
+          "input",
+          "timeoutMillis"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_CommandDecision": {
+            "additionalProperties": false,
+            "properties": {
+              "injectContext": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "rewriteArguments": {
+                "type": "string"
+              },
+              "verdict": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "allow",
+                      "deny",
+                      "ask"
+                    ]
+                  }
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "verdict"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy_Failure": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "failed",
+                      "canceled",
+                      "timedOut"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "message"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy_Result": {
+            "additionalProperties": false,
+            "properties": {
+              "decision": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_CommandDecision"
+              },
+              "exitCode": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "failure": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy_Failure"
+              },
+              "stderr": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "exitCode"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "decision": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9ob29r_CommandDecision"
+          },
+          "exitCode": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "failure": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy_Failure"
+          },
+          "stderr": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exitCode"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

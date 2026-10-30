@@ -1,0 +1,21 @@
+{
+  "protocol": "io.github.tangerg.flame/plugin/1",
+  "inputs": [
+    {
+      "id": "agents",
+      "server": "a2a",
+      "target": "env",
+      "key": "A2A_AGENTS",
+      "secret": true,
+      "required": false
+    }
+  ],
+  "contributions": [
+    {
+      "id": "remote-agents",
+      "server": "a2a",
+      "export": "remote-agents",
+      "contract": "io.github.tangerg.flame/contracts/capability.generated.json"
+    }
+  ]
+}

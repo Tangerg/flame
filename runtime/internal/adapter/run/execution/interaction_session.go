@@ -796,7 +796,7 @@ func (i *interactionSession) closeExecution(ctx context.Context) error {
 	i.state.mu.Lock()
 	deployments := i.state.deployments
 	i.state.mu.Unlock()
-	return deployments.close()
+	return errors.Join(deployments.close(), i.selectedChat.Close(context.WithoutCancel(ctx)))
 }
 
 // closeTelemetry ends any span the Engine left open. It is idempotent so the

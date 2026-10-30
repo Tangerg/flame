@@ -80,8 +80,3 @@ export function failureText(err: unknown, fallback: string): string {
 export function isUnsupportedMethod(err: unknown): boolean {
   return isErrorType(err, "method_not_found");
 }
-
-export function emptyListIfUngated(error: unknown): never[] {
-  if (isErrorType(error, "capability_not_negotiated")) return [];
-  throw error;
-}

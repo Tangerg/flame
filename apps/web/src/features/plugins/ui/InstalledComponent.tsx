@@ -31,9 +31,16 @@ import {
 } from "@/features/agent/public/session";
 import { tupleKey } from "@/lib/tupleKey";
 import { useWorkspaceFileFocus } from "@/features/workspace/public/navigation";
-import { useAgent } from "@/features/agent/public/agent";
+import { useAgent, type AgentAccess } from "@/features/agent/public/agent";
+import {
+  useNotifications,
+  type NotificationAccess,
+} from "@/features/notifications/public/notifier";
 import { type FlameClient } from "@flame/runtime-client";
-import { type PluginOperationBinding } from "@flame/runtime-client/wire";
+import {
+  type PluginClientComponent,
+  type PluginOperationBinding,
+} from "@flame/runtime-client/wire";
 import { trackContributionIO } from "@/extensions/contributionIO";
 import { type ContributionLifetime } from "@/extensions/definePlugin";
 import { type RuntimeConnectionGeneration } from "@/features/connection/public/services";
@@ -42,6 +49,11 @@ import {
   captureToolInteraction,
   type SubmitCapturedAgentInput,
 } from "@/features/plugins/adapters/toolInteraction";
+import { createClientCommandRegistration } from "@/features/plugins/adapters/clientCommands";
+import {
+  createComponentNotifications,
+  createComponentSettlementSubscription,
+} from "@/features/plugins/adapters/clientNotifications";
 export function componentFailureScope(
   component: ComponentReference,
   generation: RuntimeConnectionGeneration,
@@ -143,14 +155,16 @@ function ComponentRecovery({
   );
 }
 
+type CapturedContext = Omit<ComponentContext, "locale" | "compose">;
+
 class ComponentInstance {
   private controller = new AbortController();
   private listeners = new Set<() => void>();
-  private context: ComponentContext;
-  constructor(private readonly sources: ComponentSources & { locale: string }) {
+  private context: CapturedContext;
+  constructor(private readonly sources: ComponentSources) {
     this.context = this.capture();
   }
-  private capture(): ComponentContext {
+  private capture(): CapturedContext {
     const signal = AbortSignal.any([
       this.controller.signal,
       this.sources.lifetime.signal,
@@ -159,9 +173,10 @@ class ComponentInstance {
     const track: ComponentContext["track"] = (operation) =>
       trackContributionIO(this.sources.lifetime, () => operation(signal));
     const openSession = this.sources.openSession;
+    const component = Object.freeze({ ...this.sources.component });
     return Object.freeze({
       runtime: this.sources.runtime,
-      component: Object.freeze({ ...this.sources.component }),
+      component,
       sessionId: this.sources.sessionTarget?.id ?? this.sources.sessionId,
       sessionTarget: this.sources.sessionTarget
         ? Object.freeze({ ...this.sources.sessionTarget })
@@ -200,18 +215,41 @@ class ComponentInstance {
             openSession(sessionId);
           }
         : undefined,
+      registerCommand:
+        this.sources.placement === "clientEffect"
+          ? createClientCommandRegistration(
+              this.sources.lifetime,
+              signal,
+              component,
+              this.sources.captureSessionId,
+            )
+          : () => {
+              throw new Error("Client command registration requires clientEffect placement.");
+            },
+      subscribeRootRunSettlements:
+        this.sources.placement === "clientEffect"
+          ? createComponentSettlementSubscription(
+              this.sources.lifetime,
+              signal,
+              component,
+              this.sources.subscribeRootRunSettlements,
+            )
+          : () => {
+              throw new Error("Root run observation requires clientEffect placement.");
+            },
+      notifications: createComponentNotifications(
+        this.sources.lifetime,
+        signal,
+        component,
+        this.sources.notificationAccess,
+      ),
       saveFile: (request: SaveFileRequest) => {
         signal.throwIfAborted();
         return track(() => this.sources.saveFile(request));
       },
-      locale: this.sources.locale,
       signal,
       telemetry: captureClientTelemetry(signal),
       track,
-      compose: (composition: ComponentComposition) => {
-        signal.throwIfAborted();
-        return this.sources.compose(this.context, composition);
-      },
     });
   }
   retire = () => this.controller.abort();
@@ -240,8 +278,22 @@ function RenderingInstance({
   children,
   fallback,
   reload,
-}: ComponentProps & { instance: ComponentInstance }) {
-  const context = useSyncExternalStore(instance.subscribe, instance.getSnapshot);
+  locale,
+  compose,
+}: ComponentProps & { instance: ComponentInstance; locale: string }) {
+  const captured = useSyncExternalStore(instance.subscribe, instance.getSnapshot);
+  const context = useMemo(() => {
+    if (!captured) return null;
+    const value: ComponentContext = Object.freeze({
+      ...captured,
+      locale,
+      compose: (composition: ComponentComposition) => {
+        captured.signal.throwIfAborted();
+        return compose(value, composition);
+      },
+    });
+    return value;
+  }, [captured, locale, compose]);
   return context ? (
     <Entry context={context} input={input} contribution={contribution}>
       {children}
@@ -254,9 +306,20 @@ function RenderingInstance({
   );
 }
 
-export function RenderingComponent(props: ComponentProps & ComponentSources) {
+export function RenderingComponent(
+  props: ComponentProps &
+    Omit<
+      ComponentSources,
+      "captureSessionId" | "notificationAccess" | "subscribeRootRunSettlements"
+    >,
+) {
   const locale = useLocale();
-  const { selectAgentSession: openSession } = useAgent();
+  const {
+    selectAgentSession: openSession,
+    getActiveSessionId: captureSessionId,
+    subscribeRootRunSettlements,
+  } = useAgent();
+  const notificationAccess = useNotifications();
   const {
     runtime,
     binding,
@@ -271,6 +334,7 @@ export function RenderingComponent(props: ComponentProps & ComponentSources) {
     component,
     compose,
     saveFile,
+    placement,
   } = props;
   const instance = useMemo(
     () =>
@@ -289,7 +353,10 @@ export function RenderingComponent(props: ComponentProps & ComponentSources) {
         compose,
         saveFile,
         openSession,
-        locale,
+        captureSessionId,
+        placement,
+        notificationAccess,
+        subscribeRootRunSettlements,
       }),
     [
       runtime,
@@ -306,7 +373,10 @@ export function RenderingComponent(props: ComponentProps & ComponentSources) {
       compose,
       saveFile,
       openSession,
-      locale,
+      captureSessionId,
+      placement,
+      notificationAccess,
+      subscribeRootRunSettlements,
     ],
   );
   return (
@@ -318,13 +388,14 @@ export function RenderingComponent(props: ComponentProps & ComponentSources) {
       reload={props.reload}
     >
       <Suspense fallback={props.fallback ?? <ComponentLoading />}>
-        <RenderingInstance {...props} instance={instance} />
+        <RenderingInstance {...props} instance={instance} locale={locale} />
       </Suspense>
     </ComponentBoundary>
   );
 }
 
 type ComponentProps = {
+  placement?: PluginClientComponent["placement"];
   reload?: () => Promise<void>;
   fallback?: ReactNode;
   entry: PluginComponent;
@@ -343,7 +414,14 @@ type ComponentProps = {
 
 type ComponentSources = Pick<
   ComponentProps,
-  "runtime" | "binding" | "lifetime" | "resources" | "component" | "compose" | "saveFile"
+  | "runtime"
+  | "binding"
+  | "lifetime"
+  | "resources"
+  | "component"
+  | "compose"
+  | "saveFile"
+  | "placement"
 > & {
   workspace?: WorkspaceContext;
   sessionId?: string;
@@ -352,6 +430,9 @@ type ComponentSources = Pick<
   submitInput?: SubmitCapturedAgentInput;
   sessionTarget?: CapturedSession;
   openSession?: (sessionId: string) => void;
+  captureSessionId: () => string | undefined;
+  notificationAccess: NotificationAccess;
+  subscribeRootRunSettlements: AgentAccess["subscribeRootRunSettlements"];
 };
 
 function WorkspaceComponent(props: ComponentProps) {

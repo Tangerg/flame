@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	domain "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
+	hookdata "github.com/Tangerg/flame/packages/go-sdk/hook"
 )
 
 // ErrInvalidInspection reports a resolved Hook catalog that cannot safely
@@ -20,7 +20,7 @@ func (i Inspection) ValidateFor(workspaceRoot string) error {
 	if !canonicalAbsolutePath(workspaceRoot) {
 		return fmt.Errorf("%w: workspace root %q is not a canonical absolute path", errInvalidInspection, workspaceRoot)
 	}
-	if err := domain.ValidateHookCascade(len(i.Hooks)); err != nil {
+	if err := hookdata.ValidateHookCascade(len(i.Hooks)); err != nil {
 		return fmt.Errorf("%w: %w", errInvalidInspection, err)
 	}
 	if i.ProjectRoot != "" {
@@ -44,8 +44,8 @@ func (i Inspection) ValidateFor(workspaceRoot string) error {
 		}
 		phase := 0
 		switch hook.Scope {
-		case domain.ScopeGlobal:
-		case domain.ScopeProject:
+		case hookdata.ScopeGlobal:
+		case hookdata.ScopeProject:
 			phase = 1
 			if i.ProjectRoot == "" {
 				return fmt.Errorf("%w: project hook %d has no project root", errInvalidInspection, index+1)

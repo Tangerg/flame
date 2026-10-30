@@ -16,15 +16,16 @@ var componentExport = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]{0,63}$`)
 // ClientComponent describes a public rendering entry with an optional own
 // callable contribution. It owns no business state or backend activation policy.
 type ClientComponent struct {
-	Selector     *RendererSelector
-	ID           ContributionID
-	Title        string
-	Scope        extension.ComponentScope
-	Placement    extension.ComponentPlacement
-	Entry        string
-	Export       string
-	Contribution ContributionID
-	Material     string
+	Selector       *RendererSelector
+	ID             ContributionID
+	Title          string
+	Scope          extension.ComponentScope
+	Placement      extension.ComponentPlacement
+	Entry          string
+	Export         string
+	Contribution   ContributionID
+	Material       string
+	SettingsIntent extension.SettingsIntent
 }
 
 func (b *Builder) AdmitComponent(value ClientComponent) error {
@@ -36,7 +37,10 @@ func (b *Builder) AdmitComponent(value ClientComponent) error {
 			return err
 		}
 	}
-	if value.Title == "" || len(value.Title) > maxPresentationTitleBytes || !utf8.ValidString(value.Title) || !value.Scope.Valid() || !ValidResourcePath(value.Entry) || !strings.HasPrefix(value.Entry, Namespace+"/") || !strings.HasSuffix(value.Entry, ".js") || !componentExport.MatchString(value.Export) {
+	if value.SettingsIntent != "" && (value.Placement != extension.ComponentPlacementSettingsPane || !value.SettingsIntent.Valid()) {
+		return refuse(DiagnosticInvalidDeclaration, "invalid settings intent for component %q", value.ID)
+	}
+	if value.Title == "" || len(value.Title) > MaxPresentationTitleBytes || !utf8.ValidString(value.Title) || !value.Scope.Valid() || !ValidResourcePath(value.Entry) || !strings.HasPrefix(value.Entry, Namespace+"/") || !strings.HasSuffix(value.Entry, ".js") || !componentExport.MatchString(value.Export) {
 		return refuse(DiagnosticInvalidDeclaration, "invalid component %q", value.ID)
 	}
 	switch value.Placement {
@@ -47,6 +51,14 @@ func (b *Builder) AdmitComponent(value ClientComponent) error {
 	case extension.ComponentPlacementWorkspaceView:
 		if (value.Scope == extension.ComponentScopeFile || value.Scope == extension.ComponentScopeToolResult) || value.Selector != nil {
 			return refuse(DiagnosticInvalidDeclaration, "workspace component has a renderer target")
+		}
+	case extension.ComponentPlacementSettingsPane:
+		if (value.Scope != extension.ComponentScopeClient && value.Scope != extension.ComponentScopeWorkspace && value.Scope != extension.ComponentScopeInstallation) || value.Selector != nil {
+			return refuse(DiagnosticInvalidDeclaration, "settings component requires client, workspace or installation context")
+		}
+	case extension.ComponentPlacementClientEffect:
+		if value.Scope != extension.ComponentScopeClient || value.Material != "" || value.Selector != nil {
+			return refuse(DiagnosticInvalidDeclaration, "client effect requires client context without view metadata")
 		}
 	case extension.ComponentPlacementSessionAction:
 		if value.Scope != extension.ComponentScopeSession || value.Material != "" || value.Selector != nil {

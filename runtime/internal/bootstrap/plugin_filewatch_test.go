@@ -41,7 +41,7 @@ func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg.chatResolver = testChatResolver(client)
+	cfg.modelProviders = testChatResolver(client)
 	opening := make(chan protocol.StartRunResponse, 1)
 	var withheld atomic.Bool
 	r := poMCPOpenWithCallbackRPC(t, cfg, func(handler http.Handler) http.Handler {

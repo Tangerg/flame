@@ -29,7 +29,8 @@ for (const theme of ["light", "dark"]) {
     test(`JSON import keeps its input, errors and actions reachable ${theme} ${width}`, async ({
       page,
     }) => {
-      await page.setViewportSize({ width, height: 568 });
+      const height = width === 320 ? 420 : 568;
+      await page.setViewportSize({ width, height });
       await page.goto(
         `/visual/?fixture=workspace&state=settings&pane=mcp-servers&theme=${theme}&font-size=18`,
       );
@@ -69,7 +70,7 @@ for (const theme of ["light", "dark"]) {
       expect(dimensions.left).toBeGreaterThanOrEqual(16);
       expect(dimensions.right).toBeLessThanOrEqual(width - 16);
       expect(dimensions.top).toBeGreaterThanOrEqual(16);
-      expect(dimensions.bottom).toBeLessThanOrEqual(552);
+      expect(dimensions.bottom).toBeLessThanOrEqual(height - 16);
       expect(dimensions.overflow).toBe(0);
       expect(dimensions.headOutsideBody).toBe(true);
       expect(dimensions.actionInFooter).toBe(true);

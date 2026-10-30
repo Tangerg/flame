@@ -1,35 +1,9 @@
 package model
 
 import (
-	"fmt"
-
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/scope/models/catalog"
 )
-
-// LookupTokenLimits maps the static catalog envelope for one exact model into
-// the Runtime's immutable Domain value. A catalog miss is not an error because
-// configured compatible endpoints may legitimately expose private model IDs.
-func LookupTokenLimits(selection modelchoice.Selection) (modelref.TokenLimits, bool, error) {
-	if !selection.Configured() {
-		return modelref.TokenLimits{}, false, nil
-	}
-	entry, found := catalog.Default.Lookup(selection.Provider(), selection.Model())
-	if !found {
-		return modelref.TokenLimits{}, false, nil
-	}
-	limits, err := catalogTokenLimits(entry)
-	if err != nil {
-		return modelref.TokenLimits{}, false, fmt.Errorf(
-			"model: token limits for %q/%q: %w",
-			selection.Provider(),
-			selection.Model(),
-			err,
-		)
-	}
-	return limits, true, nil
-}
 
 func catalogTokenLimits(entry catalog.Model) (modelref.TokenLimits, error) {
 	return modelref.NewTokenLimits(modelref.TokenLimitValues{

@@ -90,7 +90,6 @@ const installedPlugins = createInstalledPlugins(
 );
 const plugins = createBuiltinPlugins(
   connection,
-  host,
   navigation.navigator,
   agent,
   composer,

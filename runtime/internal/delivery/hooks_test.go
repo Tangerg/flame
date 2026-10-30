@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	hookdata "github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
-	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 )
 
 // fakeHookTrust records the Hook catalog's trust calls (Trust/Untrust)
@@ -91,9 +91,9 @@ func TestListHooksPreservesCompleteHookDefinition(t *testing.T) {
 	}
 	s := newWorkspaceHandlerWithConfig(root, workspaceTestConfig{Hooks: staticHookInspector{inspection: apphooks.Inspection{
 		ProjectRoot: projectRoot,
-		Hooks: []domainhooks.Hook{{
-			Event: domainhooks.SessionStart, Command: "audit", TimeoutMillis: 2500,
-			Scope: domainhooks.ScopeGlobal, Source: "/home/user/.flame/hooks.json",
+		Hooks: []hookdata.Hook{{
+			Event: hookdata.SessionStart, Command: "audit", TimeoutMillis: 2500,
+			Scope: hookdata.ScopeGlobal, Source: "/home/user/.flame/hooks.json",
 		}},
 	}}})
 

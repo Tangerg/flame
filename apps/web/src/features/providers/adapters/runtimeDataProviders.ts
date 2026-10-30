@@ -1,13 +1,7 @@
 import { type Contributor } from "@/extensions/definePlugin";
 import { DATA_PROVIDER } from "@/extensions/dataProvider";
 import { type FlameClient } from "@flame/runtime-client";
-import {
-  EMBEDDING_ROLE_KEY,
-  MODELS_KEY,
-  PROVIDERS_KEY,
-  UTILITY_ROLE_KEY,
-} from "@/features/providers/application/providerQueries";
-import { ProviderConfiguration } from "@/features/providers/application/providerModels";
+import { MODELS_KEY, PROVIDERS_KEY } from "@/features/providers/application/providerQueries";
 import { SelectableModel } from "@/features/providers/application/selectableModel";
 function pageData<T>(request: Promise<{ data: T[] }>): Promise<T[]> {
   return request.then((page) => page.data);
@@ -51,16 +45,8 @@ export function registerProviderDataProviders(
   ctx.contribute(DATA_PROVIDER, {
     key: PROVIDERS_KEY,
     fetcher: async (_params, signal) =>
-      (await pageData(runtimeClient().providers.list(signal))).map((provider) =>
-        ProviderConfiguration.restore(provider),
-      ),
-  });
-  ctx.contribute(DATA_PROVIDER, {
-    key: UTILITY_ROLE_KEY,
-    fetcher: (_params, signal) => runtimeClient().models.getUtilityRole(signal),
-  });
-  ctx.contribute(DATA_PROVIDER, {
-    key: EMBEDDING_ROLE_KEY,
-    fetcher: (_params, signal) => runtimeClient().models.getEmbeddingRole(signal),
+      (await pageData(runtimeClient().providers.list(signal))).map(({ configured }) => ({
+        configured,
+      })),
   });
 }

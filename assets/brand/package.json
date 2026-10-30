@@ -1,0 +1,29 @@
+{
+  "name": "@flame/brand-assets",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./color": {
+      "types": "./color.d.ts",
+      "default": "./color.js"
+    }
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "color.js",
+    "color.d.ts",
+    "*.png",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "lint": "oxlint index.js color.js --deny-warnings",
+    "format:check": "prettier --check index.js index.d.ts color.js color.d.ts package.json README.md",
+    "check": "npm run lint && npm run format:check"
+  }
+}

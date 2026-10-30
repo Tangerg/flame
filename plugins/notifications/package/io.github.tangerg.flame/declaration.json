@@ -1,0 +1,22 @@
+{
+  "protocol": "io.github.tangerg.flame/plugin/1",
+  "components": [
+    {
+      "id": "completion-notifications",
+      "title": "Completion notifications",
+      "scope": "client",
+      "placement": "clientEffect",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "CompletionNotifications"
+    },
+    {
+      "id": "notification-settings",
+      "title": "Notifications",
+      "scope": "installation",
+      "placement": "settingsPane",
+      "material": "notifications",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "NotificationSettings"
+    }
+  ]
+}

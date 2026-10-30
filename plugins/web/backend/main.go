@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"os"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/scope/tools/httpreq"
 )
 
 func configuredKey(name string) (apiKey, error) {
@@ -58,7 +60,20 @@ func run(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
-	server, err := newServer(research)
+	var allowedHosts []string
+	if raw, present := os.LookupEnv("HTTP_ALLOWED_HOSTS"); present {
+		if err := json.Unmarshal([]byte(raw), &allowedHosts); err != nil {
+			return fmt.Errorf("web: HTTP_ALLOWED_HOSTS must be a JSON array of hosts: %w", err)
+		}
+		if allowedHosts == nil {
+			return errors.New("web: HTTP_ALLOWED_HOSTS must be a JSON array of hosts")
+		}
+	}
+	requests, err := newRequests(store.db, httpreq.ClientConfig{AllowedHosts: allowedHosts, HTTPClient: client})
+	if err != nil {
+		return err
+	}
+	server, err := newServer(research, requests)
 	if err != nil {
 		return err
 	}

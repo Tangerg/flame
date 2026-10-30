@@ -1,3 +1,4 @@
+import { unavailableComponentNotifications } from "@/test/unavailableNotifications";
 import {
   act,
   cleanup,
@@ -318,9 +319,17 @@ async function rig() {
       locale: "en",
       runtime: client,
       signal: controller.signal,
+
       track: (factory) => factory(controller.signal),
       telemetry: { read: () => ({ spans: [], metrics: [], logs: [] }), clear: () => undefined },
       saveFile,
+      notifications: unavailableComponentNotifications,
+      subscribeRootRunSettlements() {
+        throw new Error("This fixture must not observe run settlements");
+      },
+      registerCommand() {
+        throw new Error("This fixture must not register client commands");
+      },
       compose: () => {
         throw new Error("fixture does not compose");
       },

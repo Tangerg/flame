@@ -68,7 +68,7 @@ func scheduleModelManualRun(t *testing.T, lost bool) {
 		t.Fatal(err)
 	}
 	cfg := poMCPConfig(t)
-	cfg.chatResolver, cfg.approvalMode = testChatResolver(client), approval.ModeYolo
+	cfg.modelProviders, cfg.approvalMode = testChatResolver(client), approval.ModeYolo
 	var r *poMCPRuntime
 	var opening <-chan protocol.StartRunResponse
 	if lost {

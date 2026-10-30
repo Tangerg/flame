@@ -10,7 +10,7 @@ func auxiliaryFixture(model chat.Model) SelectedChat {
 	if lo.IsNil(model) {
 		return SelectedChat{}
 	}
-	resolved, err := NewResolvedChat(model, nil)
+	resolved, err := NewResolvedChat(model, nil, nil)
 	if err != nil {
 		panic(err)
 	}

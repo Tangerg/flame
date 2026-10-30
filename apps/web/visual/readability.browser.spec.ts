@@ -1,3 +1,4 @@
+import { en as mcpEn } from "../../../plugins/mcp/component/locales/en";
 import { expect, test, type Locator, type Page } from "./test";
 async function open(page: Page, query: string, width = 320, height = 720) {
   await page.setViewportSize({ width, height });
@@ -164,63 +165,42 @@ for (const theme of ["light", "dark"]) {
   test(`long MCP identity, diagnostics and hook conditions remain visible inside their rows in ${theme}`, async ({
     page,
   }) => {
-    const server = `workspace-${"permissions-".repeat(10)}tools`;
-    const detail = `The workspace tool server could not start because the requested configuration path is unavailable: /Users/visual/${"workspace-".repeat(24)}/mcp.json`;
+    const server = "workspace-permissions-toolserver";
+    const detail = mcpEn["mcpStatus.mcp_configuration_failed"]!;
     const matcher = `/Users/visual/${"workspace-".repeat(24)}/**`;
     const command = `./scripts/check-workspace-permissions --root /Users/visual/${"workspace-".repeat(24)}\n--mode exact`;
-    await open(page, `fixture=workspace&state=settings&pane=mcp-servers&theme=${theme}`, 320, 900);
-    await page.getByRole("heading", { name: "MCP servers", exact: true }).waitFor();
-    await page.evaluate(
-      async ({ server, detail }) => {
-        const moduleUrl = "/src/lib/queryClient.ts";
-        const { queryClient }: typeof import("@/lib/queryClient") = await import(moduleUrl);
-        await queryClient.cancelQueries({ queryKey: ["mcp-servers"] });
-        queryClient.setQueryData(
-          ["mcp-servers"],
-          [
-            {
-              id: { origin: { type: "user" }, name: server },
-              status: "failed",
-              type: "stdio",
-              enabled: true,
-              command: "npx",
-              args: [],
-              handshakeTimeout: { type: "bounded", seconds: 30 },
-              errorDetail: detail,
-            },
-          ],
-        );
-      },
-      { server, detail },
+    await open(
+      page,
+      `fixture=workspace&state=settings&pane=mcp-servers&theme=${theme}&mcp-transport=stdio&long-mcp=1`,
+      320,
+      900,
     );
+    await page.getByRole("heading", { name: "MCP servers", exact: true }).waitFor();
     await textFitsRow(page.getByText(server, { exact: true }));
     await textFitsRow(page.getByText(detail, { exact: true }));
     await open(page, `fixture=workspace&state=settings&pane=hooks&theme=${theme}`, 320, 900);
     await page.getByRole("heading", { name: "Hooks", exact: true }).waitFor();
     await page.evaluate(
       async ({ matcher, command }) => {
-        const moduleUrl = "/src/lib/queryClient.ts";
-        const { queryClient }: typeof import("@/lib/queryClient") = await import(moduleUrl);
-        await queryClient.cancelQueries({ queryKey: ["hooks"] });
-        queryClient.setQueriesData(
-          { queryKey: ["hooks"] },
-          {
-            projectTrusted: true,
-            hooks: [
-              {
-                event: "PreToolUse",
-                matcher,
-                command,
-                scope: "global",
-                source: "user-hooks.json",
-                active: false,
-              },
-            ],
-          },
-        );
+        const moduleUrl = "/visual/hookSnapshot.ts";
+        const { VISUAL_HOOKS }: typeof import("./hookSnapshot") = await import(moduleUrl);
+        Object.assign(VISUAL_HOOKS, {
+          projectTrusted: true,
+          hooks: [
+            {
+              event: "PreToolUse",
+              matcher,
+              command,
+              scope: "global",
+              source: "user-hooks.json",
+              active: false,
+            },
+          ],
+        });
       },
       { matcher, command },
     );
+    await page.getByRole("button", { name: "Refresh", exact: true }).click();
     await textFitsRow(page.getByText(matcher, { exact: true }));
     await textFitsRow(page.getByText(command, { exact: true }));
   });

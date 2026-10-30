@@ -1,0 +1,18 @@
+[
+  {
+    "name": "flame.skill-learning/archive.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Return an optional inactivity threshold when an archive check is due at the caller's time. The caller alone admits and commits archival.",
+    "input": "schema.json#/$defs/Method_flame_2eskill_2dlearning_2farchive_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2eskill_2dlearning_2farchive_2ev1Output"
+  },
+  {
+    "name": "flame.skill-learning/mine.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Apply learning cadence to a completed Run and return optional proposal advice using call-scoped history, current skill and model callbacks. Never publish or store active skills.",
+    "input": "schema.json#/$defs/Method_flame_2eskill_2dlearning_2fmine_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2eskill_2dlearning_2fmine_2ev1Output"
+  }
+]

@@ -63,7 +63,7 @@ without overriding the meaning of a global size token.
 | `agent/`                    | Session and Run projections, streaming fold, input submission, interruption responses, recovery, and consumer-facing command/read ports |
 | `composer/`                 | Drafts, local attachments, authoring history, explicit Run overrides, and submission intent                                             |
 | Other `chat/` features      | Conversation rendering, tool previews, message actions, Goal/Plan presentation, search, and related contributions                       |
-| `providers/`                | Provider/model catalog, exact model identity, configuration drafts, role selection, and configuration mutations                         |
+| `providers/`                | Provider/model catalog, exact model identity and navigation to an installed model settings entry                                        |
 | `connection/`               | Endpoint configuration, capability negotiation, connection generation, server scope, and mutation-journal storage                       |
 | `navigation/`               | Work Index projections and working-directory selection                                                                                  |
 | `workspace/`                | Workspace materials, view navigation, file and review reads, conversation export, and subscription invalidation                         |
@@ -149,6 +149,19 @@ resource bounds. The captured component target determines the workspace and file
 local React state owns layout, filtering and folding. Navigation resolves admitted
 Workspace view contributions with `material: "diff"` and owns no separate renderer
 registration. The former compiled Diff view and guest carrier are removed.
+
+Optional settings pages use installed `settingsPane` components in the Extensions
+group. They share the ordinary package resource lease, error boundary and captured
+command lifetime. Brand artwork, Hooks management, model configuration and MCP settings live in
+`plugins/brand`, `plugins/hooks`, `plugins/providers` and `plugins/mcp`; Runtime
+retains credentials, model roles, project trust, MCP connections, OAuth attempts
+and approval rules. Declared settings intents connect setup, Composer and the
+tools shortcut to the exact installed entries. Missing or ambiguous entries route to plugin management.
+Changing the display locale preserves each accepted operation's captured signal
+and owner. A component source factory retains private drafts across mounts under
+the actual contribution, native resource and Host lifetime. The factory constructs
+without I/O; mounted contexts retain execution tracking and cancellation. The
+Host retains this source explicitly rather than publishing a global presenter.
 
 ## Dependencies and public surfaces
 
@@ -301,9 +314,8 @@ feature that understands the data:
 
 - Agent registers Session and model-invocation reads.
 - Workspace registers projects and files. Installed Memory and Skill components read their own generated publisher contracts through release-bound operations; drafts, pending command observation and accepted pages belong to those components. Workspace has no parallel business cache, mutation gateway or catalog page.
-- Providers registers provider/model catalogs, configuration, and role reads.
-- Hooks registers inspection and trust reads.
-- MCP registers its server and tool data through its own plugin.
+- Providers registers only the provider/model catalogs needed by basic composition.
+- Installed Provider, MCP and Hook settings components read their own public Runtime projections; they have no compiled feature gateway or global presenter.
 
 Each feature registers once and removes its contribution with its own plugin
 installation. Defaults has no business-data registry or cross-feature mapper.
@@ -374,12 +386,12 @@ replay rules; the graphical application supplies its storage lifetime and render
 the outcome. A delayed result may settle its original command, but cannot
 advance a retired view generation.
 
-A null connection generation withdraws callable Provider, MCP, and Hook mutation
-owners. Discovery must establish a successor before installing writable owners
-again. MCP configuration drafts capture one concrete generation's command handle
-when opened and retire with it. Sequential JSON import belongs to that same
-Application handle, which reports its confirmed completed prefix if retirement
-interrupts the batch. A successor never receives the remainder of an old intent.
+Connection generation replacement retires captured installed component sources
+and contexts. A source retains original command promises through view closes;
+source retirement clears its drafts and observations. MCP JSON import keeps one
+accepted prefix and the original in-flight command. Reopening the same source
+reconciles that command before continuing the remaining entries; a successor
+source cannot inherit an old intent.
 
 Cancellation projects the Runtime's committed canceled Run. A `run_finished`
 refusal followed by a successful terminal read preserves the committed outcome;

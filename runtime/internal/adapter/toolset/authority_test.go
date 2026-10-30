@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
-	"slices"
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
@@ -22,7 +21,7 @@ func TestAuthorityReadSharesOneSourceObservationAndRefreshesNextRequest(t *testi
 	changed := server.Clone()
 	changed.URL = "https://second.example/mcp"
 	registry := &authorityReadSequence{states: []mcpserver.Server{server, changed}}
-	authorities := NewAuthorities(registry.Get, nil)
+	authorities := NewAuthorities(registry.Get)
 	first := testMCPRef(server.Name, testsupport.RemoteToolName("first"))
 	second := testMCPRef(server.Name, testsupport.RemoteToolName("second"))
 	refs := []tool.Ref{first, second}
@@ -70,17 +69,6 @@ func TestAuthorityFingerprintsTrackEndpointsAndExcludeCredentials(t *testing.T) 
 			t.Fatal("changed stdio endpoint retained authority")
 		}
 	}
-	agent := A2AAgentConfig{CardURL: "https://card.example", AllowedRPCOrigins: []string{"https://one.example", "https://two.example"}}
-	original = agent.AuthorityFingerprint()
-	slices.Reverse(agent.AllowedRPCOrigins)
-	agent.AllowedRPCOrigins = append(agent.AllowedRPCOrigins, agent.AllowedRPCOrigins[0])
-	if agent.AuthorityFingerprint() != original {
-		t.Fatal("origin set order changed authority")
-	}
-	agent.AllowedRPCOrigins = append(agent.AllowedRPCOrigins, "https://other.example")
-	if agent.AuthorityFingerprint() == original {
-		t.Fatal("added RPC origin retained authority")
-	}
 }
 
 func TestStandingRulesFollowCurrentSourceAuthority(t *testing.T) {
@@ -96,7 +84,7 @@ func TestStandingRulesFollowCurrentSourceAuthority(t *testing.T) {
 	}
 	ref := testMCPRef(server.Name, testsupport.RemoteToolName("read"))
 	store := db.ApprovalRules
-	policy, err := approvals.NewRuntimePolicy(approval.ModeSafe, store, db.ApprovalModes, NewAuthorities(userDefinitions(registry), nil), nil)
+	policy, err := approvals.NewRuntimePolicy(approval.ModeSafe, store, db.ApprovalModes, NewAuthorities(userDefinitions(registry)), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,40 +132,6 @@ func TestStandingRulesFollowCurrentSourceAuthority(t *testing.T) {
 	rules, err := policy.Rules(t.Context(), "", "")
 	if err != nil || len(rules) != 0 {
 		t.Fatalf("recreated source inherited rules: %v, %v", rules, err)
-	}
-}
-
-func TestA2ARulesBecomeStaleWhenCardAuthorityChanges(t *testing.T) {
-	db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "flame.db")))
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-	store := db.ApprovalRules
-	modes := db.ApprovalModes
-	agent := A2AAgentConfig{Name: "research", CardURL: "https://one.example/card", AllowedRPCOrigins: []string{"https://rpc.example"}}
-	ref, err := tool.A2A(agent.Name)
-	if err != nil {
-		t.Fatal(err)
-	}
-	policy, err := approvals.NewRuntimePolicy(approval.ModeSafe, store, modes, NewAuthorities(nil, []A2AAgentConfig{agent}), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := policy.SetRule(t.Context(), approvals.RuleChange{Tool: ref, Scope: approval.ScopeGlobal, Subject: approval.Subject{Type: approval.SubjectAll}, Decision: approval.Allow}, ""); err != nil {
-		t.Fatal(err)
-	}
-	agent.CardURL = "https://two.example/card"
-	policy, err = approvals.NewRuntimePolicy(approval.ModeSafe, store, modes, NewAuthorities(nil, []A2AAgentConfig{agent}), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	rules, err := policy.Rules(t.Context(), "", "")
-	if err != nil || len(rules) != 1 || !rules[0].Stale {
-		t.Fatalf("rules=%v, %v", rules, err)
-	}
-	if _, matched, err := policy.Decide(t.Context(), approval.Query{Tool: ref, SourceFingerprint: agent.AuthorityFingerprint()}); err != nil || matched {
-		t.Fatalf("new card matched old grant: %v, %v", matched, err)
 	}
 }
 

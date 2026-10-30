@@ -6,6 +6,7 @@ import (
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 )
 
@@ -14,17 +15,22 @@ import (
 // states let configuration changes take effect without rebuilding the Instance.
 type modelEnvironment struct {
 	defaultSelection   modelchoice.Selection
-	chatResolver       chatResolver
+	chatResolver       *modeladapter.ObservedResolver
 	utilityRoleState   *models.RoleState
 	utilityModel       modeladapter.AuxiliaryResolver
 	embeddingRoleState *models.RoleState
 	embeddingResolver  *modeladapter.EmbeddingResolver
 	liveEmbedder       *modeladapter.RoleEmbedder
 	callbacks          *qimumcp.Callbacks
+	capabilities       *modeladapter.Capabilities
 }
 
-func buildModelEnvironment(ctx context.Context, cfg assemblyConfig, defaultSelection modelchoice.Selection) (modelEnvironment, error) {
-	chatResolver, err := modeladapter.NewObservedResolver(cfg.chatResolver, cfg.stores.ModelInvocations, cfg.pricing)
+func buildModelEnvironment(ctx context.Context, cfg assemblyConfig, defaultSelection modelchoice.Selection, callbacks *qimumcp.Callbacks, providers modelProviderAdapters) (modelEnvironment, error) {
+	resolver, err := modeladapter.NewChatResolver(cfg.providerRegistry, providers)
+	if err != nil {
+		return modelEnvironment{}, err
+	}
+	chatResolver, err := modeladapter.NewObservedResolver(resolver, cfg.stores.ModelInvocations, cfg.pricing)
 	if err != nil {
 		return modelEnvironment{}, err
 	}
@@ -39,7 +45,7 @@ func buildModelEnvironment(ctx context.Context, cfg assemblyConfig, defaultSelec
 		return modelEnvironment{}, err
 	}
 	embeddingRoleState := models.NewRoleState(embeddingRole)
-	embeddingResolver, err := modeladapter.NewEmbeddingResolver(cfg.providerRegistry, cfg.stores.ModelInvocations, cfg.pricing)
+	embeddingResolver, err := modeladapter.NewEmbeddingResolver(cfg.providerRegistry, providers, cfg.stores.ModelInvocations, cfg.pricing)
 	if err != nil {
 		return modelEnvironment{}, err
 	}
@@ -48,14 +54,19 @@ func buildModelEnvironment(ctx context.Context, cfg assemblyConfig, defaultSelec
 		return modelEnvironment{}, err
 	}
 
+	capabilities, err := modeladapter.NewCapabilities(providers, cfg.stores.ModelInvocations)
+	if err != nil {
+		return modelEnvironment{}, err
+	}
 	environment := modelEnvironment{
 		defaultSelection:   defaultSelection,
 		chatResolver:       chatResolver,
 		utilityRoleState:   utilityRoleState,
 		embeddingRoleState: embeddingRoleState,
 		embeddingResolver:  embeddingResolver,
+		capabilities:       capabilities,
 	}
 	environment.liveEmbedder = liveEmbedder
-	environment.callbacks = qimumcp.NewCallbacks()
+	environment.callbacks = callbacks
 	return environment, nil
 }
