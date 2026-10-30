@@ -1,3 +1,5 @@
+import { HookTrustMutationOwner } from "@/features/hooks/application/hookTrust";
+import { HookTrustProvider } from "@/features/hooks/public/trust";
 import { createGoals } from "@/features/goal/application/goals";
 import { GoalProvider } from "@/features/goal/public/goals";
 import { MCPServerMutationOwner } from "@/features/mcp/application/mcpServerMutationOwner";
@@ -53,6 +55,7 @@ export function createTestClient(
   const theme = createTheme(document, window);
   const providers = createProviders();
   const mcpServers = new MCPServerMutationOwner(null);
+  const hookTrust = new HookTrustMutationOwner(null);
   const navigation = createMemoryNavigator();
   const projection = createRuntimeConnectionProjection();
   const replacements = new Set<() => void>();
@@ -137,31 +140,33 @@ export function createTestClient(
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>
-        <GoalProvider value={goals.access}>
-          <MCPServersProvider value={mcpServers}>
-            <ProvidersProvider value={providers.access}>
-              <ThemeProvider value={theme.access}>
-                <RuntimeProvider value={runtime}>
-                  <agent.Provider>
-                    <ComposerProvider value={composer.access}>
-                      <WorkspaceProvider value={workspace.access}>
-                        <WorkingDirectoryProvider value={directory.access}>
-                          <ImageSaveProvider saveImage={saveImage}>
-                            <NotificationProvider value={notifications.access}>
-                              <InstalledPluginsProvider value={installedPlugins.access}>
-                                <ApplicationCalloutLabels>{children}</ApplicationCalloutLabels>
-                              </InstalledPluginsProvider>
-                            </NotificationProvider>
-                          </ImageSaveProvider>
-                        </WorkingDirectoryProvider>
-                      </WorkspaceProvider>
-                    </ComposerProvider>
-                  </agent.Provider>
-                </RuntimeProvider>
-              </ThemeProvider>
-            </ProvidersProvider>
-          </MCPServersProvider>
-        </GoalProvider>
+        <HookTrustProvider value={hookTrust}>
+          <GoalProvider value={goals.access}>
+            <MCPServersProvider value={mcpServers}>
+              <ProvidersProvider value={providers.access}>
+                <ThemeProvider value={theme.access}>
+                  <RuntimeProvider value={runtime}>
+                    <agent.Provider>
+                      <ComposerProvider value={composer.access}>
+                        <WorkspaceProvider value={workspace.access}>
+                          <WorkingDirectoryProvider value={directory.access}>
+                            <ImageSaveProvider saveImage={saveImage}>
+                              <NotificationProvider value={notifications.access}>
+                                <InstalledPluginsProvider value={installedPlugins.access}>
+                                  <ApplicationCalloutLabels>{children}</ApplicationCalloutLabels>
+                                </InstalledPluginsProvider>
+                              </NotificationProvider>
+                            </ImageSaveProvider>
+                          </WorkingDirectoryProvider>
+                        </WorkspaceProvider>
+                      </ComposerProvider>
+                    </agent.Provider>
+                  </RuntimeProvider>
+                </ThemeProvider>
+              </ProvidersProvider>
+            </MCPServersProvider>
+          </GoalProvider>
+        </HookTrustProvider>
       </QueryClientProvider>
     );
   }
@@ -178,6 +183,7 @@ export function createTestClient(
     theme,
     providers,
     mcpServers,
+    hookTrust,
     goals,
     navigation,
     runtime,
@@ -213,6 +219,7 @@ export function createTestClient(
       });
     },
     async dispose() {
+      hookTrust.dispose();
       goals.dispose();
       mcpServers.dispose();
       providers.dispose();

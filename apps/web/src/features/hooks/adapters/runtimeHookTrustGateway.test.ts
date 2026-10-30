@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { queryClient } from "@/lib/queryClient";
 import { type FlameClient } from "@flame/runtime-client";
-import { setHookTrust } from "@/features/hooks/application/hookTrust";
+import { HookTrustMutationOwner } from "@/features/hooks/application/hookTrust";
 import { HOOKS_KEY } from "@/features/hooks/application/hookQueries";
-import { installHookTrustGateway } from "@/features/hooks/adapters/runtimeHookTrustGateway";
+import { createRuntimeHookTrustGateway } from "@/features/hooks/adapters/runtimeHookTrustGateway";
 import { rejected } from "@/test/rejected";
 let uninstall: (() => void) | undefined;
 
@@ -20,18 +20,16 @@ describe("runtimeHookTrustGateway", () => {
     const setTrustRetired = vi.fn(() => retiredWrite.promise);
     const setTrustSuccessor = vi.fn().mockResolvedValue(undefined);
     let runtimeClient = () => ({ hooks: { setTrust: setTrustRetired } }) as unknown as FlameClient;
-    const retiredInstallation = installHookTrustGateway(() => runtimeClient());
+    const owner = new HookTrustMutationOwner(createRuntimeHookTrustGateway(runtimeClient()));
+    uninstall = () => owner.dispose();
+    const commands = owner.capture()!;
 
-    const inFlight = rejected(setHookTrust("/repo", true));
-    const queued = rejected(setHookTrust("/repo", false));
+    const inFlight = rejected(commands.setProjectTrust("/repo", true));
+    const queued = rejected(commands.setProjectTrust("/repo", false));
     await vi.waitFor(() => expect(setTrustRetired).toHaveBeenCalledOnce());
 
     runtimeClient = () => ({ hooks: { setTrust: setTrustSuccessor } }) as unknown as FlameClient;
-    const successorInstallation = installHookTrustGateway(() => runtimeClient());
-    uninstall = () => {
-      successorInstallation.dispose();
-      retiredInstallation.dispose();
-    };
+    owner.replaceRuntimeGeneration(() => createRuntimeHookTrustGateway(runtimeClient()));
     retiredWrite.resolve();
 
     await expect(inFlight).resolves.toMatchObject({

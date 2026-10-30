@@ -1,6 +1,5 @@
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { HOOKS_KEY } from "@/features/hooks/application/hookQueries";
-import { createPublicationSlot } from "@/lib/publicationSlot";
 import { repairCachedProjection } from "@/lib/queryClient";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
 export interface HookTrustGateway {
@@ -38,47 +37,52 @@ class HookTrustMutationGeneration {
   }
 }
 
+export type HookTrustCommands = Pick<HookTrustMutationGeneration, "setProjectTrust">;
+export type HookTrustAccess = Pick<HookTrustMutationOwner, "capture" | "subscribe">;
+
 export class HookTrustMutationOwner {
-  #generation: HookTrustMutationGeneration;
+  #generation: HookTrustMutationGeneration | null;
+  readonly #listeners = new Set<() => void>();
   #disposed = false;
 
-  private constructor(gateway: HookTrustGateway) {
-    this.#generation = new HookTrustMutationGeneration(gateway);
+  constructor(gateway: HookTrustGateway | null) {
+    this.#generation = gateway ? new HookTrustMutationGeneration(gateway) : null;
   }
 
-  static install(gateway: HookTrustGateway): HookTrustMutationOwner {
-    const owner = new HookTrustMutationOwner(gateway);
-    hookTrustPublication.publish(owner, (predecessor) => predecessor.dispose());
-    return owner;
-  }
+  readonly capture = (): HookTrustCommands | null => this.#generation;
 
-  static current(): HookTrustMutationOwner {
-    const owner = hookTrustPublication.current();
-    if (!owner || owner.#disposed) throw new Error("Hook trust mutation owner is not installed");
-    return owner;
-  }
-
-  setProjectTrust(projectRoot: string, trusted: boolean): Promise<void> {
-    return this.#generation.setProjectTrust(projectRoot, trusted);
-  }
+  readonly subscribe = (listener: () => void): (() => void) => {
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
+  };
 
   replaceRuntimeGeneration(createGateway: () => HookTrustGateway): void {
-    if (this.#disposed || !hookTrustPublication.owns(this)) return;
+    if (this.#disposed) return;
+    const successor = new HookTrustMutationGeneration(createGateway());
     const predecessor = this.#generation;
-    this.#generation = new HookTrustMutationGeneration(createGateway());
+    this.#generation = successor;
+    predecessor?.retire();
+    this.#publish();
+  }
+
+  retireRuntimeGeneration(): void {
+    if (!this.#generation) return;
+    const predecessor = this.#generation;
+    this.#generation = null;
     predecessor.retire();
+    this.#publish();
   }
 
   dispose(): void {
     if (this.#disposed) return;
     this.#disposed = true;
-    this.#generation.retire();
-    hookTrustPublication.withdraw(this);
+    this.#generation?.retire();
+    this.#generation = null;
+    this.#publish();
+    this.#listeners.clear();
   }
-}
 
-const hookTrustPublication = createPublicationSlot<HookTrustMutationOwner>();
-
-export function setHookTrust(projectRoot: string, trusted: boolean): Promise<void> {
-  return HookTrustMutationOwner.current().setProjectTrust(projectRoot, trusted);
+  #publish(): void {
+    for (const listener of this.#listeners) listener();
+  }
 }

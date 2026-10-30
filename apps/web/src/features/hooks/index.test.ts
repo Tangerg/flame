@@ -1,13 +1,18 @@
 import { HookTrustMutationOwner } from "@/features/hooks/application/hookTrust";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type FlameClient } from "@flame/runtime-client";
 import { definePlugin } from "@/extensions/definePlugin";
 import { loadPluginsForTest, resetKernelForTest } from "@/test/kernel";
 import { RuntimeConnectionGeneration, RUNTIME_STREAM } from "@/features/connection/public/services";
-import { setHookTrust } from "@/features/hooks/application/hookTrust";
 import { createHooksPlugin } from "@/features/hooks/index";
 import { rejected } from "@/test/rejected";
+let owner: HookTrustMutationOwner;
+beforeEach(() => {
+  owner = new HookTrustMutationOwner(null);
+});
+
 afterEach(async () => {
+  owner.dispose();
   await resetKernelForTest();
 });
 
@@ -36,20 +41,20 @@ describe("hooks plugin Runtime generation wiring", () => {
     });
     await loadPluginsForTest(
       runtime,
-      createHooksPlugin(() => runtimeClient()),
+      createHooksPlugin(() => runtimeClient(), owner),
     );
 
-    expect(() => HookTrustMutationOwner.current()).toThrow("not installed");
+    expect(owner.capture()).toBeNull();
     generation = RuntimeConnectionGeneration.forProcess("runtime_1");
     for (const subscriber of subscribers) subscriber();
-    const command = rejected(setHookTrust("/repo", true));
+    const command = rejected(owner.capture()!.setProjectTrust("/repo", true));
     await vi.waitFor(() => expect(setTrust).toHaveBeenCalledOnce());
 
     const successorTrust = vi.fn().mockResolvedValue(undefined);
     runtimeClient = () => ({ hooks: { setTrust: successorTrust } }) as unknown as FlameClient;
     generation = null;
     for (const subscriber of subscribers) subscriber();
-    expect(() => HookTrustMutationOwner.current()).toThrow("not installed");
+    expect(owner.capture()).toBeNull();
     generation = RuntimeConnectionGeneration.forProcess("runtime_2");
     for (const subscriber of subscribers) subscriber();
     await expect(command).resolves.toMatchObject({
@@ -57,7 +62,7 @@ describe("hooks plugin Runtime generation wiring", () => {
     });
 
     retired.resolve();
-    await setHookTrust("/repo", false);
+    await owner.capture()!.setProjectTrust("/repo", false);
     expect(successorTrust).toHaveBeenCalledExactlyOnceWith("/repo", false);
     expect(setTrust).toHaveBeenCalledOnce();
   });

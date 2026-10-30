@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { queryClient } from "@/lib/queryClient";
-import { HookTrustMutationOwner, setHookTrust } from "@/features/hooks/application/hookTrust";
+import { HookTrustMutationOwner } from "@/features/hooks/application/hookTrust";
 function deferred() {
   let resolve!: () => void;
   const promise = new Promise<void>((onResolve) => {
@@ -18,6 +18,21 @@ afterEach(() => {
 });
 
 describe("hook trust mutation", () => {
+  it("rejects a captured trust command after replacement instead of using the successor", async () => {
+    const setProjectTrust = vi.fn().mockResolvedValue(undefined);
+    const successor = vi.fn().mockResolvedValue(undefined);
+    owner = new HookTrustMutationOwner({ setProjectTrust });
+    const commands = owner.capture()!;
+    const captured = commands.setProjectTrust.bind(commands);
+    owner.replaceRuntimeGeneration(() => ({ setProjectTrust: successor }));
+
+    await expect(captured("/repo", true)).rejects.toMatchObject({
+      message: "hook_trust_mutation_generation_retired",
+    });
+    expect(setProjectTrust).not.toHaveBeenCalled();
+    expect(successor).not.toHaveBeenCalled();
+  });
+
   it("serializes trust intent per project through authoritative revalidation", async () => {
     const firstWrite = deferred();
     const firstRefresh = deferred();
@@ -29,10 +44,10 @@ describe("hook trust mutation", () => {
       .spyOn(queryClient, "invalidateQueries")
       .mockImplementationOnce(() => firstRefresh.promise)
       .mockResolvedValueOnce(undefined);
-    owner = HookTrustMutationOwner.install({ setProjectTrust });
+    owner = new HookTrustMutationOwner({ setProjectTrust });
 
-    const trust = setHookTrust("/repo", true);
-    const untrust = setHookTrust("/repo", false);
+    const trust = owner!.capture()!.setProjectTrust("/repo", true);
+    const untrust = owner!.capture()!.setProjectTrust("/repo", false);
     await vi.waitFor(() => expect(setProjectTrust).toHaveBeenCalledTimes(1));
 
     firstWrite.resolve();
@@ -51,11 +66,11 @@ describe("hook trust mutation", () => {
   it("preserves a failed command while repairing the cached read", async () => {
     const failure = new Error("trust response lost");
     const invalidate = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
-    owner = HookTrustMutationOwner.install({
+    owner = new HookTrustMutationOwner({
       setProjectTrust: vi.fn().mockRejectedValue(failure),
     });
 
-    await expect(setHookTrust("/repo", true)).rejects.toBe(failure);
+    await expect(owner!.capture()!.setProjectTrust("/repo", true)).rejects.toBe(failure);
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["hooks"] });
   });
 
@@ -64,12 +79,12 @@ describe("hook trust mutation", () => {
     const setProjectTrust = vi.fn((projectRoot: string) =>
       projectRoot === "/slow" ? firstWrite.promise : Promise.resolve(),
     );
-    owner = HookTrustMutationOwner.install({ setProjectTrust });
+    owner = new HookTrustMutationOwner({ setProjectTrust });
     vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
 
-    const slow = setHookTrust("/slow", true);
+    const slow = owner!.capture()!.setProjectTrust("/slow", true);
     await vi.waitFor(() => expect(setProjectTrust).toHaveBeenCalledWith("/slow", true));
-    await expect(setHookTrust("/ready", true)).resolves.toBeUndefined();
+    await expect(owner!.capture()!.setProjectTrust("/ready", true)).resolves.toBeUndefined();
     expect(setProjectTrust).toHaveBeenCalledWith("/ready", true);
 
     firstWrite.resolve();
@@ -77,11 +92,11 @@ describe("hook trust mutation", () => {
   });
 
   it("keeps an accepted trust command successful when cache repair fails", async () => {
-    owner = HookTrustMutationOwner.install({
+    owner = new HookTrustMutationOwner({
       setProjectTrust: vi.fn().mockResolvedValue(undefined),
     });
     vi.spyOn(queryClient, "invalidateQueries").mockRejectedValue(new Error("cache unavailable"));
 
-    await expect(setHookTrust("/repo", true)).resolves.toBeUndefined();
+    await expect(owner!.capture()!.setProjectTrust("/repo", true)).resolves.toBeUndefined();
   });
 });

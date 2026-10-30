@@ -518,7 +518,7 @@ export async function installVisualWorkspaceFixture(
     shortcutsSettings(visual.workspace.access),
     approvalsSettings,
     connectionSettings,
-    createHooksPlugin(runtimeClient),
+    createHooksPlugin(runtimeClient, visual.hookTrust),
     createMCPServersPlugin(runtimeClient, visual.mcpServers),
     personalizationSettings,
     createPluginsPlugin(visual.installedPlugins),

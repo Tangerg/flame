@@ -1,3 +1,5 @@
+import { HookTrustMutationOwner } from "@/features/hooks/application/hookTrust";
+import { HookTrustProvider } from "@/features/hooks/public/trust";
 import { createGoals } from "@/features/goal/application/goals";
 import { GoalProvider } from "@/features/goal/public/goals";
 import { MCPServerMutationOwner } from "@/features/mcp/application/mcpServerMutationOwner";
@@ -53,6 +55,7 @@ export function createVisualClient(runtimeClient: () => FlameClient) {
   const theme = createTheme(document, window);
   const providers = createProviders();
   const mcpServers = new MCPServerMutationOwner(null);
+  const hookTrust = new HookTrustMutationOwner(null);
   const navigation = createMemoryNavigator();
   const projection = createRuntimeConnectionProjection();
   projection.store.setState({ connectionGeneration: VISUAL_RUNTIME_GENERATION });
@@ -142,31 +145,33 @@ export function createVisualClient(runtimeClient: () => FlameClient) {
   );
   function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <GoalProvider value={goals.access}>
-        <MCPServersProvider value={mcpServers}>
-          <ProvidersProvider value={providers.access}>
-            <ThemeProvider value={theme.access}>
-              <RuntimeProvider value={runtime}>
-                <agent.Provider>
-                  <ComposerProvider value={composer.access}>
-                    <WorkspaceProvider value={workspace.access}>
-                      <WorkingDirectoryProvider value={directory.access}>
-                        <ImageSaveProvider saveImage={saveImage}>
-                          <NotificationProvider value={notifications.access}>
-                            <InstalledPluginsProvider value={installedPlugins.access}>
-                              <ApplicationCalloutLabels>{children}</ApplicationCalloutLabels>
-                            </InstalledPluginsProvider>
-                          </NotificationProvider>
-                        </ImageSaveProvider>
-                      </WorkingDirectoryProvider>
-                    </WorkspaceProvider>
-                  </ComposerProvider>
-                </agent.Provider>
-              </RuntimeProvider>
-            </ThemeProvider>
-          </ProvidersProvider>
-        </MCPServersProvider>
-      </GoalProvider>
+      <HookTrustProvider value={hookTrust}>
+        <GoalProvider value={goals.access}>
+          <MCPServersProvider value={mcpServers}>
+            <ProvidersProvider value={providers.access}>
+              <ThemeProvider value={theme.access}>
+                <RuntimeProvider value={runtime}>
+                  <agent.Provider>
+                    <ComposerProvider value={composer.access}>
+                      <WorkspaceProvider value={workspace.access}>
+                        <WorkingDirectoryProvider value={directory.access}>
+                          <ImageSaveProvider saveImage={saveImage}>
+                            <NotificationProvider value={notifications.access}>
+                              <InstalledPluginsProvider value={installedPlugins.access}>
+                                <ApplicationCalloutLabels>{children}</ApplicationCalloutLabels>
+                              </InstalledPluginsProvider>
+                            </NotificationProvider>
+                          </ImageSaveProvider>
+                        </WorkingDirectoryProvider>
+                      </WorkspaceProvider>
+                    </ComposerProvider>
+                  </agent.Provider>
+                </RuntimeProvider>
+              </ThemeProvider>
+            </ProvidersProvider>
+          </MCPServersProvider>
+        </GoalProvider>
+      </HookTrustProvider>
     );
   }
   return {
@@ -174,6 +179,7 @@ export function createVisualClient(runtimeClient: () => FlameClient) {
     theme,
     providers,
     mcpServers,
+    hookTrust,
     goals,
     navigation,
     projection,
@@ -191,6 +197,7 @@ export function createVisualClient(runtimeClient: () => FlameClient) {
       configuration = next;
     },
     async dispose() {
+      hookTrust.dispose();
       goals.dispose();
       mcpServers.dispose();
       providers.dispose();

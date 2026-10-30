@@ -75,6 +75,7 @@ beforeEach(async () => {
     testClient.providers,
     testClient.mcpServers,
     testClient.goals,
+    testClient.hookTrust,
   );
   vi.stubGlobal("fetch", () => Promise.reject(new Error("offline in tests")));
   vi.stubGlobal(
@@ -160,6 +161,7 @@ describe("built-in contributions", () => {
       testClient.providers,
       testClient.mcpServers,
       testClient.goals,
+      testClient.hookTrust,
     );
     running = await startKernel(builtinPlugins);
     expect(received.length).toBeGreaterThan(0);

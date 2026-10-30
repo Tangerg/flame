@@ -1,3 +1,4 @@
+import { type HookTrustMutationOwner } from "@/features/hooks/application/hookTrust";
 import { type Goals } from "@/features/goal/application/goals";
 import { type MCPServerMutationOwner } from "@/features/mcp/application/mcpServerMutationOwner";
 import { type Providers } from "@/features/providers/adapters/providers";
@@ -98,6 +99,7 @@ export function createBuiltinPlugins(
   providers: Providers,
   mcpServers: MCPServerMutationOwner,
   goals: Goals,
+  hookTrust: HookTrustMutationOwner,
 ): AnyPlugin[] {
   const agentAccess = agent.access;
   const composerAccess = composerOwner.access;
@@ -150,7 +152,7 @@ export function createBuiltinPlugins(
     createPluginsPlugin(installedPlugins),
     createProvidersPlugin(runtimeClient, providers.mutations),
     createMCPServersPlugin(runtimeClient, mcpServers),
-    createHooksPlugin(runtimeClient),
+    createHooksPlugin(runtimeClient, hookTrust),
     fileView,
     subagentsView,
   ];

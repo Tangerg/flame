@@ -7,7 +7,7 @@ import { Tag } from "@/ui/index";
 import { Badge, gap, ListRow, RecordGroup, vocab } from "@flame/ui";
 import { type HookReadModel } from "@/features/hooks/application/hookConfig";
 import { useHookConfigs } from "@/features/hooks/application/hookConfig";
-import { setHookTrust } from "@/features/hooks/application/hookTrust";
+import { useSetHookTrust } from "@/features/hooks/public/trust";
 import {
   isWorkspaceResolving,
   resolvedWorkspaceCwd,
@@ -97,6 +97,7 @@ function HookRow({ h }: { h: HookReadModel }) {
 }
 
 export function HooksPane() {
+  const setHookTrust = useSetHookTrust();
   const t = useT();
   const trust = useCommandAction({
     wasRetired: wasGenerationRetired,
