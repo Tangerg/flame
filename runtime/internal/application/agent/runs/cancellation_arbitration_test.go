@@ -107,8 +107,8 @@ func TestWaitingChildAndRootCancellationHaveOneApplicationOwner(t *testing.T) {
 			{RunID: plan.target.run.ID(), Reason: "duplicate child", AllowChildRun: true},
 			{RunID: plan.root.run.ID(), Reason: "stop root"},
 		} {
-			if _, err := coordinator.Cancel(t.Context(), command); !errors.Is(err, ErrSessionBusy) {
-				t.Fatalf("losing Cancel(%q) error = %v, want ErrSessionBusy", command.RunID, err)
+			if _, err := coordinator.Cancel(t.Context(), command); !errors.Is(err, run.ErrSessionBusy) {
+				t.Fatalf("losing Cancel(%q) error = %v, want run.ErrSessionBusy", command.RunID, err)
 			}
 		}
 		if prepared.applied != 0 {
@@ -174,8 +174,8 @@ func TestWaitingChildAndRootCancellationHaveOneApplicationOwner(t *testing.T) {
 			{RunID: plan.root.run.ID(), Reason: "duplicate root"},
 			{RunID: plan.target.run.ID(), Reason: "stop child", AllowChildRun: true},
 		} {
-			if _, err := coordinator.Cancel(t.Context(), command); !errors.Is(err, ErrSessionBusy) {
-				t.Fatalf("losing Cancel(%q) error = %v, want ErrSessionBusy", command.RunID, err)
+			if _, err := coordinator.Cancel(t.Context(), command); !errors.Is(err, run.ErrSessionBusy) {
+				t.Fatalf("losing Cancel(%q) error = %v, want run.ErrSessionBusy", command.RunID, err)
 			}
 		}
 		if prepared.applied != 0 || len(effects.waitingCancels) != 0 {
@@ -236,8 +236,8 @@ func TestWaitingChildCancellationAndResumeHaveOneApplicationOwner(t *testing.T) 
 			RunID:              plan.root.run.ID(),
 			CallerCapabilities: plan.root.run.Capabilities(),
 			Responses:          waitingQuestionResponses(plan.pending),
-		}); !errors.Is(err, ErrSessionBusy) {
-			t.Fatalf("losing Resume error = %v, want ErrSessionBusy", err)
+		}); !errors.Is(err, run.ErrSessionBusy) {
+			t.Fatalf("losing Resume error = %v, want run.ErrSessionBusy", err)
 		}
 
 		closeTestBarrier(release)
@@ -301,8 +301,8 @@ func TestWaitingChildCancellationAndResumeHaveOneApplicationOwner(t *testing.T) 
 			RunID:         plan.target.run.ID(),
 			Reason:        "stop child",
 			AllowChildRun: true,
-		}); !errors.Is(err, ErrSessionBusy) {
-			t.Fatalf("losing child Cancel error = %v, want ErrSessionBusy", err)
+		}); !errors.Is(err, run.ErrSessionBusy) {
+			t.Fatalf("losing child Cancel error = %v, want run.ErrSessionBusy", err)
 		}
 		if prepared.applied != 0 || len(baseEffects.waitingCancels) != 0 {
 			t.Fatalf(
@@ -378,8 +378,8 @@ func TestLiveChildCancellationAndNaturalTerminalHaveOneTreeOwner(t *testing.T) {
 		if err != nil {
 			t.Fatalf("begin child cancellation: %v", err)
 		}
-		if _, err := owner.beginChildCancellation(plan, "duplicate child"); !errors.Is(err, ErrSessionBusy) {
-			t.Fatalf("duplicate child cancellation error = %v, want ErrSessionBusy", err)
+		if _, err := owner.beginChildCancellation(plan, "duplicate child"); !errors.Is(err, run.ErrSessionBusy) {
+			t.Fatalf("duplicate child cancellation error = %v, want run.ErrSessionBusy", err)
 		} else if !strings.Contains(err.Error(), plan.target.run.ID()) {
 			t.Fatalf("duplicate child cancellation error = %q, want target identity", err)
 		}

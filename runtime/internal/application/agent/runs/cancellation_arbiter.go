@@ -18,7 +18,7 @@ func (r *runTreeOwner) admitCancellation(root rundomain.Run, record Record) erro
 	parking := r.interrupt.committed || r.interrupt.active != nil
 	r.mu.Unlock()
 	if root.State() == rundomain.Waiting && parking {
-		return fmt.Errorf("%w: Run %q is completing parked maintenance", ErrSessionBusy, root.ID())
+		return fmt.Errorf("%w: Run %q is completing parked maintenance", rundomain.ErrSessionBusy, root.ID())
 	}
 	if root.State() != rundomain.Running || record.SegmentID != root.ActiveSegmentID() {
 		return fmt.Errorf(
@@ -91,13 +91,13 @@ func (r *runTreeOwner) beginChildCancellation(
 	case r.rootCancel != nil:
 		return nil, fmt.Errorf(
 			"%w: root Run %q cancellation owns the tree",
-			ErrSessionBusy,
+			rundomain.ErrSessionBusy,
 			plan.root.run.ID(),
 		)
 	case r.childCancel != nil:
 		return nil, fmt.Errorf(
 			"%w: child Run %q cancellation owns the tree",
-			ErrSessionBusy,
+			rundomain.ErrSessionBusy,
 			r.childCancel.targetRunID,
 		)
 	case r.terminalRuns != nil:
@@ -277,7 +277,7 @@ func (r *runTreeOwner) requestCancel(
 			r.mu.Unlock()
 			return false, fmt.Errorf(
 				"%w: child Run %q cancellation owns the tree",
-				ErrSessionBusy,
+				rundomain.ErrSessionBusy,
 				targetRunID,
 			)
 		}
@@ -285,7 +285,7 @@ func (r *runTreeOwner) requestCancel(
 			r.mu.Unlock()
 			return false, fmt.Errorf(
 				"%w: root Run cancellation already owns the tree",
-				ErrSessionBusy,
+				rundomain.ErrSessionBusy,
 			)
 		}
 		activation := r.activation

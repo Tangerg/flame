@@ -19,14 +19,11 @@ import (
 )
 
 var (
-	// ErrSessionBusy reports that a session or its working tree cannot admit a
-	// new run segment.
-	ErrSessionBusy = errors.New("runs: session busy")
-	// ErrRunAdmissionBusy is the retryable subset of ErrSessionBusy: the
+	// ErrRunAdmissionBusy is the retryable subset of run.ErrSessionBusy: the
 	// admission gate observed a current Session or working-tree owner. A caller
 	// may wait on WaitSessionStartable and retry. Other busy
 	// outcomes (for example a durable conflict) are not implicitly retryable.
-	ErrRunAdmissionBusy = fmt.Errorf("%w: run admission busy", ErrSessionBusy)
+	ErrRunAdmissionBusy = fmt.Errorf("%w: run admission busy", run.ErrSessionBusy)
 	// ErrIsolationUnavailable reports that an isolated session cannot run because
 	// isolation is not configured or the host has no sandbox backend. The run is
 	// refused rather than run unconfined (fail-closed).
@@ -458,10 +455,10 @@ func validateOptions(options *corechat.Options) error {
 // It is a typed error rather than a sentinel: the identity IS the information, and a
 // sentinel would leave the caller to go find out what blocked it.
 type ActiveRunConflictError struct {
-	RunID  string
-	Status run.State
+	RunID string
+	State run.State
 }
 
 func (a *ActiveRunConflictError) Error() string {
-	return fmt.Sprintf("runs: session already has a %s run %q", a.Status, a.RunID)
+	return fmt.Sprintf("runs: session already has a %s run %q", a.State, a.RunID)
 }

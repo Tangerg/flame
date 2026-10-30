@@ -2,6 +2,7 @@ package sessions
 
 import (
 	"context"
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"sync"
 )
 
@@ -75,7 +76,7 @@ func (c *Coordinator) ClaimIdleSession(ctx context.Context, sessionID string) (A
 		return Admission{}, leaseErr
 	}
 	if !ok {
-		return Admission{}, ErrSessionBusy
+		return Admission{}, rundomain.ErrSessionBusy
 	}
 	admission := heldSessionAdmission(sessionID, release)
 	open, err := c.listOpenInterrupts(ctx, sessionID)
@@ -85,7 +86,7 @@ func (c *Coordinator) ClaimIdleSession(ctx context.Context, sessionID string) (A
 	}
 	if len(open) > 0 {
 		admission.Release()
-		return Admission{}, ErrSessionBusy
+		return Admission{}, rundomain.ErrSessionBusy
 	}
 	return admission, nil
 }
@@ -99,7 +100,7 @@ func (c *Coordinator) ClaimSessionMutation(ctx context.Context, sessionID string
 		return Admission{}, leaseErr
 	}
 	if !ok {
-		return Admission{}, ErrSessionBusy
+		return Admission{}, rundomain.ErrSessionBusy
 	}
 	return heldSessionAdmission(sessionID, release), nil
 }

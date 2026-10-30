@@ -74,7 +74,7 @@ func wireRunResumeErr(err error) error {
 		return protocol.ErrInterruptNotOpen
 	case errors.Is(err, runs.ErrInvalidInterruptResponse):
 		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
-	case errors.Is(err, runs.ErrSessionBusy):
+	case errors.Is(err, run.ErrSessionBusy):
 		return protocol.ErrSessionBusy
 	case errors.Is(err, runs.ErrRunNotFound):
 		return protocol.ErrRunNotFound

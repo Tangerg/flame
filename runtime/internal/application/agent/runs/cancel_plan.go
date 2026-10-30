@@ -313,7 +313,7 @@ func (c *Coordinator) classifyCancellationOwnerDrift(
 	case refreshed.State() != sourceState:
 		return fmt.Errorf(
 			"%w: Run %q moved from %s to %s while cancellation ownership was resolved: %v",
-			ErrSessionBusy,
+			rundomain.ErrSessionBusy,
 			targetRunID,
 			sourceState,
 			refreshed.State(),

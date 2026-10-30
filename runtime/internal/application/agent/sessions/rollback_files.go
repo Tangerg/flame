@@ -82,7 +82,7 @@ type RollbackResult struct {
 
 // Rollback executes a session rollback as one guarded operation: it claims
 // the single-writer mutation slot (rejecting a rollback under an in-flight run
-// as [ErrSessionBusy]) and, for a file restore, the working-tree mutation slot
+// as [run.ErrSessionBusy]) and, for a file restore, the working-tree mutation slot
 // too, then resolves the boundary under those guards, stops detached processes
 // that could outlive the discarded state, restores files before durable Session
 // state, and applies the history truncation. It returns the resolved Session
@@ -131,7 +131,7 @@ func (c *Coordinator) Rollback(ctx context.Context, spec RollbackSpec) (Rollback
 			return result, leaseErr
 		}
 		if !claimed {
-			return result, fmt.Errorf("%w: working tree %q has a run admission in flight", ErrSessionBusy, cwd)
+			return result, fmt.Errorf("%w: working tree %q has a run admission in flight", run.ErrSessionBusy, cwd)
 		}
 		defer workingTreeMutation.Release()
 	}
@@ -147,7 +147,7 @@ func (c *Coordinator) Rollback(ctx context.Context, spec RollbackSpec) (Rollback
 		if surviving, found := resolvedBoundary.survivingContinuation(restoreHistory); found {
 			return result, fmt.Errorf(
 				"%w: Run %q is %s and this boundary keeps it; settle it before restoring files under it",
-				ErrSessionBusy, surviving.ID(), surviving.State(),
+				run.ErrSessionBusy, surviving.ID(), surviving.State(),
 			)
 		}
 		if err := c.quiesceRollbackWorkspace(spec.SessionID, cwd); err != nil {

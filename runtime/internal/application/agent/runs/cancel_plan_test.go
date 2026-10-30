@@ -181,8 +181,8 @@ func TestCancellationClassifiesResumeBetweenDurableReadsAsBusy(t *testing.T) {
 		t.Context(),
 		CancelCommand{RunID: pending.RootRunID},
 	)
-	if !errors.Is(err, ErrSessionBusy) {
-		t.Fatalf("Cancel during waiting-to-running transition = %v, want ErrSessionBusy", err)
+	if !errors.Is(err, run.ErrSessionBusy) {
+		t.Fatalf("Cancel during waiting-to-running transition = %v, want run.ErrSessionBusy", err)
 	}
 }
 
@@ -202,7 +202,7 @@ func TestCancellationPreservesPersistentMissingInterruptAsInvariantFault(t *test
 		t.Context(),
 		CancelCommand{RunID: pending.RootRunID},
 	)
-	if err == nil || errors.Is(err, ErrSessionBusy) || !strings.Contains(err.Error(), "no open interrupt") {
+	if err == nil || errors.Is(err, run.ErrSessionBusy) || !strings.Contains(err.Error(), "no open interrupt") {
 		t.Fatalf("persistent ownership contradiction = %v, want invariant fault", err)
 	}
 }

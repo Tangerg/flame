@@ -453,7 +453,7 @@ func TestRestoreSessionApplicationBoundaryRejectsOpenInterrupts(t *testing.T) {
 		ID: ses.ID(), Title: "Restored", CWD: restoreCWD, Selection: fixtureDefaultModelSelection(),
 		CreatedAt: now, UpdatedAt: now,
 	}})
-	if !errors.Is(err, sessions.ErrSessionBusy) {
+	if !errors.Is(err, run.ErrSessionBusy) {
 		t.Fatalf("restore = %v, want ErrSessionBusy", err)
 	}
 	pending, err := rt.interrupts.List(ctx, ses.ID())

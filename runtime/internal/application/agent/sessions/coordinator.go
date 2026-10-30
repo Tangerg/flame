@@ -11,7 +11,6 @@ package sessions
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -314,9 +313,6 @@ type Dependencies struct {
 	NewRunID  func() string
 	NewItemID func() string
 }
-
-// ErrSessionBusy reports that a session already has an active or parked run.
-var ErrSessionBusy = errors.New("sessions: session busy")
 
 // New returns a Coordinator over deps.
 func New(deps Dependencies) (*Coordinator, error) {

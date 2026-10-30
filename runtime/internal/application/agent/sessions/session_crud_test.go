@@ -3,6 +3,7 @@ package sessions
 import (
 	"context"
 	"errors"
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"slices"
 	"testing"
 	"time"
@@ -415,8 +416,8 @@ func TestCoordinatorUpdateRejectsRelocationDuringRun(t *testing.T) {
 	cwd := "/requested/project"
 
 	_, err := c.Update(t.Context(), "ses_1", Patch{WorkspacePath: &cwd})
-	if !errors.Is(err, ErrSessionBusy) {
-		t.Fatalf("Update relocation error = %v, want ErrSessionBusy", err)
+	if !errors.Is(err, rundomain.ErrSessionBusy) {
+		t.Fatalf("Update relocation error = %v, want rundomain.ErrSessionBusy", err)
 	}
 	if store.saved.ID() != "" {
 		t.Fatal("busy relocation mutated the session")
@@ -447,8 +448,8 @@ func TestCoordinatorUpdateRejectsExecutionPolicyChangeWhileParked(t *testing.T) 
 			}))
 
 			_, err := coordinator.Update(t.Context(), "ses_1", patch)
-			if !errors.Is(err, ErrSessionBusy) {
-				t.Fatalf("Update error = %v, want ErrSessionBusy", err)
+			if !errors.Is(err, rundomain.ErrSessionBusy) {
+				t.Fatalf("Update error = %v, want rundomain.ErrSessionBusy", err)
 			}
 			if store.saved.ID() != "" {
 				t.Fatal("parked execution policy change mutated the Session")

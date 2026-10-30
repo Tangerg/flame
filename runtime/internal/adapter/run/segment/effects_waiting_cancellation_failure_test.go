@@ -116,7 +116,7 @@ func TestCommitWaitingSubtreeCancellationRejectsStalePendingWithoutMutation(t *t
 		fixture.ctx,
 		fixture.commit,
 	)
-	if !errors.Is(err, runs.ErrSessionBusy) {
+	if !errors.Is(err, run.ErrSessionBusy) {
 		t.Fatalf("stale Pending error = %v, want ErrSessionBusy", err)
 	}
 	if !strings.Contains(err.Error(), fixture.rootRun.ID()) {

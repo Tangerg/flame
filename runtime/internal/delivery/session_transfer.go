@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -21,7 +22,7 @@ import (
 func (s *Handler) ExportSession(ctx context.Context, request protocol.ExportSessionRequest) (*protocol.ExportSessionResponse, error) {
 	result, err := s.sessions.ExportSession(ctx, request.SessionID)
 	if err != nil {
-		if errors.Is(err, sessions.ErrSessionBusy) {
+		if errors.Is(err, rundomain.ErrSessionBusy) {
 			return nil, protocol.NewFailure(errors.Join(protocol.ErrSessionBusy, err), fmt.Sprintf("session %q has a run in flight or open interrupt", request.SessionID))
 		}
 		return nil, wireSessionErr(err)
@@ -77,7 +78,7 @@ func (s *Handler) ImportSession(ctx context.Context, request protocol.ImportSess
 	// replace it).
 	view, err := s.sessions.RestorePortableSession(ctx, portable)
 	if err != nil {
-		if errors.Is(err, sessions.ErrSessionBusy) {
+		if errors.Is(err, rundomain.ErrSessionBusy) {
 			return nil, protocol.NewFailure(errors.Join(protocol.ErrSessionBusy, err), fmt.Sprintf("session %q has a run in flight or open interrupt", sessionID))
 		}
 		if errors.Is(err, sessions.ErrInvalidPortableSnapshot) {

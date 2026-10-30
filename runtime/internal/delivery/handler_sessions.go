@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -162,7 +163,7 @@ func (s *Handler) DeleteSession(ctx context.Context, id string) error {
 	// internal-subtask descendant before deleting their durable state atomically.
 	// User-created forks remain independent conversations.
 	if err := s.sessions.DeleteSession(ctx, id); err != nil {
-		if errors.Is(err, sessions.ErrSessionBusy) {
+		if errors.Is(err, rundomain.ErrSessionBusy) {
 			return protocol.NewFailure(errors.Join(protocol.ErrSessionBusy, err), fmt.Sprintf("session %q or its subtask tree has a run in flight", id))
 		}
 		return wireSessionErr(err)
@@ -191,7 +192,7 @@ func (s *Handler) UpdateSession(ctx context.Context, in protocol.UpdateSessionRe
 		ExpectedRevision: in.ExpectedRevision,
 	})
 	if err != nil {
-		if errors.Is(err, sessions.ErrSessionBusy) {
+		if errors.Is(err, rundomain.ErrSessionBusy) {
 			return nil, protocol.NewFailure(errors.Join(protocol.ErrSessionBusy, err), fmt.Sprintf("session %q has a run in flight", in.SessionID))
 		}
 		return nil, wireSessionErr(err)

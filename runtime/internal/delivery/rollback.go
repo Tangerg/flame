@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
@@ -61,7 +62,7 @@ func wireRollbackErr(err error, sessionID string) error {
 		return protocol.NewFailure(errors.Join(protocol.ErrInternalError, err), "file rollback recovery is still pending; retain the original request for recovery")
 	case errors.Is(err, sessions.ErrCheckpointRestoreIncomplete):
 		return err
-	case errors.Is(err, sessions.ErrSessionBusy):
+	case errors.Is(err, rundomain.ErrSessionBusy):
 		return protocol.NewFailure(protocol.ErrSessionBusy, fmt.Sprintf("session %q has a run in flight", sessionID))
 	case errors.Is(err, sessions.ErrWorkspaceMutationPending):
 		return protocol.NewFailure(protocol.ErrSessionBusy, fmt.Sprintf("session %q has an unfinished file rollback that must be recovered first", sessionID))

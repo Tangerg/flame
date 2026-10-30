@@ -1262,8 +1262,8 @@ func TestResumeAndRootCancelShareOneApplicationAdmissionBoundary(t *testing.T) {
 	if _, err := c.Cancel(
 		t.Context(),
 		CancelCommand{RunID: "run_1", Reason: "racing cancel"},
-	); !errors.Is(err, ErrSessionBusy) {
-		t.Fatalf("Cancel while resume owns admission = %v, want ErrSessionBusy", err)
+	); !errors.Is(err, run.ErrSessionBusy) {
+		t.Fatalf("Cancel while resume owns admission = %v, want run.ErrSessionBusy", err)
 	}
 	if sessions.canceledRunID != "" {
 		t.Fatalf("losing cancel committed run %q", sessions.canceledRunID)
@@ -2374,7 +2374,7 @@ func TestStartRefusesASessionThatAlreadyHasARunAndNamesIt(t *testing.T) {
 			if !ok {
 				t.Fatalf("Start = %v, want an ActiveRunConflictError", err)
 			}
-			if conflict.RunID != "run_active" || conflict.Status != tt.status {
+			if conflict.RunID != "run_active" || conflict.State != tt.status {
 				t.Fatalf("conflict = %+v, want run_active as %s", conflict, tt.status)
 			}
 			if _, admitted := effects.opening().Admission(); admitted {

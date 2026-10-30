@@ -49,7 +49,7 @@ func TestCancellationDuringParkedMaintenanceIsBusyUntilOwnerReleases(t *testing.
 	if !found {
 		t.Fatal("maintenance lost its join owner")
 	}
-	if _, err := coordinator.Cancel(t.Context(), CancelCommand{RunID: spec.RunID}); !errors.Is(err, ErrSessionBusy) {
+	if _, err := coordinator.Cancel(t.Context(), CancelCommand{RunID: spec.RunID}); !errors.Is(err, run.ErrSessionBusy) {
 		t.Fatalf("cancel during maintenance = %v, want busy", err)
 	}
 	releaseFinish()

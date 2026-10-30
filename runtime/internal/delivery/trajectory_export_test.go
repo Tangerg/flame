@@ -4,6 +4,7 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"strings"
 	"testing"
 
@@ -22,7 +23,7 @@ func TestTrajectoryExportFailureReturnsNoDocument(t *testing.T) {
 		source error
 		want   error
 	}{
-		{sessions.ErrSessionBusy, protocol.ErrSessionBusy},
+		{rundomain.ErrSessionBusy, protocol.ErrSessionBusy},
 		{sessions.ErrExportTooLarge, protocol.ErrExportTooLarge},
 	} {
 		handler := &Handler{trajectoryExports: failingTrajectoryExporter{err: test.source}}

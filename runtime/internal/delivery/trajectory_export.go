@@ -6,6 +6,7 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
@@ -59,7 +60,7 @@ func (s *Handler) ExportTrajectory(ctx context.Context, request protocol.ExportT
 }
 
 func wireTrajectoryExportError(err error) error {
-	if errors.Is(err, sessions.ErrSessionBusy) {
+	if errors.Is(err, rundomain.ErrSessionBusy) {
 		return protocol.NewFailure(errors.Join(protocol.ErrSessionBusy, err), "finish or cancel the Session's active or waiting Run before exporting its trajectory")
 	}
 	if errors.Is(err, sessions.ErrExportTooLarge) {

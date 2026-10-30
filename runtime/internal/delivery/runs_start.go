@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Tangerg/flame/qimu"
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"iter"
 	"slices"
 
@@ -134,7 +135,7 @@ func wireRunStartErr(err error) error {
 	// steer / resume / cancel, and the runtime cancels nothing on its own.
 	if conflict, ok := errors.AsType[*runs.ActiveRunConflictError](err); ok {
 		return &ActiveRunConflictError{ActiveRun: protocol.ActiveRunRef{
-			RunID: conflict.RunID, Status: presentRunStatus(conflict.Status),
+			RunID: conflict.RunID, Status: presentRunStatus(conflict.State),
 		}}
 	}
 	switch {
@@ -158,7 +159,7 @@ func wireRunStartErr(err error) error {
 		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	case errors.Is(err, session.ErrInvalid):
 		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
-	case errors.Is(err, runs.ErrSessionBusy):
+	case errors.Is(err, rundomain.ErrSessionBusy):
 		return protocol.ErrSessionBusy
 	case errors.Is(err, runs.ErrInstallationChanged), errors.Is(err, qimu.ErrStaleBinding):
 		return pluginChanged(err)

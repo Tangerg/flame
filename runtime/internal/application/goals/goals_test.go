@@ -1210,7 +1210,7 @@ func TestDriverTreatsMissingRootBoundaryAsContractFailure(t *testing.T) {
 func TestPauseCASUsesAuthoritativeCompleteOutcome(t *testing.T) {
 	base := newMemStore()
 	store := &pauseCompletionRaceStore{memStore: base}
-	fake := &fakeRuns{t: t, store: base, startErr: runs.ErrSessionBusy}
+	fake := &fakeRuns{t: t, store: base, startErr: run.ErrSessionBusy}
 	d := mustDriver(t, store, fake, &fakeSessions{}, goals.NewSessionMutations(), testPrompt)
 	cleanupDriver(t, d)
 	if _, err := d.Start(t.Context(), "s1", "do it", testGoalModelSelection(), run.Capabilities{}); err != nil {

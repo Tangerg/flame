@@ -3,6 +3,7 @@ package runs
 import (
 	"context"
 	"errors"
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"strings"
 	"testing"
 	"testing/synctest"
@@ -360,8 +361,8 @@ func TestRunTreeOwnerCancellationArbiterAllowsOnlyOneTreeOwner(t *testing.T) {
 		if err != nil {
 			t.Fatalf("begin child cancellation: %v", err)
 		}
-		if _, err := treeOwner.requestCancel(t.Context(), "stop root", acceptRootCancel); !errors.Is(err, ErrSessionBusy) {
-			t.Fatalf("root cancellation error = %v, want ErrSessionBusy", err)
+		if _, err := treeOwner.requestCancel(t.Context(), "stop root", acceptRootCancel); !errors.Is(err, rundomain.ErrSessionBusy) {
+			t.Fatalf("root cancellation error = %v, want rundomain.ErrSessionBusy", err)
 		}
 		if canceled || treeOwner.rootCancel != nil {
 			t.Fatalf(
@@ -378,8 +379,8 @@ func TestRunTreeOwnerCancellationArbiterAllowsOnlyOneTreeOwner(t *testing.T) {
 		if _, err := treeOwner.requestCancel(t.Context(), "stop root", acceptRootCancel); err != nil {
 			t.Fatalf("request root cancellation: %v", err)
 		}
-		if _, err := treeOwner.beginChildCancellation(plan, "stop child"); !errors.Is(err, ErrSessionBusy) {
-			t.Fatalf("child cancellation error = %v, want ErrSessionBusy", err)
+		if _, err := treeOwner.beginChildCancellation(plan, "stop child"); !errors.Is(err, rundomain.ErrSessionBusy) {
+			t.Fatalf("child cancellation error = %v, want rundomain.ErrSessionBusy", err)
 		} else if !strings.Contains(err.Error(), plan.root.run.ID()) {
 			t.Fatalf("child cancellation error = %q, want root identity", err)
 		}

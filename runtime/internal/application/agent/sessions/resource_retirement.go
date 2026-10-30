@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"log/slog"
 	"slices"
 
@@ -97,7 +98,7 @@ func (r *ResourceRetirer) complete(ctx context.Context, retirement ResourceRetir
 		return err
 	}
 	if committed != retirement {
-		return fmt.Errorf("%w: Session resource retirement changed", ErrSessionBusy)
+		return fmt.Errorf("%w: Session resource retirement changed", rundomain.ErrSessionBusy)
 	}
 	var errs []error
 	for _, cleanup := range r.cleanups {

@@ -73,7 +73,7 @@ func (c *Coordinator) Cancel(ctx context.Context, cmd CancelCommand) (CancelResu
 		},
 	)
 	if requestErr != nil {
-		if errors.Is(requestErr, ErrSessionBusy) {
+		if errors.Is(requestErr, rundomain.ErrSessionBusy) {
 			return CancelResult{}, requestErr
 		}
 		if settlementErr := entry.owner.wait(cleanupCtx); settlementErr != nil {
@@ -183,7 +183,7 @@ func (c *Coordinator) cancelWaitingChild(
 	if !ok {
 		return CancelResult{}, fmt.Errorf(
 			"%w: session %q or working tree %q has a run or mutation in flight",
-			ErrSessionBusy,
+			rundomain.ErrSessionBusy,
 			sess.ID(),
 			sess.Workspace().Path(),
 		)
@@ -605,7 +605,7 @@ func (c *Coordinator) cancelParkedRun(ctx context.Context, cmd CancelCommand, va
 		return CancelResult{}, leaseErr
 	}
 	if !ok {
-		return CancelResult{}, ErrSessionBusy
+		return CancelResult{}, rundomain.ErrSessionBusy
 	}
 	defer releaseSession()
 
@@ -653,7 +653,7 @@ func (c *Coordinator) cancelKnownParkedRun(
 		return CancelResult{}, leaseErr
 	}
 	if !ok {
-		return CancelResult{}, ErrSessionBusy
+		return CancelResult{}, rundomain.ErrSessionBusy
 	}
 	defer releaseSession()
 	return c.cancelClaimedParkedRun(ctx, cmd, ref)

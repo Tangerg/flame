@@ -43,7 +43,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (StartResul
 		return StartResult{}, leaseErr
 	}
 	if !ok {
-		return StartResult{}, fmt.Errorf("%w: session %q or working tree %q has a run or mutation in flight", ErrSessionBusy, sessionID, sess.Workspace().Path())
+		return StartResult{}, fmt.Errorf("%w: session %q or working tree %q has a run or mutation in flight", run.ErrSessionBusy, sessionID, sess.Workspace().Path())
 	}
 	defer runAdmission.Release()
 	// Run identity locates admission; the answerable hand-off and its Items are

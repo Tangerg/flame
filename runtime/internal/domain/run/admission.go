@@ -10,10 +10,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 )
 
-// ErrSessionBusy reports that admitting a root Run was rejected because the
-// Session already holds a non-terminal root tree. Descendant Runs share that
-// tree's admission and do not compete for a second Session slot.
-var ErrSessionBusy = errors.New("run: session has a non-terminal root Run")
+// ErrSessionBusy is the one category for a Session that cannot admit work now:
+// it already holds a non-terminal root tree, or a working-tree mutation or
+// resource retirement owns it. Descendant Runs share their tree's admission and
+// do not compete for a second Session slot.
+var ErrSessionBusy = errors.New("run: session busy")
 
 // Draft is the fresh root or child Run recorded as it enters [Running]. A
 // root claims the Session's one non-terminal tree slot; a child carries all

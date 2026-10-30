@@ -874,7 +874,7 @@ func TestCoordinatorRejectsUncommittedOpening(t *testing.T) {
 
 	events, err := coordinator.openSegment(context.Background(), testSegment())
 	if !errors.Is(err, run.ErrSessionBusy) {
-		t.Fatalf("openSegment error = %v, want ErrSessionBusy", err)
+		t.Fatalf("openSegment error = %v, want run.ErrSessionBusy", err)
 	}
 	if _, ok := coordinator.registry.Get("run_1"); events != nil || ok {
 		t.Fatal("an uncommitted opening became visible")

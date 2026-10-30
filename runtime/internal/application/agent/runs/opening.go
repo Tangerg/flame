@@ -290,7 +290,7 @@ func (c *Coordinator) resolveOpeningError(ctx context.Context, sessionID string,
 	if active, lookupErr := c.activeRunConflict(ctx, sessionID); lookupErr == nil && active != nil {
 		return active
 	}
-	return fmt.Errorf("%w: %w", ErrSessionBusy, err)
+	return err
 }
 
 // resolveSessionSelection admits an explicitly requested selection, resolves
@@ -376,7 +376,7 @@ func (c *Coordinator) activeRunConflict(ctx context.Context, sessionID string) (
 	if err != nil || !found {
 		return nil, err
 	}
-	return &ActiveRunConflictError{RunID: run.ID(), Status: run.State()}, nil
+	return &ActiveRunConflictError{RunID: run.ID(), State: run.State()}, nil
 }
 
 // executionCWD resolves where a Session's tools operate: the sandbox copy

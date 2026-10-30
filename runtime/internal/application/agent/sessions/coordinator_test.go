@@ -53,8 +53,8 @@ func TestClaimIdleSessionRejectsOpenInterrupt(t *testing.T) {
 	claimer := &testClaimer{}
 
 	_, err := newCoordinatorWithAdmissions(stores, nil, claimer).ClaimIdleSession(context.Background(), "ses_1")
-	if !errors.Is(err, ErrSessionBusy) {
-		t.Fatalf("err = %v, want ErrSessionBusy", err)
+	if !errors.Is(err, run.ErrSessionBusy) {
+		t.Fatalf("err = %v, want run.ErrSessionBusy", err)
 	}
 	if claimer.claimed["ses_1"] {
 		t.Fatal("failed admission must release its claim")
@@ -69,8 +69,8 @@ func TestClaimIdleSessionRejectsActiveClaim(t *testing.T) {
 	claimer := &testClaimer{claimed: map[string]bool{"ses_1": true}}
 
 	_, err := newCoordinatorWithAdmissions(stores, nil, claimer).ClaimIdleSession(context.Background(), "ses_1")
-	if !errors.Is(err, ErrSessionBusy) {
-		t.Fatalf("err = %v, want ErrSessionBusy", err)
+	if !errors.Is(err, run.ErrSessionBusy) {
+		t.Fatalf("err = %v, want run.ErrSessionBusy", err)
 	}
 	if len(claimer.released) != 0 {
 		t.Fatalf("released = %v, want none", claimer.released)

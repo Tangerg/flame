@@ -327,7 +327,7 @@ func TestCommittedResourceCleanupFailureFencesReplacement(t *testing.T) {
 				if err := f.stores.runs.Admit(t.Context(), testsupport.RunDraft(run.Draft{SessionID: "ses_retirement", RunID: "run_new", SegmentID: "seg_new", CreatedAt: time.Now().UTC()})); !errors.Is(err, run.ErrSessionBusy) {
 					t.Fatalf("durable admission crossed pending cleanup: %v", err)
 				}
-				if _, err := f.coordinator.RestorePortableSession(t.Context(), portable); !errors.Is(err, sessions.ErrSessionBusy) {
+				if _, err := f.coordinator.RestorePortableSession(t.Context(), portable); !errors.Is(err, run.ErrSessionBusy) {
 					t.Fatalf("replacement crossed pending cleanup: %v", err)
 				}
 				if err := f.retirer.RecoverPending(t.Context(), f.gate); err != nil {

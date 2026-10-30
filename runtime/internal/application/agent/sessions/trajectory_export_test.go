@@ -3,6 +3,7 @@ package sessions
 import (
 	"context"
 	"errors"
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"testing"
 	"time"
 
@@ -47,7 +48,7 @@ func TestTrajectoryExportReleasesAdmissionAndReturnsNoPartialEvidence(t *testing
 				t.Fatalf("failed export returned partial evidence: %+v, %v", value, err)
 			}
 			if test.active || test.parked {
-				if !errors.Is(err, ErrSessionBusy) || reader.reads != 0 {
+				if !errors.Is(err, rundomain.ErrSessionBusy) || reader.reads != 0 {
 					t.Fatalf("busy export read history: reads=%d, err=%v", reader.reads, err)
 				}
 			} else if !errors.Is(err, broken) {

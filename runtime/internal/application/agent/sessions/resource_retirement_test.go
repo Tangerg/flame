@@ -3,6 +3,7 @@ package sessions
 import (
 	"context"
 	"errors"
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"testing"
 )
 
@@ -29,7 +30,7 @@ func TestResourceRetirementRequiresItsExactCommittedAuthority(t *testing.T) {
 			if authority == "absent" && err != nil {
 				t.Fatal(err)
 			}
-			if authority == "different generation" && !errors.Is(err, ErrSessionBusy) {
+			if authority == "different generation" && !errors.Is(err, rundomain.ErrSessionBusy) {
 				t.Fatalf("generation mismatch = %v", err)
 			}
 			if len(stores.operations) != 0 {

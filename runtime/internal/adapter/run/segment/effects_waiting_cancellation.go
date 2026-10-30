@@ -75,14 +75,14 @@ func (e *Effects) claimWaitingCancellation(
 	if !found {
 		return fmt.Errorf(
 			"%w: waiting cancellation interrupt for root Run %q is no longer open",
-			runs.ErrSessionBusy,
+			run.ErrSessionBusy,
 			commit.RootRunID(),
 		)
 	}
 	if !pending.Equal(commit.ExpectedPending()) {
 		return fmt.Errorf(
 			"%w: waiting cancellation interrupt for root Run %q changed after preparation",
-			runs.ErrSessionBusy,
+			run.ErrSessionBusy,
 			commit.RootRunID(),
 		)
 	}

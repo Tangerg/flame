@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -29,7 +30,7 @@ func (s *Handler) CancelRun(ctx context.Context, in protocol.CancelRunRequest) (
 		return nil, protocol.ErrRunNotFound
 	case errors.Is(err, runs.ErrRunFinished):
 		return nil, protocol.ErrRunFinished
-	case errors.Is(err, runs.ErrSessionBusy):
+	case errors.Is(err, rundomain.ErrSessionBusy):
 		return nil, protocol.ErrSessionBusy
 	case errors.Is(err, runs.ErrInvalidCancellationReason):
 		return nil, protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
