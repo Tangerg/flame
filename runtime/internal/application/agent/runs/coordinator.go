@@ -116,8 +116,7 @@ type Dependencies struct {
 	Admissions                         *ownership.Gate
 	Isolation                          isolationProvider // nil disables isolated sessions (their start is refused)
 	Now                                func() time.Time
-	// Retention bounds every segment's replay window. Zero takes
-	// [DefaultRetention], which is also what discovery advertises.
+	// Retention bounds every segment's replay window; discovery advertises it.
 	Retention    Retention
 	NewRunID     func() string
 	NewSegmentID func() string
@@ -128,15 +127,6 @@ type Dependencies struct {
 
 // NewCoordinator builds the single owner of run use cases and live segments.
 func NewCoordinator(deps Dependencies) (*Coordinator, error) {
-	if deps.Now == nil {
-		deps.Now = time.Now
-	}
-	if deps.Retention == (Retention{}) {
-		deps.Retention = DefaultRetention()
-	}
-	if deps.Retention.MaxEvents <= 0 || deps.Retention.MaxBytes <= 0 {
-		return nil, errors.New("runs: replay retention budgets must be positive")
-	}
 	if deps.ModelSelector != nil && lo.IsNil(deps.ModelSelector) {
 		return nil, errors.New("runs: model selector is typed nil")
 	}
@@ -177,11 +167,15 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 		{"admission gate", deps.Admissions},
 		{"run id generator", deps.NewRunID},
 		{"segment id generator", deps.NewSegmentID},
+		{"clock", deps.Now},
 	}
 	for _, required := range required {
 		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("runs: %s is required", required.name)
 		}
+	}
+	if deps.Retention.MaxEvents <= 0 || deps.Retention.MaxBytes <= 0 {
+		return nil, errors.New("runs: replay retention budgets must be positive")
 	}
 	if deps.Isolation != nil && lo.IsNil(deps.Isolation) {
 		return nil, errors.New("runs: isolation provider must not be typed nil")

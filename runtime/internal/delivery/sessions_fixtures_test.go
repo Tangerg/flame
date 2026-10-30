@@ -409,6 +409,7 @@ func newTestHandler(rt testRuntime) *Handler {
 		Items:      itemProjectionFor(rt),
 		Admissions: admissions,
 		Now:        time.Now,
+		Retention:  runs.DefaultRetention(),
 		NewRunID: func() string {
 			return fmt.Sprintf("run_test_%d", ids.Add(1))
 		},

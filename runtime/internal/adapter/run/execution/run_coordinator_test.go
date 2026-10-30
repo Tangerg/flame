@@ -94,6 +94,12 @@ func mustNewRunCoordinator(t *testing.T, deps runs.Dependencies) *runs.Coordinat
 	fillRunDependency(t, &deps.Projection.Finalizer, projection, "segment finalizer")
 	fillRunDependency(t, &deps.Runs, projection, "run projection")
 	fillRunDependency(t, &deps.Items, projection, "item projection")
+	if deps.Now == nil {
+		deps.Now = time.Now
+	}
+	if deps.Retention == (runs.Retention{}) {
+		deps.Retention = runs.DefaultRetention()
+	}
 	coordinator, err := runs.NewCoordinator(deps)
 	if err != nil {
 		t.Fatalf("construct Run coordinator: %v", err)

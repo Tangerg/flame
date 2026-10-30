@@ -264,6 +264,7 @@ func buildAssemblyCore(
 		Items:         cfg.stores.Transcript,
 		Admissions:    admissionGate,
 		Now:           time.Now,
+		Retention:     runs.DefaultRetention(),
 		NewRunID:      newRunID,
 		NewSegmentID:  newSegmentID,
 		Invalidations: policy.invalidations.publish,

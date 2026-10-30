@@ -20,7 +20,8 @@ func TestNewCoordinatorRejectsMalformedDependencies(t *testing.T) {
 	}{
 		{name: "empty", deps: Dependencies{}, want: "root execution starter"},
 		{name: "typed nil", deps: Dependencies{RootStarts: typedNilStarter}, want: "root execution starter"},
-		{name: "invalid retention", deps: Dependencies{Retention: Retention{MaxEvents: -1, MaxBytes: 1}}, want: "retention budgets"},
+		{name: "invalid retention", deps: completeTestDependencies(Dependencies{Retention: Retention{MaxEvents: -1, MaxBytes: 1}}), want: "retention budgets"},
+		{name: "missing clock", deps: func() Dependencies { deps := completeTestDependencies(Dependencies{}); deps.Now = nil; return deps }(), want: "clock"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -48,12 +49,23 @@ func (acceptAllModelInputs) AdmitSelection(context.Context, modelchoice.Selectio
 // production constructor remains strict; tests opt into explicit inert doubles
 // instead of manufacturing partially valid Coordinators.
 func mustNewCoordinator(deps Dependencies) *Coordinator {
+	coordinator, err := NewCoordinator(completeTestDependencies(deps))
+	if err != nil {
+		panic(err)
+	}
+	return coordinator
+}
+
+func completeTestDependencies(deps Dependencies) Dependencies {
 	control := &fakeExecutionPorts{}
 	observer := &fakeExecutor{}
 	sessions := &fakeRunSessions{}
 	effects := &fakeEffects{}
 	if deps.RootStarts == nil {
 		deps.RootStarts = control
+	}
+	if deps.Retention == (Retention{}) {
+		deps.Retention = DefaultRetention()
 	}
 	if deps.Observations == nil {
 		deps.Observations = observer
@@ -154,11 +166,7 @@ func mustNewCoordinator(deps Dependencies) *Coordinator {
 	if deps.Now == nil {
 		deps.Now = func() time.Time { return time.Unix(1, 0).UTC() }
 	}
-	coordinator, err := NewCoordinator(deps)
-	if err != nil {
-		panic(err)
-	}
-	return coordinator
+	return deps
 }
 
 type noCommandAcceptances struct{}
