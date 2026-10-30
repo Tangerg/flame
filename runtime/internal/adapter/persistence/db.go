@@ -267,9 +267,9 @@ func currentSchema() []string {
 			PRIMARY KEY (call_id, segment_id),
 			UNIQUE (item_id, segment_id)
 		)`,
-			toolInvocationStarted.databaseValue(),
-			toolInvocationCompleted.databaseValue(),
-			toolInvocationIncomplete.databaseValue(),
+			string(runs.ToolInvocationStarted),
+			string(runs.ToolInvocationCompleted),
+			string(runs.ToolInvocationIncomplete),
 		),
 		`CREATE TABLE IF NOT EXISTS result_publications (
 			publication_id TEXT PRIMARY KEY,
@@ -283,7 +283,7 @@ func currentSchema() []string {
 		`CREATE INDEX IF NOT EXISTS idx_tool_invocations_run
 			ON tool_invocations(run_id, segment_id)`,
 		fmt.Sprintf(`CREATE INDEX IF NOT EXISTS idx_tool_invocations_open
-			ON tool_invocations(state) WHERE state = '%s'`, toolInvocationStarted.databaseValue()),
+			ON tool_invocations(state) WHERE state = '%s'`, string(runs.ToolInvocationStarted)),
 		fmt.Sprintf(`CREATE TRIGGER IF NOT EXISTS require_settled_model_invocations
 			BEFORE UPDATE OF state ON runs
 			WHEN OLD.state != '%[1]s' AND NEW.state = '%[1]s'

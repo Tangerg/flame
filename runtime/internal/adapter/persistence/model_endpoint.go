@@ -126,7 +126,7 @@ func (m *ModelInvocationStore) StartEndpointInvocation(ctx context.Context, invo
 			WHERE call_id=? AND state=?
 		) owner JOIN runs ON runs.run_id=owner.run_id AND runs.session_id=owner.session_id
 		WHERE runs.state=? AND runs.active_segment_id=owner.segment_id AND owner.started_at<=?`
-		args = []any{ownerCallID, string(modelref.InvocationStarted), ownerCallID, toolInvocationStarted.databaseValue(), string(rundomain.Running), invocation.StartedAt.UTC().UnixNano()}
+		args = []any{ownerCallID, string(modelref.InvocationStarted), ownerCallID, string(runs.ToolInvocationStarted), string(rundomain.Running), invocation.StartedAt.UTC().UnixNano()}
 	}
 	query := `INSERT INTO model_invocations(call_id,session_id,run_id,segment_id,state,started_at,endpoint_json,endpoint_kind)
  SELECT ?,scope.session_id,scope.run_id,scope.segment_id,?,?,?,? FROM (` + scope + `) scope

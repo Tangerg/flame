@@ -14,16 +14,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
-type toolInvocationState string
-
-const (
-	toolInvocationStarted    toolInvocationState = "started"
-	toolInvocationCompleted  toolInvocationState = "completed"
-	toolInvocationIncomplete toolInvocationState = "incomplete"
-)
-
-func (t toolInvocationState) databaseValue() string { return string(t) }
-
 // Arguments and results stay in the canonical Transcript Item. Each retained
 // attempt records one Segment's observation, not the Tool's external outcome.
 type ToolInvocationStore struct{ db *sql.DB }
@@ -46,7 +36,7 @@ func (t *ToolInvocationStore) ListStartedToolInvocations(
 		  FROM tool_invocations
 		 WHERE state = ?
 		 ORDER BY session_id, run_id, segment_id, call_id, item_id
-	`, toolInvocationStarted.databaseValue())
+	`, string(runs.ToolInvocationStarted))
 	if err != nil {
 		return fmt.Errorf("sqlite: list started Tool invocations: %w", err)
 	}
@@ -103,7 +93,7 @@ func (t *ToolInvocationStore) StartToolInvocation(
 			callID,
 			itemID,
 			segmentID,
-			toolInvocationStarted.databaseValue(),
+			string(runs.ToolInvocationStarted),
 			startedAt.UTC().UnixNano(),
 			runID,
 			sessionID,
@@ -146,8 +136,8 @@ func (t *ToolInvocationStore) CompleteToolInvocation(
 		WHERE tool_invocations.state = ? AND tool_invocations.item_id = excluded.item_id
 		AND tool_invocations.session_id = excluded.session_id AND tool_invocations.run_id = excluded.run_id
 		AND tool_invocations.started_at = excluded.started_at`,
-		callID, itemID, segmentID, toolInvocationCompleted.databaseValue(), startedAt.UTC().UnixNano(), finishedAt.UTC().UnixNano(),
-		sessionID, runID, string(rundomain.Running), segmentID, toolInvocationStarted.databaseValue())
+		callID, itemID, segmentID, string(runs.ToolInvocationCompleted), startedAt.UTC().UnixNano(), finishedAt.UTC().UnixNano(),
+		sessionID, runID, string(rundomain.Running), segmentID, string(runs.ToolInvocationStarted))
 	if err != nil {
 		return fmt.Errorf("sqlite: complete Tool invocation %q: %w", callID, err)
 	}
@@ -168,7 +158,7 @@ func (t *ToolInvocationStore) MarkToolInvocationIncomplete(
 ) error {
 	return t.finish(
 		ctx, sessionID, runID, segmentID, callID, itemID,
-		startedAt, finishedAt, toolInvocationIncomplete.databaseValue(),
+		startedAt, finishedAt, string(runs.ToolInvocationIncomplete),
 	)
 }
 
@@ -202,7 +192,7 @@ func (t *ToolInvocationStore) finish(
 		sessionID,
 		runID,
 		segmentID,
-		toolInvocationStarted.databaseValue(),
+		string(runs.ToolInvocationStarted),
 		startedAt.UTC().UnixNano(),
 	)
 	if err != nil {
