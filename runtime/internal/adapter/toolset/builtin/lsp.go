@@ -8,10 +8,10 @@ import (
 	"slices"
 	"strings"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -161,7 +161,7 @@ type lspRunner struct {
 func newQuery(ci *codeintel.Analyzer) (toolcontract.Tool, error) {
 	t := &lspRunner{analyzer: ci}
 	return toolcontract.NewFunc[lspInput, string](
-		toolcontract.FuncConfig{Name: string(tool.LSP), Description: lspDesc},
+		toolcontract.FuncConfig{Name: string(builtincontract.LSP), Description: lspDesc},
 		t.query,
 	)
 }

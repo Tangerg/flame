@@ -5,6 +5,14 @@ It consumes the independent Qimu module. It has no dependency on Runtime,
 products, first-party plugins or repository tooling,
 including in tests and development commands.
 
+`builtin` declares Runtime's built-in tool names, shell arguments and normalized
+transcript results. Runtime produces those values and generates their schemas
+from the same types; CLI consumes them for typed presentation. Scope owns the
+filesystem and HTTP request contracts. Unknown tools retain complete JSON without
+assigning command, path, output or exit-code semantics from field names. These
+Go contracts replace the former Runtime-private declarations; rebuild consumers
+together. Wire payloads and persisted transcript shapes are unchanged.
+
 `question.Contract` is the Runtime's immutable public answer contract. Runtime
 Domain admission, command validation and CLI editing use the same field, option,
 whitespace, uniqueness and custom-value rules. A complete candidate contains one
@@ -35,6 +43,7 @@ is refused without conversion.
 | `plugin/sqlite`                                             | Atomic plugin mutations and durable receipts                          |
 | `model`                                                     | Provider/model selection, generation values and token estimates       |
 | `question`                                                  | Runtime's ordered answer space and field-specific validation          |
+| `builtin`                                                   | Runtime built-in identities, arguments and normalized result values   |
 | `model/catalog`                                             | Translation of Scope's released model catalog                         |
 | `identity`                                                  | Shared resource identities, canonical digests and lexical constraints |
 | `filesystem`                                                | File admission, path identity, directory resolution and leases        |

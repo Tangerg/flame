@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"strings"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/scope/core/jsonschema"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -79,7 +79,7 @@ func (a askUserArgs) arguments() (string, error) {
 func NewAskUser(interrupt runs.InterruptFunc) (toolcontract.Tool, error) {
 	return newInterruptTool[askUserArgs](
 		toolcontract.FuncConfig{
-			Name:        string(tool.AskUser),
+			Name:        string(builtincontract.AskUser),
 			Description: fmt.Sprintf("Ask the user 1 to %d questions and wait for their answers. Use this only when progress requires a decision, clarification, or information only the user can provide, not for routine progress updates. Give %d to %d `options` for a multiple-choice question and put the recommended option first; the user may still provide a custom answer. Omit `options` for free text, and set `multi_select` only when options are present and more than one may apply. Headers contain at most %d Unicode characters.", questioncontract.MaximumFields, questioncontract.MinimumOptions, questioncontract.MaximumOptions, transcript.MaximumQuestionHeaderCharacters),
 		},
 		interrupt,
@@ -94,7 +94,7 @@ func askUserPlan(_ context.Context, args askUserArgs) (runs.Interrupt, string, e
 		return runs.Interrupt{}, "", err
 	}
 	in := runs.QuestionPrompt{
-		ToolName:  string(tool.AskUser),
+		ToolName:  string(builtincontract.AskUser),
 		Arguments: arguments,
 		Fields:    args.toFields(),
 	}
@@ -104,11 +104,11 @@ func askUserPlan(_ context.Context, args askUserArgs) (runs.Interrupt, string, e
 	if err := pending.Validate(); err != nil {
 		return runs.Interrupt{}, "", pluginsdk.DefiniteToolFailure(fmt.Errorf("ask_user: %w", err))
 	}
-	return pending, run.InterruptKey(string(run.InterruptQuestion), string(tool.AskUser), arguments), nil
+	return pending, run.InterruptKey(string(run.InterruptQuestion), string(builtincontract.AskUser), arguments), nil
 }
 
 func askUserResolve(_ context.Context, args askUserArgs, resolution run.InterruptResolution) (string, error) {
-	in := runs.QuestionPrompt{ToolName: string(tool.AskUser), Fields: args.toFields()}
+	in := runs.QuestionPrompt{ToolName: string(builtincontract.AskUser), Fields: args.toFields()}
 	return answerText(in, resolution.Question().Answers()), nil
 }
 

@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
-	"slices"
 	"strings"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
@@ -40,8 +40,8 @@ type Ref struct {
 	remote mcpserver.RemoteToolName
 }
 
-func BuiltIn(name BuiltInName) (Ref, error) {
-	if !slices.Contains(builtInNames, name) {
+func BuiltIn(name builtincontract.Name) (Ref, error) {
+	if !name.Valid() {
 		return Ref{}, fmt.Errorf("%w: unknown built-in %q", ErrInvalidRef, name)
 	}
 	return Ref{kind: BuiltInKind, name: string(name)}, nil
@@ -66,11 +66,11 @@ func A2A(endpoint string) (Ref, error) {
 
 func (r Ref) Kind() RefKind { return r.kind }
 
-func (r Ref) BuiltIn() (name BuiltInName, ok bool) {
+func (r Ref) BuiltIn() (name builtincontract.Name, ok bool) {
 	if r.kind != BuiltInKind {
 		return "", false
 	}
-	return BuiltInName(r.name), true
+	return builtincontract.Name(r.name), true
 }
 
 func (r Ref) MCP() (server mcpserver.ID, remote mcpserver.RemoteToolName, ok bool) {
@@ -87,7 +87,9 @@ func (r Ref) Validate() error {
 	}
 	return nil
 }
-func (r Ref) IsBuiltIn(name BuiltInName) bool { return r.kind == BuiltInKind && r.name == string(name) }
+func (r Ref) IsBuiltIn(name builtincontract.Name) bool {
+	return r.kind == BuiltInKind && r.name == string(name)
+}
 
 func (r Ref) ModelName() string {
 	if r.kind != MCPKind {
@@ -135,7 +137,7 @@ func ParseRef(text string) (Ref, error) {
 	var err error
 	switch {
 	case len(parts) == 2 && RefKind(parts[0]) == BuiltInKind:
-		r, err = BuiltIn(BuiltInName(parts[1]))
+		r, err = BuiltIn(builtincontract.Name(parts[1]))
 	case len(parts) == 2 && RefKind(parts[0]) == A2AKind:
 		r, err = A2A(parts[1])
 	case len(parts) >= 4 && RefKind(parts[0]) == MCPKind:

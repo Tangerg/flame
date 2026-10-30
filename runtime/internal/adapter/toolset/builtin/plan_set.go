@@ -5,10 +5,11 @@ import (
 	"errors"
 	"fmt"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/planpresentation"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+
 	plandomain "github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -46,7 +47,7 @@ func newSet(plans planReplacer) (toolcontract.Tool, error) {
 		return nil, nil
 	}
 	return toolcontract.NewFunc[setArgs, string](
-		toolcontract.FuncConfig{Name: string(tool.SetPlan), Description: setDescription},
+		toolcontract.FuncConfig{Name: string(builtincontract.SetPlan), Description: setDescription},
 		(&setter{plans: plans}).set,
 	)
 }

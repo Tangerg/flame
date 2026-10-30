@@ -212,6 +212,15 @@ inference. Former private selection/catalog implementations are removed. Moving
 the schema owner changes generated reference identities; rebuild Schedules
 contracts, typed consumers and component bytes together.
 
+## Tool material
+
+Built-in names, shell arguments and normalized transcript result values are
+declared once in the SDK's `builtin` package. Domain references, executable
+declarations, transcript presentation, schema generation and CLI presentation
+consume those contracts. Scope retains filesystem and HTTP request ownership.
+The former Runtime-private names and result types are removed; rebuild Go
+consumers together. This move changes neither wire nor persisted result shapes.
+
 ## Accepted interrupt answers
 
 The SDK's `question.Contract` owns the public ordered answer rules. Domain

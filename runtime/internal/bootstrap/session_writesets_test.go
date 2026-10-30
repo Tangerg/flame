@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -843,7 +844,7 @@ func TestApplyRestoreClearsSessionOwnedProjections(t *testing.T) {
 	}
 }
 
-func testAllowRule(t *testing.T, scope approval.Scope, scopeKey string, toolName tool.BuiltInName) approval.Rule {
+func testAllowRule(t *testing.T, scope approval.Scope, scopeKey string, toolName builtincontract.Name) approval.Rule {
 	t.Helper()
 	rule, err := approval.NewRule(scope, scopeKey, testsupport.BuiltInTool(t, toolName), testsupport.ToolFingerprint(testsupport.BuiltInTool(t, toolName)), approval.Subject{Type: approval.SubjectAll}, approval.Allow)
 	if err != nil {

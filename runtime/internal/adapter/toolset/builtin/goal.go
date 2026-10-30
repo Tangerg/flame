@@ -10,13 +10,14 @@ import (
 	"strings"
 	"time"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
 	goalstate "github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/samber/lo"
 )
@@ -111,7 +112,7 @@ func NewCreate(starter goalStarter) (toolcontract.Tool, error) {
 		return nil, nil
 	}
 	return toolcontract.NewFunc[createArgs, goalResult](
-		toolcontract.FuncConfig{Name: string(tool.CreateGoal), Description: createDescription},
+		toolcontract.FuncConfig{Name: string(builtincontract.CreateGoal), Description: createDescription},
 		(&creator{goals: starter}).create,
 	)
 }
@@ -122,7 +123,7 @@ func NewGet(reader GoalReader) (toolcontract.Tool, error) {
 		return nil, nil
 	}
 	return toolcontract.NewFunc[getArgs, goalResult](
-		toolcontract.FuncConfig{Name: string(tool.GetGoal), Description: getDescription},
+		toolcontract.FuncConfig{Name: string(builtincontract.GetGoal), Description: getDescription},
 		(&getter{goals: reader}).get,
 	)
 }
@@ -133,7 +134,7 @@ func NewReport(reporter GoalOutcomeReporter) (toolcontract.Tool, error) {
 		return nil, nil
 	}
 	return toolcontract.NewFunc[reportArgs, string](
-		toolcontract.FuncConfig{Name: string(tool.ReportGoalOutcome), Description: reportDescription},
+		toolcontract.FuncConfig{Name: string(builtincontract.ReportGoalOutcome), Description: reportDescription},
 		(&outcomeReporter{goals: reporter}).report,
 	)
 }

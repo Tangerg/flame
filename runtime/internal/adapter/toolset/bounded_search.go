@@ -11,11 +11,12 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/qimu/cancellation"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+
 	"github.com/Tangerg/scope/core/jsonschema"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/samber/lo"
@@ -103,7 +104,7 @@ type runtimeSearchTools struct {
 func newRuntimeSearchTools(root string) runtimeSearchTools {
 	glob := mustRuntimeSearchFunc(
 		toolcontract.FuncConfig{
-			Name: string(tool.Glob),
+			Name: string(builtincontract.Glob),
 			Description: "List files from the finite, ignore-aware workspace catalog using a doublestar pattern. " +
 				"Use grep to search file contents." + runtimeSearchBudgetDescription(maxRuntimeGlobPatternBytes),
 		},
@@ -113,7 +114,7 @@ func newRuntimeSearchTools(root string) runtimeSearchTools {
 	)
 	grep := mustRuntimeSearchFunc(
 		toolcontract.FuncConfig{
-			Name: string(tool.Grep),
+			Name: string(builtincontract.Grep),
 			Description: "Search the finite, ignore-aware workspace text corpus with a Go/RE2 line regular expression. " +
 				"Use glob to choose files and read to inspect surrounding lines." + runtimeSearchBudgetDescription(maxRuntimeSearchPatternBytes),
 		},

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -22,17 +22,17 @@ func TestShellArgumentRejectionFailsTheCallNotTheRun(t *testing.T) {
 	}{
 		{
 			name:      "background flags contradict",
-			tool:      string(tool.Shell),
+			tool:      string(builtincontract.Shell),
 			arguments: `{"command":"true","description":"Run tests","run_in_background":true,"auto_background_after_seconds":5}`,
 		},
 		{
 			name:      "description missing",
-			tool:      string(tool.Shell),
+			tool:      string(builtincontract.Shell),
 			arguments: `{"command":"true","description":"   "}`,
 		},
 		{
 			name:      "timeout without wait",
-			tool:      string(tool.ReadShellOutput),
+			tool:      string(builtincontract.ReadShellOutput),
 			arguments: `{"shell_id":"shell_1","timeout_millis":10}`,
 		},
 	} {

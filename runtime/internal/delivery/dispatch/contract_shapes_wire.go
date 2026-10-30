@@ -4,11 +4,11 @@ import (
 	"reflect"
 	"slices"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
 // shapes is the registered union / constraint contract.
@@ -1052,8 +1052,8 @@ func registerTrajectoryObservationConstraints(s *Shapes) {
 }
 
 func builtInNames() []string {
-	names := make([]string, 0, len(tool.BuiltInNames()))
-	for _, name := range tool.BuiltInNames() {
+	names := make([]string, 0, len(builtincontract.Names()))
+	for _, name := range builtincontract.Names() {
 		names = append(names, string(name))
 	}
 	return names

@@ -47,7 +47,7 @@ func repositoryLayer(path string) (string, bool) {
 
 func sdkLayer(path string) string {
 	switch path {
-	case "exactint", "identity", "instant", "extension", "model":
+	case "exactint", "identity", "instant", "extension", "model", "question", "builtin":
 		return ringValue
 	case "pagination", "capture":
 		return ringMechanism
@@ -213,6 +213,10 @@ func TestDependencyRuleClassifiesSharedAndPublicBoundaries(t *testing.T) {
 		{from: qimuModulePath, to: qimuModulePath + "/mcp"},
 		{from: qimuModulePath + "/mcp", to: qimuModulePath, allowed: true},
 		{from: runtimeModulePath + "/internal/domain/newaggregate", to: sdkModulePath + "/model", allowed: true},
+		{from: runtimeModulePath + "/internal/domain/newaggregate", to: sdkModulePath + "/question", allowed: true},
+		{from: runtimeModulePath + "/internal/domain/newaggregate", to: sdkModulePath + "/builtin", allowed: true},
+		{from: sdkModulePath + "/question", to: runtimeModulePath + "/internal/application/agent/runs"},
+		{from: sdkModulePath + "/builtin", to: runtimeModulePath + "/internal/adapter/toolset"},
 		{from: sdkModulePath + "/plugin/sqlite", to: sdkModulePath + "/extension", allowed: true},
 		{from: sdkModulePath + "/extension", to: runtimeModulePath + "/internal/application/agent/runs"},
 		{from: sdkModulePath + "/model", to: sdkModulePath + "/model/catalog"},

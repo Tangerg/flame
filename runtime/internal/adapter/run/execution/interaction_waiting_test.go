@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
@@ -273,7 +274,7 @@ func TestInteractionExecutorRestoresRuntimeAskUserTool(t *testing.T) {
 	arguments := `{"questions":[{"question":"Which value?"}]}`
 	model := &observationScriptModel{responses: []*chat.Response{
 		interactionToolResponse(chat.ToolCall{
-			ID: "ask_user_call", Name: string(domaintool.AskUser), Arguments: arguments,
+			ID: "ask_user_call", Name: string(builtincontract.AskUser), Arguments: arguments,
 		}, 1, 1),
 		interactionUsageTextResponse("continued after the answer", 1, 1),
 	}}
@@ -294,7 +295,7 @@ func TestInteractionExecutorRestoresRuntimeAskUserTool(t *testing.T) {
 	starts := payloadsOf[runs.ToolCallStarted](beforeAnswer)
 	interruptions := barrier.Interruptions()
 	if len(interruptions) != 1 || interruptions[0].Interrupt.Question == nil ||
-		interruptions[0].Interrupt.Question.ToolName != string(domaintool.AskUser) ||
+		interruptions[0].Interrupt.Question.ToolName != string(builtincontract.AskUser) ||
 		len(starts) != 1 {
 		t.Fatalf("ask_user interruption = %#v", interruptions)
 	}
@@ -506,7 +507,7 @@ func TestInteractionExecutorCancellationStopsApprovedForegroundShell(t *testing.
 	}
 	model := &observationScriptModel{responses: []*chat.Response{
 		interactionToolResponse(chat.ToolCall{
-			ID: "shell_call", Name: string(domaintool.Shell),
+			ID: "shell_call", Name: string(builtincontract.Shell),
 			Arguments: `{"command":"sleep 30","description":"Wait until canceled"}`,
 		}, 1, 1),
 	}}

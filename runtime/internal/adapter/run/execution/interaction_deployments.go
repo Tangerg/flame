@@ -7,6 +7,7 @@ import (
 	"math"
 	"strconv"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -176,7 +177,7 @@ func (i *interactionDeploymentBuilder) build(ctx context.Context) (*interactionD
 		}
 		if next.Valid() {
 			i.deployments.delegatesByParent[deployment.DeploymentRef()] = map[string]agent.Deployment{
-				string(domaintool.DelegateTask): next,
+				string(builtincontract.DelegateTask): next,
 			}
 		}
 		next = deployment
@@ -336,7 +337,7 @@ func (i *interactionDeploymentBuilder) delegateLayer(
 		return nil, nil
 	}
 	delegate, err := interaction.NewDelegate(interaction.DelegateConfig{
-		Name: string(domaintool.DelegateTask), Description: delegateDescription,
+		Name: string(builtincontract.DelegateTask), Description: delegateDescription,
 		Deployment: next,
 	})
 	if err != nil {

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
@@ -57,7 +58,7 @@ func (Presenter) Activity(ref tool.Ref, arguments tool.Arguments) string {
 }
 
 func shellActivity(arguments tool.Arguments) string {
-	if args, ok := decodeArguments[shellActivityArguments](arguments, "description"); ok &&
+	if args, ok := decodeArguments[builtincontract.ShellArguments](arguments, "description"); ok &&
 		isConciseActivityText(args.Description, 120) {
 		return args.Description
 	}
@@ -104,10 +105,6 @@ func httpActivity(arguments tool.Arguments) string {
 		}
 	}
 	return "Sending an HTTP request"
-}
-
-type shellActivityArguments struct {
-	Description string `json:"description"`
 }
 
 type delegationActivityArguments struct {
@@ -197,7 +194,7 @@ func presentApplyPatch(arguments tool.Arguments, result tool.Result) (tool.Resul
 }
 
 func commandResultContract() resultProjectionContract {
-	return resultProjectionContract{project: presentCommand, resultType: reflect.TypeFor[CommandResult]()}
+	return resultProjectionContract{project: presentCommand, resultType: reflect.TypeFor[builtincontract.CommandResult]()}
 }
 
 // commandExecutionResult is the shell tool's own result shape. The shell
@@ -207,14 +204,8 @@ type commandExecutionResult struct {
 	ExitCode *int            `json:"exit_code"`
 }
 
-// CommandResult is the transcript result of shell.
-type CommandResult struct {
-	Output   string `json:"output"`
-	ExitCode *int   `json:"exitCode,omitzero"`
-}
-
 func presentCommandResult(result tool.Result) (tool.Result, string) {
-	if existing, ok := decodeResult[CommandResult](result, "output"); ok {
+	if existing, ok := decodeResult[builtincontract.CommandResult](result, "output"); ok {
 		return result, existing.Output
 	}
 	raw, ok := decodeResult[commandExecutionResult](result, "stdout", "exit_code")
@@ -229,12 +220,12 @@ func presentCommandResult(result tool.Result) (tool.Result, string) {
 		}
 		output = string(encoded)
 	}
-	presentation := CommandResult{Output: output, ExitCode: raw.ExitCode}
+	presentation := builtincontract.CommandResult{Output: output, ExitCode: raw.ExitCode}
 	return projectResult(result, presentation), output
 }
 
 func searchResultContract() resultProjectionContract {
-	return resultProjectionContract{project: presentSearch, resultType: reflect.TypeFor[SearchResult]()}
+	return resultProjectionContract{project: presentSearch, resultType: reflect.TypeFor[builtincontract.SearchResult]()}
 }
 
 type localSearchExecutionResult struct {
@@ -255,84 +246,40 @@ type localSearchCount struct {
 	Count int    `json:"count"`
 }
 
-// SearchResult is the transcript result shared by glob and grep.
-type SearchResult struct {
-	Hits []SearchHit `json:"hits"`
-}
-
-// SearchHit identifies one local path and, for content matches, its location
-// and preview.
-type SearchHit struct {
-	Path       string `json:"path"`
-	Snippet    string `json:"snippet,omitempty"`
-	LineNumber int    `json:"lineNumber,omitzero"`
-}
-
 func presentSearchResult(result tool.Result) tool.Result {
-	if _, ok := decodeResult[SearchResult](result, "hits"); ok {
+	if _, ok := decodeResult[builtincontract.SearchResult](result, "hits"); ok {
 		return result
 	}
 	raw, ok := decodeResult[localSearchExecutionResult](result, "matches", "files", "paths", "counts")
 	if !ok {
 		return result
 	}
-	hits := make([]SearchHit, 0, len(raw.Matches)+len(raw.Files)+len(raw.Paths)+len(raw.Counts))
+	hits := make([]builtincontract.SearchHit, 0, len(raw.Matches)+len(raw.Files)+len(raw.Paths)+len(raw.Counts))
 	for _, match := range raw.Matches {
-		hits = append(hits, SearchHit{Path: match.Path, Snippet: match.Text, LineNumber: match.Line})
+		hits = append(hits, builtincontract.SearchHit{Path: match.Path, Snippet: match.Text, LineNumber: match.Line})
 	}
 	for _, path := range raw.Files {
-		hits = append(hits, SearchHit{Path: path})
+		hits = append(hits, builtincontract.SearchHit{Path: path})
 	}
 	for _, path := range raw.Paths {
-		hits = append(hits, SearchHit{Path: path})
+		hits = append(hits, builtincontract.SearchHit{Path: path})
 	}
 	for _, count := range raw.Counts {
-		hits = append(hits, SearchHit{Path: count.Path, Snippet: strconv.Itoa(count.Count) + " matches"})
+		hits = append(hits, builtincontract.SearchHit{Path: count.Path, Snippet: strconv.Itoa(count.Count) + " matches"})
 	}
-	return projectResult(result, SearchResult{Hits: hits})
+	return projectResult(result, builtincontract.SearchResult{Hits: hits})
 }
 
 func patchResultContract() resultProjectionContract {
 	return resultProjectionContract{
-		project: presentApplyPatch, resultType: reflect.TypeFor[PatchResult](), enums: patchResultEnums,
+		project: presentApplyPatch, resultType: reflect.TypeFor[builtincontract.PatchResult](), enums: patchResultEnums,
 	}
 }
 
 func patchResultEnums() map[reflect.Type][]string {
 	return map[reflect.Type][]string{
-		reflect.TypeFor[ChangeStatus](): changeStatusValues(),
+		reflect.TypeFor[builtincontract.ChangeStatus](): builtincontract.ChangeStatus("").Values(),
 	}
-}
-
-// PatchResult is the transcript result of apply_patch.
-type PatchResult struct {
-	Changes []AppliedChange `json:"changes"`
-}
-
-// ChangeStatus describes the applied filesystem mutation, not its VCS state.
-type ChangeStatus string
-
-const (
-	changeAdded    ChangeStatus = "added"
-	changeDeleted  ChangeStatus = "deleted"
-	changeModified ChangeStatus = "modified"
-	changeMoved    ChangeStatus = "moved"
-)
-
-func changeStatusValues() []string {
-	return []string{string(changeAdded), string(changeDeleted), string(changeModified), string(changeMoved)}
-}
-
-// AppliedChange is one path mutation applied by apply_patch. From is present
-// only when Status is moved. Added and Removed count the patch's line changes
-// for this file; they are always carried (0 for a pure rename or binary file)
-// so consumers render a diffstat without re-parsing the patch.
-type AppliedChange struct {
-	Path    string       `json:"path"`
-	Status  ChangeStatus `json:"status"`
-	From    string       `json:"from,omitempty"`
-	Added   int          `json:"added"`
-	Removed int          `json:"removed"`
 }
 
 type patchExecutionResult struct {
@@ -345,7 +292,7 @@ type patchExecutionResult struct {
 }
 
 func presentApplyPatchResult(arguments tool.Arguments, result tool.Result) tool.Result {
-	if _, ok := decodeResult[PatchResult](result, "changes"); ok {
+	if _, ok := decodeResult[builtincontract.PatchResult](result, "changes"); ok {
 		return result
 	}
 	decoded, ok := decodeResult[patchExecutionResult](result, "files")
@@ -356,24 +303,24 @@ func presentApplyPatchResult(arguments tool.Arguments, result tool.Result) tool.
 	// carries the line counts the executor does not. Joining by path keeps the
 	// applied set authoritative while projecting a diffstat for each file.
 	counts := patchLineCounts(arguments)
-	changes := make([]AppliedChange, 0, len(decoded.Files))
+	changes := make([]builtincontract.AppliedChange, 0, len(decoded.Files))
 	for _, file := range decoded.Files {
-		status := changeModified
+		status := builtincontract.Modified
 		switch {
 		case file.MovedFrom != "":
-			status = changeMoved
+			status = builtincontract.Moved
 		case file.Created:
-			status = changeAdded
+			status = builtincontract.Added
 		case file.Deleted:
-			status = changeDeleted
+			status = builtincontract.Deleted
 		}
 		count := counts[file.Path]
-		changes = append(changes, AppliedChange{
+		changes = append(changes, builtincontract.AppliedChange{
 			Path: file.Path, Status: status, From: file.MovedFrom,
 			Added: count.added, Removed: count.removed,
 		})
 	}
-	return projectResult(result, PatchResult{Changes: changes})
+	return projectResult(result, builtincontract.PatchResult{Changes: changes})
 }
 
 type patchLineCount struct{ added, removed int }
@@ -432,7 +379,7 @@ func decodePresentation[T any](data []byte, knownFields ...string) (T, bool) {
 }
 
 type presentationValue interface {
-	CommandResult | SearchResult | PatchResult
+	builtincontract.CommandResult | builtincontract.SearchResult | builtincontract.PatchResult
 }
 
 func projectResult[T presentationValue](original tool.Result, value T) tool.Result {

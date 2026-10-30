@@ -3,6 +3,7 @@ package delivery
 import (
 	"fmt"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -11,7 +12,7 @@ import (
 func toolRefFromWire(ref protocol.ToolRef) (tool.Ref, error) {
 	switch ref.Type {
 	case protocol.ToolRefBuiltIn:
-		return tool.BuiltIn(tool.BuiltInName(ref.Name))
+		return tool.BuiltIn(builtincontract.Name(ref.Name))
 	case protocol.ToolRefA2A:
 		return tool.A2A(ref.Endpoint)
 	case protocol.ToolRefMCP:

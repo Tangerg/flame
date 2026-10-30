@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
@@ -56,9 +57,9 @@ func (Interpreter) ApprovalSubject(ref tool.Ref, arguments tool.Arguments) (stri
 		return "", nil
 	}
 	switch name {
-	case tool.Shell:
+	case builtincontract.Shell:
 		field = "command"
-	case tool.Read, tool.Edit:
+	case builtincontract.Read, builtincontract.Edit:
 		field = "path"
 	default:
 		return "", nil
@@ -74,7 +75,7 @@ func (Interpreter) ApprovalSubject(ref tool.Ref, arguments tool.Arguments) (stri
 // Malformed arguments return an empty command and remain gated by the tool's
 // execution safety class.
 func (Interpreter) ShellCommand(ref tool.Ref, rawArguments string) string {
-	if !ref.IsBuiltIn(tool.Shell) {
+	if !ref.IsBuiltIn(builtincontract.Shell) {
 		return ""
 	}
 	arguments, err := tool.ParseArguments(rawArguments)

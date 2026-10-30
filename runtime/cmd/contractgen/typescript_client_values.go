@@ -5,10 +5,10 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/qimu/contractgen"
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 )
 
 func newClientValues(set *schemaSet) (string, error) {
@@ -47,7 +47,7 @@ func newClientValues(set *schemaSet) (string, error) {
 		return "", fmt.Errorf("client scalar %s has no declared closed values", recovery)
 	}
 	fmt.Fprintf(&out, "export type %s = %s;\n\n", defName(recovery), strings.Join(contractgen.QuoteAll(actions), " | "))
-	changes, err := clientScalarValues(set, reflect.TypeFor[toolset.ChangeStatus]())
+	changes, err := clientScalarValues(set, reflect.TypeFor[builtin.ChangeStatus]())
 	if err != nil {
 		return "", err
 	}

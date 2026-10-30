@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/tools/content"
@@ -20,21 +21,21 @@ func TestPresenterActivity(t *testing.T) {
 		arguments string
 		want      string
 	}{
-		{name: "shell description", ref: testsupport.BuiltInTool(t, tool.Shell), arguments: `{"command":"go test ./...","description":"Run server tests"}`, want: "Run server tests"},
-		{name: "shell invalid description", ref: testsupport.BuiltInTool(t, tool.Shell), arguments: `{"description":" Run server tests"}`, want: "Running command"},
-		{name: "delegation summary", ref: testsupport.BuiltInTool(t, tool.DelegateTask), arguments: `{"summary":"Review tool contracts"}`, want: "Delegating: Review tool contracts"},
-		{name: "long delegation summary", ref: testsupport.BuiltInTool(t, tool.DelegateTask), arguments: `{"summary":"` + strings.Repeat("a", 81) + `"}`, want: "Delegating to a sub-agent"},
-		{name: "enter Plan mode", ref: testsupport.BuiltInTool(t, tool.EnterPlanMode), arguments: `{}`, want: "Entering Plan mode"},
-		{name: "set Plan", ref: testsupport.BuiltInTool(t, tool.SetPlan), arguments: `{}`, want: "Updating the Plan"},
-		{name: "exit Plan mode", ref: testsupport.BuiltInTool(t, tool.ExitPlanMode), arguments: `{}`, want: "Requesting Plan approval"},
-		{name: "create Goal", ref: testsupport.BuiltInTool(t, tool.CreateGoal), arguments: `{"objective":"finish the work"}`, want: "Starting an autonomous Goal"},
-		{name: "load Skill", ref: testsupport.BuiltInTool(t, tool.LoadSkill), arguments: `{"name":"go-review"}`, want: "Loading Skill: go-review"},
-		{name: "propose named Skill", ref: testsupport.BuiltInTool(t, tool.ProposeSkill), arguments: `{"name":"review-go-api"}`, want: "Proposing Skill: review-go-api"},
-		{name: "propose unnamed Skill", ref: testsupport.BuiltInTool(t, tool.ProposeSkill), arguments: `{}`, want: "Proposing a Skill"},
-		{name: "LSP references", ref: testsupport.BuiltInTool(t, tool.LSP), arguments: `{"operation":"references"}`, want: "Finding symbol references"},
-		{name: "unknown LSP operation", ref: testsupport.BuiltInTool(t, tool.LSP), arguments: `{"operation":"rename"}`, want: "Querying the language server"},
-		{name: "HTTP default method", ref: testsupport.BuiltInTool(t, tool.HTTPRequest), arguments: `{"url":"https://example.com"}`, want: "Sending GET request"},
-		{name: "HTTP explicit method", ref: testsupport.BuiltInTool(t, tool.HTTPRequest), arguments: `{"url":"https://example.com","method":"POST"}`, want: "Sending POST request"},
+		{name: "shell description", ref: testsupport.BuiltInTool(t, builtincontract.Shell), arguments: `{"command":"go test ./...","description":"Run server tests"}`, want: "Run server tests"},
+		{name: "shell invalid description", ref: testsupport.BuiltInTool(t, builtincontract.Shell), arguments: `{"description":" Run server tests"}`, want: "Running command"},
+		{name: "delegation summary", ref: testsupport.BuiltInTool(t, builtincontract.DelegateTask), arguments: `{"summary":"Review tool contracts"}`, want: "Delegating: Review tool contracts"},
+		{name: "long delegation summary", ref: testsupport.BuiltInTool(t, builtincontract.DelegateTask), arguments: `{"summary":"` + strings.Repeat("a", 81) + `"}`, want: "Delegating to a sub-agent"},
+		{name: "enter Plan mode", ref: testsupport.BuiltInTool(t, builtincontract.EnterPlanMode), arguments: `{}`, want: "Entering Plan mode"},
+		{name: "set Plan", ref: testsupport.BuiltInTool(t, builtincontract.SetPlan), arguments: `{}`, want: "Updating the Plan"},
+		{name: "exit Plan mode", ref: testsupport.BuiltInTool(t, builtincontract.ExitPlanMode), arguments: `{}`, want: "Requesting Plan approval"},
+		{name: "create Goal", ref: testsupport.BuiltInTool(t, builtincontract.CreateGoal), arguments: `{"objective":"finish the work"}`, want: "Starting an autonomous Goal"},
+		{name: "load Skill", ref: testsupport.BuiltInTool(t, builtincontract.LoadSkill), arguments: `{"name":"go-review"}`, want: "Loading Skill: go-review"},
+		{name: "propose named Skill", ref: testsupport.BuiltInTool(t, builtincontract.ProposeSkill), arguments: `{"name":"review-go-api"}`, want: "Proposing Skill: review-go-api"},
+		{name: "propose unnamed Skill", ref: testsupport.BuiltInTool(t, builtincontract.ProposeSkill), arguments: `{}`, want: "Proposing a Skill"},
+		{name: "LSP references", ref: testsupport.BuiltInTool(t, builtincontract.LSP), arguments: `{"operation":"references"}`, want: "Finding symbol references"},
+		{name: "unknown LSP operation", ref: testsupport.BuiltInTool(t, builtincontract.LSP), arguments: `{"operation":"rename"}`, want: "Querying the language server"},
+		{name: "HTTP default method", ref: testsupport.BuiltInTool(t, builtincontract.HTTPRequest), arguments: `{"url":"https://example.com"}`, want: "Sending GET request"},
+		{name: "HTTP explicit method", ref: testsupport.BuiltInTool(t, builtincontract.HTTPRequest), arguments: `{"url":"https://example.com","method":"POST"}`, want: "Sending POST request"},
 		{name: "unknown tool", ref: tool.Ref{}, arguments: `{}`, want: ""},
 	}
 	for _, test := range tests {
@@ -51,7 +52,7 @@ func TestPresenterActivity(t *testing.T) {
 }
 
 func TestPresenterCommandResult(t *testing.T) {
-	presented, outputText := Presenter{}.Present(testsupport.BuiltInTool(t, tool.Shell), tool.Arguments{},
+	presented, outputText := Presenter{}.Present(testsupport.BuiltInTool(t, builtincontract.Shell), tool.Arguments{},
 		mustToolResult(t, map[string]any{"stdout": content.New([]byte("out\nerr")), "exit_code": 0}),
 	)
 	want := map[string]any{"output": "out\nerr", "exitCode": jsonv1.Number("0")}
@@ -82,7 +83,7 @@ func TestPresenterApplyPatchResult(t *testing.T) {
 		"+now",
 		"",
 	}, "\n")
-	presented, _ := Presenter{}.Present(testsupport.BuiltInTool(t, tool.ApplyPatch),
+	presented, _ := Presenter{}.Present(testsupport.BuiltInTool(t, builtincontract.ApplyPatch),
 		mustToolArguments(t, map[string]any{"patch": patch}),
 		mustToolResult(t, map[string]any{"files": []any{
 			map[string]any{"path": "new.go", "created": true},
@@ -99,7 +100,7 @@ func TestPresenterApplyPatchResult(t *testing.T) {
 }
 
 func TestPresenterSearchResult(t *testing.T) {
-	presented, _ := Presenter{}.Present(testsupport.BuiltInTool(t, tool.Grep), tool.Arguments{},
+	presented, _ := Presenter{}.Present(testsupport.BuiltInTool(t, builtincontract.Grep), tool.Arguments{},
 		mustToolResult(t, map[string]any{"matches": []any{
 			map[string]any{"path": "main.go", "line": 7, "text": "func main()"},
 		}}),
@@ -123,13 +124,13 @@ func TestPublishedResultContractsDecodePresenterOutput(t *testing.T) {
 	}
 
 	tests := []struct {
-		name   tool.BuiltInName
+		name   builtincontract.Name
 		result map[string]any
 	}{
-		{name: tool.Shell, result: map[string]any{"stdout": content.New([]byte("ok")), "exit_code": 0}},
-		{name: tool.Glob, result: map[string]any{"paths": []string{"main.go"}}},
-		{name: tool.Grep, result: map[string]any{"matches": []any{map[string]any{"path": "main.go", "line": 1, "text": "package main"}}}},
-		{name: tool.ApplyPatch, result: map[string]any{"files": []any{map[string]any{"path": "main.go"}}}},
+		{name: builtincontract.Shell, result: map[string]any{"stdout": content.New([]byte("ok")), "exit_code": 0}},
+		{name: builtincontract.Glob, result: map[string]any{"paths": []string{"main.go"}}},
+		{name: builtincontract.Grep, result: map[string]any{"matches": []any{map[string]any{"path": "main.go", "line": 1, "text": "package main"}}}},
+		{name: builtincontract.ApplyPatch, result: map[string]any{"files": []any{map[string]any{"path": "main.go"}}}},
 	}
 	for _, test := range tests {
 		t.Run(string(test.name), func(t *testing.T) {
@@ -152,7 +153,7 @@ func TestPublishedResultContractsDecodePresenterOutput(t *testing.T) {
 	}
 
 	wantStatuses := []string{"added", "deleted", "modified", "moved"}
-	if got := contracts[string(tool.ApplyPatch)].EnumValues[reflect.TypeFor[ChangeStatus]()]; !reflect.DeepEqual(got, wantStatuses) {
+	if got := contracts[string(builtincontract.ApplyPatch)].EnumValues[reflect.TypeFor[builtincontract.ChangeStatus]()]; !reflect.DeepEqual(got, wantStatuses) {
 		t.Fatalf("published patch statuses = %v, want %v", got, wantStatuses)
 	}
 }

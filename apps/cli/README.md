@@ -217,6 +217,13 @@ Runtime ports. Executable plugins live in `adapter/sideload`, with command contr
 in `application/extensions`. Built-in Oolong block and tool presentations stay private
 to terminal; command output renderers stay private to `delivery/cmd`.
 
+Tool presentation consumes the SDK's canonical built-in names, shell arguments
+and normalized results, and Scope's filesystem and HTTP request types. Unknown
+tools display complete raw JSON: a field named `command`, `path`, `output` or
+`exitCode` does not declare its meaning. Raw arguments and results retain exact
+numbers and remain available alongside known tool presentations. Rebuild CLI,
+SDK and Runtime together for the moved Go contracts; wire shapes are unchanged.
+
 ## Verify
 
 ```sh

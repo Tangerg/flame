@@ -14,9 +14,9 @@ import (
 	"fmt"
 	"unicode/utf8"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/samber/lo"
@@ -65,7 +65,7 @@ func NewToolResultReader(store ToolResultStore) (toolcontract.Tool, error) {
 		return nil, nil
 	}
 	return toolcontract.NewFunc[toolResultReadArgs, string](
-		toolcontract.FuncConfig{Name: string(tool.ReadToolResult), Description: toolResultDescription},
+		toolcontract.FuncConfig{Name: string(builtincontract.ReadToolResult), Description: toolResultDescription},
 		(&toolResultReader{store: store}).read,
 	)
 }

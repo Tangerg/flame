@@ -1,6 +1,7 @@
 package delivery
 
 import (
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -169,19 +170,19 @@ func presentTool(invocation transcript.ToolInvocation) protocol.ToolInvocation {
 // from, replacing the copies the CLI and Web each kept. Built-in identities are
 // grouped; plugin and MCP tools stay unknown.
 func presentToolCategory(name string) protocol.ToolCategory {
-	switch tool.BuiltInName(name) {
-	case tool.Shell, tool.ReadShellOutput, tool.StopShell:
+	switch builtincontract.Name(name) {
+	case builtincontract.Shell, builtincontract.ReadShellOutput, builtincontract.StopShell:
 		return protocol.ToolCategoryShell
-	case tool.ApplyPatch, tool.Edit:
+	case builtincontract.ApplyPatch, builtincontract.Edit:
 		return protocol.ToolCategoryEdit
-	case tool.Read, tool.ReadSkillResource, tool.ReadToolResult:
+	case builtincontract.Read, builtincontract.ReadSkillResource, builtincontract.ReadToolResult:
 		return protocol.ToolCategoryRead
-	case tool.Glob, tool.Grep, tool.SearchTools, tool.LSP:
+	case builtincontract.Glob, builtincontract.Grep, builtincontract.SearchTools, builtincontract.LSP:
 		return protocol.ToolCategorySearch
-	case tool.HTTPRequest:
+	case builtincontract.HTTPRequest:
 		return protocol.ToolCategoryWeb
-	case tool.AskUser, tool.DelegateTask, tool.CreateGoal, tool.GetGoal, tool.ReportGoalOutcome,
-		tool.LoadSkill, tool.ListSkills, tool.ProposeSkill, tool.EnterPlanMode, tool.ExitPlanMode, tool.SetPlan:
+	case builtincontract.AskUser, builtincontract.DelegateTask, builtincontract.CreateGoal, builtincontract.GetGoal, builtincontract.ReportGoalOutcome,
+		builtincontract.LoadSkill, builtincontract.ListSkills, builtincontract.ProposeSkill, builtincontract.EnterPlanMode, builtincontract.ExitPlanMode, builtincontract.SetPlan:
 		return protocol.ToolCategoryTask
 	default:
 		return protocol.ToolCategoryUnknown

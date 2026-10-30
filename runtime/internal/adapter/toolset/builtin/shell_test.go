@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -72,7 +73,7 @@ func TestShellOutputsPreserveArbitraryBytes(t *testing.T) {
 				output, err = callTextTool(attachedRun(t), shellTool(t, shells, "read_shell_output"),
 					`{"shell_id":"`+id+`","wait":true}`)
 			} else {
-				arguments, marshalErr := json.Marshal(shellArgs{Command: command, Description: "Print arbitrary bytes"})
+				arguments, marshalErr := json.Marshal(builtincontract.ShellArguments{Command: command, Description: "Print arbitrary bytes"})
 				if marshalErr != nil {
 					t.Fatal(marshalErr)
 				}
@@ -254,7 +255,7 @@ func TestShellContractRejectsNumericAbsenceSentinels(t *testing.T) {
 }
 
 func TestShellDurationValuesPreservePresence(t *testing.T) {
-	disabled, err := (shellArgs{}).timeout()
+	disabled, err := optionalShellTimeout((builtincontract.ShellArguments{}).TimeoutMillis, time.Millisecond, "timeout_millis")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -263,12 +264,12 @@ func TestShellDurationValuesPreservePresence(t *testing.T) {
 	}
 
 	zero := 0
-	if _, err := (shellArgs{TimeoutMillis: &zero}).timeout(); err == nil {
+	if _, err := optionalShellTimeout((builtincontract.ShellArguments{TimeoutMillis: &zero}).TimeoutMillis, time.Millisecond, "timeout_millis"); err == nil {
 		t.Fatal("present zero timeout was treated as omission")
 	}
 	// The schema refuses a zero before the Tool runs, so the argument helper
 	// only has to keep a present value distinct from an absent one.
-	if after, afterErr := (shellArgs{AutoBackgroundAfterSeconds: &zero}).autoBackgroundAfter(); afterErr != nil || after != 0 {
+	if after, afterErr := shellAutoBackgroundAfter(&zero); afterErr != nil || after != 0 {
 		t.Fatalf("present zero auto-background = %v, %v; want it preserved", after, afterErr)
 	}
 
@@ -328,7 +329,7 @@ func TestShell_RunInBackground(t *testing.T) {
 	// requested. Hold this one alive until the test owns its background handle.
 	release := filepath.Join(t.TempDir(), "release")
 	quotedRelease := "'" + strings.ReplaceAll(release, "'", "'\"'\"'") + "'"
-	arguments, err := json.Marshal(shellArgs{
+	arguments, err := json.Marshal(builtincontract.ShellArguments{
 		Command:         "while [ ! -f " + quotedRelease + " ]; do sleep 0.01; done; printf hi",
 		Description:     "Print hi after release",
 		RunInBackground: true,
@@ -376,7 +377,7 @@ func TestReadShellOutput_Wait(t *testing.T) {
 
 	release := filepath.Join(t.TempDir(), "release")
 	quotedRelease := "'" + strings.ReplaceAll(release, "'", "'\"'\"'") + "'"
-	arguments, err := json.Marshal(shellArgs{
+	arguments, err := json.Marshal(builtincontract.ShellArguments{
 		Command:         "while [ ! -f " + quotedRelease + " ]; do sleep 0.01; done; printf done",
 		Description:     "Print done after release",
 		RunInBackground: true,
@@ -448,7 +449,7 @@ func TestShellCanceledForegroundJoinsBeforeRemoval(t *testing.T) {
 	ctx, cancel := context.WithCancel(attachedRun(t))
 	result := make(chan error, 1)
 	go func() {
-		_, err := tools.run(ctx, shellArgs{
+		_, err := tools.run(ctx, builtincontract.ShellArguments{
 			Command: "sleep 30", Description: "Wait for cancellation",
 			AutoBackgroundAfterSeconds: shellIntPointer(30),
 		})
@@ -573,5 +574,24 @@ func TestShellRefusesToRunWithoutAnAttachedRun(t *testing.T) {
 	shell := shellTool(t, shells, "shell")
 	if _, err := callTextTool(t.Context(), shell, `{"command":"printf hello","description":"Print hello"}`); err == nil || !strings.Contains(err.Error(), "no attached Run workspace") {
 		t.Fatalf("shell without a Run scope = %v, want a refusal", err)
+	}
+}
+
+func TestShellArgumentsRetainRuntimeExecutionPolicy(t *testing.T) {
+	input := builtincontract.ShellArguments{Command: "printf done", Description: "Run the check"}
+	if err := validateShellArguments(input); err != nil {
+		t.Fatal(err)
+	}
+	if window, err := shellAutoBackgroundAfter(input.AutoBackgroundAfterSeconds); err != nil || window != time.Minute {
+		t.Fatalf("default auto-background = %v, %v", window, err)
+	}
+	seconds := 2
+	input.AutoBackgroundAfterSeconds = &seconds
+	if window, err := shellAutoBackgroundAfter(input.AutoBackgroundAfterSeconds); err != nil || window != 2*time.Second {
+		t.Fatalf("explicit auto-background = %v, %v", window, err)
+	}
+	input.RunInBackground = true
+	if err := validateShellArguments(input); err == nil {
+		t.Fatal("background execution accepted a competing auto-background window")
 	}
 }

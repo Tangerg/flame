@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/scope/core/chat"
@@ -95,14 +96,14 @@ func TestInteractionReleasesScopedFilesystemTools(t *testing.T) {
 			}
 			for _, captured := range resolver.captured {
 				for _, executable := range captured.manifest.Visible {
-					if executable.Definition().Name != string(domaintool.Read) {
+					if executable.Definition().Name != string(builtincontract.Read) {
 						continue
 					}
 					binding, err := toolcontract.Bind(executable)
 					if err != nil {
 						t.Fatal(err)
 					}
-					invocation, err := binding.Contract().Prepare(chat.ToolCall{ID: "read", Name: string(domaintool.Read), Arguments: `{"path":"note.txt"}`}, nil)
+					invocation, err := binding.Contract().Prepare(chat.ToolCall{ID: "read", Name: string(builtincontract.Read), Arguments: `{"path":"note.txt"}`}, nil)
 					if err != nil {
 						t.Fatal(err)
 					}

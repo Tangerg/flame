@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -40,8 +41,8 @@ func openDirectTools(root string) (_ Manifest, err error) {
 // This adapter owns path identity and domain-error translation; LocalExecutor
 // independently enforces the filesystem capability.
 func normalizeDirectArguments(root, name string, invocation toolcontract.Invocation) (string, error) {
-	switch tool.BuiltInName(name) {
-	case tool.Read:
+	switch builtincontract.Name(name) {
+	case builtincontract.Read:
 		request, err := decodeToolArguments[fs.ReadRequest](invocation)
 		if err != nil {
 			return "", fmt.Errorf("toolset: decode direct read arguments: %w", err)
@@ -52,7 +53,7 @@ func normalizeDirectArguments(root, name string, invocation toolcontract.Invocat
 		}
 		request.Path = path
 		return encodeDirectArguments(request)
-	case tool.Glob:
+	case builtincontract.Glob:
 		request, err := decodeToolArguments[runtimeGlobRequest](invocation)
 		if err != nil {
 			return "", fmt.Errorf("toolset: decode direct glob arguments: %w", err)
@@ -65,7 +66,7 @@ func normalizeDirectArguments(root, name string, invocation toolcontract.Invocat
 			request.Path = path
 		}
 		return encodeDirectArguments(request)
-	case tool.Grep:
+	case builtincontract.Grep:
 		request, err := decodeToolArguments[runtimeGrepRequest](invocation)
 		if err != nil {
 			return "", fmt.Errorf("toolset: decode direct grep arguments: %w", err)

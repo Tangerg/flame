@@ -4,7 +4,6 @@ package tool
 import (
 	"errors"
 	"fmt"
-	"slices"
 	"unicode/utf8"
 
 	"github.com/Tangerg/scope/core/chat"
@@ -27,46 +26,6 @@ const (
 
 // Valid reports whether g names one supported Tool surface.
 func (g Group) Valid() bool { return g == GroupRoot || g == GroupDelegated }
-
-// BuiltInName identifies a current Runtime-owned tool.
-type BuiltInName string
-
-const (
-	ApplyPatch        BuiltInName = "apply_patch"
-	AskUser           BuiltInName = "ask_user"
-	CreateGoal        BuiltInName = "create_goal"
-	DelegateTask      BuiltInName = "delegate_task"
-	Edit              BuiltInName = "edit"
-	EnterPlanMode     BuiltInName = "enter_plan_mode"
-	ExitPlanMode      BuiltInName = "exit_plan_mode"
-	GetGoal           BuiltInName = "get_goal"
-	Glob              BuiltInName = "glob"
-	Grep              BuiltInName = "grep"
-	HTTPRequest       BuiltInName = "http_request"
-	ListSkills        BuiltInName = "list_skills"
-	LoadSkill         BuiltInName = "load_skill"
-	LSP               BuiltInName = "lsp"
-	ProposeSkill      BuiltInName = "propose_skill"
-	Read              BuiltInName = "read"
-	ReadShellOutput   BuiltInName = "read_shell_output"
-	ReadSkillResource BuiltInName = "read_skill_resource"
-	ReadToolResult    BuiltInName = "read_tool_result"
-	ReportGoalOutcome BuiltInName = "report_goal_outcome"
-	SearchTools       BuiltInName = "search_tools"
-	SetPlan           BuiltInName = "set_plan"
-	Shell             BuiltInName = "shell"
-	StopShell         BuiltInName = "stop_shell"
-)
-
-// builtInNames is the set's only enumeration.
-var builtInNames = []BuiltInName{
-	ApplyPatch, AskUser, CreateGoal, DelegateTask, Edit,
-	EnterPlanMode, ExitPlanMode, GetGoal, Glob, Grep, HTTPRequest, ListSkills,
-	LoadSkill, LSP, ProposeSkill, Read, ReadShellOutput, ReadSkillResource, ReadToolResult,
-	ReportGoalOutcome, SearchTools, SetPlan, Shell, StopShell,
-}
-
-func BuiltInNames() []BuiltInName { return slices.Clone(builtInNames) }
 
 // Tool projects a Scope definition with the Runtime-owned safety class.
 type Tool struct {
