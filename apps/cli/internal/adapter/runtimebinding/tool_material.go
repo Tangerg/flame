@@ -12,50 +12,54 @@ import (
 	"github.com/Tangerg/scope/tools/fs"
 )
 
-func projectToolArguments(call *conversation.ToolCall) error {
+// summarizeToolArguments derives an optional typed summary for a built-in tool.
+// The Runtime already admitted the Item, so material that does not fit the
+// executable shape (a failed call's observed arguments) keeps its complete
+// ArgumentsJSON and simply has no typed summary.
+func summarizeToolArguments(call *conversation.ToolCall) {
 	if call.Kind == protocol.ToolCategoryUnknown || call.ArgumentsText != "" {
-		return nil
+		return
 	}
 	var summary string
 	switch builtin.Name(call.Name) {
 	case builtin.Shell:
 		var input builtin.ShellArguments
-		if err := json.Unmarshal(call.ArgumentsJSON, &input); err != nil {
-			return err
+		if json.Unmarshal(call.ArgumentsJSON, &input) != nil {
+			return
 		}
 		call.Command, summary = input.Command, input.Description
 	case builtin.Read:
 		var input fs.ReadRequest
-		if err := json.Unmarshal(call.ArgumentsJSON, &input); err != nil {
-			return err
+		if json.Unmarshal(call.ArgumentsJSON, &input) != nil {
+			return
 		}
 		call.Path, summary = input.Path, input.Path
 	case builtin.Edit:
 		var input fs.EditRequest
-		if err := json.Unmarshal(call.ArgumentsJSON, &input); err != nil {
-			return err
+		if json.Unmarshal(call.ArgumentsJSON, &input) != nil {
+			return
 		}
 		call.Path, summary = input.Path, input.Path
 	case builtin.Grep:
 		var input fs.GrepRequest
-		if err := json.Unmarshal(call.ArgumentsJSON, &input); err != nil {
-			return err
+		if json.Unmarshal(call.ArgumentsJSON, &input) != nil {
+			return
 		}
 		call.Query, call.Path, summary = input.Pattern, input.Path, input.Pattern
 	case builtin.Glob:
 		var input fs.GlobRequest
-		if err := json.Unmarshal(call.ArgumentsJSON, &input); err != nil {
-			return err
+		if json.Unmarshal(call.ArgumentsJSON, &input) != nil {
+			return
 		}
 		call.Query, call.Path, summary = input.Pattern, input.Path, input.Pattern
-
 	}
 	if summary != "" {
 		call.Summary = truncateRunes(summary, toolSummaryRuneLimit)
 	}
-	return nil
 }
 
+// projectToolResult always keeps the complete formatted result; a built-in
+// result that does not fit its typed shape only lacks the typed fields.
 func projectToolResult(call *conversation.ToolCall) error {
 	output, err := formattedJSON(call.ResultJSON)
 	if err != nil {
@@ -68,14 +72,14 @@ func projectToolResult(call *conversation.ToolCall) error {
 	switch builtin.Name(call.Name) {
 	case builtin.Shell:
 		var result builtin.CommandResult
-		if err := json.Unmarshal(call.ResultJSON, &result); err != nil {
-			return err
+		if json.Unmarshal(call.ResultJSON, &result) != nil {
+			return nil
 		}
 		call.Output, call.ExitCode = result.Output, result.ExitCode
 	case builtin.ApplyPatch:
 		var result builtin.PatchResult
-		if err := json.Unmarshal(call.ResultJSON, &result); err != nil {
-			return err
+		if json.Unmarshal(call.ResultJSON, &result) != nil {
+			return nil
 		}
 		paths := make([]string, len(result.Changes))
 		for i, change := range result.Changes {

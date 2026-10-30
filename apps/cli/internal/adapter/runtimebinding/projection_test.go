@@ -757,14 +757,37 @@ func TestBuiltinMaterialConsumesTheProducerContracts(t *testing.T) {
 	}
 }
 
-func TestBuiltinMaterialRejectsMalformedDeclaredValues(t *testing.T) {
+// Runtime owns built-in material validity; a value outside the typed shape keeps
+// its complete JSON and only lacks typed presentation fields.
+func TestBuiltinMaterialOutsideItsTypedShapeKeepsCompleteJSON(t *testing.T) {
 	for _, invocation := range []protocol.ToolInvocation{
 		{Name: string(builtin.Shell), Category: protocol.ToolCategoryShell, Arguments: map[string]any{"command": 7}},
 		{Name: string(builtin.Shell), Category: protocol.ToolCategoryShell, Arguments: map[string]any{"command": "true"}, Result: map[string]any{"exitCode": "0"}},
 		{Name: string(builtin.ApplyPatch), Category: protocol.ToolCategoryEdit, Arguments: map[string]any{}, Result: map[string]any{"changes": []any{map[string]any{"path": 7}}}},
 	} {
-		if _, err := projectTool(toolProjection{status: protocol.ItemStatusCompleted, invocation: &invocation}); err == nil {
-			t.Fatalf("invalid %s material became a valid presentation", invocation.Name)
+		call, err := projectTool(toolProjection{status: protocol.ItemStatusCompleted, invocation: &invocation})
+		if err != nil {
+			t.Fatalf("%s material was refused: %v", invocation.Name, err)
 		}
+		if call.ExitCode != nil || call.Path != "" || len(call.ArgumentsJSON) == 0 || (invocation.Result == nil && call.Command != "") {
+			t.Fatalf("%s material gained typed fields: %+v", invocation.Name, call)
+		}
+	}
+}
+
+func TestProjectToolKeepsAdmittedFailedMaterialThatDoesNotFitItsExecutableShape(t *testing.T) {
+	problem := &protocol.ProblemData{Type: "tool_failed", Detail: "command must be text"}
+	tool, err := projectTool(toolProjection{
+		invocation: &protocol.ToolInvocation{
+			Name: string(builtin.Shell), Category: protocol.ToolCategoryShell,
+			Arguments: map[string]any{"command": jsonv1.Number("123"), "description": "observed"},
+		},
+		status: protocol.ItemStatusIncomplete, problem: problem,
+	})
+	if err != nil {
+		t.Fatalf("an admitted failed Item was refused by its optional summary: %v", err)
+	}
+	if tool.Command != "" || !bytes.Contains(tool.ArgumentsJSON, []byte(`"command":123`)) || tool.Problem == nil {
+		t.Fatalf("failed material = %+v", tool)
 	}
 }

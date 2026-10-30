@@ -188,9 +188,7 @@ func projectTool(projection toolProjection) (conversation.ToolCall, error) {
 	}
 	tool.ArgumentsJSON = argumentsJSON
 	tool.ArgumentsText = value.ArgumentsText
-	if err := projectToolArguments(&tool); err != nil {
-		return conversation.ToolCall{}, fmt.Errorf("project tool %q arguments: %w", value.Name, err)
-	}
+	summarizeToolArguments(&tool)
 	if value.Result != nil {
 		resultJSON, err := encodeProjection(value.Result)
 		if err != nil {

@@ -9,19 +9,21 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// TestMetricsCostAnswersForAnUnaccountedRun keeps the answer a caller branches
-// on with the value that holds it: a Run that has not reported usage costs
-// zero rather than failing.
-func TestMetricsCostAnswersForAnUnaccountedRun(t *testing.T) {
+func TestMetricsCostSeparatesNoDispatchFromUnreportedUsage(t *testing.T) {
 	t.Parallel()
 
-	var unaccounted Metrics
-	cost, err := unaccounted.Cost()
-	if err != nil {
-		t.Fatalf("Cost of an unaccounted Run = %v", err)
+	var idle Metrics
+	cost, err := idle.Cost()
+	if usd, available := cost.USD(); err != nil || !available || usd != 0 {
+		t.Fatalf("Cost of a Run without dispatched calls = (%v, %t, %v), want an exact zero", usd, available, err)
 	}
-	if usd, available := cost.USD(); available || usd != 0 {
-		t.Fatalf("Cost of an unaccounted Run = (%v, %t), want an unavailable zero", usd, available)
+	unreported, err := idle.AccrueModelCall("served-model", nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cost, err = unreported.Cost()
+	if usd, available := cost.USD(); err != nil || available || usd != 0 {
+		t.Fatalf("Cost of a dispatched call without usage = (%v, %t, %v), want unpriced", usd, available, err)
 	}
 }
 
