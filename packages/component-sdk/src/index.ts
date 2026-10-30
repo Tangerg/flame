@@ -137,9 +137,6 @@ export interface ComponentContext {
   // The host owns the active locale; a component projects it, never selects it.
   readonly locale: string;
   readonly signal: AbortSignal;
-  // Source-owned drafts may outlive a mounted view. Retiring the installed
-  // contribution or its resources ends this lifetime and must clear them.
-  readonly sourceSignal: AbortSignal;
   // Reserve work before starting it; preserve the original command promise and
   // its retry identity. The factory is invoked synchronously after admission.
   track<P extends Promise<unknown>>(operation: (signal: AbortSignal) => P): P;
@@ -174,6 +171,36 @@ export type PluginComponent<Input = unknown, Props = unknown> = ComponentType<{
   contribution?: Props;
   children?: ReactNode;
 }>;
+
+export interface ComponentSource {
+  readonly runtimeIdentity: object;
+  readonly component: Readonly<ComponentReference>;
+  readonly signal: AbortSignal;
+}
+
+export interface ComponentDefinition {
+  readonly kind: "flame.component.source";
+  create(source: ComponentSource): PluginComponent;
+}
+
+export function defineComponent(
+  create: ComponentDefinition["create"],
+): ComponentDefinition {
+  return Object.freeze({ kind: "flame.component.source", create });
+}
+
+export function isComponentDefinition(
+  value: unknown,
+): value is ComponentDefinition {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "kind" in value &&
+    value.kind === "flame.component.source" &&
+    "create" in value &&
+    typeof value.create === "function"
+  );
+}
 
 export type Catalog = Readonly<Record<string, string>>;
 

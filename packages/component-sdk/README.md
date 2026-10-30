@@ -12,12 +12,23 @@ the host's Extensions group. Client, workspace and installation contexts use the
 same captured identity, resource lease and command lifetime as workspace views.
 Disabling the installation removes its entry. Locale changes update the display
 projection while preserving accepted work and its original cancellation signal.
+The optional `settingsIntent: "modelProviders"` declaration identifies the model
+configuration entry for Composer and setup navigation. The host opens a unique
+available entry; absence or ambiguity opens plugin management.
 
-`context.signal` ends with the mounted view. `context.sourceSignal` follows the
-captured contribution and resource lifetime, so an installed settings presenter can
-retain drafts and original command observations across page closes. It must clear
-sensitive drafts when that source ends. New I/O still enters the current view's
-`context.track` boundary; the source signal does not grant another execution path.
+State that must survive a view close uses `defineComponent(source => View)`. The
+host constructs that source once after native component acquisition and retains
+its returned React component across mounts. `source` supplies an opaque Runtime
+identity, the component identity and a signal bound to the contribution, resource and browser
+Host lifetimes. Construction is synchronous and performs no I/O. The source clears
+sensitive drafts and retained command observations when its signal ends; it never
+publishes a module-global feature instance or port installer.
+The Providers settings component is the concrete consumer of this boundary.
+Ordinary stateless exports remain React components.
+
+`context.signal` belongs to the mounted view. New I/O still enters that view's
+`context.track` boundary; source construction grants no additional execution path.
+Rebuild components and their graphical Host together when changing this SDK.
 
 PNG imports are embedded as data URLs by the component build. Components can
 display those images and transfer their original decoded bytes through

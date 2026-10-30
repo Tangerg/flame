@@ -34,6 +34,16 @@ func (ComponentPlacement) Values() []string {
 	return []string{string(ComponentPlacementExport), string(ComponentPlacementWorkspaceView), string(ComponentPlacementSettingsPane), string(ComponentPlacementSessionAction), string(ComponentPlacementFileRenderer), string(ComponentPlacementToolResultRenderer)}
 }
 
+type SettingsIntent string
+
+const SettingsIntentModelProviders SettingsIntent = "modelProviders"
+
+func (SettingsIntent) Values() []string {
+	return []string{string(SettingsIntentModelProviders)}
+}
+
+func (s SettingsIntent) Valid() bool { return slices.Contains(s.Values(), string(s)) }
+
 type RendererSelectorKind string
 
 const (
