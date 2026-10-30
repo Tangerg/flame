@@ -30,6 +30,17 @@ registration and lifetime mechanisms; it never owns business extension points.
 `src/platform` translates Browser/Wails effects. `src/ui` contains product
 presentation composites over shared `@flame/ui` controls and tokens.
 
+Recorded JSON formatting belongs to `@qimu/sdk/json`: `prettyJSON` indents values
+through the exact codec, while `formatJSONText` changes only captured source
+whitespace. Agent projections, approval drafts, Tool inspection and conversation
+archives consume those helpers directly, sharing numeric preservation with
+portable reading components.
+
+Expanded images, figures and captured documents use shared `LightboxDialog`.
+The transcript gallery retains collection, active-image and save-command ownership
+and uses shared `ImageViewport` for fitting, zoom and panning. Portable evidence
+images use the same reading boundary, with their captured source and local labels.
+
 The composition root creates each feature instance and its backing state once.
 React consumers use that owner's Provider; commands and plugin factories capture
 explicit dependencies. Tests construct independent instances in `test/renderClient.tsx`,
@@ -63,6 +74,21 @@ saving, Close, Escape and outside dismissal share the same unavailable contract
 as Cancel and Save. Settlement restores dismissal; draft, error, command and
 return-focus ownership remain with their existing callers and shared controls.
 
+Installed component recovery keeps Reload window focusable while its original
+cleanup gate is pending. The shared pending button blocks repeat activation;
+refused cleanup retains the recovery action and diagnostics without reclaiming
+later input focus. Render failure and retired resources use this same recovery
+boundary. Component retirement and actual window reload keep their existing owners.
+
+An independently mounted component's render failure returns lost owned focus to
+its existing reading host before fallback appears. Later outside focus, explicit
+blur, hidden content and ordinary unmount retain their own navigation. This
+handoff belongs to the native DOM mount, which retires stale focus records when
+an earlier inner-root update removes their node. Runtime cleanup remains separate.
+The same mount hands current reader focus to that host before its upstream
+context retires. Live context replacement and ordinary unmount retain their
+existing navigation, and a fallback's own focus takes precedence after mounting.
+
 Package configuration keeps local validation feedback with the open edit. It
 formats syntax, object-shape and request-field errors as correction instructions
 and derives field validity from that one message. Editing or cancelling retires
@@ -77,6 +103,13 @@ outside focus retires automatic reveal. The hook neither focuses another node
 nor changes the draft or selection, and retires when the transcript starts or
 the view becomes hidden. Transcript reading and shared Panel focus retain their
 separate owners.
+
+The transcript's reading-focus owner projects its measured safe height as
+`--reading-frame-height` on the attached scroll viewport. The same existing
+resize observation updates this budget when the window or Composer clearance
+changes; hiding or unmounting the transcript removes it. Shared code frames use
+that inherited budget while native source scrolling, selection and later focus
+keep their existing owners.
 
 The work index treats a first pending project read as loading even when its
 network request is paused. The sidebar and project menu use that one navigation

@@ -60,6 +60,8 @@ literal references checked at admission.
   embeds. Data acquisition remains an ordinary agent tool or installed query.
 
 Controls use public `@flame/ui` components and the active host locale and tokens.
+Horizontal report tabs select with Left/Right, Home and End. They leave Up/Down
+to the browser, while radio choices retain both arrow axes.
 Popover uses the shared non-modal portal and collision positioning, so a clipped
 report does not clip its detail controls. Nested Select and Popover dismissal
 use Base UI's existing layer boundary. The declared open field and all drafts
@@ -76,12 +78,37 @@ button semantics as their labels change between showing the answer and question;
 the current face remains expressed by the existing face label and body.
 Local flip state stays in the same OpenUI field.
 Native chart geometry uses labels, patterns and a data table rather than color
-alone. Markdown uses the established renderer with raw HTML disabled. KaTeX
+alone. All twelve admitted Cartesian series have distinct point marks or bar
+patterns, reused by their data-column legends. Plot labels keep at least the host's
+small-text size in a separate named scroll region instead of shrinking with
+the container; exact values remain in the independently readable data table.
+Pie and donut legends use the same table: every category has its complete name,
+matching slice pattern, exact value and percentage. The chart geometry and table
+share one normalized fraction projection, including zero totals and large finite
+values. A centered circular figure no longer reserves SVG space for a truncated,
+ten-category legend; its HTML legend follows ordinary text sizing and reading.
+Markdown uses the established renderer with raw HTML disabled. KaTeX
 produces MathML with trusted commands disabled. Map tiles use OpenStreetMap with
 attribution; tile errors remain visible and can be explicitly retried. A supplied
 route is displayed as supplied geometry, not represented as newly computed road
 routing. Image search, geocoding, routing and remote business facts belong to
 existing tools or provider plugins, rather than hidden GenUI service calls.
+
+Image and Markdown-image thumbnails open their original source in the shared
+image reader. The authored alternative text and caption retain their meaning;
+local zoom and panning do not advance OpenUI fields or operation state. Resource
+loading, failure and explicit retry keep their existing owner. Hiding the report
+or replacing an image source ends its open reading capture.
+Explicit retry hands its own focus to the surviving, named image container
+before replacing the action. Loading, decoding and failure do not reclaim later
+editing focus. Independent images and Markdown images share that same resource
+boundary, without adding another natural Tab stop.
+Markdown's tag renderers retain their component identities through independent
+local updates. A private translation context supplies current labels through
+the Markdown renderer's fixed DOM/AST prop contract, so images, source readers,
+links and tables are not replaced to obtain translated copy. Decoding failures,
+open previews and native reading positions keep their existing owners. Changing
+an image's actual source still ends its old preview.
 
 ## Local computation
 

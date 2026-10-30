@@ -1,7 +1,5 @@
 export const en = {
   "panel.title": "Professional deliverables",
-  "panel.description":
-    "Create, revise, inspect and deliver native documents with evidence tied to each revision.",
   "panel.controls": "Deliverable actions",
   refresh: "Refresh",
   reading: "Reading…",
@@ -190,6 +188,7 @@ export const en = {
   "revision.openHead": "Open current revision",
   "revision.details": "Revision identity and native facts",
   "document.id": "Document identity",
+  "document.created": "Document created at",
   "revision.id": "Revision identity",
   "revision.parent": "Parent revision",
   "revision.first": "Initial revision",
@@ -233,4 +232,9 @@ export const en = {
     "Configure the rendering engines in this installation’s settings to render Office documents and PDF pages.",
   "capabilities.engines": "Configured engine paths",
   "capabilities.limits": "Installed limits",
+  "image.view": "View image",
+  "image.close": "Close image preview",
+  "image.zoomIn": "Zoom in image",
+  "image.zoomOut": "Zoom out image",
+  "image.description": "Image description",
 } as const;

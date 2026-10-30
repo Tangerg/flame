@@ -29,6 +29,7 @@ import { createClientHost } from "@/platform/clientHost";
 import { ClientRenderer } from "@/app/renderer";
 import { FAILURE_SCOPE, RootBoundary, StartupFailure } from "@/app/StartupFailure";
 import { applyWindowChrome, watchWindowChrome } from "@/app/windowChrome";
+import { disposeHighlighter } from "@/lib/highlight/shiki";
 import { disposeOnHmr } from "@/lib/hmr";
 import "@/styles/markdown.css";
 import "@/styles/overlays.css";
@@ -161,6 +162,7 @@ const renderer = new ClientRenderer({
       navigation.dispose,
       installedPlugins.dispose,
       theme.dispose,
+      disposeHighlighter,
     ]) {
       try {
         await dispose();

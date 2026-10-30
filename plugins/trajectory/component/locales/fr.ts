@@ -1,4 +1,8 @@
 export const fr: Record<string, string> = {
+  "code.copy": "Copier le code",
+  "code.copied": "Copié",
+  "code.wrap": "Activer le retour à la ligne",
+  "code.unwrap": "Désactiver le retour à la ligne",
   "panel.title": "Trajectoire de la session",
   "panel.session": "Session",
   "controls.label": "Contrôles de trajectoire",
@@ -108,4 +112,10 @@ export const fr: Record<string, string> = {
   "export.markdown": "Exporter la conversation en Markdown",
   "export.json": "Exporter la conversation en JSON",
   "export.trajectory": "Exporter la trajectoire complète de la session",
+  "image.view": "Voir l’image",
+  "image.close": "Fermer l’aperçu de l’image",
+  "image.zoomIn": "Agrandir l’image",
+  "image.zoomOut": "Réduire l’image",
+  "image.description": "Description de l’image",
+  "image.unavailable": "Impossible d’afficher cette image enregistrée.",
 };

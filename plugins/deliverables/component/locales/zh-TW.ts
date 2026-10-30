@@ -2,8 +2,6 @@ import type { en } from "./en";
 
 export const zhTW = {
   "panel.title": "專業成果交付",
-  "panel.description":
-    "建立、修訂、檢查並交付原生文件，每次檢查皆綁定確切版本。",
   "panel.controls": "成果操作",
   refresh: "重新整理",
   reading: "讀取中…",
@@ -181,6 +179,7 @@ export const zhTW = {
   "revision.openHead": "開啟目前版本",
   "revision.details": "版本身分與原生資訊",
   "document.id": "文件識別碼",
+  "document.created": "文件建立時間",
   "revision.id": "版本識別碼",
   "revision.parent": "父版本",
   "revision.first": "初始版本",
@@ -222,4 +221,9 @@ export const zhTW = {
     "請在此安裝的設定中配置轉譯引擎，以轉譯 Office 文件與 PDF 頁面。",
   "capabilities.engines": "已設定引擎路徑",
   "capabilities.limits": "目前安裝的限制",
+  "image.view": "檢視圖片",
+  "image.close": "關閉圖片預覽",
+  "image.zoomIn": "放大圖片",
+  "image.zoomOut": "縮小圖片",
+  "image.description": "圖片說明",
 } satisfies Record<keyof typeof en, string>;

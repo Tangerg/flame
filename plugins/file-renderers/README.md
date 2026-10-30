@@ -12,11 +12,11 @@ Partial and truncated reads use the existing source view before loading the modu
 line navigation starts in source mode. Loading, render failure, connection retirement
 and disablement preserve the recorded source.
 
-Marked parses Markdown tokens. React renders semantic elements with text content;
+The shared remark pipeline parses Markdown. React renders semantic elements with text content;
 authored HTML, MDX expressions, images and URLs remain text. Code fences remain
 readable code. This is ordinary trusted workbench code, using shared React, the public
-SDK and `@flame/ui`. Marked is a declared private dependency bundled in the ESM;
-its license is retained in the namespace resources.
+SDK and `@flame/ui`. The declared remark and react-markdown dependencies are bundled
+in the ESM; their licenses are retained in `package/THIRD_PARTY_NOTICES.txt`.
 
 The preview describes each image with the shared `ImageNotice`: its alternative
 text and a short source caption, never a loaded image. Complete payloads remain
@@ -35,14 +35,17 @@ wrapping follows the same page-wide preference as transcript code. Syntax color
 comes from the host's code highlighter; it paints escaped text and never runs or
 loads authored code, and the literal stays visible until it is ready. Code, inline code and tables consume the same shared reading
 roles as the transcript while file parsing and content trust stay here.
+Code action names and accepted-copy feedback use the same component locale as
+the named reading region. Captured fence language, metadata and source remain
+literal; shared UI retains wrapping and selection ownership.
 Parsed table column alignment is projected on both header and body cells.
 Paragraphs, headings, nested lists, quotes and rules use the shared `data-prose`
 grammar. A quote that opens with a GitHub alert marker (`[!NOTE]`, `[!TIP]`,
 `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]`) renders as the shared `Callout`, read
 by the same `readCalloutMarker` the transcript uses; other quotes and markers stay
 literal. Prose direction follows its content; code remains left to right.
-Task tokens supply one immutable `TaskListItem` marker with the primary visible
-task name and captured checked state. Parser checkbox tokens do not become a
+Parsed task items supply one immutable `TaskListItem` marker with the primary visible
+task name and captured checked state. Parser checkboxes do not become a
 second text prefix; ordinary checkbox notation inside code stays literal.
 Ordered lists retain their authored starting number and ordinary items.
 

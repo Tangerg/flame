@@ -16,6 +16,7 @@ import { type ContentBlock, type TrajectoryEntry } from "@flame/runtime-client/w
 import { RUNTIME_AGENT_SESSION_SNAPSHOTS } from "./agentSessionSnapshots";
 import { visualTrajectory } from "./trajectorySnapshot";
 import { en as trajectoryEn } from "../../../plugins/trajectory/component/locales/en";
+import { zh as trajectoryZh } from "../../../plugins/trajectory/component/locales/zh";
 const reportT = createTranslator({ en: trajectoryEn }, "en");
 afterEach(cleanup);
 
@@ -217,6 +218,14 @@ it("gives captured code fences the shared code header while keeping the source l
   ).toEqual(["html", "text"]);
   expect(view.getAllByRole("button", { name: "Copy code" })).toHaveLength(2);
   expect(view.getAllByRole("button", { name: "Enable word wrap" })).toHaveLength(2);
+});
+
+it("retains code-fence metadata in its caption without changing the source", () => {
+  const view = renderCapturedMarkdown('```ts title="sample.ts"\nconst sample = 1;\n```');
+  expect(
+    view.container.querySelector('[data-slot="code-caption"]')?.firstElementChild?.textContent,
+  ).toBe('ts title="sample.ts"');
+  expect(view.container.querySelector("pre code")?.textContent).toBe("const sample = 1;");
 });
 
 it("shows tool execution status independently of its approval decision", () => {
@@ -651,4 +660,110 @@ it("searches recorded tool data and message metadata without image bytes or reda
   }
   expect(container.textContent).not.toContain(secret);
   expect(entries).toEqual(recorded);
+});
+
+const validRecordedImage =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+const unreadableRecordedImage = btoa("not a PNG image");
+
+function imageRecord(
+  data: string,
+  type: "userMessage" | "agentMessage" = "userMessage",
+): TrajectoryEntry {
+  return {
+    type: "item",
+    occurredAt: "2026-07-31T08:00:00.000Z",
+    item: {
+      type,
+      id: "item_image_decode",
+      runId: "run_root",
+      status: "completed",
+      createdAt: "2026-07-31T08:00:00.000Z",
+      content: [
+        { type: "text", text: "Before the recorded image." },
+        { type: "image", mime: "image/png", data },
+        { type: "text", text: "The next image remains readable." },
+        { type: "image", mime: "image/png", data: validRecordedImage },
+      ],
+    },
+  };
+}
+
+function imageReport(record: TrajectoryEntry, locale = "en") {
+  return (
+    <TrajectoryReport
+      pageNumber={1}
+      onClearFilters={vi.fn()}
+      t={createTranslator({ en: trajectoryEn, zh: trajectoryZh }, locale)}
+      locale={locale}
+      page={{ data: [record] }}
+      kind="all"
+      run="all"
+      search=""
+    />
+  );
+}
+
+it.each(["userMessage", "agentMessage"] as const)(
+  "names a failed %s image while retaining its status, neighboring image and exact evidence",
+  (type) => {
+    const record = imageRecord(unreadableRecordedImage, type);
+    const { container } = testClient.render(imageReport(record));
+    const scope = within(
+      container.querySelector('[data-trajectory-record="item:item_image_decode"]')!,
+    );
+    const summary = scope.getByRole("button", { expanded: false });
+    fireEvent.click(summary);
+    const [failed, neighbor] = scope.getAllByRole("img", { name: "Recorded image/png image" });
+    fireEvent.error(failed!);
+    expect(scope.getByText("This recorded image could not be displayed.")).toBeTruthy();
+    expect(
+      scope.getAllByRole("button", { name: "View image: Recorded image/png image" }),
+    ).toHaveLength(1);
+    expect(scope.getAllByRole("img", { name: "Recorded image/png image" })).toContain(neighbor);
+    expect(neighbor).toHaveProperty("src", "data:image/png;base64," + validRecordedImage);
+    expect(summary.textContent).toContain("completed");
+    expect(scope.getByText("Before the recorded image.")).toBeTruthy();
+    expect(scope.getByText("The next image remains readable.")).toBeTruthy();
+    fireEvent.click(scope.getByRole("button", { name: "Recorded evidence", expanded: false }));
+    expect(scope.getByRole("region", { name: "Recorded evidence" }).textContent).toBe(
+      JSON.stringify(record, null, 2),
+    );
+    expect(scope.queryByRole("alert")).toBeNull();
+  },
+);
+
+it("ends an image's failure witness when its recorded source is replaced", () => {
+  const view = testClient.render(imageReport(imageRecord(unreadableRecordedImage)));
+  const record = within(
+    view.container.querySelector('[data-trajectory-record="item:item_image_decode"]')!,
+  );
+  fireEvent.click(record.getByRole("button", { expanded: false }));
+  fireEvent.error(screen.getAllByRole("img", { name: "Recorded image/png image" })[0]!);
+  expect(screen.getByText("This recorded image could not be displayed.")).toBeTruthy();
+  view.rerender(imageReport(imageRecord(validRecordedImage)));
+  expect(screen.queryByText("This recorded image could not be displayed.")).toBeNull();
+  expect(
+    screen.getAllByRole("button", { name: "View image: Recorded image/png image" }),
+  ).toHaveLength(2);
+  expect(
+    screen
+      .getAllByRole("img", { name: "Recorded image/png image" })
+      .every(
+        (image) => image.getAttribute("src") === "data:image/png;base64," + validRecordedImage,
+      ),
+  ).toBe(true);
+});
+
+it("keeps a recorded image failure and its identity readable in Chinese", () => {
+  const { container } = testClient.render(imageReport(imageRecord(unreadableRecordedImage), "zh"));
+  const record = within(
+    container.querySelector('[data-trajectory-record="item:item_image_decode"]')!,
+  );
+  fireEvent.click(record.getByRole("button", { expanded: false }));
+  fireEvent.error(screen.getAllByRole("img", { name: "已记录的 image/png 图像" })[0]!);
+  expect(screen.getByText("无法显示这张已记录的图片。")).toBeTruthy();
+  expect(screen.getAllByRole("button", { name: "查看图片: 已记录的 image/png 图像" })).toHaveLength(
+    1,
+  );
 });

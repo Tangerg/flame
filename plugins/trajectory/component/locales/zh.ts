@@ -1,4 +1,8 @@
 export const zh: Record<string, string> = {
+  "code.copy": "复制代码",
+  "code.copied": "已复制",
+  "code.wrap": "启用自动换行",
+  "code.unwrap": "关闭自动换行",
   "panel.title": "会话轨迹",
   "panel.session": "会话",
   "controls.label": "轨迹控件",
@@ -93,4 +97,10 @@ export const zh: Record<string, string> = {
   "export.markdown": "导出对话为 Markdown",
   "export.json": "导出对话为 JSON",
   "export.trajectory": "导出完整会话轨迹",
+  "image.view": "查看图片",
+  "image.close": "关闭图片预览",
+  "image.zoomIn": "放大图片",
+  "image.zoomOut": "缩小图片",
+  "image.description": "图片说明",
+  "image.unavailable": "无法显示这张已记录的图片。",
 };

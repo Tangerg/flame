@@ -68,4 +68,9 @@ export const en: Record<string, string> = {
   "code.copied": "Copied",
   "code.wrap": "Enable word wrap",
   "code.unwrap": "Disable word wrap",
+  "image.view": "View image",
+  "image.close": "Close image preview",
+  "image.zoomIn": "Zoom in image",
+  "image.zoomOut": "Zoom out image",
+  "image.description": "Image description",
 };

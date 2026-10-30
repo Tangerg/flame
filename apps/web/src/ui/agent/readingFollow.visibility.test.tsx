@@ -155,6 +155,51 @@ afterEach(() => {
 });
 
 describe("reading focus geometry", () => {
+  it("projects the safe reading height through resize and Composer clearance without moving later focus", () => {
+    const s = scenario();
+    expect(s.viewport.style.getPropertyValue("--reading-frame-height")).toBe("300px");
+    const draft = screen.getByRole("textbox", { name: "Later draft" });
+    act(() => draft.focus());
+    s.shape.height = 246.5;
+
+    s.resize();
+
+    expect(s.viewport.style.getPropertyValue("--reading-frame-height")).toBe("146.5px");
+    s.viewport.style.scrollPaddingBottom = "96.5px";
+    s.resize(s.content);
+    expect(s.viewport.style.getPropertyValue("--reading-frame-height")).toBe("130px");
+    expect(s.viewport.scrollTop).toBe(0);
+    expect(document.activeElement).toBe(draft);
+    expect((draft as HTMLInputElement).value).toBe("Keep this draft");
+  });
+
+  it("projects zero when the reserved controls exceed the viewport and recovers on resize", () => {
+    const s = scenario();
+    act(() => screen.getByRole("textbox", { name: "Later draft" }).focus());
+    s.shape.height = 80;
+
+    s.resize();
+
+    expect(s.viewport.style.getPropertyValue("--reading-frame-height")).toBe("0px");
+    s.shape.height = 340;
+    s.resize();
+    expect(s.viewport.style.getPropertyValue("--reading-frame-height")).toBe("240px");
+    expect(s.viewport.scrollTop).toBe(0);
+  });
+
+  it("retires the height projection while hidden and measures again on reattachment", () => {
+    const s = scenario();
+    s.rerender(<s.Harness attached={false} />);
+    expect(s.viewport.style.getPropertyValue("--reading-frame-height")).toBe("");
+    s.shape.height = 260;
+
+    s.rerender(<s.Harness />);
+
+    expect(s.viewport.style.getPropertyValue("--reading-frame-height")).toBe("160px");
+    s.unmount();
+    expect(s.viewport.style.getPropertyValue("--reading-frame-height")).toBe("");
+  });
+
   it("reveals a fitting group heading before the focused option's own label", () => {
     const s = scenario();
     s.nested.dataset.focusUnit = "";

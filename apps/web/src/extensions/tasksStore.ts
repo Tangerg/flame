@@ -1,4 +1,3 @@
-import { nanoid } from "nanoid";
 import { create } from "zustand";
 export interface TaskHandle {
   update: (patch: { progress?: number | null; message?: string | null }) => void;
@@ -109,7 +108,7 @@ const TASK_LINGER_MS = 2400;
 
 export function startTask(pluginName: string, opts: TaskStartOptions): TaskHandle {
   const store = useTasksStore.getState();
-  const id = opts.id ?? `task:${pluginName}:${nanoid(8)}`;
+  const id = opts.id ?? `task:${pluginName}:${crypto.randomUUID()}`;
   const task = new TaskLifecycle(id, opts);
   store.add(task);
 

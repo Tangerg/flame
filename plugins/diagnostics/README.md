@@ -14,6 +14,9 @@ after an initial failure or failed reread following Clear. One status names the 
 read and distinguishes retained accepted content after failure. Repeated
 introductions and a separate count dashboard are removed. The About disclosure
 retains the bounded-buffer limitation.
+Raw-record code actions and accepted-copy feedback use the same active component
+locale as the named reading region. Shared UI retains source, selection and
+wrapping behavior; telemetry read and clear ownership remain unchanged.
 Log identities use the first nonblank line; expanded rows retain the complete
 recorded body, including blank lines and stack indentation. Histogram sample counts
 are dimensionless; measured sums, percentiles and averages retain their unit, as do

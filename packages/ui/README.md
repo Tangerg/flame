@@ -97,9 +97,13 @@ Its explicit `header` slot holds introductory content, `controls` holds the one
 sticky action and filter zone, and children hold the scrolling content. The host
 keeps its existing scroll viewport. The panel does not shrink inside a column
 host: its canvas and sticky-control boundary extend through the complete content.
-`Panel` projects only its own controls' measured height on its root to keep focused content and anchors
+`Panel` projects its own controls' measured height on its root to keep focused content and anchors
 clear of the controls; wrapped controls update through `ResizeObserver`.
-Body focus also respects the host's clipped viewport. `readingUnitFor` gives
+Its existing viewport observation also projects the clipped host height as
+`--reading-frame-height` for nested source readers. Sizing and body focus use
+the same intersection of host clips and the window; reader sizing continues
+after focus moves outside, and retires with inactive content or unmount.
+`readingUnitFor` gives
 Panel and transcript readers the same context rule: use the nearest declared
 `data-focus-unit` when it fits, then the wrapping native label, then the control.
 An option's label cannot hide the heading of its fitting group. Each reader owns
@@ -113,6 +117,8 @@ without refocusing it or changing its value or text selection. A wheel gesture
 or a moved scrollbar that leaves the field behind retires that follow; reflow
 notifications without scroll displacement do not. Later outside focus, inactive
 retained content and unmount also retire the reading witness.
+The same owner records positions after its own reveal, so a queued programmatic
+scroll event during native window animation cannot retire that reflow witness.
 Pointer-caused focus leaves the pressed control in place so activation can
 finish before any row reveal, including reflow during the press.
 The body retains the pressed target until pointerup or cancellation,
@@ -125,7 +131,10 @@ the focused-control fallback.
 `PanelHeader` owns the page title, description and contextual navigation.
 Its title size can use the smaller existing display roles for workbench views.
 Page actions belong to the persistent `Panel.controls` zone, alongside filters.
-`PanelSection` groups one heading, supporting context, filters and content;
+`PanelSection` groups one heading, supporting context, filters and content in
+a single vertical flex flow. Wrapped controls keep their natural height when
+retained content moves between main reading and a narrow Dock; the section
+does not keep an inflated intrinsic grid row after native page zoom.
 `PanelFooter` groups paging only when another page exists. `RecordGroup variant="list"` owns the shared resource surface, corners
 and separators. Its rows follow their natural content height in a vertical flow,
 including complete wrapping paths in native WebKit. Callers own read and empty state: a truly empty group uses the
@@ -262,10 +271,15 @@ its code typography, shared wrap preference and host-supplied highlighting. It
 limits long code to the smaller of 28rem and 60vh, keeping the caption outside
 the scrolling source. A complete `CodeBlock` is one Panel focus unit so its caption
 stays visible with the focused reader when the block fits the available space.
-The complete block also fits within the window below the existing Panel and
-disclosure clearances. Its caption does not shrink; the source flexes within the
-remaining height, so nested reading actions stay visible at large page zoom.
-Oversized blocks retain the Panel's existing focused-control fallback.
+The complete block uses the host's optional `--reading-frame-height` budget,
+falling back to the window height, below the existing Panel and disclosure
+clearances. Its caption does not shrink; the source flexes within the remaining
+height. A visible literal frame observes its actual caption height to retain
+that caption and at least one padded source line when the budget is smaller
+than their minimum. The measurement retires with content visibility and unmount.
+Oversized blocks retain the Panel's existing focused-control fallback. `CodeFrame`
+accepts host StyleX composition and semantic classes; transcript Shiki blocks
+share this frame without adding another wrapper or reading policy.
 A consumer's `styles` override merges on that same `pre`;
 compact Tool inspectors retain their smaller existing bound. Highlighting changes
 only the child `code`, preserving the reading region, scroll position and focus.
@@ -334,7 +348,8 @@ Prose color comes only from the host's accent roles: headings and inline code us
 `--color-accent-line`; body and strong text keep the neutral ink. Panel titles use
 the same heading role.
 `Callout` owns the GitHub alert presentation for every Markdown adapter: the
-marker grammar (`readCalloutMarker`), the natural-case title and icon per kind,
+marker grammar (`readCalloutMarker`), the shared remark transform (`remarkCallouts`),
+the natural-case title and icon per kind,
 and each kind's title and icon ink. A callout stays on the surrounding reading
 plane without its own fill, rule or corners: its content keeps the paragraph
 reading edge and the shared block rhythm. `ImageNotice` is the one inert image
@@ -342,6 +357,11 @@ description: an alternative text and a muted detail, used for unavailable
 transcript images and for captured file images that are never loaded.
 Quotes and loose lists retain paragraph boundaries around nested blocks; quote
 spacing applies to direct content without overriding a nested list's own flow.
+`taskListContent` projects remark task checkboxes into one captured state and primary
+visible label; `visibleText` reads the same React content for labels and inert links.
+The transcript and file preview share these reading projections while retaining their
+own HTML, link, image and math policies.
+
 `TaskListItem` renders one recorded task as a list item with an immutable,
 named checkbox marker. Its caller supplies the captured checked state and primary
 visible label; paragraphs and nested lists remain selectable document content.
@@ -405,10 +425,31 @@ It does not move focus or handle source replacement as navigation.
 `ScrollRegion` defaults to a `div`; `as="span"` keeps a bounded, named keyboard
 reader valid inside a heading. Both forms retain native refs, attributes and the
 same scrolling and focus contract.
+When a reader itself receives an unmodified horizontal arrow key and has overflow,
+it moves its own horizontal position by 10% of its visible width, including at
+either boundary. Child controls, composing or modified keys and vertical reading
+retain their existing behavior. Caller key handlers run first and can prevent this
+default. The DOM scroll position remains the only owner of the reading position.
 `ScrollRegion` contains horizontal overscroll while allowing vertical scrolling
 to continue through the enclosing reading viewport. Bounded image and diagram
 viewers explicitly contain both axes in their own viewport styles.
 Read-only code regions follow the same horizontal-only containment policy.
+
+`LightboxDialog` owns expanded figure, document and media reading over Base UI.
+It retires when its inherited content becomes hidden, releases only its own
+portal focus and keeps that capture closed when the owner returns. Ordinary
+dismissal retains Base UI's trigger return; an explicit final-focus policy stays
+with the caller. These are the same semantics used by transcript previews.
+
+`ImageViewport` owns fitting, anchored zoom, keyboard panning and pointer dragging
+for one captured `ImageSource`. Its flex frame owns its bounded scroll region and
+zoom tray. A source identity or viewport-size change resets the fit; the detached
+decoder keeps SVG natural geometry independent of displayed size and page zoom.
+`EvidenceImage` retains a bounded inline thumbnail and opens that same original
+source in a media Lightbox. Replacing its source ends the old capture. Its labels
+are supplied by the host or portable component; it owns no image acquisition,
+permission, download, document review or business command. The transcript gallery
+shares this viewport while retaining its own image collection and save outcomes.
 
 The shared stylesheet owns search emphasis: `search-match` and
 `search-match-active` CSS highlights use the host's selected wash and paired accent

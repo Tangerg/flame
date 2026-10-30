@@ -68,4 +68,9 @@ export const de: Record<string, string> = {
   "code.copied": "Kopiert",
   "code.wrap": "Zeilenumbruch aktivieren",
   "code.unwrap": "Zeilenumbruch deaktivieren",
+  "image.view": "Bild anzeigen",
+  "image.close": "Bildvorschau schließen",
+  "image.zoomIn": "Bild vergrößern",
+  "image.zoomOut": "Bild verkleinern",
+  "image.description": "Bildbeschreibung",
 };

@@ -1,4 +1,8 @@
 export const ko: Record<string, string> = {
+  "code.copy": "코드 복사",
+  "code.copied": "복사됨",
+  "code.wrap": "자동 줄 바꿈 사용",
+  "code.unwrap": "자동 줄 바꿈 사용 안 함",
   "panel.title": "세션 궤적",
   "panel.session": "세션",
   "controls.label": "궤적 컨트롤",
@@ -97,4 +101,10 @@ export const ko: Record<string, string> = {
   "export.markdown": "대화를 Markdown으로 내보내기",
   "export.json": "대화를 JSON으로 내보내기",
   "export.trajectory": "전체 세션 기록 내보내기",
+  "image.view": "이미지 보기",
+  "image.close": "이미지 미리보기 닫기",
+  "image.zoomIn": "이미지 확대",
+  "image.zoomOut": "이미지 축소",
+  "image.description": "이미지 설명",
+  "image.unavailable": "기록된 이미지를 표시할 수 없습니다.",
 };

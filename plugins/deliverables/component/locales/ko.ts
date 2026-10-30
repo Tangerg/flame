@@ -2,8 +2,6 @@ import type { en } from "./en";
 
 export const ko = {
   "panel.title": "전문 결과물",
-  "panel.description":
-    "원본 문서를 만들고 수정·검토하며 각 버전에 연결된 근거와 함께 전달합니다.",
   "panel.controls": "결과물 작업",
   refresh: "새로 고침",
   reading: "읽는 중…",
@@ -187,6 +185,7 @@ export const ko = {
   "revision.openHead": "현재 버전 열기",
   "revision.details": "버전 식별자 및 원본 정보",
   "document.id": "문서 식별자",
+  "document.created": "문서 생성 시각",
   "revision.id": "버전 식별자",
   "revision.parent": "상위 버전",
   "revision.first": "최초 버전",
@@ -230,4 +229,9 @@ export const ko = {
     "Office 문서와 PDF 페이지를 렌더링하려면 이 설치의 설정에서 엔진을 구성하세요.",
   "capabilities.engines": "설정된 엔진 경로",
   "capabilities.limits": "설치된 제한",
+  "image.view": "이미지 보기",
+  "image.close": "이미지 미리보기 닫기",
+  "image.zoomIn": "이미지 확대",
+  "image.zoomOut": "이미지 축소",
+  "image.description": "이미지 설명",
 } satisfies Record<keyof typeof en, string>;

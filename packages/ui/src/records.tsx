@@ -170,13 +170,6 @@ const styles = stylex.create({
     fontWeight: weight.medium,
     fontVariantNumeric: "tabular-nums",
   },
-  image: {
-    maxWidth: "100%",
-    maxHeight: "20rem",
-    objectFit: "contain",
-    outline: "1px solid var(--color-media-edge)",
-    outlineOffset: "-1px",
-  },
   grid: {
     display: "grid",
     gridTemplateColumns:
@@ -408,9 +401,6 @@ export function Stats({
       ))}
     </dl>
   );
-}
-export function EvidenceImage({ src, alt }: { src: string; alt: string }) {
-  return <img src={src} alt={alt} {...stylex.props(styles.image)} />;
 }
 export function TileGrid({
   children,

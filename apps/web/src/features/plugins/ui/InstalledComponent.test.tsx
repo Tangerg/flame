@@ -270,16 +270,104 @@ it("keeps reload behind the original cleanup gate and exposes an unconfirmed exi
     </ComponentBoundary>,
   );
   const button = screen.getByRole("button", { name: "Reload window" }) as HTMLButtonElement;
+  button.focus();
   fireEvent.click(button);
-  expect(button.disabled).toBe(true);
+  expect(button.disabled).toBe(false);
+  expect(button.getAttribute("aria-disabled")).toBe("true");
+  expect(document.activeElement).toBe(button);
+  fireEvent.click(button);
+  for (const key of ["Enter", " "]) {
+    fireEvent.keyDown(button, { key });
+    fireEvent.keyUp(button, { key });
+  }
   expect(reload).toHaveBeenCalledOnce();
   closing.reject(new Error("original resource release remains unconfirmed"));
-  await waitFor(() => expect(button.disabled).toBe(false));
+  await waitFor(() => expect(button.getAttribute("aria-disabled")).toBeNull());
+  expect(document.activeElement).toBe(button);
   const details = screen.getAllByRole("button", { name: "Details" });
   fireEvent.click(details[0]!);
   expect(screen.getByText(/scope: installed component reload/).textContent).toContain(
     "original resource release remains unconfirmed",
   );
+});
+
+it("does not reclaim later input focus when an installed component reload is refused", async () => {
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  const closing = Promise.withResolvers<void>();
+  const reload = vi.fn(() => closing.promise);
+  function Broken(): never {
+    throw new Error("native render failed");
+  }
+  testClient.render(
+    <>
+      <input aria-label="Later draft" defaultValue="Continue reading — 保留" />
+      <ComponentBoundary scope="installed component" reload={reload}>
+        <Broken />
+      </ComponentBoundary>
+    </>,
+  );
+  const button = screen.getByRole("button", { name: "Reload window" });
+  button.focus();
+  fireEvent.click(button);
+  expect(button.getAttribute("aria-disabled")).toBe("true");
+  const draft = screen.getByRole("textbox", { name: "Later draft" }) as HTMLInputElement;
+  draft.focus();
+  draft.setSelectionRange(8, 15);
+
+  closing.reject(new Error("original resource release remains unconfirmed"));
+
+  await waitFor(() => expect(button.getAttribute("aria-disabled")).toBeNull());
+  expect(reload).toHaveBeenCalledOnce();
+  expect(document.activeElement).toBe(draft);
+  expect(draft.value).toBe("Continue reading — 保留");
+  expect([draft.selectionStart, draft.selectionEnd]).toEqual([8, 15]);
+});
+
+it("keeps unavailable component recovery focusable through the same cleanup gate", async () => {
+  let lifetime!: ContributionLifetime;
+  const host = await startKernel([
+    definePlugin({
+      name: "test.unavailable-component",
+      setup(context) {
+        lifetime = context.lifetime("recovery");
+      },
+    }),
+  ]);
+  finishTestClient(() => stopKernel(host));
+  const resources = new AbortController();
+  resources.abort();
+  const closing = Promise.withResolvers<void>();
+  const reload = vi.fn(() => closing.promise);
+  const entry = vi.fn(() => <p>Retired content</p>);
+  testClient.render(
+    <InstalledComponent
+      scope="installation"
+      entry={entry}
+      component={{ installationId: "installed", digest: "a".repeat(64), componentId: "reader" }}
+      generation={RuntimeConnectionGeneration.forProcess("test")}
+      compose={() => null}
+      saveFile={async () => "requested"}
+      runtime={{} as FlameClient}
+      binding={undefined}
+      lifetime={lifetime}
+      resources={resources.signal}
+      reload={reload}
+    />,
+  );
+  const button = screen.getByRole("button", { name: "Reload window" }) as HTMLButtonElement;
+  button.focus();
+  fireEvent.click(button);
+  expect(button.disabled).toBe(false);
+  expect(button.getAttribute("aria-disabled")).toBe("true");
+  fireEvent.click(button);
+  expect(reload).toHaveBeenCalledOnce();
+  expect(entry).not.toHaveBeenCalled();
+
+  closing.reject(new Error("retired resources remain unsettled"));
+
+  await waitFor(() => expect(button.getAttribute("aria-disabled")).toBeNull());
+  expect(document.activeElement).toBe(button);
+  expect(screen.queryByText("Retired content")).toBeNull();
 });
 
 it("retains the original component exception for inspection before reloading", () => {

@@ -2,8 +2,6 @@ import type { en } from "./en";
 
 export const zh = {
   "panel.title": "专业成果交付",
-  "panel.description":
-    "创建、修订、检查和交付原生文档，每次检查都绑定确切版本。",
   "panel.controls": "成果操作",
   refresh: "刷新",
   reading: "读取中…",
@@ -181,6 +179,7 @@ export const zh = {
   "revision.openHead": "打开当前版本",
   "revision.details": "版本身份与原生信息",
   "document.id": "文档标识",
+  "document.created": "文档创建时间",
   "revision.id": "版本标识",
   "revision.parent": "父版本",
   "revision.first": "初始版本",
@@ -222,4 +221,9 @@ export const zh = {
     "请在此安装的设置中配置渲染引擎，以渲染 Office 文档和 PDF 页面。",
   "capabilities.engines": "已配置引擎路径",
   "capabilities.limits": "当前安装的限制",
+  "image.view": "查看图片",
+  "image.close": "关闭图片预览",
+  "image.zoomIn": "放大图片",
+  "image.zoomOut": "缩小图片",
+  "image.description": "图片说明",
 } satisfies Record<keyof typeof en, string>;

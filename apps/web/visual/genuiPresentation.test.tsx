@@ -3,14 +3,19 @@ import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-libra
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, expect, it, onTestFinished, vi } from "vitest";
 import {
+  createTranslator,
   type CapturedToolResult,
   type ComponentContext,
   type PluginComponent,
+  type Translate,
 } from "@flame/component-sdk";
 import * as ui from "@flame/ui";
 import { ComponentBoundary } from "@/features/plugins/ui/InstalledComponent";
 import { createTestClient, type TestClient } from "@/test/renderClient";
 import { GenUIResult } from "../../../plugins/genui/component/component";
+import { MarkdownView } from "../../../plugins/genui/component/media";
+import { en } from "../../../plugins/genui/component/locales/en";
+import { zh } from "../../../plugins/genui/component/locales/zh";
 import {
   Presentation,
   type AcceptedDocument,
@@ -263,6 +268,166 @@ it("keeps plain display fields literal and confines Markdown to its safe rendere
   expect(screen.queryByRole("link", { name: "Unsafe" })).toBeNull();
   expect(container.querySelector("script, [onclick], [onerror], iframe")).toBeNull();
   expect(container.textContent).toContain('const exact = "9007199254740993";');
+});
+
+it("retains a Markdown image failure while an independent local field changes", async () => {
+  show(
+    document(
+      [
+        {
+          id: "markdown",
+          type: "Markdown",
+          props: { text: "![Recorded diagram](https://example.test/diagram.png)" },
+        },
+        { id: "note", type: "Input", props: { field: "note", label: "Review note" } },
+      ],
+      [{ id: "note", value: "Keep the original note." }],
+    ),
+  );
+  await act(async () => {});
+  fireEvent.error(screen.getByRole("img", { name: "Recorded diagram" }));
+  const retry = screen.getByRole("button", { name: "Retry" });
+  const note = screen.getByRole("textbox", { name: "Review note" });
+  act(() => note.focus());
+  fireEvent.change(note, { target: { value: "Continue the review." } });
+  expect(screen.queryByRole("button", { name: "Retry" })).toBe(retry);
+  expect(screen.queryByRole("button", { name: "View image: Recorded diagram" })).toBeNull();
+  expect(window.document.activeElement).toBe(note);
+});
+
+it("retains Markdown source and table reading positions through an independent edit", async () => {
+  show(
+    document(
+      [
+        {
+          id: "markdown",
+          type: "Markdown",
+          props: {
+            text: '[Captured guide](https://example.test/guide)\n\n```json\n{"source":"literal  evidence","id":"9007199254740993"}\n```\n\n| Source | Owner |\n| --- | --- |\n| captured | Runtime |',
+          },
+        },
+        { id: "note", type: "Input", props: { field: "note", label: "Review note" } },
+      ],
+      [{ id: "note", value: "Continue from this record." }],
+    ),
+  );
+  await act(async () => {});
+  const source = screen.getByRole("region", { name: "Code" });
+  const table = screen.getByRole("region", { name: "Markdown table" });
+  const link = screen.getByRole("link", { name: "Captured guide" });
+  source.scrollTop = 83;
+  source.scrollLeft = 41;
+  table.scrollLeft = 57;
+  const wrap = source.getAttribute("data-wrap");
+  const note = screen.getByRole("textbox", { name: "Review note" });
+  act(() => note.focus());
+  fireEvent.change(note, { target: { value: "Keep reading after the edit." } });
+  expect(screen.getByRole("region", { name: "Code" })).toBe(source);
+  expect(screen.getByRole("region", { name: "Markdown table" })).toBe(table);
+  expect(screen.getByRole("link", { name: "Captured guide" })).toBe(link);
+  expect(source.scrollTop).toBe(83);
+  expect(source.scrollLeft).toBe(41);
+  expect(table.scrollLeft).toBe(57);
+  expect(source.getAttribute("data-wrap")).toBe(wrap);
+  expect(window.document.activeElement).toBe(note);
+});
+
+it("retains an open Markdown image and its zoom during an independent document update", async () => {
+  show(
+    document(
+      [
+        {
+          id: "markdown",
+          type: "Markdown",
+          props: { text: "![Recorded diagram](https://example.test/diagram.png)" },
+        },
+        { id: "note", type: "Input", props: { field: "note", label: "Review note" } },
+      ],
+      [{ id: "note", value: "Keep this note." }],
+    ),
+  );
+  await act(async () => {});
+  fireEvent.load(screen.getByRole("img", { name: "Recorded diagram" }));
+  const trigger = screen.getByRole("button", { name: "View image: Recorded diagram" });
+  act(() => trigger.focus());
+  fireEvent.click(trigger);
+  const preview = await screen.findByRole("dialog", { name: "Recorded diagram" });
+  const zoom = within(preview).getByRole("button", { name: "Zoom in image" });
+  act(() => zoom.focus());
+  fireEvent.click(zoom);
+  const viewport = within(preview).getByRole("region", { name: "Recorded diagram" });
+  expect(viewport.getAttribute("data-image-zoom")).toBe("125");
+  fireEvent.change(screen.getByRole("textbox", { name: "Review note", hidden: true }), {
+    target: { value: "The document updated independently." },
+  });
+  expect(screen.queryByRole("dialog", { name: "Recorded diagram" })).toBe(preview);
+  expect(viewport.getAttribute("data-image-zoom")).toBe("125");
+  expect(window.document.activeElement).toBe(zoom);
+  fireEvent.keyDown(preview, { key: "Escape" });
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  await waitFor(() => expect(window.document.activeElement).toBe(trigger));
+  expect(screen.getByRole("textbox", { name: "Review note" })).toHaveProperty(
+    "value",
+    "The document updated independently.",
+  );
+});
+
+it("updates Markdown labels without replacing its readers or open image", async () => {
+  const catalogs = { en, zh };
+  const english = createTranslator(catalogs, "en");
+  const chinese = createTranslator(catalogs, "zh");
+  const scene = (t: Translate) => (
+    <MarkdownView
+      props={{
+        text: '![Recorded diagram](https://example.test/diagram.png)\n\n```json\n{"source":"captured"}\n```\n\n| Source | Owner |\n| --- | --- |\n| captured | Runtime |',
+      }}
+      renderNode={() => null}
+      t={t}
+    />
+  );
+  const view = testClient.render(scene(english));
+  const source = screen.getByRole("region", { name: english("code.label") });
+  const table = screen.getByRole("region", { name: english("markdown.table") });
+  const trigger = screen.getByRole("button", { name: "View image: Recorded diagram" });
+  act(() => trigger.focus());
+  fireEvent.click(trigger);
+  const preview = await screen.findByRole("dialog", { name: "Recorded diagram" });
+  fireEvent.click(within(preview).getByRole("button", { name: english("image.zoomIn") }));
+  const viewport = within(preview).getByRole("region", { name: "Recorded diagram" });
+  view.rerender(scene(chinese));
+  expect(screen.queryByRole("dialog", { name: "Recorded diagram" })).toBe(preview);
+  expect(within(preview).getByRole("button", { name: chinese("image.zoomIn") })).toBeTruthy();
+  expect(viewport.getAttribute("data-image-zoom")).toBe("125");
+  fireEvent.keyDown(preview, { key: "Escape" });
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(screen.getByRole("region", { name: chinese("code.label") })).toBe(source);
+  expect(screen.getByRole("region", { name: chinese("markdown.table") })).toBe(table);
+  expect(screen.getByRole("button", { name: `${chinese("image.view")}: Recorded diagram` })).toBe(
+    trigger,
+  );
+  await waitFor(() => expect(window.document.activeElement).toBe(trigger));
+});
+
+it("retires a Markdown image preview when the actual source changes", async () => {
+  show(
+    document(
+      [
+        { id: "content", type: "TextArea", props: { field: "content", label: "Markdown source" } },
+        { id: "markdown", type: "Markdown", props: { text: { state: "content" } } },
+      ],
+      [{ id: "content", value: "![Original diagram](https://example.test/original.png)" }],
+    ),
+  );
+  await act(async () => {});
+  fireEvent.click(screen.getByRole("button", { name: "View image: Original diagram" }));
+  await screen.findByRole("dialog", { name: "Original diagram" });
+  fireEvent.change(screen.getByRole("textbox", { name: "Markdown source", hidden: true }), {
+    target: { value: "![Next diagram](https://example.test/next.png)" },
+  });
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(screen.getByRole("img", { name: "Next diagram" }).getAttribute("src")).toBe(
+    "https://example.test/next.png",
+  );
 });
 
 it.each([
@@ -697,6 +862,104 @@ it("owns timer values in the same Store and releases its clock on unmount", asyn
   expect(vi.getTimerCount()).toBe(0);
 });
 
+function tabReadingDocument() {
+  return document(
+    [
+      { id: "note", type: "Input", props: { field: "note", label: "Review note" } },
+      {
+        id: "views",
+        type: "Tabs",
+        props: {
+          field: "panel",
+          items: [
+            { value: "evidence", label: "Evidence" },
+            { value: "source", label: "Captured source" },
+            { value: "options", label: "Review options" },
+          ],
+        },
+        children: [
+          { id: "evidence", type: "Text", props: { text: "Read the accepted result." } },
+          { id: "source", type: "Code", props: { code: "literal  captured source" } },
+          {
+            id: "options",
+            type: "RadioGroup",
+            props: {
+              field: "audience",
+              label: "Review audience",
+              options: [
+                { value: "internal", label: "Internal review" },
+                { value: "public", label: "Public review" },
+              ],
+            },
+          },
+        ],
+      },
+    ],
+    [
+      { id: "note", value: "Keep this note." },
+      { id: "panel", value: "evidence" },
+      { id: "audience", value: "internal" },
+    ],
+  );
+}
+
+it.each(["ArrowUp", "ArrowDown"])(
+  "leaves %s available for reading while a horizontal report tab is focused",
+  async (key) => {
+    show(tabReadingDocument());
+    await act(async () => {});
+    const source = screen.getByRole("tab", { name: "Captured source" });
+    fireEvent.click(source);
+    act(() => source.focus());
+    expect(fireEvent.keyDown(source, { key, cancelable: true })).toBe(true);
+    expect(source.getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("tabpanel", { name: "Captured source" })).toBeTruthy();
+    expect(window.document.activeElement).toBe(source);
+  },
+);
+
+it("keeps horizontal report tab selection, wrapping and local drafts together", async () => {
+  show(tabReadingDocument());
+  await act(async () => {});
+  const note = screen.getByRole("textbox", { name: "Review note" });
+  fireEvent.change(note, { target: { value: "Continue after reading." } });
+  const evidence = screen.getByRole("tab", { name: "Evidence" });
+  const source = screen.getByRole("tab", { name: "Captured source" });
+  const options = screen.getByRole("tab", { name: "Review options" });
+  act(() => evidence.focus());
+  for (const [key, target] of [
+    ["ArrowRight", source],
+    ["End", options],
+    ["ArrowRight", evidence],
+    ["ArrowLeft", options],
+    ["Home", evidence],
+  ] as const) {
+    expect(fireEvent.keyDown(window.document.activeElement!, { key, cancelable: true })).toBe(
+      false,
+    );
+    expect(window.document.activeElement).toBe(target);
+    expect(target.getAttribute("aria-selected")).toBe("true");
+    expect(screen.getAllByRole("tab").filter((tab) => tab.tabIndex === 0)).toEqual([target]);
+  }
+  expect(note).toHaveProperty("value", "Continue after reading.");
+  expect(screen.getByRole("tabpanel", { name: "Evidence" })).toBeTruthy();
+});
+
+it("keeps vertical arrows selecting a report radio choice", async () => {
+  show(tabReadingDocument());
+  await act(async () => {});
+  fireEvent.click(screen.getByRole("tab", { name: "Review options" }));
+  const internal = screen.getByRole("radio", { name: "Internal review" });
+  const external = screen.getByRole("radio", { name: "Public review" });
+  act(() => internal.focus());
+  expect(fireEvent.keyDown(internal, { key: "ArrowDown", cancelable: true })).toBe(false);
+  expect(window.document.activeElement).toBe(external);
+  expect(external.getAttribute("aria-checked")).toBe("true");
+  expect(fireEvent.keyDown(external, { key: "ArrowUp", cancelable: true })).toBe(false);
+  expect(window.document.activeElement).toBe(internal);
+  expect(internal.getAttribute("aria-checked")).toBe("true");
+});
+
 it("renders controlled accordion and carousel panels with keyboard selection", async () => {
   show(
     document(
@@ -799,7 +1062,7 @@ it("shows map tile failures without hiding location data and retries only when r
   expect(screen.getByRole("button", { name: "Zoom in" })).toBeTruthy();
 });
 
-it("keeps image loading and failures explicit and retries the original URL on user request", () => {
+it("keeps image loading and failures explicit and retries the original URL on user request", async () => {
   show(
     document([
       {
@@ -825,7 +1088,89 @@ it("keeps image loading and failures explicit and retries the original URL on us
   fireEvent.load(retried);
   expect(retried.closest("figure")?.getAttribute("aria-busy")).toBe("false");
   expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+  const trigger = screen.getByRole("button", { name: "View image: Review diagram" });
+  act(() => trigger.focus());
+  fireEvent.click(trigger);
+  const preview = await screen.findByRole("dialog", { name: "Review diagram" });
+  expect(within(preview).getByRole("img").getAttribute("src")).toBe(
+    "https://example.test/review.png",
+  );
+  fireEvent.keyDown(preview, { key: "Escape" });
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  await waitFor(() => expect(window.document.activeElement).toBe(trigger));
 });
+
+it.each(["Image", "Markdown"] as const)(
+  "retains the %s reading context while its focused Retry is replaced",
+  async (kind) => {
+    show(
+      document([
+        kind === "Image"
+          ? {
+              id: "diagram",
+              type: "Image",
+              props: { src: "https://example.test/review.png", alt: "Review diagram" },
+            }
+          : {
+              id: "diagram",
+              type: "Markdown",
+              props: { text: "![Review diagram](https://example.test/review.png)" },
+            },
+      ]),
+    );
+    await act(async () => {});
+    fireEvent.error(screen.getByRole("img", { name: "Review diagram" }));
+    const retry = screen.getByRole("button", { name: "Retry" });
+    act(() => retry.focus());
+    fireEvent.click(retry);
+    const host = window.document.activeElement as HTMLElement;
+    expect(host.getAttribute("aria-label")).toBe("Review diagram");
+    expect(host.tabIndex).toBe(-1);
+    expect(host.contains(screen.getByRole("button", { name: "View image: Review diagram" }))).toBe(
+      true,
+    );
+    const retried = screen.getByRole("img", { name: "Review diagram" });
+    expect(retried.getAttribute("src")).toBe("https://example.test/review.png");
+    fireEvent.load(retried);
+    expect(window.document.activeElement).toBe(host);
+    fireEvent.error(retried);
+    expect(window.document.activeElement).toBe(host);
+    expect(host.contains(screen.getByRole("button", { name: "Retry" }))).toBe(true);
+  },
+);
+
+it.each(["load", "error"] as const)(
+  "preserves later editing focus when a retried image settles with %s",
+  async (result) => {
+    show(
+      document(
+        [
+          {
+            id: "diagram",
+            type: "Image",
+            props: { src: "https://example.test/review.png", alt: "Review diagram" },
+          },
+          { id: "note", type: "Input", props: { field: "note", label: "Review note" } },
+        ],
+        [{ id: "note", value: "Keep this draft." }],
+      ),
+    );
+    await act(async () => {});
+    fireEvent.error(screen.getByRole("img", { name: "Review diagram" }));
+    const retry = screen.getByRole("button", { name: "Retry" });
+    act(() => retry.focus());
+    fireEvent.click(retry);
+    const note = screen.getByRole("textbox", { name: "Review note" });
+    act(() => note.focus());
+    const retried = screen.getByRole("img", { name: "Review diagram" });
+    fireEvent[result](retried);
+    expect(window.document.activeElement).toBe(note);
+    expect(note).toHaveProperty("value", "Keep this draft.");
+    if (result === "load") fireEvent.error(retried);
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(window.document.activeElement).toBe(note);
+  },
+);
 
 it("validates date bounds through the document owner before any form action", async () => {
   show(GENUI_REPORT);

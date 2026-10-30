@@ -2,8 +2,6 @@ import type { en } from "./en";
 
 export const es = {
   "panel.title": "Entregables profesionales",
-  "panel.description":
-    "Cree, revise y entregue documentos nativos con evidencias vinculadas a cada revisión.",
   "panel.controls": "Acciones de entregables",
   refresh: "Actualizar",
   reading: "Leyendo…",
@@ -189,6 +187,7 @@ export const es = {
   "revision.openHead": "Abrir revisión actual",
   "revision.details": "Identidad y datos nativos",
   "document.id": "Identificador del documento",
+  "document.created": "Documento creado el",
   "revision.id": "Identificador de revisión",
   "revision.parent": "Revisión anterior",
   "revision.first": "Revisión inicial",
@@ -232,4 +231,9 @@ export const es = {
     "Configure los motores en los ajustes de esta instalación para renderizar Office y PDF.",
   "capabilities.engines": "Rutas de motores",
   "capabilities.limits": "Límites instalados",
+  "image.view": "Ver imagen",
+  "image.close": "Cerrar vista previa de imagen",
+  "image.zoomIn": "Ampliar imagen",
+  "image.zoomOut": "Reducir imagen",
+  "image.description": "Descripción de la imagen",
 } satisfies Record<keyof typeof en, string>;

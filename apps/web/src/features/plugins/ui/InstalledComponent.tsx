@@ -142,7 +142,7 @@ function ComponentRecovery({
       <p>{t(failure === "render" ? "packages.module.failed" : "packages.module.unavailable")}</p>
       {reload && (
         <Button
-          disabled={pending}
+          pending={pending}
           onClick={() => {
             void retry();
           }}

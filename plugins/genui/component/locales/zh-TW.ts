@@ -66,4 +66,9 @@ export const zhTW: Record<string, string> = {
   "code.copied": "已複製",
   "code.wrap": "開啟自動換行",
   "code.unwrap": "關閉自動換行",
+  "image.view": "檢視圖片",
+  "image.close": "關閉圖片預覽",
+  "image.zoomIn": "放大圖片",
+  "image.zoomOut": "縮小圖片",
+  "image.description": "圖片說明",
 };

@@ -2,8 +2,6 @@ import type { en } from "./en";
 
 export const de = {
   "panel.title": "Professionelle Arbeitsergebnisse",
-  "panel.description":
-    "Native Dokumente erstellen, prüfen und mit Nachweisen zur jeweiligen Revision übergeben.",
   "panel.controls": "Aktionen für Arbeitsergebnisse",
   refresh: "Aktualisieren",
   reading: "Wird geladen…",
@@ -194,6 +192,7 @@ export const de = {
   "revision.openHead": "Aktuelle Revision öffnen",
   "revision.details": "Revisionskennung und native Fakten",
   "document.id": "Dokumentkennung",
+  "document.created": "Dokument erstellt am",
   "revision.id": "Revisionskennung",
   "revision.parent": "Übergeordnete Revision",
   "revision.first": "Erste Revision",
@@ -237,4 +236,9 @@ export const de = {
     "Render-Engines in den Einstellungen dieser Installation für Office-Dokumente und PDF-Seiten konfigurieren.",
   "capabilities.engines": "Konfigurierte Engine-Pfade",
   "capabilities.limits": "Installierte Grenzen",
+  "image.view": "Bild anzeigen",
+  "image.close": "Bildvorschau schließen",
+  "image.zoomIn": "Bild vergrößern",
+  "image.zoomOut": "Bild verkleinern",
+  "image.description": "Bildbeschreibung",
 } satisfies Record<keyof typeof en, string>;

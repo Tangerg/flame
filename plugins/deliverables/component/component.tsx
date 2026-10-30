@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   createTranslator,
   failureText,
@@ -52,6 +52,14 @@ import { fr } from "./locales/fr";
 import { de } from "./locales/de";
 
 const catalogs = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
+
+function formatTimestamp(value: string, format: Intl.DateTimeFormat): string {
+  const date = new Date(value);
+  // The wire also allows opaque text; interpret only the producer's canonical ISO form.
+  return Number.isFinite(date.getTime()) && date.toISOString() === value
+    ? format.format(date)
+    : value;
+}
 
 function commandLabel(method: CommandMethod, t: Translate): string {
   switch (method) {
@@ -194,12 +202,13 @@ function StructuredContent({
 }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
+  const query = inlineContent(search).toLocaleLowerCase();
   const rows = inspection.items.filter(
     (item) =>
-      !search ||
-      `${item.id} ${item.text}`
+      !query ||
+      inlineContent(`${item.id} ${item.text}`)
         .toLocaleLowerCase()
-        .includes(search.toLocaleLowerCase()),
+        .includes(query),
   );
   const pageSize = 25;
   const shown = rows.slice(page * pageSize, (page + 1) * pageSize);
@@ -223,24 +232,38 @@ function StructuredContent({
         }}
       />
       <RecordGroup variant="list" hidden={!shown.length}>
-        {shown.map((item) => (
-          <Disclosure
-            key={item.id}
-            variant="row"
-            title={`${item.kind} · ${item.id}`}
-          >
-            <RecordBody>{item.text}</RecordBody>
-          </Disclosure>
-        ))}
+        {shown.map((item) => {
+          const preview = contentPreview(item.text);
+          const identity = `${item.kind} · ${item.id}`;
+          return (
+            <Disclosure
+              key={item.id}
+              variant="row"
+              title={
+                <RecordSummary
+                  title={preview || identity}
+                  description={preview ? identity : undefined}
+                />
+              }
+            >
+              <RecordBody>{item.text}</RecordBody>
+            </Disclosure>
+          );
+        })}
       </RecordGroup>
       {!shown.length && <Metadata>{t("content.empty")}</Metadata>}
       {(page > 0 || rows.length > (page + 1) * pageSize) && (
         <Toolbar label={t("content.paging")}>
-          <Button disabled={page === 0} onClick={() => setPage(page - 1)}>
+          <Button
+            disabled={page === 0}
+            focusableWhenDisabled
+            onClick={() => setPage(page - 1)}
+          >
             {t("previous")}
           </Button>
           <Button
             disabled={rows.length <= (page + 1) * pageSize}
+            focusableWhenDisabled
             onClick={() => setPage(page + 1)}
           >
             {t("next")}
@@ -249,6 +272,19 @@ function StructuredContent({
       )}
     </Disclosure>
   );
+}
+
+function contentPreview(value: string): string {
+  const text = inlineContent(value);
+  const segments = Array.from(
+    new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(text),
+  );
+  const boundary = segments[160]?.index;
+  return boundary === undefined ? text : `${text.slice(0, boundary)}…`;
+}
+
+function inlineContent(value: string): string {
+  return value.replace(/\s+/gu, " ").trim();
 }
 
 function safeSource(uri: string): string | undefined {
@@ -267,28 +303,22 @@ function safeSource(uri: string): string | undefined {
 function Inspector({
   state,
   document,
+  inspection,
   catalog,
+  dateTime,
+  onOpenCurrent,
   t,
 }: {
   state: DeliverablesState;
   document: DocumentRead;
+  inspection: { value?: Inspection; error?: string };
   catalog?: FormatCatalog;
+  dateTime: Intl.DateTimeFormat;
+  onOpenCurrent: (origin: HTMLButtonElement) => void;
   t: Translate;
 }) {
   const [removal, setRemoval] = useState<{ id: string; revision: string }>();
   const [csvSheet, setCSVSheet] = useState<string>();
-  const inspection = useMemo(() => {
-    try {
-      const value = inspectionSchema.parse(JSON.parse(document.inspectionJSON));
-      if (value.format !== document.revision.format)
-        throw new Error(
-          "deliverables: inspection format differs from its native revision",
-        );
-      return { value };
-    } catch (error) {
-      return { error: failureText(error) };
-    }
-  }, [document.inspectionJSON, document.revision.format]);
   const current = document.document.head === document.revision.id;
   const provenance = document.revision.provenance;
   const sheets =
@@ -302,7 +332,10 @@ function Inspector({
       <Facts
         values={[
           [t("author.format"), t(`format.${document.revision.format}`)],
-          [t("revision.created"), document.revision.createdAt],
+          [
+            t("revision.created"),
+            formatTimestamp(document.revision.createdAt, dateTime),
+          ],
           [
             t("revision.operation"),
             t(`operation.${document.revision.operation}`),
@@ -364,14 +397,7 @@ function Inspector({
           </>
         )}
         {!current && (
-          <Button
-            onClick={() =>
-              state.open({
-                id: document.document.id,
-                revision: document.document.head,
-              })
-            }
-          >
+          <Button onClick={(event) => onOpenCurrent(event.currentTarget)}>
             {t("revision.openHead")}
           </Button>
         )}
@@ -422,33 +448,6 @@ function Inspector({
             ],
           ]}
         />
-      </Disclosure>
-      <Disclosure title={t("revision.details")}>
-        <Facts
-          values={[
-            [t("document.id"), document.document.id],
-            [t("revision.id"), document.revision.id],
-            [
-              t("revision.parent"),
-              document.revision.parent ?? t("revision.first"),
-            ],
-            [t("file.hash"), document.revision.sha256],
-          ]}
-        />
-        {inspection.value && (
-          <Facts
-            values={Object.entries(inspection.value.facts).map(
-              ([key, value]) => [key, String(value)],
-            )}
-          />
-        )}
-        <Source label={t("content.original")} value={document.inspectionJSON} />
-        {document.processingJSON && (
-          <Source
-            label={t("revision.processing")}
-            value={document.processingJSON}
-          />
-        )}
       </Disclosure>
       <Disclosure title={t("remove.title")}>
         <Metadata>{t("remove.help")}</Metadata>
@@ -504,9 +503,16 @@ function Workspace({ context }: { context: ComponentContext }) {
     () => createTranslator(catalogs, context.locale),
     [context.locale],
   );
+  const dateTime = useMemo(
+    () =>
+      new Intl.DateTimeFormat(context.locale, {
+        dateStyle: "medium",
+        timeStyle: "medium",
+      }),
+    [context.locale],
+  );
   const state = useDeliverables(context);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
+  const historyEntry = useRef<HTMLElement>(null);
   const [search, setSearch] = useState("");
   const [format, setFormat] = useState("all");
   const catalog = useMemo(() => {
@@ -531,28 +537,58 @@ function Workspace({ context }: { context: ComponentContext }) {
         entry.title.toLocaleLowerCase().includes(search.toLocaleLowerCase()),
     ) ?? [];
   const document = state.read?.value;
+  const inspection = useMemo(() => {
+    if (!document) return {};
+    try {
+      const value = inspectionSchema.parse(JSON.parse(document.inspectionJSON));
+      if (value.format !== document.revision.format)
+        throw new Error(
+          "deliverables: inspection format differs from its native revision",
+        );
+      return { value };
+    } catch (error) {
+      return { error: failureText(error) };
+    }
+  }, [document?.inspectionJSON, document?.revision.format]);
+  const history = state.history?.value?.entries ?? [];
+  const revisions =
+    document &&
+    !history.some((revision) => revision.id === document.revision.id)
+      ? [document.revision, ...history]
+      : history;
+  const selectedDocument =
+    document?.document ??
+    state.list?.value?.entries.find(
+      (entry) => entry.id === state.selection?.id,
+    );
+  const selectedRevision = revisions.find(
+    (revision) => revision.id === state.selection?.revision,
+  );
+  const revisionOptions = revisions.map((revision) => ({
+    value: revision.id,
+    label: `${formatTimestamp(revision.createdAt, dateTime)} · ${t(`operation.${revision.operation}`)} · ${revision.id.slice(0, 12)}`,
+  }));
+  if (
+    state.selection &&
+    !revisionOptions.some(
+      (option) => option.value === state.selection?.revision,
+    )
+  )
+    revisionOptions.unshift({
+      value: state.selection.revision,
+      label: state.selection.revision.slice(0, 12),
+    });
   return (
     <Panel
       label={t("panel.title")}
-      header={
-        <PanelHeader
-          title={t("panel.title")}
-          description={t("panel.description")}
-        />
-      }
+      header={<PanelHeader title={t("panel.title")} />}
       controls={
         <Toolbar label={t("panel.controls")}>
           <Button
-            variant="primary"
-            onClick={() => setCreateOpen((open) => !open)}
-          >
-            {t("author.new")}
-          </Button>
-          <Button onClick={() => setImportOpen((open) => !open)}>
-            {t("import.open")}
-          </Button>
-          <Button
-            disabled={state.list?.loading || state.catalog?.loading}
+            pending={state.list?.loading || state.catalog?.loading}
+            aria-busy={
+              state.list?.loading || state.catalog?.loading || undefined
+            }
             onClick={() => {
               void state.refresh();
             }}
@@ -569,20 +605,10 @@ function Workspace({ context }: { context: ComponentContext }) {
           {state.catalog?.error ?? catalog?.error}
         </Callout>
       )}
-      <Disclosure
-        title={t("author.new")}
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        keepMounted
-      >
+      <Disclosure title={t("author.new")} keepMounted>
         <CreateForm state={state} catalog={catalog?.formats} t={t} />
       </Disclosure>
-      <Disclosure
-        title={t("import.open")}
-        open={importOpen}
-        onOpenChange={setImportOpen}
-        keepMounted
-      >
+      <Disclosure title={t("import.open")} keepMounted>
         <ImportForm state={state} t={t} />
       </Disclosure>
       <PanelSection title={t("list.title")}>
@@ -624,7 +650,7 @@ function Workspace({ context }: { context: ComponentContext }) {
             >
               <RecordSummary
                 title={entry.title}
-                description={entry.createdAt}
+                description={formatTimestamp(entry.createdAt, dateTime)}
                 status={<Badge>{entry.format.toUpperCase()}</Badge>}
               />
             </RecordButton>
@@ -636,7 +662,10 @@ function Workspace({ context }: { context: ComponentContext }) {
         {(state.listPrevious || state.list?.value?.next) && (
           <Toolbar label={t("list.paging")}>
             <Button
-              disabled={!state.listPrevious || state.list?.loading}
+              disabled={!state.listPrevious}
+              pending={state.list?.loading}
+              aria-busy={state.list?.loading || undefined}
+              focusableWhenDisabled
               onClick={() => {
                 void state.page("list", "previous");
               }}
@@ -644,7 +673,10 @@ function Workspace({ context }: { context: ComponentContext }) {
               {t("previous")}
             </Button>
             <Button
-              disabled={!state.list?.value?.next || state.list.loading}
+              disabled={!state.list?.value?.next}
+              pending={state.list?.loading}
+              aria-busy={state.list?.loading || undefined}
+              focusableWhenDisabled
               onClick={() => {
                 void state.page("list", "next");
               }}
@@ -655,7 +687,12 @@ function Workspace({ context }: { context: ComponentContext }) {
         )}
       </PanelSection>
       {state.selection && (
-        <PanelSection title={t("history.title")}>
+        <PanelSection
+          ref={historyEntry}
+          tabIndex={-1}
+          aria-label={t("history.title")}
+          title={t("history.title")}
+        >
           {state.history?.loading && (
             <Metadata role="status">{t("reading")}</Metadata>
           )}
@@ -669,15 +706,15 @@ function Workspace({ context }: { context: ComponentContext }) {
               if (state.selection)
                 state.open({ id: state.selection.id, revision });
             }}
-            options={(state.history?.value?.entries ?? []).map((revision) => ({
-              value: revision.id,
-              label: `${revision.createdAt} · ${t(`operation.${revision.operation}`)} · ${revision.id.slice(0, 12)}`,
-            }))}
+            options={revisionOptions}
           />
           {(state.historyPrevious || state.history?.value?.next) && (
             <Toolbar label={t("history.paging")}>
               <Button
-                disabled={!state.historyPrevious || state.history?.loading}
+                disabled={!state.historyPrevious}
+                pending={state.history?.loading}
+                aria-busy={state.history?.loading || undefined}
+                focusableWhenDisabled
                 onClick={() => {
                   void state.page("history", "previous");
                 }}
@@ -685,7 +722,10 @@ function Workspace({ context }: { context: ComponentContext }) {
                 {t("previous")}
               </Button>
               <Button
-                disabled={!state.history?.value?.next || state.history.loading}
+                disabled={!state.history?.value?.next}
+                pending={state.history?.loading}
+                aria-busy={state.history?.loading || undefined}
+                focusableWhenDisabled
                 onClick={() => {
                   void state.page("history", "next");
                 }}
@@ -694,6 +734,46 @@ function Workspace({ context }: { context: ComponentContext }) {
               </Button>
             </Toolbar>
           )}
+          <Disclosure title={t("revision.details")}>
+            <Facts
+              values={[
+                [t("document.id"), state.selection.id],
+                [t("document.created"), selectedDocument?.createdAt],
+                [t("revision.id"), state.selection.revision],
+                [t("revision.created"), selectedRevision?.createdAt],
+              ]}
+            />
+            {document && (
+              <>
+                <Facts
+                  values={[
+                    [
+                      t("revision.parent"),
+                      document.revision.parent ?? t("revision.first"),
+                    ],
+                    [t("file.hash"), document.revision.sha256],
+                  ]}
+                />
+                {inspection.value && (
+                  <Facts
+                    values={Object.entries(inspection.value.facts).map(
+                      ([key, value]) => [key, String(value)],
+                    )}
+                  />
+                )}
+                <Source
+                  label={t("content.original")}
+                  value={document.inspectionJSON}
+                />
+                {document.processingJSON && (
+                  <Source
+                    label={t("revision.processing")}
+                    value={document.processingJSON}
+                  />
+                )}
+              </>
+            )}
+          </Disclosure>
         </PanelSection>
       )}
       {state.read?.loading && <Metadata role="status">{t("reading")}</Metadata>}
@@ -705,7 +785,18 @@ function Workspace({ context }: { context: ComponentContext }) {
           key={document.revision.id}
           state={state}
           document={document}
+          inspection={inspection}
           catalog={catalog?.formats}
+          dateTime={dateTime}
+          onOpenCurrent={(origin) => {
+            if (context.signal.aborted) return;
+            const ownedFocus = origin.ownerDocument.activeElement === origin;
+            state.open({
+              id: document.document.id,
+              revision: document.document.head,
+            });
+            if (ownedFocus) historyEntry.current?.focus();
+          }}
           t={t}
         />
       )}

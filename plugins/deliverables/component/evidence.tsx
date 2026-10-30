@@ -178,7 +178,17 @@ function PageImage({
             setRead({ id: asset.id, error: t("preview.imageFailed") })
           }
         >
-          <EvidenceImage src={current.url} alt={t("preview.page", { page })} />
+          <EvidenceImage
+            src={current.url}
+            alt={t("preview.page", { page })}
+            labels={{
+              view: t("image.view"),
+              close: t("image.close"),
+              zoomIn: t("image.zoomIn"),
+              zoomOut: t("image.zoomOut"),
+              description: t("image.description"),
+            }}
+          />
         </RecordGroup>
       )}
     </RecordGroup>

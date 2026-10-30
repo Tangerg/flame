@@ -175,7 +175,16 @@ function DiagnosticsReport({
             </PanelSection>
           )}
           <Disclosure title={t("raw.title")}>
-            <CodeBlock label={t("raw.label")} language="json">
+            <CodeBlock
+              label={t("raw.label")}
+              language="json"
+              labels={{
+                copy: t("code.copy"),
+                copied: t("code.copied"),
+                wrap: t("code.wrap"),
+                unwrap: t("code.unwrap"),
+              }}
+            >
               {JSON.stringify(row, null, 2)}
             </CodeBlock>
           </Disclosure>

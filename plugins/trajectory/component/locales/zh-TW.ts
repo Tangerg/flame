@@ -1,4 +1,8 @@
 export const zhTW: Record<string, string> = {
+  "code.copy": "複製程式碼",
+  "code.copied": "已複製",
+  "code.wrap": "啟用自動換行",
+  "code.unwrap": "關閉自動換行",
   "panel.title": "工作階段軌跡",
   "panel.session": "工作階段",
   "controls.label": "軌跡控制項",
@@ -93,4 +97,10 @@ export const zhTW: Record<string, string> = {
   "export.markdown": "匯出對話為 Markdown",
   "export.json": "匯出對話為 JSON",
   "export.trajectory": "匯出完整工作階段軌跡",
+  "image.view": "檢視圖片",
+  "image.close": "關閉圖片預覽",
+  "image.zoomIn": "放大圖片",
+  "image.zoomOut": "縮小圖片",
+  "image.description": "圖片說明",
+  "image.unavailable": "無法顯示這張已記錄的圖片。",
 };

@@ -1,4 +1,8 @@
 export const ja: Record<string, string> = {
+  "code.copy": "コードをコピー",
+  "code.copied": "コピーしました",
+  "code.wrap": "折り返しを有効にする",
+  "code.unwrap": "折り返しを無効にする",
   "panel.title": "セッション履歴",
   "panel.session": "セッション",
   "controls.label": "履歴コントロール",
@@ -97,4 +101,10 @@ export const ja: Record<string, string> = {
   "export.markdown": "会話を Markdown でエクスポート",
   "export.json": "会話を JSON でエクスポート",
   "export.trajectory": "セッションの完全な履歴をエクスポート",
+  "image.view": "画像を表示",
+  "image.close": "画像プレビューを閉じる",
+  "image.zoomIn": "画像を拡大",
+  "image.zoomOut": "画像を縮小",
+  "image.description": "画像の説明",
+  "image.unavailable": "記録された画像を表示できません。",
 };

@@ -186,7 +186,12 @@ const styles = stylex.create({
   fieldLabel: { color: color.fgSoft, fontWeight: weight.medium },
   context: { marginTop: space.s2, minWidth: 0 },
   hostedContext: { marginTop: 0 },
-  section: { display: "grid", gap: layout.contentGap, minWidth: 0 },
+  section: {
+    display: "flex",
+    flexDirection: "column",
+    gap: layout.contentGap,
+    minWidth: 0,
+  },
   sectionHeading: {
     margin: 0,
     fontWeight: weight.semibold,
@@ -266,6 +271,26 @@ interface PanelFocusFrame {
   unit: Element;
 }
 
+function panelViewport(panel: HTMLElement) {
+  const bounds = panel.getBoundingClientRect();
+  let width = bounds.width;
+  let top = 0;
+  let bottom = panel.ownerDocument.documentElement.clientHeight;
+  for (
+    let parent = panel.parentElement;
+    parent;
+    parent = parent.parentElement
+  ) {
+    if (getComputedStyle(parent).overflowY !== "visible") {
+      const clipped = parent.getBoundingClientRect();
+      top = Math.max(top, clipped.top);
+      bottom = Math.min(bottom, clipped.bottom);
+      width = Math.min(width, clipped.width);
+    }
+  }
+  return { top, bottom, width, contentHeight: bounds.height };
+}
+
 function withinPanelFrame(bounds: DOMRect, frame: PanelFocusFrame) {
   // Native page zoom reports fractional CSS pixels at a rounded scroll offset.
   return (
@@ -307,6 +332,7 @@ export function Panel({
   const controlsRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const pressedTarget = useRef<Element | null>(null);
+  const viewportPositions = useRef(new Map<HTMLElement, number>());
   const readingFocus = useRef<{
     target: Element;
     frame: PanelFocusFrame;
@@ -319,22 +345,7 @@ export function Panel({
       const controls = controlsRef.current;
       const body = bodyRef.current;
       if (!visible || !panel || !target || !body?.contains(target)) return null;
-      const panelBounds = panel.getBoundingClientRect();
-      let visibleWidth = panelBounds.width;
-      let visibleTop = 0;
-      let visibleBottom = panel.ownerDocument.documentElement.clientHeight;
-      for (
-        let parent = panel.parentElement;
-        parent;
-        parent = parent.parentElement
-      ) {
-        if (getComputedStyle(parent).overflowY !== "visible") {
-          const bounds = parent.getBoundingClientRect();
-          visibleTop = Math.max(visibleTop, bounds.top);
-          visibleBottom = Math.min(visibleBottom, bounds.bottom);
-          visibleWidth = Math.min(visibleWidth, bounds.width);
-        }
-      }
+      const viewport = panelViewport(panel);
       const stickyHeaderHeight =
         Number.parseFloat(
           getComputedStyle(target).getPropertyValue(
@@ -343,8 +354,8 @@ export function Panel({
         ) || 0;
       const focusTop =
         Math.max(
-          visibleTop,
-          controls?.getBoundingClientRect().bottom ?? visibleTop,
+          viewport.top,
+          controls?.getBoundingClientRect().bottom ?? viewport.top,
         ) + stickyHeaderHeight;
       const focusUnit = readingUnitFor(target, body, (unit) => {
         const scrollMargin =
@@ -353,14 +364,12 @@ export function Panel({
         return (
           height > 0 &&
           height <=
-            visibleBottom - Math.max(focusTop, visibleTop + scrollMargin)
+            viewport.bottom - Math.max(focusTop, viewport.top + scrollMargin)
         );
       });
       return {
+        ...viewport,
         top: focusTop,
-        bottom: visibleBottom,
-        width: visibleWidth,
-        contentHeight: panelBounds.height,
         unit: focusUnit,
       };
     },
@@ -382,6 +391,9 @@ export function Panel({
         !withinPanelFrame(frame.unit.getBoundingClientRect(), frame)
       ) {
         frame.unit.scrollIntoView({ block: "start", inline: "nearest" });
+        // Its queued scroll event must not retire this owner's reflow witness.
+        for (const viewport of viewportPositions.current.keys())
+          viewportPositions.current.set(viewport, viewport.scrollTop);
       }
       return frame;
     },
@@ -417,12 +429,20 @@ export function Panel({
     const panel = panelRef.current;
     const body = bodyRef.current;
     if (!visible || !panel || !body) return;
+    const measure = () => {
+      const viewport = panelViewport(panel);
+      panel.style.setProperty(
+        "--reading-frame-height",
+        `${Math.max(0, viewport.bottom - viewport.top)}px`,
+      );
+    };
+    measure();
     const document = panel.ownerDocument;
     const initial = document.activeElement;
     const initialFrame = keepBodyFocusVisible(initial);
     readingFocus.current =
       initial && initialFrame ? { target: initial, frame: initialFrame } : null;
-    const scrollPositions = new Map<HTMLElement, number>();
+    const scrollPositions = viewportPositions.current;
     for (
       let parent = panel.parentElement;
       parent;
@@ -432,6 +452,7 @@ export function Panel({
         scrollPositions.set(parent, parent.scrollTop);
     }
     const reveal = () => {
+      measure();
       const reading = readingFocus.current;
       if (!reading) return;
       if (
@@ -493,6 +514,8 @@ export function Panel({
       document.removeEventListener("pointerup", clearPress, true);
       document.removeEventListener("pointercancel", clearPress, true);
       document.defaultView?.removeEventListener("resize", reveal);
+      panel.style.removeProperty("--reading-frame-height");
+      scrollPositions.clear();
       retire();
       clearPress();
     };

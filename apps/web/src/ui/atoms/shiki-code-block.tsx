@@ -1,9 +1,9 @@
 import * as stylex from "@stylexjs/stylex";
 import { type ReactNode } from "react";
-import { CodeBody, CodeCaption } from "@flame/ui";
+import { CodeBody, CodeCaption, CodeFrame } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import { cn } from "@/lib/classNames";
-import { space, type } from "@flame/ui/tokens.stylex";
+import { space } from "@flame/ui/tokens.stylex";
 import { artifactFrame } from "@/ui/atoms/artifact-frame";
 import { reveal } from "@/ui/atoms/reveal";
 import { useCodeActionLabels } from "@/ui/atoms/codeActionLabels";
@@ -17,13 +17,10 @@ interface Props {
 }
 
 const styles = stylex.create({
-  block: {
-    overflow: "hidden",
-    fontFamily: "var(--font-mono)",
-  },
   embedded: { marginBlock: 0 },
   previewBody: {
     display: "grid",
+    minHeight: 0,
     maxHeight: "calc(15lh + 24px)",
     placeItems: "center",
     overflow: "auto",
@@ -43,21 +40,16 @@ export function ShikiCodeBlock({
   const labels = useCodeActionLabels();
   const t = useT();
   const isPreview = preview !== undefined;
-  const block = stylex.props(
-    artifactFrame.frame,
-    styles.block,
-    scrollLabel !== undefined && styles.embedded,
-    type.code,
-    isPreview && reveal.host,
-  );
   return (
-    <div
+    <CodeFrame
       dir="ltr"
+      data-slot="code-block"
+      data-focus-unit=""
       data-variant={isPreview ? "preview" : "code"}
       data-markdown-copy="code-block"
       data-markdown-copy-text={code}
-      {...block}
-      className={cn(block.className, "shiki-block")}
+      styles={[artifactFrame.frame, scrollLabel !== undefined && styles.embedded]}
+      className={cn("shiki-block", isPreview && stylex.props(reveal.host).className)}
     >
       <CodeCaption
         data-markdown-copy="exclude"
@@ -93,6 +85,6 @@ export function ShikiCodeBlock({
           {code}
         </CodeBody>
       )}
-    </div>
+    </CodeFrame>
   );
 }

@@ -1,5 +1,4 @@
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
-import { nanoid } from "nanoid";
 import { type Query } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { createPublicationSlot } from "@/lib/publicationSlot";
@@ -9,7 +8,7 @@ import {
   type AgentSessionUsage,
 } from "@/features/agent/application/runtimeGateway";
 export function createAgentSessionUsage() {
-  const scope = ["usage.session", nanoid()] as const;
+  const scope = ["usage.session", crypto.randomUUID()] as const;
   const queryKey = (sessionId?: string) =>
     sessionId === undefined ? scope : ([...scope, sessionId] as const);
   const ownsQuery = (query: { queryKey: readonly unknown[] }) =>

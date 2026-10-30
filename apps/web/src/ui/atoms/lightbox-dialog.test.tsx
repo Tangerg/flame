@@ -9,8 +9,7 @@ prepareTestClient(() => {
 import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, expect, it, vi } from "vitest";
-import { ContentVisibility } from "@flame/ui";
-import { LightboxDialog } from "@/ui/atoms/lightbox-dialog";
+import { ContentVisibility, LightboxDialog } from "@flame/ui";
 
 function Harness({
   visible,

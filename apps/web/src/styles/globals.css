@@ -15,10 +15,6 @@
   outline: 1px solid var(--color-media-edge);
   outline-offset: -1px;
 }
-.media-edge-on-scrim {
-  outline: 1px solid rgb(255 255 255 / 0.1);
-  outline-offset: -1px;
-}
 :root {
   --font-sans:
     -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", system-ui, "Segoe UI",

@@ -70,7 +70,10 @@ manager.
 
 Use `@qimu/sdk/json` for values that may contain integers or decimal bounds beyond
 JavaScript's exact `number` range. It exports `parseJSON`, `stringifyJSON`,
-`cloneJSON`, `ExactNumber`, and numeric inspection helpers. Protocol identities,
+`cloneJSON`, `ExactNumber`, and numeric inspection helpers. `prettyJSON` serializes
+those values with two-space indentation. `formatJSONText` changes only whitespace
+in captured source, retaining numeric literals, string escapes and member order;
+it is presentation, not validation or decoding. Protocol identities,
 epochs, revisions, and generations are opaque strings in the control projection.
 
 Run `npm run check --workspace @qimu/sdk` from the monorepo root. Regenerate

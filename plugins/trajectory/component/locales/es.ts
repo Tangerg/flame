@@ -1,4 +1,8 @@
 export const es: Record<string, string> = {
+  "code.copy": "Copiar código",
+  "code.copied": "Copiado",
+  "code.wrap": "Activar ajuste de línea",
+  "code.unwrap": "Desactivar ajuste de línea",
   "panel.title": "Trayectoria de la sesión",
   "panel.session": "Sesión",
   "controls.label": "Controles de trayectoria",
@@ -107,4 +111,10 @@ export const es: Record<string, string> = {
   "export.markdown": "Exportar conversación como Markdown",
   "export.json": "Exportar conversación como JSON",
   "export.trajectory": "Exportar la trayectoria completa de la sesión",
+  "image.view": "Ver imagen",
+  "image.close": "Cerrar vista previa de imagen",
+  "image.zoomIn": "Ampliar imagen",
+  "image.zoomOut": "Reducir imagen",
+  "image.description": "Descripción de la imagen",
+  "image.unavailable": "No se pudo mostrar esta imagen registrada.",
 };

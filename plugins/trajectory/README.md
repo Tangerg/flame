@@ -89,6 +89,18 @@ prose. Message content keeps its text and image order. When a readable body is
 present, complete JSON remains available under Recorded evidence; structured
 records keep primary JSON evidence. Both projections use the same redacted
 evidence, preserving unknown fields while omitting redacted reasoning text.
+Recorded-evidence code actions and accepted-copy feedback use the component's
+active locale. Shared UI retains the literal reader and wrap preference; changing
+an action label does not rewrite the captured evidence.
+
+Recorded message images retain their bounded inline thumbnail and open the
+original captured bytes in the shared image reader. Zoom, panning and dismissal
+do not change the accepted page, its filters or the recorded message. Closing
+returns to the image trigger; hiding the owning view ends that open capture.
+A decoder failure shows the recorded image identity with a local unavailable
+notice. The original bytes remain under Recorded evidence, the recorded status
+does not change, and adjacent images stay independent. A replacement source
+gets its own decode result; reading does not retry a completed operation.
 
 Page search uses the same redacted evidence as reading. It excludes only the data
 bytes of canonical user/agent message image blocks, retaining their metadata.
@@ -96,3 +108,10 @@ Ordinary `data` properties in Tool arguments, results and extensions remain
 searchable, including nested arrays and image-shaped business values. This local
 search projection never changes accepted records or their complete raw evidence;
 Run/type selection, page identity and disclosure/focus owners remain unchanged.
+
+Search encodes accepted records with `@qimu/sdk/json`'s `stringifyJSON`; raw
+evidence uses its shared two-space `prettyJSON` formatter. Opaque Tool arguments
+and results retain wide integers, exact decimals, exponent literals and negative
+zero as JSON numbers. Neither projection converts them to JavaScript numbers or
+quoted strings. The existing Host-shared JSON module owns their encoding and
+formatting; rebuild/select the matching package resource with that Host SDK.

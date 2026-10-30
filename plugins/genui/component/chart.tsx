@@ -14,10 +14,75 @@ export interface ChartViewProps {
 const DASHES = [undefined, "9 4", "2 4", "12 3 2 3", "6 3"] as const;
 const WIDTH = 640;
 const HEIGHT = 320;
+const LABEL_SIZE = 12;
 const LEFT = 72;
 const RIGHT = 616;
 const TOP = 20;
 const BOTTOM = 268;
+
+const MARK_PATHS = [
+  undefined,
+  "M -3.5 -3.5 H 3.5 V 3.5 H -3.5 Z",
+  "M 0 -4.5 L 4.5 0 L 0 4.5 L -4.5 0 Z",
+  "M 0 -4.5 L 4 3.5 L -4 3.5 Z",
+  "M -4 -3.5 L 4 -3.5 L 0 4.5 Z",
+  "M 0 -5 L 1.5 -1.6 L 4.8 -1.5 L 2.3 1 L 3 4.5 L 0 2.5 L -3 4.5 L -2.3 1 L -4.8 -1.5 L -1.5 -1.6 Z",
+] as const;
+
+function PointMark({
+  index,
+  x,
+  y,
+  title,
+}: {
+  index: number;
+  x: number;
+  y: number;
+  title?: string;
+}) {
+  const path = MARK_PATHS[index % MARK_PATHS.length];
+  const paint = {
+    fill: index < MARK_PATHS.length ? "currentColor" : "none",
+    stroke: "currentColor",
+    strokeWidth: 1.25,
+    strokeLinejoin: "round",
+  } as const;
+  return path ? (
+    <g transform={`translate(${x} ${y})`} {...paint}>
+      {title && <title>{title}</title>}
+      <path d={path} />
+    </g>
+  ) : (
+    <circle cx={x} cy={y} r={4} {...paint}>
+      {title && <title>{title}</title>}
+    </circle>
+  );
+}
+
+function ChartPatterns({ id, count }: { id: string; count: number }) {
+  return (
+    <defs>
+      {Array.from({ length: count }, (_, index) => (
+        <pattern
+          key={index}
+          id={`${id}-${index}`}
+          patternUnits="userSpaceOnUse"
+          width={6 + (index % 4) * 3}
+          height={6 + (index % 4) * 3}
+          patternTransform={`rotate(${index * 37})`}
+        >
+          <rect
+            width="100%"
+            height="100%"
+            fill="currentColor"
+            fillOpacity={0.05}
+          />
+          <path d="M 0 0 L 0 20" stroke="currentColor" strokeWidth={2} />
+        </pattern>
+      ))}
+    </defs>
+  );
+}
 
 function tick(value: number) {
   return Number(value.toPrecision(4)).toString();
@@ -27,7 +92,13 @@ function axisLabel(label: string) {
   return label.length > 14 ? `${label.slice(0, 13)}…` : label;
 }
 
-function Cartesian({ kind, labels, series, xValues }: ChartViewProps) {
+function Cartesian({
+  kind,
+  labels,
+  series,
+  xValues,
+  patternId,
+}: ChartViewProps & { patternId: string }) {
   const all = series.flatMap((entry) => entry.values);
   const magnitude = Math.max(1, ...all.map(Math.abs));
   const lower = Math.min(0, ...all.map((value) => value / magnitude));
@@ -51,6 +122,7 @@ function Cartesian({ kind, labels, series, xValues }: ChartViewProps) {
 
   return (
     <>
+      {kind === "bar" && <ChartPatterns id={patternId} count={series.length} />}
       {Array.from({ length: 5 }, (_, index) => {
         const value = lower + (span * index) / 4;
         const position = BOTTOM - (index / 4) * (BOTTOM - TOP);
@@ -70,7 +142,7 @@ function Cartesian({ kind, labels, series, xValues }: ChartViewProps) {
               textAnchor="end"
               dominantBaseline="middle"
               fill="currentColor"
-              fontSize={12}
+              fontSize={LABEL_SIZE}
             >
               {tick(value * magnitude)}
             </text>
@@ -85,7 +157,7 @@ function Cartesian({ kind, labels, series, xValues }: ChartViewProps) {
               y={BOTTOM + 24}
               textAnchor="middle"
               fill="currentColor"
-              fontSize={12}
+              fontSize={LABEL_SIZE}
             >
               {tick((lowerX + (spanX * index) / 4) * xMagnitude)}
             </text>
@@ -98,7 +170,7 @@ function Cartesian({ kind, labels, series, xValues }: ChartViewProps) {
                 y={BOTTOM + 24}
                 textAnchor="middle"
                 fill="currentColor"
-                fontSize={12}
+                fontSize={LABEL_SIZE}
               >
                 {axisLabel(label)}
               </text>
@@ -137,23 +209,20 @@ function Cartesian({ kind, labels, series, xValues }: ChartViewProps) {
                   y={Math.min(baseline, y(value))}
                   width={Math.max(1, barWidth - 1)}
                   height={Math.abs(y(value) - baseline)}
-                  fill="currentColor"
-                  fillOpacity={0.3 + (seriesIndex % 5) * 0.14}
+                  fill={`url(#${patternId}-${seriesIndex})`}
                   stroke="currentColor"
                   strokeWidth={0.5}
                 >
                   <title>{tooltip}</title>
                 </rect>
               ) : (
-                <circle
+                <PointMark
                   key={index}
-                  cx={x(index)}
-                  cy={y(value)}
-                  r={3 + (seriesIndex % 2)}
-                  fill="currentColor"
-                >
-                  <title>{tooltip}</title>
-                </circle>
+                  index={seriesIndex}
+                  x={x(index)}
+                  y={y(value)}
+                  title={tooltip}
+                />
               );
             })}
           </g>
@@ -163,45 +232,31 @@ function Cartesian({ kind, labels, series, xValues }: ChartViewProps) {
   );
 }
 
+function pieFractions(values: readonly number[]) {
+  const magnitude = Math.max(1, ...values);
+  const total = values.reduce((sum, value) => sum + value / magnitude, 0);
+  return values.map((value) => (total === 0 ? 0 : value / magnitude / total));
+}
+
 function Pie({
   kind,
   labels,
   series,
   patternId,
-}: ChartViewProps & { patternId: string }) {
+  fractions,
+}: ChartViewProps & { patternId: string; fractions: readonly number[] }) {
   const values = series[0]?.values ?? [];
-  const magnitude = Math.max(1, ...values);
-  const total = values.reduce((sum, value) => sum + value / magnitude, 0);
   let angle = -Math.PI / 2;
-  const centerX = 215;
-  const centerY = 155;
+  const centerX = HEIGHT / 2;
+  const centerY = HEIGHT / 2;
   const radius = 126;
   const innerRadius = kind === "donut" ? radius * 0.55 : 0;
 
   return (
     <>
-      <defs>
-        {labels.map((_, index) => (
-          <pattern
-            key={index}
-            id={`${patternId}-${index}`}
-            patternUnits="userSpaceOnUse"
-            width={6 + (index % 4) * 3}
-            height={6 + (index % 4) * 3}
-            patternTransform={`rotate(${index * 37})`}
-          >
-            <rect
-              width="100%"
-              height="100%"
-              fill="currentColor"
-              fillOpacity={0.05}
-            />
-            <path d="M 0 0 L 0 20" stroke="currentColor" strokeWidth={2} />
-          </pattern>
-        ))}
-      </defs>
+      <ChartPatterns id={patternId} count={labels.length} />
       {values.map((value, index) => {
-        const fraction = total === 0 ? 0 : value / magnitude / total;
+        const fraction = fractions[index]!;
         const start = angle;
         angle += fraction * 2 * Math.PI;
         const fill = `url(#${patternId}-${index})`;
@@ -229,19 +284,6 @@ function Pie({
                 <title>{tooltip}</title>
               </path>
             ) : null}
-            {index < 10 && (
-              <g transform={`translate(380 ${30 + index * 27})`}>
-                <rect
-                  width={14}
-                  height={14}
-                  fill={fill}
-                  stroke="currentColor"
-                />
-                <text x={24} y={11} fill="currentColor" fontSize={12}>
-                  {axisLabel(labels[index]!)} · {tick(fraction * 100)}%
-                </text>
-              </g>
-            )}
           </g>
         );
       })}
@@ -252,29 +294,37 @@ function Pie({
 export function ChartView(props: ChartViewProps) {
   const id = useId().replaceAll(":", "");
   const { kind, caption, labels, series, dataLabel, emptyLabel } = props;
+  const circular = kind === "pie" || kind === "donut";
+  const fractions = circular ? pieFractions(series[0]?.values ?? []) : [];
   return (
     <figure style={{ margin: 0, minWidth: 0 }}>
       <figcaption>{caption}</figcaption>
       {labels.length === 0 || series.length === 0 ? (
         <Metadata>{emptyLabel}</Metadata>
       ) : (
-        <svg
-          role="img"
-          aria-label={caption}
-          viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-          style={{
-            display: "block",
-            width: "100%",
-            height: "auto",
-            maxHeight: "28rem",
-          }}
-        >
-          {kind === "pie" || kind === "donut" ? (
-            <Pie {...props} patternId={id} />
-          ) : (
-            <Cartesian {...props} />
-          )}
-        </svg>
+        <ScrollRegion label={caption}>
+          <svg
+            role="img"
+            aria-label={caption}
+            viewBox={`0 0 ${circular ? HEIGHT : WIDTH} ${HEIGHT}`}
+            style={{
+              display: "block",
+              width: "100%",
+              height: "auto",
+              minWidth: circular
+                ? undefined
+                : `calc(var(--fs-ui-sm) * ${WIDTH} / ${LABEL_SIZE})`,
+              maxWidth: circular ? "20rem" : "56rem",
+              marginInline: circular ? "auto" : undefined,
+            }}
+          >
+            {circular ? (
+              <Pie {...props} patternId={id} fractions={fractions} />
+            ) : (
+              <Cartesian {...props} patternId={id} />
+            )}
+          </svg>
+        </ScrollRegion>
       )}
       <ScrollRegion label={dataLabel}>
         <table>
@@ -286,33 +336,86 @@ export function ChartView(props: ChartViewProps) {
               {series.map((entry, index) => (
                 <th key={entry.label} scope="col">
                   {kind !== "pie" && kind !== "donut" && (
-                    <svg width={24} height={8} aria-hidden="true">
-                      <line
-                        x1={0}
-                        x2={24}
-                        y1={4}
-                        y2={4}
-                        stroke="currentColor"
-                        strokeWidth={2}
-                        strokeDasharray={DASHES[index % DASHES.length]}
-                      />
+                    <svg width={24} height={16} aria-hidden="true">
+                      {kind === "bar" ? (
+                        <rect
+                          x={3}
+                          y={2}
+                          width={18}
+                          height={12}
+                          fill={`url(#${id}-${index})`}
+                          stroke="currentColor"
+                          strokeWidth={0.5}
+                        />
+                      ) : (
+                        <>
+                          {kind !== "scatter" && (
+                            <line
+                              x1={0}
+                              x2={24}
+                              y1={8}
+                              y2={8}
+                              stroke="currentColor"
+                              strokeWidth={2}
+                              strokeDasharray={DASHES[index % DASHES.length]}
+                            />
+                          )}
+                          <PointMark index={index} x={12} y={8} />
+                        </>
+                      )}
                     </svg>
                   )}{" "}
                   {entry.label}
                 </th>
               ))}
+              {circular && <th scope="col">%</th>}
             </tr>
           </thead>
           <tbody>
             {labels.map((label, index) => (
               <tr key={index}>
-                <th scope="row">{label}</th>
+                <th scope="row">
+                  {circular && (
+                    <>
+                      <svg
+                        width={24}
+                        height={16}
+                        aria-hidden="true"
+                        style={{
+                          display: "inline-block",
+                          verticalAlign: "middle",
+                        }}
+                      >
+                        <rect
+                          x={3}
+                          y={2}
+                          width={18}
+                          height={12}
+                          fill={`url(#${id}-${index})`}
+                          stroke="currentColor"
+                          strokeWidth={0.5}
+                        />
+                      </svg>{" "}
+                    </>
+                  )}
+                  {label}
+                </th>
                 {kind === "scatter" && (
                   <td>{String(props.xValues?.[index])}</td>
                 )}
                 {series.map((entry) => (
                   <td key={entry.label}>{String(entry.values[index])}</td>
                 ))}
+                {circular && (
+                  <td
+                    style={{
+                      fontVariantNumeric: "tabular-nums",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {tick(fractions[index]! * 100)}%
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

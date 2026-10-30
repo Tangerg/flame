@@ -2,8 +2,6 @@ import type { en } from "./en";
 
 export const ja = {
   "panel.title": "成果物の作成・納品",
-  "panel.description":
-    "ネイティブ文書を作成・修正・確認し、各版の証跡とともに納品します。",
   "panel.controls": "成果物の操作",
   refresh: "更新",
   reading: "読み込み中…",
@@ -189,6 +187,7 @@ export const ja = {
   "revision.openHead": "現在の版を開く",
   "revision.details": "版の識別情報とネイティブ情報",
   "document.id": "文書識別子",
+  "document.created": "文書の作成日時",
   "revision.id": "版識別子",
   "revision.parent": "親の版",
   "revision.first": "最初の版",
@@ -232,4 +231,9 @@ export const ja = {
     "Office 文書と PDF をレンダリングするには、このインストールの設定でエンジンを構成してください。",
   "capabilities.engines": "設定済みエンジンのパス",
   "capabilities.limits": "インストール済み上限",
+  "image.view": "画像を表示",
+  "image.close": "画像プレビューを閉じる",
+  "image.zoomIn": "画像を拡大",
+  "image.zoomOut": "画像を縮小",
+  "image.description": "画像の説明",
 } satisfies Record<keyof typeof en, string>;

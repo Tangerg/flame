@@ -14,7 +14,6 @@ export { reveal } from "@/ui/atoms/reveal";
 export { Tree } from "@/ui/atoms/tree";
 export { HiddenFileInput } from "@/ui/atoms/hidden-file-input";
 export { Kbd } from "@/ui/atoms/kbd";
-export { LightboxDialog } from "@/ui/atoms/lightbox-dialog";
 export { Loader } from "@/ui/atoms/loader";
 export { ContextMenu, DropdownMenu } from "@/ui/atoms/menu";
 export { OptionRow } from "@/ui/atoms/option-row";

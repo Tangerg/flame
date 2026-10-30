@@ -1,4 +1,8 @@
 export const de: Record<string, string> = {
+  "code.copy": "Code kopieren",
+  "code.copied": "Kopiert",
+  "code.wrap": "Zeilenumbruch aktivieren",
+  "code.unwrap": "Zeilenumbruch deaktivieren",
   "panel.title": "Sitzungsverlauf",
   "panel.session": "Sitzung",
   "controls.label": "Verlaufssteuerung",
@@ -104,4 +108,11 @@ export const de: Record<string, string> = {
   "export.markdown": "Konversation als Markdown exportieren",
   "export.json": "Konversation als JSON exportieren",
   "export.trajectory": "Vollständigen Sitzungsverlauf exportieren",
+  "image.view": "Bild anzeigen",
+  "image.close": "Bildvorschau schließen",
+  "image.zoomIn": "Bild vergrößern",
+  "image.zoomOut": "Bild verkleinern",
+  "image.description": "Bildbeschreibung",
+  "image.unavailable":
+    "Dieses aufgezeichnete Bild konnte nicht angezeigt werden.",
 };

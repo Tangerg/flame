@@ -1,4 +1,8 @@
 export const es: Record<string, string> = {
+  "code.copy": "Copiar código",
+  "code.copied": "Copiado",
+  "code.wrap": "Activar ajuste de línea",
+  "code.unwrap": "Desactivar ajuste de línea",
   "panel.title": "Diagnóstico del cliente",
   "controls.label": "Controles de diagnóstico",
   refresh: "Actualizar",

@@ -2,8 +2,6 @@ import type { en } from "./en";
 
 export const fr = {
   "panel.title": "Livrables professionnels",
-  "panel.description":
-    "Créez, révisez et livrez des documents natifs avec des preuves liées à chaque révision.",
   "panel.controls": "Actions sur les livrables",
   refresh: "Actualiser",
   reading: "Lecture…",
@@ -191,6 +189,7 @@ export const fr = {
   "revision.openHead": "Ouvrir la révision actuelle",
   "revision.details": "Identité et données natives",
   "document.id": "Identifiant du document",
+  "document.created": "Création du document",
   "revision.id": "Identifiant de révision",
   "revision.parent": "Révision parente",
   "revision.first": "Révision initiale",
@@ -234,4 +233,9 @@ export const fr = {
     "Configurez les moteurs dans les réglages de cette installation pour produire les rendus Office et PDF.",
   "capabilities.engines": "Chemins des moteurs",
   "capabilities.limits": "Limites installées",
+  "image.view": "Voir l’image",
+  "image.close": "Fermer l’aperçu de l’image",
+  "image.zoomIn": "Agrandir l’image",
+  "image.zoomOut": "Réduire l’image",
+  "image.description": "Description de l’image",
 } satisfies Record<keyof typeof en, string>;

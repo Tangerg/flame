@@ -1,14 +1,18 @@
 import * as stylex from "@stylexjs/stylex";
+import { clsx as cn } from "clsx";
 import { Check, Copy, UnfoldHorizontal, WrapText } from "@flame/icons/react";
 import {
   createContext,
   useContext,
+  useLayoutEffect,
+  useRef,
   useSyncExternalStore,
   type ComponentPropsWithoutRef,
   type ComponentType,
   type ReactNode,
 } from "react";
 import { ARTIFACT_SURFACE } from "./artifact-surface";
+import { useContentVisible } from "./content-visibility";
 import { useCopyFeedback } from "./clipboard";
 import { IconButton } from "./icon-button";
 import { selectAllInReader } from "./reader-selection";
@@ -77,11 +81,13 @@ const styles = stylex.create({
     flexDirection: "column",
     minWidth: 0,
     maxWidth: "100%",
-    maxHeight: {
-      default: null,
-      ":is([data-slot='code-block'])": `calc(100dvh - var(--panel-controls-height, 0px) - var(--disclosure-header-height, 0px) - ${layout.controlGap})`,
-    },
     overflow: "hidden",
+  },
+  literalFrame: {
+    minHeight: `calc(var(--code-caption-height, 0px) + 1lh + ${space.s0_5} + ${space.s3} + var(--control-edge-width) * 2)`,
+    maxHeight: `calc(var(--reading-frame-height, 100dvh) - var(--panel-controls-height, 0px) - var(--disclosure-header-height, 0px) - ${layout.controlGap})`,
+    fontFamily: "var(--font-mono)",
+    lineHeight: leading.relaxed,
   },
   caption: {
     display: "flex",
@@ -135,13 +141,47 @@ const styles = stylex.create({
 
 export function CodeFrame({
   children,
+  className,
+  styles: extra,
   ...props
-}: Omit<ComponentPropsWithoutRef<"div">, "className" | "style">) {
+}: Omit<ComponentPropsWithoutRef<"div">, "style"> & {
+  "data-slot"?: string;
+  styles?: stylex.StyleXArray<stylex.StyleXStyles | null | false>;
+}) {
+  const frame = useRef<HTMLDivElement>(null);
+  const literal = props["data-slot"] === "code-block";
+  const visible = useContentVisible();
+  useLayoutEffect(() => {
+    const root = frame.current;
+    const caption = root?.querySelector(':scope > [data-slot="code-caption"]');
+    if (!literal || !visible || !root || !caption) return;
+    // WebKit can clamp an intrinsic minimum to max-height and clip the source entirely.
+    const measure = () =>
+      root.style.setProperty(
+        "--code-caption-height",
+        `${caption.getBoundingClientRect().height}px`,
+      );
+    measure();
+    const resize = new ResizeObserver(measure);
+    resize.observe(caption);
+    return () => {
+      resize.disconnect();
+      root.style.removeProperty("--code-caption-height");
+    };
+  }, [literal, visible]);
+  const styled = stylex.props(
+    ARTIFACT_SURFACE.face,
+    styles.frame,
+    literal && [styles.literalFrame, type.code],
+    extra,
+  );
   return (
     <div
+      ref={frame}
       data-slot="code-frame"
       {...props}
-      {...stylex.props(ARTIFACT_SURFACE.face, styles.frame)}
+      {...styled}
+      className={cn(styled.className, className)}
     >
       {children}
     </div>

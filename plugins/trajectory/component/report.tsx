@@ -1,8 +1,9 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { ReactNode, Ref } from "react";
 import type { Translate } from "@flame/component-sdk";
 import { Activity, Cpu, Terminal, FileText, Server } from "@flame/icons/react";
 import type { Page, TrajectoryEntry } from "@flame/runtime-client/wire";
+import { prettyJSON, stringifyJSON } from "@qimu/sdk/json";
 import {
   Button,
   Badge,
@@ -10,6 +11,7 @@ import {
   Disclosure,
   EmptyState,
   EvidenceImage,
+  ImageNotice,
   Facts,
   Metadata,
   RecordBody,
@@ -106,13 +108,13 @@ function evidence(row: TrajectoryEntry): TrajectoryEntry {
 }
 function searchable(row: TrajectoryEntry): string {
   const recorded = evidence(row);
-  if (recorded.type !== "item") return JSON.stringify(recorded);
+  if (recorded.type !== "item") return stringifyJSON(recorded);
   const item = recorded.item;
   if (
     (item.type !== "userMessage" && item.type !== "agentMessage") ||
     !item.content
   )
-    return JSON.stringify(recorded);
+    return stringifyJSON(recorded);
   // Only canonical message image bytes are opaque encoding; every other data
   // property, including tool arguments and results, is recorded evidence.
   const content = item.content.map((part) => {
@@ -120,7 +122,7 @@ function searchable(row: TrajectoryEntry): string {
     const { data: _bytes, ...metadata } = part;
     return metadata;
   });
-  return JSON.stringify({ ...recorded, item: { ...item, content } });
+  return stringifyJSON({ ...recorded, item: { ...item, content } });
 }
 function identity(row: TrajectoryEntry): string {
   return row.type === "run"
@@ -185,6 +187,37 @@ function title(row: TrajectoryEntry, t: Translate, clock: Intl.DateTimeFormat) {
     />
   );
 }
+function RecordedImage({
+  mime,
+  data,
+  t,
+}: {
+  mime: string;
+  data: string;
+  t: Translate;
+}) {
+  const src = `data:${mime};base64,${data}`;
+  const alt = t("image.alt", { mime });
+  const [failedSource, setFailedSource] = useState<string>();
+  if (failedSource === src)
+    return <ImageNotice label={alt} detail={t("image.unavailable")} />;
+  return (
+    <span onErrorCapture={() => setFailedSource(src)}>
+      <EvidenceImage
+        src={src}
+        alt={alt}
+        labels={{
+          view: t("image.view"),
+          close: t("image.close"),
+          zoomIn: t("image.zoomIn"),
+          zoomOut: t("image.zoomOut"),
+          description: t("image.description"),
+        }}
+      />
+    </span>
+  );
+}
+
 function Observation({
   row: recorded,
   t,
@@ -203,10 +236,11 @@ function Observation({
             body.push(<RecordBody key={index}>{part.text}</RecordBody>);
         } else {
           body.push(
-            <EvidenceImage
+            <RecordedImage
               key={index}
-              src={`data:${part.mime};base64,${part.data}`}
-              alt={t("image.alt", { mime: part.mime })}
+              mime={part.mime}
+              data={part.data}
+              t={t}
             />,
           );
         }
@@ -298,8 +332,17 @@ function Observation({
   if (row.type === "item" && row.item.type === "reasoning" && row.item.redacted)
     notes.push(t("note.reasoningRedacted"));
   const raw = (
-    <CodeBlock label={t("evidence.recorded")} language="json">
-      {JSON.stringify(row, null, 2)}
+    <CodeBlock
+      label={t("evidence.recorded")}
+      language="json"
+      labels={{
+        copy: t("code.copy"),
+        copied: t("code.copied"),
+        wrap: t("code.wrap"),
+        unwrap: t("code.unwrap"),
+      }}
+    >
+      {prettyJSON(row)}
     </CodeBlock>
   );
   return (

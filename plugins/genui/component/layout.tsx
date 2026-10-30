@@ -142,9 +142,10 @@ export function TabsView({
             variant="soft"
             active={selected === item.value}
             onClick={() => select(item.value)}
-            onKeyDown={(event) =>
-              moveChoice(event, (next) => select(props.items[next]!.value))
-            }
+            onKeyDown={(event) => {
+              if (event.key === "ArrowUp" || event.key === "ArrowDown") return;
+              moveChoice(event, (next) => select(props.items[next]!.value));
+            }}
           >
             {item.label}
           </Button>

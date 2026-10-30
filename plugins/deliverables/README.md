@@ -71,6 +71,46 @@ page previews, attributed reviews and download controls. The same published
 operations are available as model tools. The additional read-only `page` tool
 returns an actual retained PNG so a model can examine the render it is reviewing.
 
+Create and import each have one inline disclosure entry. Closing either keeps
+its local draft and native-file selection; reopening resumes the same form.
+Disclosure owns expansion, while the existing forms and command/upload owners
+retain their inputs and recovery state.
+
+Document and revision-history pagination keeps its controls focusable while a
+read is pending and at page boundaries. Pending controls reject repeat activation;
+settlement preserves the user's current focus, including a later move to another
+control. Read failures retain the accepted page and its available navigation.
+The exact revision being read remains a selectable option alongside each history
+page, so paging does not replace its label with a raw identity or change selection.
+Opening the current revision from its focused Inspector action moves focus to the
+stable revision-history region. Read settlement preserves any later focus move.
+Refresh uses the same focusable pending boundary while the list or catalog rereads.
+An unread selected revision uses its short identity until metadata is available.
+The history region's existing identity disclosure keeps the full document and
+revision identities available during reading and after failure. Native facts
+appear only after a successful read; settlement preserves the open disclosure
+and its focus.
+
+Browsing dates follow the host locale and local time zone. Only the backend's
+canonical ISO timestamps are interpreted; other recorded text stays unchanged.
+The identity disclosure retains exact document and revision creation times from
+accepted metadata, including milliseconds and the UTC designation. Missing
+metadata does not acquire an inferred time.
+
+Inspected items show a bounded content excerpt before their native kind and
+identity. Expanding an item exposes the complete retained text with its original
+whitespace. Preview boundaries preserve whole graphemes; empty items retain their
+identity instead of invented content. Search continues to use the full retained
+text and exact native identity, with the same whitespace normalization as the
+excerpt. Local page boundaries stay focusable and reject unavailable activation,
+keeping keyboard reading in the inspected list.
+
+Each rendered page thumbnail opens its original PNG in the shared image reader
+for local zoom and panning. The captured revision, render and page identity remain
+with the preview owner. Opening, zooming or closing the image does not mark a
+review accepted or change the selected page. Existing review controls continue
+to own those observations.
+
 The ordinary workflow is create/import, inspect, revise, recalculate if required,
 render, examine pages, record review, and export. Each edit captures the expected
 current revision. Each review captures its revision, render and reviewed page set.
