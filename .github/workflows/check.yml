@@ -36,17 +36,21 @@ jobs:
           echo "FLAME_DELIVERABLES_PDFINFO=/usr/bin/pdfinfo" >> "$GITHUB_ENV"
           echo "FLAME_DELIVERABLES_PDFTOPPM=/usr/bin/pdftoppm" >> "$GITHUB_ENV"
           echo "FLAME_DELIVERABLES_PDFTOTEXT=/usr/bin/pdftotext" >> "$GITHUB_ENV"
-      - if: runner.os == 'macOS'
+      - name: Install macOS renderers
+        if: runner.os == 'macOS'
         run: |
-          brew update
-          brew install poppler
+          curl --fail --location --output "$RUNNER_TEMP/MacPorts.pkg" \
+            https://github.com/macports/macports-base/releases/download/v2.12.7/MacPorts-2.12.7-15-Sequoia.pkg
+          echo "87b2e87ed7adc4aca947b42eb7ff991614cc0edfccb486237f2bbc75f28aae63  $RUNNER_TEMP/MacPorts.pkg" | shasum -a 256 --check
+          sudo installer -pkg "$RUNNER_TEMP/MacPorts.pkg" -target /
+          sudo /opt/local/bin/port -N -b install poppler
           office_executable=$(node tooling/office-toolchain.mjs --output "$GITHUB_WORKSPACE/out/toolchains")
           office_root=$(dirname "$(dirname "$office_executable")")
           echo "FLAME_DELIVERABLES_OFFICE=$office_executable" >> "$GITHUB_ENV"
-          echo "FLAME_DELIVERABLES_PDFINFO=$(brew --prefix poppler)/bin/pdfinfo" >> "$GITHUB_ENV"
-          echo "FLAME_DELIVERABLES_PDFTOPPM=$(brew --prefix poppler)/bin/pdftoppm" >> "$GITHUB_ENV"
-          echo "FLAME_DELIVERABLES_PDFTOTEXT=$(brew --prefix poppler)/bin/pdftotext" >> "$GITHUB_ENV"
-          echo "FLAME_DELIVERABLES_TOOL_ROOTS=[\"$office_root\",\"$(brew --cellar)\",\"$(brew --prefix)/opt\"]" >> "$GITHUB_ENV"
+          echo "FLAME_DELIVERABLES_PDFINFO=/opt/local/bin/pdfinfo" >> "$GITHUB_ENV"
+          echo "FLAME_DELIVERABLES_PDFTOPPM=/opt/local/bin/pdftoppm" >> "$GITHUB_ENV"
+          echo "FLAME_DELIVERABLES_PDFTOTEXT=/opt/local/bin/pdftotext" >> "$GITHUB_ENV"
+          echo "FLAME_DELIVERABLES_TOOL_ROOTS=[\"$office_root\",\"/opt/local\"]" >> "$GITHUB_ENV"
       - run: make setup
       - name: Qualify native deliverables
         run: node plugins/scripts/test-backends.mjs
