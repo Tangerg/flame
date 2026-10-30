@@ -213,7 +213,7 @@ export const de: Record<string, string> = {
   "msgActions.feedbackFailed": "Feedback wurde nicht gespeichert",
   "msgActions.poor": "Schlechte Antwort",
   "chatSearch.label": "Im Chat suchen",
-  "chatSearch.placeholder": "Im Chat suchen…",
+  "chatSearch.placeholder": "Sichtbaren Nachrichtentext suchen…",
   "chatSearch.prev": "Vorheriger Treffer",
   "chatSearch.next": "Nächster Treffer",
   "plan.complete": "{{done}} von {{total}} erledigt",

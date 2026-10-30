@@ -214,7 +214,7 @@ export const es: Record<string, string> = {
   "msgActions.feedbackFailed": "No se guardó la valoración",
   "msgActions.poor": "Respuesta deficiente",
   "chatSearch.label": "Buscar en el chat",
-  "chatSearch.placeholder": "Buscar en el chat…",
+  "chatSearch.placeholder": "Buscar texto visible…",
   "chatSearch.prev": "Coincidencia anterior",
   "chatSearch.next": "Coincidencia siguiente",
   "plan.complete": "{{done}} de {{total}} completadas",

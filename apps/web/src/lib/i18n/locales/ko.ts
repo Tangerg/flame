@@ -209,7 +209,7 @@ export const ko: Record<string, string> = {
   "msgActions.feedbackFailed": "피드백을 저장하지 못했습니다",
   "msgActions.poor": "부족한 응답",
   "chatSearch.label": "채팅에서 검색",
-  "chatSearch.placeholder": "채팅에서 검색…",
+  "chatSearch.placeholder": "표시된 메시지 내용 검색…",
   "chatSearch.prev": "이전 일치",
   "chatSearch.next": "다음 일치",
   "plan.complete": "{{total}}개 중 {{done}}개 완료",

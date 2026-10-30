@@ -14,6 +14,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MESSAGE_CONTENT_SELECTOR } from "@/features/chat/public/message/rendering";
 import { openChatSearch } from "@/features/chat/search/application/openChatSearch";
 import { ChatSearchOverlay } from "@/features/chat/search/ui/ChatSearchOverlay";
+import { Collapsible, useDisclosedContent } from "@/ui/atoms/collapsible";
 const highlights = vi.hoisted(() => ({ paint: vi.fn(), clear: vi.fn() }));
 
 vi.mock("@/features/chat/search/adapters/searchHighlights", () => ({
@@ -91,6 +92,23 @@ function renderSearch() {
   return testClient.render(<SearchFixture />);
 }
 
+function RetainedDisclosure({ open, children }: { open: boolean; children: ReactNode }) {
+  const revealed = useDisclosedContent(open);
+  return <Collapsible open={open}>{revealed ? children : null}</Collapsible>;
+}
+
+function DisclosedSearchFixture({ outer, inner }: { outer: boolean; inner: boolean }) {
+  return (
+    <SearchFixture
+      content={
+        <RetainedDisclosure open={outer}>
+          <RetainedDisclosure open={inner}>unique needle</RetainedDisclosure>
+        </RetainedDisclosure>
+      }
+    />
+  );
+}
+
 function openSearch(): HTMLInputElement {
   act(() => openChatSearch());
   return screen.getByRole<HTMLInputElement>("textbox", { name: "Search in chat" });
@@ -121,6 +139,33 @@ function expectDraftFocus(
 }
 
 describe("ChatSearchOverlay", () => {
+  it("searches revealed nested content independently of its mounting history", async () => {
+    const { rerender } = testClient.render(<DisclosedSearchFixture outer={false} inner={false} />);
+    const input = searchFor("unique needle");
+    expect(screen.getByRole("status").textContent).toBe("0 / 0");
+
+    await act(async () => rerender(<DisclosedSearchFixture outer inner />));
+    await vi.waitFor(() => expect(screen.getByRole("status").textContent).toBe("1 / 1"));
+
+    await act(async () => rerender(<DisclosedSearchFixture outer inner={false} />));
+    await vi.waitFor(() => expect(screen.getByRole("status").textContent).toBe("0 / 0"));
+    expect(screen.getByRole("button", { name: "Next match" }).getAttribute("aria-disabled")).toBe(
+      "true",
+    );
+
+    await act(async () => rerender(<DisclosedSearchFixture outer={false} inner />));
+    await vi.waitFor(() => expect(screen.getByRole("status").textContent).toBe("0 / 0"));
+
+    await act(async () => rerender(<DisclosedSearchFixture outer inner />));
+    await vi.waitFor(() => expect(screen.getByRole("status").textContent).toBe("1 / 1"));
+    fireEvent.keyDown(input, { key: "Enter" });
+    const ranges = highlights.paint.mock.calls.at(-1)?.[0] as Range[];
+    expect(ranges).toHaveLength(1);
+    expect(ranges[0]?.toString()).toBe("unique needle");
+    expect(ranges[0]?.startContainer.parentElement?.closest("[inert], [hidden]")).toBeNull();
+    expect(document.activeElement).toBe(input);
+  });
+
   it("updates and navigates matches directly from user events", () => {
     renderSearch();
     const input = openSearch();

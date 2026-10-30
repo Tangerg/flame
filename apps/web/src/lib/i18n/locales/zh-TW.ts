@@ -208,7 +208,7 @@ export const zhTW: Record<string, string> = {
   "msgActions.feedbackFailed": "意見回饋未能儲存",
   "msgActions.poor": "回覆欠佳",
   "chatSearch.label": "在對話中搜尋",
-  "chatSearch.placeholder": "在對話中搜尋…",
+  "chatSearch.placeholder": "搜尋已展開的訊息內容…",
   "chatSearch.prev": "上一個符合",
   "chatSearch.next": "下一個符合",
   "plan.complete": "已完成 {{done}} / {{total}}",

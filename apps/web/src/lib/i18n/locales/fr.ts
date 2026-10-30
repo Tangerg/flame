@@ -213,7 +213,7 @@ export const fr: Record<string, string> = {
   "msgActions.feedbackFailed": "L'avis n'a pas été enregistré",
   "msgActions.poor": "Réponse médiocre",
   "chatSearch.label": "Rechercher dans le chat",
-  "chatSearch.placeholder": "Rechercher dans le chat…",
+  "chatSearch.placeholder": "Rechercher le texte visible…",
   "chatSearch.prev": "Correspondance précédente",
   "chatSearch.next": "Correspondance suivante",
   "plan.complete": "{{done}} sur {{total}} terminées",

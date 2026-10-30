@@ -214,7 +214,7 @@ export const zh: Record<string, string> = {
   "msgActions.feedbackFailed": "反馈未能保存",
   "msgActions.poor": "回复欠佳",
   "chatSearch.label": "在对话中搜索",
-  "chatSearch.placeholder": "在对话中搜索…",
+  "chatSearch.placeholder": "搜索已展开的消息内容…",
   "chatSearch.prev": "上一个匹配",
   "chatSearch.next": "下一个匹配",
   "plan.complete": "已完成 {{done}} / {{total}}",

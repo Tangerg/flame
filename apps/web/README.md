@@ -53,6 +53,12 @@ Question drafts retain raw text and one literal custom choice, including commas.
 The editor can explicitly skip a field with an empty answer. Runtime admits the
 complete candidate; Web does not trim or deduplicate answers before submission.
 
+Conversation search covers revealed message text, including text reached by
+scrolling. Collapsed, hidden and inert content is excluded regardless of its
+mounting history. Expand a disclosure to include its content; closing it updates
+the count and retires its ranges. Search reads that visibility projection and
+preserves the disclosure and keyboard focus owners.
+
 File reading navigates adjacent bounded line windows using Runtime's served
 start and end coordinates. Earlier pages retain their requested end at the byte
 cap; later pages begin after the served end. The reader requests Runtime's

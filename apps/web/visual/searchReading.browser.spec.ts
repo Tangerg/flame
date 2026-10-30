@@ -12,6 +12,42 @@ async function openOutput(page: Page, query = "") {
   return { command, output };
 }
 
+test("message search excludes retained nested thoughts until their owners reveal them", async ({
+  page,
+}) => {
+  await page.goto("/visual/?fixture=agent&theme=light&state=narrative");
+  await page.locator("html[data-visual-ready]").waitFor();
+  const query = "the component may unmount mid-flight";
+  const matches = () =>
+    page.evaluate(async (query) => {
+      const path = "/src/features/chat/search/adapters/messageRanges.ts";
+      const { findMessageMatches } = await import(path);
+      return findMessageMatches(query).map(({ range }: { range: Range }) => ({
+        text: range.toString(),
+        visible: [...range.getClientRects()].some((rect) => rect.width > 0 && rect.height > 0),
+        hidden: Boolean(range.startContainer.parentElement?.closest("[inert], [hidden]")),
+      }));
+    }, query);
+  await expect.poll(matches).toEqual([]);
+  const process = page.getByRole("button", { name: /read · 1 search · 1 write/ }).first();
+  await process.click();
+  const thought = page.getByRole("button", { name: "Thought", exact: true });
+  await expect(thought).toHaveAttribute("aria-expanded", "false");
+  await expect.poll(matches).toEqual([]);
+  await thought.click();
+  await expect.poll(matches).toEqual([{ text: query, visible: true, hidden: false }]);
+  await thought.click();
+  await expect(thought).toBeFocused();
+  await expect(page.locator(".msg-content").filter({ hasText: query })).toHaveCount(1);
+  await expect.poll(matches).toEqual([]);
+  await thought.click();
+  await expect.poll(matches).toEqual([{ text: query, visible: true, hidden: false }]);
+  await process.click();
+  await expect.poll(matches).toEqual([]);
+  await process.click();
+  await expect.poll(matches).toEqual([{ text: query, visible: true, hidden: false }]);
+});
+
 for (const [theme, accent] of [
   ["light", ""],
   ["dark", "&accent=%238b5cf6"],

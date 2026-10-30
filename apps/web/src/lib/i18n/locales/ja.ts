@@ -212,7 +212,7 @@ export const ja: Record<string, string> = {
   "msgActions.feedbackFailed": "フィードバックを保存できませんでした",
   "msgActions.poor": "不十分な応答",
   "chatSearch.label": "チャット内を検索",
-  "chatSearch.placeholder": "チャット内を検索…",
+  "chatSearch.placeholder": "表示中のメッセージを検索…",
   "chatSearch.prev": "前の一致",
   "chatSearch.next": "次の一致",
   "plan.complete": "{{total}} 件中 {{done}} 件完了",
