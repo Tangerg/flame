@@ -121,7 +121,7 @@ type fakeRuns struct {
 
 	session         string
 	requested       []string
-	statuses        []run.Status
+	statuses        []run.State
 	descendants     bool
 	beforeCreatedAt int64
 	beforeRunID     string
@@ -146,7 +146,7 @@ func (f *fakeRuns) Run(_ context.Context, runID string) (run.Run, bool, error) {
 	return run.Run{}, false, nil
 }
 
-func (f *fakeRuns) PageRuns(_ context.Context, sessionID string, statuses []run.Status, includeDescendants bool, beforeCreatedAt int64, beforeRunID string, limit int) ([]run.Run, error) {
+func (f *fakeRuns) PageRuns(_ context.Context, sessionID string, statuses []run.State, includeDescendants bool, beforeCreatedAt int64, beforeRunID string, limit int) ([]run.Run, error) {
 	f.session, f.statuses, f.descendants = sessionID, statuses, includeDescendants
 	f.beforeCreatedAt, f.beforeRunID, f.limit = beforeCreatedAt, beforeRunID, limit
 	var out []run.Run
@@ -160,7 +160,7 @@ func (f *fakeRuns) PageRuns(_ context.Context, sessionID string, statuses []run.
 		if !seeksBefore(run.CreatedAt().UnixNano(), run.ID(), beforeCreatedAt, beforeRunID) {
 			continue
 		}
-		if len(statuses) > 0 && !slices.Contains(statuses, run.State().Status()) {
+		if len(statuses) > 0 && !slices.Contains(statuses, run.State()) {
 			continue
 		}
 		if limit > 0 && len(out) == limit {
@@ -672,7 +672,7 @@ func testSessionRunHistory(ids ...string) []run.Run {
 }
 
 func testRunHistory(sessionID string, ids ...string) []run.Run {
-	states := [...]run.State{run.Running, run.Waiting, run.Completed}
+	states := [...]run.State{run.Running, run.Waiting, run.Finished}
 	out := make([]run.Run, 0, len(ids))
 	for i, id := range ids {
 		state := states[i%len(states)]
@@ -959,7 +959,7 @@ func TestListRunPageReturnsEveryStatusUntilFiltered(t *testing.T) {
 
 	// A filter is normalized before it selects rows OR mints a cursor: the same set
 	// asked for in a different order is the same query, and it must page as one.
-	statuses := []run.Status{run.StatusWaiting, run.StatusRunning, run.StatusWaiting}
+	statuses := []run.State{run.Waiting, run.Running, run.Waiting}
 	filtered, err := c.ListRunPage(ctx, RunPageFilter{
 		SessionID: "ses_1",
 		Statuses:  statuses,
@@ -968,10 +968,10 @@ func TestListRunPageReturnsEveryStatusUntilFiltered(t *testing.T) {
 	if err != nil {
 		t.Fatalf("filtered page: %v", err)
 	}
-	if want := []run.Status{run.StatusRunning, run.StatusWaiting}; !slices.Equal(runs.statuses, want) {
+	if want := []run.State{run.Running, run.Waiting}; !slices.Equal(runs.statuses, want) {
 		t.Fatalf("store filtered on %v, want the normalized %v", runs.statuses, want)
 	}
-	if !slices.Equal(statuses, []run.Status{run.StatusWaiting, run.StatusRunning, run.StatusWaiting}) {
+	if !slices.Equal(statuses, []run.State{run.Waiting, run.Running, run.Waiting}) {
 		t.Fatalf("caller status filter changed through query: %v", statuses)
 	}
 	if len(filtered.Rows) != 2 {
@@ -1042,7 +1042,7 @@ func TestListRunPageRefusesACursorFromAnotherQuery(t *testing.T) {
 	}
 	if _, listRunPageErr := c.ListRunPage(ctx, RunPageFilter{
 		SessionID: "ses_1",
-		Statuses:  []run.Status{run.StatusRunning},
+		Statuses:  []run.State{run.Running},
 	}, unfiltered.NextCursor, explicitPageLimit(t, 2)); !errors.Is(listRunPageErr, pagination.ErrInvalidCursor) {
 		t.Fatalf("cross-filter cursor err = %v, want ErrInvalidCursor", listRunPageErr)
 	}

@@ -129,16 +129,16 @@ func (s *Handler) ListRuns(ctx context.Context, in protocol.ListRunsRequest) (*p
 // decoder puts any string into a named string type, so a value outside the enum
 // arrives here and must be refused rather than dropped — a dropped filter value
 // silently widens the page.
-func runStatusesFromWire(statuses []protocol.RunStatus) ([]run.Status, error) {
-	out := make([]run.Status, 0, len(statuses))
+func runStatusesFromWire(statuses []protocol.RunStatus) ([]run.State, error) {
+	out := make([]run.State, 0, len(statuses))
 	for _, status := range statuses {
 		switch status {
 		case protocol.RunStatusRunning:
-			out = append(out, run.StatusRunning)
+			out = append(out, run.Running)
 		case protocol.RunStatusWaiting:
-			out = append(out, run.StatusWaiting)
+			out = append(out, run.Waiting)
 		case protocol.RunStatusFinished:
-			out = append(out, run.StatusFinished)
+			out = append(out, run.Finished)
 		default:
 			return nil, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("statuses contains unknown run status %q", status))
 		}

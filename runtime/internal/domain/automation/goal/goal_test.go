@@ -476,7 +476,7 @@ func goalTestRun(t *testing.T, runID, incarnationID string, outcome run.Outcome,
 	createdAt := time.Unix(1, 0).UTC()
 	value, err := run.Restore(run.Snapshot{
 		SessionID: "ses_1", ID: runID, ModelSelection: testSelection(t),
-		GoalIncarnationID: incarnationID, State: run.State(outcome), Outcome: &outcome,
+		GoalIncarnationID: incarnationID, State: run.Finished, Outcome: &outcome,
 		Metrics: metrics, CreatedAt: createdAt, FinishedAt: finishedAt, UpdatedAt: finishedAt,
 	})
 	if err != nil {

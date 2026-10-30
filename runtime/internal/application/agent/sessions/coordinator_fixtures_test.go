@@ -452,12 +452,12 @@ func (*emptyResourceRetirements) Complete(context.Context, ResourceRetirement) e
 // testResourceRetirer retires the same resource families production composes
 // from the coordinator's checkpoint and sandbox collaborators.
 func testResourceRetirer(retirements resourceRetirements, deps Dependencies) *ResourceRetirer {
-	var cleanups []SessionCleanup
+	var cleanups []Cleanup
 	if deps.Checkpoints != nil {
-		cleanups = append(cleanups, SessionCleanup{Resource: "checkpoints", Retire: deps.Checkpoints.DropSession})
+		cleanups = append(cleanups, Cleanup{Resource: "checkpoints", Retire: deps.Checkpoints.DropSession})
 	}
 	if deps.Sandbox != nil {
-		cleanups = append(cleanups, SessionCleanup{Resource: "sandbox", Retire: deps.Sandbox.Discard})
+		cleanups = append(cleanups, Cleanup{Resource: "sandbox", Retire: deps.Sandbox.Discard})
 	}
 	retirer, err := NewResourceRetirer(retirements, cleanups...)
 	if err != nil {

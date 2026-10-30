@@ -3,6 +3,7 @@ package execution
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"reflect"
 	"strings"
 	"testing"
@@ -35,9 +36,9 @@ func TestDelegateDiagnosticIsPublishedWithoutFlameReformatting(t *testing.T) {
 	for _, event := range result.events {
 		if terminal, ok := event.Payload.(runs.SegmentFinished); ok {
 			if terminal.Run.ID() == rootID {
-				rootCompleted = terminal.Run.State() == run.Completed
+				rootCompleted = testsupport.RunOutcome(terminal.Run) == run.OutcomeCompleted
 			} else {
-				childFailed = terminal.Run.State() == run.Failed
+				childFailed = testsupport.RunFailed(terminal.Run)
 			}
 		}
 	}

@@ -288,7 +288,7 @@ func TestReducerTerminalDoesNotDuplicateCommittedModelResponse(t *testing.T) {
 	if messages := committedConversationMessages(terminal); len(messages) != 0 {
 		t.Fatalf("terminal duplicated committed conversation: %#v", messages)
 	}
-	if last := terminal[len(terminal)-1].Event.(SegmentFinished); last.Run.State() != run.Completed {
+	if last := terminal[len(terminal)-1].Event.(SegmentFinished); testsupport.RunOutcome(last.Run) != run.OutcomeCompleted {
 		t.Fatalf("terminal did not complete: %+v", last.Run)
 	}
 }
@@ -1493,7 +1493,7 @@ func TestValidateReductionBatchRejectsMalformedBoundaries(t *testing.T) {
 	}
 	terminalCommit := func() *EventCommit {
 		outcome := run.OutcomeCompleted
-		run := testsupport.MustRestoreRun(run.Snapshot{State: run.Completed, Outcome: &outcome})
+		run := testsupport.MustRestoreRun(run.Snapshot{State: run.Finished, Outcome: &outcome})
 		return &EventCommit{SegmentID: "segment_1", State: StateTerminalize, Run: &run}
 	}
 	invalidTerminalCommit := terminalCommit()

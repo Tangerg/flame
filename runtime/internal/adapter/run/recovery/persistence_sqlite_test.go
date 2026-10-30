@@ -352,7 +352,7 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 	}
 	stored, found, err := runStore.Run(ctx, "run_lost")
 	failure, failed := stored.Failure()
-	if err != nil || !found || stored.State() != run.Failed ||
+	if err != nil || !found || !testsupport.RunFailed(stored) ||
 		!failed || failure.Kind != run.FailureLost || stored.MessageMark() != run.MessageMarkAt(3) {
 		t.Fatalf("recovered Run = found:%t value:%+v err:%v", found, stored, err)
 	}

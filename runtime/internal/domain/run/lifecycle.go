@@ -1,52 +1,30 @@
 package run
 
 // State is the lifecycle position of a Run and the single authority for its
-// legal transitions.
-//
-// The state machine (see the transition methods below):
+// legal transitions. Why a Finished Run ended is its [Outcome], never a second
+// state value; persistence and the protocol store these same three spellings.
 //
 //	Running ──Suspend──▶ Waiting
 //	   │  ▲                   │
 //	   │  └──────Resume───────┘
-//	   │                      │
 //	Terminate(o)       Terminate(Canceled)
-//	   │                      │
 //	   ▼                      ▼
-//	Completed / Failed / Canceled
+//	          Finished
 //
-// A Run reaches exactly one terminal state. Root admission ("one non-terminal
-// root Run per Session") keys on [State.IsTerminal]; descendants share their
-// root tree's admission.
+// Root admission ("one non-terminal root Run per Session") keys on
+// [State.IsTerminal]; descendants share their root tree's admission.
 type State string
 
 const (
-	// Running — a segment is actively executing.
-	Running State = "running"
-	// Waiting — parked on a HITL interrupt, awaiting Resume or Cancel. NOT
-	// terminal: the run is resumable, its durable interrupt record committed.
-	Waiting State = "waiting"
-	// Completed — the model finished normally.
-	Completed State = "completed"
-	// Failed — the Run stopped without completing. The exact reason remains in
-	// its Outcome: TimedOut, Failed, or Lost.
-	Failed State = "failed"
-	// Canceled — the caller canceled the run, or its context was canceled.
-	Canceled State = "canceled"
+	Running  State = "running"
+	Waiting  State = "waiting"
+	Finished State = "finished"
 )
 
-func (s State) Valid() bool {
-	return s == Running || s == Waiting || s == Completed || s == Failed || s == Canceled
-}
+func (s State) Valid() bool { return s == Running || s == Waiting || s == Finished }
 
-// IsTerminal reports whether s is an end state (Completed, Failed, or Canceled)
-// — no further transition is legal, and the run no longer holds a Session's
-// single-writer admission slot.
-func (s State) IsTerminal() bool {
-	return s == Completed || s == Failed || s == Canceled
-}
+func (s State) IsTerminal() bool { return s == Finished }
 
-// Suspend parks a running run on a HITL interrupt (Running → Waiting). It
-// reports false from any other state.
 func (s State) Suspend() (State, bool) {
 	if s == Running {
 		return Waiting, true
@@ -54,8 +32,6 @@ func (s State) Suspend() (State, bool) {
 	return s, false
 }
 
-// Resume continues a parked run (Waiting → Running). It reports false from
-// any other state.
 func (s State) Resume() (State, bool) {
 	if s == Waiting {
 		return Running, true
@@ -63,45 +39,32 @@ func (s State) Resume() (State, bool) {
 	return s, false
 }
 
-// AdvanceProgress reports whether a model-response boundary may be committed
-// against s. Both open positions accumulate work; a terminal Run and any value
-// outside the machine do not.
-func (s State) AdvanceProgress() bool {
-	return s == Running || s == Waiting
-}
+// AdvanceProgress reports whether a model-response boundary may be committed:
+// both open positions accumulate work.
+func (s State) AdvanceProgress() bool { return s == Running || s == Waiting }
 
-// Terminate ends a run with outcome o, returning the resulting terminal state.
-// It is legal from Running for any outcome, and from Waiting only for
-// [OutcomeCanceled] — a parked run can be canceled outright, but reaching any
-// other terminal requires resuming first. It reports false (leaving s unchanged)
-// from any other state or an illegal (Waiting, non-cancel) pair.
+// Terminate is legal from Running for any outcome and from Waiting only for
+// [OutcomeCanceled]: a parked Run reaches any other ending only after resuming.
 func (s State) Terminate(o Outcome) (State, bool) {
 	if !o.valid() {
 		return s, false
 	}
-	switch s {
-	case Running:
-		return o.terminalState(), true
-	case Waiting:
-		if o == OutcomeCanceled {
-			return Canceled, true
-		}
+	if s == Running || (s == Waiting && o == OutcomeCanceled) {
+		return Finished, true
 	}
 	return s, false
 }
 
-// RecoverLost ends a non-terminal run whose executor disappeared without a
-// resumable interrupt. Loss is a recovery transition rather than a normal
-// executor outcome: both Running and an inconsistent orphaned Waiting run
-// become Failed, while terminal states are immutable.
+// RecoverLost ends a Run whose executor disappeared without a resumable
+// interrupt, including an orphaned Waiting Run.
 func (s State) RecoverLost() (State, bool) {
 	if s == Running || s == Waiting {
-		return Failed, true
+		return Finished, true
 	}
 	return s, false
 }
 
-// Outcome is why a Run reached a terminal state. Persistence and presentation
+// Outcome is why a Run reached [Finished]. Persistence and presentation
 // both project from this single terminal-reason taxonomy.
 //
 // An interrupt is deliberately NOT an Outcome: parking is the [Waiting]
@@ -110,36 +73,19 @@ func (s State) RecoverLost() (State, bool) {
 type Outcome string
 
 const (
-	// OutcomeCompleted — the model returned a stop-marker normally. → Completed.
+	// OutcomeCompleted — the model returned a stop-marker normally.
 	OutcomeCompleted Outcome = "completed"
-	// OutcomeCanceled — the caller canceled, or the context was canceled. →
-	// Canceled.
+	// OutcomeCanceled — the caller canceled, or the context was canceled.
 	OutcomeCanceled Outcome = "canceled"
 	// OutcomeTimedOut — the Run exceeded its governing deadline. This is not a
-	// generic failure: callers may apply a distinct retry and alerting policy. →
-	// Failed.
+	// generic failure: callers may apply a distinct retry and alerting policy.
 	OutcomeTimedOut Outcome = "timedOut"
-	// OutcomeFailed — the run aborted on an error. → Failed.
+	// OutcomeFailed — the run aborted on an error.
 	OutcomeFailed Outcome = "failed"
 	// OutcomeLost — recovery proved that no live executor or valid checkpoint
-	// can continue the Run. It is produced by recovery, never by an executor. →
-	// Failed.
+	// can continue the Run. It is produced by recovery, never by an executor.
 	OutcomeLost Outcome = "lost"
 )
-
-// terminalState maps a terminal outcome to the [State] it produces: normal
-// completion → Completed, cancellation → Canceled, and every non-success
-// terminal reason → Failed.
-func (o Outcome) terminalState() State {
-	switch o {
-	case OutcomeCompleted:
-		return Completed
-	case OutcomeCanceled:
-		return Canceled
-	default:
-		return Failed
-	}
-}
 
 func (o Outcome) valid() bool {
 	switch o {

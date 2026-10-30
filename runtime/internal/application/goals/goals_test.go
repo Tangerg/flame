@@ -586,7 +586,7 @@ func (f *fakeRuns) Cancel(_ context.Context, cmd runs.CancelCommand) (runs.Cance
 		}
 	}
 	outcome := run.OutcomeCanceled
-	return runs.CancelResult{Run: testsupport.MustRestoreRun(run.Snapshot{ID: cmd.RunID, State: run.Canceled, Outcome: &outcome})}, nil
+	return runs.CancelResult{Run: testsupport.MustRestoreRun(run.Snapshot{ID: cmd.RunID, State: run.Finished, Outcome: &outcome})}, nil
 }
 
 // fakeSessions is the driver's session-existence check; sessions exist unless

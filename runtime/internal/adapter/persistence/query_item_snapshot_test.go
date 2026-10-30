@@ -67,7 +67,7 @@ func TestItemPageKeepsOneSnapshotAcrossHistoryReplacement(t *testing.T) {
 				if err := newSessionStore(writer).Insert(t.Context(), sess); err != nil {
 					t.Fatal(err)
 				}
-				root := testsupport.MustRestoreRun(run.Snapshot{ID: "run_snapshot", SessionID: sess.ID(), State: run.Completed, CreatedAt: created})
+				root := testsupport.MustRestoreRun(run.Snapshot{ID: "run_snapshot", SessionID: sess.ID(), State: run.Finished, CreatedAt: created})
 				if err := newRunStore(writer).Restore(t.Context(), root); err != nil {
 					t.Fatal(err)
 				}
@@ -84,7 +84,7 @@ func TestItemPageKeepsOneSnapshotAcrossHistoryReplacement(t *testing.T) {
 							return err
 						}
 						snapshot := root.Snapshot()
-						snapshot.State = run.Canceled
+						snapshot.State = run.Finished
 						outcome := run.OutcomeCanceled
 						snapshot.Outcome = &outcome
 						if err := newRunStore(writer).Restore(ctx, testsupport.MustRestoreRun(snapshot)); err != nil {
@@ -120,7 +120,7 @@ func TestItemPageKeepsOneSnapshotAcrossHistoryReplacement(t *testing.T) {
 				if err != nil || len(page.Items) != 1 || page.Items[0].ID() != item.ID() || len(page.Runs) != 1 {
 					t.Fatalf("page lost its original history closure: items=%d, runs=%d, error=%v", len(page.Items), len(page.Runs), err)
 				}
-				if page.Runs[0].State() != run.Completed {
+				if testsupport.RunOutcome(page.Runs[0]) != run.OutcomeCompleted {
 					t.Fatalf("original Item joined replacement Run state %s", page.Runs[0].State())
 				}
 				current, err := queries.ListItemPage(t.Context(), scope, transcript.OldestFirst, "", pagination.DefaultLimit())
@@ -132,7 +132,7 @@ func TestItemPageKeepsOneSnapshotAcrossHistoryReplacement(t *testing.T) {
 					} else if !errors.Is(err, transcript.ErrRunNotFound) {
 						t.Fatalf("next Run page = %v, want deleted Run", err)
 					}
-				} else if err != nil || len(current.Items) != 1 || current.Items[0].ID() != "item_replacement" || len(current.Runs) != 1 || current.Runs[0].State() != run.Canceled {
+				} else if err != nil || len(current.Items) != 1 || current.Items[0].ID() != "item_replacement" || len(current.Runs) != 1 || !current.Runs[0].Canceled() {
 					t.Fatalf("next page missed committed replacement: %+v, %v", current, err)
 				}
 			})

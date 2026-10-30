@@ -67,7 +67,7 @@ func BenchmarkSessionMaterialSnapshot(b *testing.B) {
 					runID := fmt.Sprintf("run_%d", index/20)
 					if index%20 == 0 {
 						if err := runs.Restore(ctx, testsupport.MustRestoreRun(run.Snapshot{
-							ID: runID, SessionID: "ses_bench", State: run.Completed,
+							ID: runID, SessionID: "ses_bench", State: run.Finished,
 							CreatedAt: now, UpdatedAt: now, FinishedAt: now,
 						})); err != nil {
 							return err

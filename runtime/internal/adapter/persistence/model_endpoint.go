@@ -104,7 +104,7 @@ func (m *ModelInvocationStore) StartEndpointInvocation(ctx context.Context, invo
 			WHERE call_id=? AND state=?
 		) owner JOIN runs ON runs.run_id=owner.run_id AND runs.session_id=owner.session_id
 		WHERE runs.state=? AND runs.active_segment_id=owner.segment_id AND owner.started_at<=?`
-		args = []any{ownerCallID, runs.ModelInvocationStarted.String(), ownerCallID, toolInvocationStarted.databaseValue(), runStateRunning.databaseValue(), invocation.StartedAt.UTC().UnixNano()}
+		args = []any{ownerCallID, runs.ModelInvocationStarted.String(), ownerCallID, toolInvocationStarted.databaseValue(), string(rundomain.Running), invocation.StartedAt.UTC().UnixNano()}
 	}
 	query := `INSERT INTO model_invocations(call_id,session_id,run_id,segment_id,state,started_at,endpoint_json,endpoint_kind)
  SELECT ?,scope.session_id,scope.run_id,scope.segment_id,?,?,?,? FROM (` + scope + `) scope
@@ -434,7 +434,7 @@ func (m *ModelInvocationStore) ListIndependentEndpoints(ctx context.Context) ([]
 	rows, err := sqlite.Connection(ctx, m.db).QueryContext(ctx, `SELECT `+endpointObservationColumns+` FROM model_invocations
  WHERE endpoint_json IS NOT NULL AND run_id IN (SELECT run_id FROM runs WHERE state!=?)
  AND NOT EXISTS(SELECT 1 FROM model_invocations logical WHERE logical.endpoint_json IS NULL AND logical.call_id=json_extract(model_invocations.endpoint_json,'$.caller.id'))
- ORDER BY session_id,run_id,call_id`, runStateTerminal.databaseValue())
+ ORDER BY session_id,run_id,call_id`, string(rundomain.Finished))
 	if err != nil {
 		return nil, err
 	}

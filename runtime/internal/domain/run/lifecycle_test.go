@@ -4,28 +4,24 @@ import (
 	"testing"
 )
 
-var allStates = []State{Running, Waiting, Completed, Failed, Canceled}
+var allStates = []State{Running, Waiting, Finished}
 
 var allOutcomes = []Outcome{
 	OutcomeCompleted,
 	OutcomeCanceled,
 	OutcomeTimedOut,
 	OutcomeFailed,
-
 	OutcomeLost,
 }
 
-// TestIsTerminal pins the terminal set: exactly Completed / Failed / Canceled.
 func TestIsTerminal(t *testing.T) {
-	terminal := map[State]bool{Completed: true, Failed: true, Canceled: true}
 	for _, s := range allStates {
-		if got := s.IsTerminal(); got != terminal[s] {
-			t.Errorf("%s.IsTerminal() = %v, want %v", s, got, terminal[s])
+		if got := s.IsTerminal(); got != (s == Finished) {
+			t.Errorf("%s.IsTerminal() = %v, want %v", s, got, s == Finished)
 		}
 	}
 }
 
-// TestSuspend: only Running parks (→ Waiting).
 func TestSuspend(t *testing.T) {
 	for _, s := range allStates {
 		got, ok := s.Suspend()
@@ -40,7 +36,6 @@ func TestSuspend(t *testing.T) {
 	}
 }
 
-// TestResume: only Waiting continues (→ Running).
 func TestResume(t *testing.T) {
 	for _, s := range allStates {
 		got, ok := s.Resume()
@@ -55,27 +50,18 @@ func TestResume(t *testing.T) {
 	}
 }
 
-// TestTerminate is the full (state × outcome) matrix. Running terminates for any
-// outcome; Waiting terminates only via cancel; all other states reject.
+// Running terminates for any outcome; Waiting only via cancel.
 func TestTerminate(t *testing.T) {
 	for _, s := range allStates {
 		for _, o := range allOutcomes {
 			got, ok := s.Terminate(o)
-			var wantState State
-			var wantOK bool
-			switch {
-			case s == Running:
-				wantState, wantOK = o.terminalState(), true
-			case s == Waiting && o == OutcomeCanceled:
-				wantState, wantOK = Canceled, true
-			default:
-				wantState, wantOK = s, false
+			wantOK := s == Running || (s == Waiting && o == OutcomeCanceled)
+			wantState := s
+			if wantOK {
+				wantState = Finished
 			}
 			if got != wantState || ok != wantOK {
 				t.Errorf("%s.Terminate(%s) = (%s,%v), want (%s,%v)", s, o, got, ok, wantState, wantOK)
-			}
-			if ok && !got.IsTerminal() {
-				t.Errorf("%s.Terminate(%s) produced non-terminal %s", s, o, got)
 			}
 		}
 	}
@@ -90,31 +76,13 @@ func TestTerminateRejectsUnknownOutcome(t *testing.T) {
 func TestRecoverLost(t *testing.T) {
 	for _, state := range allStates {
 		got, ok := state.RecoverLost()
-		wantOK := state == Running || state == Waiting
+		wantOK := !state.IsTerminal()
 		want := state
 		if wantOK {
-			want = Failed
+			want = Finished
 		}
 		if got != want || ok != wantOK {
 			t.Errorf("%s.RecoverLost() = (%s, %v), want (%s, %v)", state, got, ok, want, wantOK)
-		}
-	}
-}
-
-// TestOutcomeTerminalState pins the outcome → terminal-state mapping: completion
-// and cancellation get their own states; every failure flavor folds into Failed.
-func TestOutcomeTerminalState(t *testing.T) {
-	want := map[Outcome]State{
-		OutcomeCompleted: Completed,
-		OutcomeCanceled:  Canceled,
-		OutcomeTimedOut:  Failed,
-		OutcomeFailed:    Failed,
-
-		OutcomeLost: Failed,
-	}
-	for _, o := range allOutcomes {
-		if got := o.terminalState(); got != want[o] {
-			t.Errorf("%s.terminalState() = %s, want %s", o, got, want[o])
 		}
 	}
 }
@@ -131,25 +99,6 @@ func TestOutcomeStringRoundTrip(t *testing.T) {
 	}
 }
 
-// TestNoTransitionFromTerminal: once terminal, no operation advances the run.
-func TestNoTransitionFromTerminal(t *testing.T) {
-	for _, s := range []State{Completed, Failed, Canceled} {
-		if _, ok := s.Suspend(); ok {
-			t.Errorf("%s.Suspend() unexpectedly succeeded", s)
-		}
-		if _, ok := s.Resume(); ok {
-			t.Errorf("%s.Resume() unexpectedly succeeded", s)
-		}
-		for _, o := range allOutcomes {
-			if _, ok := s.Terminate(o); ok {
-				t.Errorf("%s.Terminate(%s) unexpectedly succeeded", s, o)
-			}
-		}
-	}
-}
-
-// TestStringsAreDistinct guards the taxonomies against a copy-paste collision:
-// two states or two outcomes sharing one durable spelling.
 func TestStringsAreDistinct(t *testing.T) {
 	seen := map[string]bool{}
 	for _, s := range allStates {

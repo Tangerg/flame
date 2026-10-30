@@ -33,7 +33,7 @@ const runReadJoins = `LEFT JOIN interrupts AS i
 // PageRuns returns one page of Runs a caller may browse, newest admission first,
 // scoped to sessionID and statuses when provided. Descendants are excluded unless
 // includeDescendants is true.
-func (r *RunStore) PageRuns(ctx context.Context, sessionID string, statuses []rundomain.Status, includeDescendants bool, beforeStartedAt int64, beforeRunID string, limit int) ([]rundomain.Run, error) {
+func (r *RunStore) PageRuns(ctx context.Context, sessionID string, statuses []rundomain.State, includeDescendants bool, beforeStartedAt int64, beforeRunID string, limit int) ([]rundomain.Run, error) {
 	if err := validateOptionalSessionResource("page Runs", sessionID); err != nil {
 		return nil, err
 	}
@@ -237,13 +237,13 @@ func (r *RunStore) ListRuns(ctx context.Context, sessionID string) ([]rundomain.
 	return out, nil
 }
 
-func stateColumns(statuses []rundomain.Status) ([]any, error) {
+func stateColumns(statuses []rundomain.State) ([]any, error) {
 	out := make([]any, 0, len(statuses))
 	for _, status := range statuses {
 		if !status.Valid() {
 			return nil, fmt.Errorf("unknown run status %q", status)
 		}
-		out = append(out, stateColumn(status).databaseValue())
+		out = append(out, string(status))
 	}
 	return out, nil
 }

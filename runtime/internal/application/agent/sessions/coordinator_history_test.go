@@ -17,8 +17,8 @@ func TestResolveForkBoundary(t *testing.T) {
 		chat.NewUserMessage(chat.NewTextPart("three")),
 	}
 	runs := []run.Run{
-		testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", State: run.Completed, CreatedAt: time.Unix(1, 0), MessageMark: run.MessageMarkAt(2)}),
-		testsupport.MustRestoreRun(run.Snapshot{ID: "run_2", State: run.Completed, CreatedAt: time.Unix(3, 0), MessageMark: run.MessageMarkAt(3)}),
+		testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", State: run.Finished, CreatedAt: time.Unix(1, 0), MessageMark: run.MessageMarkAt(2)}),
+		testsupport.MustRestoreRun(run.Snapshot{ID: "run_2", State: run.Finished, CreatedAt: time.Unix(3, 0), MessageMark: run.MessageMarkAt(3)}),
 	}
 
 	got, err := ResolveForkBoundary(msgs, runs, "run_1")
@@ -53,11 +53,11 @@ func TestResolveForkBoundaryExcludesActiveTail(t *testing.T) {
 		chat.NewUserMessage(chat.NewTextPart("active")),
 	}
 	runs := []run.Run{
-		testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", State: run.Completed, CreatedAt: time.Unix(1, 0), MessageMark: run.MessageMarkAt(2)}),
+		testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", State: run.Finished, CreatedAt: time.Unix(1, 0), MessageMark: run.MessageMarkAt(2)}),
 		testsupport.MustRestoreRun(run.Snapshot{ID: "run_2", State: run.Running, CreatedAt: time.Unix(2, 0), MessageMark: run.MessageMarkAt(-1)}),
 		testsupport.MustRestoreRun(run.Snapshot{
 			ID: "run_2_child", Lineage: run.Lineage{SpawnedByItemID: "item_task", ParentRunID: "run_2", RootRunID: "run_2"},
-			State: run.Completed, CreatedAt: time.Unix(3, 0), MessageMark: run.MessageMarkAt(3),
+			State: run.Finished, CreatedAt: time.Unix(3, 0), MessageMark: run.MessageMarkAt(3),
 		}),
 	}
 

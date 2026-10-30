@@ -3,6 +3,7 @@ package runs
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"sync/atomic"
 	"testing"
 
@@ -46,7 +47,7 @@ func TestFailedTreeBarrierRetainsCommittedToolForTerminalClosure(t *testing.T) {
 	}
 	var starts, closures, invocationStarts, invocationClosures, terminal int
 	for _, commit := range effects.commitSnapshot() {
-		if commit.State == StateTerminalize && commit.Run != nil && commit.Run.State() == run.Failed {
+		if commit.State == StateTerminalize && commit.Run != nil && testsupport.RunFailed(*commit.Run) {
 			terminal++
 		}
 		for _, item := range commit.Items {

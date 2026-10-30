@@ -35,7 +35,7 @@ func TestCompactionCommitsHistoryWatermarksAndItemTogether(t *testing.T) {
 			history := mustConversationStore(t, db.ChatHistory)
 			at := time.Unix(20, 0).UTC()
 			previous := testsupport.MustRestoreRun(run.Snapshot{
-				ID: "run_previous", SessionID: "ses_1", State: run.Completed,
+				ID: "run_previous", SessionID: "ses_1", State: run.Finished,
 				CreatedAt: at, UpdatedAt: at, FinishedAt: at, MessageMark: run.MessageMarkAt(8),
 			})
 			if err := state.Restore(ctx, previous); err != nil {

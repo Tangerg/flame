@@ -256,7 +256,7 @@ func putChildRun(t *testing.T, rt *stubRuntime, sessionID, runID string, atUnix 
 	outcome := run.OutcomeCompleted
 	if err := rt.runs.Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: runID,
 
-		State: run.Completed, Outcome: &outcome,
+		State: run.Finished, Outcome: &outcome,
 		CreatedAt: time.Unix(atUnix, 0).UTC(), FinishedAt: time.Unix(atUnix, 0).UTC(),
 		UpdatedAt: time.Unix(atUnix, 0).UTC(), MessageMark: run.MessageMarkAt(mark), Lineage: run.Lineage{SpawnedByItemID: "item_spawn",
 			ParentRunID: "run_root", RootRunID: "run_root"}}),
@@ -461,7 +461,7 @@ func (rootRunReader) RunsWithAncestors(context.Context, []string) ([]run.Run, er
 	return nil, nil
 }
 
-func (rootRunReader) PageRuns(context.Context, string, []run.Status, bool, int64, string, int) ([]run.Run, error) {
+func (rootRunReader) PageRuns(context.Context, string, []run.State, bool, int64, string, int) ([]run.Run, error) {
 	return nil, nil
 }
 

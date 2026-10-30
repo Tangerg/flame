@@ -47,10 +47,10 @@ func (r ResourceRetirement) Validate() error {
 	return err
 }
 
-// SessionCleanup removes one family of resources a retired Session generation
+// Cleanup removes one family of resources a retired Session generation
 // owned. Retire must be idempotent: a failed cleanup keeps the retirement
 // pending and is attempted again.
-type SessionCleanup struct {
+type Cleanup struct {
 	Resource string
 	Retire   func(sessionID string) error
 }
@@ -60,10 +60,10 @@ type SessionCleanup struct {
 // exclusive admission of that Session retries instead of waiting for a restart.
 type ResourceRetirer struct {
 	retirements resourceRetirements
-	cleanups    []SessionCleanup
+	cleanups    []Cleanup
 }
 
-func NewResourceRetirer(retirements resourceRetirements, cleanups ...SessionCleanup) (*ResourceRetirer, error) {
+func NewResourceRetirer(retirements resourceRetirements, cleanups ...Cleanup) (*ResourceRetirer, error) {
 	if lo.IsNil(retirements) {
 		return nil, errors.New("sessions: resource retirement store is required")
 	}

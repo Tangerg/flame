@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/qimu/sqlite"
@@ -118,7 +119,7 @@ func (s *ExecutorCheckpointStore) PendingCheckpointDependencies(ctx context.Cont
 }
 
 func (s *ExecutorCheckpointStore) pendingReferences(ctx context.Context) ([]plugin.Activation, []plugin.Dependency, error) {
-	rows, err := sqlite.Connection(ctx, s.db).QueryContext(ctx, `SELECT root_member_id FROM executor_checkpoints checkpoint WHERE EXISTS (SELECT 1 FROM runs WHERE runs.session_id=checkpoint.session_id AND runs.state <> ?) ORDER BY root_member_id`, runStateTerminal.databaseValue())
+	rows, err := sqlite.Connection(ctx, s.db).QueryContext(ctx, `SELECT root_member_id FROM executor_checkpoints checkpoint WHERE EXISTS (SELECT 1 FROM runs WHERE runs.session_id=checkpoint.session_id AND runs.state <> ?) ORDER BY root_member_id`, string(rundomain.Finished))
 	if err != nil {
 		return nil, nil, err
 	}

@@ -19,7 +19,7 @@ func TestPresentersRejectUnknownDomainEnums(t *testing.T) {
 		presentQuestion(transcript.Question{Fields: []transcript.QuestionField{{Kind: questioncontract.Kind("invalid")}}})
 	})
 	mustPanic(t, func() { presentDelta(nil) })
-	mustPanic(t, func() { presentRunStatus(run.Status("invalid")) })
+	mustPanic(t, func() { presentRunStatus(run.State("invalid")) })
 	running := testsupport.MustRestoreRun(run.Snapshot{State: run.Running})
 	mustPanic(t, func() { presentOutcome(running) })
 	mustPanic(t, func() { presentRunFailure(&run.Failure{Kind: run.FailureKind("invalid")}) })
@@ -34,9 +34,7 @@ func TestPresentRunProjectsEveryValidLifecyclePosition(t *testing.T) {
 	}{
 		{run.Running, protocol.RunStatusRunning},
 		{run.Waiting, protocol.RunStatusWaiting},
-		{run.Completed, protocol.RunStatusFinished},
-		{run.Canceled, protocol.RunStatusFinished},
-		{run.Failed, protocol.RunStatusFinished},
+		{run.Finished, protocol.RunStatusFinished},
 	} {
 		t.Run(string(test.state), func(t *testing.T) {
 			value := testsupport.MustRestoreRun(run.Snapshot{State: test.state})

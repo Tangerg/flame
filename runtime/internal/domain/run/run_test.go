@@ -274,7 +274,7 @@ func TestForkReidentifiesTerminalHistoryAndClearsGoalAttribution(t *testing.T) {
 		t.Fatalf("Fork: %v", err)
 	}
 	if forked.SessionID() != "session_child" || forked.ID() != "run_child_copy" ||
-		forked.GoalIncarnationID() != "" || forked.State() != Completed ||
+		forked.GoalIncarnationID() != "" || forked.State() != Finished ||
 		forked.MessageMark() != source.MessageMark() || !forked.CreatedAt().Equal(source.CreatedAt()) {
 		t.Fatalf("forked Run = %+v", forked.Snapshot())
 	}
@@ -473,7 +473,7 @@ func TestRestoreRejectsSnapshotsThatBreakRunInvariants(t *testing.T) {
 	valid := func() Snapshot {
 		return Snapshot{
 			SessionID: "session_1", ID: "run_1", ModelSelection: mustRunSelection(t),
-			State: Completed, Outcome: &completed,
+			State: Finished, Outcome: &completed,
 			CreatedAt: createdAt, FinishedAt: finishedAt, UpdatedAt: finishedAt,
 		}
 	}
@@ -481,7 +481,7 @@ func TestRestoreRejectsSnapshotsThatBreakRunInvariants(t *testing.T) {
 		name   string
 		break_ func(*Snapshot)
 	}{
-		{name: "state does not match outcome", break_: func(s *Snapshot) { s.State = Failed }},
+		{name: "unknown outcome", break_: func(s *Snapshot) { s.Outcome = new(Outcome("error")) }},
 		{name: "terminal without an outcome", break_: func(s *Snapshot) { s.Outcome = nil }},
 		{name: "terminal without a finish time", break_: func(s *Snapshot) { s.FinishedAt = time.Time{} }},
 		{name: "terminal carries an active segment", break_: func(s *Snapshot) { s.ActiveSegmentID = "segment_1" }},
@@ -493,7 +493,7 @@ func TestRestoreRejectsSnapshotsThatBreakRunInvariants(t *testing.T) {
 			}
 		}},
 		{name: "lost without a lost failure", break_: func(s *Snapshot) {
-			s.State, s.Outcome = Failed, &lost
+			s.Outcome = &lost
 		}},
 		{name: "completed carries a failure", break_: func(s *Snapshot) {
 			s.Failure = &Failure{Kind: FailureInternal}
@@ -507,7 +507,7 @@ func TestRestoreRejectsSnapshotsThatBreakRunInvariants(t *testing.T) {
 			}
 		}},
 		{name: "failure the Failure value rejects", break_: func(s *Snapshot) {
-			s.State, s.Outcome = Failed, &failed
+			s.Outcome = &failed
 			s.Failure = &Failure{Kind: FailureProviderRejected, RetryAfter: -1}
 		}},
 		{name: "child carries a Goal incarnation", break_: func(s *Snapshot) {

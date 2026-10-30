@@ -58,7 +58,7 @@ func seedCompactionHistory(t *testing.T, messages *ConversationStore, runs *RunS
 		at := time.Unix(int64(index+1), 0).UTC()
 		terminal := testsupport.MustRestoreRun(run.Snapshot{
 			ID: "run_" + string(rune('a'+index)), SessionID: "ses_long",
-			State: run.Completed, CreatedAt: at, FinishedAt: at, UpdatedAt: at,
+			State: run.Finished, CreatedAt: at, FinishedAt: at, UpdatedAt: at,
 			MessageMark: run.MessageMarkAt(mark),
 		})
 		if err := runs.Restore(t.Context(), terminal); err != nil {
@@ -113,7 +113,7 @@ func TestConversationCompactionRebasesRunsAcrossRepeatedLongTurns(t *testing.T) 
 	}
 	at := time.Unix(10, 0).UTC()
 	latest := testsupport.MustRestoreRun(run.Snapshot{
-		ID: "run_e", SessionID: "ses_long", State: run.Completed,
+		ID: "run_e", SessionID: "ses_long", State: run.Finished,
 		CreatedAt: at, FinishedAt: at, UpdatedAt: at, MessageMark: run.MessageMarkAt(8),
 	})
 	if restoreErr := runs.Restore(t.Context(), latest); restoreErr != nil {
@@ -148,7 +148,7 @@ func TestConversationCompactionRebasesRunsAcrossRepeatedLongTurns(t *testing.T) 
 	var invalid int
 	if err := db.QueryRowContext(t.Context(), `
 		SELECT COUNT(*) FROM runs
-		 WHERE session_id = ? AND state = 'terminal'
+		 WHERE session_id = ? AND state = 'finished'
 		   AND (message_mark < 0 OR message_mark > (
 		       SELECT COUNT(*) FROM messages WHERE conversation_id = ?
 		   ))`, "ses_long", "ses_long").Scan(&invalid); err != nil {

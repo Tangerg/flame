@@ -108,11 +108,7 @@ func TestSubscribeRefusesWithTheReasonTheCallerCanActOn(t *testing.T) {
 			want: ErrRunWaiting,
 		},
 		"already finished": {
-			run: runRecord(run.Completed, "", ""), segmentID: testSegmentID,
-			want: ErrRunFinished,
-		},
-		"canceled counts as finished": {
-			run: runRecord(run.Canceled, "", ""), segmentID: testSegmentID,
+			run: runRecord(run.Finished, "", ""), segmentID: testSegmentID,
 			want: ErrRunFinished,
 		},
 		// The case a resume creates: the run is still running, but not the segment
@@ -325,7 +321,7 @@ func TestSubscribeAfterOrphanRecoveryUsesFinishedStateBeforeOldCursor(t *testing
 
 	outcome := run.OutcomeLost
 	recovered := testsupport.MustRestoreRun(run.Snapshot{
-		ID: testRunID, SessionID: "ses_1", State: run.Failed,
+		ID: testRunID, SessionID: "ses_1", State: run.Finished,
 		Outcome: &outcome, Failure: &run.Failure{Kind: run.FailureLost},
 	})
 	projection := &fakeRunProjection{runs: map[string]run.Run{testRunID: recovered}}

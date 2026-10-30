@@ -147,7 +147,7 @@ func (c *Coordinator) Rollback(ctx context.Context, spec RollbackSpec) (Rollback
 		if surviving, found := resolvedBoundary.survivingContinuation(restoreHistory); found {
 			return result, fmt.Errorf(
 				"%w: Run %q is %s and this boundary keeps it; settle it before restoring files under it",
-				ErrSessionBusy, surviving.ID(), surviving.State().Status(),
+				ErrSessionBusy, surviving.ID(), surviving.State(),
 			)
 		}
 		if err := c.quiesceRollbackWorkspace(spec.SessionID, cwd); err != nil {

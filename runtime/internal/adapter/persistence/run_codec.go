@@ -293,13 +293,13 @@ func scanRunRow(row scanRow, pendingPolicy pendingReadPolicy) (rundomain.Run, er
 	}
 	// Zero encodes absence on open rows and the Unix epoch on terminal rows.
 	// Retain nonzero finish times on open rows so the Domain rejects them.
-	if finishedAt != 0 || storedState == runStateTerminal {
+	if finishedAt != 0 || storedState == rundomain.Finished {
 		snapshot.FinishedAt = time.Unix(0, finishedAt).UTC()
 	}
 	switch storedState {
-	case runStateRunning:
+	case rundomain.Running:
 		snapshot.State = rundomain.Running
-	case runStateWaiting:
+	case rundomain.Waiting:
 		snapshot.State = rundomain.Waiting
 		// Every suspended Run must join its root-owned pending set. A Run carries
 		// no interrupts of its own, so the joined column is read only to prove the
@@ -315,7 +315,7 @@ func scanRunRow(row scanRow, pendingPolicy pendingReadPolicy) (rundomain.Run, er
 		if _, decodeErr := decodeInterrupts(interruptsSuspended.String); decodeErr != nil {
 			return rundomain.Run{}, fmt.Errorf("decode run %q interrupts: %w", id, decodeErr)
 		}
-	case runStateTerminal:
+	case rundomain.Finished:
 		if snapshot.Outcome == nil {
 			return rundomain.Run{}, fmt.Errorf("run %q has no terminal outcome", id)
 		}

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
@@ -106,7 +107,7 @@ func (t *ToolInvocationStore) StartToolInvocation(
 			startedAt.UTC().UnixNano(),
 			runID,
 			sessionID,
-			runStateRunning.databaseValue(),
+			string(rundomain.Running),
 			segmentID,
 		)
 		if err != nil {
@@ -146,7 +147,7 @@ func (t *ToolInvocationStore) CompleteToolInvocation(
 		AND tool_invocations.session_id = excluded.session_id AND tool_invocations.run_id = excluded.run_id
 		AND tool_invocations.started_at = excluded.started_at`,
 		callID, itemID, segmentID, toolInvocationCompleted.databaseValue(), startedAt.UTC().UnixNano(), finishedAt.UTC().UnixNano(),
-		sessionID, runID, runStateRunning.databaseValue(), segmentID, toolInvocationStarted.databaseValue())
+		sessionID, runID, string(rundomain.Running), segmentID, toolInvocationStarted.databaseValue())
 	if err != nil {
 		return fmt.Errorf("sqlite: complete Tool invocation %q: %w", callID, err)
 	}

@@ -177,13 +177,13 @@ func TestRetentionChargeTracksEveryVariableReplayPayload(t *testing.T) {
 	}{
 		{
 			name:  "run",
-			small: SegmentFinished{Run: testsupport.MustRestoreRun(run.Snapshot{ID: "run", State: run.Canceled, Outcome: &canceled})},
-			large: SegmentFinished{Run: testsupport.MustRestoreRun(run.Snapshot{ID: "run", State: run.Canceled, Outcome: &canceled, Detail: largeText})},
+			small: SegmentFinished{Run: testsupport.MustRestoreRun(run.Snapshot{ID: "run", State: run.Finished, Outcome: &canceled})},
+			large: SegmentFinished{Run: testsupport.MustRestoreRun(run.Snapshot{ID: "run", State: run.Finished, Outcome: &canceled, Detail: largeText})},
 		},
 		{
 			name:  "unresolved effect output",
-			small: SegmentFinished{Run: testsupport.MustRestoreRun(run.Snapshot{ID: "run", State: run.Canceled, Outcome: &canceled})},
-			large: SegmentFinished{Run: testsupport.MustRestoreRun(run.Snapshot{ID: "run", State: run.Canceled, Outcome: &canceled, UnresolvedEffects: []run.UnresolvedEffect{effect}})},
+			small: SegmentFinished{Run: testsupport.MustRestoreRun(run.Snapshot{ID: "run", State: run.Finished, Outcome: &canceled})},
+			large: SegmentFinished{Run: testsupport.MustRestoreRun(run.Snapshot{ID: "run", State: run.Finished, Outcome: &canceled, UnresolvedEffects: []run.UnresolvedEffect{effect}})},
 		},
 		{
 			name: "item start identity",
@@ -257,7 +257,7 @@ func TestJournalRetentionBoundsUnresolvedEffectEvidence(t *testing.T) {
 				t.Fatal(err)
 			}
 			terminal := testsupport.MustRestoreRun(run.Snapshot{
-				ID: testRunID, State: run.Canceled, UnresolvedEffects: []run.UnresolvedEffect{effect},
+				ID: testRunID, State: run.Finished, Outcome: new(run.OutcomeCanceled), UnresolvedEffects: []run.UnresolvedEffect{effect},
 			})
 			j := mustNewJournal(t, testStreamScope(testEpoch, testRunID, testSegmentID), Retention{MaxEvents: 1024, MaxBytes: budget})
 			mustAppendJournal(t, j, ev(true))

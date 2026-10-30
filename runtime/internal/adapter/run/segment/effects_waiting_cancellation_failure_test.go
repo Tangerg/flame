@@ -421,7 +421,7 @@ func assertWaitingCancellationUnchanged(
 	var terminalRuns int
 	if scanErr := fixture.db.QueryRowContext(
 		fixture.ctx,
-		`SELECT count(*) FROM runs WHERE session_id = ? AND state = 'terminal'`,
+		`SELECT count(*) FROM runs WHERE session_id = ? AND state = 'finished'`,
 		fixture.rootRun.SessionID(),
 	).Scan(&terminalRuns); scanErr != nil {
 		t.Fatalf("count terminal Runs after rollback: %v", scanErr)

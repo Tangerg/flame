@@ -72,7 +72,7 @@ func (c *Coordinator) Activities(ctx context.Context, sessionIDs []string) (map[
 		if _, ok := requested[sessionID]; !ok {
 			continue
 		}
-		if activeRun.State().Status() == run.StatusFinished {
+		if activeRun.State() == run.Finished {
 			return nil, fmt.Errorf(
 				"sessions: non-terminal Run read returned finished Run %q",
 				activeRun.ID(),
@@ -86,10 +86,10 @@ func (c *Coordinator) Activities(ctx context.Context, sessionIDs []string) (map[
 // with folds one Run into a Session's activity: a running Run dominates a
 // waiting one, and a finished Run leaves the activity as it was.
 func (a Activity) with(value run.Run) Activity {
-	switch value.State().Status() {
-	case run.StatusRunning:
+	switch value.State() {
+	case run.Running:
 		return ActivityRunning
-	case run.StatusWaiting:
+	case run.Waiting:
 		if a == activityIdle {
 			return ActivityWaiting
 		}

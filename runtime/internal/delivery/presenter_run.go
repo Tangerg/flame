@@ -13,13 +13,13 @@ import (
 // is the domain's answer ([rundomain.State.Status]) — the durable status filter
 // reads the same one, so a run selected as waiting cannot be published as
 // finished; this only spells it for the wire.
-func presentRunStatus(status rundomain.Status) protocol.RunStatus {
+func presentRunStatus(status rundomain.State) protocol.RunStatus {
 	switch status {
-	case rundomain.StatusRunning:
+	case rundomain.Running:
 		return protocol.RunStatusRunning
-	case rundomain.StatusWaiting:
+	case rundomain.Waiting:
 		return protocol.RunStatusWaiting
-	case rundomain.StatusFinished:
+	case rundomain.Finished:
 		return protocol.RunStatusFinished
 	default:
 		panic("delivery: unknown run status")
@@ -34,7 +34,7 @@ func presentRunSummary(run rundomain.Run) protocol.RunSummary {
 		ParentRunID: run.Lineage().ParentRunID, RootRunID: run.Lineage().RootRunID,
 		Provider: run.ModelSelection().Provider(), Model: run.ModelSelection().Model(),
 		ReasoningEffort: run.ModelSelection().ReasoningEffort(),
-		Status:          presentRunStatus(run.State().Status()),
+		Status:          presentRunStatus(run.State()),
 		CreatedAt:       run.CreatedAt(), FinishedAt: run.FinishedAt(),
 	}
 	// A waiting run has no outcome: what it is waiting on is the answer, and the

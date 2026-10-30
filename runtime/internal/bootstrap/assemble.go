@@ -519,13 +519,13 @@ func buildAssemblyCore(
 
 // sessionResourceCleanups names the resource families an available store owns
 // for a retired Session generation; an unavailable store owns none.
-func sessionResourceCleanups(checkpoints *workspaceadapter.Checkpoints, isolation *workspaceadapter.Isolator) []sessions.SessionCleanup {
-	var cleanups []sessions.SessionCleanup
+func sessionResourceCleanups(checkpoints *workspaceadapter.Checkpoints, isolation *workspaceadapter.Isolator) []sessions.Cleanup {
+	var cleanups []sessions.Cleanup
 	if checkpoints != nil {
-		cleanups = append(cleanups, sessions.SessionCleanup{Resource: "checkpoints", Retire: checkpoints.DropSession})
+		cleanups = append(cleanups, sessions.Cleanup{Resource: "checkpoints", Retire: checkpoints.DropSession})
 	}
 	if isolation != nil {
-		cleanups = append(cleanups, sessions.SessionCleanup{Resource: "sandbox", Retire: isolation.Discard})
+		cleanups = append(cleanups, sessions.Cleanup{Resource: "sandbox", Retire: isolation.Discard})
 	}
 	return cleanups
 }

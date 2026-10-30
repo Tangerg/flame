@@ -44,7 +44,7 @@ func TestCheckpointDependencyQueryReadsOnlyTheProjection(t *testing.T) {
 	finished := storedExecutorCheckpoint("member_finished", "ses_finished", "{")
 	finished.Resources = []plugin.Dependency{{InstallationID: otherInstallation, Digest: testsupport.Digest("2")}}
 	insertRunState(t, db, "run_waiting", "ses_waiting", "waiting")
-	insertRunState(t, db, "run_finished", "ses_finished", "terminal")
+	insertRunState(t, db, "run_finished", "ses_finished", "finished")
 	if err := store.SaveCheckpoint(t.Context(), waiting); err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +101,7 @@ func TestCheckpointStoreRejectsNonCanonicalDependencies(t *testing.T) {
 // A directory without the dependency projection predates it; whatever its
 // checkpoints hold, it is refused rather than completed in place.
 func TestCheckpointDirectoryWithoutDependencyProjectionIsRefused(t *testing.T) {
-	for _, test := range []struct{ state string }{{state: "waiting"}, {state: "terminal"}} {
+	for _, test := range []struct{ state string }{{state: "waiting"}, {state: "finished"}} {
 		t.Run(test.state, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "flame.db")
 			db, err := openDatabase(t.Context(), path)

@@ -63,7 +63,7 @@ func TestEventCommitUsesCompleteRunStateInvariant(t *testing.T) {
 func TestTerminalEventCommitAllowsOnlyTheTransactionalWatermarkPlaceholder(t *testing.T) {
 	createdAt := time.Date(2026, 8, 1, 3, 0, 0, 0, time.UTC)
 	outcome := run.OutcomeCanceled
-	record := testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", SessionID: "session", State: run.Canceled,
+	record := testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", SessionID: "session", State: run.Finished,
 		Outcome: &outcome, CreatedAt: createdAt, UpdatedAt: createdAt.Add(time.Second),
 		FinishedAt: createdAt.Add(time.Second), MessageMark: run.UnknownMessageMark()})
 

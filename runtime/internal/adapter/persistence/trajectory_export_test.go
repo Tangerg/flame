@@ -41,7 +41,7 @@ func trajectoryExportFixture(t *testing.T) (*trajectoryExportReader, *sql.DB, *e
 	if err := newSessionStore(db).Insert(t.Context(), ses); err != nil {
 		t.Fatal(err)
 	}
-	run := testsupport.MustRestoreRun(run.Snapshot{ID: "run_export", SessionID: ses.ID(), State: run.Completed})
+	run := testsupport.MustRestoreRun(run.Snapshot{ID: "run_export", SessionID: ses.ID(), State: run.Finished})
 	if err := newRunStore(db).Restore(t.Context(), run); err != nil {
 		t.Fatal(err)
 	}

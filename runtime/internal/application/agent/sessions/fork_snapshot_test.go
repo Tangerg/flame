@@ -20,12 +20,12 @@ func TestCopyForkSnapshotRemapsTheCompleteVisibleRunTree(t *testing.T) {
 		t.Fatalf("fork child Session: %v", err)
 	}
 	root := testsupport.MustRestoreRun(run.Snapshot{
-		SessionID: "ses_parent", ID: "run_root", State: run.Completed,
+		SessionID: "ses_parent", ID: "run_root", State: run.Finished,
 		Capabilities: run.Capabilities{ChildRuns: true}, CreatedAt: at,
 		FinishedAt: at.Add(time.Second), UpdatedAt: at.Add(time.Second), MessageMark: run.MessageMarkAt(1),
 	})
 	childRun := testsupport.MustRestoreRun(run.Snapshot{
-		SessionID: "ses_parent", ID: "run_child", State: run.Completed,
+		SessionID: "ses_parent", ID: "run_child", State: run.Finished,
 		Lineage: run.Lineage{
 			SpawnedByItemID: "item_spawn", ParentRunID: "run_root", RootRunID: "run_root",
 		},

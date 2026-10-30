@@ -140,8 +140,8 @@ func openRetirementFixture(t *testing.T, root, cut string) *retirementFixture {
 		ledger.beforeComplete = crash
 	}
 	retirer, err := sessions.NewResourceRetirer(ledger,
-		sessions.SessionCleanup{Resource: "checkpoints", Retire: resources.DropSession},
-		sessions.SessionCleanup{Resource: "sandbox", Retire: resources.Discard},
+		sessions.Cleanup{Resource: "checkpoints", Retire: resources.DropSession},
+		sessions.Cleanup{Resource: "sandbox", Retire: resources.Discard},
 	)
 	if err != nil {
 		t.Fatal(err)

@@ -83,7 +83,7 @@ func TestCommitOpeningResumePreservesAnswerClaimOnRollback(t *testing.T) {
 	// The stale hand-off names a Run that has since ended, so the Session's
 	// active root is another Run.
 	seedPending(t, db, "ses_1", stalePending, questionCapabilities())
-	if _, err := db.ExecContext(ctx, `UPDATE runs SET state = 'terminal' WHERE run_id = 'run_stale'`); err != nil {
+	if _, err := db.ExecContext(ctx, `UPDATE runs SET state = 'finished' WHERE run_id = 'run_stale'`); err != nil {
 		t.Fatalf("end stale Run: %v", err)
 	}
 	if admitErr := state.Admit(ctx, testsupport.RunDraft(run.Draft{RunID: "run_actual", SessionID: "ses_1", SegmentID: "seg_open", CreatedAt: createdAt})); admitErr != nil {
@@ -989,7 +989,7 @@ func TestCommitEventRecordsGoalRunWithTerminalRun(t *testing.T) {
 		t.Fatalf("goal after terminal = %+v", got)
 	}
 	var runState string
-	if err := db.QueryRowContext(ctx, `SELECT state FROM runs WHERE run_id = ?`, draft.RunID).Scan(&runState); err != nil || runState != "terminal" {
+	if err := db.QueryRowContext(ctx, `SELECT state FROM runs WHERE run_id = ?`, draft.RunID).Scan(&runState); err != nil || runState != "finished" {
 		t.Fatalf("run state=%q err=%v, want terminal", runState, err)
 	}
 }
@@ -1368,7 +1368,7 @@ func TestCommitWaitingSubtreeCancellationCommitsCompleteWriteSet(t *testing.T) {
 		t.Fatalf("CommitWaitingSubtreeCancellation: %v", err)
 	}
 	if result.TargetRun.ID() != fixture.childRun.ID() ||
-		result.TargetRun.State() != run.Canceled ||
+		!result.TargetRun.Canceled() ||
 		result.RootRun.ID() != fixture.rootRun.ID() ||
 		result.RootRun.State() != run.Running ||
 		result.RootRun.ActiveSegmentID() != "segment_root_resumed" {
@@ -1404,8 +1404,8 @@ func TestCommitWaitingSubtreeCancellationCommitsCompleteWriteSet(t *testing.T) {
 			)
 		}
 	}
-	assertStoredRunState(t, fixture.db, fixture.childRun.ID(), "terminal")
-	assertStoredRunState(t, fixture.db, fixture.grandchildRun.ID(), "terminal")
+	assertStoredRunState(t, fixture.db, fixture.childRun.ID(), "finished")
+	assertStoredRunState(t, fixture.db, fixture.grandchildRun.ID(), "finished")
 	assertStoredRunState(t, fixture.db, fixture.rootRun.ID(), "running")
 	checkpoint, err := fixture.checkpoints.LoadCheckpoint(fixture.ctx, "member_root")
 	if err != nil {
@@ -2529,7 +2529,7 @@ func TestCommitEventPersistsTheTerminalRunsResult(t *testing.T) {
 	record := recorded[0]
 	failure, hasFailure := record.Failure()
 	switch {
-	case record.State() != run.Failed:
+	case !testsupport.RunFailed(record):
 		t.Errorf("run state = %v, want Failed", record.State())
 	case !runHasOutcome(record, run.OutcomeFailed):
 		t.Errorf("run outcome = %v, want the outcome it terminated with", record.Snapshot().Outcome)

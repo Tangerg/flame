@@ -234,7 +234,7 @@ func TestPrepareWaitingCancellationKeepsSurvivingExternalBoundary(t *testing.T) 
 	}
 	for _, replacement := range transformation.terminalRuns {
 		record := replacement.State()
-		if record.State() != run.Canceled ||
+		if !record.Canceled() ||
 			!runHasOutcome(record, run.OutcomeCanceled) ||
 			record.Detail() != "stop delegated branch" ||
 			!record.FinishedAt().Equal(finishedAt) {

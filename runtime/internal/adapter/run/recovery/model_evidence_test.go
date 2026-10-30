@@ -182,7 +182,7 @@ func TestRecoveryAccruesOnlyUncommittedDispatchedEndpointsAcrossRestart(t *testi
 					wantInput += test.input
 				}
 			}
-			if !ok || usage.Total.InputTokens != wantInput || usage.Total.OutputTokens != 2 || recovered.Metrics().Steps() != wantSteps || recovered.State() != run.Failed {
+			if !ok || usage.Total.InputTokens != wantInput || usage.Total.OutputTokens != 2 || recovered.Metrics().Steps() != wantSteps || !testsupport.RunFailed(recovered) {
 				t.Fatalf("recovery consumption=%+v steps=%d", usage, recovered.Metrics().Steps())
 			}
 			if test.independent && recovered.ContextTokens() != 5 {

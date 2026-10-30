@@ -160,7 +160,7 @@ func assertRestartedRunTopology(
 	}
 	for _, runID := range []string{fixture.grandchildRun.ID(), fixture.childRun.ID()} {
 		record := runsByID[runID]
-		if record.State() != run.Canceled || !runHasOutcome(record, run.OutcomeCanceled) {
+		if !record.Canceled() || !runHasOutcome(record, run.OutcomeCanceled) {
 			t.Fatalf("canceled subtree Run %q = %+v", runID, record)
 		}
 	}
@@ -344,7 +344,7 @@ func assertRestartedRunningBoundary(
 		fixture.childRun.ID(),
 	} {
 		record, found, err := runStore.Run(fixture.ctx, runID)
-		if err != nil || !found || record.State() != run.Canceled {
+		if err != nil || !found || !record.Canceled() {
 			t.Fatalf(
 				"canceled Run %q after root recovery = found:%t value:%+v err:%v",
 				runID,

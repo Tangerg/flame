@@ -367,7 +367,7 @@ func TestLiveChildCancellationAndNaturalTerminalHaveOneTreeOwner(t *testing.T) {
 		if err != nil {
 			t.Fatalf("wait child cancellation: %v", err)
 		}
-		if target.ID() != plan.target.run.ID() || target.State() != run.Canceled {
+		if target.ID() != plan.target.run.ID() || !target.Canceled() {
 			t.Fatalf("child cancellation result = %+v", target)
 		}
 	})

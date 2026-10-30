@@ -75,9 +75,9 @@ func TestMessagesRejectsMissingSession(t *testing.T) {
 func TestMessagesPlansCompactionRunWatermarks(t *testing.T) {
 	at := time.Unix(10, 0).UTC()
 	current := []run.Run{
-		testsupport.MustRestoreRun(run.Snapshot{ID: "run_before", SessionID: "ses_1", State: run.Completed, CreatedAt: at, MessageMark: run.MessageMarkAt(4)}),
-		testsupport.MustRestoreRun(run.Snapshot{ID: "run_cut", SessionID: "ses_1", State: run.Completed, CreatedAt: at.Add(time.Second), MessageMark: run.MessageMarkAt(6)}),
-		testsupport.MustRestoreRun(run.Snapshot{ID: "run_recent", SessionID: "ses_1", State: run.Completed, CreatedAt: at.Add(2 * time.Second), MessageMark: run.MessageMarkAt(8)}),
+		testsupport.MustRestoreRun(run.Snapshot{ID: "run_before", SessionID: "ses_1", State: run.Finished, CreatedAt: at, MessageMark: run.MessageMarkAt(4)}),
+		testsupport.MustRestoreRun(run.Snapshot{ID: "run_cut", SessionID: "ses_1", State: run.Finished, CreatedAt: at.Add(time.Second), MessageMark: run.MessageMarkAt(6)}),
+		testsupport.MustRestoreRun(run.Snapshot{ID: "run_recent", SessionID: "ses_1", State: run.Finished, CreatedAt: at.Add(2 * time.Second), MessageMark: run.MessageMarkAt(8)}),
 		testsupport.MustRestoreRun(run.Snapshot{ID: "run_active", SessionID: "ses_1", State: run.Running, CreatedAt: at.Add(3 * time.Second)}),
 	}
 	replacement := []chat.Message{

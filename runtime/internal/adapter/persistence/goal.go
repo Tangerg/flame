@@ -230,7 +230,7 @@ func (g *GoalStore) restore(ctx context.Context, snapshot goal.Snapshot) (goal.G
 		   JOIN runs AS root ON root.run_id = CASE
 		        WHEN r.root_run_id = '' THEN r.run_id ELSE r.root_run_id END
 		  WHERE root.session_id = ? AND root.goal_incarnation_id = ? AND root.state = ?`,
-		snapshot.SessionID, snapshot.IncarnationID, runStateTerminal.databaseValue())
+		snapshot.SessionID, snapshot.IncarnationID, string(run.Finished))
 	if err != nil {
 		return goal.Goal{}, fmt.Errorf("sqlite: read goal Runs: %w", err)
 	}

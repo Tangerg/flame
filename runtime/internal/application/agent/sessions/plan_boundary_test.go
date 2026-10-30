@@ -175,7 +175,7 @@ func TestForkSeedsTheBoundaryPlanList(t *testing.T) {
 			Session:  testsupport.MustRestoreSession(session.Snapshot{ID: "ses_A"}),
 			Messages: []chat.Message{chat.NewUserMessage(chat.NewTextPart("one"))},
 			Runs: []run.Run{
-				testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", SessionID: "ses_A", State: run.Completed, CreatedAt: time.Unix(1, 0), MessageMark: run.MessageMarkAt(1)}),
+				testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", SessionID: "ses_A", State: run.Finished, CreatedAt: time.Unix(1, 0), MessageMark: run.MessageMarkAt(1)}),
 			},
 			Plan: []plan.Step{{Description: "work after the boundary", Status: plan.StatusInProgress}},
 		},

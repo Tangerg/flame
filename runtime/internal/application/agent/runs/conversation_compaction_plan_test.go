@@ -20,7 +20,7 @@ func TestConversationCompactionPlanOwnsOneSessionRunSet(t *testing.T) {
 		t.Fatal(err)
 	}
 	current := testsupport.MustRestoreRun(run.Snapshot{
-		ID: "run_1", SessionID: "ses_1", State: run.Completed,
+		ID: "run_1", SessionID: "ses_1", State: run.Finished,
 		CreatedAt: time.Unix(1, 0).UTC(), MessageMark: run.MessageMarkAt(1),
 	})
 	replacement := testsupport.MustRunReplacement(current, testsupport.DecidedRun(current))
@@ -52,7 +52,7 @@ func TestConversationCompactionPlanRejectsInvalidSessionRunSets(t *testing.T) {
 		}
 	}
 	foreign := testsupport.MustRestoreRun(run.Snapshot{
-		ID: "run_foreign", SessionID: "ses_other", State: run.Completed,
+		ID: "run_foreign", SessionID: "ses_other", State: run.Finished,
 		CreatedAt: time.Unix(1, 0).UTC(), MessageMark: run.MessageMarkAt(0),
 	})
 	replacement := testsupport.MustRunReplacement(foreign, testsupport.DecidedRun(foreign))

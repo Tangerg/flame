@@ -149,7 +149,7 @@ func TestResumeExposesAcceptedOwnerWhileRestorationIsBlocked(t *testing.T) {
 	}
 	unblock()
 	outcome := <-settled
-	if outcome.err != nil || outcome.result.Run.State() != run.Canceled {
+	if outcome.err != nil || !outcome.result.Run.Canceled() {
 		t.Fatalf("cancel across restoration=%+v,%v", outcome.result, outcome.err)
 	}
 	consumeEvents(result.Events)

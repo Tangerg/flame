@@ -100,7 +100,7 @@ func TestExportPreservesRunTreeLineage(t *testing.T) {
 		t.Fatalf("create: %v", err)
 	}
 	outcome := run.OutcomeCompleted
-	if restoreErr := rt.runs.Restore(ctx, testsupport.MustRestoreRun(run.Snapshot{SessionID: ses.ID(), ID: "run_root", State: run.Completed,
+	if restoreErr := rt.runs.Restore(ctx, testsupport.MustRestoreRun(run.Snapshot{SessionID: ses.ID(), ID: "run_root", State: run.Finished,
 		Outcome:      &outcome,
 		Capabilities: run.Capabilities{ChildRuns: true},
 		CreatedAt:    time.Unix(1, 0).UTC(),
@@ -120,7 +120,7 @@ func TestExportPreservesRunTreeLineage(t *testing.T) {
 	}
 	if restoreErr := rt.runs.Restore(ctx, testsupport.MustRestoreRun(run.Snapshot{SessionID: ses.ID(), ID: "run_child",
 
-		State: run.Completed, Outcome: &outcome,
+		State: run.Finished, Outcome: &outcome,
 		CreatedAt: time.Unix(2, 0).UTC(), FinishedAt: time.Unix(2, 0).UTC(),
 		UpdatedAt: time.Unix(2, 0).UTC(), Lineage: run.Lineage{SpawnedByItemID: "item_spawn",
 			ParentRunID: "run_root", RootRunID: "run_root"}}),
@@ -396,7 +396,7 @@ func seedCanceledRun(t *testing.T, rt *stubRuntime, sessionID string) {
 	if err != nil {
 		t.Fatalf("unresolved effect: %v", err)
 	}
-	if err := rt.runs.Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: "run_done", State: run.Canceled,
+	if err := rt.runs.Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: "run_done", State: run.Finished,
 		ModelSelection: selection, Outcome: &outcome,
 		Detail:            "user stopped execution",
 		UnresolvedEffects: []run.UnresolvedEffect{effect},
@@ -434,7 +434,7 @@ func seedChildRun(t *testing.T, rt *stubRuntime, sessionID string) {
 	if err != nil {
 		t.Fatalf("child model selection: %v", err)
 	}
-	if err := rt.runs.Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: "run_child", State: run.Completed,
+	if err := rt.runs.Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: "run_child", State: run.Finished,
 
 		ModelSelection: selection,
 		Outcome:        &outcome,
@@ -450,7 +450,7 @@ func seedChildRun(t *testing.T, rt *stubRuntime, sessionID string) {
 func seedFailedRun(t *testing.T, rt *stubRuntime, sessionID string) {
 	t.Helper()
 	outcome := run.OutcomeFailed
-	if err := rt.runs.Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: "run_failed", State: run.Failed,
+	if err := rt.runs.Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: "run_failed", State: run.Finished,
 		Outcome: &outcome,
 		Failure: &run.Failure{
 			Kind:   run.FailureRateLimited,

@@ -1019,9 +1019,9 @@ func (s *stubRuntime) sessionsCoordinatorWithRestorer(checkpoints sessions.Works
 	if s.runs != nil {
 		runStore = s.runs
 	}
-	cleanups := []sessions.SessionCleanup{{Resource: "sandbox", Retire: s.Discard}}
+	cleanups := []sessions.Cleanup{{Resource: "sandbox", Retire: s.Discard}}
 	if checkpoints != nil {
-		cleanups = append(cleanups, sessions.SessionCleanup{Resource: "checkpoints", Retire: checkpoints.DropSession})
+		cleanups = append(cleanups, sessions.Cleanup{Resource: "checkpoints", Retire: checkpoints.DropSession})
 	}
 	retirer, err := sessions.NewResourceRetirer(stores, cleanups...)
 	if err != nil {
@@ -1230,7 +1230,7 @@ func (inertQueryStores) RunsWithAncestors(context.Context, []string) ([]run.Run,
 	return nil, nil
 }
 
-func (inertQueryStores) PageRuns(context.Context, string, []run.Status, bool, int64, string, int) ([]run.Run, error) {
+func (inertQueryStores) PageRuns(context.Context, string, []run.State, bool, int64, string, int) ([]run.Run, error) {
 	return nil, nil
 }
 func (inertQueryStores) Exists(context.Context, string) (bool, error) { return false, nil }

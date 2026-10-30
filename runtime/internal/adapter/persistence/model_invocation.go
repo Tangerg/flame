@@ -98,7 +98,7 @@ func (m *ModelInvocationStore) StartModelInvocation(
 		purpose.String(),
 		runID,
 		sessionID,
-		runStateRunning.databaseValue(),
+		string(rundomain.Running),
 		segmentID,
 	)
 	if err != nil {

@@ -294,9 +294,8 @@ func (r Run) validateTerminal() error {
 	if r.outcome == nil {
 		return errors.New("run: terminal Run has no outcome")
 	}
-	expected, ok := Running.Terminate(*r.outcome)
-	if !ok || expected != r.state {
-		return fmt.Errorf("run: state %s does not match outcome %s", r.state, *r.outcome)
+	if !r.outcome.valid() {
+		return fmt.Errorf("run: unknown outcome %q", *r.outcome)
 	}
 	switch *r.outcome {
 	case OutcomeFailed:
@@ -422,7 +421,7 @@ func (r Run) CancelWaiting(detail string, finishedAt time.Time, messageMark Mess
 	if r.state != Waiting {
 		return Run{}, fmt.Errorf("run: cannot cancel %s Run as waiting", r.state)
 	}
-	return r.finish(Canceled, Termination{Outcome: OutcomeCanceled, Detail: detail, FinishedAt: finishedAt, MessageMark: messageMark})
+	return r.finish(Finished, Termination{Outcome: OutcomeCanceled, Detail: detail, FinishedAt: finishedAt, MessageMark: messageMark})
 }
 
 // LostFailure returns the failure a Run that ended lost must carry. Recovery
@@ -514,6 +513,9 @@ func (r Run) Outcome() (Outcome, bool) {
 	return *r.outcome, true
 }
 func (r Run) Detail() string { return r.detail }
+
+// Canceled reports whether the Run finished because it was canceled.
+func (r Run) Canceled() bool { return r.outcome != nil && *r.outcome == OutcomeCanceled }
 func (r Run) Failure() (Failure, bool) {
 	if r.failure == nil {
 		return Failure{}, false

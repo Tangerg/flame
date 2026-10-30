@@ -141,7 +141,7 @@ func TestApplyRunCancelProjectsTerminalTranscript(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ApplyRunCancel: %v", err)
 	}
-	if terminal.ID() != "run_1" || terminal.State() != run.Canceled {
+	if terminal.ID() != "run_1" || !terminal.Canceled() {
 		t.Fatalf("returned terminal run = %+v, want canceled run_1", terminal)
 	}
 	appliedRoot, ok := applied.RootRun()
@@ -149,7 +149,7 @@ func TestApplyRunCancelProjectsTerminalTranscript(t *testing.T) {
 		t.Fatal("terminal plan has no root Run")
 	}
 	outcome, terminalized := appliedRoot.Outcome()
-	if appliedRoot.State() != run.Canceled || !terminalized || outcome != run.OutcomeCanceled {
+	if !appliedRoot.Canceled() || !terminalized || outcome != run.OutcomeCanceled {
 		t.Fatalf("terminal Run = %+v, want canceled", appliedRoot)
 	}
 	if appliedRoot.Detail() != "user stopped" || !appliedRoot.FinishedAt().Equal(finishedAt) {
@@ -228,7 +228,7 @@ func TestApplyRunCancelSettlesQuestionToolAndClosesModelContext(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ApplyRunCancel: %v", err)
 	}
-	if terminal.State() != run.Canceled || terminal.MessageMark() != run.MessageMarkAt(3) {
+	if !terminal.Canceled() || terminal.MessageMark() != run.MessageMarkAt(3) {
 		t.Fatalf("terminal Run = %+v, want canceled at message mark 3", terminal)
 	}
 	items := applied.Items()
@@ -310,7 +310,7 @@ func TestApplyRunLostProjectsTerminalTranscript(t *testing.T) {
 		t.Fatal("terminal plan has no root Run")
 	}
 	outcome, terminalized := appliedRoot.Outcome()
-	if appliedRoot.State() != run.Failed || !terminalized || outcome != run.OutcomeLost {
+	if !testsupport.RunFailed(appliedRoot) || !terminalized || outcome != run.OutcomeLost {
 		t.Fatalf("terminal Run = %+v, want failed/lost", appliedRoot)
 	}
 	// This path is the only one that knows the run died parked on an interrupt
@@ -405,7 +405,7 @@ func TestApplyRunLostTerminalizesWholeParkedTreeInPostorder(t *testing.T) {
 		record := replacement.State()
 		outcome, terminalized := record.Outcome()
 		failure, failed := record.Failure()
-		if record.State() != run.Failed || !terminalized || outcome != run.OutcomeLost ||
+		if !testsupport.RunFailed(record) || !terminalized || outcome != run.OutcomeLost ||
 			!failed || failure.Kind != run.FailureLost || !record.FinishedAt().Equal(finishedAt) {
 			t.Fatalf("terminal Run = %+v", record)
 		}

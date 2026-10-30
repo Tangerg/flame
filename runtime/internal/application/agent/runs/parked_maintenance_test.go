@@ -57,7 +57,7 @@ func TestCancellationDuringParkedMaintenanceIsBusyUntilOwnerReleases(t *testing.
 		t.Fatal(err)
 	}
 	result, err := coordinator.Cancel(t.Context(), CancelCommand{RunID: spec.RunID})
-	if err != nil || result.Run.State() != run.Canceled {
+	if err != nil || !result.Run.Canceled() {
 		t.Fatalf("cancel after maintenance = %+v, %v", result, err)
 	}
 }

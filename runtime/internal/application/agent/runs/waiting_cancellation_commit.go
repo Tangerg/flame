@@ -368,7 +368,7 @@ func (w *waitingCancellationValidation) validateTerminalRuns() error {
 			return fmt.Errorf("runs: waiting cancellation Run[%d] Session mismatch", index)
 		case !expected.Equal(parked):
 			return fmt.Errorf("runs: waiting cancellation Run[%d] does not replace its parked Run", index)
-		case run.State() != rundomain.Canceled:
+		case !run.Canceled():
 			return fmt.Errorf("runs: waiting cancellation Run[%d] is not canceled", index)
 		}
 		if _, duplicate := w.terminalRunIDs[run.ID()]; duplicate {

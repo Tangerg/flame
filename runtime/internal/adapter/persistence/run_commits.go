@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 
 	"github.com/Tangerg/flame/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -31,7 +32,7 @@ func (r *RunStore) RecordRunCommit(
 		commitID.String(),
 		sessionID,
 		runID,
-		runStateRunning.databaseValue(),
+		string(rundomain.Running),
 		segmentID,
 	)
 	if err != nil {
@@ -65,7 +66,7 @@ func (r *RunStore) RecordWaitingRunCommit(
 		commitID.String(),
 		sessionID,
 		runID,
-		runStateWaiting.databaseValue(),
+		string(rundomain.Waiting),
 	)
 	if err != nil {
 		return fmt.Errorf("sqlite: record waiting Run commit %q: %w", commitID, err)
@@ -140,10 +141,10 @@ func (r *RunStore) RunCommitCommitted(
 		runID,
 		segmentID,
 		commitID.String(),
-		runStateRunning.databaseValue(),
+		string(rundomain.Running),
 		segmentID,
-		runStateWaiting.databaseValue(),
-		runStateTerminal.databaseValue(),
+		string(rundomain.Waiting),
+		string(rundomain.Finished),
 	).Scan(&found)
 	if err != nil {
 		return false, fmt.Errorf("sqlite: verify Run commit %q: %w", commitID, err)

@@ -110,7 +110,7 @@ func (f *fakeRunSessions) ApplyRunCancel(_ context.Context, sessionID, runID, re
 	f.canceledAt = finishedAt
 	delete(f.pending, runID)
 	outcome := run.OutcomeCanceled
-	return testsupport.MustRestoreRun(run.Snapshot{ID: runID, SessionID: sessionID, State: run.Canceled,
+	return testsupport.MustRestoreRun(run.Snapshot{ID: runID, SessionID: sessionID, State: run.Finished,
 		Outcome: &outcome, Detail: reason, FinishedAt: finishedAt}), nil
 }
 
@@ -1663,7 +1663,7 @@ func TestCancelParkedRunUsesApplicationAdmission(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Cancel: %v", err)
 	}
-	if result.Run.ID() != "run_1" || result.Run.State() != run.Canceled {
+	if result.Run.ID() != "run_1" || !result.Run.Canceled() {
 		t.Fatalf("Cancel result = %+v, want canceled run_1", result)
 	}
 	if sessions.canceledRunID != "run_1" || len(control.released) != 1 {
@@ -1681,7 +1681,7 @@ func TestCancelParkedRunUsesApplicationAdmission(t *testing.T) {
 }
 
 func TestCancelFinishedRunReportsFinishedInsteadOfNotFound(t *testing.T) {
-	finished := runRecord(run.Completed, "", "")
+	finished := runRecord(run.Finished, "", "")
 	c := mustNewCoordinator(Dependencies{
 		Releases:   &fakeExecutionPorts{},
 		Session:    testSessionPorts(&fakeRunSessions{}),
@@ -1757,7 +1757,7 @@ func projectAdmittedChildRun(
 
 func requireCanceledChildResult(t *testing.T, result CancelResult, child run.Run, reason string) {
 	t.Helper()
-	if result.Run.ID() != child.ID() || result.Run.State() != run.Canceled ||
+	if result.Run.ID() != child.ID() || !result.Run.Canceled() ||
 		!runHasOutcome(result.Run, run.OutcomeCanceled) || result.Run.Detail() != reason {
 		t.Fatalf("child result = %+v, want exact canceled terminal", result.Run)
 	}
@@ -1817,7 +1817,7 @@ func requireNaturalRootCompletion(t *testing.T, streamDone <-chan []Event, rootR
 	case events := <-streamDone:
 		for _, event := range events {
 			finished, ok := event.Payload.(SegmentFinished)
-			if ok && event.RunID == rootRunID && finished.Run.State() == run.Completed {
+			if ok && event.RunID == rootRunID && testsupport.RunOutcome(finished.Run) == run.OutcomeCompleted {
 				return
 			}
 		}
@@ -2051,7 +2051,7 @@ func TestCancelLiveRunJoinsTerminalMaintenance(t *testing.T) {
 		t.Fatalf("Cancel: %v", outcome.err)
 	}
 	if outcome.result.Run.ID() != result.RunID ||
-		outcome.result.Run.State() != run.Canceled ||
+		!outcome.result.Run.Canceled() ||
 		!runHasOutcome(outcome.result.Run, run.OutcomeCanceled) ||
 		outcome.result.Run.Detail() != "stop" {
 		t.Fatalf("Cancel result = %+v, want exact canceled terminal snapshot", outcome.result)
@@ -2340,10 +2340,10 @@ func TestStartRefusesASessionThatAlreadyHasARunAndNamesIt(t *testing.T) {
 	for _, tt := range []struct {
 		name   string
 		state  run.State
-		status run.Status
+		status run.State
 	}{
-		{"a running run", run.Running, run.StatusRunning},
-		{"a run waiting on a person", run.Waiting, run.StatusWaiting},
+		{"a running run", run.Running, run.Running},
+		{"a run waiting on a person", run.Waiting, run.Waiting},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			effects := &fakeEffects{}

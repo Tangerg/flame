@@ -459,7 +459,7 @@ func validateOptions(options *corechat.Options) error {
 // sentinel would leave the caller to go find out what blocked it.
 type ActiveRunConflictError struct {
 	RunID  string
-	Status run.Status
+	Status run.State
 }
 
 func (a *ActiveRunConflictError) Error() string {

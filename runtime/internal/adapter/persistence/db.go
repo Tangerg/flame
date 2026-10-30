@@ -116,7 +116,7 @@ func currentSchema() []string {
 		`CREATE INDEX IF NOT EXISTS idx_executor_checkpoints_session
 			ON executor_checkpoints(session_id)`,
 		// One row per root or child Run. state is the coarse admission position —
-		// 'running' | 'waiting' | 'terminal' — and the partial unique index
+		// 'running' | 'waiting' | 'finished' — and the partial unique index
 		// below is the durable "one non-terminal root Run tree per Session"
 		// guarantee. Descendants share that tree's admission and therefore do not
 		// compete for a second Session slot.
@@ -193,13 +193,13 @@ func currentSchema() []string {
 				))
 			)
 		)`,
-			runStateRunning.databaseValue(),
-			runStateWaiting.databaseValue(),
-			runStateTerminal.databaseValue(),
+			string(run.Running),
+			string(run.Waiting),
+			string(run.Finished),
 		),
 		fmt.Sprintf(`CREATE UNIQUE INDEX IF NOT EXISTS idx_runs_session_active
 			ON runs(session_id) WHERE state != '%s' AND root_run_id = ''`,
-			runStateTerminal.databaseValue()),
+			string(run.Finished)),
 		`CREATE INDEX IF NOT EXISTS idx_runs_session
 			ON runs(session_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_runs_root
@@ -290,7 +290,7 @@ func currentSchema() []string {
 			 AND EXISTS (SELECT 1 FROM model_invocations WHERE run_id = NEW.run_id AND %[2]s)
 			BEGIN
 				SELECT RAISE(ABORT, 'model invocations must settle before run terminalization');
-			END`, runStateTerminal.databaseValue(), startedModelInvocationPredicate()),
+			END`, string(run.Finished), startedModelInvocationPredicate()),
 		// child_run_start_reservations are invisible executor/application ACL
 		// records. They allocate product identity after a managed child admission
 		// but before the executor has conclusively initialized. The conclusive

@@ -256,7 +256,7 @@ var parkCreatedAt = time.Unix(1, 0).UTC()
 func restoredRun(sessionID, runID string, at time.Time) run.Run {
 	outcome := run.OutcomeCompleted
 	return testsupport.MustRestoreRun(run.Snapshot{
-		SessionID: sessionID, ID: runID, State: run.Completed,
+		SessionID: sessionID, ID: runID, State: run.Finished,
 		Outcome:   &outcome,
 		CreatedAt: at, FinishedAt: at, UpdatedAt: at, MessageMark: run.MessageMarkAt(0),
 	})
@@ -372,7 +372,7 @@ func TestApplyTerminalDropsInterruptAndTerminalizes(t *testing.T) {
 		t.Fatalf("admit after cancel = %v, want the slot freed", admitErr)
 	}
 	storedRuns, err := runs.ListRuns(ctx, "ses_A")
-	if err != nil || len(storedRuns) != 2 || storedRuns[0].State() != run.Canceled {
+	if err != nil || len(storedRuns) != 2 || !storedRuns[0].Canceled() {
 		t.Fatalf("terminal runs = %+v (err %v), want the canceled run and its successor", storedRuns, err)
 	}
 }
@@ -493,7 +493,7 @@ func TestApplyTerminalChargesGoalOwnedParkAtomically(t *testing.T) {
 		t.Fatalf("Goal after terminal park = %+v", storedGoal)
 	}
 	storedRun, found, err := runs.Run(ctx, terminal.ID())
-	if err != nil || !found || storedRun.State() != run.Failed {
+	if err != nil || !found || !testsupport.RunFailed(storedRun) {
 		t.Fatalf("Run after terminal park = found:%t value:%+v err:%v", found, storedRun, err)
 	}
 	if open, err := ints.List(ctx, "ses_A"); err != nil || len(open) != 0 {
@@ -633,7 +633,7 @@ func TestApplyForkBranchesAndSeeds(t *testing.T) {
 	}
 	forkedAt := time.Now().UTC()
 	forkedRun := testsupport.MustRestoreRun(run.Snapshot{
-		SessionID: childState.ID(), ID: "run_child_history", State: run.Completed,
+		SessionID: childState.ID(), ID: "run_child_history", State: run.Finished,
 		CreatedAt: forkedAt, FinishedAt: forkedAt, UpdatedAt: forkedAt, MessageMark: run.MessageMarkAt(1),
 	})
 	forkedItem := testsupport.MustRestoreItem(testsupport.ItemInput{

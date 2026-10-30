@@ -107,7 +107,6 @@ func TestReplacementPreservesSettledFactsAcrossThen(t *testing.T) {
 	}
 	changed := settled.State().Snapshot()
 	changed.Outcome = new(OutcomeCanceled)
-	changed.State = Canceled
 	changedOutcome, err := Restore(changed)
 	if err != nil {
 		t.Fatal(err)

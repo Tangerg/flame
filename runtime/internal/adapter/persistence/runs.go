@@ -13,29 +13,16 @@ import (
 	sqlite3lib "modernc.org/sqlite/lib"
 )
 
-// Coarse admission states stored in runs.state. The partial unique index
-// idx_runs_session_active keys on non-terminal root rows, so a Session holds at
-// most one non-terminal Run tree while any number of its descendant rows may be
-// active. The fine [run.Outcome] is stored separately in runs.outcome.
-type runState string
-
-const (
-	runStateRunning  runState = "running"
-	runStateWaiting  runState = "waiting"
-	runStateTerminal runState = "terminal"
-)
-
-func parseRunState(raw string) (runState, error) {
-	state := runState(raw)
-	switch state {
-	case runStateRunning, runStateWaiting, runStateTerminal:
-		return state, nil
-	default:
+// parseRunState admits a stored lifecycle position. runs.state stores the
+// domain's own spelling; the partial unique index keys on non-finished root rows,
+// and the fine [rundomain.Outcome] is stored separately in runs.outcome.
+func parseRunState(raw string) (rundomain.State, error) {
+	state := rundomain.State(raw)
+	if !state.Valid() {
 		return "", fmt.Errorf("sqlite: unknown Run state %q", raw)
 	}
+	return state, nil
 }
-
-func (r runState) databaseValue() string { return string(r) }
 
 // RunStore is the SQLite-backed Run table: one row per root or child Run,
 // holding its durable projection. Its immutable lineage columns identify the
@@ -103,7 +90,7 @@ func (r *RunStore) Admit(ctx context.Context, draft rundomain.Draft) error {
 			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			admitted.ID(), admitted.SessionID(),
 			lineage.SpawnedByItemID, lineage.ParentRunID, lineage.RootRunID,
-			runStateRunning.databaseValue(), admitted.ActiveSegmentID(),
+			string(rundomain.Running), admitted.ActiveSegmentID(),
 			admitted.ModelSelection().Provider(), admitted.ModelSelection().Model(), admitted.ModelSelection().ReasoningEffort(),
 			admitted.GoalIncarnationID(),
 			capabilities,
@@ -261,14 +248,14 @@ func (r *RunStore) validateChildPlacement(
 			parentTreeRoot,
 			rootRunID,
 		)
-	case requireOpen && parentRunState == runStateTerminal:
+	case requireOpen && parentRunState == rundomain.Finished:
 		return fmt.Errorf(
 			"sqlite: %s child run %q: parent %q is terminal",
 			operation,
 			runID,
 			parentRunID,
 		)
-	case requireOpen && rootRunState == runStateTerminal:
+	case requireOpen && rootRunState == rundomain.Finished:
 		return fmt.Errorf(
 			"sqlite: %s child run %q: root %q is terminal",
 			operation,
@@ -315,9 +302,9 @@ func (r *RunStore) Suspend(
 			`UPDATE runs SET state = ?, active_segment_id = '', commit_segment_id = ?, commit_id = ?,
 		        steps = ?, active_duration_ns = ?, usage = ?, context_tokens = ?, updated_at = ?
 		 WHERE session_id = ? AND run_id = ? AND state = ? AND active_segment_id = ?`,
-			coarseState(value.State()).databaseValue(), commitSegmentID, commitIDValue,
+			string(value.State()), commitSegmentID, commitIDValue,
 			metrics.steps, metrics.durationNs, metrics.usage, value.ContextTokens(), value.UpdatedAt().UTC().UnixNano(),
-			value.SessionID(), value.ID(), runStateRunning.databaseValue(), segmentID)
+			value.SessionID(), value.ID(), string(rundomain.Running), segmentID)
 		if err != nil {
 			return fmt.Errorf("sqlite: suspend run %q: %w", value.ID(), err)
 		}
@@ -356,9 +343,9 @@ func (r *RunStore) Resume(ctx context.Context, replacement rundomain.Replacement
 			`UPDATE runs SET state = ?, active_segment_id = ?, commit_segment_id = '', commit_id = '',
 		        steps = ?, active_duration_ns = ?, usage = ?, context_tokens = ?, updated_at = ?
 		 WHERE session_id = ? AND run_id = ? AND state = ? AND updated_at = ?`,
-			coarseState(next.State()).databaseValue(), next.ActiveSegmentID(),
+			string(next.State()), next.ActiveSegmentID(),
 			metrics.steps, metrics.durationNs, metrics.usage, next.ContextTokens(), next.UpdatedAt().UTC().UnixNano(),
-			expected.SessionID(), expected.ID(), coarseState(expected.State()).databaseValue(),
+			expected.SessionID(), expected.ID(), string(expected.State()),
 			expected.UpdatedAt().UTC().UnixNano())
 		if err != nil {
 			return fmt.Errorf("sqlite: resume run %q: %w", next.ID(), err)
@@ -400,7 +387,7 @@ func (r *RunStore) RequireActiveSegment(ctx context.Context, sessionID, runID, s
 	if err != nil {
 		return fmt.Errorf("sqlite: read active Segment for Run %q: %w", runID, err)
 	}
-	if storedState != runStateRunning || activeSegmentID != segmentID {
+	if storedState != rundomain.Running || activeSegmentID != segmentID {
 		return fmt.Errorf(
 			"sqlite: Run %q is %s in Segment %q, want running Segment %q",
 			runID,
@@ -438,7 +425,7 @@ func (r *RunStore) UpdateProgress(ctx context.Context, progressed rundomain.Run)
 			progressed.UpdatedAt().UTC().UnixNano(),
 			progressed.SessionID(),
 			progressed.ID(),
-			runStateRunning.databaseValue(),
+			string(rundomain.Running),
 			progressed.ActiveSegmentID(),
 		)
 		if err != nil {
@@ -479,7 +466,7 @@ func (r *RunStore) TerminalizeEvent(
 			return err
 		}
 		return r.finish(ctx, "terminalize", value, marker,
-			`state = ? AND active_segment_id = ?`, runStateRunning.databaseValue(), segmentID)
+			`state = ? AND active_segment_id = ?`, string(rundomain.Running), segmentID)
 	})
 }
 
@@ -503,7 +490,7 @@ func (r *RunStore) RebaseMessageMark(ctx context.Context, change rundomain.Repla
 		result, err := sqlite.Connection(ctx, r.db).ExecContext(ctx,
 			`UPDATE runs SET message_mark = ?
 		 WHERE session_id = ? AND run_id = ? AND state = ? AND message_mark IS ?`,
-			count, expected.SessionID(), expected.ID(), runStateTerminal.databaseValue(), messageMarkValue(expected.MessageMark()),
+			count, expected.SessionID(), expected.ID(), string(rundomain.Finished), messageMarkValue(expected.MessageMark()),
 		)
 		if err != nil {
 			return fmt.Errorf("sqlite: rebase Run %q message watermark: %w", expected.ID(), err)
@@ -541,7 +528,7 @@ func (r *RunStore) replace(ctx context.Context, op string, replacement rundomain
 		}
 		return r.finish(ctx, op, replacement.State(), nil,
 			`state = ? AND active_segment_id = ? AND updated_at = ?`,
-			coarseState(expected.State()).databaseValue(), expected.ActiveSegmentID(), expected.UpdatedAt().UTC().UnixNano())
+			string(expected.State()), expected.ActiveSegmentID(), expected.UpdatedAt().UTC().UnixNano())
 	})
 }
 
@@ -615,7 +602,7 @@ func (r *RunStore) finish(
 		   usage = ?, context_tokens = ?, problem = ?, unresolved_effects = ?, message_mark = ?, finished_at = ?, updated_at = ?
 		 WHERE session_id = ? AND run_id = ? AND ` + fence
 	args := []any{
-		coarseState(value.State()).databaseValue(), commitSegmentID, commitID,
+		string(value.State()), commitSegmentID, commitID,
 		string(outcome), value.Detail(), metrics.steps, metrics.durationNs,
 		metrics.usage, value.ContextTokens(), encodedFailure, encodedEffects,
 		messageMarkValue(value.MessageMark()), value.FinishedAt().UTC().UnixNano(),
@@ -703,7 +690,7 @@ func (r *RunStore) Restore(ctx context.Context, value rundomain.Run) error {
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		value.ID(), value.SessionID(),
 		lineage.SpawnedByItemID, lineage.ParentRunID, lineage.RootRunID,
-		coarseState(value.State()).databaseValue(), string(outcome),
+		string(value.State()), string(outcome),
 		selection.Provider(), selection.Model(), selection.ReasoningEffort(),
 		value.GoalIncarnationID(),
 		value.Detail(), metrics.steps, metrics.durationNs, metrics.usage, value.ContextTokens(), encodedFailure, encodedEffects,
@@ -719,30 +706,6 @@ func (r *RunStore) Restore(ctx context.Context, value rundomain.Run) error {
 		return fmt.Errorf("sqlite: restore run %q: %w", value.ID(), err)
 	}
 	return nil
-}
-
-// coarseState is the column value a Run in state s is stored under. It routes
-// through the domain's lifecycle position so a row written by Suspend and a query
-// filtering on [rundomain.StatusWaiting] cannot disagree about which value that
-// is — the partial unique index keys on non-terminal, so every terminal State
-// collapses to the one 'terminal' value (the fine reason lives in runs.outcome).
-func coarseState(s rundomain.State) runState {
-	return stateColumn(s.Status())
-}
-
-// stateColumn is the durable spelling of a lifecycle position. It stays an
-// explicit table rather than [rundomain.Status.String]: these three strings are
-// on disk and inside the partial unique index's predicate, so a Go rename must not
-// be able to rewrite them.
-func stateColumn(status rundomain.Status) runState {
-	switch status {
-	case rundomain.StatusWaiting:
-		return runStateWaiting
-	case rundomain.StatusFinished:
-		return runStateTerminal
-	default:
-		return runStateRunning
-	}
 }
 
 // Delete drops one Run's row. The rollback boundary uses it: a Run being dropped

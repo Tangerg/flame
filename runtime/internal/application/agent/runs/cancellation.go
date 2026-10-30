@@ -103,7 +103,7 @@ func (c *Coordinator) Cancel(ctx context.Context, cmd CancelCommand) (CancelResu
 			plan.root.run.ID(),
 		)
 	}
-	if terminal.State() != rundomain.Canceled {
+	if !terminal.Canceled() {
 		return CancelResult{}, fmt.Errorf(
 			"%w: %q completed as %s",
 			ErrRunFinished,
@@ -508,7 +508,7 @@ func validateWaitingChildCancellationResult(
 	result WaitingSubtreeCancellationResult,
 ) error {
 	target := result.TargetRun
-	if target.ID() != plan.target.run.ID() || target.State() != rundomain.Canceled {
+	if target.ID() != plan.target.run.ID() || !target.Canceled() {
 		return fmt.Errorf(
 			"runs: waiting child cancellation for %q committed invalid target snapshot %q in state %s",
 			plan.target.run.ID(),
@@ -678,7 +678,7 @@ func rootCancelResult(value rundomain.Run) (CancelResult, error) {
 	if value.Lineage().IsChild() {
 		return CancelResult{}, fmt.Errorf("runs: canceled root result %q is a child Run", value.ID())
 	}
-	if value.State() != rundomain.Canceled {
+	if !value.Canceled() {
 		return CancelResult{}, fmt.Errorf("runs: cancel committed invalid terminal Run %q in state %s", value.ID(), value.State())
 	}
 	return CancelResult{Run: value}, nil

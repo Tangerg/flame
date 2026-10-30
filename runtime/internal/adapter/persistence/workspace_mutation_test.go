@@ -26,7 +26,7 @@ func seedWorkspaceMutationSession(t *testing.T, db *sql.DB, sessionID, cwd strin
 func seedWorkspaceMutationRun(t *testing.T, db *sql.DB, sessionID, runID string) {
 	t.Helper()
 	if err := newRunStore(db).Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{
-		SessionID: sessionID, ID: runID, State: run.Completed,
+		SessionID: sessionID, ID: runID, State: run.Finished,
 		CreatedAt: time.Unix(1, 0), FinishedAt: time.Unix(2, 0), UpdatedAt: time.Unix(2, 0),
 	})); err != nil {
 		t.Fatalf("seed Run %q: %v", runID, err)

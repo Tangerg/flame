@@ -720,12 +720,12 @@ func (c *Coordinator) addressLiveSegment(ctx context.Context, runID, segmentID s
 	if run.Lineage().IsChild() {
 		return liveSegment{}, rundomain.Run{}, fmt.Errorf("%w: %q", transcript.ErrNotRoot, runID)
 	}
-	switch status := run.State().Status(); status {
-	case rundomain.StatusWaiting:
+	switch status := run.State(); status {
+	case rundomain.Waiting:
 		return liveSegment{}, rundomain.Run{}, fmt.Errorf("%w: %q", ErrRunWaiting, runID)
-	case rundomain.StatusFinished:
+	case rundomain.Finished:
 		return liveSegment{}, rundomain.Run{}, fmt.Errorf("%w: %q", ErrRunFinished, runID)
-	case rundomain.StatusRunning:
+	case rundomain.Running:
 	default:
 		return liveSegment{}, rundomain.Run{}, fmt.Errorf("runs: run %q has unknown status %q", runID, status)
 	}

@@ -78,7 +78,7 @@ type QueryInterruptReader interface {
 type queryRunReader interface {
 	Run(ctx context.Context, runID string) (run.Run, bool, error)
 	RunsWithAncestors(ctx context.Context, runIDs []string) ([]run.Run, error)
-	PageRuns(ctx context.Context, sessionID string, statuses []run.Status, includeDescendants bool, beforeCreatedAt int64, beforeRunID string, limit int) ([]run.Run, error)
+	PageRuns(ctx context.Context, sessionID string, statuses []run.State, includeDescendants bool, beforeCreatedAt int64, beforeRunID string, limit int) ([]run.Run, error)
 }
 
 // QueryCoordinator serves the session read projections. Stateless beyond its store
@@ -380,7 +380,7 @@ func (c *QueryCoordinator) Run(ctx context.Context, runID string) (run.Run, bool
 // identity to bind.
 type RunPageFilter struct {
 	SessionID          string
-	Statuses           []run.Status
+	Statuses           []run.State
 	IncludeDescendants bool
 }
 
@@ -449,7 +449,7 @@ func (f RunPageFilter) validate() error {
 // two requests asking for the same set mint the same cursor. Sorting is by the
 // domain's own declaration order — the enum IS the order, so there is nothing else
 // to agree with.
-func normalizeStatuses(statuses []run.Status) []run.Status {
+func normalizeStatuses(statuses []run.State) []run.State {
 	if len(statuses) == 0 {
 		return nil
 	}
@@ -461,7 +461,7 @@ func normalizeStatuses(statuses []run.Status) []run.Status {
 // statusFilter is the normalized status set as one cursor filter value. The empty
 // set is every status, which is a different collection from any explicit set — and
 // it reads as such, since no status is spelled "".
-func statusFilter(statuses []run.Status) string {
+func statusFilter(statuses []run.State) string {
 	names := make([]string, 0, len(statuses))
 	for _, status := range statuses {
 		names = append(names, string(status))

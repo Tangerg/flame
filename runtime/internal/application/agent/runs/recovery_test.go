@@ -806,7 +806,7 @@ func TestRecoveryMarksAbandonedRunTreeLostInPostorder(t *testing.T) {
 	}
 	for _, replacement := range lostRuns {
 		lost := replacement.State()
-		if lost.State() != rundomain.Failed || !runHasOutcome(lost, rundomain.OutcomeLost) ||
+		if !testsupport.RunFailed(lost) || !runHasOutcome(lost, rundomain.OutcomeLost) ||
 			!runHasFailureKind(lost, rundomain.FailureLost) ||
 			lost.MessageMark() != lost.Lineage().MessageMark(7) || !lost.FinishedAt().Equal(finishedAt) {
 			t.Fatalf("lost Run = %+v", lost)

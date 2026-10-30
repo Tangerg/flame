@@ -233,7 +233,7 @@ func (r *runTreeOwner) recordTerminalRun(run rundomain.Run) {
 	if attempt == nil || run.ID() != attempt.targetRunID {
 		return
 	}
-	if run.State() != rundomain.Canceled {
+	if !run.Canceled() {
 		attempt.err = fmt.Errorf(
 			"%w: %q completed as %s",
 			ErrRunFinished,

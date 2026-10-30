@@ -827,7 +827,7 @@ func TestDeleteForSessionFreesSlot(t *testing.T) {
 func TestRunRestoreRejectsUnknownOutcome(t *testing.T) {
 	outcome := run.Outcome("invalid")
 	if _, err := run.Restore(run.Snapshot{
-		ID: "run_1", SessionID: "ses_1", State: run.Failed, Outcome: &outcome,
+		ID: "run_1", SessionID: "ses_1", State: run.Finished, Outcome: &outcome,
 		ModelSelection: testsupport.DefaultModelSelection(),
 		CreatedAt:      runCreatedAt, FinishedAt: time.Unix(9, 0).UTC(), UpdatedAt: time.Unix(9, 0).UTC(),
 	}); err == nil {
@@ -891,13 +891,13 @@ func TestPageRunsReturnsEveryLifecyclePosition(t *testing.T) {
 
 	for _, tt := range []struct {
 		name     string
-		statuses []run.Status
+		statuses []run.State
 		want     []string
 	}{
-		{"running only", []run.Status{run.StatusRunning}, []string{"run_live"}},
-		{"waiting only", []run.Status{run.StatusWaiting}, []string{"run_parked"}},
-		{"finished only", []run.Status{run.StatusFinished}, []string{"run_done"}},
-		{"recovery pair", []run.Status{run.StatusRunning, run.StatusWaiting}, []string{"run_live", "run_parked"}},
+		{"running only", []run.State{run.Running}, []string{"run_live"}},
+		{"waiting only", []run.State{run.Waiting}, []string{"run_parked"}},
+		{"finished only", []run.State{run.Finished}, []string{"run_done"}},
+		{"recovery pair", []run.State{run.Running, run.Waiting}, []string{"run_live", "run_parked"}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			rows, err := store.PageRuns(ctx, "", tt.statuses, false, 0, "", 0)
@@ -917,7 +917,7 @@ func TestPageRunsReturnsEveryLifecyclePosition(t *testing.T) {
 	if scoped, err := store.PageRuns(ctx, "ses_B", nil, false, 0, "", 0); err != nil || len(scoped) != 1 || scoped[0].ID() != "run_parked" {
 		t.Fatalf("ses_B scoped = %+v (err %v), want the parked run", scoped, err)
 	}
-	if _, err := store.PageRuns(ctx, "", []run.Status{run.Status("invalid")}, false, 0, "", 0); err == nil {
+	if _, err := store.PageRuns(ctx, "", []run.State{run.State("invalid")}, false, 0, "", 0); err == nil {
 		t.Fatal("page runs accepted an unknown status instead of refusing to widen the page")
 	}
 }

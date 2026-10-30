@@ -82,16 +82,7 @@ func MustRestoreRun(snapshot run.Snapshot) run.Run {
 		}
 	}
 	if snapshot.State.IsTerminal() && snapshot.Outcome == nil {
-		var outcome run.Outcome
-		switch snapshot.State {
-		case run.Completed:
-			outcome = run.OutcomeCompleted
-		case run.Canceled:
-			outcome = run.OutcomeCanceled
-		case run.Failed:
-			outcome = run.OutcomeFailed
-		}
-		snapshot.Outcome = &outcome
+		snapshot.Outcome = new(run.OutcomeCompleted)
 	}
 	if snapshot.State == run.Running && snapshot.ActiveSegmentID == "" {
 		snapshot.ActiveSegmentID = "segment_fixture"
@@ -179,4 +170,20 @@ func MustProgressedRun(draft run.Draft, metrics run.Metrics, contextTokens int64
 		panic(err)
 	}
 	return progressed
+}
+
+// RunOutcome is the terminal reason of a finished fixture Run, or "" while open.
+func RunOutcome(value run.Run) run.Outcome {
+	outcome, _ := value.Outcome()
+	return outcome
+}
+
+// RunFailed reports the outcomes that end a Run without completing or being canceled.
+func RunFailed(value run.Run) bool {
+	switch RunOutcome(value) {
+	case run.OutcomeFailed, run.OutcomeTimedOut, run.OutcomeLost:
+		return true
+	default:
+		return false
+	}
 }

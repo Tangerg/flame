@@ -17,7 +17,7 @@ func portableSnapshot() Snapshot {
 	return Snapshot{
 		Session: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1"}),
 		Runs: []run.Run{testsupport.MustRestoreRun(run.Snapshot{
-			SessionID: "ses_1", ID: "run_1", State: run.Completed,
+			SessionID: "ses_1", ID: "run_1", State: run.Finished,
 			Capabilities: run.Capabilities{ChildRuns: true},
 			CreatedAt:    time.Unix(1, 0), FinishedAt: time.Unix(2, 0), MessageMark: run.MessageMarkAt(0),
 		})},
