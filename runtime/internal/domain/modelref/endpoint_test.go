@@ -42,27 +42,27 @@ func endpointResponse(t *testing.T, usage *chat.Usage) jsonvalue.Value {
 func TestEndpointObservationAdmitsOneEvidenceMatrix(t *testing.T) {
 	for _, test := range []struct {
 		name    string
-		state   EndpointState
+		state   InvocationState
 		known   bool
 		failure string
 		settled bool
 		valid   bool
 	}{
-		{"open", EndpointStarted, false, "", false, true},
-		{"complete", EndpointCompleted, true, "", true, true},
-		{"known failed response", EndpointFailed, true, "outer operation failed", true, true},
-		{"unknown", EndpointUnknown, false, "provider acknowledgement missing", true, true},
-		{"open finished", EndpointStarted, false, "", true, false},
-		{"open response", EndpointStarted, true, "", false, false},
-		{"open failure", EndpointStarted, false, "failure", false, false},
-		{"completed missing response", EndpointCompleted, false, "", true, false},
-		{"completed failure", EndpointCompleted, true, "failure", true, false},
-		{"failed missing response", EndpointFailed, false, "failure", true, false},
-		{"failed missing failure", EndpointFailed, true, "", true, false},
-		{"unknown response", EndpointUnknown, true, "failure", true, false},
-		{"unknown missing failure", EndpointUnknown, false, "", true, false},
-		{"unknown unfinished", EndpointUnknown, false, "failure", false, false},
-		{"undeclared state", EndpointState("other"), false, "failure", true, false},
+		{"open", InvocationStarted, false, "", false, true},
+		{"complete", InvocationCompleted, true, "", true, true},
+		{"known failed response", InvocationFailed, true, "outer operation failed", true, true},
+		{"unknown", InvocationUnknown, false, "provider acknowledgement missing", true, true},
+		{"open finished", InvocationStarted, false, "", true, false},
+		{"open response", InvocationStarted, true, "", false, false},
+		{"open failure", InvocationStarted, false, "failure", false, false},
+		{"completed missing response", InvocationCompleted, false, "", true, false},
+		{"completed failure", InvocationCompleted, true, "failure", true, false},
+		{"failed missing response", InvocationFailed, false, "failure", true, false},
+		{"failed missing failure", InvocationFailed, true, "", true, false},
+		{"unknown response", InvocationUnknown, true, "failure", true, false},
+		{"unknown missing failure", InvocationUnknown, false, "", true, false},
+		{"unknown unfinished", InvocationUnknown, false, "failure", false, false},
+		{"undeclared state", InvocationState("other"), false, "failure", true, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			record := endpointRecord(t)
@@ -118,7 +118,7 @@ func TestEndpointOutcomeAndRestorationShareAdmission(t *testing.T) {
 
 func TestEndpointObservationProtectsItsAdmittedRecord(t *testing.T) {
 	record := endpointRecord(t)
-	record.State, record.FinishedAt = EndpointCompleted, record.Invocation.StartedAt.Add(time.Second)
+	record.State, record.FinishedAt = InvocationCompleted, record.Invocation.StartedAt.Add(time.Second)
 	record.CostUSD, record.Usage = new(1.5), &chat.Usage{InputTokens: 7}
 	record.ResponseJSON = endpointResponse(t, record.Usage)
 	observation, err := RestoreEndpointObservation(record)
@@ -150,14 +150,14 @@ func TestEndpointEvidenceRequiresExactTimingAndAccounting(t *testing.T) {
 		func(r *EndpointRecord) { r.ResponseJSON = jsonvalue.Value{} },
 	} {
 		record := endpointRecord(t)
-		record.State, record.FinishedAt, record.ResponseJSON = EndpointCompleted, record.Invocation.StartedAt.Add(time.Second), endpointResponse(t, nil)
+		record.State, record.FinishedAt, record.ResponseJSON = InvocationCompleted, record.Invocation.StartedAt.Add(time.Second), endpointResponse(t, nil)
 		change(&record)
 		if _, err := RestoreEndpointObservation(record); err == nil {
 			t.Fatal("inconsistent endpoint evidence was admitted")
 		}
 	}
 	record := endpointRecord(t)
-	record.State, record.ResponseJSON = EndpointCompleted, endpointResponse(t, nil)
+	record.State, record.ResponseJSON = InvocationCompleted, endpointResponse(t, nil)
 	record.Invocation.StartedAt, record.FinishedAt = time.Unix(-1, 0).UTC(), time.Unix(0, 0).UTC()
 	if observation, err := RestoreEndpointObservation(record); err != nil || observation.Open() {
 		t.Fatalf("epoch settlement = %v", err)
@@ -169,7 +169,7 @@ func TestEndpointEvidenceRequiresExactTimingAndAccounting(t *testing.T) {
 
 func TestEndpointObservationConcurrentProjectionsRemainIsolated(t *testing.T) {
 	record := endpointRecord(t)
-	record.State, record.FinishedAt = EndpointCompleted, record.Invocation.StartedAt.Add(time.Second)
+	record.State, record.FinishedAt = InvocationCompleted, record.Invocation.StartedAt.Add(time.Second)
 	record.CostUSD, record.Usage = new(1.5), &chat.Usage{InputTokens: 7}
 	record.ResponseJSON = endpointResponse(t, record.Usage)
 	observation, err := RestoreEndpointObservation(record)

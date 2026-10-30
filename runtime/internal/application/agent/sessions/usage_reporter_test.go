@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/qimu/portable"
 	"math"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/qimu/portable"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
@@ -86,7 +87,7 @@ func TestSummaryPublishesItsSingleCoreClockObservationAndExactRange(t *testing.T
 }
 
 func usd(value float64) *float64 { return &value }
-func usageRecord(t *testing.T, id, provider, model string, state modelref.EndpointState, at time.Time, reported *chat.Usage, cost *float64) modelref.EndpointRecord {
+func usageRecord(t *testing.T, id, provider, model string, state modelref.InvocationState, at time.Time, reported *chat.Usage, cost *float64) modelref.EndpointRecord {
 	t.Helper()
 	request, err := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("input")))
 	if err != nil {
@@ -103,10 +104,10 @@ func usageRecord(t *testing.T, id, provider, model string, state modelref.Endpoi
 		t.Fatal(err)
 	}
 	value := modelref.EndpointRecord{Invocation: invocation, InvocationJSON: input, RequestJSON: requestJSON, State: state, CostUSD: cost, Usage: reported}
-	if state != modelref.EndpointStarted {
+	if state != modelref.InvocationStarted {
 		value.FinishedAt = at.Add(time.Second)
 	}
-	if state == modelref.EndpointFailed || state == modelref.EndpointUnknown {
+	if state == modelref.InvocationFailed || state == modelref.InvocationUnknown {
 		value.Failure = "observed failure"
 	}
 	if state.HasResponse() {
@@ -136,16 +137,16 @@ func usageObservation(t *testing.T, record modelref.EndpointRecord) modelref.End
 
 func TestPhysicalUsageIncludesAuxiliaryUnattachedAndUnknownWithoutDoubleCounting(t *testing.T) {
 	at := time.Date(2026, 8, 29, 12, 0, 0, 0, time.UTC)
-	primary := usageRecord(t, "primary", "provider-a", "selected", modelref.EndpointCompleted, at, &chat.Usage{InputTokens: 100, OutputTokens: 40, CacheReadInputTokens: new(int64(3)), ReasoningTokens: new(int64(2))}, usd(1.5))
+	primary := usageRecord(t, "primary", "provider-a", "selected", modelref.InvocationCompleted, at, &chat.Usage{InputTokens: 100, OutputTokens: 40, CacheReadInputTokens: new(int64(3)), ReasoningTokens: new(int64(2))}, usd(1.5))
 	primary.SessionID = "ses_one"
 	primary.RunID = "run_one"
 	primary.SegmentID = "seg_one"
 	primary.ResponseJSON = usageResponse(t, "served", primary.Usage)
-	auxiliary := usageRecord(t, "title", "provider-b", "served", modelref.EndpointFailed, at.Add(time.Second), &chat.Usage{InputTokens: 10, OutputTokens: 2}, usd(0))
+	auxiliary := usageRecord(t, "title", "provider-b", "served", modelref.InvocationFailed, at.Add(time.Second), &chat.Usage{InputTokens: 10, OutputTokens: 2}, usd(0))
 	auxiliary.SessionID = "ses_one"
-	unknown := usageRecord(t, "global", "provider-a", "served", modelref.EndpointUnknown, at.Add(2*time.Second), nil, nil)
-	unreported := usageRecord(t, "unreported", "provider-a", "served", modelref.EndpointCompleted, at.Add(3*time.Second), nil, nil)
-	started := usageRecord(t, "started", "provider-b", "served", modelref.EndpointStarted, at.Add(4*time.Second), nil, nil)
+	unknown := usageRecord(t, "global", "provider-a", "served", modelref.InvocationUnknown, at.Add(2*time.Second), nil, nil)
+	unreported := usageRecord(t, "unreported", "provider-a", "served", modelref.InvocationCompleted, at.Add(3*time.Second), nil, nil)
+	started := usageRecord(t, "started", "provider-b", "served", modelref.InvocationStarted, at.Add(4*time.Second), nil, nil)
 	reporter, err := NewUsageReporter(UsageDependencies{Source: usageSourceStub{values: []modelref.EndpointRecord{primary, auxiliary, unknown, unreported, started}}})
 	if err != nil {
 		t.Fatal(err)
@@ -182,8 +183,8 @@ func TestPhysicalUsageIncludesAuxiliaryUnattachedAndUnknownWithoutDoubleCounting
 }
 func TestPhysicalUsageFiltersAtAdmissionAndRejectsPartialRead(t *testing.T) {
 	now := time.Date(2026, 8, 29, 12, 0, 0, 0, time.UTC)
-	current := usageRecord(t, "current", "provider", "model", modelref.EndpointCompleted, now, &chat.Usage{}, usd(0))
-	old := usageRecord(t, "old", "provider", "model", modelref.EndpointCompleted, now.AddDate(0, 0, -8), &chat.Usage{InputTokens: 1}, usd(2))
+	current := usageRecord(t, "current", "provider", "model", modelref.InvocationCompleted, now, &chat.Usage{}, usd(0))
+	old := usageRecord(t, "old", "provider", "model", modelref.InvocationCompleted, now.AddDate(0, 0, -8), &chat.Usage{InputTokens: 1}, usd(2))
 	reader, err := NewUsageReporter(UsageDependencies{Source: usageSourceStub{values: []modelref.EndpointRecord{old, current}}, Now: func() time.Time { return now }})
 	if err != nil {
 		t.Fatal(err)
@@ -203,19 +204,19 @@ func TestPhysicalUsageFiltersAtAdmissionAndRejectsPartialRead(t *testing.T) {
 }
 func TestAccumulatorRejectsOverflowWithoutMutation(t *testing.T) {
 	value := usageAccumulator{}
-	first := usageRecord(t, "first", "provider", "model", modelref.EndpointCompleted, time.Now().UTC(), &chat.Usage{InputTokens: math.MaxInt64}, usd(1))
+	first := usageRecord(t, "first", "provider", "model", modelref.InvocationCompleted, time.Now().UTC(), &chat.Usage{InputTokens: math.MaxInt64}, usd(1))
 	if err := value.addCall(usageObservation(t, first)); err != nil {
 		t.Fatal(err)
 	}
 	before := value
-	if err := value.addCall(usageObservation(t, usageRecord(t, "next", "provider", "model", modelref.EndpointCompleted, time.Now().UTC(), &chat.Usage{InputTokens: 1}, usd(1)))); err == nil || !reflect.DeepEqual(before, value) {
+	if err := value.addCall(usageObservation(t, usageRecord(t, "next", "provider", "model", modelref.InvocationCompleted, time.Now().UTC(), &chat.Usage{InputTokens: 1}, usd(1)))); err == nil || !reflect.DeepEqual(before, value) {
 		t.Fatal("overflow mutated aggregate")
 	}
 }
 func TestBucketsBySpendRankCostThenUsageThenIdentity(t *testing.T) {
 	values := map[string]*usageAccumulator{}
 	for index, name := range []string{"z", "a", "highest"} {
-		value := usageRecord(t, fmt.Sprint(index), "provider", name, modelref.EndpointCompleted, time.Now().UTC(), &chat.Usage{InputTokens: 1}, usd(1))
+		value := usageRecord(t, fmt.Sprint(index), "provider", name, modelref.InvocationCompleted, time.Now().UTC(), &chat.Usage{InputTokens: 1}, usd(1))
 		if name == "highest" {
 			value.CostUSD = usd(2)
 		}

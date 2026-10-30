@@ -27,7 +27,7 @@ func TestTrajectoryUnknownInvocationPreservesObservationWithoutTimingEstimates(t
 	entry, err := presentTrajectoryEntry(sessions.TrajectoryEntry{
 		OccurredAt: at,
 		Model: &sessions.TrajectoryModelInvocation{RunID: "run_unknown", ModelInvocationCommit: runs.ModelInvocationCommit{
-			CallID: "call_unknown", SegmentID: "seg_unknown", State: runs.ModelInvocationUnknown,
+			CallID: "call_unknown", SegmentID: "seg_unknown", State: modelref.InvocationUnknown,
 			StartedAt: at, FinishedAt: at.Add(24 * time.Hour),
 		}},
 	})
@@ -114,7 +114,7 @@ func TestTrajectoryEndpointPreservesOriginalJSONAndSessionOnlyIdentity(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	observation, err := modelref.RestoreEndpointObservation(modelref.EndpointRecord{Invocation: invocation, SessionID: "ses_original", State: modelref.EndpointFailed, Failure: "outer failure", FinishedAt: time.Unix(101, 0).UTC(), Usage: usage, InvocationJSON: input, RequestJSON: request, ResponseJSON: response})
+	observation, err := modelref.RestoreEndpointObservation(modelref.EndpointRecord{Invocation: invocation, SessionID: "ses_original", State: modelref.InvocationFailed, Failure: "outer failure", FinishedAt: time.Unix(101, 0).UTC(), Usage: usage, InvocationJSON: input, RequestJSON: request, ResponseJSON: response})
 	if err != nil {
 		t.Fatal(err)
 	}

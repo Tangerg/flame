@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -164,7 +165,7 @@ func TestEventCommitOwnsInvocationAndProgressSegment(t *testing.T) {
 		RunID: "run_1", SessionID: "session", SegmentID: "segment_1",
 		ModelInvocations: []ModelInvocationCommit{{
 			CallID: "call_1", SegmentID: "segment_2",
-			State: ModelInvocationStarted, StartedAt: startedAt,
+			State: modelref.InvocationStarted, StartedAt: startedAt,
 		}},
 	}
 	if err := commit.Validate(); err == nil {
@@ -475,7 +476,7 @@ func TestModelInvocationUsageBelongsOnlyToCompletedCallsAndIsIsolated(t *testing
 		InputTokens: 7, OutputTokens: 5, ReasoningTokens: new(int64(3)),
 		CacheReadInputTokens: new(int64(2)), CacheWriteInputTokens: new(int64(1)),
 	}
-	invocation := ModelInvocationCommit{CallID: "call_usage", SegmentID: "segment_1", State: ModelInvocationCompleted, StartedAt: time.Unix(1, 0), FinishedAt: time.Unix(2, 0), Usage: usage}
+	invocation := ModelInvocationCommit{CallID: "call_usage", SegmentID: "segment_1", State: modelref.InvocationCompleted, StartedAt: time.Unix(1, 0), FinishedAt: time.Unix(2, 0), Usage: usage}
 	if err := invocation.Validate(); err != nil {
 		t.Fatal(err)
 	}
@@ -489,11 +490,11 @@ func TestModelInvocationUsageBelongsOnlyToCompletedCallsAndIsIsolated(t *testing
 		*owned.CacheReadInputTokens != 2 || *owned.CacheWriteInputTokens != 1 {
 		t.Fatal("commit aliases reported usage")
 	}
-	invocation.State = ModelInvocationUnknown
+	invocation.State = modelref.InvocationUnknown
 	if err := invocation.Validate(); err == nil {
 		t.Fatal("unknown outcome accepted completed-call usage")
 	}
-	invocation.State = ModelInvocationCompleted
+	invocation.State = modelref.InvocationCompleted
 	usage.InputTokens = -1
 	if err := invocation.Validate(); err == nil {
 		t.Fatal("accepted negative call usage")
@@ -502,7 +503,7 @@ func TestModelInvocationUsageBelongsOnlyToCompletedCallsAndIsIsolated(t *testing
 
 func TestFirstOutputLatencyIsOptionalOwnedMeasurement(t *testing.T) {
 	latency := int64(0)
-	invocation := ModelInvocationCommit{CallID: "call_latency", SegmentID: "segment_1", State: ModelInvocationCompleted, StartedAt: time.Unix(1, 0), FinishedAt: time.Unix(2, 0), FirstOutputLatencyMillis: &latency}
+	invocation := ModelInvocationCommit{CallID: "call_latency", SegmentID: "segment_1", State: modelref.InvocationCompleted, StartedAt: time.Unix(1, 0), FinishedAt: time.Unix(2, 0), FirstOutputLatencyMillis: &latency}
 	if err := invocation.Validate(); err != nil {
 		t.Fatal(err)
 	}
@@ -516,11 +517,11 @@ func TestFirstOutputLatencyIsOptionalOwnedMeasurement(t *testing.T) {
 		t.Fatal("negative latency accepted")
 	}
 	latency = 0
-	invocation.State = ModelInvocationFailed
+	invocation.State = modelref.InvocationFailed
 	if err := invocation.Validate(); err != nil {
 		t.Fatal(err)
 	}
-	invocation.State = ModelInvocationUnknown
+	invocation.State = modelref.InvocationUnknown
 	if err := invocation.Validate(); err == nil {
 		t.Fatal("recovery invented first output latency")
 	}

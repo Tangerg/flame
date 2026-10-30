@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
@@ -478,21 +479,21 @@ func (e *Effects) applyModelInvocations(ctx context.Context, commit runs.EventCo
 	for _, invocation := range commit.ModelInvocations {
 		var err error
 		switch invocation.State {
-		case runs.ModelInvocationStarted:
+		case modelref.InvocationStarted:
 			err = e.modelInvocations.StartModelInvocation(
 				ctx, commit.SessionID, commit.RunID, invocation.SegmentID,
 				invocation.CallID, invocation.StartedAt, invocation.Purpose)
-		case runs.ModelInvocationCompleted:
+		case modelref.InvocationCompleted:
 			err = e.modelInvocations.CompleteModelInvocation(
 				ctx, commit.SessionID, commit.RunID, invocation.SegmentID,
 				invocation.CallID, invocation.StartedAt, invocation.FinishedAt, invocation.FirstOutputLatencyMillis, invocation.Usage,
 			)
-		case runs.ModelInvocationFailed:
+		case modelref.InvocationFailed:
 			err = e.modelInvocations.FailModelInvocation(
 				ctx, commit.SessionID, commit.RunID, invocation.SegmentID,
 				invocation.CallID, invocation.StartedAt, invocation.FinishedAt, invocation.FirstOutputLatencyMillis, invocation.Usage, invocation.KnownResponse,
 			)
-		case runs.ModelInvocationUnknown:
+		case modelref.InvocationUnknown:
 			err = e.modelInvocations.MarkModelInvocationUnknown(
 				ctx, commit.SessionID, commit.RunID, invocation.SegmentID,
 				invocation.CallID, invocation.StartedAt, invocation.FinishedAt,

@@ -93,17 +93,21 @@ func (i EndpointInvocation) Validate() error {
 	}
 }
 
-type EndpointState string
+// InvocationState is the durable observation of one model invocation, whether
+// a Run's logical call or one physical endpoint attempt. It is deliberately
+// smaller than a response: it distinguishes a call that never crossed the
+// provider boundary from one whose final projection became indeterminate.
+type InvocationState string
 
 const (
-	EndpointStarted   EndpointState = "started"
-	EndpointCompleted EndpointState = "completed"
-	EndpointFailed    EndpointState = "failed"
-	EndpointUnknown   EndpointState = "unknown"
+	InvocationStarted   InvocationState = "started"
+	InvocationCompleted InvocationState = "completed"
+	InvocationFailed    InvocationState = "failed"
+	InvocationUnknown   InvocationState = "unknown"
 )
 
 type EndpointEvidenceRule struct {
-	State    EndpointState
+	State    InvocationState
 	Response bool
 	Failure  bool
 	Settled  bool
@@ -111,23 +115,23 @@ type EndpointEvidenceRule struct {
 
 func EndpointEvidenceRules() []EndpointEvidenceRule {
 	return []EndpointEvidenceRule{
-		{State: EndpointStarted},
-		{State: EndpointCompleted, Response: true, Settled: true},
-		{State: EndpointFailed, Response: true, Failure: true, Settled: true},
-		{State: EndpointUnknown, Failure: true, Settled: true},
+		{State: InvocationStarted},
+		{State: InvocationCompleted, Response: true, Settled: true},
+		{State: InvocationFailed, Response: true, Failure: true, Settled: true},
+		{State: InvocationUnknown, Failure: true, Settled: true},
 	}
 }
 
-func (EndpointState) Values() []EndpointState {
+func (InvocationState) Values() []InvocationState {
 	rules := EndpointEvidenceRules()
-	values := make([]EndpointState, len(rules))
+	values := make([]InvocationState, len(rules))
 	for i, rule := range rules {
 		values[i] = rule.State
 	}
 	return values
 }
 
-func (s EndpointState) rule() (EndpointEvidenceRule, error) {
+func (s InvocationState) rule() (EndpointEvidenceRule, error) {
 	for _, rule := range EndpointEvidenceRules() {
 		if rule.State == s {
 			return rule, nil
@@ -136,8 +140,8 @@ func (s EndpointState) rule() (EndpointEvidenceRule, error) {
 	return EndpointEvidenceRule{}, errors.New("models: unknown endpoint state")
 }
 
-func (s EndpointState) Validate() error   { _, err := s.rule(); return err }
-func (s EndpointState) HasResponse() bool { rule, _ := s.rule(); return rule.Response }
+func (s InvocationState) Validate() error   { _, err := s.rule(); return err }
+func (s InvocationState) HasResponse() bool { rule, _ := s.rule(); return rule.Response }
 
 // EndpointOutcome is the provider observation submitted for settlement. Admission
 // derives its state; a caller cannot label missing evidence as a known failure.
@@ -149,7 +153,7 @@ type EndpointOutcome struct {
 	Failure           string
 }
 
-func (o EndpointOutcome) State(invocation EndpointInvocation) (EndpointState, error) {
+func (o EndpointOutcome) State(invocation EndpointInvocation) (InvocationState, error) {
 	if err := invocation.Validate(); err != nil {
 		return "", err
 	}
@@ -176,11 +180,11 @@ func (o EndpointOutcome) State(invocation EndpointInvocation) (EndpointState, er
 			}
 		}
 	}
-	state := EndpointUnknown
+	state := InvocationUnknown
 	if known {
-		state = EndpointCompleted
+		state = InvocationCompleted
 		if o.Failure != "" {
-			state = EndpointFailed
+			state = InvocationFailed
 		}
 	}
 	if err := validateEndpointEvidence(state, known, o.Failure, invocation.StartedAt, o.FinishedAt); err != nil {
@@ -216,7 +220,7 @@ type EndpointRecord struct {
 	RunID          string
 	SegmentID      string
 	Invocation     EndpointInvocation
-	State          EndpointState
+	State          InvocationState
 	Failure        string
 	FinishedAt     time.Time
 	InvocationJSON jsonvalue.Value
@@ -316,7 +320,7 @@ func RestoreEndpointObservation(record EndpointRecord) (EndpointObservation, err
 	return observation, nil
 }
 
-func validateEndpointEvidence(state EndpointState, response bool, failure string, startedAt, finishedAt time.Time) error {
+func validateEndpointEvidence(state InvocationState, response bool, failure string, startedAt, finishedAt time.Time) error {
 	rule, err := state.rule()
 	if err != nil {
 		return err
@@ -359,9 +363,9 @@ func validateEndpointPrice(cost *float64, usage *chat.Usage) error {
 }
 
 func (o EndpointObservation) Validate() error          { return o.record.State.Validate() }
-func (o EndpointObservation) State() EndpointState     { return o.record.State }
+func (o EndpointObservation) State() InvocationState     { return o.record.State }
 func (o EndpointObservation) HasResponse() bool        { return o.record.State.HasResponse() }
-func (o EndpointObservation) Open() bool               { return o.record.State == EndpointStarted }
+func (o EndpointObservation) Open() bool               { return o.record.State == InvocationStarted }
 func (o EndpointObservation) Snapshot() EndpointRecord { return cloneEndpointRecord(o.record) }
 func (o EndpointObservation) Response() *chat.Response { return o.response.Clone() }
 func (o EndpointObservation) ServedModel() string      { return o.servedModel }

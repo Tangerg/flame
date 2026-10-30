@@ -59,7 +59,7 @@ func TestObservedEmbedderJournalsEndpointEvidenceThroughSharedOwner(t *testing.T
 		t.Fatalf("embedding endpoint evidence: %+v %v", rows, err)
 	}
 	row := rows[0]
-	if row.Snapshot().Invocation.Kind != modelref.EndpointEmbedding || row.State() != modelref.EndpointCompleted || row.ServedModel() != "served-embed" {
+	if row.Snapshot().Invocation.Kind != modelref.EndpointEmbedding || row.State() != modelref.InvocationCompleted || row.ServedModel() != "served-embed" {
 		t.Fatalf("embedding endpoint projection changed: %+v", row)
 	}
 	if row.Snapshot().Usage == nil || row.Snapshot().Usage.InputTokens != 13 || row.Snapshot().Usage.OutputTokens != 0 {
@@ -96,7 +96,7 @@ func TestEmbeddingRetainsPhysicalEvidenceWhenPricingFails(t *testing.T) {
 	if err != nil || len(rows) != 1 {
 		t.Fatalf("embedding endpoint observation: %+v, %v", rows, err)
 	}
-	if row := rows[0]; row.State() != modelref.EndpointFailed || !row.HasResponse() || row.Snapshot().Usage == nil || row.Snapshot().Usage.InputTokens != 13 || row.Snapshot().CostUSD != nil || row.Snapshot().Failure != cause.Error() {
+	if row := rows[0]; row.State() != modelref.InvocationFailed || !row.HasResponse() || row.Snapshot().Usage == nil || row.Snapshot().Usage.InputTokens != 13 || row.Snapshot().CostUSD != nil || row.Snapshot().Failure != cause.Error() {
 		t.Fatalf("pricing failure lost embedding evidence or invented a price: %+v", row)
 	}
 }
@@ -134,7 +134,7 @@ func TestEmbeddingRefusesUnrepresentableIndexCoordinatesAndRetainsEvidence(t *te
 				t.Fatalf("physical evidence: %+v, %v", rows, err)
 			}
 			row := rows[0]
-			if row.State() != modelref.EndpointFailed || !row.HasResponse() || row.Snapshot().Usage == nil || row.Snapshot().Usage.InputTokens != 1 || !strings.Contains(row.Snapshot().Failure, "float32 range") {
+			if row.State() != modelref.InvocationFailed || !row.HasResponse() || row.Snapshot().Usage == nil || row.Snapshot().Usage.InputTokens != 1 || !strings.Contains(row.Snapshot().Failure, "float32 range") {
 				t.Fatalf("index projection failure lost physical evidence: %+v", row)
 			}
 		})

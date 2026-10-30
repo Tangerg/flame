@@ -9,6 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
@@ -50,7 +51,7 @@ func TestTrajectoryPageBindsItsCursorToSessionAndDescendants(t *testing.T) {
 		reader.entries = append(reader.entries, TrajectoryEntry{
 			OccurredAt: at,
 			Model: &TrajectoryModelInvocation{RunID: "run_1", ModelInvocationCommit: runs.ModelInvocationCommit{
-				CallID: id, SegmentID: "seg_1", StartedAt: at, State: runs.ModelInvocationStarted,
+				CallID: id, SegmentID: "seg_1", StartedAt: at, State: modelref.InvocationStarted,
 			}},
 		})
 	}

@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -147,7 +148,7 @@ func TestAuthoritativeProjectionFailurePreservesStartUntilAtomicRunLost(t *testi
 	if commits[0].CommitID.IsZero() || commits[1].CommitID.IsZero() || commits[0].CommitID == commits[1].CommitID {
 		t.Fatalf("commit identities = %q, %q; want distinct non-empty write-set identities", commits[0].CommitID, commits[1].CommitID)
 	}
-	if got := commits[0].ModelInvocations; len(got) != 1 || got[0].State != ModelInvocationStarted {
+	if got := commits[0].ModelInvocations; len(got) != 1 || got[0].State != modelref.InvocationStarted {
 		t.Fatalf("first commit model invocations = %#v", got)
 	}
 	lost := commits[1]
@@ -155,7 +156,7 @@ func TestAuthoritativeProjectionFailurePreservesStartUntilAtomicRunLost(t *testi
 		!runHasOutcome(*lost.Run, run.OutcomeLost) {
 		t.Fatalf("lost commit = %#v", lost)
 	}
-	if got := lost.ModelInvocations; len(got) != 1 || got[0].State != ModelInvocationUnknown {
+	if got := lost.ModelInvocations; len(got) != 1 || got[0].State != modelref.InvocationUnknown {
 		t.Fatalf("lost model invocations = %#v", got)
 	}
 	for _, commit := range commits {
@@ -246,7 +247,7 @@ func TestUnknownEffectsCloseUnfinishedTreeAsLostInPostorder(t *testing.T) {
 		}
 		terminalIDs = append(terminalIDs, commit.Run.ID())
 		for _, invocation := range commit.ModelInvocations {
-			if invocation.CallID == "in_flight_model" && invocation.State == ModelInvocationUnknown {
+			if invocation.CallID == "in_flight_model" && invocation.State == modelref.InvocationUnknown {
 				unknownModel = true
 			}
 		}

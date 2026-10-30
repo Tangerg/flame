@@ -22,12 +22,13 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
-// Logical and physical requests share a table, not a state owner.
-func modelInvocationStatePredicate(logical []runs.ModelInvocationState, physical []modelref.EndpointState) string {
+// Logical calls and physical endpoint attempts share one state vocabulary but
+// admit different evidence; endpoint_json distinguishes the two row kinds.
+func modelInvocationStatePredicate(logical []modelref.InvocationState, physical []modelref.InvocationState) string {
 	quote := func(values []string) string { return "'" + strings.Join(values, "','") + "'" }
 	left := make([]string, len(logical))
 	for i, state := range logical {
-		left[i] = state.String()
+		left[i] = string(state)
 	}
 	right := make([]string, len(physical))
 	for i, state := range physical {
@@ -37,11 +38,11 @@ func modelInvocationStatePredicate(logical []runs.ModelInvocationState, physical
 }
 
 func startedModelInvocationPredicate() string {
-	return modelInvocationStatePredicate([]runs.ModelInvocationState{runs.ModelInvocationStarted}, []modelref.EndpointState{modelref.EndpointStarted})
+	return modelInvocationStatePredicate([]modelref.InvocationState{modelref.InvocationStarted}, []modelref.InvocationState{modelref.InvocationStarted})
 }
 
-func endpointResponseStates() []modelref.EndpointState {
-	var states []modelref.EndpointState
+func endpointResponseStates() []modelref.InvocationState {
+	var states []modelref.InvocationState
 	for _, rule := range modelref.EndpointEvidenceRules() {
 		if rule.Response {
 			states = append(states, rule.State)
@@ -52,13 +53,13 @@ func endpointResponseStates() []modelref.EndpointState {
 
 func modelInvocationLatencyColumn() string {
 	return "first_output_latency_millis INTEGER CHECK (first_output_latency_millis IS NULL OR (" +
-		modelInvocationStatePredicate([]runs.ModelInvocationState{runs.ModelInvocationCompleted, runs.ModelInvocationFailed}, endpointResponseStates()) +
+		modelInvocationStatePredicate([]modelref.InvocationState{modelref.InvocationCompleted, modelref.InvocationFailed}, endpointResponseStates()) +
 		" AND first_output_latency_millis >= 0))"
 }
 
 func modelInvocationUsageColumn() string {
 	return fmt.Sprintf("usage TEXT CHECK (usage IS NULL OR ((%s OR (state = '%s' AND endpoint_json IS NULL AND known_response IS NOT NULL)) AND json_valid(usage)))",
-		modelInvocationStatePredicate([]runs.ModelInvocationState{runs.ModelInvocationCompleted}, endpointResponseStates()), runs.ModelInvocationFailed.String())
+		modelInvocationStatePredicate([]modelref.InvocationState{modelref.InvocationCompleted}, endpointResponseStates()), string(modelref.InvocationFailed))
 }
 
 const oauthBindingColumn = "binding TEXT NOT NULL DEFAULT ''"
@@ -236,8 +237,8 @@ func currentSchema() []string {
 			modelInvocationUsageColumn(),
 			run.ModelConversation.String(), run.ModelIndependent.String(),
 			modelref.EndpointChat, modelref.EndpointEmbedding,
-			modelInvocationStatePredicate([]runs.ModelInvocationState{runs.ModelInvocationFailed}, endpointResponseStates()),
-			modelInvocationStatePredicate(runs.ModelInvocationState("").Values(), modelref.EndpointState("").Values()),
+			modelInvocationStatePredicate([]modelref.InvocationState{modelref.InvocationFailed}, endpointResponseStates()),
+			modelInvocationStatePredicate(modelref.InvocationState("").Values(), modelref.InvocationState("").Values()),
 			startedModelInvocationPredicate(),
 		),
 		`CREATE INDEX IF NOT EXISTS idx_model_invocations_trajectory

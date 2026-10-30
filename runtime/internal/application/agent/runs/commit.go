@@ -9,6 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -25,35 +26,6 @@ const (
 	StateTerminalize StateChange = "terminalize"
 )
 
-// ModelInvocationState records the durable application observation of one
-// provider call. It is deliberately smaller than a model response: semantic
-// output belongs to Transcript Items and accounting belongs to EventCommit.Progress.
-// This record exists to distinguish an invocation that never crossed the
-// provider boundary from one whose final projection became indeterminate.
-type ModelInvocationState string
-
-const (
-	ModelInvocationStarted   ModelInvocationState = "started"
-	ModelInvocationCompleted ModelInvocationState = "completed"
-	ModelInvocationFailed    ModelInvocationState = "failed"
-	ModelInvocationUnknown   ModelInvocationState = "unknown"
-)
-
-func (ModelInvocationState) Values() []ModelInvocationState {
-	return []ModelInvocationState{ModelInvocationStarted, ModelInvocationCompleted, ModelInvocationFailed, ModelInvocationUnknown}
-}
-
-// Valid reports whether m belongs to the durable model-invocation journal.
-func (m ModelInvocationState) Valid() bool { return slices.Contains(m.Values(), m) }
-
-// String returns the durable model-invocation state name.
-func (m ModelInvocationState) String() string {
-	if !m.Valid() {
-		return "invalid"
-	}
-	return string(m)
-}
-
 // ModelInvocationCommit is one monotonic transition in the durable invocation
 // journal. StartedAt is repeated on terminal transitions so persistence can
 // compare the exact attempt instead of updating whichever row happens to share
@@ -67,7 +39,7 @@ type ModelInvocationCommit struct {
 	Usage      *corechat.Usage
 	CallID     string
 	SegmentID  string
-	State      ModelInvocationState
+	State      modelref.InvocationState
 	StartedAt  time.Time
 	FinishedAt time.Time
 }
@@ -157,12 +129,12 @@ func (m ModelInvocationCommit) Validate() error {
 		return err
 	}
 	if m.FirstOutputLatencyMillis != nil {
-		if *m.FirstOutputLatencyMillis < 0 || (m.State != ModelInvocationCompleted && m.State != ModelInvocationFailed) {
+		if *m.FirstOutputLatencyMillis < 0 || (m.State != modelref.InvocationCompleted && m.State != modelref.InvocationFailed) {
 			return errors.New("runs: first output latency requires a nonnegative measurement and a definite model outcome")
 		}
 	}
 	if m.Usage != nil {
-		if m.State != ModelInvocationCompleted && (m.State != ModelInvocationFailed || m.KnownResponse == nil) {
+		if m.State != modelref.InvocationCompleted && (m.State != modelref.InvocationFailed || m.KnownResponse == nil) {
 			return errors.New("runs: model invocation usage requires a known response")
 		}
 		if err := m.Usage.Validate(); err != nil {
@@ -170,7 +142,7 @@ func (m ModelInvocationCommit) Validate() error {
 		}
 	}
 	if m.KnownResponse != nil {
-		if m.State != ModelInvocationFailed {
+		if m.State != modelref.InvocationFailed {
 			return errors.New("runs: known response evidence requires a failed outer model invocation")
 		}
 		if err := m.KnownResponse.Validate(); err != nil {
@@ -194,11 +166,11 @@ func (m ModelInvocationCommit) Validate() error {
 		return errors.New("runs: model invocation start time is required")
 	}
 	switch m.State {
-	case ModelInvocationStarted:
+	case modelref.InvocationStarted:
 		if !m.FinishedAt.IsZero() {
 			return errors.New("runs: started model invocation carries a finish time")
 		}
-	case ModelInvocationCompleted, ModelInvocationFailed, ModelInvocationUnknown:
+	case modelref.InvocationCompleted, modelref.InvocationFailed, modelref.InvocationUnknown:
 		if m.FinishedAt.IsZero() {
 			return errors.New("runs: terminal model invocation has no finish time")
 		}

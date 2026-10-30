@@ -15,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -322,7 +323,7 @@ func TestCommitEventAtomicallyRecordsModelFinalAndRunAccounting(t *testing.T) {
 	})
 	start := runs.ModelInvocationCommit{
 		CallID: "model_call_1", SegmentID: "seg_model",
-		State: runs.ModelInvocationStarted, StartedAt: startedAt,
+		State: modelref.InvocationStarted, StartedAt: startedAt,
 	}
 	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
 		RunID: "run_model", SessionID: "ses_model", SegmentID: "seg_model", CommitID: testCommitID("run_commit_event_model_start"),
@@ -337,7 +338,7 @@ func TestCommitEventAtomicallyRecordsModelFinalAndRunAccounting(t *testing.T) {
 		Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "answer"}},
 	})
 	completion := runs.ModelInvocationCommit{
-		CallID: "model_call_1", SegmentID: "seg_model", State: runs.ModelInvocationCompleted,
+		CallID: "model_call_1", SegmentID: "seg_model", State: modelref.InvocationCompleted,
 		StartedAt: startedAt, FinishedAt: finishedAt,
 	}
 	usage := &accounting.Usage{Total: accounting.Totals{Tokens: accounting.Tokens{InputTokens: 2, OutputTokens: 1}}}
@@ -2294,7 +2295,7 @@ func TestCommitEventReconcilesAmbiguousAuthoritativeCommit(t *testing.T) {
 		CommitID: testCommitID("run_commit_event_authoritative_start"),
 		ModelInvocations: []runs.ModelInvocationCommit{{
 			CallID: "model_call_1", SegmentID: draft.SegmentID,
-			State: runs.ModelInvocationStarted, StartedAt: startedAt,
+			State: modelref.InvocationStarted, StartedAt: startedAt,
 		}},
 	}); commitEventErr != nil {
 		t.Fatalf("commit model start: %v", commitEventErr)
@@ -2324,7 +2325,7 @@ func TestCommitEventReconcilesAmbiguousAuthoritativeCommit(t *testing.T) {
 		},
 		ModelInvocations: []runs.ModelInvocationCommit{{
 			CallID: "model_call_1", SegmentID: draft.SegmentID,
-			State: runs.ModelInvocationCompleted, StartedAt: startedAt, FinishedAt: finishedAt,
+			State: modelref.InvocationCompleted, StartedAt: startedAt, FinishedAt: finishedAt,
 		}},
 		Progress: new(testsupport.MustProgressedRun(draft, testsupport.MustRunMetrics(testsupport.RunMetricsInput{
 			Steps: 1, Usage: usage,

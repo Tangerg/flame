@@ -43,7 +43,7 @@ func TestUnobservedEndpointReopensUnknownWithoutReplayingCallingIdentity(t *test
 		t.Fatal(err)
 	}
 	rows, err := store.PageEndpointInvocations(t.Context(), "model-operation", 0, "", 10)
-	if err != nil || len(rows) != 1 || rows[0].State() != modelref.EndpointUnknown || rows[0].Response() != nil || rows[0].Snapshot().Failure == "" {
+	if err != nil || len(rows) != 1 || rows[0].State() != modelref.InvocationUnknown || rows[0].Response() != nil || rows[0].Snapshot().Failure == "" {
 		t.Fatalf("restart promoted unknown request: %+v, %v", rows, err)
 	}
 	invocation.ID = "endpoint-replacement"
@@ -356,7 +356,7 @@ func TestEmbeddingEndpointRecordsKindUsageServedModelAndRawEvidence(t *testing.T
 	if err != nil || !found {
 		t.Fatalf("embedding endpoint missing: %v", err)
 	}
-	if observed.Snapshot().Invocation.Kind != modelref.EndpointEmbedding || observed.State() != modelref.EndpointCompleted || observed.ServedModel() != "embed-model-served" {
+	if observed.Snapshot().Invocation.Kind != modelref.EndpointEmbedding || observed.State() != modelref.InvocationCompleted || observed.ServedModel() != "embed-model-served" {
 		t.Fatalf("embedding projection changed: %+v", observed)
 	}
 	if observed.Snapshot().Usage == nil || observed.Snapshot().Usage.InputTokens != 11 || observed.Snapshot().Usage.OutputTokens != 0 {

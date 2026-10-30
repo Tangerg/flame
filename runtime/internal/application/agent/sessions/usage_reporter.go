@@ -158,13 +158,13 @@ func (u *usageAccumulator) addCall(observation modelref.EndpointObservation) err
 	}
 	next.coverage.Calls++
 	switch source.State {
-	case modelref.EndpointStarted:
+	case modelref.InvocationStarted:
 		next.coverage.StartedCalls++
-	case modelref.EndpointCompleted:
+	case modelref.InvocationCompleted:
 		next.coverage.CompletedCalls++
-	case modelref.EndpointFailed:
+	case modelref.InvocationFailed:
 		next.coverage.FailedCalls++
-	case modelref.EndpointUnknown:
+	case modelref.InvocationUnknown:
 		next.coverage.UnknownCalls++
 	}
 

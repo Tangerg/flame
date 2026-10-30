@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
@@ -47,7 +47,7 @@ func TestModelInvocationReaderValidatesStoredEvidence(t *testing.T) {
 				t.Fatal(err)
 			}
 			rows, err := reader.PageModelInvocations(t.Context(), draft.RunID, 0, "", 10)
-			if err != nil || len(rows) != 1 || rows[0].State != runs.ModelInvocationCompleted ||
+			if err != nil || len(rows) != 1 || rows[0].State != modelref.InvocationCompleted ||
 				rows[0].Usage == nil || rows[0].FirstOutputLatencyMillis == nil || *rows[0].FirstOutputLatencyMillis != 0 {
 				t.Fatalf("valid evidence = %+v, %v", rows, err)
 			}

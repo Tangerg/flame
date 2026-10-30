@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
 // ModelInvocationReader translates the stored journal into application observations.
@@ -36,7 +37,7 @@ func (m modelInvocationReader) PageModelInvocations(ctx context.Context, runID s
 func modelInvocationFromRecord(row modelInvocationRecord) (runs.ModelInvocationCommit, error) {
 	record := runs.ModelInvocationCommit{
 		FirstOutputLatencyMillis: row.FirstOutputLatencyMillis, Usage: row.Usage, KnownResponse: row.KnownResponse.Clone(),
-		CallID: row.CallID, SegmentID: row.SegmentID, State: runs.ModelInvocationState(row.State),
+		CallID: row.CallID, SegmentID: row.SegmentID, State: modelref.InvocationState(row.State),
 		StartedAt: row.StartedAt, FinishedAt: row.FinishedAt,
 	}
 	if err := record.Validate(); err != nil {

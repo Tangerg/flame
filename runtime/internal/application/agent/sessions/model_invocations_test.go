@@ -8,6 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
 type modelInvocationPages struct {
@@ -50,5 +51,5 @@ func TestModelInvocationPageKeepsOpaqueCursorBoundToItsRun(t *testing.T) {
 }
 
 func invocation(id string) runs.ModelInvocationCommit {
-	return runs.ModelInvocationCommit{CallID: id, SegmentID: "seg_attempt", State: runs.ModelInvocationCompleted, StartedAt: time.Unix(10, 0), FinishedAt: time.Unix(11, 0)}
+	return runs.ModelInvocationCommit{CallID: id, SegmentID: "seg_attempt", State: modelref.InvocationCompleted, StartedAt: time.Unix(10, 0), FinishedAt: time.Unix(11, 0)}
 }

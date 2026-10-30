@@ -8,6 +8,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -314,7 +315,7 @@ func (r *reducer) startModelCall(started ModelCallStarted) (factReduction, error
 		events: []ProjectionEvent{SegmentProgressed{Progress: Progress{Activity: "Calling model"}}},
 		modelInvocations: []ModelInvocationCommit{{
 			CallID: started.CallID, SegmentID: r.cfg.Opened.ActiveSegmentID(),
-			State: ModelInvocationStarted, Purpose: started.Purpose, StartedAt: startedAt,
+			State: modelref.InvocationStarted, Purpose: started.Purpose, StartedAt: startedAt,
 		}},
 	}, nil
 }
@@ -371,7 +372,7 @@ func (r *reducer) completeModelCall(completed ModelCallCompleted) (factReduction
 		conversationMessages: conversationMessages,
 		modelInvocations: []ModelInvocationCommit{{
 			CallID: completed.CallID, SegmentID: r.cfg.Opened.ActiveSegmentID(),
-			State: ModelInvocationCompleted, Purpose: call.purpose, StartedAt: startedAt, FinishedAt: finishedAt, Usage: completed.ReportedUsage,
+			State: modelref.InvocationCompleted, Purpose: call.purpose, StartedAt: startedAt, FinishedAt: finishedAt, Usage: completed.ReportedUsage,
 			FirstOutputLatencyMillis: completed.FirstOutputLatencyMillis,
 		}},
 		progress: &progressed,
@@ -449,7 +450,7 @@ func (r *reducer) failModelCall(failed ModelCallFailed) (factReduction, error) {
 		events:   append(events, SegmentProgressed{Progress: Progress{Activity: "Model call failed"}}),
 		modelInvocations: []ModelInvocationCommit{{
 			CallID: failed.CallID, SegmentID: r.cfg.Opened.ActiveSegmentID(),
-			State: ModelInvocationFailed, Purpose: call.purpose, StartedAt: startedAt, FinishedAt: finishedAt,
+			State: modelref.InvocationFailed, Purpose: call.purpose, StartedAt: startedAt, FinishedAt: finishedAt,
 			Usage: usage, KnownResponse: failed.KnownResponse.Clone(),
 			FirstOutputLatencyMillis: failed.FirstOutputLatencyMillis,
 		}},
@@ -525,7 +526,7 @@ func (r *reducer) closeLostModelCalls(outcome run.Outcome) ([]ModelInvocationCom
 		}
 		invocations = append(invocations, ModelInvocationCommit{
 			CallID: callID, SegmentID: r.cfg.Opened.ActiveSegmentID(),
-			State: ModelInvocationUnknown, Purpose: call.purpose, StartedAt: startedAt, FinishedAt: finishedAt,
+			State: modelref.InvocationUnknown, Purpose: call.purpose, StartedAt: startedAt, FinishedAt: finishedAt,
 		})
 	}
 	clear(r.modelCalls)
@@ -594,7 +595,7 @@ func (r *reducer) synthesizeTerminal() (reductionBatch, error) {
 			}
 			modelInvocations = append(modelInvocations, ModelInvocationCommit{
 				CallID: callID, SegmentID: r.cfg.Opened.ActiveSegmentID(),
-				State: ModelInvocationUnknown, Purpose: call.purpose, StartedAt: startedAt, FinishedAt: finishedAt,
+				State: modelref.InvocationUnknown, Purpose: call.purpose, StartedAt: startedAt, FinishedAt: finishedAt,
 			})
 		}
 		clear(r.modelCalls)

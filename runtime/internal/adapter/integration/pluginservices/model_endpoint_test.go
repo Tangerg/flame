@@ -96,7 +96,7 @@ func TestEndpointEvidenceSurvivesOuterObserverFailureAndHostRestart(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if row.State() != modelref.EndpointCompleted || row.Snapshot().Failure != "" || storedResponse != expectedResponse || storedRequest != expectedRequest || row.Snapshot().Invocation.Provider != "anthropic" || row.Snapshot().Invocation.Model != "configured-model" || row.Snapshot().Invocation.Caller.Parent != "original-effect" || row.Snapshot().Invocation.ID == row.Snapshot().Invocation.Caller.ID {
+	if row.State() != modelref.InvocationCompleted || row.Snapshot().Failure != "" || storedResponse != expectedResponse || storedRequest != expectedRequest || row.Snapshot().Invocation.Provider != "anthropic" || row.Snapshot().Invocation.Model != "configured-model" || row.Snapshot().Invocation.Caller.Parent != "original-effect" || row.Snapshot().Invocation.ID == row.Snapshot().Invocation.Caller.ID {
 		t.Fatalf("outer failure changed physical endpoint evidence: %+v", row)
 	}
 }

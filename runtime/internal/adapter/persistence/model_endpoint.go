@@ -5,6 +5,9 @@ import (
 	"database/sql"
 	"encoding/json/jsontext"
 	"errors"
+	"reflect"
+	"time"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
@@ -16,8 +19,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
-	"reflect"
-	"time"
 )
 
 const endpointObservationColumns = `call_id,started_at,endpoint_json,state,finished_at,known_response,endpoint_failure,COALESCE(session_id,''),COALESCE(run_id,''),COALESCE(segment_id,''),endpoint_cost_usd,usage,COALESCE(endpoint_kind,'')`
@@ -104,7 +105,7 @@ func (m *ModelInvocationStore) StartEndpointInvocation(ctx context.Context, invo
 			WHERE call_id=? AND state=?
 		) owner JOIN runs ON runs.run_id=owner.run_id AND runs.session_id=owner.session_id
 		WHERE runs.state=? AND runs.active_segment_id=owner.segment_id AND owner.started_at<=?`
-		args = []any{ownerCallID, runs.ModelInvocationStarted.String(), ownerCallID, toolInvocationStarted.databaseValue(), string(rundomain.Running), invocation.StartedAt.UTC().UnixNano()}
+		args = []any{ownerCallID, string(modelref.InvocationStarted), ownerCallID, toolInvocationStarted.databaseValue(), string(rundomain.Running), invocation.StartedAt.UTC().UnixNano()}
 	}
 	query := `INSERT INTO model_invocations(call_id,session_id,run_id,segment_id,state,started_at,endpoint_json,endpoint_kind)
  SELECT ?,scope.session_id,scope.run_id,scope.segment_id,?,?,?,? FROM (` + scope + `) scope
@@ -112,7 +113,7 @@ func (m *ModelInvocationStore) StartEndpointInvocation(ctx context.Context, invo
  AND (? IS NULL OR scope.session_id=?)
  AND NOT EXISTS(SELECT 1 FROM model_invocations WHERE endpoint_json IS NULL AND call_id=? AND call_id!=?)
  AND NOT EXISTS(SELECT 1 FROM tool_invocations WHERE call_id=?)`
-	parameters := []any{invocation.ID, modelref.EndpointStarted, invocation.StartedAt.UTC().UnixNano(), string(encoded), string(invocation.Kind)}
+	parameters := []any{invocation.ID, modelref.InvocationStarted, invocation.StartedAt.UTC().UnixNano(), string(encoded), string(invocation.Kind)}
 	parameters = append(parameters, args...)
 	parameters = append(parameters, session, session, invocation.Caller.ID, ownerCallID, invocation.Caller.ID)
 	result, err := sqlite.Connection(ctx, m.db).ExecContext(ctx, query, parameters...)
@@ -149,7 +150,7 @@ func (m *ModelInvocationStore) SettleEndpointInvocation(ctx context.Context, inv
 	}
 	result, err := sqlite.Connection(ctx, m.db).ExecContext(ctx, `UPDATE model_invocations SET state=?,finished_at=?,known_response=?,usage=?,endpoint_failure=?,endpoint_cost_usd=?
 		WHERE call_id=? AND state=? AND started_at=? AND endpoint_json=?`, state, outcome.FinishedAt.UTC().UnixNano(), response, encodedUsage, outcome.Failure, outcome.CostUSD,
-		invocation.ID, modelref.EndpointStarted, invocation.StartedAt.UTC().UnixNano(), string(encoded))
+		invocation.ID, modelref.InvocationStarted, invocation.StartedAt.UTC().UnixNano(), string(encoded))
 	if err != nil {
 		return err
 	}
@@ -251,7 +252,7 @@ func (m *ModelInvocationStore) ReconcileEndpointInvocations(ctx context.Context,
 	if err := instant.Validate(settledAt); err != nil {
 		return err
 	}
-	_, err := sqlite.Connection(ctx, m.db).ExecContext(ctx, `UPDATE model_invocations SET state=?,finished_at=MAX(started_at,?),endpoint_failure='process stopped before endpoint completion was recorded' WHERE endpoint_json IS NOT NULL AND state=?`, modelref.EndpointUnknown, settledAt.UTC().UnixNano(), modelref.EndpointStarted)
+	_, err := sqlite.Connection(ctx, m.db).ExecContext(ctx, `UPDATE model_invocations SET state=?,finished_at=MAX(started_at,?),endpoint_failure='process stopped before endpoint completion was recorded' WHERE endpoint_json IS NOT NULL AND state=?`, modelref.InvocationUnknown, settledAt.UTC().UnixNano(), modelref.InvocationStarted)
 	return err
 }
 
@@ -340,7 +341,7 @@ func (m *ModelInvocationStore) RecoverModelInvocation(ctx context.Context, sessi
 	 UPDATE model_invocations SET state=?,finished_at=?,usage=(SELECT usage FROM evidence),known_response=(SELECT known_response FROM evidence)
 	 WHERE call_id=? AND session_id=? AND run_id=? AND segment_id=? AND state=? AND started_at=? AND endpoint_json IS NULL AND EXISTS(SELECT 1 FROM evidence)`,
 		record.Invocation.ID, record.InvocationJSON.String(), sessionID, runID, segmentID, record.State, record.FinishedAt.UTC().UnixNano(), record.ResponseJSON.String(), record.CostUSD, record.Failure, usage,
-		runs.ModelInvocationFailed.String(), finishedAt.UTC().UnixNano(), callID, sessionID, runID, segmentID, runs.ModelInvocationStarted.String(), startedAt.UTC().UnixNano())
+		string(modelref.InvocationFailed), finishedAt.UTC().UnixNano(), callID, sessionID, runID, segmentID, string(modelref.InvocationStarted), startedAt.UTC().UnixNano())
 	if err != nil {
 		return err
 	}

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -152,7 +153,7 @@ func TestReducerAccountsModelResponseWithoutMessage(t *testing.T) {
 			calls = append(calls, reduction.Commit.ModelInvocations...)
 		}
 	}
-	if len(calls) != 1 || calls[0].State != ModelInvocationCompleted ||
+	if len(calls) != 1 || calls[0].State != modelref.InvocationCompleted ||
 		calls[0].Usage == nil || !reflect.DeepEqual(*calls[0].Usage, reported) {
 		t.Fatalf("usage-only model journal = %+v", calls)
 	}
@@ -491,7 +492,7 @@ func TestReducerSynthesizesUnsettledModelCallAsAtomicRunLost(t *testing.T) {
 	}
 	commit := reductions[len(reductions)-1].Commit
 	if commit == nil || len(commit.ModelInvocations) != 1 ||
-		commit.ModelInvocations[0].State != ModelInvocationUnknown {
+		commit.ModelInvocations[0].State != modelref.InvocationUnknown {
 		t.Fatalf("model invocation settlement = %#v, want one unknown", commit)
 	}
 }
@@ -954,7 +955,7 @@ func TestReducerCanonicalProgressSnapshotsAndOutcomes(t *testing.T) {
 	}
 	commit := usage[0].Commit
 	if commit == nil || commit.Progress == nil || len(commit.ModelInvocations) != 1 ||
-		commit.ModelInvocations[0].CallID != "model_call_1" || commit.ModelInvocations[0].State != ModelInvocationCompleted {
+		commit.ModelInvocations[0].CallID != "model_call_1" || commit.ModelInvocations[0].State != modelref.InvocationCompleted {
 		t.Fatalf("accounting progress has no model completion write-set: %+v", commit)
 	}
 	stored, reported := commit.Progress.Metrics().Usage()
@@ -1847,7 +1848,7 @@ func TestFailedOuterKnownResponseCommitsEvidenceAndUsageWithoutContinuation(t *t
 			progress = progress || reduction.Commit.Progress != nil
 		}
 	}
-	if len(invocations) != 1 || invocations[0].State != ModelInvocationFailed || !reflect.DeepEqual(invocations[0].KnownResponse, response) || !reflect.DeepEqual(invocations[0].Usage, usage) || !progress {
+	if len(invocations) != 1 || invocations[0].State != modelref.InvocationFailed || !reflect.DeepEqual(invocations[0].KnownResponse, response) || !reflect.DeepEqual(invocations[0].Usage, usage) || !progress {
 		t.Fatalf("failed response evidence/accounting=%+v progress=%v", invocations, progress)
 	}
 	for _, item := range completedItems(reduced) {
