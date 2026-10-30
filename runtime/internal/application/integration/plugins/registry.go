@@ -72,8 +72,6 @@ func NewRegistry(host *qimu.Host, user userServers, installations Store, package
 	return &Registry{framework: host, user: user, installations: installations, packages: packages, selections: selections, compositions: compositions}, nil
 }
 
-func (r *Registry) Framework() *qimu.Host { return r.framework }
-
 // ComponentPlan prepares one immutable component export in its target Realm.
 // The Host revalidates the plan before the browser receives execution authority.
 func (r *Registry) ComponentPlan(ctx context.Context, realm qimu.RealmID, id identity.InstallationID, digest integrity.Digest, component plugin.ContributionID) (*qimu.BindingPlan, error) {
