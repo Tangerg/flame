@@ -9690,6 +9690,11 @@
               "name": "MaxBytes",
               "type": "*int",
               "tag": "json:\"maxBytes,omitzero\""
+            },
+            {
+              "name": "FromEnd",
+              "type": "bool",
+              "tag": "json:\"fromEnd,omitzero\""
             }
           ]
         },

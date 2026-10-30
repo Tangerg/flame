@@ -7,6 +7,7 @@ import {
   useCallback,
   useId,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type ClipboardEventHandler,
@@ -109,10 +110,11 @@ interface LocalFileActions {
 interface LineWindow {
   start?: number;
   end?: number;
+  fromEnd?: boolean;
 }
 
 function initialWindow(line: number): LineWindow {
-  return line > 0 ? { start: Math.max(1, line - WINDOW_RADIUS), end: line + WINDOW_RADIUS } : {};
+  return line > 0 ? { start: line, end: line + WINDOW_RADIUS } : {};
 }
 
 export function FileWorkspace() {
@@ -332,11 +334,12 @@ function FilePreview({
   const workspace = useActiveSessionWorkspace();
   const cwd = resolvedWorkspaceCwd(workspace);
   const targetLine = viewer.line;
+  const initialLineWindow = useMemo(() => initialWindow(targetLine), [targetLine]);
   const [windowFor, setWindowFor] = useState<{ intent: object; window: LineWindow }>(() => ({
     intent: viewer,
     window: initialWindow(targetLine),
   }));
-  const lineWindow = windowFor.intent === viewer ? windowFor.window : initialWindow(targetLine);
+  const lineWindow = windowFor.intent === viewer ? windowFor.window : initialLineWindow;
   const setLineWindow = (next: LineWindow) => setWindowFor({ intent: viewer, window: next });
 
   const { data, isPlaceholderData, isPending, isFetching, error, refetch } = useWorkspaceReadFile(
@@ -346,13 +349,13 @@ function FilePreview({
           path: viewer.path,
           ...(lineWindow.start !== undefined ? { startLine: lineWindow.start } : {}),
           ...(lineWindow.end !== undefined ? { endLine: lineWindow.end } : {}),
+          ...(lineWindow.fromEnd ? { fromEnd: true } : {}),
         }
       : undefined,
   );
 
-  const shownLines = data ? data.content.split("\n").length : 0;
   const firstShown = data?.startLine ?? 1;
-  const lastShown = firstShown + shownLines - 1;
+  const lastShown = data?.endLine ?? 0;
   const moreBefore = firstShown > 1;
   const moreAfter = data !== undefined && lastShown < data.totalLines;
 
@@ -374,19 +377,15 @@ function FilePreview({
     if (host && viewer.line <= 0) host.scrollTop = 0;
   }, [viewer]);
 
-  // Bound to the window it requested; any later window or navigation retires it.
-  const anchor = useRef<{ height: number; window: LineWindow } | null>(null);
+  const arrival = useRef<{ viewer: object; window: LineWindow } | null>(null);
   useLayoutEffect(() => {
     const host = scrollPort.current;
-    if (!anchor.current || !host) return;
-    if (anchor.current.window !== lineWindow) {
-      anchor.current = null;
-      return;
+    if (!host || !data || isPlaceholderData) return;
+    if (arrival.current?.viewer === viewer && arrival.current.window !== lineWindow) {
+      host.scrollTop = 0;
     }
-    if (isPlaceholderData) return;
-    host.scrollTop += host.scrollHeight - anchor.current.height;
-    anchor.current = null;
-  }, [data, isPlaceholderData, lineWindow]);
+    arrival.current = { viewer, window: lineWindow };
+  }, [data, isPlaceholderData, lineWindow, viewer]);
 
   const focusReaderFrom = (control: HTMLElement) => {
     if (control.ownerDocument.activeElement === control) {
@@ -395,14 +394,15 @@ function FilePreview({
   };
   const loadEarlier = (event: MouseEvent<HTMLElement>) => {
     focusReaderFrom(event.currentTarget);
-    const host = scrollPort.current;
-    const next = { start: Math.max(1, firstShown - WINDOW_RADIUS), end: lastShown };
-    anchor.current = host ? { height: host.scrollHeight, window: next } : null;
-    setLineWindow(next);
+    setLineWindow({
+      start: Math.max(1, firstShown - WINDOW_RADIUS),
+      end: firstShown - 1,
+      fromEnd: true,
+    });
   };
   const loadLater = (event: MouseEvent<HTMLElement>) => {
     focusReaderFrom(event.currentTarget);
-    setLineWindow({ start: firstShown, end: lastShown + WINDOW_RADIUS });
+    setLineWindow({ start: lastShown + 1, end: lastShown + WINDOW_RADIUS });
   };
 
   // Set only while FileView presents the source, including as a renderer's fallback;

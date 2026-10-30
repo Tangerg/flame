@@ -1,4 +1,5 @@
 import { expect, test } from "./test";
+import { type Query } from "@tanstack/react-query";
 const REFERENCE = "apps/web/src/features/chat/message/ui/markdown/markdownComponents.tsx:12:3";
 
 for (const [width, fontSize, theme] of [
@@ -222,7 +223,7 @@ for (const [fontSize, codeFontSize, theme] of [
       await queryClient.cancelQueries({ queryKey: [WORKSPACE_READ_FILE_KEY] });
       queryClient.setQueriesData(
         { queryKey: [WORKSPACE_READ_FILE_KEY] },
-        { content: "first\n\n  final", startLine: 999998, totalLines: 1000000 },
+        { content: "first\n\n  final", startLine: 999998, endLine: 1000000, totalLines: 1000000 },
       );
     });
     await expect(source.locator('[data-quote-line="1000000"]')).toBeVisible();
@@ -258,3 +259,80 @@ for (const [fontSize, codeFontSize, theme] of [
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
   });
 }
+
+test("file page changes keep keyboard focus, reset reading position and copy the current material", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/visual/?fixture=workspace&state=dock-files&locale=en");
+  await page.locator("html[data-visual-ready]").waitFor();
+  await page.getByRole("treeitem", { name: "README.md", exact: true }).click();
+  const view = page.locator('[data-dock-view-id="file"]');
+  await view.getByRole("radio", { name: "Source", exact: true }).click();
+  const source = view.locator('[data-quote-source="file"]');
+  await expect(source).toBeVisible();
+  const suffix = await page.evaluate(async () => {
+    if (!location.pathname.startsWith("/visual/"))
+      throw new Error("An isolated fixture is required");
+    const clientPath = "/src/lib/queryClient.ts";
+    const queryPath = "/src/features/workspace/application/workspaceQueries.ts";
+    const { queryClient } = await import(clientPath);
+    const { WORKSPACE_READ_FILE_KEY } = await import(queryPath);
+    await queryClient.cancelQueries({ queryKey: [WORKSPACE_READ_FILE_KEY] });
+    const query = queryClient
+      .getQueryCache()
+      .findAll({ queryKey: [WORKSPACE_READ_FILE_KEY] })
+      .find((entry: Query) => entry.isActive());
+    if (!query) throw new Error("The current file read is missing");
+    const params = query.queryKey[1] as { cwd?: string; path: string };
+    const lines = Array.from(
+      { length: 100 },
+      (_, index) => `source line ${index + 1}: ${"material ".repeat(12)}`,
+    );
+    lines.push("");
+    const first = {
+      content: lines.slice(0, 80).join("\n"),
+      startLine: 1,
+      endLine: 80,
+      totalLines: lines.length,
+      truncated: true,
+    };
+    const last = {
+      content: lines.slice(80).join("\n"),
+      startLine: 81,
+      endLine: 101,
+      totalLines: lines.length,
+      truncated: true,
+    };
+    const nextKey = [WORKSPACE_READ_FILE_KEY, { ...params, startLine: 81, endLine: 280 }];
+    const previousKey = [
+      WORKSPACE_READ_FILE_KEY,
+      { ...params, startLine: 1, endLine: 80, fromEnd: true },
+    ];
+    for (const key of [query.queryKey, nextKey, previousKey])
+      queryClient.setQueryDefaults(key, { staleTime: Infinity });
+    queryClient.setQueryData(nextKey, last);
+    queryClient.setQueryData(previousKey, first);
+    queryClient.setQueryData(query.queryKey, first);
+    return last.content;
+  });
+  const reader = view.getByRole("region", { name: "README.md", exact: true });
+  const next = view.getByRole("button", { name: /more/i });
+  await next.focus();
+  await next.press("Enter");
+  await expect(source.locator('[data-quote-line="81"]')).toBeVisible();
+  await expect(source.locator('[data-quote-line="1"]')).toHaveCount(0);
+  await expect(reader).toBeFocused();
+  await expect.poll(() => reader.evaluate((node) => node.scrollTop)).toBe(0);
+  await reader.press("ControlOrMeta+A");
+  await reader.press("ControlOrMeta+C");
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(suffix);
+  const previous = view.getByRole("button", { name: /earlier/i });
+  await previous.focus();
+  await previous.press("Enter");
+  await expect(source.locator('[data-quote-line="1"]')).toBeVisible();
+  await expect(source.locator('[data-quote-line="81"]')).toHaveCount(0);
+  await expect(reader).toBeFocused();
+  await expect.poll(() => reader.evaluate((node) => node.scrollTop)).toBe(0);
+});

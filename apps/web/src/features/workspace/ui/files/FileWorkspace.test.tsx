@@ -85,7 +85,9 @@ beforeEach(async () => {
   });
   client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
   listFiles.mockReset().mockImplementation(async (query) => (query.path ? [file] : [directory]));
-  readFile.mockReset().mockResolvedValue({ content: "package main", startLine: 1, totalLines: 1 });
+  readFile
+    .mockReset()
+    .mockResolvedValue({ content: "package main", startLine: 1, endLine: 1, totalLines: 1 });
   await loadPluginsForTest(
     definePlugin({
       name: "test.workspace-files",
@@ -131,7 +133,7 @@ function pauseQueries() {
 
 function lineWindow(start: number, end: number, totalLines: number): WorkspaceFileContent {
   const lines = Array.from({ length: end - start + 1 }, (_, i) => `line ${start + i}`);
-  return { content: lines.join("\n"), startLine: start, totalLines };
+  return { content: lines.join("\n"), startLine: start, endLine: end, totalLines };
 }
 
 function row(line: number) {
@@ -300,8 +302,13 @@ describe("workspace files panel", () => {
     expect(readFile).toHaveBeenCalledWith({ cwd: undefined, path: "src/main.go" });
   });
 
-  it("keeps the file shown while a wider line window loads", async () => {
-    readFile.mockResolvedValue({ content: "middle chunk", startLine: 1300, totalLines: 3000 });
+  it("keeps the file shown while a preceding page loads", async () => {
+    readFile.mockResolvedValue({
+      content: "middle chunk",
+      startLine: 1300,
+      endLine: 1300,
+      totalLines: 3000,
+    });
     openWorkspaceFile(testClient.workspace.access, "src/big.go");
     mount(<FileWorkspace />);
     await screen.findByText("middle chunk");
@@ -313,7 +320,12 @@ describe("workspace files panel", () => {
     // placeholderData holds the content instead of flashing a skeleton.
     expect(screen.getByText("middle chunk")).toBeTruthy();
 
-    pending.resolve({ content: "earlier\nmiddle chunk", startLine: 1100, totalLines: 3000 });
+    pending.resolve({
+      content: "earlier\nprevious page",
+      startLine: 1298,
+      endLine: 1299,
+      totalLines: 3000,
+    });
     await screen.findByText("earlier");
   });
 
@@ -343,11 +355,11 @@ describe("workspace files panel", () => {
 
   describe("range-control focus continuity", () => {
     it.each([
-      { edge: "first", control: /earlier/i, start: 1, end: 500, requestedEnd: 500 },
-      { edge: "last", control: /more/i, start: 100, end: 600, requestedEnd: 700 },
+      { edge: "first", control: /earlier/i, start: 1, end: 99, requestedEnd: 99, fromEnd: true },
+      { edge: "last", control: /more/i, start: 501, end: 600, requestedEnd: 700, fromEnd: false },
     ])(
       "keeps the reader focused when the $edge line retires its range control",
-      async ({ control, start, end, requestedEnd }) => {
+      async ({ control, start, end, requestedEnd, fromEnd }) => {
         const placeTarget = vi
           .spyOn(HTMLElement.prototype, "scrollIntoView")
           .mockImplementation(() => {});
@@ -373,6 +385,7 @@ describe("workspace files panel", () => {
             path: "src/big.go",
             startLine: start,
             endLine: requestedEnd,
+            ...(fromEnd ? { fromEnd: true } : {}),
           }),
         );
 
@@ -381,7 +394,7 @@ describe("workspace files panel", () => {
         expect(document.activeElement).toBe(host);
         expect(focusWhilePending).toBe(host);
         expect(focusReader).toHaveBeenCalledExactlyOnceWith({ preventScroll: true });
-        expect(host.scrollTop).toBe(10 + (100 - start) * ROW);
+        expect(host.scrollTop).toBe(0);
         expect(placeTarget).toHaveBeenCalledTimes(1);
       },
     );
@@ -465,7 +478,7 @@ describe("workspace files panel", () => {
       act(() => draft.focus());
       fireEvent.change(draft, { target: { value: "Retained message draft, continued" } });
 
-      await act(async () => pending.resolve(lineWindow(100, 600, 600)));
+      await act(async () => pending.resolve(lineWindow(501, 600, 600)));
       await waitFor(() => expect(row(600)).toBeTruthy());
       expect(document.activeElement).toBe(draft);
       expect(draft.value).toBe("Retained message draft, continued");
@@ -484,13 +497,18 @@ describe("workspace files panel", () => {
       fireEvent.click(button);
       expect(document.activeElement).toBe(host);
 
-      readFile.mockResolvedValueOnce({ content: "package main", startLine: 1, totalLines: 1 });
+      readFile.mockResolvedValueOnce({
+        content: "package main",
+        startLine: 1,
+        endLine: 1,
+        totalLines: 1,
+      });
       act(() => openWorkspaceFile(testClient.workspace.access, "src/main.go"));
       await screen.findByText("package main");
       const back = screen.getByRole("button", { name: "Back to files" });
       expect(document.activeElement).toBe(back);
 
-      await act(async () => pending.resolve(lineWindow(100, 600, 600)));
+      await act(async () => pending.resolve(lineWindow(501, 600, 600)));
       await waitFor(() => expect(client.isFetching()).toBe(0));
       expect(document.activeElement).toBe(back);
       expect(screen.getByRole("region", { name: "src/main.go" }).textContent).toContain(
@@ -500,7 +518,7 @@ describe("workspace files panel", () => {
     });
   });
 
-  describe("prepend scroll continuity", () => {
+  describe("page scroll ownership", () => {
     async function openMiddle() {
       vi.spyOn(HTMLElement.prototype, "scrollIntoView").mockImplementation(() => {});
       readFile.mockResolvedValueOnce(lineWindow(1300, 1302, 3000));
@@ -515,33 +533,33 @@ describe("workspace files panel", () => {
       return { host, earlier };
     }
 
-    it("keeps the reader's rows in place when earlier lines arrive", async () => {
+    it("places the preceding page at its start when its material arrives", async () => {
       const { host, earlier } = await openMiddle();
-      await act(async () => earlier.resolve(lineWindow(1100, 1302, 3000)));
+      await act(async () => earlier.resolve(lineWindow(1100, 1299, 3000)));
       await vi.waitFor(() => expect(row(1100)).toBeTruthy());
-      expect(host.scrollTop).toBe(10 + 200 * ROW);
+      expect(host.scrollTop).toBe(0);
     });
 
-    it("drops a superseded prepend when a line navigation replaces the window", async () => {
+    it("retires a superseded previous page when a line navigation replaces the window", async () => {
       const { host, earlier } = await openMiddle();
       const navigation = Promise.withResolvers<WorkspaceFileContent>();
       readFile.mockReturnValueOnce(navigation.promise);
       act(() => openWorkspaceFile(testClient.workspace.access, "src/big.go", 2000));
-      await act(async () => earlier.resolve(lineWindow(1100, 1302, 3000)));
+      await act(async () => earlier.resolve(lineWindow(1100, 1299, 3000)));
       await act(async () => navigation.resolve(lineWindow(1800, 2200, 3000)));
       await vi.waitFor(() => expect(row(2200)).toBeTruthy());
       expect(host.scrollTop).toBe(10);
     });
 
-    it("drops a superseded prepend when later lines replace the window", async () => {
+    it("retires a superseded previous page when later lines replace the window", async () => {
       const { host, earlier } = await openMiddle();
       const later = Promise.withResolvers<WorkspaceFileContent>();
       readFile.mockReturnValueOnce(later.promise);
       fireEvent.click(screen.getByRole("button", { name: /more/i }));
-      await act(async () => earlier.resolve(lineWindow(1100, 1302, 3000)));
-      await act(async () => later.resolve(lineWindow(1300, 1502, 3000)));
+      await act(async () => earlier.resolve(lineWindow(1100, 1299, 3000)));
+      await act(async () => later.resolve(lineWindow(1303, 1502, 3000)));
       await vi.waitFor(() => expect(row(1502)).toBeTruthy());
-      expect(host.scrollTop).toBe(10);
+      expect(host.scrollTop).toBe(0);
     });
   });
 
@@ -584,16 +602,16 @@ describe("workspace files panel", () => {
 
       fireEvent.click(screen.getByRole("button", { name: /more/i }));
       await vi.waitFor(() => expect(row(850)).toBeTruthy());
-      expect(host.scrollTop).toBe(3482);
+      expect(host.scrollTop).toBe(0);
 
       act(() => openWorkspaceFile(testClient.workspace.access, "src/main.ts"));
-      await vi.waitFor(() => expect(row(450)).toBeNull());
-      expect(row(1)).toBeTruthy();
+      await vi.waitFor(() => expect(row(1)).toBeTruthy());
+      expect(row(450)).toBeNull();
       expect(host.scrollTop).toBe(0);
     });
 
     it("reopens a rendered file at its top in its preferred mode", async () => {
-      readFile.mockResolvedValue({ content: "# Guide", startLine: 1, totalLines: 1 });
+      readFile.mockResolvedValue({ content: "# Guide", startLine: 1, endLine: 1, totalLines: 1 });
       openWorkspaceFile(testClient.workspace.access, "docs/reading-guide.md");
       mount(<FileWorkspace />);
       await screen.findByTestId("rendered-markdown");
@@ -616,7 +634,7 @@ describe("workspace files panel", () => {
   });
 
   it("renders a whole file through the renderer registered for its extension", async () => {
-    readFile.mockResolvedValue({ content: "# Title", startLine: 1, totalLines: 1 });
+    readFile.mockResolvedValue({ content: "# Title", startLine: 1, endLine: 1, totalLines: 1 });
     openWorkspaceFile(testClient.workspace.access, "docs/README.md");
     mount(
       <>
@@ -645,6 +663,7 @@ describe("workspace files panel", () => {
     readFile.mockResolvedValue({
       content: "# Truncated",
       startLine: 1,
+      endLine: 1,
       totalLines: 1,
       truncated: true,
     });
@@ -655,7 +674,12 @@ describe("workspace files panel", () => {
   });
 
   it("follows a line reference in source even when the whole file is available", async () => {
-    readFile.mockResolvedValue({ content: "# First\nSecond", startLine: 1, totalLines: 2 });
+    readFile.mockResolvedValue({
+      content: "# First\nSecond",
+      startLine: 1,
+      endLine: 2,
+      totalLines: 2,
+    });
     openWorkspaceFile(testClient.workspace.access, "docs/README.md", 2);
     mount(<FileWorkspace />);
     await screen.findByText("Second");
@@ -663,7 +687,7 @@ describe("workspace files panel", () => {
   });
 
   it("retires the file renderer without losing the captured source", async () => {
-    readFile.mockResolvedValue({ content: "# Captured", startLine: 1, totalLines: 1 });
+    readFile.mockResolvedValue({ content: "# Captured", startLine: 1, endLine: 1, totalLines: 1 });
     openWorkspaceFile(testClient.workspace.access, "docs/README.md");
     mount(<FileWorkspace />);
     await screen.findByTestId("rendered-markdown");
@@ -688,7 +712,7 @@ describe("workspace files panel", () => {
         {
           cwd: "/work/project",
           path: "src/main.go",
-          startLine: 250,
+          startLine: 450,
           endLine: 650,
         },
       ],
@@ -843,7 +867,7 @@ describe("workspace files panel", () => {
       {
         typeWhileReading: false,
         settle: (read: PromiseWithResolvers<WorkspaceFileContent>) =>
-          read.resolve({ content: "package main", startLine: 1, totalLines: 1 }),
+          read.resolve({ content: "package main", startLine: 1, endLine: 1, totalLines: 1 }),
       },
     ]) {
       const retry = await screen.findByRole("button", { name: "Retry" });
@@ -971,13 +995,23 @@ describe("file preview path identity", () => {
   });
 
   it("follows the opened file's path in the same reader", async () => {
-    readFile.mockResolvedValueOnce({ content: "package first", startLine: 1, totalLines: 1 });
+    readFile.mockResolvedValueOnce({
+      content: "package first",
+      startLine: 1,
+      endLine: 1,
+      totalLines: 1,
+    });
     openWorkspaceFile(testClient.workspace.access, longPath);
     mount(<FileWorkspace />);
     await screen.findByText("package first");
     const { region } = shownPath(longPath);
 
-    readFile.mockResolvedValueOnce({ content: "package next", startLine: 1, totalLines: 1 });
+    readFile.mockResolvedValueOnce({
+      content: "package next",
+      startLine: 1,
+      endLine: 1,
+      totalLines: 1,
+    });
     act(() => openWorkspaceFile(testClient.workspace.access, "cmd/flame/main.go"));
     await screen.findByText("package next");
     expect(shownPath("cmd/flame/main.go").region).toBe(region);
@@ -987,7 +1021,7 @@ describe("file preview path identity", () => {
 
   it("shows the complete path ahead of both rendered and source presentations", async () => {
     const path = "docs/guides/runtime/reading-guide.md";
-    readFile.mockResolvedValue({ content: "# Guide", startLine: 1, totalLines: 1 });
+    readFile.mockResolvedValue({ content: "# Guide", startLine: 1, endLine: 1, totalLines: 1 });
     openWorkspaceFile(testClient.workspace.access, path);
     mount(<FileWorkspace />);
 
@@ -1497,6 +1531,7 @@ describe("file source selection", () => {
   const captured = (text = content, totalLines = text.split("\n").length) => ({
     content: text,
     startLine: 1,
+    endLine: text.split("\n").length,
     totalLines,
   });
   const sourceView = () => document.querySelector<HTMLElement>('[data-quote-source="file"]')!;
@@ -1574,7 +1609,7 @@ describe("file source selection", () => {
     ]);
   });
 
-  it("copies accepted content through pending expansion, new rows and a shorter refresh", async () => {
+  it("copies accepted content through a pending page change and a shorter refresh", async () => {
     readFile.mockResolvedValueOnce(captured(content, 30));
     openWorkspaceFile(testClient.workspace.access, path);
     mount(<FileWorkspace />);
@@ -1588,20 +1623,107 @@ describe("file source selection", () => {
     expectSourceRange(source);
     expect(clipboard(host).setData.mock.calls).toEqual([["text/plain", content]]);
 
-    const expanded = content + "func extra() {}\n";
-    await act(async () => pending.resolve(captured(expanded, 30)));
-    await waitFor(() => expect(row(11)).toBeTruthy());
+    const nextPage = "func extra() {}\n\n";
+    await act(async () =>
+      pending.resolve({ content: nextPage, startLine: 11, endLine: 13, totalLines: 30 }),
+    );
+    await waitFor(() => expect(row(13)).toBeTruthy());
     expect(sourceView()).toBe(source);
     expectSourceRange(source);
-    expect(clipboard(host).setData.mock.calls).toEqual([["text/plain", expanded]]);
+    expect(clipboard(host).setData.mock.calls).toEqual([["text/plain", nextPage]]);
 
-    const shortened = "package main\n";
-    readFile.mockResolvedValueOnce(captured(shortened));
+    const shortened = "func shorter() {}";
+    readFile.mockResolvedValueOnce({
+      content: shortened,
+      startLine: 11,
+      endLine: 11,
+      totalLines: 30,
+    });
     await act(() => client.refetchQueries({ type: "active" }));
-    await waitFor(() => expect(row(3)).toBeNull());
+    await waitFor(() => expect(row(13)).toBeNull());
     expect(sourceView()).toBe(source);
     expectSourceRange(source);
     expect(clipboard(host).setData.mock.calls).toEqual([["text/plain", shortened]]);
+  });
+});
+
+describe("byte-bounded file pages", () => {
+  it("reaches both ends of a large source and copies only the accepted page", async () => {
+    const lines = Array.from({ length: 1200 }, (_, index) => `${index + 1}:${"x".repeat(1000)}`);
+    lines.push("");
+    const original = lines.join("\n");
+    expect(new TextEncoder().encode(original).length).toBeGreaterThan(1 << 20);
+    let served: WorkspaceFileContent | undefined;
+    readFile.mockImplementation(async ({ startLine = 1, endLine = lines.length, fromEnd }) => {
+      let start = startLine - 1;
+      let end = Math.min(endLine, lines.length);
+      let bytes = 0;
+      let count = 0;
+      for (
+        let index = fromEnd ? end - 1 : start;
+        index >= start && index < end;
+        index += fromEnd ? -1 : 1
+      ) {
+        const added = new TextEncoder().encode(lines[index]!).length + (count > 0 ? 1 : 0);
+        if (bytes + added > 1 << 20) break;
+        bytes += added;
+        count++;
+      }
+      if (fromEnd) start = end - count;
+      else end = start + count;
+      served = {
+        content: lines.slice(start, end).join("\n"),
+        startLine: start + 1,
+        endLine: end,
+        totalLines: lines.length,
+        truncated: start > 0 || end < lines.length,
+      };
+      return served;
+    });
+    openWorkspaceFile(testClient.workspace.access, "large.log");
+    mount(<FileWorkspace />);
+    await waitFor(() => expect(row(1)).toBeTruthy());
+    const host = screen.getByRole("region", { name: "large.log" });
+    const forward: string[] = [served!.content];
+    while (served!.endLine < lines.length) {
+      const previousEnd = served!.endLine;
+      fireEvent.click(screen.getByRole("button", { name: /more/i }));
+      await waitFor(() => expect(row(previousEnd + 1)).toBeTruthy());
+      expect(readFile).toHaveBeenLastCalledWith({
+        cwd: undefined,
+        path: "large.log",
+        startLine: previousEnd + 1,
+        endLine: previousEnd + 200,
+      });
+      expect(row(previousEnd)).toBeNull();
+      forward.push(served!.content);
+    }
+    expect(forward.join("\n")).toBe(original);
+    expect(row(lines.length)).toBeTruthy();
+    fireEvent.keyDown(host, { key: "a", metaKey: true });
+    const source = document.querySelector('[data-quote-source="file"]')!;
+    expect(document.getSelection()!.getRangeAt(0).commonAncestorContainer).toBe(source);
+    const setData = vi.fn();
+    fireEvent.copy(host, { clipboardData: { setData } });
+    expect(setData.mock.calls).toEqual([["text/plain", served!.content]]);
+    expect(served!.content).not.toBe(original);
+    const backward: string[] = [served!.content];
+    while (served!.startLine > 1) {
+      const previousStart = served!.startLine;
+      fireEvent.click(screen.getByRole("button", { name: /earlier/i }));
+      await waitFor(() => expect(row(previousStart - 1)).toBeTruthy());
+      expect(readFile).toHaveBeenLastCalledWith({
+        cwd: undefined,
+        path: "large.log",
+        startLine: Math.max(1, previousStart - 200),
+        endLine: previousStart - 1,
+        fromEnd: true,
+      });
+      expect(row(previousStart)).toBeNull();
+      backward.unshift(served!.content);
+    }
+    expect(backward.join("\n")).toBe(original);
+    expect(screen.queryByRole("button", { name: /earlier/i })).toBeNull();
   });
 });
 
@@ -1622,6 +1744,7 @@ describe("file read refresh continuity", () => {
     readFile.mockResolvedValueOnce({
       content: "# Guide\nAccepted line",
       startLine: 1,
+      endLine: 2,
       totalLines: 2,
     });
     openWorkspaceFile(testClient.workspace.access, guide);
@@ -1668,7 +1791,12 @@ describe("file read refresh continuity", () => {
       {
         typing: true,
         settle: (read: PromiseWithResolvers<WorkspaceFileContent>) =>
-          read.resolve({ content: "# Guide\nUpdated line", startLine: 1, totalLines: 2 }),
+          read.resolve({
+            content: "# Guide\nUpdated line",
+            startLine: 1,
+            endLine: 2,
+            totalLines: 2,
+          }),
       },
     ]) {
       const retry = await screen.findByRole("button", { name: "Retry" });
@@ -1726,7 +1854,7 @@ describe("file read refresh continuity", () => {
   ])(
     "keeps $label mounted through a failed refresh until updated content arrives",
     async ({ path, content, updated, mode, shown }) => {
-      readFile.mockResolvedValueOnce({ content, startLine: 1, totalLines: 1 });
+      readFile.mockResolvedValueOnce({ content, startLine: 1, endLine: 1, totalLines: 1 });
       openWorkspaceFile(testClient.workspace.access, path);
       mount(<FileWorkspace />);
       const node = await waitFor(shown);
@@ -1742,7 +1870,7 @@ describe("file read refresh continuity", () => {
       expect(node.textContent).toBe(text);
       expect(screen.queryByRole("radio", { checked: true })?.textContent).toBe(mode);
 
-      readFile.mockResolvedValueOnce({ content: updated, startLine: 1, totalLines: 1 });
+      readFile.mockResolvedValueOnce({ content: updated, startLine: 1, endLine: 1, totalLines: 1 });
       fireEvent.click(screen.getByRole("button", { name: "Retry" }));
       await waitFor(() => expect(node.textContent).toContain(updated));
       expect(shown()).toBe(node);
@@ -1781,7 +1909,12 @@ describe("file read refresh continuity", () => {
     async ({ path, title, hasMode }) => {
       isLocal = true;
       selection.current = { status: "ready", cwd: "/work/project" };
-      readFile.mockResolvedValueOnce({ content: "cached pixels", startLine: 1, totalLines: 1 });
+      readFile.mockResolvedValueOnce({
+        content: "cached pixels",
+        startLine: 1,
+        endLine: 1,
+        totalLines: 1,
+      });
       openWorkspaceFile(testClient.workspace.access, path);
       mount(<FileWorkspace />);
       await screen.findByText("cached pixels");
@@ -1834,7 +1967,9 @@ describe("file read refresh continuity", () => {
       expect(screen.queryByText("package main")).toBeNull();
       expect(screen.getByRole("status").textContent).toContain("Loading");
 
-      await act(async () => read.resolve({ content: "package next", startLine: 1, totalLines: 1 }));
+      await act(async () =>
+        read.resolve({ content: "package next", startLine: 1, endLine: 1, totalLines: 1 }),
+      );
       expect(await screen.findByText("package next")).toBeTruthy();
       expect(readFile).toHaveBeenLastCalledWith(next);
     },
@@ -1863,7 +1998,7 @@ describe("file read refresh continuity", () => {
     expect(readFile).toHaveBeenLastCalledWith({
       cwd: undefined,
       path: "src/big.go",
-      startLine: 100,
+      startLine: 501,
       endLine: 700,
     });
   });
@@ -2069,6 +2204,7 @@ describe("Go to line target validation", () => {
     readFile.mockResolvedValue({
       content: "one\ntwo\nthree\nfour\nfive",
       startLine: 1,
+      endLine: 5,
       totalLines: 5,
     });
     const viewer = testClient.renderHook(useWorkspaceFileViewer);
@@ -2375,6 +2511,7 @@ describe("retained file workspace popups", () => {
     readFile.mockResolvedValue({
       content: "one\ntwo\nthree\nfour\nfive",
       startLine: 1,
+      endLine: 5,
       totalLines: 5,
     });
     const viewer = testClient.renderHook(useWorkspaceFileViewer);

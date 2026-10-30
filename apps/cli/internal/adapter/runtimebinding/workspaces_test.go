@@ -176,7 +176,7 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 				ModifiedAt: time.Date(2026, 8, 12, 0, 0, 0, 0, time.UTC),
 			}}),
 		},
-		content: &protocol.FileContent{Content: "package main\n", TotalLines: 1},
+		content: &protocol.FileContent{Content: "package main\n", TotalLines: 2, StartLine: 1, EndLine: 2},
 	}
 	runtime := &Connection{
 		workspaces: stub, meta: requestMeta("test"),
@@ -232,7 +232,7 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 		Workspace: "/workspace", Path: "main.go", Range: workspace.WholeFileReadRange(),
 		ByteLimit: workspace.DefaultReadByteLimit(),
 	})
-	if err != nil || content.Content != "package main\n" || content.Window() != "1 lines" {
+	if err != nil || content.Content != "package main\n" || content.Window() != "lines 1-2/2" {
 		t.Fatalf("Read = (%+v, %v)", content, err)
 	}
 
@@ -400,7 +400,7 @@ func TestWorkspaceAdapterRejectsNilResponses(t *testing.T) {
 
 func TestWorkspaceDefaultRequestsLeaveRuntimePoliciesUnspecified(t *testing.T) {
 	stub := &workspaceBindingStub{
-		search: &protocol.GrepResult{}, content: &protocol.FileContent{},
+		search: &protocol.GrepResult{}, content: &protocol.FileContent{TotalLines: 1, StartLine: 1, EndLine: 1},
 	}
 	connection := &Connection{workspaces: stub, meta: requestMeta("test")}
 	if _, err := connection.Search(t.Context(), workspace.SearchRequest{
@@ -427,7 +427,7 @@ func TestWorkspaceDefaultRequestsLeaveRuntimePoliciesUnspecified(t *testing.T) {
 }
 
 func TestWorkspaceExplicitReadPoliciesReachRuntimeUnchanged(t *testing.T) {
-	stub := &workspaceBindingStub{search: &protocol.GrepResult{}, content: &protocol.FileContent{}}
+	stub := &workspaceBindingStub{search: &protocol.GrepResult{}, content: &protocol.FileContent{TotalLines: 1, StartLine: 1, EndLine: 1}}
 	connection := &Connection{workspaces: stub, meta: requestMeta("test")}
 	matches, err := workspace.NewSearchResultLimit(10000)
 	if err != nil {

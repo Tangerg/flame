@@ -69,6 +69,7 @@ import {
 } from "./workspaceFixtureStates";
 const RESIZER_SOURCE: WorkspaceFileContent = {
   startLine: 1,
+  endLine: 8,
   totalLines: 8,
   content: [
     "const onKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {",
@@ -112,24 +113,28 @@ const README_CONTENT = [
 const README_SOURCE: WorkspaceFileContent = {
   content: README_CONTENT,
   startLine: 1,
+  endLine: README_CONTENT.split("\n").length,
   totalLines: README_CONTENT.split("\n").length,
 };
 
 const READING_GUIDE_SOURCE: WorkspaceFileContent = {
   content: LONG_RESPONSE_MARKDOWN,
   startLine: 1,
+  endLine: LONG_RESPONSE_MARKDOWN.split("\n").length,
   totalLines: LONG_RESPONSE_MARKDOWN.split("\n").length,
 };
 
 const READING_BLOCKS_SOURCE: WorkspaceFileContent = {
   content: READING_BLOCKS_MARKDOWN,
   startLine: 1,
+  endLine: READING_BLOCKS_MARKDOWN.split("\n").length,
   totalLines: READING_BLOCKS_MARKDOWN.split("\n").length,
 };
 
 const READING_CALLOUTS_SOURCE: WorkspaceFileContent = {
   content: CALLOUT_MARKDOWN,
   startLine: 1,
+  endLine: CALLOUT_MARKDOWN.split("\n").length,
   totalLines: CALLOUT_MARKDOWN.split("\n").length,
 };
 

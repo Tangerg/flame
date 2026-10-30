@@ -54,7 +54,8 @@ func TestFileContentOwnsOneCompleteRuntimeWindow(t *testing.T) {
 	t.Parallel()
 
 	valid := []FileContent{
-		{TotalLines: 1},
+		{TotalLines: 1, Truncated: true},
+		{TotalLines: 1, StartLine: 1, EndLine: 1},
 		{TotalLines: 3, StartLine: 2, EndLine: 3},
 	}
 	for _, content := range valid {
@@ -64,6 +65,10 @@ func TestFileContentOwnsOneCompleteRuntimeWindow(t *testing.T) {
 	}
 
 	for _, content := range []FileContent{
+		{Content: "old unbounded response", TotalLines: 1},
+		{TotalLines: 1},
+		{TotalLines: 3, StartLine: 2},
+		{TotalLines: 3, EndLine: 2},
 		{TotalLines: 3, StartLine: 3, EndLine: 2},
 		{TotalLines: 3, StartLine: 2, EndLine: 4},
 	} {

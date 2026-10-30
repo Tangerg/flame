@@ -49,6 +49,15 @@ explicit dependencies. Tests construct independent instances in `test/renderClie
 and visual fixtures compose them in `visual/client.tsx`. No default feature-instance
 registry or module-global port installer is part of the product API.
 
+File reading navigates adjacent bounded line windows using Runtime's served
+start and end coordinates. Earlier pages retain their requested end at the byte
+cap; later pages begin after the served end. The reader requests Runtime's
+maximum admitted response budget so every permitted source line fits whole.
+Line references begin at the requested line. A changed page starts at its top,
+while a refresh retains that page's reading position. Source selection and copy
+refer only to the presented page, and a partial file stays in source mode with
+its range and truncation visible.
+
 The workbench keeps its layout and existing Runtime recovery notice available
 before the first Session snapshot. Conversation content starts from a defined
 snapshot, including a known empty list. Request activity can change while that

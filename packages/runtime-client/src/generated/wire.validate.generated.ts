@@ -3298,6 +3298,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ReadFileRequest: allOf([
     object({
       endLine: allOf([integer(), minimum("1")]),
+      fromEnd: flag(),
       maxBytes: allOf([integer(), minimum("1")]),
       path: allOf([text(), minLength(1)]),
       startLine: allOf([integer(), minimum("1")]),

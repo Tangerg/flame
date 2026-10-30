@@ -115,6 +115,7 @@ describe("workspace Runtime data providers", () => {
     const { value, requests } = await runProvider<{
       content: string;
       startLine: number;
+      endLine: number;
       totalLines: number;
       truncated?: boolean;
     }>(
@@ -139,13 +140,25 @@ describe("workspace Runtime data providers", () => {
       path: "src/a.ts",
       startLine: 400,
       endLine: 800,
+      maxBytes: Number.MAX_SAFE_INTEGER,
       workspace: { path: "/work/auth" },
     });
     expect(value).toEqual({
       content: "line 400",
       startLine: 400,
+      endLine: 400,
       totalLines: 900,
       truncated: true,
     });
+  });
+
+  it("read-file: rejects a missing served window instead of inventing its first line", async () => {
+    await expect(
+      runProvider(
+        "read-file",
+        [["workspace.files.read", { content: "", totalLines: 1, truncated: true }]],
+        { cwd: "/work/auth", path: "src/a.ts" },
+      ),
+    ).rejects.toThrow("workspace file read omitted its served line window");
   });
 });

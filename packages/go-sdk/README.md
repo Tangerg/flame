@@ -5,6 +5,12 @@ It consumes the independent Qimu module. It has no dependency on Runtime,
 products, first-party plugins or repository tooling,
 including in tests and development commands.
 
+Workspace file reads return complete normalized lines and their actual served
+coordinates, including whole-file requests. `ReadFileRequest.FromEnd` selects
+the suffix of its range without reversing source order. Callers must use those
+coordinates for continuation; a budget that cannot hold a line returns no line
+instead of its former partial prefix. Rebuild Runtime and SDK consumers together.
+
 `extension.ResultShape` owns the closed result-selector vocabulary and its
 admission. A `resultShape` selector carries a typed `shape`; `toolName` and
 `fileExtension` carry independent free `name` values. Runtime contract generation

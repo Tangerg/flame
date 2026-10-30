@@ -4560,6 +4560,46 @@ for await (const line of lines) {
     }
   }, 30_000);
 
+  it("pages complete source lines through the real byte-capped file protocol", async () => {
+    if (!client) throw new Error("runtime client was not initialized");
+    const directory = join(root, "file-pages");
+    await mkdir(directory);
+    const lines = Array.from({ length: 3000 }, (_, index) => `${index + 1}:${"é".repeat(1600)}`);
+    lines.push("");
+    const source = lines.join("\n");
+    expect(Buffer.byteLength(source)).toBeGreaterThan(8 << 20);
+    await writeFile(join(directory, "large.txt"), source);
+    const workspace = await client.workspaces.open({ path: directory });
+    for (const fromEnd of [false, true]) {
+      let startLine = 1;
+      let endLine = lines.length;
+      const pages: string[] = [];
+      while (startLine <= endLine) {
+        const page = await workspace.files.read({
+          path: "large.txt",
+          startLine,
+          endLine,
+          fromEnd,
+          maxBytes: Number.MAX_SAFE_INTEGER,
+        });
+        expect(page.startLine).toBeDefined();
+        expect(page.endLine).toBeDefined();
+        expect(Buffer.byteLength(page.content)).toBeLessThanOrEqual(8 << 20);
+        expect(page.content).toBe(lines.slice(page.startLine! - 1, page.endLine!).join("\n"));
+        pages.push(page.content);
+        if (fromEnd) {
+          expect(page.endLine).toBe(endLine);
+          endLine = page.startLine! - 1;
+        } else {
+          expect(page.startLine).toBe(startLine);
+          startLine = page.endLine! + 1;
+        }
+      }
+      expect(pages.length).toBeGreaterThan(1);
+      expect((fromEnd ? pages.reverse() : pages).join("\n")).toBe(source);
+    }
+  });
+
   it("consumes workspace files and hook trust through bound APIs", async () => {
     if (!client) throw new Error("runtime client was not initialized");
 

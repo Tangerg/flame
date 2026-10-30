@@ -1598,6 +1598,7 @@ export interface QuestionOption {
 
 export interface ReadFileRequest {
   endLine?: number;
+  fromEnd?: boolean;
   maxBytes?: number;
   path: string;
   startLine?: number;

@@ -72,7 +72,7 @@ func (s *Handler) ReadWorkspaceFile(ctx context.Context, in protocol.ReadFileReq
 		byteLimit = explicit
 	}
 	read, err := s.workspaceFiles.Read(ctx, in.Workspace.Path, workspaceapp.FileReadInput{
-		Path: in.Path, Range: lineRange, ByteLimit: byteLimit,
+		Path: in.Path, Range: lineRange, ByteLimit: byteLimit, FromEnd: in.FromEnd,
 	})
 	if err != nil {
 		return nil, wireWorkspaceError(err)
@@ -80,7 +80,7 @@ func (s *Handler) ReadWorkspaceFile(ctx context.Context, in protocol.ReadFileReq
 	out := &protocol.FileContent{
 		Content: read.Content, TotalLines: read.TotalLines, Truncated: read.Truncated,
 	}
-	if in.StartLine != nil && read.EndLine > read.StartLine {
+	if read.EndLine > read.StartLine {
 		out.StartLine = read.StartLine + 1
 		out.EndLine = read.EndLine
 	}

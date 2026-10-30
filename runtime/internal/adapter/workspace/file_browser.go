@@ -1,9 +1,11 @@
 package workspace
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -84,10 +86,7 @@ func (FileBrowser) Read(ctx context.Context, root string, input workspaceapp.Fil
 		}
 	}
 	source := &fileScanInput{reader: file}
-	result, err := textread.Scan(ctx, source, textread.Options{
-		InputBytes: workspaceapp.MaxFileReadSourceBytes, LineBytes: workspaceapp.MaxFileReadLineBytes,
-		OutputBytes: input.MaxBytes, StartLine: start, MaxLines: lines, PartialLine: true,
-	})
+	result, err := scanFileWindow(ctx, source, input, start, lines)
 	err = errors.Join(err, source.readErr, cancellation.Err(ctx))
 	if err != nil {
 		switch {
@@ -115,4 +114,56 @@ func (FileBrowser) Read(ctx context.Context, root string, input workspaceapp.Fil
 		Content: result.Content, TotalLines: result.TotalLines, StartLine: result.StartLine,
 		EndLine: result.EndLine, Truncated: result.Truncated,
 	}, nil
+}
+
+func scanFileWindow(ctx context.Context, source io.Reader, input workspaceapp.FileReadPlan, start, lines int) (textread.Result, error) {
+	if !input.FromEnd {
+		return textread.Scan(ctx, source, textread.Options{
+			InputBytes: workspaceapp.MaxFileReadSourceBytes, LineBytes: workspaceapp.MaxFileReadLineBytes,
+			OutputBytes: input.MaxBytes, StartLine: start, MaxLines: lines,
+		})
+	}
+
+	var content bytes.Buffer
+	result := textread.Result{StartLine: start, EndLine: start}
+	retained := 0
+	err := textread.VisitLines(ctx, source, textread.Limits{
+		InputBytes: workspaceapp.MaxFileReadSourceBytes, LineBytes: workspaceapp.MaxFileReadLineBytes,
+	}, func(number int, line []byte) error {
+		result.TotalLines = number
+		if number <= start || (lines > 0 && number > start+lines) {
+			return nil
+		}
+		if len(line) > input.MaxBytes {
+			content.Reset()
+			retained = 0
+			result.StartLine, result.EndLine = number-1, number-1
+			return nil
+		}
+		// Retire whole leading rows so the requested end remains reachable at the byte cap.
+		for retained > 0 && content.Len()+1+len(line) > input.MaxBytes {
+			if retained == 1 {
+				content.Reset()
+			} else {
+				content.Next(bytes.IndexByte(content.Bytes(), '\n') + 1)
+			}
+			retained--
+			result.StartLine++
+		}
+		if retained == 0 {
+			result.StartLine = number - 1
+		} else {
+			content.WriteByte('\n')
+		}
+		content.Write(line)
+		retained++
+		result.EndLine = number
+		return nil
+	})
+	if err != nil {
+		return textread.Result{}, err
+	}
+	result.Content = content.String()
+	result.Truncated = result.StartLine > 0 || result.EndLine < result.TotalLines
+	return result, nil
 }

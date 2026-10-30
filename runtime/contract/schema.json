@@ -8928,6 +8928,9 @@
           "type": "integer",
           "minimum": 1
         },
+        "fromEnd": {
+          "type": "boolean"
+        },
         "maxBytes": {
           "type": "integer",
           "minimum": 1

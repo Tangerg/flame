@@ -39,11 +39,13 @@ export interface WorkspaceReadFileQuery {
   cwd?: string;
   startLine?: number;
   endLine?: number;
+  fromEnd?: boolean;
 }
 
 export interface WorkspaceFileContent {
   content: string;
   startLine: number;
+  endLine: number;
   totalLines: number;
   truncated?: boolean;
 }
