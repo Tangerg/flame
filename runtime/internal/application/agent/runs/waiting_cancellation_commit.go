@@ -433,17 +433,17 @@ func (w waitingCancellationValidation) validateTerminalItems() error {
 // checked here, not the transition again.
 func validateAbandonedToolReplacement(replacement transcript.Replacement, finishedAt time.Time) error {
 	state := replacement.State()
-	if _, present := state.ToolInvocation(); state.Kind() != transcript.ToolCall || !present {
+	call, present := state.ToolCall()
+	if !present {
 		return errors.New("tool Item is not a ToolCall")
 	}
 	if state.Status() != transcript.ItemIncomplete {
 		return errors.New("tool replacement is not abandoned")
 	}
-	failure, failed := state.Failure()
-	if !failed || failure.Kind != tool.FailureExecution {
+	if call.Failure == nil || call.Failure.Kind != tool.FailureExecution {
 		return errors.New("tool replacement has an invalid failure")
 	}
-	if !state.FinishedAt().Equal(finishedAt) {
+	if !call.FinishedAt.Equal(finishedAt) {
 		return errors.New("tool replacement finishes at another time than its Run")
 	}
 	return nil

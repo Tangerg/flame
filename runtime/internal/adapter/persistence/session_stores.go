@@ -504,8 +504,10 @@ func (s *SessionStores) ApplyTerminal(ctx context.Context, terminal sessions.Ter
 	messages := terminal.Messages()
 	runs := terminal.Runs()
 	return s.tx(ctx, func(ctx context.Context) error {
-		if err := s.appendTranscriptItems(ctx, items); err != nil {
-			return err
+		for _, item := range items {
+			if err := s.transcript.ReplaceItem(ctx, item); err != nil {
+				return err
+			}
 		}
 		if len(messages) != 0 {
 			if err := s.history.Append(ctx, root.SessionID(), messages...); err != nil {

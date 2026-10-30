@@ -129,10 +129,11 @@ func validateWaitingCancellationSpawningItem(plan cancellationPlan, item transcr
 			item.Status(),
 		)
 	}
-	if _, present := item.ToolInvocation(); !present {
+	call, present := item.ToolCall()
+	if !present {
 		return fmt.Errorf("runs: spawning Item %q has no tool invocation", item.ID())
 	}
-	if _, failed := item.Failure(); failed {
+	if call.Failure != nil {
 		return fmt.Errorf("runs: spawning Item %q already carries a failure", item.ID())
 	}
 	return nil

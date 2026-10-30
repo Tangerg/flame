@@ -47,7 +47,8 @@ func (r *resumeBindingBuilder) addInterrupts(continuation treeContinuation, runI
 			if pending.Approval != nil && pending.Approval.Tool.Name != "" {
 				callID, found := continuation.approvalCalls[pending.ItemID]
 				item := continuation.items[pending.ItemID]
-				if !found || callID == "" || !item.ApprovalDecision().Valid() {
+				call, _ := item.ToolCall()
+				if !found || callID == "" || call.Approval == nil {
 					return fmt.Errorf("resume Tool approval %q has no accepted resolution", pending.ItemID)
 				}
 				// Accepting the answer settles the verdict, while the Tool Item
@@ -89,8 +90,8 @@ func (r *resumeBindingBuilder) build() *resumeBinding {
 func (r *reducer) reuseOrCreateToolItem(callID string, invocation transcript.ToolInvocation, safetyClass tool.SafetyClass) (transcript.Item, bool, error) {
 	if r.resume != nil {
 		if item, ok := r.resume.callItems[callID]; ok {
-			original, _ := item.ToolInvocation()
-			if original.Name != invocation.Name {
+			original, _ := item.ToolCall()
+			if original.Invocation.Name != invocation.Name {
 				return transcript.Item{}, false, fmt.Errorf("resumed Tool call %q changes its name", callID)
 			}
 			r.resume.consumeToolCall(callID)

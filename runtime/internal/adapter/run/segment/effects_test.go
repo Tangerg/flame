@@ -156,9 +156,9 @@ func TestCommitEventPersistsTranscriptAndTerminalizes(t *testing.T) {
 		SegmentID: "segment_1",
 		CommitID:  testCommitID("run_commit_event_1"),
 		State:     runs.StateTerminalize,
-		Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
+		Items: runs.NewItemWrites(testsupport.MustRestoreItem(testsupport.ItemInput{
 			SessionID: "ses_1", RunID: "run_1", ID: "item_1", OccurredAt: time.Unix(1, 0).UTC(),
-		})},
+		})),
 		Run: finishedRunRecord("run_1", "ses_1", run.OutcomeCompleted),
 	})
 	if err != nil {
@@ -204,12 +204,12 @@ func TestCommitEventDiscardsStagedOffloadAfterCommitFailure(t *testing.T) {
 
 	err = effects.CommitEvent(t.Context(), runs.EventCommit{
 		RunID: "run_1", SessionID: "ses_1", SegmentID: "segment_1", CommitID: testCommitID("run_commit_event_1"),
-		Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
+		Items: runs.NewItemWrites(testsupport.MustRestoreItem(testsupport.ItemInput{
 			SessionID: "ses_1", RunID: "run_1", ID: "item_1",
 			Kind: transcript.ToolCall, Status: transcript.ItemCompleted,
 			OccurredAt: time.Unix(1, 0).UTC(), FinishedAt: time.Unix(2, 0).UTC(),
 			Tool: &transcript.ToolInvocation{Name: "shell", Result: &preview, Offload: ref},
-		})},
+		})),
 	})
 	if !errors.Is(err, want) {
 		t.Fatalf("CommitEvent error = %v, want %v", err, want)
@@ -271,9 +271,9 @@ func TestCommitOpeningAdmitsAndProjectsInOneTransaction(t *testing.T) {
 			RunID:     "run_1",
 			SessionID: "ses_1",
 			SegmentID: "seg_open",
-			Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
+			Items: runs.NewItemWrites(testsupport.MustRestoreItem(testsupport.ItemInput{
 				SessionID: "ses_1", RunID: "run_1", ID: "item_1", OccurredAt: time.Unix(1, 0).UTC(),
-			})},
+			})),
 		}},
 	)
 	err := effects.CommitOpening(context.Background(), opening)
@@ -373,9 +373,9 @@ func TestCommitOpeningAppliesDecidedRunResume(t *testing.T) {
 			RunID:     "run_1",
 			SessionID: "ses_1",
 			SegmentID: "seg_next",
-			Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
+			Items: runs.NewItemWrites(testsupport.MustRestoreItem(testsupport.ItemInput{
 				SessionID: "ses_1", RunID: "run_1", ID: "item_1", OccurredAt: now,
-			})},
+			})),
 		}},
 	)
 	err := effects.CommitOpening(context.Background(), opening)
@@ -422,7 +422,7 @@ func TestCommitTreeBarrierRecordsPendingSetAndSuspends(t *testing.T) {
 				UpdatedAt:    barrierCreatedAt,
 				MessageMark:  run.UnknownMessageMark()})),
 
-			Items: []transcript.Item{singleRunQuestionItem(t, "ses_1", pending)},
+			Items: runs.NewItemWrites(singleRunQuestionItem(t, "ses_1", pending)),
 		}},
 		testRootExecutorCheckpoint(),
 	)
@@ -965,6 +965,11 @@ func (f *fakeToolResults) Discard(_ context.Context, sessionID string, ref trans
 
 func (f *fakeTranscript) AppendItem(_ context.Context, it transcript.Item) error {
 	f.items = append(f.items, it)
+	return nil
+}
+
+func (f *fakeTranscript) SettleItem(_ context.Context, settlement transcript.Replacement) error {
+	f.items = append(f.items, settlement.State())
 	return nil
 }
 

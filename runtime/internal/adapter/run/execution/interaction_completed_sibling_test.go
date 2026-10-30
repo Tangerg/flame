@@ -171,11 +171,11 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 	}
 	var known transcript.Item
 	for _, item := range items {
-		if invocation, ok := item.ToolInvocation(); ok && invocation.Offload != nil {
+		if invocation, ok := testsupport.ToolInvocationOf(item); ok && invocation.Offload != nil {
 			known = item
 		}
 	}
-	knownInvocation, found := known.ToolInvocation()
+	knownInvocation, found := testsupport.ToolInvocationOf(known)
 	if !found || knownInvocation.Arguments.Canonical() != `{"value":"edited"}` || knownInvocation.Offload == nil || offloads.calls.Load() != 1 {
 		t.Fatalf("completed tool was not durably projected: %+v", known)
 	}

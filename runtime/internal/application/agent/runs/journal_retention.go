@@ -64,19 +64,35 @@ func retainedRunBytes(run run.Run) int {
 }
 
 func retainedItemBytes(item transcript.Item) int {
-	snapshot := item.Snapshot()
-	bytes := retainedItemHeaderBytes + stringsBytes(
-		snapshot.Identity.SessionID, snapshot.Identity.ItemID, snapshot.Identity.RunID,
-		snapshot.Text, snapshot.Summary, snapshot.EditedArguments, snapshot.DenialReason,
-		string(snapshot.SafetyClass), string(snapshot.ApprovalDecision), string(snapshot.RememberScope),
-	)
-	bytes += cap(snapshot.Content) * retainedSliceEntryBytes
-	for _, block := range snapshot.Content {
+	bytes := retainedItemHeaderBytes + stringsBytes(item.SessionID(), item.ID(), item.RunID())
+	switch payload := item.Body().(type) {
+	case transcript.UserMessageBody:
+		bytes += retainedContentBytes(payload.Content)
+	case transcript.AgentMessageBody:
+		bytes += retainedContentBytes(payload.Content)
+	case transcript.ReasoningBody:
+		bytes += len(payload.Text)
+	case transcript.QuestionBody:
+		bytes += retainedQuestionBytes(&payload.Question)
+	case transcript.CompactionBody:
+		bytes += len(payload.Summary)
+	case transcript.ToolCallBody:
+		bytes += len(payload.SafetyClass)
+		if payload.Approval != nil {
+			bytes += stringsBytes(string(payload.Approval.Decision), payload.Approval.EditedArguments,
+				payload.Approval.Reason, string(payload.Approval.RememberScope))
+		}
+		bytes += retainedToolInvocationBytes(&payload.Invocation)
+		bytes += retainedToolFailureBytes(payload.Failure)
+	}
+	return bytes
+}
+
+func retainedContentBytes(content []transcript.ContentBlock) int {
+	bytes := cap(content) * retainedSliceEntryBytes
+	for _, block := range content {
 		bytes += len(block.Text) + len(block.MediaType) + cap(block.Bytes)
 	}
-	bytes += retainedQuestionBytes(snapshot.Question)
-	bytes += retainedToolInvocationBytes(snapshot.Tool)
-	bytes += retainedToolFailureBytes(snapshot.Failure)
 	return bytes
 }
 

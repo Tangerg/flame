@@ -222,10 +222,12 @@ func bindPortableToolResults(snapshot *Snapshot, results []PortableToolResult) e
 		}
 		item := &snapshot.Items[index]
 		itemSnapshot := item.Snapshot()
-		if itemSnapshot.Tool == nil {
+		call, isToolCall := item.ToolCall()
+		if !isToolCall {
 			return fmt.Errorf("sessions: portable tool result %q references non-tool item %q", blob.ID, item.ID())
 		}
-		itemSnapshot.Tool.Offload = &transcript.ToolResultRef{ID: blob.ID}
+		call.Invocation.Offload = &transcript.ToolResultRef{ID: blob.ID}
+		itemSnapshot.Body = call
 		restored, err := transcript.RestoreItem(itemSnapshot)
 		if err != nil {
 			return fmt.Errorf("sessions: bind portable tool result %q: %w", blob.ID, err)
@@ -263,9 +265,9 @@ func (s Snapshot) PortableSnapshot() (PortableSnapshot, error) {
 		blobs[blob.ID] = blob
 	}
 	for _, item := range s.Items {
-		if invocation, present := item.ToolInvocation(); present && invocation.Offload != nil {
+		if call, present := item.ToolCall(); present && call.Invocation.Offload != nil {
 			portable.ToolResults = append(portable.ToolResults, PortableToolResult{
-				ItemID: item.ID(), Blob: blobs[invocation.Offload.ID],
+				ItemID: item.ID(), Blob: blobs[call.Invocation.Offload.ID],
 			})
 		}
 	}

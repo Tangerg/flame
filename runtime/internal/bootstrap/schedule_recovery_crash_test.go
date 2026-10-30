@@ -258,7 +258,7 @@ func scheduleResolutionCommitted(ctx context.Context, stores *persistence.Bundle
 	// The result Item and opaque executor cut share the original transaction.
 	// The execution-adapter test verifies the exact settlement after SIGKILL.
 	for _, item := range items {
-		if invocation, ok := item.ToolInvocation(); ok && invocation.Name == "schedules_create_schedule" && item.Status() == transcript.ItemCompleted {
+		if invocation, ok := testsupport.ToolInvocationOf(item); ok && invocation.Name == "schedules_create_schedule" && item.Status() == transcript.ItemCompleted {
 			return true, nil
 		}
 	}

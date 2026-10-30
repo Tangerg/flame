@@ -193,7 +193,7 @@ func TestSessionExportImportCarriesOffloadedToolResultsAcrossDatabases(t *testin
 	if len(items) != 1 {
 		t.Fatalf("destination transcript = %+v, want one rehydrated tool result", items)
 	}
-	invocation, present := items[0].ToolInvocation()
+	invocation, present := testsupport.ToolInvocationOf(items[0])
 	if !present || invocation.Result == nil {
 		t.Fatalf("destination transcript = %+v, want rehydrated tool result", items)
 	}

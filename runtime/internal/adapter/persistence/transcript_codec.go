@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
+	"errors"
 	"fmt"
 	"time"
 
@@ -109,33 +110,30 @@ type toolFailurePayload struct {
 }
 
 func encodeTranscriptItem(item transcript.Item) ([]byte, error) {
-	if !item.Status().Valid() {
-		return nil, fmt.Errorf("unknown item status %q", item.Status())
-	}
-	if !item.Kind().Valid() {
+	payload := transcriptItemPayload{Status: item.Status(), Kind: item.Kind()}
+	var content []transcript.ContentBlock
+	switch variant := item.Body().(type) {
+	case transcript.UserMessageBody:
+		content = variant.Content
+	case transcript.AgentMessageBody:
+		payload.Phase, content = variant.Phase, variant.Content
+	case transcript.ReasoningBody:
+		payload.Text, payload.Redacted = variant.Text, variant.Redacted
+	case transcript.QuestionBody:
+		encoded, err := encodeQuestionPayload(variant.Question)
+		if err != nil {
+			return nil, err
+		}
+		payload.Question = &encoded
+	case transcript.CompactionBody:
+		payload.Summary, payload.DroppedMessages = variant.Summary, variant.DroppedMessages
+	case transcript.ToolCallBody:
+		if err := encodeToolCall(&payload, variant); err != nil {
+			return nil, err
+		}
+	default:
 		return nil, fmt.Errorf("unknown item kind %q", item.Kind())
 	}
-	if phase := item.MessagePhase(); phase != transcript.MessagePhaseNone && !phase.Valid() {
-		return nil, fmt.Errorf("unknown message phase %q", phase)
-	}
-	resolution := item.ApprovalResolution()
-	payload := transcriptItemPayload{
-		Status: item.Status(), Kind: item.Kind(), Phase: item.MessagePhase(), Text: item.Text(), Redacted: item.Redacted(),
-		SafetyClass: item.SafetyClass(), ApprovalDecision: item.ApprovalDecision(),
-		EditedArguments: resolution.EditedArguments, DenialReason: resolution.Reason,
-		RememberScope:   resolution.RememberScope,
-		Summary:         item.Summary(),
-		DroppedMessages: item.DroppedMessages(),
-	}
-	if !item.FinishedAt().IsZero() {
-		nanos := item.FinishedAt().UnixNano()
-		payload.FinishedAt = &nanos
-	}
-	if duration, known := item.ExecutionDuration(); known {
-		nanos := duration.Nanoseconds()
-		payload.ExecutionDurationNanos = &nanos
-	}
-	content := item.Content()
 	if len(content) > 0 {
 		payload.Content = make([]contentPayload, len(content))
 		for index, block := range content {
@@ -146,25 +144,33 @@ func encodeTranscriptItem(item transcript.Item) ([]byte, error) {
 			payload.Content[index] = encoded
 		}
 	}
-	if question, present := item.Question(); present {
-		encoded, err := encodeQuestionPayload(question)
-		if err != nil {
-			return nil, err
-		}
-		payload.Question = &encoded
+	return encodeStoredJSON(payload)
+}
+
+func encodeToolCall(payload *transcriptItemPayload, call transcript.ToolCallBody) error {
+	invocation := encodeToolInvocationPayload(call.Invocation)
+	payload.Tool = &invocation
+	payload.SafetyClass = call.SafetyClass
+	if call.Approval != nil {
+		payload.ApprovalDecision = call.Approval.Decision
+		payload.EditedArguments = call.Approval.EditedArguments
+		payload.DenialReason = call.Approval.Reason
+		payload.RememberScope = call.Approval.RememberScope
 	}
-	if invocation, present := item.ToolInvocation(); present {
-		encoded := encodeToolInvocationPayload(invocation)
-		payload.Tool = &encoded
+	if !call.FinishedAt.IsZero() {
+		payload.FinishedAt = new(call.FinishedAt.UnixNano())
 	}
-	if failure, present := item.Failure(); present {
-		encoded, err := encodeToolFailurePayload(failure)
+	if call.ExecutionDuration != nil {
+		payload.ExecutionDurationNanos = new(call.ExecutionDuration.Nanoseconds())
+	}
+	if call.Failure != nil {
+		encoded, err := encodeToolFailurePayload(*call.Failure)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		payload.Failure = &encoded
 	}
-	return encodeStoredJSON(payload)
+	return nil
 }
 
 func decodeTranscriptItem(data []byte) (transcript.ItemSnapshot, error) {
@@ -175,59 +181,77 @@ func decodeTranscriptItem(data []byte) (transcript.ItemSnapshot, error) {
 	if !payload.Status.Valid() {
 		return transcript.ItemSnapshot{}, fmt.Errorf("unknown item status %q", payload.Status)
 	}
-	if !payload.Kind.Valid() {
-		return transcript.ItemSnapshot{}, fmt.Errorf("unknown item kind %q", payload.Kind)
-	}
-	if payload.Phase != transcript.MessagePhaseNone && !payload.Phase.Valid() {
-		return transcript.ItemSnapshot{}, fmt.Errorf("unknown message phase %q", payload.Phase)
-	}
-	snapshot := transcript.ItemSnapshot{
-		Status: payload.Status, Kind: payload.Kind, MessagePhase: payload.Phase, Text: payload.Text, Redacted: payload.Redacted,
-		SafetyClass:      payload.SafetyClass,
-		ApprovalDecision: payload.ApprovalDecision, EditedArguments: payload.EditedArguments,
-		DenialReason: payload.DenialReason, RememberScope: payload.RememberScope,
-		Summary:         payload.Summary,
-		DroppedMessages: payload.DroppedMessages,
-	}
-	if payload.FinishedAt != nil {
-		snapshot.FinishedAt = time.Unix(0, *payload.FinishedAt).UTC()
-	}
-	if payload.ExecutionDurationNanos != nil {
-		duration := time.Duration(*payload.ExecutionDurationNanos)
-		snapshot.ExecutionDuration = &duration
-	}
+	var content []transcript.ContentBlock
 	if len(payload.Content) > 0 {
-		snapshot.Content = make([]transcript.ContentBlock, len(payload.Content))
+		content = make([]transcript.ContentBlock, len(payload.Content))
 		for index, encoded := range payload.Content {
 			block, err := decodeContentPayload(encoded)
 			if err != nil {
 				return transcript.ItemSnapshot{}, fmt.Errorf("content %d: %w", index, err)
 			}
-			snapshot.Content[index] = block
+			content[index] = block
 		}
 	}
-	if payload.Question != nil {
+	snapshot := transcript.ItemSnapshot{Status: payload.Status}
+	switch payload.Kind {
+	case transcript.UserMessage:
+		snapshot.Body = transcript.UserMessageBody{Content: content}
+	case transcript.AgentMessage:
+		snapshot.Body = transcript.AgentMessageBody{Phase: payload.Phase, Content: content}
+	case transcript.Reasoning:
+		snapshot.Body = transcript.ReasoningBody{Text: payload.Text, Redacted: payload.Redacted}
+	case transcript.QuestionItem:
+		if payload.Question == nil {
+			return transcript.ItemSnapshot{}, errors.New("question item has no prompt")
+		}
 		question, err := decodeQuestionPayload(*payload.Question)
 		if err != nil {
 			return transcript.ItemSnapshot{}, err
 		}
-		snapshot.Question = &question
-	}
-	if payload.Tool != nil {
-		invocation, err := decodeToolInvocationPayload(*payload.Tool)
+		snapshot.Body = transcript.QuestionBody{Question: question}
+	case transcript.Compaction:
+		snapshot.Body = transcript.CompactionBody{Summary: payload.Summary, DroppedMessages: payload.DroppedMessages}
+	case transcript.ToolCall:
+		call, err := decodeToolCall(payload)
 		if err != nil {
 			return transcript.ItemSnapshot{}, err
 		}
-		snapshot.Tool = &invocation
+		snapshot.Body = call
+	default:
+		return transcript.ItemSnapshot{}, fmt.Errorf("unknown item kind %q", payload.Kind)
+	}
+	return snapshot, nil
+}
+
+func decodeToolCall(payload transcriptItemPayload) (transcript.ToolCallBody, error) {
+	if payload.Tool == nil {
+		return transcript.ToolCallBody{}, errors.New("tool call item has no invocation")
+	}
+	invocation, err := decodeToolInvocationPayload(*payload.Tool)
+	if err != nil {
+		return transcript.ToolCallBody{}, err
+	}
+	call := transcript.ToolCallBody{Invocation: invocation, SafetyClass: payload.SafetyClass}
+	if payload.ApprovalDecision != "" {
+		call.Approval = &approval.Resolution{
+			Decision: payload.ApprovalDecision, EditedArguments: payload.EditedArguments,
+			Reason: payload.DenialReason, RememberScope: payload.RememberScope,
+		}
+	}
+	if payload.FinishedAt != nil {
+		call.FinishedAt = time.Unix(0, *payload.FinishedAt).UTC()
+	}
+	if payload.ExecutionDurationNanos != nil {
+		call.ExecutionDuration = new(time.Duration(*payload.ExecutionDurationNanos))
 	}
 	if payload.Failure != nil {
 		failure, err := decodeToolFailurePayload(*payload.Failure)
 		if err != nil {
-			return transcript.ItemSnapshot{}, err
+			return transcript.ToolCallBody{}, err
 		}
-		snapshot.Failure = &failure
+		call.Failure = &failure
 	}
-	return snapshot, nil
+	return call, nil
 }
 
 func encodeContentPayload(block transcript.ContentBlock) (contentPayload, error) {

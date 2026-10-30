@@ -48,7 +48,7 @@ func TestGetSessionSnapshotProjectsOneLiveMaterialRead(t *testing.T) {
 		ID: "item_approved_tool", RunID: "run_waiting", SessionID: "ses_1",
 		Kind: transcript.ToolCall, Status: transcript.ItemCompleted,
 		OccurredAt: createdAt.Add(time.Second), FinishedAt: createdAt.Add(2 * time.Second),
-		SafetyClass: tool.SafetyClassExec, ApprovalDecision: approval.Allow,
+		SafetyClass: tool.SafetyClassExec, Approval: &approval.Resolution{Decision: approval.Allow},
 		Tool: &transcript.ToolInvocation{Name: "shell"},
 	})); err != nil {
 		t.Fatalf("append approved ToolCall: %v", err)

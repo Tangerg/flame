@@ -232,8 +232,8 @@ func TestApplyRunCancelSettlesQuestionToolAndClosesModelContext(t *testing.T) {
 		t.Fatalf("terminal Run = %+v, want canceled at message mark 3", terminal)
 	}
 	items := applied.Items()
-	if len(items) != 1 || items[0].ID() != "item_tool" ||
-		items[0].Status() != transcript.ItemIncomplete {
+	if len(items) != 1 || items[0].State().ID() != "item_tool" ||
+		items[0].State().Status() != transcript.ItemIncomplete {
 		t.Fatalf("terminal Items = %+v, want incomplete item_tool", items)
 	}
 	messages := applied.Messages()
@@ -326,8 +326,8 @@ func TestApplyRunLostProjectsTerminalTranscript(t *testing.T) {
 	if len(items) != 1 {
 		t.Fatalf("terminal items = %+v, want one incomplete ToolCall", items)
 	}
-	toolFailure, toolFailed := items[0].Failure()
-	if items[0].Status() != transcript.ItemIncomplete || !toolFailed ||
+	toolFailure, toolFailed := testsupport.FailureOf(items[0].State())
+	if items[0].State().Status() != transcript.ItemIncomplete || !toolFailed ||
 		toolFailure.Detail != "tool call abandoned because its run could not be resumed" {
 		t.Fatalf("terminal items = %+v, want incomplete failed tool naming its cause", items)
 	}

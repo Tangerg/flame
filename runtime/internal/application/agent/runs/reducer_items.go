@@ -485,8 +485,8 @@ func (r *reducer) toolEnd(e ToolCallFinished) ([]ProjectionEvent, []ToolInvocati
 		if err := e.ModelResult.Validate(); err != nil {
 			return nil, nil, err
 		}
-		invocation, _ := ref.item.ToolInvocation()
-		if e.ModelResult.ID != ref.sourceCallID || e.ModelResult.Name != invocation.Name {
+		call, _ := ref.item.ToolCall()
+		if e.ModelResult.ID != ref.sourceCallID || e.ModelResult.Name != call.Invocation.Name {
 			return nil, nil, errors.New("model-attributed Tool result differs from its source call")
 		}
 	}
@@ -525,20 +525,20 @@ func (r *reducer) completeTool(ref *openTool, e ToolCallFinished) ([]ProjectionE
 	}
 	invocation.Result = e.Result
 	invocation.Offload = e.Offload
-	item := ref.item
+	var settlement transcript.Replacement
 	var err error
 	if e.Failure != nil {
 		if validateErr := e.Failure.Validate(); validateErr != nil {
 			return nil, fmt.Errorf("tool %q failure: %w", invocation.Name, validateErr)
 		}
-		item, err = item.FailToolCall(invocation, *e.Failure, ref.attemptStartedAt, ref.finishedAt)
+		settlement, err = ref.item.FailToolCall(invocation, *e.Failure, ref.attemptStartedAt, ref.finishedAt)
 	} else {
-		item, err = item.CompleteToolCall(invocation, ref.attemptStartedAt, ref.finishedAt)
+		settlement, err = ref.item.CompleteToolCall(invocation, ref.attemptStartedAt, ref.finishedAt)
 	}
 	if err != nil {
 		return nil, err
 	}
-	return append(out, ItemCompleted{Item: item, mutatedPaths: e.MutatedPaths}), nil
+	return append(out, settledItem(settlement, e.MutatedPaths)), nil
 }
 
 // The model completion supplies both durable consumption and its progress

@@ -152,7 +152,7 @@ func (p parkedRunTerminalization) terminalRuns(
 	return terminalRuns, nil
 }
 
-func (p parkedRunTerminalization) terminalItems() ([]transcript.Item, error) {
+func (p parkedRunTerminalization) terminalItems() ([]transcript.Replacement, error) {
 	projection := newParkedTerminalItemProjection(p)
 	for _, item := range p.snapshot.Items {
 		if err := projection.project(item); err != nil {
@@ -176,7 +176,7 @@ type parkedTerminalItemProjection struct {
 	interrupts    map[string]parkedInterrupt
 	pendingRunIDs map[string]struct{}
 	drained       map[string]runs.DrainedTool
-	items         []transcript.Item
+	items         []transcript.Replacement
 }
 
 func newParkedTerminalItemProjection(owner parkedRunTerminalization) *parkedTerminalItemProjection {
@@ -203,7 +203,7 @@ func newParkedTerminalItemProjection(owner parkedRunTerminalization) *parkedTerm
 		interrupts:    interrupts,
 		pendingRunIDs: pendingRunIDs,
 		drained:       drained,
-		items:         make([]transcript.Item, 0, len(interrupts)+len(drained)),
+		items:         make([]transcript.Replacement, 0, len(interrupts)+len(drained)),
 	}
 }
 
@@ -286,10 +286,9 @@ func (projection *parkedTerminalItemProjection) validateComplete() error {
 	return nil
 }
 
-func (p parkedRunTerminalization) terminalDrainedItem(item transcript.Item) (transcript.Item, error) {
-	if _, present := item.ToolInvocation(); item.SessionID() != p.sessionID ||
-		item.Kind() != transcript.ToolCall || !present {
-		return transcript.Item{}, fmt.Errorf(
+func (p parkedRunTerminalization) terminalDrainedItem(item transcript.Item) (transcript.Replacement, error) {
+	if _, present := item.ToolCall(); item.SessionID() != p.sessionID || !present {
+		return transcript.Replacement{}, fmt.Errorf(
 			"sessions: terminalize parked Run tree %q: drained Tool Item %q is not a ToolCall of this Session",
 			p.rootRunID,
 			item.ID(),
@@ -299,7 +298,7 @@ func (p parkedRunTerminalization) terminalDrainedItem(item transcript.Item) (tra
 	case transcript.ItemRunning:
 		settled, err := item.AbandonToolCall(p.abandonmentFailure(), p.finishedAt)
 		if err != nil {
-			return transcript.Item{}, fmt.Errorf(
+			return transcript.Replacement{}, fmt.Errorf(
 				"sessions: terminalize parked ToolCall %q: %w",
 				item.ID(),
 				err,
@@ -307,7 +306,7 @@ func (p parkedRunTerminalization) terminalDrainedItem(item transcript.Item) (tra
 		}
 		return settled, nil
 	default:
-		return transcript.Item{}, fmt.Errorf(
+		return transcript.Replacement{}, fmt.Errorf(
 			"sessions: terminalize parked Run tree %q: drained Tool Item %q is %s",
 			p.rootRunID,
 			item.ID(),

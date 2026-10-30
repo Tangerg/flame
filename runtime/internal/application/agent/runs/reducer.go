@@ -687,8 +687,8 @@ func (r *reducer) finishToolResults(batch ToolResultsCommitted) (factReduction, 
 			return factReduction{}, errors.New("runs: result publication call set is not in declared order")
 		}
 		if ref, open := r.tools.get(start.CallID); open {
-			invocation, _ := ref.item.ToolInvocation()
-			if ref.modelCallSequence != sequence || ref.toolCallIndex != start.ToolCallIndex || ref.sourceCallID != start.SourceCallID || invocation.Name != start.ToolName {
+			call, _ := ref.item.ToolCall()
+			if ref.modelCallSequence != sequence || ref.toolCallIndex != start.ToolCallIndex || ref.sourceCallID != start.SourceCallID || call.Invocation.Name != start.ToolName {
 				return factReduction{}, errors.New("runs: result publication differs from its open call")
 			}
 			continue

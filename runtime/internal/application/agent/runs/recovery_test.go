@@ -873,7 +873,7 @@ func TestRecoveryMarksAbandonedRunTreeLostInPostorder(t *testing.T) {
 		t.Fatal("RecoveryCommit.Validate accepted an Item replacement that was never constructed")
 	}
 	unmovedReplacement := invalidRecoveryCommit(store.commit, func(state *RecoveryCommitInput) {
-		state.ItemReplacements[0] = testsupport.MustItemReplacement(toolItem, testsupport.DecidedItem(toolItem))
+		state.ItemReplacements[0] = testsupport.MustItemReplacement(toolItem.AbandonToolCall(nil, toolItem.OccurredAt()))
 	})
 	if err := unmovedReplacement.Validate(); err == nil {
 		t.Fatal("RecoveryCommit.Validate accepted an Item replacement that is not the recovery transition")
@@ -979,8 +979,8 @@ func TestRecoveryDoesNotMoveDurableTimeBackwardWhenTheClockRegresses(t *testing.
 				}
 			}
 			for _, replacement := range store.commit.ItemReplacements() {
-				if !replacement.State().FinishedAt().Equal(test.want) {
-					t.Fatalf("Item finish = %v, want %v", replacement.State().FinishedAt(), test.want)
+				if !testsupport.Facts(replacement.State()).FinishedAt.Equal(test.want) {
+					t.Fatalf("Item finish = %v, want %v", testsupport.Facts(replacement.State()).FinishedAt, test.want)
 				}
 			}
 		})

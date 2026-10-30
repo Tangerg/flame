@@ -1515,13 +1515,13 @@ func TestCoordinatorAtomicallyAdmitsChildRunFromSpawningItem(t *testing.T) {
 	}
 	parentCommit := childEvents[0]
 	spawningItem := parentCommit.Items[0]
-	invocation, present := spawningItem.ToolInvocation()
+	invocation, present := testsupport.ToolInvocationOf(spawningItem.Item())
 	if parentCommit.RunID != "run_1" ||
 		parentCommit.SessionID != "ses_1" ||
-		spawningItem.ID() != draft.SpawnedByItemID ||
-		spawningItem.RunID() != "run_1" ||
-		spawningItem.SessionID() != "ses_1" ||
-		spawningItem.Status() != transcript.ItemRunning ||
+		spawningItem.Item().ID() != draft.SpawnedByItemID ||
+		spawningItem.Item().RunID() != "run_1" ||
+		spawningItem.Item().SessionID() != "ses_1" ||
+		spawningItem.Item().Status() != transcript.ItemRunning ||
 		!present || invocation.Name != "delegate_task" {
 		t.Fatalf("parent spawning-item commit = %+v", parentCommit)
 	}
@@ -1818,7 +1818,7 @@ func TestCoordinatorKeepsConcurrentSiblingSegmentsIsolated(t *testing.T) {
 		switch payload := event.Payload.(type) {
 		case ItemCompleted:
 			if payload.Item.Kind() == transcript.AgentMessage {
-				child.text = payload.Item.Content()[0].Text
+				child.text = testsupport.Facts(payload.Item).Content[0].Text
 			}
 		case SegmentFinished:
 			run := payload.Run

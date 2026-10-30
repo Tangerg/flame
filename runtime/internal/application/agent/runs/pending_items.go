@@ -43,19 +43,17 @@ func (o OpenInterrupt) project(item transcript.Item) (transcript.Interrupt, erro
 	}
 	switch o.Kind() {
 	case run.InterruptApproval:
-		invocation, present := item.ToolInvocation()
-		if item.Kind() != transcript.ToolCall || item.Status() != transcript.ItemRunning ||
-			item.ApprovalDecision() != "" || !present {
+		call, present := item.ToolCall()
+		if !present || item.Status() != transcript.ItemRunning || call.Approval != nil {
 			return transcript.Interrupt{}, fmt.Errorf("is not a ToolCall awaiting a verdict")
 		}
 		projected.Approval = &transcript.Approval{
-			Tool: invocation, Risk: o.Approval.Risk,
+			Tool: call.Invocation, Risk: o.Approval.Risk,
 			Reason: o.Approval.Reason, Rememberable: o.Approval.Rememberable,
 		}
 	case run.InterruptQuestion:
 		question, present := item.Question()
-		if item.Kind() != transcript.QuestionItem || item.Status() != transcript.ItemCompleted ||
-			!present || question.Answered() {
+		if !present || question.Answered() {
 			return transcript.Interrupt{}, fmt.Errorf("is not a Question awaiting answers")
 		}
 		projected.Question = &question
@@ -87,16 +85,13 @@ func drainedToolItem(
 	drained DrainedTool,
 ) (transcript.Item, transcript.ToolInvocation, error) {
 	item, found := itemsByID[drained.ItemID]
-	invocation, hasInvocation := item.ToolInvocation()
-	_, hasFailure := item.Failure()
-	if !found || item.RunID() != runID ||
-		item.Kind() != transcript.ToolCall || item.Status() != transcript.ItemRunning ||
-		!hasInvocation || hasFailure {
+	call, isToolCall := item.ToolCall()
+	if !found || item.RunID() != runID || !isToolCall || item.Status() != transcript.ItemRunning {
 		return transcript.Item{}, transcript.ToolInvocation{}, fmt.Errorf(
 			"drained Tool Item %q is not an open ToolCall of Run %q", drained.ItemID, runID,
 		)
 	}
-	return item, invocation, nil
+	return item, call.Invocation, nil
 }
 
 // pendingItemIDs lists every Item a hand-off names: its open interrupts and

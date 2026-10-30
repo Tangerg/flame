@@ -121,7 +121,7 @@ func (s Snapshot) validateItems(runs map[string]struct{}) (map[string]transcript
 		default:
 			return nil, fmt.Errorf("sessions: snapshot item %q has unknown status %q", item.ID(), item.Status())
 		}
-		if _, failed := item.Failure(); failed && (item.Kind() != transcript.ToolCall || item.Status() != transcript.ItemIncomplete) {
+		if call, _ := item.ToolCall(); call.Failure != nil && item.Status() != transcript.ItemIncomplete {
 			return nil, fmt.Errorf("sessions: snapshot item %q has an invalid tool failure", item.ID())
 		}
 	}

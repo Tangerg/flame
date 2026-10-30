@@ -202,7 +202,7 @@ type EventCommit struct {
 	// the top-level CommitEvent port boundary requires it.
 	CommitID CommitID
 	State    StateChange
-	Items    []transcript.Item
+	Items    []ItemWrite
 	// ConversationMessages are the provider-neutral messages this root
 	// execution made durable for future model context. Conversation and
 	// Transcript remain separate projections: the former feeds later model
@@ -295,7 +295,7 @@ func (e EventCommit) Validate() error {
 		if err := e.Compaction.validateOwner(e.RunID, e.SegmentID); err != nil {
 			return err
 		}
-		if e.State != StateUnchanged || len(e.Items) != 1 || e.Items[0].Kind() != transcript.Compaction || len(e.ConversationMessages) != 0 {
+		if e.State != StateUnchanged || len(e.Items) != 1 || e.Items[0].Item().Kind() != transcript.Compaction || len(e.ConversationMessages) != 0 {
 			return errors.New("runs: compaction requires one Compaction Item in its history transaction")
 		}
 	}
@@ -373,7 +373,8 @@ func (e EventCommit) validateEnvelope() error {
 
 func (e EventCommit) validateItems() error {
 	seenItems := make(map[string]struct{}, len(e.Items))
-	for index, item := range e.Items {
+	for index, write := range e.Items {
+		item := write.Item()
 		if item.ID() == "" || item.RunID() != e.RunID || item.SessionID() != e.SessionID {
 			return fmt.Errorf("runs: event commit Item[%d] is not owned by Run %q", index, e.RunID)
 		}
@@ -387,8 +388,8 @@ func (e EventCommit) validateItems() error {
 
 func (e EventCommit) validateInvocations() error {
 	items := make(map[string]transcript.Item, len(e.Items))
-	for _, item := range e.Items {
-		items[item.ID()] = item
+	for _, write := range e.Items {
+		items[write.Item().ID()] = write.Item()
 	}
 	if err := e.validateModelInvocations(); err != nil {
 		return err
@@ -455,7 +456,7 @@ func validateToolInvocationItem(invocation ToolInvocationCommit, item transcript
 		switch item.Status() {
 		case transcript.ItemCompleted:
 		case transcript.ItemIncomplete:
-			if _, failed := item.Failure(); !failed {
+			if call, _ := item.ToolCall(); call.Failure == nil {
 				return fmt.Errorf("runs: completed Tool invocation %q has an unclassified incomplete Item", invocation.CallID)
 			}
 		default:

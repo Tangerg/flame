@@ -127,8 +127,8 @@ func (t treePublisher) commitIncrementalReduction(
 		}
 		t.owner.recordTerminalRun(*commit.Run)
 	}
-	for _, item := range commit.Items {
-		t.owner.recordChildCancellationItem(route.runID, item)
+	for _, write := range commit.Items {
+		t.owner.recordChildCancellationItem(route.runID, write.Item())
 	}
 	return commit.ChargesGoal(), nil
 }
@@ -166,8 +166,8 @@ func (t treePublisher) publishAuthoritativeAtomically(
 		if err := t.publications.commitEvent(ctx, combined); err != nil {
 			return reductionPublication{}, fmt.Errorf("runs: commit authoritative fact: %w", err)
 		}
-		for _, item := range combined.Items {
-			t.owner.recordChildCancellationItem(route.runID, item)
+		for _, write := range combined.Items {
+			t.owner.recordChildCancellationItem(route.runID, write.Item())
 		}
 	}
 	for _, reduced := range batch.events {
@@ -212,8 +212,8 @@ func (t treePublisher) publishTerminalAtomically(
 	// The database owns one indivisible write-set, while the live tree still
 	// applies its facts in causal reduction order. Register Item closures before
 	// the terminal Run so process-local ownership observes the same ordering.
-	for _, item := range combined.Items {
-		t.owner.recordChildCancellationItem(route.runID, item)
+	for _, write := range combined.Items {
+		t.owner.recordChildCancellationItem(route.runID, write.Item())
 	}
 	t.owner.recordTerminalRun(*combined.Run)
 	for _, reduced := range batch.events {

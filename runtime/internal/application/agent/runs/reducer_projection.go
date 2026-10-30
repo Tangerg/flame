@@ -67,7 +67,7 @@ func (r *reducer) projectFact(reduced factReduction) (reductionBatch, error) {
 		if batch.parkCommit == nil {
 			return reductionBatch{}, fmt.Errorf("%w: parked Items have no park boundary", errReducerInvariant)
 		}
-		batch.parkCommit.Items = append(batch.parkCommit.Items, reduced.parkItems...)
+		batch.parkCommit.Items = append(batch.parkCommit.Items, NewItemWrites(reduced.parkItems...)...)
 		if err := validateReductionBatch(batch); err != nil {
 			return reductionBatch{}, err
 		}
@@ -138,7 +138,7 @@ func (r *reducer) attachDurableItems(batch *reductionBatch, items []transcript.I
 		return fmt.Errorf("%w: durable Items have no ordinary reduction", errReducerInvariant)
 	}
 	commit := r.ensureLastEventCommit(batch)
-	commit.Items = append(commit.Items, items...)
+	commit.Items = append(commit.Items, NewItemWrites(items...)...)
 	return validateReductionBatch(*batch)
 }
 
@@ -262,7 +262,11 @@ func (r *reducer) projectOne(event ProjectionEvent) (reduction, error) {
 	var nudge *Nudge
 	switch e := event.(type) {
 	case ItemCompleted:
-		commit.Items = []transcript.Item{e.Item}
+		if e.settlement != nil {
+			commit.Items = []ItemWrite{SettlementWrite(*e.settlement)}
+		} else {
+			commit.Items = NewItemWrites(e.Item)
+		}
 		// An isolated Run's tools write into a scratch copy, so the Session's
 		// workspace files are exactly as the client last read them. Announcing
 		// them would send every subscriber to re-read an unchanged tree, and

@@ -22,11 +22,11 @@ func TestSnapshotHydratedItemsJoinBodiesWithoutMutatingSource(t *testing.T) {
 	if err != nil {
 		t.Fatalf("HydratedItems: %v", err)
 	}
-	hydratedTool, _ := hydrated[0].ToolInvocation()
+	hydratedTool, _ := testsupport.ToolInvocationOf(hydrated[0])
 	if got, _ := hydratedTool.Result.String(); got != "full body" {
 		t.Fatalf("hydrated result = %q, want full body", got)
 	}
-	sourceTool, _ := snapshot.Items[0].ToolInvocation()
+	sourceTool, _ := testsupport.ToolInvocationOf(snapshot.Items[0])
 	if got, _ := sourceTool.Result.String(); got != "bounded preview" {
 		t.Fatalf("source result mutated to %q", got)
 	}
@@ -136,7 +136,11 @@ func TestSnapshotValidateToolResultsRejectsBrokenRelationships(t *testing.T) {
 		{
 			name: "detached blob",
 			mutate: func(snapshot *Snapshot) {
-				mutateSnapshotItem(snapshot, func(item *transcript.ItemSnapshot) { item.Tool.Offload = nil })
+				mutateSnapshotItem(snapshot, func(item *transcript.ItemSnapshot) {
+					call := item.Body.(transcript.ToolCallBody)
+					call.Invocation.Offload = nil
+					item.Body = call
+				})
 			},
 			want: "is named by no transcript item",
 		},
@@ -157,10 +161,9 @@ func TestSnapshotValidateToolResultsRejectsBrokenRelationships(t *testing.T) {
 		{
 			name: "two items name one blob",
 			mutate: func(snapshot *Snapshot) {
-				second := snapshot.Items[0].Snapshot()
 				snapshot.Items = append(snapshot.Items, testsupport.MustRestoreItem(testsupport.ItemInput{
 					SessionID: "ses_1", ID: "item_2", Kind: transcript.ToolCall,
-					Status: transcript.ItemCompleted, Tool: second.Tool,
+					Status: transcript.ItemCompleted, Tool: testsupport.Facts(snapshot.Items[0]).Tool,
 				}))
 			},
 			want: "is named by both items",

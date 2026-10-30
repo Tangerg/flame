@@ -20,7 +20,7 @@ func acceptedRootOpening(t *testing.T, commitRaw string, draft run.Draft, key, f
 	if err != nil {
 		t.Fatal(err)
 	}
-	opening := mustAdmissionOpening(t, testCommitID(commitRaw), draft, nil, nil, nil, []runs.EventCommit{{SessionID: draft.SessionID, RunID: draft.RunID, SegmentID: draft.SegmentID, Items: []transcript.Item{item}}})
+	opening := mustAdmissionOpening(t, testCommitID(commitRaw), draft, nil, nil, nil, []runs.EventCommit{{SessionID: draft.SessionID, RunID: draft.RunID, SegmentID: draft.SegmentID, Items: runs.NewItemWrites(item)}})
 	acceptance, err := runs.AcceptCommand(key, fingerprint, opening)
 	if err != nil {
 		t.Fatalf("AcceptCommand: %v", err)

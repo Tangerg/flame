@@ -68,7 +68,7 @@ func TestCompactionCommitsHistoryWatermarksAndItemTogether(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			commit := runs.EventCommit{RunID: "run_active", SessionID: "ses_1", SegmentID: "seg_active", CommitID: testCommitID("run_commit_compaction"), Items: []transcript.Item{item}, Compaction: new(plan)}
+			commit := runs.EventCommit{RunID: "run_active", SessionID: "ses_1", SegmentID: "seg_active", CommitID: testCommitID("run_commit_compaction"), Items: runs.NewItemWrites(item), Compaction: new(plan)}
 			tx := func(ctx context.Context, apply func(context.Context) error) error {
 				return db.Transactor(ctx, apply)
 			}

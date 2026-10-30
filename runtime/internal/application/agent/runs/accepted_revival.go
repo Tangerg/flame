@@ -69,10 +69,11 @@ func (c *Coordinator) reviveAcceptedContinuation(ctx context.Context, accepted A
 		if err != nil {
 			return err
 		}
-		if !found || item.Kind() != transcript.UserMessage || item.SessionID() != accepted.SessionID || item.RunID() != root.ID() {
+		message, isUserMessage := item.Body().(transcript.UserMessageBody)
+		if !found || !isUserMessage || item.SessionID() != accepted.SessionID || item.RunID() != root.ID() {
 			return c.retireUnrestorableAccepted(ctx, accepted, errors.New("runs: accepted input Item is missing or has another owner"))
 		}
-		input = &CommittedUserInput{ItemID: item.ID(), Content: item.Content()}
+		input = &CommittedUserInput{ItemID: item.ID(), Content: message.Content}
 	}
 	member, _ := accepted.Pending.RootContinuation()
 	checkpoint, err := c.checkpoints.ReadWaitingCheckpoint(ctx, member.MemberID)
@@ -149,11 +150,11 @@ func (a AcceptedContinuation) treeContinuation(values []run.Run, items map[strin
 		if question, ok := item.Question(); ok {
 			value.Question = &question
 		} else {
-			invocation, ok := item.ToolInvocation()
+			call, ok := item.ToolCall()
 			if !ok || open.Approval == nil {
 				return nil, errors.New("runs: accepted approval has no Tool invocation")
 			}
-			value.Approval = &transcript.Approval{Tool: invocation, Risk: open.Approval.Risk, Reason: open.Approval.Reason, Rememberable: open.Approval.Rememberable}
+			value.Approval = &transcript.Approval{Tool: call.Invocation, Risk: open.Approval.Risk, Reason: open.Approval.Reason, Rememberable: open.Approval.Rememberable}
 			continuation.approvalCalls[item.ID()] = binding.ToolCallID
 		}
 		continuation.interrupts = append(continuation.interrupts, value)

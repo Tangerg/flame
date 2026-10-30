@@ -933,8 +933,8 @@ func TestStartKeepsGoalControlInputModelOnly(t *testing.T) {
 	}
 	for _, event := range effects.opening().Events() {
 		for _, item := range event.Items {
-			if item.Kind() == transcript.UserMessage {
-				t.Fatalf("Goal control input escaped into transcript Item %q", item.ID())
+			if item.Item().Kind() == transcript.UserMessage {
+				t.Fatalf("Goal control input escaped into transcript Item %q", item.Item().ID())
 			}
 		}
 	}
@@ -1328,7 +1328,7 @@ func TestResumeWithInputCommitsTheUserItemWithTheContinuation(t *testing.T) {
 	events := opening.Events()
 	for _, event := range events {
 		for _, item := range event.Items {
-			if item.ID() == withInput.UserItemID && item.Kind() == transcript.UserMessage {
+			if item.Item().ID() == withInput.UserItemID && item.Item().Kind() == transcript.UserMessage {
 				committed = true
 			}
 		}
@@ -1780,8 +1780,8 @@ func requireChildCancellationProjection(
 			childTerminalCommits++
 		}
 		for _, item := range commit.Items {
-			failure, failed := item.Failure()
-			if item.ID() == child.Lineage().SpawnedByItemID && item.Status() == transcript.ItemIncomplete &&
+			failure, failed := testsupport.FailureOf(item.Item())
+			if item.Item().ID() == child.Lineage().SpawnedByItemID && item.Item().Status() == transcript.ItemIncomplete &&
 				failed && failure.Kind == tool.FailureChildRunCanceled && failure.Detail == reason {
 				parentCancellationItems++
 			}

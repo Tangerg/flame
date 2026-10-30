@@ -74,11 +74,11 @@ func TestResultPublicationTransactionReceiptsAndSegmentFence(t *testing.T) {
 				RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID, CommitID: testCommitID("run_commit_result_first"),
 				ResultPublication: &runs.ResultPublication{ID: "effect_result_first", Digest: "sha256:" + strings.Repeat("a", 64)},
 				ToolResults:       []chat.ToolResult{modelResult},
-				Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
+				Items: runs.NewItemWrites(testsupport.MustRestoreItem(testsupport.ItemInput{
 					SessionID: draft.SessionID, RunID: draft.RunID, ID: "item_rejected", OccurredAt: started, FinishedAt: started.Add(time.Second),
 					Status: transcript.ItemCompleted, Kind: transcript.ToolCall, SafetyClass: tool.SafetyClassSafe,
 					Tool: &transcript.ToolInvocation{Name: "unavailable", Arguments: tool.Arguments{}, Result: &presentation},
-				})},
+				})),
 				ToolInvocations: []runs.ToolInvocationCommit{{CallID: "tool_rejected", ItemID: "item_rejected", SegmentID: draft.SegmentID,
 					State: runs.ToolInvocationCompleted, StartedAt: started, FinishedAt: started.Add(time.Second)}},
 				ConversationMessages: []chat.Message{chat.NewToolMessage(modelResult)},
@@ -207,10 +207,10 @@ func TestTerminalConversationPreservesSparseResultsAcrossRestart(t *testing.T) {
 			partial := runs.EventCommit{
 				RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID, CommitID: testCommitID("run_commit_sparse"),
 				ResultPublication: &runs.ResultPublication{ID: "publication_sparse", Digest: "sha256:" + strings.Repeat("a", 64)}, ToolResults: []chat.ToolResult{exact},
-				Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
+				Items: runs.NewItemWrites(testsupport.MustRestoreItem(testsupport.ItemInput{
 					SessionID: draft.SessionID, RunID: draft.RunID, ID: "item_known", OccurredAt: started, FinishedAt: started.Add(time.Second),
 					Kind: transcript.ToolCall, Status: transcript.ItemCompleted, Tool: &transcript.ToolInvocation{Name: "write", Arguments: tool.Arguments{}, Result: &preview},
-				})},
+				})),
 				ToolInvocations: []runs.ToolInvocationCommit{{CallID: "tool_known", ItemID: "item_known", SegmentID: draft.SegmentID, State: runs.ToolInvocationCompleted, StartedAt: started, FinishedAt: started.Add(time.Second)}},
 			}
 			if err := effects.CommitEvent(ctx, partial); err != nil {

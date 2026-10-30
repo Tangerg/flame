@@ -363,7 +363,8 @@ func (o OpeningCommit) UserInputItemID() (string, error) {
 	}
 	var id string
 	for _, event := range o.events {
-		for _, item := range event.Items {
+		for _, write := range event.Items {
+			item := write.Item()
 			if item.Kind() != transcript.UserMessage || item.RunID() != root {
 				continue
 			}

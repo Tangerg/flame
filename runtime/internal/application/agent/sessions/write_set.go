@@ -49,7 +49,7 @@ func runsInParentFirstOrder(runs []rundomain.Run) []rundomain.Run {
 // all move in one transaction.
 type TerminalPlan struct {
 	runs  []rundomain.Replacement
-	items []transcript.Item
+	items []transcript.Replacement
 	// Messages close model-context Tool calls that cannot receive their ordinary
 	// result because the parked tree is being abandoned. They are appended in
 	// the same transaction before the terminal Run watermark is committed.
@@ -62,7 +62,7 @@ type TerminalPlan struct {
 // transaction, read from the root Run itself.
 func NewTerminalPlan(
 	runs []rundomain.Replacement,
-	items []transcript.Item,
+	items []transcript.Replacement,
 	messages []chat.Message,
 	checkpointRootID string,
 ) (TerminalPlan, error) {
@@ -94,8 +94,8 @@ func (t TerminalPlan) RootRun() (rundomain.Run, bool) {
 // Runs returns an isolated canonical postorder of exact Run replacements.
 func (t TerminalPlan) Runs() []rundomain.Replacement { return slices.Clone(t.runs) }
 
-// Items returns the isolated incomplete transcript projections committed with the Runs.
-func (t TerminalPlan) Items() []transcript.Item { return slices.Clone(t.items) }
+// Items returns the isolated transcript settlements committed with the Runs.
+func (t TerminalPlan) Items() []transcript.Replacement { return slices.Clone(t.items) }
 
 // Messages returns isolated model-context closures committed with the Runs.
 func (t TerminalPlan) Messages() []chat.Message { return cloneSnapshotMessages(t.messages) }
@@ -142,7 +142,8 @@ func (t TerminalPlan) validate() error {
 		return errors.New("sessions: terminal plan Runs are not in canonical postorder")
 	}
 	seenItems := make(map[string]struct{}, len(t.items))
-	for index, item := range t.items {
+	for index, replacement := range t.items {
+		item := replacement.State()
 		_, owned := ownedRuns[item.RunID()]
 		if item.ID() == "" || item.SessionID() != root.SessionID() || !owned || item.Status() != transcript.ItemIncomplete {
 			return fmt.Errorf("sessions: terminal plan Item[%d] is not an incomplete Item owned by its Run tree", index)

@@ -38,12 +38,13 @@ func TestToolApprovalDecisionIsImmutableAndSurvivesSettlement(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewToolCall: %v", err)
 	}
-	resolved, err := running.ResolveToolApproval(approval.Resolution{Decision: approval.Allow})
+	resolution, err := running.ResolveToolApproval(approval.Resolution{Decision: approval.Allow})
 	if err != nil {
 		t.Fatalf("ResolveToolApproval: %v", err)
 	}
-	if running.ApprovalDecision() != "" || resolved.ApprovalDecision() != approval.Allow {
-		t.Fatalf("approval decisions = original %q, resolved %q", running.ApprovalDecision(), resolved.ApprovalDecision())
+	resolved := resolution.State()
+	if approvalDecision(running) != "" || approvalDecision(resolved) != approval.Allow {
+		t.Fatalf("approval decisions = original %q, resolved %q", approvalDecision(running), approvalDecision(resolved))
 	}
 	if _, resolveToolApprovalErr := resolved.ResolveToolApproval(approval.Resolution{Decision: approval.Deny}); resolveToolApprovalErr == nil {
 		t.Fatal("ResolveToolApproval accepted a second decision")
@@ -60,14 +61,31 @@ func TestToolApprovalDecisionIsImmutableAndSurvivesSettlement(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CompleteToolCall: %v", err)
 	}
-	if completed.ApprovalDecision() != approval.Allow {
-		t.Fatalf("completed approval decision = %q, want %q", completed.ApprovalDecision(), approval.Allow)
+	if approvalDecision(completed.State()) != approval.Allow {
+		t.Fatalf("completed approval decision = %q, want %q", approvalDecision(completed.State()), approval.Allow)
 	}
-	if restored, err := transcript.RestoreItem(completed.Snapshot()); err != nil {
+	if restored, err := transcript.RestoreItem(completed.State().Snapshot()); err != nil {
 		t.Fatalf("RestoreItem: %v", err)
-	} else if restored.ApprovalDecision() != approval.Allow {
-		t.Fatalf("restored approval decision = %q, want %q", restored.ApprovalDecision(), approval.Allow)
+	} else if approvalDecision(restored) != approval.Allow {
+		t.Fatalf("restored approval decision = %q, want %q", approvalDecision(restored), approval.Allow)
 	}
+}
+
+func approvalDecision(item transcript.Item) approval.Decision {
+	call, _ := item.ToolCall()
+	if call.Approval == nil {
+		return ""
+	}
+	return call.Approval.Decision
+}
+
+func toolCall(t *testing.T, item transcript.Item) transcript.ToolCallBody {
+	t.Helper()
+	call, ok := item.ToolCall()
+	if !ok {
+		t.Fatalf("Item %q is %s, not a ToolCall", item.ID(), item.Kind())
+	}
+	return call
 }
 
 func itemIdentity() transcript.ItemIdentity {
@@ -155,9 +173,9 @@ func TestItemOwnsMutablePayloads(t *testing.T) {
 		t.Fatalf("NewUserMessage: %v", err)
 	}
 	image[0] = 9
-	content := message.Content()
+	content := message.Body().(transcript.UserMessageBody).Content
 	content[0].Bytes[1] = 8
-	if got := message.Content()[0].Bytes; got[0] != 1 || got[1] != 2 {
+	if got := message.Body().(transcript.UserMessageBody).Content[0].Bytes; got[0] != 1 || got[1] != 2 {
 		t.Fatalf("message shares mutable image bytes: %v", got)
 	}
 
@@ -192,10 +210,11 @@ func TestAnswerQuestionEnrichesAnImmutablePromptExactlyOnce(t *testing.T) {
 	if _, err := prompt.AnswerQuestion(nil); err == nil {
 		t.Fatal("AnswerQuestion accepted an absent answer")
 	}
-	answered, err := prompt.AnswerQuestion(answers)
+	answer, err := prompt.AnswerQuestion(answers)
 	if err != nil {
 		t.Fatalf("AnswerQuestion: %v", err)
 	}
+	answered := answer.State()
 	answers[0][0] = "A"
 	original, _ := prompt.Question()
 	accepted, _ := answered.Question()
@@ -226,23 +245,24 @@ func TestItemForkReidentifiesTerminalHistoryAndKeepsOffload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	completed, err := running.CompleteToolCall(transcript.ToolInvocation{
+	settlement, err := running.CompleteToolCall(transcript.ToolInvocation{
 		Name: "read_large", Result: &preview, Offload: &transcript.ToolResultRef{ID: "SOURCE23"},
 	}, running.OccurredAt(), running.OccurredAt().Add(time.Second))
 	if err != nil {
 		t.Fatalf("CompleteToolCall: %v", err)
 	}
+	completed := settlement.State()
 	forked, err := completed.Fork("session-child", "run-child", "item-child")
 	if err != nil {
 		t.Fatalf("Fork: %v", err)
 	}
-	invocation, present := forked.ToolInvocation()
+	invocation := toolCall(t, forked).Invocation
 	if forked.SessionID() != "session-child" || forked.RunID() != "run-child" ||
-		forked.ID() != "item-child" || !present || invocation.Offload == nil ||
+		forked.ID() != "item-child" || invocation.Offload == nil ||
 		invocation.Offload.ID != "SOURCE23" {
 		t.Fatalf("forked Item = %+v", forked.Snapshot())
 	}
-	sourceInvocation, _ := completed.ToolInvocation()
+	sourceInvocation := toolCall(t, completed).Invocation
 	if completed.SessionID() != "session-1" || completed.ID() != "item-1" ||
 		sourceInvocation.Offload == nil || sourceInvocation.Offload.ID != "SOURCE23" {
 		t.Fatalf("fork mutated source Item: %+v", completed.Snapshot())
@@ -262,8 +282,8 @@ func TestToolCallSettlementIsTerminalAndPreservesIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewToolCall: %v", err)
 	}
-	if running.Status() != transcript.ItemRunning || !running.FinishedAt().IsZero() {
-		t.Fatalf("running ToolCall = status %v, finished %v", running.Status(), running.FinishedAt())
+	if running.Status() != transcript.ItemRunning || !toolCall(t, running).FinishedAt.IsZero() {
+		t.Fatalf("running ToolCall = %+v", running.Snapshot())
 	}
 
 	finishedAt := running.OccurredAt().Add(time.Second)
@@ -273,16 +293,17 @@ func TestToolCallSettlementIsTerminalAndPreservesIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 	settlement := transcript.ToolInvocation{Name: "read_file", Arguments: arguments, Result: &result}
-	completed, err := running.CompleteToolCall(settlement, executionStartedAt, finishedAt)
+	completion, err := running.CompleteToolCall(settlement, executionStartedAt, finishedAt)
 	if err != nil {
 		t.Fatalf("CompleteToolCall: %v", err)
 	}
-	if completed.Status() != transcript.ItemCompleted || !completed.FinishedAt().Equal(finishedAt) {
-		t.Fatalf("completed ToolCall = status %v, finished %v", completed.Status(), completed.FinishedAt())
+	completed := completion.State()
+	call := toolCall(t, completed)
+	if completed.Status() != transcript.ItemCompleted || !call.FinishedAt.Equal(finishedAt) {
+		t.Fatalf("completed ToolCall = %+v", completed.Snapshot())
 	}
-	duration, known := completed.ExecutionDuration()
-	if !known || duration != 750*time.Millisecond {
-		t.Fatalf("completed execution duration = %v/%t", duration, known)
+	if call.ExecutionDuration == nil || *call.ExecutionDuration != 750*time.Millisecond {
+		t.Fatalf("completed execution duration = %v", call.ExecutionDuration)
 	}
 	if _, err := completed.FailToolCall(
 		settlement, tool.Failure{Kind: tool.FailureExecution}, executionStartedAt, finishedAt,
@@ -315,19 +336,20 @@ func TestToolCallFailureAndAbandonmentHaveOneWayTransitions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FailToolCall: %v", err)
 	}
-	gotFailure, present := failed.Failure()
-	if failed.Status() != transcript.ItemIncomplete || !present || gotFailure != failure {
-		t.Fatalf("failed ToolCall = status %v, failure %+v/%t", failed.Status(), gotFailure, present)
+	gotFailure := toolCall(t, failed.State()).Failure
+	if failed.State().Status() != transcript.ItemIncomplete || gotFailure == nil || *gotFailure != failure {
+		t.Fatalf("failed ToolCall = %+v", failed.State().Snapshot())
 	}
 
-	abandoned, err := running.AbandonToolCall(nil, finishedAt)
+	abandonment, err := running.AbandonToolCall(nil, finishedAt)
 	if err != nil {
 		t.Fatalf("AbandonToolCall: %v", err)
 	}
-	if duration, known := abandoned.ExecutionDuration(); known {
-		t.Fatalf("unstarted abandonment execution duration = %v", duration)
+	abandoned := toolCall(t, abandonment.State())
+	if abandoned.ExecutionDuration != nil {
+		t.Fatalf("unstarted abandonment execution duration = %v", *abandoned.ExecutionDuration)
 	}
-	if _, present := abandoned.Failure(); present {
+	if abandoned.Failure != nil {
 		t.Fatal("unstarted abandonment invented a failure")
 	}
 }

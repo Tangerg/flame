@@ -308,64 +308,81 @@ func portableItemFromArtifact(sessionID, path string, artifact protocol.Artifact
 	if err != nil {
 		return transcript.Item{}, err
 	}
-	failure, err := portableToolFailureFromArtifact(path+".error", artifact.Error)
-	if err != nil {
-		return transcript.Item{}, err
-	}
 	snapshot := transcript.ItemSnapshot{
 		Identity: transcript.ItemIdentity{
 			SessionID: sessionID, ItemID: artifact.ID, RunID: artifact.RunID,
 			OccurredAt: artifact.CreatedAt,
 		},
-		Status: status, Kind: kind, MessagePhase: portableMessagePhase(artifact.Phase),
-		Text: artifact.Text, Redacted: artifact.Redacted,
-		ApprovalDecision: portableItemApprovalDecision(artifact.ApprovalDecision),
-		Failure:          failure, Summary: artifact.Summary, DroppedMessages: artifact.DroppedMessages,
+		Status: status,
 	}
-	if kind == transcript.ToolCall {
+	var content []transcript.ContentBlock
+	for index, block := range artifact.Content {
+		decoded, err := portableContentFromArtifact(fmt.Sprintf("%s.content[%d]", path, index), block)
+		if err != nil {
+			return transcript.Item{}, err
+		}
+		content = append(content, decoded)
+	}
+	switch kind {
+	case transcript.UserMessage:
+		snapshot.Body = transcript.UserMessageBody{Content: content}
+	case transcript.AgentMessage:
+		snapshot.Body = transcript.AgentMessageBody{Phase: portableMessagePhase(artifact.Phase), Content: content}
+	case transcript.Reasoning:
+		snapshot.Body = transcript.ReasoningBody{Text: artifact.Text, Redacted: artifact.Redacted}
+	case transcript.Compaction:
+		snapshot.Body = transcript.CompactionBody{Summary: artifact.Summary, DroppedMessages: artifact.DroppedMessages}
+	case transcript.QuestionItem:
+		if artifact.Question == nil {
+			return transcript.Item{}, invalidArtifact(path+".question", "is required")
+		}
+		question, err := portableQuestionFromArtifact(path+".question", *artifact.Question)
+		if err != nil {
+			return transcript.Item{}, err
+		}
+		snapshot.Body = transcript.QuestionBody{Question: question}
+	case transcript.ToolCall:
+		call, err := portableToolCallFromArtifact(path, status, artifact)
+		if err != nil {
+			return transcript.Item{}, err
+		}
 		snapshot.Identity.OccurredAt = artifact.StartedAt
-		if status != transcript.ItemRunning {
-			if artifact.DurationMillis != nil {
-				duration := time.Duration(*artifact.DurationMillis) * time.Millisecond
-				snapshot.ExecutionDuration = &duration
-			}
-			snapshot.FinishedAt = artifact.FinishedAt
-		}
-	}
-	safetyClass, err := portableSafetyClass(path+".safetyClass", artifact.SafetyClass)
-	if err != nil {
-		return transcript.Item{}, err
-	}
-	snapshot.SafetyClass = safetyClass
-	if len(artifact.Content) != 0 {
-		snapshot.Content = make([]transcript.ContentBlock, len(artifact.Content))
-		for index, block := range artifact.Content {
-			content, portableContentFromArtifactErr := portableContentFromArtifact(fmt.Sprintf("%s.content[%d]", path, index), block)
-			if portableContentFromArtifactErr != nil {
-				return transcript.Item{}, portableContentFromArtifactErr
-			}
-			snapshot.Content[index] = content
-		}
-	}
-	if artifact.Question != nil {
-		question, portableQuestionFromArtifactErr := portableQuestionFromArtifact(path+".question", *artifact.Question)
-		if portableQuestionFromArtifactErr != nil {
-			return transcript.Item{}, portableQuestionFromArtifactErr
-		}
-		snapshot.Question = &question
-	}
-	if artifact.Tool != nil {
-		invocation, portableToolFromArtifactErr := portableToolFromArtifact(path+".tool", *artifact.Tool)
-		if portableToolFromArtifactErr != nil {
-			return transcript.Item{}, portableToolFromArtifactErr
-		}
-		snapshot.Tool = &invocation
+		snapshot.Body = call
 	}
 	item, err := transcript.RestoreItem(snapshot)
 	if err != nil {
 		return transcript.Item{}, invalidArtifact(path, "%v", err)
 	}
 	return item, nil
+}
+
+func portableToolCallFromArtifact(path string, status transcript.ItemStatus, artifact protocol.ArtifactItem) (transcript.ToolCallBody, error) {
+	if artifact.Tool == nil {
+		return transcript.ToolCallBody{}, invalidArtifact(path+".tool", "is required")
+	}
+	invocation, err := portableToolFromArtifact(path+".tool", *artifact.Tool)
+	if err != nil {
+		return transcript.ToolCallBody{}, err
+	}
+	failure, err := portableToolFailureFromArtifact(path+".error", artifact.Error)
+	if err != nil {
+		return transcript.ToolCallBody{}, err
+	}
+	safetyClass, err := portableSafetyClass(path+".safetyClass", artifact.SafetyClass)
+	if err != nil {
+		return transcript.ToolCallBody{}, err
+	}
+	call := transcript.ToolCallBody{Invocation: invocation, SafetyClass: safetyClass, Failure: failure}
+	if decision := portableItemApprovalDecision(artifact.ApprovalDecision); decision != "" {
+		call.Approval = &approval.Resolution{Decision: decision}
+	}
+	if status != transcript.ItemRunning {
+		if artifact.DurationMillis != nil {
+			call.ExecutionDuration = new(time.Duration(*artifact.DurationMillis) * time.Millisecond)
+		}
+		call.FinishedAt = artifact.FinishedAt
+	}
+	return call, nil
 }
 
 func portableMessagePhase(phase protocol.MessagePhase) transcript.MessagePhase {

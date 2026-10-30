@@ -102,8 +102,8 @@ func (i *InteractionExecutor) PrepareUncertainExecution(ctx context.Context, act
 		if !found || item.RunID() != active.Run.ID() || item.SessionID() != active.Run.SessionID() || item.Status() != transcript.ItemRunning {
 			return zero, false, errors.New("execution: captured Tool Item is unavailable")
 		}
-		original, found := item.ToolInvocation()
-		if !found || original.Name != metadata.Start.ToolName {
+		original, found := item.ToolCall()
+		if !found || original.Invocation.Name != metadata.Start.ToolName {
 			return zero, false, errors.New("execution: captured Tool attribution differs from the original Item")
 		}
 		drained = append(drained, runs.DrainedTool{ItemID: item.ID(), CallID: invocation.CallID, SourceCallID: metadata.Start.SourceCallID})

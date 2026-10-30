@@ -154,8 +154,8 @@ func (s *segmentPump) commitExecutionTree(tree ExecutionTreeSettled) error {
 		}
 		for _, reduced := range projected.batch.events {
 			if reduced.Commit != nil {
-				for _, item := range reduced.Commit.Items {
-					s.owner.recordChildCancellationItem(projected.route.runID, item)
+				for _, write := range reduced.Commit.Items {
+					s.owner.recordChildCancellationItem(projected.route.runID, write.Item())
 				}
 			}
 			if err := s.publisher.append(projected.route, reduced); err != nil {

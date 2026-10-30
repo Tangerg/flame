@@ -638,7 +638,9 @@ func (r *recoveryPlanner) transcript(tree recoveryRunTree) ([]transcript.Item, e
 	}
 	for _, item := range items {
 		r.observeTime(item.OccurredAt())
-		r.observeTime(item.FinishedAt())
+		if call, ok := item.ToolCall(); ok {
+			r.observeTime(call.FinishedAt)
+		}
 	}
 	r.transcripts[sessionID] = items
 	return items, nil
@@ -705,9 +707,7 @@ func recoverLostTree(
 				Kind:   tool.FailureExecution,
 				Detail: "tool call interrupted because the run was lost on restart",
 			}
-			itemReplacement, err := transcript.Replace(item, func(item transcript.Item) (transcript.Item, error) {
-				return item.AbandonToolCall(&failure, finishedAt)
-			})
+			itemReplacement, err := item.AbandonToolCall(&failure, finishedAt)
 			if err != nil {
 				return nil, nil, fmt.Errorf("runs: recover lost Item %q: %w", item.ID(), err)
 			}

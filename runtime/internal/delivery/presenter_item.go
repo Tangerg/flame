@@ -6,52 +6,61 @@ import (
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
 func presentItem(item transcript.Item) protocol.Item {
-	var failureRef *tool.Failure
-	if failure, present := item.Failure(); present {
-		failureRef = &failure
-	}
 	out := protocol.Item{
 		ID: item.ID(), RunID: item.RunID(), Status: presentItemStatus(item.Status()),
-		Type:  presentItemKind(item.Kind()),
-		Phase: presentMessagePhase(item.MessagePhase()), Text: item.Text(), Redacted: item.Redacted(),
-		SafetyClass: presentSafetyClass(item.SafetyClass()), Error: presentToolFailure(failureRef),
-		ApprovalDecision: presentItemApprovalDecision(item.ApprovalDecision()),
-		Summary:          item.Summary(), DroppedMessages: item.DroppedMessages(),
+		Type: presentItemKind(item.Kind()),
 	}
-	content := item.Content()
-	if len(content) > 0 {
-		out.Content = make([]protocol.ContentBlock, len(content))
-		for i, block := range content {
-			out.Content[i] = presentContent(block)
+	payload := item.Body()
+	if _, isToolCall := payload.(transcript.ToolCallBody); !isToolCall {
+		out.CreatedAt = item.OccurredAt()
+	}
+	switch payload := payload.(type) {
+	case transcript.UserMessageBody:
+		out.Content = presentContents(payload.Content)
+	case transcript.AgentMessageBody:
+		out.Phase = presentMessagePhase(payload.Phase)
+		out.Content = presentContents(payload.Content)
+	case transcript.ReasoningBody:
+		out.Text, out.Redacted = payload.Text, payload.Redacted
+	case transcript.QuestionBody:
+		question := presentQuestion(payload.Question)
+		out.Question = &question
+	case transcript.CompactionBody:
+		out.Summary, out.DroppedMessages = payload.Summary, payload.DroppedMessages
+	case transcript.ToolCallBody:
+		tool := presentTool(payload.Invocation)
+		out.Tool = &tool
+		out.SafetyClass = presentSafetyClass(payload.SafetyClass)
+		out.Error = presentToolFailure(payload.Failure)
+		if payload.Approval != nil {
+			out.ApprovalDecision = presentItemApprovalDecision(payload.Approval.Decision)
+		}
+		out.StartedAt = item.OccurredAt()
+		out.FinishedAt = payload.FinishedAt
+		if payload.ExecutionDuration != nil {
+			out.DurationMillis = new(payload.ExecutionDuration.Milliseconds())
 		}
 	}
-	if value, present := item.Question(); present {
-		question := presentQuestion(value)
-		out.Question = &question
+	return out
+}
+
+func presentContents(content []transcript.ContentBlock) []protocol.ContentBlock {
+	if len(content) == 0 {
+		return nil
 	}
-	if value, present := item.ToolInvocation(); present {
-		tool := presentTool(value)
-		out.Tool = &tool
-	}
-	if item.Kind() == transcript.ToolCall {
-		out.StartedAt = item.OccurredAt()
-		out.FinishedAt = item.FinishedAt()
-		out.DurationMillis = presentToolDurationMillis(item)
-	} else {
-		out.CreatedAt = item.OccurredAt()
+	out := make([]protocol.ContentBlock, len(content))
+	for i, block := range content {
+		out[i] = presentContent(block)
 	}
 	return out
 }
 
 func presentMessagePhase(phase transcript.MessagePhase) protocol.MessagePhase {
 	switch phase {
-	case transcript.MessagePhaseNone:
-		return ""
 	case transcript.MessageCommentary:
 		return protocol.MessagePhaseCommentary
 	case transcript.MessageFinalAnswer:
@@ -70,15 +79,6 @@ func presentItemApprovalDecision(decision approval.Decision) protocol.ApprovalDe
 	default:
 		return ""
 	}
-}
-
-func presentToolDurationMillis(item transcript.Item) *int64 {
-	duration, known := item.ExecutionDuration()
-	if !known {
-		return nil
-	}
-	millis := duration.Milliseconds()
-	return &millis
 }
 
 func presentItemStart(item runs.ItemStart) protocol.Item {

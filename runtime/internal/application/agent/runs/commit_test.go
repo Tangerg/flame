@@ -149,7 +149,7 @@ func TestEventCommitToolJournalOwnsMatchingItemState(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			err := (EventCommit{
-				RunID: "run_1", SessionID: "session", SegmentID: "segment_1", Items: test.items,
+				RunID: "run_1", SessionID: "session", SegmentID: "segment_1", Items: NewItemWrites(test.items...),
 				ToolInvocations: []ToolInvocationCommit{test.invocation},
 			}).Validate()
 			if (err != nil) != test.wantErr {
@@ -263,7 +263,7 @@ func TestOpeningCommitOwnsEveryOpeningEvent(t *testing.T) {
 	}
 	foreign := EventCommit{
 		RunID: "run_foreign", SessionID: "session", SegmentID: "segment_foreign",
-		Items: []transcript.Item{item("run_foreign", "item_foreign")},
+		Items: NewItemWrites(item("run_foreign", "item_foreign")),
 	}
 	if _, err := NewAdmissionOpeningCommit(
 		testCommitID("run_commit_foreign_event"), root,
@@ -279,11 +279,11 @@ func TestOpeningCommitOwnsEveryOpeningEvent(t *testing.T) {
 	}
 	parentEvent := EventCommit{
 		RunID: root.RunID, SessionID: "session", SegmentID: root.SegmentID,
-		Items: []transcript.Item{item(root.RunID, "item_parent")},
+		Items: NewItemWrites(item(root.RunID, "item_parent")),
 	}
 	childEvent := EventCommit{
 		RunID: child.RunID, SessionID: "session", SegmentID: child.SegmentID,
-		Items: []transcript.Item{item(child.RunID, "item_child")},
+		Items: NewItemWrites(item(child.RunID, "item_child")),
 	}
 	if _, err := NewAdmissionOpeningCommit(
 		testCommitID("run_commit_child_events"), child,
@@ -305,7 +305,7 @@ func TestOpeningCommitOwnsEveryOpeningEvent(t *testing.T) {
 	)
 	wrongSegment := EventCommit{
 		RunID: root.RunID, SessionID: "session", SegmentID: "segment_stale",
-		Items: []transcript.Item{item(root.RunID, "item_resumed")},
+		Items: NewItemWrites(item(root.RunID, "item_resumed")),
 	}
 	if _, err := NewResumeOpeningCommit(
 		testCommitID("run_commit_stale_resume_event"), resume, []EventCommit{wrongSegment},
@@ -327,7 +327,7 @@ func TestCompositeCommitsRejectNestedTopLevelEventIdentity(t *testing.T) {
 		testCommitID("run_commit_opening_parent"), admission,
 		nil, nil, nil, []EventCommit{{
 			RunID: admission.RunID, SessionID: admission.SessionID, SegmentID: admission.SegmentID,
-			CommitID: testCommitID("run_commit_opening_nested"), Items: []transcript.Item{openingItem},
+			CommitID: testCommitID("run_commit_opening_nested"), Items: NewItemWrites(openingItem),
 		}},
 	); err == nil {
 		t.Fatal("OpeningCommit accepted a nested top-level event identity")

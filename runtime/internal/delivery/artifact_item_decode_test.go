@@ -3,6 +3,7 @@ package delivery
 import (
 	"encoding/json/jsontext"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"testing"
 	"time"
 
@@ -144,7 +145,7 @@ func TestPortableArtifactDecoderPreservesCanonicalToolResult(t *testing.T) {
 	if err != nil {
 		t.Fatalf("portableArtifactFromWire: %v", err)
 	}
-	invocation, present := portable.Items[0].ToolInvocation()
+	invocation, present := testsupport.ToolInvocationOf(portable.Items[0])
 	if !present {
 		t.Fatal("decoded ToolCall has no invocation")
 	}
@@ -169,7 +170,7 @@ func TestPortableArtifactDecoderPreservesCanceledToolFailure(t *testing.T) {
 	if err != nil {
 		t.Fatalf("portableArtifactFromWire: %v", err)
 	}
-	failure, present := portable.Items[0].Failure()
+	failure, present := testsupport.FailureOf(portable.Items[0])
 	if !present || failure.Kind != tool.FailureCanceled {
 		t.Fatalf("decoded Tool failure = (%+v, %t)", failure, present)
 	}
@@ -251,7 +252,7 @@ func TestPortableArtifactDecoderAcceptsToolExecutionShorterThanLifecycle(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	duration, known := portable.Items[0].ExecutionDuration()
+	duration, known := testsupport.ExecutionDurationOf(portable.Items[0])
 	if !known || duration != 500*time.Millisecond {
 		t.Fatalf("execution duration = %v/%t", duration, known)
 	}
@@ -270,7 +271,7 @@ func TestPortableArtifactDecoderPreservesUnknownToolExecutionDuration(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if duration, known := portable.Items[0].ExecutionDuration(); known {
+	if duration, known := testsupport.ExecutionDurationOf(portable.Items[0]); known {
 		t.Fatalf("unknown execution duration was fabricated as %v", duration)
 	}
 }

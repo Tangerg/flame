@@ -45,11 +45,11 @@ func TestCommitEventRollsBackAllProjectionsWhenProgressIsStale(t *testing.T) {
 	commit := runs.EventCommit{
 		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
 		CommitID: testCommitID("run_commit_stale_progress"),
-		Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
+		Items: runs.NewItemWrites(testsupport.MustRestoreItem(testsupport.ItemInput{
 			SessionID: draft.SessionID, RunID: draft.RunID, ID: "item_stale", Kind: transcript.AgentMessage,
 			Status: transcript.ItemCompleted, OccurredAt: at,
 			Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "stale answer"}},
-		})},
+		})),
 		ConversationMessages: []chat.Message{chat.NewAssistantMessage(chat.NewTextPart("stale answer"))},
 		Progress:             new(testsupport.MustProgressedRun(draft, testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 1}), 10, at)),
 	}

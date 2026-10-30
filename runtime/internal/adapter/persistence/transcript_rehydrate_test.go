@@ -76,14 +76,14 @@ func TestTranscriptRehydratesOffloadedToolResult(t *testing.T) {
 	if len(items) != 1 {
 		t.Fatalf("got %d items, want 1", len(items))
 	}
-	invocation, present := items[0].ToolInvocation()
+	invocation, present := testsupport.ToolInvocationOf(items[0])
 	if !present {
 		t.Fatal("rehydrated Item has no Tool invocation")
 	}
 	if got, ok := invocation.Result.String(); !ok || got != full {
 		t.Fatalf("tool result not rehydrated: got %q, want the full %d-byte body", got, len(full))
 	}
-	duration, known := items[0].ExecutionDuration()
+	duration, known := testsupport.ExecutionDurationOf(items[0])
 	if !known || duration != 500*time.Millisecond {
 		t.Fatalf("tool execution duration not rehydrated: got %v/%t", duration, known)
 	}
@@ -120,7 +120,7 @@ func TestTranscriptLeavesOrdinaryToolResultUntouched(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	invocation, present := items[0].ToolInvocation()
+	invocation, present := testsupport.ToolInvocationOf(items[0])
 	if !present {
 		t.Fatal("stored Item has no Tool invocation")
 	}

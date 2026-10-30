@@ -146,16 +146,16 @@ func (r ResumeAcceptance) ItemReplacements() ([]transcript.Replacement, error) {
 		if !found {
 			return nil, fmt.Errorf("interrupt item %q was not read", open.ItemID)
 		}
-		itemReplacement, err := transcript.Replace(expected, func(expected transcript.Item) (transcript.Item, error) {
-			switch open.Kind() {
-			case run.InterruptQuestion:
-				return expected.AnswerQuestion(answer.Resolution.Question().Answers())
-			case run.InterruptApproval:
-				return expected.ResolveToolApproval(*answer.Resolution.Approval())
-			default:
-				return transcript.Item{}, fmt.Errorf("unknown interrupt kind %q", open.Kind())
-			}
-		})
+		var itemReplacement transcript.Replacement
+		var err error
+		switch open.Kind() {
+		case run.InterruptQuestion:
+			itemReplacement, err = expected.AnswerQuestion(answer.Resolution.Question().Answers())
+		case run.InterruptApproval:
+			itemReplacement, err = expected.ResolveToolApproval(*answer.Resolution.Approval())
+		default:
+			err = fmt.Errorf("unknown interrupt kind %q", open.Kind())
+		}
 		if err != nil {
 			return nil, fmt.Errorf("settle interrupt item %q: %w", open.ItemID, err)
 		}

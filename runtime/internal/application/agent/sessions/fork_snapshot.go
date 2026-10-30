@@ -164,7 +164,8 @@ func (projection *forkSnapshotProjection) copyToolResults() {
 		blobs[blob.ID] = blob
 	}
 	for _, item := range projection.forked.Items {
-		invocation, present := item.ToolInvocation()
+		call, present := item.ToolCall()
+		invocation := call.Invocation
 		if !present || invocation.Offload == nil {
 			continue
 		}

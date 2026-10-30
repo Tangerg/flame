@@ -299,9 +299,7 @@ func (w waitingCancellationBuilder) settleWaitingItems(
 			Kind:   tool.FailureExecution,
 			Detail: w.reason,
 		}
-		itemReplacement, err := transcript.Replace(item, func(item transcript.Item) (transcript.Item, error) {
-			return item.AbandonToolCall(&itemFailure, w.finishedAt)
-		})
+		itemReplacement, err := item.AbandonToolCall(&itemFailure, w.finishedAt)
 		if err != nil {
 			return nil, nil, fmt.Errorf("runs: settle waiting Item %q: %w", item.ID(), err)
 		}

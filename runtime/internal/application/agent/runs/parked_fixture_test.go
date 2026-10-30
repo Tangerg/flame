@@ -172,7 +172,7 @@ func acceptTestApproval(t *testing.T, continuation *treeContinuation, itemID, ca
 	if err != nil {
 		t.Fatal(err)
 	}
-	continuation.items[itemID] = item
+	continuation.items[itemID] = item.State()
 	if continuation.approvalCalls == nil {
 		continuation.approvalCalls = make(map[string]string)
 	}
@@ -182,7 +182,7 @@ func acceptTestApproval(t *testing.T, continuation *treeContinuation, itemID, ca
 func setTestContinuationTool(t *testing.T, continuation *treeContinuation, itemID string, invocation transcript.ToolInvocation) {
 	t.Helper()
 	original := continuation.items[itemID]
-	item, err := transcript.NewToolCall(original.Snapshot().Identity, invocation, original.SafetyClass())
+	item, err := transcript.NewToolCall(original.Snapshot().Identity, invocation, testsupport.Facts(original).SafetyClass)
 	if err != nil {
 		t.Fatal(err)
 	}

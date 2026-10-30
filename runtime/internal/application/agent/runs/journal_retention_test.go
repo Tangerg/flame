@@ -37,6 +37,8 @@ func TestRetentionChargeCoversAdmittedSnapshotStrings(t *testing.T) {
 	}
 	for _, seed := range seeds {
 		snapshot := seed.Snapshot()
+		payload := reflect.New(reflect.TypeOf(snapshot.Body)).Elem()
+		payload.Set(reflect.ValueOf(snapshot.Body))
 		baseline := retainedItemBytes(seed)
 		var walk func(reflect.Value, string)
 		walk = func(value reflect.Value, path string) {
@@ -62,7 +64,9 @@ func TestRetentionChargeCoversAdmittedSnapshotStrings(t *testing.T) {
 				}
 				original := value.String()
 				value.SetString(original + strings.Repeat("x", growth))
-				grown, err := transcript.RestoreItem(snapshot)
+				grown, err := transcript.RestoreItem(transcript.ItemSnapshot{
+					Identity: snapshot.Identity, Status: snapshot.Status, Body: payload.Interface().(transcript.Body),
+				})
 				value.SetString(original)
 				// Closed vocabularies and bounded identities stay at their Domain boundary.
 				if err == nil && retainedItemBytes(grown)-baseline < growth {
@@ -70,13 +74,14 @@ func TestRetentionChargeCoversAdmittedSnapshotStrings(t *testing.T) {
 				}
 			}
 		}
-		walk(reflect.ValueOf(&snapshot).Elem(), "Item")
+		walk(payload, "Item")
 	}
 }
 
 func TestJournalBoundsAcceptedAnswersAndApprovalMaterial(t *testing.T) {
 	const growth = 32 << 10
 	base := testsupport.MustRestoreItem(testsupport.ItemInput{Kind: transcript.ToolCall, Status: transcript.ItemCompleted}).Snapshot()
+	baseCall := base.Body.(transcript.ToolCallBody)
 	for _, test := range []struct {
 		name    string
 		payload func(string) ProjectionEvent
@@ -89,8 +94,9 @@ func TestJournalBoundsAcceptedAnswersAndApprovalMaterial(t *testing.T) {
 			})}
 		}},
 		{"rejected argument source", func(value string) ProjectionEvent {
-			snapshot := base
-			snapshot.Tool = &transcript.ToolInvocation{Name: "shell", ArgumentsText: value}
+			snapshot, call := base, baseCall
+			call.Invocation = transcript.ToolInvocation{Name: "shell", ArgumentsText: value}
+			snapshot.Body = call
 			item, err := transcript.RestoreItem(snapshot)
 			if err != nil {
 				t.Fatal(err)
@@ -98,9 +104,9 @@ func TestJournalBoundsAcceptedAnswersAndApprovalMaterial(t *testing.T) {
 			return ItemCompleted{Item: item}
 		}},
 		{"edited arguments", func(value string) ProjectionEvent {
-			snapshot := base
-			snapshot.ApprovalDecision = approval.Allow
-			snapshot.EditedArguments = `{"input":"` + value + `"}`
+			snapshot, call := base, baseCall
+			call.Approval = &approval.Resolution{Decision: approval.Allow, EditedArguments: `{"input":"` + value + `"}`}
+			snapshot.Body = call
 			item, err := transcript.RestoreItem(snapshot)
 			if err != nil {
 				t.Fatal(err)
@@ -108,8 +114,9 @@ func TestJournalBoundsAcceptedAnswersAndApprovalMaterial(t *testing.T) {
 			return ItemCompleted{Item: item}
 		}},
 		{"denial reason", func(value string) ProjectionEvent {
-			snapshot := base
-			snapshot.ApprovalDecision, snapshot.DenialReason = approval.Deny, value
+			snapshot, call := base, baseCall
+			call.Approval = &approval.Resolution{Decision: approval.Deny, Reason: value}
+			snapshot.Body = call
 			item, err := transcript.RestoreItem(snapshot)
 			if err != nil {
 				t.Fatal(err)

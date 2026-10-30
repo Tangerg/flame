@@ -54,9 +54,8 @@ func TestTranscriptCodecPreservesEpochFinishTime(t *testing.T) {
 			SessionID: "session_1", RunID: "run_1", ItemID: "item_1",
 			OccurredAt: finishedAt.Add(-time.Second),
 		},
-		Status: transcript.ItemIncomplete, Kind: transcript.ToolCall,
-		FinishedAt: finishedAt,
-		Tool:       &transcript.ToolInvocation{Name: "shell"},
+		Status: transcript.ItemIncomplete,
+		Body:   transcript.ToolCallBody{Invocation: transcript.ToolInvocation{Name: "shell"}, FinishedAt: finishedAt},
 	})
 	if err != nil {
 		t.Fatalf("RestoreItem: %v", err)
@@ -73,7 +72,7 @@ func TestTranscriptCodecPreservesEpochFinishTime(t *testing.T) {
 	if err != nil {
 		t.Fatalf("decodeTranscriptItem: %v", err)
 	}
-	if !decoded.FinishedAt.Equal(finishedAt) {
-		t.Fatalf("decoded finish time = %v, want %v", decoded.FinishedAt, finishedAt)
+	if call := decoded.Body.(transcript.ToolCallBody); !call.FinishedAt.Equal(finishedAt) {
+		t.Fatalf("decoded finish time = %v, want %v", call.FinishedAt, finishedAt)
 	}
 }

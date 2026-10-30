@@ -127,9 +127,9 @@ func acceptedItemResolution(item transcript.Item) (run.InterruptResolution, erro
 		}
 		return run.NewQuestionAnswer(question.Answers)
 	}
-	resolution := item.ApprovalResolution()
-	if resolution.Decision == "" {
+	call, ok := item.ToolCall()
+	if !ok || call.Approval == nil {
 		return run.InterruptResolution{}, errors.New("approval item has no accepted resolution")
 	}
-	return run.NewApprovalAnswer(resolution)
+	return run.NewApprovalAnswer(*call.Approval)
 }

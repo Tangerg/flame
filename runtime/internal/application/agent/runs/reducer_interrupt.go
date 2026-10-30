@@ -208,8 +208,8 @@ func (r *reducer) approvalItem(prompt ApprovalPrompt, ref *openTool) (transcript
 		return transcript.Item{}, false, fmt.Errorf("approval tool %q arguments: %w", prompt.Tool.ModelName(), err)
 	}
 	if ref != nil {
-		invocation, _ := ref.item.ToolInvocation()
-		if invocation.Name != prompt.Tool.ModelName() {
+		call, _ := ref.item.ToolCall()
+		if call.Invocation.Name != prompt.Tool.ModelName() {
 			return transcript.Item{}, false, errors.New("approval prompt changes Tool identity")
 		}
 		return ref.item, false, nil
@@ -225,14 +225,14 @@ func (r *reducer) approvalItem(prompt ApprovalPrompt, ref *openTool) (transcript
 }
 
 func approvalTranscriptInterrupt(item transcript.Item, prompt ApprovalPrompt) transcript.Interrupt {
-	invocation, _ := item.ToolInvocation()
+	call, _ := item.ToolCall()
 	return transcript.Interrupt{
 		ItemID:         item.ID(),
 		ItemOccurredAt: item.OccurredAt(),
 		RunID:          item.RunID(),
 		Kind:           run.InterruptApproval,
 		Approval: &transcript.Approval{
-			Tool: invocation, Risk: prompt.Risk, Reason: prompt.Reason, Rememberable: prompt.Rememberable,
+			Tool: call.Invocation, Risk: prompt.Risk, Reason: prompt.Reason, Rememberable: prompt.Rememberable,
 		},
 	}
 }
@@ -298,11 +298,11 @@ func (r *reducer) removeDrained(itemID string) {
 
 func (r *reducer) incompleteStartedToolItem(ref *openTool) (ItemCompleted, error) {
 	r.endToolAttempt(ref)
-	item, err := ref.item.AbandonStartedToolCall(ref.attemptInvocation, nil, ref.attemptStartedAt, ref.finishedAt)
+	settlement, err := ref.item.AbandonStartedToolCall(ref.attemptInvocation, nil, ref.attemptStartedAt, ref.finishedAt)
 	if err != nil {
 		return ItemCompleted{}, err
 	}
-	return ItemCompleted{Item: item}, nil
+	return settledItem(settlement, nil), nil
 }
 
 func (r *reducer) abandonUnstartedToolItem(ref *openTool) (ItemCompleted, error) {
@@ -310,11 +310,11 @@ func (r *reducer) abandonUnstartedToolItem(ref *openTool) (ItemCompleted, error)
 	if finishedAt.Before(ref.item.OccurredAt()) {
 		return ItemCompleted{}, fmt.Errorf("tool call %q finish time precedes occurrence time", ref.callID)
 	}
-	item, err := ref.item.AbandonToolCall(nil, finishedAt)
+	settlement, err := ref.item.AbandonToolCall(nil, finishedAt)
 	if err != nil {
 		return ItemCompleted{}, err
 	}
-	return ItemCompleted{Item: item}, nil
+	return settledItem(settlement, nil), nil
 }
 
 // endToolAttempt stamps the moment this attempt stopped occupying its tool.

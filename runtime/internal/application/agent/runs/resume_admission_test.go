@@ -52,7 +52,7 @@ func TestResumeRejectsAHandoffConsumedBeforeAdmission(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			items.items["item_1"] = answered
+			items.items["item_1"] = answered.State()
 			delete(sessions.pending, "run_1")
 			continued, err := projection.runs["run_1"].Resume("seg_winner", pending.CreatedAt.Add(time.Second))
 			if err != nil {

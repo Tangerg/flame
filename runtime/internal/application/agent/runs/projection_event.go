@@ -61,6 +61,12 @@ type ItemChanged struct {
 type ItemCompleted struct {
 	Item         transcript.Item
 	mutatedPaths []string
+	// settlement is present when Item settles a ToolCall the reducer opened.
+	settlement *transcript.Replacement
+}
+
+func settledItem(settlement transcript.Replacement, mutatedPaths []string) ItemCompleted {
+	return ItemCompleted{Item: settlement.State(), mutatedPaths: mutatedPaths, settlement: &settlement}
 }
 
 // QuestionAnswered publishes a Question Item whose answers a resume committed
@@ -333,18 +339,15 @@ func newTransientItemStart(identity transcript.ItemIdentity, kind transcript.Ite
 }
 
 func newToolItemStart(item transcript.Item) (ItemStart, error) {
-	if item.Kind() != transcript.ToolCall || item.Status() != transcript.ItemRunning {
+	call, ok := item.ToolCall()
+	if !ok || item.Status() != transcript.ItemRunning {
 		return ItemStart{}, errors.New("runs: durable Item start is not a running ToolCall")
-	}
-	invocation, ok := item.ToolInvocation()
-	if !ok {
-		return ItemStart{}, errors.New("runs: running ToolCall has no invocation")
 	}
 	owned := item
 	return ItemStart{
 		SessionID: item.SessionID(), RunID: item.RunID(), ItemID: item.ID(),
-		Kind: item.Kind(), OccurredAt: item.OccurredAt(), ToolInvocation: &invocation,
-		SafetyClass: item.SafetyClass(), durable: &owned,
+		Kind: item.Kind(), OccurredAt: item.OccurredAt(), ToolInvocation: &call.Invocation,
+		SafetyClass: call.SafetyClass, durable: &owned,
 	}, nil
 }
 
@@ -373,10 +376,10 @@ func (i ItemStart) validate() error {
 		!item.OccurredAt().Equal(i.OccurredAt) {
 		return errors.New("runs: ToolCall start differs from its durable Item")
 	}
-	invocation, present := item.ToolInvocation()
-	if !present || invocation.Name != i.ToolInvocation.Name ||
-		invocation.Arguments != i.ToolInvocation.Arguments ||
-		item.SafetyClass() != i.SafetyClass {
+	call, present := item.ToolCall()
+	if !present || call.Invocation.Name != i.ToolInvocation.Name ||
+		call.Invocation.Arguments != i.ToolInvocation.Arguments ||
+		call.SafetyClass != i.SafetyClass {
 		return errors.New("runs: ToolCall start differs from its durable invocation")
 	}
 	return nil

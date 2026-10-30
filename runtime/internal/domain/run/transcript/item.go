@@ -3,7 +3,6 @@ package transcript
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
@@ -42,139 +41,84 @@ func (i ItemIdentity) Validate() error {
 // internal status lifecycle. A Question prompt is complete when constructed and
 // may later be replaced by the same fact enriched with its accepted answer.
 type Item struct {
-	identity          ItemIdentity
-	status            ItemStatus
-	finishedAt        time.Time
-	executionDuration *time.Duration
-	kind              ItemKind
-	messagePhase      MessagePhase
-	content           []ContentBlock
-	text              string
-	redacted          bool
-	question          *Question
-	tool              *ToolInvocation
-	safetyClass       tool.SafetyClass
-	approvalDecision  approval.Decision
-	editedArguments   string
-	denialReason      string
-	rememberScope     approval.Scope
-	failure           *tool.Failure
-	summary           string
-	droppedMessages   int
+	identity ItemIdentity
+	status   ItemStatus
+	body     Body
 }
 
 // ItemSnapshot is the complete representation consumed by strict technical
 // codecs. [RestoreItem] validates it; it is not a second mutation surface.
 type ItemSnapshot struct {
-	Identity          ItemIdentity
-	Status            ItemStatus
-	FinishedAt        time.Time
-	ExecutionDuration *time.Duration
-	Kind              ItemKind
-	MessagePhase      MessagePhase
-	Content           []ContentBlock
-	Text              string
-	Redacted          bool
-	Question          *Question
-	Tool              *ToolInvocation
-	SafetyClass       tool.SafetyClass
-	ApprovalDecision  approval.Decision
-	EditedArguments   string
-	DenialReason      string
-	RememberScope     approval.Scope
-	Failure           *tool.Failure
-	Summary           string
-	DroppedMessages   int
+	Identity ItemIdentity
+	Status   ItemStatus
+	Body     Body
 }
 
 // NewUserMessage constructs a complete user message.
 func NewUserMessage(identity ItemIdentity, content []ContentBlock) (Item, error) {
-	return newMessage(identity, UserMessage, content)
+	return RestoreItem(ItemSnapshot{Identity: identity, Status: ItemCompleted, Body: UserMessageBody{Content: content}})
 }
 
 // NewAgentMessage constructs a complete agent message.
 func NewAgentMessage(identity ItemIdentity, phase MessagePhase, content []ContentBlock) (Item, error) {
 	return RestoreItem(ItemSnapshot{
-		Identity: identity, Status: ItemCompleted, Kind: AgentMessage,
-		MessagePhase: phase, Content: content,
-	})
-}
-
-func newMessage(identity ItemIdentity, kind ItemKind, content []ContentBlock) (Item, error) {
-	return RestoreItem(ItemSnapshot{
-		Identity: identity, Status: ItemCompleted, Kind: kind, Content: content,
+		Identity: identity, Status: ItemCompleted,
+		Body: AgentMessageBody{Phase: phase, Content: content},
 	})
 }
 
 // NewReasoning constructs a complete reasoning record.
 func NewReasoning(identity ItemIdentity, text string, redacted bool) (Item, error) {
 	return RestoreItem(ItemSnapshot{
-		Identity: identity, Status: ItemCompleted, Kind: Reasoning,
-		Text: text, Redacted: redacted,
+		Identity: identity, Status: ItemCompleted,
+		Body: ReasoningBody{Text: text, Redacted: redacted},
 	})
 }
 
 // NewIncompleteAgentMessage retains visible output from an unfinished response.
 func NewIncompleteAgentMessage(identity ItemIdentity, text string) (Item, error) {
-	return RestoreItem(ItemSnapshot{Identity: identity, Status: ItemIncomplete, Kind: AgentMessage,
-		MessagePhase: MessageCommentary, Content: []ContentBlock{{Kind: TextContent, Text: text}}})
+	return RestoreItem(ItemSnapshot{
+		Identity: identity, Status: ItemIncomplete,
+		Body: AgentMessageBody{Phase: MessageCommentary, Content: []ContentBlock{{Kind: TextContent, Text: text}}},
+	})
 }
 
 // NewIncompleteReasoning retains visible reasoning without provider replay state.
 func NewIncompleteReasoning(identity ItemIdentity, text string) (Item, error) {
-	return RestoreItem(ItemSnapshot{Identity: identity, Status: ItemIncomplete, Kind: Reasoning, Text: text})
+	return RestoreItem(ItemSnapshot{Identity: identity, Status: ItemIncomplete, Body: ReasoningBody{Text: text}})
 }
 
 // NewQuestion constructs the complete prompt fact for one pending question.
 // Whether it still awaits an answer belongs to the root-owned Pending set, not
 // to a second lifecycle on the transcript Item.
 func NewQuestion(identity ItemIdentity, question Question) (Item, error) {
-	return RestoreItem(ItemSnapshot{
-		Identity: identity, Status: ItemCompleted, Kind: QuestionItem, Question: &question,
-	})
+	return RestoreItem(ItemSnapshot{Identity: identity, Status: ItemCompleted, Body: QuestionBody{Question: question}})
 }
 
 // NewToolCall constructs a running ToolCall. Its invocation must not already
 // carry a result or offload reference.
 func NewToolCall(identity ItemIdentity, invocation ToolInvocation, safetyClass tool.SafetyClass) (Item, error) {
 	return RestoreItem(ItemSnapshot{
-		Identity: identity, Status: ItemRunning, Kind: ToolCall,
-		Tool: &invocation, SafetyClass: safetyClass,
+		Identity: identity, Status: ItemRunning,
+		Body: ToolCallBody{Invocation: invocation, SafetyClass: safetyClass},
 	})
 }
 
 // NewCompaction constructs a complete compaction boundary.
 func NewCompaction(identity ItemIdentity, summary string, droppedMessages int) (Item, error) {
 	return RestoreItem(ItemSnapshot{
-		Identity: identity, Status: ItemCompleted, Kind: Compaction,
-		Summary: summary, DroppedMessages: droppedMessages,
+		Identity: identity, Status: ItemCompleted,
+		Body: CompactionBody{Summary: summary, DroppedMessages: droppedMessages},
 	})
 }
 
 // RestoreItem rebuilds a complete Item from a technical record.
 func RestoreItem(snapshot ItemSnapshot) (Item, error) {
+	if snapshot.Body == nil {
+		return Item{}, errors.New("transcript: Item body is required")
+	}
 	snapshot.Identity.OccurredAt = snapshot.Identity.OccurredAt.UTC()
-	clonedExecutionDuration := snapshot.ExecutionDuration
-	if clonedExecutionDuration != nil {
-		clonedExecutionDuration = new(*clonedExecutionDuration)
-	}
-	clonedFailure := snapshot.Failure
-	if clonedFailure != nil {
-		clonedFailure = new(*clonedFailure)
-	}
-	item := Item{
-		identity: snapshot.Identity, status: snapshot.Status, finishedAt: snapshot.FinishedAt.UTC(),
-		executionDuration: clonedExecutionDuration,
-		kind:              snapshot.Kind, messagePhase: snapshot.MessagePhase,
-		content: CloneContent(snapshot.Content), text: snapshot.Text,
-		redacted: snapshot.Redacted, question: cloneQuestion(snapshot.Question),
-		tool: cloneToolInvocation(snapshot.Tool), safetyClass: snapshot.SafetyClass,
-		approvalDecision: snapshot.ApprovalDecision,
-		editedArguments:  snapshot.EditedArguments, denialReason: snapshot.DenialReason,
-		rememberScope: snapshot.RememberScope,
-		failure:       clonedFailure, summary: snapshot.Summary,
-		droppedMessages: snapshot.DroppedMessages,
-	}
+	item := Item{identity: snapshot.Identity, status: snapshot.Status, body: snapshot.Body.clone()}
 	if err := item.validate(); err != nil {
 		return Item{}, err
 	}
@@ -183,26 +127,7 @@ func RestoreItem(snapshot ItemSnapshot) (Item, error) {
 
 // Snapshot returns a complete ownership-isolated representation.
 func (i Item) Snapshot() ItemSnapshot {
-	clonedExecutionDuration := i.executionDuration
-	if clonedExecutionDuration != nil {
-		clonedExecutionDuration = new(*clonedExecutionDuration)
-	}
-	clonedFailure := i.failure
-	if clonedFailure != nil {
-		clonedFailure = new(*clonedFailure)
-	}
-	return ItemSnapshot{
-		Identity: i.identity, Status: i.status, FinishedAt: i.finishedAt,
-		ExecutionDuration: clonedExecutionDuration,
-		Kind:              i.kind, MessagePhase: i.messagePhase,
-		Content: CloneContent(i.content), Text: i.text,
-		Redacted: i.redacted, Question: cloneQuestion(i.question),
-		Tool: cloneToolInvocation(i.tool), SafetyClass: i.safetyClass,
-		ApprovalDecision: i.approvalDecision,
-		EditedArguments:  i.editedArguments, DenialReason: i.denialReason, RememberScope: i.rememberScope,
-		Failure: clonedFailure, Summary: i.summary,
-		DroppedMessages: i.droppedMessages,
-	}
+	return ItemSnapshot{Identity: i.identity, Status: i.status, Body: i.Body()}
 }
 
 // Fork derives a terminal historical Item for a child Session under fresh
@@ -226,8 +151,8 @@ func (i Item) CompleteToolCall(
 	invocation ToolInvocation,
 	executionStartedAt time.Time,
 	finishedAt time.Time,
-) (Item, error) {
-	return i.settleToolCall(invocation, nil, ItemCompleted, executionStartedAt, finishedAt)
+) (Replacement, error) {
+	return i.replacedBy(i.settleToolCall(invocation, nil, ItemCompleted, executionStartedAt, finishedAt))
 }
 
 // FailToolCall settles a started ToolCall with a classified failure and the
@@ -237,17 +162,18 @@ func (i Item) FailToolCall(
 	failure tool.Failure,
 	executionStartedAt time.Time,
 	finishedAt time.Time,
-) (Item, error) {
-	return i.settleToolCall(invocation, &failure, ItemIncomplete, executionStartedAt, finishedAt)
+) (Replacement, error) {
+	return i.replacedBy(i.settleToolCall(invocation, &failure, ItemIncomplete, executionStartedAt, finishedAt))
 }
 
 // AbandonToolCall records that a running ToolCall never reached a conclusive
 // result. Failure may be absent when only executor loss is known.
-func (i Item) AbandonToolCall(failure *tool.Failure, finishedAt time.Time) (Item, error) {
-	if i.tool == nil {
-		return Item{}, errors.New("transcript: ToolCall invocation is absent")
+func (i Item) AbandonToolCall(failure *tool.Failure, finishedAt time.Time) (Replacement, error) {
+	call, ok := i.body.(ToolCallBody)
+	if !ok {
+		return Replacement{}, errors.New("transcript: only a ToolCall can be abandoned")
 	}
-	return i.settleToolCall(*i.tool, failure, ItemIncomplete, time.Time{}, finishedAt)
+	return i.replacedBy(i.settleToolCall(call.Invocation, failure, ItemIncomplete, time.Time{}, finishedAt))
 }
 
 // AbandonStartedToolCall records an inconclusive started Tool attempt whose
@@ -257,41 +183,42 @@ func (i Item) AbandonStartedToolCall(
 	failure *tool.Failure,
 	executionStartedAt time.Time,
 	finishedAt time.Time,
-) (Item, error) {
-	return i.settleToolCall(invocation, failure, ItemIncomplete, executionStartedAt, finishedAt)
+) (Replacement, error) {
+	return i.replacedBy(i.settleToolCall(invocation, failure, ItemIncomplete, executionStartedAt, finishedAt))
 }
 
 // ResolveToolApproval records the exact human verdict accepted for a running
 // ToolCall. The decision is a durable semantic fact on the invocation rather
 // than a property of the current policy or its eventual execution outcome.
 // Identity and lifecycle remain unchanged, and a second verdict is rejected.
-func (i Item) ResolveToolApproval(resolution approval.Resolution) (Item, error) {
-	if i.kind != ToolCall || i.status != ItemRunning || i.tool == nil {
-		return Item{}, errors.New("transcript: only a running ToolCall can resolve approval")
+func (i Item) ResolveToolApproval(resolution approval.Resolution) (Replacement, error) {
+	call, ok := i.body.(ToolCallBody)
+	if !ok || i.status != ItemRunning {
+		return Replacement{}, errors.New("transcript: only a running ToolCall can resolve approval")
 	}
-	if err := resolution.Validate(); err != nil {
-		return Item{}, err
+	if call.Approval != nil {
+		return Replacement{}, errors.New("transcript: ToolCall approval is already resolved")
 	}
-	if i.approvalDecision != "" {
-		return Item{}, errors.New("transcript: ToolCall approval is already resolved")
-	}
-	i.approvalDecision = resolution.Decision
-	i.editedArguments = resolution.EditedArguments
-	i.denialReason = resolution.Reason
-	i.rememberScope = resolution.RememberScope
-	if err := i.validate(); err != nil {
-		return Item{}, err
-	}
-	return i, nil
+	call.Approval = &resolution
+	return i.replacedBy(i.with(i.status, call))
 }
 
-// ApprovalResolution returns the complete accepted approval verdict. An empty
-// Decision means the ToolCall approval is unresolved.
-func (i Item) ApprovalResolution() approval.Resolution {
-	return approval.Resolution{
-		Decision: i.approvalDecision, EditedArguments: i.editedArguments,
-		Reason: i.denialReason, RememberScope: i.rememberScope,
+// AnswerQuestion enriches one complete Question prompt with the exact response
+// accepted at the resume linearization point. Identity, occurrence, and Item
+// status remain unchanged; a second answer is rejected.
+func (i Item) AnswerQuestion(answers [][]string) (Replacement, error) {
+	prompt, ok := i.body.(QuestionBody)
+	if !ok {
+		return Replacement{}, errors.New("transcript: only a Question can be answered")
 	}
+	if prompt.Question.Answered() {
+		return Replacement{}, errors.New("transcript: Question is already answered")
+	}
+	if answers == nil {
+		return Replacement{}, errors.New("transcript: accepted Question answers are required")
+	}
+	prompt.Question.Answers = answers
+	return i.replacedBy(i.with(i.status, prompt))
 }
 
 func (i Item) settleToolCall(
@@ -301,10 +228,11 @@ func (i Item) settleToolCall(
 	executionStartedAt time.Time,
 	finishedAt time.Time,
 ) (Item, error) {
-	if i.kind != ToolCall || i.status != ItemRunning {
+	call, ok := i.body.(ToolCallBody)
+	if !ok || i.status != ItemRunning {
 		return Item{}, errors.New("transcript: only a running ToolCall can settle")
 	}
-	if i.tool == nil || invocation.Name != i.tool.Name {
+	if invocation.Name != call.Invocation.Name {
 		return Item{}, errors.New("transcript: ToolCall settlement changes tool identity")
 	}
 	if finishedAt.IsZero() || finishedAt.Before(i.identity.OccurredAt) {
@@ -315,22 +243,21 @@ func (i Item) settleToolCall(
 		if executionStartedAt.Before(i.identity.OccurredAt) || finishedAt.Before(executionStartedAt) {
 			return Item{}, errors.New("transcript: ToolCall execution interval is outside its lifecycle")
 		}
-		duration := finishedAt.Sub(executionStartedAt)
-		executionDuration = &duration
+		executionDuration = new(finishedAt.Sub(executionStartedAt))
 	} else if status == ItemCompleted {
 		return Item{}, errors.New("transcript: completed ToolCall requires an execution interval")
 	}
-	i.status, i.finishedAt = status, finishedAt.UTC()
-	i.executionDuration = executionDuration
-	clonedFailure := failure
-	if clonedFailure != nil {
-		clonedFailure = new(*clonedFailure)
-	}
-	i.tool, i.failure = cloneToolInvocation(&invocation), clonedFailure
-	if err := i.validate(); err != nil {
-		return Item{}, err
-	}
-	return i, nil
+	call.Invocation = invocation
+	call.FinishedAt = finishedAt.UTC()
+	call.ExecutionDuration = executionDuration
+	call.Failure = failure
+	return i.with(status, call)
+}
+
+// with is the one exit of every transition: the successor is validated like a
+// restored Item, so a transition cannot produce what restore would reject.
+func (i Item) with(status ItemStatus, body Body) (Item, error) {
+	return RestoreItem(ItemSnapshot{Identity: i.identity, Status: status, Body: body})
 }
 
 // validate reports whether the Item is one legal variant. Every constructor
@@ -340,219 +267,10 @@ func (i Item) validate() error {
 	if err := i.identity.Validate(); err != nil {
 		return err
 	}
-	if i.droppedMessages < 0 {
-		return errors.New("transcript: dropped messages must not be negative")
-	}
-	for index, block := range i.content {
-		if err := block.Validate(); err != nil {
-			return fmt.Errorf("transcript: content %d: %w", index, err)
-		}
-	}
-	switch i.kind {
-	case UserMessage, AgentMessage:
-		if len(i.content) == 0 {
-			return errors.New("transcript: message has no content")
-		}
-		if i.kind == AgentMessage && !i.messagePhase.Valid() {
-			return fmt.Errorf("transcript: unknown AgentMessage phase %q", i.messagePhase)
-		}
-	case Reasoning:
-		if i.text == "" {
-			return errors.New("transcript: reasoning has no text")
-		}
-	case QuestionItem:
-		if i.question == nil {
-			return errors.New("transcript: question has no prompt")
-		}
-		if err := i.question.Validate(); err != nil {
-			return err
-		}
-	case ToolCall:
-		if err := i.validateToolCall(); err != nil {
-			return err
-		}
-	case Compaction:
-		if strings.TrimSpace(i.summary) == "" {
-			return errors.New("transcript: compaction summary is required")
-		}
-		if i.summary != strings.TrimSpace(i.summary) {
-			return errors.New("transcript: compaction summary is not canonical")
-		}
-	default:
-		return fmt.Errorf("transcript: unknown Item kind %q", i.kind)
-	}
-	// Visible model observations can settle incomplete without becoming a response.
-	if i.kind != ToolCall && i.status != ItemCompleted &&
-		!(i.status == ItemIncomplete && (i.kind == AgentMessage || i.kind == Reasoning)) {
-		return fmt.Errorf("transcript: %s must be complete", i.kind)
-	}
-	return i.rejectDisallowedPayload()
-}
-
-func (i Item) validateToolCall() error {
-	if i.tool == nil {
-		return errors.New("transcript: ToolCall invocation is required")
-	}
-	if err := instant.Validate(i.finishedAt); err != nil {
-		return fmt.Errorf("transcript: %w", err)
-	}
-	if err := i.tool.Validate(i.status == ItemRunning); err != nil {
-		return err
-	}
-	if i.safetyClass != "" && !i.safetyClass.Valid() {
-		return fmt.Errorf("transcript: unknown Tool safety class %q", i.safetyClass)
-	}
-	if i.approvalDecision != "" {
-		if err := i.ApprovalResolution().Validate(); err != nil {
-			return err
-		}
-	} else if i.editedArguments != "" || i.denialReason != "" || i.rememberScope != "" {
-		return errors.New("transcript: unresolved Tool approval carries a verdict")
-	}
-	switch i.status {
-	case ItemRunning:
-		if !i.finishedAt.IsZero() || i.executionDuration != nil || i.failure != nil {
-			return errors.New("transcript: running ToolCall carries terminal facts")
-		}
-	case ItemCompleted:
-		if i.finishedAt.IsZero() || i.executionDuration == nil || i.failure != nil {
-			return errors.New("transcript: completed ToolCall has invalid terminal facts")
-		}
-	case ItemIncomplete:
-		if i.finishedAt.IsZero() {
-			return errors.New("transcript: incomplete ToolCall has no finish time")
-		}
-	default:
+	if !i.status.Valid() {
 		return fmt.Errorf("transcript: unknown Item status %q", i.status)
 	}
-	if !i.finishedAt.IsZero() && i.finishedAt.Before(i.identity.OccurredAt) {
-		return errors.New("transcript: ToolCall finish time precedes its occurrence")
-	}
-	if i.executionDuration != nil {
-		if *i.executionDuration < 0 {
-			return errors.New("transcript: ToolCall execution duration is negative")
-		}
-		if i.finishedAt.IsZero() || *i.executionDuration > i.finishedAt.Sub(i.identity.OccurredAt) {
-			return errors.New("transcript: ToolCall execution duration exceeds its lifecycle")
-		}
-	}
-	if i.failure != nil {
-		if err := i.failure.Validate(); err != nil {
-			return fmt.Errorf("transcript: Tool failure: %w", err)
-		}
-	}
-	return nil
-}
-
-func (i Item) rejectDisallowedPayload() error {
-	present := func(value bool, name string) error {
-		if value {
-			return fmt.Errorf("transcript: %s is not valid for Item kind %s", name, i.kind)
-		}
-		return nil
-	}
-	checks := []struct {
-		value bool
-		name  string
-	}{
-		{i.kind != UserMessage && i.kind != AgentMessage && len(i.content) != 0, "content"},
-		{i.kind != AgentMessage && i.messagePhase != MessagePhaseNone, "AgentMessage phase"},
-		{i.kind != Reasoning && i.text != "", "text"},
-		{i.kind != Reasoning && i.redacted, "redacted"},
-		{i.kind != QuestionItem && i.question != nil, "question"},
-		{i.kind != ToolCall && i.tool != nil, "Tool invocation"},
-		{i.kind != ToolCall && i.safetyClass != "", "Tool safety class"},
-		{i.kind != ToolCall && i.approvalDecision != "", "Tool approval decision"},
-		{i.kind != ToolCall && i.editedArguments != "", "Tool edited arguments"},
-		{i.kind != ToolCall && i.denialReason != "", "Tool denial reason"},
-		{i.kind != ToolCall && i.rememberScope != "", "Tool remember scope"},
-		{i.kind != ToolCall && i.failure != nil, "Tool failure"},
-		{i.kind != ToolCall && !i.finishedAt.IsZero(), "finish time"},
-		{i.kind != ToolCall && i.executionDuration != nil, "execution duration"},
-		{i.kind != Compaction && i.summary != "", "summary"},
-		{i.kind != Compaction && i.droppedMessages != 0, "dropped messages"},
-	}
-	for _, check := range checks {
-		if err := present(check.value, check.name); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// Validate reports whether an invocation has a canonical identity and result
-// shape. pending requires the result and offload reference to be absent.
-func (t ToolInvocation) Validate(pending bool) error {
-	if t.ArgumentsText != "" && !t.Arguments.Equal(tool.Arguments{}) {
-		return errors.New("transcript: Tool invocation carries both parsed and rejected arguments")
-	}
-
-	if strings.TrimSpace(t.Name) == "" || t.Name != strings.TrimSpace(t.Name) {
-		return errors.New("transcript: Tool name is required without surrounding whitespace")
-	}
-	if pending && (t.Result != nil || t.Offload != nil) {
-		return errors.New("transcript: pending Tool invocation carries a result")
-	}
-	if t.Offload != nil {
-		if err := t.Offload.Validate(); err != nil {
-			return fmt.Errorf("transcript: Tool offload: %w", err)
-		}
-		if t.Result == nil {
-			return errors.New("transcript: offloaded Tool result has no preview")
-		}
-		if _, textual := t.Result.String(); !textual {
-			return errors.New("transcript: offloaded Tool result preview is not text")
-		}
-	}
-	return nil
-}
-
-func cloneToolInvocation(invocation *ToolInvocation) *ToolInvocation {
-	if invocation == nil {
-		return nil
-	}
-	copy := *invocation
-	copy.Result = invocation.Result
-	if copy.Result != nil {
-		copy.Result = new(*copy.Result)
-	}
-	copy.Offload = invocation.Offload
-	if copy.Offload != nil {
-		copy.Offload = new(*copy.Offload)
-	}
-	return &copy
-}
-
-func cloneQuestion(question *Question) *Question {
-	if question == nil {
-		return nil
-	}
-	copy := Question{
-		Fields:  make([]QuestionField, len(question.Fields)),
-		Answers: CloneAnswers(question.Answers),
-	}
-	for index, field := range question.Fields {
-		copy.Fields[index] = field
-		copy.Fields[index].Options = append([]QuestionOption(nil), field.Options...)
-	}
-	return &copy
-}
-
-// CloneAnswers copies one question's answers away from their producer.
-//
-// A row is appended onto a nil slice rather than cloned, so an answered-but-empty
-// field arrives as nil and encodes as JSON null. That is the published shape for
-// a skipped field: slices.Clone would preserve the empty slice and publish [],
-// changing the wire for every consumer that reads a skipped answer back.
-func CloneAnswers(answers [][]string) [][]string {
-	if answers == nil {
-		return nil
-	}
-	cloned := make([][]string, len(answers))
-	for index, values := range answers {
-		cloned[index] = append([]string(nil), values...)
-	}
-	return cloned
+	return i.body.validate(i.status, i.identity.OccurredAt)
 }
 
 func (i Item) SessionID() string     { return i.identity.SessionID }
@@ -560,58 +278,36 @@ func (i Item) RunID() string         { return i.identity.RunID }
 func (i Item) ID() string            { return i.identity.ItemID }
 func (i Item) Status() ItemStatus    { return i.status }
 func (i Item) OccurredAt() time.Time { return i.identity.OccurredAt }
-func (i Item) FinishedAt() time.Time { return i.finishedAt }
-func (i Item) ExecutionDuration() (time.Duration, bool) {
-	if i.executionDuration == nil {
-		return 0, false
+func (i Item) Kind() ItemKind        { return i.body.Kind() }
+
+// Body returns an ownership-isolated copy of the Item's variant.
+func (i Item) Body() Body { return i.body.clone() }
+
+// ToolCall returns the ToolCall variant when the Item is one.
+func (i Item) ToolCall() (ToolCallBody, bool) {
+	call, ok := i.body.(ToolCallBody)
+	if !ok {
+		return ToolCallBody{}, false
 	}
-	return *i.executionDuration, true
-}
-func (i Item) Kind() ItemKind                      { return i.kind }
-func (i Item) MessagePhase() MessagePhase          { return i.messagePhase }
-func (i Item) Content() []ContentBlock             { return CloneContent(i.content) }
-func (i Item) Text() string                        { return i.text }
-func (i Item) Redacted() bool                      { return i.redacted }
-func (i Item) SafetyClass() tool.SafetyClass       { return i.safetyClass }
-func (i Item) ApprovalDecision() approval.Decision { return i.approvalDecision }
-func (i Item) Summary() string                     { return i.summary }
-func (i Item) DroppedMessages() int                { return i.droppedMessages }
-func (i Item) Question() (Question, bool) {
-	if i.question == nil {
-		return Question{}, false
-	}
-	return *cloneQuestion(i.question), true
-}
-func (i Item) ToolInvocation() (ToolInvocation, bool) {
-	if i.tool == nil {
-		return ToolInvocation{}, false
-	}
-	return *cloneToolInvocation(i.tool), true
+	return call.clone().(ToolCallBody), true
 }
 
-// AnswerQuestion enriches one complete Question prompt with the exact response
-// accepted at the resume linearization point. Identity, occurrence, and Item
-// status remain unchanged; a second answer is rejected.
-func (i Item) AnswerQuestion(answers [][]string) (Item, error) {
-	if i.kind != QuestionItem || i.question == nil || i.status != ItemCompleted {
-		return Item{}, errors.New("transcript: only a complete Question can be answered")
+// Question returns the Question variant's prompt when the Item is one.
+func (i Item) Question() (Question, bool) {
+	prompt, ok := i.body.(QuestionBody)
+	if !ok {
+		return Question{}, false
 	}
-	if i.question.Answered() {
-		return Item{}, errors.New("transcript: Question is already answered")
-	}
-	if answers == nil {
-		return Item{}, errors.New("transcript: accepted Question answers are required")
-	}
-	i.question = cloneQuestion(i.question)
-	i.question.Answers = CloneAnswers(answers)
-	if err := i.validate(); err != nil {
-		return Item{}, err
-	}
-	return i, nil
+	return cloneQuestion(prompt.Question), true
 }
-func (i Item) Failure() (tool.Failure, bool) {
-	if i.failure == nil {
-		return tool.Failure{}, false
-	}
-	return *i.failure, true
+
+// Equal compares the complete semantic Item, including accepted answers and
+// terminal execution evidence, independently of codec slice representation.
+func (i Item) Equal(other Item) bool {
+	return i.identity.SessionID == other.identity.SessionID &&
+		i.identity.RunID == other.identity.RunID &&
+		i.identity.ItemID == other.identity.ItemID &&
+		i.identity.OccurredAt.Equal(other.identity.OccurredAt) &&
+		i.status == other.status &&
+		i.body.equal(other.body)
 }

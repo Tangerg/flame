@@ -177,11 +177,11 @@ func TestCommitOpeningResumeCommitsWholeWriteSet(t *testing.T) {
 		RunID:     "run_1",
 		SessionID: "ses_1",
 		SegmentID: "seg_next",
-		Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
+		Items: runs.NewItemWrites(testsupport.MustRestoreItem(testsupport.ItemInput{
 			SessionID: "ses_1", RunID: "run_1", ID: "item_resumed", OccurredAt: created,
 			Status: transcript.ItemCompleted, Kind: transcript.UserMessage,
 			Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "go on"}},
-		})},
+		})),
 	}}
 	opening := mustResumeOpening(t, testCommitID("run_commit_resume"), resume, openingEvents, acceptance)
 	err = effects.CommitOpening(ctx, opening)
@@ -239,11 +239,11 @@ func TestCommitOpeningReconcilesAmbiguousAdmission(t *testing.T) {
 	}
 	openingEvents := []runs.EventCommit{{
 		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
-		Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
+		Items: runs.NewItemWrites(testsupport.MustRestoreItem(testsupport.ItemInput{
 			SessionID: draft.SessionID, RunID: draft.RunID, ID: "item_opening",
 			OccurredAt: createdAt, Status: transcript.ItemCompleted, Kind: transcript.UserMessage,
 			Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}},
-		})},
+		})),
 	}}
 	opening := mustAdmissionOpening(
 		t, testCommitID("run_commit_ambiguous_opening"), draft,
@@ -348,7 +348,7 @@ func TestCommitEventAtomicallyRecordsModelFinalAndRunAccounting(t *testing.T) {
 	)
 	err = effects.CommitEvent(ctx, runs.EventCommit{
 		RunID: "run_model", SessionID: "ses_model", SegmentID: "seg_model", CommitID: testCommitID("run_commit_event_model_wrong"),
-		Items:            []transcript.Item{item},
+		Items:            runs.NewItemWrites(item),
 		ModelInvocations: []runs.ModelInvocationCommit{completion}, Progress: &wrongSegment,
 	})
 	if err == nil {
@@ -370,7 +370,7 @@ func TestCommitEventAtomicallyRecordsModelFinalAndRunAccounting(t *testing.T) {
 	)
 	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
 		RunID: "run_model", SessionID: "ses_model", SegmentID: "seg_model", CommitID: testCommitID("run_commit_event_model_complete"),
-		Items:            []transcript.Item{item},
+		Items:            runs.NewItemWrites(item),
 		ModelInvocations: []runs.ModelInvocationCommit{completion}, Progress: &progress,
 	}); commitEventErr != nil {
 		t.Fatalf("commit final: %v", commitEventErr)
@@ -503,7 +503,7 @@ func TestCommitEventRejectsProjectionFromReplacedSegmentBeforeWritingAnything(t 
 	})
 	err = effects.CommitEvent(ctx, runs.EventCommit{
 		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: "seg_old", CommitID: testCommitID("run_commit_event_stale_item"),
-		Items: []transcript.Item{item},
+		Items: runs.NewItemWrites(item),
 		ConversationMessages: []chat.Message{
 			chat.NewAssistantMessage(chat.NewTextPart("stale")),
 		},
@@ -551,6 +551,7 @@ func TestCommitEventAtomicallyRecordsCanonicalToolBatch(t *testing.T) {
 		{CallID: "tool_first", ItemID: "item_first", SegmentID: "seg_tools", State: runs.ToolInvocationStarted, StartedAt: startedAt},
 		{CallID: "tool_second", ItemID: "item_second", SegmentID: "seg_tools", State: runs.ToolInvocationStarted, StartedAt: startedAt},
 	}
+	runningItems := make([]transcript.Item, 0, len(starts))
 	for index, start := range starts {
 		name := []string{"first", "second"}[index]
 		running := testsupport.MustRestoreItem(testsupport.ItemInput{
@@ -561,14 +562,15 @@ func TestCommitEventAtomicallyRecordsCanonicalToolBatch(t *testing.T) {
 		})
 		if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
 			RunID: "run_tools", SessionID: "ses_tools", SegmentID: "seg_tools", CommitID: testCommitID("run_commit_event_tool_start_" + start.CallID),
-			Items:           []transcript.Item{running},
+			Items:           runs.NewItemWrites(running),
 			ToolInvocations: []runs.ToolInvocationCommit{start},
 		}); commitEventErr != nil {
 			t.Fatalf("commit Tool start %q: %v", start.CallID, commitEventErr)
 		}
+		runningItems = append(runningItems, running)
 	}
 
-	items := make([]transcript.Item, 0, 2)
+	items := make([]runs.ItemWrite, 0, 2)
 	terminals := make([]runs.ToolInvocationCommit, 0, 2)
 	for index, start := range starts {
 		name := []string{"first", "second"}[index]
@@ -576,13 +578,9 @@ func TestCommitEventAtomicallyRecordsCanonicalToolBatch(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		items = append(items, testsupport.MustRestoreItem(testsupport.ItemInput{
-			SessionID: "ses_tools", RunID: "run_tools", ID: start.ItemID,
-			OccurredAt: startedAt, FinishedAt: finishedAt,
-			Status: transcript.ItemCompleted, Kind: transcript.ToolCall,
-			Tool:        &transcript.ToolInvocation{Name: name, Arguments: tool.Arguments{}, Result: &result},
-			SafetyClass: tool.SafetyClassSafe,
-		}))
+		items = append(items, runs.SettlementWrite(testsupport.MustItemReplacement(runningItems[index].CompleteToolCall(
+			transcript.ToolInvocation{Name: name, Arguments: tool.Arguments{}, Result: &result}, startedAt, finishedAt,
+		))))
 		terminals = append(terminals, runs.ToolInvocationCommit{
 			CallID: start.CallID, ItemID: start.ItemID, SegmentID: start.SegmentID,
 			State: runs.ToolInvocationCompleted, StartedAt: startedAt, FinishedAt: finishedAt,
@@ -854,7 +852,7 @@ func TestActorOpeningCommitsAcceptanceAndRollsBackWithdrawal(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			opening := mustAdmissionOpening(t, testCommitID("run_commit_actor"), draft, &initial, nil, &actor, []runs.EventCommit{{SessionID: draft.SessionID, RunID: draft.RunID, SegmentID: draft.SegmentID, Items: []transcript.Item{item}}})
+			opening := mustAdmissionOpening(t, testCommitID("run_commit_actor"), draft, &initial, nil, &actor, []runs.EventCommit{{SessionID: draft.SessionID, RunID: draft.RunID, SegmentID: draft.SegmentID, Items: runs.NewItemWrites(item)}})
 			acceptance := runs.CommandAcceptance{Key: "captured-start", Fingerprint: testsupport.Digest("captured request").String(), Operation: runs.CommandStartOpening, SessionID: draft.SessionID, RunID: draft.RunID, SegmentID: draft.SegmentID, UserItemID: "item_opening"}
 			opening, err = opening.WithCommandAcceptance(acceptance)
 			if err != nil {
@@ -1066,7 +1064,7 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 		pending,
 		[]runs.EventCommit{{
 			RunID: "run_1", SessionID: "ses_1", SegmentID: "seg_open", State: runs.StateSuspend,
-			Items: []transcript.Item{
+			Items: runs.NewItemWrites(
 				testsupport.MustRestoreItem(testsupport.ItemInput{
 					SessionID: "ses_1", ID: "item_tool", RunID: "run_1",
 					Status: transcript.ItemRunning, Kind: transcript.ToolCall,
@@ -1077,7 +1075,7 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 					Status: transcript.ItemCompleted, Kind: transcript.QuestionItem,
 					Question: question, OccurredAt: parkedAt,
 				}),
-			},
+			),
 			ToolInvocations: []runs.ToolInvocationCommit{{
 				CallID: "tool_ask", ItemID: "item_tool", SegmentID: "seg_open",
 				State: runs.ToolInvocationIncomplete, StartedAt: toolStartedAt, FinishedAt: parkedAt,
@@ -1385,7 +1383,7 @@ func TestCommitWaitingSubtreeCancellationCommitsCompleteWriteSet(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("parent Item after commit found=%t err=%v", found, err)
 	}
-	if _, failed := storedItem.Failure(); failed {
+	if _, failed := testsupport.FailureOf(storedItem); failed {
 		t.Fatalf("parent Item = %+v, want the spawning Tool left open", storedItem)
 	}
 	messages, err := fixture.conversation.Read(fixture.ctx, fixture.rootRun.SessionID())
@@ -1394,7 +1392,7 @@ func TestCommitWaitingSubtreeCancellationCommitsCompleteWriteSet(t *testing.T) {
 	}
 	for _, terminal := range fixture.commit.TerminalItems() {
 		item, found, itemErr := fixture.transcript.Item(fixture.ctx, terminal.Expected().ID())
-		if itemErr != nil || !found || !sameItemSnapshot(item, terminal.State()) {
+		if itemErr != nil || !found || !item.Equal(terminal.State()) {
 			t.Fatalf(
 				"terminal interrupt Item %q = found:%t value:%+v err:%v, want %+v",
 				terminal.Expected().ID(),
@@ -2040,11 +2038,11 @@ func TestCommitOpeningRefusesASecondOpenRun(t *testing.T) {
 			ConversationMessages: []chat.Message{
 				chat.NewUserMessage(chat.NewTextPart("me too")),
 			},
-			Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
+			Items: runs.NewItemWrites(testsupport.MustRestoreItem(testsupport.ItemInput{
 				SessionID: "ses_1", RunID: "run_2", ID: "item_second", OccurredAt: created,
 				Status: transcript.ItemCompleted, Kind: transcript.UserMessage,
 				Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "me too"}},
-			})},
+			})),
 		}},
 	)
 	err = effects.CommitOpening(ctx, opening)

@@ -190,7 +190,7 @@ func assertRestartedTerminalItems(
 	t.Helper()
 	for _, replacement := range fixture.commit.TerminalItems() {
 		item, found, err := transcriptStore.Item(fixture.ctx, replacement.Expected().ID())
-		if err != nil || !found || !sameItemSnapshot(item, replacement.State()) {
+		if err != nil || !found || !item.Equal(replacement.State()) {
 			t.Fatalf(
 				"restarted terminal Item %q = found:%t value:%+v err:%v, want %+v",
 				replacement.Expected().ID(), found, item, err, replacement.State(),

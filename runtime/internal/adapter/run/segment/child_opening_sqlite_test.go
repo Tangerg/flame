@@ -69,7 +69,7 @@ func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
 		t, testCommitID("run_commit_child_opening"), child,
 		nil, nil, nil, []runs.EventCommit{{
 			RunID: root.RunID, SessionID: root.SessionID, SegmentID: root.SegmentID,
-			Items: []transcript.Item{spawningItem},
+			Items: runs.NewItemWrites(spawningItem),
 		}},
 	)
 	if commitOpeningErr := effects.CommitOpening(t.Context(), opening); commitOpeningErr != nil {
@@ -121,7 +121,7 @@ func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
 		t, testCommitID("run_commit_child_failure"), rolledBackChild,
 		nil, nil, nil, []runs.EventCommit{{
 			RunID: root.RunID, SessionID: root.SessionID, SegmentID: root.SegmentID,
-			Items: []transcript.Item{rolledBackItem},
+			Items: runs.NewItemWrites(rolledBackItem),
 		}},
 	)
 	err = failingEffects.CommitOpening(t.Context(), rolledBackOpening)
@@ -215,7 +215,7 @@ func TestStartedChildOpeningReconcilesOnlyItsExactWriteSet(t *testing.T) {
 	}
 	openingEvents := []runs.EventCommit{{
 		RunID: root.RunID, SessionID: root.SessionID, SegmentID: root.SegmentID,
-		Items: []transcript.Item{spawningItem},
+		Items: runs.NewItemWrites(spawningItem),
 	}}
 	started, err := runs.NewStartedChildRun(reservation, child.ModelSelection, startedAt, openingEvents)
 	if err != nil {
@@ -272,6 +272,13 @@ type appendThenFail struct {
 
 func (a appendThenFail) AppendItem(ctx context.Context, item transcript.Item) error {
 	if err := a.store.AppendItem(ctx, item); err != nil {
+		return err
+	}
+	return a.err
+}
+
+func (a appendThenFail) SettleItem(ctx context.Context, settlement transcript.Replacement) error {
+	if err := a.store.SettleItem(ctx, settlement); err != nil {
 		return err
 	}
 	return a.err

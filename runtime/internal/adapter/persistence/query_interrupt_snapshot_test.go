@@ -120,9 +120,7 @@ func TestInterruptPageReadsTheHandoffAndItemsFromOneSnapshot(t *testing.T) {
 	case err := <-result:
 		t.Fatalf("query ended before its handoff read: %v", err)
 	}
-	change, err := transcript.Replace(item, func(current transcript.Item) (transcript.Item, error) {
-		return current.AnswerQuestion([][]string{{"Yes"}})
-	})
+	change, err := item.AnswerQuestion([][]string{{"Yes"}})
 	if err != nil {
 		t.Fatal(err)
 	}

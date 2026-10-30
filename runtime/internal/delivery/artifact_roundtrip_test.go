@@ -514,10 +514,10 @@ func seedEveryItemKind(t *testing.T, rt *stubRuntime, sessionID string) {
 	}), testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_tool", RunID: "run_done", Kind: transcript.ToolCall,
 		Status: transcript.ItemCompleted, OccurredAt: time.Unix(7, 0).UTC(),
-		FinishedAt:       time.UnixMilli(7250).UTC(),
-		SafetyClass:      tool.SafetyClassExec,
-		ApprovalDecision: approval.Allow,
-		Tool:             &transcript.ToolInvocation{Name: "shell", Arguments: arguments, Result: &result},
+		FinishedAt:  time.UnixMilli(7250).UTC(),
+		SafetyClass: tool.SafetyClassExec,
+		Approval:    &approval.Resolution{Decision: approval.Allow},
+		Tool:        &transcript.ToolInvocation{Name: "shell", Arguments: arguments, Result: &result},
 	}), testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_failed", RunID: "run_failed", Kind: transcript.ToolCall,
 		Status: transcript.ItemIncomplete, OccurredAt: time.Unix(8, 0).UTC(),

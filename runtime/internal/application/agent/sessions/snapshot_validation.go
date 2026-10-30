@@ -25,7 +25,8 @@ func (s Snapshot) ValidateToolResults() error {
 		owners[blob.ID] = ""
 	}
 	for _, item := range s.Items {
-		invocation, present := item.ToolInvocation()
+		call, present := item.ToolCall()
+		invocation := call.Invocation
 		if !present || invocation.Offload == nil {
 			continue
 		}
@@ -66,18 +67,20 @@ func (s Snapshot) HydratedItems() ([]transcript.Item, error) {
 	items := slices.Clone(s.Items)
 	for i, item := range items {
 		snapshot := item.Snapshot()
-		if snapshot.Tool == nil || snapshot.Tool.Offload == nil {
+		call, present := item.ToolCall()
+		if !present || call.Invocation.Offload == nil {
 			continue
 		}
-		body, found := bodies[snapshot.Tool.Offload.ID]
+		body, found := bodies[call.Invocation.Offload.ID]
 		if !found {
-			return nil, fmt.Errorf("sessions: item %q references missing tool result %q", item.ID(), snapshot.Tool.Offload.ID)
+			return nil, fmt.Errorf("sessions: item %q references missing tool result %q", item.ID(), call.Invocation.Offload.ID)
 		}
 		result, err := tool.NewResult(body)
 		if err != nil {
 			return nil, fmt.Errorf("sessions: hydrate item %q: %w", item.ID(), err)
 		}
-		snapshot.Tool.Result = &result
+		call.Invocation.Result = &result
+		snapshot.Body = call
 		hydrated, err := transcript.RestoreItem(snapshot)
 		if err != nil {
 			return nil, fmt.Errorf("sessions: hydrate item %q: %w", item.ID(), err)

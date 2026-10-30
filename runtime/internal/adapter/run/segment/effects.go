@@ -64,6 +64,7 @@ type InterruptStore interface {
 // persistence. Reading and destructive deletion belong to other use-cases.
 type TranscriptStore interface {
 	AppendItem(ctx context.Context, it transcript.Item) error
+	SettleItem(ctx context.Context, settlement transcript.Replacement) error
 }
 
 type ItemReplacer interface {

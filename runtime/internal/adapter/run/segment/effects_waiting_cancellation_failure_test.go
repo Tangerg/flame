@@ -233,7 +233,7 @@ func TestCommitWaitingSubtreeCancellationRollsBackEveryPreCommitFailure(t *testi
 					RunID:     fixture.rootRun.ID(),
 					SessionID: fixture.rootRun.SessionID(),
 					SegmentID: draft.resume.Runs[0].State().ActiveSegmentID(),
-					Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
+					Items: runs.NewItemWrites(testsupport.MustRestoreItem(testsupport.ItemInput{
 						ID:         "item_root_continuation",
 						SessionID:  fixture.rootRun.SessionID(),
 						RunID:      fixture.rootRun.ID(),
@@ -244,7 +244,7 @@ func TestCommitWaitingSubtreeCancellationRollsBackEveryPreCommitFailure(t *testi
 							Kind: transcript.TextContent,
 							Text: "continue",
 						}},
-					})},
+					})),
 				}}
 				fixture.commit = mustWaitingCancellationCommit(t, draft)
 				fixture.replaceEffects(func(config *Config) {
@@ -385,7 +385,7 @@ func assertWaitingCancellationUnchanged(
 	}
 	for _, expected := range fixture.originalItems {
 		item, found := itemsByID[expected.ID()]
-		if !found || !sameItemSnapshot(item, expected) {
+		if !found || !item.Equal(expected) {
 			t.Fatalf(
 				"Item %q after rollback = found:%t value:%+v, want %+v",
 				expected.ID(),

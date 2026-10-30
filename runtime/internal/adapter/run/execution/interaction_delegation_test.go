@@ -104,7 +104,7 @@ func TestInteractionExecutorRunsDelegateAsProductChildRun(t *testing.T) {
 				}
 			}
 		case runs.ItemCompleted:
-			invocation, present := payload.Item.ToolInvocation()
+			invocation, present := testsupport.ToolInvocationOf(payload.Item)
 			if event.RunID == "run_root" && present && invocation.Name == "delegate_task" {
 				parentToolFinished = index
 			}

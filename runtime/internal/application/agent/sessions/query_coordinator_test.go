@@ -522,11 +522,11 @@ func TestListItemPageScopedToARunReadsOnlyThatRun(t *testing.T) {
 	items := sequencedItems(3)
 	snapshot := items[2].Item.Snapshot()
 	snapshot.Identity.RunID = "run_2"
-	items[2].Item = testsupport.MustRestoreItem(testsupport.ItemInput{
-		SessionID: snapshot.Identity.SessionID, RunID: snapshot.Identity.RunID,
-		ID: snapshot.Identity.ItemID, OccurredAt: snapshot.Identity.OccurredAt,
-		Status: snapshot.Status, Kind: snapshot.Kind, Content: snapshot.Content,
-	})
+	moved, err := transcript.RestoreItem(snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	items[2].Item = moved
 	tx := &fakeTranscript{items: items}
 	runs := &fakeRuns{
 		runs:    []run.Run{queryRun("run_1"), queryRun("run_2")},

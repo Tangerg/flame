@@ -112,7 +112,8 @@ func presentTrajectoryExport(result sessions.TrajectoryExport) (protocol.Session
 		blobs[blob.ID] = blob
 	}
 	for _, item := range snapshot.Items {
-		invocation, present := item.ToolInvocation()
+		call, present := item.ToolCall()
+		invocation := call.Invocation
 		if !present || invocation.Offload == nil {
 			continue
 		}

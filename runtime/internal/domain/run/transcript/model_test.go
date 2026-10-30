@@ -61,114 +61,113 @@ func TestItemValidateOwnsPayloadInvariants(t *testing.T) {
 	}
 	negativeDuration := -time.Nanosecond
 	tooLongDuration := 2 * time.Second
+	hello := []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}}
+	finishedAt := identity.OccurredAt.Add(time.Second)
 	tests := []struct {
 		name     string
 		snapshot transcript.ItemSnapshot
 		wantErr  bool
 	}{
 		{
-			name: "tool data on user message",
-			snapshot: transcript.ItemSnapshot{
-				Identity: identity, Kind: transcript.UserMessage, Status: transcript.ItemCompleted,
-				Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}},
-				Tool:    &transcript.ToolInvocation{Name: "shell"},
-			},
-			wantErr: true,
+			name:     "missing body",
+			snapshot: transcript.ItemSnapshot{Identity: identity, Status: transcript.ItemCompleted},
+			wantErr:  true,
 		},
 		{
 			name: "missing occurrence time",
 			snapshot: transcript.ItemSnapshot{
 				Identity: transcript.ItemIdentity{SessionID: "session-1", RunID: "run-1", ItemID: "item-1"},
-				Kind:     transcript.UserMessage, Status: transcript.ItemCompleted,
-				Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}},
+				Status:   transcript.ItemCompleted, Body: transcript.UserMessageBody{Content: hello},
 			},
 			wantErr: true,
 		},
 		{
 			name: "valid message",
 			snapshot: transcript.ItemSnapshot{
-				Identity: identity, Kind: transcript.UserMessage, Status: transcript.ItemCompleted,
-				Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}},
+				Identity: identity, Status: transcript.ItemCompleted, Body: transcript.UserMessageBody{Content: hello},
 			},
 		},
 		{
 			name: "negative tool execution duration",
 			snapshot: transcript.ItemSnapshot{
-				Identity: identity, Kind: transcript.ToolCall, Status: transcript.ItemIncomplete,
-				FinishedAt: identity.OccurredAt.Add(time.Second), ExecutionDuration: &negativeDuration,
-				Tool: &transcript.ToolInvocation{Name: "shell"},
+				Identity: identity, Status: transcript.ItemIncomplete,
+				Body: transcript.ToolCallBody{
+					Invocation: transcript.ToolInvocation{Name: "shell"}, FinishedAt: finishedAt, ExecutionDuration: &negativeDuration,
+				},
 			},
 			wantErr: true,
 		},
 		{
 			name: "completed tool missing execution duration",
 			snapshot: transcript.ItemSnapshot{
-				Identity: identity, Kind: transcript.ToolCall, Status: transcript.ItemCompleted,
-				FinishedAt: identity.OccurredAt.Add(time.Second),
-				Tool:       &transcript.ToolInvocation{Name: "shell"},
+				Identity: identity, Status: transcript.ItemCompleted,
+				Body: transcript.ToolCallBody{Invocation: transcript.ToolInvocation{Name: "shell"}, FinishedAt: finishedAt},
 			},
 			wantErr: true,
 		},
 		{
 			name: "tool execution duration exceeds lifecycle",
 			snapshot: transcript.ItemSnapshot{
-				Identity: identity, Kind: transcript.ToolCall, Status: transcript.ItemCompleted,
-				FinishedAt: identity.OccurredAt.Add(time.Second), ExecutionDuration: &tooLongDuration,
-				Tool: &transcript.ToolInvocation{Name: "shell"},
+				Identity: identity, Status: transcript.ItemCompleted,
+				Body: transcript.ToolCallBody{
+					Invocation: transcript.ToolInvocation{Name: "shell"}, FinishedAt: finishedAt, ExecutionDuration: &tooLongDuration,
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "running tool with terminal facts",
+			snapshot: transcript.ItemSnapshot{
+				Identity: identity, Status: transcript.ItemRunning,
+				Body: transcript.ToolCallBody{Invocation: transcript.ToolInvocation{Name: "shell"}, FinishedAt: finishedAt},
 			},
 			wantErr: true,
 		},
 		{
 			name: "message without content",
 			snapshot: transcript.ItemSnapshot{
-				Identity: identity, Kind: transcript.AgentMessage, Status: transcript.ItemCompleted,
-				MessagePhase: transcript.MessageFinalAnswer,
+				Identity: identity, Status: transcript.ItemCompleted,
+				Body: transcript.AgentMessageBody{Phase: transcript.MessageFinalAnswer},
 			},
 			wantErr: true,
 		},
 		{
 			name: "reasoning without text",
 			snapshot: transcript.ItemSnapshot{
-				Identity: identity, Kind: transcript.Reasoning, Status: transcript.ItemCompleted,
+				Identity: identity, Status: transcript.ItemCompleted, Body: transcript.ReasoningBody{},
 			},
 			wantErr: true,
 		},
 		{
 			name: "question without a prompt",
 			snapshot: transcript.ItemSnapshot{
-				Identity: identity, Kind: transcript.QuestionItem, Status: transcript.ItemCompleted,
+				Identity: identity, Status: transcript.ItemCompleted, Body: transcript.QuestionBody{},
 			},
 			wantErr: true,
 		},
 	}
 	// Visible model observations may settle incomplete; running anchors are never stored.
-	settled := map[transcript.ItemKind]transcript.ItemSnapshot{
-		transcript.UserMessage: {
-			Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}},
-		},
-		transcript.AgentMessage: {
-			MessagePhase: transcript.MessageFinalAnswer,
-			Content:      []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}},
-		},
-		transcript.Reasoning: {Text: "thinking"},
-		transcript.QuestionItem: {Question: &transcript.Question{
+	settled := []transcript.Body{
+		transcript.UserMessageBody{Content: hello},
+		transcript.AgentMessageBody{Phase: transcript.MessageFinalAnswer, Content: hello},
+		transcript.ReasoningBody{Text: "thinking"},
+		transcript.QuestionBody{Question: transcript.Question{
 			Fields: []transcript.QuestionField{
 				{Prompt: "pick", Header: "Pick", Kind: questioncontract.Text},
 			},
 		}},
-		transcript.Compaction: {Summary: "folded"},
+		transcript.CompactionBody{Summary: "folded"},
 	}
-	for kind, payload := range settled {
+	for _, body := range settled {
+		kind := body.Kind()
 		for _, status := range []transcript.ItemStatus{transcript.ItemCompleted, transcript.ItemRunning, transcript.ItemIncomplete} {
-			snapshot := payload
-			snapshot.Identity, snapshot.Kind, snapshot.Status = identity, kind, status
 			tests = append(tests, struct {
 				name     string
 				snapshot transcript.ItemSnapshot
 				wantErr  bool
 			}{
 				name:     string(kind) + " " + string(status),
-				snapshot: snapshot,
+				snapshot: transcript.ItemSnapshot{Identity: identity, Status: status, Body: body},
 				wantErr:  status != transcript.ItemCompleted && !(status == transcript.ItemIncomplete && (kind == transcript.AgentMessage || kind == transcript.Reasoning)),
 			})
 		}
@@ -195,15 +194,16 @@ func TestToolCallTimingLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewToolCall(): %v", err)
 	}
-	if running.Status() != transcript.ItemRunning || !running.FinishedAt().IsZero() {
-		t.Fatalf("running timing = (%v, %v)", running.Status(), running.FinishedAt())
+	if call, _ := running.ToolCall(); running.Status() != transcript.ItemRunning || !call.FinishedAt.IsZero() {
+		t.Fatalf("running timing = (%v, %v)", running.Status(), call.FinishedAt)
 	}
-	completed, err := running.CompleteToolCall(invocation, executionStartedAt, finishedAt)
+	completion, err := running.CompleteToolCall(invocation, executionStartedAt, finishedAt)
 	if err != nil {
 		t.Fatalf("CompleteToolCall(): %v", err)
 	}
-	if completed.Status() != transcript.ItemCompleted || !completed.FinishedAt().Equal(finishedAt) {
-		t.Fatalf("completed timing = (%v, %v)", completed.Status(), completed.FinishedAt())
+	completed := completion.State()
+	if call, _ := completed.ToolCall(); completed.Status() != transcript.ItemCompleted || !call.FinishedAt.Equal(finishedAt) {
+		t.Fatalf("completed timing = (%v, %v)", completed.Status(), call.FinishedAt)
 	}
 	if _, completeToolCallErr := completed.CompleteToolCall(invocation, executionStartedAt, finishedAt.Add(time.Second)); completeToolCallErr == nil {
 		t.Fatal("second CompleteToolCall() succeeded")
@@ -211,22 +211,22 @@ func TestToolCallTimingLifecycle(t *testing.T) {
 	if _, completeToolCallErr := running.CompleteToolCall(invocation, startedAt.Add(-time.Millisecond), finishedAt); completeToolCallErr == nil {
 		t.Fatal("CompleteToolCall() accepted execution before occurrence")
 	}
-	abandoned, err := running.AbandonToolCall(nil, finishedAt)
+	abandonment, err := running.AbandonToolCall(nil, finishedAt)
 	if err != nil {
 		t.Fatalf("AbandonToolCall(): %v", err)
 	}
-	if abandoned.Status() != transcript.ItemIncomplete {
-		t.Fatalf("abandoned status = %v", abandoned.Status())
+	if abandonment.State().Status() != transcript.ItemIncomplete {
+		t.Fatalf("abandoned status = %v", abandonment.State().Status())
 	}
-	if _, known := abandoned.ExecutionDuration(); known {
+	if call, _ := abandonment.State().ToolCall(); call.ExecutionDuration != nil {
 		t.Fatal("unstarted abandonment fabricated an execution duration")
 	}
 	startedAbandonment, err := running.AbandonStartedToolCall(invocation, nil, executionStartedAt, finishedAt)
 	if err != nil {
 		t.Fatalf("AbandonStartedToolCall(): %v", err)
 	}
-	if duration, known := startedAbandonment.ExecutionDuration(); !known || duration != time.Second {
-		t.Fatalf("started abandonment execution duration = %v/%t, want 1s", duration, known)
+	if call, _ := startedAbandonment.State().ToolCall(); call.ExecutionDuration == nil || *call.ExecutionDuration != time.Second {
+		t.Fatalf("started abandonment execution duration = %v, want 1s", call.ExecutionDuration)
 	}
 }
 

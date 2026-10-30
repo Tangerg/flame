@@ -51,10 +51,10 @@ func TestFailedTreeBarrierRetainsCommittedToolForTerminalClosure(t *testing.T) {
 			terminal++
 		}
 		for _, item := range commit.Items {
-			if item.Kind() != transcript.ToolCall {
+			if item.Item().Kind() != transcript.ToolCall {
 				continue
 			}
-			if item.Status() == transcript.ItemRunning {
+			if item.Item().Status() == transcript.ItemRunning {
 				starts++
 			} else {
 				closures++

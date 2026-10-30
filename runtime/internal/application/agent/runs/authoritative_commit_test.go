@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"iter"
 	"slices"
 	"strings"
@@ -161,7 +162,7 @@ func TestAuthoritativeProjectionFailurePreservesStartUntilAtomicRunLost(t *testi
 	}
 	for _, commit := range commits {
 		for _, item := range commit.Items {
-			if item.Kind() == transcript.AgentMessage && len(item.Content()) > 0 {
+			if item.Item().Kind() == transcript.AgentMessage && len(testsupport.Facts(item.Item()).Content) > 0 {
 				t.Fatalf("failed final projection leaked a completed assistant item: %#v", item)
 			}
 		}
@@ -332,13 +333,13 @@ func TestConcurrentToolResultsCommitInModelOrder(t *testing.T) {
 	}
 	for index, name := range []string{"first", "second"} {
 		commit := commits[index]
-		if len(commit.Items) != 1 || commit.Items[0].Status() != transcript.ItemRunning {
+		if len(commit.Items) != 1 || commit.Items[0].Item().Status() != transcript.ItemRunning {
 			t.Fatalf("Tool start[%d] Items = %#v, want one running Item", index, commit.Items)
 		}
-		invocation, present := commit.Items[0].ToolInvocation()
+		invocation, present := testsupport.ToolInvocationOf(commit.Items[0].Item())
 		if !present || invocation.Name != name || len(commit.ToolInvocations) != 1 ||
 			commit.ToolInvocations[0].State != ToolInvocationStarted ||
-			commit.ToolInvocations[0].ItemID != commit.Items[0].ID() {
+			commit.ToolInvocations[0].ItemID != commit.Items[0].Item().ID() {
 			t.Fatalf("Tool start[%d] = Item:%#v journal:%#v", index, commit.Items[0], commit.ToolInvocations)
 		}
 	}
@@ -354,8 +355,8 @@ func TestConcurrentToolResultsCommitInModelOrder(t *testing.T) {
 	if final == nil {
 		t.Fatalf("no canonical Tool batch in commits: %#v", commits)
 	}
-	first, firstPresent := final.Items[0].ToolInvocation()
-	second, secondPresent := final.Items[1].ToolInvocation()
+	first, firstPresent := testsupport.ToolInvocationOf(final.Items[0].Item())
+	second, secondPresent := testsupport.ToolInvocationOf(final.Items[1].Item())
 	if !firstPresent || first.Name != "first" || !secondPresent || second.Name != "second" {
 		t.Fatalf("Tool Item order = %#v, want first then second", final.Items)
 	}
@@ -407,8 +408,8 @@ func TestConcurrentToolBatchFailurePublishesOnlyIncompleteRunLost(t *testing.T) 
 		t.Fatalf("lost Tool projection = items %#v invocations %#v", lost.Items, lost.ToolInvocations)
 	}
 	for index := range lost.Items {
-		invocation, present := lost.Items[index].ToolInvocation()
-		if lost.Items[index].Status() != transcript.ItemIncomplete || !present ||
+		invocation, present := testsupport.ToolInvocationOf(lost.Items[index].Item())
+		if lost.Items[index].Item().Status() != transcript.ItemIncomplete || !present ||
 			invocation.Result != nil || lost.ToolInvocations[index].State != ToolInvocationIncomplete {
 			t.Fatalf("lost Tool[%d] leaked a result: item %#v invocation %#v", index, lost.Items[index], lost.ToolInvocations[index])
 		}
@@ -456,7 +457,7 @@ func TestTerminalTransactionFailurePreservesRunningToolsForAtomicRecovery(t *tes
 		t.Fatalf("recovered Tool write-set = items %#v invocations %#v", terminal.Items, terminal.ToolInvocations)
 	}
 	for index := range terminal.Items {
-		if terminal.Items[index].Status() != transcript.ItemIncomplete ||
+		if terminal.Items[index].Item().Status() != transcript.ItemIncomplete ||
 			terminal.ToolInvocations[index].State != ToolInvocationIncomplete {
 			t.Fatalf("recovered Tool[%d] = item %#v journal %#v", index, terminal.Items[index], terminal.ToolInvocations[index])
 		}

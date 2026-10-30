@@ -520,8 +520,8 @@ func validateRouteCommit(route *executorRoute, sessionID string, commit *EventCo
 			commit.SessionID,
 		)
 	}
-	for _, item := range commit.Items {
-		if err := validateRouteItem(route, sessionID, item); err != nil {
+	for _, write := range commit.Items {
+		if err := validateRouteItem(route, sessionID, write.Item()); err != nil {
 			return err
 		}
 	}
@@ -751,7 +751,7 @@ func (c *Coordinator) finalizeChildOpening(
 		RunID:     prepared.parent.runID,
 		SessionID: spec.SessionID,
 		SegmentID: prepared.parent.segmentID,
-		Items:     []transcript.Item{prepared.spawningItem},
+		Items:     NewItemWrites(prepared.spawningItem),
 	}}
 	for _, reduced := range projected.events {
 		if reduced.Event.Terminal() || reduced.Nudge != nil {

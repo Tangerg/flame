@@ -43,8 +43,8 @@ func TestInstalledStartProjectsOnlyTheCapturedExecution(t *testing.T) {
 	var recorded []transcript.ContentBlock
 	for _, event := range opening.Events() {
 		for _, item := range event.Items {
-			if item.Kind() == transcript.UserMessage {
-				recorded = append(recorded, item.Content()...)
+			if item.Item().Kind() == transcript.UserMessage {
+				recorded = append(recorded, testsupport.Facts(item.Item()).Content...)
 			}
 		}
 	}

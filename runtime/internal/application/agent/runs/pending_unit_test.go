@@ -44,9 +44,9 @@ func TestResumeClaimSettlesReviewedToolCallsFromTheirItems(t *testing.T) {
 	}
 	if len(replacements) != 2 ||
 		replacements[0].Expected().ID() != "item_grandchild" ||
-		replacements[0].State().ApprovalDecision() != approval.Allow ||
+		testsupport.Facts(replacements[0].State()).ApprovalDecision() != approval.Allow ||
 		replacements[1].Expected().ID() != "item_b" ||
-		replacements[1].State().ApprovalDecision() != approval.Deny {
+		testsupport.Facts(replacements[1].State()).ApprovalDecision() != approval.Deny {
 		t.Fatalf("Tool approval replacements = %+v", replacements)
 	}
 	calls := claim.approvalCalls()

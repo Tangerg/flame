@@ -30,7 +30,7 @@ func TestTerminalPlanOwnsProjectionAndDerivesGoalRun(t *testing.T) {
 		t.Fatalf("abandon ToolCall: %v", err)
 	}
 	runs := []run.Replacement{testsupport.MustRunReplacement(parked, testsupport.DecidedRun(terminal))}
-	items := []transcript.Item{incompleteItem}
+	items := []transcript.Replacement{incompleteItem}
 	messages := []chat.Message{chat.NewUserMessage(chat.NewTextPart("closed"))}
 
 	plan, err := NewTerminalPlan(runs, items, messages, "member_1")
@@ -39,23 +39,23 @@ func TestTerminalPlanOwnsProjectionAndDerivesGoalRun(t *testing.T) {
 	}
 
 	runs[0] = run.Replacement{}
-	items[0] = transcript.Item{}
+	items[0] = transcript.Replacement{}
 	messages[0].Parts[0].Text = "changed input"
 	ownedRuns := plan.Runs()
 	ownedItems := plan.Items()
 	ownedMessages := plan.Messages()
 	ownedRuns[0] = run.Replacement{}
-	ownedItems[0] = transcript.Item{}
+	ownedItems[0] = transcript.Replacement{}
 	ownedMessages[0].Parts[0].Text = "changed accessor"
 
 	gotRuns := plan.Runs()
 	gotItems := plan.Items()
 	gotMessages := plan.Messages()
-	if gotRuns[0].State().ID() != "run_1" || gotItems[0].ID() != "item_1" ||
+	if gotRuns[0].State().ID() != "run_1" || gotItems[0].State().ID() != "item_1" ||
 		gotMessages[0].Parts[0].Text != "closed" {
 		t.Fatalf(
 			"terminal ownership = run:%q item:%q message:%q",
-			gotRuns[0].State().ID(), gotItems[0].ID(), gotMessages[0].Parts[0].Text,
+			gotRuns[0].State().ID(), gotItems[0].State().ID(), gotMessages[0].Parts[0].Text,
 		)
 	}
 }

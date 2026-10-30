@@ -88,7 +88,7 @@ func TestCopyForkSnapshotRemapsTheCompleteVisibleRunTree(t *testing.T) {
 	if len(copied.Items) != 1 || copied.Items[0].SessionID() != "ses_child" || copied.Items[0].RunID() != "run_copy_root" || copied.Items[0].ID() != "item_copy_spawn" {
 		t.Fatalf("copied Items = %+v, want child-owned remapped Item", copied.Items)
 	}
-	invocation, present := copied.Items[0].ToolInvocation()
+	invocation, present := testsupport.ToolInvocationOf(copied.Items[0])
 	if !present || invocation.Offload == nil || invocation.Offload.ID != "BLOB234" {
 		t.Fatalf("copied tool invocation = %+v, want remapped offload", invocation)
 	}

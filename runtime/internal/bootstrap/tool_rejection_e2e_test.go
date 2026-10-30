@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -125,7 +126,7 @@ func TestRuntimeRejectedToolSurvivesFollowingCallsAndHistoryReads(t *testing.T) 
 			}
 			found := false
 			for _, item := range items {
-				invocation, ok := item.ToolInvocation()
+				invocation, ok := testsupport.ToolInvocationOf(item)
 				if !ok || invocation.Name != test.tool {
 					continue
 				}

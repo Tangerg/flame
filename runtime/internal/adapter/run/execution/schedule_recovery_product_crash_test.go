@@ -163,7 +163,7 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 			}
 			originalTool := ""
 			for _, item := range items {
-				if invocation, ok := item.ToolInvocation(); ok && invocation.Name == "schedules_create_schedule" {
+				if invocation, ok := testsupport.ToolInvocationOf(item); ok && invocation.Name == "schedules_create_schedule" {
 					originalTool = item.ID()
 					if item.Status() != transcript.ItemRunning {
 						t.Fatalf("original Tool was already terminal: %+v", item)
@@ -268,7 +268,7 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 				wantStatus = transcript.ItemIncomplete
 			}
 			for _, item := range items {
-				if invocation, ok := item.ToolInvocation(); ok && invocation.Name == "schedules_create_schedule" {
+				if invocation, ok := testsupport.ToolInvocationOf(item); ok && invocation.Name == "schedules_create_schedule" {
 					count++
 					if item.ID() != originalTool || item.Status() != wantStatus {
 						t.Fatalf("recovery replaced the original Tool Item: %+v", item)

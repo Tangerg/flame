@@ -273,7 +273,7 @@ func TestTranscriptStore_RoundTrip(t *testing.T) {
 		t.Fatalf("list: %v", err)
 	}
 	if len(items) != 2 || items[0].ID() != "i1" || items[1].ID() != "i2" ||
-		items[1].MessagePhase() != transcript.MessageCommentary || items[1].Content()[0].Text != "two" {
+		testsupport.Facts(items[1]).MessagePhase != transcript.MessageCommentary || testsupport.Facts(items[1]).Content[0].Text != "two" {
 		t.Fatalf("items = %+v, want [i1 i2]", items)
 	}
 }
@@ -368,17 +368,14 @@ func TestTranscriptStoreReplaceItemUsesExactOptimisticSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("abandon Item: %v", err)
 	}
-	if replaceItemErr := store.ReplaceItem(
-		t.Context(),
-		testsupport.MustItemReplacement(original, testsupport.DecidedItem(replacement)),
-	); replaceItemErr != nil {
+	if replaceItemErr := store.ReplaceItem(t.Context(), replacement); replaceItemErr != nil {
 		t.Fatalf("ReplaceItem: %v", replaceItemErr)
 	}
 	stored, found, err := store.Item(t.Context(), original.ID())
 	if err != nil || !found {
 		t.Fatalf("Item after replacement found=%t err=%v", found, err)
 	}
-	storedFailure, failed := stored.Failure()
+	storedFailure, failed := testsupport.FailureOf(stored)
 	if !failed || storedFailure.Kind != tool.FailureChildRunCanceled {
 		t.Fatalf("replaced Item = %+v, want child_run_canceled", stored)
 	}
@@ -391,15 +388,12 @@ func TestTranscriptStoreReplaceItemUsesExactOptimisticSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("abandon stale Item: %v", err)
 	}
-	err = store.ReplaceItem(
-		t.Context(),
-		testsupport.MustItemReplacement(original, testsupport.DecidedItem(staleReplacement)),
-	)
+	err = store.ReplaceItem(t.Context(), staleReplacement)
 	if !errors.Is(err, transcript.ErrIdentityConflict) {
 		t.Fatalf("stale ReplaceItem error = %v, want ErrIdentityConflict", err)
 	}
 	stored, found, err = store.Item(t.Context(), original.ID())
-	storedFailure, failed = stored.Failure()
+	storedFailure, failed = testsupport.FailureOf(stored)
 	if err != nil || !found || !failed || storedFailure.Detail != failure.Detail {
 		t.Fatalf("Item after stale replacement = %+v found=%t err=%v", stored, found, err)
 	}
@@ -440,9 +434,11 @@ func TestTranscriptStoreKeepsOffloadRelationshipsImmutableAndOneToOne(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	changedSnapshot.Tool = &transcript.ToolInvocation{
+	changedCall, _ := original.ToolCall()
+	changedCall.Invocation = transcript.ToolInvocation{
 		Name: "shell", Result: &otherPreview, Offload: &transcript.ToolResultRef{ID: "OTHER234"},
 	}
+	changedSnapshot.Body = changedCall
 	changed, err := transcript.RestoreItem(changedSnapshot)
 	if err != nil {
 		t.Fatalf("restore changed item: %v", err)

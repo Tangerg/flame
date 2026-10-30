@@ -947,7 +947,7 @@ func (s stubLifecycleStores) ApplyTerminal(ctx context.Context, plan sessions.Te
 		return errors.New("terminal plan has no root Run")
 	}
 	for _, item := range plan.Items() {
-		if err := s.rt.hist.AppendItem(ctx, item); err != nil {
+		if err := s.rt.hist.ReplaceItem(ctx, item); err != nil {
 			return err
 		}
 	}
@@ -1132,7 +1132,8 @@ func (inertRuntimeStores) GetInterrupt(context.Context, string) (runs.Pending, b
 	return runs.Pending{}, false, nil
 }
 
-func (inertRuntimeStores) AppendItem(context.Context, transcript.Item) error { return nil }
+func (inertRuntimeStores) AppendItem(context.Context, transcript.Item) error        { return nil }
+func (inertRuntimeStores) SettleItem(context.Context, transcript.Replacement) error { return nil }
 func (inertRuntimeStores) Item(context.Context, string) (transcript.Item, bool, error) {
 	return transcript.Item{}, false, nil
 }

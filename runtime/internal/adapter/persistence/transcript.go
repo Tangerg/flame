@@ -17,7 +17,32 @@ type TranscriptStore struct{ db *sql.DB }
 
 func newTranscriptStore(db *sql.DB) *TranscriptStore { return &TranscriptStore{db: db} }
 
+// AppendItem records a new Item. Re-appending the identical Item is a no-op;
+// any other Item under the same identity is a conflict, because only a named
+// transition may change a durable Item.
 func (t *TranscriptStore) AppendItem(ctx context.Context, item transcript.Item) error {
+	return t.writeItem(ctx, item, nil, true)
+}
+
+// ReplaceItem atomically replaces expected with its decided state only while
+// the durable Item still equals the immutable value the application planned
+// against. This is the transcript-side compare-and-swap used by tree
+// transformations: a racing continuation can never have its newer completion
+// overwritten by a cancellation built from an older parked projection.
+func (t *TranscriptStore) ReplaceItem(ctx context.Context, change transcript.Replacement) error {
+	expected := change.Expected()
+	return t.writeItem(ctx, change.State(), &expected, false)
+}
+
+// SettleItem applies a ToolCall settlement. Its running state is durable only
+// when a park or child admission wrote it, so an absent row means that state
+// never left the executor; a present row must still equal it.
+func (t *TranscriptStore) SettleItem(ctx context.Context, settlement transcript.Replacement) error {
+	expected := settlement.Expected()
+	return t.writeItem(ctx, settlement.State(), &expected, true)
+}
+
+func (t *TranscriptStore) writeItem(ctx context.Context, item transcript.Item, expected *transcript.Item, absentInserts bool) error {
 	offloadID, err := transcriptOffloadID(item)
 	if err != nil {
 		return err
@@ -27,12 +52,25 @@ func (t *TranscriptStore) AppendItem(ctx context.Context, item transcript.Item) 
 		return fmt.Errorf("sqlite: encode history item: %w", err)
 	}
 	return sqlite.RunInTx(ctx, t.db, func(ctx context.Context) error {
-		return t.appendItemRecord(ctx, item, payload, offloadID)
+		current, found, err := t.storedItem(ctx, item.ID())
+		if err != nil {
+			return err
+		}
+		switch {
+		case !found && !absentInserts:
+			return fmt.Errorf("sqlite: replace history item %q: not found", item.ID())
+		case found && expected == nil && current.Equal(item):
+			return nil
+		case found && (expected == nil || !current.Equal(*expected)):
+			return fmt.Errorf("%w: item %q changed after its writer read it", transcript.ErrIdentityConflict, item.ID())
+		}
+		return t.writeItemRecord(ctx, item, payload, offloadID)
 	})
 }
 
 func transcriptOffloadID(item transcript.Item) (transcript.ToolResultID, error) {
-	invocation, present := item.ToolInvocation()
+	call, present := item.ToolCall()
+	invocation := call.Invocation
 	if !present || invocation.Offload == nil {
 		return "", nil
 	}
@@ -48,36 +86,39 @@ func transcriptOffloadID(item transcript.Item) (transcript.ToolResultID, error) 
 	return invocation.Offload.ID, nil
 }
 
-func (t *TranscriptStore) appendItemRecord(
+// storedItem reads one Item as written, with an offloaded result still its
+// preview, which is the form every writer holds.
+func (t *TranscriptStore) storedItem(ctx context.Context, itemID string) (transcript.Item, bool, error) {
+	var sessionID, runID, payload, offloadID string
+	var occurredAt int64
+	err := sqlite.Connection(ctx, t.db).QueryRowContext(ctx,
+		`SELECT session_id, run_id, occurred_at, payload, offload_id FROM history_items WHERE item_id = ?`,
+		itemID,
+	).Scan(&sessionID, &runID, &occurredAt, &payload, &offloadID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return transcript.Item{}, false, nil
+	}
+	if err != nil {
+		return transcript.Item{}, false, fmt.Errorf("sqlite: inspect history item: %w", err)
+	}
+	snapshot, err := storedTranscriptItem(sessionID, runID, itemID, occurredAt, payload, offloadID)
+	if err != nil {
+		return transcript.Item{}, false, err
+	}
+	item, err := transcript.RestoreItem(snapshot)
+	if err != nil {
+		return transcript.Item{}, false, fmt.Errorf("sqlite: decoded history item %q: %w", itemID, err)
+	}
+	return item, true, nil
+}
+
+func (t *TranscriptStore) writeItemRecord(
 	ctx context.Context,
 	item transcript.Item,
 	payload []byte,
 	offloadID transcript.ToolResultID,
 ) error {
 	q := sqlite.Connection(ctx, t.db)
-	var sessionID, runID, currentPayload, currentOffloadID string
-	var occurredAt int64
-	err := q.QueryRowContext(ctx,
-		`SELECT session_id, run_id, occurred_at, payload, offload_id FROM history_items WHERE item_id = ?`,
-		item.ID(),
-	).Scan(&sessionID, &runID, &occurredAt, &currentPayload, &currentOffloadID)
-	if err == nil {
-		snapshot, decodeErr := storedTranscriptItem(sessionID, runID, item.ID(), occurredAt, currentPayload, currentOffloadID)
-		if decodeErr != nil {
-			return decodeErr
-		}
-		current, restoreErr := transcript.RestoreItem(snapshot)
-		if restoreErr != nil {
-			return fmt.Errorf("sqlite: decoded history item %q: %w", item.ID(), restoreErr)
-		}
-		if _, replaceErr := transcript.Replace(current, func(transcript.Item) (transcript.Item, error) {
-			return item, nil
-		}); replaceErr != nil {
-			return replaceErr
-		}
-	} else if !errors.Is(err, sql.ErrNoRows) {
-		return fmt.Errorf("sqlite: inspect history item: %w", err)
-	}
 	if offloadID != "" {
 		var staged bool
 		if err := q.QueryRowContext(ctx,
@@ -161,42 +202,6 @@ func (t *TranscriptStore) Item(ctx context.Context, itemID string) (transcript.I
 	return item, true, nil
 }
 
-// ReplaceItem atomically replaces expected with replacement only while the
-// durable Item still equals the immutable value the application planned
-// against. This is the transcript-side compare-and-swap used by tree
-// transformations: a racing continuation can never have its newer completion
-// overwritten by a cancellation built from an older parked projection.
-func (t *TranscriptStore) ReplaceItem(
-	ctx context.Context,
-	change transcript.Replacement,
-) error {
-	expected := change.Expected()
-	replacement := change.State()
-	expectedTool, expectedHasTool := expected.ToolInvocation()
-	replacementTool, replacementHasTool := replacement.ToolInvocation()
-	if (expectedHasTool && expectedTool.Offload != nil) ||
-		(replacementHasTool && replacementTool.Offload != nil) {
-		return errors.New("sqlite: replace history item does not support offloaded tool results")
-	}
-	return sqlite.RunInTx(ctx, t.db, func(ctx context.Context) error {
-		current, found, err := t.Item(ctx, expected.ID())
-		if err != nil {
-			return err
-		}
-		if !found {
-			return fmt.Errorf("sqlite: replace history item %q: not found", expected.ID())
-		}
-		if !current.Equal(expected) {
-			return fmt.Errorf(
-				"%w: item %q changed after the application prepared its replacement",
-				transcript.ErrIdentityConflict,
-				expected.ID(),
-			)
-		}
-		return t.AppendItem(ctx, replacement)
-	})
-}
-
 func scanTranscriptItem(row scanRow) (transcript.Item, error) {
 	var (
 		sessionID    string
@@ -231,15 +236,16 @@ func materializeTranscriptItem(
 	if err != nil {
 		return transcript.Item{}, err
 	}
-	if snapshot.Tool != nil && snapshot.Tool.Offload != nil {
+	if call, ok := snapshot.Body.(transcript.ToolCallBody); ok && call.Invocation.Offload != nil {
 		if !offloaded.Valid {
-			return transcript.Item{}, fmt.Errorf("sqlite: history item %q references missing tool result %q", itemID, snapshot.Tool.Offload.ID)
+			return transcript.Item{}, fmt.Errorf("sqlite: history item %q references missing tool result %q", itemID, call.Invocation.Offload.ID)
 		}
 		body, err := tool.NewResult(offloaded.String)
 		if err != nil {
 			return transcript.Item{}, fmt.Errorf("sqlite: decode history item %q offloaded text: %w", itemID, err)
 		}
-		snapshot.Tool.Result = &body
+		call.Invocation.Result = &body
+		snapshot.Body = call
 	}
 	item, err := transcript.RestoreItem(snapshot)
 	if err != nil {
@@ -270,16 +276,18 @@ func storedTranscriptItem(
 	if err != nil {
 		return transcript.ItemSnapshot{}, fmt.Errorf("sqlite: decode history item %q offload: %w", itemID, err)
 	}
-	if snapshot.Tool == nil {
+	call, ok := snapshot.Body.(transcript.ToolCallBody)
+	if !ok {
 		return transcript.ItemSnapshot{}, fmt.Errorf("sqlite: history item %q has an offload identity but no tool invocation", itemID)
 	}
-	if snapshot.Tool.Result == nil {
+	if call.Invocation.Result == nil {
 		return transcript.ItemSnapshot{}, fmt.Errorf("sqlite: history item %q has an offload identity but no preview", itemID)
 	}
-	if _, ok := snapshot.Tool.Result.String(); !ok {
+	if _, ok := call.Invocation.Result.String(); !ok {
 		return transcript.ItemSnapshot{}, fmt.Errorf("sqlite: history item %q has an offload identity but no preview string", itemID)
 	}
-	snapshot.Tool.Offload = &transcript.ToolResultRef{ID: id}
+	call.Invocation.Offload = &transcript.ToolResultRef{ID: id}
+	snapshot.Body = call
 	return snapshot, nil
 }
 

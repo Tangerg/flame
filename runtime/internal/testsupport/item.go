@@ -28,7 +28,7 @@ type ItemInput struct {
 	Question          *transcript.Question
 	Tool              *transcript.ToolInvocation
 	SafetyClass       tool.SafetyClass
-	ApprovalDecision  approval.Decision
+	Approval          *approval.Resolution
 	Failure           *tool.Failure
 	Summary           string
 	DroppedMessages   int
@@ -92,12 +92,7 @@ func MustRestoreItem(input ItemInput) transcript.Item {
 			SessionID: input.SessionID, RunID: input.RunID, ItemID: input.ID,
 			OccurredAt: input.OccurredAt,
 		},
-		Status: input.Status, FinishedAt: input.FinishedAt,
-		ExecutionDuration: input.ExecutionDuration, Kind: input.Kind, MessagePhase: input.MessagePhase,
-		Content: input.Content, Text: input.Text, Redacted: input.Redacted,
-		Question: input.Question, Tool: input.Tool, SafetyClass: input.SafetyClass,
-		ApprovalDecision: input.ApprovalDecision,
-		Failure:          input.Failure, Summary: input.Summary, DroppedMessages: input.DroppedMessages,
+		Status: input.Status, Body: input.payload(),
 	})
 	if err != nil {
 		panic(err)
@@ -105,17 +100,88 @@ func MustRestoreItem(input ItemInput) transcript.Item {
 	return item
 }
 
-// MustItemReplacement derives one Item replacement or panics.
-func MustItemReplacement(expected transcript.Item, transition func(transcript.Item) (transcript.Item, error)) transcript.Replacement {
-	replacement, err := transcript.Replace(expected, transition)
+func (input ItemInput) payload() transcript.Body {
+	switch input.Kind {
+	case transcript.UserMessage:
+		return transcript.UserMessageBody{Content: input.Content}
+	case transcript.AgentMessage:
+		return transcript.AgentMessageBody{Phase: input.MessagePhase, Content: input.Content}
+	case transcript.Reasoning:
+		return transcript.ReasoningBody{Text: input.Text, Redacted: input.Redacted}
+	case transcript.QuestionItem:
+		return transcript.QuestionBody{Question: *input.Question}
+	case transcript.Compaction:
+		return transcript.CompactionBody{Summary: input.Summary, DroppedMessages: input.DroppedMessages}
+	case transcript.ToolCall:
+		return transcript.ToolCallBody{
+			Invocation: *input.Tool, SafetyClass: input.SafetyClass, Approval: input.Approval,
+			FinishedAt: input.FinishedAt, ExecutionDuration: input.ExecutionDuration, Failure: input.Failure,
+		}
+	}
+	panic("testsupport: unknown Item kind " + string(input.Kind))
+}
+
+// MustItemReplacement applies one named Item transition or panics.
+func MustItemReplacement(replacement transcript.Replacement, err error) transcript.Replacement {
 	if err != nil {
 		panic(err)
 	}
 	return replacement
 }
 
-// DecidedItem is a transition that yields an already-built Item, for tests
-// that need a replacement whose state they constructed directly.
-func DecidedItem(state transcript.Item) func(transcript.Item) (transcript.Item, error) {
-	return func(transcript.Item) (transcript.Item, error) { return state, nil }
+// Facts flattens an Item into the fixture shape so assertions can read any
+// variant's fields without a type switch per check.
+func Facts(item transcript.Item) ItemInput {
+	facts := ItemInput{
+		SessionID: item.SessionID(), RunID: item.RunID(), ID: item.ID(),
+		Status: item.Status(), Kind: item.Kind(), OccurredAt: item.OccurredAt(),
+	}
+	switch payload := item.Body().(type) {
+	case transcript.UserMessageBody:
+		facts.Content = payload.Content
+	case transcript.AgentMessageBody:
+		facts.MessagePhase, facts.Content = payload.Phase, payload.Content
+	case transcript.ReasoningBody:
+		facts.Text, facts.Redacted = payload.Text, payload.Redacted
+	case transcript.QuestionBody:
+		facts.Question = &payload.Question
+	case transcript.CompactionBody:
+		facts.Summary, facts.DroppedMessages = payload.Summary, payload.DroppedMessages
+	case transcript.ToolCallBody:
+		facts.Tool, facts.SafetyClass, facts.Approval = &payload.Invocation, payload.SafetyClass, payload.Approval
+		facts.FinishedAt, facts.ExecutionDuration, facts.Failure = payload.FinishedAt, payload.ExecutionDuration, payload.Failure
+	}
+	return facts
+}
+
+// ApprovalDecision returns the accepted verdict, empty while unresolved.
+func (input ItemInput) ApprovalDecision() approval.Decision {
+	if input.Approval == nil {
+		return ""
+	}
+	return input.Approval.Decision
+}
+
+// ToolInvocationOf returns the ToolCall invocation when item is a ToolCall.
+func ToolInvocationOf(item transcript.Item) (transcript.ToolInvocation, bool) {
+	call, ok := item.ToolCall()
+	return call.Invocation, ok
+}
+
+// FailureOf returns the classified ToolCall failure when one was recorded.
+func FailureOf(item transcript.Item) (tool.Failure, bool) {
+	call, _ := item.ToolCall()
+	if call.Failure == nil {
+		return tool.Failure{}, false
+	}
+	return *call.Failure, true
+}
+
+// ExecutionDurationOf returns the ToolCall execution interval when known.
+func ExecutionDurationOf(item transcript.Item) (time.Duration, bool) {
+	call, _ := item.ToolCall()
+	if call.ExecutionDuration == nil {
+		return 0, false
+	}
+	return *call.ExecutionDuration, true
 }

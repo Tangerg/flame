@@ -147,21 +147,50 @@ func artifactToolFailureFromDomain(failure *tool.Failure) (*protocol.ArtifactPro
 }
 
 func artifactItemFromTranscript(item transcript.Item) (protocol.ArtifactItem, error) {
-	var failureRef *tool.Failure
-	if failure, present := item.Failure(); present {
-		failureRef = &failure
-	}
-	problem, err := artifactToolFailureFromDomain(failureRef)
-	if err != nil {
-		return protocol.ArtifactItem{}, fmt.Errorf("item %q error: %w", item.ID(), err)
-	}
 	out := protocol.ArtifactItem{
 		ID: item.ID(), RunID: item.RunID(), Status: presentItemStatus(item.Status()),
-		Type: presentItemKind(item.Kind()), Phase: presentMessagePhase(item.MessagePhase()), Text: item.Text(), Redacted: item.Redacted(),
-		SafetyClass: presentSafetyClass(item.SafetyClass()), ApprovalDecision: presentItemApprovalDecision(item.ApprovalDecision()), Error: problem,
-		Summary: item.Summary(), DroppedMessages: item.DroppedMessages(),
+		Type: presentItemKind(item.Kind()),
 	}
-	content := item.Content()
+	payload := item.Body()
+	if _, isToolCall := payload.(transcript.ToolCallBody); !isToolCall {
+		out.CreatedAt = item.OccurredAt()
+	}
+	var content []transcript.ContentBlock
+	switch payload := payload.(type) {
+	case transcript.UserMessageBody:
+		content = payload.Content
+	case transcript.AgentMessageBody:
+		out.Phase = presentMessagePhase(payload.Phase)
+		content = payload.Content
+	case transcript.ReasoningBody:
+		out.Text, out.Redacted = payload.Text, payload.Redacted
+	case transcript.QuestionBody:
+		question := presentQuestion(payload.Question)
+		out.Question = &question
+	case transcript.CompactionBody:
+		out.Summary, out.DroppedMessages = payload.Summary, payload.DroppedMessages
+	case transcript.ToolCallBody:
+		problem, err := artifactToolFailureFromDomain(payload.Failure)
+		if err != nil {
+			return protocol.ArtifactItem{}, fmt.Errorf("item %q error: %w", item.ID(), err)
+		}
+		out.Error = problem
+		out.SafetyClass = presentSafetyClass(payload.SafetyClass)
+		if payload.Approval != nil {
+			out.ApprovalDecision = presentItemApprovalDecision(payload.Approval.Decision)
+		}
+		invocation := payload.Invocation
+		tool := protocol.ToolInvocation{Name: invocation.Name, ArgumentsText: invocation.ArgumentsText, Arguments: invocation.Arguments.Map()}
+		if invocation.Result != nil {
+			tool.Result = invocation.Result.Any()
+		}
+		out.Tool = &tool
+		out.StartedAt = item.OccurredAt()
+		out.FinishedAt = payload.FinishedAt
+		if payload.ExecutionDuration != nil {
+			out.DurationMillis = new(payload.ExecutionDuration.Milliseconds())
+		}
+	}
 	if len(content) != 0 {
 		out.Content = make([]protocol.ContentBlock, len(content))
 		for index, block := range content {
@@ -171,24 +200,6 @@ func artifactItemFromTranscript(item transcript.Item) (protocol.ArtifactItem, er
 			}
 			out.Content[index] = protocol.ContentBlock{Type: encoded.kind, Text: encoded.text, Mime: encoded.mime, Data: encoded.data}
 		}
-	}
-	if value, present := item.Question(); present {
-		question := presentQuestion(value)
-		out.Question = &question
-	}
-	if invocation, present := item.ToolInvocation(); present {
-		tool := protocol.ToolInvocation{Name: invocation.Name, ArgumentsText: invocation.ArgumentsText, Arguments: invocation.Arguments.Map()}
-		if invocation.Result != nil {
-			tool.Result = invocation.Result.Any()
-		}
-		out.Tool = &tool
-	}
-	if item.Kind() == transcript.ToolCall {
-		out.StartedAt = item.OccurredAt()
-		out.FinishedAt = item.FinishedAt()
-		out.DurationMillis = presentToolDurationMillis(item)
-	} else {
-		out.CreatedAt = item.OccurredAt()
 	}
 	return out, nil
 }

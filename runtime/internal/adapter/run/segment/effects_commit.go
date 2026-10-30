@@ -267,8 +267,8 @@ func (e *Effects) CommitEvent(ctx context.Context, commit runs.EventCommit) erro
 }
 
 func (e *Effects) invalidateCompactedContext(commit runs.EventCommit) {
-	for _, item := range commit.Items {
-		if item.Kind() == transcript.Compaction {
+	for _, write := range commit.Items {
+		if write.Item().Kind() == transcript.Compaction {
 			e.contextState.ForgetSessionContext(commit.SessionID)
 			return
 		}
@@ -387,12 +387,13 @@ func (e *Effects) compensateFailedCommit(ctx context.Context, commit runs.EventC
 	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), stagedToolResultCleanupTimeout)
 	defer cancel()
 	var cleanupErrs []error
-	for _, item := range commit.Items {
-		invocation, present := item.ToolInvocation()
+	for _, write := range commit.Items {
+		call, present := write.Item().ToolCall()
+		invocation := call.Invocation
 		if !present || invocation.Offload == nil {
 			continue
 		}
-		if err := e.toolResults.Discard(cleanupCtx, item.SessionID(), *invocation.Offload); err != nil {
+		if err := e.toolResults.Discard(cleanupCtx, write.Item().SessionID(), *invocation.Offload); err != nil {
 			cleanupErrs = append(cleanupErrs, fmt.Errorf("segment: discard staged tool result %q: %w", invocation.Offload.ID, err))
 		}
 	}
@@ -437,8 +438,8 @@ func (e *Effects) applyCommit(ctx context.Context, commit runs.EventCommit) erro
 		}
 	}
 
-	for _, item := range commit.Items {
-		if err := e.appendItem(ctx, item); err != nil {
+	for _, write := range commit.Items {
+		if err := e.writeItem(ctx, write); err != nil {
 			return err
 		}
 	}
@@ -636,8 +637,11 @@ func (e *Effects) openInterrupt(ctx context.Context, p runs.Pending) error {
 	return nil
 }
 
-func (e *Effects) appendItem(ctx context.Context, item transcript.Item) error {
-	return e.transcript.AppendItem(ctx, item)
+func (e *Effects) writeItem(ctx context.Context, write runs.ItemWrite) error {
+	if settlement, ok := write.Settlement(); ok {
+		return e.transcript.SettleItem(ctx, settlement)
+	}
+	return e.transcript.AppendItem(ctx, write.Item())
 }
 
 func (e *Effects) applyState(ctx context.Context, commit runs.EventCommit) error {

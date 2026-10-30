@@ -630,7 +630,7 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 	})
 	openingEvents := []EventCommit{{
 		RunID: commit.RootRunID(), SessionID: commit.SessionID(), SegmentID: rootSegmentID,
-		Items: []transcript.Item{openingItem},
+		Items: NewItemWrites(openingItem),
 	}}
 	expectedPending := commit.ExpectedPending()
 	checkpoint := commit.Checkpoint()
