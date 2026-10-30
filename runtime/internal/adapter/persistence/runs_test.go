@@ -38,25 +38,33 @@ func newRunProjectionStores(t *testing.T) (*RunStore, *InterruptStore, *Transcri
 	return newRunStore(db), newInterruptStore(db), newTranscriptStore(db)
 }
 
-func storedRunReplacement(
+// terminalizeStoredRun ends the stored running Run with state through the
+// Segment commit path, the one every live terminal outcome takes.
+func terminalizeStoredRun(
 	t testing.TB,
 	ctx context.Context,
 	store *RunStore,
 	state run.Run,
-) run.Replacement {
+) error {
 	t.Helper()
 	expected, found, err := store.Run(ctx, state.ID())
 	if err != nil || !found {
 		t.Fatalf("load expected Run %q: found=%t err=%v", state.ID(), found, err)
 	}
-	return testsupport.MustRunReplacement(expected, testsupport.DecidedRun(state))
+	return store.TerminalizeEvent(ctx, state, expected.ActiveSegmentID(), testCommitID("run_commit_terminal_"+state.ID()))
+}
+
+// lostRunReplacement is the recovery of expected, the replacement every
+// strict terminal write of a running Run derives.
+func lostRunReplacement(expected run.Run) run.Replacement {
+	return testsupport.MustRunReplacement(expected.Replace().RecoverLost(
+		run.Failure{Kind: run.FailureLost}, expected.UpdatedAt().Add(time.Minute), run.MessageMarkAt(0),
+	))
 }
 
 // resumeParkedRun reopens the parked Run the store holds into segmentID.
 func resumeParkedRun(ctx context.Context, store *RunStore, parked run.Run, segmentID string, at time.Time) error {
-	replacement, err := run.Replace(parked, func(parked run.Run) (run.Run, error) {
-		return parked.Resume(segmentID, at)
-	})
+	replacement, err := parked.Replace().Resume(segmentID, at)
 	if err != nil {
 		return err
 	}
@@ -283,7 +291,7 @@ func TestRunAdmitEnforcesOneActivePerSession(t *testing.T) {
 		t.Fatalf("other-session admit: %v", err)
 	}
 	finished := finishedRun("run_1", "ses_A", run.OutcomeCompleted)
-	if err := store.Terminalize(ctx, storedRunReplacement(t, ctx, store, finished)); err != nil {
+	if err := terminalizeStoredRun(t, ctx, store, finished); err != nil {
 		t.Fatalf("terminalize: %v", err)
 	}
 	if err := store.Admit(ctx, runDraft("run_4", "ses_A")); err != nil {
@@ -300,7 +308,7 @@ func TestRunLifecycleRetainsInvocationEvidenceUntilDeletion(t *testing.T) {
 			name: "terminal",
 			settle: func(ctx context.Context, store *RunStore, draft run.Draft) error {
 				finished := finishedRunFromDraft(draft, run.OutcomeCompleted)
-				return store.Terminalize(ctx, storedRunReplacement(t, ctx, store, finished))
+				return terminalizeStoredRun(t, ctx, store, finished)
 			},
 		},
 		{
@@ -391,10 +399,7 @@ func TestRunProgressFootprintSurvivesTerminalRead(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Terminate: %v", err)
 	}
-	if terminalizeErr := store.Terminalize(
-		ctx,
-		testsupport.MustRunReplacement(current, testsupport.DecidedRun(terminal)),
-	); terminalizeErr != nil {
+	if terminalizeErr := terminalizeStoredRun(t, ctx, store, terminal); terminalizeErr != nil {
 		t.Fatalf("Terminalize: %v", terminalizeErr)
 	}
 	recovered, found, err := store.Run(ctx, "run_context")
@@ -558,18 +563,14 @@ func TestTerminalizeRequiresExactLiveRun(t *testing.T) {
 	store, _ := newRunStores(t)
 
 	unknownDraft := runDraft("run_unknown", "ses_unknown")
-	unknown := finishedRunFromDraft(unknownDraft, run.OutcomeCompleted)
-	if err := store.Terminalize(ctx, testsupport.MustRunReplacement(
-		admittedRunFromDraft(unknownDraft), testsupport.DecidedRun(unknown))); err == nil {
+	if err := store.Terminalize(ctx, lostRunReplacement(admittedRunFromDraft(unknownDraft))); err == nil {
 		t.Fatal("terminalize unknown run must fail")
 	}
 	if err := store.Admit(ctx, runDraft("run_1", "ses_A")); err != nil {
 		t.Fatalf("admit: %v", err)
 	}
 	otherDraft := runDraft("run_other", "ses_A")
-	other := finishedRunFromDraft(otherDraft, run.OutcomeCompleted)
-	if err := store.Terminalize(ctx, testsupport.MustRunReplacement(
-		admittedRunFromDraft(otherDraft), testsupport.DecidedRun(other))); err == nil {
+	if err := store.Terminalize(ctx, lostRunReplacement(admittedRunFromDraft(otherDraft))); err == nil {
 		t.Fatal("terminalize mismatched run must fail")
 	}
 	expected, found, err := store.Run(ctx, "run_1")
@@ -579,15 +580,14 @@ func TestTerminalizeRequiresExactLiveRun(t *testing.T) {
 	foreignExpected := withRunSnapshot(expected, func(snapshot *run.Snapshot) {
 		snapshot.ActiveSegmentID = "seg_other"
 	})
-	finished := finishedRun("run_1", "ses_A", run.OutcomeCompleted)
-	if err := store.Terminalize(ctx, testsupport.MustRunReplacement(foreignExpected, testsupport.DecidedRun(finished))); err == nil {
+	if err := store.Terminalize(ctx, lostRunReplacement(foreignExpected)); err == nil {
 		t.Fatal("terminalize with a different expected Segment must fail")
 	}
 	unchanged, found, err := store.Run(ctx, "run_1")
 	if err != nil || !found || !unchanged.Equal(expected) {
 		t.Fatalf("Run after rejected replacement = (%+v, %t, %v), want unchanged", unchanged, found, err)
 	}
-	exact := testsupport.MustRunReplacement(expected, testsupport.DecidedRun(finished))
+	exact := lostRunReplacement(expected)
 	if err := store.Terminalize(ctx, exact); err != nil {
 		t.Fatalf("terminalize: %v", err)
 	}
@@ -611,7 +611,7 @@ func TestRecoverLostRequiresExactExpectedRun(t *testing.T) {
 	foreignSnapshot.ActiveSegmentID = "seg_other"
 	foreign := testsupport.MustRestoreRun(foreignSnapshot)
 	finishedAt := runCreatedAt.Add(time.Minute)
-	foreignLost, err := foreign.RecoverLost(
+	foreignLost, err := foreign.Replace().RecoverLost(
 		run.Failure{Kind: run.FailureLost},
 		finishedAt,
 		run.MessageMarkAt(0),
@@ -619,10 +619,7 @@ func TestRecoverLostRequiresExactExpectedRun(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RecoverLost foreign aggregate: %v", err)
 	}
-	if err := store.RecoverLost(
-		ctx,
-		testsupport.MustRunReplacement(foreign, testsupport.DecidedRun(foreignLost)),
-	); err == nil || !strings.Contains(err.Error(), "changed after the application prepared") {
+	if err := store.RecoverLost(ctx, foreignLost); err == nil || !strings.Contains(err.Error(), "changed after the application prepared") {
 		t.Fatalf("RecoverLost with a different expected Segment error = %v", err)
 	}
 	current, found, err := store.Run(ctx, actual.ID())
@@ -630,7 +627,7 @@ func TestRecoverLostRequiresExactExpectedRun(t *testing.T) {
 		t.Fatalf("rejected recovery changed Run: found=%t current=%+v err=%v", found, current, err)
 	}
 
-	lost, err := actual.RecoverLost(
+	lost, err := actual.Replace().RecoverLost(
 		run.Failure{Kind: run.FailureLost},
 		finishedAt,
 		run.MessageMarkAt(0),
@@ -638,7 +635,7 @@ func TestRecoverLostRequiresExactExpectedRun(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RecoverLost aggregate: %v", err)
 	}
-	if err := store.RecoverLost(ctx, testsupport.MustRunReplacement(actual, testsupport.DecidedRun(lost))); err != nil {
+	if err := store.RecoverLost(ctx, lost); err != nil {
 		t.Fatalf("RecoverLost exact aggregate: %v", err)
 	}
 }
@@ -660,18 +657,14 @@ func TestTerminalizeParkedRunOnlyByCancellation(t *testing.T) {
 	// A parked run cannot complete/error/cap out without resuming — no
 	// replacement can be derived for that transition.
 	finishedAt := parked.UpdatedAt().Add(time.Second)
-	if _, err := run.Replace(parked, func(current run.Run) (run.Run, error) {
-		return current.Terminate(run.Termination{Outcome: run.OutcomeCompleted, FinishedAt: finishedAt})
-	}); err == nil {
+	if _, err := parked.Terminate(run.Termination{Outcome: run.OutcomeCompleted, FinishedAt: finishedAt}); err == nil {
 		t.Fatal("a parked run must not derive a completed replacement")
 	}
 	if err := store.Admit(ctx, runDraft("run_2", "ses_A")); !errors.Is(err, run.ErrSessionBusy) {
 		t.Fatalf("admit while parked = %v, want ErrSessionBusy", err)
 	}
 	// Cancellation of the same parked run is legal (Waiting → Canceled).
-	canceled := testsupport.MustRunReplacement(parked, func(current run.Run) (run.Run, error) {
-		return current.CancelWaiting("", finishedAt, run.MessageMarkAt(0))
-	})
+	canceled := testsupport.MustRunReplacement(parked.Replace().CancelWaiting("", finishedAt, run.MessageMarkAt(0)))
 	if err := store.Terminalize(ctx, canceled); err != nil {
 		t.Fatalf("terminalize(canceled) of a parked run: %v", err)
 	}
@@ -750,7 +743,7 @@ func TestSuspendResumeReusesOneSlot(t *testing.T) {
 	}
 	// Terminal frees the one reused slot.
 	finished := finishedRun("run_1", "ses_A", run.OutcomeCompleted)
-	if err := store.Terminalize(ctx, storedRunReplacement(t, ctx, store, finished)); err != nil {
+	if err := terminalizeStoredRun(t, ctx, store, finished); err != nil {
 		t.Fatalf("terminalize: %v", err)
 	}
 	if err := store.Admit(ctx, runDraft("run_4", "ses_A")); err != nil {
@@ -877,7 +870,7 @@ func TestPageRunsReturnsEveryLifecyclePosition(t *testing.T) {
 	finished := finishedRunFromDraft(run.Draft{
 		RunID: "run_done", SessionID: "ses_C", SegmentID: "seg_open", CreatedAt: time.Unix(0, 30),
 	}, run.OutcomeCompleted)
-	if err := store.Terminalize(ctx, storedRunReplacement(t, ctx, store, finished)); err != nil {
+	if err := terminalizeStoredRun(t, ctx, store, finished); err != nil {
 		t.Fatalf("terminalize: %v", err)
 	}
 
@@ -1172,7 +1165,7 @@ func TestRunCapabilitiesAreImmutable(t *testing.T) {
 	assertRunCapabilities(t, store, "run_1", admitted, "after resume")
 
 	finished := finishedRunFromDraft(draft, run.OutcomeCompleted)
-	if err := store.Terminalize(ctx, storedRunReplacement(t, ctx, store, finished)); err != nil {
+	if err := terminalizeStoredRun(t, ctx, store, finished); err != nil {
 		t.Fatalf("terminalize: %v", err)
 	}
 	assertRunCapabilities(t, store, "run_1", admitted, "after terminal")

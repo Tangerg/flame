@@ -130,9 +130,7 @@ func TestInterruptPageReadsTheHandoffAndItemsFromOneSnapshot(t *testing.T) {
 		}
 		// Acceptance consumes the open set and resumes the Run in one transaction,
 		// so the Run never rests waiting without its Pending.
-		if err := runStore.Resume(ctx, testsupport.MustRunReplacement(root, func(waiting run.Run) (run.Run, error) {
-			return waiting.Resume("seg_snapshot_resumed", created.Add(2*time.Second))
-		})); err != nil {
+		if err := runStore.Resume(ctx, testsupport.MustRunReplacement(root.Replace().Resume("seg_snapshot_resumed", created.Add(2*time.Second)))); err != nil {
 			return err
 		}
 		return newTranscriptStore(writer).ReplaceItem(ctx, change)

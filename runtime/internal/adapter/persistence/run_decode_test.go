@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestRunReadsRefuseOpenRowsWithTerminalFacts(t *testing.T) {
@@ -61,13 +60,14 @@ func TestRunCodecPreservesEpochFinishTime(t *testing.T) {
 		t.Fatal(err)
 	}
 	opened := admittedRunFromDraft(draft)
-	change := testsupport.MustRunReplacement(opened, func(current run.Run) (run.Run, error) {
-		return current.Terminate(run.Termination{
-			Outcome: run.OutcomeCompleted, FinishedAt: time.Unix(0, 0).UTC(), MessageMark: run.MessageMarkAt(0),
-		})
+	terminal, err := opened.Terminate(run.Termination{
+		Outcome: run.OutcomeCompleted, FinishedAt: time.Unix(0, 0).UTC(), MessageMark: run.MessageMarkAt(0),
 	})
-	if err := store.Terminalize(t.Context(), change); err != nil {
+	if err != nil {
 		t.Fatal(err)
 	}
-	assertStoredRun(t, store, change.State())
+	if err := terminalizeStoredRun(t, t.Context(), store, terminal); err != nil {
+		t.Fatal(err)
+	}
+	assertStoredRun(t, store, terminal)
 }

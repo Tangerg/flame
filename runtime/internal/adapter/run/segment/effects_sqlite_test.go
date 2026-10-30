@@ -422,9 +422,7 @@ func TestCommitEventRejectsTerminalFromReplacedSegment(t *testing.T) {
 	if suspendErr := store.Suspend(ctx, waiting, "seg_old", runs.CommitID{}); suspendErr != nil {
 		t.Fatal(suspendErr)
 	}
-	if resumeErr := store.Resume(ctx, testsupport.MustRunReplacement(waiting, func(waiting run.Run) (run.Run, error) {
-		return waiting.Resume("seg_new", resumedAt)
-	})); resumeErr != nil {
+	if resumeErr := store.Resume(ctx, testsupport.MustRunReplacement(waiting.Replace().Resume("seg_new", resumedAt))); resumeErr != nil {
 		t.Fatal(resumeErr)
 	}
 	staleTerminal, err := oldSegment.Terminate(run.Termination{
@@ -482,9 +480,7 @@ func TestCommitEventRejectsProjectionFromReplacedSegmentBeforeWritingAnything(t 
 	if suspendErr := store.Suspend(ctx, waiting, "seg_old", runs.CommitID{}); suspendErr != nil {
 		t.Fatal(suspendErr)
 	}
-	if resumeErr := store.Resume(ctx, testsupport.MustRunReplacement(waiting, func(waiting run.Run) (run.Run, error) {
-		return waiting.Resume("seg_new", startedAt.Add(2*time.Second))
-	})); resumeErr != nil {
+	if resumeErr := store.Resume(ctx, testsupport.MustRunReplacement(waiting.Replace().Resume("seg_new", startedAt.Add(2*time.Second)))); resumeErr != nil {
 		t.Fatal(resumeErr)
 	}
 	history := db.Transcript
@@ -1881,11 +1877,11 @@ func newWaitingCancellationSQLiteFixtureAt(
 	if saveCheckpointErr := checkpointStore.SaveCheckpoint(ctx, originalCheckpoint); saveCheckpointErr != nil {
 		t.Fatalf("seed executor checkpoint: %v", saveCheckpointErr)
 	}
-	terminalChild, err := childRun.CancelWaiting("stop delegated branch", finishedAt, run.UnknownMessageMark())
+	terminalChild, err := childRun.Replace().CancelWaiting("stop delegated branch", finishedAt, run.UnknownMessageMark())
 	if err != nil {
 		t.Fatalf("cancel child fixture: %v", err)
 	}
-	terminalGrandchild, err := grandchildRun.CancelWaiting("stop delegated branch", finishedAt, run.UnknownMessageMark())
+	terminalGrandchild, err := grandchildRun.Replace().CancelWaiting("stop delegated branch", finishedAt, run.UnknownMessageMark())
 	if err != nil {
 		t.Fatalf("cancel grandchild fixture: %v", err)
 	}
@@ -1941,8 +1937,8 @@ func newWaitingCancellationSQLiteFixtureAt(
 		remainingPending: remainingPending,
 		checkpoint:       replacementCheckpoint,
 		terminalRuns: []run.Replacement{
-			testsupport.MustRunReplacement(grandchildRun, testsupport.DecidedRun(terminalGrandchild)),
-			testsupport.MustRunReplacement(childRun, testsupport.DecidedRun(terminalChild)),
+			terminalGrandchild,
+			terminalChild,
 		},
 		terminalItems: terminalItems,
 		resume:        resume,

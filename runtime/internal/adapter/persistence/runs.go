@@ -293,7 +293,7 @@ func (r *RunStore) Suspend(
 	}
 	commitSegmentID, commitIDValue := marker.databaseValues()
 	return sqlite.RunInTx(ctx, r.db, func(ctx context.Context) error {
-		if err := r.requireTransition(ctx, "suspend", value); err != nil {
+		if err := r.requireAdvance(ctx, "suspend", value); err != nil {
 			return err
 		}
 		// The segment identity is cleared in the same statement that parks the Run:
@@ -412,7 +412,7 @@ func (r *RunStore) UpdateProgress(ctx context.Context, progressed rundomain.Run)
 		return fmt.Errorf("sqlite: update Run progress for %q: %w", progressed.ID(), err)
 	}
 	return sqlite.RunInTx(ctx, r.db, func(ctx context.Context) error {
-		if err := r.requireTransition(ctx, "update progress", progressed); err != nil {
+		if err := r.requireAdvance(ctx, "update progress", progressed); err != nil {
 			return err
 		}
 		result, err := sqlite.Connection(ctx, r.db).ExecContext(ctx,
@@ -462,7 +462,7 @@ func (r *RunStore) TerminalizeEvent(
 		return err
 	}
 	return sqlite.RunInTx(ctx, r.db, func(ctx context.Context) error {
-		if err := r.requireTransition(ctx, "terminalize", value); err != nil {
+		if err := r.requireAdvance(ctx, "terminalize", value); err != nil {
 			return err
 		}
 		return r.finish(ctx, "terminalize", value, marker,
@@ -546,7 +546,10 @@ func (r *RunStore) requireExpected(ctx context.Context, operation string, expect
 	return nil
 }
 
-func (r *RunStore) requireTransition(ctx context.Context, operation string, state rundomain.Run) error {
+// requireAdvance fences a Segment write on the progress the row already
+// holds. The Segment fence alone admits a stale snapshot of the same Segment;
+// the Run's cumulative accounting only advances, so such a snapshot is refused.
+func (r *RunStore) requireAdvance(ctx context.Context, operation string, state rundomain.Run) error {
 	current, found, err := r.readRun(ctx, operation, state.ID(), scanRunForRecovery)
 	if err != nil {
 		return err
@@ -554,8 +557,11 @@ func (r *RunStore) requireTransition(ctx context.Context, operation string, stat
 	if !found {
 		return fmt.Errorf("sqlite: %s run %q: Run was not found", operation, state.ID())
 	}
-	if _, err := rundomain.Replace(current, func(rundomain.Run) (rundomain.Run, error) { return state, nil }); err != nil {
+	if err := state.Metrics().ValidateAdvanceFrom(current.Metrics()); err != nil {
 		return fmt.Errorf("sqlite: %s run %q: %w", operation, state.ID(), err)
+	}
+	if state.UpdatedAt().Before(current.UpdatedAt()) {
+		return fmt.Errorf("sqlite: %s run %q: snapshot precedes the committed update", operation, state.ID())
 	}
 	return nil
 }

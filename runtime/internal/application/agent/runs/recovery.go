@@ -714,50 +714,58 @@ func recoverLostTree(
 			replacements = append(replacements, itemReplacement)
 		}
 
-		replacement, err := rundomain.Replace(active, func(active rundomain.Run) (rundomain.Run, error) {
-			for _, invocation := range models {
-				if invocation.RunID != active.ID() || invocation.Endpoint == nil {
-					continue
-				}
-				source := invocation.Endpoint
-				record := source.Snapshot()
-				served := source.ServedModel()
-				reported := record.Usage
-				metrics, err := active.Metrics().AccrueModelCall(served, reported, record.CostUSD)
-				if err != nil {
-					return rundomain.Run{}, err
-				}
-				contextTokens := active.ContextTokens()
-				if invocation.Purpose == rundomain.ModelConversation && reported != nil && reported.InputTokens > 0 {
-					contextTokens = reported.InputTokens
-				}
-				active, err = active.AdvanceProgress(metrics, contextTokens, finishedAt)
-				if err != nil {
-					return rundomain.Run{}, err
-				}
-			}
-			for _, source := range independent {
-				record := source.Snapshot()
-				if record.RunID != active.ID() {
-					continue
-				}
-				served := source.ServedModel()
-				usage := record.Usage
-				metrics, err := active.Metrics().AccrueModelCall(served, usage, record.CostUSD)
-				if err != nil {
-					return rundomain.Run{}, err
-				}
-				active, err = active.AdvanceProgress(metrics, active.ContextTokens(), finishedAt)
-				if err != nil {
-					return rundomain.Run{}, err
-				}
-			}
-			return active.RecoverLost(failure, finishedAt, active.Lineage().MessageMark(messageMark))
-		})
+		replacement, err := recoverLostRun(active, models, independent, failure, finishedAt, messageMark)
 		if err != nil {
 			return nil, nil, fmt.Errorf("runs: recover lost Run %q: %w", active.ID(), err)
 		}
 		lostRuns = append(lostRuns, replacement)
 	}
 	return lostRuns, replacements, nil
+}
+
+// recoverLostRun charges the lost Run every model call its executor reported
+// before ending it, so the recovered accounting matches what was consumed.
+func recoverLostRun(
+	active rundomain.Run,
+	models []ModelInvocationRecovery,
+	independent []modelref.EndpointObservation,
+	failure rundomain.Failure,
+	finishedAt time.Time,
+	messageMark int,
+) (rundomain.Replacement, error) {
+	replacement := active.Replace()
+	for _, invocation := range models {
+		if invocation.RunID != active.ID() || invocation.Endpoint == nil {
+			continue
+		}
+		current := replacement.State()
+		record := invocation.Endpoint.Snapshot()
+		reported := record.Usage
+		metrics, err := current.Metrics().AccrueModelCall(invocation.Endpoint.ServedModel(), reported, record.CostUSD)
+		if err != nil {
+			return rundomain.Replacement{}, err
+		}
+		contextTokens := current.ContextTokens()
+		if invocation.Purpose == rundomain.ModelConversation && reported != nil && reported.InputTokens > 0 {
+			contextTokens = reported.InputTokens
+		}
+		if replacement, err = replacement.AdvanceProgress(metrics, contextTokens, finishedAt); err != nil {
+			return rundomain.Replacement{}, err
+		}
+	}
+	for _, source := range independent {
+		record := source.Snapshot()
+		if record.RunID != active.ID() {
+			continue
+		}
+		current := replacement.State()
+		metrics, err := current.Metrics().AccrueModelCall(source.ServedModel(), record.Usage, record.CostUSD)
+		if err != nil {
+			return rundomain.Replacement{}, err
+		}
+		if replacement, err = replacement.AdvanceProgress(metrics, current.ContextTokens(), finishedAt); err != nil {
+			return rundomain.Replacement{}, err
+		}
+	}
+	return replacement.RecoverLost(failure, finishedAt, active.Lineage().MessageMark(messageMark))
 }

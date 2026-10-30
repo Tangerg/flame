@@ -33,7 +33,7 @@ func TestAcceptedRevivalPreservesOwnershipAndInconclusiveFailures(t *testing.T) 
 			effects := &fakeEffects{}
 			coordinator := newUseCaseCoordinator(&fakeExecutor{}, control, sessions, effects)
 			parked := runForPending(pending)
-			resumed, err := run.Replace(parked, func(value run.Run) (run.Run, error) { return value.Resume("seg_accepted", at.Add(2*time.Second)) })
+			resumed, err := parked.Replace().Resume("seg_accepted", at.Add(2*time.Second))
 			if err != nil {
 				t.Fatal(err)
 			}

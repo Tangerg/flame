@@ -71,26 +71,28 @@ type ConversationCompactionStore interface {
 func PlanConversationCompaction(sessionID string, compaction conversation.Compaction, current []run.Run) (ConversationCompactionPlan, error) {
 	planned := make([]run.Replacement, len(current))
 	for index, value := range current {
-		replacement, err := run.Replace(value, func(value run.Run) (run.Run, error) {
-			if !value.State().IsTerminal() || !value.Lineage().IsRoot() {
-				return value, nil
-			}
-			count, known := value.MessageMark().Count()
-			if !known {
-				return run.Run{}, errors.New("terminal root Run has no message watermark")
-			}
-			mark, err := compaction.RebaseMessageMark(count)
-			if err != nil {
-				return run.Run{}, err
-			}
-			return value.WithMessageMark(mark)
-		})
+		replacement, err := rebasedRun(value, compaction)
 		if err != nil {
 			return ConversationCompactionPlan{}, fmt.Errorf("runs: rebase conversation Run %q: %w", value.ID(), err)
 		}
 		planned[index] = replacement
 	}
 	return newConversationCompactionPlan(sessionID, compaction, planned)
+}
+
+func rebasedRun(value run.Run, compaction conversation.Compaction) (run.Replacement, error) {
+	if !value.State().IsTerminal() || !value.Lineage().IsRoot() {
+		return value.Replace(), nil
+	}
+	count, known := value.MessageMark().Count()
+	if !known {
+		return run.Replacement{}, errors.New("terminal root Run has no message watermark")
+	}
+	mark, err := compaction.RebaseMessageMark(count)
+	if err != nil {
+		return run.Replacement{}, err
+	}
+	return value.Replace().WithMessageMark(mark)
 }
 
 func (p ConversationCompactionPlan) validateOwner(runID, segmentID string) error {

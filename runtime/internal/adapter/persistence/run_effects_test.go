@@ -39,7 +39,7 @@ func TestTerminalEffectsSurviveDatabaseReopen(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := store.Terminalize(t.Context(), storedRunReplacement(t, t.Context(), store, terminal)); err != nil {
+			if err := terminalizeStoredRun(t, t.Context(), store, terminal); err != nil {
 				t.Fatal(err)
 			}
 			if err := db.Close(); err != nil {

@@ -446,10 +446,10 @@ func waitingCancellationMutationWithSiblingBoundary() *fakePreparedWaitingCancel
 }
 
 func stopChildWaitingCancellationEffects(plan cancellationPlan) *fakeEffects {
-	target, err := canceledWaitingRun(
-		plan.target.run,
+	target, err := plan.target.run.CancelWaiting(
 		"stop child",
 		time.Date(2026, 7, 30, 2, 3, 4, 0, time.UTC),
+		run.UnknownMessageMark(),
 	)
 	if err != nil {
 		panic(err)

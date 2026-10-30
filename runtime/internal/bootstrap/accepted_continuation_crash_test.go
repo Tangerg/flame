@@ -381,13 +381,15 @@ func TestAcceptedRevivalRejectsUnsafeBoundaries(t *testing.T) {
 					outcome = run.OutcomeCompleted
 					expected = protocol.OutcomeCompleted
 				}
-				replacement, err := run.Replace(value, func(value run.Run) (run.Run, error) {
-					return value.Terminate(run.Termination{Outcome: outcome, FinishedAt: time.Now().UTC()})
-				})
+				terminal, err := value.Terminate(run.Termination{Outcome: outcome, FinishedAt: time.Now().UTC()})
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := stores.Runs.Terminalize(t.Context(), replacement); err != nil {
+				commitID, err := runapp.ParseCommit("run_commit_crash_terminal")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := stores.Runs.TerminalizeEvent(t.Context(), terminal, value.ActiveSegmentID(), commitID); err != nil {
 					t.Fatal(err)
 				}
 			}

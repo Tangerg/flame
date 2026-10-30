@@ -186,9 +186,7 @@ func (r *resumedRouteBuilder) newRoute(continuationState Continuation) (*executo
 	opened := parked
 	var resumed *rundomain.Replacement
 	if !r.spec.restoresSegments() {
-		replacement, err := rundomain.Replace(parked, func(parked rundomain.Run) (rundomain.Run, error) {
-			return parked.Resume(segmentID, r.resumedAt)
-		})
+		replacement, err := parked.Replace().Resume(segmentID, r.resumedAt)
 		if err != nil {
 			return nil, fmt.Errorf("runs: resume Run %q: %w", continuationState.RunID, err)
 		}

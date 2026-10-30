@@ -68,7 +68,7 @@ func TestModelInvocationHistorySurvivesRestartAndPagesByStableIdentity(t *testin
 			t.Fatal(err)
 		}
 	}
-	if err := runs.Terminalize(ctx, storedRunReplacement(t, ctx, runs, finishedRunFromDraft(draft, run.OutcomeCompleted))); err != nil {
+	if err := terminalizeStoredRun(t, ctx, runs, finishedRunFromDraft(draft, run.OutcomeCompleted)); err != nil {
 		t.Fatal(err)
 	}
 	if err := db.Close(); err != nil {
@@ -123,8 +123,7 @@ func TestRunCannotEraseAnUnsettledModelAttempt(t *testing.T) {
 	if err := calls.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_pending", draft.CreatedAt, run.ModelConversation); err != nil {
 		t.Fatal(err)
 	}
-	replacement := storedRunReplacement(t, t.Context(), runs, finishedRunFromDraft(draft, run.OutcomeCompleted))
-	if err := runs.Terminalize(t.Context(), replacement); err == nil {
+	if err := terminalizeStoredRun(t, t.Context(), runs, finishedRunFromDraft(draft, run.OutcomeCompleted)); err == nil {
 		t.Fatal("terminalized Run while provider outcome remains undecided")
 	}
 	rows, err := calls.PageModelInvocations(t.Context(), draft.RunID, 0, "", 2)

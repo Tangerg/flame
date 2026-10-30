@@ -94,7 +94,7 @@ func TestToolInvocationJournalAllowsOneLogicalCallAcrossContinuationSegments(t *
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := runs.Terminalize(t.Context(), storedRunReplacement(t, t.Context(), runs, terminal)); err != nil {
+	if err := terminalizeStoredRun(t, t.Context(), runs, terminal); err != nil {
 		t.Fatal(err)
 	}
 	if err := db.Close(); err != nil {
@@ -148,7 +148,7 @@ func TestToolInvocationReadRetainsUnsettledTerminalEvidence(t *testing.T) {
 		"call_unsettled", "item_unsettled", draft.CreatedAt, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := runs.Terminalize(t.Context(), storedRunReplacement(t, t.Context(), runs, finishedRunFromDraft(draft, run.OutcomeCompleted))); err != nil {
+	if err := terminalizeStoredRun(t, t.Context(), runs, finishedRunFromDraft(draft, run.OutcomeCompleted)); err != nil {
 		t.Fatal(err)
 	}
 	if err := db.Close(); err != nil {

@@ -122,19 +122,12 @@ func MustRestoreRun(snapshot run.Snapshot) run.Run {
 	return restored
 }
 
-// MustRunReplacement derives one Run replacement or panics.
-func MustRunReplacement(expected run.Run, transition func(run.Run) (run.Run, error)) run.Replacement {
-	replacement, err := run.Replace(expected, transition)
+// MustRunReplacement returns one Run replacement or panics.
+func MustRunReplacement(replacement run.Replacement, err error) run.Replacement {
 	if err != nil {
 		panic(err)
 	}
 	return replacement
-}
-
-// DecidedRun is a transition that yields an already-built state, for tests
-// that need a replacement whose state they constructed directly.
-func DecidedRun(state run.Run) func(run.Run) (run.Run, error) {
-	return func(run.Run) (run.Run, error) { return state, nil }
 }
 
 // MustResumeRuns derives one tree resume from parked Runs given in postorder
@@ -146,9 +139,7 @@ func MustResumeRuns(resumedAt time.Time, parked []run.Run, segmentIDs []string) 
 	resume := run.TreeResumeDraft{Runs: make([]run.Replacement, len(parked))}
 	for index, waiting := range parked {
 		segmentID := segmentIDs[index]
-		resume.Runs[index] = MustRunReplacement(waiting, func(waiting run.Run) (run.Run, error) {
-			return waiting.Resume(segmentID, resumedAt)
-		})
+		resume.Runs[index] = MustRunReplacement(waiting.Replace().Resume(segmentID, resumedAt))
 	}
 	return resume
 }

@@ -348,14 +348,14 @@ func TestApplyTerminalDropsInterruptAndTerminalizes(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("read parked Run: found=%t err=%v", found, err)
 	}
-	terminal, err := parked.CancelWaiting("", finishedAt, run.MessageMarkAt(0))
+	terminal, err := parked.Replace().CancelWaiting("", finishedAt, run.MessageMarkAt(0))
 	if err != nil {
 		t.Fatalf("cancel parked Run: %v", err)
 	}
 
 	terminalPlan := bootstrapTerminalPlan(
 		t,
-		[]run.Replacement{testsupport.MustRunReplacement(parked, testsupport.DecidedRun(terminal))},
+		[]run.Replacement{terminal},
 		memberID,
 	)
 	if applyTerminalErr := ss.ApplyTerminal(ctx, terminalPlan); applyTerminalErr != nil {
@@ -389,14 +389,14 @@ func TestApplyTerminalRecoversLostParkAtomically(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("read parked Run: found=%t err=%v", found, err)
 	}
-	terminal, err := parked.RecoverLost(run.Failure{Kind: run.FailureLost}, finishedAt, run.MessageMarkAt(0))
+	terminal, err := parked.Replace().RecoverLost(run.Failure{Kind: run.FailureLost}, finishedAt, run.MessageMarkAt(0))
 	if err != nil {
 		t.Fatalf("recover parked Run: %v", err)
 	}
 
 	terminalPlan := bootstrapTerminalPlan(
 		t,
-		[]run.Replacement{testsupport.MustRunReplacement(parked, testsupport.DecidedRun(terminal))},
+		[]run.Replacement{terminal},
 		memberID,
 	)
 	if applyTerminalErr := ss.ApplyTerminal(ctx, terminalPlan); applyTerminalErr != nil {
@@ -461,22 +461,21 @@ func TestApplyTerminalChargesGoalOwnedParkAtomically(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("read parked Goal Run: found=%t err=%v", found, err)
 	}
-	expected := parked
-	parked, err = parked.AdvanceProgress(testsupport.MustRunMetrics(testsupport.RunMetricsInput{
+	progressed, err := parked.Replace().AdvanceProgress(testsupport.MustRunMetrics(testsupport.RunMetricsInput{
 		Steps: 4,
 		Usage: &accounting.Usage{Total: accounting.Totals{CostUSD: &costUSD}},
 	}), 0, finishedAt)
 	if err != nil {
 		t.Fatalf("advance parked Goal Run metrics: %v", err)
 	}
-	terminal, err := parked.RecoverLost(run.Failure{Kind: run.FailureLost}, finishedAt, run.MessageMarkAt(0))
+	terminal, err := progressed.RecoverLost(run.Failure{Kind: run.FailureLost}, finishedAt, run.MessageMarkAt(0))
 	if err != nil {
 		t.Fatalf("recover parked Goal Run: %v", err)
 	}
 
 	terminalPlan := bootstrapTerminalPlan(
 		t,
-		[]run.Replacement{testsupport.MustRunReplacement(expected, testsupport.DecidedRun(terminal))},
+		[]run.Replacement{terminal},
 		memberID,
 	)
 	if applyTerminalErr := ss.ApplyTerminal(ctx, terminalPlan); applyTerminalErr != nil {
@@ -492,7 +491,7 @@ func TestApplyTerminalChargesGoalOwnedParkAtomically(t *testing.T) {
 		storedGoal.Reason().Code() != goal.ReasonRunNotCompleted {
 		t.Fatalf("Goal after terminal park = %+v", storedGoal)
 	}
-	storedRun, found, err := runs.Run(ctx, terminal.ID())
+	storedRun, found, err := runs.Run(ctx, terminal.State().ID())
 	if err != nil || !found || !testsupport.RunFailed(storedRun) {
 		t.Fatalf("Run after terminal park = found:%t value:%+v err:%v", found, storedRun, err)
 	}

@@ -86,7 +86,7 @@ func TestSessionTrajectorySurvivesRestartAndPagesSameTimeSourcesWithoutLoss(t *t
 			t.Fatal(err)
 		}
 	}
-	if err := runStore.Terminalize(ctx, storedRunReplacement(t, ctx, runStore, finishedRunFromDraft(draft, run.OutcomeCompleted))); err != nil {
+	if err := terminalizeStoredRun(t, ctx, runStore, finishedRunFromDraft(draft, run.OutcomeCompleted)); err != nil {
 		t.Fatal(err)
 	}
 	reader := newTrajectoryStore(db)

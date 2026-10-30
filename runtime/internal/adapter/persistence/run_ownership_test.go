@@ -41,14 +41,14 @@ func TestRunWritesCannotRegressCommittedProgress(t *testing.T) {
 				if operation == "terminal event" {
 					err = store.TerminalizeEvent(t.Context(), terminal, draft.SegmentID, testCommitID("run_commit_terminal"))
 				} else {
-					err = store.Terminalize(t.Context(), testsupport.MustRunReplacement(stale, testsupport.DecidedRun(terminal)))
+					err = store.Terminalize(t.Context(), lostRunReplacement(stale))
 				}
 			case "lost replacement":
-				lost, lostErr := stale.RecoverLost(run.Failure{Kind: run.FailureLost}, at, run.MessageMarkAt(0))
+				lost, lostErr := stale.Replace().RecoverLost(run.Failure{Kind: run.FailureLost}, at, run.MessageMarkAt(0))
 				if lostErr != nil {
 					t.Fatal(lostErr)
 				}
-				err = store.RecoverLost(t.Context(), testsupport.MustRunReplacement(stale, testsupport.DecidedRun(lost)))
+				err = store.RecoverLost(t.Context(), lost)
 			}
 			if err == nil {
 				t.Fatal("stale Run snapshot overwrote committed progress at the same timestamp")
@@ -91,12 +91,8 @@ func TestResumePersistsCompleteDecidedProgress(t *testing.T) {
 		t.Fatal(err)
 	}
 	metrics := testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 2, ActiveDuration: time.Second})
-	change := testsupport.MustRunReplacement(parked, func(current run.Run) (run.Run, error) {
-		return current.AdvanceProgress(metrics, 100, current.UpdatedAt())
-	})
-	change, err := change.Then(func(current run.Run) (run.Run, error) {
-		return current.Resume("seg_resumed", current.UpdatedAt())
-	})
+	change := testsupport.MustRunReplacement(parked.Replace().AdvanceProgress(metrics, 100, parked.UpdatedAt()))
+	change, err := change.Resume("seg_resumed", change.State().UpdatedAt())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,16 +111,12 @@ func TestMessageMarkRebaseRequiresCompleteExpectedRun(t *testing.T) {
 	snapshot := terminal.Snapshot()
 	snapshot.ContextTokens = 100
 	foreign := testsupport.MustRestoreRun(snapshot)
-	change := testsupport.MustRunReplacement(foreign, func(current run.Run) (run.Run, error) {
-		return current.WithMessageMark(2)
-	})
+	change := testsupport.MustRunReplacement(foreign.Replace().WithMessageMark(2))
 	if err := store.RebaseMessageMark(t.Context(), change); err == nil {
 		t.Fatal("message watermark rebase accepted another terminal source snapshot")
 	}
 	assertStoredRun(t, store, terminal)
-	change = testsupport.MustRunReplacement(terminal, func(current run.Run) (run.Run, error) {
-		return current.WithMessageMark(2)
-	})
+	change = testsupport.MustRunReplacement(terminal.Replace().WithMessageMark(2))
 	if err := store.RebaseMessageMark(t.Context(), change); err != nil {
 		t.Fatalf("exact message watermark rebase: %v", err)
 	}

@@ -121,9 +121,11 @@ func (e *Effects) terminalizeWaitingCancellationRuns(
 	terminalByID := make(map[string]run.Run, len(planned))
 	for _, replacement := range planned {
 		runID := replacement.State().ID()
-		finalReplacement, err := replacement.Then(func(state run.Run) (run.Run, error) {
-			return e.finishedRun(ctx, state)
-		})
+		finalReplacement := replacement
+		mark, needed, err := e.terminalMessageMark(ctx, replacement.State())
+		if err == nil && needed {
+			finalReplacement, err = replacement.WithMessageMark(mark)
+		}
 		if err != nil {
 			return nil, fmt.Errorf("segment: finalize canceled Run %q: %w", runID, err)
 		}

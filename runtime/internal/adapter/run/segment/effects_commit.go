@@ -676,16 +676,25 @@ func (e *Effects) applyState(ctx context.Context, commit runs.EventCommit) error
 // is in its terminal post-compaction shape by the time a terminal event arrives),
 // and the row's touch time.
 func (e *Effects) finishedRun(ctx context.Context, record run.Run) (run.Run, error) {
-	if _, known := record.MessageMark().Count(); record.Lineage().IsRoot() && !known {
-		mark, err := e.conversation.Count(ctx, record.SessionID())
-		if err != nil {
-			return run.Run{}, fmt.Errorf("segment: resolve terminal message watermark: %w", err)
-		}
-		finalized, err := record.WithMessageMark(mark)
-		if err != nil {
-			return run.Run{}, fmt.Errorf("segment: apply terminal message watermark: %w", err)
-		}
-		record = finalized
+	mark, needed, err := e.terminalMessageMark(ctx, record)
+	if err != nil || !needed {
+		return record, err
 	}
-	return record, nil
+	finalized, err := record.WithMessageMark(mark)
+	if err != nil {
+		return run.Run{}, fmt.Errorf("segment: apply terminal message watermark: %w", err)
+	}
+	return finalized, nil
+}
+
+// terminalMessageMark resolves the watermark a terminal root Run still lacks.
+func (e *Effects) terminalMessageMark(ctx context.Context, record run.Run) (int, bool, error) {
+	if _, known := record.MessageMark().Count(); !record.Lineage().IsRoot() || known {
+		return 0, false, nil
+	}
+	mark, err := e.conversation.Count(ctx, record.SessionID())
+	if err != nil {
+		return 0, false, fmt.Errorf("segment: resolve terminal message watermark: %w", err)
+	}
+	return mark, true, nil
 }

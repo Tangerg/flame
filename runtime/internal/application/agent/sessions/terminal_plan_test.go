@@ -17,7 +17,7 @@ func TestTerminalPlanOwnsProjectionAndDerivesGoalRun(t *testing.T) {
 		ID: "run_1", SessionID: "ses_1", State: run.Waiting,
 		GoalIncarnationID: "lease_1", CreatedAt: createdAt,
 	})
-	terminal, err := parked.CancelWaiting("stopped", finishedAt, run.MessageMarkAt(1))
+	terminal, err := parked.Replace().CancelWaiting("stopped", finishedAt, run.MessageMarkAt(1))
 	if err != nil {
 		t.Fatalf("cancel waiting Run: %v", err)
 	}
@@ -29,7 +29,7 @@ func TestTerminalPlanOwnsProjectionAndDerivesGoalRun(t *testing.T) {
 	if err != nil {
 		t.Fatalf("abandon ToolCall: %v", err)
 	}
-	runs := []run.Replacement{testsupport.MustRunReplacement(parked, testsupport.DecidedRun(terminal))}
+	runs := []run.Replacement{terminal}
 	items := []transcript.Replacement{incompleteItem}
 	messages := []chat.Message{chat.NewUserMessage(chat.NewTextPart("closed"))}
 

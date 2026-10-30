@@ -159,7 +159,7 @@ func TestPlanStoreRejectsMissingStoredCollections(t *testing.T) {
 				t.Fatal(err)
 			}
 			finished := finishedRun(runID, sessionID, run.OutcomeCompleted)
-			if err := runs.Terminalize(t.Context(), storedRunReplacement(t, t.Context(), runs, finished)); err != nil {
+			if err := terminalizeStoredRun(t, t.Context(), runs, finished); err != nil {
 				t.Fatal(err)
 			}
 			if _, err := db.ExecContext(t.Context(), `UPDATE session_plans SET steps = ? WHERE session_id = ?`, encoded, sessionID); err != nil {
@@ -205,7 +205,7 @@ func TestPlanBoundaryIsRecordedByTheRunThatEnds(t *testing.T) {
 		t.Fatalf("admit run_1: %v", err)
 	}
 	finished := finishedRun("run_1", "ses_A", run.OutcomeCompleted)
-	if err := runs.Terminalize(ctx, storedRunReplacement(t, ctx, runs, finished)); err != nil {
+	if err := terminalizeStoredRun(t, ctx, runs, finished); err != nil {
 		t.Fatalf("terminalize run_1: %v", err)
 	}
 
@@ -215,7 +215,7 @@ func TestPlanBoundaryIsRecordedByTheRunThatEnds(t *testing.T) {
 		t.Fatalf("admit run_2: %v", err)
 	}
 	finished = finishedRun("run_2", "ses_A", run.OutcomeCompleted)
-	if err := runs.Terminalize(ctx, storedRunReplacement(t, ctx, runs, finished)); err != nil {
+	if err := terminalizeStoredRun(t, ctx, runs, finished); err != nil {
 		t.Fatalf("terminalize run_2: %v", err)
 	}
 
@@ -245,7 +245,7 @@ func TestPlanBoundaryDistinguishesEmptyFromUnrecorded(t *testing.T) {
 		t.Fatalf("admit: %v", err)
 	}
 	finished := finishedRun("run_1", "ses_A", run.OutcomeCompleted)
-	if err := runs.Terminalize(ctx, storedRunReplacement(t, ctx, runs, finished)); err != nil {
+	if err := terminalizeStoredRun(t, ctx, runs, finished); err != nil {
 		t.Fatalf("terminalize: %v", err)
 	}
 	got, recorded, err := plans.Boundary(ctx, "run_1")
@@ -279,7 +279,7 @@ func TestPlanBoundaryDiesWithItsRun(t *testing.T) {
 		t.Fatalf("admit: %v", err)
 	}
 	finished := finishedRun("run_1", "ses_A", run.OutcomeCompleted)
-	if err := runs.Terminalize(ctx, storedRunReplacement(t, ctx, runs, finished)); err != nil {
+	if err := terminalizeStoredRun(t, ctx, runs, finished); err != nil {
 		t.Fatalf("terminalize: %v", err)
 	}
 	if _, recorded, err := plans.Boundary(ctx, "run_1"); err != nil || !recorded {

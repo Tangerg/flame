@@ -1076,7 +1076,7 @@ func continuationRunIDs(continuations []Continuation) []string {
 
 func mustCanceledWaitingRun(t *testing.T, record run.Run, reason string, finishedAt time.Time) run.Run {
 	t.Helper()
-	canceled, err := canceledWaitingRun(record, reason, finishedAt)
+	canceled, err := record.CancelWaiting(reason, finishedAt, run.UnknownMessageMark())
 	if err != nil {
 		t.Fatalf("cancel waiting Run: %v", err)
 	}

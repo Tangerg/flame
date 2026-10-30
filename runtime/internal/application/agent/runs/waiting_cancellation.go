@@ -252,11 +252,9 @@ func (w waitingCancellationBuilder) terminalProjection(
 			)
 		}
 		expectedProcesses[member.memberID] = struct{}{}
-		replacement, err := rundomain.Replace(member.run, func(run rundomain.Run) (rundomain.Run, error) {
-			return canceledWaitingRun(run, w.reason, w.finishedAt)
-		})
+		replacement, err := member.run.Replace().CancelWaiting(w.reason, w.finishedAt, rundomain.UnknownMessageMark())
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("runs: cancel waiting Run %q: %w", member.run.ID(), err)
 		}
 		terminalRuns = append(terminalRuns, replacement)
 		canceledRunIDs = append(canceledRunIDs, member.run.ID())
@@ -460,14 +458,6 @@ func (w waitingCancellationBuilder) remainingPending(
 		)
 	}
 	return &reduced, nil
-}
-
-func canceledWaitingRun(run rundomain.Run, reason string, finishedAt time.Time) (rundomain.Run, error) {
-	terminal, err := run.CancelWaiting(reason, finishedAt, rundomain.UnknownMessageMark())
-	if err != nil {
-		return rundomain.Run{}, fmt.Errorf("runs: cancel waiting Run %q: %w", run.ID(), err)
-	}
-	return terminal, nil
 }
 
 type inputRequestKey struct {
