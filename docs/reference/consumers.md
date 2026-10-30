@@ -25,7 +25,7 @@ historical plugin state. Preserve the old deployment and its data separately.
 Rebuild and select new plugin releases after their resource imports or contract identities change; the host does not register former package aliases.
 
 The TypeScript client explicitly exports its main client API, `wire`, `methods`,
-`validation`, `testing` and `testing/samples/*`. Ordinary unit tests and internal
+`validation`, `testing`, `testing/samples/*` and `testing/skill-pages.json`. Ordinary unit tests and internal
 implementation paths are not package APIs. `npm pack` is exercised by independent
 author projects. Exact JSON values are owned by `@qimu/sdk/json`; clients import it
 directly. Raw JSON sample copies are generated from Runtime-owned bytes.
