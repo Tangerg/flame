@@ -40,7 +40,7 @@ func (b *Builder) AdmitComponent(value ClientComponent) error {
 	if value.SettingsIntent != "" && (value.Placement != extension.ComponentPlacementSettingsPane || !value.SettingsIntent.Valid()) {
 		return refuse(DiagnosticInvalidDeclaration, "invalid settings intent for component %q", value.ID)
 	}
-	if value.Title == "" || len(value.Title) > maxPresentationTitleBytes || !utf8.ValidString(value.Title) || !value.Scope.Valid() || !ValidResourcePath(value.Entry) || !strings.HasPrefix(value.Entry, Namespace+"/") || !strings.HasSuffix(value.Entry, ".js") || !componentExport.MatchString(value.Export) {
+	if value.Title == "" || len(value.Title) > MaxPresentationTitleBytes || !utf8.ValidString(value.Title) || !value.Scope.Valid() || !ValidResourcePath(value.Entry) || !strings.HasPrefix(value.Entry, Namespace+"/") || !strings.HasSuffix(value.Entry, ".js") || !componentExport.MatchString(value.Export) {
 		return refuse(DiagnosticInvalidDeclaration, "invalid component %q", value.ID)
 	}
 	switch value.Placement {

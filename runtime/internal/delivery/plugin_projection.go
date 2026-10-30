@@ -110,6 +110,10 @@ func presentPluginRelease(release plugin.Release) (protocol.PluginRelease, error
 	for _, item := range v.Themes {
 		result.Themes = append(result.Themes, presentPluginTheme(item))
 	}
+	result.Locales = make([]protocol.PluginLocale, 0, len(v.Locales))
+	for _, item := range v.Locales {
+		result.Locales = append(result.Locales, protocol.PluginLocale{Tag: item.Tag, Title: item.Title})
+	}
 	result.Skills = make([]protocol.PluginSkill, 0, len(v.Skills))
 
 	for _, item := range v.Skills {

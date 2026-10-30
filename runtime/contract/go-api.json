@@ -360,6 +360,10 @@
               "signature": "func(ctx context.Context, request protocol.OpenPluginResourcesRequest, options protocol.SubscriptionOptions) (*protocol.PluginResourceLease, iter.Seq2[protocol.PluginResourceEvent, error], error)"
             },
             {
+              "name": "ReadPluginLocale",
+              "signature": "func(ctx context.Context, request protocol.ReadPluginLocaleRequest, options protocol.CallOptions) (*protocol.PluginLocaleCatalog, error)"
+            },
+            {
               "name": "ReadPluginResource",
               "signature": "func(ctx context.Context, request protocol.ReadPluginResourceRequest, options protocol.CallOptions) (*protocol.PluginResource, error)"
             },
@@ -5959,7 +5963,7 @@
         {
           "name": "Version",
           "type": "untyped string",
-          "value": "\"2026-10-29.1\""
+          "value": "\"2026-10-30.1\""
         },
         {
           "name": "WorkspaceAvailable",
@@ -10242,6 +10246,33 @@
           ]
         },
         {
+          "name": "PluginLocale",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Tag",
+              "type": "string",
+              "tag": "json:\"tag\""
+            },
+            {
+              "name": "Title",
+              "type": "string",
+              "tag": "json:\"title\""
+            }
+          ]
+        },
+        {
+          "name": "PluginLocaleCatalog",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Messages",
+              "type": "map[string]string",
+              "tag": "json:\"messages\""
+            }
+          ]
+        },
+        {
           "name": "PluginOperationBinding",
           "kind": "struct",
           "fields": [
@@ -10451,6 +10482,11 @@
               "name": "Themes",
               "type": "[]PluginTheme",
               "tag": "json:\"themes\""
+            },
+            {
+              "name": "Locales",
+              "type": "[]PluginLocale",
+              "tag": "json:\"locales\""
             },
             {
               "name": "Skills",
@@ -11015,6 +11051,21 @@
               "name": "MaxBytes",
               "type": "*int",
               "tag": "json:\"maxBytes,omitzero\""
+            }
+          ]
+        },
+        {
+          "name": "ReadPluginLocaleRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "PluginReleaseRequest",
+              "type": "PluginReleaseRequest"
+            },
+            {
+              "name": "Tag",
+              "type": "string",
+              "tag": "json:\"tag\""
             }
           ]
         },
@@ -13944,6 +13995,10 @@
             {
               "name": "OpenPluginResources",
               "signature": "func(ctx context.Context, request protocol.OpenPluginResourcesRequest, options protocol.SubscriptionOptions) (*protocol.PluginResourceLease, iter.Seq2[protocol.PluginResourceEvent, error], error)"
+            },
+            {
+              "name": "ReadPluginLocale",
+              "signature": "func(ctx context.Context, request protocol.ReadPluginLocaleRequest, options protocol.CallOptions) (*protocol.PluginLocaleCatalog, error)"
             },
             {
               "name": "ReadPluginResource",

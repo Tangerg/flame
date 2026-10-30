@@ -44,7 +44,7 @@ import {
 } from "@/features/shell/workbench/index";
 import nativeShell from "@/features/shell/native/index";
 import providerSetup from "@/features/providers/setup/index";
-import { localePlugins } from "@/features/i18n/index";
+import { i18nPlugin } from "@/features/i18n/index";
 import mainRoute from "@/app/routes";
 import { createNavigationBootstrapPlugin } from "@/features/navigation/bootstrap";
 import { messageCopy } from "@/features/chat/message-actions/index";
@@ -109,7 +109,7 @@ export function createBuiltinPlugins(
     defaultTitle,
     defaultAccents,
     ...createAppearancePlugins(theme),
-    ...localePlugins,
+    i18nPlugin,
     mainRoute,
   ];
 

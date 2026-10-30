@@ -33,6 +33,8 @@ import { failureMessage } from "@/lib/diagnostics";
 import { contributePaletteTheme } from "@/features/theme/public/appearance";
 import { retainThemeSelection } from "@/features/theme/public/appearance";
 import { trackContributionIO } from "@/extensions/contributionIO";
+import { reportPluginError } from "@/extensions/errors";
+import { createLocaleReconciler } from "@/features/i18n/public/locales";
 import { type RuntimeConnectionGeneration } from "@/features/connection/public/services";
 import {
   type InstalledPackageState,
@@ -65,8 +67,29 @@ function createPackageReconciler(
     moduleScope,
   );
   const resources = new Map<string, { signature: string; lifetime: ContributionLifetime }>();
+  const reconcileLocales = createLocaleReconciler(scope, (error) =>
+    reportPluginError("flame.builtin.plugins-pane", "setup", error),
+  );
   return async (installations: PluginInstallation[]) => {
     const admitted = installations.filter((item) => item.presentation === "admitted");
+    await reconcileLocales(
+      admitted.flatMap((installation) =>
+        installation.selected.locales.map((locale) => {
+          const request = {
+            installationId: installation.id,
+            digest: installation.selected.digest,
+            tag: locale.tag,
+          };
+          return {
+            key: JSON.stringify([request.installationId, request.digest, request.tag]),
+            tag: locale.tag,
+            title: locale.title,
+            load: async (signal: AbortSignal) =>
+              (await client.plugins.readLocale(request, signal)).messages,
+          };
+        }),
+      ),
+    );
     retainThemeSelection(
       themeAccess.preference,
       admitted.flatMap((item) =>

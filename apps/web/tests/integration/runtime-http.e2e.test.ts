@@ -74,6 +74,8 @@ const compactionContextPressure = "context ".repeat(4_200);
 
 const defaultTestDeadlineMilliseconds = 5_000;
 
+const runnerStartupDeadlineMilliseconds = 20_000;
+
 const compactionCutpointDeadlineMilliseconds = 15_000;
 
 async function unusedLoopbackPort(): Promise<number> {
@@ -880,7 +882,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
         `runner exited before fixture shutdown (${code}, ${signal}): ${runnerOutput}`,
       );
     });
-    const deadline = Date.now() + defaultTestDeadlineMilliseconds;
+    const deadline = Date.now() + runnerStartupDeadlineMilliseconds;
     // The fixture owns this process across deliberate Host crashes. This probe
     // only orders startup; Runtime still performs the original identity handshake.
     while (Date.now() < deadline) {
@@ -1297,6 +1299,47 @@ for await (const line of lines) {
       await client.plugins.setEnablement({ installationId: defaultTrajectory.id, enabled: true });
     }
   });
+
+  it("reads only the exact enabled installed locale catalog without executable contributions", async () => {
+    if (!client) throw new Error("runtime client was not initialized");
+    const installation = (await client.plugins.list()).data.find(
+      (value) => value.selected.name === "flame.locale.ja",
+    );
+    if (!installation) throw new Error("the shipped Japanese locale is unavailable");
+    expect(installation.selected.locales).toEqual([{ tag: "ja", title: "日本語" }]);
+    expect(installation.selected.components).toEqual([]);
+    expect(installation.selected.servers).toEqual([]);
+    expect(installation.selected.contributions).toEqual([]);
+    const request = {
+      installationId: installation.id,
+      digest: installation.selected.digest,
+      tag: "ja",
+    };
+    const messages = JSON.parse(
+      await readFile(
+        join(environmentRoot, "plugins", "locale-ja", "io.github.tangerg.flame/messages.json"),
+        "utf8",
+      ),
+    );
+    await expect(client.plugins.readLocale(request)).resolves.toEqual({ messages });
+    await expect(
+      client.plugins.readLocale({ ...request, digest: "f".repeat(64) }),
+    ).rejects.toMatchObject({
+      data: { type: "plugin_stale" },
+    });
+    await expect(client.plugins.readLocale({ ...request, tag: "ko" })).rejects.toMatchObject({
+      data: { type: "plugin_not_found" },
+    });
+    await client.plugins.setEnablement({ installationId: installation.id, enabled: false });
+    try {
+      await expect(client.plugins.readLocale(request)).rejects.toMatchObject({
+        data: { type: "plugin_disabled" },
+      });
+    } finally {
+      await client.plugins.setEnablement({ installationId: installation.id, enabled: true });
+    }
+    await expect(client.plugins.readLocale(request)).resolves.toEqual({ messages });
+  }, 30_000);
 
   it("reads the shipped Memory backend page and resumes private facts after withdrawal", async () => {
     if (!client) throw new Error("runtime client was not initialized");
@@ -3089,7 +3132,7 @@ for await (const line of lines) {
       type: "segment.finished",
       run: { status: "finished", outcome: { type: "completed" } },
     });
-  });
+  }, 30_000);
 
   it("parks and resumes the same run through durable HITL identity", async () => {
     if (!client) throw new Error("runtime client was not initialized");

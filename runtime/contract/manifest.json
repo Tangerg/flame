@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-29.1",
+  "protocolVersion": "2026-10-30.1",
   "features": [
     "reasoning",
     "multimodal",
@@ -1036,6 +1036,27 @@
       ]
     },
     {
+      "goName": "ReadPluginLocale",
+      "name": "plugins.readLocale",
+      "kind": "unary",
+      "operation": "query",
+      "idempotency": "none",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_not_found",
+        "plugin_in_use",
+        "plugin_disabled",
+        "plugin_stale",
+        "plugin_command_retired",
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "plugins"
+      ]
+    },
+    {
       "goName": "ResolvePluginPoint",
       "name": "plugins.resolvePoint",
       "kind": "unary",
@@ -1802,6 +1823,7 @@
           "plugins.notifyChange",
           "plugins.openBrowserRealm",
           "plugins.openResources",
+          "plugins.readLocale",
           "plugins.readResource",
           "plugins.resolveComposition",
           "plugins.resolvePoint",
@@ -1996,6 +2018,7 @@
           "plugins.listProviders",
           "plugins.openBrowserRealm",
           "plugins.openResources",
+          "plugins.readLocale",
           "plugins.readResource",
           "plugins.resolveComposition",
           "plugins.resolvePoint",
@@ -2026,6 +2049,7 @@
           "plugins.listProviders",
           "plugins.openBrowserRealm",
           "plugins.openResources",
+          "plugins.readLocale",
           "plugins.readResource",
           "plugins.resolveComposition",
           "plugins.resolvePoint",
@@ -2056,6 +2080,7 @@
           "plugins.listProviders",
           "plugins.openBrowserRealm",
           "plugins.openResources",
+          "plugins.readLocale",
           "plugins.readResource",
           "plugins.resolveComposition",
           "plugins.resolvePoint",
@@ -2086,6 +2111,7 @@
           "plugins.listProviders",
           "plugins.openBrowserRealm",
           "plugins.openResources",
+          "plugins.readLocale",
           "plugins.readResource",
           "plugins.resolveComposition",
           "plugins.resolvePoint",
@@ -2121,6 +2147,7 @@
           "plugins.listProviders",
           "plugins.openBrowserRealm",
           "plugins.openResources",
+          "plugins.readLocale",
           "plugins.readResource",
           "plugins.resolveComposition",
           "plugins.resolvePoint",
@@ -2163,6 +2190,7 @@
           "plugins.listProviders",
           "plugins.openBrowserRealm",
           "plugins.openResources",
+          "plugins.readLocale",
           "plugins.readResource",
           "plugins.resolveComposition",
           "plugins.resolvePoint",
@@ -2914,6 +2942,16 @@
     },
     {
       "method": "plugins.readResource",
+      "rules": [
+        {
+          "requires": [
+            "plugins"
+          ]
+        }
+      ]
+    },
+    {
+      "method": "plugins.readLocale",
       "rules": [
         {
           "requires": [
@@ -9304,6 +9342,40 @@
         {
           "field": "componentId",
           "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
+        }
+      ]
+    },
+    {
+      "type": "ReadPluginLocaleRequest",
+      "rules": [
+        {
+          "field": "tag",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "tag",
+          "constraint": "maxLength(128)"
+        }
+      ]
+    },
+    {
+      "type": "PluginLocale",
+      "rules": [
+        {
+          "field": "tag",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "tag",
+          "constraint": "maxLength(128)"
+        },
+        {
+          "field": "title",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "title",
+          "constraint": "maxLength(128)"
         }
       ]
     },

@@ -14,6 +14,43 @@ import (
 
 type resourceCallerKey struct{}
 
+type localePluginOwner struct {
+	pluginUseCases
+	request protocol.ReadPluginLocaleRequest
+	failure error
+}
+
+func (p *localePluginOwner) Locale(_ context.Context, id identity.InstallationID, digest identity.Digest, tag string) (map[string]string, error) {
+	p.request = protocol.ReadPluginLocaleRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: id.String(), Digest: digest.String()}, Tag: tag}
+	return map[string]string{"common.loading": "読込中"}, p.failure
+}
+
+func TestLocaleQueryPreservesExactSourceAndFailure(t *testing.T) {
+	owner := &localePluginOwner{}
+	handler := &Handler{plugins: owner, features: featureAvailability{plugins: true}}
+	endpoint := mustNewEndpoint(t, handler, EndpointConfig{})
+	request := protocol.ReadPluginLocaleRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("locale").String()}, Tag: "ja"}
+	result := endpoint.Invoke(t.Context(), PluginsReadLocale, request, Options{})
+	if result.Failure != nil {
+		t.Fatal(result.Failure)
+	}
+	value, ok := result.ValueAs[*protocol.PluginLocaleCatalog]()
+	if !ok || value.Messages["common.loading"] != "読込中" || owner.request != request {
+		t.Fatalf("locale result=%+v, request=%+v", value, owner.request)
+	}
+	for _, test := range []struct{ cause, want error }{
+		{plugin.ErrDisabled, protocol.ErrPluginDisabled},
+		{plugin.ErrStale, protocol.ErrPluginStale},
+		{plugin.ErrNotFound, protocol.ErrPluginNotFound},
+	} {
+		owner.failure = test.cause
+		result := endpoint.Invoke(t.Context(), PluginsReadLocale, request, Options{})
+		if !errors.Is(result.Failure, test.want) {
+			t.Fatalf("locale failure=%v, want %v", result.Failure, test.want)
+		}
+	}
+}
+
 type resourcePluginOwner struct {
 	pluginUseCases
 	disabled bool

@@ -1,4 +1,4 @@
-export const zhTW: Record<string, string> = {
+{
   "packages.installTitle": "安裝外掛",
   "packages.installedTitle": "已安裝的外掛",
   "packages.refreshError.title": "無法重新整理已安裝的外掛",
@@ -8,14 +8,12 @@ export const zhTW: Record<string, string> = {
   "packages.actions": "外掛操作",
   "packages.digest": "發佈版本摘要",
   "plugins.loadedTitle": "用戶端已載入的外掛",
-
   "packages.module.loading": "正在載入插件頁面…",
   "packages.module.failed": "無法載入或顯示插件頁面。",
   "packages.module.unavailable": "插件目前無法使用。",
   "packages.module.reload": "重新載入視窗",
   "packages.module.resolvingWorkspace": "正在解析目前工作區…",
   "packages.module.selectWorkspace": "請選擇包含工作區的 Session 來查看此頁面。",
-
   "packages.providers.title": "提供者選擇",
   "packages.providers.refresh": "重新整理選擇",
   "packages.providers.future": "選擇用於後續啟用；既有執行保留已綁定的提供者。",
@@ -32,8 +30,7 @@ export const zhTW: Record<string, string> = {
   "packages.providers.reconcile": "核對原始結果",
   "packages.commands.title": "待確認的插件命令",
   "packages.commands.refresh": "重新整理命令",
-  "packages.commands.explanation":
-    "插件頁面無法使用時，仍可核對原始結果。新提供者不能取代原命令的擁有者。",
+  "packages.commands.explanation": "插件頁面無法使用時，仍可核對原始結果。新提供者不能取代原命令的擁有者。",
   "packages.commands.none": "沒有待確認的插件命令。",
   "packages.commands.retire": "退役尚未派發的命令",
   "packages.commands.retired": "原命令已在派發前退役：{{id}}",
@@ -51,21 +48,17 @@ export const zhTW: Record<string, string> = {
   "packages.points.order": "明確貢獻順序（JSON 陣列）",
   "packages.points.lastInspected": "上次檢查的目標、順序與貢獻值",
   "packages.points.failed": "無法檢查此擴充點。",
-
   "packages.requirements.title": "相依項目",
   "packages.requirements.inspect": "查看綁定",
-  "packages.requirements.future":
-    "可讀取目前宣告的綁定；這裡顯示上次查看的快照，既有執行保留受理時的綁定。",
+  "packages.requirements.future": "可讀取目前宣告的綁定；這裡顯示上次查看的快照，既有執行保留受理時的綁定。",
   "packages.requirements.optional": "選用",
   "packages.requirements.required": "必要",
   "packages.requirements.absent": "選用相依項目目前為空。",
   "packages.requirements.unread": "尚未讀取綁定。",
   "packages.requirements.failed": "無法讀取相依項目綁定。",
-
   "common.clearSearch": "清除搜尋",
   "common.cancel": "取消",
   "common.close": "關閉",
-
   "approval.what.command": "執行命令",
   "approval.what.fileEdit": "套用檔案變更",
   "approval.what.search": "執行搜尋",
@@ -102,7 +95,6 @@ export const zhTW: Record<string, string> = {
   "sidebar.action.newSession": "新會話",
   "sidebar.action.tools": "工具與外掛",
   "sidebar.action.settings": "設定",
-
   "composer.input.label": "訊息輸入框",
   "composer.placeholder": "描述你要做的事，@ 引用檔案或符號",
   "composer.switchModel": "切換模型",
@@ -130,12 +122,10 @@ export const zhTW: Record<string, string> = {
   "composer.paste.remove": "移除貼上的文字",
   "composer.mention.heading": "檔案",
   "composer.slash.heading": "命令",
-
   "chat.notices": "對話通知",
   "chat.error.title": "顯示錯誤",
   "chat.error.retry": "重試",
   "chat.jumpToBottom": "跳到底部",
-
   "dock.action.browse": "瀏覽面板",
   "dock.catalog.title": "開啟一個面板",
   "dock.picker.placeholder": "尋找面板…",
@@ -150,7 +140,7 @@ export const zhTW: Record<string, string> = {
   "dock.tabs.moveRight": "向右移動面板",
   "workspace.view.openBeside": "在內容面板中開啟",
   "workspace.view.unavailable.title": "檢視不可用",
-  "workspace.view.unavailable.body": '未註冊 "{{id}}" 檢視。請關閉此分頁或重新啟用其外掛。',
+  "workspace.view.unavailable.body": "未註冊 \"{{id}}\" 檢視。請關閉此分頁或重新啟用其外掛。",
   "message.markdown.footnotes": "註腳",
   "message.markdown.backReference": "返回引用 {{reference}}",
   "message.image.view": "檢視附帶的圖片",
@@ -183,7 +173,6 @@ export const zhTW: Record<string, string> = {
   "message.table.preview": "表格預覽",
   "message.table.closePreview": "關閉表格預覽",
   "message.math.expression": "數學公式",
-
   "msgActions.copy": "複製訊息",
   "msgActions.copyMarkdown": "複製 Markdown",
   "msgActions.copyMarkdownHint": "保留標題 / 程式碼圍欄",
@@ -210,7 +199,6 @@ export const zhTW: Record<string, string> = {
   "plan.step.done": "已完成",
   "plan.step.active": "進行中",
   "plan.step.pending": "待處理",
-
   "goal.summary.active": "進行中的目標",
   "goal.summary.paused": "目標已暫停",
   "goal.summary.blocked": "目標停滯",
@@ -277,7 +265,6 @@ export const zhTW: Record<string, string> = {
   "runtime.unsupported.sub": "已連線的執行環境尚未提供此功能。",
   "dataView.error.title": "載入失敗",
   "dataView.error.sub": "執行時未回應此請求。請檢查連線後重試。",
-
   "welcome.title": "今天想建立什麼？",
   "welcome.projectTitle": "想在 <projectSelect>{{project}}</projectSelect> 中建立什麼？",
   "composer.project.choose": "選擇專案",
@@ -287,7 +274,6 @@ export const zhTW: Record<string, string> = {
   "providers.setup.title": "接入一個模型 provider",
   "providers.setup.sub": "設定模型 provider 即可開始對話 —— 是否需要驗證由 provider 自身決定。",
   "providers.setup.action": "前往設定 provider",
-
   "settings.title": "設定",
   "settings.searchPlaceholder": "搜尋設定…",
   "settings.pane.appearance": "外觀",
@@ -311,7 +297,6 @@ export const zhTW: Record<string, string> = {
   "approvals.clearAll": "全部清除",
   "approvals.allow": "允許",
   "approvals.deny": "拒絕",
-
   "approvals.subject.all": "所有參數",
   "approvals.subject.exact": "精確比對",
   "approvals.subject.glob": "萬用字元比對",
@@ -323,7 +308,6 @@ export const zhTW: Record<string, string> = {
   "approvals.error.loadMode": "無法載入核准模式",
   "approvals.error.mode": "無法變更核准模式。",
   "approvals.error.forget": "無法清除該決定。",
-
   "plugins.errorDetail.show": "顯示錯誤詳情",
   "plugins.errorDetail.hide": "隱藏錯誤詳情",
   "plugins.errors_other": "{{count}} 個錯誤",
@@ -338,7 +322,6 @@ export const zhTW: Record<string, string> = {
   "plugins.errorSource.events": "事件處理",
   "plugins.errorSource.command": "命令",
   "plugins.errorSource.other": "其他",
-
   "connection.error.invalidUrl": "無效的 URL",
   "shape.radius.aria": "圓角",
   "shape.motion.aria": "動畫速度",
@@ -347,7 +330,6 @@ export const zhTW: Record<string, string> = {
   "shape.opt.off": "關閉",
   "shape.opt.fast": "快",
   "shape.opt.slow": "慢",
-
   "workspace.view.title.file": "檔案",
   "contextDock.group.workspace": "工作區",
   "contextDock.group.run": "執行",
@@ -392,7 +374,6 @@ export const zhTW: Record<string, string> = {
   "settings.completionSound": "完成提示音",
   "settings.completionSound.sub": "當應用程式在背景時,執行結束時播放提示音。",
   "settings.language.label": "語言",
-
   "settings.pane.connection": "連線",
   "settings.connection.title": "後端",
   "settings.connection.sub": "Flame Runtime 的位址。套用後桌面端將切換連線。",
@@ -435,7 +416,6 @@ export const zhTW: Record<string, string> = {
   "settings.connection.status.server": "服務",
   "settings.connection.status.protocol": "協定",
   "settings.connection.status.checks": "異常檢查",
-
   "approval.settled.approved": "已核可",
   "approval.settled.declined": "已拒絕",
   "approval.identity.permission": "請求權限",
@@ -460,34 +440,25 @@ export const zhTW: Record<string, string> = {
   "question.settled.noAnswer": "未提供答案",
   "question.settled.dismissed": "未作答即關閉",
   "question.freetext.placeholder": "輸入自訂答案…",
-
   "cwdMissing.title": "工作目錄遺失",
-  "cwdMissing.body":
-    "該資料夾已從磁碟消失——在還原或重新定位工作階段之前，agent 將以純聊天模式運作。",
+  "cwdMissing.body": "該資料夾已從磁碟消失——在還原或重新定位工作階段之前，agent 將以純聊天模式運作。",
   "cwdMissing.action.relocate": "重新定位…",
   "cwdMissing.action.apply": "套用",
   "cwdMissing.action.cancel": "取消",
   "cwdMissing.placeholder": "新的絕對路徑",
-
   "runError.unknown": "執行失敗。",
   "runError.title": "Agent 錯誤",
   "runError.action.retryIn": "{{seconds}} 秒後可重試",
   "runError.action.context": "檢視上下文",
   "runError.action.diagnostics": "診斷",
   "runError.action.dismiss": "關閉",
-
   "session.status.pinned": "已置頂",
   "session.status.running": "執行中",
-
   "session.identity.copyCwd": "複製工作目錄",
-
   "session.identity.copiedCwd": "已複製工作目錄",
-
   "session.identity.copyId": "複製工作階段 ID",
-
   "session.identity.copiedId": "已複製工作階段 ID",
   "session.status.waiting": "等待輸入",
-
   "agent.runTree.delegated.one": "子代理",
   "subagents.title": "子代理",
   "subagents.active": "進行中",
@@ -514,12 +485,10 @@ export const zhTW: Record<string, string> = {
   "agent.steps_other": "{{count}} 步",
   "agent.runTree.action.cancel": "取消此次執行",
   "agent.runTree.material.empty": "尚無敘事內容",
-
   "notifications.title": "通知",
   "notifications.clearAll": "全部清除",
   "notifications.dismiss": "忽略",
   "notifications.empty.title": "尚無通知",
-
   "tools.family.shell": "Shell",
   "tools.family.files": "檔案",
   "tools.family.search": "搜尋",
@@ -530,27 +499,21 @@ export const zhTW: Record<string, string> = {
   "tools.family.recall": "回溯",
   "tools.family.schedules": "排程",
   "tools.family.goals": "目標",
-
   "toolAction.copyArguments": "複製參數",
   "toolAction.failed": "無法完成「{{action}}」。",
   "toolAction.argumentsCopied": "參數已複製",
   "toolAction.copyFailed": "無法複製參數。請展開工具，從「{{section}}」中複製。",
   "approval.fallbackText": "核准此操作？",
-
-  "shortcuts.sub":
-    "由內建和使用者外掛註冊的每一個按鍵繫結。在應用中任意位置按下組合鍵即可觸發；繫結衝突始終以最後一次註冊為準。",
+  "shortcuts.sub": "由內建和使用者外掛註冊的每一個按鍵繫結。在應用中任意位置按下組合鍵即可觸發；繫結衝突始終以最後一次註冊為準。",
   "shortcuts.filter": "按操作或組合鍵篩選…",
   "shortcuts.filterAria": "篩選快速鍵",
   "shortcuts.empty": "無符合的快速鍵",
-
   "agentSource.rpc": "執行時協定 (JSON-RPC)",
   "narrative.rail.turns": "你的提問",
   "role.user": "你",
   "role.assistant": "助手",
   "role.system": "系統",
-
   "composer.removeImage": "移除圖片",
-
   "diff.fileCount_other": "{{count}} 個檔案",
   "file.lines_other": "{{count}} 行",
   "file.truncated": "已截斷",
@@ -564,7 +527,6 @@ export const zhTW: Record<string, string> = {
   "file.readRefreshError.sub": "目前顯示上次載入的內容。",
   "file.error.title": "無法開啟檔案",
   "file.error.sub": "它可能已移動，或位於工作區之外。",
-
   "compaction.compacted": "已自動壓縮上下文",
   "projects.showMore": "顯示另外 {{count}} 條",
   "projects.showLess": "收合",
@@ -621,13 +583,11 @@ export const zhTW: Record<string, string> = {
   "commandMenu.empty.title": "沒有相符的命令",
   "commandMenu.empty.sub": "試試名稱的一部分。",
   "command.showShortcuts": "鍵盤快速鍵",
-
   "reasoning.thinking": "思考中",
   "reasoning.thought": "思考",
   "reasoning.thoughtFor": "思考了 {{duration}}",
   "reasoning.interrupted": "已中斷",
   "reasoning.text": "思考內容",
-
   "composer.placeholder.steer": "傳送訊息以引導進行中的回合…",
   "composer.action.steer": "引導進行中的回合",
   "composer.drop.images": "拖入圖片以附加",
@@ -656,18 +616,14 @@ export const zhTW: Record<string, string> = {
   "approvals.gate.prompt": "先詢問",
   "approvals.gate.deny": "拒絕",
   "approvals.gate.entry": "{{toolClass}}：{{gate}}",
-
   "settings.theme.system": "系統",
-
   "rpcError.session_has_active_run": "該工作階段已有一個進行中的執行 —— 請先介入、回應或取消它。",
   "runError.activeRun.running": "該工作階段已有進行中的執行——請介入它或取消它。",
   "runError.activeRun.waiting": "該工作階段有一個執行在等你回覆——請回答它或取消它。",
-
   "rpcError.run_not_root": "該 run 屬於某個更大的 run —— 請改用其根 run。",
   "rpcError.run_waiting": "該 run 正在等待回應 —— 請先回應它。",
   "rpcError.run_finished": "該 run 已經結束。",
   "rpcError.stale_segment": "該 run 已經繼續往下走了 —— 請重新載入查看目前進度。",
-
   "rpcError.session_busy": "工作階段正忙 —— 請等目前的執行結束。",
   "rpcError.checkpoint_unavailable": "該輪沒有檔案檢查點 —— 未變更任何檔案。",
   "rpcError.checkpoint_conflict": "為保護未存入檢查點的檔案，已拒絕還原。未變更任何檔案。",
@@ -685,13 +641,10 @@ export const zhTW: Record<string, string> = {
   "rpcError.tool_failed": "工具執行失敗——在時間軸裡查看它回報了什麼。",
   "rpcError.tool_canceled": "工具呼叫在完成前被取消。",
   "rpcError.child_run_canceled": "一個委派的執行被取消。",
-  "rpcError.idempotency_in_progress":
-    "這條命令的結果仍待核對。請先檢查會話，不要重新傳送同一操作；新請求可能重複執行已經完成的動作。",
+  "rpcError.idempotency_in_progress": "這條命令的結果仍待核對。請先檢查會話，不要重新傳送同一操作；新請求可能重複執行已經完成的動作。",
   "rpcError.internal_error": "執行階段內部出錯 —— 重試一次，若反覆出現請看診斷。",
   "rpcError.run_lost": "這次執行的程序已消失 —— 它在結果寫入前就結束了。重新發起一次。",
-
   "rpcError.mcp_authorization_attempt_not_found": "這次登入嘗試已過期，請重新開始。",
-
   "rpcError.skill_not_found": "該技能已不在程式庫中。",
   "rpcError.skill_unavailable": "該技能的文件無法讀取——請檢查它指向的檔案。",
   "rpcError.revision_conflict": "已有他人先一步變更——請重新載入後再試。",
@@ -705,8 +658,7 @@ export const zhTW: Record<string, string> = {
   "rpcError.plugin_changed": "準備執行時外掛程式已變更，尚未啟動任何內容。請重新送出以重試。",
   "rpcError.capability_not_negotiated": "已連線的執行環境不提供此功能。",
   "rpcError.export_too_large": "此對話過大，無法匯出為單一軌跡。",
-  "rpcError.invalid_protocol_version":
-    "此執行環境使用不同的通訊協定版本——請更新 Flame 或執行環境。",
+  "rpcError.invalid_protocol_version": "此執行環境使用不同的通訊協定版本——請更新 Flame 或執行環境。",
   "rpcError.mcp_owned_by_installation": "此伺服器由外掛程式提供——請透過外掛程式修改。",
   "rpcError.plugin_in_use": "仍有對話依賴此外掛程式——請在不再使用後重試。",
   "rpcError.plugin_not_found": "該外掛程式已不再安裝。",
@@ -832,7 +784,6 @@ export const zhTW: Record<string, string> = {
   "tool.group.write": "寫入 {{count}}",
   "tool.group.run": "執行 {{count}}",
   "tool.group.fetch": "連網 {{count}}",
-
   "duration.seconds": "{{sec}} 秒",
   "duration.minutes": "{{min}} 分 {{sec}} 秒",
   "duration.hours": "{{hr}} 小時 {{min}} 分",
@@ -852,11 +803,9 @@ export const zhTW: Record<string, string> = {
   "startup.failed.copied": "已複製",
   "plugins.renderFailed.details": "詳情",
   "settings.notifications": "系統通知",
-  "settings.notifications.authorization.granted":
-    "Flame 在背景時，執行完成、失敗或需要你處理時會顯示通知。",
+  "settings.notifications.authorization.granted": "Flame 在背景時，執行完成、失敗或需要你處理時會顯示通知。",
   "settings.notifications.authorization.default": "Flame 會在第一次需要通知你時請求權限。",
-  "settings.notifications.authorization.denied":
-    "已被系統阻擋。請在「系統設定 › 通知」中允許 Flame 後再開啟。",
+  "settings.notifications.authorization.denied": "已被系統阻擋。請在「系統設定 › 通知」中允許 Flame 後再開啟。",
   "settings.notifications.authorization.unsupported": "此平台不支援系統通知。",
   "notify.finished.title": "{{product}} 已完成",
   "notify.finished.body": "代理已完成本輪任務。",
@@ -920,21 +869,16 @@ export const zhTW: Record<string, string> = {
   "model.effort.max": "最高",
   "file.unsupported.image": "這裡暫時無法預覽圖片",
   "file.unsupported.binary": "這不是文字檔",
-  "file.unsupported.sub":
-    "Flame 以文字方式顯示工作區檔案。可以用預設 App 開啟，或在 Finder 中查看。",
+  "file.unsupported.sub": "Flame 以文字方式顯示工作區檔案。可以用預設 App 開啟，或在 Finder 中查看。",
   "file.open": "打開",
   "file.change.add": "工作樹中新增",
   "file.change.mod": "工作樹中已修改",
   "file.change.del": "工作樹中已刪除",
   "file.change.renamed": "重新命名自 {{path}}",
   "file.change.below": "包含工作樹變更",
-
   "packages.module.selectSession": "選擇一個工作階段來查看此頁面。",
-
   "packages.loading": "正在載入…",
-
-  "packages.trust":
-    "核准版本表示信任其確切程式碼。本機程式以你的作業系統權限執行。請先檢查來源、摘要和輸入。選擇其他版本需要重新核准。",
+  "packages.trust": "核准版本表示信任其確切程式碼。本機程式以你的作業系統權限執行。請先檢查來源、摘要和輸入。選擇其他版本需要重新核准。",
   "packages.source": "Runtime 上的外掛目錄或 ZIP 絕對路徑",
   "packages.install": "安裝",
   "packages.empty": "尚未安裝 Runtime 外掛",
@@ -975,5 +919,5 @@ export const zhTW: Record<string, string> = {
   "packages.realizationFailed": "此視窗無法載入外掛主題：{{reason}}",
   "packages.reviewedField": "「{{field}}」屬於已審閱的版本，無法在此修改。",
   "composer.models.error": "無法載入模型。",
-  "composer.models.refresh": "重新整理模型清單",
-};
+  "composer.models.refresh": "重新整理模型清單"
+}

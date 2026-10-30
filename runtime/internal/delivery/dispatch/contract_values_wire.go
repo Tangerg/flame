@@ -992,6 +992,13 @@ func registerPluginValues(s *Shapes) {
 		{Field: "material", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
 	}})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.OpenPluginResourcesRequest](), Constraints: []FieldConstraint{{Field: "componentId", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern}}})
+	for _, shape := range []reflect.Type{typeOf[protocol.ReadPluginLocaleRequest](), typeOf[protocol.PluginLocale]()} {
+		constraints := []FieldConstraint{{Field: "tag", Kind: ConstraintNonEmpty}, {Field: "tag", Kind: ConstraintMaxLength, Limit: plugin.MaxLocaleTagBytes}}
+		if shape == typeOf[protocol.PluginLocale]() {
+			constraints = append(constraints, FieldConstraint{Field: "title", Kind: ConstraintNonEmpty}, FieldConstraint{Field: "title", Kind: ConstraintMaxLength, Limit: plugin.MaxPresentationTitleBytes})
+		}
+		s.valueConstraint(FieldConstraintSpec{GoType: shape, Constraints: constraints})
+	}
 	for _, shape := range []reflect.Type{typeOf[protocol.PluginPoint](), typeOf[protocol.PluginPointValue](), typeOf[protocol.ResolvePluginPointRequest]()} {
 		constraints := []FieldConstraint{{Field: "contract", Kind: ConstraintNonEmpty}}
 		if shape != typeOf[protocol.ResolvePluginPointRequest]() {

@@ -75,6 +75,7 @@ function installation(name: string, digest = "a".repeat(64)): PluginInstallation
       servers: [],
       inputs: [],
       skills: [],
+      locales: [],
       themes: [],
       diagnostics: [],
       components: [

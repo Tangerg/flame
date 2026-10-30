@@ -68,6 +68,11 @@ type wireTheme struct {
 	Scheme string          `json:"scheme"`
 	Colors wireThemeColors `json:"colors"`
 }
+type wireLocale struct {
+	Tag   string `json:"tag"`
+	Title string `json:"title"`
+	Entry string `json:"entry"`
+}
 type wireRendererSelector struct {
 	Type extension.RendererSelectorKind `json:"type"`
 	Name string                         `json:"name"`
@@ -110,4 +115,4 @@ func (v wireTheme) domain() (plugin.Theme, error) {
 }
 
 var declarationFields = []string{"protocol", "managedBackends", "inputs", "contributions", "contributes", "points", "pointValues", "components"}
-var presentationFields = []string{"themes"}
+var presentationFields = []string{"themes", "locales"}

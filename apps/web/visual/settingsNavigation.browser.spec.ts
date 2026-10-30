@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "./test";
-import { de } from "@/lib/i18n/locales/de";
+import de from "../../../plugins/locale-de/package/io.github.tangerg.flame/messages.json" with { type: "json" };
 import { en } from "@/lib/i18n/locales/en";
 import providersDeclaration from "../../../plugins/providers/package/io.github.tangerg.flame/declaration.json" with { type: "json" };
 const providerTitle = providersDeclaration.components[0]!.title;

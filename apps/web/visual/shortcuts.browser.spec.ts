@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "./test";
-import { de } from "@/lib/i18n/locales/de";
+import de from "../../../plugins/locale-de/package/io.github.tangerg.flame/messages.json" with { type: "json" };
 import { en } from "@/lib/i18n/locales/en";
 async function openShortcuts(page: Page, { width = 1120, theme = "light", locale = "en" } = {}) {
   await page.setViewportSize({ width, height: 900 });

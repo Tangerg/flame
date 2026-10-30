@@ -1,0 +1,12 @@
+{
+  "protocol": "io.github.tangerg.flame/plugin/1",
+  "contributes": {
+    "locales": [
+      {
+        "tag": "ja",
+        "title": "日本語",
+        "entry": "io.github.tangerg.flame/messages.json"
+      }
+    ]
+  }
+}

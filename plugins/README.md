@@ -6,6 +6,8 @@ File watch, Code intelligence, Remote agents, Skill learning, Model providers an
 backends. Memory, Schedules, Saved usage reports, Generated interfaces, Deliverables,
 Computer use, Skills, Model providers and Hooks expose ordinary public components.
 Brand, icon gallery, MCP settings and the presentation packages are client-only.
+The `locale-*` content packages supply optional workbench translations without
+executing component or backend code. English remains the Host's base language.
 MCP model Tools and human Runtime commands
 enter the same existing backend owners. A component does not create a second store.
 

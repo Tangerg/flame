@@ -23,6 +23,7 @@ type pluginUseCases interface {
 	Uninstall(context.Context, identity.InstallationID) error
 	Component(context.Context, identity.InstallationID, identity.Digest, plugin.ContributionID) (plugin.ClientComponent, error)
 	Resource(context.Context, identity.InstallationID, identity.Digest, plugin.ContributionID, string) ([]byte, error)
+	Locale(context.Context, identity.InstallationID, identity.Digest, string) (map[string]string, error)
 }
 
 type selectionUseCases interface {

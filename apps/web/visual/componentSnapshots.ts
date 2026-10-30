@@ -210,6 +210,7 @@ export const VISUAL_PACKAGES: PluginInstallation[] = (
       servers: [{ type: "stdio", name: server, command: `/visual/bin/${server}` }],
       inputs: [],
       skills: [],
+      locales: [],
       themes: [],
       diagnostics: [],
     },

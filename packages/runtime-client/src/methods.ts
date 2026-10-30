@@ -14,6 +14,8 @@ import type {
   OpenPluginResourcesRequest,
   PluginResourceLease,
   ReadPluginResourceRequest,
+  ReadPluginLocaleRequest,
+  PluginLocaleCatalog,
   PluginResource,
   CallPluginRequest,
   PluginCommandRequest,
@@ -413,6 +415,10 @@ export interface Methods {
       request: ReadPluginResourceRequest,
       signal?: AbortSignal,
     ) => Promise<PluginResource>;
+    readLocale: (
+      request: ReadPluginLocaleRequest,
+      signal?: AbortSignal,
+    ) => Promise<PluginLocaleCatalog>;
     resolvePoint: (
       request: ResolvePluginPointRequest,
       signal?: AbortSignal,
@@ -908,6 +914,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       selectProvider: (request, signal) => call("plugins.selectProvider", request, { signal }),
       openResources: (request, signal) => openResourceLease(client, call, request, signal),
       readResource: (request, signal) => call("plugins.readResource", request, { signal }),
+      readLocale: (request, signal) => call("plugins.readLocale", request, { signal }),
       resolvePoint: (request, signal) => call("plugins.resolvePoint", request, { signal }),
       resolveRequirements: (request, signal) =>
         call("plugins.resolveRequirements", request, { signal }),

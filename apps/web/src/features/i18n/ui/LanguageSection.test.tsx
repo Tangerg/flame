@@ -10,7 +10,8 @@ import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react
 import { afterEach, expect, it, vi } from "vitest";
 import { activeLocale, setLocale, useT } from "@/lib/i18n/index";
 import { en } from "@/lib/i18n/locales/en";
-import { defineLocale } from "@/features/i18n/defineLocale";
+import { contributeLocale } from "@/features/i18n/public/locales";
+import { i18nPlugin } from "@/features/i18n/index";
 import { definePlugin } from "@/extensions/definePlugin";
 import { LOCALE } from "@/features/i18n/public/extensionPoints";
 import { loadPluginsForTest } from "@/test/kernel";
@@ -18,6 +19,29 @@ import { LanguageSection } from "@/features/i18n/public/LanguageSection";
 afterEach(() => {
   cleanup();
   setLocale("en");
+});
+
+it("retries an initially failed saved language by choosing its current entry", async () => {
+  const load = vi
+    .fn()
+    .mockRejectedValueOnce(new Error("initial catalog read failed"))
+    .mockResolvedValue({ "locale.initial-retry": "recovered" });
+  setLocale("retry-locale");
+  await loadPluginsForTest(
+    i18nPlugin,
+    definePlugin({
+      name: "test.saved-language",
+      setup(scope) {
+        contributeLocale(scope, { id: "retry-locale", label: "Saved language", load });
+      },
+    }),
+  );
+  await waitFor(() => expect(load).toHaveBeenCalledOnce());
+  testClient.render(<LanguageSection />);
+  fireEvent.click(screen.getByRole("button", { name: "Language" }));
+  fireEvent.click(await screen.findByRole("menuitemradio", { name: "Saved language" }));
+  await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+  expect(activeLocale()).toBe("retry-locale");
 });
 
 it("does not label an unavailable preference as another registered locale", async () => {
@@ -71,8 +95,13 @@ function ReadingContext() {
 
 async function failDictionary(load: () => Promise<Record<string, string>>) {
   await loadPluginsForTest(
-    defineLocale({ id: "en", label: "English" }),
-    defineLocale({ id: recoveryLocale, label: "Recovery language", load }),
+    i18nPlugin,
+    definePlugin({
+      name: "test.locale-recovery",
+      setup(scope) {
+        contributeLocale(scope, { id: recoveryLocale, label: "Recovery language", load });
+      },
+    }),
   );
   testClient.render(
     <>

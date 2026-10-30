@@ -37,7 +37,6 @@ require (
 	golang.org/x/mod v0.42.0 // indirect
 	golang.org/x/net v0.61.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
-	golang.org/x/text v0.43.0 // indirect
 	golang.org/x/time v0.16.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	modernc.org/libc v1.79.0 // indirect
@@ -46,7 +45,7 @@ require (
 )
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.plugin-boundaries.12
+	github.com/Tangerg/flame/packages/go-sdk v0.1.0-quality.20261030.plugin-boundaries.13
 	github.com/Tangerg/flame/packages/local-runtime v0.1.0-quality.20261029.1
 	github.com/Tangerg/flame/qimu v0.1.0-quality.20261030.plugin-boundaries.1
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
@@ -77,6 +76,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.47.0
 	golang.org/x/oauth2 v0.37.0
 	golang.org/x/sys v0.49.0
+	golang.org/x/text v0.43.0
 	golang.org/x/tools v0.52.0
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.61.0

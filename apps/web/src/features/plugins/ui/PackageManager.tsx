@@ -241,6 +241,7 @@ function PackageRow({
         })),
       })),
       components: installation.selected.components,
+      locales: installation.selected.locales,
       points: installation.selected.points.map((value) => ({
         id: value.id,
         ...pointMetadata(value.contract),

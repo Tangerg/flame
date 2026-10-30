@@ -16,13 +16,15 @@ import { WORKSPACE_FILE_RENDERER } from "@/features/workspace/public/views";
 import { cleanup } from "@testing-library/react";
 import { afterEach, expect, it, onTestFinished, vi } from "vitest";
 import { type FlameClient } from "@flame/runtime-client";
-import { type PluginInstallation } from "@flame/runtime-client/wire";
+import { type PluginInstallation, type ReadPluginLocaleRequest } from "@flame/runtime-client/wire";
 import { queryClient } from "@/lib/queryClient";
 import { definePlugin } from "@/extensions/definePlugin";
 import { contributionsTo } from "@/extensions/kernel";
 import { COLOR_THEME } from "@/features/theme/public/extensionPoints";
 import { WORKSPACE_VIEW } from "@/features/workspace/public/views";
 import { SETTINGS_PANE } from "@/features/settings/public/panes";
+import { LOCALE } from "@/features/i18n/public/extensionPoints";
+import { activeLocale, setLocale, t } from "@/lib/i18n/index";
 import { loadPluginsForTest, resetKernelForTest } from "@/test/kernel";
 import { usePluginErrorStore } from "@/extensions/errors";
 import { RuntimeConnectionGeneration, RUNTIME_STREAM } from "@/features/connection/public/services";
@@ -140,10 +142,48 @@ function installation(id: string, name: string): PluginInstallation {
       skills: [],
       diagnostics: [],
 
+      locales: [],
+
       themes: [{ id: "theme", title: name, scheme: "dark", colors: { background: "#181a1e" } }],
     },
   };
 }
+
+it("loads only an admitted locale's exact release and withdraws it with its Runtime generation", async () => {
+  const admitted = installation("d3cbafab-ef30-4e20-9583-42f5316dc865", "japanese");
+  admitted.selected.locales = [{ tag: "ja", title: "日本語" }];
+  const withheld: PluginInstallation = {
+    ...installation("0c31c796-224c-40fa-a721-6696971bb697", "withheld"),
+    presentation: "withheld",
+  };
+  withheld.selected.locales = admitted.selected.locales;
+  const runtime = client(async () => ({ data: [admitted, withheld] }));
+  const read = vi.fn(async (_request: ReadPluginLocaleRequest, _signal?: AbortSignal) => ({
+    messages: { "common.loading": "読込中" },
+  }));
+  runtime.plugins.readLocale = read;
+  onTestFinished(() => setLocale("en"));
+  await loadPluginsForTest(
+    runtimePlugin(),
+    pluginsPane(() => runtime),
+  );
+  await vi.waitFor(() => expect(contributionsTo(LOCALE)).toHaveLength(1));
+  const digest = admitted.selected.digest;
+  admitted.selected.digest = "b".repeat(64);
+  setLocale("ja");
+  await contributionsTo(LOCALE)[0]!.item.activate();
+  expect(t("common.loading")).toBe("読込中");
+  expect(read).toHaveBeenCalledOnce();
+  expect(read.mock.calls[0]?.[0]).toEqual({
+    installationId: admitted.id,
+    digest,
+    tag: "ja",
+  });
+  expect(contributionsTo(LOCALE).map((entry) => entry.item.id)).toEqual(["ja"]);
+  await resetKernelForTest();
+  expect(t("common.loading")).toBe("Loading");
+  expect(activeLocale()).toBe("ja");
+});
 
 it("keeps package realization owned by its generation when the query cache is cancelled", async () => {
   const pending = Promise.withResolvers<{ data: PluginInstallation[] }>();

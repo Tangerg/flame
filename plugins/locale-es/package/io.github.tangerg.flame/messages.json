@@ -1,4 +1,4 @@
-export const es: Record<string, string> = {
+{
   "packages.installTitle": "Instalar un complemento",
   "packages.installedTitle": "Paquetes instalados",
   "packages.refreshError.title": "No se pudieron actualizar los paquetes instalados",
@@ -8,19 +8,15 @@ export const es: Record<string, string> = {
   "packages.actions": "Acciones del paquete",
   "packages.digest": "Resumen de la versión",
   "plugins.loadedTitle": "Complementos cargados en el cliente",
-
   "packages.module.loading": "Cargando la vista del plugin…",
   "packages.module.failed": "No se pudo cargar o mostrar la vista del plugin.",
   "packages.module.unavailable": "El plugin no está disponible.",
   "packages.module.reload": "Recargar ventana",
   "packages.module.resolvingWorkspace": "Resolviendo el espacio de trabajo actual…",
-  "packages.module.selectWorkspace":
-    "Elige una Session con espacio de trabajo para ver esta página.",
-
+  "packages.module.selectWorkspace": "Elige una Session con espacio de trabajo para ver esta página.",
   "packages.providers.title": "Selección de proveedores",
   "packages.providers.refresh": "Actualizar selecciones",
-  "packages.providers.future":
-    "Las selecciones se aplican a futuras activaciones. Las ejecuciones existentes conservan sus enlaces.",
+  "packages.providers.future": "Las selecciones se aplican a futuras activaciones. Las ejecuciones existentes conservan sus enlaces.",
   "packages.providers.none": "No se ha seleccionado un proveedor.",
   "packages.providers.current": "Seleccionado: {{name}} · {{contribution}}",
   "packages.providers.unavailable": "Seleccionado pero no disponible: {{name}} · {{contribution}}",
@@ -30,13 +26,11 @@ export const es: Record<string, string> = {
   "packages.providers.choose": "Elegir proveedor",
   "packages.providers.apply": "Aplicar selección",
   "packages.providers.failed": "No se pudo confirmar la selección.",
-  "packages.providers.unknown":
-    "Confirmación desconocida. Comprueba el comando original {{id}} antes de otra selección.",
+  "packages.providers.unknown": "Confirmación desconocida. Comprueba el comando original {{id}} antes de otra selección.",
   "packages.providers.reconcile": "Comprobar resultado original",
   "packages.commands.title": "Comandos de plugin sin confirmar",
   "packages.commands.refresh": "Actualizar comandos",
-  "packages.commands.explanation":
-    "Compruebe el resultado original aunque la vista del plugin no esté disponible. Un nuevo proveedor no puede sustituir al propietario original.",
+  "packages.commands.explanation": "Compruebe el resultado original aunque la vista del plugin no esté disponible. Un nuevo proveedor no puede sustituir al propietario original.",
   "packages.commands.none": "No hay comandos de plugin sin confirmar.",
   "packages.commands.retire": "Retirar si nunca se envió",
   "packages.commands.retired": "Comando original retirado antes del envío: {{id}}",
@@ -44,48 +38,39 @@ export const es: Record<string, string> = {
   "packages.commands.checking": "Comprobando el comando original {{id}}…",
   "packages.commands.confirmed": "Resultado original confirmado: {{id}}",
   "packages.commands.refused": "Comando original rechazado: {{id}}",
-  "packages.commands.unknown":
-    "El resultado original sigue siendo desconocido. Conserve el comando {{id}}.",
+  "packages.commands.unknown": "El resultado original sigue siendo desconocido. Conserve el comando {{id}}.",
   "packages.commands.failed": "No se pudo leer el resultado original.",
   "packages.points.title": "Puntos de extensión",
   "packages.points.inspect": "Inspeccionar valores",
-  "packages.points.readOnly":
-    "Inspeccionar las contribuciones actuales sin activar el código del plugin.",
+  "packages.points.readOnly": "Inspeccionar las contribuciones actuales sin activar el código del plugin.",
   "packages.points.target": "Referencia del destino",
   "packages.points.attributes": "Atributos del contexto (JSON)",
   "packages.points.order": "Orden explícito de contribuciones (matriz JSON)",
   "packages.points.lastInspected": "Último destino, orden y valores inspeccionados",
   "packages.points.failed": "No se pudo inspeccionar el punto de extensión.",
-
   "packages.requirements.title": "Dependencias",
   "packages.requirements.inspect": "Inspeccionar enlaces",
-  "packages.requirements.future":
-    "Lee los enlaces actuales. Los resultados mostrados son la última instantánea inspeccionada; las ejecuciones existentes conservan sus enlaces aceptados.",
+  "packages.requirements.future": "Lee los enlaces actuales. Los resultados mostrados son la última instantánea inspeccionada; las ejecuciones existentes conservan sus enlaces aceptados.",
   "packages.requirements.optional": "Opcional",
   "packages.requirements.required": "Obligatorio",
   "packages.requirements.absent": "La dependencia opcional está ausente.",
   "packages.requirements.unread": "Todavía no se han leído los enlaces.",
   "packages.requirements.failed": "No se pudieron leer los enlaces de dependencias.",
-
   "common.clearSearch": "Borrar búsqueda",
   "common.cancel": "Cancelar",
   "common.close": "Cerrar",
-
   "approval.what.command": "Ejecutar comando",
   "approval.what.fileEdit": "Aplicar cambio de archivo",
   "approval.what.search": "Ejecutar búsqueda",
   "approval.what.webSearch": "Ejecutar búsqueda web",
   "approval.what.subagent": "Delegar a un subagente",
   "approval.what.generic": "Ejecutar {{tool}}",
-  "session.regenerate.switchedAway":
-    "Cambiaste de sesión antes de terminar la regeneración: no se reenvió nada.",
-  "session.editRerun.draftRetained":
-    "Se restauró el historial de la conversación original. Se conservó tu borrador actual.",
+  "session.regenerate.switchedAway": "Cambiaste de sesión antes de terminar la regeneración: no se reenvió nada.",
+  "session.editRerun.draftRetained": "Se restauró el historial de la conversación original. Se conservó tu borrador actual.",
   "session.restore.files": "Árbol de trabajo restaurado a este punto de control.",
   "session.restore.both": "Conversación y archivos restaurados a este punto de control.",
   "session.restore.history": "Conversación revertida a este punto de control.",
-  "session.restore.noCheckpoint":
-    "No hay punto de control antes del primer turno: los archivos quedan como están.",
+  "session.restore.noCheckpoint": "No hay punto de control antes del primer turno: los archivos quedan como están.",
   "sessionSearch.label": "Ir a una sesión",
   "sessionSearch.placeholder": "Buscar sesiones…",
   "sessionSearch.empty.title": "Ninguna sesión coincide",
@@ -110,7 +95,6 @@ export const es: Record<string, string> = {
   "sidebar.action.newSession": "Nueva sesión",
   "sidebar.action.tools": "Herramientas y complementos",
   "sidebar.action.settings": "Ajustes",
-
   "composer.input.label": "Compositor de mensajes",
   "composer.placeholder": "Describe lo que quieres hacer: @ para referenciar un archivo",
   "composer.switchModel": "Cambiar modelo",
@@ -134,12 +118,10 @@ export const es: Record<string, string> = {
   "composer.action.send": "Enviar",
   "composer.action.stop": "Detener",
   "composer.slash.heading": "Comandos",
-
   "chat.notices": "Avisos de la conversación",
   "chat.error.title": "Error de renderizado",
   "chat.error.retry": "Reintentar",
   "chat.jumpToBottom": "Ir al final",
-
   "dock.action.browse": "Explorar paneles",
   "dock.catalog.title": "Abrir un panel",
   "dock.picker.placeholder": "Buscar un panel…",
@@ -154,8 +136,7 @@ export const es: Record<string, string> = {
   "dock.tabs.moveRight": "Mover panel a la derecha",
   "workspace.view.openBeside": "Abrir en el panel de contexto",
   "workspace.view.unavailable.title": "Vista no disponible",
-  "workspace.view.unavailable.body":
-    'La vista "{{id}}" no está registrada. Cierra esta pestaña o reactiva su plugin.',
+  "workspace.view.unavailable.body": "La vista \"{{id}}\" no está registrada. Cierra esta pestaña o reactiva su plugin.",
   "message.markdown.footnotes": "Notas al pie",
   "message.markdown.backReference": "Volver a la referencia {{reference}}",
   "message.image.view": "Ver imagen adjunta",
@@ -188,7 +169,6 @@ export const es: Record<string, string> = {
   "message.table.preview": "Vista previa de la tabla",
   "message.table.closePreview": "Cerrar vista previa de la tabla",
   "message.math.expression": "Expresión matemática",
-
   "msgActions.copy": "Copiar mensaje",
   "msgActions.copyMarkdown": "Copiar Markdown",
   "msgActions.copyMarkdownHint": "Encabezados / bloques conservados",
@@ -215,7 +195,6 @@ export const es: Record<string, string> = {
   "plan.step.done": "Completado",
   "plan.step.active": "En curso",
   "plan.step.pending": "Pendiente",
-
   "goal.summary.active": "Objetivo en curso",
   "goal.summary.paused": "Objetivo en pausa",
   "goal.summary.blocked": "Objetivo estancado",
@@ -245,8 +224,7 @@ export const es: Record<string, string> = {
   "goal.error.clear": "No se pudo borrar el objetivo",
   "goal.error.update": "No se pudo actualizar el objetivo",
   "slash.goal": "Define un objetivo que el agente siga persiguiendo",
-  "goal.error.unavailable":
-    "Ahora no se puede definir un objetivo: puede que este runtime no admita objetivos o que ya haya uno en marcha",
+  "goal.error.unavailable": "Ahora no se puede definir un objetivo: puede que este runtime no admita objetivos o que ya haya uno en marcha",
   "goal.replace.title": "¿Reemplazar el objetivo actual?",
   "goal.replace.body": "«{{objective}}» termina aquí. La conversación se conserva.",
   "goal.replace.confirm": "Reemplazar objetivo",
@@ -294,9 +272,7 @@ export const es: Record<string, string> = {
   "runtime.unsupported.title": "No compatible con este runtime",
   "runtime.unsupported.sub": "El runtime conectado aún no expone esta función.",
   "dataView.error.title": "No se pudo cargar",
-  "dataView.error.sub":
-    "El runtime no respondió a esta petición. Comprueba la conexión y reinténtalo.",
-
+  "dataView.error.sub": "El runtime no respondió a esta petición. Comprueba la conexión y reinténtalo.",
   "welcome.title": "¿Qué quieres construir hoy?",
   "welcome.projectTitle": "¿Qué quieres construir en <projectSelect>{{project}}</projectSelect>?",
   "composer.project.choose": "Elegir proyecto",
@@ -304,10 +280,8 @@ export const es: Record<string, string> = {
   "composer.project.add": "Nuevo proyecto",
   "composer.project.required": "Selecciona un proyecto para continuar",
   "providers.setup.title": "Conecta un proveedor de modelos",
-  "providers.setup.sub":
-    "Configura un proveedor de modelos para empezar — la autenticación depende del proveedor.",
+  "providers.setup.sub": "Configura un proveedor de modelos para empezar — la autenticación depende del proveedor.",
   "providers.setup.action": "Configurar proveedor",
-
   "settings.title": "Ajustes",
   "settings.searchPlaceholder": "Buscar ajustes…",
   "settings.pane.appearance": "Apariencia",
@@ -331,7 +305,6 @@ export const es: Record<string, string> = {
   "approvals.clearAll": "Borrar todo",
   "approvals.allow": "permitir",
   "approvals.deny": "denegar",
-
   "approvals.subject.all": "Todos los argumentos",
   "approvals.subject.exact": "Coincidencia exacta",
   "approvals.subject.glob": "Patrón glob",
@@ -343,7 +316,6 @@ export const es: Record<string, string> = {
   "approvals.error.loadMode": "No se pudo cargar el modo de aprobación",
   "approvals.error.mode": "No se pudo cambiar el modo de aprobación.",
   "approvals.error.forget": "No se pudo borrar la decisión.",
-
   "plugins.errorDetail.show": "Mostrar detalle del error",
   "plugins.errorDetail.hide": "Ocultar detalle del error",
   "plugins.errors_one": "{{count}} error",
@@ -360,7 +332,6 @@ export const es: Record<string, string> = {
   "plugins.errorSource.events": "controlador de eventos",
   "plugins.errorSource.command": "comando",
   "plugins.errorSource.other": "otro",
-
   "connection.error.invalidUrl": "URL no válida",
   "shape.radius.aria": "Radio de esquina",
   "shape.motion.aria": "Velocidad de animación",
@@ -369,7 +340,6 @@ export const es: Record<string, string> = {
   "shape.opt.off": "Desactivado",
   "shape.opt.fast": "Rápido",
   "shape.opt.slow": "Lento",
-
   "contextDock.group.workspace": "Espacio",
   "contextDock.group.run": "Ejecución",
   "contextDock.group.session": "Sesión",
@@ -411,25 +381,19 @@ export const es: Record<string, string> = {
   "settings.streamReveal.smooth": "Suave",
   "settings.streamReveal.typewriter": "Máquina de escribir",
   "settings.completionSound": "Sonido de finalización",
-  "settings.completionSound.sub":
-    "Reproduce un sonido cuando una ejecución termina mientras la app está en segundo plano.",
+  "settings.completionSound.sub": "Reproduce un sonido cuando una ejecución termina mientras la app está en segundo plano.",
   "settings.language.label": "Idioma",
-
   "settings.pane.connection": "Conexión",
   "settings.connection.title": "Backend",
-  "settings.connection.sub":
-    "Dirección de Flame Runtime. Al aplicar, la aplicación de escritorio se vuelve a conectar.",
+  "settings.connection.sub": "Dirección de Flame Runtime. Al aplicar, la aplicación de escritorio se vuelve a conectar.",
   "settings.connection.clearToken": "Borrar token",
   "settings.connection.discardToken": "Descartar cambio del token",
   "settings.connection.tokenSet": "Hay un token definido para la dirección de Runtime actual.",
-  "settings.connection.tokenNotSet":
-    "No hay ningún token definido para la dirección de Runtime actual.",
-  "settings.connection.tokenPending":
-    "Cambio del token sin aplicar. Aplica para usar este valor; déjalo en blanco para quitar el token.",
+  "settings.connection.tokenNotSet": "No hay ningún token definido para la dirección de Runtime actual.",
+  "settings.connection.tokenPending": "Cambio del token sin aplicar. Aplica para usar este valor; déjalo en blanco para quitar el token.",
   "settings.connection.token": "Token de acceso",
   "settings.connection.tokenPlaceholder": "Introduce o reemplaza el token",
-  "settings.connection.tokenHint":
-    "Se conserva solo en esta ventana para esta dirección de Runtime. Se borra al recargar.",
+  "settings.connection.tokenHint": "Se conserva solo en esta ventana para esta dirección de Runtime. Se borra al recargar.",
   "settings.connection.url": "URL",
   "settings.connection.apply": "Aplicar",
   "settings.connection.reset": "Restaurar predeterminado",
@@ -439,23 +403,18 @@ export const es: Record<string, string> = {
   "agent.steer.pending": "Enviando entrada",
   "agent.opening.start": "Solicitud de inicio sin confirmar",
   "agent.opening.resume": "Solicitud de reanudación sin confirmar",
-  "agent.opening.notRecorded":
-    "Esta consulta no encontró la solicitud original; su aceptación sigue sin confirmarse.",
+  "agent.opening.notRecorded": "Esta consulta no encontró la solicitud original; su aceptación sigue sin confirmarse.",
   "agent.opening.review": "Revisar la entrada y las opciones originales",
   "agent.command.unknown": "Recepción sin confirmar",
   "agent.command.retry": "Reintentar el envío original",
-  "agent.steer.retired":
-    "Los datos de la ejecución original no están disponibles; no se puede confirmar si se aplicó la entrada.",
+  "agent.steer.retired": "Los datos de la ejecución original no están disponibles; no se puede confirmar si se aplicó la entrada.",
   "agent.steer.applied": "Incorporada al contexto del modelo",
-  "agent.steer.notApplied":
-    "La ejecución terminó antes de que una instrucción aceptada entrara en el contexto del modelo.",
+  "agent.steer.notApplied": "La ejecución terminó antes de que una instrucción aceptada entrara en el contexto del modelo.",
   "agent.inputNotApplied": "Aún no aplicado",
   "agent.acceptedRunRetired": "Los datos de la ejecución aceptada ya no están disponibles.",
-  "agent.synchronizationIncomplete":
-    "La sincronización está incompleta. Vuelve a abrir la sesión para reintentarlo.",
+  "agent.synchronizationIncomplete": "La sincronización está incompleta. Vuelve a abrir la sesión para reintentarlo.",
   "runtime.connection.reconnecting": "Se perdió la conexión con el runtime. Reconectando…",
-  "runtime.connection.unavailable":
-    "El runtime no está disponible. Flame seguirá intentando reconectarse.",
+  "runtime.connection.unavailable": "El runtime no está disponible. Flame seguirá intentando reconectarse.",
   "runtime.connection.settings": "Ajustes de conexión",
   "settings.connection.status.ready": "Listo",
   "settings.connection.status.degraded": "Degradado",
@@ -466,7 +425,6 @@ export const es: Record<string, string> = {
   "settings.connection.status.server": "Servidor",
   "settings.connection.status.protocol": "Protocolo",
   "settings.connection.status.checks": "Comprobaciones",
-
   "approval.settled.approved": "Aprobado",
   "approval.settled.declined": "Rechazado",
   "approval.identity.permission": "Solicitar permiso",
@@ -493,33 +451,24 @@ export const es: Record<string, string> = {
   "question.settled.noAnswer": "Sin respuesta",
   "question.settled.dismissed": "Cerrado sin respuesta",
   "question.freetext.placeholder": "Escribe una respuesta…",
-
   "cwdMissing.title": "Falta el directorio de trabajo",
-  "cwdMissing.body":
-    "La carpeta desapareció del disco: el agent funciona en modo solo chat hasta restaurarla o reubicar la sesión.",
+  "cwdMissing.body": "La carpeta desapareció del disco: el agent funciona en modo solo chat hasta restaurarla o reubicar la sesión.",
   "cwdMissing.action.relocate": "Reubicar…",
   "cwdMissing.action.apply": "Aplicar",
   "cwdMissing.action.cancel": "Cancelar",
   "cwdMissing.placeholder": "Nueva ruta absoluta",
-
   "runError.unknown": "La ejecución falló.",
   "runError.title": "Error de agent",
   "runError.action.context": "Inspeccionar contexto",
   "runError.action.diagnostics": "Diagnóstico",
   "runError.action.dismiss": "Descartar",
-
   "session.status.pinned": "Fijada",
   "session.status.running": "Ejecutando",
-
   "session.identity.copyCwd": "Copiar directorio de trabajo",
-
   "session.identity.copiedCwd": "Directorio de trabajo copiado",
-
   "session.identity.copyId": "Copiar ID de sesión",
-
   "session.identity.copiedId": "ID de sesión copiado",
   "session.status.waiting": "Esperando entrada",
-
   "agent.runTree.delegated.one": "Subagente",
   "subagents.title": "Subagentes",
   "subagents.active": "En curso",
@@ -539,8 +488,7 @@ export const es: Record<string, string> = {
   "agent.runTree.status.finished": "Finalizado",
   "agent.runTree.status.error": "Error",
   "agent.runTree.status.canceled": "Cancelado",
-  "agent.unresolved.summary":
-    "Esta ejecución ha terminado. Los resultados de estas operaciones externas siguen sin confirmarse.",
+  "agent.unresolved.summary": "Esta ejecución ha terminado. Los resultados de estas operaciones externas siguen sin confirmarse.",
   "agent.unresolved.operation": "Operación sin confirmar {{index}}",
   "agent.unresolved.processId": "ID de proceso",
   "agent.unresolved.effectId": "ID de efecto",
@@ -553,12 +501,10 @@ export const es: Record<string, string> = {
   "agent.steps_other": "{{count}} pasos",
   "agent.runTree.action.cancel": "Cancelar esta ejecución",
   "agent.runTree.material.empty": "Aún no hay contenido narrativo",
-
   "notifications.title": "Notificaciones",
   "notifications.clearAll": "Borrar todo",
   "notifications.dismiss": "Descartar",
   "notifications.empty.title": "Sin notificaciones",
-
   "tools.family.shell": "Shell",
   "tools.family.files": "Archivos",
   "tools.family.search": "Búsqueda",
@@ -569,37 +515,28 @@ export const es: Record<string, string> = {
   "tools.family.recall": "Memoria",
   "tools.family.schedules": "Programaciones",
   "tools.family.goals": "Objetivos",
-
   "toolAction.copyArguments": "Copiar parámetros",
   "toolAction.argumentsCopied": "Parámetros copiados",
-  "toolAction.copyFailed":
-    "No se pudieron copiar los parámetros. Expande la herramienta y cópialos desde {{section}}.",
+  "toolAction.copyFailed": "No se pudieron copiar los parámetros. Expande la herramienta y cópialos desde {{section}}.",
   "approval.fallbackText": "¿Aprobar esta acción?",
-
-  "shortcuts.sub":
-    "Cada combinación de teclas registrada por los plugins integrados y de usuario. Pulsa una combinación en cualquier parte de la app para activarla; los conflictos se resuelven siempre a favor del último registro.",
+  "shortcuts.sub": "Cada combinación de teclas registrada por los plugins integrados y de usuario. Pulsa una combinación en cualquier parte de la app para activarla; los conflictos se resuelven siempre a favor del último registro.",
   "shortcuts.filter": "Filtrar por acción o combinación…",
   "shortcuts.filterAria": "Filtrar atajos",
   "shortcuts.empty": "Sin atajos coincidentes",
-
   "agentSource.rpc": "Protocolo de ejecución (JSON-RPC)",
   "narrative.rail.turns": "Tus preguntas",
   "role.user": "Tú",
   "role.assistant": "Asistente",
   "role.system": "Sistema",
-
   "composer.removeImage": "Eliminar imagen",
-
   "diff.fileCount_one": "{{count}} archivo",
   "diff.fileCount_many": "{{count}} archivos",
   "diff.fileCount_other": "{{count}} archivos",
-
   "compaction.compacted": "Contexto compactado automáticamente",
   "projects.showMore": "Mostrar {{count}} más",
   "projects.showLess": "Mostrar menos",
   "projects.empty.title": "Sin proyectos",
-  "projects.empty.sub":
-    "Inicia una sesión en una carpeta para crear un grupo de espacio de trabajo.",
+  "projects.empty.sub": "Inicia una sesión en una carpeta para crear un grupo de espacio de trabajo.",
   "projects.error.title": "No se pudieron cargar los proyectos",
   "projects.error.sub": "Comprueba la conexión con Runtime y vuelve a abrir el índice de trabajo.",
   "convExport.markdown": "Exportar conversación como Markdown",
@@ -607,13 +544,10 @@ export const es: Record<string, string> = {
   "convExport.trajectory": "Exportar la trayectoria completa de la sesión",
   "convExport.import": "Importar conversación desde JSON",
   "convExport.unsupported": "Este runtime no admite la exportación ni la importación de sesiones.",
-  "convExport.readFailed":
-    "No se pudo leer el archivo seleccionado. Vuelve a seleccionarlo o elige otro archivo JSON.",
-  "convExport.notJson":
-    "El archivo seleccionado no es un JSON válido. Elige un archivo JSON de conversación exportado desde Flame.",
+  "convExport.readFailed": "No se pudo leer el archivo seleccionado. Vuelve a seleccionarlo o elige otro archivo JSON.",
+  "convExport.notJson": "El archivo seleccionado no es un JSON válido. Elige un archivo JSON de conversación exportado desde Flame.",
   "convExport.exportFailed": "No se pudo exportar la conversación.",
-  "convExport.importFailed":
-    "No se pudo importar la conversación. Inténtalo de nuevo con un archivo JSON de conversación exportado desde Flame.",
+  "convExport.importFailed": "No se pudo importar la conversación. Inténtalo de nuevo con un archivo JSON de conversación exportado desde Flame.",
   "convExport.importSuccess": "«{{title}}» importada.",
   "connection.error.token": "Introduce un token válido sin espacios ni caracteres de control.",
   "connection.error.urlScheme": "Debe comenzar con http:// o https://",
@@ -652,13 +586,11 @@ export const es: Record<string, string> = {
   "commandMenu.empty.title": "Ningún comando coincide",
   "commandMenu.empty.sub": "Prueba parte del nombre.",
   "command.showShortcuts": "Atajos de teclado",
-
   "reasoning.thinking": "Pensando",
   "reasoning.thought": "Pensamiento",
   "reasoning.thoughtFor": "Pensamiento de {{duration}}",
   "reasoning.interrupted": "interrumpido",
   "reasoning.text": "Texto del razonamiento",
-
   "composer.placeholder.steer": "Envía un mensaje para guiar el turno en curso…",
   "composer.action.steer": "Guiar el turno en curso",
   "composer.paste.lines_one": "Pegado · {{count}} línea",
@@ -696,7 +628,6 @@ export const es: Record<string, string> = {
   "approvals.gate.deny": "rechazado",
   "approvals.gate.entry": "{{toolClass}}: {{gate}}",
   "toolAction.failed": "No se pudo completar «{{action}}».",
-
   "workspace.view.title.file": "Archivos",
   "settings.theme.system": "Sistema",
   "runError.action.retryIn": "Reintentar en {{seconds}} s",
@@ -716,55 +647,36 @@ export const es: Record<string, string> = {
   "file.error.sub": "Puede haberse movido o estar fuera del espacio de trabajo.",
   "composer.key.historyPrevDesc": "Recuperar el mensaje anterior",
   "composer.key.historyNextDesc": "Recuperar el mensaje siguiente",
-
-  "rpcError.session_has_active_run":
-    "Esta sesión ya tiene una ejecución en curso: dirígela, respóndela o cancélala primero.",
+  "rpcError.session_has_active_run": "Esta sesión ya tiene una ejecución en curso: dirígela, respóndela o cancélala primero.",
   "runError.activeRun.running": "Esta sesión ya está en marcha — dirige ese run o cancélalo.",
   "runError.activeRun.waiting": "Esta sesión tiene un run esperándote — respóndelo o cancélalo.",
-
   "rpcError.run_not_root": "Esa ejecución pertenece a una mayor: consulta la ejecución raíz.",
   "rpcError.run_waiting": "Esa ejecución espera una respuesta: respóndele primero.",
   "rpcError.run_finished": "Esa ejecución ya ha terminado.",
   "rpcError.stale_segment": "Esa ejecución ha avanzado: vuelve a cargarla para ver su estado.",
-
   "rpcError.session_busy": "La sesión está ocupada — espera a que termine la ejecución actual.",
-  "rpcError.checkpoint_unavailable":
-    "No hay punto de restauración de archivos para ese turno — no se cambió nada.",
-  "rpcError.checkpoint_conflict":
-    "Se rechazó la restauración para proteger archivos no guardados en el punto de restauración. No se modificó ningún archivo.",
-  "rpcError.prompt_source_too_large":
-    "Los archivos de instrucciones superan el límite de tamaño o cantidad. Acórtalos o usa menos archivos y vuelve a intentarlo.",
+  "rpcError.checkpoint_unavailable": "No hay punto de restauración de archivos para ese turno — no se cambió nada.",
+  "rpcError.checkpoint_conflict": "Se rechazó la restauración para proteger archivos no guardados en el punto de restauración. No se modificó ningún archivo.",
+  "rpcError.prompt_source_too_large": "Los archivos de instrucciones superan el límite de tamaño o cantidad. Acórtalos o usa menos archivos y vuelve a intentarlo.",
   "rpcError.workspace_unavailable": "Ese espacio de trabajo no existe en el disco del runtime.",
   "rpcError.vcs_unavailable": "Esta carpeta no es un repositorio git.",
-  "rpcError.rate_limited":
-    "El proveedor del modelo está limitando la tasa de peticiones — espera un momento y reintenta.",
-  "rpcError.invalid_api_key":
-    "El proveedor rechazó la API key — revísala en los ajustes del proveedor.",
-  "rpcError.timeout":
-    "La petición al proveedor del modelo agotó el tiempo — comprueba la conexión y reintenta.",
-  "rpcError.provider_unavailable":
-    "El proveedor del modelo no está disponible temporalmente — reintenta en breve.",
+  "rpcError.rate_limited": "El proveedor del modelo está limitando la tasa de peticiones — espera un momento y reintenta.",
+  "rpcError.invalid_api_key": "El proveedor rechazó la API key — revísala en los ajustes del proveedor.",
+  "rpcError.timeout": "La petición al proveedor del modelo agotó el tiempo — comprueba la conexión y reintenta.",
+  "rpcError.provider_unavailable": "El proveedor del modelo no está disponible temporalmente — reintenta en breve.",
   "rpcError.provider_rejected": "El proveedor del modelo rechazó la petición por inválida.",
   "rpcError.provider_error": "El proveedor del modelo no respondió — inténtalo de nuevo.",
   "rpcError.agent_stuck": "El agente dejó de avanzar — reformula o acota la tarea.",
   "rpcError.denied_by_user": "Rechazaste esta acción.",
-  "rpcError.tool_failed":
-    "Una herramienta falló durante la ejecución: revisa la línea de tiempo para ver qué informó.",
+  "rpcError.tool_failed": "Una herramienta falló durante la ejecución: revisa la línea de tiempo para ver qué informó.",
   "rpcError.tool_canceled": "La llamada a la herramienta se canceló antes de terminar.",
   "rpcError.child_run_canceled": "Se canceló una ejecución delegada.",
-  "rpcError.idempotency_in_progress":
-    "El resultado del comando aún no se conoce. Revisa la sesión antes de enviarlo de nuevo; una nueva solicitud podría repetir una acción ya completada.",
-  "rpcError.internal_error":
-    "Algo falló dentro del runtime — reintenta y revisa los diagnósticos si se repite.",
-  "rpcError.run_lost":
-    "El proceso de esta ejecución desapareció — terminó antes de guardar un resultado. Vuelve a lanzarla.",
-
-  "rpcError.mcp_authorization_attempt_not_found":
-    "Este intento de inicio de sesión caducó. Inicia uno nuevo.",
-
+  "rpcError.idempotency_in_progress": "El resultado del comando aún no se conoce. Revisa la sesión antes de enviarlo de nuevo; una nueva solicitud podría repetir una acción ya completada.",
+  "rpcError.internal_error": "Algo falló dentro del runtime — reintenta y revisa los diagnósticos si se repite.",
+  "rpcError.run_lost": "El proceso de esta ejecución desapareció — terminó antes de guardar un resultado. Vuelve a lanzarla.",
+  "rpcError.mcp_authorization_attempt_not_found": "Este intento de inicio de sesión caducó. Inicia uno nuevo.",
   "rpcError.skill_not_found": "Esa habilidad ya no está en la biblioteca.",
-  "rpcError.skill_unavailable":
-    "No se puede leer el documento de esa habilidad — revisa el archivo al que apunta.",
+  "rpcError.skill_unavailable": "No se puede leer el documento de esa habilidad — revisa el archivo al que apunta.",
   "rpcError.revision_conflict": "Alguien lo cambió antes — recarga y vuelve a intentarlo.",
   "rpcError.mcp_server_not_found": "Ese servidor ya no está configurado.",
   "rpcError.mcp_server_already_exists": "Ya hay un servidor configurado con ese nombre.",
@@ -773,29 +685,22 @@ export const es: Record<string, string> = {
   "rpcError.unsupported_mime": "Ese tipo de archivo no se admite aquí.",
   "rpcError.interrupt_not_open": "Esa solicitud ya no espera respuesta.",
   "rpcError.idempotency_conflict": "La misma solicitud ya se envió con un contenido distinto.",
-  "rpcError.plugin_changed":
-    "Un plugin cambió mientras se preparaba la ejecución. No se inició nada; vuelve a enviar para reintentarlo.",
+  "rpcError.plugin_changed": "Un plugin cambió mientras se preparaba la ejecución. No se inició nada; vuelve a enviar para reintentarlo.",
   "rpcError.capability_not_negotiated": "El runtime conectado no ofrece esta función.",
-  "rpcError.export_too_large":
-    "Esta sesión es demasiado grande para exportarla como una sola trayectoria.",
-  "rpcError.invalid_protocol_version":
-    "Este runtime usa otra versión del protocolo — actualiza Flame o el runtime.",
-  "rpcError.mcp_owned_by_installation":
-    "Un plugin proporciona este servidor — cámbialo desde el plugin.",
-  "rpcError.plugin_in_use":
-    "Una sesión todavía depende de este plugin — vuelve a intentarlo cuando ya no lo use.",
+  "rpcError.export_too_large": "Esta sesión es demasiado grande para exportarla como una sola trayectoria.",
+  "rpcError.invalid_protocol_version": "Este runtime usa otra versión del protocolo — actualiza Flame o el runtime.",
+  "rpcError.mcp_owned_by_installation": "Un plugin proporciona este servidor — cámbialo desde el plugin.",
+  "rpcError.plugin_in_use": "Una sesión todavía depende de este plugin — vuelve a intentarlo cuando ya no lo use.",
   "rpcError.plugin_not_found": "Ese plugin ya no está instalado.",
   "rpcError.plugin_stale": "Ese plugin cambió desde que lo abriste — recarga y revísalo de nuevo.",
   "rpcError.plugin_disabled": "Activa este plugin antes de usarlo.",
-  "rpcError.plugin_unavailable":
-    "Esa versión del plugin no superó la verificación — reinstala o actualiza el plugin.",
+  "rpcError.plugin_unavailable": "Esa versión del plugin no superó la verificación — reinstala o actualiza el plugin.",
   "session.error.create": "No se pudo crear la sesión. Inténtalo de nuevo.",
   "session.directory.title": "Nueva sesión",
   "session.directory.path": "Directorio del Runtime",
   "session.directory.create": "Crear sesión",
   "session.directory.browse": "Explorar este equipo",
-  "session.error.chooseWorkingDirectory":
-    "No se pudo abrir el selector de carpetas. Introduce el directorio directamente.",
+  "session.error.chooseWorkingDirectory": "No se pudo abrir el selector de carpetas. Introduce el directorio directamente.",
   "session.error.delete": "No se pudo borrar la sesión.",
   "session.error.rename": "No se pudo renombrar la sesión.",
   "session.error.fork": "No se pudo bifurcar la sesión.",
@@ -919,7 +824,6 @@ export const es: Record<string, string> = {
   "tool.group.write": "{{count}} escritura",
   "tool.group.run": "{{count}} ejecución",
   "tool.group.fetch": "{{count}} consulta web",
-
   "duration.seconds": "{{sec}} s",
   "duration.minutes": "{{min}} min {{sec}} s",
   "duration.hours": "{{hr}} h {{min}} min",
@@ -934,20 +838,15 @@ export const es: Record<string, string> = {
   "composer.mention.status.no-workspace": "Elige un proyecto para citar sus archivos",
   "settings.search.empty": "Ningún ajuste coincide con «{{query}}».",
   "startup.failed.title": "Flame no pudo iniciarse",
-  "startup.failed.body":
-    "Algo falló antes de que la ventana estuviera lista. Reinténtalo o copia el diagnóstico para informarlo.",
+  "startup.failed.body": "Algo falló antes de que la ventana estuviera lista. Reinténtalo o copia el diagnóstico para informarlo.",
   "startup.failed.copy": "Copiar diagnóstico",
   "startup.failed.copied": "Copiado",
   "plugins.renderFailed.details": "Detalles",
   "settings.notifications": "Notificaciones del sistema",
-  "settings.notifications.authorization.granted":
-    "Se muestran cuando una ejecución termina, falla o te necesita con Flame en segundo plano.",
-  "settings.notifications.authorization.default":
-    "Flame pedirá permiso la primera vez que tenga algo que avisarte.",
-  "settings.notifications.authorization.denied":
-    "Bloqueadas por el sistema. Permite Flame en Ajustes del Sistema › Notificaciones.",
-  "settings.notifications.authorization.unsupported":
-    "Esta plataforma no ofrece notificaciones del sistema.",
+  "settings.notifications.authorization.granted": "Se muestran cuando una ejecución termina, falla o te necesita con Flame en segundo plano.",
+  "settings.notifications.authorization.default": "Flame pedirá permiso la primera vez que tenga algo que avisarte.",
+  "settings.notifications.authorization.denied": "Bloqueadas por el sistema. Permite Flame en Ajustes del Sistema › Notificaciones.",
+  "settings.notifications.authorization.unsupported": "Esta plataforma no ofrece notificaciones del sistema.",
   "notify.finished.title": "{{product}} terminó",
   "notify.finished.body": "El agente terminó su turno.",
   "notify.needsInput.title": "{{product}} te necesita",
@@ -994,8 +893,7 @@ export const es: Record<string, string> = {
   "settings.font.codeSize": "Tamaño del código",
   "settings.font.followUi": "Como la interfaz",
   "dock.action.expand": "Abrir a ancho completo",
-  "dock.action.openFull":
-    "Abrir el material a ancho completo: la ventana es demasiado estrecha para mostrarlo al lado",
+  "dock.action.openFull": "Abrir el material a ancho completo: la ventana es demasiado estrecha para mostrarlo al lado",
   "composer.add": "Añadir al mensaje",
   "composer.add.file": "Citar un archivo del proyecto",
   "composer.add.command": "Ejecutar un comando",
@@ -1019,21 +917,16 @@ export const es: Record<string, string> = {
   "model.effort.max": "Máximo",
   "file.unsupported.image": "Aún no hay vista previa de imágenes aquí",
   "file.unsupported.binary": "Este archivo no es texto",
-  "file.unsupported.sub":
-    "Flame muestra los archivos del espacio de trabajo como texto. Ábrelo en su propia app o búscalo en Finder.",
+  "file.unsupported.sub": "Flame muestra los archivos del espacio de trabajo como texto. Ábrelo en su propia app o búscalo en Finder.",
   "file.open": "Abrir",
   "file.change.add": "Añadido en el árbol de trabajo",
   "file.change.mod": "Modificado en el árbol de trabajo",
   "file.change.del": "Eliminado en el árbol de trabajo",
   "file.change.renamed": "Renombrado desde {{path}}",
   "file.change.below": "Contiene cambios del árbol de trabajo",
-
   "packages.module.selectSession": "Selecciona una sesión para ver esta página.",
-
   "packages.loading": "Cargando…",
-
-  "packages.trust":
-    "Aprobar una versión implica confiar exactamente en su código. Los ejecutables locales usan tus permisos del sistema. Revisa origen, resumen y entradas. Seleccionar otra versión requiere una nueva aprobación.",
+  "packages.trust": "Aprobar una versión implica confiar exactamente en su código. Los ejecutables locales usan tus permisos del sistema. Revisa origen, resumen y entradas. Seleccionar otra versión requiere una nueva aprobación.",
   "packages.source": "Ruta absoluta del directorio o ZIP en el Runtime",
   "packages.install": "Instalar",
   "packages.empty": "No hay paquetes Runtime instalados",
@@ -1052,14 +945,11 @@ export const es: Record<string, string> = {
   "packages.configureObject": "Usa un objeto JSON para los cambios de entradas.",
   "packages.configureField": "Corrige {{field}}: {{reason}}.",
   "packages.configureContext": "Huella de la versión revisada: {{digest}}.",
-  "packages.stageContext":
-    "Preparar la actualización no cambia la versión seleccionada. Selecciona la versión preparada por separado después.",
+  "packages.stageContext": "Preparar la actualización no cambia la versión seleccionada. Selecciona la versión preparada por separado después.",
   "packages.save": "Guardar",
   "packages.installed": "Se instaló {{name}}. Revisa su versión abajo antes de activarlo.",
-  "packages.releaseUnavailable":
-    "Los archivos de esta versión no superaron la verificación, así que sus componentes no están disponibles.",
-  "packages.backendUnavailable":
-    "El servidor «{{name}}» no puede iniciarse: no se pudo preparar su backend.",
+  "packages.releaseUnavailable": "Los archivos de esta versión no superaron la verificación, así que sus componentes no están disponibles.",
+  "packages.backendUnavailable": "El servidor «{{name}}» no puede iniciarse: no se pudo preparar su backend.",
   "packages.component.manifestField": "El campo de manifiesto «{{name}}»",
   "packages.component.flameExtension": "La extensión de Flame",
   "packages.component.extensionField": "El campo de extensión «{{name}}»",
@@ -1072,13 +962,10 @@ export const es: Record<string, string> = {
   "packages.diagnostic.invalidDeclaration": "{{component}} no es válido y se desactivó.",
   "packages.diagnostic.unsupportedContribution": "{{component}} no es compatible y se ignoró.",
   "packages.diagnostic.componentLimit": "{{component}} supera su límite y se desactivó.",
-  "packages.diagnostic.invalidDependencies":
-    "{{component}} depende de declaraciones ausentes o no válidas y se desactivó.",
+  "packages.diagnostic.invalidDependencies": "{{component}} depende de declaraciones ausentes o no válidas y se desactivó.",
   "packages.diagnostic.unavailableComponent": "{{component}} no se pudo leer y se desactivó.",
-  "packages.realizationFailed":
-    "No se pudieron cargar los temas de paquetes en esta ventana: {{reason}}",
-  "packages.reviewedField":
-    "«{{field}}» pertenece a la versión revisada y no se puede cambiar aquí.",
+  "packages.realizationFailed": "No se pudieron cargar los temas de paquetes en esta ventana: {{reason}}",
+  "packages.reviewedField": "«{{field}}» pertenece a la versión revisada y no se puede cambiar aquí.",
   "composer.models.error": "No se pudieron cargar los modelos.",
-  "composer.models.refresh": "Actualizar modelos",
-};
+  "composer.models.refresh": "Actualizar modelos"
+}

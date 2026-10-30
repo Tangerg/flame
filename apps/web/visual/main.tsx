@@ -386,9 +386,10 @@ async function fixtureNode(): Promise<ReactNode> {
   return <VisualAgentStateFixture state={state} view={view} />;
 }
 
-const { localePlugins } = await import("@/features/i18n/index");
+const { i18nPlugin } = await import("@/features/i18n/index");
+const { visualLocalePackages } = await import("./localePackages");
 
-await loadPluginsForTest(...localePlugins);
+await loadPluginsForTest(i18nPlugin, visualLocalePackages);
 
 const locale = lookupExtensionByKey(LOCALE, requestedLocale);
 

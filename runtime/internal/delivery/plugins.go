@@ -21,6 +21,7 @@ const (
 	PluginsAcquireComponent    Name = "plugins.acquireComponent"
 	PluginsCloseBrowserRealm   Name = "plugins.closeBrowserRealm"
 	PluginsReadResource        Name = "plugins.readResource"
+	PluginsReadLocale          Name = "plugins.readLocale"
 	PluginsListProviders       Name = "plugins.listProviders"
 	PluginsSelectProvider      Name = "plugins.selectProvider"
 	pluginsListCompositions    Name = "plugins.listCompositions"
@@ -95,6 +96,11 @@ func registerPlugins(r *Registry) {
 		ReadPluginResource(context.Context, protocol.ReadPluginResourceRequest) (*protocol.PluginResource, error)
 	}, ctx context.Context, in protocol.ReadPluginResourceRequest) (*protocol.PluginResource, error) {
 		return s.ReadPluginResource(ctx, in)
+	})
+	r.query(MethodMeta{Name: PluginsReadLocale, GoName: "ReadPluginLocale", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
+		ReadPluginLocale(context.Context, protocol.ReadPluginLocaleRequest) (*protocol.PluginLocaleCatalog, error)
+	}, ctx context.Context, in protocol.ReadPluginLocaleRequest) (*protocol.PluginLocaleCatalog, error) {
+		return s.ReadPluginLocale(ctx, in)
 	})
 	r.query(MethodMeta{Name: PluginsResolvePoint, GoName: "ResolvePluginPoint", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
 		ResolvePluginPoint(context.Context, protocol.ResolvePluginPointRequest) (*protocol.Page[protocol.PluginPointBinding], error)

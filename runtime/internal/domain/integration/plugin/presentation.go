@@ -1,5 +1,5 @@
 package plugin
 
 const (
-	maxPresentationTitleBytes = 128
+	MaxPresentationTitleBytes = 128
 )

@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-29.1` · 104 methods
+Protocol `2026-10-30.1` · 105 methods
 
 ## Methods
 
@@ -74,6 +74,7 @@ Protocol `2026-10-29.1` · 104 methods
 | `plugins.notifyChange` | command | unary | replayResponse | none | none | — | `plugins` | `capability_not_negotiated` |
 | `plugins.openResources` | subscription | stream | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
 | `plugins.readResource` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
+| `plugins.readLocale` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
 | `plugins.resolvePoint` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
 | `plugins.resolveRequirements` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
 | `plugins.call` | extension | unary | ownerResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
@@ -995,6 +996,12 @@ TypeScript validator from this single registry projection.
 | `PluginClientComponent` | `contribution` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginClientComponent` | `material` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `OpenPluginResourcesRequest` | `componentId` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
+| `ReadPluginLocaleRequest` | `tag` | `nonEmpty` |
+| `ReadPluginLocaleRequest` | `tag` | `maxLength(128)` |
+| `PluginLocale` | `tag` | `nonEmpty` |
+| `PluginLocale` | `tag` | `maxLength(128)` |
+| `PluginLocale` | `title` | `nonEmpty` |
+| `PluginLocale` | `title` | `maxLength(128)` |
 | `PluginPoint` | `contract` | `nonEmpty` |
 | `PluginPoint` | `id` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginPointValue` | `contract` | `nonEmpty` |
@@ -1271,6 +1278,7 @@ available. Refusal is `capability_not_negotiated` — never a silent downgrade.
 | `plugins.notifyChange` | always | `plugins` |
 | `plugins.openResources` | always | `plugins` |
 | `plugins.readResource` | always | `plugins` |
+| `plugins.readLocale` | always | `plugins` |
 | `plugins.resolvePoint` | always | `plugins` |
 | `plugins.resolveRequirements` | always | `plugins` |
 | `plugins.call` | always | `plugins` |

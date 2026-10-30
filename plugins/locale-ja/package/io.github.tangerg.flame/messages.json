@@ -1,4 +1,4 @@
-export const ja: Record<string, string> = {
+{
   "packages.installTitle": "プラグインをインストール",
   "packages.installedTitle": "インストール済みパッケージ",
   "packages.refreshError.title": "インストール済みパッケージを更新できませんでした",
@@ -8,19 +8,15 @@ export const ja: Record<string, string> = {
   "packages.actions": "パッケージの操作",
   "packages.digest": "リリースのダイジェスト",
   "plugins.loadedTitle": "読み込まれたクライアントプラグイン",
-
   "packages.module.loading": "プラグインのビューを読み込み中…",
   "packages.module.failed": "プラグインのビューを読み込みまたは表示できません。",
   "packages.module.unavailable": "プラグインは利用できません。",
   "packages.module.reload": "ウィンドウを再読み込み",
   "packages.module.resolvingWorkspace": "現在のワークスペースを解決中…",
-  "packages.module.selectWorkspace":
-    "このページを表示するには、ワークスペースを持つ Session を選択してください。",
-
+  "packages.module.selectWorkspace": "このページを表示するには、ワークスペースを持つ Session を選択してください。",
   "packages.providers.title": "プロバイダーの選択",
   "packages.providers.refresh": "選択を更新",
-  "packages.providers.future":
-    "選択は次回の起動に適用されます。実行中の処理は既存のバインドを保持します。",
+  "packages.providers.future": "選択は次回の起動に適用されます。実行中の処理は既存のバインドを保持します。",
   "packages.providers.none": "プロバイダーは未選択です。",
   "packages.providers.current": "選択済み：{{name}} · {{contribution}}",
   "packages.providers.unavailable": "選択済みですが利用不可：{{name}} · {{contribution}}",
@@ -30,13 +26,11 @@ export const ja: Record<string, string> = {
   "packages.providers.choose": "プロバイダーを選択",
   "packages.providers.apply": "選択を適用",
   "packages.providers.failed": "選択を確認できませんでした。",
-  "packages.providers.unknown":
-    "確認結果は不明です。別の選択を行う前に元のコマンド {{id}} を確認してください。",
+  "packages.providers.unknown": "確認結果は不明です。別の選択を行う前に元のコマンド {{id}} を確認してください。",
   "packages.providers.reconcile": "元の結果を確認",
   "packages.commands.title": "未確認のプラグインコマンド",
   "packages.commands.refresh": "コマンドを更新",
-  "packages.commands.explanation":
-    "プラグインのビューが利用できなくても元の結果を確認できます。新しいプロバイダーが元の所有者を置き換えることはありません。",
+  "packages.commands.explanation": "プラグインのビューが利用できなくても元の結果を確認できます。新しいプロバイダーが元の所有者を置き換えることはありません。",
   "packages.commands.none": "未確認のプラグインコマンドはありません。",
   "packages.commands.retire": "未送信の場合に終了",
   "packages.commands.retired": "元のコマンドは送信前に終了しました: {{id}}",
@@ -54,21 +48,17 @@ export const ja: Record<string, string> = {
   "packages.points.order": "明示的な拡張順序（JSON 配列）",
   "packages.points.lastInspected": "前回確認した対象・順序・値",
   "packages.points.failed": "拡張ポイントを確認できませんでした。",
-
   "packages.requirements.title": "依存関係",
   "packages.requirements.inspect": "バインドを確認",
-  "packages.requirements.future":
-    "現在の宣言のバインドを取得できます。表示は前回取得した結果で、既存の実行は受理時のバインドを保持します。",
+  "packages.requirements.future": "現在の宣言のバインドを取得できます。表示は前回取得した結果で、既存の実行は受理時のバインドを保持します。",
   "packages.requirements.optional": "任意",
   "packages.requirements.required": "必須",
   "packages.requirements.absent": "任意の依存関係はありません。",
   "packages.requirements.unread": "バインドは未取得です。",
   "packages.requirements.failed": "依存関係のバインドを取得できませんでした。",
-
   "common.clearSearch": "検索をクリア",
   "common.cancel": "キャンセル",
   "common.close": "閉じる",
-
   "approval.what.command": "コマンドを実行",
   "approval.what.fileEdit": "ファイル変更を適用",
   "approval.what.search": "検索を実行",
@@ -76,13 +66,11 @@ export const ja: Record<string, string> = {
   "approval.what.subagent": "サブエージェントに委任",
   "approval.what.generic": "{{tool}} を実行",
   "session.regenerate.switchedAway": "再生成の完了前に切り替えたため、何も再送信されませんでした。",
-  "session.editRerun.draftRetained":
-    "元の会話の履歴を復元しました。現在の下書きは保持されています。",
+  "session.editRerun.draftRetained": "元の会話の履歴を復元しました。現在の下書きは保持されています。",
   "session.restore.files": "作業ツリーをこのチェックポイントに復元しました。",
   "session.restore.both": "会話とファイルをこのチェックポイントに復元しました。",
   "session.restore.history": "会話をこのチェックポイントまで巻き戻しました。",
-  "session.restore.noCheckpoint":
-    "最初のターンより前にチェックポイントがないため、ファイルはそのままです。",
+  "session.restore.noCheckpoint": "最初のターンより前にチェックポイントがないため、ファイルはそのままです。",
   "sessionSearch.label": "セッションへ移動",
   "sessionSearch.placeholder": "セッションを検索…",
   "sessionSearch.empty.title": "一致するセッションがありません",
@@ -107,7 +95,6 @@ export const ja: Record<string, string> = {
   "sidebar.action.newSession": "新規セッション",
   "sidebar.action.tools": "ツールとプラグイン",
   "sidebar.action.settings": "設定",
-
   "composer.input.label": "メッセージ入力欄",
   "composer.placeholder": "やりたいことを書いてください — @ でファイル参照",
   "composer.switchModel": "モデルを切替",
@@ -131,12 +118,10 @@ export const ja: Record<string, string> = {
   "composer.action.send": "送信",
   "composer.action.stop": "停止",
   "composer.slash.heading": "コマンド",
-
   "chat.notices": "会話の通知",
   "chat.error.title": "レンダリングエラー",
   "chat.error.retry": "再試行",
   "chat.jumpToBottom": "最下部へ移動",
-
   "dock.action.browse": "パネルを参照",
   "dock.catalog.title": "パネルを開く",
   "dock.picker.placeholder": "パネルを検索…",
@@ -151,8 +136,7 @@ export const ja: Record<string, string> = {
   "dock.tabs.moveRight": "パネルを右に移動",
   "workspace.view.openBeside": "コンテキストドックで開く",
   "workspace.view.unavailable.title": "ビューを利用できません",
-  "workspace.view.unavailable.body":
-    '"{{id}}" ビューは登録されていません。このタブを閉じるか、プラグインを再度有効にしてください。',
+  "workspace.view.unavailable.body": "\"{{id}}\" ビューは登録されていません。このタブを閉じるか、プラグインを再度有効にしてください。",
   "message.markdown.footnotes": "脚注",
   "message.markdown.backReference": "参照 {{reference}} に戻る",
   "message.image.view": "添付画像を表示",
@@ -185,7 +169,6 @@ export const ja: Record<string, string> = {
   "message.table.preview": "表のプレビュー",
   "message.table.closePreview": "表のプレビューを閉じる",
   "message.math.expression": "数式",
-
   "msgActions.copy": "メッセージをコピー",
   "msgActions.copyMarkdown": "Markdown をコピー",
   "msgActions.copyMarkdownHint": "見出し / フェンスを保持",
@@ -212,7 +195,6 @@ export const ja: Record<string, string> = {
   "plan.step.done": "完了",
   "plan.step.active": "進行中",
   "plan.step.pending": "未着手",
-
   "goal.summary.active": "進行中の目標",
   "goal.summary.paused": "一時停止中の目標",
   "goal.summary.blocked": "目標が停滞中",
@@ -242,8 +224,7 @@ export const ja: Record<string, string> = {
   "goal.error.clear": "目標をクリアできませんでした",
   "goal.error.update": "目標を更新できませんでした",
   "slash.goal": "エージェントが追い続ける目標を設定する",
-  "goal.error.unavailable":
-    "いま目標は設定できません — このランタイムが目標に対応していないか、すでに実行中です",
+  "goal.error.unavailable": "いま目標は設定できません — このランタイムが目標に対応していないか、すでに実行中です",
   "goal.replace.title": "現在の目標を置き換えますか？",
   "goal.replace.body": "「{{objective}}」はここで終了します。会話はそのまま残ります。",
   "goal.replace.confirm": "目標を置き換える",
@@ -279,9 +260,7 @@ export const ja: Record<string, string> = {
   "runtime.unsupported.title": "このランタイムでは利用できません",
   "runtime.unsupported.sub": "接続中のランタイムはこの機能にまだ対応していません。",
   "dataView.error.title": "読み込めませんでした",
-  "dataView.error.sub":
-    "ランタイムがこのリクエストに応答しませんでした。接続を確認して再試行してください。",
-
+  "dataView.error.sub": "ランタイムがこのリクエストに応答しませんでした。接続を確認して再試行してください。",
   "welcome.title": "今日は何を作りましょうか？",
   "welcome.projectTitle": "<projectSelect>{{project}}</projectSelect> で何を作りましょうか？",
   "composer.project.choose": "プロジェクトを選択",
@@ -289,10 +268,8 @@ export const ja: Record<string, string> = {
   "composer.project.add": "新規プロジェクト",
   "composer.project.required": "続行するにはプロジェクトを選択してください",
   "providers.setup.title": "モデルプロバイダーを接続",
-  "providers.setup.sub":
-    "モデルプロバイダーを設定すると会話を開始できます — 認証要件はプロバイダーごとに異なります。",
+  "providers.setup.sub": "モデルプロバイダーを設定すると会話を開始できます — 認証要件はプロバイダーごとに異なります。",
   "providers.setup.action": "プロバイダーを設定",
-
   "settings.title": "設定",
   "settings.searchPlaceholder": "設定を検索…",
   "settings.pane.appearance": "外観",
@@ -316,7 +293,6 @@ export const ja: Record<string, string> = {
   "approvals.clearAll": "すべてクリア",
   "approvals.allow": "許可",
   "approvals.deny": "拒否",
-
   "approvals.subject.all": "すべての引数",
   "approvals.subject.exact": "完全一致",
   "approvals.subject.glob": "グロブ",
@@ -328,7 +304,6 @@ export const ja: Record<string, string> = {
   "approvals.error.loadMode": "承認モードを読み込めませんでした",
   "approvals.error.mode": "承認モードを変更できませんでした。",
   "approvals.error.forget": "決定をクリアできませんでした。",
-
   "plugins.errorDetail.show": "エラー詳細を表示",
   "plugins.errorDetail.hide": "エラー詳細を非表示",
   "plugins.errors_other": "{{count}} 件のエラー",
@@ -343,7 +318,6 @@ export const ja: Record<string, string> = {
   "plugins.errorSource.events": "イベントハンドラー",
   "plugins.errorSource.command": "コマンド",
   "plugins.errorSource.other": "その他",
-
   "connection.error.invalidUrl": "無効な URL",
   "shape.radius.aria": "角丸",
   "shape.motion.aria": "アニメーション速度",
@@ -352,7 +326,6 @@ export const ja: Record<string, string> = {
   "shape.opt.off": "オフ",
   "shape.opt.fast": "速い",
   "shape.opt.slow": "遅い",
-
   "contextDock.group.workspace": "ワークスペース",
   "contextDock.group.run": "実行",
   "contextDock.group.session": "セッション",
@@ -394,10 +367,8 @@ export const ja: Record<string, string> = {
   "settings.streamReveal.smooth": "スムーズ",
   "settings.streamReveal.typewriter": "タイプライター",
   "settings.completionSound": "完了サウンド",
-  "settings.completionSound.sub":
-    "アプリがバックグラウンドのときに実行が完了したらサウンドを再生します。",
+  "settings.completionSound.sub": "アプリがバックグラウンドのときに実行が完了したらサウンドを再生します。",
   "settings.language.label": "言語",
-
   "settings.pane.connection": "接続",
   "settings.connection.title": "バックエンド",
   "settings.connection.sub": "Flame Runtime のアドレス。適用するとデスクトップが再接続します。",
@@ -405,12 +376,10 @@ export const ja: Record<string, string> = {
   "settings.connection.discardToken": "トークンの変更を破棄",
   "settings.connection.tokenSet": "現在の Runtime アドレスにはトークンが設定されています。",
   "settings.connection.tokenNotSet": "現在の Runtime アドレスにはトークンが設定されていません。",
-  "settings.connection.tokenPending":
-    "トークンの変更は未適用です。この値を使うには適用してください。空欄のままにするとトークンを削除します。",
+  "settings.connection.tokenPending": "トークンの変更は未適用です。この値を使うには適用してください。空欄のままにするとトークンを削除します。",
   "settings.connection.token": "アクセストークン",
   "settings.connection.tokenPlaceholder": "トークンを入力または置換",
-  "settings.connection.tokenHint":
-    "このウィンドウ内の、この Runtime アドレスにのみ保持します。再読み込みで消去されます。",
+  "settings.connection.tokenHint": "このウィンドウ内の、この Runtime アドレスにのみ保持します。再読み込みで消去されます。",
   "settings.connection.url": "URL",
   "settings.connection.apply": "適用",
   "settings.connection.reset": "デフォルトに戻す",
@@ -420,19 +389,16 @@ export const ja: Record<string, string> = {
   "agent.steer.pending": "入力を送信中",
   "agent.opening.start": "未確認の開始リクエスト",
   "agent.opening.resume": "未確認の再開リクエスト",
-  "agent.opening.notRecorded":
-    "この照会では元のリクエストの記録が見つかりませんでした。受付結果はまだ未確認です。",
+  "agent.opening.notRecorded": "この照会では元のリクエストの記録が見つかりませんでした。受付結果はまだ未確認です。",
   "agent.opening.review": "元の入力と選択を確認",
   "agent.command.unknown": "受付結果を確認できません",
   "agent.command.retry": "元の送信を再試行",
   "agent.steer.retired": "元の実行記録を利用できないため、入力が適用されたか確認できません。",
   "agent.steer.applied": "モデルのコンテキストに追加済み",
-  "agent.steer.notApplied":
-    "受け付けた指示がモデルのコンテキストに追加される前に実行が終了しました。",
+  "agent.steer.notApplied": "受け付けた指示がモデルのコンテキストに追加される前に実行が終了しました。",
   "agent.inputNotApplied": "未適用",
   "agent.acceptedRunRetired": "受理された実行のデータは利用できなくなりました。",
-  "agent.synchronizationIncomplete":
-    "実行の同期が完了していません。セッションを開き直して再試行してください。",
+  "agent.synchronizationIncomplete": "実行の同期が完了していません。セッションを開き直して再試行してください。",
   "runtime.connection.reconnecting": "Runtime への接続が切れました。再接続しています…",
   "runtime.connection.unavailable": "Runtime を利用できません。Flame は再接続を続けます。",
   "runtime.connection.settings": "接続設定",
@@ -445,7 +411,6 @@ export const ja: Record<string, string> = {
   "settings.connection.status.server": "サーバー",
   "settings.connection.status.protocol": "プロトコル",
   "settings.connection.status.checks": "異常な検査",
-
   "approval.settled.approved": "承認済",
   "approval.settled.declined": "拒否",
   "approval.identity.permission": "権限を確認",
@@ -470,33 +435,24 @@ export const ja: Record<string, string> = {
   "question.settled.noAnswer": "回答なし",
   "question.settled.dismissed": "未回答のまま終了",
   "question.freetext.placeholder": "自由に入力…",
-
   "cwdMissing.title": "作業ディレクトリが見つかりません",
-  "cwdMissing.body":
-    "フォルダがディスクから消失しました。復元するかセッションを再配置するまで、agent はチャット専用モードで動作します。",
+  "cwdMissing.body": "フォルダがディスクから消失しました。復元するかセッションを再配置するまで、agent はチャット専用モードで動作します。",
   "cwdMissing.action.relocate": "再配置…",
   "cwdMissing.action.apply": "適用",
   "cwdMissing.action.cancel": "キャンセル",
   "cwdMissing.placeholder": "新しい絶対パス",
-
   "runError.unknown": "実行が失敗しました。",
   "runError.title": "Agent エラー",
   "runError.action.context": "コンテキストを確認",
   "runError.action.diagnostics": "診断",
   "runError.action.dismiss": "閉じる",
-
   "session.status.pinned": "ピン留め済み",
   "session.status.running": "実行中",
-
   "session.identity.copyCwd": "作業ディレクトリをコピー",
-
   "session.identity.copiedCwd": "作業ディレクトリをコピーしました",
-
   "session.identity.copyId": "セッション ID をコピー",
-
   "session.identity.copiedId": "セッション ID をコピーしました",
   "session.status.waiting": "入力待ち",
-
   "agent.runTree.delegated.one": "サブエージェント",
   "subagents.title": "サブエージェント",
   "subagents.active": "実行中",
@@ -512,8 +468,7 @@ export const ja: Record<string, string> = {
   "agent.runTree.status.finished": "完了",
   "agent.runTree.status.error": "エラー",
   "agent.runTree.status.canceled": "キャンセル済み",
-  "agent.unresolved.summary":
-    "この実行は終了しました。これらの外部操作の結果はまだ確認されていません。",
+  "agent.unresolved.summary": "この実行は終了しました。これらの外部操作の結果はまだ確認されていません。",
   "agent.unresolved.operation": "未確認の操作 {{index}}",
   "agent.unresolved.processId": "プロセス ID",
   "agent.unresolved.effectId": "Effect ID",
@@ -524,12 +479,10 @@ export const ja: Record<string, string> = {
   "agent.steps_other": "{{count}} ステップ",
   "agent.runTree.action.cancel": "この実行をキャンセル",
   "agent.runTree.material.empty": "ナラティブはまだありません",
-
   "notifications.title": "通知",
   "notifications.clearAll": "すべてクリア",
   "notifications.dismiss": "閉じる",
   "notifications.empty.title": "通知はありません",
-
   "tools.family.shell": "シェル",
   "tools.family.files": "ファイル",
   "tools.family.search": "検索",
@@ -540,29 +493,21 @@ export const ja: Record<string, string> = {
   "tools.family.recall": "参照",
   "tools.family.schedules": "スケジュール",
   "tools.family.goals": "ゴール",
-
   "toolAction.copyArguments": "引数をコピー",
   "toolAction.argumentsCopied": "引数をコピーしました",
-  "toolAction.copyFailed":
-    "引数をコピーできませんでした。ツールを展開し、「{{section}}」からコピーしてください。",
+  "toolAction.copyFailed": "引数をコピーできませんでした。ツールを展開し、「{{section}}」からコピーしてください。",
   "approval.fallbackText": "この操作を承認しますか？",
-
-  "shortcuts.sub":
-    "組み込みおよびユーザープラグインによって登録されたすべてのキーバインド。アプリ内のどこでもコンボを押して発動できます。バインドの競合は常に最後の登録に解決されます。",
+  "shortcuts.sub": "組み込みおよびユーザープラグインによって登録されたすべてのキーバインド。アプリ内のどこでもコンボを押して発動できます。バインドの競合は常に最後の登録に解決されます。",
   "shortcuts.filter": "アクションまたはコンボで絞り込み…",
   "shortcuts.filterAria": "ショートカットを絞り込む",
   "shortcuts.empty": "一致するショートカットはありません",
-
   "agentSource.rpc": "ランタイムプロトコル (JSON-RPC)",
   "narrative.rail.turns": "あなたの質問",
   "role.user": "あなた",
   "role.assistant": "アシスタント",
   "role.system": "システム",
-
   "composer.removeImage": "画像を削除",
-
   "diff.fileCount_other": "{{count}} 個のファイル",
-
   "compaction.compacted": "コンテキストが自動的に圧縮されました",
   "projects.showMore": "さらに {{count}} 件表示",
   "projects.showLess": "折りたたむ",
@@ -574,15 +519,11 @@ export const ja: Record<string, string> = {
   "convExport.json": "会話を JSON でエクスポート",
   "convExport.trajectory": "セッションの完全な履歴をエクスポート",
   "convExport.import": "JSON から会話をインポート",
-  "convExport.unsupported":
-    "このランタイムはセッションのエクスポートとインポートをサポートしていません。",
-  "convExport.readFailed":
-    "選択したファイルを読み取れませんでした。もう一度選択するか、別の JSON ファイルを選択してください。",
-  "convExport.notJson":
-    "選択したファイルは有効な JSON ではありません。Flame からエクスポートした会話 JSON ファイルを選択してください。",
+  "convExport.unsupported": "このランタイムはセッションのエクスポートとインポートをサポートしていません。",
+  "convExport.readFailed": "選択したファイルを読み取れませんでした。もう一度選択するか、別の JSON ファイルを選択してください。",
+  "convExport.notJson": "選択したファイルは有効な JSON ではありません。Flame からエクスポートした会話 JSON ファイルを選択してください。",
   "convExport.exportFailed": "会話をエクスポートできませんでした。",
-  "convExport.importFailed":
-    "会話をインポートできませんでした。Flame からエクスポートした会話 JSON ファイルでもう一度お試しください。",
+  "convExport.importFailed": "会話をインポートできませんでした。Flame からエクスポートした会話 JSON ファイルでもう一度お試しください。",
   "convExport.importSuccess": "「{{title}}」をインポートしました。",
   "connection.error.token": "空白や制御文字を含まない有効なアクセストークンを入力してください。",
   "connection.error.urlScheme": "http:// または https:// で始める必要があります",
@@ -621,13 +562,11 @@ export const ja: Record<string, string> = {
   "commandMenu.empty.title": "一致するコマンドがありません",
   "commandMenu.empty.sub": "名前の一部を入力してください。",
   "command.showShortcuts": "キーボードショートカット",
-
   "reasoning.thinking": "考えています",
   "reasoning.thought": "思考",
   "reasoning.thoughtFor": "{{duration}} 思考",
   "reasoning.interrupted": "中断",
   "reasoning.text": "思考の内容",
-
   "composer.placeholder.steer": "実行中のターンを誘導するメッセージを送信…",
   "composer.action.steer": "実行中のターンを誘導",
   "composer.paste.lines_other": "貼り付け · {{count}} 行",
@@ -660,9 +599,7 @@ export const ja: Record<string, string> = {
   "approvals.gate.prompt": "事前に確認",
   "approvals.gate.deny": "拒否",
   "approvals.gate.entry": "{{toolClass}}：{{gate}}",
-
   "toolAction.failed": "「{{action}}」を完了できませんでした。",
-
   "workspace.view.title.file": "ファイル",
   "settings.theme.system": "システム",
   "runError.action.retryIn": "{{seconds}} 秒後に再試行",
@@ -680,59 +617,36 @@ export const ja: Record<string, string> = {
   "file.error.sub": "移動されたか、ワークスペース外にある可能性があります。",
   "composer.key.historyPrevDesc": "前のメッセージを呼び出す",
   "composer.key.historyNextDesc": "次のメッセージを呼び出す",
-
-  "rpcError.session_has_active_run":
-    "このセッションには実行中のランがあります — 介入・応答・キャンセルのいずれかを先に行ってください。",
-  "runError.activeRun.running":
-    "このセッションは実行中です。その実行に介入するか、キャンセルしてください。",
-  "runError.activeRun.waiting":
-    "このセッションには回答待ちの実行があります。回答するかキャンセルしてください。",
-
+  "rpcError.session_has_active_run": "このセッションには実行中のランがあります — 介入・応答・キャンセルのいずれかを先に行ってください。",
+  "runError.activeRun.running": "このセッションは実行中です。その実行に介入するか、キャンセルしてください。",
+  "runError.activeRun.waiting": "このセッションには回答待ちの実行があります。回答するかキャンセルしてください。",
   "rpcError.run_not_root": "そのランはより大きなランの一部です — ルートランを指定してください。",
   "rpcError.run_waiting": "そのランは回答を待っています — まず回答してください。",
   "rpcError.run_finished": "そのランはすでに終了しています。",
-  "rpcError.stale_segment":
-    "そのランは先へ進みました — 再読み込みして現在の状態を確認してください。",
-
+  "rpcError.stale_segment": "そのランは先へ進みました — 再読み込みして現在の状態を確認してください。",
   "rpcError.session_busy": "セッションは実行中です — 現在の実行が終わるまで待ってください。",
-  "rpcError.checkpoint_unavailable":
-    "そのターンにはファイルのチェックポイントがありません — 何も変更されていません。",
-  "rpcError.checkpoint_conflict":
-    "チェックポイントに保存されていないファイルを保護するため、復元を拒否しました。ファイルは変更されていません。",
-  "rpcError.prompt_source_too_large":
-    "指示ファイルがサイズまたは数の上限を超えています。内容を短くするかファイル数を減らして、再試行してください。",
+  "rpcError.checkpoint_unavailable": "そのターンにはファイルのチェックポイントがありません — 何も変更されていません。",
+  "rpcError.checkpoint_conflict": "チェックポイントに保存されていないファイルを保護するため、復元を拒否しました。ファイルは変更されていません。",
+  "rpcError.prompt_source_too_large": "指示ファイルがサイズまたは数の上限を超えています。内容を短くするかファイル数を減らして、再試行してください。",
   "rpcError.workspace_unavailable": "そのワークスペースはランタイムのディスク上に存在しません。",
   "rpcError.vcs_unavailable": "このフォルダは git リポジトリではありません。",
-  "rpcError.rate_limited":
-    "モデルプロバイダがレート制限中です — 少し待ってから再試行してください。",
-  "rpcError.invalid_api_key":
-    "プロバイダが API キーを拒否しました — プロバイダ設定で確認してください。",
-  "rpcError.timeout":
-    "モデルプロバイダへのリクエストがタイムアウトしました — 接続を確認して再試行してください。",
-  "rpcError.provider_unavailable":
-    "モデルプロバイダは一時的に利用できません — しばらくしてから再試行してください。",
+  "rpcError.rate_limited": "モデルプロバイダがレート制限中です — 少し待ってから再試行してください。",
+  "rpcError.invalid_api_key": "プロバイダが API キーを拒否しました — プロバイダ設定で確認してください。",
+  "rpcError.timeout": "モデルプロバイダへのリクエストがタイムアウトしました — 接続を確認して再試行してください。",
+  "rpcError.provider_unavailable": "モデルプロバイダは一時的に利用できません — しばらくしてから再試行してください。",
   "rpcError.provider_rejected": "モデルプロバイダがリクエストを不正として拒否しました。",
-  "rpcError.provider_error":
-    "モデルプロバイダから応答がありませんでした — もう一度お試しください。",
-  "rpcError.agent_stuck":
-    "エージェントの進行が止まりました — 表現を変えるか、タスクを絞ってください。",
+  "rpcError.provider_error": "モデルプロバイダから応答がありませんでした — もう一度お試しください。",
+  "rpcError.agent_stuck": "エージェントの進行が止まりました — 表現を変えるか、タスクを絞ってください。",
   "rpcError.denied_by_user": "この操作を拒否しました。",
   "rpcError.tool_failed": "ツールの実行に失敗しました。タイムラインで内容を確認してください。",
   "rpcError.tool_canceled": "ツール呼び出しが完了前にキャンセルされました。",
   "rpcError.child_run_canceled": "委任された実行がキャンセルされました。",
-  "rpcError.idempotency_in_progress":
-    "コマンドの結果はまだ確認できません。再送信する前にセッションを確認してください。新しいリクエストは、完了済みの操作を重複して実行する可能性があります。",
-  "rpcError.internal_error":
-    "ランタイム内部でエラーが発生しました — 再試行し、繰り返す場合は診断を確認してください。",
-  "rpcError.run_lost":
-    "この実行のプロセスが失われました — 結果が保存される前に終了しました。もう一度実行してください。",
-
-  "rpcError.mcp_authorization_attempt_not_found":
-    "このサインイン試行は期限切れです。もう一度開始してください。",
-
+  "rpcError.idempotency_in_progress": "コマンドの結果はまだ確認できません。再送信する前にセッションを確認してください。新しいリクエストは、完了済みの操作を重複して実行する可能性があります。",
+  "rpcError.internal_error": "ランタイム内部でエラーが発生しました — 再試行し、繰り返す場合は診断を確認してください。",
+  "rpcError.run_lost": "この実行のプロセスが失われました — 結果が保存される前に終了しました。もう一度実行してください。",
+  "rpcError.mcp_authorization_attempt_not_found": "このサインイン試行は期限切れです。もう一度開始してください。",
   "rpcError.skill_not_found": "そのスキルはライブラリにありません。",
-  "rpcError.skill_unavailable":
-    "そのスキルの文書を読み込めません。解決先のファイルを確認してください。",
+  "rpcError.skill_unavailable": "そのスキルの文書を読み込めません。解決先のファイルを確認してください。",
   "rpcError.revision_conflict": "先に別の変更が入りました。再読み込みしてやり直してください。",
   "rpcError.mcp_server_not_found": "そのサーバーは設定にありません。",
   "rpcError.mcp_server_already_exists": "同じ名前のサーバーが既に設定されています。",
@@ -741,30 +655,22 @@ export const ja: Record<string, string> = {
   "rpcError.unsupported_mime": "ここではこのファイル形式に対応していません。",
   "rpcError.interrupt_not_open": "その要求はもう回答を待っていません。",
   "rpcError.idempotency_conflict": "同じ要求が別の内容で既に送信されています。",
-  "rpcError.plugin_changed":
-    "実行の準備中にプラグインが変更されました。何も開始されていません。再送信して再試行してください。",
+  "rpcError.plugin_changed": "実行の準備中にプラグインが変更されました。何も開始されていません。再送信して再試行してください。",
   "rpcError.capability_not_negotiated": "接続中のランタイムはこの機能を提供していません。",
-  "rpcError.export_too_large":
-    "このセッションは大きすぎるため、1 つの軌跡としてエクスポートできません。",
-  "rpcError.invalid_protocol_version":
-    "このランタイムは異なるプロトコルバージョンを使用しています。Flame またはランタイムを更新してください。",
-  "rpcError.mcp_owned_by_installation":
-    "このサーバーはプラグインが提供しています。プラグイン側で変更してください。",
-  "rpcError.plugin_in_use":
-    "このプラグインに依存しているセッションがあります。依存がなくなってから再試行してください。",
+  "rpcError.export_too_large": "このセッションは大きすぎるため、1 つの軌跡としてエクスポートできません。",
+  "rpcError.invalid_protocol_version": "このランタイムは異なるプロトコルバージョンを使用しています。Flame またはランタイムを更新してください。",
+  "rpcError.mcp_owned_by_installation": "このサーバーはプラグインが提供しています。プラグイン側で変更してください。",
+  "rpcError.plugin_in_use": "このプラグインに依存しているセッションがあります。依存がなくなってから再試行してください。",
   "rpcError.plugin_not_found": "そのプラグインはもうインストールされていません。",
-  "rpcError.plugin_stale":
-    "開いた後にプラグインが変更されました。再読み込みしてもう一度確認してください。",
+  "rpcError.plugin_stale": "開いた後にプラグインが変更されました。再読み込みしてもう一度確認してください。",
   "rpcError.plugin_disabled": "使用する前にこのプラグインを有効にしてください。",
-  "rpcError.plugin_unavailable":
-    "そのプラグインのリリースは検証に失敗しました。再インストールまたは更新してください。",
+  "rpcError.plugin_unavailable": "そのプラグインのリリースは検証に失敗しました。再インストールまたは更新してください。",
   "session.error.create": "セッションを作成できませんでした。もう一度お試しください。",
   "session.directory.title": "新しいセッション",
   "session.directory.path": "Runtime の作業ディレクトリ",
   "session.directory.create": "セッションを作成",
   "session.directory.browse": "このコンピューターを参照",
-  "session.error.chooseWorkingDirectory":
-    "フォルダー選択を開けませんでした。ディレクトリを直接入力してください。",
+  "session.error.chooseWorkingDirectory": "フォルダー選択を開けませんでした。ディレクトリを直接入力してください。",
   "session.error.delete": "セッションを削除できませんでした。",
   "session.error.rename": "セッション名を変更できませんでした。",
   "session.error.fork": "セッションをフォークできませんでした。",
@@ -878,7 +784,6 @@ export const ja: Record<string, string> = {
   "tool.group.write": "書き込み {{count}}",
   "tool.group.run": "実行 {{count}}",
   "tool.group.fetch": "通信 {{count}}",
-
   "duration.seconds": "{{sec}}秒",
   "duration.minutes": "{{min}}分{{sec}}秒",
   "duration.hours": "{{hr}}時間{{min}}分",
@@ -893,19 +798,15 @@ export const ja: Record<string, string> = {
   "composer.mention.status.no-workspace": "ファイルを参照するにはプロジェクトを選択してください",
   "settings.search.empty": "「{{query}}」に一致する設定はありません。",
   "startup.failed.title": "Flame を起動できませんでした",
-  "startup.failed.body":
-    "ウィンドウの準備が整う前に問題が発生しました。再試行するか、診断情報をコピーして報告してください。",
+  "startup.failed.body": "ウィンドウの準備が整う前に問題が発生しました。再試行するか、診断情報をコピーして報告してください。",
   "startup.failed.copy": "診断情報をコピー",
   "startup.failed.copied": "コピーしました",
   "plugins.renderFailed.details": "詳細",
   "settings.notifications": "システム通知",
-  "settings.notifications.authorization.granted":
-    "Flame がバックグラウンドのとき、実行の完了・失敗・入力待ちを通知します。",
+  "settings.notifications.authorization.granted": "Flame がバックグラウンドのとき、実行の完了・失敗・入力待ちを通知します。",
   "settings.notifications.authorization.default": "最初に通知が必要になったときに許可を求めます。",
-  "settings.notifications.authorization.denied":
-    "システムでブロックされています。「システム設定 › 通知」で Flame を許可してください。",
-  "settings.notifications.authorization.unsupported":
-    "このプラットフォームはシステム通知に対応していません。",
+  "settings.notifications.authorization.denied": "システムでブロックされています。「システム設定 › 通知」で Flame を許可してください。",
+  "settings.notifications.authorization.unsupported": "このプラットフォームはシステム通知に対応していません。",
   "notify.finished.title": "{{product}} が完了しました",
   "notify.finished.body": "エージェントがターンを終えました。",
   "notify.needsInput.title": "{{product}} が入力を待っています",
@@ -965,8 +866,7 @@ export const ja: Record<string, string> = {
   "model.effort.max": "最大",
   "file.unsupported.image": "ここではまだ画像をプレビューできません",
   "file.unsupported.binary": "このファイルはテキストではありません",
-  "file.unsupported.sub":
-    "Flame はワークスペースのファイルをテキストとして表示します。既定のアプリで開くか、Finder で表示してください。",
+  "file.unsupported.sub": "Flame はワークスペースのファイルをテキストとして表示します。既定のアプリで開くか、Finder で表示してください。",
   "file.open": "開く",
   "file.openFailed": "{{path}} を開けませんでした。もう一度お試しください。",
   "file.revealFailed": "{{path}} を Finder に表示できませんでした。もう一度お試しください。",
@@ -976,13 +876,9 @@ export const ja: Record<string, string> = {
   "file.change.del": "作業ツリーで削除",
   "file.change.renamed": "{{path}} から名前を変更",
   "file.change.below": "作業ツリーの変更を含む",
-
   "packages.module.selectSession": "このページを表示するセッションを選択してください。",
-
   "packages.loading": "読み込み中…",
-
-  "packages.trust":
-    "リリースの承認はその正確なコードを信頼することを意味します。ローカル実行は OS の権限を使用します。ソース、ダイジェスト、入力を確認してください。別のリリースを選択すると再承認が必要です。",
+  "packages.trust": "リリースの承認はその正確なコードを信頼することを意味します。ローカル実行は OS の権限を使用します。ソース、ダイジェスト、入力を確認してください。別のリリースを選択すると再承認が必要です。",
   "packages.source": "Runtime 上のパッケージディレクトリまたは ZIP の絶対パス",
   "packages.install": "インストール",
   "packages.empty": "Runtime パッケージはありません",
@@ -1001,15 +897,11 @@ export const ja: Record<string, string> = {
   "packages.configureObject": "入力の変更には JSON オブジェクトを使用してください。",
   "packages.configureField": "{{field}} を修正してください：{{reason}}。",
   "packages.configureContext": "レビュー対象リリースのダイジェスト: {{digest}}。",
-  "packages.stageContext":
-    "ステージは新しいリリースを準備するだけで、選択中のリリースは変わりません。ステージ済みリリースは後で別途選択してください。",
+  "packages.stageContext": "ステージは新しいリリースを準備するだけで、選択中のリリースは変わりません。ステージ済みリリースは後で別途選択してください。",
   "packages.save": "保存",
-  "packages.installed":
-    "{{name}} をインストールしました。有効にする前に、下のリリースを確認してください。",
-  "packages.releaseUnavailable":
-    "このリリースのファイルが検証に失敗したため、コンポーネントを利用できません。",
-  "packages.backendUnavailable":
-    "サーバー「{{name}}」を起動できません：バックエンドを準備できませんでした。",
+  "packages.installed": "{{name}} をインストールしました。有効にする前に、下のリリースを確認してください。",
+  "packages.releaseUnavailable": "このリリースのファイルが検証に失敗したため、コンポーネントを利用できません。",
+  "packages.backendUnavailable": "サーバー「{{name}}」を起動できません：バックエンドを準備できませんでした。",
   "packages.component.manifestField": "マニフェストのフィールド「{{name}}」",
   "packages.component.flameExtension": "Flame 拡張",
   "packages.component.extensionField": "拡張フィールド「{{name}}」",
@@ -1020,17 +912,12 @@ export const ja: Record<string, string> = {
   "packages.component.skill": "スキル「{{name}}」",
   "packages.diagnostic.unknownField": "{{component}}は認識されないため無視されました。",
   "packages.diagnostic.invalidDeclaration": "{{component}}は無効なため無効化されました。",
-  "packages.diagnostic.unsupportedContribution":
-    "{{component}}はサポートされていないため無視されました。",
+  "packages.diagnostic.unsupportedContribution": "{{component}}はサポートされていないため無視されました。",
   "packages.diagnostic.componentLimit": "{{component}}は上限を超えたため無効化されました。",
-  "packages.diagnostic.invalidDependencies":
-    "{{component}}は存在しないか無効な宣言に依存しているため無効化されました。",
-  "packages.diagnostic.unavailableComponent":
-    "{{component}}を読み込めなかったため無効化されました。",
-  "packages.realizationFailed":
-    "このウィンドウでパッケージテーマを読み込めませんでした: {{reason}}",
-  "packages.reviewedField":
-    "「{{field}}」はレビュー済みのリリースに属するため、ここでは変更できません。",
+  "packages.diagnostic.invalidDependencies": "{{component}}は存在しないか無効な宣言に依存しているため無効化されました。",
+  "packages.diagnostic.unavailableComponent": "{{component}}を読み込めなかったため無効化されました。",
+  "packages.realizationFailed": "このウィンドウでパッケージテーマを読み込めませんでした: {{reason}}",
+  "packages.reviewedField": "「{{field}}」はレビュー済みのリリースに属するため、ここでは変更できません。",
   "composer.models.error": "モデルを読み込めませんでした。",
-  "composer.models.refresh": "モデル一覧を更新",
-};
+  "composer.models.refresh": "モデル一覧を更新"
+}

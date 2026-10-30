@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-29.1";
+export const PROTOCOL_VERSION = "2026-10-30.1";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -1353,6 +1353,15 @@ export interface PluginInstallation {
   staged?: PluginRelease;
 }
 
+export interface PluginLocale {
+  tag: string;
+  title: string;
+}
+
+export interface PluginLocaleCatalog {
+  messages: Record<string, string>;
+}
+
 export interface PluginOperationBinding {
   contract: string;
   contribution: string;
@@ -1404,6 +1413,7 @@ export interface PluginRelease {
   diagnostics: PluginDiagnostic[];
   digest: string;
   inputs: PluginInput[];
+  locales: PluginLocale[];
   name: string;
   pointValues: PluginPointValue[];
   points: PluginPoint[];
@@ -1603,6 +1613,12 @@ export interface ReadFileRequest {
   path: string;
   startLine?: number;
   workspace: WorkspaceRef;
+}
+
+export interface ReadPluginLocaleRequest {
+  digest: string;
+  installationId: string;
+  tag: string;
 }
 
 export interface ReadPluginResourceRequest {

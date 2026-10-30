@@ -197,6 +197,9 @@ func (r *binding) OpenPluginResources(ctx context.Context, request protocol.Open
 func (r *binding) ReadPluginResource(ctx context.Context, request protocol.ReadPluginResourceRequest, options protocol.CallOptions) (*protocol.PluginResource, error) {
 	return r.invoke[protocol.ReadPluginResourceRequest, *protocol.PluginResource](ctx, delivery.Name("plugins.readResource"), request, callOptions(options))
 }
+func (r *binding) ReadPluginLocale(ctx context.Context, request protocol.ReadPluginLocaleRequest, options protocol.CallOptions) (*protocol.PluginLocaleCatalog, error) {
+	return r.invoke[protocol.ReadPluginLocaleRequest, *protocol.PluginLocaleCatalog](ctx, delivery.Name("plugins.readLocale"), request, callOptions(options))
+}
 func (r *binding) ResolvePluginPoint(ctx context.Context, request protocol.ResolvePluginPointRequest, options protocol.CallOptions) (*protocol.Page[protocol.PluginPointBinding], error) {
 	return r.invoke[protocol.ResolvePluginPointRequest, *protocol.Page[protocol.PluginPointBinding]](ctx, delivery.Name("plugins.resolvePoint"), request, callOptions(options))
 }

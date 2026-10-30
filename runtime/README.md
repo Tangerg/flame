@@ -1,5 +1,12 @@
 # Flame Runtime
 
+Core `2026-10-30.1` exposes installed locale metadata and `plugins.readLocale`.
+Rebuild Go, TypeScript, CLI and Desktop consumers together. Locale catalogs are
+bounded static JSON resources of the exact selected, enabled release, independent
+of executable components. Workbench translation packages are independently
+installable; existing installations do not gain them through a compatibility
+registration. Language preference and English fallback remain client-owned.
+
 Core `2026-10-29.1` removes the built-in HTTP Tool and its `online` configuration.
 The installed Web package owns HTTP execution, network grants and original request
 receipts. Configure its `http-allowed-hosts` input explicitly; no former environment

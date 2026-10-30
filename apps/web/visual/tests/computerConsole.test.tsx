@@ -1559,7 +1559,7 @@ it("renders the operator boundary and controls in Chinese", async () => {
   const setup = rig(fixture({ ...initial, session: undefined }));
   setup.mount("zh");
   const panel = await screen.findByRole("region", { name: "电脑控制" });
-  expect(within(panel).getByText(/操作员控制台必须位于被控桌面/)).not.toBeNull();
+  expect(await within(panel).findByText(/操作员控制台必须位于被控桌面/)).not.toBeNull();
   expect(
     within(panel).getByRole("button", { name: "授权并打开控制" }).hasAttribute("disabled"),
   ).toBe(false);

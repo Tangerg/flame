@@ -186,6 +186,17 @@ arrival and withdrawal through react-i18next and receive its current translator,
 so ordinary and memoized copy update together. Dictionary ownership, locale storage,
 English fallback, BCP-47 mapping and Runtime commands retain their existing owners.
 
+Optional workbench dictionaries come from installed `contributes.locales`
+declarations. Runtime reads only the declared JSON for an exact installation,
+selected release and canonical language tag. The Host lazily activates each unique
+source, joins pending reads on withdrawal, and removes its dictionary when the
+source is disabled, replaced or removed. Conflicting sources for one language
+withdraw all dictionaries for that tag and report a plugin error; load order never
+selects a winner. The saved language preference survives withdrawal and uses the
+English base until an admitted source returns.
+Choosing the current language retries a failed initial catalog load through the
+same activation owner, without changing the preference.
+
 `SettingRow` marks the label and controls as one shared focus unit. `Panel` owns
 revealing that complete unit inside the clipped host when it fits; taller rows
 retain the focused control as the reading target.

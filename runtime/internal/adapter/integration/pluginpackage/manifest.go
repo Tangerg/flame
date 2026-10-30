@@ -295,17 +295,33 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 		return release.AdmitComponent(plugin.ClientComponent{Selector: selector, ID: w.ID, Title: w.Title, Scope: w.Scope, Placement: w.Placement, Entry: w.Entry, Export: w.Export, Contribution: contribution, Material: material, SettingsIntent: settingsIntent})
 	})
 	for _, component := range slices.Sorted(maps.Keys(contributes)) {
-		if component != "themes" {
+		switch component {
+		case "locales":
+			admitContributions(contributes[component], release, plugin.Component{Kind: plugin.ComponentContribution, Name: component}, func(w wireLocale) error {
+				value := plugin.Locale{Tag: w.Tag, Title: w.Title, Entry: w.Entry}
+				if !plugin.ValidResourcePath(value.Entry) || !strings.HasPrefix(value.Entry, plugin.Namespace+"/") {
+					return plugin.ErrInvalid
+				}
+				body, err := read(ctx, root, value.Entry, maxManifestBytes)
+				if err != nil {
+					return err
+				}
+				if _, err := decodeLocale(body); err != nil {
+					return err
+				}
+				return release.AdmitLocale(value)
+			})
+		case "themes":
+			admitContributions(contributes[component], release, plugin.Component{Kind: plugin.ComponentContribution, Name: component}, func(w wireTheme) error {
+				theme, err := w.domain()
+				if err != nil {
+					return err
+				}
+				return release.AdmitTheme(theme)
+			})
+		default:
 			report(release, plugin.Component{Kind: plugin.ComponentContribution, Name: component}, plugin.DiagnosticUnsupportedContribution)
-			continue
 		}
-		admitContributions(contributes[component], release, plugin.Component{Kind: plugin.ComponentContribution, Name: component}, func(w wireTheme) error {
-			theme, err := w.domain()
-			if err != nil {
-				return err
-			}
-			return release.AdmitTheme(theme)
-		})
 	}
 	return nil
 }
