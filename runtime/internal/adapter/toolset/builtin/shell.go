@@ -30,9 +30,6 @@ import (
 // instead of polling. cwd is read per call (executionctx.CWD) so a command runs in the
 // session's working directory.
 
-// Long-running commands yield their foreground slot without ending execution.
-const defaultAutoBackgroundSeconds = 60
-
 func validateShellArguments(s builtincontract.ShellArguments) error {
 	if s.Command == "" {
 		return errors.New("shell: command is required")
@@ -50,7 +47,7 @@ func validateShellArguments(s builtincontract.ShellArguments) error {
 }
 
 func shellAutoBackgroundAfter(seconds *int) (time.Duration, error) {
-	after := defaultAutoBackgroundSeconds
+	after := builtincontract.ShellAutoBackgroundSeconds
 	if seconds != nil {
 		after = *seconds
 	}

@@ -1,5 +1,10 @@
 package builtin
 
+// ShellAutoBackgroundSeconds is the foreground budget an omitted
+// auto_background_after_seconds selects. The field description states it to
+// the model; the contract test keeps that sentence and this value together.
+const ShellAutoBackgroundSeconds = 60
+
 type ShellArguments struct {
 	Command                    string `json:"command" jsonschema:"minLength=1" jsonschema_description:"Shell command line, run by /bin/sh -c. Each call starts a fresh shell; directory changes, variables, and shell options do not persist."`
 	Description                string `json:"description" jsonschema:"minLength=1,maxLength=120" jsonschema_description:"Concise action phrase shown while the command runs, such as Run backend tests. Describe the command's purpose; do not copy the command or predict its result."`

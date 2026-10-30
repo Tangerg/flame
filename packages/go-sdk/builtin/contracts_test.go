@@ -2,6 +2,8 @@ package builtin
 
 import (
 	json "encoding/json/v2"
+	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -32,5 +34,13 @@ func TestNormalizedResultEncodingRetainsPresenceAndZeroCounts(t *testing.T) {
 	encoded, err = json.Marshal(PatchResult{Changes: []AppliedChange{{Path: "next.go", Status: Moved, From: "old.go"}}})
 	if err != nil || !strings.Contains(string(encoded), `"added":0`) || !strings.Contains(string(encoded), `"removed":0`) {
 		t.Fatalf("pure move = %s, %v", encoded, err)
+	}
+}
+
+func TestShellSchemaStatesTheAutoBackgroundDefault(t *testing.T) {
+	field, _ := reflect.TypeFor[ShellArguments]().FieldByName("AutoBackgroundAfterSeconds")
+	want := "Defaults to " + strconv.Itoa(ShellAutoBackgroundSeconds) + "."
+	if !strings.Contains(field.Tag.Get("jsonschema_description"), want) {
+		t.Fatalf("auto-background description does not state %q", want)
 	}
 }
