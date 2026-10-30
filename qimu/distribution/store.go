@@ -376,7 +376,7 @@ func (s *Store) Remove(ctx context.Context, digest qimu.Digest) (err error) {
 		return err
 	}
 	defer func() { err = errors.Join(err, temporary.Close(), s.removePrivate(retiring, identity)) }()
-	err = s.admission.Under(ctx, func() error {
+	err = s.admission.Under(ctx, func() (err error) {
 		s.mu.Lock()
 		busy := s.leases[digest] != 0
 		s.mu.Unlock()
@@ -400,6 +400,15 @@ func (s *Store) Remove(ctx context.Context, digest qimu.Digest) (err error) {
 		if !info.IsDir() || info.Mode()&fs.ModeSymlink != 0 {
 			return ErrIntegrity
 		}
+		releaseRoot, err := s.root.OpenRoot(digest.String())
+		if err != nil {
+			return err
+		}
+		defer func() { err = errors.Join(err, releaseRoot.Close()) }()
+		opened, err := releaseRoot.Stat(".")
+		if err != nil || !os.SameFile(info, opened) {
+			return errors.Join(ErrIntegrity, err)
+		}
 		placeholder, err := s.root.Lstat(retiring)
 		if err != nil || !os.SameFile(identity, placeholder) {
 			return errors.Join(ErrIntegrity, err)
@@ -407,15 +416,18 @@ func (s *Store) Remove(ctx context.Context, digest qimu.Digest) (err error) {
 		if err := s.root.Remove(retiring); err != nil {
 			return err
 		}
-		// A same-parent rename withdraws the sealed directory without making its
-		// immutable contents writable. The empty reservation fixes the private
-		// operation's name before admission; no release I/O uses that name.
-		err = s.root.Rename(string(digest), retiring)
-		if errors.Is(err, os.ErrNotExist) {
-			return nil
-		}
-		if err != nil {
+		// Older macOS filesystems require the renamed directory to be writable.
+		// Admission has excluded leases and retention; its contents stay sealed.
+		if err := releaseRoot.Chmod(".", 0700); err != nil {
 			return err
+		}
+		err = s.root.Rename(string(digest), retiring)
+		if err != nil {
+			restoreErr := releaseRoot.Chmod(".", info.Mode().Perm())
+			if errors.Is(err, os.ErrNotExist) {
+				err = nil
+			}
+			return errors.Join(err, restoreErr)
 		}
 		identity = info
 		return s.lock.Sync()
@@ -465,7 +477,7 @@ func (s *Store) publishHeld(ctx context.Context, staged *staging, source Source)
 	if err := s.trust(ctx, source, release.Manifest, release.Lock); err != nil {
 		return nil, errors.Join(ErrUntrusted, err)
 	}
-	if err := staged.seal(); err != nil {
+	if err := staged.sealContents(); err != nil {
 		return nil, err
 	}
 	lease := &Lease{store: s, release: release}
@@ -482,6 +494,11 @@ func (s *Store) publishHeld(ctx context.Context, staged *staging, source Source)
 				return errors.Join(ErrIntegrity, err)
 			}
 			if err := s.root.Rename(staged.name, destination); err != nil {
+				return err
+			}
+			// Seal the renamed root before admission can grant its first lease.
+			// A failed seal leaves a directory that openRelease refuses.
+			if err := staged.root.Chmod(".", 0500); err != nil {
 				return err
 			}
 			if err := s.lock.Sync(); err != nil {
@@ -635,10 +652,13 @@ func (s *staging) write(ctx context.Context, name string, mode fs.FileMode, read
 	return errors.Join(writeErr, file.Sync(), file.Close())
 }
 
-func (s *staging) seal() error {
+func (s *staging) sealContents() error {
 	return fs.WalkDir(s.root.FS(), ".", func(name string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
+		}
+		if name == "." {
+			return nil
 		}
 		mode := fs.FileMode(0400)
 		if entry.IsDir() {

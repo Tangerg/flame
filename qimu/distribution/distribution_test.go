@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
@@ -88,6 +89,51 @@ func TestBuildDeterministicAndResourceNeedsNoMethods(t *testing.T) {
 	data, err := lease.Read(context.Background(), "theme.css")
 	if err != nil || string(data) != "body { color: blue; }\n" {
 		t.Fatalf("resource: %q %v", data, err)
+	}
+}
+
+func TestPublicationSealsTheTreeAndRefusesAnIncompleteRoot(t *testing.T) {
+	_, _, archive, _ := packageFixture(t)
+	store := storeFixture(t, nil)
+	release := installArchive(t, store, archive)
+	directory := filepath.Join(store.directory, release.Digest.String())
+	if err := filepath.WalkDir(directory, func(name string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		if info.Mode().Perm()&0222 != 0 {
+			t.Errorf("published path remains writable: %s", name)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	lease, err := store.Acquire(t.Context(), release.Digest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer lease.Close()
+	if err := os.Chmod(directory, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := lease.Read(t.Context(), "theme.css"); !errors.Is(err, ErrIntegrity) {
+		t.Fatalf("unsealed root remained readable: %v", err)
+	}
+	if _, err := store.Acquire(t.Context(), release.Digest); !errors.Is(err, ErrIntegrity) {
+		t.Fatalf("unsealed root accepted a new lease: %v", err)
+	}
+	if err := lease.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Remove(t.Context(), release.Digest); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(directory); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("incomplete publication was not removed: %v", err)
 	}
 }
 

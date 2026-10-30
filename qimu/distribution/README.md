@@ -49,6 +49,12 @@ File count, source and expanded bytes, manifest bytes and compression ratio have
 explicit configurable bounds. ZIP checksums and artifact hashes are both verified.
 Staging belongs to one installation operation and is removed unless atomically
 published. Validated content is read-only in the content-addressed cache.
+Contents are sealed before rename; the release root is sealed after rename under
+admission, before its first lease. This also supports macOS filesystems that
+refuse renaming a non-writable directory. An incompletely sealed root is refused.
+Collection changes only the root's mode after excluding every lease and retention
+claim, restores that mode if withdrawal fails, and unseals descendants only after
+the directory has left the public namespace.
 
 `Acquire` holds a read lease under the Host's same Admission. `Read` returns verified
 detached bytes, and `Executable` exposes only a verified declared executable while

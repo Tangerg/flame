@@ -170,7 +170,7 @@ func (s *Store) openRelease(digest qimu.Digest) (*os.Root, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !info.IsDir() || info.Mode()&fs.ModeSymlink != 0 {
+	if !info.IsDir() || info.Mode()&fs.ModeSymlink != 0 || info.Mode().Perm() != 0500 {
 		return nil, ErrIntegrity
 	}
 	root, err := s.root.OpenRoot(name)
@@ -178,7 +178,7 @@ func (s *Store) openRelease(digest qimu.Digest) (*os.Root, error) {
 		return nil, err
 	}
 	opened, err := root.Stat(".")
-	if err != nil || !os.SameFile(info, opened) {
+	if err != nil || !os.SameFile(info, opened) || opened.Mode().Perm() != 0500 {
 		return nil, errors.Join(ErrIntegrity, err, root.Close())
 	}
 	return root, nil
