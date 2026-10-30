@@ -497,7 +497,7 @@ func (r *reducer) endSegment(ended SegmentEnded) (factReduction, error) {
 	}
 	modelInvocations, err := r.closeLostModelCalls(ended.Ending)
 	if err != nil {
-		return factReduction{}, err
+		return factReduction{}, fmt.Errorf("%w: %w", errExecutorContract, err)
 	}
 	openTools := r.tools.ordered()
 	events, err := r.segmentEnd(ended)
@@ -522,7 +522,7 @@ func (r *reducer) closeLostModelCalls(ending run.Ending) ([]ModelInvocationCommi
 		call := r.modelCalls[callID]
 		startedAt := call.startedAt
 		if finishedAt.Before(startedAt) {
-			return nil, fmt.Errorf("%w: model call %q loss precedes its start", errExecutorContract, callID)
+			return nil, fmt.Errorf("model call %q loss precedes its start", callID)
 		}
 		invocations = append(invocations, ModelInvocationCommit{
 			CallID: callID, SegmentID: r.cfg.Opened.ActiveSegmentID(),
@@ -575,27 +575,15 @@ func (r *reducer) synthesizeTerminal() (reductionBatch, error) {
 	out = append(out, drained...)
 	// No SegmentEnded arrived, so nothing fresh was reported: the Segment's accrual
 	// stands as last reported and is committed as-is.
-	var modelInvocations []ModelInvocationCommit
 	var ending run.Ending = run.Canceled{}
 	if len(r.modelCalls) > 0 {
 		ending = run.Lost{Loss: run.Loss{Reason: run.LossUnresolvedModelCall}}
-		finishedAt := r.now()
-		callIDs := slices.Sorted(maps.Keys(r.modelCalls))
-		modelInvocations = make([]ModelInvocationCommit, 0, len(callIDs))
-		for _, callID := range callIDs {
-			call := r.modelCalls[callID]
-			startedAt := call.startedAt
-			if finishedAt.Before(startedAt) {
-				return reductionBatch{}, fmt.Errorf("%w: model call %q loss precedes its start", errReducerInvariant, callID)
-			}
-			modelInvocations = append(modelInvocations, ModelInvocationCommit{
-				CallID: callID, SegmentID: r.cfg.Opened.ActiveSegmentID(),
-				State: modelref.InvocationUnknown, Purpose: call.purpose, StartedAt: startedAt, FinishedAt: finishedAt,
-			})
-		}
-		clear(r.modelCalls)
 	} else if r.errFailure != nil {
 		ending = run.Failed{Failure: *r.errFailure}
+	}
+	modelInvocations, err := r.closeLostModelCalls(ending)
+	if err != nil {
+		return reductionBatch{}, fmt.Errorf("%w: %w", errReducerInvariant, err)
 	}
 	terminal, err := r.finishedRun(r.cancelDetail(ending), nil)
 	if err != nil {
