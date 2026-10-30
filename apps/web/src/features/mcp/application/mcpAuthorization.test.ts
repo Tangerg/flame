@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { userMCPServer } from "@/features/mcp/application/mcpServerQueries";
-import { authorizeMCPServer } from "@/features/mcp/application/mcpServerConfig";
 import {
   type MCPAuthorizationAttempt,
   type MCPServerGateway,
 } from "@/features/mcp/application/ports/mcpServerGateway";
-import { MCPServerMutationOwner } from "@/features/mcp/application/mcpServerMutationOwner";
+import {
+  MCPServerMutationOwner,
+  type MCPServerCommands,
+} from "@/features/mcp/application/mcpServerMutationOwner";
 const inertGateway = {
   create: vi.fn(),
   update: vi.fn(),
@@ -18,8 +20,11 @@ const inertGateway = {
 
 let disposeGateway: () => void = () => undefined;
 
+let commands: MCPServerCommands;
+
 function installGateway(gateway: MCPServerGateway): void {
-  const owner = MCPServerMutationOwner.install(gateway);
+  const owner = new MCPServerMutationOwner(gateway);
+  commands = owner.capture()!;
   disposeGateway = () => owner.dispose();
 }
 
@@ -43,7 +48,7 @@ describe("MCP authorization attempts", () => {
       getAuthorizationAttempt,
     } as MCPServerGateway);
 
-    const authorization = authorizeMCPServer(userMCPServer("github"));
+    const authorization = commands.authorize(userMCPServer("github"));
     await vi.advanceTimersByTimeAsync(1_000);
     await authorization;
 
@@ -70,7 +75,7 @@ describe("MCP authorization attempts", () => {
       getAuthorizationAttempt: vi.fn(),
     } as MCPServerGateway);
 
-    await expect(authorizeMCPServer(userMCPServer("github"))).rejects.toThrow(
+    await expect(commands.authorize(userMCPServer("github"))).rejects.toThrow(
       "Sign-in didn't complete. Try again.",
     );
   });

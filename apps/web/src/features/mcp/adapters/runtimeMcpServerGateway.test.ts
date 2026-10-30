@@ -1,12 +1,6 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { type FlameClient } from "@flame/runtime-client";
 import { queryClient } from "@/lib/queryClient";
-import {
-  authorizeMCPServer,
-  reconnectMCPServer,
-  setMCPServerEnabled,
-  setMCPToolExposure,
-} from "@/features/mcp/application/mcpServerConfig";
 import {
   MCP_SERVERS_KEY,
   type MCPServerID,
@@ -14,15 +8,16 @@ import {
   userMCPServer,
 } from "@/features/mcp/application/mcpServerQueries";
 import { validateWire } from "@flame/runtime-client/validation";
-import { installMCPServerGateway } from "@/features/mcp/adapters/runtimeMcpServerGateway";
+import { createRuntimeMCPServerGateway } from "@/features/mcp/adapters/runtimeMcpServerGateway";
 import { MCPServerMutationOwner } from "@/features/mcp/application/mcpServerMutationOwner";
 import { rejected } from "@/test/rejected";
-let uninstall: (() => void) | undefined;
+function commandsFor(client: FlameClient) {
+  const owner = new MCPServerMutationOwner(createRuntimeMCPServerGateway(client));
+  onTestFinished(() => owner.dispose());
+  return owner.capture()!;
+}
 
 afterEach(() => {
-  uninstall?.();
-  uninstall = undefined;
-
   queryClient.removeQueries({ queryKey: [MCP_SERVERS_KEY] });
   vi.useRealTimers();
 });
@@ -51,11 +46,9 @@ describe("runtimeMcpServerGateway", () => {
     ],
   ])("renders the closed %s test outcome locally", async (outcome, expected) => {
     const test = vi.fn().mockResolvedValue({ outcome });
-    uninstall = installMCPServerGateway(
-      () => ({ mcp: { test } }) as unknown as FlameClient,
-    ).dispose;
+    const commands = commandsFor({ mcp: { test } } as unknown as FlameClient);
     await expect(
-      MCPServerMutationOwner.capture()!.test({
+      commands.test({
         name: "probe",
         transport: "stdio",
         enabled: true,
@@ -67,10 +60,8 @@ describe("runtimeMcpServerGateway", () => {
 
   it("sends a metadata delta without replacing connection material", async () => {
     const update = vi.fn().mockResolvedValue(runtimeServer({ description: "changed" }));
-    uninstall = installMCPServerGateway(
-      () => ({ mcp: { update } }) as unknown as FlameClient,
-    ).dispose;
-    await MCPServerMutationOwner.capture()!.update(userMCPServer("cloud"), {
+    const commands = commandsFor({ mcp: { update } } as unknown as FlameClient);
+    await commands.update(userMCPServer("cloud"), {
       description: "changed",
     });
     const request = update.mock.calls[0]![0];
@@ -85,9 +76,9 @@ describe("runtimeMcpServerGateway", () => {
     const setToolExposure = vi.fn().mockResolvedValue(undefined);
     const update = vi.fn();
     const client = { mcp: { setToolExposure, update } } as unknown as FlameClient;
-    uninstall = installMCPServerGateway(() => client).dispose;
+    const commands = commandsFor(client);
 
-    await setMCPToolExposure(userMCPServer("docs"), "read", true);
+    await commands.setToolExposure(userMCPServer("docs"), "read", true);
 
     expect(setToolExposure).toHaveBeenCalledWith({
       server: userMCPServer("docs"),
@@ -130,9 +121,9 @@ describe("runtimeMcpServerGateway", () => {
       status: { type: "connected", toolCount: 0 },
     });
     const runtimeClient = () => ({ mcp: { create } }) as unknown as FlameClient;
-    uninstall = installMCPServerGateway(() => runtimeClient()).dispose;
+    const commands = commandsFor(runtimeClient());
 
-    await MCPServerMutationOwner.capture()!.create(input);
+    await commands.create(input);
 
     expect(validateWire("MCPServerCandidate", create.mock.calls[0]?.[0])).toEqual([]);
   });
@@ -146,10 +137,10 @@ describe("runtimeMcpServerGateway", () => {
       status: { type: "connected", toolCount: 3 },
     });
     const runtimeClient = () => ({ mcp: { create } }) as unknown as FlameClient;
-    uninstall = installMCPServerGateway(() => runtimeClient()).dispose;
+    const commands = commandsFor(runtimeClient());
 
     await expect(
-      MCPServerMutationOwner.capture()!.create({
+      commands.create({
         name: "local-tools",
         transport: "stdio",
         enabled: true,
@@ -176,9 +167,9 @@ describe("runtimeMcpServerGateway", () => {
       status: { type: "disabled" },
     });
     const runtimeClient = () => ({ mcp: { update } }) as unknown as FlameClient;
-    uninstall = installMCPServerGateway(() => runtimeClient()).dispose;
+    const commands = commandsFor(runtimeClient());
 
-    await expect(setMCPServerEnabled(userMCPServer("cloud"), false)).resolves.toMatchObject({
+    await expect(commands.setEnabled(userMCPServer("cloud"), false)).resolves.toMatchObject({
       id: userMCPServer("cloud"),
       status: "disabled",
       enabled: false,
@@ -204,12 +195,12 @@ describe("runtimeMcpServerGateway", () => {
       const update = vi.fn();
       const setToolExposure = vi.fn();
       const client = { mcp: { reconnect, update, setToolExposure } } as unknown as FlameClient;
-      uninstall = installMCPServerGateway(() => client).dispose;
+      const commands = commandsFor(client);
       const failed = server({ id, status: "failed", errorDetail: "Couldn't reach this server." });
       queryClient.setQueryData([MCP_SERVERS_KEY], [failed]);
 
       let settled = false;
-      const reconnection = reconnectMCPServer(id).then((value) => {
+      const reconnection = commands.reconnect(id).then((value) => {
         settled = true;
         return value;
       });
@@ -227,28 +218,27 @@ describe("runtimeMcpServerGateway", () => {
     },
   );
 
-  it("retires in-flight and queued server commands before installing a successor", async () => {
+  it("retires in-flight and queued server commands before explicitly constructing a successor", async () => {
     const retiredUpdate = Promise.withResolvers<ReturnType<typeof runtimeServer>>();
     const updateRetired = vi.fn(() => retiredUpdate.promise);
     const updateSuccessor = vi
       .fn()
       .mockResolvedValue(runtimeServer({ status: { type: "connected", toolCount: 2 } }));
     let runtimeClient = () => ({ mcp: { update: updateRetired } }) as unknown as FlameClient;
-    const retiredInstallation = installMCPServerGateway(() => runtimeClient());
+    const retiredOwner = new MCPServerMutationOwner(createRuntimeMCPServerGateway(runtimeClient()));
+    onTestFinished(() => retiredOwner.dispose());
+    const commands = retiredOwner.capture()!;
     queryClient.setQueryData([MCP_SERVERS_KEY], [server()]);
 
-    const inFlight = setMCPServerEnabled(userMCPServer("cloud"), false);
-    const queued = setMCPServerEnabled(userMCPServer("cloud"), true);
+    const inFlight = commands.setEnabled(userMCPServer("cloud"), false);
+    const queued = commands.setEnabled(userMCPServer("cloud"), true);
     const inFlightSettlement = rejected(inFlight);
     const queuedSettlement = rejected(queued);
     await vi.waitFor(() => expect(updateRetired).toHaveBeenCalledOnce());
 
     runtimeClient = () => ({ mcp: { update: updateSuccessor } }) as unknown as FlameClient;
-    const successorInstallation = installMCPServerGateway(() => runtimeClient());
-    uninstall = () => {
-      successorInstallation.dispose();
-      retiredInstallation.dispose();
-    };
+    retiredOwner.dispose();
+    commandsFor(runtimeClient());
     queryClient.setQueryData([MCP_SERVERS_KEY], [server({ status: "connected", toolCount: 2 })]);
 
     retiredUpdate.resolve(runtimeServer({ status: { type: "disabled" } }));
@@ -274,8 +264,10 @@ describe("runtimeMcpServerGateway", () => {
       ({
         mcp: { authorizationAttempts: { create: createRetired } },
       }) as unknown as FlameClient;
-    const retiredInstallation = installMCPServerGateway(() => runtimeClient());
-    const authorization = rejected(authorizeMCPServer(userMCPServer("github")));
+    const retiredOwner = new MCPServerMutationOwner(createRuntimeMCPServerGateway(runtimeClient()));
+    onTestFinished(() => retiredOwner.dispose());
+    const commands = retiredOwner.capture()!;
+    const authorization = rejected(commands.authorize(userMCPServer("github")));
     await vi.waitFor(() => expect(createRetired).toHaveBeenCalledOnce());
 
     const getSuccessor = vi.fn().mockResolvedValue({
@@ -284,11 +276,8 @@ describe("runtimeMcpServerGateway", () => {
     });
     runtimeClient = () =>
       ({ mcp: { authorizationAttempts: { get: getSuccessor } } }) as unknown as FlameClient;
-    const successorInstallation = installMCPServerGateway(() => runtimeClient());
-    uninstall = () => {
-      successorInstallation.dispose();
-      retiredInstallation.dispose();
-    };
+    retiredOwner.dispose();
+    commandsFor(runtimeClient());
     await vi.advanceTimersByTimeAsync(500);
 
     await expect(authorization).resolves.toMatchObject({

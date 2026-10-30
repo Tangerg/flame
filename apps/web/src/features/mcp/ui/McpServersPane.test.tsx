@@ -70,7 +70,8 @@ async function mount({
     for (const key of [MCP_EXPOSURE_KEY, APPROVAL_RULES_KEY])
       ctx.contribute(DATA_PROVIDER, { key, fetcher: async () => [] });
   });
-  owner = MCPServerMutationOwner.install({} as MCPServerGateway);
+  owner = testClient.mcpServers;
+  owner.replaceRuntimeGeneration(() => ({}) as MCPServerGateway);
   testClient.render(
     <QueryClientProvider client={queryClient}>
       <McpServersPane />

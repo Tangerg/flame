@@ -519,7 +519,7 @@ export async function installVisualWorkspaceFixture(
     approvalsSettings,
     connectionSettings,
     createHooksPlugin(runtimeClient),
-    createMCPServersPlugin(runtimeClient),
+    createMCPServersPlugin(runtimeClient, visual.mcpServers),
     personalizationSettings,
     createPluginsPlugin(visual.installedPlugins),
     visualNotifier,

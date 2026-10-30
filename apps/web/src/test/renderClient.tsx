@@ -1,3 +1,5 @@
+import { MCPServerMutationOwner } from "@/features/mcp/application/mcpServerMutationOwner";
+import { MCPServersProvider } from "@/features/mcp/public/servers";
 import { createProviders } from "@/features/providers/adapters/providers";
 import { ProvidersProvider } from "@/features/providers/public/providers";
 import { IMAGE_FILENAME_STEM } from "@/app/product";
@@ -48,6 +50,7 @@ export function createTestClient(
 ) {
   const theme = createTheme(document, window);
   const providers = createProviders();
+  const mcpServers = new MCPServerMutationOwner(null);
   const navigation = createMemoryNavigator();
   const projection = createRuntimeConnectionProjection();
   const replacements = new Set<() => void>();
@@ -129,27 +132,29 @@ export function createTestClient(
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>
-        <ProvidersProvider value={providers.access}>
-          <ThemeProvider value={theme.access}>
-            <RuntimeProvider value={runtime}>
-              <agent.Provider>
-                <ComposerProvider value={composer.access}>
-                  <WorkspaceProvider value={workspace.access}>
-                    <WorkingDirectoryProvider value={directory.access}>
-                      <ImageSaveProvider saveImage={saveImage}>
-                        <NotificationProvider value={notifications.access}>
-                          <InstalledPluginsProvider value={installedPlugins.access}>
-                            <ApplicationCalloutLabels>{children}</ApplicationCalloutLabels>
-                          </InstalledPluginsProvider>
-                        </NotificationProvider>
-                      </ImageSaveProvider>
-                    </WorkingDirectoryProvider>
-                  </WorkspaceProvider>
-                </ComposerProvider>
-              </agent.Provider>
-            </RuntimeProvider>
-          </ThemeProvider>
-        </ProvidersProvider>
+        <MCPServersProvider value={mcpServers}>
+          <ProvidersProvider value={providers.access}>
+            <ThemeProvider value={theme.access}>
+              <RuntimeProvider value={runtime}>
+                <agent.Provider>
+                  <ComposerProvider value={composer.access}>
+                    <WorkspaceProvider value={workspace.access}>
+                      <WorkingDirectoryProvider value={directory.access}>
+                        <ImageSaveProvider saveImage={saveImage}>
+                          <NotificationProvider value={notifications.access}>
+                            <InstalledPluginsProvider value={installedPlugins.access}>
+                              <ApplicationCalloutLabels>{children}</ApplicationCalloutLabels>
+                            </InstalledPluginsProvider>
+                          </NotificationProvider>
+                        </ImageSaveProvider>
+                      </WorkingDirectoryProvider>
+                    </WorkspaceProvider>
+                  </ComposerProvider>
+                </agent.Provider>
+              </RuntimeProvider>
+            </ThemeProvider>
+          </ProvidersProvider>
+        </MCPServersProvider>
       </QueryClientProvider>
     );
   }
@@ -165,6 +170,7 @@ export function createTestClient(
   return {
     theme,
     providers,
+    mcpServers,
     navigation,
     runtime,
     projection,
@@ -199,6 +205,7 @@ export function createTestClient(
       });
     },
     async dispose() {
+      mcpServers.dispose();
       providers.dispose();
       notifications.dispose();
       theme.dispose();

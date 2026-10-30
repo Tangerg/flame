@@ -1,9 +1,10 @@
+import { type MCPServerMutationOwner } from "@/features/mcp/application/mcpServerMutationOwner";
 import { type FlameClient } from "@flame/runtime-client";
 import { lazy } from "react";
 import { definePlugin } from "@/extensions/definePlugin";
 import { registerSettingsPane } from "@/features/settings/public/registerSettingsPane";
 import { MCP_SERVERS_PANE } from "@/features/settings/public/paneIDs";
-import { installMCPServerGateway } from "@/features/mcp/adapters/runtimeMcpServerGateway";
+import { createRuntimeMCPServerGateway } from "@/features/mcp/adapters/runtimeMcpServerGateway";
 import { registerMCPDataProviders } from "@/features/mcp/adapters/runtimeMcpDataProviders";
 import { RUNTIME_STREAM, followRuntimeGeneration } from "@/features/connection/public/services";
 const McpServersPane = lazy(() =>
@@ -12,23 +13,22 @@ const McpServersPane = lazy(() =>
   })),
 );
 
-export function createMCPServersPlugin(runtimeClient: () => FlameClient) {
+export function createMCPServersPlugin(
+  runtimeClient: () => FlameClient,
+  mutations: MCPServerMutationOwner,
+) {
   return definePlugin({
     name: "flame.builtin.mcp-servers-pane",
     requires: { runtime: RUNTIME_STREAM },
     setup(ctx) {
-      let gateway =
-        ctx.runtime.connectionGeneration() === null
-          ? undefined
-          : installMCPServerGateway(runtimeClient);
-      ctx.cleanup(() => gateway?.dispose());
+      ctx.cleanup(() => mutations.retireRuntimeGeneration());
+      const replace = () =>
+        mutations.replaceRuntimeGeneration(() => createRuntimeMCPServerGateway(runtimeClient()));
+      if (ctx.runtime.connectionGeneration() !== null) replace();
       ctx.cleanup(
         followRuntimeGeneration(ctx.runtime, (next) => {
-          if (next === null) {
-            gateway?.dispose();
-            gateway = undefined;
-          } else if (gateway) gateway.replaceRuntimeGeneration();
-          else gateway = installMCPServerGateway(runtimeClient);
+          if (next === null) mutations.retireRuntimeGeneration();
+          else replace();
         }),
       );
       registerMCPDataProviders(ctx, runtimeClient);

@@ -1,7 +1,7 @@
 import { useAgent } from "@/features/agent/public/agent";
 
 import { useApprovalRules } from "@/features/agent/public/approvalPolicy";
-import { setMCPToolExposure } from "@/features/mcp/application/mcpServerConfig";
+import { useSetMCPToolExposure } from "@/features/mcp/application/mcpServerConfig";
 import { useCommandAction } from "@/features/command/public/commandAction";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import * as stylex from "@stylexjs/stylex";
@@ -42,6 +42,7 @@ const tc = stylex.create({
 });
 
 export function ToolControls({ server }: Props) {
+  const setMCPToolExposure = useSetMCPToolExposure();
   const agentAccess = useAgent();
 
   const t = useT();

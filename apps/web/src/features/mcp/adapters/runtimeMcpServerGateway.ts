@@ -24,7 +24,6 @@ import {
   type MCPAuthorizationAttempt as AuthorizationAttempt,
   type MCPServerGateway,
 } from "@/features/mcp/application/ports/mcpServerGateway";
-import { MCPServerMutationOwner } from "@/features/mcp/application/mcpServerMutationOwner";
 function authorizationChange(value: string | null | undefined): MCPAuthorizationChange | undefined {
   if (value === undefined) return undefined;
   return value === null ? { type: "clear" } : { type: "set", value };
@@ -117,7 +116,7 @@ function testOutcome(result: MCPTestResult): { ok: boolean; error?: string } {
   }
 }
 
-function runtimeMCPServerGateway(client: FlameClient): MCPServerGateway {
+export function createRuntimeMCPServerGateway(client: FlameClient): MCPServerGateway {
   return {
     async create(input) {
       const saved = await client.mcp.create(candidate(input));
@@ -151,18 +150,6 @@ function runtimeMCPServerGateway(client: FlameClient): MCPServerGateway {
     async test(input) {
       const result = await client.mcp.test(candidate(input));
       return testOutcome(result);
-    },
-  };
-}
-
-export function installMCPServerGateway(runtimeClient: () => FlameClient) {
-  const gateway = runtimeMCPServerGateway(runtimeClient());
-  const mutationOwner = MCPServerMutationOwner.install(gateway);
-  return {
-    replaceRuntimeGeneration: () =>
-      mutationOwner.replaceRuntimeGeneration(() => runtimeMCPServerGateway(runtimeClient())),
-    dispose() {
-      mutationOwner.dispose();
     },
   };
 }

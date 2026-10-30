@@ -63,7 +63,8 @@ function runtimeGateway() {
 
 async function openImport(gateway: MCPServerGateway) {
   queryClient.setQueryData<MCPServerSettings[]>([MCP_SERVERS_KEY], []);
-  owner = MCPServerMutationOwner.install(gateway);
+  owner = testClient.mcpServers;
+  owner.replaceRuntimeGeneration(() => gateway);
   testClient.render(<JsonImport />);
   const opener = screen.getByRole("button", { name: "Import from JSON" });
   act(() => opener.focus());
@@ -281,7 +282,7 @@ describe("JsonImport", () => {
   it("reports an unexpected import rejection without marking valid source invalid", async () => {
     const { gateway, create } = runtimeGateway();
     const source = await openImport(gateway);
-    const commands = MCPServerMutationOwner.capture()!;
+    const commands = testClient.mcpServers.capture()!;
     vi.spyOn(commands, "importServers").mockRejectedValueOnce(
       new Error("The import request failed."),
     );
@@ -318,7 +319,7 @@ describe("JsonImport", () => {
     const original = runtimeGateway();
     const source = await openImport(original.gateway);
     const successor = runtimeGateway();
-    const commands = MCPServerMutationOwner.capture()!;
+    const commands = testClient.mcpServers.capture()!;
     const create = commands.create.bind(commands);
     vi.spyOn(commands, "create").mockImplementation(async (input) => {
       const result = await create(input);

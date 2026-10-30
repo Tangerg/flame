@@ -1,41 +1,37 @@
 import { useCallback, useSyncExternalStore } from "react";
-import {
-  type MCPServerID,
-  type MCPServerSettings,
-} from "@/features/mcp/application/mcpServerQueries";
-import { MCPServerMutationOwner } from "@/features/mcp/application/mcpServerMutationOwner";
+import { GenerationRetiredError } from "@/lib/asyncOwnership";
+import { type MCPServerID } from "@/features/mcp/application/mcpServerQueries";
 import { type MCPServerCommands } from "@/features/mcp/application/mcpServerMutationOwner";
-export type { MCPTransport } from "@/features/mcp/application/mcpServerQueries";
-
-export type { MCPServerSettings };
+import { useMCPServerAccess } from "@/features/mcp/public/servers";
+export type { MCPTransport, MCPServerSettings } from "@/features/mcp/application/mcpServerQueries";
 
 export function useMCPServerMutationMaterialGeneration(): bigint {
+  const owner = useMCPServerAccess();
   return useSyncExternalStore(
-    MCPServerMutationOwner.subscribeMaterialGeneration,
-    MCPServerMutationOwner.materialGeneration,
-    MCPServerMutationOwner.materialGeneration,
+    owner.subscribeMaterialGeneration,
+    owner.materialGeneration,
+    owner.materialGeneration,
   );
-}
-
-export function setMCPServerEnabled(
-  server: MCPServerID,
-  enabled: boolean,
-): Promise<MCPServerSettings> {
-  return MCPServerMutationOwner.current().setEnabled(server, enabled);
 }
 
 export function useMCPServerCommands(): MCPServerCommands | null {
-  return useSyncExternalStore(
-    MCPServerMutationOwner.subscribeMaterialGeneration,
-    MCPServerMutationOwner.capture,
-    MCPServerMutationOwner.capture,
-  );
+  const owner = useMCPServerAccess();
+  return useSyncExternalStore(owner.subscribeMaterialGeneration, owner.capture, owner.capture);
+}
+
+function requireCommands(commands: MCPServerCommands | null): MCPServerCommands {
+  if (!commands) throw new GenerationRetiredError("mcp_server_mutation_generation");
+  return commands;
 }
 
 export function useSetMCPServerEnabled(): (server: MCPServerID, enabled: boolean) => Promise<void> {
+  const commands = useMCPServerCommands();
   return useCallback(
-    (server, enabled) => setMCPServerEnabled(server, enabled).then(() => undefined),
-    [],
+    (server, enabled) =>
+      requireCommands(commands)
+        .setEnabled(server, enabled)
+        .then(() => undefined),
+    [commands],
   );
 }
 
@@ -43,21 +39,26 @@ export function useAuthorizeMCPServer(): (
   server: MCPServerID,
   signal?: AbortSignal,
 ) => Promise<void> {
-  return useCallback((server, signal) => authorizeMCPServer(server, signal), []);
+  const commands = useMCPServerCommands();
+  return useCallback(
+    (server, signal) => requireCommands(commands).authorize(server, signal),
+    [commands],
+  );
 }
 
-export async function authorizeMCPServer(server: MCPServerID, signal?: AbortSignal): Promise<void> {
-  await MCPServerMutationOwner.current().authorize(server, signal);
-}
-
-export function setMCPToolExposure(
+export function useSetMCPToolExposure(): (
   server: MCPServerID,
   name: string,
   disabled: boolean,
-): Promise<void> {
-  return MCPServerMutationOwner.current().setToolExposure(server, name, disabled);
+) => Promise<void> {
+  const commands = useMCPServerCommands();
+  return useCallback(
+    (server, name, disabled) => requireCommands(commands).setToolExposure(server, name, disabled),
+    [commands],
+  );
 }
 
-export function reconnectMCPServer(server: MCPServerID): Promise<void> {
-  return MCPServerMutationOwner.current().reconnect(server);
+export function useReconnectMCPServer(): (server: MCPServerID) => Promise<void> {
+  const commands = useMCPServerCommands();
+  return useCallback((server) => requireCommands(commands).reconnect(server), [commands]);
 }

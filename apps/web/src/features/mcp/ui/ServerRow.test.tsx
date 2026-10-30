@@ -95,7 +95,8 @@ async function mount(initial: MCPServerSettings, gateway = gatewayDouble()) {
     }
   });
   queryClient.setQueryData<MCPServerSettings[]>([MCP_SERVERS_KEY], [initial]);
-  owner = MCPServerMutationOwner.install(gateway as unknown as MCPServerGateway);
+  owner = testClient.mcpServers;
+  owner.replaceRuntimeGeneration(() => gateway as unknown as MCPServerGateway);
   const view = testClient.render(<Row server={initial} />);
   const canonical = (next: MCPServerSettings) => {
     queryClient.setQueryData<MCPServerSettings[]>([MCP_SERVERS_KEY], [next]);

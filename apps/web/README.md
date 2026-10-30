@@ -54,6 +54,11 @@ one explicitly composed feature instance. A command captures its original
 generation and rejects after retirement. Runtime replacement clears that
 instance's drafts; disposal cannot affect another instance's commands or drafts.
 
+MCP settings receive their mutation owner from the composition root. Editors,
+enablement, authorization, tool exposure and reconnect capture that instance's
+current command generation. Runtime replacement retires those commands; plugin
+shutdown retires the generation and renderer shutdown disposes the owner.
+
 Question drafts retain raw text and one literal custom choice, including commas.
 The editor can explicitly skip a field with an empty answer. Runtime admits the
 complete candidate; Web does not trim or deduplicate answers before submission.

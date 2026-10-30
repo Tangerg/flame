@@ -1,3 +1,4 @@
+import { type MCPServerMutationOwner } from "@/features/mcp/application/mcpServerMutationOwner";
 import { type Providers } from "@/features/providers/adapters/providers";
 import { type Theme } from "@/features/theme/adapters/theme";
 import { type NotificationOwner } from "@/features/notifications/adapters/notifications";
@@ -94,6 +95,7 @@ export function createBuiltinPlugins(
   installedPlugins: InstalledPluginsOwner,
   theme: Theme,
   providers: Providers,
+  mcpServers: MCPServerMutationOwner,
 ): AnyPlugin[] {
   const agentAccess = agent.access;
   const composerAccess = composerOwner.access;
@@ -145,7 +147,7 @@ export function createBuiltinPlugins(
     connectionSettings,
     createPluginsPlugin(installedPlugins),
     createProvidersPlugin(runtimeClient, providers.mutations),
-    createMCPServersPlugin(runtimeClient),
+    createMCPServersPlugin(runtimeClient, mcpServers),
     createHooksPlugin(runtimeClient),
     fileView,
     subagentsView,

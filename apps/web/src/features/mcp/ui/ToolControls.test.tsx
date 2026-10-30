@@ -43,7 +43,7 @@ vi.mock("@/features/mcp/application/mcpServerQueries", async (importOriginal) =>
 }));
 
 vi.mock("@/features/mcp/application/mcpServerConfig", () => ({
-  setMCPToolExposure: model.setExposure,
+  useSetMCPToolExposure: () => model.setExposure,
 }));
 
 vi.mock("@/features/agent/public/approvalPolicy", () => ({ useApprovalRules: () => model.rules }));

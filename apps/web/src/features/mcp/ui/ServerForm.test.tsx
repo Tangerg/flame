@@ -86,7 +86,8 @@ async function mount(gateway: Partial<MCPServerGateway>, server?: MCPServerSetti
     });
   }
   queryClient.setQueryData<MCPServerSettings[]>([MCP_SERVERS_KEY], server ? [server] : []);
-  owner = MCPServerMutationOwner.install(gateway as MCPServerGateway);
+  owner = testClient.mcpServers;
+  owner.replaceRuntimeGeneration(() => gateway as MCPServerGateway);
   testClient.render(
     <QueryClientProvider client={queryClient}>
       <Harness server={server} />
@@ -99,7 +100,8 @@ async function mount(gateway: Partial<MCPServerGateway>, server?: MCPServerSetti
 }
 
 function openDraft(test: MCPServerGateway["test"]) {
-  owner = MCPServerMutationOwner.install({ test } as MCPServerGateway);
+  owner = testClient.mcpServers;
+  owner.replaceRuntimeGeneration(() => ({ test }) as MCPServerGateway);
   testClient.render(<Harness />);
   const opener = screen.getByRole("button", { name: "Configure MCP server" });
   fireEvent.click(opener);

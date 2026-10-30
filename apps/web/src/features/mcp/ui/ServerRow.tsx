@@ -20,7 +20,7 @@ import {
 import { type MCPServerSettings } from "@/features/mcp/application/mcpServerConfig";
 import {
   type MCPTransport,
-  reconnectMCPServer,
+  useReconnectMCPServer,
   useAuthorizeMCPServer,
   useSetMCPServerEnabled,
 } from "@/features/mcp/application/mcpServerConfig";
@@ -70,6 +70,7 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
   const t = useT();
   const setEnabled = useSetMCPServerEnabled();
   const authorize = useAuthorizeMCPServer();
+  const reconnectMCPServer = useReconnectMCPServer();
   const [editing, setEditing] = useState<HTMLElement | null>(null);
   const panelId = useId();
   const [signingIn, setSigningIn] = useState(false);

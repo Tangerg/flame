@@ -1,6 +1,6 @@
 import { OperationFailure } from "@flame/runtime-client";
 import { parseMcpImport } from "@/features/mcp/application/mcpImport";
-import { installMCPServerGateway } from "@/features/mcp/adapters/runtimeMcpServerGateway";
+import { createRuntimeMCPServerGateway } from "@/features/mcp/adapters/runtimeMcpServerGateway";
 import { MCPServerMutationOwner } from "@/features/mcp/application/mcpServerMutationOwner";
 import {
   addInstalledMemory,
@@ -3842,7 +3842,7 @@ for await (const line of lines) {
     await new Promise<void>((resolve) => remote.listen(0, "127.0.0.1", resolve));
     const address = remote.address();
     if (address === null || typeof address === "string") throw new Error("missing fixture address");
-    const gateway = installMCPServerGateway(() => client!);
+    const gateway = new MCPServerMutationOwner(createRuntimeMCPServerGateway(client!));
     try {
       const imported = parseMcpImport(
         JSON.stringify({
@@ -3857,7 +3857,7 @@ for await (const line of lines) {
         }),
       );
       for (const input of imported) {
-        await expect(MCPServerMutationOwner.capture()!.test(input)).resolves.toEqual({ ok: true });
+        await expect(gateway.capture()!.test(input)).resolves.toEqual({ ok: true });
       }
       expect(requests).toContain("initialize");
       expect(requests).toContain("tools/list");

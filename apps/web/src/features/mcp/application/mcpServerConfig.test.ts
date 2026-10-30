@@ -5,9 +5,11 @@ import {
   type MCPServerSettings,
   userMCPServer,
 } from "@/features/mcp/application/mcpServerQueries";
-import { setMCPServerEnabled } from "@/features/mcp/application/mcpServerConfig";
 import { type MCPServerGateway } from "@/features/mcp/application/ports/mcpServerGateway";
-import { MCPServerMutationOwner } from "@/features/mcp/application/mcpServerMutationOwner";
+import {
+  MCPServerMutationOwner,
+  type MCPServerCommands,
+} from "@/features/mcp/application/mcpServerMutationOwner";
 function server(overrides: Partial<MCPServerSettings> = {}): MCPServerSettings {
   return {
     id: userMCPServer("cloud"),
@@ -22,8 +24,11 @@ function server(overrides: Partial<MCPServerSettings> = {}): MCPServerSettings {
 
 let uninstall: (() => void) | undefined;
 
+let commands: MCPServerCommands;
+
 function installGateway(gateway: MCPServerGateway): void {
-  const owner = MCPServerMutationOwner.install(gateway);
+  const owner = new MCPServerMutationOwner(gateway);
+  commands = owner.capture()!;
   uninstall = () => owner.dispose();
 }
 
@@ -47,7 +52,7 @@ describe("MCP server configuration", () => {
     } as unknown as MCPServerGateway);
 
     await expect(
-      MCPServerMutationOwner.capture()!.create({
+      commands.create({
         name: "local",
         transport: "stdio",
         enabled: true,
@@ -71,8 +76,8 @@ describe("MCP server configuration", () => {
       .mockReturnValueOnce(second.promise);
     installGateway({ setEnabled } as unknown as MCPServerGateway);
 
-    const disabled = setMCPServerEnabled(userMCPServer("cloud"), false);
-    const enabled = setMCPServerEnabled(userMCPServer("cloud"), true);
+    const disabled = commands.setEnabled(userMCPServer("cloud"), false);
+    const enabled = commands.setEnabled(userMCPServer("cloud"), true);
     await vi.waitFor(() => expect(setEnabled).toHaveBeenCalledTimes(1));
 
     first.resolve(server({ status: "disabled", enabled: false }));
@@ -100,8 +105,8 @@ describe("MCP server configuration", () => {
       delete: remove,
     } as unknown as MCPServerGateway);
 
-    const disabled = setMCPServerEnabled(userMCPServer("cloud"), false);
-    const deleted = MCPServerMutationOwner.capture()!.delete(userMCPServer("cloud"));
+    const disabled = commands.setEnabled(userMCPServer("cloud"), false);
+    const deleted = commands.delete(userMCPServer("cloud"));
     await Promise.resolve();
     expect(remove).not.toHaveBeenCalled();
 
@@ -120,8 +125,8 @@ describe("MCP server configuration", () => {
       .mockResolvedValueOnce(server({ status: "connected" }));
     installGateway({ setEnabled } as unknown as MCPServerGateway);
 
-    const rejected = setMCPServerEnabled(userMCPServer("cloud"), false);
-    const accepted = setMCPServerEnabled(userMCPServer("cloud"), true);
+    const rejected = commands.setEnabled(userMCPServer("cloud"), false);
+    const accepted = commands.setEnabled(userMCPServer("cloud"), true);
     first.reject(new Error("not saved"));
 
     await expect(rejected).rejects.toThrow("not saved");
