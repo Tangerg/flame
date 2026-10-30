@@ -3,26 +3,13 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
-	"os"
-	"os/signal"
 	"path/filepath"
-	"syscall"
 
-	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/backend"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-func run(ctx context.Context) (err error) {
-	data := os.Getenv("PLUGIN_DATA")
-	if !filepath.IsAbs(data) {
-		return errors.New("filewatch: PLUGIN_DATA must be absolute")
-	}
-	lease, err := filesystem.AcquireDirectoryLease(ctx, data)
-	if err != nil {
-		return err
-	}
-	defer func() { err = errors.Join(err, lease.Release()) }()
+func run(ctx context.Context, data string) (err error) {
 	store, err := openStore(ctx, filepath.Join(data, "filewatch.db"))
 	if err != nil {
 		return err
@@ -36,11 +23,4 @@ func run(ctx context.Context) (err error) {
 	return server.Run(ctx, &sdk.StdioTransport{})
 }
 
-func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-	if err := run(ctx); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-}
+func main() { backend.Main("filewatch", run) }

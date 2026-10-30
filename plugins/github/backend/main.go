@@ -3,24 +3,17 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net"
 	"net/http"
 	"os"
-	"os/signal"
 	"path/filepath"
-	"syscall"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/backend"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-func run(ctx context.Context) (err error) {
-	data := os.Getenv("PLUGIN_DATA")
-	if !filepath.IsAbs(data) {
-		return errors.New("github: PLUGIN_DATA must be absolute")
-	}
+func run(ctx context.Context, data string) (err error) {
 	var configured *string
 	if value, present := os.LookupEnv("GITHUB_TOKEN"); present {
 		configured = &value
@@ -29,11 +22,6 @@ func run(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
-	lease, err := filesystem.AcquireDirectoryLease(ctx, data)
-	if err != nil {
-		return err
-	}
-	defer func() { err = errors.Join(err, lease.Release()) }()
 	store, err := openStore(ctx, filepath.Join(data, "github.db"))
 	if err != nil {
 		return err
@@ -52,11 +40,4 @@ func run(ctx context.Context) (err error) {
 	return server.Run(ctx, &sdk.StdioTransport{})
 }
 
-func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-	if err := run(ctx); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-}
+func main() { backend.Main("github", run) }

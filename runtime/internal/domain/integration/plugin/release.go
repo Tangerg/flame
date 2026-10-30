@@ -10,6 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/process"
 	"github.com/Tangerg/flame/qimu/integrity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
@@ -522,7 +523,7 @@ func validatePackageEnvironment(environment map[string]string) error {
 	canonical := map[string]bool{}
 	for key := range environment {
 		upper := strings.ToUpper(key)
-		if upper == RootVariable || upper == DataVariable {
+		if upper == process.RootVariable || upper == process.DataVariable {
 			return fmt.Errorf("%w: package environment key %q is reserved", ErrInvalid, key)
 		}
 		if canonical[upper] {

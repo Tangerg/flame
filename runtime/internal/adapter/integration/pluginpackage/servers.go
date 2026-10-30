@@ -10,6 +10,8 @@ import (
 	"slices"
 	"strings"
 
+	pluginprocess "github.com/Tangerg/flame/packages/go-sdk/plugin/process"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/Tangerg/flame/qimu/cancellation"
@@ -288,7 +290,7 @@ func descriptorServer(installation *plugin.Installation, release plugin.Release,
 // data variables, the package's static environment, then the configured inputs, an inherited PATH unless one was
 // supplied, and its confined working directory.
 func realizeProcess(process mcpserver.StdioConnection, static map[string]string, declared plugin.Server, inputs plugin.ServerInputs, dir, data string) (mcpserver.Connection, error) {
-	process.Env = map[string]string{plugin.RootVariable: dir, plugin.DataVariable: data}
+	process.Env = map[string]string{pluginprocess.RootVariable: dir, pluginprocess.DataVariable: data}
 	for key, value := range static {
 		process.Env[key] = plugin.ExpandPlaceholders(value, dir, data)
 	}

@@ -4,21 +4,14 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
-	"fmt"
 	"os"
-	"os/signal"
 	"path/filepath"
-	"syscall"
 
-	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/backend"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-func run(ctx context.Context) (err error) {
-	data := os.Getenv("PLUGIN_DATA")
-	if !filepath.IsAbs(data) {
-		return errors.New("a2a: PLUGIN_DATA must be absolute")
-	}
+func run(ctx context.Context, data string) (err error) {
 	var specs []agentSpec
 	if raw, configured := os.LookupEnv("A2A_AGENTS"); configured {
 		if len(raw) > 1<<20 {
@@ -28,11 +21,6 @@ func run(ctx context.Context) (err error) {
 			return errors.New("a2a: A2A_AGENTS must be a valid agent configuration array")
 		}
 	}
-	lease, err := filesystem.AcquireDirectoryLease(ctx, data)
-	if err != nil {
-		return err
-	}
-	defer func() { err = errors.Join(err, lease.Release()) }()
 	connector, err := openConnector(ctx, filepath.Join(data, "a2a.db"), specs)
 	if err != nil {
 		return err
@@ -45,11 +33,4 @@ func run(ctx context.Context) (err error) {
 	return server.Run(ctx, &sdk.StdioTransport{})
 }
 
-func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-	if err := run(ctx); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-}
+func main() { backend.Main("a2a", run) }

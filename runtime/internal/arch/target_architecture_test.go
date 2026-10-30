@@ -47,7 +47,7 @@ func repositoryLayer(path string) (string, bool) {
 
 func sdkLayer(path string) string {
 	switch path {
-	case "exactint", "identity", "instant", "extension", "model", "hook", "httporigin", "question", "builtin":
+	case "exactint", "identity", "instant", "extension", "model", "hook", "httporigin", "question", "builtin", "plugin/process":
 		return ringValue
 	case "pagination", "capture":
 		return ringMechanism

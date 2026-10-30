@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	pluginprocess "github.com/Tangerg/flame/packages/go-sdk/plugin/process"
+
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -55,7 +57,7 @@ func TestDataRootCapturesPhysicalParentWithoutFollowingNamespaceRedirection(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := launch.Stdio.Env[plugin.DataVariable], filepath.Join(physical, "data", installation.ID().String()); got != want {
+	if got, want := launch.Stdio.Env[pluginprocess.DataVariable], filepath.Join(physical, "data", installation.ID().String()); got != want {
 		t.Fatalf("data authority = %q, want original %q", got, want)
 	}
 	if _, err := os.Stat(filepath.Join(replacement, "data")); !errors.Is(err, os.ErrNotExist) {
@@ -128,7 +130,7 @@ func TestDataRootPreservesPhysicalParentTraversal(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got, want := launch.Stdio.Env[plugin.DataVariable], filepath.Join(physical, "data", installation.ID().String()); got != want {
+			if got, want := launch.Stdio.Env[pluginprocess.DataVariable], filepath.Join(physical, "data", installation.ID().String()); got != want {
 				t.Fatalf("data authority = %q, want physical %q", got, want)
 			}
 			if _, err := os.Stat(filepath.Join(lexical, "data")); !errors.Is(err, os.ErrNotExist) {

@@ -2,18 +2,15 @@ package plugin
 
 import (
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/process"
 	"strings"
 )
 
-// The Runtime binds these variables for every package process, and a package
-// may spell the same two locations as placeholders in its arguments,
-// environment and working directory.
+// A package may spell the two process locations as placeholders in its
+// arguments, environment and working directory.
 const (
-	RootVariable = "PLUGIN_ROOT"
-	DataVariable = "PLUGIN_DATA"
-
-	rootPlaceholder = "${" + RootVariable + "}"
-	dataPlaceholder = "${" + DataVariable + "}"
+	rootPlaceholder = "${" + process.RootVariable + "}"
+	dataPlaceholder = "${" + process.DataVariable + "}"
 )
 
 // ExpandPlaceholders substitutes the release and data directories a package

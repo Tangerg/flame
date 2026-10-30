@@ -2948,6 +2948,18 @@
       ]
     },
     {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/backend",
+      "imports": [
+        "context"
+      ],
+      "functions": [
+        {
+          "name": "Main",
+          "signature": "func(name string, serve func(ctx context.Context, dataDirectory string) error)"
+        }
+      ]
+    },
+    {
       "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/codeintel",
       "imports": [
         "github.com/Tangerg/flame/qimu/integrity",
@@ -4349,6 +4361,21 @@
               "signature": "func() error"
             }
           ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/process",
+      "constants": [
+        {
+          "name": "DataVariable",
+          "type": "untyped string",
+          "value": "\"PLUGIN_DATA\""
+        },
+        {
+          "name": "RootVariable",
+          "type": "untyped string",
+          "value": "\"PLUGIN_ROOT\""
         }
       ]
     },
