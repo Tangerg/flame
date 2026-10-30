@@ -424,10 +424,11 @@ func outcomeOf(run *run.Run) (run.Outcome, error) {
 }
 
 func runCost(run *run.Run) (float64, bool) {
-	if usage, reported := run.Metrics().Usage(); reported && usage.Total.CostUSD != nil {
-		return *usage.Total.CostUSD, true
+	usage, reported := run.Metrics().Usage()
+	if !reported {
+		return 0, false
 	}
-	return 0, false
+	return usage.Total.Cost.USD()
 }
 
 func runSteps(run *run.Run) int { return run.Metrics().Steps() }

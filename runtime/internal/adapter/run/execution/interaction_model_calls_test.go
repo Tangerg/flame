@@ -76,7 +76,7 @@ func TestIndependentModelPublisherUsesOriginalSourceAndCapturedMemberAfterCancel
 			if known {
 				message := chat.NewAssistantMessage(chat.NewTextPart("auxiliary output"))
 				response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: "served-independent", Usage: &chat.Usage{InputTokens: 9007199254740993, OutputTokens: 2}}}
-				if err := journal.SettleEndpointInvocation(t.Context(), source, modelref.EndpointOutcome{Response: modelref.ChatEndpointResponse{Chat: response}, CostUSD: new(.25), FinishedAt: time.Now().UTC()}); err != nil {
+				if err := journal.SettleEndpointInvocation(t.Context(), source, modelref.EndpointOutcome{Response: modelref.ChatEndpointResponse{Chat: response}, Cost: testsupport.OptionalCost(new(.25)), FinishedAt: time.Now().UTC()}); err != nil {
 					t.Fatal(err)
 				}
 			}

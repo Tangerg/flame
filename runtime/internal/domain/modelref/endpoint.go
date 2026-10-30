@@ -3,10 +3,11 @@ package modelref
 import (
 	json "encoding/json/v2"
 	"errors"
-	"github.com/Tangerg/flame/qimu/portable"
 	"reflect"
 	"slices"
 	"time"
+
+	"github.com/Tangerg/flame/qimu/portable"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
@@ -212,7 +213,7 @@ func (s InvocationState) HasResponse() bool { rule, _ := s.rule(); return rule.R
 // EndpointOutcome is the provider observation submitted for settlement. Admission
 // derives its state; a caller cannot label missing evidence as a known failure.
 type EndpointOutcome struct {
-	CostUSD *float64
+	Cost accounting.Cost
 	// Response is nil when the provider's answer was never known.
 	Response   EndpointResponse
 	FinishedAt time.Time
@@ -242,7 +243,7 @@ func (o EndpointOutcome) State(invocation EndpointInvocation) (InvocationState, 
 	if err := validateEndpointEvidence(state, known, o.Failure, invocation.StartedAt, o.FinishedAt); err != nil {
 		return "", err
 	}
-	if err := validateEndpointPrice(o.CostUSD, o.ReportedUsage()); err != nil {
+	if err := validateEndpointPrice(o.Cost, o.ReportedUsage()); err != nil {
 		return "", err
 	}
 	return state, nil
@@ -266,7 +267,7 @@ func embeddingReportedUsage(response *embedding.Response) *chat.Usage {
 // original numeric lexemes; normalized response and model facts are derived only
 // after this record is admitted by RestoreEndpointObservation.
 type EndpointRecord struct {
-	CostUSD        *float64
+	Cost           accounting.Cost
 	Usage          *chat.Usage
 	SessionID      string
 	RunID          string
@@ -366,7 +367,7 @@ func RestoreEndpointObservation(record EndpointRecord) (EndpointObservation, err
 	if !reflect.DeepEqual(record.Usage, reported) {
 		return zero, errors.New("models: endpoint usage differs from known response")
 	}
-	if err := validateEndpointPrice(record.CostUSD, reported); err != nil {
+	if err := validateEndpointPrice(record.Cost, reported); err != nil {
 		return zero, err
 	}
 	return observation, nil
@@ -404,11 +405,8 @@ func validateEndpointEvidence(state InvocationState, response bool, failure stri
 	return nil
 }
 
-func validateEndpointPrice(cost *float64, usage *chat.Usage) error {
-	if _, err := accounting.CostFromOptional(cost); err != nil {
-		return err
-	}
-	if cost != nil && usage == nil {
+func validateEndpointPrice(cost accounting.Cost, usage *chat.Usage) error {
+	if _, priced := cost.USD(); priced && usage == nil {
 		return errors.New("models: endpoint price has no reported usage")
 	}
 	return nil
@@ -433,9 +431,6 @@ func cloneEndpointUsage(usage *chat.Usage) *chat.Usage {
 func cloneEndpointRecord(record EndpointRecord) EndpointRecord {
 	if record.Invocation.Request != nil {
 		record.Invocation.Request = record.Invocation.Request.clone()
-	}
-	if record.CostUSD != nil {
-		record.CostUSD = new(*record.CostUSD)
 	}
 	record.Usage = cloneEndpointUsage(record.Usage)
 	return record

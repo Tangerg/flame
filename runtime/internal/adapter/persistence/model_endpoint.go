@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json/jsontext"
 	"errors"
+	"fmt"
 	"reflect"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
@@ -170,7 +172,7 @@ func (m *ModelInvocationStore) SettleEndpointInvocation(ctx context.Context, inv
 		return err
 	}
 	result, err := sqlite.Connection(ctx, m.db).ExecContext(ctx, `UPDATE model_invocations SET state=?,finished_at=?,known_response=?,usage=?,endpoint_failure=?,endpoint_cost_usd=?
-		WHERE call_id=? AND state=? AND started_at=? AND endpoint_json=?`, state, outcome.FinishedAt.UTC().UnixNano(), response, encodedUsage, outcome.Failure, outcome.CostUSD,
+		WHERE call_id=? AND state=? AND started_at=? AND endpoint_json=?`, state, outcome.FinishedAt.UTC().UnixNano(), response, encodedUsage, outcome.Failure, outcome.Cost.OptionalUSD(),
 		invocation.ID, modelref.InvocationStarted, invocation.StartedAt.UTC().UnixNano(), string(encoded))
 	if err != nil {
 		return err
@@ -221,8 +223,12 @@ func scanEndpointObservation(row scanRow, parent string) (modelref.EndpointObser
 	var response *string
 	var encodedUsage *string
 	var kind string
-	if err := row.Scan(&id, &startedAt, &encoded, &value.State, &finishedAt, &response, &value.Failure, &value.SessionID, &value.RunID, &value.SegmentID, &value.CostUSD, &encodedUsage, &kind); err != nil {
+	var costUSD *float64
+	if err := row.Scan(&id, &startedAt, &encoded, &value.State, &finishedAt, &response, &value.Failure, &value.SessionID, &value.RunID, &value.SegmentID, &costUSD, &encodedUsage, &kind); err != nil {
 		return modelref.EndpointObservation{}, err
+	}
+	if value.Cost, err = accounting.CostFromOptional(costUSD); err != nil {
+		return modelref.EndpointObservation{}, fmt.Errorf("sqlite: decode model invocation cost: %w", err)
 	}
 	value.InvocationJSON, err = jsonvalue.Parse([]byte(encoded))
 	if err != nil {
@@ -364,7 +370,7 @@ func (m *ModelInvocationStore) RecoverModelInvocation(ctx context.Context, sessi
 	 AND state=? AND finished_at=? AND known_response=? AND endpoint_cost_usd IS ? AND endpoint_failure=? AND usage IS ?)
 	 UPDATE model_invocations SET state=?,finished_at=?,usage=(SELECT usage FROM evidence),known_response=(SELECT known_response FROM evidence)
 	 WHERE call_id=? AND session_id=? AND run_id=? AND segment_id=? AND state=? AND started_at=? AND endpoint_json IS NULL AND EXISTS(SELECT 1 FROM evidence)`,
-		record.Invocation.ID, record.InvocationJSON.String(), sessionID, runID, segmentID, record.State, record.FinishedAt.UTC().UnixNano(), record.ResponseJSON.String(), record.CostUSD, record.Failure, usage,
+		record.Invocation.ID, record.InvocationJSON.String(), sessionID, runID, segmentID, record.State, record.FinishedAt.UTC().UnixNano(), record.ResponseJSON.String(), record.Cost.OptionalUSD(), record.Failure, usage,
 		string(modelref.InvocationFailed), finishedAt.UTC().UnixNano(), callID, sessionID, runID, segmentID, string(modelref.InvocationStarted), startedAt.UTC().UnixNano())
 	if err != nil {
 		return err

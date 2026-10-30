@@ -737,7 +737,7 @@ func recoverLostRun(
 		current := replacement.State()
 		record := invocation.Endpoint.Snapshot()
 		reported := record.Usage
-		metrics, err := current.Metrics().AccrueModelCall(invocation.Endpoint.ServedModel(), reported, record.CostUSD)
+		metrics, err := current.Metrics().AccrueModelCall(invocation.Endpoint.ServedModel(), reported, record.Cost)
 		if err != nil {
 			return rundomain.Replacement{}, err
 		}
@@ -755,7 +755,7 @@ func recoverLostRun(
 			continue
 		}
 		current := replacement.State()
-		metrics, err := current.Metrics().AccrueModelCall(source.ServedModel(), record.Usage, record.CostUSD)
+		metrics, err := current.Metrics().AccrueModelCall(source.ServedModel(), record.Usage, record.Cost)
 		if err != nil {
 			return rundomain.Replacement{}, err
 		}

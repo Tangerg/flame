@@ -184,7 +184,7 @@ func presentModelUsage(usage accounting.Totals) protocol.ModelUsage {
 	return protocol.ModelUsage{
 		InputTokens: usage.InputTokens, OutputTokens: usage.OutputTokens,
 		CacheReadTokens: usage.CacheReadTokens, CacheWriteTokens: usage.CacheWriteTokens,
-		ReasoningTokens: usage.ReasoningTokens, CostUSD: usage.CostUSD,
+		ReasoningTokens: usage.ReasoningTokens, CostUSD: usage.Cost.OptionalUSD(),
 	}
 }
 

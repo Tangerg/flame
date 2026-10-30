@@ -141,7 +141,7 @@ func runUsageRowOf(usage *accounting.Usage) *runUsageRow {
 		CacheReadTokens:  usage.Total.CacheReadTokens,
 		CacheWriteTokens: usage.Total.CacheWriteTokens,
 		ReasoningTokens:  usage.Total.ReasoningTokens,
-		CostUSD:          usage.Total.CostUSD,
+		CostUSD:          usage.Total.Cost.OptionalUSD(),
 	}
 	if len(usage.ByModel) > 0 {
 		row.ByModel = make(map[string]runModelRowUse, len(usage.ByModel))
@@ -152,7 +152,7 @@ func runUsageRowOf(usage *accounting.Usage) *runUsageRow {
 				CacheReadTokens:  perModel.CacheReadTokens,
 				CacheWriteTokens: perModel.CacheWriteTokens,
 				ReasoningTokens:  perModel.ReasoningTokens,
-				CostUSD:          perModel.CostUSD,
+				CostUSD:          perModel.Cost.OptionalUSD(),
 			}
 		}
 	}
@@ -396,32 +396,44 @@ func decodeRunUsage(encoded string) (*accounting.Usage, error) {
 	if row == nil {
 		return nil, errors.New("decode run usage: stored usage must be an object")
 	}
-	return row.usage(), nil
+	return row.usage()
 }
 
-func (r runUsageRow) usage() *accounting.Usage {
+func (r runUsageRow) usage() (*accounting.Usage, error) {
+	cost, err := accounting.CostFromOptional(r.CostUSD)
+	if err != nil {
+		return nil, err
+	}
 	usage := &accounting.Usage{Total: accounting.Totals{
-		InputTokens:      r.InputTokens,
-		OutputTokens:     r.OutputTokens,
-		CacheReadTokens:  r.CacheReadTokens,
-		CacheWriteTokens: r.CacheWriteTokens,
-		ReasoningTokens:  r.ReasoningTokens,
-		CostUSD:          r.CostUSD,
+		Tokens: accounting.Tokens{
+			InputTokens:      r.InputTokens,
+			OutputTokens:     r.OutputTokens,
+			CacheReadTokens:  r.CacheReadTokens,
+			CacheWriteTokens: r.CacheWriteTokens,
+			ReasoningTokens:  r.ReasoningTokens,
+		},
+		Cost: cost,
 	}}
 	if len(r.ByModel) > 0 {
 		usage.ByModel = make(map[string]accounting.Totals, len(r.ByModel))
 		for model, perModel := range r.ByModel {
+			cost, err := accounting.CostFromOptional(perModel.CostUSD)
+			if err != nil {
+				return nil, fmt.Errorf("model %q: %w", model, err)
+			}
 			usage.ByModel[model] = accounting.Totals{
-				InputTokens:      perModel.InputTokens,
-				OutputTokens:     perModel.OutputTokens,
-				CacheReadTokens:  perModel.CacheReadTokens,
-				CacheWriteTokens: perModel.CacheWriteTokens,
-				ReasoningTokens:  perModel.ReasoningTokens,
-				CostUSD:          perModel.CostUSD,
+				Tokens: accounting.Tokens{
+					InputTokens:      perModel.InputTokens,
+					OutputTokens:     perModel.OutputTokens,
+					CacheReadTokens:  perModel.CacheReadTokens,
+					CacheWriteTokens: perModel.CacheWriteTokens,
+					ReasoningTokens:  perModel.ReasoningTokens,
+				},
+				Cost: cost,
 			}
 		}
 	}
-	return usage
+	return usage, nil
 }
 
 func (row runProblemRow) failure() (rundomain.Failure, error) {

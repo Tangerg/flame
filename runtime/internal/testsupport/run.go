@@ -183,3 +183,21 @@ func EndingFor(outcome run.Outcome) run.Ending {
 		return run.Completed{}
 	}
 }
+
+// Cost returns an exact priced amount for test usage literals.
+func Cost(usd float64) accounting.Cost {
+	cost, err := accounting.NewCost(usd)
+	if err != nil {
+		panic(err)
+	}
+	return cost
+}
+
+// OptionalCost converts a test fixture's optional dollar amount; nil is unpriced.
+func OptionalCost(usd *float64) accounting.Cost {
+	cost, err := accounting.CostFromOptional(usd)
+	if err != nil {
+		panic(err)
+	}
+	return cost
+}

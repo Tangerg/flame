@@ -96,7 +96,7 @@ func TestEmbeddingRetainsPhysicalEvidenceWhenPricingFails(t *testing.T) {
 	if err != nil || len(rows) != 1 {
 		t.Fatalf("embedding endpoint observation: %+v, %v", rows, err)
 	}
-	if row := rows[0]; row.State() != modelref.InvocationFailed || !row.HasResponse() || row.Snapshot().Usage == nil || row.Snapshot().Usage.InputTokens != 13 || row.Snapshot().CostUSD != nil || row.Snapshot().Failure != cause.Error() {
+	if row := rows[0]; row.State() != modelref.InvocationFailed || !row.HasResponse() || row.Snapshot().Usage == nil || row.Snapshot().Usage.InputTokens != 13 || row.Snapshot().Cost.OptionalUSD() != nil || row.Snapshot().Failure != cause.Error() {
 		t.Fatalf("pricing failure lost embedding evidence or invented a price: %+v", row)
 	}
 }

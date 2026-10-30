@@ -17,7 +17,7 @@ func TestMetricsCostSeparatesNoDispatchFromUnreportedUsage(t *testing.T) {
 	if usd, available := cost.USD(); err != nil || !available || usd != 0 {
 		t.Fatalf("Cost of a Run without dispatched calls = (%v, %t, %v), want an exact zero", usd, available, err)
 	}
-	unreported, err := idle.AccrueModelCall("served-model", nil, nil)
+	unreported, err := idle.AccrueModelCall("served-model", nil, accounting.Cost{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +32,7 @@ func TestRecoveredCallPreservesUnreportedUsageAndRejectsOverflow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	next, err := metrics.AccrueModelCall("served-model", nil, nil)
+	next, err := metrics.AccrueModelCall("served-model", nil, accounting.Cost{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func TestRecoveredCallPreservesUnreportedUsageAndRejectsOverflow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := metrics.AccrueModelCall("served-model", &chat.Usage{InputTokens: 1}, nil); err == nil {
+	if _, err := metrics.AccrueModelCall("served-model", &chat.Usage{InputTokens: 1}, accounting.Cost{}); err == nil {
 		t.Fatal("recovered usage overflowed silently")
 	}
 	if value, _ := metrics.Usage(); value.Total.InputTokens != math.MaxInt64 {
@@ -56,8 +56,11 @@ func TestModelCallAccountingKeepsUnknownPriceAcrossCallOrder(t *testing.T) {
 	for _, unknownFirst := range []bool{true, false} {
 		t.Run(fmt.Sprint(unknownFirst), func(t *testing.T) {
 			var current Metrics
-			price := 0.25
-			accrue := func(model string, usage *chat.Usage, cost *float64) {
+			price, err := accounting.NewCost(0.25)
+			if err != nil {
+				t.Fatal(err)
+			}
+			accrue := func(model string, usage *chat.Usage, cost accounting.Cost) {
 				t.Helper()
 				next, err := current.AccrueModelCall(model, usage, cost)
 				if err != nil {
@@ -69,18 +72,18 @@ func TestModelCallAccountingKeepsUnknownPriceAcrossCallOrder(t *testing.T) {
 				current = next
 			}
 			if unknownFirst {
-				accrue("unknown-model", nil, nil)
+				accrue("unknown-model", nil, accounting.Cost{})
 			}
-			accrue("known-model", &chat.Usage{InputTokens: 7, OutputTokens: 2}, &price)
+			accrue("known-model", &chat.Usage{InputTokens: 7, OutputTokens: 2}, price)
 			if !unknownFirst {
-				accrue("unknown-model", nil, nil)
+				accrue("unknown-model", nil, accounting.Cost{})
 			}
-			accrue("unknown-model", &chat.Usage{InputTokens: 3, OutputTokens: 1}, &price)
+			accrue("unknown-model", &chat.Usage{InputTokens: 3, OutputTokens: 1}, price)
 			usage, reported := current.Usage()
-			if !reported || current.Steps() != 3 || usage.Total.InputTokens != 10 || usage.Total.OutputTokens != 3 || usage.Total.CostUSD != nil {
+			if !reported || current.Steps() != 3 || usage.Total.InputTokens != 10 || usage.Total.OutputTokens != 3 || usage.Total.Cost != (accounting.Cost{}) {
 				t.Fatalf("consumption = %+v, steps=%d", usage, current.Steps())
 			}
-			if unknown, present := usage.ByModel["unknown-model"]; present && unknown.CostUSD != nil {
+			if unknown, present := usage.ByModel["unknown-model"]; present && unknown.Cost != (accounting.Cost{}) {
 				t.Fatalf("later known response erased original unknown price: %+v", unknown)
 			}
 			if known := usage.ByModel["known-model"]; known.InputTokens != 7 || known.OutputTokens != 2 {

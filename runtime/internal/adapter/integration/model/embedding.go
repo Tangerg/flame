@@ -204,7 +204,7 @@ func (e *embedder) finish(ctx context.Context, invocation modelref.EndpointInvoc
 	if err := errors.Join(cause, pricingErr); err != nil {
 		failure = err.Error()
 	}
-	outcome := modelref.EndpointOutcome{CostUSD: cost.OptionalUSD(), FinishedAt: time.Now().UTC(), Failure: failure}
+	outcome := modelref.EndpointOutcome{Cost: cost, FinishedAt: time.Now().UTC(), Failure: failure}
 	if response != nil {
 		outcome.Response = modelref.EmbeddingEndpointResponse{Embedding: response}
 	}

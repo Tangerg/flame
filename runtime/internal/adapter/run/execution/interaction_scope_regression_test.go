@@ -683,7 +683,7 @@ func TestRootAndDelegateCompleteLongExecution(t *testing.T) {
 	}
 	for _, terminal := range terminals {
 		usage, metered := terminal.Run.Metrics().Usage()
-		if !metered || usage.Total.InputTokens < 71_000_000 || usage.Total.CostUSD == nil || *usage.Total.CostUSD < 7100 {
+		if !metered || usage.Total.InputTokens < 71_000_000 || usage.Total.Cost.OptionalUSD() == nil || *usage.Total.Cost.OptionalUSD() < 7100 {
 			t.Fatalf("long execution lost metering: %+v", usage)
 		}
 		outcome, found := terminal.Run.Outcome()

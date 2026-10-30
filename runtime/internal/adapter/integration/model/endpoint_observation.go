@@ -126,7 +126,7 @@ func (m *observedEndpoint) finish(ctx context.Context, invocation modelref.Endpo
 	if err := errors.Join(cause, pricingErr); err != nil {
 		failure = err.Error()
 	}
-	outcome := modelref.EndpointOutcome{CostUSD: cost.OptionalUSD(), FinishedAt: time.Now().UTC(), Failure: failure}
+	outcome := modelref.EndpointOutcome{Cost: cost, FinishedAt: time.Now().UTC(), Failure: failure}
 	if response != nil {
 		outcome.Response = modelref.ChatEndpointResponse{Chat: response.Clone()}
 	}

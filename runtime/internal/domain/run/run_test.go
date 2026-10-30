@@ -134,9 +134,12 @@ func TestRunLifecyclePreservesAdmissionFactsAndAdvancesMetrics(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Admit: %v", err)
 	}
-	cost := 0.25
+	cost, err := accounting.NewCost(0.25)
+	if err != nil {
+		t.Fatal(err)
+	}
 	metrics, err := NewMetrics(&accounting.Usage{
-		Total: accounting.Totals{InputTokens: 3, OutputTokens: 2, CostUSD: &cost},
+		Total: accounting.Totals{InputTokens: 3, OutputTokens: 2, Cost: cost},
 	}, 1, 2*time.Second)
 	if err != nil {
 		t.Fatalf("NewMetrics: %v", err)
@@ -418,9 +421,12 @@ func TestRunAndMetricsCopyOwnership(t *testing.T) {
 		t.Fatalf("Run capabilities changed through an external slice: %s", got)
 	}
 
-	cost := 1.0
+	cost, err := accounting.NewCost(1.0)
+	if err != nil {
+		t.Fatal(err)
+	}
 	usage := accounting.Usage{
-		Total:   accounting.Totals{CostUSD: &cost},
+		Total:   accounting.Totals{Cost: cost},
 		ByModel: map[string]accounting.Totals{"model": {InputTokens: 1}},
 	}
 	metrics, err := NewMetrics(&usage, 1, 0)

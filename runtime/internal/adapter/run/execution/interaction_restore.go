@@ -349,10 +349,6 @@ func modelUsageFromRunMetrics(
 		// Providers may omit usage. The checkpoint still owns the call count;
 		// zero executor calibration counters do not publish reported-zero usage.
 		value := byModel[model]
-		cost, err := accounting.CostFromOptional(value.CostUSD)
-		if err != nil {
-			return nil, fmt.Errorf("model %q cost: %w", model, err)
-		}
 		usage := accounting.ModelUsage{
 			Model: model,
 			Tokens: accounting.Tokens{
@@ -360,7 +356,7 @@ func modelUsageFromRunMetrics(
 				ReasoningTokens: value.ReasoningTokens, CacheReadTokens: value.CacheReadTokens,
 				CacheWriteTokens: value.CacheWriteTokens,
 			},
-			Cost:  cost,
+			Cost:  value.Cost,
 			Calls: calls,
 		}
 		if err := usage.Validate(); err != nil {
@@ -372,10 +368,7 @@ func modelUsageFromRunMetrics(
 }
 
 func sameTranscriptUsage(total accounting.ModelUsage, value accounting.Totals) bool {
-	cost, err := accounting.CostFromOptional(value.CostUSD)
-	if err != nil {
-		return false
-	}
+	cost := value.Cost
 	return total.InputTokens == value.InputTokens && total.OutputTokens == value.OutputTokens &&
 		total.ReasoningTokens == value.ReasoningTokens && total.CacheReadTokens == value.CacheReadTokens &&
 		total.CacheWriteTokens == value.CacheWriteTokens && total.Cost.Equal(cost)

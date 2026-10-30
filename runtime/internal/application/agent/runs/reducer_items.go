@@ -547,7 +547,7 @@ func (r *reducer) modelUsageProgress(e ModelCallCompleted) ([]ProjectionEvent, e
 	if err != nil {
 		return nil, err
 	}
-	next, err := current.AccrueModelCall(e.Model, e.ReportedUsage, e.Cost.OptionalUSD())
+	next, err := current.AccrueModelCall(e.Model, e.ReportedUsage, e.Cost)
 	if err != nil {
 		return nil, err
 	}

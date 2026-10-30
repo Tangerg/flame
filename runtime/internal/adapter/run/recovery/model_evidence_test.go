@@ -91,7 +91,7 @@ func TestRecoveryAccruesOnlyUncommittedDispatchedEndpointsAcrossRestart(t *testi
 			if err != nil {
 				t.Fatal(err)
 			}
-			previous := accounting.Totals{Tokens: accounting.Tokens{InputTokens: 5, OutputTokens: 2}, CostUSD: new(0.5)}
+			previous := accounting.Totals{Tokens: accounting.Tokens{InputTokens: 5, OutputTokens: 2}, Cost: testsupport.Cost(0.5)}
 			metrics, err := run.NewMetrics(&accounting.Usage{Total: previous, ByModel: map[string]accounting.Totals{"captured-model": previous}}, 1, time.Second)
 			if err != nil {
 				t.Fatal(err)
@@ -128,7 +128,7 @@ func TestRecoveryAccruesOnlyUncommittedDispatchedEndpointsAcrossRestart(t *testi
 				if test.reported {
 					response.Metadata = &chat.ResponseMetadata{Model: invocation.Model, Usage: &chat.Usage{InputTokens: test.input, OutputTokens: 0, CacheReadInputTokens: new(int64(0))}}
 				}
-				if err := journal.SettleEndpointInvocation(t.Context(), invocation, modelref.EndpointOutcome{Response: modelref.ChatEndpointResponse{Chat: response}, CostUSD: test.price, FinishedAt: at.Add(2 * time.Second)}); err != nil {
+				if err := journal.SettleEndpointInvocation(t.Context(), invocation, modelref.EndpointOutcome{Response: modelref.ChatEndpointResponse{Chat: response}, Cost: testsupport.OptionalCost(test.price), FinishedAt: at.Add(2 * time.Second)}); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -188,8 +188,8 @@ func TestRecoveryAccruesOnlyUncommittedDispatchedEndpointsAcrossRestart(t *testi
 			if test.independent && recovered.ContextTokens() != 5 {
 				t.Fatalf("independent recovery recalibrated primary context: %d", recovered.ContextTokens())
 			}
-			if (usage.Total.CostUSD == nil) != (test.wantCost == nil) || (test.wantCost != nil && *usage.Total.CostUSD != *test.wantCost) {
-				t.Fatalf("recovery repriced or guessed cost: %+v", usage.Total.CostUSD)
+			if (usage.Total.Cost.OptionalUSD() == nil) != (test.wantCost == nil) || (test.wantCost != nil && *usage.Total.Cost.OptionalUSD() != *test.wantCost) {
+				t.Fatalf("recovery repriced or guessed cost: %+v", usage.Total.Cost.OptionalUSD())
 			}
 			loadedGoal, err := goalStore.Get(t.Context(), draft.SessionID)
 			if err != nil {
@@ -281,7 +281,7 @@ func TestRecoveryAccruesIndependentKnownSourcesOnceWithoutChangingContext(t *tes
 		if err := journal.StartEndpointInvocation(t.Context(), inv, "original_model"); err != nil {
 			t.Fatal(err)
 		}
-		outcome := modelref.EndpointOutcome{FinishedAt: at.Add(2 * time.Second), Failure: test.failure, CostUSD: test.price}
+		outcome := modelref.EndpointOutcome{FinishedAt: at.Add(2 * time.Second), Failure: test.failure, Cost: testsupport.OptionalCost(test.price)}
 		if test.known {
 			outcome.Response = modelref.ChatEndpointResponse{Chat: &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: "served-" + test.id, Usage: &chat.Usage{InputTokens: test.input, OutputTokens: 2}}}}
 		}
@@ -293,7 +293,7 @@ func TestRecoveryAccruesIndependentKnownSourcesOnceWithoutChangingContext(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	metrics, err := active.Metrics().AccrueModelCall("served-original_model", &chat.Usage{InputTokens: 5, OutputTokens: 2}, new(0.5))
+	metrics, err := active.Metrics().AccrueModelCall("served-original_model", &chat.Usage{InputTokens: 5, OutputTokens: 2}, testsupport.Cost(0.5))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -321,7 +321,7 @@ func TestRecoveryAccruesIndependentKnownSourcesOnceWithoutChangingContext(t *tes
 		t.Fatal("changed typed usage bypassed original JSON evidence")
 	}
 	changedRecord = sources[0].Snapshot()
-	changedRecord.CostUSD = new(99.0)
+	changedRecord.Cost = testsupport.OptionalCost(new(99.0))
 	changed, err := modelref.RestoreEndpointObservation(changedRecord)
 	if err != nil {
 		t.Fatal(err)
@@ -350,7 +350,7 @@ func TestRecoveryAccruesIndependentKnownSourcesOnceWithoutChangingContext(t *tes
 		t.Fatal(err)
 	}
 	usage, ok := recovered.Metrics().Usage()
-	if !ok || usage.Total.InputTokens != 9007199254741005 || usage.Total.OutputTokens != 6 || usage.Total.CostUSD != nil || recovered.Metrics().Steps() != 4 || recovered.ContextTokens() != 5 {
+	if !ok || usage.Total.InputTokens != 9007199254741005 || usage.Total.OutputTokens != 6 || usage.Total.Cost.OptionalUSD() != nil || recovered.Metrics().Steps() != 4 || recovered.ContextTokens() != 5 {
 		t.Fatalf("independent accrual: %+v steps=%d context=%d", usage, recovered.Metrics().Steps(), recovered.ContextTokens())
 	}
 
@@ -378,7 +378,7 @@ func TestRecoveryAccruesIndependentKnownSourcesOnceWithoutChangingContext(t *tes
 		t.Fatal("restart changed original consumption")
 	}
 	row, found, err := db.ModelInvocations.EndpointForCaller(t.Context(), "independent_unknown")
-	if err != nil || !found || row.Response() != nil || row.Snapshot().CostUSD != nil {
+	if err != nil || !found || row.Response() != nil || row.Snapshot().Cost.OptionalUSD() != nil {
 		t.Fatalf("unknown invented a price/report: %+v %v", row, err)
 	}
 }

@@ -154,7 +154,7 @@ func TestSelectedModelCallsHaveIndependentRoutesBudgetsAndDurableEvidence(t *tes
 				t.Fatalf("durable independent endpoints: %+v %v", rows, err)
 			}
 			for _, row := range rows {
-				if row.Snapshot().Invocation.Caller.Parent != "original-plugin-operation" || row.Snapshot().Invocation.Caller.Origin != extension.Model || row.Snapshot().Invocation.Model == "" || row.Response().Metadata.Model != "served-"+row.Snapshot().Invocation.Model || row.Response().Metadata.Usage.InputTokens != 11 || row.Snapshot().CostUSD == nil || *row.Snapshot().CostUSD != 1.5 {
+				if row.Snapshot().Invocation.Caller.Parent != "original-plugin-operation" || row.Snapshot().Invocation.Caller.Origin != extension.Model || row.Snapshot().Invocation.Model == "" || row.Response().Metadata.Model != "served-"+row.Snapshot().Invocation.Model || row.Response().Metadata.Usage.InputTokens != 11 || row.Snapshot().Cost.OptionalUSD() == nil || *row.Snapshot().Cost.OptionalUSD() != 1.5 {
 					t.Fatalf("independent evidence replaced: %+v", row)
 				}
 			}

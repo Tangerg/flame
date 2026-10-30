@@ -35,7 +35,7 @@ func (s *Handler) UsageSummary(ctx context.Context, in protocol.UsageSummaryRequ
 		return nil, err
 	}
 	summary := &protocol.UsageSummary{
-		RecordedUsage: presentRecordedUsage(report.Total, report.RecordedCostUSD, report.Coverage),
+		RecordedUsage: presentRecordedUsage(report.Total, report.RecordedCost, report.Coverage),
 		ObservedAt:    report.ObservedAt,
 		ByProvider:    presentUsageBuckets(report.ByProvider),
 		ByModel:       presentUsageBuckets(report.ByModel),
@@ -52,17 +52,17 @@ func (s *Handler) UsageSummary(ctx context.Context, in protocol.UsageSummaryRequ
 }
 
 func presentSessionUsage(report sessions.UsageReport) *protocol.SessionUsage {
-	return &protocol.SessionUsage{RecordedUsage: presentRecordedUsage(report.Total, report.RecordedCostUSD, report.Coverage), ByModel: presentUsageBuckets(report.ByModel)}
+	return &protocol.SessionUsage{RecordedUsage: presentRecordedUsage(report.Total, report.RecordedCost, report.Coverage), ByModel: presentUsageBuckets(report.ByModel)}
 }
 
 func presentUsageBuckets(buckets []sessions.UsageBucket) []protocol.UsageBucket {
 	out := make([]protocol.UsageBucket, 0, len(buckets))
 	for _, bucket := range buckets {
-		out = append(out, protocol.UsageBucket{Key: bucket.Key, RecordedUsage: presentRecordedUsage(bucket.Usage, bucket.RecordedCostUSD, bucket.Coverage)})
+		out = append(out, protocol.UsageBucket{Key: bucket.Key, RecordedUsage: presentRecordedUsage(bucket.Usage, bucket.RecordedCost, bucket.Coverage)})
 	}
 	return out
 }
 
-func presentRecordedUsage(total accounting.Totals, cost *float64, coverage sessions.UsageCoverage) protocol.RecordedUsage {
-	return protocol.RecordedUsage{Total: presentModelUsage(total), RecordedCostUSD: cost, Coverage: protocol.UsageCoverage{Calls: coverage.Calls, ReportedCalls: coverage.ReportedCalls, PricedCalls: coverage.PricedCalls, StartedCalls: coverage.StartedCalls, CompletedCalls: coverage.CompletedCalls, FailedCalls: coverage.FailedCalls, UnknownCalls: coverage.UnknownCalls}}
+func presentRecordedUsage(total accounting.Totals, cost accounting.Cost, coverage sessions.UsageCoverage) protocol.RecordedUsage {
+	return protocol.RecordedUsage{Total: presentModelUsage(total), RecordedCostUSD: cost.OptionalUSD(), Coverage: protocol.UsageCoverage{Calls: coverage.Calls, ReportedCalls: coverage.ReportedCalls, PricedCalls: coverage.PricedCalls, StartedCalls: coverage.StartedCalls, CompletedCalls: coverage.CompletedCalls, FailedCalls: coverage.FailedCalls, UnknownCalls: coverage.UnknownCalls}}
 }

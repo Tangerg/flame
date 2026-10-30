@@ -993,7 +993,7 @@ func TestRecoveryChargesLostGoalOwnedRootToItsAdmissionLease(t *testing.T) {
 	run := testsupport.MustRestoreRun(rundomain.Snapshot{ID: "run_goal", SessionID: "session", State: rundomain.Running,
 		ActiveSegmentID: "segment_goal", GoalIncarnationID: "lease_goal",
 		Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 3,
-			Usage: &accounting.Usage{Total: accounting.Totals{CostUSD: &cost}}}),
+			Usage: &accounting.Usage{Total: accounting.Totals{Cost: testsupport.OptionalCost(&cost)}}}),
 
 		CreatedAt: createdAt, MessageMark: rundomain.UnknownMessageMark()})
 

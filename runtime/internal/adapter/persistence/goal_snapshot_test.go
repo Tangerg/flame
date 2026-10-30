@@ -49,7 +49,7 @@ func TestGoalReadsKeepLifecycleAndUsageInOneSnapshot(t *testing.T) {
 				SessionID: initial.SessionID(), ID: "run_goal_snapshot", GoalIncarnationID: initial.IncarnationID(),
 				Ending: run.Completed{}, CreatedAt: now, FinishedAt: now.Add(time.Minute), UpdatedAt: now.Add(time.Minute),
 				Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{
-					Steps: 3, Usage: &accounting.Usage{Total: accounting.Totals{CostUSD: new(0.25)}},
+					Steps: 3, Usage: &accounting.Usage{Total: accounting.Totals{Cost: testsupport.OptionalCost(new(0.25))}},
 				}),
 			})
 			snapshotDriver := goalSnapshotDriver{

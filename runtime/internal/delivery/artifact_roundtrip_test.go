@@ -403,12 +403,12 @@ func seedCanceledRun(t *testing.T, rt *stubRuntime, sessionID string) {
 		Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Usage: &accounting.Usage{
 			Total: accounting.Totals{
 				InputTokens: 100, OutputTokens: 20, CacheReadTokens: 5,
-				CacheWriteTokens: 3, ReasoningTokens: 7, CostUSD: &cost,
+				CacheWriteTokens: 3, ReasoningTokens: 7, Cost: testsupport.OptionalCost(&cost),
 			},
 			ByModel: map[string]accounting.Totals{
 				"claude-opus-5": {
 					InputTokens: 100, OutputTokens: 20, CacheReadTokens: 5,
-					CacheWriteTokens: 3, ReasoningTokens: 7, CostUSD: &cost,
+					CacheWriteTokens: 3, ReasoningTokens: 7, Cost: testsupport.OptionalCost(&cost),
 				},
 			},
 		},

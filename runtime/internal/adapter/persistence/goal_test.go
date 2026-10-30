@@ -85,7 +85,7 @@ func persistTerminalGoalRun(
 		Ending:            testsupport.EndingFor(outcome),
 		Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{
 			Steps: steps,
-			Usage: &accounting.Usage{Total: accounting.Totals{CostUSD: costUSD}},
+			Usage: &accounting.Usage{Total: accounting.Totals{Cost: testsupport.OptionalCost(costUSD)}},
 		}),
 		CreatedAt: completedAt.Add(-time.Second), FinishedAt: completedAt,
 		UpdatedAt: completedAt, MessageMark: run.MessageMarkAt(0),
@@ -169,7 +169,7 @@ func TestGoalUsageIncludesDelegatedSpendingAfterRestart(t *testing.T) {
 			SessionID: sessionID, ID: descendant.id,
 			Lineage:   run.Lineage{ParentRunID: descendant.parent, RootRunID: root.ID(), SpawnedByItemID: "itm_" + descendant.id},
 			Ending:    testsupport.EndingFor(descendant.outcome),
-			Metrics:   testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: descendant.steps, Usage: &accounting.Usage{Total: accounting.Totals{CostUSD: &descendant.cost}}}),
+			Metrics:   testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: descendant.steps, Usage: &accounting.Usage{Total: accounting.Totals{Cost: testsupport.OptionalCost(&descendant.cost)}}}),
 			CreatedAt: now, UpdatedAt: now.Add(time.Second), FinishedAt: now.Add(time.Second),
 		})
 		if err := runs.Restore(t.Context(), value); err != nil {

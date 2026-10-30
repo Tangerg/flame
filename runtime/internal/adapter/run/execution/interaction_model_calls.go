@@ -9,7 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 )
 
 type modelCalls struct {
@@ -62,11 +61,7 @@ func accountModelEndpoint(callID string, source modelref.EndpointObservation) (r
 		return runs.ModelCallCompleted{}, err
 	}
 	record := source.Snapshot()
-	cost, err := accounting.CostFromOptional(record.CostUSD)
-	if err != nil {
-		return runs.ModelCallCompleted{}, err
-	}
-	consumption := runs.ModelCallCompleted{CallID: callID, Model: source.ServedModel(), Cost: cost}
+	consumption := runs.ModelCallCompleted{CallID: callID, Model: source.ServedModel(), Cost: record.Cost}
 	if record.Usage != nil {
 		usage := record.Usage.Clone()
 		consumption.ReportedUsage = &usage

@@ -273,8 +273,12 @@ func portableEndingFromArtifact(path string, outcome protocol.ArtifactOutcome) (
 }
 
 func portableMetricsFromArtifact(path string, artifact protocol.RunMetrics) (run.Metrics, error) {
+	usage, err := portableUsageFromArtifact(artifact.Usage)
+	if err != nil {
+		return run.Metrics{}, invalidArtifact(path+".usage", "%v", err)
+	}
 	metrics, err := run.NewMetrics(
-		portableUsageFromArtifact(artifact.Usage),
+		usage,
 		artifact.Steps,
 		time.Duration(artifact.ActiveDurationMillis)*time.Millisecond,
 	)
@@ -284,26 +288,34 @@ func portableMetricsFromArtifact(path string, artifact protocol.RunMetrics) (run
 	return metrics, nil
 }
 
-func portableUsageFromArtifact(artifact *protocol.Usage) *accounting.Usage {
+func portableUsageFromArtifact(artifact *protocol.Usage) (*accounting.Usage, error) {
 	if artifact == nil {
-		return nil
+		return nil, nil
 	}
-	out := &accounting.Usage{Total: accounting.Totals{
+	cost, err := accounting.CostFromOptional(artifact.CostUSD)
+	if err != nil {
+		return nil, err
+	}
+	out := &accounting.Usage{Total: accounting.Totals{Tokens: accounting.Tokens{
 		InputTokens: artifact.InputTokens, OutputTokens: artifact.OutputTokens,
 		CacheReadTokens: artifact.CacheReadTokens, CacheWriteTokens: artifact.CacheWriteTokens,
-		ReasoningTokens: artifact.ReasoningTokens, CostUSD: artifact.CostUSD,
-	}}
+		ReasoningTokens: artifact.ReasoningTokens,
+	}, Cost: cost}}
 	if len(artifact.ByModel) != 0 {
 		out.ByModel = make(map[string]accounting.Totals, len(artifact.ByModel))
 		for model, values := range artifact.ByModel {
-			out.ByModel[model] = accounting.Totals{
+			cost, err := accounting.CostFromOptional(values.CostUSD)
+			if err != nil {
+				return nil, fmt.Errorf("model %q: %w", model, err)
+			}
+			out.ByModel[model] = accounting.Totals{Tokens: accounting.Tokens{
 				InputTokens: values.InputTokens, OutputTokens: values.OutputTokens,
 				CacheReadTokens: values.CacheReadTokens, CacheWriteTokens: values.CacheWriteTokens,
-				ReasoningTokens: values.ReasoningTokens, CostUSD: values.CostUSD,
-			}
+				ReasoningTokens: values.ReasoningTokens,
+			}, Cost: cost}
 		}
 	}
-	return out
+	return out, nil
 }
 
 func portableItemFromArtifact(sessionID, path string, artifact protocol.ArtifactItem) (transcript.Item, error) {

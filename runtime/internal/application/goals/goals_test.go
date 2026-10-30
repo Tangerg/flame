@@ -519,7 +519,7 @@ func (f *fakeRuns) emitScriptedRun(
 				ID:      boundaryRunID,
 				State:   boundaryState,
 				Ending:  outcome,
-				Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: script.steps, Usage: &accounting.Usage{Total: accounting.Totals{CostUSD: &cost}}})})
+				Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: script.steps, Usage: &accounting.Usage{Total: accounting.Totals{Cost: testsupport.OptionalCost(&cost)}}})})
 
 			if outcome != nil && cmd.GoalIncarnationID != "" {
 				if err := f.store.RecordRun(context.WithoutCancel(ctx), goalOwnedRun(cmd, runID, script.outcome, &cost, script.steps)); err != nil {
@@ -1979,7 +1979,7 @@ func goalOwnedRun(cmd runs.StartCommand, runID string, outcome run.Outcome, cost
 		SessionID: cmd.SessionID, ID: runID, GoalIncarnationID: cmd.GoalIncarnationID,
 		Ending: testsupport.EndingFor(outcome),
 		Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{
-			Steps: steps, Usage: &accounting.Usage{Total: accounting.Totals{CostUSD: costUSD}},
+			Steps: steps, Usage: &accounting.Usage{Total: accounting.Totals{Cost: testsupport.OptionalCost(costUSD)}},
 		}),
 		CreatedAt: finishedAt.Add(-time.Second), FinishedAt: finishedAt, UpdatedAt: finishedAt,
 	})

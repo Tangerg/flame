@@ -8,6 +8,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -120,21 +121,21 @@ func TestEndpointOutcomeAndRestorationShareAdmission(t *testing.T) {
 func TestEndpointObservationProtectsItsAdmittedRecord(t *testing.T) {
 	record := endpointRecord(t)
 	record.State, record.FinishedAt = InvocationCompleted, record.Invocation.StartedAt.Add(time.Second)
-	record.CostUSD, record.Usage = new(1.5), &chat.Usage{InputTokens: 7}
+	record.Cost, record.Usage = mustCost(t, 1.5), &chat.Usage{InputTokens: 7}
 	record.ResponseJSON = endpointResponse(t, record.Usage)
 	observation, err := RestoreEndpointObservation(record)
 	if err != nil {
 		t.Fatal(err)
 	}
 	before := observation.Snapshot()
-	*record.CostUSD, record.Usage.InputTokens = 99, 99
+	record.Usage.InputTokens = 99
 	other, err := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("different input")))
 	if err != nil {
 		t.Fatal(err)
 	}
 	*record.Invocation.Request.(ChatEndpointRequest).Chat = *other
 	projection := observation.Snapshot()
-	*projection.CostUSD, projection.Usage.InputTokens = 88, 88
+	projection.Usage.InputTokens = 88
 	*projection.Invocation.Request.(ChatEndpointRequest).Chat = *other
 	response := observation.Response()
 	response.Metadata.Model, response.Metadata.Usage.InputTokens = "different", 88
@@ -147,7 +148,7 @@ func TestEndpointEvidenceRequiresExactTimingAndAccounting(t *testing.T) {
 	for _, change := range []func(*EndpointRecord){
 		func(r *EndpointRecord) { r.FinishedAt = r.Invocation.StartedAt.Add(-time.Second) },
 		func(r *EndpointRecord) { r.Usage = &chat.Usage{InputTokens: 1} },
-		func(r *EndpointRecord) { r.CostUSD = new(1.0) },
+		func(r *EndpointRecord) { r.Cost = mustCost(t, 1.0) },
 		func(r *EndpointRecord) { r.ResponseJSON = jsonvalue.Value{} },
 	} {
 		record := endpointRecord(t)
@@ -171,7 +172,7 @@ func TestEndpointEvidenceRequiresExactTimingAndAccounting(t *testing.T) {
 func TestEndpointObservationConcurrentProjectionsRemainIsolated(t *testing.T) {
 	record := endpointRecord(t)
 	record.State, record.FinishedAt = InvocationCompleted, record.Invocation.StartedAt.Add(time.Second)
-	record.CostUSD, record.Usage = new(1.5), &chat.Usage{InputTokens: 7}
+	record.Cost, record.Usage = mustCost(t, 1.5), &chat.Usage{InputTokens: 7}
 	record.ResponseJSON = endpointResponse(t, record.Usage)
 	observation, err := RestoreEndpointObservation(record)
 	if err != nil {
@@ -182,7 +183,7 @@ func TestEndpointObservationConcurrentProjectionsRemainIsolated(t *testing.T) {
 		t.Run("independent reader", func(t *testing.T) {
 			t.Parallel()
 			projection := observation.Snapshot()
-			*projection.CostUSD, projection.Usage.InputTokens = 99, 99
+			projection.Usage.InputTokens = 99
 			projection.Invocation.Request.(ChatEndpointRequest).Chat.Messages = nil
 			response := observation.Response()
 			response.Metadata.Model, response.Metadata.Usage.InputTokens = "different", 99
@@ -191,4 +192,13 @@ func TestEndpointObservationConcurrentProjectionsRemainIsolated(t *testing.T) {
 			}
 		})
 	}
+}
+
+func mustCost(t *testing.T, usd float64) accounting.Cost {
+	t.Helper()
+	cost, err := accounting.NewCost(usd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return cost
 }

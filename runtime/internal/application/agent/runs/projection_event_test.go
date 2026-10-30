@@ -83,7 +83,6 @@ func TestProgressRejectsImpossiblePreviews(t *testing.T) {
 	t.Parallel()
 
 	negativeStep, negativeContext := -1, int64(-1)
-	invalidCost := -0.01
 	for _, test := range []struct {
 		name     string
 		progress Progress
@@ -91,7 +90,7 @@ func TestProgressRejectsImpossiblePreviews(t *testing.T) {
 		{name: "empty"},
 		{name: "negative step", progress: Progress{Step: &negativeStep}},
 		{name: "invalid usage", progress: Progress{Usage: &accounting.Usage{
-			Total: accounting.Totals{CostUSD: &invalidCost},
+			Total: accounting.Totals{Tokens: accounting.Tokens{InputTokens: -1}},
 		}}},
 		{name: "negative context", progress: Progress{ContextTokens: &negativeContext}},
 		{name: "anonymous tool activity", progress: Progress{Activity: ToolCallActivity{}}},

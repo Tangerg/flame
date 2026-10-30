@@ -33,17 +33,19 @@ type UsageCoverage struct {
 }
 
 type UsageBucket struct {
-	Key             string
-	Usage           accounting.Totals
-	RecordedCostUSD *float64
-	Coverage        UsageCoverage
+	Key   string
+	Usage accounting.Totals
+	// RecordedCost sums the calls that were priced; it is available when any
+	// call was, even if others were not, unlike Usage's exact total.
+	RecordedCost accounting.Cost
+	Coverage     UsageCoverage
 }
 
 type UsageReport struct {
-	Total           accounting.Totals
-	RecordedCostUSD *float64
-	Coverage        UsageCoverage
-	ByModel         []UsageBucket
+	Total        accounting.Totals
+	RecordedCost accounting.Cost
+	Coverage     UsageCoverage
+	ByModel      []UsageBucket
 }
 
 type UsageSummary struct {
@@ -138,7 +140,7 @@ func (r *UsageReporter) collect(ctx context.Context, sessionID string, since tim
 	if err != nil {
 		return UsageSummary{}, err
 	}
-	return UsageSummary{UsageReport: UsageReport{Total: total.usage(), RecordedCostUSD: total.recordedCost(), Coverage: total.coverage, ByModel: bucketsBySpend(groups[1])}, ByProvider: bucketsBySpend(groups[0]), ByDay: bucketsByKey(groups[2]), ByOrigin: bucketsByKey(groups[3]), ByScope: bucketsByKey(groups[4]), Sessions: len(sessions), Runs: len(runs)}, nil
+	return UsageSummary{UsageReport: UsageReport{Total: total.usage(), RecordedCost: total.recordedCost(), Coverage: total.coverage, ByModel: bucketsBySpend(groups[1])}, ByProvider: bucketsBySpend(groups[0]), ByDay: bucketsByKey(groups[2]), ByOrigin: bucketsByKey(groups[3]), ByScope: bucketsByKey(groups[4]), Sessions: len(sessions), Runs: len(runs)}, nil
 }
 
 type usageAccumulator struct {
@@ -180,21 +182,19 @@ func (u *usageAccumulator) addCall(observation modelref.EndpointObservation) err
 		}
 		next.coverage.ReportedCalls++
 	}
-	cost, err := accounting.CostFromOptional(source.CostUSD)
-	if err != nil {
-		return err
-	}
-	if source.CostUSD != nil {
+	if _, priced := source.Cost.USD(); priced {
+		cost := source.Cost
 		if reported == nil {
 			return errors.New("usage source price has no reported usage")
 		}
 		if next.coverage.PricedCalls == 0 {
 			next.cost = cost
 		} else {
-			next.cost, err = next.cost.Add(cost)
+			sum, err := next.cost.Add(cost)
 			if err != nil {
 				return err
 			}
+			next.cost = sum
 		}
 		next.coverage.PricedCalls++
 	}
@@ -202,17 +202,17 @@ func (u *usageAccumulator) addCall(observation modelref.EndpointObservation) err
 	return nil
 }
 
-func (u usageAccumulator) recordedCost() *float64 {
+func (u usageAccumulator) recordedCost() accounting.Cost {
 	if u.coverage.PricedCalls == 0 {
-		return nil
+		return accounting.Cost{}
 	}
-	return u.cost.OptionalUSD()
+	return u.cost
 }
 
 func (u usageAccumulator) usage() accounting.Totals {
 	value := accounting.Totals{Tokens: u.tokens}
 	if u.coverage.Calls > 0 && u.coverage.PricedCalls == u.coverage.Calls {
-		value.CostUSD = u.recordedCost()
+		value.Cost = u.recordedCost()
 	}
 	return value
 }
@@ -229,7 +229,7 @@ func accumulatorFor(groups map[string]*usageAccumulator, key string) *usageAccum
 func bucketsOf(groups map[string]*usageAccumulator) []UsageBucket {
 	result := make([]UsageBucket, 0, len(groups))
 	for key, value := range groups {
-		result = append(result, UsageBucket{Key: key, Usage: value.usage(), RecordedCostUSD: value.recordedCost(), Coverage: value.coverage})
+		result = append(result, UsageBucket{Key: key, Usage: value.usage(), RecordedCost: value.recordedCost(), Coverage: value.coverage})
 	}
 	return result
 }
@@ -237,7 +237,7 @@ func bucketsOf(groups map[string]*usageAccumulator) []UsageBucket {
 func bucketsBySpend(groups map[string]*usageAccumulator) []UsageBucket {
 	result := bucketsOf(groups)
 	slices.SortFunc(result, func(a, b UsageBucket) int {
-		return cmp.Or(cmp.Compare(costOf(b.RecordedCostUSD), costOf(a.RecordedCostUSD)), cmp.Compare(b.Usage.InputTokens, a.Usage.InputTokens), cmp.Compare(a.Key, b.Key))
+		return cmp.Or(cmp.Compare(costOf(b.RecordedCost), costOf(a.RecordedCost)), cmp.Compare(b.Usage.InputTokens, a.Usage.InputTokens), cmp.Compare(a.Key, b.Key))
 	})
 	return result
 }
@@ -248,9 +248,7 @@ func bucketsByKey(groups map[string]*usageAccumulator) []UsageBucket {
 	return result
 }
 
-func costOf(value *float64) float64 {
-	if value == nil {
-		return 0
-	}
-	return *value
+func costOf(value accounting.Cost) float64 {
+	usd, _ := value.USD()
+	return usd
 }

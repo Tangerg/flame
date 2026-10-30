@@ -87,7 +87,7 @@ func TestEndpointRetainsGenerationWhenCatalogCannotPriceUsage(t *testing.T) {
 		t.Fatalf("endpoint observation: %+v, %v", rows, err)
 	}
 	row := rows[0]
-	if row.State() != modelref.InvocationFailed || row.Response() == nil || row.Response().Text() != "generated answer" || row.Snapshot().Usage == nil || row.Snapshot().Usage.InputTokens != 10 || row.Snapshot().CostUSD != nil || row.Snapshot().Failure != callErr.Error() {
+	if row.State() != modelref.InvocationFailed || row.Response() == nil || row.Response().Text() != "generated answer" || row.Snapshot().Usage == nil || row.Snapshot().Usage.InputTokens != 10 || row.Snapshot().Cost.OptionalUSD() != nil || row.Snapshot().Failure != callErr.Error() {
 		t.Fatalf("pricing failure lost physical evidence or invented a price: %+v", row)
 	}
 }

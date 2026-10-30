@@ -955,7 +955,7 @@ func TestCommitEventRecordsGoalRunWithTerminalRun(t *testing.T) {
 	}
 	finishedAt := created.Add(time.Second)
 	updated, err = updated.AdvanceProgress(testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 2,
-		Usage: &accounting.Usage{Total: accounting.Totals{CostUSD: &costUSD}}}), 0, finishedAt)
+		Usage: &accounting.Usage{Total: accounting.Totals{Cost: testsupport.OptionalCost(&costUSD)}}}), 0, finishedAt)
 	if err != nil {
 		t.Fatalf("advance Run metrics: %v", err)
 	}

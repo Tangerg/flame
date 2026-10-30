@@ -72,7 +72,7 @@ func TestEndpointEvidenceSurvivesOuterObserverFailureAndHostRestart(t *testing.T
 	t.Cleanup(func() { _ = db.Close() })
 	store := db.ModelInvocations
 	source, found, err := store.EndpointForCaller(t.Context(), "original-endpoint-parent")
-	if err != nil || !found || source.Snapshot().CostUSD == nil || *source.Snapshot().CostUSD != 1.5 {
+	if err != nil || !found || source.Snapshot().Cost.OptionalUSD() == nil || *source.Snapshot().Cost.OptionalUSD() != 1.5 {
 		t.Fatalf("restart lost captured source price: %+v %v", source, err)
 	}
 	rows, err := store.PageEndpointInvocations(t.Context(), "original-endpoint-parent", 0, "", 10)

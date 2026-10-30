@@ -97,7 +97,7 @@ func (m Metrics) Cost() (accounting.Cost, error) {
 		}
 		return accounting.Cost{}, nil
 	}
-	return accounting.CostFromOptional(m.usage.Total.CostUSD)
+	return m.usage.Total.Cost, nil
 }
 
 // Steps counts physically dispatched model calls, including unknown outcomes.
@@ -108,30 +108,26 @@ func (m Metrics) ActiveDuration() time.Duration { return m.activeDuration }
 
 // AccrueModelCall adds one not-yet-committed provider call. The journal
 // transition and Run replacement commit together; a restarted pass cannot add it twice.
-func (m Metrics) AccrueModelCall(model string, reported *chat.Usage, costUSD *float64) (Metrics, error) {
+func (m Metrics) AccrueModelCall(model string, reported *chat.Usage, cost accounting.Cost) (Metrics, error) {
 	if err := m.Validate(); err != nil {
 		return Metrics{}, err
 	}
 	if _, err := modelchoice.NewModelIdentity(model); err != nil {
 		return Metrics{}, err
 	}
-	cost, err := accounting.CostFromOptional(costUSD)
-	if err != nil {
-		return Metrics{}, err
-	}
 	if m.steps == math.MaxInt {
 		return Metrics{}, errors.New("run: model call count overflows")
 	}
 	if reported == nil {
-		if costUSD != nil {
+		if _, priced := cost.USD(); priced {
 			return Metrics{}, errors.New("run: model price requires reported usage")
 		}
 		if m.usage != nil {
 			usage := m.usage.Clone()
-			usage.Total.CostUSD = nil
+			usage.Total.Cost = accounting.Cost{}
 			if usage.ByModel != nil {
 				value := usage.ByModel[model]
-				value.CostUSD = nil
+				value.Cost = accounting.Cost{}
 				usage.ByModel[model] = value
 			}
 			m.usage = &usage
@@ -142,13 +138,13 @@ func (m Metrics) AccrueModelCall(model string, reported *chat.Usage, costUSD *fl
 	if err != nil {
 		return Metrics{}, err
 	}
-	delta := accounting.Totals{Tokens: tokens, CostUSD: cost.OptionalUSD()}
+	delta := accounting.Totals{Tokens: tokens, Cost: cost}
 	usage := accounting.Usage{Total: delta, ByModel: map[string]accounting.Totals{model: delta}}
 	if m.usage == nil && m.steps > 0 {
-		usage.Total.CostUSD = nil
+		usage.Total.Cost = accounting.Cost{}
 		// Earlier unreported calls have no surviving model attribution here.
 		// Preserve this reported breakdown, but its aggregate price is unknown.
-		delta.CostUSD = nil
+		delta.Cost = accounting.Cost{}
 		usage.ByModel[model] = delta
 	}
 	if m.usage != nil {
@@ -163,10 +159,10 @@ func (m Metrics) AccrueModelCall(model string, reported *chat.Usage, costUSD *fl
 				if err != nil {
 					return Metrics{}, err
 				}
-			} else if m.usage.Total.CostUSD == nil {
+			} else if _, priced := m.usage.Total.Cost.USD(); !priced {
 				// An unattributed earlier call may belong to this model. A later
 				// known price cannot make that model's aggregate price exact.
-				delta.CostUSD = nil
+				delta.Cost = accounting.Cost{}
 			}
 			usage.ByModel[model] = delta
 		}

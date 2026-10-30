@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -103,7 +104,7 @@ func usageRecord(t *testing.T, id, provider, model string, state modelref.Invoca
 	if err != nil {
 		t.Fatal(err)
 	}
-	value := modelref.EndpointRecord{Invocation: invocation, InvocationJSON: input, RequestJSON: requestJSON, State: state, CostUSD: cost, Usage: reported}
+	value := modelref.EndpointRecord{Invocation: invocation, InvocationJSON: input, RequestJSON: requestJSON, State: state, Cost: testsupport.OptionalCost(cost), Usage: reported}
 	if state != modelref.InvocationStarted {
 		value.FinishedAt = at.Add(time.Second)
 	}
@@ -156,7 +157,7 @@ func TestPhysicalUsageIncludesAuxiliaryUnattachedAndUnknownWithoutDoubleCounting
 		t.Fatal(err)
 	}
 	want := UsageCoverage{Calls: 5, ReportedCalls: 2, PricedCalls: 2, CompletedCalls: 2, FailedCalls: 1, UnknownCalls: 1, StartedCalls: 1}
-	if report.Coverage != want || report.Total.InputTokens != 110 || report.Total.OutputTokens != 42 || report.Total.CacheReadTokens != 3 || report.Total.ReasoningTokens != 2 || report.Total.CostUSD != nil || report.RecordedCostUSD == nil || *report.RecordedCostUSD != 1.5 || report.Runs != 1 || report.Sessions != 1 {
+	if report.Coverage != want || report.Total.InputTokens != 110 || report.Total.OutputTokens != 42 || report.Total.CacheReadTokens != 3 || report.Total.ReasoningTokens != 2 || report.Total.Cost.OptionalUSD() != nil || report.RecordedCost.OptionalUSD() == nil || *report.RecordedCost.OptionalUSD() != 1.5 || report.Runs != 1 || report.Sessions != 1 {
 		t.Fatalf("physical total changed or hid incomplete coverage: %+v", report)
 	}
 	if len(report.ByModel) != 2 || report.ByModel[0].Key != "provider-a/served" || report.ByModel[1].Key != "provider-b/served" {
@@ -177,7 +178,7 @@ func TestPhysicalUsageIncludesAuxiliaryUnattachedAndUnknownWithoutDoubleCounting
 	if err != nil {
 		t.Fatal(err)
 	}
-	if session.Coverage.Calls != 2 || session.Total.CostUSD == nil || *session.Total.CostUSD != 1.5 || session.Total.InputTokens != 110 {
+	if session.Coverage.Calls != 2 || session.Total.Cost.OptionalUSD() == nil || *session.Total.Cost.OptionalUSD() != 1.5 || session.Total.InputTokens != 110 {
 		t.Fatalf("Session-only auxiliary missing: %+v", session)
 	}
 }
@@ -191,7 +192,7 @@ func TestPhysicalUsageFiltersAtAdmissionAndRejectsPartialRead(t *testing.T) {
 	}
 	period, _ := RecentUsageDays(7)
 	report, err := reader.Summary(t.Context(), period)
-	if err != nil || report.Coverage.Calls != 1 || report.Coverage.ReportedCalls != 1 || report.Total.CostUSD == nil || *report.Total.CostUSD != 0 {
+	if err != nil || report.Coverage.Calls != 1 || report.Coverage.ReportedCalls != 1 || report.Total.Cost.OptionalUSD() == nil || *report.Total.Cost.OptionalUSD() != 0 {
 		t.Fatalf("window or reported zero lost: %+v %v", report, err)
 	}
 	reader, err = NewUsageReporter(UsageDependencies{Source: usageSourceStub{values: []modelref.EndpointRecord{current}, failure: errors.New("later source is corrupt")}})
@@ -218,7 +219,7 @@ func TestBucketsBySpendRankCostThenUsageThenIdentity(t *testing.T) {
 	for index, name := range []string{"z", "a", "highest"} {
 		value := usageRecord(t, fmt.Sprint(index), "provider", name, modelref.InvocationCompleted, time.Now().UTC(), &chat.Usage{InputTokens: 1}, usd(1))
 		if name == "highest" {
-			value.CostUSD = usd(2)
+			value.Cost = testsupport.OptionalCost(usd(2))
 		}
 		if err := accumulatorFor(values, name).addCall(usageObservation(t, value)); err != nil {
 			t.Fatal(err)

@@ -13,6 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -24,13 +25,13 @@ func TestWaitingAccountingRestoresUnreportedCallsWithoutInventingUsage(t *testin
 			if err != nil {
 				t.Fatal(err)
 			}
-			metrics, err = metrics.AccrueModelCall("unreported", nil, nil)
+			metrics, err = metrics.AccrueModelCall("unreported", nil, accounting.Cost{})
 			if err != nil {
 				t.Fatal(err)
 			}
 			counts := map[string]int{"unreported": 1}
 			if mixed {
-				metrics, err = metrics.AccrueModelCall("reported", &chat.Usage{InputTokens: 11, OutputTokens: 3}, new(1.25))
+				metrics, err = metrics.AccrueModelCall("reported", &chat.Usage{InputTokens: 11, OutputTokens: 3}, testsupport.Cost(1.25))
 				if err != nil {
 					t.Fatal(err)
 				}

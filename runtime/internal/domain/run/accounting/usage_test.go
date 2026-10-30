@@ -162,13 +162,30 @@ func TestCostPreservesPricingAvailability(t *testing.T) {
 }
 
 func TestTotalsAllowPricingToBecomeUnavailableWithoutLosingUsage(t *testing.T) {
-	priced := 0.25
-	previous := Totals{InputTokens: 10, CostUSD: &priced}
+	priced, err := NewCost(0.25)
+	if err != nil {
+		t.Fatal(err)
+	}
+	previous := Totals{InputTokens: 10, Cost: priced}
 	next := Totals{InputTokens: 20}
 	if err := next.ValidateAdvanceFrom(previous); err != nil {
 		t.Fatalf("ValidateAdvanceFrom: %v", err)
 	}
 	if err := previous.ValidateAdvanceFrom(next); err == nil {
 		t.Fatal("unknown cumulative pricing became exact")
+	}
+}
+
+func TestCostRejectsAmountsThatAreNotFiniteAndNonNegative(t *testing.T) {
+	for _, usd := range []float64{-0.1, math.NaN(), math.Inf(1)} {
+		if _, err := NewCost(usd); err == nil {
+			t.Errorf("NewCost(%v) accepted an invalid amount", usd)
+		}
+		if _, err := CostFromOptional(&usd); err == nil {
+			t.Errorf("CostFromOptional(%v) accepted an invalid amount", usd)
+		}
+	}
+	if cost, err := CostFromOptional(nil); err != nil || cost != (Cost{}) {
+		t.Fatalf("CostFromOptional(nil) = %+v, %v, want unpriced", cost, err)
 	}
 }

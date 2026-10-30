@@ -468,7 +468,11 @@ func goalTestRun(t *testing.T, runID, incarnationID string, outcome run.Outcome,
 	t.Helper()
 	var usage *accounting.Usage
 	if costUSD != nil {
-		usage = &accounting.Usage{Total: accounting.Totals{CostUSD: costUSD}}
+		cost, err := accounting.CostFromOptional(costUSD)
+		if err != nil {
+			t.Fatal(err)
+		}
+		usage = &accounting.Usage{Total: accounting.Totals{Cost: cost}}
 	}
 	metrics, err := run.NewMetrics(usage, steps, time.Second)
 	if err != nil {

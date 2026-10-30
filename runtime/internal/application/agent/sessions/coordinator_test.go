@@ -288,7 +288,7 @@ func TestApplyRunLostProjectsTerminalTranscript(t *testing.T) {
 					InterruptKinds: []run.InterruptKind{run.InterruptApproval},
 				},
 				Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 4, Usage: &accounting.Usage{
-					Total: accounting.Totals{CostUSD: &costUSD},
+					Total: accounting.Totals{Cost: testsupport.OptionalCost(&costUSD)},
 				}}),
 				CreatedAt: createdAt, MessageMark: run.MessageMarkAt(-1),
 			})},

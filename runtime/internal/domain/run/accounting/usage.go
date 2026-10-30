@@ -5,6 +5,7 @@ package accounting
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"slices"
 
@@ -12,35 +13,15 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// Totals is the cumulative token and cost fact reported for one scope. CostUSD
-// is absent when pricing was not available; an absent price is intentionally
-// distinct from a reported zero price.
+// Totals is the cumulative token and cost fact reported for one scope.
 type Totals struct {
 	Tokens
-	CostUSD *float64
-}
-
-// Clone returns an ownership-isolated value.
-func (t Totals) Clone() Totals {
-	clonedCostUSD := t.CostUSD
-	if clonedCostUSD !=
-
-		nil {
-		clonedCostUSD = new(*clonedCostUSD)
-	}
-	t.CostUSD = clonedCostUSD
-	return t
+	Cost Cost
 }
 
 // Validate reports whether the cumulative counters are internally consistent.
 func (t Totals) Validate() error {
-	if err := t.Tokens.Validate(); err != nil {
-		return err
-	}
-	if t.CostUSD != nil && (*t.CostUSD < 0 || math.IsNaN(*t.CostUSD) || math.IsInf(*t.CostUSD, 0)) {
-		return errors.New("accounting: cost must be finite and non-negative")
-	}
-	return nil
+	return t.Tokens.Validate()
 }
 
 // ValidateAdvanceFrom proves that t has not erased previously committed
@@ -57,15 +38,7 @@ func (t Totals) ValidateAdvanceFrom(previous Totals) error {
 		t.ReasoningTokens < previous.ReasoningTokens {
 		return errors.New("accounting: cumulative totals regressed")
 	}
-	nextCost, err := CostFromOptional(t.CostUSD)
-	if err != nil {
-		return fmt.Errorf("next totals: %w", err)
-	}
-	previousCost, err := CostFromOptional(previous.CostUSD)
-	if err != nil {
-		return fmt.Errorf("previous totals: %w", err)
-	}
-	return nextCost.ValidateAdvanceFrom(previousCost)
+	return t.Cost.ValidateAdvanceFrom(previous.Cost)
 }
 
 // Equal reports semantic equality, preserving the distinction between absent
@@ -76,10 +49,7 @@ func (t Totals) Equal(other Totals) bool {
 		t.ReasoningTokens != other.ReasoningTokens {
 		return false
 	}
-	if t.CostUSD == nil || other.CostUSD == nil {
-		return t.CostUSD == nil && other.CostUSD == nil
-	}
-	return *t.CostUSD == *other.CostUSD
+	return t.Cost.Equal(other.Cost)
 }
 
 func (t Totals) Add(other Totals) (Totals, error) {
@@ -93,19 +63,11 @@ func (t Totals) Add(other Totals) (Totals, error) {
 	if err != nil {
 		return Totals{}, err
 	}
-	left, err := CostFromOptional(t.CostUSD)
+	cost, err := t.Cost.Add(other.Cost)
 	if err != nil {
 		return Totals{}, err
 	}
-	right, err := CostFromOptional(other.CostUSD)
-	if err != nil {
-		return Totals{}, err
-	}
-	cost, err := left.Add(right)
-	if err != nil {
-		return Totals{}, err
-	}
-	return Totals{Tokens: tokens, CostUSD: cost.OptionalUSD()}, nil
+	return Totals{Tokens: tokens, Cost: cost}, nil
 }
 
 // Usage is cumulative accounting for a Run. Total remains authoritative when
@@ -118,14 +80,7 @@ type Usage struct {
 
 // Clone returns an ownership-isolated usage value.
 func (u Usage) Clone() Usage {
-	u.Total = u.Total.Clone()
-	if u.ByModel != nil {
-		source := u.ByModel
-		u.ByModel = make(map[string]Totals, len(source))
-		for model, totals := range source {
-			u.ByModel[model] = totals.Clone()
-		}
-	}
+	u.ByModel = maps.Clone(u.ByModel)
 	return u
 }
 

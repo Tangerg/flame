@@ -246,7 +246,7 @@ func TestOuterStreamFailureWaitsForPhysicalSettlement(t *testing.T) {
 				t.Fatalf("expected one failed model call: %+v", failed)
 			}
 			source, found, err := journal.EndpointForCaller(t.Context(), failed[0].CallID)
-			if err != nil || !found || source.Response() == nil || source.Snapshot().CostUSD == nil || *source.Snapshot().CostUSD != .25 {
+			if err != nil || !found || source.Response() == nil || source.Snapshot().Cost.OptionalUSD() == nil || *source.Snapshot().Cost.OptionalUSD() != .25 {
 				t.Fatalf("physical response was not settled: %+v %v", source, err)
 			}
 			fact := failed[0]

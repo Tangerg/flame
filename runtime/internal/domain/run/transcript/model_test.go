@@ -1,7 +1,6 @@
 package transcript_test
 
 import (
-	"math"
 	"testing"
 	"time"
 
@@ -231,9 +230,6 @@ func TestToolCallTimingLifecycle(t *testing.T) {
 }
 
 func TestUsageAndToolFailureValidate(t *testing.T) {
-	negativeCost := -0.1
-	nanCost := math.NaN()
-	infiniteCost := math.Inf(1)
 	tests := []struct {
 		name    string
 		usage   *accounting.Usage
@@ -242,9 +238,6 @@ func TestUsageAndToolFailureValidate(t *testing.T) {
 	}{
 		{name: "valid"},
 		{name: "negative token", usage: &accounting.Usage{Total: accounting.Totals{InputTokens: -1}}, wantErr: true},
-		{name: "negative cost", usage: &accounting.Usage{Total: accounting.Totals{CostUSD: &negativeCost}}, wantErr: true},
-		{name: "nan cost", usage: &accounting.Usage{Total: accounting.Totals{CostUSD: &nanCost}}, wantErr: true},
-		{name: "infinite cost", usage: &accounting.Usage{Total: accounting.Totals{CostUSD: &infiniteCost}}, wantErr: true},
 		{name: "unknown failure kind", failure: &tool.Failure{Kind: tool.FailureKind("invalid")}, wantErr: true},
 		{name: "valid execution failure", failure: &tool.Failure{Kind: tool.FailureExecution}},
 		{name: "valid canceled failure", failure: &tool.Failure{Kind: tool.FailureCanceled}},

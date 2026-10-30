@@ -15,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
 )
@@ -121,7 +122,7 @@ func TestEndpointReadRejectsCompetingUsageProjection(t *testing.T) {
 	}
 	message := chat.NewAssistantMessage(chat.NewTextPart("known"))
 	response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Usage: &chat.Usage{InputTokens: 12, OutputTokens: 3}}}
-	if err := store.SettleEndpointInvocation(t.Context(), invocation, modelref.EndpointOutcome{Response: modelref.ChatEndpointResponse{Chat: response}, FinishedAt: invocation.StartedAt.Add(time.Second), CostUSD: new(0.0)}); err != nil {
+	if err := store.SettleEndpointInvocation(t.Context(), invocation, modelref.EndpointOutcome{Response: modelref.ChatEndpointResponse{Chat: response}, FinishedAt: invocation.StartedAt.Add(time.Second), Cost: testsupport.OptionalCost(new(0.0))}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := db.ExecContext(t.Context(), `UPDATE model_invocations SET usage=json_set(usage,'$.inputTokens',13) WHERE call_id=?`, invocation.ID); err != nil {
@@ -170,7 +171,7 @@ func TestPhysicalUsageReadsAllScopesOnceAndSurvivesRestart(t *testing.T) {
 		if err := store.StartEndpointInvocation(t.Context(), invocation, owner); err != nil {
 			t.Fatal(err)
 		}
-		outcome := modelref.EndpointOutcome{FinishedAt: draft.CreatedAt.Add(time.Second), CostUSD: source.price}
+		outcome := modelref.EndpointOutcome{FinishedAt: draft.CreatedAt.Add(time.Second), Cost: testsupport.OptionalCost(source.price)}
 		if source.unknown {
 			outcome.Failure = "unobserved result"
 		} else {
@@ -193,11 +194,11 @@ func TestPhysicalUsageReadsAllScopesOnceAndSurvivesRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if before.Coverage.Calls != 4 || before.Coverage.ReportedCalls != 3 || before.Coverage.PricedCalls != 2 || before.Coverage.UnknownCalls != 1 || before.Total.InputTokens != 18 || before.Total.OutputTokens != 3 || before.Total.CostUSD != nil || before.RecordedCostUSD == nil || *before.RecordedCostUSD != 1.25 || before.Sessions != 2 || before.Runs != 1 {
+	if before.Coverage.Calls != 4 || before.Coverage.ReportedCalls != 3 || before.Coverage.PricedCalls != 2 || before.Coverage.UnknownCalls != 1 || before.Total.InputTokens != 18 || before.Total.OutputTokens != 3 || before.Total.Cost.OptionalUSD() != nil || before.RecordedCost.OptionalUSD() == nil || *before.RecordedCost.OptionalUSD() != 1.25 || before.Sessions != 2 || before.Runs != 1 {
 		t.Fatalf("logical/physical or unattached usage changed: %+v", before)
 	}
 	own, err := reporter.Session(t.Context(), "ses_usage")
-	if err != nil || own.Coverage.Calls != 2 || own.Total.InputTokens != 16 || own.Total.CostUSD == nil || *own.Total.CostUSD != 1.25 {
+	if err != nil || own.Coverage.Calls != 2 || own.Total.InputTokens != 16 || own.Total.Cost.OptionalUSD() == nil || *own.Total.Cost.OptionalUSD() != 1.25 {
 		t.Fatalf("auxiliary missing from Session report: %+v %v", own, err)
 	}
 	if _, err := reporter.Session(t.Context(), "ses_absent"); !errors.Is(err, session.ErrNotFound) {
@@ -345,7 +346,7 @@ func TestEmbeddingEndpointRecordsKindUsageServedModelAndRawEvidence(t *testing.T
 		t.Fatal(err)
 	}
 	cost := 0.0005
-	if err := store.SettleEndpointInvocation(t.Context(), invocation, modelref.EndpointOutcome{Response: modelref.EmbeddingEndpointResponse{Embedding: response}, CostUSD: &cost, FinishedAt: invocation.StartedAt.Add(time.Second)}); err != nil {
+	if err := store.SettleEndpointInvocation(t.Context(), invocation, modelref.EndpointOutcome{Response: modelref.EmbeddingEndpointResponse{Embedding: response}, Cost: testsupport.OptionalCost(&cost), FinishedAt: invocation.StartedAt.Add(time.Second)}); err != nil {
 		t.Fatal(err)
 	}
 	// A chat response on an embedding admission must be refused, not stored.
@@ -362,8 +363,8 @@ func TestEmbeddingEndpointRecordsKindUsageServedModelAndRawEvidence(t *testing.T
 	if observed.Snapshot().Usage == nil || observed.Snapshot().Usage.InputTokens != 11 || observed.Snapshot().Usage.OutputTokens != 0 {
 		t.Fatalf("embedding usage is not input-only: %+v", observed.Snapshot().Usage)
 	}
-	if observed.Snapshot().CostUSD == nil || *observed.Snapshot().CostUSD != cost {
-		t.Fatalf("embedding cost lost: %+v", observed.Snapshot().CostUSD)
+	if observed.Snapshot().Cost.OptionalUSD() == nil || *observed.Snapshot().Cost.OptionalUSD() != cost {
+		t.Fatalf("embedding cost lost: %+v", observed.Snapshot().Cost.OptionalUSD())
 	}
 	if observed.Response() != nil {
 		t.Fatalf("embedding must not synthesize a chat response: %+v", observed.Response())
