@@ -275,6 +275,14 @@ export type WireTypeName =
   | "PluginSkill"
   | "PluginStreamEvent"
   | "PluginStreamKind"
+  | "PluginTerminalAction"
+  | "PluginTerminalBinding"
+  | "PluginTerminalColumn"
+  | "PluginTerminalCursor"
+  | "PluginTerminalFormField"
+  | "PluginTerminalInput"
+  | "PluginTerminalList"
+  | "PluginTerminalView"
   | "PluginTheme"
   | "PluginThemeColors"
   | "PluginThemeScheme"
@@ -386,6 +394,10 @@ export type WireTypeName =
   | "SubscriptionLimits"
   | "SuppressibleRunEventType"
   | "Target"
+  | "TerminalActionTarget"
+  | "TerminalBindingSource"
+  | "TerminalContext"
+  | "TerminalFormKind"
   | "TestProviderRequest"
   | "ToolAttempt"
   | "ToolAttemptState"
@@ -2727,9 +2739,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     points: array(ref(() => CHECKS.PluginPoint)),
     servers: array(ref(() => CHECKS.PluginServerDeclaration)),
     skills: array(ref(() => CHECKS.PluginSkill)),
+    terminalViews: array(ref(() => CHECKS.PluginTerminalView)),
     themes: array(ref(() => CHECKS.PluginTheme)),
     version: text(),
-  }, ["components", "contributions", "diagnostics", "digest", "inputs", "locales", "name", "pointValues", "points", "servers", "skills", "themes"]),
+  }, ["components", "contributions", "diagnostics", "digest", "inputs", "locales", "name", "pointValues", "points", "servers", "skills", "terminalViews", "themes"]),
   PluginReleaseRequest: object({
     digest: allOf([text(), pattern("^[0-9a-f]{64}$")]),
     installationId: allOf([text(), pattern("^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$")]),
@@ -2847,6 +2860,104 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ),
   ]),
   PluginStreamKind: enumOf(["chunk", "result", "failure"]),
+  PluginTerminalAction: object({
+    confirm: flag(),
+    id: allOf([text(), pattern("^[a-z][a-z0-9._-]{0,63}$")]),
+    input: array(ref(() => CHECKS.PluginTerminalInput)),
+    method: text(),
+    target: ref(() => CHECKS.TerminalActionTarget),
+    title: allOf([text(), minLength(1), maxLength(128)]),
+  }, ["confirm", "id", "input", "method", "target", "title"]),
+  PluginTerminalBinding: allOf([
+    object({
+      context: ref(() => CHECKS.TerminalContext),
+      field: text(),
+      form: ref(() => CHECKS.PluginTerminalFormField),
+      source: ref(() => CHECKS.TerminalBindingSource),
+      value: text(),
+    }, ["source"]),
+    ifThen(
+      fields({
+        source: literal("value"),
+      }, ["source"]),
+      fields({
+        context: absent(),
+        field: absent(),
+        form: absent(),
+      }, ["value"]),
+    ),
+    ifThen(
+      fields({
+        source: literal("row"),
+      }, ["source"]),
+      fields({
+        context: absent(),
+        form: absent(),
+        value: absent(),
+      }, ["field"]),
+    ),
+    ifThen(
+      fields({
+        source: literal("context"),
+      }, ["source"]),
+      fields({
+        field: absent(),
+        form: absent(),
+        value: absent(),
+      }, ["context"]),
+    ),
+    ifThen(
+      fields({
+        source: literal("form"),
+      }, ["source"]),
+      fields({
+        context: absent(),
+        field: absent(),
+        value: absent(),
+      }, ["form"]),
+    ),
+  ]),
+  PluginTerminalColumn: object({
+    field: text(),
+    title: text(),
+  }, ["field", "title"]),
+  PluginTerminalCursor: object({
+    input: text(),
+    output: text(),
+  }, ["input", "output"]),
+  PluginTerminalFormField: allOf([
+    object({
+      default: ref(() => CHECKS.PluginTerminalBinding),
+      kind: ref(() => CHECKS.TerminalFormKind),
+      options: array(text()),
+      title: text(),
+    }, ["kind", "title"]),
+    ifThen(
+      fields({
+        kind: literal("choice"),
+      }, ["kind"]),
+      fields({}, ["options"]),
+    ),
+  ]),
+  PluginTerminalInput: object({
+    path: text(),
+    value: ref(() => CHECKS.PluginTerminalBinding),
+  }, ["path", "value"]),
+  PluginTerminalList: object({
+    columns: array(ref(() => CHECKS.PluginTerminalColumn)),
+    cursor: ref(() => CHECKS.PluginTerminalCursor),
+    input: array(ref(() => CHECKS.PluginTerminalInput)),
+    key: text(),
+    method: text(),
+    rows: text(),
+  }, ["columns", "input", "key", "method", "rows"]),
+  PluginTerminalView: object({
+    actions: array(ref(() => CHECKS.PluginTerminalAction)),
+    contribution: allOf([text(), pattern("^[a-z][a-z0-9._-]{0,63}$")]),
+    id: allOf([text(), pattern("^[a-z][a-z0-9._-]{0,63}$")]),
+    list: ref(() => CHECKS.PluginTerminalList),
+    title: allOf([text(), minLength(1), maxLength(128)]),
+  }, ["actions", "contribution", "id", "list", "title"]),
   PluginTheme: object({
     colors: ref(() => CHECKS.PluginThemeColors),
     id: text(),
@@ -4295,6 +4406,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     reference: text(),
     scope: text(),
   }, ["reference", "scope"]),
+  TerminalActionTarget: enumOf(["view", "row"]),
+  TerminalBindingSource: enumOf(["value", "row", "context", "form"]),
+  TerminalContext: enumOf(["workspace", "timeZone"]),
+  TerminalFormKind: enumOf(["text", "integer", "number", "boolean", "choice"]),
   TestProviderRequest: object({
     provider: allOf([text(), minLength(1), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["provider"]),

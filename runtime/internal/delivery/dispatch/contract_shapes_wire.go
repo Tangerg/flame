@@ -590,6 +590,28 @@ func registerObjectConstraints(s *Shapes) {
 	}
 	s.constraint(ObjectConstraintSpec{GoType: typeOf[protocol.HookInfo](), Rules: hookRules})
 
+	// A terminal binding carries exactly the member its source names, so a
+	// client never chooses between two values for one input.
+	bindingSource := func(source extension.TerminalBindingSource) []delivery.FieldCondition {
+		return []delivery.FieldCondition{{Field: "source", Operator: delivery.OperatorEquals, Value: string(source)}}
+	}
+	s.constraint(ObjectConstraintSpec{
+		GoType: typeOf[protocol.PluginTerminalBinding](),
+		Rules: []ConditionalRule{
+			{When: bindingSource(extension.TerminalBindingValue), Required: []string{"value"}, Forbidden: []string{"field", "context", "form"}},
+			{When: bindingSource(extension.TerminalBindingRow), Required: []string{"field"}, Forbidden: []string{"value", "context", "form"}},
+			{When: bindingSource(extension.TerminalBindingContext), Required: []string{"context"}, Forbidden: []string{"value", "field", "form"}},
+			{When: bindingSource(extension.TerminalBindingForm), Required: []string{"form"}, Forbidden: []string{"value", "field", "context"}},
+		},
+	})
+	s.constraint(ObjectConstraintSpec{
+		GoType: typeOf[protocol.PluginTerminalFormField](),
+		Rules: []ConditionalRule{{
+			When:     []delivery.FieldCondition{{Field: "kind", Operator: delivery.OperatorEquals, Value: string(extension.TerminalFormChoice)}},
+			Required: []string{"options"},
+		}},
+	})
+
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.ApprovalRule](),
 		Rules: []ConditionalRule{{

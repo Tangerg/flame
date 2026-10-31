@@ -1213,6 +1213,71 @@
           "name": "SettingsIntentModelProviders",
           "type": "SettingsIntent",
           "value": "\"modelProviders\""
+        },
+        {
+          "name": "TerminalActionRow",
+          "type": "TerminalActionTarget",
+          "value": "\"row\""
+        },
+        {
+          "name": "TerminalActionView",
+          "type": "TerminalActionTarget",
+          "value": "\"view\""
+        },
+        {
+          "name": "TerminalBindingContext",
+          "type": "TerminalBindingSource",
+          "value": "\"context\""
+        },
+        {
+          "name": "TerminalBindingForm",
+          "type": "TerminalBindingSource",
+          "value": "\"form\""
+        },
+        {
+          "name": "TerminalBindingRow",
+          "type": "TerminalBindingSource",
+          "value": "\"row\""
+        },
+        {
+          "name": "TerminalBindingValue",
+          "type": "TerminalBindingSource",
+          "value": "\"value\""
+        },
+        {
+          "name": "TerminalContextTimeZone",
+          "type": "TerminalContext",
+          "value": "\"timeZone\""
+        },
+        {
+          "name": "TerminalContextWorkspace",
+          "type": "TerminalContext",
+          "value": "\"workspace\""
+        },
+        {
+          "name": "TerminalFormBoolean",
+          "type": "TerminalFormKind",
+          "value": "\"boolean\""
+        },
+        {
+          "name": "TerminalFormChoice",
+          "type": "TerminalFormKind",
+          "value": "\"choice\""
+        },
+        {
+          "name": "TerminalFormInteger",
+          "type": "TerminalFormKind",
+          "value": "\"integer\""
+        },
+        {
+          "name": "TerminalFormNumber",
+          "type": "TerminalFormKind",
+          "value": "\"number\""
+        },
+        {
+          "name": "TerminalFormText",
+          "type": "TerminalFormKind",
+          "value": "\"text\""
         }
       ],
       "functions": [
@@ -1283,6 +1348,62 @@
               "name": "Valid",
               "signature": "func() bool"
             },
+            {
+              "name": "Values",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "TerminalActionTarget",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "Valid",
+              "signature": "func() bool"
+            },
+            {
+              "name": "Values",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "TerminalBindingSource",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "Valid",
+              "signature": "func() bool"
+            },
+            {
+              "name": "Values",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "TerminalContext",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "Valid",
+              "signature": "func() bool"
+            },
+            {
+              "name": "Values",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "TerminalFormKind",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
             {
               "name": "Values",
               "signature": "func() []string"
@@ -11256,6 +11377,11 @@
               "tag": "json:\"components\""
             },
             {
+              "name": "TerminalViews",
+              "type": "[]PluginTerminalView",
+              "tag": "json:\"terminalViews\""
+            },
+            {
               "name": "Servers",
               "type": "[]PluginServerDeclaration",
               "tag": "json:\"servers\""
@@ -11489,6 +11615,214 @@
           "name": "PluginStreamKind",
           "kind": "defined",
           "underlying": "string"
+        },
+        {
+          "name": "PluginTerminalAction",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Title",
+              "type": "string",
+              "tag": "json:\"title\""
+            },
+            {
+              "name": "Method",
+              "type": "string",
+              "tag": "json:\"method\""
+            },
+            {
+              "name": "Target",
+              "type": "extension.TerminalActionTarget",
+              "tag": "json:\"target\""
+            },
+            {
+              "name": "Confirm",
+              "type": "bool",
+              "tag": "json:\"confirm\""
+            },
+            {
+              "name": "Input",
+              "type": "[]PluginTerminalInput",
+              "tag": "json:\"input\""
+            }
+          ]
+        },
+        {
+          "name": "PluginTerminalBinding",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Source",
+              "type": "extension.TerminalBindingSource",
+              "tag": "json:\"source\""
+            },
+            {
+              "name": "Value",
+              "type": "string",
+              "tag": "json:\"value,omitempty\""
+            },
+            {
+              "name": "Field",
+              "type": "string",
+              "tag": "json:\"field,omitempty\""
+            },
+            {
+              "name": "Context",
+              "type": "extension.TerminalContext",
+              "tag": "json:\"context,omitempty\""
+            },
+            {
+              "name": "Form",
+              "type": "*PluginTerminalFormField",
+              "tag": "json:\"form,omitzero\""
+            }
+          ]
+        },
+        {
+          "name": "PluginTerminalColumn",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Title",
+              "type": "string",
+              "tag": "json:\"title\""
+            },
+            {
+              "name": "Field",
+              "type": "string",
+              "tag": "json:\"field\""
+            }
+          ]
+        },
+        {
+          "name": "PluginTerminalCursor",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Input",
+              "type": "string",
+              "tag": "json:\"input\""
+            },
+            {
+              "name": "Output",
+              "type": "string",
+              "tag": "json:\"output\""
+            }
+          ]
+        },
+        {
+          "name": "PluginTerminalFormField",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Title",
+              "type": "string",
+              "tag": "json:\"title\""
+            },
+            {
+              "name": "Kind",
+              "type": "extension.TerminalFormKind",
+              "tag": "json:\"kind\""
+            },
+            {
+              "name": "Options",
+              "type": "[]string",
+              "tag": "json:\"options,omitempty\""
+            },
+            {
+              "name": "Default",
+              "type": "*PluginTerminalBinding",
+              "tag": "json:\"default,omitzero\""
+            }
+          ]
+        },
+        {
+          "name": "PluginTerminalInput",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Path",
+              "type": "string",
+              "tag": "json:\"path\""
+            },
+            {
+              "name": "Value",
+              "type": "PluginTerminalBinding",
+              "tag": "json:\"value\""
+            }
+          ]
+        },
+        {
+          "name": "PluginTerminalList",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Method",
+              "type": "string",
+              "tag": "json:\"method\""
+            },
+            {
+              "name": "Input",
+              "type": "[]PluginTerminalInput",
+              "tag": "json:\"input\""
+            },
+            {
+              "name": "Rows",
+              "type": "string",
+              "tag": "json:\"rows\""
+            },
+            {
+              "name": "Key",
+              "type": "string",
+              "tag": "json:\"key\""
+            },
+            {
+              "name": "Cursor",
+              "type": "*PluginTerminalCursor",
+              "tag": "json:\"cursor,omitzero\""
+            },
+            {
+              "name": "Columns",
+              "type": "[]PluginTerminalColumn",
+              "tag": "json:\"columns\""
+            }
+          ]
+        },
+        {
+          "name": "PluginTerminalView",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Title",
+              "type": "string",
+              "tag": "json:\"title\""
+            },
+            {
+              "name": "Contribution",
+              "type": "string",
+              "tag": "json:\"contribution\""
+            },
+            {
+              "name": "List",
+              "type": "PluginTerminalList",
+              "tag": "json:\"list\""
+            },
+            {
+              "name": "Actions",
+              "type": "[]PluginTerminalAction",
+              "tag": "json:\"actions\""
+            }
+          ]
         },
         {
           "name": "PluginTheme",

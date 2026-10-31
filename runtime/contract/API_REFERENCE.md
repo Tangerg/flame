@@ -1011,6 +1011,13 @@ TypeScript validator from this single registry projection.
 | `PluginClientComponent` | `id` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginClientComponent` | `contribution` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginClientComponent` | `material` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
+| `PluginTerminalView` | `id` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
+| `PluginTerminalView` | `contribution` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
+| `PluginTerminalView` | `title` | `nonEmpty` |
+| `PluginTerminalView` | `title` | `maxLength(128)` |
+| `PluginTerminalAction` | `id` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
+| `PluginTerminalAction` | `title` | `nonEmpty` |
+| `PluginTerminalAction` | `title` | `maxLength(128)` |
 | `OpenPluginResourcesRequest` | `componentId` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `ReadPluginLocaleRequest` | `tag` | `nonEmpty` |
 | `ReadPluginLocaleRequest` | `tag` | `maxLength(128)` |

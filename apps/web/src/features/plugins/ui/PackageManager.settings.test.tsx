@@ -43,6 +43,7 @@ const installation: PluginInstallation = {
     contributions: [],
     points: [],
     pointValues: [],
+    terminalViews: [],
     components: [],
     servers: [],
     inputs: [],

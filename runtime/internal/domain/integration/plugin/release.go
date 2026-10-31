@@ -149,6 +149,7 @@ type Declaration struct {
 	Points        []Point
 	PointValues   []PointValue
 	Components    []ClientComponent
+	TerminalViews []TerminalView
 	Inputs        []Input
 	Themes        []Theme
 	Locales       []Locale
@@ -173,6 +174,10 @@ func (d Declaration) clone() Declaration {
 	d.Contributions = slices.Clone(d.Contributions)
 	for index := range d.Contributions {
 		d.Contributions[index] = d.Contributions[index].clone()
+	}
+	d.TerminalViews = slices.Clone(d.TerminalViews)
+	for index := range d.TerminalViews {
+		d.TerminalViews[index] = d.TerminalViews[index].clone()
 	}
 	d.Inputs = slices.Clone(d.Inputs)
 	d.Themes = slices.Clone(d.Themes)
@@ -225,6 +230,11 @@ func NewRelease(digest integrity.Digest, declaration Declaration) (Release, erro
 	}
 	for _, value := range declaration.Components {
 		if err := builder.AdmitComponent(value); err != nil {
+			return Release{}, err
+		}
+	}
+	for _, value := range declaration.TerminalViews {
+		if err := builder.AdmitTerminalView(value); err != nil {
 			return Release{}, err
 		}
 	}

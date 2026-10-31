@@ -208,6 +208,7 @@ export const VISUAL_PACKAGES: PluginInstallation[] = (
       ],
       points: [],
       pointValues: [],
+      terminalViews: [],
       components: [],
       servers: [{ type: "stdio", name: server, command: `/visual/bin/${server}` }],
       inputs: [],

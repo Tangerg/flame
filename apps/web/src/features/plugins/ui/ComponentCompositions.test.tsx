@@ -78,6 +78,7 @@ function installation(name: string, digest = "a".repeat(64)): PluginInstallation
       locales: [],
       themes: [],
       diagnostics: [],
+      terminalViews: [],
       components: [
         {
           id: "panel",

@@ -154,6 +154,7 @@ type PluginRelease struct {
 	Points        []PluginPoint             `json:"points"`
 	PointValues   []PluginPointValue        `json:"pointValues"`
 	Components    []PluginClientComponent   `json:"components"`
+	TerminalViews []PluginTerminalView      `json:"terminalViews"`
 	Servers       []PluginServerDeclaration `json:"servers"`
 	Inputs        []PluginInput             `json:"inputs"`
 	Themes        []PluginTheme             `json:"themes"`
@@ -421,6 +422,74 @@ type PluginClientComponent struct {
 	Contribution   string                       `json:"contribution,omitzero"`
 	Material       string                       `json:"material,omitzero"`
 	SettingsIntent extension.SettingsIntent     `json:"settingsIntent,omitzero"`
+}
+
+// PluginTerminalView is a management surface a release contributes to terminal
+// clients: a list read through one callable contribution and actions that call
+// its methods. Every input value is bound here and every form field carries its
+// kind, so a client renders it without the package's types or schemas.
+type PluginTerminalView struct {
+	ID           string                 `json:"id"`
+	Title        string                 `json:"title"`
+	Contribution string                 `json:"contribution"`
+	List         PluginTerminalList     `json:"list"`
+	Actions      []PluginTerminalAction `json:"actions"`
+}
+
+// PluginTerminalList reads a view's rows. Rows names the output property that
+// holds them and Key the row property that identifies one.
+type PluginTerminalList struct {
+	Method  string                 `json:"method"`
+	Input   []PluginTerminalInput  `json:"input"`
+	Rows    string                 `json:"rows"`
+	Key     string                 `json:"key"`
+	Cursor  *PluginTerminalCursor  `json:"cursor,omitzero"`
+	Columns []PluginTerminalColumn `json:"columns"`
+}
+
+// PluginTerminalCursor pages a list: Output carries the next cursor and Input
+// sends it back.
+type PluginTerminalCursor struct {
+	Input  string `json:"input"`
+	Output string `json:"output"`
+}
+
+type PluginTerminalColumn struct {
+	Title string `json:"title"`
+	Field string `json:"field"`
+}
+
+type PluginTerminalAction struct {
+	ID      string                         `json:"id"`
+	Title   string                         `json:"title"`
+	Method  string                         `json:"method"`
+	Target  extension.TerminalActionTarget `json:"target"`
+	Confirm bool                           `json:"confirm"`
+	Input   []PluginTerminalInput          `json:"input"`
+}
+
+// PluginTerminalInput supplies the input property at Path, a '/'-separated walk
+// through nested objects.
+type PluginTerminalInput struct {
+	Path  string                `json:"path"`
+	Value PluginTerminalBinding `json:"value"`
+}
+
+// PluginTerminalBinding is where one input value comes from. Value is the JSON
+// literal of a value binding, Field the row property of a row binding.
+type PluginTerminalBinding struct {
+	Source  extension.TerminalBindingSource `json:"source"`
+	Value   string                          `json:"value,omitempty"`
+	Field   string                          `json:"field,omitempty"`
+	Context extension.TerminalContext       `json:"context,omitempty"`
+	Form    *PluginTerminalFormField        `json:"form,omitzero"`
+}
+
+type PluginTerminalFormField struct {
+	Title   string                     `json:"title"`
+	Kind    extension.TerminalFormKind `json:"kind"`
+	Options []string                   `json:"options,omitempty"`
+	Default *PluginTerminalBinding     `json:"default,omitzero"`
 }
 
 type OpenPluginResourcesRequest struct {

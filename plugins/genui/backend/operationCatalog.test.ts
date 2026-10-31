@@ -41,6 +41,7 @@ function installation(): PluginInstallation {
       name: "flame.usage-reports",
       digest: "selected-release",
       version: "1.0.0",
+      terminalViews: [],
       components: [],
       diagnostics: [],
       inputs: [],

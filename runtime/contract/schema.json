@@ -7524,6 +7524,12 @@
             "$ref": "#/$defs/PluginSkill"
           }
         },
+        "terminalViews": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PluginTerminalView"
+          }
+        },
         "themes": {
           "type": "array",
           "items": {
@@ -7546,6 +7552,7 @@
         "points",
         "servers",
         "skills",
+        "terminalViews",
         "themes"
       ]
     },
@@ -7889,6 +7896,314 @@
         "chunk",
         "result",
         "failure"
+      ]
+    },
+    "PluginTerminalAction": {
+      "type": "object",
+      "properties": {
+        "confirm": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9._-]{0,63}$"
+        },
+        "input": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PluginTerminalInput"
+          }
+        },
+        "method": {
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/TerminalActionTarget"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "confirm",
+        "id",
+        "input",
+        "method",
+        "target",
+        "title"
+      ]
+    },
+    "PluginTerminalBinding": {
+      "type": "object",
+      "properties": {
+        "context": {
+          "$ref": "#/$defs/TerminalContext"
+        },
+        "field": {
+          "type": "string"
+        },
+        "form": {
+          "$ref": "#/$defs/PluginTerminalFormField"
+        },
+        "source": {
+          "$ref": "#/$defs/TerminalBindingSource"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "source": {
+                "const": "value"
+              }
+            },
+            "required": [
+              "source"
+            ]
+          },
+          "then": {
+            "properties": {
+              "context": false,
+              "field": false,
+              "form": false
+            },
+            "required": [
+              "value"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "source": {
+                "const": "row"
+              }
+            },
+            "required": [
+              "source"
+            ]
+          },
+          "then": {
+            "properties": {
+              "context": false,
+              "form": false,
+              "value": false
+            },
+            "required": [
+              "field"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "source": {
+                "const": "context"
+              }
+            },
+            "required": [
+              "source"
+            ]
+          },
+          "then": {
+            "properties": {
+              "field": false,
+              "form": false,
+              "value": false
+            },
+            "required": [
+              "context"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "source": {
+                "const": "form"
+              }
+            },
+            "required": [
+              "source"
+            ]
+          },
+          "then": {
+            "properties": {
+              "context": false,
+              "field": false,
+              "value": false
+            },
+            "required": [
+              "form"
+            ]
+          }
+        }
+      ]
+    },
+    "PluginTerminalColumn": {
+      "type": "object",
+      "properties": {
+        "field": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "field",
+        "title"
+      ]
+    },
+    "PluginTerminalCursor": {
+      "type": "object",
+      "properties": {
+        "input": {
+          "type": "string"
+        },
+        "output": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "input",
+        "output"
+      ]
+    },
+    "PluginTerminalFormField": {
+      "type": "object",
+      "properties": {
+        "default": {
+          "$ref": "#/$defs/PluginTerminalBinding"
+        },
+        "kind": {
+          "$ref": "#/$defs/TerminalFormKind"
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "title"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "choice"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "options"
+            ]
+          }
+        }
+      ]
+    },
+    "PluginTerminalInput": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/PluginTerminalBinding"
+        }
+      },
+      "required": [
+        "path",
+        "value"
+      ]
+    },
+    "PluginTerminalList": {
+      "type": "object",
+      "properties": {
+        "columns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PluginTerminalColumn"
+          }
+        },
+        "cursor": {
+          "$ref": "#/$defs/PluginTerminalCursor"
+        },
+        "input": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PluginTerminalInput"
+          }
+        },
+        "key": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "rows": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "columns",
+        "input",
+        "key",
+        "method",
+        "rows"
+      ]
+    },
+    "PluginTerminalView": {
+      "type": "object",
+      "properties": {
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PluginTerminalAction"
+          }
+        },
+        "contribution": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9._-]{0,63}$"
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9._-]{0,63}$"
+        },
+        "list": {
+          "$ref": "#/$defs/PluginTerminalList"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "actions",
+        "contribution",
+        "id",
+        "list",
+        "title"
       ]
     },
     "PluginTheme": {
@@ -12269,6 +12584,39 @@
       "required": [
         "reference",
         "scope"
+      ]
+    },
+    "TerminalActionTarget": {
+      "type": "string",
+      "enum": [
+        "view",
+        "row"
+      ]
+    },
+    "TerminalBindingSource": {
+      "type": "string",
+      "enum": [
+        "value",
+        "row",
+        "context",
+        "form"
+      ]
+    },
+    "TerminalContext": {
+      "type": "string",
+      "enum": [
+        "workspace",
+        "timeZone"
+      ]
+    },
+    "TerminalFormKind": {
+      "type": "string",
+      "enum": [
+        "text",
+        "integer",
+        "number",
+        "boolean",
+        "choice"
       ]
     },
     "TestProviderRequest": {

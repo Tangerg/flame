@@ -62,6 +62,7 @@ const installation: PluginInstallation = {
     locales: [],
     themes: [],
     diagnostics: [],
+    terminalViews: [],
     components: [component],
   },
 };

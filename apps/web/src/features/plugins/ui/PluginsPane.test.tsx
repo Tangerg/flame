@@ -147,6 +147,7 @@ function reviewedInstallation(): PluginInstallation {
       contributions: [],
       points: [],
       pointValues: [],
+      terminalViews: [],
       components: [],
       servers: [],
       inputs: [],

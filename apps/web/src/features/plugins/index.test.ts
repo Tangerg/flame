@@ -141,6 +141,7 @@ function installation(id: string, name: string): PluginInstallation {
       contributions: [],
       points: [],
       pointValues: [],
+      terminalViews: [],
       components: [],
       servers: [],
       inputs: [],

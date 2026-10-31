@@ -2004,6 +2004,36 @@ func (h HookInfo) validateWire() error {
 	)
 }
 
+func (p PluginTerminalBinding) validateWire() error {
+	return collectWireViolations("PluginTerminalBinding",
+		closedEnum("source", string(p.Source), []string{"value", "row", "context", "form"}, false),
+		closedEnum("context", string(p.Context), []string{"workspace", "timeZone"}, true),
+		requiredWhen(wireFieldEquals(p, "source", "value"), "value", p),
+		forbiddenWhen(wireFieldEquals(p, "source", "value"), "field", p),
+		forbiddenWhen(wireFieldEquals(p, "source", "value"), "context", p),
+		forbiddenWhen(wireFieldEquals(p, "source", "value"), "form", p),
+		requiredWhen(wireFieldEquals(p, "source", "row"), "field", p),
+		forbiddenWhen(wireFieldEquals(p, "source", "row"), "value", p),
+		forbiddenWhen(wireFieldEquals(p, "source", "row"), "context", p),
+		forbiddenWhen(wireFieldEquals(p, "source", "row"), "form", p),
+		requiredWhen(wireFieldEquals(p, "source", "context"), "context", p),
+		forbiddenWhen(wireFieldEquals(p, "source", "context"), "value", p),
+		forbiddenWhen(wireFieldEquals(p, "source", "context"), "field", p),
+		forbiddenWhen(wireFieldEquals(p, "source", "context"), "form", p),
+		requiredWhen(wireFieldEquals(p, "source", "form"), "form", p),
+		forbiddenWhen(wireFieldEquals(p, "source", "form"), "value", p),
+		forbiddenWhen(wireFieldEquals(p, "source", "form"), "field", p),
+		forbiddenWhen(wireFieldEquals(p, "source", "form"), "context", p),
+	)
+}
+
+func (p PluginTerminalFormField) validateWire() error {
+	return collectWireViolations("PluginTerminalFormField",
+		closedEnum("kind", string(p.Kind), []string{"text", "integer", "number", "boolean", "choice"}, false),
+		requiredWhen(wireFieldEquals(p, "kind", "choice"), "options", p),
+	)
+}
+
 func (a ApprovalRule) validateWire() error {
 	return collectWireViolations("ApprovalRule",
 		requiredText("id", a.ID),
@@ -2680,6 +2710,24 @@ func (p PluginClientComponent) validateWire() error {
 		closedEnum("scope", string(p.Scope), []string{"installation", "workspace", "session", "client", "file", "toolResult"}, false),
 		closedEnum("placement", string(p.Placement), []string{"export", "workspaceView", "settingsPane", "clientEffect", "sessionAction", "fileRenderer", "toolResultRenderer"}, false),
 		closedEnum("settingsIntent", string(p.SettingsIntent), []string{"modelProviders", "mcpServers"}, true),
+	)
+}
+
+func (p PluginTerminalView) validateWire() error {
+	return collectWireViolations("PluginTerminalView",
+		requiredTextPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
+		requiredTextPattern("contribution", p.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
+		requiredText("title", p.Title),
+		maxLength("title", p.Title, 128),
+	)
+}
+
+func (p PluginTerminalAction) validateWire() error {
+	return collectWireViolations("PluginTerminalAction",
+		requiredTextPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
+		requiredText("title", p.Title),
+		maxLength("title", p.Title, 128),
+		closedEnum("target", string(p.Target), []string{"view", "row"}, false),
 	)
 }
 

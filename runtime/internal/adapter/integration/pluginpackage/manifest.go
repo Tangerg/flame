@@ -294,6 +294,13 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 		}
 		return release.AdmitComponent(plugin.ClientComponent{Selector: selector, ID: w.ID, Title: w.Title, Scope: w.Scope, Placement: w.Placement, Entry: w.Entry, Export: w.Export, Contribution: contribution, Material: material, SettingsIntent: settingsIntent})
 	})
+	admitContributions(members["terminalViews"], release, plugin.Component{Kind: plugin.ComponentContribution, Name: "terminalViews"}, func(w wireTerminalView) error {
+		view, err := w.domain()
+		if err != nil {
+			return err
+		}
+		return release.AdmitTerminalView(view)
+	})
 	for _, component := range slices.Sorted(maps.Keys(contributes)) {
 		switch component {
 		case "locales":

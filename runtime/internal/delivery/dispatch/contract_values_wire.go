@@ -993,6 +993,17 @@ func registerPluginValues(s *Shapes) {
 		{Field: "contribution", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
 		{Field: "material", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
 	}})
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginTerminalView](), Constraints: []FieldConstraint{
+		{Field: "id", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
+		{Field: "contribution", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
+		{Field: "title", Kind: ConstraintNonEmpty},
+		{Field: "title", Kind: ConstraintMaxLength, Limit: plugin.MaxPresentationTitleBytes},
+	}})
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginTerminalAction](), Constraints: []FieldConstraint{
+		{Field: "id", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
+		{Field: "title", Kind: ConstraintNonEmpty},
+		{Field: "title", Kind: ConstraintMaxLength, Limit: plugin.MaxPresentationTitleBytes},
+	}})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.OpenPluginResourcesRequest](), Constraints: []FieldConstraint{{Field: "componentId", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern}}})
 	for _, shape := range []reflect.Type{typeOf[protocol.ReadPluginLocaleRequest](), typeOf[protocol.PluginLocale]()} {
 		constraints := []FieldConstraint{{Field: "tag", Kind: ConstraintNonEmpty}, {Field: "tag", Kind: ConstraintMaxLength, Limit: plugin.MaxLocaleTagBytes}}

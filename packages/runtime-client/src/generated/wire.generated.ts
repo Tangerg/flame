@@ -1430,6 +1430,7 @@ export interface PluginRelease {
   points: PluginPoint[];
   servers: PluginServerDeclaration[];
   skills: PluginSkill[];
+  terminalViews: PluginTerminalView[];
   themes: PluginTheme[];
   version?: string;
 }
@@ -1486,6 +1487,62 @@ export interface PluginStreamEvent {
 }
 
 export type PluginStreamKind = "chunk" | "result" | "failure";
+
+export interface PluginTerminalAction {
+  confirm: boolean;
+  id: string;
+  input: PluginTerminalInput[];
+  method: string;
+  target: TerminalActionTarget;
+  title: string;
+}
+
+export interface PluginTerminalBinding {
+  context?: TerminalContext;
+  field?: string;
+  form?: PluginTerminalFormField;
+  source: TerminalBindingSource;
+  value?: string;
+}
+
+export interface PluginTerminalColumn {
+  field: string;
+  title: string;
+}
+
+export interface PluginTerminalCursor {
+  input: string;
+  output: string;
+}
+
+export interface PluginTerminalFormField {
+  default?: PluginTerminalBinding;
+  kind: TerminalFormKind;
+  options?: string[];
+  title: string;
+}
+
+export interface PluginTerminalInput {
+  path: string;
+  value: PluginTerminalBinding;
+}
+
+export interface PluginTerminalList {
+  columns: PluginTerminalColumn[];
+  cursor?: PluginTerminalCursor;
+  input: PluginTerminalInput[];
+  key: string;
+  method: string;
+  rows: string;
+}
+
+export interface PluginTerminalView {
+  actions: PluginTerminalAction[];
+  contribution: string;
+  id: string;
+  list: PluginTerminalList;
+  title: string;
+}
 
 export interface PluginTheme {
   colors: PluginThemeColors;
@@ -2160,6 +2217,14 @@ export interface Target {
   scope: string;
 }
 
+export type TerminalActionTarget = "view" | "row";
+
+export type TerminalBindingSource = "value" | "row" | "context" | "form";
+
+export type TerminalContext = "workspace" | "timeZone";
+
+export type TerminalFormKind = "text" | "integer" | "number" | "boolean" | "choice";
+
 export interface TestProviderRequest {
   provider: string;
 }
@@ -2432,6 +2497,10 @@ export const WIRE_ENUMS = {
   SkillScope: ["project", "user", "installation"],
   StreamEventType: ["segment.started", "segment.progress", "segment.finished", "item.started", "item.delta", "item.completed", "plan.updated"],
   SuppressibleRunEventType: ["segment.progress", "item.delta"],
+  TerminalActionTarget: ["view", "row"],
+  TerminalBindingSource: ["value", "row", "context", "form"],
+  TerminalContext: ["workspace", "timeZone"],
+  TerminalFormKind: ["text", "integer", "number", "boolean", "choice"],
   ToolAttemptState: ["started", "completed", "incomplete"],
   ToolCategory: ["shell", "edit", "read", "search", "task"],
   ToolRefType: ["builtIn", "mcp"],

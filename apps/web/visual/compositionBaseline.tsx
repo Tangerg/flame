@@ -51,6 +51,7 @@ async function setup() {
     selected: {
       digest: "a".repeat(64),
       name: "composition-baseline-provider",
+      terminalViews: [],
       components: [entry],
       contributions: [],
       points: [],

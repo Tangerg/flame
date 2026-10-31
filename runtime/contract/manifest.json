@@ -5516,6 +5516,96 @@
       ]
     },
     {
+      "type": "PluginTerminalBinding",
+      "rules": [
+        {
+          "when": [
+            {
+              "field": "source",
+              "operator": "equals",
+              "value": "value"
+            }
+          ],
+          "required": [
+            "value"
+          ],
+          "forbidden": [
+            "field",
+            "context",
+            "form"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "source",
+              "operator": "equals",
+              "value": "row"
+            }
+          ],
+          "required": [
+            "field"
+          ],
+          "forbidden": [
+            "value",
+            "context",
+            "form"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "source",
+              "operator": "equals",
+              "value": "context"
+            }
+          ],
+          "required": [
+            "context"
+          ],
+          "forbidden": [
+            "value",
+            "field",
+            "form"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "source",
+              "operator": "equals",
+              "value": "form"
+            }
+          ],
+          "required": [
+            "form"
+          ],
+          "forbidden": [
+            "value",
+            "field",
+            "context"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PluginTerminalFormField",
+      "rules": [
+        {
+          "when": [
+            {
+              "field": "kind",
+              "operator": "equals",
+              "value": "choice"
+            }
+          ],
+          "required": [
+            "options"
+          ]
+        }
+      ]
+    },
+    {
       "type": "ApprovalRule",
       "rules": [
         {
@@ -9371,6 +9461,44 @@
         {
           "field": "material",
           "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
+        }
+      ]
+    },
+    {
+      "type": "PluginTerminalView",
+      "rules": [
+        {
+          "field": "id",
+          "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
+        },
+        {
+          "field": "contribution",
+          "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
+        },
+        {
+          "field": "title",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "title",
+          "constraint": "maxLength(128)"
+        }
+      ]
+    },
+    {
+      "type": "PluginTerminalAction",
+      "rules": [
+        {
+          "field": "id",
+          "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
+        },
+        {
+          "field": "title",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "title",
+          "constraint": "maxLength(128)"
         }
       ]
     },

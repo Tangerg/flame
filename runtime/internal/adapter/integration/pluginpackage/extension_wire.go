@@ -115,5 +115,5 @@ func (v wireTheme) domain() (plugin.Theme, error) {
 	return plugin.Theme{ID: v.ID, Title: v.Title, Scheme: plugin.ThemeScheme(v.Scheme), Colors: colors}, nil
 }
 
-var declarationFields = []string{"protocol", "managedBackends", "inputs", "contributions", "contributes", "points", "pointValues", "components"}
+var declarationFields = []string{"protocol", "managedBackends", "inputs", "contributions", "contributes", "points", "pointValues", "components", "terminalViews"}
 var presentationFields = []string{"themes", "locales"}
