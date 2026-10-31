@@ -135,26 +135,13 @@ func (a *app) registerCommands() {
 			return a.commands.add(owner, descriptor, run, nil)
 		})
 	}
-	for _, contributed := range a.pluginHost.Commands() {
-		command := contributed.Command
-		pluginID := contributed.PluginID
+	a.extensions.registerCommands(func(owner string, descriptor extensions.CommandDescriptor, run func(string, func()), available func() extensions.CommandAvailability) error {
 		var evaluate func(*app) extensions.CommandAvailability
-		if command.Available != nil {
-			evaluate = func(host *app) extensions.CommandAvailability {
-				request := extensions.CommandRequest{
-					Workspace: host.lifecycle.state.current.Workspace.Path, SessionID: host.lifecycle.state.current.ID,
-					LocalDirectory: authoringDirectory(host.localDirectory, host.lifecycle.state.current.Workspace.Path),
-				}
-				return command.Available(request)
-			}
+		if available != nil {
+			evaluate = func(*app) extensions.CommandAvailability { return available() }
 		}
-		if err := a.commands.add(pluginID, command.Descriptor,
-			func(argument string, accept func()) { a.executeCommand(pluginID, command, argument, accept) },
-			evaluate,
-		); err != nil {
-			a.message(err.Error())
-		}
-	}
+		return a.commands.add(owner, descriptor, run, evaluate)
+	})
 }
 
 type commandOperation struct {
@@ -226,52 +213,52 @@ func (r *commandOperationRegistry) take(pluginIDs ...string) []commandOperation 
 	return operations
 }
 
-func (a *app) executeCommand(pluginID string, command extensions.SlashCommand, argument string, accept func()) {
+func (e *localExtensions) executeCommand(pluginID string, command extensions.SlashCommand, argument string, accept func()) {
 	name := command.Descriptor.Name
-	a.status.note("running /" + name)
+	e.status.note("running /" + name)
 	request := extensions.CommandRequest{
-		Argument: argument, Workspace: a.lifecycle.state.current.Workspace.Path, SessionID: a.lifecycle.state.current.ID,
-		LocalDirectory: authoringDirectory(a.localDirectory, a.lifecycle.state.current.Workspace.Path),
+		Argument: argument, Workspace: e.session.current.Workspace.Path, SessionID: e.session.current.ID,
+		LocalDirectory: authoringDirectory(e.localDirectory, e.session.current.Workspace.Path),
 	}
-	dispatcher := a.loop.Dispatcher()
-	operation, err := a.commandOperations.reserve(pluginID)
+	dispatcher := e.tasks.dispatch
+	operation, err := e.running.reserve(pluginID)
 	if err != nil {
-		a.message("could not start /" + name + ": " + err.Error())
+		e.notify("could not start /" + name + ": " + err.Error())
 		return
 	}
 	slot := operation.slot()
-	started := a.operations.GoSession(slot, false, func(ctx context.Context, lease operationLease) {
+	started := e.tasks.operations.GoSession(slot, false, func(ctx context.Context, lease operationLease) {
 		result, err := executeCommandSafely(ctx, command, request)
 		_ = post(ctx, dispatcher, func() {
-			if !a.operations.Current(lease) || a.closed {
+			if !e.tasks.operations.Current(lease) || e.closed() {
 				return
 			}
-			a.commandOperations.retire(operation)
+			e.running.retire(operation)
 			if errors.Is(err, context.Canceled) {
 				return
 			}
 			if err != nil {
-				a.message(err.Error())
+				e.notify(err.Error())
 				return
 			}
 			message := strings.TrimSpace(result.Message)
 			if message == "" {
 				message = "completed /" + name
 			}
-			a.message(message)
+			e.notify(message)
 		})
 	})
 	if !started {
-		a.commandOperations.retire(operation)
-		a.message("could not start /" + name)
+		e.running.retire(operation)
+		e.notify("could not start /" + name)
 		return
 	}
 	accept()
 }
 
-func (a *app) cancelPluginCommands(pluginIDs ...string) {
-	for _, operation := range a.commandOperations.take(pluginIDs...) {
-		a.operations.Cancel(operation.slot())
+func (e *localExtensions) cancelPluginCommands(pluginIDs ...string) {
+	for _, operation := range e.running.take(pluginIDs...) {
+		e.tasks.operations.Cancel(operation.slot())
 	}
 }
 

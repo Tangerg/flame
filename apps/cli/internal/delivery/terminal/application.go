@@ -58,8 +58,6 @@ type app struct {
 	changes        changefeed.Source
 	runtimeProfile RuntimeProfile
 
-	pluginHost       *extensions.Host
-	pluginIssues     []extensions.SourceIssue
 	operations       *operationOwner
 	tasks            taskRunner
 	runs             *runs
@@ -76,6 +74,7 @@ type app struct {
 	search           *searchPrompt
 	shortcuts        *shortcutGuide
 	queueEditor      *queueEditor
+	extensions       *localExtensions
 	workspaceChoices *pickerDialog[workspaceChoice]
 
 	transcript *transcriptView
@@ -98,11 +97,10 @@ type app struct {
 	localDirectory string
 	detachOnExit   bool
 
-	workbenchHealth   workbenchHealth
-	commandOperations commandOperationRegistry
-	confirmation      pressConfirmation
-	keys              keyRouter
-	attention         attentionCenter
+	workbenchHealth workbenchHealth
+	confirmation    pressConfirmation
+	keys            keyRouter
+	attention       attentionCenter
 
 	closed         bool
 	closeErr       error
@@ -181,25 +179,23 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 		runtimeProfile: cfg.runtimeProfile,
 		changes:        cfg.changes,
 
-		pluginHost: cfg.pluginHost, pluginIssues: cfg.pluginIssues,
-		operations:        newOperationOwner(cfg.context),
-		transcript:        transcript,
-		brand:             brand,
-		header:            newSessionHeader(appearance.theme, appearance.glyphs, cfg.snapshot.Session),
-		activity:          newActivityView(appearance.theme, appearance.glyphs),
-		queueView:         newQueueView(appearance.theme, appearance.glyphs),
-		status:            newStatusView(appearance.theme, appearance.glyphs),
-		queue:             cfg.queue,
-		workbench:         cfg.workbench,
-		localDirectory:    cfg.localDirectory,
-		detachOnExit:      cfg.detachOnExit,
-		settings:          cfg.settings.Clone(),
-		options:           cfg.options,
-		syntax:            appearance.syntax,
-		commandOperations: newCommandOperationRegistry(),
-		commands:          newCommandCatalog(),
-		attention:         newAttentionCenter(),
-		keys:              keyRouter{application: cfg.keyBindings.application, global: cfg.keyBindings.global},
+		operations:     newOperationOwner(cfg.context),
+		transcript:     transcript,
+		brand:          brand,
+		header:         newSessionHeader(appearance.theme, appearance.glyphs, cfg.snapshot.Session),
+		activity:       newActivityView(appearance.theme, appearance.glyphs),
+		queueView:      newQueueView(appearance.theme, appearance.glyphs),
+		status:         newStatusView(appearance.theme, appearance.glyphs),
+		queue:          cfg.queue,
+		workbench:      cfg.workbench,
+		localDirectory: cfg.localDirectory,
+		detachOnExit:   cfg.detachOnExit,
+		settings:       cfg.settings.Clone(),
+		options:        cfg.options,
+		syntax:         appearance.syntax,
+		commands:       newCommandCatalog(),
+		attention:      newAttentionCenter(),
+		keys:           keyRouter{application: cfg.keyBindings.application, global: cfg.keyBindings.global},
 	}
 	a.lifecycle = &sessionLifecycle{state: sessionState{current: cfg.snapshot.Session, context: newSessionContextLease()}}
 	a.runs = &runs{
@@ -235,6 +231,11 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 		diagramTheme = "default"
 	}
 	a.prepareDiagram = prepareMermaid(diagramTheme)
+	a.extensions = &localExtensions{
+		host: cfg.pluginHost, issues: cfg.pluginIssues, running: newCommandOperationRegistry(), tasks: a.tasks,
+		session: &a.lifecycle.state, localDirectory: cfg.localDirectory, status: a.status,
+		notify: a.message, appendNote: a.appendNote, closed: func() bool { return a.closed }, commandsChanged: a.registerCommands,
+	}
 	a.configureMarkdown(a.transcript)
 	a.configureComposer(appearance, cfg.keyBindings.editor, cfg.initialDraft)
 	a.configureCompletion(appearance)
@@ -371,7 +372,7 @@ func (a *app) Close(ctx context.Context) error {
 	closeErr = errors.Join(closeErr, err)
 	a.runs.dropStream()
 	a.operations.Cancel(completionOperation)
-	a.cancelPluginCommands()
+	a.extensions.cancelPluginCommands()
 	a.operations.Close()
 	if a.screens.mcp != nil && a.screens.mcp.form != nil {
 		a.screens.mcp.closeMCPForm(a.screens.mcp.form)
@@ -507,8 +508,6 @@ func (a *app) appendNote(label, body string) {
 	a.transcript.Append(&kit.Entry{Theme: a.transcript.theme, Label: label, Body: body})
 }
 
-func (a *app) dismissModelPicker() { a.screens.options.dismissModelPicker() }
-
-func (a *app) refreshModelPicker() { a.screens.options.refreshModelPicker() }
-
-func (a *app) dismissContextEditor() { a.contextEditors.dismiss() }
+func (a *app) cancelPluginCommands(pluginIDs ...string) {
+	a.extensions.cancelPluginCommands(pluginIDs...)
+}

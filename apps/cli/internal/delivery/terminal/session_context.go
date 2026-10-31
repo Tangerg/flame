@@ -52,7 +52,7 @@ func (a *app) dismissModals() {
 	a.prompts.dismiss()
 	a.confirm.dismiss()
 	a.reader.dismiss()
-	a.dismissContextEditor()
+	a.contextEditors.dismiss()
 	a.search.dialog.Dismiss()
 	a.palette.dialog.Dismiss()
 	a.timeline.dialog.Dismiss()

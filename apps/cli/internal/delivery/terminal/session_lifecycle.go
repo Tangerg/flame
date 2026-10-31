@@ -20,16 +20,10 @@ type sessionRoot interface {
 	presentTranscript(transcript *transcriptView) *transcriptView
 	listenForSearch()
 	enterSessionHealth()
-	setWindowTitle()
 	dismissModals()
 	dismissCompletion()
-	dismissContextEditor()
-	dismissModelPicker()
-	refreshModelPicker()
-	followModelChanges(affected bool)
 	cancelPluginCommands(pluginIDs ...string)
 	followRuntimeChanges()
-	loadPluginViews(affected bool)
 	requireRuntimeFeature(feature string) error
 }
 

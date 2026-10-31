@@ -128,9 +128,9 @@ func builtinCommands() []localCommand {
 		),
 		commandGroup(commandCategoryExtensions,
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "plugins", Title: "inspect Runtime-installed plugins and release state"}, Available: availableWithPlugins, Run: func(a *app, _ string) error { a.screens.plugins.ShowPlugins(); return nil }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "extensions", Title: "show local command extensions and lifecycle state"}, Run: func(a *app, _ string) error { a.ShowExtensions(); return nil }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "reload", Title: "reload a local command extension and its dependents", Arguments: extensions.RequiredArguments}, Run: func(a *app, id string) error { a.ReloadPlugin(id); return nil }},
-			localCommand{Descriptor: extensions.CommandDescriptor{Name: "unload", Title: "unload a local command extension and its dependents", Arguments: extensions.RequiredArguments}, Run: func(a *app, id string) error { a.UnloadPlugin(id); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "extensions", Title: "show local command extensions and lifecycle state"}, Run: func(a *app, _ string) error { a.extensions.ShowExtensions(); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "reload", Title: "reload a local command extension and its dependents", Arguments: extensions.RequiredArguments}, Run: func(a *app, id string) error { a.extensions.ReloadPlugin(id); return nil }},
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "unload", Title: "unload a local command extension and its dependents", Arguments: extensions.RequiredArguments}, Run: func(a *app, id string) error { a.extensions.UnloadPlugin(id); return nil }},
 		),
 	)
 }

@@ -4,28 +4,67 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/oolong/components/kit"
-
 	"github.com/Tangerg/flame/apps/cli/internal/application/extensions"
 )
 
-func (a *app) ShowExtensions() {
-	if a.pluginHost == nil {
-		a.message("plugin host is unavailable")
+// localExtensions owns the local command extension host: the commands its
+// plugins contribute, the operations those commands run, and reloading or
+// unloading a plugin. commandsChanged rebuilds the command catalog.
+type localExtensions struct {
+	host           *extensions.Host
+	issues         []extensions.SourceIssue
+	running        commandOperationRegistry
+	tasks          taskRunner
+	session        *sessionState
+	localDirectory string
+	status         *statusView
+
+	notify          func(string)
+	appendNote      func(label, body string)
+	closed          func() bool
+	commandsChanged func()
+}
+
+// registerCommands adds every contributed command through add.
+func (e *localExtensions) registerCommands(add func(owner string, descriptor extensions.CommandDescriptor, run func(string, func()), available func() extensions.CommandAvailability) error) {
+	for _, contributed := range e.host.Commands() {
+		command := contributed.Command
+		pluginID := contributed.PluginID
+		var available func() extensions.CommandAvailability
+		if command.Available != nil {
+			available = func() extensions.CommandAvailability {
+				return command.Available(extensions.CommandRequest{
+					Workspace: e.session.current.Workspace.Path, SessionID: e.session.current.ID,
+					LocalDirectory: authoringDirectory(e.localDirectory, e.session.current.Workspace.Path),
+				})
+			}
+		}
+		if err := add(pluginID, command.Descriptor,
+			func(argument string, accept func()) { e.executeCommand(pluginID, command, argument, accept) },
+			available,
+		); err != nil {
+			e.notify(err.Error())
+		}
+	}
+}
+
+func (e *localExtensions) ShowExtensions() {
+	if e.host == nil {
+		e.notify("plugin host is unavailable")
 		return
 	}
-	statuses := a.pluginHost.Statuses()
-	lines := make([]string, 0, len(statuses)+len(a.pluginIssues))
+	statuses := e.host.Statuses()
+	lines := make([]string, 0, len(statuses)+len(e.issues))
 	for _, status := range statuses {
 		lines = append(lines, formatPluginStatus(status))
 	}
-	for _, issue := range a.pluginIssues {
+	for _, issue := range e.issues {
 		lines = append(lines, fmt.Sprintf("failed   source:%s · %v", issue.Source, issue.Err))
 	}
 	if len(lines) == 0 {
 		lines = append(lines, "No local command extensions installed")
 	}
-	a.transcript.Append(&kit.Entry{Theme: a.transcript.theme, Label: "local command extensions", Body: strings.Join(lines, "\n")})
+	e.appendNote("local command extensions", strings.Join(lines, "\n"))
 }
 
 // unloadedPluginsNotice says at startup that something did not load. A plugin
@@ -73,22 +112,22 @@ func formatCapabilities(status extensions.Status) string {
 	}
 }
 
-func (a *app) ReloadPlugin(id string) {
-	if a.pluginHost == nil {
-		a.message("plugin host is unavailable")
+func (e *localExtensions) ReloadPlugin(id string) {
+	if e.host == nil {
+		e.notify("plugin host is unavailable")
 		return
 	}
 	id = strings.TrimSpace(id)
-	affected, err := a.pluginHost.Affected(id)
+	affected, err := e.host.Affected(id)
 	if err != nil {
-		a.message(err.Error())
+		e.notify(err.Error())
 		return
 	}
-	a.cancelPluginCommands(affected...)
-	results, err := a.pluginHost.Reload(id)
-	a.registerCommands()
+	e.cancelPluginCommands(affected...)
+	results, err := e.host.Reload(id)
+	e.commandsChanged()
 	if err != nil {
-		a.message(err.Error())
+		e.notify(err.Error())
 		return
 	}
 	var failed []extensions.LifecycleResult
@@ -101,31 +140,31 @@ func (a *app) ReloadPlugin(id string) {
 	// rather than letting the last one overwrite the rest.
 	switch len(failed) {
 	case 0:
-		a.message("reloaded plugin " + id)
+		e.notify("reloaded plugin " + id)
 	case 1:
-		a.message(fmt.Sprintf("plugin %s · %s · %v", failed[0].PluginID, failed[0].Phase, failed[0].Err))
+		e.notify(fmt.Sprintf("plugin %s · %s · %v", failed[0].PluginID, failed[0].Phase, failed[0].Err))
 	default:
-		a.message(fmt.Sprintf("%d plugins did not reload · /extensions for details", len(failed)))
+		e.notify(fmt.Sprintf("%d plugins did not reload · /extensions for details", len(failed)))
 	}
 }
 
-func (a *app) UnloadPlugin(id string) {
-	if a.pluginHost == nil {
-		a.message("plugin host is unavailable")
+func (e *localExtensions) UnloadPlugin(id string) {
+	if e.host == nil {
+		e.notify("plugin host is unavailable")
 		return
 	}
 	id = strings.TrimSpace(id)
-	affected, err := a.pluginHost.Affected(id)
+	affected, err := e.host.Affected(id)
 	if err != nil {
-		a.message(err.Error())
+		e.notify(err.Error())
 		return
 	}
-	a.cancelPluginCommands(affected...)
-	err = a.pluginHost.Unload(id)
-	a.registerCommands()
+	e.cancelPluginCommands(affected...)
+	err = e.host.Unload(id)
+	e.commandsChanged()
 	if err != nil {
-		a.message(err.Error())
+		e.notify(err.Error())
 		return
 	}
-	a.message("unloaded plugin " + id)
+	e.notify("unloaded plugin " + id)
 }
