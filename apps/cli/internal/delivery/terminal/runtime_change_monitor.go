@@ -74,7 +74,7 @@ func (a *app) followRuntimeChanges() {
 
 func (a *app) applyWorkspaceChanges(changes []workspace.Change) {
 	a.header.SetWorkspaceChanges(len(changes))
-	a.reader.update(a.session.changesView, workspaceChangesDocument(a.session.current.Workspace.Path, changes))
+	a.inspection.showChanges(changes)
 }
 
 type runtimeChangeMonitor struct {

@@ -15,8 +15,6 @@ type sessionState struct {
 	context         *sessionContextLease
 	invalidated     bool
 	draftTransition *sessionDraftTransition
-	// changesView is the workspace changes read, updated in place as changes arrive.
-	changesView *readerQuery
 }
 
 type openingReceipt struct {

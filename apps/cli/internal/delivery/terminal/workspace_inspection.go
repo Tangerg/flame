@@ -11,10 +11,19 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-func (a *app) ShowWorkspaces() {
-	a.runWorkspaceQuery("loading workspaces",
+// workspaceScreens inspects the current workspace: known workspaces, changes,
+// diffs, search, listings and files. changesView is the open changes read,
+// updated in place as changes arrive.
+type workspaceScreens struct {
+	screenHost
+	service     Workspaces
+	changesView *readerQuery
+}
+
+func (w *workspaceScreens) ShowWorkspaces() {
+	w.runWorkspaceQuery("loading workspaces",
 		func(ctx context.Context) (readerDocument, error) {
-			values, err := a.workspaces.List(ctx)
+			values, err := w.service.List(ctx)
 			if err != nil {
 				return readerDocument{}, err
 			}
@@ -39,30 +48,30 @@ func (a *app) ShowWorkspaces() {
 		})
 }
 
-func (a *app) ShowWorkspaceChanges() {
-	path := a.session.current.Workspace.Path
-	a.session.changesView = &readerQuery{status: "loading workspace changes", read: func(ctx context.Context) (readerDocument, error) {
-		changes, err := a.workspaces.Changes(ctx, path)
+func (w *workspaceScreens) ShowWorkspaceChanges() {
+	path := w.session.current.Workspace.Path
+	w.changesView = &readerQuery{status: "loading workspace changes", read: func(ctx context.Context) (readerDocument, error) {
+		changes, err := w.service.Changes(ctx, path)
 		if err != nil {
 			return readerDocument{}, err
 		}
 		return workspaceChangesDocument(path, changes), nil
 	}}
-	a.reader.show(a.session.changesView)
+	w.reader.show(w.changesView)
 }
 
-func (a *app) ShowWorkspaceDiff(argument string) error {
+func (w *workspaceScreens) ShowWorkspaceDiff(argument string) error {
 	selection, err := parseWorkspaceDiffSelection(argument)
 	if err != nil {
 		return err
 	}
 	request := workspace.DiffRequest{
-		Workspace: a.session.current.Workspace.Path, Path: selection.path,
+		Workspace: w.session.current.Workspace.Path, Path: selection.path,
 		Mode: selection.mode, Format: selection.format, RowLimit: selection.limit,
 	}
-	a.runWorkspaceQuery("loading workspace diff",
+	w.runWorkspaceQuery("loading workspace diff",
 		func(ctx context.Context) (readerDocument, error) {
-			diff, err := a.workspaces.Diff(ctx, request)
+			diff, err := w.service.Diff(ctx, request)
 			if err != nil {
 				return readerDocument{}, err
 			}
@@ -71,7 +80,7 @@ func (a *app) ShowWorkspaceDiff(argument string) error {
 	return nil
 }
 
-func (a *app) PreviewWorkspaceFile(argument string) error {
+func (w *workspaceScreens) PreviewWorkspaceFile(argument string) error {
 	selection, err := parseWorkspacePreviewSelection(argument)
 	if err != nil {
 		return err
@@ -81,12 +90,12 @@ func (a *app) PreviewWorkspaceFile(argument string) error {
 		return err
 	}
 	request := workspace.ReadRequest{
-		Workspace: a.session.current.Workspace.Path, Path: selection.path,
+		Workspace: w.session.current.Workspace.Path, Path: selection.path,
 		Range: lineRange, ByteLimit: workspace.DefaultReadByteLimit(),
 	}
-	a.runWorkspaceQuery("loading file preview",
+	w.runWorkspaceQuery("loading file preview",
 		func(ctx context.Context) (readerDocument, error) {
-			content, err := a.workspaces.Read(ctx, request)
+			content, err := w.service.Read(ctx, request)
 			if err != nil {
 				return readerDocument{}, err
 			}
@@ -99,17 +108,17 @@ func (a *app) PreviewWorkspaceFile(argument string) error {
 	return nil
 }
 
-func (a *app) SearchWorkspace(argument string) error {
+func (w *workspaceScreens) SearchWorkspace(argument string) error {
 	selection, err := parseWorkspaceSearchSelection(argument)
 	if err != nil {
 		return err
 	}
 	request := workspace.SearchRequest{
-		Workspace: a.session.current.Workspace.Path, Query: selection.query, Path: selection.path, Limit: selection.limit,
+		Workspace: w.session.current.Workspace.Path, Query: selection.query, Path: selection.path, Limit: selection.limit,
 	}
-	a.runWorkspaceQuery("searching workspace",
+	w.runWorkspaceQuery("searching workspace",
 		func(ctx context.Context) (readerDocument, error) {
-			result, err := a.workspaces.Search(ctx, request)
+			result, err := w.service.Search(ctx, request)
 			if err != nil {
 				return readerDocument{}, err
 			}
@@ -126,18 +135,18 @@ func (a *app) SearchWorkspace(argument string) error {
 	return nil
 }
 
-func (a *app) BrowseWorkspace(argument string) error {
+func (w *workspaceScreens) BrowseWorkspace(argument string) error {
 	selection, err := parseWorkspaceFilesSelection(argument)
 	if err != nil {
 		return err
 	}
 	request := workspace.FilesRequest{
-		Workspace: a.session.current.Workspace.Path, Path: selection.path, Glob: selection.glob,
+		Workspace: w.session.current.Workspace.Path, Path: selection.path, Glob: selection.glob,
 		Recursive: selection.recursive, IncludeIgnored: selection.includeIgnored,
 	}
-	a.runWorkspaceQuery("browsing workspace",
+	w.runWorkspaceQuery("browsing workspace",
 		func(ctx context.Context) (readerDocument, error) {
-			listing, err := a.workspaces.Files(ctx, request)
+			listing, err := w.service.Files(ctx, request)
 			if err != nil {
 				return readerDocument{}, err
 			}
@@ -179,18 +188,18 @@ func (a *app) BrowseWorkspace(argument string) error {
 	return nil
 }
 
-func (a *app) ReadWorkspaceFile(argument string) error {
+func (w *workspaceScreens) ReadWorkspaceFile(argument string) error {
 	selection, err := parseWorkspaceReadSelection(argument)
 	if err != nil {
 		return err
 	}
 	request := workspace.ReadRequest{
-		Workspace: a.session.current.Workspace.Path, Path: selection.path,
+		Workspace: w.session.current.Workspace.Path, Path: selection.path,
 		Range: selection.lineRange, ByteLimit: selection.byteLimit,
 	}
-	a.runWorkspaceQuery("reading workspace file",
+	w.runWorkspaceQuery("reading workspace file",
 		func(ctx context.Context) (readerDocument, error) {
-			content, err := a.workspaces.Read(ctx, request)
+			content, err := w.service.Read(ctx, request)
 			if err != nil {
 				return readerDocument{}, err
 			}
@@ -203,8 +212,8 @@ func (a *app) ReadWorkspaceFile(argument string) error {
 	return nil
 }
 
-func (a *app) runWorkspaceQuery(status string, read func(context.Context) (readerDocument, error)) {
-	a.reader.show(&readerQuery{status: status, read: read})
+func (w *workspaceScreens) runWorkspaceQuery(status string, read func(context.Context) (readerDocument, error)) {
+	w.reader.show(&readerQuery{status: status, read: read})
 }
 
 func paragraphDocument(title, detail string, lines []string) readerDocument {
@@ -239,4 +248,9 @@ func workspaceChangesDocument(path string, changes []workspace.Change) readerDoc
 		lines = append(lines, fmt.Sprintf("%-10s %s%s", change.Status, pathLabel, stat))
 	}
 	return paragraphDocument("Workspace changes", fmt.Sprintf("%d files · %s", len(changes), path), lines)
+}
+
+// showChanges updates the open changes read with changes the monitor observed.
+func (w *workspaceScreens) showChanges(changes []workspace.Change) {
+	w.reader.update(w.changesView, workspaceChangesDocument(w.session.current.Workspace.Path, changes))
 }

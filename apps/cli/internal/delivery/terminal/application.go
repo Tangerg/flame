@@ -85,6 +85,7 @@ type app struct {
 	reader       *readerSurface
 	prompts      *interruptPrompts
 	approvals    *approvalScreens
+	inspection   *workspaceScreens
 
 	transcript  *transcriptView
 	brand       *brandBanner
