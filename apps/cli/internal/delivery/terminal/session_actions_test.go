@@ -622,17 +622,18 @@ func TestConfirmationRejectsCallbacksFromAReplacedPresentation(t *testing.T) {
 	transcript := testTranscriptView(t)
 	application := &app{composer: testPromptComposer(t), transcript: transcript, session: sessionState{context: newSessionContextLease()}}
 	application.stack.SetBase(transcript)
+	application.confirm = &confirmPrompt{stack: &application.stack, theme: transcript.theme, glyphs: transcript.glyphs, session: &application.session}
 	oldCalls, currentCalls := 0, 0
-	application.confirmAction("Old confirmation", "Run the old action?", "Run old", func() { oldCalls++ })
+	application.confirm.ask("Old confirmation", "Run the old action?", "Run old", "", func() { oldCalls++ })
 	drawRoot(t, &application.stack, 96, 28)
 
-	application.confirmAction("Current confirmation", "Run the current action?", "Run current", func() { currentCalls++ })
+	application.confirm.ask("Current confirmation", "Run the current action?", "Run current", "", func() { currentCalls++ })
 	application.stack.Handle(input.Key{Code: input.Down})
 	application.stack.Handle(input.Key{Code: input.Enter})
 	if oldCalls != 0 || currentCalls != 0 {
 		t.Fatalf("stale presented confirmation executed callbacks: old=%d current=%d", oldCalls, currentCalls)
 	}
-	if application.dialogs.confirmationDialog == nil || !application.dialogs.confirmationDialog.Controller().Open() {
+	if application.confirm.dialog == nil || !application.confirm.dialog.Controller().Open() {
 		t.Fatal("stale presented confirmation dismissed its replacement")
 	}
 
@@ -655,7 +656,7 @@ func TestProjectionRetirementRejectsAPresentedConfirmationCallback(t *testing.T)
 	application.stack.SetBase(transcript)
 	withModalOwners(t, application)
 	calls := 0
-	application.confirmAction("Retired confirmation", "Run the retired action?", "Run", func() { calls++ })
+	application.confirm.ask("Retired confirmation", "Run the retired action?", "Run", "", func() { calls++ })
 	drawRoot(t, application, 96, 28)
 
 	application.retireSessionContext()
@@ -664,7 +665,7 @@ func TestProjectionRetirementRejectsAPresentedConfirmationCallback(t *testing.T)
 	if calls != 0 {
 		t.Fatalf("retired projection confirmation executed %d callbacks", calls)
 	}
-	if application.dialogs.confirmationDialog != nil || application.stack.Depth() > 0 {
+	if application.confirm.dialog != nil || application.stack.Depth() > 0 {
 		t.Fatal("retired projection left its confirmation open")
 	}
 }
@@ -993,6 +994,7 @@ func steerReplayTestProfile(t *testing.T, workspace string) runtimefixture.Profi
 func withModalOwners(t *testing.T, application *app) {
 	t.Helper()
 	theme, glyphs := application.transcript.theme, application.transcript.glyphs
+	application.confirm = &confirmPrompt{stack: &application.stack, theme: theme, glyphs: glyphs, session: &application.session}
 	application.search = newSearchPrompt(&application.stack, theme, glyphs, func(string) {})
 	application.timeline = newTimelineDialog(&application.stack, theme, glyphs, func(timelineEntry) {}, func(timelineEntry) {})
 	application.palette = newPickerDialog(pickerDialogConfig[commandPaletteItem]{

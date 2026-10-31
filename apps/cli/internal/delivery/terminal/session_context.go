@@ -45,7 +45,7 @@ func (a *app) retireSessionContext() {
 	a.session.context.retire()
 	a.session.context = newSessionContextLease()
 	a.prompts.dismiss()
-	a.dismissConfirmation()
+	a.confirm.dismiss()
 	a.reader.dismiss()
 	a.dismissContextEditor()
 	a.search.dialog.Dismiss()

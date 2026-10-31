@@ -45,7 +45,7 @@ type screens struct {
 func (a *app) screenHost() screenHost {
 	return screenHost{
 		tasks: a.tasks, reader: a.reader, status: a.status, message: a.message,
-		confirm: a.confirmActionWithContent, session: &a.session,
+		confirm: a.confirm.ask, session: &a.session,
 		stack: &a.stack, theme: a.transcript.theme, glyphs: a.transcript.glyphs,
 		clipboard: a.loop.Clipboard(), replayPolicy: a.replayPolicy,
 	}

@@ -57,6 +57,5 @@ type dialogState struct {
 	sessionDialog       *presentationDialog
 	sessionRenameDialog *kit.Dialog
 	sessionDeleteDialog *kit.Dialog
-	confirmationDialog  *kit.Dialog
 	activeContextEditor *contextEditorSession
 }

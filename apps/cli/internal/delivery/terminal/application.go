@@ -75,6 +75,7 @@ type app struct {
 	dialogs          dialogState
 	reader           *readerSurface
 	prompts          *interruptPrompts
+	confirm          *confirmPrompt
 	screens          screens
 	timeline         *timelineDialog
 	palette          *pickerDialog[commandPaletteItem]
@@ -337,6 +338,7 @@ func (a *app) buildInterface(appearance terminalAppearance, editorKeys *keymap.M
 	})
 	a.shortcuts = newShortcutGuide(&a.stack, theme, glyphs, a.loop.Environment().Wheel(), editorKeys, a.transcript.Keys())
 	a.search = newSearchPrompt(&a.stack, theme, glyphs, a.Find)
+	a.confirm = &confirmPrompt{stack: &a.stack, theme: theme, glyphs: glyphs, wheel: a.loop.Environment().Wheel(), session: &a.session}
 	a.reader = newReaderSurface(readerSurfaceConfig{
 		theme: theme, glyphs: glyphs, syntax: a.syntax, stack: &a.stack, loop: a.loop,
 		tasks: a.tasks, status: a.status, message: a.message,

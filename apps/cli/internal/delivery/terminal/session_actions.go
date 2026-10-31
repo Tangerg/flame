@@ -11,10 +11,6 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/keymap"
-	"github.com/Tangerg/oolong/core/layout"
 )
 
 type sessionImport struct {
@@ -41,10 +37,11 @@ func (a *app) prepareSessionImport(path string) error {
 				a.message("import session failed: " + err.Error())
 				return
 			}
-			a.confirmAction(
+			a.confirm.ask(
 				"Import session",
 				"Import "+prepared.path+"? An existing session with the artifact ID will be replaced.",
 				"Import and replace",
+				"",
 				func() { a.importSession(prepared.artifact) },
 			)
 		},
@@ -98,10 +95,11 @@ func (a *app) prepareSessionRollback(argument string) error {
 				a.message("preview rollback failed: " + err.Error())
 				return
 			}
-			a.confirmAction(
+			a.confirm.ask(
 				"Rollback session",
 				preview.Description()+" This cannot be undone.",
 				"Rollback permanently",
+				"",
 				func() { a.rollbackSession(preview) },
 			)
 		},
@@ -266,61 +264,4 @@ func parseRollbackArgument(sessionID, argument string) (conversation.RollbackSes
 		return conversation.RollbackSession{}, err
 	}
 	return request, nil
-}
-
-func (a *app) confirmAction(title, question, action string, confirm func()) {
-	a.confirmActionWithContent(title, question, action, "", confirm)
-}
-
-func (a *app) confirmActionWithContent(title, question, action, content string, confirm func()) {
-	a.dismissConfirmation()
-	generation := a.session.context
-	confirmed := false
-	choice := headless.NewSelect(headless.SelectConfig[bool]{Same: headless.Equal[bool], Label: question, Value: headless.Bind(&confirmed), Rows: 2})
-	choice.SetOptions([]headless.Option[bool]{
-		{Label: "Cancel", Value: false},
-		{Label: action, Value: true},
-	})
-	form := headless.NewForm(choice)
-	form.Keys = headless.DefaultFormKeys()
-	var dialog *kit.Dialog
-	dismiss := func() {
-		if a.dialogs.confirmationDialog == dialog {
-			dialog.Controller().Dismiss()
-			a.dialogs.confirmationDialog = nil
-		}
-	}
-	form.Done = func() {
-		current := a.dialogs.confirmationDialog == dialog
-		dismiss()
-		if current && confirmed && a.session.context.current(generation) {
-			confirm()
-		}
-	}
-	form.GaveUp = dismiss
-	formBody := kit.NewForm(kit.FormConfig{
-		Theme: a.transcript.theme, Glyphs: a.transcript.glyphs, Controller: form,
-		Hints: []keymap.Action{headless.Submit, headless.Cancel},
-	})
-	var body headless.Widget = formBody
-	placement := layout.Placement{Width: 78, Height: 9}
-	if content != "" {
-		viewport := headless.NewViewport(headless.Static{Of: kit.NewParagraph(content, a.transcript.theme.Text)})
-		viewport.Scroll().Wheel(a.loop.Environment().Wheel())
-		body = &confirmationContentPane{viewport: viewport, form: formBody}
-		placement = layout.Placement{Width: 96, Height: 26}
-	}
-	dialog = kit.NewDialog(kit.DialogConfig{
-		Stack: &a.stack, Theme: a.transcript.theme, Glyphs: a.transcript.glyphs,
-		Title: title, Body: body, Where: placement,
-	})
-	a.dialogs.confirmationDialog = dialog
-	dialog.Controller().Show()
-}
-
-func (a *app) dismissConfirmation() {
-	if a.dialogs.confirmationDialog != nil {
-		a.dialogs.confirmationDialog.Controller().Dismiss()
-		a.dialogs.confirmationDialog = nil
-	}
 }
