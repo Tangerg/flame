@@ -124,10 +124,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (StartResul
 			}
 			rememberedRules = append(rememberedRules, rule)
 		}
-		acceptance, err = acceptance.WithRememberedRules(rememberedRules)
-		if err != nil {
-			return StartResult{}, err
-		}
+		acceptance = acceptance.WithRememberedRules(rememberedRules)
 	}
 	segmentID := c.segments.newSegmentID()
 	var committedInput *CommittedUserInput

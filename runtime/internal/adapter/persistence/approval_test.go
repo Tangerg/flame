@@ -75,17 +75,17 @@ func TestApprovalRuleStoreReplacesDecisionAndAuthority(t *testing.T) {
 	if err := newMCPServerStore(store.db).Save(ctx, server); err != nil {
 		t.Fatal(err)
 	}
-	rule, err := approval.NewRule(approval.ScopeGlobal, "", testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "remote"), testsupport.Digest("first authority"), approval.Subject{Type: approval.SubjectAll}, approval.Deny)
+	rule, err := approval.NewRule(approval.GlobalScope(), testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "remote"), testsupport.Digest("first authority"), approval.Subject{Type: approval.SubjectAll}, approval.Deny)
 	if err != nil {
 		t.Fatal(err)
 	}
 	id := rule.ID()
 	for _, decision := range []approval.Decision{approval.Deny, approval.Allow, approval.Deny} {
-		fingerprint := rule.SourceFingerprint
+		fingerprint := rule.SourceFingerprint()
 		if decision == approval.Allow {
 			fingerprint = testsupport.Digest("second authority")
 		}
-		next, err := approval.NewRule(rule.Scope, rule.ScopeKey, rule.Tool, fingerprint, rule.Subject, decision)
+		next, err := approval.NewRule(rule.Scope(), rule.Tool(), fingerprint, rule.Subject(), decision)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -99,7 +99,7 @@ func TestApprovalRuleStoreReplacesDecisionAndAuthority(t *testing.T) {
 		if err != nil || len(rules) != 1 || rules[0] != next {
 			t.Fatalf("rules after %s = %v, %v; want [%v]", decision, rules, err, next)
 		}
-		if got, found, err := approval.Decide(rules, approval.Query{Tool: next.Tool, SourceFingerprint: fingerprint}); err != nil || !found || got != decision {
+		if got, found, err := approval.Decide(rules, approval.Query{Tool: next.Tool(), SourceFingerprint: fingerprint}); err != nil || !found || got != decision {
 			t.Fatalf("decision = %v, %v, %v; want %s", got, found, err, decision)
 		}
 	}
@@ -130,7 +130,7 @@ func TestApprovalSubjectTypesSurviveRestart(t *testing.T) {
 		if subject.Type == approval.SubjectExact {
 			decision = approval.Allow
 		}
-		rule, err := approval.NewRule(approval.ScopeGlobal, "", ref, integrity.Digest{}, subject, decision)
+		rule, err := approval.NewRule(approval.GlobalScope(), ref, integrity.Digest{}, subject, decision)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -216,7 +216,7 @@ func TestApprovalRuleStore_VisibleEnforcesRequestedBound(t *testing.T) {
 
 func newApprovalRule(t *testing.T, scope approval.Scope, scopeKey string, toolName builtincontract.Name, subject string, decision approval.Decision) approval.Rule {
 	t.Helper()
-	rule, err := approval.NewRule(scope, scopeKey, testsupport.BuiltInTool(t, toolName), testsupport.ToolFingerprint(testsupport.BuiltInTool(t, toolName)), approval.InvocationSubject(subject), decision)
+	rule, err := approval.NewRule(testsupport.RuleScope(t, scope, scopeKey), testsupport.BuiltInTool(t, toolName), testsupport.ToolFingerprint(testsupport.BuiltInTool(t, toolName)), approval.InvocationSubject(subject), decision)
 	if err != nil {
 		t.Fatalf("new approval rule: %v", err)
 	}

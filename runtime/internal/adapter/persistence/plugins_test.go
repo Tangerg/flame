@@ -42,7 +42,7 @@ func TestInstallationTransitionsPreserveStandingRulesUntilSourceRemoval(t *testi
 	if err := newMCPServerStore(db).SetToolExposure(t.Context(), ref, true); err != nil {
 		t.Fatal(err)
 	}
-	rule, err := approval.NewRule(approval.ScopeGlobal, "", ref, i.ServerAuthority(testsupport.ServerName("server")), approval.Subject{Type: approval.SubjectAll}, approval.Deny)
+	rule, err := approval.NewRule(approval.GlobalScope(), ref, i.ServerAuthority(testsupport.ServerName("server")), approval.Subject{Type: approval.SubjectAll}, approval.Deny)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestInstallationTransitionsPreserveStandingRulesUntilSourceRemoval(t *testi
 			t.Fatalf("installation read lost its current enabled state: %+v, %v", snapshot, err)
 		}
 		visible, err := rules.Visible(t.Context(), "", "", approval.MaximumVisibleRules)
-		if err != nil || len(visible) != 1 || visible[0].Decision != approval.Deny {
+		if err != nil || len(visible) != 1 || visible[0].Decision() != approval.Deny {
 			t.Fatalf("standing deny lost: %+v, %v", visible, err)
 		}
 	}

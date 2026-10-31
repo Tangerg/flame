@@ -32,7 +32,7 @@ func TestRemovedMCPSourceCannotRetainApproval(t *testing.T) {
 		t.Fatal(err)
 	}
 	ref := testsupport.MCPTool(server.ID(), "create_issue")
-	rule, err := approval.NewRule(approval.ScopeGlobal, "", ref, server.AuthorityFingerprint(), approval.Subject{Type: approval.SubjectAll}, approval.Allow)
+	rule, err := approval.NewRule(approval.GlobalScope(), ref, server.AuthorityFingerprint(), approval.Subject{Type: approval.SubjectAll}, approval.Allow)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestUserServerRemovalCascadesEveryRelation(t *testing.T) {
 		t.Fatal(err)
 	}
 	ref := testsupport.MCPTool(server.ID(), "write")
-	rule, err := approval.NewRule(approval.ScopeGlobal, "", ref, server.AuthorityFingerprint(), approval.Subject{Type: approval.SubjectAll}, approval.Allow)
+	rule, err := approval.NewRule(approval.GlobalScope(), ref, server.AuthorityFingerprint(), approval.Subject{Type: approval.SubjectAll}, approval.Allow)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +133,7 @@ func TestEqualNamesAcrossOriginsKeepSeparateRelations(t *testing.T) {
 		t.Fatal("fixture must share a model name while differing in identity")
 	}
 	for _, ref := range []tool.Ref{userRef, installedRef} {
-		rule, err := approval.NewRule(approval.ScopeGlobal, "", ref, testsupport.Digest("authority"), approval.Subject{Type: approval.SubjectAll}, approval.Deny)
+		rule, err := approval.NewRule(approval.GlobalScope(), ref, testsupport.Digest("authority"), approval.Subject{Type: approval.SubjectAll}, approval.Deny)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -145,7 +145,7 @@ func TestEqualNamesAcrossOriginsKeepSeparateRelations(t *testing.T) {
 		}
 	}
 	visible, err := rules.Visible(t.Context(), "", "", approval.MaximumVisibleRules)
-	if err != nil || len(visible) != 2 || visible[0].Tool != userRef || visible[1].Tool != installedRef {
+	if err != nil || len(visible) != 2 || visible[0].Tool() != userRef || visible[1].Tool() != installedRef {
 		t.Fatalf("rules = %+v, %v", visible, err)
 	}
 
@@ -153,7 +153,7 @@ func TestEqualNamesAcrossOriginsKeepSeparateRelations(t *testing.T) {
 		t.Fatal(err)
 	}
 	visible, err = rules.Visible(t.Context(), "", "", approval.MaximumVisibleRules)
-	if err != nil || len(visible) != 1 || visible[0].Tool != installedRef {
+	if err != nil || len(visible) != 1 || visible[0].Tool() != installedRef {
 		t.Fatalf("removing the user server changed installation rules: %+v, %v", visible, err)
 	}
 	exposure, err := servers.ListExposure(t.Context())

@@ -24,3 +24,12 @@ func ApprovalAnswer(t testing.TB, answer approval.Resolution) run.InterruptResol
 	}
 	return value
 }
+
+func RuleScope(t testing.TB, kind approval.Scope, key string) approval.RuleScope {
+	t.Helper()
+	scope, err := approval.RestoreRuleScope(kind, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return scope
+}

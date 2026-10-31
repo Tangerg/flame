@@ -39,17 +39,16 @@ func ValidateVisibleRules(rules []Rule, sessionID, projectDir string) error {
 	}
 	seen := make(map[string]struct{}, len(rules))
 	for index, rule := range rules {
-		if err := rule.Validate(); err != nil {
-			return fmt.Errorf("approval: visible rule %d: %w", index, err)
+		if !rule.scope.kind.Valid() {
+			return fmt.Errorf("%w: visible rule %d was never constructed", ErrInvalidRule, index)
 		}
-		scopeKey, visible := rule.Scope.key(sessionID, projectDir)
-		if !visible || rule.ScopeKey != scopeKey {
+		if !rule.scope.visibleFrom(sessionID, projectDir) {
 			return fmt.Errorf(
 				"%w: visible rule %d with scope %q and key %q is outside the requested scope",
 				ErrInvalidRule,
 				index,
-				rule.Scope,
-				rule.ScopeKey,
+				rule.scope.kind,
+				rule.scope.key,
 			)
 		}
 		if _, duplicate := seen[rule.ID()]; duplicate {
@@ -60,48 +59,80 @@ func ValidateVisibleRules(rules []Rule, sessionID, projectDir string) error {
 	return nil
 }
 
-// NewRule constructs one durable rule and derives its deterministic identity.
-func NewRule(scope Scope, scopeKey string, ref tool.Ref, source integrity.Digest, subject Subject, decision Decision) (Rule, error) {
-	rule := Rule{
-		Scope: scope, ScopeKey: scopeKey, Tool: ref, SourceFingerprint: source,
-		Subject: subject, Decision: decision,
-	}
-	if err := rule.Validate(); err != nil {
-		return Rule{}, err
-	}
-	return rule, nil
+// RuleScope is where a remembered rule applies: a session rule names its
+// Session, a project rule its directory, and a global rule nothing.
+type RuleScope struct {
+	kind Scope
+	key  string
 }
 
-// Validate protects the durable approval vocabulary and deterministic rule
-// identity at every store boundary.
-func (r Rule) Validate() error {
-	if !r.Scope.Valid() {
-		return fmt.Errorf("%w: unknown scope %q", ErrInvalidRule, r.Scope)
+func GlobalScope() RuleScope { return RuleScope{kind: ScopeGlobal} }
+
+func SessionScope(sessionID string) (RuleScope, error) {
+	if err := identity.ValidateSession(sessionID); err != nil {
+		return RuleScope{}, fmt.Errorf("%w: session scope: %v", ErrInvalidRule, err)
 	}
-	switch r.Scope {
+	return RuleScope{kind: ScopeSession, key: sessionID}, nil
+}
+
+func ProjectScope(dir string) (RuleScope, error) {
+	if strings.TrimSpace(dir) == "" {
+		return RuleScope{}, fmt.Errorf("%w: project scope requires a directory", ErrInvalidRule)
+	}
+	return RuleScope{kind: ScopeProject, key: dir}, nil
+}
+
+// RestoreRuleScope reads a stored kind and key back through its constructor.
+func RestoreRuleScope(kind Scope, key string) (RuleScope, error) {
+	switch kind {
 	case ScopeSession:
-		if err := identity.ValidateSession(r.ScopeKey); err != nil {
-			return fmt.Errorf("%w: session scope: %v", ErrInvalidRule, err)
-		}
+		return SessionScope(key)
 	case ScopeProject:
-		if strings.TrimSpace(r.ScopeKey) == "" {
-			return fmt.Errorf("%w: scope %q requires a key", ErrInvalidRule, r.Scope)
-		}
+		return ProjectScope(key)
 	case ScopeGlobal:
-		if r.ScopeKey != "" {
-			return fmt.Errorf("%w: global scope cannot carry a key", ErrInvalidRule)
+		if key != "" {
+			return RuleScope{}, fmt.Errorf("%w: global scope cannot carry a key", ErrInvalidRule)
 		}
+		return GlobalScope(), nil
+	default:
+		return RuleScope{}, fmt.Errorf("%w: unknown scope %q", ErrInvalidRule, kind)
 	}
-	if err := r.Tool.ValidateFingerprint(r.SourceFingerprint); err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidRule, err)
+}
+
+func (s RuleScope) Kind() Scope { return s.kind }
+
+// Key is the Session identity or project directory the scope names; it is
+// empty only for the global scope.
+func (s RuleScope) Key() string { return s.key }
+
+// visibleFrom refuses empty session and project keys so rules cannot leak
+// across scopes.
+func (s RuleScope) visibleFrom(sessionID, projectDir string) bool {
+	switch s.kind {
+	case ScopeSession:
+		return sessionID != "" && s.key == sessionID
+	case ScopeProject:
+		return projectDir != "" && s.key == projectDir
+	default:
+		return s.kind == ScopeGlobal
 	}
-	if !r.Decision.Valid() {
-		return fmt.Errorf("%w: unknown decision %q", ErrInvalidRule, r.Decision)
+}
+
+// NewRule constructs one durable rule; its identity is derived, never chosen.
+func NewRule(scope RuleScope, ref tool.Ref, source integrity.Digest, subject Subject, decision Decision) (Rule, error) {
+	if !scope.kind.Valid() {
+		return Rule{}, fmt.Errorf("%w: scope is required", ErrInvalidRule)
 	}
-	if err := r.Subject.Validate(); err != nil {
-		return err
+	if err := ref.ValidateFingerprint(source); err != nil {
+		return Rule{}, fmt.Errorf("%w: %w", ErrInvalidRule, err)
 	}
-	return nil
+	if !decision.Valid() {
+		return Rule{}, fmt.Errorf("%w: unknown decision %q", ErrInvalidRule, decision)
+	}
+	if err := subject.Validate(); err != nil {
+		return Rule{}, err
+	}
+	return Rule{scope: scope, tool: ref, source: source, subject: subject, decision: decision}, nil
 }
 
 // specificity encodes the conflict policy: narrower scope beats wider scope,
@@ -112,8 +143,8 @@ func (r Rule) Validate() error {
 func (r Rule) specificity() [2]int {
 	rank := func(order []string, value string) int { return slices.Index(order, value) + 1 }
 	return [2]int{
-		rank([]string{string(ScopeGlobal), string(ScopeProject), string(ScopeSession)}, string(r.Scope)),
-		rank([]string{string(SubjectAll), string(SubjectGlob), string(SubjectExact)}, string(r.Subject.Type)),
+		rank([]string{string(ScopeGlobal), string(ScopeProject), string(ScopeSession)}, string(r.scope.kind)),
+		rank([]string{string(SubjectAll), string(SubjectGlob), string(SubjectExact)}, string(r.subject.Type)),
 	}
 }
 
@@ -143,13 +174,13 @@ func (r ruleSet) decide(q Query) (Decision, bool, error) {
 	var verdict Decision
 	conflict := false
 	for _, rule := range r {
-		if rule.Tool != q.Tool || rule.SourceFingerprint != q.SourceFingerprint || !rule.Subject.matches(q.Subject) {
+		if rule.tool != q.Tool || rule.source != q.SourceFingerprint || !rule.subject.matches(q.Subject) {
 			continue
 		}
 		switch score := rule.specificity(); {
 		case cmp.Or(cmp.Compare(score[0], best[0]), cmp.Compare(score[1], best[1])) > 0:
-			best, verdict, conflict = score, rule.Decision, false
-		case score == best && rule.Decision != verdict:
+			best, verdict, conflict = score, rule.decision, false
+		case score == best && rule.decision != verdict:
 			conflict = true
 		}
 	}
@@ -162,36 +193,29 @@ func (r ruleSet) decide(q Query) (Decision, bool, error) {
 	return verdict, true, nil
 }
 
-// key refuses empty session/project keys so rules cannot leak across scopes.
-func (s Scope) key(sessionID, projectDir string) (string, bool) {
-	switch s {
-	case ScopeSession:
-		return sessionID, sessionID != ""
-	case ScopeProject:
-		return projectDir, projectDir != ""
-	case ScopeGlobal:
-		return "", true
-	default:
-		return "", false
-	}
-}
-
-// Rule derives and validates the durable rule represented by r.
+// Rule derives the durable rule represented by r; the scope requested names
+// which of the Session or project keys the rule is stored under.
 func (r RememberRequest) Rule() (Rule, error) {
-	if r.SessionID != "" {
-		if err := identity.ValidateSession(r.SessionID); err != nil {
-			return Rule{}, fmt.Errorf("%w: session: %v", ErrInvalidRule, err)
-		}
+	var scope RuleScope
+	var err error
+	switch r.Scope {
+	case ScopeSession:
+		scope, err = SessionScope(r.SessionID)
+	case ScopeProject:
+		scope, err = ProjectScope(r.ProjectDir)
+	case ScopeGlobal:
+		scope = GlobalScope()
+	default:
+		err = fmt.Errorf("%w: unknown scope %q", ErrInvalidRule, r.Scope)
 	}
-	key, ok := r.Scope.key(r.SessionID, r.ProjectDir)
-	if !ok {
-		return Rule{}, fmt.Errorf("%w: scope %q has no usable key", ErrInvalidRule, r.Scope)
+	if err != nil {
+		return Rule{}, err
 	}
-	return NewRule(r.Scope, key, r.Tool, r.SourceFingerprint, r.Subject, r.Decision)
+	return NewRule(scope, r.Tool, r.SourceFingerprint, r.Subject, r.Decision)
 }
 
 // ID is derived from the rule's scope, tool and subject, so re-remembering the
 // same rule is an upsert and the identity is a durable handle for forgetting it.
 func (r Rule) ID() string {
-	return "rule_" + identity.DigestStrings(string(r.Scope), r.ScopeKey, r.Tool.String(), string(r.Subject.Type), r.Subject.Value).String()
+	return "rule_" + identity.DigestStrings(string(r.scope.kind), r.scope.key, r.tool.String(), string(r.subject.Type), r.subject.Value).String()
 }

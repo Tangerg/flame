@@ -255,3 +255,16 @@ type resolutionFixture struct {
 	interrupts []transcript.Interrupt
 	bindings   []InterruptBinding
 }
+
+func TestInterruptKeyIsStableAndKindSensitive(t *testing.T) {
+	shell := testsupport.BuiltInTool(t, "shell")
+	arguments := `{"command":"go test ./..."}`
+	approvalPrompt := ApprovalPrompt{Tool: shell, Arguments: arguments}
+	first := InterruptKey(approvalPrompt)
+	if again := InterruptKey(approvalPrompt); again != first {
+		t.Fatalf("key changed between equal prompts: %q != %q", first, again)
+	}
+	if question := InterruptKey(QuestionPrompt{ToolName: shell.ModelName(), Arguments: arguments}); question == first {
+		t.Fatalf("key ignored the interrupt kind: %q", first)
+	}
+}

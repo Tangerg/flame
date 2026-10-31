@@ -8,8 +8,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 // handlerWithApprovals builds a Handler whose only wired use case is approvals,
@@ -39,9 +39,9 @@ func (a *approvalPolicyFake) ListRules(_ context.Context, sessionID string) ([]a
 	a.rulesForSession = sessionID
 	var view []approvals.RuleView
 	for _, rule := range a.rules {
-		entry := approvals.RuleView{ID: rule.ID(), Scope: rule.Scope, Tool: rule.Tool, Subject: rule.Subject, Decision: rule.Decision}
-		if rule.Scope == approval.ScopeProject {
-			entry.ProjectDir = rule.ScopeKey
+		entry := approvals.RuleView{ID: rule.ID(), Scope: rule.Scope().Kind(), Tool: rule.Tool(), Subject: rule.Subject(), Decision: rule.Decision()}
+		if rule.Scope().Kind() == approval.ScopeProject {
+			entry.ProjectDir = rule.Scope().Key()
 		}
 		view = append(view, entry)
 	}
@@ -106,19 +106,12 @@ func TestGetApprovalModeRejectsUnknownDomainValue(t *testing.T) {
 }
 
 func TestListApprovalRulesMapsToWire(t *testing.T) {
-	rt := &approvalPolicyFake{rules: []approval.Rule{{
-		Scope:    approval.ScopeProject,
-		ScopeKey: "/repo",
-		Tool: func() tool.Ref {
-			ref, err := tool.BuiltIn("shell")
-			if err != nil {
-				panic(err)
-			}
-			return ref
-		}(),
-		Subject:  approval.InvocationSubject("npm test"),
-		Decision: approval.Allow,
-	}}}
+	shell := testsupport.BuiltInTool(t, "shell")
+	rule, err := approval.NewRule(testsupport.RuleScope(t, approval.ScopeProject, "/repo"), shell, testsupport.ToolFingerprint(shell), approval.InvocationSubject("npm test"), approval.Allow)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rt := &approvalPolicyFake{rules: []approval.Rule{rule}}
 	s := handlerWithApprovals(rt)
 
 	got, err := s.ListApprovalRules(context.Background(), protocol.ListApprovalRulesRequest{SessionID: "ses_1"})

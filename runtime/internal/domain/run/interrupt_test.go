@@ -15,16 +15,6 @@ func TestInterruptTypesAreClosed(t *testing.T) {
 	}
 }
 
-func TestKeyIsStableAndKindSensitive(t *testing.T) {
-	first := InterruptKey(InterruptApproval, "shell", `{"command":"go test ./..."}`)
-	if again := InterruptKey(InterruptApproval, "shell", `{"command":"go test ./..."}`); again != first {
-		t.Fatalf("Key() changed between equal inputs: %q != %q", first, again)
-	}
-	if question := InterruptKey(InterruptQuestion, "shell", `{"command":"go test ./..."}`); question == first {
-		t.Fatalf("Key() ignored interrupt kind: %q", first)
-	}
-}
-
 func TestQuestionAnswerProjectionCannotChangeAcceptedResolution(t *testing.T) {
 	original := [][]string{{"chosen"}}
 	resolution, err := NewQuestionAnswer(original)

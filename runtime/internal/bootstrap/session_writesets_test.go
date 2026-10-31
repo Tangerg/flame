@@ -844,7 +844,7 @@ func TestApplyRestoreClearsSessionOwnedProjections(t *testing.T) {
 
 func testAllowRule(t *testing.T, scope approval.Scope, scopeKey string, toolName builtincontract.Name) approval.Rule {
 	t.Helper()
-	rule, err := approval.NewRule(scope, scopeKey, testsupport.BuiltInTool(t, toolName), testsupport.ToolFingerprint(testsupport.BuiltInTool(t, toolName)), approval.Subject{Type: approval.SubjectAll}, approval.Allow)
+	rule, err := approval.NewRule(testsupport.RuleScope(t, scope, scopeKey), testsupport.BuiltInTool(t, toolName), testsupport.ToolFingerprint(testsupport.BuiltInTool(t, toolName)), approval.Subject{Type: approval.SubjectAll}, approval.Allow)
 	if err != nil {
 		t.Fatalf("new approval rule: %v", err)
 	}

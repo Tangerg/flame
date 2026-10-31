@@ -109,17 +109,12 @@ func (r ResumeAcceptance) Pending() Pending { return r.expected.Clone() }
 func (r ResumeAcceptance) Answers() []InterruptAnswer { return slices.Clone(r.answers) }
 
 // WithRememberedRules binds the standing rules the acceptance persists together
-// with its answers. Each rule is already derived from a confirmed invocation and
-// validated against its frozen source authority, so this only records them on an
+// with its answers. Each rule was constructed from a confirmed invocation and
+// checked against its frozen source authority, so this only records them on an
 // isolated copy of the acceptance.
-func (r ResumeAcceptance) WithRememberedRules(rules []approval.Rule) (ResumeAcceptance, error) {
-	for index, rule := range rules {
-		if err := rule.Validate(); err != nil {
-			return ResumeAcceptance{}, fmt.Errorf("runs: resume acceptance rule[%d]: %w", index, err)
-		}
-	}
+func (r ResumeAcceptance) WithRememberedRules(rules []approval.Rule) ResumeAcceptance {
 	r.rememberedRules = slices.Clone(rules)
-	return r, nil
+	return r
 }
 
 // RememberedRules returns an isolated copy of the standing rules the acceptance

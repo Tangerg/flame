@@ -144,8 +144,8 @@ func TestVisibleRuleRelationRejectsOverCapacity(t *testing.T) {
 }
 
 func TestSessionScopedApprovalIdentityIsExact(t *testing.T) {
-	if _, err := approval.NewRule(approval.ScopeSession, "ses_ one", testsupport.BuiltInTool(t, "shell"), testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")), approval.Subject{Type: approval.SubjectAll}, approval.Allow); !errors.Is(err, approval.ErrInvalidRule) {
-		t.Fatalf("NewRule error = %v, want ErrInvalidRule", err)
+	if _, err := approval.SessionScope("ses_ one"); !errors.Is(err, approval.ErrInvalidRule) {
+		t.Fatalf("SessionScope error = %v, want ErrInvalidRule", err)
 	}
 	if _, _, err := approval.Decide(nil, approval.Query{SessionID: "ses_\u200bhidden", Tool: testsupport.BuiltInTool(t, "shell"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell"))}); !errors.Is(err, approval.ErrInvalidQuery) {
 		t.Fatalf("Decide error = %v, want ErrInvalidQuery", err)
@@ -157,23 +157,33 @@ func TestSessionScopedApprovalIdentityIsExact(t *testing.T) {
 	}
 }
 
-func TestRuleValidationRejectsCorruptDurableValues(t *testing.T) {
-	valid := mustRule(t, approval.ScopeProject, "/repo", "shell", approval.Subject{Type: approval.SubjectGlob, Value: "npm run *"}, approval.Allow)
+func TestRuleConstructionRejectsCorruptDurableValues(t *testing.T) {
+	shell := testsupport.BuiltInTool(t, "shell")
+	project := testsupport.RuleScope(t, approval.ScopeProject, "/repo")
 	tests := []struct {
-		name   string
-		mutate func(*approval.Rule)
+		name string
+		make func() error
 	}{
-		{name: "unknown scope", mutate: func(rule *approval.Rule) { rule.Scope = approval.Scope("team") }},
-		{name: "missing scope key", mutate: func(rule *approval.Rule) { rule.ScopeKey = "" }},
-		{name: "unknown decision", mutate: func(rule *approval.Rule) { rule.Decision = approval.Decision("maybe") }},
-		{name: "invalid glob", mutate: func(rule *approval.Rule) { rule.Subject.Value = "[" }},
+		{name: "unknown scope", make: func() error { _, err := approval.RestoreRuleScope(approval.Scope("team"), "/repo"); return err }},
+		{name: "missing scope key", make: func() error { _, err := approval.RestoreRuleScope(approval.ScopeProject, ""); return err }},
+		{name: "global scope key", make: func() error { _, err := approval.RestoreRuleScope(approval.ScopeGlobal, "/repo"); return err }},
+		{name: "unconstructed scope", make: func() error {
+			_, err := approval.NewRule(approval.RuleScope{}, shell, testsupport.ToolFingerprint(shell), approval.Subject{Type: approval.SubjectAll}, approval.Allow)
+			return err
+		}},
+		{name: "unknown decision", make: func() error {
+			_, err := approval.NewRule(project, shell, testsupport.ToolFingerprint(shell), approval.Subject{Type: approval.SubjectAll}, approval.Decision("maybe"))
+			return err
+		}},
+		{name: "invalid glob", make: func() error {
+			_, err := approval.NewRule(project, shell, testsupport.ToolFingerprint(shell), approval.Subject{Type: approval.SubjectGlob, Value: "["}, approval.Allow)
+			return err
+		}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			rule := valid
-			test.mutate(&rule)
-			if err := rule.Validate(); !errors.Is(err, approval.ErrInvalidRule) {
-				t.Fatalf("Validate error = %v, want ErrInvalidRule", err)
+			if err := test.make(); !errors.Is(err, approval.ErrInvalidRule) {
+				t.Fatalf("construction error = %v, want ErrInvalidRule", err)
 			}
 		})
 	}
@@ -181,7 +191,7 @@ func TestRuleValidationRejectsCorruptDurableValues(t *testing.T) {
 
 func mustRule(t *testing.T, scope approval.Scope, scopeKey string, toolName builtincontract.Name, subject approval.Subject, decision approval.Decision) approval.Rule {
 	t.Helper()
-	rule, err := approval.NewRule(scope, scopeKey, testsupport.BuiltInTool(t, toolName), testsupport.ToolFingerprint(testsupport.BuiltInTool(t, toolName)), subject, decision)
+	rule, err := approval.NewRule(testsupport.RuleScope(t, scope, scopeKey), testsupport.BuiltInTool(t, toolName), testsupport.ToolFingerprint(testsupport.BuiltInTool(t, toolName)), subject, decision)
 	if err != nil {
 		t.Fatalf("NewRule: %v", err)
 	}

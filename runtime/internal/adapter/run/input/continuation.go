@@ -101,8 +101,7 @@ func Restore(invocation toolcontract.Invocation) (Continuation, bool, error) {
 // Scope InputRequest the Tool returns as tool.Result{InputRequest} to park on
 // new input. Scope owns the suspension, wait identity, and re-entry.
 func Require(ctx context.Context, invocation toolcontract.Invocation, prompt runs.Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
-	toolName, arguments := prompt.ToolCall()
-	key := run.InterruptKey(prompt.Type(), toolName, arguments)
+	key := runs.InterruptKey(prompt)
 	promptJSON, err := admitRequirement(ctx, prompt)
 	if err != nil {
 		return run.InterruptResolution{}, nil, err

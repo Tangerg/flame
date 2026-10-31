@@ -199,7 +199,7 @@ func (m *memoryRuleStore) DeleteSession(_ context.Context, sessionID string) err
 	defer m.mu.Unlock()
 	delete(m.planning, sessionID)
 	for id, rule := range m.rules {
-		if rule.Scope == approval.ScopeSession && rule.ScopeKey == sessionID {
+		if rule.Scope().Kind() == approval.ScopeSession && rule.Scope().Key() == sessionID {
 			delete(m.rules, id)
 		}
 	}
@@ -207,11 +207,11 @@ func (m *memoryRuleStore) DeleteSession(_ context.Context, sessionID string) err
 }
 
 func ruleVisibleFrom(rule approval.Rule, sessionID, projectDir string) bool {
-	switch rule.Scope {
+	switch rule.Scope().Kind() {
 	case approval.ScopeSession:
-		return rule.ScopeKey == sessionID
+		return rule.Scope().Key() == sessionID
 	case approval.ScopeProject:
-		return projectDir != "" && rule.ScopeKey == projectDir
+		return projectDir != "" && rule.Scope().Key() == projectDir
 	case approval.ScopeGlobal:
 		return true
 	default:

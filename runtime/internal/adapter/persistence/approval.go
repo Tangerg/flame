@@ -10,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/qimu/integrity"
 	"github.com/Tangerg/qimu/sqlite"
 )
 
@@ -28,9 +29,6 @@ func newApprovalRuleStore(db *sql.DB) *ApprovalRuleStore {
 }
 
 func (a *ApprovalRuleStore) Put(ctx context.Context, r approval.Rule) error {
-	if err := r.Validate(); err != nil {
-		return fmt.Errorf("sqlite: put approval rule: %w", err)
-	}
 	_, err := sqlite.Connection(ctx, a.db).ExecContext(ctx, putApprovalRuleSQL, approvalRuleArgs(r)...)
 	if err != nil {
 		return fmt.Errorf("sqlite: put approval rule: %w", err)
@@ -65,22 +63,27 @@ func (a *ApprovalRuleStore) Visible(ctx context.Context, sessionID, projectDir s
 
 	var out []approval.Rule
 	for rows.Next() {
-		var r approval.Rule
-		var storedID, scope, decision, kind, name, fingerprint string
+		var storedID, scope, scopeKey, decision, kind, name, fingerprint string
+		var subject approval.Subject
 		var source storedMCPSource
-		if err := rows.Scan(&storedID, &scope, &r.ScopeKey, &kind, &name, &source.origin, &source.installation, &source.name,
-			&fingerprint, &r.Subject.Type, &r.Subject.Value, &decision); err != nil {
+		if err := rows.Scan(&storedID, &scope, &scopeKey, &kind, &name, &source.origin, &source.installation, &source.name,
+			&fingerprint, &subject.Type, &subject.Value, &decision); err != nil {
 			return nil, fmt.Errorf("sqlite: scan approval rule: %w", err)
 		}
-		if r.Tool, err = decodeRuleTool(kind, name, source); err != nil {
+		ref, err := decodeRuleTool(kind, name, source)
+		if err != nil {
 			return nil, fmt.Errorf("sqlite: decode approval rule %q tool: %w", storedID, err)
 		}
-		if err := r.SourceFingerprint.UnmarshalText([]byte(fingerprint)); err != nil {
+		var digest integrity.Digest
+		if err := digest.UnmarshalText([]byte(fingerprint)); err != nil {
 			return nil, fmt.Errorf("sqlite: decode approval rule %q fingerprint: %w", storedID, err)
 		}
-		r.Scope = approval.Scope(scope)
-		r.Decision = approval.Decision(decision)
-		if err := r.Validate(); err != nil {
+		ruleScope, err := approval.RestoreRuleScope(approval.Scope(scope), scopeKey)
+		if err != nil {
+			return nil, fmt.Errorf("sqlite: decode approval rule %q: %w", storedID, err)
+		}
+		r, err := approval.NewRule(ruleScope, ref, digest, subject, approval.Decision(decision))
+		if err != nil {
 			return nil, fmt.Errorf("sqlite: decode approval rule %q: %w", storedID, err)
 		}
 		if storedID != r.ID() {
@@ -145,20 +148,22 @@ const putApprovalRuleSQL = `INSERT INTO approval_rules
  VALUES (?,?,?,?,?,` + mcpSourceIDQuery + `,?,?,?,?) ON CONFLICT(id) DO UPDATE SET decision=excluded.decision, source_fingerprint=excluded.source_fingerprint`
 
 func approvalRuleArgs(r approval.Rule) []any {
-	args := []any{r.ID(), string(r.Scope), r.ScopeKey, string(r.Tool.Kind())}
+	ref := r.Tool()
+	args := []any{r.ID(), string(r.Scope().Kind()), r.Scope().Key(), string(ref.Kind())}
 	var source []any
-	switch r.Tool.Kind() {
+	switch ref.Kind() {
 	case tool.BuiltInKind:
-		name, _ := r.Tool.BuiltIn()
+		name, _ := ref.BuiltIn()
 		args = append(args, string(name))
 		source = noMCPSource()
 	case tool.MCPKind:
-		server, remote, _ := r.Tool.MCP()
+		server, remote, _ := ref.MCP()
 		args = append(args, remote.String())
 		source = mcpSourceArgs(server)
 	}
 	args = append(args, source...)
-	return append(args, r.SourceFingerprint.String(), string(r.Subject.Type), r.Subject.Value, string(r.Decision))
+	subject := r.Subject()
+	return append(args, r.SourceFingerprint().String(), string(subject.Type), subject.Value, string(r.Decision()))
 }
 
 func decodeRuleTool(kind, name string, source storedMCPSource) (tool.Ref, error) {

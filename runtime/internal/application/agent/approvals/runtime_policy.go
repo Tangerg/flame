@@ -223,7 +223,7 @@ func (r *RuntimePolicy) ListRules(ctx context.Context, sessionID string) ([]Rule
 	}
 	refs := make([]tool.Ref, 0, len(rules))
 	for _, rule := range rules {
-		refs = append(refs, rule.Tool)
+		refs = append(refs, rule.Tool())
 	}
 	current, err := r.authorities.Fingerprints(ctx, refs)
 	if err != nil {
@@ -231,13 +231,13 @@ func (r *RuntimePolicy) ListRules(ctx context.Context, sessionID string) ([]Rule
 	}
 	view := make([]RuleView, 0, len(rules))
 	for _, rule := range rules {
-		authority, found := current[rule.Tool]
+		authority, found := current[rule.Tool()]
 		entry := RuleView{
-			ID: rule.ID(), Scope: rule.Scope, Tool: rule.Tool, Subject: rule.Subject, Decision: rule.Decision,
-			Stale: !found || authority != rule.SourceFingerprint,
+			ID: rule.ID(), Scope: rule.Scope().Kind(), Tool: rule.Tool(), Subject: rule.Subject(), Decision: rule.Decision(),
+			Stale: !found || authority != rule.SourceFingerprint(),
 		}
-		if rule.Scope == approval.ScopeProject {
-			entry.ProjectDir = rule.ScopeKey
+		if rule.Scope().Kind() == approval.ScopeProject {
+			entry.ProjectDir = rule.Scope().Key()
 		}
 		view = append(view, entry)
 	}

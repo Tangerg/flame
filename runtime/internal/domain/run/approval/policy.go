@@ -145,18 +145,22 @@ func (r Resolution) Validate() error {
 	return nil
 }
 
-// Rule is one standing approval decision. A rule matches a tool call when the
-// call's scope key matches (same session / same project dir / always for
-// global), the tool reference and source fingerprint match, and the call's
-// per-tool subject matches the explicit Subject matcher.
+// Rule is one standing approval decision. A rule matches a tool call visible
+// from its scope when the tool reference and source fingerprint match and the
+// call's per-tool subject matches the explicit Subject matcher.
 type Rule struct {
-	Scope             Scope  // session | project | global
-	ScopeKey          string // session id | project dir | "" for global
-	Tool              tool.Ref
-	SourceFingerprint integrity.Digest
-	Subject           Subject
-	Decision          Decision // allow | deny
+	scope    RuleScope
+	tool     tool.Ref
+	source   integrity.Digest
+	subject  Subject
+	decision Decision
 }
+
+func (r Rule) Scope() RuleScope                    { return r.scope }
+func (r Rule) Tool() tool.Ref                      { return r.tool }
+func (r Rule) SourceFingerprint() integrity.Digest { return r.source }
+func (r Rule) Subject() Subject                    { return r.subject }
+func (r Rule) Decision() Decision                  { return r.decision }
 
 // Query identifies one gated tool call for [Policy.Decide]. ProjectDir is the
 // call's working directory (the project scope key); empty for sessions without

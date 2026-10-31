@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"slices"
+	"strconv"
 	"strings"
 
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
@@ -83,6 +85,20 @@ type Interrupt interface {
 	// aggregate or application event.
 	Validate() error
 	clone() Interrupt
+}
+
+// InterruptKey is the stable identity prompt is answered under. The kind is
+// part of it so an approval and a question over the same call never collide;
+// the hash keeps serialized keys compact for transport and durable stores.
+func InterruptKey(prompt Interrupt) string {
+	name, arguments := prompt.ToolCall()
+	h := fnv.New64a()
+	_, _ = h.Write([]byte(prompt.Type()))
+	_, _ = h.Write([]byte{0})
+	_, _ = h.Write([]byte(name))
+	_, _ = h.Write([]byte{0})
+	_, _ = h.Write([]byte(arguments))
+	return string(prompt.Type()) + "." + strconv.FormatUint(h.Sum64(), 16)
 }
 
 func validateInterrupt(interrupt Interrupt) error {

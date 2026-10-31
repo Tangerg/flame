@@ -213,7 +213,7 @@ func TestRuntimePolicyIsolatesVisibleRuleStorage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Rules after caller mutation: %v", err)
 	}
-	want := RuleView{ID: rule.ID(), Scope: rule.Scope, Tool: rule.Tool, Subject: rule.Subject, Decision: rule.Decision}
+	want := RuleView{ID: rule.ID(), Scope: rule.Scope().Kind(), Tool: rule.Tool(), Subject: rule.Subject(), Decision: rule.Decision()}
 	if len(got) != 1 || got[0] != want {
 		t.Fatalf("Rules after caller mutation = %+v, want %+v", got, rule)
 	}
@@ -221,7 +221,7 @@ func TestRuntimePolicyIsolatesVisibleRuleStorage(t *testing.T) {
 
 func mustRuntimePolicyRule(t *testing.T, scope approval.Scope, scopeKey string, decision approval.Decision) approval.Rule {
 	t.Helper()
-	rule, err := approval.NewRule(scope, scopeKey, testsupport.BuiltInTool(t, "shell"), testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")), approval.Subject{Type: approval.SubjectAll}, decision)
+	rule, err := approval.NewRule(testsupport.RuleScope(t, scope, scopeKey), testsupport.BuiltInTool(t, "shell"), testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")), approval.Subject{Type: approval.SubjectAll}, decision)
 	if err != nil {
 		t.Fatalf("NewRule: %v", err)
 	}
