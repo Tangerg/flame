@@ -15,6 +15,7 @@ import (
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
 	"github.com/Tangerg/oolong/core/input"
+	"github.com/Tangerg/oolong/core/program"
 	"github.com/Tangerg/oolong/highlight"
 )
 
@@ -348,4 +349,21 @@ func TestReaderQueriesFollowTheirTopicAndItsResync(t *testing.T) {
 			t.Errorf("follows(%+v) = %t, want %t", test.event, got, test.want)
 		}
 	}
+}
+
+// testScreenHost presents screens over stack; operations is nil when the test
+// starts no background work.
+func testScreenHost(t *testing.T, transcript *transcriptView, stack *headless.Stack, operations *operationOwner) screenHost {
+	t.Helper()
+	status := &statusView{}
+	host := screenHost{
+		status: status, message: status.note, stack: stack,
+		theme: transcript.theme, glyphs: transcript.glyphs, clipboard: (&program.Runtime{}).Clipboard(),
+		session: &sessionState{context: newSessionContextLease()},
+	}
+	if operations != nil {
+		host.tasks = unattachedTasks(operations)
+		host.reader = testReaderSurface(t, operations)
+	}
+	return host
 }

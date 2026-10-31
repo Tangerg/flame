@@ -601,7 +601,7 @@ func TestObservedRuntimeResourcesRequireTheirPublishedFeature(t *testing.T) {
 		runtimeProfile: &profile,
 		goals:          new(goalServiceStub),
 		skills:         newSkillServiceStub(),
-		mcp:            newMCPServiceStub(),
+		mcp:            &mcpScreens{service: newMCPServiceStub()},
 		plugins:        &installedPluginCatalog{},
 		hooks:          &hookServiceStub{},
 	}

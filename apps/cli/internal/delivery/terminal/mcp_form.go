@@ -167,48 +167,48 @@ func (m mcpFormDraft) validateSelections() error {
 	return nil
 }
 
-func (a *app) openMCPServerForm(mode mcpFormMode, server protocol.MCPServer) {
-	a.showMCPFormStep(newMCPFormFlow(mode, server))
+func (m *mcpScreens) openMCPServerForm(mode mcpFormMode, server protocol.MCPServer) {
+	m.showMCPFormStep(newMCPFormFlow(mode, server))
 }
 
-func (a *app) showMCPFormStep(flow *mcpFormFlow) {
+func (m *mcpScreens) showMCPFormStep(flow *mcpFormFlow) {
 	if flow.state != mcpFormEditing {
 		return
 	}
-	if a.dialogs.mcpForm != nil && a.dialogs.mcpForm != flow {
-		a.closeMCPForm(a.dialogs.mcpForm)
+	if m.form != nil && m.form != flow {
+		m.closeMCPForm(m.form)
 	}
-	a.dialogs.mcpForm = flow
+	m.form = flow
 	if flow.dialog != nil {
 		flow.dialog.Controller().Dismiss()
 	}
-	fields, secretFields := a.mcpFormFields(flow)
+	fields, secretFields := m.mcpFormFields(flow)
 	flow.secretFields = append(flow.secretFields, secretFields...)
 	form := headless.NewForm(fields...)
 	form.Keys = headless.DefaultFormKeys()
 	var dialog *kit.Dialog
 	form.Done = func() {
-		if a.dialogs.mcpForm != flow || flow.dialog != dialog || flow.state != mcpFormEditing {
+		if m.form != flow || flow.dialog != dialog || flow.state != mcpFormEditing {
 			return
 		}
 		if flow.advance() {
-			a.showMCPFormStep(flow)
+			m.showMCPFormStep(flow)
 			return
 		}
-		a.submitMCPForm(flow)
+		m.submitMCPForm(flow)
 	}
 	form.GaveUp = func() {
-		if a.dialogs.mcpForm != flow || flow.dialog != dialog || flow.state != mcpFormEditing {
+		if m.form != flow || flow.dialog != dialog || flow.state != mcpFormEditing {
 			return
 		}
 		if flow.back() {
-			a.showMCPFormStep(flow)
+			m.showMCPFormStep(flow)
 			return
 		}
-		a.closeMCPForm(flow)
+		m.closeMCPForm(flow)
 	}
 	body := kit.NewForm(kit.FormConfig{
-		Theme: a.transcript.theme, Glyphs: a.transcript.glyphs, Controller: form,
+		Theme: m.theme, Glyphs: m.glyphs, Controller: form,
 		Hints: []keymap.Action{headless.Submit, headless.Cancel},
 	})
 	title := "Create MCP server"
@@ -221,7 +221,7 @@ func (a *app) showMCPFormStep(flow *mcpFormFlow) {
 	step, total, label := flow.progress()
 	title += fmt.Sprintf(" · %d/%d", step, total)
 	dialog = kit.NewDialog(kit.DialogConfig{
-		Stack: &a.stack, Theme: a.transcript.theme, Glyphs: a.transcript.glyphs,
+		Stack: m.stack, Theme: m.theme, Glyphs: m.glyphs,
 		Title: title, Body: body,
 		Where: layout.Placement{Width: 92, Height: formDialogHeight(body.HeightForWidth(88), len(fields), 24)},
 	})
@@ -231,21 +231,21 @@ func (a *app) showMCPFormStep(flow *mcpFormFlow) {
 	dialog.Controller().Show()
 }
 
-func (a *app) submitMCPForm(flow *mcpFormFlow) {
-	if a.dialogs.mcpForm != flow || (flow.state != mcpFormEditing && flow.state != mcpFormUncertain) {
+func (m *mcpScreens) submitMCPForm(flow *mcpFormFlow) {
+	if m.form != flow || (flow.state != mcpFormEditing && flow.state != mcpFormUncertain) {
 		return
 	}
-	submission, err := flow.prepare(a.mcp, a.replayPolicy)
+	submission, err := flow.prepare(m.service, m.replayPolicy)
 	if err != nil {
 		flow.feedback("MCP form: " + err.Error())
 		return
 	}
 	if submission == nil {
-		a.closeMCPForm(flow)
-		a.message("MCP server configuration unchanged")
+		m.closeMCPForm(flow)
+		m.message("MCP server configuration unchanged")
 		return
 	}
-	presentation := a.session.context
+	presentation := m.session.context
 	apply := func(result mcpFormResult, err error) {
 		if flow.state == mcpFormClosed {
 			return
@@ -254,65 +254,65 @@ func (a *app) submitMCPForm(flow *mcpFormFlow) {
 		if err != nil {
 			message := submission.label + " failed: " + err.Error()
 			if flow.state == mcpFormEditing {
-				a.showMCPFormStep(flow)
+				m.showMCPFormStep(flow)
 				flow.feedback(message)
 			} else {
 				message = submission.label + " outcome unknown: " + err.Error()
-				a.showMCPFormSubmission(flow, message)
+				m.showMCPFormSubmission(flow, message)
 			}
-			a.message(message)
+			m.message(message)
 			return
 		}
-		a.closeMCPForm(flow)
+		m.closeMCPForm(flow)
 		if flow.mode == mcpFormProbe {
 			message, err := mcpProbeMessage(result.probeName, result.probe)
 			if err != nil {
-				a.message(submission.label + " returned an invalid result: " + err.Error())
+				m.message(submission.label + " returned an invalid result: " + err.Error())
 				return
 			}
-			a.message(message)
+			m.message(message)
 			return
 		}
 		document, err := mcpServersDocument([]protocol.MCPServer{result.server})
 		if err != nil {
-			a.message(submission.label + " returned an invalid result: " + err.Error())
+			m.message(submission.label + " returned an invalid result: " + err.Error())
 			return
 		}
-		a.message(submission.label + " complete")
-		if a.session.context.current(presentation) {
-			a.reader.open(a.mcpServersReaderQuery(), document)
-			a.status.note("MCP server · " + mcp.ServerLabel(result.server.ID))
+		m.message(submission.label + " complete")
+		if m.session.context.current(presentation) {
+			m.reader.open(m.mcpServersReaderQuery(), document)
+			m.status.note("MCP server · " + mcp.ServerLabel(result.server.ID))
 		}
 	}
 	var started bool
 	if flow.mode == mcpFormProbe {
-		started = a.tasks.application(mcpOperation, false, submission.work, apply)
+		started = m.tasks.application(mcpOperation, false, submission.work, apply)
 	} else {
-		started = a.tasks.admissionMutation(mcpOperation, false, submission.work, apply)
+		started = m.tasks.admissionMutation(mcpOperation, false, submission.work, apply)
 	}
 	if !started {
 		flow.feedback("another MCP operation is running")
-		a.message("another MCP operation is running")
+		m.message("another MCP operation is running")
 		return
 	}
 	flow.admitted(submission)
-	a.status.note(submission.label)
-	a.showMCPFormSubmission(flow, submission.label)
+	m.status.note(submission.label)
+	m.showMCPFormSubmission(flow, submission.label)
 }
 
-func (a *app) showMCPFormSubmission(flow *mcpFormFlow, message string) {
+func (m *mcpScreens) showMCPFormSubmission(flow *mcpFormFlow, message string) {
 	flow.dialog.Controller().Dismiss()
 	form := headless.NewForm()
 	form.Keys = headless.DefaultFormKeys()
 	var dialog *kit.Dialog
 	form.Done = func() {
-		if a.dialogs.mcpForm == flow && flow.dialog == dialog {
-			a.submitMCPForm(flow)
+		if m.form == flow && flow.dialog == dialog {
+			m.submitMCPForm(flow)
 		}
 	}
 	form.GaveUp = func() {
-		if a.dialogs.mcpForm == flow && flow.dialog == dialog {
-			a.closeMCPForm(flow)
+		if m.form == flow && flow.dialog == dialog {
+			m.closeMCPForm(flow)
 		}
 	}
 	title := "Submitting MCP form"
@@ -324,10 +324,10 @@ func (a *app) showMCPFormSubmission(flow *mcpFormFlow, message string) {
 		title = "Outcome unknown · replay is unavailable"
 	}
 	body := kit.NewForm(kit.FormConfig{
-		Theme: a.transcript.theme, Glyphs: a.transcript.glyphs, Controller: form, Title: title + "\n" + message, Hints: hints,
+		Theme: m.theme, Glyphs: m.glyphs, Controller: form, Title: title + "\n" + message, Hints: hints,
 	})
 	dialog = kit.NewDialog(kit.DialogConfig{
-		Stack: &a.stack, Theme: a.transcript.theme, Glyphs: a.transcript.glyphs,
+		Stack: m.stack, Theme: m.theme, Glyphs: m.glyphs,
 		Title: "MCP submission", Description: message, Body: body,
 		Where: layout.Placement{Width: 92, Height: formDialogHeight(body.HeightForWidth(88), 0, 24)},
 	})
@@ -336,20 +336,20 @@ func (a *app) showMCPFormSubmission(flow *mcpFormFlow, message string) {
 	dialog.Controller().Show()
 }
 
-func (a *app) closeMCPForm(flow *mcpFormFlow) {
+func (m *mcpScreens) closeMCPForm(flow *mcpFormFlow) {
 	flow.close()
-	if a.dialogs.mcpForm == flow {
-		a.dialogs.mcpForm = nil
+	if m.form == flow {
+		m.form = nil
 	}
 }
 
-func (a *app) mcpFormFields(flow *mcpFormFlow) ([]headless.Field, []*headless.Text) {
+func (m *mcpScreens) mcpFormFields(flow *mcpFormFlow) ([]headless.Field, []*headless.Text) {
 	draft := &flow.draft
 	fields := make([]headless.Field, 0, 5)
 	secretFields := make([]*headless.Text, 0, 3)
 	textField := func(label, placeholder string, value *string, check func(string) error) *headless.Text {
 		field := headless.NewText(headless.TextConfig{Label: label, Placeholder: placeholder, Value: headless.Bind(value), Check: check})
-		field.Clipboard = a.loop.Clipboard()
+		field.Clipboard = m.clipboard
 		fields = append(fields, field)
 		return field
 	}

@@ -8,11 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/program"
 )
 
 func TestMCPFormPreservesExactProcessMaterial(t *testing.T) {
@@ -72,17 +70,18 @@ func TestMCPEnvironmentFormPreservesProcessValues(t *testing.T) {
 
 func TestMCPFormRejectsSubmissionFromAReplacedStepPresentation(t *testing.T) {
 	transcript := testTranscriptView(t)
-	application := &app{loop: &program.Runtime{}, transcript: transcript}
-	application.stack.SetBase(transcript)
+	var stack headless.Stack
+	stack.SetBase(transcript)
+	screens := &mcpScreens{screenHost: testScreenHost(t, transcript, &stack, nil)}
 	flow := newMCPFormFlow(mcpFormCreate, protocol.MCPServer{})
 	flow.draft.name = "docs"
 	flow.draft.transport = protocol.MCPTransportStreamableHTTP
-	application.showMCPFormStep(flow)
-	drawRoot(t, &application.stack, 96, 28)
+	screens.showMCPFormStep(flow)
+	drawRoot(t, &stack, 96, 28)
 
 	oldDialog := flow.dialog
-	application.showMCPFormStep(flow)
-	application.stack.Handle(input.Key{Code: input.Enter})
+	screens.showMCPFormStep(flow)
+	stack.Handle(input.Key{Code: input.Enter})
 	if flow.step != mcpFormGeneral {
 		t.Fatalf("stale form advanced to step %d", flow.step)
 	}
@@ -90,12 +89,12 @@ func TestMCPFormRejectsSubmissionFromAReplacedStepPresentation(t *testing.T) {
 		t.Fatal("stale form replaced or dismissed the current dialog")
 	}
 
-	drawRoot(t, &application.stack, 96, 28)
-	application.stack.Handle(input.Key{Code: input.Enter})
+	drawRoot(t, &stack, 96, 28)
+	stack.Handle(input.Key{Code: input.Enter})
 	if flow.step != mcpFormHTTP {
 		t.Fatalf("current form advanced to step %d, want HTTP", flow.step)
 	}
-	application.closeMCPForm(flow)
+	screens.closeMCPForm(flow)
 }
 
 func TestMCPFormFlowRoutesOnlyThroughRelevantConnection(t *testing.T) {
@@ -193,9 +192,11 @@ func TestMCPFormBusyAdmissionKeepsTheOriginalDraftAndStep(t *testing.T) {
 				t.Fatal("could not occupy MCP operation")
 			}
 			service := newMCPServiceStub()
-			application := &app{loop: &program.Runtime{}, transcript: transcript, operations: operations, tasks: unattachedTasks(operations), mcp: service, status: &statusView{}, execution: executionState{conversation: conversation.New()}, session: sessionState{context: newSessionContextLease()}}
-			application.replayPolicy = testReplayPolicy(t, featuredTerminalProfile(t))
-			application.stack.SetBase(transcript)
+			var stack headless.Stack
+			stack.SetBase(transcript)
+			host := testScreenHost(t, transcript, &stack, operations)
+			host.replayPolicy = testReplayPolicy(t, featuredTerminalProfile(t))
+			application := &mcpScreens{screenHost: host, service: service}
 			flow := newMCPFormFlow(test.mode, service.servers[0])
 			flow.step = mcpFormPolicy
 			flow.draft.name = "docs"
@@ -218,7 +219,7 @@ func TestMCPFormBusyAdmissionKeepsTheOriginalDraftAndStep(t *testing.T) {
 			if flow.step != mcpFormPolicy || flow.draft != before || secret.Text() != before.authorization {
 				t.Fatal("busy admission discarded original input")
 			}
-			frame := drawRoot(t, &application.stack, 96, 28)
+			frame := drawRoot(t, &stack, 96, 28)
 			if !strings.Contains(frame, "another MCP operation is running") {
 				t.Fatalf("busy refusal is not visible: %s", frame)
 			}

@@ -64,7 +64,7 @@ type app struct {
 	modelConfig      ModelConfiguration
 	goals            Goals
 	skills           Skills
-	mcp              MCPManagement
+	mcp              *mcpScreens
 	plugins          Plugins
 	diagnosticTools  DiagnosticTools
 	authoringContext AuthoringContext
@@ -199,7 +199,7 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 		ctx: cfg.context, loop: loop, runtime: cfg.runtime, workspaces: cfg.workspaces,
 		runtimeProfile: cfg.runtimeProfile, replayPolicy: cfg.replayPolicy,
 		changes: cfg.changes, transfers: cfg.transfers, usage: cfg.usage, modelConfig: cfg.modelConfig,
-		goals: cfg.goals, skills: cfg.skills, mcp: cfg.mcp, plugins: cfg.plugins,
+		goals: cfg.goals, skills: cfg.skills, plugins: cfg.plugins,
 		diagnosticTools:  cfg.diagnosticTools,
 		authoringContext: cfg.authoringContext, hooks: cfg.hooks, feedback: cfg.feedback,
 		session: sessionState{current: cfg.snapshot.Session, context: newSessionContextLease()},
@@ -250,6 +250,7 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 	a.configureCompletion(appearance)
 	a.registerCommands()
 	a.buildInterface(appearance, cfg.keyBindings.editor)
+	a.buildScreens(cfg)
 	for _, result := range cfg.recoveredSteers {
 		a.steers.accept(result)
 	}
@@ -411,8 +412,8 @@ func (a *app) Close(ctx context.Context) error {
 	a.operations.Cancel(completionOperation)
 	a.cancelPluginCommands()
 	a.operations.Close()
-	if a.dialogs.mcpForm != nil {
-		a.closeMCPForm(a.dialogs.mcpForm)
+	if a.mcp != nil && a.mcp.form != nil {
+		a.mcp.closeMCPForm(a.mcp.form)
 	}
 	a.cancelScheduledDraftSave()
 	// Flush is a serialization barrier: any autosave already in the filesystem

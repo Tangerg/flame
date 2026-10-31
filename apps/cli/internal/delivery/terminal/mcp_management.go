@@ -18,20 +18,25 @@ import (
 
 const mcpAuthorizationPollInterval = 500 * time.Millisecond
 
-func (a *app) ShowMCPServers() {
-	if a.mcp == nil {
-		a.message("this runtime composition has no MCP service")
-		return
-	}
-	a.reader.show(a.mcpServersReaderQuery())
+// mcpScreens manages MCP servers, their tools and authorization through the
+// Runtime's MCP port; form is the server form being filled, if any.
+type mcpScreens struct {
+	screenHost
+	service         MCPManagement
+	form            *mcpFormFlow
+	setApprovalRule func(protocol.SetApprovalRuleRequest) error
 }
 
-func (a *app) mcpServersReaderQuery() *readerQuery {
+func (m *mcpScreens) ShowMCPServers() {
+	m.reader.show(m.mcpServersReaderQuery())
+}
+
+func (m *mcpScreens) mcpServersReaderQuery() *readerQuery {
 	return &readerQuery{
 		status:  "loading MCP servers",
 		follows: followsTopic(protocol.TopicMCPChanged),
 		read: func(ctx context.Context) (readerDocument, error) {
-			servers, err := a.mcp.Servers(ctx)
+			servers, err := m.service.Servers(ctx)
 			if err != nil {
 				return readerDocument{}, err
 			}
@@ -149,29 +154,25 @@ func sortedKeys[V any](values map[string]V) []string {
 	return keys
 }
 
-func (a *app) ShowMCPTools(argument string) {
-	if a.mcp == nil {
-		a.message("this runtime composition has no MCP service")
-		return
-	}
+func (m *mcpScreens) ShowMCPTools(argument string) {
 	var server *protocol.MCPServerID
 	if strings.TrimSpace(argument) != "" {
 		parsed, err := mcp.ParseServerReference(argument)
 		if err != nil {
-			a.message(err.Error())
+			m.message(err.Error())
 			return
 		}
 		server = &parsed
 	}
-	a.reader.show(a.mcpToolsReaderQuery(server))
+	m.reader.show(m.mcpToolsReaderQuery(server))
 }
 
-func (a *app) mcpToolsReaderQuery(server *protocol.MCPServerID) *readerQuery {
+func (m *mcpScreens) mcpToolsReaderQuery(server *protocol.MCPServerID) *readerQuery {
 	return &readerQuery{
 		status:  "loading MCP tools",
 		follows: followsTopic(protocol.TopicMCPChanged),
 		read: func(ctx context.Context) (readerDocument, error) {
-			tools, err := a.mcp.Tools(ctx, server)
+			tools, err := m.service.Tools(ctx, server)
 			if err != nil {
 				return readerDocument{}, err
 			}
@@ -183,7 +184,7 @@ func (a *app) mcpToolsReaderQuery(server *protocol.MCPServerID) *readerQuery {
 			if server != nil {
 				servers = append(servers, *server)
 			} else {
-				configured, err := a.mcp.Servers(ctx)
+				configured, err := m.service.Servers(ctx)
 				if err != nil {
 					return readerDocument{}, err
 				}
@@ -192,7 +193,7 @@ func (a *app) mcpToolsReaderQuery(server *protocol.MCPServerID) *readerQuery {
 				}
 			}
 			for _, id := range servers {
-				exposure, err := a.mcp.ToolExposure(ctx, id)
+				exposure, err := m.service.ToolExposure(ctx, id)
 				if err != nil {
 					return readerDocument{}, err
 				}
@@ -239,26 +240,17 @@ func mcpToolsDocument(server *protocol.MCPServerID, tools []protocol.MCPTool) (r
 	return readerDocument{Title: "MCP tools", Detail: detail, Sections: sections}, nil
 }
 
-func (a *app) OpenMCPCreateForm() error {
-	if a.mcp == nil {
-		return errors.New("this runtime composition has no MCP service")
-	}
-	a.openMCPServerForm(mcpFormCreate, protocol.MCPServer{})
+func (m *mcpScreens) OpenMCPCreateForm() error {
+	m.openMCPServerForm(mcpFormCreate, protocol.MCPServer{})
 	return nil
 }
 
-func (a *app) OpenMCPProbeForm() error {
-	if a.mcp == nil {
-		return errors.New("this runtime composition has no MCP service")
-	}
-	a.openMCPServerForm(mcpFormProbe, protocol.MCPServer{})
+func (m *mcpScreens) OpenMCPProbeForm() error {
+	m.openMCPServerForm(mcpFormProbe, protocol.MCPServer{})
 	return nil
 }
 
-func (a *app) EditMCPServer(argument string) error {
-	if a.mcp == nil {
-		return errors.New("this runtime composition has no MCP service")
-	}
+func (m *mcpScreens) EditMCPServer(argument string) error {
 	if strings.TrimSpace(argument) == "" {
 		return errors.New("usage: /mcp-edit <server>")
 	}
@@ -266,11 +258,11 @@ func (a *app) EditMCPServer(argument string) error {
 	if err != nil {
 		return err
 	}
-	presentation := a.session.context
-	a.status.note("loading MCP server " + mcp.ServerLabel(id))
-	started := a.tasks.application(mcpOperation, false,
+	presentation := m.session.context
+	m.status.note("loading MCP server " + mcp.ServerLabel(id))
+	started := m.tasks.application(mcpOperation, false,
 		func(ctx context.Context) (protocol.MCPServer, error) {
-			servers, err := a.mcp.Servers(ctx)
+			servers, err := m.service.Servers(ctx)
 			if err != nil {
 				return protocol.MCPServer{}, err
 			}
@@ -283,18 +275,18 @@ func (a *app) EditMCPServer(argument string) error {
 		},
 		func(server protocol.MCPServer, err error) {
 			if err != nil {
-				a.message("load MCP server failed: " + err.Error())
+				m.message("load MCP server failed: " + err.Error())
 				return
 			}
-			if !a.session.context.current(presentation) {
-				a.message("MCP server loaded after the active session changed; reopen the editor to continue")
+			if !m.session.context.current(presentation) {
+				m.message("MCP server loaded after the active session changed; reopen the editor to continue")
 				return
 			}
 			if server.ID.Origin.Type == protocol.MCPOriginInstallation {
-				a.message("MCP connection configuration is owned by installation " + server.ID.Origin.InstallationID + "; use flame plugins configure")
+				m.message("MCP connection configuration is owned by installation " + server.ID.Origin.InstallationID + "; use flame plugins configure")
 				return
 			}
-			a.openMCPServerForm(mcpFormUpdate, server)
+			m.openMCPServerForm(mcpFormUpdate, server)
 		},
 	)
 	if !started {
@@ -303,10 +295,7 @@ func (a *app) EditMCPServer(argument string) error {
 	return nil
 }
 
-func (a *app) PrepareDeleteMCPServer(argument string) error {
-	if a.mcp == nil {
-		return errors.New("this runtime composition has no MCP service")
-	}
+func (m *mcpScreens) PrepareDeleteMCPServer(argument string) error {
 	if strings.TrimSpace(argument) == "" {
 		return errors.New("usage: /mcp-delete <server>")
 	}
@@ -314,20 +303,17 @@ func (a *app) PrepareDeleteMCPServer(argument string) error {
 	if err != nil {
 		return err
 	}
-	a.confirmAction("Delete MCP server", "Delete "+mcp.ServerLabel(server)+" and its live connection?", "Delete permanently", func() {
-		a.deleteMCPServer(server)
+	m.confirm("Delete MCP server", "Delete "+mcp.ServerLabel(server)+" and its live connection?", "Delete permanently", "", func() {
+		m.deleteMCPServer(server)
 	})
 	return nil
 }
 
-func (a *app) deleteMCPServer(server protocol.MCPServerID) {
-	a.runMCPAck("deleting MCP server "+mcp.ServerLabel(server), func(ctx context.Context) error { return a.mcp.DeleteServer(ctx, server) })
+func (m *mcpScreens) deleteMCPServer(server protocol.MCPServerID) {
+	m.runMCPAck("deleting MCP server "+mcp.ServerLabel(server), func(ctx context.Context) error { return m.service.DeleteServer(ctx, server) })
 }
 
-func (a *app) ReconnectMCPServer(argument string) error {
-	if a.mcp == nil {
-		return errors.New("this runtime composition has no MCP service")
-	}
+func (m *mcpScreens) ReconnectMCPServer(argument string) error {
 	if strings.TrimSpace(argument) == "" {
 		return errors.New("usage: /mcp-reconnect <server>")
 	}
@@ -335,31 +321,28 @@ func (a *app) ReconnectMCPServer(argument string) error {
 	if err != nil {
 		return err
 	}
-	a.runMCPAck("requesting MCP reconnect "+mcp.ServerLabel(server), func(ctx context.Context) error { return a.mcp.ReconnectServer(ctx, server) })
+	m.runMCPAck("requesting MCP reconnect "+mcp.ServerLabel(server), func(ctx context.Context) error { return m.service.ReconnectServer(ctx, server) })
 	return nil
 }
 
-func (a *app) runMCPAck(label string, command func(context.Context) error) {
-	a.status.note(label)
-	started := a.tasks.admissionMutation(mcpOperation, false,
+func (m *mcpScreens) runMCPAck(label string, command func(context.Context) error) {
+	m.status.note(label)
+	started := m.tasks.admissionMutation(mcpOperation, false,
 		func(ctx context.Context) (struct{}, error) { return struct{}{}, command(ctx) },
 		func(_ struct{}, err error) {
 			if err != nil {
-				a.message(label + " failed: " + err.Error())
+				m.message(label + " failed: " + err.Error())
 				return
 			}
-			a.message(label + " accepted")
+			m.message(label + " accepted")
 		},
 	)
 	if !started {
-		a.message("another MCP operation is running")
+		m.message("another MCP operation is running")
 	}
 }
 
-func (a *app) AuthorizeMCPServer(argument string) error {
-	if a.mcp == nil {
-		return errors.New("this runtime composition has no MCP service")
-	}
+func (m *mcpScreens) AuthorizeMCPServer(argument string) error {
 	if strings.TrimSpace(argument) == "" {
 		return errors.New("usage: /mcp-auth <server>")
 	}
@@ -367,24 +350,24 @@ func (a *app) AuthorizeMCPServer(argument string) error {
 	if err != nil {
 		return err
 	}
-	presentation := a.session.context
-	a.status.note("starting MCP authorization " + mcp.ServerLabel(server))
-	started := a.tasks.admissionMutation(mcpAuthorizationOperation, false,
+	presentation := m.session.context
+	m.status.note("starting MCP authorization " + mcp.ServerLabel(server))
+	started := m.tasks.admissionMutation(mcpAuthorizationOperation, false,
 		func(ctx context.Context) (protocol.MCPAuthorizationAttempt, error) {
-			return a.mcp.StartAuthorization(ctx, server)
+			return m.service.StartAuthorization(ctx, server)
 		},
 		func(attempt protocol.MCPAuthorizationAttempt, err error) {
 			if err != nil {
-				a.message("start MCP authorization failed: " + err.Error())
+				m.message("start MCP authorization failed: " + err.Error())
 				return
 			}
 			// The reader follows this attempt only, so a later reader is not overwritten.
 			view := &readerQuery{status: "MCP authorization"}
-			if a.session.context.current(presentation) {
-				a.reader.open(view, mcpAuthorizationDocument(attempt))
+			if m.session.context.current(presentation) {
+				m.reader.open(view, mcpAuthorizationDocument(attempt))
 			}
 			if attempt.Status.Type == protocol.MCPAuthorizationAttemptPending {
-				a.pollMCPAuthorization(attempt, view)
+				m.pollMCPAuthorization(attempt, view)
 			}
 		},
 	)
@@ -394,25 +377,25 @@ func (a *app) AuthorizeMCPServer(argument string) error {
 	return nil
 }
 
-func (a *app) pollMCPAuthorization(initial protocol.MCPAuthorizationAttempt, view *readerQuery) {
+func (m *mcpScreens) pollMCPAuthorization(initial protocol.MCPAuthorizationAttempt, view *readerQuery) {
 	observer := mcpAuthorizationObserver{
-		service: a.mcp, pollInterval: mcpAuthorizationPollInterval, recovery: runtimeRecoveryBackoff,
+		service: m.service, pollInterval: mcpAuthorizationPollInterval, recovery: runtimeRecoveryBackoff,
 	}
-	started := a.tasks.application(mcpAuthorizationOperation, false,
+	started := m.tasks.application(mcpAuthorizationOperation, false,
 		func(ctx context.Context) (protocol.MCPAuthorizationAttempt, error) {
 			return observer.observe(ctx, initial)
 		},
 		func(attempt protocol.MCPAuthorizationAttempt, err error) {
 			if err != nil {
-				a.message("observe MCP authorization failed: " + err.Error())
+				m.message("observe MCP authorization failed: " + err.Error())
 				return
 			}
-			a.reader.update(view, mcpAuthorizationDocument(attempt))
-			a.message("MCP authorization " + string(attempt.Status.Type) + " · " + mcp.ServerLabel(attempt.Server))
+			m.reader.update(view, mcpAuthorizationDocument(attempt))
+			m.message("MCP authorization " + string(attempt.Status.Type) + " · " + mcp.ServerLabel(attempt.Server))
 		},
 	)
 	if !started {
-		a.message("could not observe MCP authorization " + initial.ID)
+		m.message("could not observe MCP authorization " + initial.ID)
 	}
 }
 
@@ -496,10 +479,7 @@ func mcpAuthorizationDocument(attempt protocol.MCPAuthorizationAttempt) readerDo
 	return paragraphDocument("MCP authorization", detail, lines)
 }
 
-func (a *app) ConfigureMCPTool(arguments string) error {
-	if a.mcp == nil {
-		return errors.New("this runtime composition has no MCP service")
-	}
+func (m *mcpScreens) ConfigureMCPTool(arguments string) error {
 	parts := strings.Fields(arguments)
 	if len(parts) != 3 {
 		return errors.New("usage: /mcp-tool <server> <tool> <enable|disable|allow|deny>")
@@ -515,13 +495,13 @@ func (a *app) ConfigureMCPTool(arguments string) error {
 		if err := protocol.ValidateWireTree(request); err != nil {
 			return err
 		}
-		a.runMCPAck("setting tool exposure "+mcp.ServerLabel(server)+"/"+name, func(ctx context.Context) error { return a.mcp.SetToolExposure(ctx, request) })
+		m.runMCPAck("setting tool exposure "+mcp.ServerLabel(server)+"/"+name, func(ctx context.Context) error { return m.service.SetToolExposure(ctx, request) })
 	case string(protocol.ApprovalRuleDecisionAllow), string(protocol.ApprovalRuleDecisionDeny):
 		request := protocol.SetApprovalRuleRequest{Subject: protocol.ApprovalSubject{Type: protocol.ApprovalSubjectAll}, Tool: protocol.ToolRef{Type: protocol.ToolRefMCP, Server: &server, Name: name}, Scope: protocol.ApprovalRuleScopeGlobal, Decision: protocol.ApprovalRuleDecision(action)}
 		if err := protocol.ValidateWireTree(request); err != nil {
 			return err
 		}
-		return a.setApprovalRule(request)
+		return m.setApprovalRule(request)
 	default:
 		return errors.New("tool action must be enable, disable, allow, or deny")
 	}

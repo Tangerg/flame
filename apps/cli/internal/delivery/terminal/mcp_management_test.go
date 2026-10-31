@@ -678,8 +678,8 @@ func TestMCPApprovalMutationDoesNotWaitForReconnect(t *testing.T) {
 func TestUnscopedMCPToolsIncludesDisabledTools(t *testing.T) {
 	service := newMCPServiceStub()
 	service.disabled = map[string][]string{"docs": {"read"}}
-	app := &app{mcp: service}
-	document, err := app.mcpToolsReaderQuery(nil).read(t.Context())
+	screens := &mcpScreens{service: service}
+	document, err := screens.mcpToolsReaderQuery(nil).read(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
