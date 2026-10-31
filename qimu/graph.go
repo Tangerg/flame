@@ -104,15 +104,52 @@ func (h *Host) validateBindingReadsLocked(reads []bindingRead) error {
 }
 
 func (h *Host) resolveLocked(roots []ExportRef, unitRoots []UnitRef, realm RealmID, choices []BindingChoice) (*BindingPlan, error) {
+	selected, refused, err := h.indexChoicesLocked(choices)
+	if err != nil {
+		return nil, err
+	}
+	resolution := &bindingResolution{
+		host: h, realm: realm, selected: selected, refused: refused,
+		preparation: &bindingPreparation{}, visiting: map[UnitRef]bool{}, visited: map[UnitRef]bool{},
+	}
+	for _, root := range roots {
+		if err := h.exportLocked(root); err != nil {
+			return nil, err
+		}
+		if err := resolution.resolve(root.Unit()); err != nil {
+			return nil, err
+		}
+	}
+	for _, root := range unitRoots {
+		if err := resolution.resolve(root); err != nil {
+			return nil, err
+		}
+	}
+	result := BindingSnapshot{FormatVersion: 1, Roots: slices.Clone(roots), UnitRoots: slices.Clone(unitRoots), Units: resolution.units}
+	if result.Roots == nil {
+		result.Roots = []ExportRef{}
+	}
+	if result.Units == nil {
+		result.Units = []UnitBinding{}
+	}
+	if err := result.Validate(); err != nil {
+		return nil, err
+	}
+	return &BindingPlan{owner: h.identity, binding: result, realm: realm, durable: true, preparation: resolution.preparation}, nil
+}
+
+// indexChoicesLocked admits the caller's explicit provider choices and refusals,
+// one per declared import slot.
+func (h *Host) indexChoicesLocked(choices []BindingChoice) (map[choiceKey][]ExportRef, map[choiceKey]error, error) {
 	selected := make(map[choiceKey][]ExportRef, len(choices))
 	refused := make(map[choiceKey]error)
 	for _, choice := range choices {
 		if choice.Providers == nil && choice.Failure == nil || choice.Providers != nil && choice.Failure != nil {
-			return nil, ErrInvalid
+			return nil, nil, ErrInvalid
 		}
 		unit, _, err := h.unitLocked(choice.Unit)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		found := false
 		for _, declared := range unit.Declaration.Imports {
@@ -121,116 +158,119 @@ func (h *Host) resolveLocked(roots []ExportRef, unitRoots []UnitRef, realm Realm
 			}
 			found = true
 			if declared.Providers != nil && !slices.Equal(declared.Providers, choice.Providers) {
-				return nil, ErrContractMismatch
+				return nil, nil, ErrContractMismatch
 			}
 		}
 		if !found {
-			return nil, ErrContractMismatch
+			return nil, nil, ErrContractMismatch
 		}
 		key := choiceKey{unit: choice.Unit, slot: choice.Slot}
 		if _, duplicate := selected[key]; duplicate {
-			return nil, ErrInvalid
+			return nil, nil, ErrInvalid
 		}
 		selected[key] = slices.Clone(choice.Providers)
 		refused[key] = choice.Failure
 	}
-	result := BindingSnapshot{FormatVersion: 1, Roots: slices.Clone(roots), UnitRoots: slices.Clone(unitRoots), Units: []UnitBinding{}}
-	if result.Roots == nil {
-		result.Roots = []ExportRef{}
+	return selected, refused, nil
+}
+
+// bindingResolution walks provider edges from the roots, binding each reached
+// unit once and refusing a dependency cycle.
+type bindingResolution struct {
+	host        *Host
+	realm       RealmID
+	selected    map[choiceKey][]ExportRef
+	refused     map[choiceKey]error
+	preparation *bindingPreparation
+	visiting    map[UnitRef]bool
+	visited     map[UnitRef]bool
+	path        []string
+	units       []UnitBinding
+}
+
+func (r *bindingResolution) resolve(ref UnitRef) error {
+	if r.visiting[ref] {
+		return fmt.Errorf("%w: %s", ErrDependencyCycle, strings.Join(append(slices.Clone(r.path), ref.InstallationID.String()+"/"+string(ref.UnitID)), " -> "))
 	}
-	preparation := &bindingPreparation{}
-	visiting, visited := make(map[UnitRef]bool), make(map[UnitRef]bool)
-	var path []string
-	var resolve func(UnitRef) error
-	resolve = func(ref UnitRef) error {
-		if visiting[ref] {
-			return fmt.Errorf("%w: %s", ErrDependencyCycle, strings.Join(append(slices.Clone(path), ref.InstallationID.String()+"/"+string(ref.UnitID)), " -> "))
-		}
-		if visited[ref] {
-			return nil
-		}
-		unit, installation, err := h.unitLocked(ref)
-		if err != nil {
-			return err
-		}
-		visiting[ref] = true
-		path = append(path, ref.InstallationID.String()+"/"+string(ref.UnitID))
-		defer func() { path = path[:len(path)-1] }()
-		bound := UnitBinding{Source: ref, Configuration: integrity.Hash(installation.record.Configuration), Imports: make([]ImportDeclaration, len(unit.Declaration.Imports))}
-		requirements := unit.Declaration.Imports
-		actualRealm, err := h.realmLocked(unit.Declaration, realm)
-		if err != nil {
-			return err
-		}
-		if existing := h.instances[instanceKey{source: ref, realm: actualRealm}]; existing != nil && !existing.retiring && existing.binding.Configuration == bound.Configuration {
-			requirements = existing.binding.Imports
-			preparation.reads = append(preparation.reads, existing.preparation...)
-		}
-		for i, requirement := range requirements {
-			if failure := refused[choiceKey{unit: ref, slot: requirement.Slot}]; failure != nil {
-				return fmt.Errorf("unit %s/%s requires %s: %w", ref.InstallationID, ref.UnitID, requirement.Slot, failure)
-			}
-			bound.Imports[i] = requirement.Clone()
-			providers := requirement.Providers
-			if providers == nil {
-				preparation.reads = append(preparation.reads, bindingRead{unit: ref, slot: requirement.Slot, contract: requirement.Contract, candidates: h.candidatesLocked(requirement.Contract)})
-			}
-			if chosen, exists := selected[choiceKey{unit: ref, slot: requirement.Slot}]; exists {
-				if providers != nil && !slices.Equal(providers, chosen) {
-					return fmt.Errorf("%w: existing setup binding for %s", ErrStaleBinding, requirement.Slot)
-				}
-				providers = chosen
-			}
-			if providers == nil {
-				providers = h.candidatesLocked(requirement.Contract)
-				if requirement.Contract.Kind == ServiceKind && len(providers) > 1 {
-					return fmt.Errorf("%w: import %s", ErrAmbiguous, requirement.Slot)
-				}
-			}
-			if len(providers) == 0 && !requirement.Optional {
-				return fmt.Errorf("%w: required import %s", ErrUnavailable, requirement.Slot)
-			}
-			if providers == nil {
-				providers = []ExportRef{}
-			}
-			bound.Imports[i].Providers = slices.Clone(providers)
-			for _, provider := range providers {
-				if provider.Contract != requirement.Contract {
-					return ErrContractMismatch
-				}
-				if err := h.exportLocked(provider); err != nil {
-					return err
-				}
-				if provider.Unit() == ref {
-					continue
-				}
-				if err := resolve(provider.Unit()); err != nil {
-					return fmt.Errorf("unit %s/%s requires %s: %w", ref.InstallationID, ref.UnitID, requirement.Slot, err)
-				}
-			}
-		}
-		delete(visiting, ref)
-		visited[ref] = true
-		result.Units = append(result.Units, bound)
+	if r.visited[ref] {
 		return nil
 	}
-	for _, root := range roots {
-		if err := h.exportLocked(root); err != nil {
-			return nil, err
+	h := r.host
+	unit, installation, err := h.unitLocked(ref)
+	if err != nil {
+		return err
+	}
+	r.visiting[ref] = true
+	r.path = append(r.path, ref.InstallationID.String()+"/"+string(ref.UnitID))
+	defer func() { r.path = r.path[:len(r.path)-1] }()
+	bound := UnitBinding{Source: ref, Configuration: integrity.Hash(installation.record.Configuration), Imports: make([]ImportDeclaration, len(unit.Declaration.Imports))}
+	requirements := unit.Declaration.Imports
+	actualRealm, err := h.realmLocked(unit.Declaration, r.realm)
+	if err != nil {
+		return err
+	}
+	if existing := h.instances[instanceKey{source: ref, realm: actualRealm}]; existing != nil && !existing.retiring && existing.binding.Configuration == bound.Configuration {
+		requirements = existing.binding.Imports
+		r.preparation.reads = append(r.preparation.reads, existing.preparation...)
+	}
+	for i, requirement := range requirements {
+		providers, err := r.providers(ref, requirement)
+		if err != nil {
+			return err
 		}
-		if err := resolve(root.Unit()); err != nil {
-			return nil, err
+		bound.Imports[i] = requirement.Clone()
+		bound.Imports[i].Providers = slices.Clone(providers)
+		for _, provider := range providers {
+			if provider.Contract != requirement.Contract {
+				return ErrContractMismatch
+			}
+			if err := h.exportLocked(provider); err != nil {
+				return err
+			}
+			if provider.Unit() == ref {
+				continue
+			}
+			if err := r.resolve(provider.Unit()); err != nil {
+				return fmt.Errorf("unit %s/%s requires %s: %w", ref.InstallationID, ref.UnitID, requirement.Slot, err)
+			}
 		}
 	}
-	for _, root := range unitRoots {
-		if err := resolve(root); err != nil {
-			return nil, err
+	delete(r.visiting, ref)
+	r.visited[ref] = true
+	r.units = append(r.units, bound)
+	return nil
+}
+
+// providers chooses the exports that satisfy one import of ref: a recorded
+// binding, the caller's choice, or the sole live candidate.
+func (r *bindingResolution) providers(ref UnitRef, requirement ImportDeclaration) ([]ExportRef, error) {
+	key := choiceKey{unit: ref, slot: requirement.Slot}
+	if failure := r.refused[key]; failure != nil {
+		return nil, fmt.Errorf("unit %s/%s requires %s: %w", ref.InstallationID, ref.UnitID, requirement.Slot, failure)
+	}
+	providers := requirement.Providers
+	if providers == nil {
+		r.preparation.reads = append(r.preparation.reads, bindingRead{unit: ref, slot: requirement.Slot, contract: requirement.Contract, candidates: r.host.candidatesLocked(requirement.Contract)})
+	}
+	if chosen, exists := r.selected[key]; exists {
+		if providers != nil && !slices.Equal(providers, chosen) {
+			return nil, fmt.Errorf("%w: existing setup binding for %s", ErrStaleBinding, requirement.Slot)
+		}
+		providers = chosen
+	}
+	if providers == nil {
+		providers = r.host.candidatesLocked(requirement.Contract)
+		if requirement.Contract.Kind == ServiceKind && len(providers) > 1 {
+			return nil, fmt.Errorf("%w: import %s", ErrAmbiguous, requirement.Slot)
 		}
 	}
-	if err := result.Validate(); err != nil {
-		return nil, err
+	if len(providers) == 0 && !requirement.Optional {
+		return nil, fmt.Errorf("%w: required import %s", ErrUnavailable, requirement.Slot)
 	}
-	return &BindingPlan{owner: h.identity, binding: result, realm: realm, durable: true, preparation: preparation}, nil
+	if providers == nil {
+		providers = []ExportRef{}
+	}
+	return providers, nil
 }
 
 // CheckSource validates a declaration projection without starting execution or

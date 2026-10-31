@@ -210,46 +210,69 @@ func (b BindingSnapshot) Validate() error {
 	}
 	units := make(map[UnitRef]UnitBinding, len(b.Units))
 	for _, unit := range b.Units {
-		if err := unit.Source.Validate(); err != nil {
-			return err
-		}
-		if err := unit.Configuration.Validate(); err != nil {
+		if err := unit.validate(); err != nil {
 			return err
 		}
 		if _, found := units[unit.Source]; found {
 			return fmt.Errorf("%w: duplicate bound unit", ErrInvalid)
 		}
 		units[unit.Source] = unit
-		slots := make(map[string]bool)
-		for _, binding := range unit.Imports {
-			if err := validateName("import slot", binding.Slot); err != nil {
-				return err
-			}
-			if slots[binding.Slot] {
-				return fmt.Errorf("%w: duplicate bound import", ErrInvalid)
-			}
-			slots[binding.Slot] = true
-			if err := binding.Contract.Validate(); err != nil {
-				return err
-			}
-			if binding.Providers == nil || (!binding.Optional && len(binding.Providers) == 0) || (binding.Contract.Kind == ServiceKind && len(binding.Providers) > 1) {
-				return fmt.Errorf("%w: bound import cardinality", ErrInvalid)
-			}
-			providers := make(map[ExportRef]bool)
-			for _, provider := range binding.Providers {
-				if err := provider.Validate(); err != nil {
-					return err
-				}
-				if provider.Contract != binding.Contract {
-					return ErrContractMismatch
-				}
-				if providers[provider] {
-					return fmt.Errorf("%w: duplicate bound provider", ErrInvalid)
-				}
-				providers[provider] = true
-			}
+	}
+	if err := b.validateRoots(units); err != nil {
+		return err
+	}
+	return b.validateReachability(units)
+}
+
+func (u UnitBinding) validate() error {
+	if err := u.Source.Validate(); err != nil {
+		return err
+	}
+	if err := u.Configuration.Validate(); err != nil {
+		return err
+	}
+	slots := make(map[string]bool)
+	for _, binding := range u.Imports {
+		if err := validateName("import slot", binding.Slot); err != nil {
+			return err
+		}
+		if slots[binding.Slot] {
+			return fmt.Errorf("%w: duplicate bound import", ErrInvalid)
+		}
+		slots[binding.Slot] = true
+		if err := binding.validateBound(); err != nil {
+			return err
 		}
 	}
+	return nil
+}
+
+// validateBound checks a resolved import: its providers satisfy the contract's
+// cardinality and each provides exactly that contract.
+func (d ImportDeclaration) validateBound() error {
+	if err := d.Contract.Validate(); err != nil {
+		return err
+	}
+	if d.Providers == nil || (!d.Optional && len(d.Providers) == 0) || (d.Contract.Kind == ServiceKind && len(d.Providers) > 1) {
+		return fmt.Errorf("%w: bound import cardinality", ErrInvalid)
+	}
+	providers := make(map[ExportRef]bool)
+	for _, provider := range d.Providers {
+		if err := provider.Validate(); err != nil {
+			return err
+		}
+		if provider.Contract != d.Contract {
+			return ErrContractMismatch
+		}
+		if providers[provider] {
+			return fmt.Errorf("%w: duplicate bound provider", ErrInvalid)
+		}
+		providers[provider] = true
+	}
+	return nil
+}
+
+func (b BindingSnapshot) validateRoots(units map[UnitRef]UnitBinding) error {
 	for _, root := range b.Roots {
 		if err := root.Validate(); err != nil {
 			return err
@@ -271,6 +294,12 @@ func (b BindingSnapshot) Validate() error {
 		}
 		unitRoots[root] = true
 	}
+	return nil
+}
+
+// validateReachability requires every bound unit to be reachable from a root
+// through acyclic provider edges.
+func (b BindingSnapshot) validateReachability(units map[UnitRef]UnitBinding) error {
 	visiting, visited := make(map[UnitRef]bool), make(map[UnitRef]bool)
 	var visit func(UnitRef) error
 	visit = func(ref UnitRef) error {

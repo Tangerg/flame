@@ -21,9 +21,7 @@
 22 plugins/providers/backend/server.go:newServer
 24 plugins/schedules/backend/server.go:registerServer
 23 plugins/schedules/backend/tool_receipts.go:toolReceipt
-42 qimu/activation.go:Host.activate
 27 qimu/activation.go:Instance.finishPrepare
-42 qimu/binding.go:BindingSnapshot.Validate
 21 qimu/contractgen/feature.go:buildFeature
 23 qimu/contractgen/feature.go:featureNames
 31 qimu/contractgen/feature.go:featureNode
@@ -51,7 +49,6 @@
 48 qimu/examples/document/app.go:Open
 35 qimu/examples/document/tasks.go:App.Run
 22 qimu/graph.go:Host.Restore
-44 qimu/graph.go:Host.resolveLocked
 28 qimu/host.go:Host.changeInstallation
 26 qimu/host.go:NewHost
 22 qimu/lifetime.go:Lifetime.retire
@@ -68,7 +65,6 @@
 26 qimu/sqlite/installation.go:Store.CommitInstallation
 48 qimu/sqlite/store.go:Open
 30 qimu/sqlite/submission.go:Owner.commit
-42 qimu/use.go:Host.Acquire
 23 runtime/cmd/contractgen/bindings.go:writeGoBindings
 24 runtime/cmd/contractgen/main.go:run
 23 runtime/cmd/contractgen/schema.go:applyValueConstraints

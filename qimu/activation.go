@@ -61,7 +61,6 @@ func (h *Host) ActivateUnit(ctx context.Context, realm RealmID, root UnitRef) (B
 
 func (h *Host) activate(ctx context.Context, realm RealmID, frozen *BindingSnapshot, plan *BindingPlan, roots []ExportRef) (BindingSnapshot, error) {
 	var binding BindingSnapshot
-	var reads []bindingRead
 	var selected, created []*Instance
 	err := h.admission.Admit(ctx, func(admitted context.Context) error {
 		if frozen != nil {
@@ -74,129 +73,22 @@ func (h *Host) activate(ctx context.Context, realm RealmID, frozen *BindingSnaps
 		if h.closed {
 			return ErrClosed
 		}
+		var reads []bindingRead
 		var err error
-		switch {
-		case frozen != nil:
-			binding, err = subsetBinding(*frozen, roots)
-		case plan != nil:
-			err = h.validatePlanLocked(plan)
-			binding = plan.binding.Clone()
-			reads = plan.preparation.reads
-		default:
-			plan, err = h.resolveLocked(roots, nil, realm, nil)
-			if err == nil {
-				binding = plan.binding.Clone()
-				reads = plan.preparation.reads
-			}
-		}
+		binding, reads, err = h.activationBindingLocked(realm, frozen, plan, roots)
 		if err != nil {
 			return err
 		}
 		planned := make(map[UnitRef]*Instance, len(binding.Units))
 		for _, bound := range binding.Units {
-			unit, installation, err := h.unitLocked(bound.Source)
+			instance, isNew, err := h.planInstanceLocked(binding, bound, realm, reads, planned)
 			if err != nil {
 				return err
 			}
-			actualRealm, err := h.realmLocked(unit.Declaration, realm)
-			if err != nil {
-				return err
-			}
-			key := instanceKey{source: bound.Source, realm: actualRealm}
-			if err := h.admission.ValidateScope(installation.scope); err != nil {
-				return err
-			}
-			var unitRoots []ExportRef
-			for _, export := range unit.Declaration.Exports {
-				unitRoots = append(unitRoots, ExportRef{InstallationID: bound.Source.InstallationID, Release: bound.Source.Release, UnitID: bound.Source.UnitID, Export: export.Name, Contract: export.Contract})
-			}
-			actual, err := subsetBindingRoots(binding, unitRoots, []UnitRef{bound.Source})
-			if err != nil {
-				return err
-			}
-			// The consumer's ordering rule belongs to its capture. It cannot
-			// change an already approved Unit's exact setup identity.
-			actual.Rule = ""
-			identity, err := actual.Identity()
-			if err != nil {
-				return err
-			}
-			if current := h.instances[key]; current != nil && !current.retiring {
-				if current.identity != identity {
-					return fmt.Errorf("%w: unit already has another setup binding", ErrInUse)
-				}
-				planned[bound.Source] = current
-				selected = append(selected, current)
-				continue
-			}
-			for _, old := range h.allInstances {
-				if old.binding.Source.InstallationID == bound.Source.InstallationID && old.binding.Source.UnitID == bound.Source.UnitID && old.realm == actualRealm {
-					return fmt.Errorf("%w: original unit is still retiring", ErrInUse)
-				}
-			}
-			id, err := randomID()
-			if err != nil {
-				return err
-			}
-			h.nextGeneration++
-			instance := &Instance{host: h, id: id, generation: h.nextGeneration, scope: installation.scope, realm: actualRealm, unit: unit.Declaration.Clone(), binding: bound.Clone(), snapshot: actual, identity: identity, configuration: bytes.Clone(installation.record.Configuration), setup: unit.Setup, lifetime: NewLifetime(context.WithoutCancel(h.lifetime.Context())), exports: make(map[string]*publication), ready: make(chan struct{}), closed: make(chan struct{}), changed: make(chan struct{}), publicationOperations: make(map[string]*publicationOperation)}
-			for _, read := range reads {
-				if read.unit == bound.Source {
-					instance.preparation = append(instance.preparation, read)
-				}
-			}
-			var resourceDependencies []*ResourceHandle
-			seen := make(map[*Instance]bool)
-			for _, requirement := range bound.Imports {
-				for _, provider := range requirement.Providers {
-					if provider.Unit() == bound.Source {
-						continue
-					}
-					dependency := planned[provider.Unit()]
-					if dependency == nil {
-						instance.releaseDependencyHoldsLocked()
-						return fmt.Errorf("%w: provider not ordered before consumer", ErrInvalid)
-					}
-					if seen[dependency] {
-						continue
-					}
-					seen[dependency] = true
-					hold, err := dependency.lifetime.Enter(context.WithoutCancel(h.lifetime.Context()))
-					if err != nil {
-						instance.releaseDependencyHoldsLocked()
-						return err
-					}
-					instance.dependencies = append(instance.dependencies, dependency)
-					instance.dependencyHolds = append(instance.dependencyHolds, hold)
-					dependency.dependents++
-					dependency.signalLocked()
-					resourceDependencies = append(resourceDependencies, dependency.hostResource)
-				}
-			}
-			resource, err := h.lifetime.Own(Resource{Name: "unit:" + id, Cancel: func(cause error) { instance.lifetime.cancel(cause) }, Close: func(closeCtx context.Context) (ReleaseState, error) {
-				instance.beginRetire()
-				outcome, err := instance.retire(closeCtx)
-				if outcome.Released {
-					return ResourceReleased, err
-				}
-				return ResourceUnconfirmed, withoutUnconfirmedState(err)
-			}}, resourceDependencies...)
-			if err != nil {
-				instance.releaseDependencyHoldsLocked()
-				return err
-			}
-			instance.hostResource = resource
-			h.instances[key] = instance
-			h.allInstances[id] = instance
-			for _, hold := range instance.dependencyHolds {
-				instance.stopDependencies = append(instance.stopDependencies, context.AfterFunc(hold.Context(), func() {
-					instance.lifetime.cancel(context.Cause(hold.Context()))
-					instance.beginRetire()
-				}))
-			}
-			instance.stopFailure = context.AfterFunc(instance.lifetime.Context(), func() { instance.beginRetire() })
 			planned[bound.Source] = instance
-			created = append(created, instance)
+			if isNew {
+				created = append(created, instance)
+			}
 			selected = append(selected, instance)
 		}
 		return nil
@@ -217,24 +109,174 @@ func (h *Host) activate(ctx context.Context, realm RealmID, frozen *BindingSnaps
 	for _, instance := range created {
 		go instance.prepare()
 	}
+	return binding.Clone(), h.awaitReady(ctx, selected)
+}
+
+// activationBindingLocked chooses what to activate: a frozen binding's subset,
+// an already resolved plan, or a fresh resolution of roots.
+func (h *Host) activationBindingLocked(realm RealmID, frozen *BindingSnapshot, plan *BindingPlan, roots []ExportRef) (BindingSnapshot, []bindingRead, error) {
+	switch {
+	case frozen != nil:
+		binding, err := subsetBinding(*frozen, roots)
+		return binding, nil, err
+	case plan != nil:
+		if err := h.validatePlanLocked(plan); err != nil {
+			return BindingSnapshot{}, nil, err
+		}
+		return plan.binding.Clone(), plan.preparation.reads, nil
+	default:
+		resolved, err := h.resolveLocked(roots, nil, realm, nil)
+		if err != nil {
+			return BindingSnapshot{}, nil, err
+		}
+		return resolved.binding.Clone(), resolved.preparation.reads, nil
+	}
+}
+
+// planInstanceLocked returns the live instance that already realizes bound
+// under its exact setup identity, or creates one holding its planned providers.
+func (h *Host) planInstanceLocked(binding BindingSnapshot, bound UnitBinding, realm RealmID, reads []bindingRead, planned map[UnitRef]*Instance) (*Instance, bool, error) {
+	unit, installation, err := h.unitLocked(bound.Source)
+	if err != nil {
+		return nil, false, err
+	}
+	actualRealm, err := h.realmLocked(unit.Declaration, realm)
+	if err != nil {
+		return nil, false, err
+	}
+	key := instanceKey{source: bound.Source, realm: actualRealm}
+	if err := h.admission.ValidateScope(installation.scope); err != nil {
+		return nil, false, err
+	}
+	var unitRoots []ExportRef
+	for _, export := range unit.Declaration.Exports {
+		unitRoots = append(unitRoots, ExportRef{InstallationID: bound.Source.InstallationID, Release: bound.Source.Release, UnitID: bound.Source.UnitID, Export: export.Name, Contract: export.Contract})
+	}
+	actual, err := subsetBindingRoots(binding, unitRoots, []UnitRef{bound.Source})
+	if err != nil {
+		return nil, false, err
+	}
+	// The consumer's ordering rule belongs to its capture. It cannot
+	// change an already approved Unit's exact setup identity.
+	actual.Rule = ""
+	identity, err := actual.Identity()
+	if err != nil {
+		return nil, false, err
+	}
+	if current := h.instances[key]; current != nil && !current.retiring {
+		if current.identity != identity {
+			return nil, false, fmt.Errorf("%w: unit already has another setup binding", ErrInUse)
+		}
+		return current, false, nil
+	}
+	for _, old := range h.allInstances {
+		if old.binding.Source.InstallationID == bound.Source.InstallationID && old.binding.Source.UnitID == bound.Source.UnitID && old.realm == actualRealm {
+			return nil, false, fmt.Errorf("%w: original unit is still retiring", ErrInUse)
+		}
+	}
+	id, err := randomID()
+	if err != nil {
+		return nil, false, err
+	}
+	h.nextGeneration++
+	instance := &Instance{host: h, id: id, generation: h.nextGeneration, scope: installation.scope, realm: actualRealm, unit: unit.Declaration.Clone(), binding: bound.Clone(), snapshot: actual, identity: identity, configuration: bytes.Clone(installation.record.Configuration), setup: unit.Setup, lifetime: NewLifetime(context.WithoutCancel(h.lifetime.Context())), exports: make(map[string]*publication), ready: make(chan struct{}), closed: make(chan struct{}), changed: make(chan struct{}), publicationOperations: make(map[string]*publicationOperation)}
+	for _, read := range reads {
+		if read.unit == bound.Source {
+			instance.preparation = append(instance.preparation, read)
+		}
+	}
+	resourceDependencies, err := instance.holdProvidersLocked(planned)
+	if err != nil {
+		instance.releaseDependencyHoldsLocked()
+		return nil, false, err
+	}
+	if err := h.registerInstanceLocked(instance, key, resourceDependencies); err != nil {
+		instance.releaseDependencyHoldsLocked()
+		return nil, false, err
+	}
+	return instance, true, nil
+}
+
+// holdProvidersLocked enters every provider instance the binding planned
+// before i, so a provider cannot retire beneath its consumer.
+func (i *Instance) holdProvidersLocked(planned map[UnitRef]*Instance) ([]*ResourceHandle, error) {
+	var resourceDependencies []*ResourceHandle
+	seen := make(map[*Instance]bool)
+	for _, requirement := range i.binding.Imports {
+		for _, provider := range requirement.Providers {
+			if provider.Unit() == i.binding.Source {
+				continue
+			}
+			dependency := planned[provider.Unit()]
+			if dependency == nil {
+				return nil, fmt.Errorf("%w: provider not ordered before consumer", ErrInvalid)
+			}
+			if seen[dependency] {
+				continue
+			}
+			seen[dependency] = true
+			hold, err := dependency.lifetime.Enter(context.WithoutCancel(i.host.lifetime.Context()))
+			if err != nil {
+				return nil, err
+			}
+			i.dependencies = append(i.dependencies, dependency)
+			i.dependencyHolds = append(i.dependencyHolds, hold)
+			dependency.dependents++
+			dependency.signalLocked()
+			resourceDependencies = append(resourceDependencies, dependency.hostResource)
+		}
+	}
+	return resourceDependencies, nil
+}
+
+// registerInstanceLocked makes instance a host resource that retires after its
+// dependents, and retires it when a held provider or its own lifetime ends.
+func (h *Host) registerInstanceLocked(instance *Instance, key instanceKey, resourceDependencies []*ResourceHandle) error {
+	resource, err := h.lifetime.Own(Resource{Name: "unit:" + instance.id, Cancel: func(cause error) { instance.lifetime.cancel(cause) }, Close: func(closeCtx context.Context) (ReleaseState, error) {
+		instance.beginRetire()
+		outcome, err := instance.retire(closeCtx)
+		if outcome.Released {
+			return ResourceReleased, err
+		}
+		return ResourceUnconfirmed, withoutUnconfirmedState(err)
+	}}, resourceDependencies...)
+	if err != nil {
+		return err
+	}
+	instance.hostResource = resource
+	h.instances[key] = instance
+	h.allInstances[instance.id] = instance
+	for _, hold := range instance.dependencyHolds {
+		instance.stopDependencies = append(instance.stopDependencies, context.AfterFunc(hold.Context(), func() {
+			instance.lifetime.cancel(context.Cause(hold.Context()))
+			instance.beginRetire()
+		}))
+	}
+	instance.stopFailure = context.AfterFunc(instance.lifetime.Context(), func() { instance.beginRetire() })
+	return nil
+}
+
+// awaitReady waits for every selected instance to finish setup and refuses one
+// that failed or began retiring meanwhile.
+func (h *Host) awaitReady(ctx context.Context, selected []*Instance) error {
 	for _, instance := range selected {
 		select {
 		case <-instance.ready:
 		case <-ctx.Done():
-			return binding.Clone(), contextError(ctx)
+			return contextError(ctx)
 		}
 		h.mu.Lock()
 		err := instance.readyErr
 		retiring := instance.retiring
 		h.mu.Unlock()
 		if err != nil {
-			return binding.Clone(), err
+			return err
 		}
 		if retiring {
-			return binding.Clone(), ErrStaleBinding
+			return ErrStaleBinding
 		}
 	}
-	return binding.Clone(), nil
+	return nil
 }
 
 func (i *Instance) prepare() {

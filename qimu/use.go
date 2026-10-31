@@ -81,29 +81,9 @@ func (h *Host) Acquire(ctx context.Context, plan *BindingPlan, config UseConfig)
 	if ctx == nil || plan == nil || config.Owner == nil {
 		return nil, ErrInvalid
 	}
-	if config.Parent != nil {
-		if config.Parent.owner != h.identity || config.Owner != config.Parent.lifetime {
-			return nil, ErrInvalid
-		}
-		h.mu.Lock()
-		if h.closed || h.uses[config.Parent.id] != config.Parent {
-			h.mu.Unlock()
-			return nil, ErrClosed
-		}
-		if config.Scope.owner == nil {
-			config.Scope = config.Parent.scope
-		}
-		if config.Realm == "" {
-			config.Realm = config.Parent.realm
-		}
-		if config.ExecutionID == "" {
-			config.ExecutionID = config.Parent.executionID
-		}
-		if config.ExecutionID != config.Parent.executionID || config.Realm != config.Parent.realm || config.Scope != config.Parent.scope {
-			h.mu.Unlock()
-			return nil, ErrInvalid
-		}
-		h.mu.Unlock()
+	config, err := h.inheritParent(config)
+	if err != nil {
+		return nil, err
 	}
 	if config.Realm != plan.realm {
 		return nil, ErrContractMismatch
@@ -132,91 +112,13 @@ func (h *Host) Acquire(ctx context.Context, plan *BindingPlan, config UseConfig)
 		if err := h.admission.ValidateScope(config.Scope); err != nil {
 			return err
 		}
-		h.mu.Lock()
-		if err := h.validatePlanLocked(plan); err != nil {
-			h.mu.Unlock()
+		if err := h.attachPlanMembers(ctx, use, plan); err != nil {
 			return err
 		}
-		if len(h.uses) >= h.maxUses {
-			h.mu.Unlock()
-			return fmt.Errorf("%w: active uses", ErrCapacity)
-		}
-		seen := make(map[*Instance]bool)
-		for _, member := range plan.members {
-			actual := h.catalog[member.source.Contract].members[member.id]
-			use.members[member.id] = actual
-			if !seen[actual.instance] {
-				seen[actual.instance] = true
-				use.instances = append(use.instances, actual.instance)
-			}
-		}
-		for _, member := range plan.unitMembers {
-			instance := h.allInstances[member.instanceID]
-			if !seen[instance] {
-				seen[instance] = true
-				use.instances = append(use.instances, instance)
-			}
-		}
-		for _, selection := range plan.selections {
-			use.selections[selection.id] = []string{}
-			for _, member := range selection.members {
-				use.selections[selection.id] = append(use.selections[selection.id], member.id)
-			}
-		}
-		for _, instance := range use.instances {
-			hold, err := instance.lifetime.Enter(context.WithoutCancel(ctx))
-			if err != nil {
-				h.mu.Unlock()
-				return err
-			}
-			use.instanceHolds = append(use.instanceHolds, hold)
-			stop := context.AfterFunc(hold.Context(), func() { use.BeginClose(context.Cause(hold.Context())) })
-			use.stopDependencies = append(use.stopDependencies, stop)
-		}
-		h.mu.Unlock()
-		if config.Realm != "" {
-			if h.protection == nil {
-				return fmt.Errorf("%w: surviving execution requires protection", ErrInvalid)
-			}
-			instanceIDs := make([]string, 0, len(use.instances))
-			for _, instance := range use.instances {
-				instanceIDs = append(instanceIDs, instance.id)
-			}
-			slices.Sort(instanceIDs)
-			if err := h.protection.ApproveUse(admitted, UseApproval{ID: id, ParentID: use.parentID, ExecutionID: config.ExecutionID, Instances: instanceIDs, Realm: config.Realm, Scope: config.Scope.ID(), ScopeGeneration: config.Scope.Generation(), Epoch: h.epoch, Binding: use.binding.Clone()}); err != nil {
-				return err
-			}
-			use.protected = true
-		}
-		resource := Resource{Name: "use:" + id, Cancel: func(cause error) { use.BeginClose(cause) }, Close: func(closeCtx context.Context) (ReleaseState, error) {
-			outcome, err := use.Close(closeCtx)
-			if outcome.Released {
-				return ResourceReleased, err
-			}
-			return ResourceUnconfirmed, withoutUnconfirmedState(err)
-		}}
-		ownerResource, err := config.Owner.Own(resource)
-		if err != nil {
+		if err := h.protectUse(admitted, use, config); err != nil {
 			return err
 		}
-		use.ownerResource = ownerResource
-		var dependencies []*ResourceHandle
-		for _, instance := range use.instances {
-			dependencies = append(dependencies, instance.hostResource)
-		}
-		hostResource, err := h.lifetime.Own(resource, dependencies...)
-		if err != nil {
-			return err
-		}
-		use.hostResource = hostResource
-		h.mu.Lock()
-		for _, instance := range use.instances {
-			instance.uses++
-			instance.signalLocked()
-		}
-		h.uses[id] = use
-		h.mu.Unlock()
-		return nil
+		return h.publishUse(use, config.Owner)
 	})
 	close(use.initialized)
 	if err != nil {
@@ -224,6 +126,136 @@ func (h *Host) Acquire(ctx context.Context, plan *BindingPlan, config UseConfig)
 		return nil, err
 	}
 	return use, nil
+}
+
+// inheritParent completes a child Use's identity from its parent and refuses one
+// that would escape the parent's execution, realm or scope.
+func (h *Host) inheritParent(config UseConfig) (UseConfig, error) {
+	parent := config.Parent
+	if parent == nil {
+		return config, nil
+	}
+	if parent.owner != h.identity || config.Owner != parent.lifetime {
+		return config, ErrInvalid
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.closed || h.uses[parent.id] != parent {
+		return config, ErrClosed
+	}
+	if config.Scope.owner == nil {
+		config.Scope = parent.scope
+	}
+	if config.Realm == "" {
+		config.Realm = parent.realm
+	}
+	if config.ExecutionID == "" {
+		config.ExecutionID = parent.executionID
+	}
+	if config.ExecutionID != parent.executionID || config.Realm != parent.realm || config.Scope != parent.scope {
+		return config, ErrInvalid
+	}
+	return config, nil
+}
+
+// attachPlanMembers binds use to the plan's members and holds every instance it
+// reaches, under the host lock so the plan cannot go stale in between.
+func (h *Host) attachPlanMembers(ctx context.Context, use *Use, plan *BindingPlan) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if err := h.validatePlanLocked(plan); err != nil {
+		return err
+	}
+	if len(h.uses) >= h.maxUses {
+		return fmt.Errorf("%w: active uses", ErrCapacity)
+	}
+	seen := make(map[*Instance]bool)
+	for _, member := range plan.members {
+		actual := h.catalog[member.source.Contract].members[member.id]
+		use.members[member.id] = actual
+		if !seen[actual.instance] {
+			seen[actual.instance] = true
+			use.instances = append(use.instances, actual.instance)
+		}
+	}
+	for _, member := range plan.unitMembers {
+		instance := h.allInstances[member.instanceID]
+		if !seen[instance] {
+			seen[instance] = true
+			use.instances = append(use.instances, instance)
+		}
+	}
+	for _, selection := range plan.selections {
+		use.selections[selection.id] = []string{}
+		for _, member := range selection.members {
+			use.selections[selection.id] = append(use.selections[selection.id], member.id)
+		}
+	}
+	for _, instance := range use.instances {
+		hold, err := instance.lifetime.Enter(context.WithoutCancel(ctx))
+		if err != nil {
+			return err
+		}
+		use.instanceHolds = append(use.instanceHolds, hold)
+		stop := context.AfterFunc(hold.Context(), func() { use.BeginClose(context.Cause(hold.Context())) })
+		use.stopDependencies = append(use.stopDependencies, stop)
+	}
+	return nil
+}
+
+// protectUse records a surviving execution's Use approval before it is
+// published, so a restart can still account for it.
+func (h *Host) protectUse(admitted context.Context, use *Use, config UseConfig) error {
+	if config.Realm == "" {
+		return nil
+	}
+	if h.protection == nil {
+		return fmt.Errorf("%w: surviving execution requires protection", ErrInvalid)
+	}
+	instanceIDs := make([]string, 0, len(use.instances))
+	for _, instance := range use.instances {
+		instanceIDs = append(instanceIDs, instance.id)
+	}
+	slices.Sort(instanceIDs)
+	if err := h.protection.ApproveUse(admitted, UseApproval{ID: use.id, ParentID: use.parentID, ExecutionID: config.ExecutionID, Instances: instanceIDs, Realm: config.Realm, Scope: config.Scope.ID(), ScopeGeneration: config.Scope.Generation(), Epoch: h.epoch, Binding: use.binding.Clone()}); err != nil {
+		return err
+	}
+	use.protected = true
+	return nil
+}
+
+// publishUse registers use with its owner and the host lifetime, then makes it
+// visible to its instances.
+func (h *Host) publishUse(use *Use, owner *Lifetime) error {
+	resource := Resource{Name: "use:" + use.id, Cancel: func(cause error) { use.BeginClose(cause) }, Close: func(closeCtx context.Context) (ReleaseState, error) {
+		outcome, err := use.Close(closeCtx)
+		if outcome.Released {
+			return ResourceReleased, err
+		}
+		return ResourceUnconfirmed, withoutUnconfirmedState(err)
+	}}
+	ownerResource, err := owner.Own(resource)
+	if err != nil {
+		return err
+	}
+	use.ownerResource = ownerResource
+	var dependencies []*ResourceHandle
+	for _, instance := range use.instances {
+		dependencies = append(dependencies, instance.hostResource)
+	}
+	hostResource, err := h.lifetime.Own(resource, dependencies...)
+	if err != nil {
+		return err
+	}
+	use.hostResource = hostResource
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for _, instance := range use.instances {
+		instance.uses++
+		instance.signalLocked()
+	}
+	h.uses[use.id] = use
+	return nil
 }
 
 func (u *Use) BeginClose(cause error) *Close {
