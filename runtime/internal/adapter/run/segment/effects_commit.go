@@ -585,7 +585,7 @@ func (e *Effects) acceptResumeAnswers(ctx context.Context, opening runs.OpeningC
 	// consumed open set, so a rule never survives an acceptance that rolled back.
 	for _, rule := range acceptance.RememberedRules() {
 		if err := e.rememberedRules.Put(ctx, rule); err != nil {
-			return fmt.Errorf("segment: persist remembered approval rule %q: %w", rule.ID, err)
+			return fmt.Errorf("segment: persist remembered approval rule %q: %w", rule.ID(), err)
 		}
 	}
 	// The accepted continuation binding commits with the answers it routes, so a

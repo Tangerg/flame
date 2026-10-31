@@ -163,7 +163,6 @@ func TestRuleValidationRejectsCorruptDurableValues(t *testing.T) {
 		name   string
 		mutate func(*approval.Rule)
 	}{
-		{name: "identity drift", mutate: func(rule *approval.Rule) { rule.Tool = testsupport.BuiltInTool(t, "edit") }},
 		{name: "unknown scope", mutate: func(rule *approval.Rule) { rule.Scope = approval.Scope("team") }},
 		{name: "missing scope key", mutate: func(rule *approval.Rule) { rule.ScopeKey = "" }},
 		{name: "unknown decision", mutate: func(rule *approval.Rule) { rule.Decision = approval.Decision("maybe") }},

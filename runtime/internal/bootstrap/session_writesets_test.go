@@ -791,7 +791,7 @@ func TestApplyRestoreClearsSessionOwnedProjections(t *testing.T) {
 	globalRule := testAllowRule(t, approval.ScopeGlobal, "", "read")
 	for _, rule := range []approval.Rule{sessionRule, projectRule, globalRule} {
 		if err := ss.approvals.Put(ctx, rule); err != nil {
-			t.Fatalf("seed approval %s: %v", rule.ID, err)
+			t.Fatalf("seed approval %s: %v", rule.ID(), err)
 		}
 	}
 	if _, err := ss.modes.StartPlanMode(ctx, "ses_A"); err != nil {
@@ -832,9 +832,9 @@ func TestApplyRestoreClearsSessionOwnedProjections(t *testing.T) {
 	}
 	ids := make(map[string]bool, len(rules))
 	for _, rule := range rules {
-		ids[rule.ID] = true
+		ids[rule.ID()] = true
 	}
-	if ids[sessionRule.ID] || !ids[projectRule.ID] || !ids[globalRule.ID] || len(ids) != 2 {
+	if ids[sessionRule.ID()] || !ids[projectRule.ID()] || !ids[globalRule.ID()] || len(ids) != 2 {
 		t.Fatalf("approvals after restore = %v, want project+global only", ids)
 	}
 	if planning, err := ss.modes.PlanModeActive(ctx, "ses_A"); err != nil || planning {

@@ -213,7 +213,7 @@ func TestRuntimePolicyIsolatesVisibleRuleStorage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Rules after caller mutation: %v", err)
 	}
-	want := RuleView{ID: rule.ID, Scope: rule.Scope, Tool: rule.Tool, Subject: rule.Subject, Decision: rule.Decision}
+	want := RuleView{ID: rule.ID(), Scope: rule.Scope, Tool: rule.Tool, Subject: rule.Subject, Decision: rule.Decision}
 	if len(got) != 1 || got[0] != want {
 		t.Fatalf("Rules after caller mutation = %+v, want %+v", got, rule)
 	}

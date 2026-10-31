@@ -50,10 +50,10 @@ func ValidateVisibleRules(rules []Rule, sessionID, projectDir string) error {
 				rule.ScopeKey,
 			)
 		}
-		if _, duplicate := seen[rule.ID]; duplicate {
-			return fmt.Errorf("%w: duplicate visible rule identity %q", ErrInvalidRule, rule.ID)
+		if _, duplicate := seen[rule.ID()]; duplicate {
+			return fmt.Errorf("%w: duplicate visible rule identity %q", ErrInvalidRule, rule.ID())
 		}
-		seen[rule.ID] = struct{}{}
+		seen[rule.ID()] = struct{}{}
 	}
 	return nil
 }
@@ -64,7 +64,6 @@ func NewRule(scope Scope, scopeKey string, ref tool.Ref, source integrity.Digest
 		Scope: scope, ScopeKey: scopeKey, Tool: ref, SourceFingerprint: source,
 		Subject: subject, Decision: decision,
 	}
-	rule.ID = rule.stableID()
 	if err := rule.Validate(); err != nil {
 		return Rule{}, err
 	}
@@ -99,9 +98,6 @@ func (r Rule) Validate() error {
 	}
 	if err := r.Subject.Validate(); err != nil {
 		return err
-	}
-	if r.ID == "" || r.ID != r.stableID() {
-		return fmt.Errorf("%w: identity %q does not match rule contents", ErrInvalidRule, r.ID)
 	}
 	return nil
 }
@@ -206,8 +202,8 @@ func (r RememberRequest) Rule() (Rule, error) {
 	return NewRule(r.Scope, key, r.Tool, r.SourceFingerprint, r.Subject, r.Decision)
 }
 
-// stableID makes re-remembering the same rule an upsert and supplies a durable
-// handle for forgetting it later.
-func (r Rule) stableID() string {
+// ID is derived from the rule's scope, tool and subject, so re-remembering the
+// same rule is an upsert and the identity is a durable handle for forgetting it.
+func (r Rule) ID() string {
 	return "rule_" + identity.DigestStrings(string(r.Scope), r.ScopeKey, r.Tool.String(), string(r.Subject.Type), r.Subject.Value).String()
 }

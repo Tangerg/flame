@@ -236,7 +236,7 @@ func (r *RuntimePolicy) ListRules(ctx context.Context, sessionID string) ([]Rule
 	for _, rule := range rules {
 		authority, found := current[rule.Tool]
 		entry := RuleView{
-			ID: rule.ID, Scope: rule.Scope, Tool: rule.Tool, Subject: rule.Subject, Decision: rule.Decision,
+			ID: rule.ID(), Scope: rule.Scope, Tool: rule.Tool, Subject: rule.Subject, Decision: rule.Decision,
 			Stale: !found || authority != rule.SourceFingerprint,
 		}
 		if rule.Scope == approval.ScopeProject {

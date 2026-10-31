@@ -66,22 +66,25 @@ func (a *ApprovalRuleStore) Visible(ctx context.Context, sessionID, projectDir s
 	var out []approval.Rule
 	for rows.Next() {
 		var r approval.Rule
-		var scope, decision, kind, name, fingerprint string
+		var storedID, scope, decision, kind, name, fingerprint string
 		var source storedMCPSource
-		if err := rows.Scan(&r.ID, &scope, &r.ScopeKey, &kind, &name, &source.origin, &source.installation, &source.name,
+		if err := rows.Scan(&storedID, &scope, &r.ScopeKey, &kind, &name, &source.origin, &source.installation, &source.name,
 			&fingerprint, &r.Subject.Type, &r.Subject.Value, &decision); err != nil {
 			return nil, fmt.Errorf("sqlite: scan approval rule: %w", err)
 		}
 		if r.Tool, err = decodeRuleTool(kind, name, source); err != nil {
-			return nil, fmt.Errorf("sqlite: decode approval rule %q tool: %w", r.ID, err)
+			return nil, fmt.Errorf("sqlite: decode approval rule %q tool: %w", storedID, err)
 		}
 		if err := r.SourceFingerprint.UnmarshalText([]byte(fingerprint)); err != nil {
-			return nil, fmt.Errorf("sqlite: decode approval rule %q fingerprint: %w", r.ID, err)
+			return nil, fmt.Errorf("sqlite: decode approval rule %q fingerprint: %w", storedID, err)
 		}
 		r.Scope = approval.Scope(scope)
 		r.Decision = approval.Decision(decision)
 		if err := r.Validate(); err != nil {
-			return nil, fmt.Errorf("sqlite: decode approval rule %q: %w", r.ID, err)
+			return nil, fmt.Errorf("sqlite: decode approval rule %q: %w", storedID, err)
+		}
+		if storedID != r.ID() {
+			return nil, fmt.Errorf("sqlite: approval rule %q is stored under another rule's identity", storedID)
 		}
 		out = append(out, r)
 	}
@@ -142,7 +145,7 @@ const putApprovalRuleSQL = `INSERT INTO approval_rules
  VALUES (?,?,?,?,?,` + mcpSourceIDQuery + `,?,?,?,?) ON CONFLICT(id) DO UPDATE SET decision=excluded.decision, source_fingerprint=excluded.source_fingerprint`
 
 func approvalRuleArgs(r approval.Rule) []any {
-	args := []any{r.ID, string(r.Scope), r.ScopeKey, string(r.Tool.Kind())}
+	args := []any{r.ID(), string(r.Scope), r.ScopeKey, string(r.Tool.Kind())}
 	var source []any
 	switch r.Tool.Kind() {
 	case tool.BuiltInKind:

@@ -168,7 +168,7 @@ var _ approvals.RuleStore = (*memoryRuleStore)(nil)
 func (m *memoryRuleStore) Put(_ context.Context, rule approval.Rule) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.rules[rule.ID] = rule
+	m.rules[rule.ID()] = rule
 	return nil
 }
 

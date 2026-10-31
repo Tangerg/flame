@@ -49,21 +49,21 @@ func TestApprovalRuleStore_VisibleScopes(t *testing.T) {
 		}
 		m := map[string]bool{}
 		for _, r := range rules {
-			m[r.ID] = true
+			m[r.ID()] = true
 		}
 		return m
 	}
 
 	// From sess1 in /proj/a: all three visible.
-	if got := ids("sess1", "/proj/a"); !got[sessionRule.ID] || !got[projectRule.ID] || !got[globalRule.ID] || len(got) != 3 {
+	if got := ids("sess1", "/proj/a"); !got[sessionRule.ID()] || !got[projectRule.ID()] || !got[globalRule.ID()] || len(got) != 3 {
 		t.Fatalf("sess1@/proj/a sees %v, want s+p+g", got)
 	}
 	// From another session in another dir: only global.
-	if got := ids("sess2", "/proj/b"); got[sessionRule.ID] || got[projectRule.ID] || !got[globalRule.ID] || len(got) != 1 {
+	if got := ids("sess2", "/proj/b"); got[sessionRule.ID()] || got[projectRule.ID()] || !got[globalRule.ID()] || len(got) != 1 {
 		t.Fatalf("sess2@/proj/b sees %v, want only g", got)
 	}
 	// With no cwd: project rule must not match (skipped when dir is empty).
-	if got := ids("sess1", ""); got[projectRule.ID] {
+	if got := ids("sess1", ""); got[projectRule.ID()] {
 		t.Fatalf("project rule leaked with empty dir: %v", got)
 	}
 }
@@ -79,7 +79,7 @@ func TestApprovalRuleStoreReplacesDecisionAndAuthority(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	id := rule.ID
+	id := rule.ID()
 	for _, decision := range []approval.Decision{approval.Deny, approval.Allow, approval.Deny} {
 		fingerprint := rule.SourceFingerprint
 		if decision == approval.Allow {
@@ -89,7 +89,7 @@ func TestApprovalRuleStoreReplacesDecisionAndAuthority(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if next.ID != id {
+		if next.ID() != id {
 			t.Fatal("changing a decision changed the rule identity")
 		}
 		if err := store.Put(ctx, next); err != nil {
@@ -173,7 +173,7 @@ func TestApprovalRuleStore_DeleteSessionPreservesBroaderScopes(t *testing.T) {
 	global := newApprovalRule(t, approval.ScopeGlobal, "", "read", "", approval.Allow)
 	for _, rule := range []approval.Rule{sessionOne, sessionTwo, project, global} {
 		if err := store.Put(ctx, rule); err != nil {
-			t.Fatalf("put %s: %v", rule.ID, err)
+			t.Fatalf("put %s: %v", rule.ID(), err)
 		}
 	}
 	if err := store.DeleteSession(ctx, "sess1"); err != nil {
@@ -185,9 +185,9 @@ func TestApprovalRuleStore_DeleteSessionPreservesBroaderScopes(t *testing.T) {
 	}
 	ids := map[string]bool{}
 	for _, rule := range rules {
-		ids[rule.ID] = true
+		ids[rule.ID()] = true
 	}
-	if ids[sessionOne.ID] || !ids[project.ID] || !ids[global.ID] || len(ids) != 2 {
+	if ids[sessionOne.ID()] || !ids[project.ID()] || !ids[global.ID()] || len(ids) != 2 {
 		t.Fatalf("visible after DeleteSession = %v, want p+g", ids)
 	}
 	if rules, err := store.Visible(ctx, "sess2", "", approval.MaximumVisibleRules+1); err != nil || len(rules) != 2 {
@@ -221,4 +221,18 @@ func newApprovalRule(t *testing.T, scope approval.Scope, scopeKey string, toolNa
 		t.Fatalf("new approval rule: %v", err)
 	}
 	return rule
+}
+
+func TestApprovalRuleStoreRefusesARuleStoredUnderAnotherIdentity(t *testing.T) {
+	store := newApprovalStore(t)
+	rule := newApprovalRule(t, approval.ScopeGlobal, "", "shell", "", approval.Allow)
+	if err := store.Put(t.Context(), rule); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.db.ExecContext(t.Context(), `UPDATE approval_rules SET id = 'rule_other' WHERE id = ?`, rule.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if rules, err := store.Visible(t.Context(), "", "", approval.MaximumVisibleRules+1); err == nil {
+		t.Fatalf("Visible admitted a rule under a foreign identity: %+v", rules)
+	}
 }

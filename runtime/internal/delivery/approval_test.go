@@ -39,7 +39,7 @@ func (a *approvalPolicyFake) ListRules(_ context.Context, sessionID string) ([]a
 	a.rulesForSession = sessionID
 	var view []approvals.RuleView
 	for _, rule := range a.rules {
-		entry := approvals.RuleView{ID: rule.ID, Scope: rule.Scope, Tool: rule.Tool, Subject: rule.Subject, Decision: rule.Decision}
+		entry := approvals.RuleView{ID: rule.ID(), Scope: rule.Scope, Tool: rule.Tool, Subject: rule.Subject, Decision: rule.Decision}
 		if rule.Scope == approval.ScopeProject {
 			entry.ProjectDir = rule.ScopeKey
 		}
@@ -107,7 +107,6 @@ func TestGetApprovalModeRejectsUnknownDomainValue(t *testing.T) {
 
 func TestListApprovalRulesMapsToWire(t *testing.T) {
 	rt := &approvalPolicyFake{rules: []approval.Rule{{
-		ID:       "rule_1",
 		Scope:    approval.ScopeProject,
 		ScopeKey: "/repo",
 		Tool: func() tool.Ref {

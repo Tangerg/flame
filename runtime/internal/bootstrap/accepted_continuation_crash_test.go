@@ -230,7 +230,7 @@ func testAcceptedContinuationSurvivesRestart(t *testing.T, phase string) {
 	if len(rules) != 1 {
 		t.Fatalf("accepted rules=%+v", rules)
 	}
-	if err := stores.ApprovalRules.Delete(t.Context(), rules[0].ID); err != nil {
+	if err := stores.ApprovalRules.Delete(t.Context(), rules[0].ID()); err != nil {
 		t.Fatal(err)
 	}
 	cfg := protocolRuntimeConfig(t, stores, acceptedCrashModel(t, home))

@@ -150,7 +150,6 @@ func (r Resolution) Validate() error {
 // global), the tool reference and source fingerprint match, and the call's
 // per-tool subject matches the explicit Subject matcher.
 type Rule struct {
-	ID                string // deterministic over (Scope, ScopeKey, Tool, Subject)
 	Scope             Scope  // session | project | global
 	ScopeKey          string // session id | project dir | "" for global
 	Tool              tool.Ref
