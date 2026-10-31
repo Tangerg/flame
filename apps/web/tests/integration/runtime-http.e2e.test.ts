@@ -76,6 +76,11 @@ const compactionContextPressure = "context ".repeat(4_200);
 
 const defaultTestDeadlineMilliseconds = 5_000;
 
+// A spawned process (the Runtime, its runner, a package backend) starts while
+// every first-party backend starts beside it, so its readiness gets the
+// startup budget rather than the in-process event deadline.
+const processStartupMilliseconds = 20_000;
+
 const runtimeFixtureStartupMilliseconds = 60_000;
 
 const compactionCutpointDeadlineMilliseconds = 15_000;
@@ -678,7 +683,7 @@ function writeChatCompletion(
 async function waitUntilReady(
   baseUrl: string,
   processError: () => string,
-  readyBefore = Date.now() + 20_000,
+  readyBefore = Date.now() + processStartupMilliseconds,
 ): Promise<void> {
   while (Date.now() < readyBefore) {
     try {
@@ -812,7 +817,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
   const awaitMCPTools = async (
     server: Parameters<FlameClient["mcp"]["listTools"]>[0],
     ready: (tools: MCPTool[]) => boolean,
-    readyBefore = Date.now() + defaultTestDeadlineMilliseconds,
+    readyBefore = Date.now() + processStartupMilliseconds,
   ) => {
     if (!client) throw new Error("runtime client was not initialized");
     while (!ready((await client.mcp.listTools(server)).data)) {
@@ -854,7 +859,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
     OTEL_SDK_DISABLED: "true",
   });
 
-  const startRunnerProcess = async (readyBefore = Date.now() + defaultTestDeadlineMilliseconds) => {
+  const startRunnerProcess = async (readyBefore = Date.now() + processStartupMilliseconds) => {
     const directory = join(runtimeStore, "runner");
     const socketPath = join(directory, "control.sock");
     const child = spawn(
@@ -1302,7 +1307,7 @@ for await (const line of lines) {
       await client.plugins.uninstall(installed.id);
       await client.plugins.setEnablement({ installationId: defaultTrajectory.id, enabled: true });
     }
-  });
+  }, 30_000);
 
   it("reads only the exact enabled installed locale catalog without executable contributions", async () => {
     if (!client) throw new Error("runtime client was not initialized");
@@ -1397,7 +1402,7 @@ for await (const line of lines) {
       await client.plugins.uninstall(installation.id);
       managedOwners.delete("memory");
     }
-  }, 10_000);
+  }, 30_000);
 
   it("joins a CLI-owned run from independent views without canceling it when a view closes", async () => {
     const observer = createSharedClient();
@@ -4205,7 +4210,7 @@ for await (const line of lines) {
     } finally {
       await client.skills.restore(managedSkillName);
     }
-  });
+  }, 30_000);
 
   it("reviews project and user skill proposals produced by a real run tool", async () => {
     if (!client) throw new Error("runtime client was not initialized");
@@ -4669,7 +4674,7 @@ for await (const line of lines) {
       expect(pages.length).toBeGreaterThan(1);
       expect((fromEnd ? pages.reverse() : pages).join("\n")).toBe(source);
     }
-  });
+  }, 30_000);
 
   it("consumes workspace files and hook trust through bound APIs", async () => {
     if (!client) throw new Error("runtime client was not initialized");
