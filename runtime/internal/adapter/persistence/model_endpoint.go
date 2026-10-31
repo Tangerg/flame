@@ -23,7 +23,7 @@ import (
 	"github.com/Tangerg/scope/core/embedding"
 )
 
-const endpointObservationColumns = `call_id,started_at,endpoint_json,state,finished_at,known_response,endpoint_failure,COALESCE(session_id,''),COALESCE(run_id,''),COALESCE(segment_id,''),endpoint_cost_usd,usage,COALESCE(endpoint_kind,'')`
+const endpointObservationColumns = `call_id,started_at,endpoint_json,state,finished_at,known_response,endpoint_failure,COALESCE(session_id,''),COALESCE(run_id,''),COALESCE(segment_id,''),endpoint_cost_nano_usd,usage,COALESCE(endpoint_kind,'')`
 
 type storedEndpointInvocation struct {
 	ID        string                `json:"id"`
@@ -171,8 +171,8 @@ func (m *ModelInvocationStore) SettleEndpointInvocation(ctx context.Context, inv
 	if err != nil {
 		return err
 	}
-	result, err := sqlite.Connection(ctx, m.db).ExecContext(ctx, `UPDATE model_invocations SET state=?,finished_at=?,known_response=?,usage=?,endpoint_failure=?,endpoint_cost_usd=?
-		WHERE call_id=? AND state=? AND started_at=? AND endpoint_json=?`, state, outcome.FinishedAt.UTC().UnixNano(), response, encodedUsage, outcome.Failure, outcome.Cost.OptionalUSD(),
+	result, err := sqlite.Connection(ctx, m.db).ExecContext(ctx, `UPDATE model_invocations SET state=?,finished_at=?,known_response=?,usage=?,endpoint_failure=?,endpoint_cost_nano_usd=?
+		WHERE call_id=? AND state=? AND started_at=? AND endpoint_json=?`, state, outcome.FinishedAt.UTC().UnixNano(), response, encodedUsage, outcome.Failure, outcome.Cost.OptionalNanoUSD(),
 		invocation.ID, modelref.InvocationStarted, invocation.StartedAt.UTC().UnixNano(), string(encoded))
 	if err != nil {
 		return err
@@ -223,11 +223,11 @@ func scanEndpointObservation(row scanRow, parent string) (modelref.EndpointObser
 	var response *string
 	var encodedUsage *string
 	var kind string
-	var costUSD *float64
-	if err := row.Scan(&id, &startedAt, &encoded, &value.State, &finishedAt, &response, &value.Failure, &value.SessionID, &value.RunID, &value.SegmentID, &costUSD, &encodedUsage, &kind); err != nil {
+	var costNanoUSD *int64
+	if err := row.Scan(&id, &startedAt, &encoded, &value.State, &finishedAt, &response, &value.Failure, &value.SessionID, &value.RunID, &value.SegmentID, &costNanoUSD, &encodedUsage, &kind); err != nil {
 		return modelref.EndpointObservation{}, err
 	}
-	if value.Cost, err = accounting.CostFromOptional(costUSD); err != nil {
+	if value.Cost, err = accounting.CostFromOptionalNanoUSD(costNanoUSD); err != nil {
 		return modelref.EndpointObservation{}, fmt.Errorf("sqlite: decode model invocation cost: %w", err)
 	}
 	value.InvocationJSON, err = jsonvalue.Parse([]byte(encoded))
@@ -367,10 +367,10 @@ func (m *ModelInvocationStore) RecoverModelInvocation(ctx context.Context, sessi
 	}
 	result, err := sqlite.Connection(ctx, m.db).ExecContext(ctx, `WITH evidence AS (
 	 SELECT usage,known_response FROM model_invocations WHERE call_id=? AND endpoint_json=? AND session_id=? AND run_id=? AND segment_id=?
-	 AND state=? AND finished_at=? AND known_response=? AND endpoint_cost_usd IS ? AND endpoint_failure=? AND usage IS ?)
+	 AND state=? AND finished_at=? AND known_response=? AND endpoint_cost_nano_usd IS ? AND endpoint_failure=? AND usage IS ?)
 	 UPDATE model_invocations SET state=?,finished_at=?,usage=(SELECT usage FROM evidence),known_response=(SELECT known_response FROM evidence)
 	 WHERE call_id=? AND session_id=? AND run_id=? AND segment_id=? AND state=? AND started_at=? AND endpoint_json IS NULL AND EXISTS(SELECT 1 FROM evidence)`,
-		record.Invocation.ID, record.InvocationJSON.String(), sessionID, runID, segmentID, record.State, record.FinishedAt.UTC().UnixNano(), record.ResponseJSON.String(), record.Cost.OptionalUSD(), record.Failure, usage,
+		record.Invocation.ID, record.InvocationJSON.String(), sessionID, runID, segmentID, record.State, record.FinishedAt.UTC().UnixNano(), record.ResponseJSON.String(), record.Cost.OptionalNanoUSD(), record.Failure, usage,
 		string(modelref.InvocationFailed), finishedAt.UTC().UnixNano(), callID, sessionID, runID, segmentID, string(modelref.InvocationStarted), startedAt.UTC().UnixNano())
 	if err != nil {
 		return err

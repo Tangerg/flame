@@ -198,3 +198,27 @@ func TestUsageRefusesAnEmptyAttribution(t *testing.T) {
 		t.Fatalf("unattributed usage: %v", err)
 	}
 }
+
+func TestCostSumsExactlyWithoutDrift(t *testing.T) {
+	tenth, err := NewCost(0.1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	total, _ := CostFromNanoUSD(0)
+	for range 10 {
+		if total, err = total.Add(tenth); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if nano, _ := total.NanoUSD(); nano != 1_000_000_000 {
+		t.Fatalf("ten tenths = %d nano-dollars, want exactly one dollar", nano)
+	}
+	// Five tokens at $0.05 per million is a quarter of a micro-dollar.
+	tiny, err := NewCost(5 * 0.05 / 1_000_000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if nano, _ := tiny.NanoUSD(); nano != 250 {
+		t.Fatalf("sub-micro-dollar call = %d nano-dollars, want 250", nano)
+	}
+}

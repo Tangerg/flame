@@ -248,7 +248,7 @@ func bucketsByKey(groups map[string]*usageAccumulator) []UsageBucket {
 	return result
 }
 
-func costOf(value accounting.Cost) float64 {
-	usd, _ := value.USD()
-	return usd
+func costOf(value accounting.Cost) int64 {
+	nano, _ := value.NanoUSD()
+	return nano
 }

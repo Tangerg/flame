@@ -214,24 +214,50 @@ func (t Tokens) Add(other Tokens) (Tokens, error) {
 	return next, nil
 }
 
-// Cost is one explicit pricing fact. Its zero value means pricing was
-// unavailable; a priced zero is constructed explicitly and remains distinct.
-// This prevents an unknown catalog entry from silently becoming a free model.
+// Cost is one explicit pricing fact, held as an exact count of nano-dollars so
+// aggregates sum without floating-point drift; a single call can cost less than
+// a micro-dollar. Its zero value means pricing was unavailable; a priced zero is
+// constructed explicitly and remains distinct. This prevents an unknown catalog
+// entry from silently becoming a free model.
 type Cost struct {
-	usd       float64
+	nanoUSD   int64
 	available bool
 }
 
-// NewCost constructs one available finite non-negative USD amount.
+const nanoPerUSD = 1e9
+
+// NewCost prices usd, the dollar amount a catalog or provider computed, to the
+// nearest nano-dollar.
 func NewCost(usd float64) (Cost, error) {
 	if usd < 0 || math.IsNaN(usd) || math.IsInf(usd, 0) {
 		return Cost{}, errors.New("accounting: cost must be finite and non-negative")
 	}
-	return Cost{usd: usd, available: true}, nil
+	nano := math.Round(usd * nanoPerUSD)
+	if nano >= math.MaxInt64 {
+		return Cost{}, errors.New("accounting: cost overflows")
+	}
+	return Cost{nanoUSD: int64(nano), available: true}, nil
 }
 
-// CostFromOptional restores the exact absent-versus-priced-zero distinction
-// used by durable Run metrics and executor checkpoints.
+// CostFromNanoUSD restores an exact recorded amount.
+func CostFromNanoUSD(nanoUSD int64) (Cost, error) {
+	if nanoUSD < 0 {
+		return Cost{}, errors.New("accounting: cost must be non-negative")
+	}
+	return Cost{nanoUSD: nanoUSD, available: true}, nil
+}
+
+// CostFromOptionalNanoUSD restores the exact absent-versus-priced-zero
+// distinction durable records keep.
+func CostFromOptionalNanoUSD(nanoUSD *int64) (Cost, error) {
+	if nanoUSD == nil {
+		return Cost{}, nil
+	}
+	return CostFromNanoUSD(*nanoUSD)
+}
+
+// CostFromOptional admits a dollar amount from the wire, where absence means
+// unpriced.
 func CostFromOptional(usd *float64) (Cost, error) {
 	if usd == nil {
 		return Cost{}, nil
@@ -239,16 +265,28 @@ func CostFromOptional(usd *float64) (Cost, error) {
 	return NewCost(*usd)
 }
 
-// USD returns the price only when the model call was priced.
-func (c Cost) USD() (float64, bool) { return c.usd, c.available }
+// NanoUSD returns the exact amount only when the model call was priced.
+func (c Cost) NanoUSD() (int64, bool) { return c.nanoUSD, c.available }
 
-// OptionalUSD projects this value to the pointer vocabulary used by durable
-// accounting records. The returned pointer owns an independent value.
+// OptionalNanoUSD projects this value to the pointer vocabulary durable records
+// use. The returned pointer owns an independent value.
+func (c Cost) OptionalNanoUSD() *int64 {
+	if !c.available {
+		return nil
+	}
+	value := c.nanoUSD
+	return &value
+}
+
+// USD presents the amount in dollars for display and the wire.
+func (c Cost) USD() (float64, bool) { return float64(c.nanoUSD) / nanoPerUSD, c.available }
+
+// OptionalUSD presents the amount in dollars, absent when unpriced.
 func (c Cost) OptionalUSD() *float64 {
 	if !c.available {
 		return nil
 	}
-	value := c.usd
+	value, _ := c.USD()
 	return &value
 }
 
@@ -258,15 +296,15 @@ func (c Cost) Add(other Cost) (Cost, error) {
 	if !c.available || !other.available {
 		return Cost{}, nil
 	}
-	if other.usd > math.MaxFloat64-c.usd {
+	if other.nanoUSD > math.MaxInt64-c.nanoUSD {
 		return Cost{}, errors.New("accounting: cost aggregate overflows")
 	}
-	return Cost{usd: c.usd + other.usd, available: true}, nil
+	return Cost{nanoUSD: c.nanoUSD + other.nanoUSD, available: true}, nil
 }
 
 // Equal preserves availability as part of the accounting fact.
 func (c Cost) Equal(other Cost) bool {
-	return c.available == other.available && (!c.available || c.usd == other.usd)
+	return c.available == other.available && c.nanoUSD == other.nanoUSD
 }
 
 // ValidateAdvanceFrom proves that c can be the cumulative result after
@@ -274,7 +312,7 @@ func (c Cost) Equal(other Cost) bool {
 // unpriced, but an unavailable aggregate can never become exact again.
 func (c Cost) ValidateAdvanceFrom(previous Cost) error {
 	if (!previous.available && c.available) ||
-		(previous.available && c.available && c.usd < previous.usd) {
+		(previous.available && c.available && c.nanoUSD < previous.nanoUSD) {
 		return errors.New("accounting: cumulative cost regressed")
 	}
 	return nil

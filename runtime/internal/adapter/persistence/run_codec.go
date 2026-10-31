@@ -22,21 +22,21 @@ type runUsageRow struct {
 	CacheReadTokens  int64                     `json:"cacheReadTokens,omitzero"`
 	CacheWriteTokens int64                     `json:"cacheWriteTokens,omitzero"`
 	ReasoningTokens  int64                     `json:"reasoningTokens,omitzero"`
-	CostUSD          *float64                  `json:"costUsd,omitzero"`
+	CostNanoUSD      *int64                    `json:"costNanoUsd,omitzero"`
 	ByModel          map[string]runModelRowUse `json:"byModel,omitempty"`
 }
 
 type runModelRowUse struct {
-	InputTokens      int64    `json:"inputTokens,omitzero"`
-	OutputTokens     int64    `json:"outputTokens,omitzero"`
-	CacheReadTokens  int64    `json:"cacheReadTokens,omitzero"`
-	CacheWriteTokens int64    `json:"cacheWriteTokens,omitzero"`
-	ReasoningTokens  int64    `json:"reasoningTokens,omitzero"`
-	CostUSD          *float64 `json:"costUsd,omitzero"`
+	InputTokens      int64  `json:"inputTokens,omitzero"`
+	OutputTokens     int64  `json:"outputTokens,omitzero"`
+	CacheReadTokens  int64  `json:"cacheReadTokens,omitzero"`
+	CacheWriteTokens int64  `json:"cacheWriteTokens,omitzero"`
+	ReasoningTokens  int64  `json:"reasoningTokens,omitzero"`
+	CostNanoUSD      *int64 `json:"costNanoUsd,omitzero"`
 }
 
-// runCapabilitiesRow is the Run's frozen optional behavior. Interrupt kinds are
-// stored under their canonical names rather than ordinals, so inserting a kind
+// runCapabilitiesRow is the Run's frozen optional behavior. Interrupt types are
+// stored under their canonical names rather than ordinals, so inserting a type
 // into the enum cannot silently re-label stored rows.
 type runCapabilitiesRow struct {
 	ChildRuns      bool                      `json:"childRuns,omitzero"`
@@ -141,7 +141,7 @@ func runUsageRowOf(usage *accounting.Usage) *runUsageRow {
 		CacheReadTokens:  usage.Total.CacheReadTokens,
 		CacheWriteTokens: usage.Total.CacheWriteTokens,
 		ReasoningTokens:  usage.Total.ReasoningTokens,
-		CostUSD:          usage.Total.Cost.OptionalUSD(),
+		CostNanoUSD:      usage.Total.Cost.OptionalNanoUSD(),
 	}
 	if len(usage.ByModel) > 0 {
 		row.ByModel = make(map[string]runModelRowUse, len(usage.ByModel))
@@ -152,7 +152,7 @@ func runUsageRowOf(usage *accounting.Usage) *runUsageRow {
 				CacheReadTokens:  perModel.CacheReadTokens,
 				CacheWriteTokens: perModel.CacheWriteTokens,
 				ReasoningTokens:  perModel.ReasoningTokens,
-				CostUSD:          perModel.Cost.OptionalUSD(),
+				CostNanoUSD:      perModel.Cost.OptionalNanoUSD(),
 			}
 		}
 	}
@@ -403,7 +403,7 @@ func decodeRunUsage(encoded string) (*accounting.Usage, error) {
 }
 
 func (r runUsageRow) usage() (*accounting.Usage, error) {
-	cost, err := accounting.CostFromOptional(r.CostUSD)
+	cost, err := accounting.CostFromOptionalNanoUSD(r.CostNanoUSD)
 	if err != nil {
 		return nil, err
 	}
@@ -420,7 +420,7 @@ func (r runUsageRow) usage() (*accounting.Usage, error) {
 	if len(r.ByModel) > 0 {
 		usage.ByModel = make(map[string]accounting.Totals, len(r.ByModel))
 		for model, perModel := range r.ByModel {
-			cost, err := accounting.CostFromOptional(perModel.CostUSD)
+			cost, err := accounting.CostFromOptionalNanoUSD(perModel.CostNanoUSD)
 			if err != nil {
 				return nil, fmt.Errorf("model %q: %w", model, err)
 			}
