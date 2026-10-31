@@ -54,16 +54,18 @@ export {
   PanelTitle,
   PanelSection,
   PanelFooter,
+  ListRow,
+  Metadata,
+} from "./panel";
+export {
   FormRow,
   FormSection,
   FormActions,
-  ListRow,
-  Metadata,
   Form,
   RecordForm,
   FormField,
   FormGroup,
-} from "./panel";
+} from "./form";
 export { ModalDialog } from "./modal-dialog";
 export { LightboxDialog, type LightboxDialogProps } from "./lightbox-dialog";
 export {
