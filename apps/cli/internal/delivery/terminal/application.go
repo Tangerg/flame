@@ -17,7 +17,6 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/keymap"
 	"github.com/Tangerg/oolong/core/layout"
 	"github.com/Tangerg/oolong/core/program"
@@ -91,8 +90,7 @@ type app struct {
 	composer       *promptComposer
 	prompt         *promptView
 	commands       commandCatalog
-	completion     headless.Completion
-	completionGate completionGate
+	completion     *promptCompletion
 	shell          *shellView
 	stack          headless.Stack
 	queue          *workbench.Queue
@@ -286,29 +284,17 @@ func (a *app) configureComposer(appearance terminalAppearance, keys *keymap.Map,
 }
 
 func (a *app) configureCompletion(appearance terminalAppearance) {
-	completionKeys := headless.DefaultCompletionKeys()
-	completionKeys.Bind(headless.Accept, input.Chord{Code: input.Enter})
-	a.completion = headless.Completion{
-		Look: appearance.theme.Look(appearance.glyphs), Keys: completionKeys,
-		Accept: func(candidate headless.Candidate, token headless.Token) {
-			// Acceptance closes both halves of completion: Oolong has already
-			// dismissed the list, while the application must retire its async
-			// producer so an older file lookup cannot reopen the accepted token.
-			a.operations.Cancel(completionOperation)
-			if token.Trigger.Prefix == "@" {
-				a.acceptAttachmentCompletion(candidate.Text, token)
-				return
-			}
-			a.completionGate.Reset()
-			a.composer.Editor().Replace(token.Start, token.End, candidate.Text)
-			a.composer.scheduleDraftPersistence()
-		},
-	}
+	a.completion = newPromptCompletion(promptCompletionConfig{
+		composer: a.composer, tasks: a.tasks, commands: &a.commands, theme: appearance.theme, glyphs: appearance.glyphs,
+		notify:       a.message,
+		availability: func(name string) extensions.CommandAvailability { return a.commands.availability(name, a) },
+	})
 }
 
 func (a *app) buildInterface(appearance terminalAppearance, editorKeys *keymap.Map) {
 	theme, glyphs := appearance.theme, appearance.glyphs
 	a.prompt = newPromptView(theme, glyphs, editorKeys, &a.composer.Composer, a.displayOptions())
+	a.completion.prompt = a.prompt
 	a.shell = newShellView(a.header, a.transcript, a.activity, a.queueView, a.status, a.prompt)
 	a.wireTranscript(a.transcript)
 	a.shell.Focus(true)
@@ -369,8 +355,8 @@ func (a *app) buildSessionPicker(theme kit.Theme, glyphs kit.Glyphs, replayPolic
 
 func (a *app) Draw(frame headless.Frame) {
 	a.stack.Draw(frame)
-	if a.stack.Depth() == 0 && a.completion.Open() {
-		a.drawCompletion(frame)
+	if a.stack.Depth() == 0 && a.completion.popup.Open() {
+		a.completion.drawCompletion(frame)
 	}
 }
 
@@ -419,7 +405,7 @@ func (a *app) submit() {
 		a.runCommand(name, arg, func() {
 			a.composer.restoreComposer(authoring.Message{Attachments: message.Attachments})
 			a.operations.Cancel(completionOperation)
-			a.completion.Dismiss()
+			a.completion.popup.Dismiss()
 		})
 		return
 	}
@@ -453,7 +439,7 @@ func (a *app) dispatchPrompt(message authoring.Message) {
 	a.screens.options.dismissModelPicker()
 	a.composer.resetComposer()
 	a.operations.Cancel(completionOperation)
-	a.completion.Dismiss()
+	a.completion.popup.Dismiss()
 	if !a.runs.drainQueue() {
 		a.runs.syncQueue()
 	}
@@ -489,7 +475,7 @@ func (a *app) message(label string) {
 
 func (a *app) terminalClosed() bool { return a.closed }
 
-func (a *app) dismissCompletion() { a.completion.Dismiss() }
+func (a *app) dismissCompletion() { a.completion.popup.Dismiss() }
 
 func (a *app) currentTranscript() *transcriptView { return a.transcript }
 

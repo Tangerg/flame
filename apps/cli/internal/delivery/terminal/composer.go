@@ -194,15 +194,15 @@ func (c *promptComposer) addAttachment(path string) error {
 	return nil
 }
 
-func (a *app) acceptAttachmentCompletion(path string, token headless.Token) {
-	insertion, err := a.composer.resolveAttachment(path)
+func (c *promptCompletion) acceptAttachmentCompletion(path string, token headless.Token) {
+	insertion, err := c.composer.resolveAttachment(path)
 	if err != nil {
-		a.message(err.Error())
+		c.notify(err.Error())
 		return
 	}
-	a.completionGate.Reset()
-	a.composer.Editor().Replace(max(token.Start-1, 0), token.End, "")
-	a.composer.insertAttachment(insertion)
+	c.gate.Reset()
+	c.composer.Editor().Replace(max(token.Start-1, 0), token.End, "")
+	c.composer.insertAttachment(insertion)
 }
 
 func (c *promptComposer) removeAttachment(argument string) error {

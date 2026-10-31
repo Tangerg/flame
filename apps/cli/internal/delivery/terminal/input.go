@@ -71,11 +71,11 @@ func (a *app) handleConfiguredAction(event input.Event, action keymap.Action) bo
 	}
 	// Completion owns its navigation and acceptance keys before prompt-level
 	// history, submission, or editing actions, matching the visual layer on top.
-	if action == sendPrompt && a.exactCommandCompletion() {
-		if !a.completion.Dismiss() {
+	if action == sendPrompt && a.completion.exactCommandCompletion() {
+		if !a.completion.popup.Dismiss() {
 			return true
 		}
-	} else if a.handleCompletion(event) {
+	} else if a.completion.handleCompletion(event) {
 		return true
 	}
 	if a.shell.PromptFocused() && a.handleHistoryAction(action) {
@@ -92,7 +92,7 @@ func (a *app) handleConfiguredAction(event input.Event, action keymap.Action) bo
 		before := a.composer.Editor().Revision()
 		if a.composer.Editor().Do(action) {
 			a.scheduleDraftPersistenceAfter(before)
-			a.refreshCompletion()
+			a.completion.refreshCompletion()
 			return true
 		}
 	}
@@ -113,7 +113,7 @@ func (a *app) handleUnboundEvent(event input.Event) bool {
 			return true
 		}
 	}
-	if a.handleCompletion(event) {
+	if a.completion.handleCompletion(event) {
 		return true
 	}
 	before := a.composer.Editor().Revision()
@@ -129,7 +129,7 @@ func (a *app) handleUnboundEvent(event input.Event) bool {
 		a.scheduleDraftPersistenceAfter(before)
 	}
 	if handled {
-		a.refreshCompletion()
+		a.completion.refreshCompletion()
 	}
 	return handled
 }
@@ -250,7 +250,7 @@ func (a *app) retireDraft(message authoring.Message) error {
 	if err := a.composer.commitDraft(authoring.Message{}); err != nil {
 		return fmt.Errorf("retire session draft: %w", err)
 	}
-	a.completion.Dismiss()
+	a.completion.popup.Dismiss()
 	return nil
 }
 
@@ -286,7 +286,7 @@ func (a *app) handleSessionAction(action keymap.Action) bool {
 		a.PreviousMatch()
 		return true
 	case scrollPageUp, scrollPageDown, scrollTop, scrollBottom:
-		if a.completion.Open() {
+		if a.completion.popup.Open() {
 			return false
 		}
 		return a.transcript.Scroll(action)

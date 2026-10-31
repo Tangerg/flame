@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/Tangerg/flame/apps/cli/internal/application/extensions"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
@@ -43,27 +44,80 @@ func (c *completionGate) Reset() {
 	c.suppressed, c.active = completionQuery{}, false
 }
 
-func (a *app) refreshCompletion() {
-	a.operations.Cancel(completionOperation)
-	query, ok := a.currentCompletionQuery()
+// promptCompletion offers command names and workspace files for the token
+// under the prompt's cursor. gate keeps an explicitly closed offer closed until
+// its token changes.
+type promptCompletion struct {
+	popup    headless.Completion
+	gate     completionGate
+	composer *promptComposer
+	tasks    taskRunner
+	commands *commandCatalog
+	prompt   *promptView
+	theme    kit.Theme
+	glyphs   kit.Glyphs
+
+	notify       func(string)
+	availability func(name string) extensions.CommandAvailability
+}
+
+type promptCompletionConfig struct {
+	composer     *promptComposer
+	tasks        taskRunner
+	commands     *commandCatalog
+	theme        kit.Theme
+	glyphs       kit.Glyphs
+	notify       func(string)
+	availability func(name string) extensions.CommandAvailability
+}
+
+func newPromptCompletion(cfg promptCompletionConfig) *promptCompletion {
+	p := &promptCompletion{
+		composer: cfg.composer, tasks: cfg.tasks, commands: cfg.commands, theme: cfg.theme, glyphs: cfg.glyphs,
+		notify: cfg.notify, availability: cfg.availability,
+	}
+	keys := headless.DefaultCompletionKeys()
+	keys.Bind(headless.Accept, input.Chord{Code: input.Enter})
+	p.popup = headless.Completion{
+		Look: p.theme.Look(p.glyphs), Keys: keys,
+		Accept: func(candidate headless.Candidate, token headless.Token) {
+			// Acceptance closes both halves of completion: Oolong has already
+			// dismissed the list, while the application must retire its async
+			// producer so an older file lookup cannot reopen the accepted token.
+			p.tasks.operations.Cancel(completionOperation)
+			if token.Trigger.Prefix == "@" {
+				p.acceptAttachmentCompletion(candidate.Text, token)
+				return
+			}
+			p.gate.Reset()
+			p.composer.Editor().Replace(token.Start, token.End, candidate.Text)
+			p.composer.scheduleDraftPersistence()
+		},
+	}
+	return p
+}
+
+func (c *promptCompletion) refreshCompletion() {
+	c.tasks.operations.Cancel(completionOperation)
+	query, ok := c.currentCompletionQuery()
 	if !ok {
-		a.completionGate.Reset()
-		a.completion.Dismiss()
+		c.gate.Reset()
+		c.popup.Dismiss()
 		return
 	}
-	if !a.completionGate.Allow(query) {
-		a.completion.Dismiss()
+	if !c.gate.Allow(query) {
+		c.popup.Dismiss()
 		return
 	}
 	token := query.token
 	if token.Trigger.Prefix == "@" {
-		a.completeFiles(query)
+		c.completeFiles(query)
 		return
 	}
-	found := a.commands.find(token.Query)
+	found := c.commands.find(token.Query)
 	candidates := make([]headless.Candidate, 0, len(found))
 	for _, match := range found {
-		availability := a.commands.availability(match.Command.Name, a)
+		availability := c.availability(match.Command.Name)
 		detail := match.Command.Title
 		if !availability.Enabled() {
 			detail = "unavailable: " + availability.Reason()
@@ -73,12 +127,12 @@ func (a *app) refreshCompletion() {
 			Detail: detail, Matched: match.At,
 		})
 	}
-	a.completion.Offer(token, candidates)
+	c.popup.Offer(token, candidates)
 }
 
-func (a *app) currentCompletionQuery() (completionQuery, bool) {
-	lines := strings.Split(a.composer.Editor().Text(), "\n")
-	line, column := a.composer.Editor().Cursor()
+func (c *promptCompletion) currentCompletionQuery() (completionQuery, bool) {
+	lines := strings.Split(c.composer.Editor().Text(), "\n")
+	line, column := c.composer.Editor().Cursor()
 	if line < 0 || line >= len(lines) {
 		return completionQuery{}, false
 	}
@@ -92,31 +146,31 @@ func (a *app) currentCompletionQuery() (completionQuery, bool) {
 	return completionQuery{line: line, token: token}, true
 }
 
-func (a *app) handleCompletion(event input.Event) bool {
-	_, wasOpen := a.completion.Token()
-	handled := a.completion.Handle(event)
-	if !handled || !wasOpen || a.completion.Open() {
+func (c *promptCompletion) handleCompletion(event input.Event) bool {
+	_, wasOpen := c.popup.Token()
+	handled := c.popup.Handle(event)
+	if !handled || !wasOpen || c.popup.Open() {
 		return handled
 	}
-	if query, ok := a.currentCompletionQuery(); ok {
-		a.completionGate.Suppress(query)
+	if query, ok := c.currentCompletionQuery(); ok {
+		c.gate.Suppress(query)
 	} else {
-		a.completionGate.Reset()
+		c.gate.Reset()
 	}
 	return true
 }
 
-func (a *app) completeFiles(query completionQuery) {
+func (c *promptCompletion) completeFiles(query completionQuery) {
 	// The previous offer carries its query's replacement range and must stop
 	// accepting input before the next asynchronous lookup can publish a result.
-	if !a.completion.Dismiss() {
+	if !c.popup.Dismiss() {
 		return
 	}
-	if a.composer.attachments == nil {
+	if c.composer.attachments == nil {
 		return
 	}
-	resolver := a.composer.attachments
-	a.tasks.session(completionOperation, true,
+	resolver := c.composer.attachments
+	c.tasks.session(completionOperation, true,
 		func(ctx context.Context) ([]headless.Candidate, error) {
 			matches, err := resolver.Complete(ctx, query.token.Query)
 			candidates := make([]headless.Candidate, 0, len(matches))
@@ -128,59 +182,59 @@ func (a *app) completeFiles(query completionQuery) {
 			return candidates, err
 		},
 		func(candidates []headless.Candidate, err error) {
-			if !a.completionGate.Allow(query) {
-				a.completion.Dismiss()
+			if !c.gate.Allow(query) {
+				c.popup.Dismiss()
 				return
 			}
 			if err != nil {
-				a.completion.Dismiss()
-				a.message(err.Error())
+				c.popup.Dismiss()
+				c.notify(err.Error())
 				return
 			}
-			a.completion.Offer(query.token, candidates)
+			c.popup.Offer(query.token, candidates)
 		},
 	)
 }
 
-func (a *app) exactCommandCompletion() bool {
-	token, open := a.completion.Token()
+func (c *promptCompletion) exactCommandCompletion() bool {
+	token, open := c.popup.Token()
 	if !open || token.Trigger.Prefix != "/" || token.Query == "" {
 		return false
 	}
-	command, found := a.commands.lookup(token.Query)
+	command, found := c.commands.lookup(token.Query)
 	if !found {
 		return false
 	}
-	candidate, selected := a.completion.Current()
+	candidate, selected := c.popup.Current()
 	return selected && candidate.Text == command.Name
 }
 
-func (a *app) drawCompletion(frame headless.Frame) {
+func (c *promptCompletion) drawCompletion(frame headless.Frame) {
 	width, height := frame.Size()
-	rows := a.completion.HeightForWidth(width)
-	promptHeight := a.prompt.HeightForWidth(width)
+	rows := c.popup.HeightForWidth(width)
+	promptHeight := c.prompt.HeightForWidth(width)
 	availableHeight := height - promptHeight
 	if width <= 2 || availableHeight <= 2 || rows <= 0 {
 		return
 	}
 	title := "commands"
 	footer := "enter complete"
-	if token, ok := a.completion.Token(); ok && token.Trigger.Prefix == "@" {
+	if token, ok := c.popup.Token(); ok && token.Trigger.Prefix == "@" {
 		title = "workspace files"
 		footer = "enter attach"
-	} else if a.exactCommandCompletion() {
+	} else if c.exactCommandCompletion() {
 		footer = "enter run"
 	}
 	box := kit.Box{
-		Theme: a.transcript.theme, Glyphs: a.transcript.glyphs,
+		Theme: c.theme, Glyphs: c.glyphs,
 		Padding: layout.Symmetric(0, 1), Title: title, Footer: footer,
 		FooterAlign: layout.End,
 	}
 	space := frame.Sub(grid.Area(1, 0, width-2, availableHeight))
 	area := (layout.Placement{
-		Anchor: layout.BottomLeft, Width: max(a.completion.Width()+4, 32), Height: rows + 2,
+		Anchor: layout.BottomLeft, Width: max(c.popup.Width()+4, 32), Height: rows + 2,
 	}).In(space.Bounds().Size())
 	inner := box.InnerRect(area.Size())
 	box.Draw(space.View.Sub(area))
-	a.completion.Draw(space.Sub(area).Sub(inner))
+	c.popup.Draw(space.Sub(area).Sub(inner))
 }

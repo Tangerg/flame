@@ -91,7 +91,7 @@ func (a *app) buildScreens(cfg appConfig) {
 		a.screens.plugins = &pluginScreens{screenHost: host, service: cfg.plugins, workbench: a.workbench, viewsChanged: func() {
 			a.registerCommands()
 			// A command typed while the views loaded completes once they arrive.
-			a.refreshCompletion()
+			a.completion.refreshCompletion()
 		}}
 	}
 	if cfg.authoringContext != nil {

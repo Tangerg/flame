@@ -5,7 +5,6 @@ import (
 
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/program"
 
 	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/attachment"
 )
@@ -17,22 +16,31 @@ func TestFileCompletionCannotAcceptAnOfferForEarlierInput(t *testing.T) {
 	}
 	// The unattached loop cannot apply the new lookup, so acceptance exercises
 	// the interval between editing the query and receiving its candidates.
-	a := &app{loop: &program.Runtime{}, operations: newOperationOwner(t.Context()), composer: testPromptComposer(t)}
-	a.composer.attachments = resolver
-	a.tasks = unattachedTasks(a.operations)
-	t.Cleanup(a.operations.Close)
+	operations := newOperationOwner(t.Context())
+	t.Cleanup(operations.Close)
+	composer := testPromptComposer(t)
+	composer.attachments = resolver
+	transcript := testTranscriptView(t)
+	completion := newPromptCompletion(promptCompletionConfig{
+		composer: composer, tasks: unattachedTasks(operations), commands: &commandCatalog{},
+		theme: transcript.theme, glyphs: transcript.glyphs, notify: func(string) {},
+	})
+	a := struct {
+		composer   *promptComposer
+		completion *promptCompletion
+	}{composer, completion}
 	a.composer.Editor().SetText("@c")
-	query, ok := a.currentCompletionQuery()
+	query, ok := a.completion.currentCompletionQuery()
 	if !ok {
 		t.Fatal("file input did not open a completion query")
 	}
-	a.completion.Accept = func(_ headless.Candidate, token headless.Token) {
+	a.completion.popup.Accept = func(_ headless.Candidate, token headless.Token) {
 		t.Errorf("accepted obsolete replacement range %+v for @cache", token)
 	}
-	a.completion.Offer(query.token, []headless.Candidate{{Text: "cache_test.go"}})
+	a.completion.popup.Offer(query.token, []headless.Candidate{{Text: "cache_test.go"}})
 	a.composer.Editor().SetText("@cache")
-	a.refreshCompletion()
-	if a.handleCompletion(input.Key{Code: input.Tab}) {
+	a.completion.refreshCompletion()
+	if a.completion.handleCompletion(input.Key{Code: input.Tab}) {
 		t.Fatal("earlier file candidates consumed completion acceptance while the new lookup was pending")
 	}
 	if got := a.composer.Editor().Text(); got != "@cache" {
