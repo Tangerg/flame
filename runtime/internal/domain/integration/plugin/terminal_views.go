@@ -71,7 +71,7 @@ type InputBinding struct {
 // the member Source names is set.
 type Binding struct {
 	Source  extension.TerminalBindingSource
-	Literal jsonvalue.Value
+	Literal jsonvalue.Value `json:",omitzero"`
 	Field   string
 	Context extension.TerminalContext
 	Form    *FormField

@@ -63,6 +63,11 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 			usage = item
 		}
 	}
+	for _, item := range []protocol.PluginInstallation{memory, scheduling} {
+		if len(item.Selected.TerminalViews) != 1 || len(item.Selected.Diagnostics) != 0 {
+			t.Fatalf("%s terminal views = %+v, diagnostics = %+v", item.Selected.Name, item.Selected.TerminalViews, item.Selected.Diagnostics)
+		}
+	}
 	for _, item := range []protocol.PluginInstallation{memory, diagnostics, usage} {
 		if item.ID == "" || !slices.ContainsFunc(item.Selected.Components, func(component protocol.PluginClientComponent) bool { return component.Placement == "workspaceView" }) {
 			t.Fatalf("required workspace page is absent: %+v", item)

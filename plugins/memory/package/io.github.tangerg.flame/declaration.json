@@ -19,5 +19,187 @@
       "contribution": "memory-provider",
       "material": "memory"
     }
+  ],
+  "terminalViews": [
+    {
+      "id": "memory",
+      "title": "Agent memory",
+      "contribution": "memory-provider",
+      "list": {
+        "method": "flame.memory/list.v2",
+        "rows": "Rows",
+        "key": "ID",
+        "cursor": {
+          "input": "Cursor",
+          "output": "NextCursor"
+        },
+        "input": {
+          "CWD": {
+            "context": "workspace"
+          },
+          "Scope": {
+            "form": {
+              "title": "Scope",
+              "default": {
+                "value": "project"
+              }
+            }
+          }
+        },
+        "columns": [
+          {
+            "title": "Status",
+            "field": "Status"
+          },
+          {
+            "title": "Pinned",
+            "field": "Pinned"
+          },
+          {
+            "title": "Origin",
+            "field": "Origin"
+          },
+          {
+            "title": "Content",
+            "field": "Content"
+          },
+          {
+            "title": "Updated",
+            "field": "UpdatedAt"
+          }
+        ]
+      },
+      "actions": [
+        {
+          "id": "add",
+          "title": "Add memory",
+          "method": "flame.memory/add.v2",
+          "target": "view",
+          "input": {
+            "CWD": {
+              "context": "workspace"
+            },
+            "Scope": {
+              "form": {
+                "title": "Scope",
+                "default": {
+                  "value": "project"
+                }
+              }
+            },
+            "Content": {
+              "form": {
+                "title": "Content"
+              }
+            }
+          }
+        },
+        {
+          "id": "edit",
+          "title": "Edit",
+          "method": "flame.memory/update.v2",
+          "target": "row",
+          "input": {
+            "ID": {
+              "row": "ID"
+            },
+            "ExpectedRevision": {
+              "row": "Revision"
+            },
+            "Content": {
+              "form": {
+                "title": "Content",
+                "default": {
+                  "row": "Content"
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "pin",
+          "title": "Pin",
+          "method": "flame.memory/update.v2",
+          "target": "row",
+          "input": {
+            "ID": {
+              "row": "ID"
+            },
+            "ExpectedRevision": {
+              "row": "Revision"
+            },
+            "Pinned": {
+              "value": true
+            }
+          }
+        },
+        {
+          "id": "unpin",
+          "title": "Unpin",
+          "method": "flame.memory/update.v2",
+          "target": "row",
+          "input": {
+            "ID": {
+              "row": "ID"
+            },
+            "ExpectedRevision": {
+              "row": "Revision"
+            },
+            "Pinned": {
+              "value": false
+            }
+          }
+        },
+        {
+          "id": "approve",
+          "title": "Approve",
+          "method": "flame.memory/review.v2",
+          "target": "row",
+          "input": {
+            "ID": {
+              "row": "ID"
+            },
+            "ExpectedRevision": {
+              "row": "Revision"
+            },
+            "Decision": {
+              "value": "approve"
+            }
+          }
+        },
+        {
+          "id": "reject",
+          "title": "Reject",
+          "method": "flame.memory/review.v2",
+          "target": "row",
+          "input": {
+            "ID": {
+              "row": "ID"
+            },
+            "ExpectedRevision": {
+              "row": "Revision"
+            },
+            "Decision": {
+              "value": "reject"
+            }
+          }
+        },
+        {
+          "id": "delete",
+          "title": "Delete",
+          "method": "flame.memory/delete.v2",
+          "target": "row",
+          "confirm": true,
+          "input": {
+            "ID": {
+              "row": "ID"
+            },
+            "ExpectedRevision": {
+              "row": "Revision"
+            }
+          }
+        }
+      ]
+    }
   ]
 }

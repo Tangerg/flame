@@ -20,5 +20,249 @@
       "contribution": "schedules-provider",
       "material": "schedules"
     }
+  ],
+  "terminalViews": [
+    {
+      "id": "schedules",
+      "title": "Scheduled runs",
+      "contribution": "schedules-provider",
+      "list": {
+        "method": "flame.schedules/list.v1",
+        "rows": "Rows",
+        "key": "ID",
+        "cursor": {
+          "input": "Cursor",
+          "output": "NextCursor"
+        },
+        "columns": [
+          {
+            "title": "Title",
+            "field": "Title"
+          },
+          {
+            "title": "Cron",
+            "field": "Cron"
+          },
+          {
+            "title": "Time zone",
+            "field": "TimeZone"
+          },
+          {
+            "title": "Next run",
+            "field": "NextRunAt"
+          },
+          {
+            "title": "Last run",
+            "field": "LastRunAt"
+          },
+          {
+            "title": "Workspace",
+            "field": "CWD"
+          }
+        ]
+      },
+      "actions": [
+        {
+          "id": "create",
+          "title": "Create schedule",
+          "method": "flame.schedules/create.v1",
+          "target": "view",
+          "input": {
+            "Title": {
+              "form": {
+                "title": "Title",
+                "default": {
+                  "value": ""
+                }
+              }
+            },
+            "Instructions": {
+              "form": {
+                "title": "Instructions"
+              }
+            },
+            "Cron": {
+              "form": {
+                "title": "Cron",
+                "default": {
+                  "value": "0 9 * * 1-5"
+                }
+              }
+            },
+            "TimeZone": {
+              "form": {
+                "title": "Time zone",
+                "default": {
+                  "context": "timeZone"
+                }
+              }
+            },
+            "CWD": {
+              "form": {
+                "title": "Workspace",
+                "default": {
+                  "context": "workspace"
+                }
+              }
+            },
+            "ModelSelection/provider": {
+              "form": {
+                "title": "Provider",
+                "default": {
+                  "value": ""
+                }
+              }
+            },
+            "ModelSelection/model": {
+              "form": {
+                "title": "Model",
+                "default": {
+                  "value": ""
+                }
+              }
+            },
+            "ModelSelection/reasoningEffort": {
+              "value": ""
+            },
+            "Enabled": {
+              "value": true
+            }
+          }
+        },
+        {
+          "id": "edit",
+          "title": "Edit",
+          "method": "flame.schedules/update.v1",
+          "target": "row",
+          "input": {
+            "ID": {
+              "row": "ID"
+            },
+            "ExpectedRevision": {
+              "row": "Revision"
+            },
+            "Title": {
+              "form": {
+                "title": "Title",
+                "default": {
+                  "row": "Title"
+                }
+              }
+            },
+            "Instructions": {
+              "form": {
+                "title": "Instructions",
+                "default": {
+                  "row": "Instructions"
+                }
+              }
+            },
+            "Cron": {
+              "form": {
+                "title": "Cron",
+                "default": {
+                  "row": "Cron"
+                }
+              }
+            },
+            "TimeZone": {
+              "form": {
+                "title": "Time zone",
+                "default": {
+                  "row": "TimeZone"
+                }
+              }
+            },
+            "CWD": {
+              "form": {
+                "title": "Workspace",
+                "default": {
+                  "row": "CWD"
+                }
+              }
+            },
+            "ModelSelection/Provider": {
+              "form": {
+                "title": "Provider",
+                "default": {
+                  "row": "ModelSelection/provider"
+                }
+              }
+            },
+            "ModelSelection/Model": {
+              "form": {
+                "title": "Model",
+                "default": {
+                  "row": "ModelSelection/model"
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "enable",
+          "title": "Enable",
+          "method": "flame.schedules/update.v1",
+          "target": "row",
+          "input": {
+            "ID": {
+              "row": "ID"
+            },
+            "ExpectedRevision": {
+              "row": "Revision"
+            },
+            "ModelSelection": {
+              "value": {}
+            },
+            "Enabled": {
+              "value": true
+            }
+          }
+        },
+        {
+          "id": "disable",
+          "title": "Disable",
+          "method": "flame.schedules/update.v1",
+          "target": "row",
+          "input": {
+            "ID": {
+              "row": "ID"
+            },
+            "ExpectedRevision": {
+              "row": "Revision"
+            },
+            "ModelSelection": {
+              "value": {}
+            },
+            "Enabled": {
+              "value": false
+            }
+          }
+        },
+        {
+          "id": "run",
+          "title": "Run now",
+          "method": "flame.schedules/runNow.v1",
+          "target": "row",
+          "input": {
+            "ID": {
+              "row": "ID"
+            }
+          }
+        },
+        {
+          "id": "delete",
+          "title": "Delete",
+          "method": "flame.schedules/delete.v1",
+          "target": "row",
+          "confirm": true,
+          "input": {
+            "ID": {
+              "row": "ID"
+            }
+          }
+        }
+      ]
+    }
   ]
 }
