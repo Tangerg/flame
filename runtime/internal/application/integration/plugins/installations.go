@@ -17,13 +17,13 @@ import (
 	"github.com/samber/lo"
 )
 
-// Catalog is the admitted release catalog, the only owner of release content.
+// catalog is the admitted release catalog, the only owner of release content.
 // Installations name releases by digest and read them here when needed.
 type catalog interface {
 	Get(context.Context, integrity.Digest) (plugin.Release, error)
 }
 
-// Packages owns release bytes: it admits a package as a candidate, publishes
+// packages owns release bytes: it admits a package as a candidate, publishes
 // and reclaims releases, prepares backends and observes realization.
 type packages interface {
 	Materialize(context.Context, string) (Candidate, error)
@@ -44,7 +44,7 @@ type Candidate interface {
 	Discard() error
 }
 
-// Connections realizes installation sources in the MCP supervisor.
+// connections realizes installation sources in the MCP supervisor.
 // WithdrawInstallation runs inside the change's critical section and must not
 // block; ReconcileInstallation dials after it.
 type connections interface {

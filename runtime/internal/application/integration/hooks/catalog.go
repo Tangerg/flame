@@ -9,7 +9,7 @@ import (
 	"github.com/samber/lo"
 )
 
-// Roots resolves the existing workspace identity before inspection or trust changes.
+// roots resolves the existing workspace identity before inspection or trust changes.
 type roots interface {
 	ResolveRoot(cwd string) (string, error)
 }

@@ -38,7 +38,7 @@ type RunStore struct {
 	db *sql.DB
 }
 
-// NewRunStore binds the Run table to db. db must have been opened via [Open] so
+// newRunStore binds the Run table to db. db must have been opened via [Open] so
 // the current schema was installed.
 func newRunStore(db *sql.DB) *RunStore {
 	return &RunStore{db: db}

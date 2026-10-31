@@ -6,17 +6,17 @@ import (
 )
 
 var (
-	// ErrInvalidTokenLimits reports a non-positive published fact or a prompt
+	// errInvalidTokenLimits reports a non-positive published fact or a prompt
 	// maximum that exceeds a known context window.
 	errInvalidTokenLimits = errors.New("model token limits: invalid")
-	// ErrInvalidOutputReservation reports a non-positive explicit generation
+	// errInvalidOutputReservation reports a non-positive explicit generation
 	// reservation. Absence is represented by [OutputReservation] zero value,
 	// never by the number zero.
 	errInvalidOutputReservation = errors.New("model token limits: invalid output reservation")
-	// ErrOutputTokenLimitExceeded reports an explicit generation request above
+	// errOutputTokenLimitExceeded reports an explicit generation request above
 	// the selected model's published output maximum.
 	errOutputTokenLimitExceeded = errors.New("model token limits: output maximum exceeded")
-	// ErrOutputReservationExhaustsContext reports an explicit output reservation
+	// errOutputReservationExhaustsContext reports an explicit output reservation
 	// that leaves no room for the non-empty model input.
 	errOutputReservationExhaustsContext = errors.New("model token limits: output reservation exhausts context")
 )

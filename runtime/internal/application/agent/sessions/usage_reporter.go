@@ -16,7 +16,7 @@ import (
 	"github.com/samber/lo"
 )
 
-// UsageSource reads retained physical evidence from one snapshot. The callback
+// usageSource reads retained physical evidence from one snapshot. The callback
 // must not perform storage I/O while that snapshot owns the database connection.
 type usageSource interface {
 	VisitEndpointInvocations(context.Context, string, time.Time, func(modelref.EndpointObservation) error) error

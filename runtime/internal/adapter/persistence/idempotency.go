@@ -19,13 +19,13 @@ const (
 	idempotencyRunAcceptance   = "run_acceptance"
 )
 
-// IdempotencyStore persists replay records across runtime restarts.
+// idempotencyStore persists replay records across runtime restarts.
 type idempotencyStore struct{ db *sql.DB }
 
-// NewIdempotencyStore returns a replay store backed by db.
+// newIdempotencyStore returns a replay store backed by db.
 func newIdempotencyStore(db *sql.DB) *idempotencyStore { return &idempotencyStore{db: db} }
 
-// IdempotencyNamespace returns the opaque identity of db's durable replay
+// idempotencyNamespace returns the opaque identity of db's durable replay
 // store. It is published as a transport capability so a client never replays a
 // persisted key into a different store that happens to occupy the same URL.
 func idempotencyNamespace(ctx context.Context, db *sql.DB) (operation.ReplayNamespace, error) {

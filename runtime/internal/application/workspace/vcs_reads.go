@@ -127,7 +127,7 @@ type RawDiffResult struct {
 	Patch    string
 }
 
-// GitReader is the application-owned port for working-tree status and diff
+// gitReader is the application-owned port for working-tree status and diff
 // reads. Its error contract uses this package's VCS sentinels. Results transfer
 // ownership to the caller, including the rows within structured diffs.
 // StructuredDiff returns only whole files, at most maxFiles of them holding at

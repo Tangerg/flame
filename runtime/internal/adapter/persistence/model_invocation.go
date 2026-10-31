@@ -246,7 +246,7 @@ func validateModelInvocationIdentity(sessionID, runID, segmentID, callID string)
 	return nil
 }
 
-// ModelInvocationRecord retains an attempt and any known response evidence;
+// modelInvocationRecord retains an attempt and any known response evidence;
 // failed response evidence never authorizes conversation continuation.
 type modelInvocationRecord struct {
 	KnownResponse            *chat.Response

@@ -30,7 +30,7 @@ import (
 // unsupported file extension, or a workspace with no matching root marker.
 var ErrNoServer = errors.New("lsp: no language server for target")
 
-// ErrClosed means the server set has been shut down.
+// errClosed means the server set has been shut down.
 var errClosed = errors.New("lsp: servers closed")
 
 // diagnosticsSettle bounds how long a diagnostics query waits for the server

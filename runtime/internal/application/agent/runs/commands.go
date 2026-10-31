@@ -24,7 +24,7 @@ var (
 	// may wait on WaitSessionStartable and retry. Other busy
 	// outcomes (for example a durable conflict) are not implicitly retryable.
 	ErrRunAdmissionBusy = fmt.Errorf("%w: run admission busy", run.ErrSessionBusy)
-	// ErrIsolationUnavailable reports that an isolated session cannot run because
+	// errIsolationUnavailable reports that an isolated session cannot run because
 	// isolation is not configured or the host has no sandbox backend. The run is
 	// refused rather than run unconfined (fail-closed).
 	errIsolationUnavailable = errors.New("runs: sandbox isolation unavailable")

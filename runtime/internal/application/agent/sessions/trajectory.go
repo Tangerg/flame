@@ -70,7 +70,7 @@ func (p TrajectoryPosition) validate() error {
 	}
 }
 
-// QueryTrajectoryReader returns a bounded page hydrated from one database
+// queryTrajectoryReader returns a bounded page hydrated from one database
 // snapshot, including the Session existence check and descendant filter.
 type queryTrajectoryReader interface {
 	PageTrajectory(context.Context, string, bool, *TrajectoryPosition, int) ([]TrajectoryEntry, error)

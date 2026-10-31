@@ -67,7 +67,7 @@ type GoalOutcomeReporter interface {
 	Report(ctx context.Context, command goals.ReportCommand) (goals.ReportResult, error)
 }
 
-// GoalStarter is the one lifecycle operation create_goal needs. The Driver owns
+// goalStarter is the one lifecycle operation create_goal needs. The Driver owns
 // admission waiting and loop lifetime; the tool does not reproduce either.
 type goalStarter interface {
 	Start(ctx context.Context, sessionID, objective string, selection modelchoice.Selection, capabilities run.Capabilities) (goalstate.Goal, error)

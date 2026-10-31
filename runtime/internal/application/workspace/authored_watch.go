@@ -72,7 +72,7 @@ type AuthoredObservation interface {
 	Accept(changes []AuthoredChange) error
 }
 
-// IdentityInspector supplies the one live identity fact needed to distinguish
+// identityInspector supplies the one live identity fact needed to distinguish
 // a nested workspace root from its project-discovery root.
 type identityInspector interface {
 	Inspect(path string) (Resolved, error)

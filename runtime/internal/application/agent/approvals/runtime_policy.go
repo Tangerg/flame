@@ -44,7 +44,7 @@ func NewRuntimePolicy(
 	}, nil
 }
 
-// ModeStore persists permission modes: the Runtime default a user chose, and
+// modeStore persists permission modes: the Runtime default a user chose, and
 // explicit per-session Plan mode. A missing session row means the session
 // follows the Runtime default; a missing default means none was chosen.
 // Implementations validate ownership and decoded modes at their persistence

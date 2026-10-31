@@ -22,7 +22,7 @@ type ApprovalRuleStore struct {
 	db *sql.DB
 }
 
-// NewApprovalRuleStore binds the rule store to db.
+// newApprovalRuleStore binds the rule store to db.
 func newApprovalRuleStore(db *sql.DB) *ApprovalRuleStore {
 	return &ApprovalRuleStore{db: db}
 }

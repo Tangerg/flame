@@ -21,7 +21,7 @@ type ConversationCompactionPlan struct {
 	runs       []run.Replacement
 }
 
-// NewConversationCompactionPlan binds one conversation rewrite to the exact
+// newConversationCompactionPlan binds one conversation rewrite to the exact
 // same-Session Run set from which its watermark replacements were derived.
 func newConversationCompactionPlan(
 	sessionID string,

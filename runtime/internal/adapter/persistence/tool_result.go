@@ -20,7 +20,7 @@ type ToolResultStore struct {
 	db *sql.DB
 }
 
-// NewToolResultStore wires a database with the current [Open]-installed schema
+// newToolResultStore wires a database with the current [Open]-installed schema
 // to the offloaded-tool-result surface.
 func newToolResultStore(db *sql.DB) *ToolResultStore {
 	return &ToolResultStore{db: db}

@@ -22,12 +22,12 @@ const maxDocumentBytes int64 = 8 << 20
 // one didOpen when it is next touched.
 const maxOpenDocuments = 128
 
-// ErrDocumentTooLarge reports a workspace document that cannot be admitted to
+// errDocumentTooLarge reports a workspace document that cannot be admitted to
 // the in-memory language-server synchronization boundary.
 var errDocumentTooLarge = fmt.Errorf(
 	"lsp: document exceeds the %d MiB limit", maxDocumentBytes>>20)
 
-// ErrUnsupportedDocument reports a source that cannot be represented as one
+// errUnsupportedDocument reports a source that cannot be represented as one
 // Language Server Protocol text document.
 var errUnsupportedDocument = errors.New("lsp: document is not a regular UTF-8 text file")
 

@@ -137,7 +137,7 @@ func NewDurableModelContextCompaction(input ModelContextCompactionInput) (ModelC
 	return newModelContextCompaction(modelContextDurable, input)
 }
 
-// NewTransientModelContextCompaction builds a request for an isolated child
+// newTransientModelContextCompaction builds a request for an isolated child
 // Interaction whose complete candidate exists only in Strategy recovery state.
 func newTransientModelContextCompaction(input ModelContextCompactionInput) (ModelContextCompaction, error) {
 	return newModelContextCompaction(modelContextTransient, input)

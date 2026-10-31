@@ -10,7 +10,7 @@ import (
 	"github.com/samber/lo"
 )
 
-// DiagnosticToolRegistry is the directly invocable diagnostic-tool catalog. It is deliberately
+// diagnosticToolRegistry is the directly invocable diagnostic-tool catalog. It is deliberately
 // distinct from the agent's full tool set: every entry must be safe to run
 // outside a Run and must honor the supplied workspace root. List transfers
 // ownership of the returned tool definitions to the caller.
@@ -19,7 +19,7 @@ type diagnosticToolRegistry interface {
 	Invoke(ctx context.Context, root, name string, arguments toolsvc.Arguments) (toolsvc.Result, error)
 }
 
-// DiagnosticToolRoots resolves the workspace root an external diagnostic invocation is
+// diagnosticToolRoots resolves the workspace root an external diagnostic invocation is
 // allowed to inspect. The workspace use case owns cwd admission; tools never
 // accept an unchecked client path as their filesystem root.
 type diagnosticToolRoots interface {

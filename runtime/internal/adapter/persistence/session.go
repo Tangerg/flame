@@ -14,7 +14,7 @@ type SessionStore struct {
 	db *sql.DB
 }
 
-// NewSessionStore wires a database opened via [openDatabase] to the session persistence
+// newSessionStore wires a database opened via [openDatabase] to the session persistence
 // surface.
 func newSessionStore(db *sql.DB) *SessionStore {
 	return &SessionStore{db: db}

@@ -20,7 +20,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 )
 
-// ErrPromptRejected reports that a lifecycle hook explicitly blocked a fresh
+// errPromptRejected reports that a lifecycle hook explicitly blocked a fresh
 // root prompt. Broken or timed-out hooks remain non-blocking in the hooks
 // application policy and therefore do not produce this error.
 var errPromptRejected = errors.New("execution: prompt rejected by lifecycle hook")
@@ -37,7 +37,7 @@ type WorkingContextConfig struct {
 	Hooks             workingContextHookResolver
 }
 
-// WorkingContextHookResolver resolves the trusted lifecycle hooks for one
+// workingContextHookResolver resolves the trusted lifecycle hooks for one
 // execution directory. Management inspection is intentionally absent.
 type workingContextHookResolver interface {
 	For(ctx context.Context, cwd string) (*apphooks.Bound, error)

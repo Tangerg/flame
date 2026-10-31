@@ -53,7 +53,7 @@ type WorkspaceMutationStore struct {
 	db *sql.DB
 }
 
-// NewWorkspaceMutationStore wires a database opened via [openDatabase] to the
+// newWorkspaceMutationStore wires a database opened via [openDatabase] to the
 // operation-log surface.
 func newWorkspaceMutationStore(db *sql.DB) *WorkspaceMutationStore {
 	return &WorkspaceMutationStore{db: db}

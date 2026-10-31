@@ -71,7 +71,7 @@ func (e ExecutorEvent) Validate() error {
 	return e.Member.Validate()
 }
 
-// ExecutorPayload is the closed family carried by the ordered executor stream.
+// executorPayload is the closed family carried by the ordered executor stream.
 // Most values are reducible [ExecutionFact] facts. A control handshake such as
 // control requests share the stream only when their ordering relative to those
 // facts is itself part of correctness.

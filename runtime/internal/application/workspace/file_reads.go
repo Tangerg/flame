@@ -68,7 +68,7 @@ type FileListOptions struct {
 	IncludeIgnored bool
 }
 
-// FileBrowser is the application-owned port for workspace file reads.
+// fileBrowser is the application-owned port for workspace file reads.
 type fileBrowser interface {
 	List(ctx context.Context, root string, options FileListOptions) ([]FileEntry, error)
 	Read(ctx context.Context, root string, plan FileReadPlan) (FileReadResult, error)

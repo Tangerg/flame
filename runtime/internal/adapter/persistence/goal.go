@@ -23,7 +23,7 @@ type GoalStore struct {
 	db *sql.DB
 }
 
-// NewGoalStore wires a database with the current [Open]-installed schema to the
+// newGoalStore wires a database with the current [Open]-installed schema to the
 // autonomous-goal persistence surface.
 func newGoalStore(db *sql.DB) *GoalStore { return &GoalStore{db: db} }
 

@@ -18,7 +18,8 @@ import (
 
 var (
 	// forkBomb matches the classic :(){ :|:& };: (whitespace-tolerant).
-	forkBomb = regexp.MustCompile(`:\s*\(\s*\)\s*\{\s*:\s*\|\s*:\s*&\s*\}\s*;\s*:`)
+	shellSeparators = regexp.MustCompile(`&&|\|\||[;|&\n]`)
+	forkBomb        = regexp.MustCompile(`:\s*\(\s*\)\s*\{\s*:\s*\|\s*:\s*&\s*\}\s*;\s*:`)
 	// deviceDestroyers match filesystem/disk-wiping commands that are essentially
 	// never run against a real target by accident.
 	deviceDestroyers = []*regexp.Regexp{
@@ -29,16 +30,11 @@ var (
 	}
 )
 
-// catastrophicCommand reports whether a shell command line matches a
-// high-confidence, near-zero-false-positive catastrophic pattern. Conservative
-// on purpose: it flags the handful of forms that are essentially never
-// intentional (rm -rf of a root/home path, the explicit --no-preserve-root, a
-// fork bomb, a device wipe), and leaves everything else — including ordinary
-// rm -rf of a subdirectory — alone. It is NOT a security boundary (trivially
-// bypassable via quoting/variables); it is a courtesy confirm before an obvious
-// disaster.
 // Command reports whether a shell command has a high-confidence destructive
-// shape. The command must already be extracted from its concrete tool input.
+// shape: rm -rf of a root or home path, --no-preserve-root, a fork bomb or a
+// device wipe. It is a courtesy confirmation before an obvious disaster, not a
+// security boundary; quoting or variables bypass it. The command must already
+// be extracted from its concrete tool input.
 func Command(command string) bool {
 	if command == "" {
 		return false
@@ -63,7 +59,7 @@ func Command(command string) bool {
 // shellSegments splits a command line on the shell operators that separate
 // commands (; && || | & newline) so each is inspected on its own.
 func shellSegments(command string) []string {
-	return regexp.MustCompile(`&&|\|\||[;|&\n]`).Split(command, -1)
+	return shellSeparators.Split(command, -1)
 }
 
 // catastrophicRemoveTarget is the set of rm targets that a recursive-force

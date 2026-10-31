@@ -9,14 +9,14 @@ import (
 	"github.com/Tangerg/flame/qimu/sqlite"
 )
 
-// TrustStore records which project roots are trusted to run their project-scope
+// trustStore records which project roots are trusted to run their project-scope
 // hooks (internal/domain/integration/hooks). A cloned repo's hooks stay inert until the user
 // trusts the project explicitly. Global (~/.flame) hooks need no entry.
 type trustStore struct {
 	db *sql.DB
 }
 
-// NewTrustStore wires the given *sql.DB to the trusted-projects table.
+// newTrustStore wires the given *sql.DB to the trusted-projects table.
 func newTrustStore(db *sql.DB) *trustStore {
 	return &trustStore{db: db}
 }

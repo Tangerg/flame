@@ -72,7 +72,7 @@ type WorkingContextComposer interface {
 	) ([]corechat.Message, error)
 }
 
-// ModelAdmitter admits a model proposal before exact selection is frozen.
+// modelAdmitter admits a model proposal before exact selection is frozen.
 // Authored input is structurally validated here; model-media admission belongs
 // to the complete transformed request at the physical execution boundary.
 type modelAdmitter interface {
@@ -126,7 +126,7 @@ type RememberedRuleCandidate struct {
 	EffectiveArguments tool.Arguments
 }
 
-// ApprovalRulePreparer validates one remembered-rule request against the current
+// approvalRulePreparer validates one remembered-rule request against the current
 // source authority and derives its durable rule without persisting it. The
 // acceptance transaction persists the returned rule; a changed authority rejects
 // the whole Resume.
@@ -134,13 +134,13 @@ type approvalRulePreparer interface {
 	PrepareRule(ctx context.Context, request approval.RememberRequest) (approval.Rule, error)
 }
 
-// AcceptedContinuationStore reads and retires the accepted answer handoff.
+// acceptedContinuationStore reads and retires the accepted answer handoff.
 type acceptedContinuationStore interface {
 	List(ctx context.Context) ([]AcceptedContinuation, error)
 	Delete(ctx context.Context, rootRunID string) error
 }
 
-// WaitingExecutionRestorer reconstructs one exact committed waiting tree
+// waitingExecutionRestorer reconstructs one exact committed waiting tree
 // without claiming or advancing it. It is used after the previous live owner is
 // known obsolete; the supplied Application value and opaque checkpoint are the
 // only recovery source.
@@ -201,7 +201,7 @@ func (w WaitingSubtreeDisposition) Valid() bool {
 	return w == WaitingSubtreeStaysWaiting || w == WaitingSubtreeResumesRunning
 }
 
-// WaitingSubtreeChange is the one-shot executor capability attached to a
+// waitingSubtreeChange is the one-shot executor capability attached to a
 // prepared cancellation. Apply submits the cancellation and installs the
 // committed tree disposition after the application transaction succeeds. Continue advances a disposition that
 // removed the final external boundary; it is a distinct activation phase so an
@@ -227,12 +227,12 @@ type PreparedWaitingSubtreeCancellation struct {
 	change waitingSubtreeChange
 }
 
-// SessionReader resolves the product Session a Run belongs to.
+// sessionReader resolves the product Session a Run belongs to.
 type sessionReader interface {
 	Get(ctx context.Context, id string) (session.Session, error)
 }
 
-// SessionCreator owns the one Session creation path consumed by Run start: a
+// sessionCreator owns the one Session creation path consumed by Run start: a
 // automation request whose Session may not exist yet. It returns the resolved
 // Session and, when that Session is not durable, the initial aggregate the
 // opening write-set inserts with the Run, so a retried occurrence reuses its
@@ -245,19 +245,19 @@ type sessionCreator interface {
 	) (session.Session, *session.Session, error)
 }
 
-// ActiveRunReader reports the Session's current non-terminal Run for admission.
+// activeRunReader reports the Session's current non-terminal Run for admission.
 type activeRunReader interface {
 	ActiveRun(ctx context.Context, sessionID string) (run.Run, bool, error)
 }
 
-// PendingInterruptReader returns the valid root-owned waiting boundary for an
+// pendingInterruptReader returns the valid root-owned waiting boundary for an
 // addressed Run without exposing checkpoint storage. A found value belongs to
 // the requested root Run.
 type pendingInterruptReader interface {
 	LookupOpenInterrupt(ctx context.Context, runID string) (Pending, bool, error)
 }
 
-// TerminationCommitter owns the atomic application write-sets for canceling
+// terminationCommitter owns the atomic application write-sets for canceling
 // a parked Run or declaring its executor state unrecoverable.
 type terminationCommitter interface {
 	ApplyRunCancel(ctx context.Context, sessionID, runID, reason string, finishedAt time.Time) (run.Run, error)
@@ -357,7 +357,7 @@ type ExecutionContinuation struct {
 	Isolated          bool
 }
 
-// IsolationProvider resolves the sandbox working-copy directory an isolated
+// isolationProvider resolves the sandbox working-copy directory an isolated
 // session's Run executes in, creating it from the project directory on first
 // use. nil means isolation is unavailable and an isolated start is refused.
 type isolationProvider interface {

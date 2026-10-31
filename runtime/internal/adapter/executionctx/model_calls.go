@@ -6,7 +6,7 @@ import (
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 )
 
-// ModelCalls binds nested consumption to the admitted execution member. Finish
+// modelCalls binds nested consumption to the admitted execution member. Finish
 // projects original physical evidence through that member's existing commit pump.
 type modelCalls interface {
 	Start(context.Context, string, modelchoice.Selection) (func(context.Context, error) error, error)

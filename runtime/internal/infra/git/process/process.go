@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-// Environment returns the host environment without inherited Git controls,
+// environment returns the host environment without inherited Git controls,
 // followed by the command-owned overrides. Clearing the namespace as a whole
 // covers repository routing, alternate object/index files, replace refs,
 // injected config, pathspec modes, and future Git controls without maintaining

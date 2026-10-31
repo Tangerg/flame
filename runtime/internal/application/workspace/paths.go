@@ -24,7 +24,7 @@ var (
 	ErrInvalidFileReadLimit = errors.New("workspace: invalid file read byte limit")
 )
 
-// Paths resolves the externally-observed filesystem identity used by workspace
+// paths resolves the externally-observed filesystem identity used by workspace
 // use cases. Implementations own path canonicalization and symlink inspection;
 // this package owns when each operation is required.
 type paths interface {

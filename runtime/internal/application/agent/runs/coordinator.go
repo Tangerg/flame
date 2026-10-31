@@ -17,7 +17,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// ErrClosed is returned by [Coordinator.Start] once the Coordinator is closing:
+// errClosed is returned by [Coordinator.Start] once the Coordinator is closing:
 // it accepts no new run segments.
 var errClosed = errors.New("runs: coordinator closed")
 

@@ -21,7 +21,7 @@ type MCPServerStore struct {
 	db *sql.DB
 }
 
-// NewMCPServerStore wires the given *sql.DB to MCP server persistence.
+// newMCPServerStore wires the given *sql.DB to MCP server persistence.
 func newMCPServerStore(db *sql.DB) *MCPServerStore {
 	return &MCPServerStore{db: db}
 }

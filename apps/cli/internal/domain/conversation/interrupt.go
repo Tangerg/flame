@@ -342,7 +342,7 @@ func CloneAnswer(answer Answer) Answer {
 	}
 }
 
-// AnswerEqual reports whether two interrupt answers carry the same complete
+// answerEqual reports whether two interrupt answers carry the same complete
 // decision value, including edited tool arguments and ordered question values.
 func answerEqual(left, right Answer) bool {
 	switch typed := left.(type) {

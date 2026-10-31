@@ -10,12 +10,12 @@ import (
 	"github.com/samber/lo"
 )
 
-// HookTrust reports whether a project root may run user lifecycle hooks.
+// hookTrust reports whether a project root may run user lifecycle hooks.
 type hookTrust interface {
 	IsTrusted(ctx context.Context, projectRoot string) (bool, error)
 }
 
-// NewHookResolver builds the runtime hook resolver from the composition root's
+// newHookResolver builds the runtime hook resolver from the composition root's
 // user-home snapshot and the durable project trust policy.
 func newHookResolver(userHome string, trust hookTrust, source adapterhooks.Source) (*adapterhooks.Resolver, error) {
 	if lo.IsNil(trust) {

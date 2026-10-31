@@ -15,7 +15,7 @@ import (
 	"github.com/samber/lo"
 )
 
-// DefaultTimeout bounds a single hook command — a hook must not wedge execution
+// defaultTimeout bounds a single hook command — a hook must not wedge execution
 // it gates. A hook that exceeds it is killed and treated as a non-blocking error
 // (the action proceeds), so a hung hook degrades to "no hook" rather than a
 // frozen agent.
@@ -58,7 +58,7 @@ func domainVerdict(c hookdata.CommandVerdict) domain.Verdict {
 	}
 }
 
-// CommandRunner executes hook commands with borrowed request data. It neither
+// commandRunner executes hook commands with borrowed request data. It neither
 // mutates the request nor retains it after the synchronous call returns.
 type commandRunner interface {
 	RunHookCommand(ctx context.Context, req CommandRequest) CommandResult

@@ -4,7 +4,7 @@ import (
 	"errors"
 )
 
-// AcceptedMutationError reports that a runtime mutation returned successfully
+// acceptedMutationError reports that a runtime mutation returned successfully
 // but its receipt violated the client contract. Receipt retains every usable
 // identity from that response so callers can clean up the accepted mutation
 // without replaying user intent under a new command identity.

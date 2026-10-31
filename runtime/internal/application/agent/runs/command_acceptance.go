@@ -126,7 +126,7 @@ type CommandAcceptanceRecord struct {
 	AppliedItem    *transcript.Item
 }
 
-// CommandAcceptanceReader observes original command facts without admitting,
+// commandAcceptanceReader observes original command facts without admitting,
 // completing, or repairing a record.
 type commandAcceptanceReader interface {
 	Lookup(ctx context.Context, key string) (CommandAcceptanceRecord, error)

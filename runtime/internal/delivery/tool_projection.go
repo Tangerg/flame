@@ -9,7 +9,7 @@ import (
 )
 
 // The public protocol represents schemas as objects. A schema states its bounds
-// as numeric literals, so [exactjson.Numbers] keeps each one as written: a
+// as numeric literals, so [jsonvalue.Numbers] keeps each one as written: a
 // maximum or multipleOf rounded through float64 would publish a constraint the
 // Tool never declared.
 func presentToolSchema(definition chat.ToolDefinition) (map[string]any, error) {

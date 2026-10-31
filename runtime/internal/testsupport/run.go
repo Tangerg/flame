@@ -54,7 +54,7 @@ func MustRunMetrics(input RunMetricsInput) run.Metrics {
 	return metrics
 }
 
-// Pointer returns an owned pointer for explicit optional fixture values.
+// pointer returns an owned pointer for explicit optional fixture values.
 func pointer[T any](value T) *T { return &value }
 
 // MustRestoreRun constructs a valid Run or panics. Tests exercising invalid

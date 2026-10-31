@@ -8,7 +8,7 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// ResponseDelta projects a complete fixture response into one terminal stream
+// responseDelta projects a complete fixture response into one terminal stream
 // increment. Production providers build their own transport deltas; this helper
 // keeps Runtime tests on the same accumulator contract without duplicating a
 // synthetic provider in every package.

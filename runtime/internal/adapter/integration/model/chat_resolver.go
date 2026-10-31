@@ -89,7 +89,7 @@ func (r ResolvedChat) InputTokenCounter() (InputTokenCounter, bool) {
 	return r.inputTokenCounter, r.inputTokenCounter != nil
 }
 
-// CredentialLookup is the model-client construction view of the provider
+// credentialLookup is the model-client construction view of the provider
 // registry: resolving a chat or embedding client needs only one provider's
 // credentials, not list/configure capabilities.
 type credentialLookup interface {

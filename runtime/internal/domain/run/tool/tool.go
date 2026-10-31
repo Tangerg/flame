@@ -9,7 +9,7 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// ErrInvalidDefinition reports registered Tool metadata that cannot be used as
+// errInvalidDefinition reports registered Tool metadata that cannot be used as
 // one stable model- and client-facing capability definition.
 var errInvalidDefinition = errors.New("tool: invalid definition")
 

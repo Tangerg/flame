@@ -9,7 +9,7 @@ import (
 	"github.com/Tangerg/flame/qimu/sqlite"
 )
 
-// AcceptedContinuationStore persists the Run-owned binding that lets boot recovery
+// acceptedContinuationStore persists the Run-owned binding that lets boot recovery
 // revive an accepted but not-yet-delivered continuation. It stores the exact
 // consumed interrupt hand-off so revival reconstructs the same tree; the answer
 // resolutions stay in the transcript. Put joins the acceptance transaction through

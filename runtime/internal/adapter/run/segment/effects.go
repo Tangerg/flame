@@ -38,14 +38,14 @@ type actorAuthority interface {
 	Admit(context.Context, operation.Actor) error
 }
 
-// CommandAcceptanceStore commits Run command receipts in the same transaction
+// commandAcceptanceStore commits Run command receipts in the same transaction
 // as their opening or input-admission head and confirms uncertain commit ACKs.
 type commandAcceptanceStore interface {
 	Save(context.Context, runs.CommandAcceptance) error
 	Lookup(context.Context, string) (runs.CommandAcceptanceRecord, error)
 }
 
-// GoalRunRecorder applies a terminal goal-owned Run to its Session's Goal. It
+// goalRunRecorder applies a terminal goal-owned Run to its Session's Goal. It
 // runs in the same transaction as terminalizing that Run.
 type goalRunRecorder interface {
 	RecordRun(ctx context.Context, value run.Run) error
@@ -71,7 +71,7 @@ type ItemReplacer interface {
 	ReplaceItem(ctx context.Context, replacement transcript.Replacement) error
 }
 
-// RememberedRuleStore persists a standing approval rule inside the acceptance
+// rememberedRuleStore persists a standing approval rule inside the acceptance
 // transaction. The rule was already derived and validated against its frozen
 // source authority by the acceptance owner; this store only writes it so it lands
 // atomically with the answer, consumed open set, and Segment opening.
@@ -79,7 +79,7 @@ type rememberedRuleStore interface {
 	Put(ctx context.Context, rule approval.Rule) error
 }
 
-// AcceptedContinuationStore writes the Run-owned recovery binding of an accepted
+// acceptedContinuationStore writes the Run-owned recovery binding of an accepted
 // continuation inside the acceptance transaction, so a crash before delivery
 // completes leaves exactly one durable accepted-paused tree to revive. It carries
 // only routing; the answer resolutions stay owned by the settled Items.
@@ -92,7 +92,7 @@ type toolResultStore interface {
 	Discard(ctx context.Context, sessionID string, ref transcript.ToolResultRef) error
 }
 
-// ModelInvocationJournal applies provider-attempt transitions. It is an
+// modelInvocationJournal applies provider-attempt transitions. It is an
 // operational evidence journal. A known inner response can accompany outer failure;
 // it never creates executable Transcript continuation or advances Run accounting.
 // The consumer-owned methods keep application enums out of storage.
@@ -124,7 +124,7 @@ type modelInvocationJournal interface {
 	) error
 }
 
-// ToolInvocationJournal records pre-call and terminal attempt boundaries without
+// toolInvocationJournal records pre-call and terminal attempt boundaries without
 // using Transcript insertion order as an operational lock. Final semantic Tool
 // Items are still committed through TranscriptStore in canonical model order.
 type toolInvocationJournal interface {
@@ -146,7 +146,7 @@ type toolInvocationJournal interface {
 	) error
 }
 
-// RunWriter applies the run's lifecycle transitions inside the event commit:
+// runWriter applies the run's lifecycle transitions inside the event commit:
 // an opening admits or resumes it, a park suspends it, and a terminal
 // ends it — each in the SAME transaction as the interrupt / item records it must
 // stay consistent with. Suspend and Terminalize both take the whole Run because
@@ -189,7 +189,7 @@ type RunProgressWriter interface {
 	UpdateProgress(ctx context.Context, progressed run.Run) error
 }
 
-// ExecutorCheckpointStore persists and removes root-owned opaque executor
+// executorCheckpointStore persists and removes root-owned opaque executor
 // checkpoints selected by the Run lifecycle. It never interprets the
 // payload.
 type executorCheckpointStore interface {
@@ -198,7 +198,7 @@ type executorCheckpointStore interface {
 	DeleteCheckpoints(ctx context.Context, sessionID string, rootIDs []string) error
 }
 
-// ChildRunStartReservationStore is the technical persistence mechanism behind
+// childRunStartReservationStore is the technical persistence mechanism behind
 // the Application-owned child-start write-set. Its payload is opaque to SQLite;
 // this adapter alone translates the application value.
 type childRunStartReservationStore interface {
@@ -221,7 +221,7 @@ type Transactor func(ctx context.Context, fn func(context.Context) error) error
 // same stable transaction as the product receipt. It never executes a plugin.
 type BindingTransactor func(context.Context, string, runs.ExecutorCheckpoint, func(context.Context) error) error
 
-// ConversationStore appends root execution context and resolves the watermark
+// conversationStore appends root execution context and resolves the watermark
 // recorded by a terminal Run. Both operations join the event transaction.
 type conversationStore interface {
 	Read(ctx context.Context, sessionID string) ([]chat.Message, error)

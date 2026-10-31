@@ -18,7 +18,7 @@ type Command struct {
 	Text      string
 }
 
-// Store is the durable receiver this feedback use case needs.
+// store is the durable receiver this feedback use case needs.
 type store interface {
 	Append(ctx context.Context, entry feedbackdomain.Entry) error
 }

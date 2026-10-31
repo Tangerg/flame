@@ -20,7 +20,7 @@ type conversationRuns interface {
 	RebaseMessageMark(ctx context.Context, replacement run.Replacement) error
 }
 
-// ConversationCompactions applies an Application-decided conversation rewrite
+// conversationCompactions applies an Application-decided conversation rewrite
 // and all of its Run-watermark replacements in one storage transaction.
 type conversationCompactions struct {
 	history conversationHistory

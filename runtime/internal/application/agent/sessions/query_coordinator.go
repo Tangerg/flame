@@ -34,7 +34,7 @@ const (
 	interruptPageLimit = 100
 )
 
-// QueryTranscriptReader is the coordinator's view of the durable item history. Items
+// queryTranscriptReader is the coordinator's view of the durable item history. Items
 // arrive one bounded page at a time, seeking from the previous page's position in
 // the direction asked for.
 //
@@ -48,13 +48,13 @@ type queryTranscriptReader interface {
 	PageRunTreeItems(ctx context.Context, runID string, order transcript.SequenceOrder, fromSequence int64, limit int) ([]transcript.SequencedItem, error)
 }
 
-// QueryPlanReader is the coordinator's view of the Plan projection: the whole
+// queryPlanReader is the coordinator's view of the Plan projection: the whole
 // state, because what identifies one replacement from the next is its revision.
 type queryPlanReader interface {
 	State(ctx context.Context, sessionID string) (plan.Current, error)
 }
 
-// QuerySessionReader answers only whether a session exists. The item read needs that
+// querySessionReader answers only whether a session exists. The item read needs that
 // much and no more: a scope naming no session is a refusal, and an empty page would
 // tell the client its session is empty instead.
 type querySessionReader interface {
@@ -69,7 +69,7 @@ type QueryInterruptReader interface {
 	ListPage(ctx context.Context, sessionID, rootRunID string, afterCreatedAt int64, afterRootRunID string, limit int) ([]runs.Pending, error)
 }
 
-// QueryRunReader is the coordinator's view of the durable Run record: one Run by id,
+// queryRunReader is the coordinator's view of the durable Run record: one Run by id,
 // the ancestor closure of a named set, and a browsable page of Runs. The closure
 // threads a page of items onto a connected tree without loading unrelated Runs
 // from a long session.

@@ -235,7 +235,7 @@ func (c *connections) serviceSession(ctx context.Context, current mcpserver.Serv
 	return configured.session, nil
 }
 
-// WaitSession joins the already owned attempt; it never starts or retries one.
+// waitSession joins the already owned attempt; it never starts or retries one.
 func (c *connections) waitSession(ctx context.Context, current mcpserver.Server) (*sdkmcp.ClientSession, error) {
 	for {
 		c.mu.Lock()

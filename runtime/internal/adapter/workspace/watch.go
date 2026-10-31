@@ -29,7 +29,7 @@ type GitWatcher struct {
 	lifetime context.Context
 }
 
-// NewGitWatcher binds Git observation to the owning Runtime lifetime.
+// newGitWatcher binds Git observation to the owning Runtime lifetime.
 func newGitWatcher(lifetime context.Context) GitWatcher {
 	return GitWatcher{lifetime: lifetime}
 }

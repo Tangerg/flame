@@ -16,7 +16,7 @@ const (
 	MaxRemoteToolDescriptionBytes = 64 << 10
 )
 
-// ErrInvalidRemoteToolCatalog reports remote descriptor material that cannot
+// errInvalidRemoteToolCatalog reports remote descriptor material that cannot
 // be admitted to Runtime's complete management and model-facing catalogs.
 var errInvalidRemoteToolCatalog = errors.New("mcp: invalid remote tool catalog")
 

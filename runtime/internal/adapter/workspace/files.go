@@ -26,10 +26,10 @@ import (
 // interaction so callers depend only on listing behavior.
 
 var (
-	// ErrListingTooLarge asks the caller to narrow Path or Glob instead of
+	// errListingTooLarge asks the caller to narrow Path or Glob instead of
 	// returning an incomplete result that looks authoritative.
 	errListingTooLarge = errors.New("workspace: file listing too large")
-	// ErrInvalidGlob distinguishes malformed match syntax from a valid pattern
+	// errInvalidGlob distinguishes malformed match syntax from a valid pattern
 	// that simply has no matching files.
 	errInvalidGlob = errors.New("workspace: invalid file glob")
 	// errInvalidListPath reports an invalid selection for browsing or search.
@@ -53,7 +53,7 @@ var backstopExclude = map[string]bool{
 	".cache": true, "coverage": true, ".turbo": true, ".svn": true, ".hg": true,
 }
 
-// ListFiles lists entries under opts.Path within root. With Recursive (or a
+// listFiles lists entries under opts.Path within root. With Recursive (or a
 // Glob) it returns a flat list of files for the subtree; otherwise the
 // immediate children (files + dirs) of opts.Path, for a lazy file tree.
 // The complete, deterministically ordered result is returned for use-case

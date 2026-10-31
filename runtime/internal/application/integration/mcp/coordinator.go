@@ -15,7 +15,7 @@ import (
 	"github.com/samber/lo"
 )
 
-// ToolCatalog is the live tool set execution admits from. It borrows the
+// toolCatalog is the live tool set execution admits from. It borrows the
 // optional server scope and transfers one snapshot: the advertised tools and
 // the name conflicts that exclude some of them from Run manifests. A single
 // source keeps the read model from disagreeing with what a Run would freeze.
@@ -43,14 +43,14 @@ type Connections interface {
 	Detach(name mcpserver.ID) error
 }
 
-// Registry supplies durable definitions of every origin independently of
+// registry supplies durable definitions of every origin independently of
 // executable admission.
 type registry interface {
 	Definitions(ctx context.Context) ([]mcpserver.Server, error)
 	Definition(ctx context.Context, name mcpserver.ID) (mcpserver.Server, bool, error)
 }
 
-// Store persists what this coordinator owns directly: user-origin descriptors
+// store persists what this coordinator owns directly: user-origin descriptors
 // and the tool exposure relation over sources of every origin.
 type store interface {
 	Save(ctx context.Context, server mcpserver.Server) error

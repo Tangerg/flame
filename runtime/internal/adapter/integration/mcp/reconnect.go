@@ -216,7 +216,7 @@ func admitSession(ctx context.Context, session *sdk.ClientSession, admit func(co
 
 var errConnectionSuperseded = errors.New("mcp: connection operation superseded")
 
-// Refuse records that the configuration owner refused a new connection for
+// refuse records that the configuration owner refused a new connection for
 // name. The refusal is that server's latest operation: it supersedes an
 // in-flight attempt, withdraws the session and its tools, and settles the
 // failure category, so a refused source never keeps serving through the

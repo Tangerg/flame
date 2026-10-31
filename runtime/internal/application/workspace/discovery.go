@@ -52,7 +52,7 @@ type Summary struct {
 	LastActiveAt time.Time
 }
 
-// Catalog supplies the user-facing sessions and their current workspace
+// catalog supplies the user-facing sessions and their current workspace
 // identities. The session coordinator is the production implementation.
 type catalog interface {
 	List(ctx context.Context) ([]session.Session, error)
@@ -136,7 +136,7 @@ type AgentDoc struct {
 	Scope AgentDocScope
 }
 
-// AgentDocFinder discovers the workspace instruction-document cascade in render
+// agentDocFinder discovers the workspace instruction-document cascade in render
 // order. Application validates unique source identity and phase order.
 type agentDocFinder interface {
 	Find(ctx context.Context, cwd, home string) ([]AgentDocFile, error)

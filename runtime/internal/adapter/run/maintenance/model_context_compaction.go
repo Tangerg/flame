@@ -12,13 +12,13 @@ import (
 )
 
 var (
-	// ErrModelContextDiverged reports that the Interaction candidate no longer
+	// errModelContextDiverged reports that the Interaction candidate no longer
 	// begins with the exact durable conversation snapshot.
 	errModelContextDiverged = errors.New("maintenance: model context diverged from durable conversation")
-	// ErrModelContextCannotFit reports that only protected or fixed context is
+	// errModelContextCannotFit reports that only protected or fixed context is
 	// over budget, so no truthful compaction can make the request executable.
 	errModelContextCannotFit = errors.New("maintenance: protected model context cannot fit")
-	// ErrModelContextCompactionVetoed reports that a lifecycle hook blocked a
+	// errModelContextCompactionVetoed reports that a lifecycle hook blocked a
 	// compaction required to keep the next model request inside its budget.
 	errModelContextCompactionVetoed = errors.New("maintenance: required model context compaction was vetoed")
 )

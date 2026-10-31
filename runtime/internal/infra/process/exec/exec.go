@@ -70,11 +70,11 @@ type Shells struct {
 }
 
 var (
-	// ErrShellsClosed reports a launch attempted after the shell owner shut down.
+	// errShellsClosed reports a launch attempted after the shell owner shut down.
 	errShellsClosed = errors.New("exec: shells closed")
 	// ErrShellNotFound reports a command addressed outside this owner's shell set.
 	ErrShellNotFound = errors.New("exec: shell not found")
-	// ErrShellIdentityExhausted reports that one process-local Shells owner has
+	// errShellIdentityExhausted reports that one process-local Shells owner has
 	// consumed every addressable sequence value.
 	errShellIdentityExhausted = errors.New("exec: shell identity sequence exhausted")
 )

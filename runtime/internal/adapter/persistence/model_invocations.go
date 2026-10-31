@@ -9,7 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
-// ModelInvocationReader translates the stored journal into application observations.
+// modelInvocationReader translates the stored journal into application observations.
 type modelInvocationReader struct{ store *ModelInvocationStore }
 
 func NewModelInvocationReader(store *ModelInvocationStore) (*modelInvocationReader, error) {

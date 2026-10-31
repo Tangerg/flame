@@ -16,26 +16,26 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// SessionTitles is the Application capability for best-effort initial title
+// sessionTitles is the Application capability for best-effort initial title
 // generation. It rechecks first-writer semantics through Session behavior.
 type sessionTitles interface {
 	NeedsGeneratedTitle(ctx context.Context, id string) (bool, error)
 	ApplyGeneratedTitle(ctx context.Context, id, title string) error
 }
 
-// TitleGenerator derives an initial session title from its opening request. It
+// titleGenerator derives an initial session title from its opening request. It
 // may return a usable deterministic fallback with a non-nil error so maintenance
 // can persist stable identity and still report provider degradation.
 type titleGenerator interface {
 	Generate(ctx context.Context, firstMessage string) (string, error)
 }
 
-// Checkpoints anchors the working tree at a terminal run boundary.
+// checkpoints anchors the working tree at a terminal run boundary.
 type checkpoints interface {
 	Snapshot(ctx context.Context, sessionID, cwd, runID string) error
 }
 
-// TaskLauncher starts request-detached work owned by its component lifecycle.
+// taskLauncher starts request-detached work owned by its component lifecycle.
 type taskLauncher interface {
 	Start(parent context.Context, task func(context.Context)) bool
 }

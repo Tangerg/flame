@@ -13,7 +13,7 @@ import (
 
 var errConversationSessionIDRequired = errors.New("runs: conversation session ID is required")
 
-// ConversationStore is the exact persistence capability consumed by conversation
+// conversationStore is the exact persistence capability consumed by conversation
 // use cases, addressed by the Session that owns the conversation. Read transfers
 // ownership of decoded messages to the caller. Write and Replace borrow messages
 // only until return; retained values must be copied. Replace must atomically

@@ -23,7 +23,7 @@ func RequestMetaFrom(ctx context.Context) (protocol.RequestMeta, bool) {
 	return cloneRequestMeta(meta), ok
 }
 
-// ClientCapabilitiesFrom returns the capabilities declared for this operation.
+// clientCapabilitiesFrom returns the capabilities declared for this operation.
 func clientCapabilitiesFrom(ctx context.Context) (*protocol.ClientCapabilities, bool) {
 	meta, ok := RequestMetaFrom(ctx)
 	if !ok || meta.ClientCapabilities == nil {

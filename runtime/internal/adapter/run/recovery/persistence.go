@@ -76,7 +76,7 @@ type toolInvocationStore interface {
 	) error
 }
 
-// ChildRunStartReservations owns the process-scoped callback ledger behind
+// childRunStartReservations owns the process-scoped callback ledger behind
 // child admission. Its rows are not recovery facts: callbacks die with the
 // process, so reconciliation retires the claimed Session's abandoned ledger in
 // the same transaction as the public Run repair.

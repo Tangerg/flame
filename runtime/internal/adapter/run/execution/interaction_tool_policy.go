@@ -16,7 +16,7 @@ import (
 	"github.com/samber/lo"
 )
 
-// InteractionApprovalPolicy is the exact product policy view required at the
+// interactionApprovalPolicy is the exact product policy view required at the
 // Interaction Tool boundary. Remembering a decision is not here: a standing rule
 // is derived and persisted by the acceptance owner, in the transaction that
 // accepts the answer, never by a Tool replay.

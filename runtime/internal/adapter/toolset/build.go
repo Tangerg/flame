@@ -57,7 +57,7 @@ type BuildConfig struct {
 	SandboxReadOnlyPaths []string
 }
 
-// GoalReader supplies the Goal read model used by get_goal. Outcome-tool
+// goalReader supplies the Goal read model used by get_goal. Outcome-tool
 // availability is derived from immutable Run admission provenance instead of
 // mutable Goal state.
 type goalReader interface {

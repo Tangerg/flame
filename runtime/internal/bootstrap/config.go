@@ -13,7 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/config"
 )
 
-// LoadConfig loads process settings and the explicit default selection.
+// loadConfig loads process settings and the explicit default selection.
 func loadConfig(configDirectories []string) (config.Settings, error) {
 	cfg, err := config.Load(configDirectories)
 	if err != nil {
@@ -29,7 +29,7 @@ func resolveProviderConfig(settings config.Settings) (config.Settings, error) {
 	return settings, nil
 }
 
-// ProviderRegistry wraps the durable provider registry with env-key fallback.
+// providerRegistry wraps the durable provider registry with env-key fallback.
 func providerRegistry(registry models.ProviderRegistry, settings config.Settings) (models.ProviderRegistry, error) {
 	environmentKeys := make(map[string]string)
 	if apiKey, present := settings.APIKey.EnvironmentValue(); present {

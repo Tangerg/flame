@@ -7,7 +7,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
-// EmbeddingRoleStore persists the optional agent-memory embedding-model role as
+// embeddingRoleStore persists the optional agent-memory embedding-model role as
 // a single row. The DB
 // must have been opened via [Open] so the embedding_role table exists. Mirrors
 // [UtilityRoleStore]; the credential for the named provider comes from the
@@ -16,7 +16,7 @@ type embeddingRoleStore struct {
 	store *roleStore
 }
 
-// NewEmbeddingRoleStore wires the given *sql.DB to the embedding-role surface.
+// newEmbeddingRoleStore wires the given *sql.DB to the embedding-role surface.
 func newEmbeddingRoleStore(db *sql.DB) *embeddingRoleStore {
 	return &embeddingRoleStore{store: newRoleStore(db, "embedding_role", "embedding role")}
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/samber/lo"
 )
 
-// IdleSkillSweeper is the persistence port for automatic archival policy. The
+// idleSkillSweeper is the persistence port for automatic archival policy. The
 // second result contains every public file identity changed before return, even
 // when a later step fails.
 type idleSkillSweeper interface {

@@ -13,7 +13,7 @@ import (
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 )
 
-// Statuses returns one cached entry per server attached to the live projection
+// statuses returns one cached entry per server attached to the live projection
 // (connected and failed alike), in dial order.
 func (c *connections) statuses() []mcpserver.ConnectionStatus {
 	c.mu.Lock()
@@ -30,7 +30,7 @@ func (c *connections) statuses() []mcpserver.ConnectionStatus {
 	return out
 }
 
-// Detach removes a server from the live projection. Ordinary session teardown
+// detach removes a server from the live projection. Ordinary session teardown
 // belongs to connections. Managed retirement is requested from the Host, which
 // joins the actual resource after its original Uses have released.
 func (c *connections) detach(name mcpserver.ID) error {
@@ -91,7 +91,7 @@ func (c *connections) publishToolsLocked(changed ...mcpserver.ID) {
 	c.onTools(catalog, pending, changed)
 }
 
-// Shutdown rejects new operations, joins admitted discovery and retires the
+// shutdown rejects new operations, joins admitted discovery and retires the
 // current catalog. The Host owns completion of managed instance retirement.
 // Ordinary ClientSession.Close consumes its transport closer even on error, so
 // that diagnostic is terminal for the connection owner's resource.

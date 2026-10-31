@@ -18,7 +18,7 @@ import (
 
 const defaultProviderProbeTimeout = 10 * time.Second
 
-// ProviderCatalog supplies one captured provider and model catalog. The
+// providerCatalog supplies one captured provider and model catalog. The
 // coordinator owns visible identity, public order, and the use-case policy that
 // consumes the projection. Slice results transfer ownership to the caller.
 type providerCatalog interface {
@@ -44,7 +44,7 @@ var (
 	ErrEmbeddingUnsupported = errors.New("models: provider does not support embeddings")
 )
 
-// ProviderProber validates a provider's credentials with one minimal live call
+// providerProber validates a provider's credentials with one minimal live call
 // during a provider probe.
 type providerProber interface {
 	Probe(ctx context.Context, entry provider.Provider) error
@@ -66,18 +66,18 @@ type ChatModelValidator interface {
 	ValidateChatModel(ctx context.Context, providerID, model string) error
 }
 
-// EmbeddingModelValidator validates that an embedding client can be built for
+// embeddingModelValidator validates that an embedding client can be built for
 // (provider, model) without exposing the concrete embedder.
 type embeddingModelValidator interface {
 	ValidateEmbeddingModel(ctx context.Context, providerID, model string) error
 }
 
-// UtilityRoleSaver persists the utility-model role across restarts.
+// utilityRoleSaver persists the utility-model role across restarts.
 type utilityRoleSaver interface {
 	SaveUtilityRole(ctx context.Context, role modelref.Role) error
 }
 
-// EmbeddingRoleSaver persists the embedding-model role across restarts.
+// embeddingRoleSaver persists the embedding-model role across restarts.
 type embeddingRoleSaver interface {
 	SaveEmbeddingRole(ctx context.Context, role modelref.Role) error
 }

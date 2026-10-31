@@ -19,7 +19,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// EndpointJournal commits observations without authorizing replay or continuation.
+// endpointJournal commits observations without authorizing replay or continuation.
 // The owner is the host-captured logical Model/Tool call, not caller-supplied ancestry.
 // Its durable admission supplies the original Run/Segment before provider generation.
 type endpointJournal interface {

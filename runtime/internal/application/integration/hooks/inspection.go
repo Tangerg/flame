@@ -9,7 +9,7 @@ import (
 	hookdata "github.com/Tangerg/flame/packages/go-sdk/hook"
 )
 
-// ErrInvalidInspection reports a resolved Hook catalog that cannot safely
+// errInvalidInspection reports a resolved Hook catalog that cannot safely
 // drive execution or trust management.
 var errInvalidInspection = errors.New("hooks: invalid inspection")
 

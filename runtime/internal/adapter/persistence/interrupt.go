@@ -151,7 +151,7 @@ type interruptBindingRow struct {
 	SourceFingerprint string `json:"sourceFingerprint,omitempty"`
 }
 
-// NewInterruptStore binds the SQLite interrupt registry to a database opened via
+// newInterruptStore binds the SQLite interrupt registry to a database opened via
 // [openDatabase].
 func newInterruptStore(db *sql.DB) *InterruptStore {
 	return &InterruptStore{db: db}

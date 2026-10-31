@@ -18,14 +18,14 @@ const (
 	// MaxConfigurationFileBytes bounds one complete authored hooks.json file
 	// before JSON decoding or management projection.
 	MaxConfigurationFileBytes int64 = 256 << 10
-	// MaxHooksPerFile bounds one authored policy document.
+	// maxHooksPerFile bounds one authored policy document.
 	maxHooksPerFile = 128
 	// MaxHooksPerCascade bounds the complete global + project policy resolved
 	// for one workspace.
 	MaxHooksPerCascade = 256
-	// MaxMatcherBytes bounds one tool-name glob.
+	// maxMatcherBytes bounds one tool-name glob.
 	maxMatcherBytes = 256
-	// MaxActionBytes bounds one shell command or declarative injection.
+	// maxActionBytes bounds one shell command or declarative injection.
 	maxActionBytes = 8 << 10
 	// MaxPromptBytes bounds user and sub-agent prompt material presented to one
 	// command hook. Longer prompt material is projected as a marked prefix.
@@ -34,10 +34,10 @@ const (
 	// Arguments are policy input, so an oversized object is rejected rather than
 	// truncated into a different action.
 	MaxArgumentsBytes = 256 << 10
-	// MaxResultBytes bounds Tool and sub-agent result material presented to one
+	// maxResultBytes bounds Tool and sub-agent result material presented to one
 	// command hook. The original result remains owned by its normal consumer.
 	maxResultBytes = 128 << 10
-	// MaxReasonBytes bounds failure, terminal, and descriptive material exposed
+	// maxReasonBytes bounds failure, terminal, and descriptive material exposed
 	// to one command hook.
 	maxReasonBytes = 8 << 10
 	// MaxTimeoutMillis prevents authored policy from replacing the Runtime's
@@ -106,11 +106,11 @@ var ErrInvalidHook = errors.New("hooks: invalid hook")
 // that cannot enter the complete management and execution projections.
 var ErrConfigurationTooLarge = errors.New("hooks: configuration too large")
 
-// ErrCommandInputTooLarge reports semantic invocation material that cannot be
+// errCommandInputTooLarge reports semantic invocation material that cannot be
 // projected into the private command contract without changing policy input.
 var errCommandInputTooLarge = errors.New("hooks: command input too large")
 
-// ErrInvalidCommandInput reports command material that cannot enter the
+// errInvalidCommandInput reports command material that cannot enter the
 // private JSON contract without silent text replacement.
 var errInvalidCommandInput = errors.New("hooks: invalid command input")
 

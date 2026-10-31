@@ -87,15 +87,15 @@ func (o OperationKind) String() string {
 type IdempotencyPolicy string
 
 const (
-	// IdempotencyNone keeps no replay record. Reads, and mutations whose repeat
+	// idempotencyNone keeps no replay record. Reads, and mutations whose repeat
 	// is indistinguishable from the first call, need none.
 	idempotencyNone IdempotencyPolicy = "none"
 
-	// IdempotencyReplayResponse caches the first response and returns it verbatim
+	// idempotencyReplayResponse caches the first response and returns it verbatim
 	// to a same-key retry, so the business handler runs exactly once.
 	idempotencyReplayResponse IdempotencyPolicy = "replayResponse"
 
-	// IdempotencyOwnerResponse re-enters the original owner's command/receipt
+	// idempotencyOwnerResponse re-enters the original owner's command/receipt
 	// path. Runtime retains no competing business outcome or stream chunk history.
 	idempotencyOwnerResponse IdempotencyPolicy = "ownerResponse"
 

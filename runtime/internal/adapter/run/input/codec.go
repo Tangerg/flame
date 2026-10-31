@@ -44,7 +44,7 @@ func DecodePrompt(raw []byte) (runs.Interrupt, error) {
 	return interrupt, nil
 }
 
-// DecodeResolution restores a typed user decision from persisted agent-process
+// decodeResolution restores a typed user decision from persisted agent-process
 // response JSON. It applies the same exact-field and single-value contract as
 // [DecodePrompt].
 func decodeResolution(raw []byte) (run.InterruptResolution, error) {

@@ -10,7 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
-// WorkspaceResolver is the filesystem boundary needed when a Session is
+// workspaceResolver is the filesystem boundary needed when a Session is
 // created or relocated. Session.Workspace is exact after admission, so
 // downstream use cases treat it as an invariant instead of repeatedly touching
 // the filesystem.

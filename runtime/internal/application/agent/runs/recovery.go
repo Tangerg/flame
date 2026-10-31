@@ -49,7 +49,7 @@ type WaitingExecutionResumability interface {
 	CanResumeWaitingExecution(ctx context.Context, continuation ExecutionContinuation) (WaitingResumption, error)
 }
 
-// RecoveryAdmissions provides the same per-Session writer boundary used by
+// recoveryAdmissions provides the same per-Session writer boundary used by
 // live Run and Session mutations. Recovery skips a Session when another
 // Runtime process still owns it; such a Run is live, not abandoned.
 type recoveryAdmissions interface {

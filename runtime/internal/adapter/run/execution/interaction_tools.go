@@ -13,7 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
-// InteractionToolResolver builds the exact Tool manifest for one staged root.
+// interactionToolResolver builds the exact Tool manifest for one staged root.
 // Runtime binds the resolved Session/workspace scope to ctx before calling it;
 // resolution must not execute a Tool or call a model. A successful resolution
 // transfers manifest resource ownership to this execution, including on later
@@ -24,7 +24,7 @@ type interactionToolResolver interface {
 	Manifest(ctx context.Context, group tool.Group, retained *toolset.Retained) (toolset.Manifest, error)
 }
 
-// InteractionToolInterpreter owns product policy facts implied by concrete
+// interactionToolInterpreter owns product policy facts implied by concrete
 // Tool identities. Toolset satisfies this port without importing Agent Framework. An
 // implementation must be safe for concurrent calls from one Tool batch.
 type interactionToolInterpreter interface {
@@ -35,7 +35,7 @@ type interactionToolInterpreter interface {
 	ProjectOutcome(ctx context.Context, sessionID string, ref tool.Ref, succeeded bool) (runs.ExecutionFact, error)
 }
 
-// InteractionToolPresenter owns client-facing result projection.
+// interactionToolPresenter owns client-facing result projection.
 // Its implementation remains in Toolset; Agent Framework sees only ordinary Tools. An
 // implementation must be safe for concurrent calls from one Tool batch.
 type interactionToolPresenter interface {
@@ -71,21 +71,21 @@ type ToolAuthorizationDecision struct {
 	approval  *runs.ApprovalPrompt
 }
 
-// AllowTool proceeds with the model's own arguments.
+// allowTool proceeds with the model's own arguments.
 func allowTool() ToolAuthorizationDecision { return ToolAuthorizationDecision{} }
 
-// AllowToolWithArguments proceeds with arguments policy replaced.
+// allowToolWithArguments proceeds with arguments policy replaced.
 func allowToolWithArguments(arguments tool.Arguments) ToolAuthorizationDecision {
 	return ToolAuthorizationDecision{arguments: &arguments}
 }
 
-// DenyTool refuses the call. The reason reaches the model as a recoverable Tool
+// denyTool refuses the call. The reason reaches the model as a recoverable Tool
 // result, so a blank one becomes the generic wording rather than nothing.
 func denyTool(reason string) ToolAuthorizationDecision {
 	return ToolAuthorizationDecision{reason: toolDenialReason(reason)}
 }
 
-// AskToolApproval waits for a durable human answer to prompt.
+// askToolApproval waits for a durable human answer to prompt.
 func askToolApproval(prompt runs.ApprovalPrompt) (ToolAuthorizationDecision, error) {
 	if err := prompt.Validate(); err != nil {
 		return ToolAuthorizationDecision{}, fmt.Errorf("execution: invalid Tool approval plan: %w", err)
@@ -134,7 +134,7 @@ func toolDenialReason(reason string) string {
 	return "denied by Tool policy"
 }
 
-// InteractionToolAuthorizer evaluates Runtime Tool policy and resolves its
+// interactionToolAuthorizer evaluates Runtime Tool policy and resolves its
 // optional durable human response. It plans but never owns the wait lifecycle:
 // Run input remains the sole Agent Framework ACL. Implementations must be safe
 // for concurrent calls from one Tool batch.
@@ -175,7 +175,7 @@ type InteractionToolHookDecision struct {
 	requireApproval bool
 }
 
-// AllowToolHook proceeds, optionally escalating to human review and optionally
+// allowToolHook proceeds, optionally escalating to human review and optionally
 // with arguments a hook rewrote.
 func allowToolHook(requireApproval bool, arguments *tool.Arguments) InteractionToolHookDecision {
 	if arguments != nil {
@@ -184,7 +184,7 @@ func allowToolHook(requireApproval bool, arguments *tool.Arguments) InteractionT
 	return InteractionToolHookDecision{requireApproval: requireApproval, arguments: arguments}
 }
 
-// DenyToolHook refuses the call, naming the hook when the hook did not.
+// denyToolHook refuses the call, naming the hook when the hook did not.
 func denyToolHook(reason string) InteractionToolHookDecision {
 	if trimmed := strings.TrimSpace(reason); trimmed != "" {
 		return InteractionToolHookDecision{reason: trimmed}
@@ -207,7 +207,7 @@ func (d InteractionToolHookDecision) EffectiveArguments() (tool.Arguments, bool)
 // RequiresApproval reports a hook escalating a call the gate would have passed.
 func (d InteractionToolHookDecision) RequiresApproval() bool { return d.requireApproval }
 
-// InteractionToolHooks owns Runtime lifecycle extensions around ordinary Tool
+// interactionToolHooks owns Runtime lifecycle extensions around ordinary Tool
 // calls. PostToolUse is observational: its error is recorded by the caller but
 // cannot rewrite a Tool result after the external operation completed. An
 // implementation must be safe for concurrent calls from one Tool batch.

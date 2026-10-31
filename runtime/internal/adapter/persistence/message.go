@@ -33,7 +33,7 @@ func admitConversation(ctx context.Context, conversationID history.ConversationI
 	return conversationID.Validate()
 }
 
-// NewMessageStore binds the chat history store to a database opened via [openDatabase].
+// newMessageStore binds the chat history store to a database opened via [openDatabase].
 func newMessageStore(db *sql.DB) *MessageStore {
 	return &MessageStore{db: db}
 }

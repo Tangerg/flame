@@ -10,13 +10,13 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/feedback"
 )
 
-// FeedbackStore persists the append-only quality ledger. The DB must have been
+// feedbackStore persists the append-only quality ledger. The DB must have been
 // opened via Open so the feedback_entries table exists.
 type feedbackStore struct {
 	db *sql.DB
 }
 
-// NewFeedbackStore wires db to the feedback receiver.
+// newFeedbackStore wires db to the feedback receiver.
 func newFeedbackStore(db *sql.DB) *feedbackStore {
 	return &feedbackStore{db: db}
 }

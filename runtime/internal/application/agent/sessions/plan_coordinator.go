@@ -12,7 +12,7 @@ import (
 	"github.com/samber/lo"
 )
 
-// PlanStore is the use case's consumer-owned persistence port.
+// planStore is the use case's consumer-owned persistence port.
 type planStore interface {
 	State(ctx context.Context, sessionID string) (plan.Current, error)
 	Save(ctx context.Context, sessionID string, replacement plan.Replacement) error

@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-// CommandAcceptanceStore writes immutable Run-owned receipts in their product
+// commandAcceptanceStore writes immutable Run-owned receipts in their product
 // transaction. Deleting original Run material retires its reference permanently;
 // importing the same Run ID cannot bind that receipt to replacement material.
 type commandAcceptanceStore struct{ db *sql.DB }

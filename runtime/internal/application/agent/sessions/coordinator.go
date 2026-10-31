@@ -37,7 +37,7 @@ type Store interface {
 	Save(ctx context.Context, replacement session.Replacement) error
 }
 
-// ModelAdmitter validates an exact model choice before it becomes durable
+// modelAdmitter validates an exact model choice before it becomes durable
 // Session policy.
 type modelAdmitter interface {
 	AdmitSelection(ctx context.Context, selection modelchoice.Selection) error
@@ -61,7 +61,7 @@ type TranscriptStore interface {
 	List(ctx context.Context, sessionID string) ([]transcript.Item, error)
 }
 
-// PlanBoundaries is the lifecycle coordinator's read view of the Plan a Run
+// planBoundaries is the lifecycle coordinator's read view of the Plan a Run
 // boundary recorded. Rollback and fork both need "the value as of that run", which
 // the live projection cannot answer: it keeps the latest value and no history. A
 // false ok is "never recorded", not "empty" — see [PlanBoundary]. nil disables it
@@ -128,7 +128,7 @@ type MaterialSnapshotReader interface {
 	ReadMaterialSnapshot(ctx context.Context, sessionID string) (MaterialSnapshot, error)
 }
 
-// TransientState releases process-local facts when the durable Session, its
+// transientState releases process-local facts when the durable Session, its
 // effective model context, or its shared working tree changes. Whole-Session
 // deletion also retires lifecycle markers; restore and rollback retain those
 // markers while discarding only context-derived authority.
@@ -175,13 +175,13 @@ type WorkspaceCheckpoints interface {
 	DropSession(sessionID string) error
 }
 
-// SandboxDiscarder destroys the isolated copy owned by the addressed Session.
+// sandboxDiscarder destroys the isolated copy owned by the addressed Session.
 // It must also reach that Session's managed scratch namespace after restart.
 type sandboxDiscarder interface {
 	Discard(sessionID string) error
 }
 
-// GoalMutationGuard serializes a session write-set with Goal lifecycle
+// goalMutationGuard serializes a session write-set with Goal lifecycle
 // commands. It owns the complete commit boundary: afterCommit runs exactly
 // once after commit succeeds, even when quiescing an affected Goal fails.
 // A returned error is always the commit's — settlement after a successful
@@ -196,7 +196,7 @@ type goalMutationGuard interface {
 	) error
 }
 
-// WorkspaceMutations is the recoverable operation log for file rollbacks:
+// workspaceMutations is the recoverable operation log for file rollbacks:
 // a Git checkout is not atomic across paths, and the optional durable-history cut
 // cannot share its transaction. Record logs the intent before the tree is
 // touched, Complete clears it once all requested effects commit, and ListPending
@@ -215,7 +215,7 @@ type workspaceMutations interface {
 	ListPending(ctx context.Context) ([]WorkspaceMutation, error)
 }
 
-// ResourceRetirements exposes only committed cleanup responsibilities. Their
+// resourceRetirements exposes only committed cleanup responsibilities. Their
 // creation belongs to the same write-set that retires the Session history.
 type resourceRetirements interface {
 	Lookup(context.Context, string) (ResourceRetirement, bool, error)
@@ -223,7 +223,7 @@ type resourceRetirements interface {
 	Complete(context.Context, ResourceRetirement) error
 }
 
-// ExecutionReleaser is the engine-neutral resource lifecycle slice the Session
+// executionReleaser is the engine-neutral resource lifecycle slice the Session
 // coordinator uses when delete or rollback abandons parked executions. Product
 // resume, cancel, and steer orchestration belongs to application/agent/runs.
 type executionReleaser interface {
